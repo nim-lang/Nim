@@ -1039,8 +1039,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       addToResult(elem)
     return
   elif t.kind != tyGenericBody:
-    #we likely got code of the form TypeA[TypeB] where TypeA is
-    #not generic.
+    # we likely got code of the form TypeA[TypeB] where TypeA is
+    # not generic.
     localError(n.info, errNoGenericParamsAllowedForX, s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:
@@ -1057,9 +1057,14 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     var isConcrete = true
 
     for i in 1 .. <m.call.len:
-      let typ = m.call[i].typ.skipTypes({tyTypeDesc})
-      if containsGenericType(typ): isConcrete = false
-      addToResult(typ)
+      var typ = m.call[i].typ
+      if typ.kind == tyTypeDesc and typ.sons[0].kind == tyNone:
+        isConcrete = false
+        addToResult(typ)
+      else:
+        typ = typ.skipTypes({tyTypeDesc})
+        if containsGenericType(typ): isConcrete = false
+        addToResult(typ)
 
     if isConcrete:
       if s.ast == nil and s.typ.kind != tyCompositeTypeClass:

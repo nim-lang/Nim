@@ -89,6 +89,7 @@ type
     info*: TLineInfo
     allowMetaTypes*: bool     # allow types such as seq[Number]
                               # i.e. the result contains unresolved generics
+    skipTypedesc*: bool       # wether we should skip typeDescs
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
@@ -276,6 +277,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     idTablePut(cl.localCache, t, result)
 
+  let oldSkipTypedesc = cl.skipTypedesc
+  cl.skipTypedesc = true
   for i in countup(1, sonsLen(t) - 1):
     var x = replaceTypeVarsT(cl, t.sons[i])
     assert x.kind != tyGenericInvocation
@@ -289,6 +292,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     rawAddSon(result, header.sons[i])
 
   var newbody = replaceTypeVarsT(cl, lastSon(body))
+  cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
   # This is actually wrong: tgeneric_closure fails with this line:
@@ -400,7 +404,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     let lookup = PType(idTableGet(cl.typeMap, t)) # lookupTypeVar(cl, t)
     if lookup != nil:
       result = lookup
-      if tfUnresolved in t.flags: result = result.base
+      if tfUnresolved in t.flags or cl.skipTypedesc: result = result.base
     elif t.sons[0].kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
 
