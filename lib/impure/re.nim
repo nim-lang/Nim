@@ -162,19 +162,6 @@ proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint =
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
 
-proc match*(s: string, pattern: Regex, matches: var openArray[string],
-           start = 0): bool =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
-  ## the captured substrings in the array ``matches``. If it does not
-  ## match, nothing is written into ``matches`` and ``false`` is
-  ## returned.
-  return matchOrFind(s, pattern, matches, start.cint, 
-                     pcre.ANCHORED) == cint(s.len - start)
-
-proc match*(s: string, pattern: Regex, start = 0): bool =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
-  return matchOrFind(s, pattern, start.cint, pcre.ANCHORED) == cint(s.len-start)
-
 proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
               start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
@@ -187,6 +174,18 @@ proc matchLen*(s: string, pattern: Regex, start = 0): int =
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. 
   return matchOrFind(s, pattern, start.cint, pcre.ANCHORED)
+
+proc match*(s: string, pattern: Regex, start = 0): bool =
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
+  result = matchLen(s, pattern, start) != -1
+
+proc match*(s: string, pattern: Regex, matches: var openArray[string],
+           start = 0): bool =
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
+  ## the captured substrings in the array ``matches``. If it does not
+  ## match, nothing is written into ``matches`` and ``false`` is
+  ## returned.
+  result = matchLen(s, pattern, matches, start) != -1
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
            start = 0): int =
@@ -469,13 +468,20 @@ when isMainModule:
   assert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
          "$1<-$2$2; $1<-$2$2")
 
+  var accum: seq[string] = @[]
   for word in split("00232this02939is39an22example111", re"\d+"):
-    writeln(stdout, word)
+    accum.add(word)
+  assert(accum == @["this", "is", "an", "example"])
 
   for x in findAll("abcdef", re"^{.}", 3):
     assert x == "d"
+  accum = @[]
   for x in findAll("abcdef", re".", 3):
-    echo x
+    accum.add(x)
+  assert(accum == @["d", "e", "f"])
+
+  assert("XYZ".find(re"^\d*") == 0)
+  assert("XYZ".match(re"^\d*") == true)
 
   block:
     var matches: array[0..15, string]
