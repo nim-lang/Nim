@@ -744,24 +744,6 @@ template fillMatches(s, caps, c: expr) =
     else:
       caps[k] = nil
 
-proc match*(s: string, pattern: Peg, matches: var openArray[string],
-            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
-  ## the captured substrings in the array ``matches``. If it does not
-  ## match, nothing is written into ``matches`` and ``false`` is
-  ## returned.
-  var c: Captures
-  c.origStart = start
-  result = rawMatch(s, pattern, start, c) == len(s) - start
-  if result: fillMatches(s, matches, c)
-
-proc match*(s: string, pattern: Peg,
-            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1".} =
-  ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
-  var c: Captures
-  c.origStart = start
-  result = rawMatch(s, pattern, start, c) == len(s)-start
-
 proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
                start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
   ## the same as ``match``, but it returns the length of the match,
@@ -782,6 +764,20 @@ proc matchLen*(s: string, pattern: Peg,
   var c: Captures
   c.origStart = start
   result = rawMatch(s, pattern, start, c)
+
+proc match*(s: string, pattern: Peg, matches: var openArray[string],
+            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1Capture".} =
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
+  ## the captured substrings in the array ``matches``. If it does not
+  ## match, nothing is written into ``matches`` and ``false`` is
+  ## returned.
+  result = matchLen(s, pattern, matches, start) != -1
+
+proc match*(s: string, pattern: Peg,
+            start = 0): bool {.nosideEffect, rtl, extern: "npegs$1".} =
+  ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
+  result = matchLen(s, pattern, start) != -1
+
 
 proc find*(s: string, pattern: Peg, matches: var openArray[string],
            start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
@@ -1686,8 +1682,10 @@ when isMainModule:
   assert "ABC 0232".match(peg"\w+\s+\d+")
   assert "ABC".match(peg"\d+ / \w+")
 
+  var accum: seq[string] = @[]
   for word in split("00232this02939is39an22example111", peg"\d+"):
-    writeln(stdout, word)
+    accum.add(word)
+  assert(accum == @["this", "is", "an", "example"])
 
   assert matchLen("key", ident) == 3
 
@@ -1748,8 +1746,10 @@ when isMainModule:
   else:
     assert false
 
+  accum = @[]
   for x in findAll("abcdef", peg".", 3):
-    echo x
+    accum.add(x)
+  assert(accum == @["d", "e", "f"])
 
   for x in findAll("abcdef", peg"^{.}", 3):
     assert x == "d"
@@ -1783,3 +1783,9 @@ when isMainModule:
   if "foo" =~ peg"{'foo'}":
     assert matches[0] == "foo"
   else: assert false
+
+  let empty_test = peg"^\d*"
+  let str = "XYZ"
+
+  assert(str.find(empty_test) == 0)
+  assert(str.match(empty_test))
