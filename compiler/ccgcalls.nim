@@ -198,6 +198,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
     assert(sonsLen(typ) == sonsLen(typ.n))
+    if ri.sons[i].typ.isCompileTimeOnly: continue
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
       app(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym, ri))
@@ -240,7 +241,9 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genCallPattern()
 
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
-  if i < sonsLen(typ):
+  if ri.sons[i].typ.isCompileTimeOnly:
+    result = nil
+  elif i < sonsLen(typ):
     # 'var T' is 'T&' in C++. This means we ignore the request of
     # any nkHiddenAddr when it's a 'var T'.
     assert(typ.n.sons[i].kind == nkSym)
