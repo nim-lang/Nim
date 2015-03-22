@@ -286,6 +286,53 @@ proc endsWith*(s: string, suffix: Regex): bool =
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
+proc replace*(s: string, sub: Regex, by: proc(s: string): string): string =
+  ## Replaces `sub` in `s` by the results of calling the proc `by` with
+  ## each matched string.
+  result = ""
+  var prev = 0
+  while true:
+    var match = findBounds(s, sub, prev)
+    if match.first < 0: break
+    add(result, substr(s, prev, match.first-1))
+    add(result, by(substr(s, match.first, match.last)))
+    prev = match.last + 1
+  add(result, substr(s, prev))
+
+template replacefIt(sExpr: expr, subExpr: expr, body: expr): expr =
+  let s = sExpr
+  let sub = subExpr
+  result = ""
+  var prev = 0
+  while true:
+    var it {.inject.} : array[MaxSubpatterns, string]
+    var match = s.findBounds(sub, it, prev)
+
+    if match.first < 0: break
+
+    result.add(s.substr(prev, match.first - 1))
+    let nextReplacement = body
+    assert(nextReplacement != nil)
+    result.add(nextReplacement)
+
+    prev = match.last + 1
+
+  result.add(s.substr(prev))
+  return result
+
+proc replacef*(s: string, sub: Regex,
+              by: proc(matches: openarray[string]): string): string =
+  ## Replaces each occurance of `sub` in `s` by the result of the
+  ## `by` expression. The captures are provided, and accessing
+  ## a capture index above the number of actual captures is undefined
+  ## behavior.
+  ##
+  ## `by` should never return `nil`
+  var capCount: int
+  # this should never fail
+  discard fullinfo(sub.h, sub.e, INFO_CAPTURECOUNT, addr capCount)
+  replacefIt(s, sub, by(it[0..(capCount - 1)]))
+
 proc replace*(s: string, sub: Regex, by = ""): string =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be 
   ## accessed in `by`. Examples:
@@ -298,16 +345,8 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ## .. code-block:: nim
   ##
   ##   "; "
-  result = ""
-  var prev = 0
-  while true:
-    var match = findBounds(s, sub, prev)
-    if match.first < 0: break
-    add(result, substr(s, prev, match.first-1))
-    add(result, by)
-    prev = match.last + 1
-  add(result, substr(s, prev))
-  
+  replacefIt(s, sub, by)
+
 proc replacef*(s: string, sub: Regex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
@@ -320,18 +359,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ## .. code-block:: nim
   ##
   ## "var1<-keykey; val2<-key2key2"
-  result = ""
-  var caps: array[0..MaxSubpatterns-1, string]
-  var prev = 0
-  while true:
-    var match = findBounds(s, sub, caps, prev)
-    if match.first < 0: break
-    assert result != nil
-    assert s != nil
-    add(result, substr(s, prev, match.first-1))
-    addf(result, by, caps)
-    prev = match.last + 1
-  add(result, substr(s, prev))
+  replacefIt(s, sub, by % it)
 
 proc parallelReplace*(s: string, subs: openArray[
                       tuple[pattern: Regex, repl: string]]): string =
