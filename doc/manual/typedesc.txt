@@ -66,9 +66,6 @@ When multiple typedesc params are present, they act like a distinct type class
 one can use a named alias or an explicit `typedesc` generic param:
 
 .. code-block:: nim
-
-  # `type1` and `type2` are aliases for typedesc available from system.nim
-  proc acceptOnlyTypePairs(A, B: type1; C, D: type2)
   proc acceptOnlyTypePairs[T: typedesc, U: typedesc](A, B: T; C, D: U)
 
 Once bound, typedesc params can appear in the rest of the proc signature:

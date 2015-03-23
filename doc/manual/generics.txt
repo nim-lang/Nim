@@ -208,11 +208,10 @@ Concepts
 
 **Note**: Concepts are still in development.
 
-Concepts, also known as "user-defined type classes", are available in two
-flavours - declarative and imperative. Both are used to specify an arbitrary
-set of requirements that the matched type must satisfy.
+Concepts, also known as "user-defined type classes", are used to specify an
+arbitrary set of requirements that the matched type must satisfy.
 
-Declarative type classes are written in the following form:
+Concepts are written in the following form:
 
 .. code-block:: nim
   type
@@ -225,7 +224,7 @@ Declarative type classes are written in the following form:
       for value in c:
         type(value) is T
 
-The concept will be matched if:
+The concept is a match if:
 
 a) all of the expressions within the body can be compiled for the tested type
 b) all statically evaluatable boolean expressions in the body must be true
@@ -247,36 +246,12 @@ passed in its explicit ``typedesc[T]`` form:
 
 .. code-block:: nim
   type
-    OutputStream = concept S
-      write(var S, string)
+    OutputStream = concept s
+      write(var s, string)
 
 Much like generics, concepts are instantiated exactly
 once for each tested type and any static code included within them is also
 executed once.
-
-
-Type inference with type classes
---------------------------------
-
-If a type class is used as the return type of a proc and it won't be bound to
-a concrete type by some of the proc params, Nim will infer the return type
-from the proc body. This is usually used with the ``auto`` type class:
-
-.. code-block:: nim
-  proc makePair(a, b): auto = (first: a, second: b)
-
-The return type will be treated as an additional generic param and can be
-explicitly specified at call sites as any other generic param.
-
-Future versions of Nim may also support overloading based on the return type
-of the overloads. In such settings, the expected result type at call sites may
-also influence the inferred return type.
-
-..
-  Likewise, if a type class is used in another position where Nim expects a
-  concrete type (e.g. a variable declaration or a type coercion), Nim will try
-  to infer the concrete type by applying the matching algorithm that also used
-  in overload resolution.
 
 
 Symbol lookup in generics
