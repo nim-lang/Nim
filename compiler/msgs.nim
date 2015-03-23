@@ -587,21 +587,14 @@ proc unknownLineInfo*(): TLineInfo =
 var
   msgContext: seq[TLineInfo] = @[]
   lastError = unknownLineInfo()
-  bufferedMsgs*: seq[string]
 
   errorOutputs* = {eStdOut, eStdErr}
   writelnHook*: proc (output: string) {.closure.}
-
-proc clearBufferedMsgs* =
-  bufferedMsgs = nil
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
     if isNil(writelnHook): writeln(stdout, s)
     else: writelnHook(s)
-
-  if eInMemory in errorOutputs:
-    bufferedMsgs.safeAdd(s)
 
 proc msgQuit*(x: int8) = quit x
 proc msgQuit*(x: string) = quit x
@@ -704,8 +697,6 @@ proc msgWriteln*(s: string) =
     if eStdErr in errorOutputs: writeln(stderr, s)
   else:
     if eStdOut in errorOutputs: writeln(stdout, s)
-
-  if eInMemory in errorOutputs: bufferedMsgs.safeAdd(s)
 
 proc coordToStr(coord: int): string =
   if coord == -1: result = "???"

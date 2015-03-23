@@ -12,6 +12,11 @@
 # included from sem.nim
 
 type
+  TTypeAttachedOp = enum
+    attachedDestructor,
+    attachedAsgn,
+    attachedDeepCopy
+
   TLiftCtx = object
     c: PContext
     info: TLineInfo # for construction
@@ -78,7 +83,7 @@ proc liftBodyObj(c: TLiftCtx; typ, x, y: PNode) =
     let L = forLoop.len
     let call = forLoop.sons[L-2]
     if call.len > 2:
-      localError(forLoop.info, errGenerated, 
+      localError(forLoop.info, errGenerated,
                  "parallel 'fields' iterator does not work for 'case' objects")
       return
     # iterate over the selector:
@@ -117,7 +122,7 @@ proc newAsgnStmt(le, ri: PNode): PNode =
 proc newDestructorCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
   result.add(newSymNode(op))
-  result.add x  
+  result.add x
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newDestructorCall(op, y))
@@ -158,7 +163,7 @@ proc liftBodyAux(c: TLiftCtx; t: PType; x, y: PNode) =
   of tyArrayConstr, tyArray, tySequence:
     if iterOverType(lastSon(t), hasAttachedOp[c.kind], nil):
       # generate loop and call the attached Op:
-      
+
     else:
       defaultOp(c, t, x, y)
   of tyObject:
@@ -167,7 +172,7 @@ proc liftBodyAux(c: TLiftCtx; t: PType; x, y: PNode) =
     liftBodyTup(c, t, x, y)
   of tyRef:
     # we MUST not check for acyclic here as a DAG might still share nodes:
-    
+
   of tyProc:
     if t.callConv != ccClosure or c.kind != attachedDeepCopy:
       defaultOp(c, t, x, y)
@@ -195,3 +200,4 @@ proc liftBody(c: PContext; typ: PType; info: TLineInfo): PNode =
   a.info = info
   a.result = newNodeI(nkStmtList, info)
   liftBodyAux(a, typ)
+  result = a.result

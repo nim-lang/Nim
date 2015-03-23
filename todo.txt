@@ -6,12 +6,12 @@ version 0.10.4
 - make 'nil' work for 'add' and 'len'
 - add "all threads are blocked" detection to 'spawn'
 - overloading of '='
+- disallow negative indexing
 
 
 version 1.0
 ===========
 
-- disallow negative indexing
 - figure out why C++ bootstrapping is so much slower
 - nimsuggest: auto-completion needs to work in 'class' macros
 - improve the docs for inheritance

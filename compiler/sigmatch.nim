@@ -499,6 +499,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
         param.typ = makeTypeDesc(c, typ)
 
       addDecl(c, param)
+      #echo "A ", param.name.s, " ", typeToString(param.typ), " ", param.kind
 
   for param in body.n[0]:
     var
@@ -507,30 +508,19 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 
     if param.kind == nkVarTy:
       dummyName = param[0]
-      dummyType = if a.kind != tyVar: makeVarType(c, a)
-                  else: a
+      dummyType = if a.kind != tyVar: makeVarType(c, a) else: a
     else:
       dummyName = param
       dummyType = a
 
     internalAssert dummyName.kind == nkIdent
-    var dummyParam = newSym(skType, dummyName.ident, body.sym, body.sym.info)
+    var dummyParam = newSym(skVar, dummyName.ident, body.sym, body.sym.info)
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
+    #echo "B ", dummyName.ident.s, " ", typeToString(dummyType), " ", dummyparam.kind
 
   var checkedBody = c.semTryExpr(c, body.n[3].copyTree)
-  #m.errors = bufferedMsgs
-  clearBufferedMsgs()
   if checkedBody == nil: return isNone
-
-  if checkedBody.kind == nkStmtList:
-    for stmt in checkedBody:
-      case stmt.kind
-      of nkReturnStmt: discard
-      of nkTypeSection: discard
-      of nkConstDef: discard
-      else: discard
-
   return isGeneric
 
 proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =

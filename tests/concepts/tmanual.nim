@@ -12,7 +12,6 @@ e
 s
 t
 '''
-  disabled: "true"
 """
 
 template accept(e: expr) =
@@ -22,10 +21,10 @@ template reject(e: expr) =
   static: assert(not compiles(e))
 
 type
-  Container[T] = concept C
-    C.len is Ordinal
+  Container[T] = concept c
+    c.len is Ordinal
     items(c) is iterator
-    for value in C:
+    for value in c:
       type(value) is T
 
 proc takesIntContainer(c: Container[int]) =
