@@ -33,36 +33,36 @@ when not defined(JS):
 
 when defined(posix) and not defined(JS):
   type
-    TimeImpl {.importc: "time_t", header: "<sys/time.h>".} = int
+    TimeImpl {.importc: "time_t", header: "<time.h>".} = int
     Time* = distinct TimeImpl ## distinct type that represents a time
                               ## measured as number of seconds since the epoch
-    
-    Timeval {.importc: "struct timeval", 
+
+    Timeval {.importc: "struct timeval",
               header: "<sys/select.h>".} = object ## struct timeval
-      tv_sec: int  ## Seconds. 
-      tv_usec: int ## Microseconds. 
-      
+      tv_sec: int  ## Seconds.
+      tv_usec: int ## Microseconds.
+
   # we cannot import posix.nim here, because posix.nim depends on times.nim.
-  # Ok, we could, but I don't want circular dependencies. 
+  # Ok, we could, but I don't want circular dependencies.
   # And gettimeofday() is not defined in the posix module anyway. Sigh.
-  
+
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
   # we also need tzset() to make sure that tzname is initialized
-  proc tzset() {.importc, header: "<sys/time.h>".}
+  proc tzset() {.importc, header: "<time.h>".}
   # calling tzset() implicitly to initialize tzname data.
   tzset()
 
 elif defined(windows):
   import winlean
-  
+
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
   else:
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int32
-  
+
   type
     Time* = distinct TimeImpl
 
@@ -166,7 +166,7 @@ proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign.}
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
 
-proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign.} = 
+proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign.} =
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
   fromSeconds(float(since1970))
@@ -184,12 +184,12 @@ proc `-`*(a, b: Time): int64 {.
   ## computes the difference of two calendar times. Result is in seconds.
 
 proc `<`*(a, b: Time): bool {.
-  rtl, extern: "ntLtTime", tags: [], raises: [].} = 
+  rtl, extern: "ntLtTime", tags: [], raises: [].} =
   ## returns true iff ``a < b``, that is iff a happened before b.
   result = a - b < 0
-  
+
 proc `<=` * (a, b: Time): bool {.
-  rtl, extern: "ntLeTime", tags: [], raises: [].}= 
+  rtl, extern: "ntLeTime", tags: [], raises: [].}=
   ## returns true iff ``a <= b``.
   result = a - b <= 0
 
@@ -211,7 +211,7 @@ proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
   ## get the miliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 
-proc initInterval*(miliseconds, seconds, minutes, hours, days, months, 
+proc initInterval*(miliseconds, seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval =
   ## creates a new ``TimeInterval``.
   result.miliseconds = miliseconds
@@ -227,9 +227,9 @@ proc isLeapYear*(year: int): bool =
 
   if year mod 400 == 0:
     return true
-  elif year mod 100 == 0: 
+  elif year mod 100 == 0:
     return false
-  elif year mod 4 == 0: 
+  elif year mod 4 == 0:
     return true
   else:
     return false
@@ -238,7 +238,7 @@ proc getDaysInMonth*(month: Month, year: int): int =
   ## gets the amount of days in a ``month`` of a ``year``
 
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
-  case month 
+  case month
   of mFeb: result = if isLeapYear(year): 29 else: 28
   of mApr, mJun, mSep, mNov: result = 30
   else: result = 31
@@ -250,7 +250,7 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
   var anew = a
   var newinterv = interval
   result = 0
-  
+
   newinterv.months += interval.years * 12
   var curMonth = anew.month
   for mth in 1 .. newinterv.months:
@@ -290,18 +290,18 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   else:
     result = getLocalTime(fromSeconds(t - secs))
 
-when not defined(JS):  
+when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
     ## gets time after the UNIX epoch (1970) in seconds. It is a float
-    ## because sub-second resolution is likely to be supported (depending 
+    ## because sub-second resolution is likely to be supported (depending
     ## on the hardware/OS).
 
   proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
     ## gets time spent that the CPU spent to run the current process in
     ## seconds. This may be more useful for benchmarking than ``epochTime``.
     ## However, it may measure the real time instead (depending on the OS).
-    ## The value of the result has no meaning. 
-    ## To generate useful timing values, take the difference between 
+    ## The value of the result has no meaning.
+    ## To generate useful timing values, take the difference between
     ## the results of two ``cpuTime`` calls:
     ##
     ## .. code-block:: nim
@@ -322,10 +322,10 @@ when not defined(JS):
         weekday {.importc: "tm_wday".},
         yearday {.importc: "tm_yday".},
         isdst {.importc: "tm_isdst".}: cint
-  
+
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
-  
+
   proc localtime(timer: ptr Time): TimeInfoPtr {.
     importc: "localtime", header: "<time.h>", tags: [].}
   proc gmtime(timer: ptr Time): TimeInfoPtr {.
@@ -341,12 +341,12 @@ when not defined(JS):
   #  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
   #    importc: "strftime", header: "<time.h>".}
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
-  proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>", 
+  proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
     tags: [].}
-  
+
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
-    
+
   # our own procs on top of that:
   proc tmToTimeInfo(tm: StructTM, local: bool): TimeInfo =
     const
@@ -370,7 +370,7 @@ when not defined(JS):
           "UTC",
       timezone: if local: getTimezone() else: 0
     )
-  
+
   proc timeInfoToTM(t: TimeInfo): StructTM =
     const
       weekDays: array [WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
@@ -383,11 +383,11 @@ when not defined(JS):
     result.weekday = weekDays[t.weekday]
     result.yearday = t.yearday
     result.isdst = if t.isDST: 1 else: 0
-  
+
   when not defined(useNimRtl):
     proc `-` (a, b: Time): int64 =
       return toBiggestInt(difftime(a, b))
-  
+
   proc getStartMilsecs(): int =
     #echo "clocks per sec: ", clocksPerSec, "clock: ", int(getClock())
     #return getClock() div (clocksPerSec div 1000)
@@ -400,37 +400,37 @@ when not defined(JS):
       posix_gettimeofday(a)
       result = a.tv_sec * 1000'i64 + a.tv_usec div 1000'i64
       #echo "result: ", result
-    
+
   proc getTime(): Time = return timec(nil)
   proc getLocalTime(t: Time): TimeInfo =
     var a = t
     result = tmToTimeInfo(localtime(addr(a))[], true)
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
-  
+
   proc getGMTime(t: Time): TimeInfo =
     var a = t
     result = tmToTimeInfo(gmtime(addr(a))[], false)
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
-  
+
   proc timeInfoToTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
     return mktime(timeInfoToTM(cTimeInfo))
 
-  proc toStringTillNL(p: cstring): string = 
+  proc toStringTillNL(p: cstring): string =
     result = ""
     var i = 0
-    while p[i] != '\0' and p[i] != '\10' and p[i] != '\13': 
+    while p[i] != '\0' and p[i] != '\10' and p[i] != '\13':
       add(result, p[i])
       inc(i)
-    
+
   proc `$`(timeInfo: TimeInfo): string =
     # BUGFIX: asctime returns a newline at the end!
     var p = asctime(timeInfoToTM(timeInfo))
     result = toStringTillNL(p)
-  
+
   proc `$`(time: Time): string =
     # BUGFIX: ctime returns a newline at the end!
     var a = time
@@ -440,17 +440,17 @@ when not defined(JS):
     epochDiff = 116444736000000000'i64
     rateDiff = 10000000'i64 # 100 nsecs
 
-  proc unixTimeToWinTime*(t: Time): int64 = 
+  proc unixTimeToWinTime*(t: Time): int64 =
     ## converts a UNIX `Time` (``time_t``) to a Windows file time
     result = int64(t) * rateDiff + epochDiff
-    
-  proc winTimeToUnixTime*(t: int64): Time = 
+
+  proc winTimeToUnixTime*(t: int64): Time =
     ## converts a Windows time to a UNIX `Time` (``time_t``)
     result = Time((t - epochDiff) div rateDiff)
- 
+
   proc getTzname(): tuple[nonDST, DST: string] =
     return ($tzname[0], $tzname[1])
-  
+
   proc getTimezone(): int =
     return timezone
 
@@ -459,7 +459,7 @@ when not defined(JS):
   proc toSeconds(time: Time): float = float(time)
 
   when not defined(useNimRtl):
-    proc epochTime(): float = 
+    proc epochTime(): float =
       when defined(posix):
         var a: Timeval
         posix_gettimeofday(a)
@@ -473,14 +473,14 @@ when not defined(JS):
         result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
       else:
         {.error: "unknown OS".}
-      
-    proc cpuTime(): float = 
+
+    proc cpuTime(): float =
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
-    
+
 elif defined(JS):
   proc newDate(): Time {.importc: "new Date".}
   proc internGetTime(): Time {.importc: "new Date", tags: [].}
-  
+
   proc newDate(value: float): Time {.importc: "new Date".}
   proc newDate(value: string): Time {.importc: "new Date".}
   proc getTime(): Time =
@@ -490,7 +490,7 @@ elif defined(JS):
   const
     weekDays: array [0..6, WeekDay] = [
       dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-  
+
   proc getLocalTime(t: Time): TimeInfo =
     result.second = t.getSeconds()
     result.minute = t.getMinutes()
@@ -510,7 +510,7 @@ elif defined(JS):
     result.year = t.getUTCFullYear()
     result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
-  
+
   proc timeInfoToTime*(timeInfo: TimeInfo): Time =
     result = internGetTime()
     result.setSeconds(timeInfo.second)
@@ -519,16 +519,16 @@ elif defined(JS):
     result.setMonth(ord(timeInfo.month))
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
-  
+
   proc `$`(timeInfo: TimeInfo): string = return $(timeInfoToTime(timeInfo))
   proc `$`(time: Time): string = return $time.toLocaleString()
-    
-  proc `-` (a, b: Time): int64 = 
+
+  proc `-` (a, b: Time): int64 =
     return a.getTime() - b.getTime()
-  
+
   var
     startMilsecs = getTime()
-  
+
   proc getStartMilsecs(): int =
     ## get the miliseconds from the start of the program
     return int(getTime() - startMilsecs)
@@ -561,7 +561,7 @@ proc `$`*(day: WeekDay): string =
 
 proc `$`*(m: Month): string =
   ## stingify operator for ``Month``.
-  const lookup: array[Month, string] = ["January", "February", "March", 
+  const lookup: array[Month, string] = ["January", "February", "March",
       "April", "May", "June", "July", "August", "September", "October",
       "November", "December"]
   return lookup[m]
@@ -682,7 +682,7 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
 proc format*(info: TimeInfo, f: string): string =
   ## This function formats `info` as specified by `f`. The following format
   ## specifiers are available:
-  ## 
+  ##
   ## ==========  =================================================================================  ================================================
   ## Specifier   Description                                                                        Example
   ## ==========  =================================================================================  ================================================
@@ -729,14 +729,14 @@ proc format*(info: TimeInfo, f: string): string =
 
       currentF = ""
       if f[i] == '\0': break
-      
+
       if f[i] == '\'':
         inc(i) # Skip '
         while f[i] != '\'' and f.len-1 > i:
           result.add(f[i])
           inc(i)
       else: result.add(f[i])
-      
+
     else:
       # Check if the letter being added matches previous accumulated buffer.
       if currentF.len < 1 or currentF[high(currentF)] == f[i]:
@@ -803,7 +803,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
       info.weekday = dSat
       j += 8
     else:
-      raise newException(ValueError, "invalid day of week ")    
+      raise newException(ValueError, "invalid day of week ")
   of "h", "H":
     var pd = parseInt(value[j..j+1], sv)
     info.hour = sv
@@ -854,7 +854,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     of "dec":
       info.month =  mDec
     else:
-      raise newException(ValueError, "invalid month") 
+      raise newException(ValueError, "invalid month")
     j += 3
   of "MMMM":
     if value.len >= j+7 and value[j..j+6].cmpIgnoreCase("january") == 0:
@@ -894,7 +894,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
       info.month =  mDec
       j += 8
     else:
-      raise newException(ValueError, "invalid month") 
+      raise newException(ValueError, "invalid month")
   of "s":
     var pd = parseInt(value[j..j+1], sv)
     info.second = sv
@@ -949,7 +949,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
   else:
     # Ignore the token and move forward in the value string by the same length
     j += token.len
-    
+
 proc parse*(value, layout: string): TimeInfo =
   ## This function parses a date/time string using the standard format identifiers (below)
   ## The function defaults information not provided in the format string from the running program (timezone, month, year, etc)
@@ -987,7 +987,7 @@ proc parse*(value, layout: string): TimeInfo =
   ## ``hh'->'mm`` will give ``01->56``.  The following characters can be
   ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
   ## ``,``. However you don't need to necessarily separate format specifiers, a
-  ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.    
+  ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
   var i = 0 # pointer for format string
   var j = 0 # pointer for value string
   var token = ""
@@ -1038,28 +1038,28 @@ when isMainModule:
   echo t.format("ddd ddMMMhhmmssZZZyyyy")
   assert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
   assert t.format("ddd ddMMMhh:mm:ssZZZyyyy") == "Tue 19Jan03:14:07UTC2038"
-  
+
   assert t.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-    " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") == 
+    " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
     "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 0 00 00:00 UTC"
 
   assert t.format("yyyyMMddhhmmss") == "20380119031407"
-  
+
   var t2 = getGMTime(fromSeconds(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
   assert t2.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
     " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
     "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00 UTC"
-  
+
   when not defined(JS) and sizeof(Time) == 8:
     var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
     assert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-      " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") == 
+      " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
       "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
-    assert t3.format(":,[]()-/") == ":,[]()-/" 
-  
+    assert t3.format(":,[]()-/") == ":,[]()-/"
+
   var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
   assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
-  
+
   # Interval tests
   assert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
   assert((t4 - initInterval(years = 7, minutes = 34, seconds = 24)).format("yyyy mm ss") == "1990 24 10")
