@@ -171,7 +171,7 @@ proc liftBodyAux(c: TLiftCtx; t: PType; x, y: PNode) =
   of tyTuple:
     liftBodyTup(c, t, x, y)
   of tyRef:
-    # we MUST not check for acyclic here as a DAG might still share nodes:
+    # we MUST NOT check for acyclic here as a DAG might still share nodes:
 
   of tyProc:
     if t.callConv != ccClosure or c.kind != attachedDeepCopy:

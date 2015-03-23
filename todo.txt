@@ -39,7 +39,8 @@ Low priority:
 Misc
 ----
 
-- make '--implicitStatic:on' the default
+- make '--implicitStatic:on' the default; then we can also clean up the
+  'static[T]' mess in the compiler!
 - make tuple unpacking work in a non-var/let context
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
