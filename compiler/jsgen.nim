@@ -1118,7 +1118,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, c: var int): PRope =
 proc createVar(p: PProc, typ: PType, indirect: bool): PRope =
   var t = skipTypes(typ, abstractInst)
   case t.kind
-  of tyInt..tyInt64, tyEnum, tyChar:
+  of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar:
     result = putToSeq("0", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
