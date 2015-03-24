@@ -32,7 +32,7 @@ proc vm() =
   while true:
     {.computedGoto.}
     let instr = instructions[pc]
-    let ra = instr.succ # instr.regA
+    let ra = if instr < MyEnum.high: instr.succ else: instr
     case instr
     of enumA:
       echo "yeah A ", ra
@@ -43,5 +43,5 @@ proc vm() =
     of enumE:
       break
     inc(pc)
-  
+
 vm()
