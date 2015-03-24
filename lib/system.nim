@@ -1714,12 +1714,10 @@ iterator items*[T](a: set[T]): T {.inline.} =
   ## iterates over each element of `a`. `items` iterates only over the
   ## elements that are really in the set (and not over the ones the set is
   ## able to hold).
-  var i = low(T)
-  if i <= high(T):
-    while true:
-      if i in a: yield i
-      if i >= high(T): break
-      inc(i)
+  var i = low(T).int
+  while i <= high(T).int:
+    if T(i) in a: yield T(i)
+    inc(i)
 
 iterator items*(a: cstring): char {.inline.} =
   ## iterates over each item of `a`.
