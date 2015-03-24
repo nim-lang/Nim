@@ -365,23 +365,21 @@ discard """proc getElementById*(doc: PDocument, elementId: string): PElement =
 proc getElementsByTagName*(doc: PDocument, tagName: string): seq[PNode] =
   ## Returns a NodeList of all the Elements with a given tag name in
   ## the order in which they are encountered in a preorder traversal of the Document tree.
-  var result: seq[PNode] = @[]
+  result = @[]
   if doc.fDocumentElement.fNodeName == tagName or tagName == "*":
     result.add(doc.fDocumentElement)
 
   result.add(doc.fDocumentElement.findNodes(tagName))
-  return result
 
 proc getElementsByTagNameNS*(doc: PDocument, namespaceURI: string, localName: string): seq[PNode] =
   ## Returns a NodeList of all the Elements with a given localName and namespaceURI
   ## in the order in which they are encountered in a preorder traversal of the Document tree.
-  var result: seq[PNode] = @[]
+  result = @[]
   if doc.fDocumentElement.fLocalName == localName or localName == "*":
     if doc.fDocumentElement.fNamespaceURI == namespaceURI or namespaceURI == "*":
       result.add(doc.fDocumentElement)
 
   result.add(doc.fDocumentElement.findNodesNS(namespaceURI, localName))
-  return result
 
 proc importNode*(doc: PDocument, importedNode: PNode, deep: bool): PNode =
   ## Imports a node from another document to this document
@@ -677,7 +675,7 @@ proc removeChild*(n: PNode, oldChild: PNode): PNode =
       if n.childNodes[i] == oldChild:
         result = n.childNodes[i]
         n.childNodes.delete(i)
-        return result
+        return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -693,7 +691,7 @@ proc replaceChild*(n: PNode, newChild: PNode, oldChild: PNode): PNode =
       if n.childNodes[i] == oldChild:
         result = n.childNodes[i]
         n.childNodes[i] = newChild
-        return result
+        return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -740,7 +738,7 @@ proc removeNamedItem*(nList: var seq[PNode], name: string): PNode =
     if nList[i].fNodeName == name:
       result = nList[i]
       nList.delete(i)
-      return result
+      return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -750,7 +748,7 @@ proc removeNamedItemNS*(nList: var seq[PNode], namespaceURI: string, localName: 
     if nList[i].fLocalName == localName and nList[i].fNamespaceURI == namespaceURI:
       result = nList[i]
       nList.delete(i)
-      return result
+      return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -965,7 +963,7 @@ proc removeAttributeNode*(el: PElement, oldAttr: PAttr): PAttr =
       if el.attributes[i] == oldAttr:
         result = el.attributes[i]
         el.attributes.delete(i)
-        return result
+        return
 
   raise newException(ENotFoundErr, "oldAttr is not a member of el's Attributes")
 
