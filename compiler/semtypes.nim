@@ -1090,6 +1090,8 @@ proc freshType(res, prev: PType): PType {.inline.} =
 
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
+  if nfBase2 in n.flags:
+    message(n.info, warnDeprecated, "use 'concept' instead; 'generic'")
   result = newOrPrevType(tyUserTypeClass, prev, c)
   result.n = n
 

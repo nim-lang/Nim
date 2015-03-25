@@ -1075,9 +1075,11 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       getTok(p)
   of tkGeneric, tkConcept:
     if mode == pmTypeDef:
-      if p.tok.tokType == tkGeneric:
-        parMessage(p, warnDeprecated, "use 'concept' instead; 'generic'")
+      let wasGeneric = p.tok.tokType == tkGeneric
       result = parseTypeClass(p)
+      # hack so that it's remembered and can be marked as deprecated in
+      # sem'check:
+      if wasGeneric: result.flags.incl nfBase2
     else:
       parMessage(p, errInvalidToken, p.tok)
   of tkStatic:
