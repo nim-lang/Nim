@@ -157,6 +157,25 @@ proc `$`*(runes: seq[Rune]): string =
   result = ""
   for rune in runes: result.add(rune.toUTF8)
 
+proc runeOffset*(s: string, pos:int): int =
+  ## Returns the byte position of unicode character at position in s
+  var
+    i = 0
+    o = 0
+  while i < pos:
+    o += runeLenAt(s, o)
+    inc i
+  o
+
+proc rune*(s: string, pos:int): Rune =
+  ## Returns the unicode character at position pos
+  fastRuneAt(s, runeOffset(s, pos), result, false)
+
+proc runeStr*(s: string, pos:int): string =
+  ## Returns the unicode character at position pos as UTF8 String
+  let o = runeOffset(s, pos)
+  s[o.. (o+runeLenAt(s, o)-1)]
+
 const
   alphaRanges = [
     0x00d8,  0x00f6,  #  - 
