@@ -1735,9 +1735,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
-  of mNLen..mNError:
-    localError(e.info, errCannotGenerateCodeForX, e.sons[0].sym.name.s)
-  of mSlurp..mQuoteAst:
+  of mNLen..mNError, mSlurp..mQuoteAst:
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   of mSpawn:
     let n = lowerings.wrapProcForSpawn(p.module.module, e, e.typ, nil, nil)

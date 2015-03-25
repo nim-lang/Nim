@@ -1371,13 +1371,11 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mIncl: binaryExpr(p, n, r, "", "$1[$2] = true")
   of mExcl: binaryExpr(p, n, r, "", "delete $1[$2]")
   of mInSet: binaryExpr(p, n, r, "", "($1[$2] != undefined)")
-  of mNLen..mNError:
-    localError(n.info, errCannotGenerateCodeForX, n.sons[0].sym.name.s)
   of mNewSeq: genNewSeq(p, n)
   of mOf: genOf(p, n, r)
   of mReset: genReset(p, n)
   of mEcho: genEcho(p, n, r)
-  of mSlurp, mStaticExec:
+  of mNLen..mNError, mSlurp, mStaticExec:
     localError(n.info, errXMustBeCompileTime, n.sons[0].sym.name.s)
   of mCopyStr: binaryExpr(p, n, r, "", "($1.slice($2))")
   of mCopyStrLast: ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
