@@ -2011,7 +2011,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   case n.kind
   of nkIdent, nkAccQuoted:
     var s = lookUp(c, n)
-    semCaptureSym(s, c.p.owner)
+    if c.inTypeClass == 0: semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
     if s.kind in {skProc, skMethod, skConverter}+skIterators:
       #performProcvarCheck(c, n, s)
