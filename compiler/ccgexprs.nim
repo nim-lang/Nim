@@ -1962,7 +1962,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     var sym = n.sym
     case sym.kind
     of skMethod:
-      if sym.getBody.kind == nkEmpty or sfDispatcher in sym.flags:
+      if {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(sym)
         genProcPrototype(p.module, sym)
