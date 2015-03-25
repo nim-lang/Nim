@@ -1200,6 +1200,17 @@ proc isEmptyContainer*(t: PType): bool =
   of tyGenericInst: result = isEmptyContainer(t.lastSon)
   else: result = false
 
+proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
+  case r
+  of isConvertible, isIntConv: inc(m.convMatches, convMatch)
+  of isSubtype, isSubrange: inc(m.subtypeMatches)
+  of isGeneric, isInferred: inc(m.genericMatches)
+  of isFromIntLit: inc(m.intConvMatches, 256)
+  of isInferredConvertible:
+    inc(m.convMatches)
+  of isEqual: inc(m.exactMatches)
+  of isNone: discard
+
 proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
@@ -1240,18 +1251,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
 
   if r != isNone and m.calleeSym != nil and
      m.calleeSym.kind in {skMacro, skTemplate}:
-    # XXX: duplicating this is ugly, maybe we should move this
+    # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
-    case r
-    of isConvertible, isIntConv: inc(m.convMatches)
-    of isSubtype, isSubrange: inc(m.subtypeMatches)
-    of isGeneric, isInferred: inc(m.genericMatches)
-    of isFromIntLit: inc(m.intConvMatches, 256)
-    of isInferredConvertible:
-      inc(m.convMatches)
-    of isEqual: inc(m.exactMatches)
-    of isNone: discard
-
+    incMatches(m, r)
     if f.kind == tyStmt:
       return arg
     elif f.kind == tyTypeDesc:
@@ -1366,20 +1368,23 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         z.calleeSym = arg.sons[i].sym
         #if arg.sons[i].sym.name.s == "cmp":
         #  ggDebug = true
-        #  echo "CALLLEEEEEEEE ", typeToString(z.callee)
-        var r = typeRel(z, f, arg.sons[i].typ)
+        #  echo "CALLLEEEEEEEE A ", typeToString(z.callee)
+        # XXX this is still all wrong: (T, T) should be 2 generic matches
+        # and  (int, int) 2 exact matches, etc. Essentially you cannot call
+        # typeRel here and expect things to work!
+        let r = typeRel(z, f, arg.sons[i].typ)
+        incMatches(z, r, 2)
         #if arg.sons[i].sym.name.s == "cmp": # and arg.info.line == 606:
         #  echo "M ", r, " ", arg.info, " ", typeToString(arg.sons[i].sym.typ)
-        #  debug arg.sons[i].sym
         #  writeMatches(z)
         if r != isNone:
+          z.state = csMatch
           case x.state
           of csEmpty, csNoMatch:
             x = z
             best = i
-            x.state = csMatch
           of csMatch:
-            var cmp = cmpCandidates(x, z)
+            let cmp = cmpCandidates(x, z)
             if cmp < 0:
               best = i
               x = z
@@ -1401,6 +1406,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       styleCheckUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
+
 
 proc setSon(father: PNode, at: int, son: PNode) =
   if sonsLen(father) <= at: setLen(father.sons, at + 1)
