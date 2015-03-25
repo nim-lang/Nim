@@ -1151,7 +1151,10 @@ proc semMethod(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMethod, methodPragmas)
 
   var s = result.sons[namePos].sym
-  if not isGenericRoutine(s) and result.sons[bodyPos].kind != nkEmpty:
+  if not isGenericRoutine(s):
+    # why check for the body? bug #2400 has none. Checking for sfForward makes
+    # no sense either.
+    # and result.sons[bodyPos].kind != nkEmpty:
     if hasObjParam(s):
       methodDef(s, fromCache=false)
     else:
