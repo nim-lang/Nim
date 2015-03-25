@@ -56,12 +56,12 @@ Objects have access to their type at runtime. There is an
 
 .. code-block:: nim
   type
-    Person = object of RootObj
+    Person = ref object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
       age: int       # no * means that the field is hidden from other modules
 
-    Student = object of Person # Student inherits from Person
-      id: int                  # with an id field
+    Student = ref object of Person # Student inherits from Person
+      id: int                      # with an id field
 
   var
     student: Student
@@ -69,6 +69,7 @@ Objects have access to their type at runtime. There is an
   assert(student of Student) # is true
   # object construction:
   student = Student(name: "Anton", age: 5, id: 2)
+  echo student[]
 
 Object fields that should be visible from outside the defining module have to
 be marked by ``*``. In contrast to tuples, different object types are
@@ -228,7 +229,7 @@ is needed:
 .. code-block:: nim
 
   type
-    Socket* = object of RootObj
+    Socket* = ref object of RootObj
       FHost: int # cannot be accessed from the outside of the module
                  # the `F` prefix is a convention to avoid clashes since
                  # the accessors are named `host`
@@ -241,8 +242,8 @@ is needed:
     ## getter of hostAddr
     s.FHost
 
-  var
-    s: Socket
+  var s: Socket
+  new s
   s.host = 34  # same as `host=`(s, 34)
 
 (The example also shows ``inline`` procedures.)
@@ -313,8 +314,8 @@ dispatching:
 .. code-block:: nim
 
   type
-    Thing = object of RootObj
-    Unit = object of Thing
+    Thing = ref object of RootObj
+    Unit = ref object of Thing
       x: int
 
   method collide(a, b: Thing) {.inline.} =
@@ -326,8 +327,9 @@ dispatching:
   method collide(a: Unit, b: Thing) {.inline.} =
     echo "2"
 
-  var
-    a, b: Unit
+  var a, b: Unit
+  new a
+  new b
   collide(a, b) # output: 2
 
 
