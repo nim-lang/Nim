@@ -985,16 +985,19 @@ proc sort*[A](t: CountTableRef[A]) =
   t[].sort
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
+  ## merges the second table into the first one
   for key, value in t:
     s.inc(key, value)
 
 proc merge*[A](s, t: CountTable[A]): CountTable[A] =
+  ## merges the two tables into a new one
   result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
   for table in @[s, t]:
     for key, value in table:
       result.inc(key, value)
 
 proc merge*[A](s, t: CountTableRef[A]) =
+  ## merges the second table into the first one
   s[].merge(t[])
 
 when isMainModule:
