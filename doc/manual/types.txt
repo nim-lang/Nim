@@ -568,7 +568,7 @@ the ``of`` operator can be used to determine the object's type.
       name*: string   # the * means that `name` is accessible from other modules
       age: int        # no * means that the field is hidden
 
-    Student = object of Person # a student is a person
+    Student = ref object of Person # a student is a person
       id: int                  # with an id field
 
   var

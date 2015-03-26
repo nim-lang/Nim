@@ -121,7 +121,7 @@ different; for this a special setter syntax is needed:
 .. code-block:: nim
   
   type
-    Socket* = object of RootObj
+    Socket* = ref object of RootObj
       FHost: int # cannot be accessed from the outside of the module
                  # the `F` prefix is a convention to avoid clashes since
                  # the accessors are named `host`
@@ -134,8 +134,8 @@ different; for this a special setter syntax is needed:
     ## getter of hostAddr
     s.FHost
 
-  var
-    s: Socket
+  var s: Socket
+  new s
   s.host = 34  # same as `host=`(s, 34)
 
 
@@ -351,32 +351,32 @@ dispatch.
 
 .. code-block:: nim
   type
-    Expression = object of RootObj ## abstract base class for an expression
-    Literal = object of Expression
+    Expression = ref object of RootObj ## abstract base class for an expression
+    Literal = ref object of Expression
       x: int
-    PlusExpr = object of Expression
-      a, b: ref Expression
-      
-  method eval(e: ref Expression): int =
+    PlusExpr = ref object of Expression
+      a, b: Expression
+  
+  method eval(e: Expression): int =
     # override this base method
     quit "to override!"
   
-  method eval(e: ref Literal): int = return e.x
-
-  method eval(e: ref PlusExpr): int =
+  method eval(e: Literal): int = return e.x
+  
+  method eval(e: PlusExpr): int =
     # watch out: relies on dynamic binding
     result = eval(e.a) + eval(e.b)
   
-  proc newLit(x: int): ref Literal =
+  proc newLit(x: int): Literal =
     new(result)
     result.x = x
-    
-  proc newPlus(a, b: ref Expression): ref PlusExpr =
+  
+  proc newPlus(a, b: Expression): PlusExpr =
     new(result)
     result.a = a
     result.b = b
-  
-  echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
+
+echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
   
 In the example the constructors ``newLit`` and ``newPlus`` are procs
 because they should use static binding, but ``eval`` is a method because it
@@ -387,8 +387,8 @@ dispatching:
 
 .. code-block:: nim
   type
-    Thing = object of RootObj
-    Unit = object of Thing
+    Thing = ref object of RootObj
+    Unit = ref object of Thing
       x: int
       
   method collide(a, b: Thing) {.inline.} =
@@ -400,8 +400,9 @@ dispatching:
   method collide(a: Unit, b: Thing) {.inline.} =
     echo "2"
   
-  var
-    a, b: Unit
+  var a, b: Unit
+  new a
+  new b
   collide(a, b) # output: 2
 
 
