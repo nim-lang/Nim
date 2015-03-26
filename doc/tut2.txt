@@ -83,6 +83,9 @@ no ancestor are implicitly ``final``. You can use the ``inheritable`` pragma
 to introduce new object roots apart from ``system.RootObj``. (This is used
 in the GTK wrapper for instance.)
 
+We always use ref objects for inheritance in this tutorial. When you store a
+non-ref object in a variable of a parent type, the additional fields are cut
+off.
 
 **Note**: Composition (*has-a* relation) is often preferable to inheritance
 (*is-a* relation) for simple code reuse. Since objects are value types in
