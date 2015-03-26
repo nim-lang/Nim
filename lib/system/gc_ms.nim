@@ -165,7 +165,7 @@ proc initGC() =
     init(gch.tempStack)
     init(gch.additionalRoots)
     when withBitvectors:
-      Init(gch.allocated)
+      init(gch.allocated)
       init(gch.marked)
 
 var
