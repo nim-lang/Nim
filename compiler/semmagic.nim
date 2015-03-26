@@ -130,6 +130,11 @@ proc semLocals(c: PContext, n: PNode): PNode =
         result.add(a)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
+
+proc isStrangeArray(t: PType): bool =
+  let t = t.skipTypes(abstractInst)
+  result = t.kind == tyArray and t.firstOrd != 0
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
@@ -153,4 +158,29 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mProcCall:
     result = n
     result.typ = n[1].typ
+  of mRoof:
+    # error correction:
+    result = n.sons[1]
+    if c.p.bracketExpr.isNil:
+      localError(n.info, "no surrounding array access context for '^'")
+    elif c.p.bracketExpr.checkForSideEffects != seNoSideEffect:
+      localError(n.info, "invalid context for '^' as '$#' has side effects" %
+        renderTree(c.p.bracketExpr))
+    elif c.p.bracketExpr.typ.isStrangeArray:
+      localError(n.info, "invalid context for '^' as len!=high+1 for '$#'" %
+        renderTree(c.p.bracketExpr))
+    else:
+      # ^x  is rewritten to: len(a)-x
+      let lenExpr = newNodeI(nkCall, n.info)
+      lenExpr.add newIdentNode(getIdent"len", n.info)
+      lenExpr.add c.p.bracketExpr
+      let lenExprB = semExprWithType(c, lenExpr)
+      if lenExprB.typ.isNil or not isOrdinalType(lenExprB.typ):
+        localError(n.info, "'$#' has to be of an ordinal type for '^'" %
+          renderTree(lenExpr))
+      else:
+        result = newNodeIT(nkCall, n.info, getSysType(tyInt))
+        result.add newSymNode(createMagic("-", mSubI), n.info)
+        result.add lenExprB
+        result.add n.sons[1]
   else: result = n

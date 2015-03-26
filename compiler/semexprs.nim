@@ -1133,19 +1133,20 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
   ## checking of assignments
   if sonsLen(n) == 1:
-    var x = semDeref(c, n)
+    let x = semDeref(c, n)
     if x == nil: return nil
     result = newNodeIT(nkDerefExpr, x.info, x.typ)
     result.add(x[0])
     return
   checkMinSonsLen(n, 2)
   n.sons[0] = semExprWithType(c, n.sons[0])
-  var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
+  let arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tyArrayConstr, tySequence, tyString,
      tyCString:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
+    c.p.bracketExpr = n.sons[0]
     for i in countup(1, sonsLen(n) - 1):
       n.sons[i] = semExprWithType(c, n.sons[i],
                                   flags*{efInTypeof, efDetermineType})
@@ -1166,6 +1167,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   of tyTuple:
     checkSonsLen(n, 2)
     n.sons[0] = makeDeref(n.sons[0])
+    c.p.bracketExpr = n.sons[0]
     # [] operator for tuples requires constant expression:
     n.sons[1] = semConstExpr(c, n.sons[1])
     if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal}).kind in
@@ -1176,13 +1178,16 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       localError(n.info, errIndexTypesDoNotMatch)
     result = n
-  else: discard
+  else:
+    c.p.bracketExpr = n.sons[0]
 
 proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  let oldBracketExpr = c.p.bracketExpr
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"[]"))
+  c.p.bracketExpr = oldBracketExpr
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   var id = considerQuotedIdent(a[1])
@@ -1249,11 +1254,15 @@ proc semAsgn(c: PContext, n: PNode): PNode =
   of nkBracketExpr:
     # a[i] = x
     # --> `[]=`(a, i, x)
+    let oldBracketExpr = c.p.bracketExpr
     a = semSubscript(c, a, {efLValue})
     if a == nil:
       result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
       add(result, n[1])
-      return semExprNoType(c, result)
+      result = semExprNoType(c, result)
+      c.p.bracketExpr = oldBracketExpr
+      return result
+    c.p.bracketExpr = oldBracketExpr
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
     result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")

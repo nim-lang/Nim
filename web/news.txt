@@ -42,6 +42,22 @@ News
     structure; for immediate macro parameters ``nkCall('addr', 'x')`` is
     produced instead of ``nkAddr('x')``.
   - ``concept`` is now a keyword and is used instead of ``generic``.
+  - The ``inc``, ``dec``, ``+=``, ``-=`` builtins now produces OverflowError
+    exceptions. This means code like the following:
+
+  .. code-block:: nim
+    var x = low(T)
+    while x <= high(T):
+      echo x
+      inc x
+
+  Needs to be replaced by something like this:
+
+  .. code-block:: nim
+    var x = low(T).int
+    while x <= high(T).int:
+      echo x.T
+      inc x
 
 
   Language Additions
@@ -83,6 +99,9 @@ News
     var x: int
     varOrConst(x) # "var"
     varOrConst(45) # "const"
+
+  - Array and seq indexing can now use the builtin ``^`` operator to access
+    things from backwards: ``a[^1]`` is like Python's ``a[-1]``.
 
 
   Library additions

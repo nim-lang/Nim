@@ -131,11 +131,10 @@ proc semNodeKindConstraints*(p: PNode): PNode =
   result.strVal.add(ppEof)
 
 type
-  TSideEffectAnalysis = enum
+  TSideEffectAnalysis* = enum
     seUnknown, seSideEffect, seNoSideEffect
 
-proc checkForSideEffects(n: PNode): TSideEffectAnalysis =
-  # XXX is 'raise' a side effect?
+proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
   case n.kind
   of nkCallKinds:
     # only calls can produce side effects:
@@ -162,6 +161,8 @@ proc checkForSideEffects(n: PNode): TSideEffectAnalysis =
     # an atom cannot produce a side effect:
     result = seNoSideEffect
   else:
+    # assume no side effect:
+    result = seNoSideEffect
     for i in 0 .. <n.len:
       let ret = checkForSideEffects(n.sons[i])
       if ret == seSideEffect: return ret

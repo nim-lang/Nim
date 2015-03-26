@@ -222,8 +222,8 @@ type
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
 type
-  Slice* {.final, pure.}[T] = object ## builtin slice type
-    a*, b*: T                        ## the bounds
+  Slice*[T] = object ## builtin slice type
+    a*, b*: T        ## the bounds
 
 when defined(nimalias):
   {.deprecated: [TSlice: Slice].}
@@ -3245,6 +3245,14 @@ proc procCall*(x: expr) {.magic: "ProcCall".} =
   ## .. code-block:: nim
   ##   # 'someMethod' will be resolved fully statically:
   ##   procCall someMethod(a, b)
+  discard
+
+proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
+  ## builtin `roof`:idx: operator that can be used for convenient array access.
+  ## ``a[^x]`` is rewritten to ``a[a.len-x]``. However currently the ``a``
+  ## expression must not have side effects for this to compile. Note that since
+  ## this is a builtin, it automatically works for all kinds of
+  ## overloaded ``[]`` or ``[]=`` accessors.
   discard
 
 {.pop.} #{.push warning[GcMem]: off.}
