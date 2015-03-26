@@ -1749,6 +1749,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     initLocExpr(p, x, a)
     initLocExpr(p, e.sons[2], b)
     genDeepCopy(p, a, b)
+  of mDotDot: genCall(p, e, d)
   else: internalError(e.info, "genMagicExpr: " & $op)
 
 proc genConstExpr(p: BProc, n: PNode): PRope

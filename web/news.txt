@@ -59,6 +59,12 @@ News
       echo x.T
       inc x
 
+  - **Negative indexing for slicing is deprecated and will be removed in the
+    next version of the language.** Instead of ``a[0.. -1]`` you can
+    use ``a[0.. ^1]``. This also works with accessing a single
+    element ``a[^1]``. Note that we cannot detect this reliably as it is
+    determined at **runtime** whether negative indexing is used!
+
 
   Language Additions
   ------------------

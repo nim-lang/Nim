@@ -228,7 +228,7 @@ type
 when defined(nimalias):
   {.deprecated: [TSlice: Slice].}
 
-proc `..`*[T](a, b: T): Slice[T] {.noSideEffect, inline.} =
+proc `..`*[T](a, b: T): Slice[T] {.noSideEffect, inline, magic: "DotDot".} =
   ## `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
@@ -236,7 +236,7 @@ proc `..`*[T](a, b: T): Slice[T] {.noSideEffect, inline.} =
   result.a = a
   result.b = b
 
-proc `..`*[T](b: T): Slice[T] {.noSideEffect, inline.} =
+proc `..`*[T](b: T): Slice[T] {.noSideEffect, inline, magic: "DotDot".} =
   ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
   result.b = b
 
@@ -2864,11 +2864,11 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
 
 when hostOS != "standalone":
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
-    ## slice operation for strings. Negative indexes are supported.
+    ## slice operation for strings.
     result = s.substr(x.a-|s, x.b-|s)
 
   proc `[]=`*(s: var string, x: Slice[int], b: string) =
-    ## slice assignment for strings. Negative indexes are supported. If
+    ## slice assignment for strings. If
     ## ``b.len`` is not exactly the number of elements that are referred to
     ## by `x`, a `splice`:idx: is performed:
     ##
@@ -2884,8 +2884,7 @@ when hostOS != "standalone":
       spliceImpl(s, a, L, b)
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
-  ## slice operation for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## slice operation for arrays.
   when low(a) < 0:
     {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
@@ -2893,8 +2892,7 @@ proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
   for i in 0.. <L: result[i] = a[i + x.a]
 
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[int], b: openArray[T]) =
-  ## slice assignment for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## slice assignment for arrays.
   when low(a) < 0:
     {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
@@ -2904,16 +2902,14 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[int], b: openArray[T]) =
     sysFatal(RangeError, "different lengths for slice assignment")
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[Idx]): seq[T] =
-  ## slice operation for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## slice operation for arrays.
   var L = ord(x.b) - ord(x.a) + 1
   newSeq(result, L)
   for i in 0.. <L:
     result[i] = a[Idx(ord(x.a) + i)]
 
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
-  ## slice assignment for arrays. Negative indexes are **not** supported
-  ## because the array might have negative bounds.
+  ## slice assignment for arrays.
   var L = ord(x.b) - ord(x.a) + 1
   if L == b.len:
     for i in 0 .. <L:
@@ -2922,14 +2918,14 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
     sysFatal(RangeError, "different lengths for slice assignment")
 
 proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
-  ## slice operation for sequences. Negative indexes are supported.
+  ## slice operation for sequences.
   var a = x.a-|s
   var L = x.b-|s - a + 1
   newSeq(result, L)
   for i in 0.. <L: result[i] = s[i + a]
 
 proc `[]=`*[T](s: var seq[T], x: Slice[int], b: openArray[T]) =
-  ## slice assignment for sequences. Negative indexes are supported. If
+  ## slice assignment for sequences. If
   ## ``b.len`` is not exactly the number of elements that are referred to
   ## by `x`, a `splice`:idx: is performed.
   var a = x.a-|s
