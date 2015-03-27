@@ -227,7 +227,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       inc(linei, le)
       # Status code
       linei.inc skipWhitespace(line, linei)
-      result.status = line[linei .. -1]
+      result.status = line[linei .. ^1]
       parsedStatus = true
     else:
       # Parse headers
@@ -238,7 +238,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
 
-      result.headers[name] = line[linei.. -1].strip()
+      result.headers[name] = line[linei.. ^1].strip()
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
@@ -442,7 +442,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   ## | Extra headers can be specified and must be separated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout, 
+  result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout,
                    userAgent, proxy)
 
 proc redirection(status: string): bool =
@@ -725,7 +725,7 @@ proc parseResponse(client: AsyncHttpClient,
       inc(linei, le)
       # Status code
       linei.inc skipWhitespace(line, linei)
-      result.status = line[linei .. -1]
+      result.status = line[linei .. ^1]
       parsedStatus = true
     else:
       # Parse headers
@@ -736,7 +736,7 @@ proc parseResponse(client: AsyncHttpClient,
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
 
-      result.headers[name] = line[linei.. -1].strip()
+      result.headers[name] = line[linei.. ^1].strip()
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
