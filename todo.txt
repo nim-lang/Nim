@@ -13,7 +13,6 @@ version 1.0
 
 - figure out why C++ bootstrapping is so much slower
 - nimsuggest: auto-completion needs to work in 'class' macros
-- improve the docs for inheritance
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - iterators always require a return type
