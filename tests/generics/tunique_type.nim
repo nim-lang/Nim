@@ -27,7 +27,7 @@ proc refExpr(exprNode: NimNode): string {.compileTime.} =
   "expr" & $(exprNodes.len - 1)
 
 proc derefExpr(exprRef: string): NimNode {.compileTime.} =
-  exprNodes[parseInt(exprRef[4 .. -1])]
+  exprNodes[parseInt(exprRef[4 .. ^1])]
 
 #===============================================================================
 # Define a type that allows a callable expression to be mapped onto elements

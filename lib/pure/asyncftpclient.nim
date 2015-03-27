@@ -61,8 +61,8 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
-  var ip = nums[0.. -3]
-  var port = nums[-2.. -1]
+  var ip = nums[0.. ^3]
+  var port = nums[^2.. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
   await ftp.dsock.connect(ip.join("."), Port(properPort.toU16))
   ftp.dsockConnected = true

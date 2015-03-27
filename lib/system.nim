@@ -2874,7 +2874,7 @@ when hostOS != "standalone":
     ##
     ## .. code-block:: nim
     ##   var s = "abcdef"
-    ##   s[1 .. -2] = "xyz"
+    ##   s[1 .. ^2] = "xyz"
     ##   assert s == "axyzf"
     var a = x.a
     var L = x.b - a + 1
