@@ -161,6 +161,10 @@ proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
   ## Returns the byte position of unicode character
   ## at position pos in s with an optional start byte position.
   ## returns the special value -1 if it runs out of the string
+  ##
+  ## Beware: This can lead to unoptimized code and slow execution!
+  ## Most problems are solve more efficient by using an iterator
+  ## or conversion to a seq of Rune.
   var
     i = 0
     o = start
@@ -168,29 +172,71 @@ proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
     o += runeLenAt(s, o)
     if o >= s.len:
       return -1
-      #raise newException(IndexError, "Position out of bounds")
     inc i
   return o
 
 proc runeAtPos*(s: string, pos: int): Rune =
   ## Returns the unicode character at position pos
+  ##
+  ## Beware: This can lead to unoptimized code and slow execution!
+  ## Most problems are solve more efficient by using an iterator
+  ## or conversion to a seq of Rune.
   fastRuneAt(s, runeOffset(s, pos), result, false)
 
 proc runeStrAtPos*(s: string, pos: Natural): string =
   ## Returns the unicode character at position pos as UTF8 String
+  ##
+  ## Beware: This can lead to unoptimized code and slow execution!
+  ## Most problems are solve more efficient by using an iterator
+  ## or conversion to a seq of Rune.
   let o = runeOffset(s, pos)
   s[o.. (o+runeLenAt(s, o)-1)]
 
-proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
+proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
+  ## Returns a tuple with the the byte offset of the
+  ## unicode character at position ``rev`` in s counting
+  ## from the end (starting with 1) and the total
+  ## number of runes in the string. Returns a negative value
+  ## for offset if there are to few runes in the string to
+  ## satisfy the request.
+  ##
+  ## Beware: This can lead to unoptimized code and slow execution!
+  ## Most problems are solve more efficient by using an iterator
+  ## or conversion to a seq of Rune.
+  var
+    a = rev.int
+    o = 0
+    x = 0
+  while o < s.len:
+    let r = runeLenAt(s, o)
+    o += r
+    if a < 0:
+      x += r
+    dec a
+
+  if a > 0:
+    return (-a, rev.int-a)
+  return (x, -a+rev.int)
+
+proc runeSubStr*(s: string, pos:int, len:int = int.high): string =
   ## Returns the UTF-8 substring starting at codepoint pos
   ## with len codepoints. If pos or len is negativ they count from
   ## the end of the string. If len is not given it means the longest
-  ## possible string. This reensembles how substr() in PHP works.
+  ## possible string.
+  ##
+  ## (Needs some examples)
   if pos < 0: 
-    # offset from the end could be optimized further
-    var o = runeLen(s) + pos
-    if o < 0: o = 0
-    result = runeSubStr(s, o, len)
+    let (o, rl) = runeReverseOffset(s, -pos)
+    if len >= rl:
+      result = s[o.. s.len-1]
+    elif len < 0:
+      let e = rl + len
+      if e < 0:
+        result = ""
+      else:
+        result = s[o.. runeOffset(s, e-(rl+pos) , o)-1]
+    else:
+      result = s[o.. runeOffset(s, len, o)-1]
   else:
     let o = runeOffset(s, pos)
     if o < 0:
@@ -198,12 +244,12 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
     elif len == int.high:
       result = s[o.. s.len-1]
     elif len < 0:
-      # offset from the end could be optimized further
-      let e = runeLen(s) + len
+      let (e, rl) = runeReverseOffset(s, -len)
+      discard rl
       if e <= 0:
         result = ""
       else:
-        result = s[o.. runeOffset(s, e)-1]
+        result = s[o.. e-1]
     else: 
       var e = runeOffset(s, len, o)
       if e < 0:
@@ -1344,3 +1390,38 @@ when isMainModule:
   assert reversed("先秦兩漢") == "漢兩秦先"
   assert reversed("as⃝df̅") == "f̅ds⃝a"
   assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
+
+  # test for rune positioning and runeSubStr()
+  let s = "Hänsel  ««: 10,00€"
+
+  doAssert(runeReverseOffset(s, 1) == (20, 18))
+  doAssert(runeReverseOffset(s, 19) == (-1, 18))
+
+  doAssert(runeStrAtPos(s, 0) == "H")
+  doAssert(runeSubStr(s, 0, 1) == "H")
+  doAssert(runeStrAtPos(s, 10) == ":")
+  doAssert(runeSubStr(s, 10, 1) == ":")
+  doAssert(runeStrAtPos(s, 9) == "«")
+  doAssert(runeSubStr(s, 9, 1) == "«")
+  doAssert(runeStrAtPos(s, 17) == "€")
+  doAssert(runeSubStr(s, 17, 1) == "€")
+ # echo runeStrAtPos(s, 18) # index error
+
+  doAssert(runeSubStr(s, 0) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, -18) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, 10) == ": 10,00€")
+  doAssert(runeSubStr(s, 18) == "")
+  doAssert(runeSubStr(s, 0, 10) == "Hänsel  ««")
+
+  doAssert(runeSubStr(s, 12) == "10,00€")
+  doAssert(runeSubStr(s, -6) == "10,00€")
+
+  doAssert(runeSubStr(s, 12, 5) == "10,00")
+  doAssert(runeSubStr(s, 12, -1) == "10,00")
+  doAssert(runeSubStr(s, -6, 5) == "10,00")
+  doAssert(runeSubStr(s, -6, -1) == "10,00")
+
+  doAssert(runeSubStr(s, 0, 100) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, -100, 100) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, 0, -100) == "")
+  doAssert(runeSubStr(s, 100, -100) == "")
