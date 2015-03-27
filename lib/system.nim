@@ -2865,7 +2865,7 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
 when hostOS != "standalone":
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
-    result = s.substr(x.a-|s, x.b-|s)
+    result = s.substr(x.a, x.b)
 
   proc `[]=`*(s: var string, x: Slice[int], b: string) =
     ## slice assignment for strings. If
@@ -2876,8 +2876,8 @@ when hostOS != "standalone":
     ##   var s = "abcdef"
     ##   s[1 .. -2] = "xyz"
     ##   assert s == "axyzf"
-    var a = x.a-|s
-    var L = x.b-|s - a + 1
+    var a = x.a
+    var L = x.b - a + 1
     if L == b.len:
       for i in 0 .. <L: s[i+a] = b[i]
     else:
@@ -2919,8 +2919,8 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
 
 proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
   ## slice operation for sequences.
-  var a = x.a-|s
-  var L = x.b-|s - a + 1
+  var a = x.a
+  var L = x.b - a + 1
   newSeq(result, L)
   for i in 0.. <L: result[i] = s[i + a]
 
@@ -2928,8 +2928,8 @@ proc `[]=`*[T](s: var seq[T], x: Slice[int], b: openArray[T]) =
   ## slice assignment for sequences. If
   ## ``b.len`` is not exactly the number of elements that are referred to
   ## by `x`, a `splice`:idx: is performed.
-  var a = x.a-|s
-  var L = x.b-|s - a + 1
+  var a = x.a
+  var L = x.b - a + 1
   if L == b.len:
     for i in 0 .. <L: s[i+a] = b[i]
   else:

@@ -59,11 +59,12 @@ News
       echo x.T
       inc x
 
-  - **Negative indexing for slicing is deprecated and will be removed in the
-    next version of the language.** Instead of ``a[0.. -1]`` you can
+  - **Negative indexing for slicing does not work anymore!** Instead
+    of ``a[0.. -1]`` you can
     use ``a[0.. ^1]``. This also works with accessing a single
     element ``a[^1]``. Note that we cannot detect this reliably as it is
     determined at **runtime** whether negative indexing is used!
+    ``a[0.. -1]`` now produces the empty string/sequence.
   - The compiler now warns about code like ``foo +=1`` which uses inconsistent
     spacing around binary operators. Later versions of the language will parse
     these as unary operators instead so that ``echo $foo`` finally can do what

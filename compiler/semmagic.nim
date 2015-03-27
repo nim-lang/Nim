@@ -167,10 +167,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-    # we only need to warnings here about negative indexing:
-    if isNegative(n.sons[1]) or (n.len > 2 and isNegative(n.sons[2])):
-      message(n.info, warnDeprecated,
-        "use '^' instead of '-'; negative indexing")
+    # disallow negative indexing for now:
+    if not c.p.bracketExpr.isNil:
+      if isNegative(n.sons[1]) or (n.len > 2 and isNegative(n.sons[2])):
+        localError(n.info, "use '^' instead of '-'; negative indexing is obsolete")
   of mRoof:
     # error correction:
     result = n.sons[1]
