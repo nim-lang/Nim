@@ -1175,6 +1175,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyPtr, prev)
       elif op.id == ord(wRef):
         result = semAnyRef(c, n, tyRef, prev)
+      elif op.id == ord(wType):
+        checkSonsLen(n, 2)
+        let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
+        result = typExpr.typ.skipTypes({tyIter})
       else:
         result = semTypeExpr(c, n)
   of nkWhenStmt:
