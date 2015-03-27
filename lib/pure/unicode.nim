@@ -157,24 +157,58 @@ proc `$`*(runes: seq[Rune]): string =
   result = ""
   for rune in runes: result.add(rune.toUTF8)
 
-proc runeOffset*(s: string, pos:int): int =
-  ## Returns the byte position of unicode character at position in s
+proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
+  ## Returns the byte position of unicode character
+  ## at position pos in s with an optional start byte position.
+  ## returns the special value -1 if it runs out of the string
   var
     i = 0
-    o = 0
+    o = start
   while i < pos:
     o += runeLenAt(s, o)
+    if o >= s.len:
+      return -1
+      #raise newException(IndexError, "Position out of bounds")
     inc i
-  o
+  return o
 
-proc rune*(s: string, pos:int): Rune =
+proc runeAtPos*(s: string, pos: int): Rune =
   ## Returns the unicode character at position pos
   fastRuneAt(s, runeOffset(s, pos), result, false)
 
-proc runeStr*(s: string, pos:int): string =
+proc runeStrAtPos*(s: string, pos: Natural): string =
   ## Returns the unicode character at position pos as UTF8 String
   let o = runeOffset(s, pos)
   s[o.. (o+runeLenAt(s, o)-1)]
+
+proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
+  ## Returns the UTF-8 substring starting at codepoint pos
+  ## with len codepoints. If pos or len is negativ they count from
+  ## the end of the string. If len is not given it means the longest
+  ## possible string. This reensembles how substr() in PHP works.
+  if pos < 0: 
+    # offset from the end could be optimized further
+    var o = runeLen(s) + pos
+    if o < 0: o = 0
+    result = runeSubStr(s, o, len)
+  else:
+    let o = runeOffset(s, pos)
+    if o < 0:
+      result = ""
+    elif len == int.high:
+      result = s[o.. s.len-1]
+    elif len < 0:
+      # offset from the end could be optimized further
+      let e = runeLen(s) + len
+      if e <= 0:
+        result = ""
+      else:
+        result = s[o.. runeOffset(s, e)-1]
+    else: 
+      var e = runeOffset(s, len, o)
+      if e < 0:
+        e = s.len
+      result = s[o.. e-1]
 
 const
   alphaRanges = [
