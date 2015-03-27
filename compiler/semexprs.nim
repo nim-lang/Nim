@@ -1904,7 +1904,8 @@ proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
         of nkOfBranch, nkElse: checkInitialized(lastSon(n.sons[i]), ids, info)
         else: internalError(info, "checkInitialized")
   of nkSym:
-    if tfNeedsInit in n.sym.typ.flags and n.sym.name.id notin ids:
+    if {tfNotNil, tfNeedsInit} * n.sym.typ.flags != {} and
+        n.sym.name.id notin ids:
       message(info, errGenerated, "field not initialized: " & n.sym.name.s)
   else: internalError(info, "checkInitialized")
 
