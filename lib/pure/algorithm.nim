@@ -253,16 +253,16 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   while true:
     while indexes[index] == -1:
       indexes[index] = initial[index]
-      index +=1
+      index += 1
       if index == x.len: return
-      indexes[index] -=1
+      indexes[index] -= 1
     for ni, i in indexes:
       next[ni] = x[ni][i]
     var res: seq[T]
     shallowCopy(res, next)
     result.add(res)
     index = 0
-    indexes[index] -=1
+    indexes[index] -= 1
 
 proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   ## Calculates the next lexicographic permutation, directly modifying ``x``.

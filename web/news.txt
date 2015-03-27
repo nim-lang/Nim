@@ -42,7 +42,7 @@ News
     structure; for immediate macro parameters ``nkCall('addr', 'x')`` is
     produced instead of ``nkAddr('x')``.
   - ``concept`` is now a keyword and is used instead of ``generic``.
-  - The ``inc``, ``dec``, ``+=``, ``-=`` builtins now produces OverflowError
+  - The ``inc``, ``dec``, ``+=``, ``-=`` builtins now produce OverflowError
     exceptions. This means code like the following:
 
   .. code-block:: nim
@@ -64,6 +64,10 @@ News
     use ``a[0.. ^1]``. This also works with accessing a single
     element ``a[^1]``. Note that we cannot detect this reliably as it is
     determined at **runtime** whether negative indexing is used!
+  - The compiler now warns about code like ``foo +=1`` which uses inconsistent
+    spacing around binary operators. Later versions of the language will parse
+    these as unary operators instead so that ``echo $foo`` finally can do what
+    people expect it to do.
 
 
   Language Additions
