@@ -88,7 +88,9 @@ type
     ntyBigNum,
     ntyConst, ntyMutable, ntyVarargs,
     ntyIter,
-    ntyError
+    ntyError,
+    ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,
+    ntyAnd, ntyOr, ntyNot
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
