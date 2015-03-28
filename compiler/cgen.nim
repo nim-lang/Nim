@@ -486,7 +486,7 @@ proc lenField(p: BProc): PRope =
 include ccgcalls, "ccgstmts.nim", "ccgexprs.nim"
 
 # ----------------------------- dynamic library handling -----------------
-# We don't finalize dynamic libs as this does the OS for us.
+# We don't finalize dynamic libs as the OS does this for us.
 
 proc isGetProcAddr(lib: PLib): bool =
   let n = lib.path

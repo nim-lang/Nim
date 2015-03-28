@@ -54,6 +54,7 @@ proc commandDoc2 =
   finishDoc2Pass(gProjectName)
 
 proc commandCompileToC =
+  extccomp.initVars()
   semanticPasses()
   registerPass(cgenPass)
   rodPass()
