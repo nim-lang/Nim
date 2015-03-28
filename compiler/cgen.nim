@@ -228,7 +228,7 @@ proc rdLoc(a: TLoc): PRope =
 
 proc addrLoc(a: TLoc): PRope =
   result = a.r
-  if lfIndirect notin a.flags and mapType(a.t) != ctArray:
+  if lfIndirect notin a.flags:
     result = con("(&", result).con(")")
 
 proc rdCharLoc(a: TLoc): PRope =
@@ -486,7 +486,7 @@ proc lenField(p: BProc): PRope =
 include ccgcalls, "ccgstmts.nim", "ccgexprs.nim"
 
 # ----------------------------- dynamic library handling -----------------
-# We don't finalize dynamic libs as this does the OS for us.
+# We don't finalize dynamic libs as the OS does this for us.
 
 proc isGetProcAddr(lib: PLib): bool =
   let n = lib.path
