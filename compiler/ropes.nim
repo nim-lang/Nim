@@ -77,13 +77,6 @@ type
     rInvalidFormatStr
     rTokenTooLong
 
-proc con*(a, b: PRope): PRope
-proc con*(a: PRope, b: string): PRope
-proc con*(a: string, b: PRope): PRope
-proc con*(a: varargs[PRope]): PRope
-proc app*(a: var PRope, b: PRope)
-proc app*(a: var PRope, b: string)
-proc prepend*(a: var PRope, b: PRope)
 proc toRope*(s: string): PRope
 proc toRope*(i: BiggestInt): PRope
 proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
@@ -179,6 +172,32 @@ proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) =
     inc(resultLen, it.length)
     assert(resultLen <= len(result))
 
+proc `&`*(a, b: PRope): PRope =
+  if a == nil:
+    result = b
+  elif b == nil:
+    result = a
+  else:
+    result = newRope()
+    result.length = a.length + b.length
+    result.left = a
+    result.right = b
+
+proc `&`*(a: PRope, b: string): PRope =
+  result = a & toRope(b)
+
+proc `&`*(a: string, b: PRope): PRope =
+  result = toRope(a) & b
+
+proc `&`*(a: varargs[PRope]): PRope =
+  for i in countup(0, high(a)): result = result & a[i]
+
+proc add*(a: var PRope, b: PRope) =
+  a = a & b
+
+proc add*(a: var PRope, b: string) =
+  a = a & b
+
 proc `$`*(p: PRope): string =
   if p == nil:
     result = ""
@@ -187,20 +206,11 @@ proc `$`*(p: PRope): string =
     var resultLen = 0
     newRecRopeToStr(result, resultLen, p)
 
-proc con(a, b: PRope): PRope =
-  if a == nil: result = b
-  elif b == nil: result = a
-  else:
-    result = newRope()
-    result.length = a.length + b.length
-    result.left = a
-    result.right = b
-
-proc con(a: PRope, b: string): PRope = result = con(a, toRope(b))
-proc con(a: string, b: PRope): PRope = result = con(toRope(a), b)
-
-proc con(a: varargs[PRope]): PRope =
-  for i in countup(0, high(a)): result = con(result, a[i])
+# TODO Old names - change invokations to &
+proc con*(a, b: PRope): PRope = a & b
+proc con*(a: PRope, b: string): PRope = a & b
+proc con*(a: string, b: PRope): PRope = a & b
+proc con*(a: varargs[PRope]): PRope = `&`(a)
 
 proc ropeConcat*(a: varargs[PRope]): PRope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
@@ -210,9 +220,12 @@ proc toRope(i: BiggestInt): PRope =
   inc gCacheIntTries
   result = toRope($i)
 
-proc app(a: var PRope, b: PRope) = a = con(a, b)
-proc app(a: var PRope, b: string) = a = con(a, b)
-proc prepend(a: var PRope, b: PRope) = a = con(b, a)
+# TODO Old names - change invokations to add
+proc app*(a: var PRope, b: PRope) = add(a, b)
+proc app*(a: var PRope, b: string) = add(a, b)
+
+proc prepend*(a: var PRope, b: PRope) = a = b & a
+proc prepend*(a: var PRope, b: string) = a = b & a
 
 proc writeRope*(f: File, c: PRope) =
   var stack = @[c]
