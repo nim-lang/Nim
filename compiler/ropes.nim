@@ -76,9 +76,6 @@ type
     rCannotOpenFile
     rInvalidFormatStr
 
-proc toRope*(s: string): PRope
-proc toRope*(i: BiggestInt): PRope
-
 # implementation
 
 var errorHandler*: proc(err: TRopesError, msg: string, useWarning = false)
@@ -136,12 +133,25 @@ proc insertInCache(s: string): PRope =
     result = newRope(s)
     cache[h] = result
 
-proc toRope(s: string): PRope =
+proc rope*(s: string): PRope =
   if s.len == 0:
     result = nil
   else:
     result = insertInCache(s)
   assert(ropeInvariant(result))
+
+proc rope*(i: BiggestInt): PRope =
+  inc gCacheIntTries
+  result = rope($i)
+
+proc rope*(f: BiggestFloat): PRope =
+  result = rope($f)
+
+# TODO Old names - change invokations to rope
+proc toRope*(s: string): PRope =
+  result = rope(s)
+proc toRope*(i: BiggestInt): PRope =
+  result = rope(i)
 
 proc ropeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) =
   var length = len(rs)
@@ -177,12 +187,12 @@ proc `&`*(a, b: PRope): PRope =
     result.right = b
 
 proc `&`*(a: PRope, b: string): PRope =
-  result = a & toRope(b)
+  result = a & rope(b)
 
 proc `&`*(a: string, b: PRope): PRope =
-  result = toRope(a) & b
+  result = rope(a) & b
 
-proc `&`*(a: varargs[PRope]): PRope =
+proc `&`*(a: openArray[PRope]): PRope =
   for i in countup(0, high(a)): result = result & a[i]
 
 proc add*(a: var PRope, b: PRope) =
@@ -208,10 +218,6 @@ proc con*(a: varargs[PRope]): PRope = `&`(a)
 proc ropeConcat*(a: varargs[PRope]): PRope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
   for i in countup(0, high(a)): result = con(result, a[i])
-
-proc toRope(i: BiggestInt): PRope =
-  inc gCacheIntTries
-  result = toRope($i)
 
 # TODO Old names - change invokations to add
 proc app*(a: var PRope, b: PRope) = add(a, b)
