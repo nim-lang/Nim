@@ -1273,7 +1273,7 @@ proc processBody(node, retFutureSym: NimNode,
   else: discard
 
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid, tryStmt)
+    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid, nil)
 
 proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
@@ -1378,8 +1378,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  if prc[0].getName == "test3":
-    echo(toStrLit(result))
+  #if prc[0].getName == "test":
+  #  echo(toStrLit(result))
 
 proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
