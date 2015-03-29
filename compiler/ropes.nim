@@ -86,7 +86,6 @@ proc app*(a: var PRope, b: string)
 proc prepend*(a: var PRope, b: PRope)
 proc toRope*(s: string): PRope
 proc toRope*(i: BiggestInt): PRope
-proc ropeLen*(a: PRope): int
 proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
 proc ropeToStr*(p: PRope): string
 proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope
@@ -100,7 +99,7 @@ proc ropeInvariant*(r: PRope): bool
 var errorHandler*: proc(err: TRopesError, msg: string, useWarning = false)
   # avoid dependency on msgs.nim
 
-proc ropeLen(a: PRope): int =
+proc len*(a: PRope): int =
   if a == nil: result = 0
   else: result = a.length
 
