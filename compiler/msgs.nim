@@ -494,20 +494,16 @@ proc toCChar*(c: char): string =
   else: result = $(c)
 
 proc makeCString*(s: string): PRope =
-  # BUGFIX: We have to split long strings into many ropes. Otherwise
-  # this could trigger an internalError(). See the ropes module for
-  # further information.
   const
     MaxLineLength = 64
   result = nil
-  var res = "\""
+  var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
+  add(res, "\"")
   for i in countup(0, len(s) - 1):
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
       add(res, tnl)
-      app(result, toRope(res)) # reset:
-      setLen(res, 1)
-      res[0] = '\"'
+      add(res, '\"')
     add(res, toCChar(s[i]))
   add(res, '\"')
   app(result, toRope(res))
@@ -877,8 +873,6 @@ ropes.errorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =
   case err
   of rInvalidFormatStr:
     internalError("ropes: invalid format string: " & msg)
-  of rTokenTooLong:
-    internalError("ropes: token too long: " & msg)
   of rCannotOpenFile:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
 

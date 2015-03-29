@@ -56,7 +56,7 @@
 #  To cache them they are inserted in a `cache` array.
 
 import
-  strutils, platform, hashes, crc, options
+  platform, hashes
 
 type
   TFormatStr* = string # later we may change it to CString for better
@@ -75,14 +75,11 @@ type
   TRopesError* = enum
     rCannotOpenFile
     rInvalidFormatStr
-    rTokenTooLong
 
 proc toRope*(s: string): PRope
 proc toRope*(i: BiggestInt): PRope
-proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
 proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope
 proc appf*(c: var PRope, frmt: TFormatStr, args: varargs[PRope])
-proc ropeEqualsFile*(r: PRope, f: string): bool
   # returns true if the rope r is the same as the contents of file f
 proc ropeInvariant*(r: PRope): bool
   # exported for debugging
@@ -310,63 +307,48 @@ proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) =
 const
   bufSize = 1024              # 1 KB is reasonable
 
-proc auxRopeEqualsFile(r: PRope, bin: var File, buf: pointer): bool =
+proc auxEqualsFile(r: PRope, f: File, buf: var array[bufSize, char],
+                   bpos, blen: var int): bool =
   if r.data != nil:
-    if r.length > bufSize:
-      errorHandler(rTokenTooLong, r.data)
-      return
-    var readBytes = readBuffer(bin, buf, r.length)
-    result = readBytes == r.length and
-        equalMem(buf, addr(r.data[0]), r.length) # BUGFIX
+    var dpos = 0
+    let dlen = r.data.len
+    while dpos < dlen:
+      if bpos == blen:
+        # Read more data
+        bpos = 0
+        blen = readBuffer(f, addr(buf[0]), buf.len)
+        if blen == 0:  # no more data in file
+          result = false
+          return
+      let n = min(blen - bpos, dlen - dpos)
+      if not equalMem(addr(buf[bpos]), addr(r.data[dpos]), n):
+        result = false
+        return
+      dpos += n
+      bpos += n
+    result = true
   else:
-    result = auxRopeEqualsFile(r.left, bin, buf)
-    if result: result = auxRopeEqualsFile(r.right, bin, buf)
+    result = auxEqualsFile(r.left, f, buf, bpos, blen) and
+             auxEqualsFile(r.right, f, buf, bpos, blen)
 
-proc ropeEqualsFile(r: PRope, f: string): bool =
-  var bin: File
-  result = open(bin, f)
-  if not result:
-    return                    # not equal if file does not exist
-  var buf = alloc(bufSize)
-  result = auxRopeEqualsFile(r, bin, buf)
+proc equalsFile*(r: PRope, f: File): bool =
+  var
+    buf: array[bufSize, char]
+    bpos = bufSize
+    blen = bufSize
+  result = auxEqualsFile(r, f, buf, bpos, blen) and
+           readBuffer(f, addr(buf[0]), 1) == 0  # check that we've read all
+
+proc equalsFile*(r: PRope, filename: string): bool =
+  var f: File
+  result = open(f, filename)
   if result:
-    result = readBuffer(bin, buf, bufSize) == 0 # really at the end of file?
-  dealloc(buf)
-  close(bin)
+    result = equalsFile(r, f)
+    close(f)
 
-proc crcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 =
-  if r.data != nil:
-    result = startVal
-    for i in countup(0, len(r.data) - 1):
-      result = updateCrc32(r.data[i], result)
-  else:
-    result = crcFromRopeAux(r.left, startVal)
-    result = crcFromRopeAux(r.right, result)
-
-proc newCrcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 =
-  # XXX profiling shows this is actually expensive
-  var stack: TRopeSeq = @[r]
-  result = startVal
-  while len(stack) > 0:
-    var it = pop(stack)
-    while it.data == nil:
-      add(stack, it.right)
-      it = it.left
-    assert(it.data != nil)
-    var i = 0
-    var L = len(it.data)
-    while i < L:
-      result = updateCrc32(it.data[i], result)
-      inc(i)
-
-proc crcFromRope(r: PRope): TCrc32 =
-  result = newCrcFromRopeAux(r, InitCrc32)
-
-proc writeRopeIfNotEqual(r: PRope, filename: string): bool =
+proc writeRopeIfNotEqual*(r: PRope, filename: string): bool =
   # returns true if overwritten
-  var c: TCrc32
-  c = crcFromFile(filename)
-  if c != crcFromRope(r):
+  if not equalsFile(r, filename):
     writeRope(r, filename)
     result = true
   else:
