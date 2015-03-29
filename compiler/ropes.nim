@@ -103,7 +103,7 @@ proc len*(a: PRope): int =
   if a == nil: result = 0
   else: result = a.length
 
-proc newRope*(data: string = nil): PRope =
+proc newRope(data: string = nil): PRope =
   new(result)
   if data != nil:
     result.length = len(data)

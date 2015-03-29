@@ -635,7 +635,7 @@ proc commandJSON*() =
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
   var json = generateJson(d, ast)
-  var content = newRope(pretty(json))
+  var content = toRope(pretty(json))
 
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
