@@ -290,8 +290,8 @@ when false:
         else: break 
       if i - 1 >= start: 
         add(result, substr(frmt, start, i-1))
-  
-proc `%`*(frmt: string, args: openArray[Rope]): Rope {. 
+
+proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
   rtl, extern: "nroFormat".} =
   ## `%` substitution operator for ropes. Does not support the ``$identifier``
   ## nor ``${identifier}`` notations.
@@ -299,39 +299,40 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
   var length = len(frmt)
   result = nil
   var num = 0
-  while i < length: 
-    if frmt[i] == '$': 
+  while i < length:
+    if frmt[i] == '$':
       inc(i)
       case frmt[i]
-      of '$': 
+      of '$':
         add(result, "$")
         inc(i)
-      of '#': 
+      of '#':
         inc(i)
         add(result, args[num])
         inc(num)
-      of '0'..'9': 
+      of '0'..'9':
         var j = 0
-        while true: 
+        while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if frmt[i] notin {'0'..'9'}: break 
+          if (i >= length) or frmt[i] notin {'0'..'9'}: break
         add(result, args[j-1])
       of '{':
         inc(i)
         var j = 0
-        while frmt[i] in {'0'..'9'}:
+        while i < length and frmt[i] in {'0'..'9'}:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-        if frmt[i] == '}': inc(i)
+        if i < length and frmt[i] == '}': inc(i)
         else: raise newException(ValueError, "invalid format string")
+
         add(result, args[j-1])
       else: raise newException(ValueError, "invalid format string")
     var start = i
-    while i < length: 
+    while i < length:
       if frmt[i] != '$': inc(i)
-      else: break 
-    if i - 1 >= start: 
+      else: break
+    if i - 1 >= start:
       add(result, substr(frmt, start, i - 1))
 
 proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.

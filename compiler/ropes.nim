@@ -264,8 +264,22 @@ proc `%`*(frmt: TFormatStr, args: openArray[PRope]): PRope =
         while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if (i > length - 1) or frmt[i] notin {'0'..'9'}: break
+          if (i >= length) or frmt[i] notin {'0'..'9'}: break
         num = j
+        if j > high(args) + 1:
+          errorHandler(rInvalidFormatStr, $(j))
+        else:
+          add(result, args[j-1])
+      of '{':
+        inc(i)
+        var j = 0
+        while i < length and frmt[i] in {'0'..'9'}:
+          j = j * 10 + ord(frmt[i]) - ord('0')
+          inc(i)
+        num = j
+        if i < length and frmt[i] == '}': inc(i)
+        else: errorHandler(rInvalidFormatStr, $(frmt[i]))
+
         if j > high(args) + 1:
           errorHandler(rInvalidFormatStr, $(j))
         else:
