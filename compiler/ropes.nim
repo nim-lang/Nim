@@ -78,11 +78,7 @@ type
 
 proc toRope*(s: string): PRope
 proc toRope*(i: BiggestInt): PRope
-proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope
-proc appf*(c: var PRope, frmt: TFormatStr, args: varargs[PRope])
-  # returns true if the rope r is the same as the contents of file f
-proc ropeInvariant*(r: PRope): bool
-  # exported for debugging
+
 # implementation
 
 var errorHandler*: proc(err: TRopesError, msg: string, useWarning = false)
@@ -247,38 +243,38 @@ var
   rnl* = tnl.newRope
   softRnl* = tnl.newRope
 
-proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
+proc `%`*(frmt: TFormatStr, args: openArray[PRope]): PRope =
   var i = 0
   var length = len(frmt)
   result = nil
   var num = 0
-  while i <= length - 1:
+  while i < length:
     if frmt[i] == '$':
       inc(i)                  # skip '$'
       case frmt[i]
       of '$':
-        app(result, "$")
+        add(result, "$")
         inc(i)
       of '#':
         inc(i)
-        app(result, args[num])
+        add(result, args[num])
         inc(num)
       of '0'..'9':
         var j = 0
         while true:
-          j = (j * 10) + ord(frmt[i]) - ord('0')
+          j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if (i > length + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
+          if (i > length - 1) or frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
           errorHandler(rInvalidFormatStr, $(j))
         else:
-          app(result, args[j - 1])
+          add(result, args[j-1])
       of 'n':
-        app(result, softRnl)
-        inc i
+        add(result, softRnl)
+        inc(i)
       of 'N':
-        app(result, rnl)
+        add(result, rnl)
         inc(i)
       else:
         errorHandler(rInvalidFormatStr, $(frmt[i]))
@@ -287,8 +283,17 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
       if frmt[i] != '$': inc(i)
       else: break
     if i - 1 >= start:
-      app(result, substr(frmt, start, i - 1))
+      add(result, substr(frmt, start, i - 1))
   assert(ropeInvariant(result))
+
+proc addf*(c: var PRope, frmt: TFormatStr, args: openArray[PRope]) =
+  add(c, frmt % args)
+
+# TODO Compatibility names
+proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope =
+  result = frmt % args
+proc appf*(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) =
+  addf(c, frmt, args)
 
 when true:
   template `~`*(r: string): PRope = r.ropef
@@ -300,9 +305,6 @@ else:
     var r {.global.} = r.ropef
     return r
   {.pop.}
-
-proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) =
-  app(c, ropef(frmt, args))
 
 const
   bufSize = 1024              # 1 KB is reasonable
