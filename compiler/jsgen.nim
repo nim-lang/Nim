@@ -874,7 +874,7 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
-    r.res = makeJSString(ropeToStr(f.loc.r))
+    r.res = makeJSString($f.loc.r)
   internalAssert a.typ != etyBaseIndex
   r.address = a.res
   r.kind = resExpr

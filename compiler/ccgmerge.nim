@@ -79,7 +79,7 @@ proc writeTypeCache(a: TIdTable, s: var string) =
       s.add(' ')
     encodeVInt(id, s)
     s.add(':')
-    encodeStr(PRope(value).ropeToStr, s)
+    encodeStr($PRope(value), s)
     inc i
   s.add('}')
 
@@ -280,11 +280,11 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
 proc mergeRequired*(m: BModule): bool =
   for i in cfsHeaders..cfsProcs:
     if m.s[i] != nil:
-      #echo "not empty: ", i, " ", ropeToStr(m.s[i])
+      #echo "not empty: ", i, " ", m.s[i]
       return true
   for i in low(TCProcSection)..high(TCProcSection):
     if m.initProc.s(i) != nil:
-      #echo "not empty: ", i, " ", ropeToStr(m.initProc.s[i])
+      #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
 
 proc mergeFiles*(cfilename: string, m: BModule) =

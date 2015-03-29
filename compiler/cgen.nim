@@ -120,7 +120,7 @@ proc ropecg(m: BModule, frmt: TFormatStr, args: varargs[PRope]): PRope =
       while frmt[i] in Digits:
         j = (j * 10) + ord(frmt[i]) - ord('0')
         inc(i)
-      app(result, cgsym(m, args[j-1].ropeToStr))
+      app(result, cgsym(m, $args[j-1]))
     var start = i
     while i < length:
       if frmt[i] != '$' and frmt[i] != '#': inc(i)
@@ -555,8 +555,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
       params.app(rdLoc(a))
       params.app(", ")
     let load = ropef("\t$1 = ($2) ($3$4));$n",
-        [tmp, getTypeDesc(m, sym.typ),
-        params, makeCString(ropeToStr(extname))])
+        [tmp, getTypeDesc(m, sym.typ), params, makeCString($extname)])
     var last = lastSon(n)
     if last.kind == nkHiddenStdConv: last = last.sons[1]
     internalAssert(last.kind == nkStrLit)
@@ -570,8 +569,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   else:
     appcg(m, m.s[cfsDynLibInit],
         "\t$1 = ($2) #nimGetProcAddr($3, $4);$n",
-        [tmp, getTypeDesc(m, sym.typ),
-        lib.name, makeCString(ropeToStr(extname))])
+        [tmp, getTypeDesc(m, sym.typ), lib.name, makeCString($extname)])
   appf(m.s[cfsVars], "$2 $1;$n", [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
 proc varInDynamicLib(m: BModule, sym: PSym) =
@@ -584,8 +582,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   inc(m.labels, 2)
   appcg(m, m.s[cfsDynLibInit],
       "$1 = ($2*) #nimGetProcAddr($3, $4);$n",
-      [tmp, getTypeDesc(m, sym.typ),
-      lib.name, makeCString(ropeToStr(extname))])
+      [tmp, getTypeDesc(m, sym.typ), lib.name, makeCString($extname)])
   appf(m.s[cfsVars], "$2* $1;$n",
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
@@ -1255,7 +1252,7 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cfile)
     when hasTinyCBackend:
       if gCmd == cmdRun:
-        tccgen.compileCCode(ropeToStr(code))
+        tccgen.compileCCode($code)
         return
 
     if shouldRecompile(code, cfile):

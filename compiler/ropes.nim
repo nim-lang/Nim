@@ -87,7 +87,6 @@ proc prepend*(a: var PRope, b: PRope)
 proc toRope*(s: string): PRope
 proc toRope*(i: BiggestInt): PRope
 proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
-proc ropeToStr*(p: PRope): string
 proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope
 proc appf*(c: var PRope, frmt: TFormatStr, args: varargs[PRope])
 proc ropeEqualsFile*(r: PRope, f: string): bool
@@ -180,7 +179,7 @@ proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) =
     inc(resultLen, it.length)
     assert(resultLen <= len(result))
 
-proc ropeToStr(p: PRope): string =
+proc `$`*(p: PRope): string =
   if p == nil:
     result = ""
   else:
