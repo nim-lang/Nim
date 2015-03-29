@@ -492,7 +492,7 @@ proc binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
                 else: getTypeDesc(p.module, t)
   result = getTempName()
   linefmt(p, cpsLocals, "$1 $2;$n", storage, result)
-  lineCg(p, cpsStmts, frmt, result, rdLoc(a), rdLoc(b))
+  lineCg(p, cpsStmts, frmt, result, rdCharLoc(a), rdCharLoc(b))
   if size < platform.intSize or t.kind in {tyRange, tyEnum}:
     linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
             result, intLiteral(firstOrd(t)), intLiteral(lastOrd(t)))
