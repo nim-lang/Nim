@@ -349,6 +349,7 @@ proc atom(n: PNode): string =
     else:
       result = litAux(n, (cast[PInt64](addr(n.floatVal)))[], 8) & "\'f64"
   of nkNilLit: result = "nil"
+  of nkUnderscore: result = "_"
   of nkType:
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
@@ -805,7 +806,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkTripleStrLit: putRawStr(g, tkTripleStrLit, n.strVal)
   of nkEmpty: discard
   of nkType: put(g, tkInvalid, atom(n))
-  of nkSym, nkIdent: gident(g, n)
+  of nkSym, nkIdent, nkUnderscore: gident(g, n)
   of nkIntLit: put(g, tkIntLit, atom(n))
   of nkInt8Lit: put(g, tkInt8Lit, atom(n))
   of nkInt16Lit: put(g, tkInt16Lit, atom(n))

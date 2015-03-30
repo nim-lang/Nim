@@ -221,6 +221,7 @@ type
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
+    nkUnderscore,         # underscore inside a tuple unpack ``(_, x) = foo()``
   TNodeKinds* = set[TNodeKind]
 
 type

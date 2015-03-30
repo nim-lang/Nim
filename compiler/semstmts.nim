@@ -403,7 +403,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
-      if sfGenSym notin v.flags: addInterfaceDecl(c, v)
+      if sfGenSym notin v.flags and
+         a.sons[j].kind != nkUnderscore: addInterfaceDecl(c, v)
       when oKeepVariableNames:
         if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:
