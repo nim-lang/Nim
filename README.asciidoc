@@ -1,4 +1,9 @@
-image::web/logo.png["NRE Logo", width=auto, link="https://github.com/flaviut/nre"]
+= NRE
+:toc:
+:toclevels: 4
+:toc-placement!:
+
+toc::[]
 
 == What is NRE?
 
@@ -184,3 +189,5 @@ By default, NRE compiles it's own PCRE. If this is undesirable, pass
 `-d:pcreDynlib` to use whatever dynamic library is available on the system.
 This may have unexpected consequences if the dynamic library doesn't have
 certain features enabled.
+
+image::web/logo.png["NRE Logo", width=auto, link="https://github.com/flaviut/nre"]
