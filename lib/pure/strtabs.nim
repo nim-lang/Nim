@@ -101,21 +101,26 @@ proc rawGet(t: StringTableRef, key: string): int =
     h = nextTry(h, high(t.data))
   result = - 1
 
-proc `[]`*(t: StringTableRef, key: string): string {.rtl, extern: "nstGet".} =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`, "" is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
+template get(t: StringTableRef, key: string): stmt {.immediate.} =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: result = ""
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
-proc mget*(t: StringTableRef, key: string): var string {.
-             rtl, extern: "nstTake".} =
+proc `[]`*(t: StringTableRef, key: string): var string {.
+           rtl, extern: "nstTake".} =
   ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
-  ## ``KeyError`` exception is raised.
-  var index = rawGet(t, key)
-  if index >= 0: result = t.data[index].val
-  else: raise newException(KeyError, "key does not exist: " & key)
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
+  get(t, key)
+
+proc mget*(t: StringTableRef, key: string): var string {.deprecated.} =
+  ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. Use ```[]``` instead.
+  get(t, key)
 
 proc hasKey*(t: StringTableRef, key: string): bool {.rtl, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.
@@ -227,7 +232,7 @@ proc `$`*(t: StringTableRef): string {.rtl, extern: "nstDollar".} =
     result = "{:}"
   else:
     result = "{"
-    for key, val in pairs(t): 
+    for key, val in pairs(t):
       if result.len > 1: result.add(", ")
       result.add(key)
       result.add(": ")
@@ -239,6 +244,6 @@ when isMainModule:
   assert x["k"] == "v"
   assert x["11"] == "22"
   assert x["565"] == "67"
-  x.mget("11") = "23"
+  x["11"] = "23"
   assert x["11"] == "23"
 

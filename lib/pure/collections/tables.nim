@@ -181,18 +181,7 @@ proc rawGetDeep[A, B](t: Table[A, B], key: A, hc: var THash): int {.inline.} =
 proc rawGet[A, B](t: Table[A, B], key: A, hc: var THash): int {.inline.} =
   rawGetImpl()
 
-proc `[]`*[A, B](t: Table[A, B], key: A): B =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
-  var hc: THash
-  var index = rawGet(t, key, hc)
-  if index >= 0: result = t.data[index].val
-
-proc mget*[A, B](t: var Table[A, B], key: A): var B =
-  ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+template get[A, B](t: Table[A, B], key: A): B {.immediate.} =
   var hc: THash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
@@ -201,6 +190,23 @@ proc mget*[A, B](t: var Table[A, B], key: A): var B =
       raise newException(KeyError, "key not found: " & $key)
     else:
       raise newException(KeyError, "key not found")
+
+proc `[]`*[A, B](t: Table[A, B], key: A): B =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
+  get(t, key)
+
+proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  get(t, key)
+
+proc mget*[A, B](t: var Table[A, B], key: A): var B {.deprecated.} =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised. Use ```[]```
+  ## instead.
+  get(t, key)
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
@@ -386,17 +392,17 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
-proc `[]`*[A, B](t: TableRef[A, B], key: A): B =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
+proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
+  ## retrieves the value at ``t[key]``.  If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
   result = t[][key]
 
-proc mget*[A, B](t: TableRef[A, B], key: A): var B =
+proc mget*[A, B](t: TableRef[A, B], key: A): var B {.deprecated.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  t[].mget(key)
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## Use ```[]``` instead.
+  t[][key]
 
 proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
@@ -510,22 +516,32 @@ proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var THash): int {.inlin
 proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var THash): int =
   rawGetImpl()
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
+template get[A, B](t: OrderedTable[A, B], key: A): B {.immediate.} =
   var hc: THash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
-proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B =
+proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
+  get(t, key)
+
+proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var hc: THash
-  var index = rawGet(t, key, hc)
-  if index >= 0: result = t.data[index].val
-  else: raise newException(KeyError, "key not found: " & $key)
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  get(t, key)
+
+proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B {.deprecated.} =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## Use ```[]``` instead.
+  get(t, key)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -679,17 +695,17 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): B =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
+proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
+  ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
   result = t[][key]
 
-proc mget*[A, B](t: OrderedTableRef[A, B], key: A): var B =
+proc mget*[A, B](t: OrderedTableRef[A, B], key: A): var B {.deprecated.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  result = t[].mget(key)
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## Use ```[]``` instead.
+  result = t[][key]
 
 proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
@@ -786,19 +802,31 @@ proc rawGet[A](t: CountTable[A], key: A): int =
     h = nextTry(h, high(t.data))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
+template get[A](t: CountTable[A], key: A): int {.immediate.} =
+  var index = rawGet(t, key)
+  if index >= 0: result = t.data[index].val
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
+
 proc `[]`*[A](t: CountTable[A], key: A): int =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## 0 is returned. One can check with ``hasKey`` whether the key
-  ## exists.
-  var index = rawGet(t, key)
-  if index >= 0: result = t.data[index].val
+  ## the ``KeyError`` exception is raised. One can check with ``hasKey``
+  ## whether the key exists.
+  get(t, key)
 
-proc mget*[A](t: var CountTable[A], key: A): var int =
+proc `[]`*[A](t: var CountTable[A], key: A): var int =
   ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var index = rawGet(t, key)
-  if index >= 0: result = t.data[index].val
-  else: raise newException(KeyError, "key not found: " & $key)
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  get(t, key)
+
+proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated.} =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## Use ```[]``` instead.
+  get(t, key)
 
 proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -927,16 +955,16 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-proc `[]`*[A](t: CountTableRef[A], key: A): int =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`,
-  ## 0 is returned. One can check with ``hasKey`` whether the key
-  ## exists.
+proc `[]`*[A](t: CountTableRef[A], key: A): var int =
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   result = t[][key]
 
-proc mget*[A](t: CountTableRef[A], key: A): var int =
+proc mget*[A](t: CountTableRef[A], key: A): var int {.deprecated.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  result = t[].mget(key)
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## Use ```[]``` instead.
+  result = t[][key]
 
 proc hasKey*[A](t: CountTableRef[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.

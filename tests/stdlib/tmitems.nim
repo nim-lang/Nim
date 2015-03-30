@@ -132,5 +132,5 @@ block:
   </Students>""")
   for x in d.mitems:
     x = <>Student(Name=x.attrs["Name"] & "foo")
-  d.mget(1).attrs["Name"] = "bar"
+  d[1].attrs["Name"] = "bar"
   echo d

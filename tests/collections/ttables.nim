@@ -22,15 +22,15 @@ const
     "---00": 346677844,
     "0": 34404,
     "1": 344004,
-    "10": 34484, 
+    "10": 34484,
     "11": 34474,
     "12": 789,
     "19": 34464,
-    "2": 344774, "20": 34454, 
+    "2": 344774, "20": 34454,
     "3": 342244, "30": 34141244,
     "34": 123456,
     "4": 3412344, "40": 344114,
-    "5": 341232144, "50": 344490, 
+    "5": 341232144, "50": 344490,
     "6": 34214544, "60": 344491,
     "7": 3434544, "70": 344492,
     "8": 344544, "80": 344497,
@@ -46,7 +46,7 @@ block tableTest1:
   for x in 0..1:
     for y in 0..1:
       assert t[(x,y)] == $x & $y
-  assert($t == 
+  assert($t ==
     "{(x: 0, y: 1): 01, (x: 0, y: 0): 00, (x: 1, y: 0): 10, (x: 1, y: 1): 11}")
 
 block tableTest2:
@@ -55,14 +55,17 @@ block tableTest2:
   t["111"] = 1.000043
   t["123"] = 1.23
   t.del("111")
-  
+
   t["012"] = 67.9
   t["123"] = 1.5 # test overwriting
-  
+
   assert t["123"] == 1.5
-  assert t["111"] == 0.0 # deleted
+  try:
+    echo t["111"] # deleted
+  except KeyError:
+    discard
   assert(not hasKey(t, "111"))
-  
+
   for key, val in items(data): t[key] = val.toFloat
   for key, val in items(data): assert t[key] == val.toFloat
 
