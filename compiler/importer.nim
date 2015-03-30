@@ -121,7 +121,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
       if s.kind != skEnumField:
         if s.kind notin ExportableSymKinds:
           internalError(s.info, "importAllSymbols: " & $s.kind)
-        if exceptSet.empty or s.name.id notin exceptSet:
+        if s.name.id notin exceptSet:
           rawImportSymbol(c, s)
     s = nextIter(i, fromMod.tab)
 
@@ -138,7 +138,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
       let s = a.sym
       if s.kind == skModule:
         importAllSymbolsExcept(c, s, exceptSet)
-      elif exceptSet.empty or s.name.id notin exceptSet:
+      elif s.name.id notin exceptSet:
         rawImportSymbol(c, s)
   of nkExportExceptStmt:
     localError(n.info, errGenerated, "'export except' not implemented")
