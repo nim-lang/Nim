@@ -541,6 +541,8 @@ elif defined(JS):
 
   proc getTimezone(): int = result = newDate().getTimezoneOffset()
 
+  proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
+
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
   var ti = getLocalTime(getTime())
