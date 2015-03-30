@@ -14,7 +14,7 @@ deprecated pragma
 
 The deprecated pragma is used to mark a symbol as deprecated:
 
-.. code-block:: nimrod
+.. code-block:: nim
   proc p() {.deprecated.}
   var x {.deprecated.}: char
 
@@ -22,7 +22,7 @@ It can also be used as a statement. Then it takes a list of *renamings*. The
 upcoming ``nimfix`` tool can automatically update the code and perform these
 renamings:
 
-.. code-block:: nimrod
+.. code-block:: nim
   type
     File = object
     Stream = ref object
@@ -78,7 +78,7 @@ as helpers for macros.
 
 noReturn pragma
 ---------------
-The ``noreturn`` pragma is used to mark a proc that never returns. 
+The ``noreturn`` pragma is used to mark a proc that never returns.
 
 
 acyclic pragma
@@ -122,25 +122,25 @@ shallow pragma
 --------------
 The ``shallow`` pragma affects the semantics of a type: The compiler is
 allowed to make a shallow copy. This can cause serious semantic issues and
-break memory safety! However, it can speed up assignments considerably, 
-because the semantics of Nim require deep copying of sequences and strings. 
+break memory safety! However, it can speed up assignments considerably,
+because the semantics of Nim require deep copying of sequences and strings.
 This can be expensive, especially if sequences are used to build a tree
-structure: 
+structure:
 
 .. code-block:: nim
   type
     NodeKind = enum nkLeaf, nkInner
     Node {.final, shallow.} = object
       case kind: NodeKind
-      of nkLeaf: 
+      of nkLeaf:
         strVal: string
-      of nkInner: 
+      of nkInner:
         children: seq[Node]
 
 
 pure pragma
 -----------
-An object type can be marked with the ``pure`` pragma so that its type 
+An object type can be marked with the ``pure`` pragma so that its type
 field which is used for runtime type identification is omitted. This used to be
 necessary for binary compatibility with other compiled languages.
 
@@ -163,12 +163,12 @@ error pragma
 ------------
 The ``error`` pragma is used to make the compiler output an error message
 with the given content. Compilation does not necessarily abort after an error
-though. 
+though.
 
 The ``error`` pragma can also be used to
 annotate a symbol (like an iterator or proc). The *usage* of the symbol then
 triggers a compile-time error. This is especially useful to rule out that some
-operation is valid due to overloading and type conversions: 
+operation is valid due to overloading and type conversions:
 
 .. code-block:: nim
   ## check that underlying int values are compared and not the pointers:
@@ -201,7 +201,7 @@ The ``line`` pragma can be used to affect line information of the annotated
 statement as seen in stack backtraces:
 
 .. code-block:: nim
-  
+
   template myassert*(cond: expr, msg = "") =
     if not cond:
       # change run-time line information of the 'raise' statement:
@@ -215,26 +215,26 @@ If the ``line`` pragma is used with a parameter, the parameter needs be a
 
 linearScanEnd pragma
 --------------------
-The ``linearScanEnd`` pragma can be used to tell the compiler how to 
+The ``linearScanEnd`` pragma can be used to tell the compiler how to
 compile a Nim `case`:idx: statement. Syntactically it has to be used as a
 statement:
 
 .. code-block:: nim
   case myInt
-  of 0: 
+  of 0:
     echo "most common case"
-  of 1: 
+  of 1:
     {.linearScanEnd.}
     echo "second most common case"
   of 2: echo "unlikely: use branch table"
   else: echo "unlikely too: use branch table for ", myInt
 
-In the example, the case branches ``0`` and ``1`` are much more common than 
-the other cases. Therefore the generated assembler code should test for these 
-values first, so that the CPU's branch predictor has a good chance to succeed 
+In the example, the case branches ``0`` and ``1`` are much more common than
+the other cases. Therefore the generated assembler code should test for these
+values first, so that the CPU's branch predictor has a good chance to succeed
 (avoiding an expensive CPU pipeline stall). The other cases might be put into a
 jump table for O(1) overhead, but at the cost of a (very likely) pipeline
-stall. 
+stall.
 
 The ``linearScanEnd`` pragma should be put into the last branch that should be
 tested against via linear scanning. If put into the last branch of the
@@ -243,8 +243,8 @@ whole ``case`` statement, the whole ``case`` statement uses linear scanning.
 
 computedGoto pragma
 -------------------
-The ``computedGoto`` pragma can be used to tell the compiler how to 
-compile a Nim `case`:idx: in a ``while true`` statement. 
+The ``computedGoto`` pragma can be used to tell the compiler how to
+compile a Nim `case`:idx: in a ``while true`` statement.
 Syntactically it has to be used as a statement inside the loop:
 
 .. code-block:: nim
@@ -278,21 +278,21 @@ Syntactically it has to be used as a statement inside the loop:
       of enumE:
         break
       inc(pc)
-    
+
   vm()
 
 As the example shows ``computedGoto`` is mostly useful for interpreters. If
-the underlying backend (C compiler) does not support the computed goto 
+the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
 
 
 unroll pragma
 -------------
 The ``unroll`` pragma can be used to tell the compiler that it should unroll
-a `for`:idx: or `while`:idx: loop for runtime efficiency: 
+a `for`:idx: or `while`:idx: loop for runtime efficiency:
 
 .. code-block:: nim
-  proc searchChar(s: string, c: char): int = 
+  proc searchChar(s: string, c: char): int =
     for i in 0 .. s.high:
       {.unroll: 4.}
       if s[i] == c: return i
@@ -440,7 +440,7 @@ Example:
 
   Please note that if a callable symbol is never used in this scenario, its body
   will never be compiled. This is the default behavior leading to best compilation
-  times, but if exhaustive compilation of all definitions is required, using 
+  times, but if exhaustive compilation of all definitions is required, using
   ``nim check`` provides this option as well.
 
   Example:
@@ -461,9 +461,9 @@ Example:
 pragma pragma
 -------------
 
-The ``pragma`` pragma can be used to declare user defined pragmas. This is 
-useful because Nim's templates and macros do not affect pragmas. User 
-defined pragmas are in a different module-wide scope than all other symbols. 
+The ``pragma`` pragma can be used to declare user defined pragmas. This is
+useful because Nim's templates and macros do not affect pragmas. User
+defined pragmas are in a different module-wide scope than all other symbols.
 They cannot be imported from a module.
 
 Example:
@@ -473,8 +473,8 @@ Example:
     {.pragma: rtl, exportc, dynlib, cdecl.}
   else:
     {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
-    
-  proc p*(a, b: int): int {.rtl.} = 
+
+  proc p*(a, b: int): int {.rtl.} =
     result = a+b
 
 In the example a new pragma named ``rtl`` is introduced that either imports

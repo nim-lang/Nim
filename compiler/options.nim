@@ -9,7 +9,7 @@
 
 import
   os, lists, strutils, strtabs, osproc, sets
-  
+
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
@@ -21,10 +21,10 @@ const
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
-    optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck, 
+    optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optNilCheck,
     optNaNCheck, optInfCheck,
-    optAssert, optLineDir, optWarns, optHints, 
+    optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
     optEndb,                  # embedded debugger
@@ -37,8 +37,8 @@ type                          # please make sure we have under 32 options
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
-    gloptNone, optForceFullMake, optDeadCodeElim, 
-    optListCmd, optCompileOnly, optNoLinking, 
+    gloptNone, optForceFullMake, optDeadCodeElim,
+    optListCmd, optCompileOnly, optNoLinking,
     optSafeCode,              # only allow safe code
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -67,9 +67,9 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
-    cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, 
-    cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc, 
-    cmdGenDepend, cmdDump, 
+    cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
+    cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
+    cmdGenDepend, cmdDump,
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
     cmdScan,                  # scan a single file (for debugging)
@@ -90,12 +90,12 @@ var
   gIdeCmd*: TIdeCmd
 
 const
-  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck, 
+  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck}
 
-var 
-  gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck, 
-                         optBoundsCheck, optOverflowCheck, optAssert, optWarns, 
+var
+  gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck,
+                         optBoundsCheck, optOverflowCheck, optAssert, optWarns,
                          optHints, optStackTrace, optLineTrace,
                          optPatterns, optNilCheck}
   gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
@@ -129,7 +129,7 @@ template optPreserveOrigSource*: expr =
 template optPrintSurroundingSrc*: expr =
   gVerbosity >= 2
 
-const 
+const
   genSubDir* = "nimcache"
   NimExt* = "nim"
   RodExt* = "rod"
@@ -168,20 +168,20 @@ proc mainCommandArg*: string =
   else:
     result = gProjectName
 
-proc existsConfigVar*(key: string): bool = 
+proc existsConfigVar*(key: string): bool =
   result = hasKey(gConfigVars, key)
 
-proc getConfigVar*(key: string): string = 
+proc getConfigVar*(key: string): string =
   result = gConfigVars[key]
 
-proc setConfigVar*(key, val: string) = 
+proc setConfigVar*(key, val: string) =
   gConfigVars[key] = val
 
-proc getOutFile*(filename, ext: string): string = 
+proc getOutFile*(filename, ext: string): string =
   if options.outFile != "": result = options.outFile
   else: result = changeFileExt(filename, ext)
-  
-proc getPrefixDir*(): string = 
+
+proc getPrefixDir*(): string =
   ## gets the application directory
   result = splitPath(getAppDir()).head
 
@@ -189,22 +189,22 @@ proc canonicalizePath*(path: string): string =
   when not FileSystemCaseSensitive: result = path.expandFilename.toLower
   else: result = path.expandFilename
 
-proc shortenDir*(dir: string): string = 
+proc shortenDir*(dir: string): string =
   ## returns the interesting part of a dir
   var prefix = getPrefixDir() & DirSep
-  if startsWith(dir, prefix): 
+  if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   prefix = gProjectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
 
-proc removeTrailingDirSep*(path: string): string = 
-  if (len(path) > 0) and (path[len(path) - 1] == DirSep): 
+proc removeTrailingDirSep*(path: string): string =
+  if (len(path) > 0) and (path[len(path) - 1] == DirSep):
     result = substr(path, 0, len(path) - 2)
-  else: 
+  else:
     result = path
-  
+
 proc getGeneratedPath: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
@@ -257,7 +257,7 @@ proc withPackageName*(path: string): string =
     let (p, file, ext) = path.splitFile
     result = (p / (x & '_' & file)) & ext
 
-proc toGeneratedFile*(path, ext: string): string = 
+proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
   var (head, tail) = splitPath(path)
   #if len(head) > 0: head = shortenDir(head & dirSep)
@@ -301,7 +301,7 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-iterator iterSearchPath*(searchPaths: TLinkedList): string = 
+iterator iterSearchPath*(searchPaths: TLinkedList): string =
   var it = PStrEntry(searchPaths.head)
   while it != nil:
     yield it.data
@@ -324,7 +324,7 @@ proc rawFindFile2(f: string): string =
     it = PStrEntry(it.next)
   result = ""
 
-proc findFile*(f: string): string {.procvar.} = 
+proc findFile*(f: string): string {.procvar.} =
   result = f.rawFindFile
   if result.len == 0:
     result = f.toLower.rawFindFile
@@ -351,7 +351,7 @@ proc findModule*(modulename, currentModule: string): string =
   if not existsFile(result):
     result = findFile(m)
 
-proc libCandidates*(s: string, dest: var seq[string]) = 
+proc libCandidates*(s: string, dest: var seq[string]) =
   var le = strutils.find(s, '(')
   var ri = strutils.find(s, ')', le+1)
   if le >= 0 and ri > le:
@@ -359,7 +359,7 @@ proc libCandidates*(s: string, dest: var seq[string]) =
     var suffix = substr(s, ri + 1)
     for middle in split(substr(s, le + 1, ri - 1), '|'):
       libCandidates(prefix & middle & suffix, dest)
-  else: 
+  else:
     add(dest, s)
 
 proc canonDynlibName(s: string): string =
@@ -376,17 +376,17 @@ proc inclDynlibOverride*(lib: string) =
 proc isDynlibOverride*(lib: string): bool =
   result = gDllOverrides.hasKey(lib.canonDynlibName)
 
-proc binaryStrSearch*(x: openArray[string], y: string): int = 
+proc binaryStrSearch*(x: openArray[string], y: string): int =
   var a = 0
   var b = len(x) - 1
-  while a <= b: 
+  while a <= b:
     var mid = (a + b) div 2
     var c = cmpIgnoreCase(x[mid], y)
-    if c < 0: 
+    if c < 0:
       a = mid + 1
-    elif c > 0: 
+    elif c > 0:
       b = mid - 1
-    else: 
+    else:
       return mid
   result = - 1
 

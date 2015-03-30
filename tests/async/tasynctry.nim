@@ -82,6 +82,15 @@ proc test3(): Future[int] {.async.} =
     result = 2
     return
 
+proc test4(): Future[int] {.async.} =
+  try:
+    discard await foo()
+    raise newException(ValueError, "Test4")
+  except OSError:
+    result = 1
+  except:
+    result = 2
+
 var x = test()
 assert x.read
 
@@ -89,4 +98,7 @@ x = test2()
 assert x.read
 
 var y = test3()
+assert y.read == 2
+
+y = test4()
 assert y.read == 2
