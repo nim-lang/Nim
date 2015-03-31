@@ -76,11 +76,10 @@ type
     rCannotOpenFile
     rInvalidFormatStr
 
-  # TODO Compatibility names - update uses
-  TFormatStr* = FormatStr
-  PRope* = Rope
-  TRopeSeq* = RopeSeq
-  TRopesError* = RopesError
+{.deprecated: [TFormatStr: FormatStr].}
+{.deprecated: [PRope: Rope].}
+{.deprecated: [TRopeSeq: RopeSeq].}
+{.deprecated: [TRopesError: RopesError].}
 
 # implementation
 
@@ -154,9 +153,9 @@ proc rope*(f: BiggestFloat): Rope =
   result = rope($f)
 
 # TODO Old names - change invokations to rope
-proc toRope*(s: string): Rope =
+proc toRope*(s: string): Rope {.deprecated.} =
   result = rope(s)
-proc toRope*(i: BiggestInt): Rope =
+proc toRope*(i: BiggestInt): Rope {.deprecated.}  =
   result = rope(i)
 
 proc ropeSeqInsert(rs: var RopeSeq, r: Rope, at: Natural) =
@@ -215,19 +214,19 @@ proc `$`*(p: Rope): string =
     var resultLen = 0
     newRecRopeToStr(result, resultLen, p)
 
-# TODO Old names - change invokations to &
-proc con*(a, b: Rope): Rope = a & b
-proc con*(a: Rope, b: string): Rope = a & b
-proc con*(a: string, b: Rope): Rope = a & b
-proc con*(a: varargs[Rope]): Rope = `&`(a)
+# TODO Old names - change invokations to `&`
+proc con*(a, b: Rope): Rope {.deprecated.} = a & b
+proc con*(a: Rope, b: string): Rope {.deprecated.} = a & b
+proc con*(a: string, b: Rope): Rope {.deprecated.} = a & b
+proc con*(a: varargs[Rope]): Rope {.deprecated.} = `&`(a)
 
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
   for i in countup(0, high(a)): result = con(result, a[i])
 
 # TODO Old names - change invokations to add
-proc app*(a: var Rope, b: Rope) = add(a, b)
-proc app*(a: var Rope, b: string) = add(a, b)
+proc app*(a: var Rope, b: Rope) {.deprecated.} = add(a, b)
+proc app*(a: var Rope, b: string) {.deprecated.} = add(a, b)
 
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
@@ -316,9 +315,9 @@ proc addf*(c: var Rope, frmt: TFormatStr, args: openArray[Rope]) =
   add(c, frmt % args)
 
 # TODO Compatibility names
-proc ropef*(frmt: TFormatStr, args: varargs[Rope]): Rope =
+proc ropef*(frmt: TFormatStr, args: varargs[Rope]): Rope {.deprecated.} =
   result = frmt % args
-proc appf*(c: var Rope, frmt: TFormatStr, args: varargs[Rope]) =
+proc appf*(c: var Rope, frmt: TFormatStr, args: varargs[Rope]) {.deprecated.} =
   addf(c, frmt, args)
 
 when true:
