@@ -291,6 +291,24 @@ y.v()          --> y.v() is correct
 
 """
 
+proc skipAddrDeref(node: PNode): PNode =
+  var n = node
+  var isAddr = false
+  case n.kind
+  of nkAddr, nkHiddenAddr:
+    n = n.sons[0]
+    isAddr = true
+  of nkDerefExpr, nkHiddenDeref:
+    n = n.sons[0]
+  else: return n
+  if n.kind == nkObjDownConv: n = n.sons[0]
+  if isAddr and n.kind in {nkDerefExpr, nkHiddenDeref}:
+    result = n.sons[0]
+  elif n.kind in {nkAddr, nkHiddenAddr}:
+    result = n.sons[0]
+  else:
+    result = node
+
 proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
   # for better or worse c2nim translates the 'this' argument to a 'var T'.
   # However manual wrappers may also use 'ptr T'. In any case we support both
@@ -301,7 +319,8 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
   # skip the deref:
   var ri = ri[i]
   while ri.kind == nkObjDownConv: ri = ri[0]
-  if typ.sons[i].kind == tyVar:
+  let t = typ.sons[i].skipTypes({tyGenericInst})
+  if t.kind == tyVar:
     let x = if ri.kind == nkHiddenAddr: ri[0] else: ri
     if x.typ.kind == tyPtr:
       result = genArgNoParam(p, x)
@@ -312,7 +331,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
     else:
       result = genArgNoParam(p, x)
       result.app(".")
-  elif typ.sons[i].kind == tyPtr:
+  elif t.kind == tyPtr:
     if ri.kind in {nkAddr, nkHiddenAddr}:
       result = genArgNoParam(p, ri[0])
       result.app(".")
@@ -320,6 +339,8 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): PRope =
       result = genArgNoParam(p, ri)
       result.app("->")
   else:
+    ri = skipAddrDeref(ri)
+    if ri.kind in {nkAddr, nkHiddenAddr}: ri = ri[0]
     result = genArgNoParam(p, ri) #, typ.n.sons[i].sym)
     result.app(".")
 
@@ -354,6 +375,11 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): PRope =
       elif pat[i+1] == '.':
         result.app genThisArg(p, ri, j, typ)
         inc i
+      elif pat[i+1] == '[':
+        var arg = ri.sons[j].skipAddrDeref
+        while arg.kind in {nkAddr, nkHiddenAddr, nkObjDownConv}: arg = arg[0]
+        result.app genArgNoParam(p, arg)
+        #result.app debugTree(arg, 0, 10)
       else:
         result.app genOtherArg(p, ri, j, typ)
       inc j
