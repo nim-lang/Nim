@@ -15,26 +15,26 @@ when not defined(js) and not defined(Nimdoc):
 
 type
   TEventHandlers* {.importc.} = object of RootObj
-    onabort*: proc (event: ref TEvent) {.nimcall.}
-    onblur*: proc (event: ref TEvent) {.nimcall.}
-    onchange*: proc (event: ref TEvent) {.nimcall.}
-    onclick*: proc (event: ref TEvent) {.nimcall.}
-    ondblclick*: proc (event: ref TEvent) {.nimcall.}
-    onerror*: proc (event: ref TEvent) {.nimcall.}
-    onfocus*: proc (event: ref TEvent) {.nimcall.}
-    onkeydown*: proc (event: ref TEvent) {.nimcall.}
-    onkeypress*: proc (event: ref TEvent) {.nimcall.}
-    onkeyup*: proc (event: ref TEvent) {.nimcall.}
-    onload*: proc (event: ref TEvent) {.nimcall.}
-    onmousedown*: proc (event: ref TEvent) {.nimcall.}
-    onmousemove*: proc (event: ref TEvent) {.nimcall.}
-    onmouseout*: proc (event: ref TEvent) {.nimcall.}
-    onmouseover*: proc (event: ref TEvent) {.nimcall.}
-    onmouseup*: proc (event: ref TEvent) {.nimcall.}
-    onreset*: proc (event: ref TEvent) {.nimcall.}
-    onselect*: proc (event: ref TEvent) {.nimcall.}
-    onsubmit*: proc (event: ref TEvent) {.nimcall.}
-    onunload*: proc (event: ref TEvent) {.nimcall.}
+    onabort*: proc (event: ref TEvent)
+    onblur*: proc (event: ref TEvent)
+    onchange*: proc (event: ref TEvent)
+    onclick*: proc (event: ref TEvent)
+    ondblclick*: proc (event: ref TEvent)
+    onerror*: proc (event: ref TEvent)
+    onfocus*: proc (event: ref TEvent)
+    onkeydown*: proc (event: ref TEvent)
+    onkeypress*: proc (event: ref TEvent)
+    onkeyup*: proc (event: ref TEvent)
+    onload*: proc (event: ref TEvent)
+    onmousedown*: proc (event: ref TEvent)
+    onmousemove*: proc (event: ref TEvent)
+    onmouseout*: proc (event: ref TEvent)
+    onmouseover*: proc (event: ref TEvent)
+    onmouseup*: proc (event: ref TEvent)
+    onreset*: proc (event: ref TEvent)
+    onselect*: proc (event: ref TEvent)
+    onsubmit*: proc (event: ref TEvent)
+    onunload*: proc (event: ref TEvent)
 
   TWindow* {.importc.} = object of TEventHandlers
     document*: ref TDocument
