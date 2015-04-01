@@ -1281,7 +1281,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
       var body = newNodeI(nkStmtList, n.sons[i].info)
       if i < n.sonsLen - 1:
-        body.sons = n.sons[(i+1)..(-1)]
+        body.sons = n.sons[(i+1)..n.len-1]
       tryStmt.addSon(body)
       tryStmt.addSon(deferPart)
       n.sons[i] = semTry(c, tryStmt)

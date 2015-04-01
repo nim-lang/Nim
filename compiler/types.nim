@@ -590,7 +590,7 @@ proc firstOrd(t: PType): BiggestInt =
   of tyUInt..tyUInt64: result = 0
   of tyEnum:
     # if basetype <> nil then return firstOrd of basetype
-    if (sonsLen(t) > 0) and (t.sons[0] != nil):
+    if sonsLen(t) > 0 and t.sons[0] != nil:
       result = firstOrd(t.sons[0])
     else:
       assert(t.n.sons[0].kind == nkSym)

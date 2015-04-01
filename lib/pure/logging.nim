@@ -10,7 +10,7 @@
 ## This module implements a simple logger. It has been designed to be as simple
 ## as possible to avoid bloat, if this library does not fulfill your needs,
 ## write your own.
-## 
+##
 ## Format strings support the following variables which must be prefixed with
 ## the dollar operator (``$``):
 ##
@@ -21,13 +21,13 @@
 ## $time         Current time
 ## $app          ``os.getAppFilename()``
 ## ============  =======================
-## 
+##
 ##
 ## The following example demonstrates logging to three different handlers
 ## simultaneously:
 ##
 ## .. code-block:: nim
-##     
+##
 ##    var L = newConsoleLogger()
 ##    var fL = newFileLogger("test.log", fmtStr = verboseFmtStr)
 ##    var rL = newRollingFileLogger("rolling.log", fmtStr = verboseFmtStr)
@@ -64,20 +64,20 @@ const
 
 type
   Logger* = ref object of RootObj ## abstract logger; the base type of all loggers
-    levelThreshold*: Level    ## only messages of level >= levelThreshold 
+    levelThreshold*: Level    ## only messages of level >= levelThreshold
                               ## should be processed
     fmtStr: string ## = defaultFmtStr by default, see substituteLog for $date etc.
-    
+
   ConsoleLogger* = ref object of Logger ## logger that writes the messages to the
                                         ## console
-  
+
   FileLogger* = ref object of Logger ## logger that writes the messages to a file
     f: File
-  
-  RollingFileLogger* = ref object of FileLogger ## logger that writes the 
+
+  RollingFileLogger* = ref object of FileLogger ## logger that writes the
                                                 ## messages to a file and
                                                 ## performs log rotation
-    maxLines: int # maximum number of lines    
+    maxLines: int # maximum number of lines
     curLine : int
     baseName: string # initial filename
     baseMode: FileMode # initial file mode
@@ -86,22 +86,22 @@ type
 {.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger,
     PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
 
-proc substituteLog(frmt: string): string = 
+proc substituteLog(frmt: string): string =
   ## converts $date to the current date
   ## converts $time to the current time
   ## converts $app to getAppFilename()
-  ## converts 
+  ## converts
   result = newStringOfCap(frmt.len + 20)
   var i = 0
-  while i < frmt.len: 
-    if frmt[i] != '$': 
+  while i < frmt.len:
+    if frmt[i] != '$':
       result.add(frmt[i])
       inc(i)
     else:
       inc(i)
       var v = ""
       var app = getAppFilename()
-      while frmt[i] in IdentChars: 
+      while frmt[i] in IdentChars:
         v.add(toLower(frmt[i]))
         inc(i)
       case v
@@ -114,12 +114,12 @@ proc substituteLog(frmt: string): string =
 
 method log*(logger: Logger, level: Level,
             frmt: string, args: varargs[string, `$`]) {.
-            raises: [Exception], 
+            raises: [Exception],
             tags: [TimeEffect, WriteIOEffect, ReadIOEffect].} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
   discard
-  
+
 method log*(logger: ConsoleLogger, level: Level,
             frmt: string, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
@@ -127,14 +127,14 @@ method log*(logger: ConsoleLogger, level: Level,
     writeln(stdout, LevelNames[level], " ", substituteLog(logger.fmtStr),
             frmt % args)
 
-method log*(logger: FileLogger, level: Level, 
+method log*(logger: FileLogger, level: Level,
             frmt: string, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
   if level >= logger.levelThreshold:
     writeln(logger.f, LevelNames[level], " ",
             substituteLog(logger.fmtStr), frmt % args)
 
-proc defaultFilename*(): string = 
+proc defaultFilename*(): string =
   ## Returns the default filename for a logger.
   var (path, name, ext) = splitFile(getAppFilename())
   result = changeFileExt(path / name, "log")
@@ -145,10 +145,10 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): Console
   result.fmtStr = fmtStr
   result.levelThreshold = levelThreshold
 
-proc newFileLogger*(filename = defaultFilename(), 
+proc newFileLogger*(filename = defaultFilename(),
                     mode: FileMode = fmAppend,
                     levelThreshold = lvlAll,
-                    fmtStr = defaultFmtStr): FileLogger = 
+                    fmtStr = defaultFmtStr): FileLogger =
   ## Creates a new file logger. This logger logs to a file.
   new(result)
   result.levelThreshold = levelThreshold
@@ -170,14 +170,14 @@ proc countFiles(filename: string): int =
     if kind == pcFile:
       let llfn = name & ext & ExtSep
       if path.extractFilename.startsWith(llfn):
-        let numS = path.extractFilename[llfn.len .. -1]
+        let numS = path.extractFilename[llfn.len .. ^1]
         try:
           let num = parseInt(numS)
           if num > result:
             result = num
         except ValueError: discard
 
-proc newRollingFileLogger*(filename = defaultFilename(), 
+proc newRollingFileLogger*(filename = defaultFilename(),
                            mode: FileMode = fmReadWrite,
                            levelThreshold = lvlAll,
                            fmtStr = defaultFmtStr,
@@ -192,9 +192,9 @@ proc newRollingFileLogger*(filename = defaultFilename(),
   result.curLine = 0
   result.baseName = filename
   result.baseMode = mode
-  
+
   result.logFiles = countFiles(filename)
-  
+
   if mode == fmAppend:
     # We need to get a line count because we will be appending to the file.
     result.curLine = countLogLines(result)
@@ -206,7 +206,7 @@ proc rotate(logger: RollingFileLogger) =
     moveFile(dir / (name & ext & srcSuff),
              dir / (name & ext & ExtSep & $(i+1)))
 
-method log*(logger: RollingFileLogger, level: Level, 
+method log*(logger: RollingFileLogger, level: Level,
             frmt: string, args: varargs[string, `$`]) =
   ## Logs to a file using rolling ``logger`` only.
   if level >= logger.levelThreshold:
@@ -216,7 +216,7 @@ method log*(logger: RollingFileLogger, level: Level,
       logger.logFiles.inc
       logger.curLine = 0
       logger.f = open(logger.baseName, logger.baseMode)
-    
+
     writeln(logger.f, LevelNames[level], " ",substituteLog(logger.fmtStr), frmt % args)
     logger.curLine.inc
 
@@ -226,7 +226,7 @@ var level {.threadvar.}: Level   ## global log filter
 var handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
 proc logLoop(level: Level, frmt: string, args: varargs[string, `$`]) =
-  for logger in items(handlers): 
+  for logger in items(handlers):
     if level >= logger.levelThreshold:
       log(logger, level, frmt, args)
 
@@ -235,7 +235,7 @@ template log*(level: Level, frmt: string, args: varargs[string, `$`]) =
   bind logLoop
   bind `%`
   bind logging.level
-  
+
   if level >= logging.level:
     logLoop(level, frmt, args)
 
@@ -243,19 +243,19 @@ template debug*(frmt: string, args: varargs[string, `$`]) =
   ## Logs a debug message to all registered handlers.
   log(lvlDebug, frmt, args)
 
-template info*(frmt: string, args: varargs[string, `$`]) = 
+template info*(frmt: string, args: varargs[string, `$`]) =
   ## Logs an info message to all registered handlers.
   log(lvlInfo, frmt, args)
 
-template warn*(frmt: string, args: varargs[string, `$`]) = 
+template warn*(frmt: string, args: varargs[string, `$`]) =
   ## Logs a warning message to all registered handlers.
   log(lvlWarn, frmt, args)
 
-template error*(frmt: string, args: varargs[string, `$`]) = 
+template error*(frmt: string, args: varargs[string, `$`]) =
   ## Logs an error message to all registered handlers.
   log(lvlError, frmt, args)
-  
-template fatal*(frmt: string, args: varargs[string, `$`]) =  
+
+template fatal*(frmt: string, args: varargs[string, `$`]) =
   ## Logs a fatal error message to all registered handlers.
   log(lvlFatal, frmt, args)
 
@@ -287,5 +287,5 @@ when isMainModule:
   addHandler(rL)
   for i in 0 .. 25:
     info("hello" & $i, [])
-  
+
 

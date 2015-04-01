@@ -201,7 +201,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     elif nfDotSetter in n.flags:
       internalAssert f.kind == nkIdent and n.sonsLen == 3
-      let calleeName = newStrNode(nkStrLit, f.ident.s[0.. -2]).withInfo(n.info)
+      let calleeName = newStrNode(nkStrLit,
+        f.ident.s[0..f.ident.s.len-2]).withInfo(n.info)
       let callOp = newIdentNode(getIdent".=", n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]

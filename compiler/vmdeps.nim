@@ -42,6 +42,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
 
 proc atomicTypeX(name: string; t: PType; info: TLineInfo): PNode =
   let sym = newSym(skType, getIdent(name), t.owner, info)
+  sym.typ = t
   result = newSymNode(sym)
   result.typ = t
 

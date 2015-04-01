@@ -1,20 +1,18 @@
 version 0.10.4
 ==============
 
-- improve the parser; deal with  echo $foo  gotcha
 - improve GC-unsafety warnings
 - make 'nil' work for 'add' and 'len'
-- add "all threads are blocked" detection to 'spawn'
 - overloading of '='
-- disallow negative indexing
 
 
 version 1.0
 ===========
 
+- remove   echo $foo  gotcha
+- add "all threads are blocked" detection to 'spawn'
 - figure out why C++ bootstrapping is so much slower
 - nimsuggest: auto-completion needs to work in 'class' macros
-- improve the docs for inheritance
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - iterators always require a return type

@@ -36,7 +36,7 @@ echo()
 
 
 var myseq = @[1, 2, 3, 4, 5, 6]
-myseq[0..2] = myseq[-3.. -1]
+myseq[0..2] = myseq[^3 .. ^1]
 
 for x in items(myseq): stdout.write(x)
 echo()
@@ -46,7 +46,7 @@ echo mystr
 mystr[4..4] = "u"
 
 # test full replacement
-mystr[.. -2] = "egerichtet"
+mystr[.. ^2] = "egerichtet"
 
 echo mystr
 
@@ -54,6 +54,6 @@ mystr[0..2] = "ve"
 echo mystr
 
 var s = "abcdef"
-s[1 .. -2] = "xyz"
+s[1 .. ^2] = "xyz"
 assert s == "axyzf"
 

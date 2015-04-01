@@ -59,7 +59,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell])
-  var p = startProcess(command=c[0], args=c[1.. -1],
+  var p = startProcess(command=c[0], args=c[1.. ^1],
                        options={poStdErrToStdOut, poUseShell})
   let outp = p.outputStream
   var suc = ""
@@ -284,7 +284,7 @@ proc main() =
     let testsDir = "tests" & DirSep
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
-      let cat = dir[testsDir.len .. -1]
+      let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
         processCategory(r, Category(cat), p.cmdLineRest.string)
     for a in AdditionalCategories:
