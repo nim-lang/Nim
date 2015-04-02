@@ -429,7 +429,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   pruneSocketSet(writefds, (wr))
 
 # We ignore signal SIGPIPE on Darwin
-when defined(macosx):
+when defined(macosx) and not defined(nimdoc):
   signal(SIGPIPE, SIG_IGN)
 
 when defined(Windows):
