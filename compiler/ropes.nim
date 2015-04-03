@@ -284,11 +284,11 @@ proc `%`*(frmt: TFormatStr, args: openArray[Rope]): Rope =
       of '{':
         inc(i)
         var j = 0
-        while i < length and frmt[i] in {'0'..'9'}:
+        while frmt[i] in {'0'..'9'}:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
         num = j
-        if i < length and frmt[i] == '}': inc(i)
+        if frmt[i] == '}': inc(i)
         else: errorHandler(rInvalidFormatStr, $(frmt[i]))
 
         if j > high(args) + 1:

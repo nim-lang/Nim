@@ -315,15 +315,15 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
         while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if (i >= length) or frmt[i] notin {'0'..'9'}: break
+          if frmt[i] notin {'0'..'9'}: break
         add(result, args[j-1])
       of '{':
         inc(i)
         var j = 0
-        while i < length and frmt[i] in {'0'..'9'}:
+        while frmt[i] in {'0'..'9'}:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-        if i < length and frmt[i] == '}': inc(i)
+        if frmt[i] == '}': inc(i)
         else: raise newException(ValueError, "invalid format string")
 
         add(result, args[j-1])
