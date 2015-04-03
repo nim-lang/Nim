@@ -865,9 +865,11 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
     while it != nil:
       let o = it.otherPragmas
       if not o.isNil:
+        pushInfoContext(n.info)
         for i in countup(0, sonsLen(o) - 1):
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(n.info, "implicitPragmas")
+        popInfoContext()
       it = it.next.POptionEntry
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
