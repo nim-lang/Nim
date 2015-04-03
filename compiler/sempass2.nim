@@ -210,7 +210,7 @@ proc useVar(a: PEffects, n: PNode) =
   if {sfGlobal, sfThread} * s.flags == {sfGlobal} and s.kind in {skVar, skLet}:
     if s.guard != nil: guardGlobal(a, n, s.guard)
     if (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
-      if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
+      #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
       markGcUnsafe(a)
 
 type
