@@ -101,7 +101,8 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
     if callee.originatingModule == ctx.module:
       let rootSym = if sfFromGeneric notin callee.flags: callee
                     else: callee.owner
-      c.calleeScope = rootSym.scope.depthLevel
+      c.calleeScope = 2 #  rootSym.scope.depthLevel
+      #echo "SCOPE IS ", rootSym.scope.depthLevel
     else:
       c.calleeScope = 1
   else:

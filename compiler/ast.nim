@@ -728,7 +728,7 @@ type
       typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
-      scope*: PScope          # the scope where the proc was defined
+      #scope*: PScope          # the scope where the proc was defined
     of skModule:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to

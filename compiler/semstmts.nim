@@ -970,7 +970,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       s = semIdentDef(c, n.sons[0], kind)
     n.sons[namePos] = newSymNode(s)
     s.ast = n
-    s.scope = c.currentScope
+    #s.scope = c.currentScope
 
     if sfNoForward in c.module.flags and
        sfSystemModule notin c.module.flags:
@@ -982,14 +982,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.owner = getCurrOwner()
     typeIsDetermined = s.typ == nil
     s.ast = n
-    s.scope = c.currentScope
+    #s.scope = c.currentScope
 
     # if typeIsDetermined: assert phase == stepCompileBody
     # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
-  c.currentScope = s.scope
+  #c.currentScope = s.scope
   pushOwner(s)
   openScope(c)
   var gp: PNode
@@ -1014,7 +1014,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if s.kind in skIterators:
     s.typ.flags.incl(tfIterator)
 
-  var proto = searchForProc(c, s.scope, s)
+  var proto = searchForProc(c, oldScope, s)
   if proto == nil:
     if s.kind == skClosureIterator: s.typ.callConv = ccClosure
     else: s.typ.callConv = lastOptionEntry(c).defaultCC
@@ -1022,10 +1022,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfGenSym in s.flags: discard
     elif kind in OverloadableSyms:
       if not typeIsDetermined:
-        addInterfaceOverloadableSymAt(c, s.scope, s)
+        addInterfaceOverloadableSymAt(c, oldScope, s)
     else:
       if not typeIsDetermined:
-        addInterfaceDeclAt(c, s.scope, s)
+        addInterfaceDeclAt(c, oldScope, s)
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
     else:
@@ -1093,7 +1093,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
   closeScope(c)           # close scope for parameters
-  c.currentScope = oldScope
+  # c.currentScope = oldScope
   popOwner()
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
