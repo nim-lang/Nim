@@ -137,7 +137,7 @@ proc startProcess*(command: string,
   ## `env` is the environment that will be passed to the process.
   ## If ``env == nil`` the environment is inherited of
   ## the parent process. `options` are additional flags that may be passed
-  ## to `startProcess`. See the documentation of ``TProcessOption`` for the
+  ## to `startProcess`. See the documentation of ``ProcessOption`` for the
   ## meaning of these flags. You need to `close` the process when done.
   ##
   ## Note that you can't pass any `args` if you use the option
