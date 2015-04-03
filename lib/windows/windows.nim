@@ -11,7 +11,7 @@
 ## Unicode version.
 
 {.deadCodeElim: on.}
-
+{.push gcsafe.}
 type
   WideChar* = uint16
   PWideChar* = ptr uint16
@@ -23481,7 +23481,7 @@ proc ListView_EnsureVisible(hwndLV: HWND, i, fPartialOK: int32): LRESULT =
                        MAKELPARAM(fPartialOK, 0))
 
 proc ListView_FindItem(wnd: HWND, iStart: int32, lvfi: var LV_FINDINFO): int32 =
-  result = SendMessage(wnd, LVM_FINDITEM, WPARAM(iStart), 
+  result = SendMessage(wnd, LVM_FINDITEM, WPARAM(iStart),
                        cast[LPARAM](addr(lvfi))).int32
 
 proc ListView_GetBkColor(wnd: HWND): LRESULT =
@@ -23615,9 +23615,9 @@ proc ListView_SetTextBkColor(wnd: HWND, clrTextBk: COLORREF): LRESULT =
 proc ListView_SetTextColor(wnd: HWND, clrText: COLORREF): LRESULT =
   result = SendMessage(wnd, LVM_SETTEXTCOLOR, 0, LPARAM(clrText))
 
-proc ListView_SortItems(hwndLV: HWND, pfnCompare: PFNLVCOMPARE, 
+proc ListView_SortItems(hwndLV: HWND, pfnCompare: PFNLVCOMPARE,
                         lPrm: LPARAM): LRESULT =
-  result = SendMessage(hwndLV, LVM_SORTITEMS, WPARAM(lPrm), 
+  result = SendMessage(hwndLV, LVM_SORTITEMS, WPARAM(lPrm),
                        cast[LPARAM](pfnCompare))
 
 proc ListView_Update(hwndLV: HWND, i: int32): LRESULT =
@@ -23924,3 +23924,5 @@ proc LOCALE_NEUTRAL(): DWORD =
 
 proc LOCALE_INVARIANT(): DWORD =
   result = MAKELCID(MAKELANGID(toU16(LANG_INVARIANT), SUBLANG_NEUTRAL), SORT_DEFAULT)
+
+{.pop.}
