@@ -692,6 +692,7 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
+  ##
   ## .. code-block:: Nim
   ##   1 div 2 == 0
   ##   2 div 2 == 1
@@ -711,6 +712,7 @@ proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI64", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`.
+  ##
   ## .. code-block:: Nim
   ##   0b0001_0000'i8 shr 2 == 0b0100_0000'i8
   ##   0b1000_0000'i8 shr 2 == 0b0000_0000'i8
