@@ -194,8 +194,38 @@ proc warnAboutGcUnsafe(n: PNode) =
   #assert false
   message(n.info, warnGcUnsafe, renderTree(n))
 
-template markGcUnsafe(a: PEffects) =
+proc markGcUnsafe(a: PEffects; reason: PSym) =
   a.gcUnsafe = true
+  if a.owner.kind in routineKinds: a.owner.gcUnsafetyReason = reason
+
+proc markGcUnsafe(a: PEffects; reason: PNode) =
+  a.gcUnsafe = true
+  if a.owner.kind in routineKinds:
+    if reason.kind == nkSym:
+      a.owner.gcUnsafetyReason = reason.sym
+    else:
+      a.owner.gcUnsafetyReason = newSym(skUnknown, getIdent("<unknown>"),
+                                        a.owner, reason.info)
+
+proc listGcUnsafety(s: PSym; onlyWarning: bool) =
+  let u = s.gcUnsafetyReason
+  if u != nil:
+    let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
+    if u.kind in {skLet, skVar}:
+      message(s.info, msgKind,
+        ("'$#' is not GC-safe as it accesses '$#'" &
+        " which is a global using GC'ed memory") % [s.name.s, u.name.s])
+    elif u.kind in routineKinds:
+      # recursive call *always* produces only a warning so the full error
+      # message is printed:
+      listGcUnsafety(u, true)
+      message(s.info, msgKind,
+        "'$#' is not GC-safe as it calls '$#'" %
+        [s.name.s, u.name.s])
+    else:
+      internalAssert u.kind == skUnknown
+      message(u.info, msgKind,
+        "'$#' is not GC-safe as it performs an indirect call here" % s.name.s)
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -211,7 +241,7 @@ proc useVar(a: PEffects, n: PNode) =
     if s.guard != nil: guardGlobal(a, n, s.guard)
     if (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
       #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-      markGcUnsafe(a)
+      markGcUnsafe(a, s)
 
 type
   TIntersection = seq[tuple[id, count: int]] # a simple count table
@@ -450,7 +480,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
 
   if notGcSafe(s.typ) and sfImportc notin s.flags:
     if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-    markGcUnsafe(tracked)
+    markGcUnsafe(tracked, s)
   mergeLockLevels(tracked, n, s.getLockLevel)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
@@ -504,13 +534,13 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
       # assume GcUnsafe unless in its type; 'forward' does not matter:
       if notGcSafe(op) and not isOwnedProcVar(a, tracked.owner):
         if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-        markGcUnsafe(tracked)
+        markGcUnsafe(tracked, a)
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
       if notGcSafe(op):
         if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-        markGcUnsafe(tracked)
+        markGcUnsafe(tracked, a)
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
@@ -658,7 +688,7 @@ proc track(tracked: PEffects, n: PNode) =
           # and it's not a recursive call:
           if not (a.kind == nkSym and a.sym == tracked.owner):
             warnAboutGcUnsafe(n)
-            markGcUnsafe(tracked)
+            markGcUnsafe(tracked, a)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
@@ -853,9 +883,11 @@ proc trackProc*(s: PSym, body: PNode) =
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in gGlobalOptions and optThreadAnalysis in gGlobalOptions:
-      localError(s.info, "'$1' is not GC-safe" % s.name.s)
+      #localError(s.info, "'$1' is not GC-safe" % s.name.s)
+      listGcUnsafety(s, onlyWarning=false)
     else:
-      localError(s.info, warnGcUnsafe2, s.name.s)
+      listGcUnsafety(s, onlyWarning=true)
+      #localError(s.info, warnGcUnsafe2, s.name.s)
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if s.typ.lockLevel == UnspecifiedLockLevel:

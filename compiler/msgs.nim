@@ -387,7 +387,7 @@ const
     warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
     warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
     warnGcUnsafe: "not GC-safe: '$1' [GcUnsafe]",
-    warnGcUnsafe2: "cannot prove '$1' is GC-safe. Does not compile with --threads:on.",
+    warnGcUnsafe2: "$1",
     warnUninit: "'$1' might not have been initialized [Uninit]",
     warnGcMem: "'$1' uses GC'ed memory [GcMem]",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future. [Destructor]",

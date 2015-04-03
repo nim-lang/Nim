@@ -728,6 +728,7 @@ type
       typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
+      gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       #scope*: PScope          # the scope where the proc was defined
     of skModule:
       # modules keep track of the generic symbols they use from other modules.

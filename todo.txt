@@ -1,7 +1,6 @@
 version 0.10.4
 ==============
 
-- improve GC-unsafety warnings
 - make 'nil' work for 'add' and 'len'
 - overloading of '='
 
