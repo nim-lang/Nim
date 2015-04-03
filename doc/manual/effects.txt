@@ -48,7 +48,7 @@ possibly raised exceptions; the algorithm operates on ``p``'s call graph:
    However if the call is of the form ``f(...)`` where ``f`` is a parameter
    of the currently analysed routine it is ignored. The call is optimistically 
    assumed to have no effect. Rule 2 compensates for this case.
-2. Every expression of some proc type wihtin a call that is not a call 
+2. Every expression of some proc type within a call that is not a call 
    itself (and not nil) is assumed to be called indirectly somehow and thus 
    its raises list is added to ``p``'s raises list.
 3. Every call to a proc ``q`` which has an unknown body (due to a forward 
