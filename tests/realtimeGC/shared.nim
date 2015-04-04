@@ -45,17 +45,17 @@ proc status() {.exportc: "status", dynlib.} =
   var a = getComm1Status()
   var b = getComm2Status()
   var str2: string = "$1  COM1: $2  COM2: $3" % [ptt_status, a, b]
-  #echo(str1)
-  #echo(str2)
+  # echo(str1)
+  # echo(str2)
 
 proc count() {.exportc: "count", dynlib.} =
   var temp: uint64
   for i in 0..100_000:
     temp += 1
   gCounter += 1
-  #echo("gCounter: ", gCounter)
+  # echo("gCounter: ", gCounter)
 
 proc occupiedMem() {.exportc: "occupiedMem", dynlib.} =
-  #echo("Occupied Memmory: ", getOccupiedMem())
+  echo("Occupied Memmory: ", getOccupiedMem())
   discard
 

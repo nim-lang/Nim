@@ -6,7 +6,7 @@ discard """
 import times
 import os
 
-const RUNTIME = 35 * 60 # 35 minutes
+const RUNTIME = 15 * 60 # 15 minutes
 
 when defined(windows):
   const dllname = "./shared.dll"

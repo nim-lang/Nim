@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <time.h>
 
-#define RUNTIME (35*60)
+#define RUNTIME (15*60)
 
 
 typedef void (*pFunc)(void);
@@ -46,11 +46,11 @@ int main(int argc, char* argv[])
     while (accumTime < runTime) {
         for (i = 0; i < 10; i++)
             count();
-        printf("1. sleeping...\n");
+        /* printf("1. sleeping...\n"); */
         sleep(1);
         for (i = 0; i < 10; i++)
             status();
-        printf("2. sleeping...\n");
+        /* printf("2. sleeping...\n"); */
         sleep(1);
         occupiedMem();
         accumTime = time((time_t*)0) - startTime;
