@@ -69,7 +69,7 @@ proc handleCmdLine() =
             ex = options.outFile.prependCurDir.quoteShell
           else:
             ex = quoteShell(
-              completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
+              completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir, prependModule=false))
           execExternalProgram(findNodeJs() & " " & ex & ' ' & commands.arguments)
         else:
           var binPath: string
