@@ -573,7 +573,7 @@ type
     mBool, mChar, mString, mCstring,
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
     mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
-    mIsMainModule, mCompileDate, mCompileTime, mProcCall,
+    mIsMainModule, mCompileDate, mCompileTime, mCompileSha1, mProcCall,
     mCpuEndian, mHostOS, mHostCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,

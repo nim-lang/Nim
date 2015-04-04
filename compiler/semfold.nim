@@ -13,7 +13,7 @@
 import
   strutils, lists, options, ast, astalgo, trees, treetab, nimsets, times,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
-  commands, magicsys, saturate
+  commands, magicsys, saturate, computils
 
 proc getConstExpr*(m: PSym, n: PNode): PNode
   # evaluates the constant expression or returns nil if it is no constant
@@ -615,6 +615,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n)
       of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
       of mCompileTime: result = newStrNodeT(times.getClockStr(), n)
+      of mCompileSha1: result = newStrNodeT(getGitHeadSha1(), n)
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLower(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLower, n)

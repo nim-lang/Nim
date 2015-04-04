@@ -51,7 +51,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
 # implementation
 
 const
-  HelpMessage = "Nim Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
+  HelpMessage = "Nim Compiler Version $1 " & CompileSha1 &
+      "(" & CompileDate & ") [$3: $4] " &
       "Copyright (c) 2006-2015 by Andreas Rumpf\n"
 
 const
@@ -59,7 +60,8 @@ const
   AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string =
-  result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
+  result = (HelpMessage % [VersionAsString, CompiltSha1,
+                           platform.OS[platform.hostOS].name,
                            CPU[platform.hostCPU].name]) & Usage
 
 proc helpOnError(pass: TCmdLinePass) =
@@ -69,14 +71,14 @@ proc helpOnError(pass: TCmdLinePass) =
 
 proc writeAdvancedUsage(pass: TCmdLinePass) =
   if pass == passCmd1:
-    msgWriteln(`%`(HelpMessage, [VersionAsString,
+    msgWriteln(`%`(HelpMessage, [VersionAsString, CompileSha1,
                                  platform.OS[platform.hostOS].name,
                                  CPU[platform.hostCPU].name]) & AdvancedUsage)
     msgQuit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) =
   if pass == passCmd1:
-    msgWriteln(`%`(HelpMessage, [VersionAsString,
+    msgWriteln(`%`(HelpMessage, [VersionAsString, CompileSha1
                                  platform.OS[platform.hostOS].name,
                                  CPU[platform.hostCPU].name]))
 

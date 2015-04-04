@@ -1028,6 +1028,10 @@ const
     ## is the time of compilation as a string of the form
     ## ``HH:MM:SS``. This works thanks to compiler magic.
 
+  CompileSha1* {.magic: "CompileSha1"}: string = ""
+    ## is the git sha1 of compilation as a string.
+    ## This works thanks to compiler magic.
+
   cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
     ## is the endianness of the target CPU. This is a valuable piece of
     ## information for low-level code only. This works thanks to compiler

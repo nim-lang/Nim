@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json, xmltree, cgi, typesrenderer
+  importer, sempass2, json, xmltree, cgi, typesrenderer, osproc, computils
 
 type
   TSections = array[TSymKind, PRope]
@@ -573,16 +573,16 @@ proc genOutFile(d: PDoc): PRope =
 
   let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content"],
+      "tableofcontents", "moduledesc", "date", "time", "shaone", "content"],
       [title.toRope, toc, d.modDesc, toRope(getDateStr()),
-      toRope(getClockStr()), code])
+      toRope(getClockStr()), toRope(getGitHeadSha1()), code])
   if optCompileOnly notin gGlobalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
-        "tableofcontents", "moduledesc", "date", "time",
+        "tableofcontents", "moduledesc", "date", "time", "shaone",
         "content", "author", "version", "analytics"],
         [title.toRope, toc, d.modDesc, toRope(getDateStr()),
-                     toRope(getClockStr()), content, d.meta[metaAuthor].toRope,
+                     toRope(getClockStr()), toRope(getGitHeadSha1()), content, d.meta[metaAuthor].toRope,
                      d.meta[metaVersion].toRope, d.analytics.toRope])
   else:
     code = content
@@ -647,9 +647,9 @@ proc commandBuildIndex*() =
   var content = mergeIndexes(gProjectFull).toRope
 
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
-      "tableofcontents", "moduledesc", "date", "time",
+      "tableofcontents", "moduledesc", "date", "time", "shaone",
       "content", "author", "version", "analytics"],
-      ["Index".toRope, nil, nil, toRope(getDateStr()),
-                   toRope(getClockStr()), content, nil, nil, nil])
+      ["Index".toRope, nil, nil, toRope(getDateStr()), toRope(getClockStr()),
+                   toRope(getGitHeadSha1()), content, nil, nil, nil])
   # no analytics because context is not available
   writeRope(code, getOutFile("theindex", HtmlExt))
