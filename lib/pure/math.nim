@@ -152,6 +152,7 @@ proc randomize*(seed: int) {.benign.}
   ## Note: Does nothing for the JavaScript target,
   ## as JavaScript does not support this.
 
+{.push noSideEffect.}
 when not defined(JS):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
@@ -273,6 +274,8 @@ else:
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
 
+{.pop.}
+
 proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
 
@@ -370,3 +373,7 @@ when isMainModule and not defined(JS):
   for i in 0..SIZE-1:
     assert buf[i] == random(high(int)), "non deterministic random seeding"
   echo "random values equal after reseeding"
+
+  # Check for no side effect annotation
+  proc mySqrt(num: float): float {.noSideEffect.} =
+    return sqrt(num)
