@@ -798,177 +798,178 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
     g = nxg
   result = compared == s.counter
 
-proc testModule() =
-  ## Internal micro test to validate docstrings and such.
-  block isValidTest:
-    var options: HashSet[string]
-    proc savePreferences(options: HashSet[string]) =
-      assert options.isValid, "Pass an initialized set!"
-    options = initSet[string]()
-    options.savePreferences
+when isMainModule and not defined(release):
+  proc testModule() =
+    ## Internal micro test to validate docstrings and such.
+    block isValidTest:
+      var options: HashSet[string]
+      proc savePreferences(options: HashSet[string]) =
+        assert options.isValid, "Pass an initialized set!"
+      options = initSet[string]()
+      options.savePreferences
 
-  block lenTest:
-    var values: HashSet[int]
-    assert(not values.isValid)
-    assert values.len == 0
-    assert values.card == 0
+    block lenTest:
+      var values: HashSet[int]
+      assert(not values.isValid)
+      assert values.len == 0
+      assert values.card == 0
 
-  block setIterator:
-    type pair = tuple[a, b: int]
-    var a, b = initSet[pair]()
-    a.incl((2, 3))
-    a.incl((3, 2))
-    a.incl((2, 3))
-    for x, y in a.items:
-      b.incl((x - 2, y + 1))
-    assert a.len == b.card
-    assert a.len == 2
-    #echo b
+    block setIterator:
+      type pair = tuple[a, b: int]
+      var a, b = initSet[pair]()
+      a.incl((2, 3))
+      a.incl((3, 2))
+      a.incl((2, 3))
+      for x, y in a.items:
+        b.incl((x - 2, y + 1))
+      assert a.len == b.card
+      assert a.len == 2
+      #echo b
 
-  block setContains:
-    var values = initSet[int]()
-    assert(not values.contains(2))
-    values.incl(2)
-    assert values.contains(2)
-    values.excl(2)
-    assert(not values.contains(2))
+    block setContains:
+      var values = initSet[int]()
+      assert(not values.contains(2))
+      values.incl(2)
+      assert values.contains(2)
+      values.excl(2)
+      assert(not values.contains(2))
 
-    values.incl(4)
-    var others = toSet([6, 7])
-    values.incl(others)
-    assert values.len == 3
+      values.incl(4)
+      var others = toSet([6, 7])
+      values.incl(others)
+      assert values.len == 3
 
-    values.init
-    assert values.containsOrIncl(2) == false
-    assert values.containsOrIncl(2) == true
-    var
-      a = toSet([1, 2])
-      b = toSet([1])
-    b.incl(2)
-    assert a == b
+      values.init
+      assert values.containsOrIncl(2) == false
+      assert values.containsOrIncl(2) == true
+      var
+        a = toSet([1, 2])
+        b = toSet([1])
+      b.incl(2)
+      assert a == b
 
-  block exclusions:
-    var s = toSet([2, 3, 6, 7])
-    s.excl(2)
-    s.excl(2)
-    assert s.len == 3
+    block exclusions:
+      var s = toSet([2, 3, 6, 7])
+      s.excl(2)
+      s.excl(2)
+      assert s.len == 3
 
-    var
-      numbers = toSet([1, 2, 3, 4, 5])
-      even = toSet([2, 4, 6, 8])
-    numbers.excl(even)
-    #echo numbers
-    # --> {1, 3, 5}
+      var
+        numbers = toSet([1, 2, 3, 4, 5])
+        even = toSet([2, 4, 6, 8])
+      numbers.excl(even)
+      #echo numbers
+      # --> {1, 3, 5}
 
-  block toSeqAndString:
-    var a = toSet([2, 4, 5])
-    var b = initSet[int]()
-    for x in [2, 4, 5]: b.incl(x)
-    assert($a == $b)
-    #echo a
-    #echo toSet(["no", "esc'aping", "is \" provided"])
+    block toSeqAndString:
+      var a = toSet([2, 4, 5])
+      var b = initSet[int]()
+      for x in [2, 4, 5]: b.incl(x)
+      assert($a == $b)
+      #echo a
+      #echo toSet(["no", "esc'aping", "is \" provided"])
 
-  #block orderedToSeqAndString:
-  #  echo toOrderedSet([2, 4, 5])
-  #  echo toOrderedSet(["no", "esc'aping", "is \" provided"])
+    #block orderedToSeqAndString:
+    #  echo toOrderedSet([2, 4, 5])
+    #  echo toOrderedSet(["no", "esc'aping", "is \" provided"])
 
-  block setOperations:
-    var
-      a = toSet(["a", "b"])
-      b = toSet(["b", "c"])
-      c = union(a, b)
-    assert c == toSet(["a", "b", "c"])
-    var d = intersection(a, b)
-    assert d == toSet(["b"])
-    var e = difference(a, b)
-    assert e == toSet(["a"])
-    var f = symmetricDifference(a, b)
-    assert f == toSet(["a", "c"])
-    assert d < a and d < b
-    assert((a < a) == false)
-    assert d <= a and d <= b
-    assert((a <= a))
-    # Alias test.
-    assert a + b == toSet(["a", "b", "c"])
-    assert a * b == toSet(["b"])
-    assert a - b == toSet(["a"])
-    assert a -+- b == toSet(["a", "c"])
-    assert disjoint(a, b) == false
-    assert disjoint(a, b - a) == true
+    block setOperations:
+      var
+        a = toSet(["a", "b"])
+        b = toSet(["b", "c"])
+        c = union(a, b)
+      assert c == toSet(["a", "b", "c"])
+      var d = intersection(a, b)
+      assert d == toSet(["b"])
+      var e = difference(a, b)
+      assert e == toSet(["a"])
+      var f = symmetricDifference(a, b)
+      assert f == toSet(["a", "c"])
+      assert d < a and d < b
+      assert((a < a) == false)
+      assert d <= a and d <= b
+      assert((a <= a))
+      # Alias test.
+      assert a + b == toSet(["a", "b", "c"])
+      assert a * b == toSet(["b"])
+      assert a - b == toSet(["a"])
+      assert a -+- b == toSet(["a", "c"])
+      assert disjoint(a, b) == false
+      assert disjoint(a, b - a) == true
 
-  block mapSet:
-    var a = toSet([1, 2, 3])
-    var b = a.map(proc (x: int): string = $x)
-    assert b == toSet(["1", "2", "3"])
+    block mapSet:
+      var a = toSet([1, 2, 3])
+      var b = a.map(proc (x: int): string = $x)
+      assert b == toSet(["1", "2", "3"])
 
-  block isValidTest:
-    var cards: OrderedSet[string]
-    proc saveTarotCards(cards: OrderedSet[string]) =
-      assert cards.isValid, "Pass an initialized set!"
-    cards = initOrderedSet[string]()
-    cards.saveTarotCards
+    block isValidTest:
+      var cards: OrderedSet[string]
+      proc saveTarotCards(cards: OrderedSet[string]) =
+        assert cards.isValid, "Pass an initialized set!"
+      cards = initOrderedSet[string]()
+      cards.saveTarotCards
 
-  block lenTest:
-    var values: OrderedSet[int]
-    assert(not values.isValid)
-    assert values.len == 0
-    assert values.card == 0
+    block lenTest:
+      var values: OrderedSet[int]
+      assert(not values.isValid)
+      assert values.len == 0
+      assert values.card == 0
 
-  block setIterator:
-    type pair = tuple[a, b: int]
-    var a, b = initOrderedSet[pair]()
-    a.incl((2, 3))
-    a.incl((3, 2))
-    a.incl((2, 3))
-    for x, y in a.items:
-      b.incl((x - 2, y + 1))
-    assert a.len == b.card
-    assert a.len == 2
+    block setIterator:
+      type pair = tuple[a, b: int]
+      var a, b = initOrderedSet[pair]()
+      a.incl((2, 3))
+      a.incl((3, 2))
+      a.incl((2, 3))
+      for x, y in a.items:
+        b.incl((x - 2, y + 1))
+      assert a.len == b.card
+      assert a.len == 2
 
-  #block orderedSetIterator:
-  #  var a = initOrderedSet[int]()
-  #  for value in [9, 2, 1, 5, 1, 8, 4, 2]:
-  #    a.incl(value)
-  #  for value in a.items:
-  #    echo "Got ", value
+    #block orderedSetIterator:
+    #  var a = initOrderedSet[int]()
+    #  for value in [9, 2, 1, 5, 1, 8, 4, 2]:
+    #    a.incl(value)
+    #  for value in a.items:
+    #    echo "Got ", value
 
-  block setContains:
-    var values = initOrderedSet[int]()
-    assert(not values.contains(2))
-    values.incl(2)
-    assert values.contains(2)
+    block setContains:
+      var values = initOrderedSet[int]()
+      assert(not values.contains(2))
+      values.incl(2)
+      assert values.contains(2)
 
-  block toSeqAndString:
-    var a = toOrderedSet([2, 4, 5])
-    var b = initOrderedSet[int]()
-    for x in [2, 4, 5]: b.incl(x)
-    assert($a == $b)
-    assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
+    block toSeqAndString:
+      var a = toOrderedSet([2, 4, 5])
+      var b = initOrderedSet[int]()
+      for x in [2, 4, 5]: b.incl(x)
+      assert($a == $b)
+      assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
 
-  block initBlocks:
-    var a: OrderedSet[int]
-    a.init(4)
-    a.incl(2)
-    a.init
-    assert a.len == 0 and a.isValid
-    a = initOrderedSet[int](4)
-    a.incl(2)
-    assert a.len == 1
+    block initBlocks:
+      var a: OrderedSet[int]
+      a.init(4)
+      a.incl(2)
+      a.init
+      assert a.len == 0 and a.isValid
+      a = initOrderedSet[int](4)
+      a.incl(2)
+      assert a.len == 1
 
-    var b: HashSet[int]
-    b.init(4)
-    b.incl(2)
-    b.init
-    assert b.len == 0 and b.isValid
-    b = initSet[int](4)
-    b.incl(2)
-    assert b.len == 1
+      var b: HashSet[int]
+      b.init(4)
+      b.incl(2)
+      b.init
+      assert b.len == 0 and b.isValid
+      b = initSet[int](4)
+      b.incl(2)
+      assert b.len == 1
 
-  for i in 0 .. 32:
-    var s = rightSize(i)
-    if s <= i or mustRehash(s, i):
-      echo "performance issue: rightSize() will not elide enlarge() at ", i
+    for i in 0 .. 32:
+      var s = rightSize(i)
+      if s <= i or mustRehash(s, i):
+        echo "performance issue: rightSize() will not elide enlarge() at ", i
 
-  echo "Micro tests run successfully."
+    echo "Micro tests run successfully."
 
-when isMainModule and not defined(release): testModule()
+  testModule()
