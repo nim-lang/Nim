@@ -539,8 +539,8 @@ proc allocInv(a: TMemRegion): bool =
 
 proc rawAlloc(a: var TMemRegion, requestedSize: int): pointer =
   sysAssert(allocInv(a), "rawAlloc: begin")
-  sysAssert(roundup(65, 8) == 72, "rawAlloc 1")
-  sysAssert requestedSize >= sizeof(TFreeCell), "rawAlloc 2"
+  sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
+  sysAssert(requestedSize >= sizeof(TFreeCell), "rawAlloc: requested size too small")
   var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(c_stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
