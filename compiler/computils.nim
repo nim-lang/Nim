@@ -9,6 +9,9 @@
 
 import osproc
 
+const
+  Sha1DisplayLen* = 6 ## Default length used for displaying the sha1
+
 proc getGitHeadSha1*(): string =
   ## Get the current git HEAD sha1
   var

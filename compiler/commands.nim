@@ -52,7 +52,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
 
 const
   HelpMessage = "Nim Compiler Version $1 " & CompileSha1 &
-      "(" & CompileDate & ") [$3: $4] " &
+      " (" & CompileDate & ") [$3: $4]\n" &
       "Copyright (c) 2006-2015 by Andreas Rumpf\n"
 
 const
