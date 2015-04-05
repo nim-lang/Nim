@@ -173,12 +173,6 @@ proc new*(T: typedesc): ref T =
   ## reference to it as result value
   new(result)
 
-proc unsafeNew*[T](a: var ref T, size: int) {.magic: "New", noSideEffect.}
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it in ``a``. This is **unsafe** as it allocates an object
-  ## of the passed ``size``. This should only be used for optimization
-  ## purposes when you know what you're doing!
-
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
 
@@ -513,7 +507,13 @@ type
   ESynch: Exception
 ].}
 
-proc sizeof*[T](x: T): Natural {.magic: "SizeOf", noSideEffect.}
+proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
+  ## creates a new object of type ``T`` and returns a safe (traced)
+  ## reference to it in ``a``. This is **unsafe** as it allocates an object
+  ## of the passed ``size``. This should only be used for optimization
+  ## purposes when you know what you're doing!
+
+proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## returns the size of ``x`` in bytes. Since this is a low-level proc,
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
@@ -547,7 +547,7 @@ proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
 
-proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
+proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
   ## efficient since no reallocation is needed.
@@ -565,7 +565,7 @@ proc newSeq*[T](s: var seq[T], len: int) {.magic: "NewSeq", noSideEffect.}
   ##   inputStrings[2] = "would crash"
   ##   #inputStrings[3] = "out of bounds"
 
-proc newSeq*[T](len = 0): seq[T] =
+proc newSeq*[T](len = 0.Natural): seq[T] =
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
   ##
   ## Note that the sequence will be filled with zeroed entries, which can be a
@@ -939,7 +939,7 @@ proc `@` * [IDX, T](a: array[IDX, T]): seq[T] {.
   ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
   ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
 
-proc setLen*[T](s: var seq[T], newlen: int) {.
+proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## ``T`` may be any sequence type.
@@ -947,14 +947,14 @@ proc setLen*[T](s: var seq[T], newlen: int) {.
   ## ``s`` will be truncated. `s` cannot be nil! To initialize a sequence with
   ## a size, use ``newSeq`` instead.
 
-proc setLen*(s: var string, newlen: int) {.
+proc setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## If the current length is greater than the new length,
   ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
   ## a size, use ``newString`` instead.
 
-proc newString*(len: int): string {.
+proc newString*(len: Natural): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
   ## returns a new string of length ``len`` but with uninitialized
   ## content. One needs to fill the string character after character
@@ -962,7 +962,7 @@ proc newString*(len: int): string {.
   ## optimization purposes; the same effect can be achieved with the
   ## ``&`` operator or with ``add``.
 
-proc newStringOfCap*(cap: int): string {.
+proc newStringOfCap*(cap: Natural): string {.
   magic: "NewStringOfCap", importc: "rawNewString", noSideEffect.}
   ## returns a new string of length ``0`` but with capacity `cap`.This
   ## procedure exists only for optimization purposes; the same effect can
@@ -1152,21 +1152,21 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## is a reason why the default assignment does a deep copy of sequences
   ## and strings.
 
-proc del*[T](x: var seq[T], i: int) {.noSideEffect.} =
+proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
   let xl = x.len
   shallowCopy(x[i], x[xl-1])
   setLen(x, xl-1)
 
-proc delete*[T](x: var seq[T], i: int) {.noSideEffect.} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
   let xl = x.len
   for j in i..xl-2: shallowCopy(x[j], x[j+1])
   setLen(x, xl-1)
 
-proc insert*[T](x: var seq[T], item: T, i = 0) {.noSideEffect.} =
+proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   ## inserts `item` into `x` at position `i`.
   let xl = x.len
   setLen(x, xl+1)
@@ -1312,19 +1312,19 @@ proc substr*(s: string, first, last: int): string {.
   ## or `limit`:idx: a string's length.
 
 when not defined(nimrodVM):
-  proc zeroMem*(p: pointer, size: int) {.importc, noDecl, benign.}
+  proc zeroMem*(p: pointer, size: Natural) {.importc, noDecl, benign.}
     ## overwrites the contents of the memory at ``p`` with the value 0.
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: pointer, size: int) {.
+  proc copyMem*(dest, source: pointer, size: Natural) {.
     importc: "memcpy", header: "<string.h>", benign.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: pointer, size: int) {.
+  proc moveMem*(dest, source: pointer, size: Natural) {.
     importc: "memmove", header: "<string.h>", benign.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
@@ -1332,7 +1332,7 @@ when not defined(nimrodVM):
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still *unsafe*, though.
 
-  proc equalMem*(a, b: pointer, size: int): bool {.
+  proc equalMem*(a, b: pointer, size: Natural): bool {.
     importc: "equalMem", noDecl, noSideEffect.}
     ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared. If the blocks are equal, true is returned, false
@@ -1340,7 +1340,7 @@ when not defined(nimrodVM):
     ## *unsafe*.
 
   when hostOS != "standalone":
-    proc alloc*(size: int): pointer {.noconv, rtl, tags: [], benign.}
+    proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is not initialized, so reading
@@ -1355,7 +1355,7 @@ when not defined(nimrodVM):
       ## The allocated memory belongs to its allocating thread!
       ## Use `createSharedU` to allocate from a shared heap.
       cast[ptr T](alloc(T.sizeof * size))
-    proc alloc0*(size: int): pointer {.noconv, rtl, tags: [], benign.}
+    proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
       ## ``dealloc(block)``. The block is initialized with all bytes
@@ -1370,8 +1370,8 @@ when not defined(nimrodVM):
       ## The allocated memory belongs to its allocating thread!
       ## Use `createShared` to allocate from a shared heap.
       cast[ptr T](alloc0(T.sizeof * size))
-    proc realloc*(p: pointer, newSize: int): pointer {.noconv, rtl, tags: [],
-                                                       benign.}
+    proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
+                                                           benign.}
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
@@ -1398,7 +1398,7 @@ when not defined(nimrodVM):
       ## Use `deallocShared` to deallocate from a shared heap.
     proc free*[T](p: ptr T) {.inline, benign.} =
       dealloc(p)
-    proc allocShared*(size: int): pointer {.noconv, rtl, benign.}
+    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign.}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
@@ -1412,7 +1412,7 @@ when not defined(nimrodVM):
       ## is not initialized, so reading from it before writing to it is
       ## undefined behaviour!
       cast[ptr T](allocShared(T.sizeof * size))
-    proc allocShared0*(size: int): pointer {.noconv, rtl, benign.}
+    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign.}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
@@ -1425,8 +1425,8 @@ when not defined(nimrodVM):
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``createSharedU``.
       cast[ptr T](allocShared0(T.sizeof * size))
-    proc reallocShared*(p: pointer, newSize: int): pointer {.noconv, rtl,
-                                                             benign.}
+    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl,
+                                                                 benign.}
       ## grows or shrinks a given memory block on the heap. If p is **nil**
       ## then a new memory block is returned. In either way the block has at
       ## least ``newSize`` bytes. If ``newSize == 0`` and p is not **nil**
@@ -2489,37 +2489,37 @@ when not defined(JS): #and not defined(NimrodVM):
     proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
       ## retrieves the file size (in bytes) of `f`.
 
-    proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: int): int {.
+    proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
       tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc readChars*(f: File, a: var openArray[char], start, len: int): int {.
+    proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
       tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc readBuffer*(f: File, buffer: pointer, len: int): int {.
+    proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
       tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
 
-    proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: int): int {.
+    proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
       tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
       ## of an error.
 
-    proc writeChars*(f: File, a: openArray[char], start, len: int): int {.
+    proc writeChars*(f: File, a: openArray[char], start, len: Natural): int {.
       tags: [WriteIOEffect], benign.}
       ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
       ## the number of actual written bytes, which may be less than `len` in case
       ## of an error.
 
-    proc writeBuffer*(f: File, buffer: pointer, len: int): int {.
+    proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
       tags: [WriteIOEffect], benign.}
       ## writes the bytes of buffer pointed to by the parameter `buffer` to the
       ## file `f`. Returns the number of actual written bytes, which may be less
@@ -2541,7 +2541,7 @@ when not defined(JS): #and not defined(NimrodVM):
     when not defined(nimfix):
       {.deprecated: [fileHandle: getFileHandle].}
 
-    proc cstringArrayToSeq*(a: cstringArray, len: int): seq[string] =
+    proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
       ## of length ``len``.
       newSeq(result, len)
@@ -2811,14 +2811,14 @@ elif defined(JS):
   proc getTotalMem(): int = return -1
 
   proc dealloc(p: pointer) = discard
-  proc alloc(size: int): pointer = discard
-  proc alloc0(size: int): pointer = discard
-  proc realloc(p: pointer, newsize: int): pointer = discard
+  proc alloc(size: Natural): pointer = discard
+  proc alloc0(size: Natural): pointer = discard
+  proc realloc(p: pointer, newsize: Natural): pointer = discard
 
-  proc allocShared(size: int): pointer = discard
-  proc allocShared0(size: int): pointer = discard
+  proc allocShared(size: Natural): pointer = discard
+  proc allocShared0(size: Natural): pointer = discard
   proc deallocShared(p: pointer) = discard
-  proc reallocShared(p: pointer, newsize: int): pointer = discard
+  proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
   when defined(JS):
     include "system/jssys"
@@ -3164,7 +3164,7 @@ when false:
     payload()
 
 when hostOS != "standalone":
-  proc insert*(x: var string, item: string, i = 0) {.noSideEffect.} =
+  proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## inserts `item` into `x` at position `i`.
     var xl = x.len
     setLen(x, xl+item.len)
