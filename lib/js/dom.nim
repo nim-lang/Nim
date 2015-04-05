@@ -36,6 +36,8 @@ type
     onsubmit*: proc (event: ref TEvent) {.nimcall.}
     onunload*: proc (event: ref TEvent) {.nimcall.}
 
+    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent), useCapture: bool = false) {.nimcall.}
+
   TWindow* {.importc.} = object of TEventHandlers
     document*: ref TDocument
     event*: ref TEvent
@@ -55,7 +57,6 @@ type
     status*: cstring
     toolbar*: ref TToolBar
 
-    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent) ) {.nimcall.}
     alert*: proc (msg: cstring) {.nimcall.}
     back*: proc () {.nimcall.}
     blur*: proc () {.nimcall.}
@@ -91,114 +92,6 @@ type
 
   TFrame* {.importc.} = object of TWindow
 
-  TDocument* {.importc.} = object of TEventHandlers
-    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent) ) {.nimcall.}
-    alinkColor*: cstring
-    bgColor*: cstring
-    charset*: cstring
-    cookie*: cstring
-    defaultCharset*: cstring
-    fgColor*: cstring
-    lastModified*: cstring
-    linkColor*: cstring
-    referrer*: cstring
-    title*: cstring
-    URL*: cstring
-    vlinkColor*: cstring
-    captureEvents*: proc (eventMask: int) {.nimcall.}
-    createAttribute*: proc (identifier: cstring): ref TNode {.nimcall.}
-    createElement*: proc (identifier: cstring): ref TNode {.nimcall.}
-    createTextNode*: proc (identifier: cstring): ref TNode {.nimcall.}
-    getElementById*: proc (id: cstring): ref TNode {.nimcall.}
-    getElementsByName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
-    getElementsByTagName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
-    getElementsByClassName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
-    getSelection*: proc (): cstring {.nimcall.}
-    handleEvent*: proc (event: ref TEvent) {.nimcall.}
-    open*: proc () {.nimcall.}
-    releaseEvents*: proc (eventMask: int) {.nimcall.}
-    routeEvent*: proc (event: ref TEvent) {.nimcall.}
-    write*: proc (text: cstring) {.nimcall.}
-    writeln*: proc (text: cstring) {.nimcall.}
-    anchors*: seq[ref TAnchor]
-    forms*: seq[ref TForm]
-    images*: seq[ref TImage]
-    applets*: seq[ref TApplet]
-    embeds*: seq[ref TEmbed]
-    links*: seq[ref TLink]
-
-  TLink* {.importc.} = object of RootObj
-    name*: cstring
-    target*: cstring
-    text*: cstring
-    x*: int
-    y*: int
-
-  TEmbed* {.importc.} = object of RootObj
-    height*: int
-    hspace*: int
-    name*: cstring
-    src*: cstring
-    width*: int
-    `type`*: cstring
-    vspace*: int
-    play*: proc () {.nimcall.}
-    stop*: proc () {.nimcall.}
-
-  TAnchor* {.importc.} = object of RootObj
-    name*: cstring
-    text*: cstring
-    x*, y*: int
-
-  TApplet* {.importc.} = object of RootObj
-
-  TElement* {.importc.} = object of TEventHandlers
-    checked*: bool
-    defaultChecked*: bool
-    defaultValue*: cstring
-    disabled*: bool
-    form*: ref TForm
-    name*: cstring
-    readOnly*: bool
-    `type`*: cstring
-    value*: cstring
-    blur*: proc () {.nimcall.}
-    click*: proc () {.nimcall.}
-    focus*: proc () {.nimcall.}
-    handleEvent*: proc (event: ref TEvent) {.nimcall.}
-    select*: proc () {.nimcall.}
-    options*: seq[ref TOption]
-
-  TOption* {.importc.} = object of RootObj
-    defaultSelected*: bool
-    selected*: bool
-    selectedIndex*: int
-    text*: cstring
-    value*: cstring
-
-  TForm* {.importc.} = object of TEventHandlers
-    action*: cstring
-    encoding*: cstring
-    `method`*: cstring
-    name*: cstring
-    target*: cstring
-    handleEvent*: proc (event: ref TEvent) {.nimcall.}
-    reset*: proc () {.nimcall.}
-    submit*: proc () {.nimcall.}
-    elements*: seq[ref TElement]
-
-  TImage* {.importc.} = object of TEventHandlers
-    border*: int
-    complete*: bool
-    height*: int
-    hspace*: int
-    lowsrc*: cstring
-    name*: cstring
-    src*: cstring
-    vspace*: int
-    width*: int
-    handleEvent*: proc (event: ref TEvent) {.nimcall.}
-
   ClassList* {.importc.} = object of RootObj
     add*: proc (class: cstring) {.nimcall.}
     remove*: proc (class: cstring) {.nimcall.}
@@ -218,11 +111,10 @@ type
     DocumentTypeNode,
     DocumentFragmentNode,
     NotationNode
-  TNode* {.importc.} = object of RootObj
+  TNode* {.importc.} = object of TEventHandlers
     attributes*: seq[ref TNode]
     childNodes*: seq[ref TNode]
     children*: seq[ref TNode]
-    classList*: ref Classlist
     data*: cstring
     firstChild*: ref TNode
     lastChild*: ref TNode
@@ -238,13 +130,10 @@ type
     deleteData*: proc (start, len: int) {.nimcall.}
     getAttribute*: proc (attr: cstring): cstring {.nimcall.}
     getAttributeNode*: proc (attr: cstring): ref TNode {.nimcall.}
-    getElementsByTagName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
-    getElementsByClassName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
     hasChildNodes*: proc (): bool {.nimcall.}
     innerHTML*: cstring
     insertBefore*: proc (newNode, before: ref TNode) {.nimcall.}
     insertData*: proc (position: int, data: cstring) {.nimcall.}
-    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent)) {.nimcall.}
     removeAttribute*: proc (attr: cstring) {.nimcall.}
     removeAttributeNode*: proc (attr: ref TNode) {.nimcall.}
     removeChild*: proc (child: ref TNode) {.nimcall.}
@@ -254,6 +143,109 @@ type
     setAttribute*: proc (name, value: cstring) {.nimcall.}
     setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
     style*: ref TStyle
+
+  TDocument* {.importc.} = object of TNode
+    alinkColor*: cstring
+    bgColor*: cstring
+    charset*: cstring
+    cookie*: cstring
+    defaultCharset*: cstring
+    fgColor*: cstring
+    lastModified*: cstring
+    linkColor*: cstring
+    referrer*: cstring
+    title*: cstring
+    URL*: cstring
+    vlinkColor*: cstring
+    captureEvents*: proc (eventMask: int) {.nimcall.}
+    createAttribute*: proc (identifier: cstring): ref TNode {.nimcall.}
+    createElement*: proc (identifier: cstring): ref TNode {.nimcall.}
+    createTextNode*: proc (identifier: cstring): ref TNode {.nimcall.}
+    getElementById*: proc (id: cstring): ref TElement {.nimcall.}
+    getElementsByName*: proc (name: cstring): seq[ref TElement] {.nimcall.}
+    getElementsByTagName*: proc (name: cstring): seq[ref TElement] {.nimcall.}
+    getElementsByClassName*: proc (name: cstring): seq[ref TElement] {.nimcall.}
+    getSelection*: proc (): cstring {.nimcall.}
+    handleEvent*: proc (event: ref TEvent) {.nimcall.}
+    open*: proc () {.nimcall.}
+    releaseEvents*: proc (eventMask: int) {.nimcall.}
+    routeEvent*: proc (event: ref TEvent) {.nimcall.}
+    write*: proc (text: cstring) {.nimcall.}
+    writeln*: proc (text: cstring) {.nimcall.}
+    anchors*: seq[ref TAnchor]
+    forms*: seq[ref TForm]
+    images*: seq[ref TImage]
+    applets*: seq[ref TApplet]
+    embeds*: seq[ref TEmbed]
+    links*: seq[ref TLink]
+
+  TElement* {.importc.} = object of TNode
+    classList*: ref Classlist
+    checked*: bool
+    defaultChecked*: bool
+    defaultValue*: cstring
+    disabled*: bool
+    form*: ref TForm
+    name*: cstring
+    readOnly*: bool
+    blur*: proc () {.nimcall.}
+    click*: proc () {.nimcall.}
+    focus*: proc () {.nimcall.}
+    handleEvent*: proc (event: ref TEvent) {.nimcall.}
+    select*: proc () {.nimcall.}
+    options*: seq[ref TOption]
+    getElementsByTagName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    getElementsByClassName*: proc (name: cstring): seq[ref TNode] {.nimcall.}
+
+  TLink* {.importc.} = object of TElement
+    target*: cstring
+    text*: cstring
+    x*: int
+    y*: int
+
+  TEmbed* {.importc.} = object of TElement
+    height*: int
+    hspace*: int
+    src*: cstring
+    width*: int
+    `type`*: cstring
+    vspace*: int
+    play*: proc () {.nimcall.}
+    stop*: proc () {.nimcall.}
+
+  TAnchor* {.importc.} = object of RootObj
+    name*: cstring
+    text*: cstring
+    x*, y*: int
+
+  TApplet* {.importc.} = object of RootObj
+
+  TOption* {.importc.} = object of TElement
+    defaultSelected*: bool
+    selected*: bool
+    selectedIndex*: int
+    text*: cstring
+    value*: cstring
+
+  TForm* {.importc.} = object of TElement
+    action*: cstring
+    encoding*: cstring
+    `method`*: cstring
+    target*: cstring
+    reset*: proc () {.nimcall.}
+    submit*: proc () {.nimcall.}
+    elements*: seq[ref TElement]
+
+  TImage* {.importc.} = object of TElement
+    border*: int
+    complete*: bool
+    height*: int
+    hspace*: int
+    lowsrc*: cstring
+    src*: cstring
+    vspace*: int
+    width*: int
+
 
   TStyle* {.importc.} = object of RootObj
     background*: cstring
