@@ -296,14 +296,14 @@ proc colcom(p: var TParser, n: PNode) =
   skipComment(p, n)
 
 proc parseSymbol(p: var TParser, allowNil = false): PNode =
-  #| symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'='|'_')+)+ '`'
+  #| symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
   #|        | IDENT | 'addr' | 'type'
   case p.tok.tokType
   of tkSymbol, tkAddr, tkType:
     result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
   of tkUnderscore:
-    result = newNodeP(nkUnderscore, p)
+    result = newIdentNodeP(getIdent("_"), p)
     getTok(p)
   of tkAccent:
     result = newNodeP(nkAccQuoted, p)
@@ -647,7 +647,7 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
     result = newNodeP(nkNilLit, p)
     getTok(p)
   of tkUnderscore:
-    result = newNodeP(nkUnderscore, p)
+    result = newIdentNodeP(getIdent("_"), p)
     getTok(p)
   of tkParLe:
     # () constructor

@@ -340,6 +340,10 @@ proc checkNilable(v: PSym) =
     elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
       message(v.info, warnProveInit, v.name.s)
 
+proc isDiscardUnderscore(n: PNode): bool =
+  if n.kind != nkIdent: return false
+  return n.ident.s == "_"
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -404,7 +408,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
       if sfGenSym notin v.flags and
-         a.sons[j].kind != nkUnderscore: addInterfaceDecl(c, v)
+         not isDiscardUnderscore(a.sons[j]): addInterfaceDecl(c, v)
       when oKeepVariableNames:
         if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:

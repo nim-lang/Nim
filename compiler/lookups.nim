@@ -20,7 +20,6 @@ proc considerQuotedIdent*(n: PNode): PIdent =
   case n.kind
   of nkIdent: result = n.ident
   of nkSym: result = n.sym.name
-  of nkUnderscore: result = getIdent"_"
   of nkAccQuoted:
     case n.len
     of 0:
