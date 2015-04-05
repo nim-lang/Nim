@@ -186,7 +186,7 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
     pushType(w, loc.t)
   if loc.r != nil: 
     add(result, '!')
-    encodeStr(ropeToStr(loc.r), result)
+    encodeStr($loc.r, result)
   if oldLen + 1 == result.len:
     # no data was necessary, so remove the '<' again:
     setLen(result, oldLen)
@@ -241,7 +241,7 @@ proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   add(result, '|')
   encodeVInt(ord(lib.kind), result)
   add(result, '|')
-  encodeStr(ropeToStr(lib.name), result)
+  encodeStr($lib.name, result)
   add(result, '|')
   encodeNode(w, info, lib.path, result)
 

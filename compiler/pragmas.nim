@@ -105,7 +105,7 @@ proc validateExternCName(s: PSym, info: TLineInfo) =
   ## Valid identifiers are those alphanumeric including the underscore not
   ## starting with a number. If the check fails, a generic error will be
   ## displayed to the user.
-  let target = ropeToStr(s.loc.r)
+  let target = $s.loc.r
   if target.len < 1 or target[0] notin IdentStartChars or
       not target.allCharsInSet(IdentChars):
     localError(info, errGenerated, "invalid exported symbol")

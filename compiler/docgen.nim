@@ -436,7 +436,7 @@ proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
   if not isVisible(nameNode): return
   var
     name = getName(d, nameNode)
-    comm = genRecComment(d, n).ropeToStr()
+    comm = $genRecComment(d, n)
     r: TSrcGen
 
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
@@ -635,7 +635,7 @@ proc commandJSON*() =
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
   var json = generateJson(d, ast)
-  var content = newRope(pretty(json))
+  var content = toRope(pretty(json))
 
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)

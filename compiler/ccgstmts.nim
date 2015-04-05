@@ -936,7 +936,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
       if sym.kind in {skProc, skIterator, skClosureIterator, skMethod}:
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
-        res.add(rdLoc(a).ropeToStr)
+        res.add($rdLoc(a))
       else:
         var r = sym.loc.r
         if r == nil:
@@ -944,7 +944,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): PRope =
           # it doesn't matter much:
           r = mangleName(sym)
           sym.loc.r = r       # but be consequent!
-        res.add(r.ropeToStr)
+        res.add($r)
     else: internalError(t.sons[i].info, "genAsmOrEmitStmt()")
 
   if isAsmStmt and hasGnuAsm in CC[cCompiler].props:

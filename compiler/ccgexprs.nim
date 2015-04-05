@@ -1730,7 +1730,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       mParseBiggestFloat:
     var opr = e.sons[0].sym
     if lfNoDecl notin opr.loc.flags:
-      discard cgsym(p.module, opr.loc.r.ropeToStr)
+      discard cgsym(p.module, $opr.loc.r)
     genCall(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)

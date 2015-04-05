@@ -452,17 +452,16 @@ proc debug(n: PSym) =
   elif n.kind == skUnknown:
     msgWriteln("skUnknown")
   else:
-    #writeln(stdout, ropeToStr(symToYaml(n, 0, 1)))
+    #writeln(stdout, $symToYaml(n, 0, 1))
     msgWriteln("$1_$2: $3, $4, $5, $6" % [
-      n.name.s, $n.id, flagsToStr(n.flags).ropeToStr,
-      flagsToStr(n.loc.flags).ropeToStr, lineInfoToStr(n.info).ropeToStr,
-      $n.kind])
+      n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
+      $lineInfoToStr(n.info), $n.kind])
 
 proc debug(n: PType) =
-  msgWriteln(ropeToStr(debugType(n)))
+  msgWriteln($debugType(n))
 
 proc debug(n: PNode) =
-  msgWriteln(ropeToStr(debugTree(n, 0, 100)))
+  msgWriteln($debugTree(n, 0, 100))
 
 const
   EmptySeq = @[]

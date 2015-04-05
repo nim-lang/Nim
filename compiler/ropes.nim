@@ -56,77 +56,63 @@
 #  To cache them they are inserted in a `cache` array.
 
 import
-  strutils, platform, hashes, crc, options
+  platform, hashes
 
 type
-  TFormatStr* = string # later we may change it to CString for better
+  FormatStr* = string  # later we may change it to CString for better
                        # performance of the code generator (assignments
                        # copy the format strings
                        # though it is not necessary)
-  PRope* = ref TRope
-  TRope*{.acyclic.} = object of RootObj # the empty rope is represented
-                                        # by nil to safe space
-    left*, right*: PRope
+  Rope* = ref RopeObj
+  RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
+                                          # by nil to safe space
+    left*, right*: Rope
     length*: int
     data*: string             # != nil if a leaf
 
-  TRopeSeq* = seq[PRope]
+  RopeSeq* = seq[Rope]
 
-  TRopesError* = enum
+  RopesError* = enum
     rCannotOpenFile
     rInvalidFormatStr
-    rTokenTooLong
 
-proc con*(a, b: PRope): PRope
-proc con*(a: PRope, b: string): PRope
-proc con*(a: string, b: PRope): PRope
-proc con*(a: varargs[PRope]): PRope
-proc app*(a: var PRope, b: PRope)
-proc app*(a: var PRope, b: string)
-proc prepend*(a: var PRope, b: PRope)
-proc toRope*(s: string): PRope
-proc toRope*(i: BiggestInt): PRope
-proc ropeLen*(a: PRope): int
-proc writeRopeIfNotEqual*(r: PRope, filename: string): bool
-proc ropeToStr*(p: PRope): string
-proc ropef*(frmt: TFormatStr, args: varargs[PRope]): PRope
-proc appf*(c: var PRope, frmt: TFormatStr, args: varargs[PRope])
-proc ropeEqualsFile*(r: PRope, f: string): bool
-  # returns true if the rope r is the same as the contents of file f
-proc ropeInvariant*(r: PRope): bool
-  # exported for debugging
+{.deprecated: [TFormatStr: FormatStr].}
+{.deprecated: [PRope: Rope].}
+{.deprecated: [TRopeSeq: RopeSeq].}
+{.deprecated: [TRopesError: RopesError].}
+
 # implementation
 
-var errorHandler*: proc(err: TRopesError, msg: string, useWarning = false)
+var errorHandler*: proc(err: RopesError, msg: string, useWarning = false)
   # avoid dependency on msgs.nim
 
-proc ropeLen(a: PRope): int =
+proc len*(a: Rope): int =
   if a == nil: result = 0
   else: result = a.length
 
-proc newRope*(data: string = nil): PRope =
+proc newRope(data: string = nil): Rope =
   new(result)
   if data != nil:
     result.length = len(data)
     result.data = data
 
-proc newMutableRope*(capacity = 30): PRope =
+proc newMutableRope*(capacity = 30): Rope =
   ## creates a new rope that supports direct modifications of the rope's
   ## 'data' and 'length' fields.
   new(result)
   result.data = newStringOfCap(capacity)
 
-proc freezeMutableRope*(r: PRope) {.inline.} =
+proc freezeMutableRope*(r: Rope) {.inline.} =
   r.length = r.data.len
 
 var
-  cache: array[0..2048*2 - 1, PRope]
+  cache: array[0..2048*2 - 1, Rope]
 
 proc resetRopeCache* =
   for i in low(cache)..high(cache):
     cache[i] = nil
 
-proc ropeInvariant(r: PRope): bool =
+proc ropeInvariant(r: Rope): bool =
   if r == nil:
     result = true
   else:
@@ -143,7 +129,7 @@ var gCacheTries* = 0
 var gCacheMisses* = 0
 var gCacheIntTries* = 0
 
-proc insertInCache(s: string): PRope =
+proc insertInCache(s: string): Rope =
   inc gCacheTries
   var h = hash(s) and high(cache)
   result = cache[h]
@@ -152,14 +138,27 @@ proc insertInCache(s: string): PRope =
     result = newRope(s)
     cache[h] = result
 
-proc toRope(s: string): PRope =
+proc rope*(s: string): Rope =
   if s.len == 0:
     result = nil
   else:
     result = insertInCache(s)
   assert(ropeInvariant(result))
 
-proc ropeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) =
+proc rope*(i: BiggestInt): Rope =
+  inc gCacheIntTries
+  result = rope($i)
+
+proc rope*(f: BiggestFloat): Rope =
+  result = rope($f)
+
+# TODO Old names - change invokations to rope
+proc toRope*(s: string): Rope {.deprecated.} =
+  result = rope(s)
+proc toRope*(i: BiggestInt): Rope {.deprecated.}  =
+  result = rope(i)
+
+proc ropeSeqInsert(rs: var RopeSeq, r: Rope, at: Natural) =
   var length = len(rs)
   if at > length:
     setLen(rs, at + 1)
@@ -169,7 +168,7 @@ proc ropeSeqInsert(rs: var TRopeSeq, r: PRope, at: Natural) =
     rs[i] = rs[i - 1] # this is correct, I used pen and paper to validate it
   rs[at] = r
 
-proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) =
+proc newRecRopeToStr(result: var string, resultLen: var int, r: Rope) =
   var stack = @[r]
   while len(stack) > 0:
     var it = pop(stack)
@@ -181,7 +180,33 @@ proc newRecRopeToStr(result: var string, resultLen: var int, r: PRope) =
     inc(resultLen, it.length)
     assert(resultLen <= len(result))
 
-proc ropeToStr(p: PRope): string =
+proc `&`*(a, b: Rope): Rope =
+  if a == nil:
+    result = b
+  elif b == nil:
+    result = a
+  else:
+    result = newRope()
+    result.length = a.length + b.length
+    result.left = a
+    result.right = b
+
+proc `&`*(a: Rope, b: string): Rope =
+  result = a & rope(b)
+
+proc `&`*(a: string, b: Rope): Rope =
+  result = rope(a) & b
+
+proc `&`*(a: openArray[Rope]): Rope =
+  for i in countup(0, high(a)): result = result & a[i]
+
+proc add*(a: var Rope, b: Rope) =
+  a = a & b
+
+proc add*(a: var Rope, b: string) =
+  a = a & b
+
+proc `$`*(p: Rope): string =
   if p == nil:
     result = ""
   else:
@@ -189,34 +214,24 @@ proc ropeToStr(p: PRope): string =
     var resultLen = 0
     newRecRopeToStr(result, resultLen, p)
 
-proc con(a, b: PRope): PRope =
-  if a == nil: result = b
-  elif b == nil: result = a
-  else:
-    result = newRope()
-    result.length = a.length + b.length
-    result.left = a
-    result.right = b
+# TODO Old names - change invokations to `&`
+proc con*(a, b: Rope): Rope {.deprecated.} = a & b
+proc con*(a: Rope, b: string): Rope {.deprecated.} = a & b
+proc con*(a: string, b: Rope): Rope {.deprecated.} = a & b
+proc con*(a: varargs[Rope]): Rope {.deprecated.} = `&`(a)
 
-proc con(a: PRope, b: string): PRope = result = con(a, toRope(b))
-proc con(a: string, b: PRope): PRope = result = con(toRope(a), b)
-
-proc con(a: varargs[PRope]): PRope =
-  for i in countup(0, high(a)): result = con(result, a[i])
-
-proc ropeConcat*(a: varargs[PRope]): PRope =
+proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
   for i in countup(0, high(a)): result = con(result, a[i])
 
-proc toRope(i: BiggestInt): PRope =
-  inc gCacheIntTries
-  result = toRope($i)
+# TODO Old names - change invokations to add
+proc app*(a: var Rope, b: Rope) {.deprecated.} = add(a, b)
+proc app*(a: var Rope, b: string) {.deprecated.} = add(a, b)
 
-proc app(a: var PRope, b: PRope) = a = con(a, b)
-proc app(a: var PRope, b: string) = a = con(a, b)
-proc prepend(a: var PRope, b: PRope) = a = con(b, a)
+proc prepend*(a: var Rope, b: Rope) = a = b & a
+proc prepend*(a: var Rope, b: string) = a = b & a
 
-proc writeRope*(f: File, c: PRope) =
+proc writeRope*(f: File, c: Rope) =
   var stack = @[c]
   while len(stack) > 0:
     var it = pop(stack)
@@ -227,7 +242,7 @@ proc writeRope*(f: File, c: PRope) =
     assert(it.data != nil)
     write(f, it.data)
 
-proc writeRope*(head: PRope, filename: string, useWarning = false) =
+proc writeRope*(head: Rope, filename: string, useWarning = false) =
   var f: File
   if open(f, filename, fmWrite):
     if head != nil: writeRope(f, head)
@@ -239,38 +254,52 @@ var
   rnl* = tnl.newRope
   softRnl* = tnl.newRope
 
-proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
+proc `%`*(frmt: TFormatStr, args: openArray[Rope]): Rope =
   var i = 0
   var length = len(frmt)
   result = nil
   var num = 0
-  while i <= length - 1:
+  while i < length:
     if frmt[i] == '$':
       inc(i)                  # skip '$'
       case frmt[i]
       of '$':
-        app(result, "$")
+        add(result, "$")
         inc(i)
       of '#':
         inc(i)
-        app(result, args[num])
+        add(result, args[num])
         inc(num)
       of '0'..'9':
         var j = 0
         while true:
-          j = (j * 10) + ord(frmt[i]) - ord('0')
+          j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if (i > length + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
+          if frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
           errorHandler(rInvalidFormatStr, $(j))
         else:
-          app(result, args[j - 1])
+          add(result, args[j-1])
+      of '{':
+        inc(i)
+        var j = 0
+        while frmt[i] in {'0'..'9'}:
+          j = j * 10 + ord(frmt[i]) - ord('0')
+          inc(i)
+        num = j
+        if frmt[i] == '}': inc(i)
+        else: errorHandler(rInvalidFormatStr, $(frmt[i]))
+
+        if j > high(args) + 1:
+          errorHandler(rInvalidFormatStr, $(j))
+        else:
+          add(result, args[j-1])
       of 'n':
-        app(result, softRnl)
-        inc i
+        add(result, softRnl)
+        inc(i)
       of 'N':
-        app(result, rnl)
+        add(result, rnl)
         inc(i)
       else:
         errorHandler(rInvalidFormatStr, $(frmt[i]))
@@ -279,83 +308,74 @@ proc ropef(frmt: TFormatStr, args: varargs[PRope]): PRope =
       if frmt[i] != '$': inc(i)
       else: break
     if i - 1 >= start:
-      app(result, substr(frmt, start, i - 1))
+      add(result, substr(frmt, start, i - 1))
   assert(ropeInvariant(result))
 
+proc addf*(c: var Rope, frmt: TFormatStr, args: openArray[Rope]) =
+  add(c, frmt % args)
+
+# TODO Compatibility names
+proc ropef*(frmt: TFormatStr, args: varargs[Rope]): Rope {.deprecated.} =
+  result = frmt % args
+proc appf*(c: var Rope, frmt: TFormatStr, args: varargs[Rope]) {.deprecated.} =
+  addf(c, frmt, args)
+
 when true:
-  template `~`*(r: string): PRope = r.ropef
+  template `~`*(r: string): Rope = r.ropef
 else:
   {.push stack_trace: off, line_trace: off.}
-  proc `~`*(r: static[string]): PRope =
+  proc `~`*(r: static[string]): Rope =
     # this is the new optimized "to rope" operator
     # the mnemonic is that `~` looks a bit like a rope :)
     var r {.global.} = r.ropef
     return r
   {.pop.}
 
-proc appf(c: var PRope, frmt: TFormatStr, args: varargs[PRope]) =
-  app(c, ropef(frmt, args))
-
 const
   bufSize = 1024              # 1 KB is reasonable
 
-proc auxRopeEqualsFile(r: PRope, bin: var File, buf: pointer): bool =
+proc auxEqualsFile(r: Rope, f: File, buf: var array[bufSize, char],
+                   bpos, blen: var int): bool =
   if r.data != nil:
-    if r.length > bufSize:
-      errorHandler(rTokenTooLong, r.data)
-      return
-    var readBytes = readBuffer(bin, buf, r.length)
-    result = readBytes == r.length and
-        equalMem(buf, addr(r.data[0]), r.length) # BUGFIX
+    var dpos = 0
+    let dlen = r.data.len
+    while dpos < dlen:
+      if bpos == blen:
+        # Read more data
+        bpos = 0
+        blen = readBuffer(f, addr(buf[0]), buf.len)
+        if blen == 0:  # no more data in file
+          result = false
+          return
+      let n = min(blen - bpos, dlen - dpos)
+      if not equalMem(addr(buf[bpos]), addr(r.data[dpos]), n):
+        result = false
+        return
+      dpos += n
+      bpos += n
+    result = true
   else:
-    result = auxRopeEqualsFile(r.left, bin, buf)
-    if result: result = auxRopeEqualsFile(r.right, bin, buf)
+    result = auxEqualsFile(r.left, f, buf, bpos, blen) and
+             auxEqualsFile(r.right, f, buf, bpos, blen)
 
-proc ropeEqualsFile(r: PRope, f: string): bool =
-  var bin: File
-  result = open(bin, f)
-  if not result:
-    return                    # not equal if file does not exist
-  var buf = alloc(bufSize)
-  result = auxRopeEqualsFile(r, bin, buf)
+proc equalsFile*(r: Rope, f: File): bool =
+  var
+    buf: array[bufSize, char]
+    bpos = bufSize
+    blen = bufSize
+  result = auxEqualsFile(r, f, buf, bpos, blen) and
+           readBuffer(f, addr(buf[0]), 1) == 0  # check that we've read all
+
+proc equalsFile*(r: Rope, filename: string): bool =
+  var f: File
+  result = open(f, filename)
   if result:
-    result = readBuffer(bin, buf, bufSize) == 0 # really at the end of file?
-  dealloc(buf)
-  close(bin)
+    result = equalsFile(r, f)
+    close(f)
 
-proc crcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 =
-  if r.data != nil:
-    result = startVal
-    for i in countup(0, len(r.data) - 1):
-      result = updateCrc32(r.data[i], result)
-  else:
-    result = crcFromRopeAux(r.left, startVal)
-    result = crcFromRopeAux(r.right, result)
-
-proc newCrcFromRopeAux(r: PRope, startVal: TCrc32): TCrc32 =
-  # XXX profiling shows this is actually expensive
-  var stack: TRopeSeq = @[r]
-  result = startVal
-  while len(stack) > 0:
-    var it = pop(stack)
-    while it.data == nil:
-      add(stack, it.right)
-      it = it.left
-    assert(it.data != nil)
-    var i = 0
-    var L = len(it.data)
-    while i < L:
-      result = updateCrc32(it.data[i], result)
-      inc(i)
-
-proc crcFromRope(r: PRope): TCrc32 =
-  result = newCrcFromRopeAux(r, InitCrc32)
-
-proc writeRopeIfNotEqual(r: PRope, filename: string): bool =
+proc writeRopeIfNotEqual*(r: Rope, filename: string): bool =
   # returns true if overwritten
-  var c: TCrc32
-  c = crcFromFile(filename)
-  if c != crcFromRope(r):
+  if not equalsFile(r, filename):
     writeRope(r, filename)
     result = true
   else:
