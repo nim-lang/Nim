@@ -605,6 +605,49 @@ proc newJArray*(): JsonNode =
   result.kind = JArray
   result.elems = @[]
 
+proc getStr*(n: JsonNode, default: string = ""): string =
+  ## Retrieves the string value of a `JString JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JString``.
+  if n.kind != JString: return default
+  else: return n.str
+
+proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
+  ## Retrieves the int value of a `JInt JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JInt``.
+  if n.kind != JInt: return default
+  else: return n.num
+
+proc getFNum*(n: JsonNode, default: float = 0.0): float =
+  ## Retrieves the float value of a `JFloat JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JFloat``.
+  if n.kind != JFloat: return default
+  else: return n.fnum
+
+proc getBVal*(n: JsonNode, default: bool = false): bool =
+  ## Retrieves the bool value of a `JBool JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JBool``.
+  if n.kind != JBool: return default
+  else: return n.bval
+
+proc getFields*(n: JsonNode,
+    default: seq[tuple[key: string, val: JsonNode]] = @[]):
+        seq[tuple[key: string, val: JsonNode]] =
+  ## Retrieves the key, value pairs of a `JObject JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JObject``.
+  if n.kind != JObject: return default
+  else: return n.fields
+
+proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
+  ## Retrieves the int value of a `JArray JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JArray``.
+  if n.kind != JArray: return default
+  else: return n.elems
 
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
