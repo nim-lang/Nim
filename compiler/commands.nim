@@ -60,7 +60,7 @@ const
   AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string =
-  result = (HelpMessage % [VersionAsString, CompiltSha1,
+  result = (HelpMessage % [VersionAsString, CompileSha1,
                            platform.OS[platform.hostOS].name,
                            CPU[platform.hostCPU].name]) & Usage
 
@@ -78,7 +78,7 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
 
 proc writeVersionInfo(pass: TCmdLinePass) =
   if pass == passCmd1:
-    msgWriteln(`%`(HelpMessage, [VersionAsString, CompileSha1
+    msgWriteln(`%`(HelpMessage, [VersionAsString, CompileSha1,
                                  platform.OS[platform.hostOS].name,
                                  CPU[platform.hostCPU].name]))
 
