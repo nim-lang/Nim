@@ -1672,7 +1672,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
                                                "$# = #subInt64($#, $#);$n"]
     const fun: array [mInc..mDec, string] = ["$# = #addInt($#, $#);$n",
                                              "$# = #subInt($#, $#);$n"]
-    if optOverflowCheck notin p.options:
+    let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyVar, tyRange})
+    if optOverflowCheck notin p.options or underlying.kind in {tyUInt..tyUInt64}:
       binaryStmt(p, e, d, opr[op])
     else:
       var a, b: TLoc
@@ -1681,7 +1682,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
 
-      let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyVar, tyRange})
       let ranged = skipTypes(e.sons[1].typ, {tyGenericInst, tyVar})
       let res = binaryArithOverflowRaw(p, ranged, a, b,
         if underlying.kind == tyInt64: fun64[op] else: fun[op])
