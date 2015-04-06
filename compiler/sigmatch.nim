@@ -1628,12 +1628,15 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   # instantiate generic converters for that
   result = res != nil
 
-proc instDeepCopy*(c: PContext; dc: PSym; t: PType; info: TLineInfo): PSym {.
-                    procvar.} =
+proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
+                      op: TTypeAttachedOp): PSym {.procvar.} =
   var m: TCandidate
   initCandidate(c, m, dc.typ)
   var f = dc.typ.sons[1]
-  if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  if op == attachedDeepCopy:
+    if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  else:
+    if f.kind == tyVar: f = f.lastSon
   if typeRel(m, f, t) == isNone:
     localError(info, errGenerated, "cannot instantiate 'deepCopy'")
   else:

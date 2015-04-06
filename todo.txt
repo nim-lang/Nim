@@ -3,6 +3,7 @@ version 0.10.4
 
 - make 'nil' work for 'add' and 'len'
 - overloading of '='
+- introduce typed/untyped types
 
 
 version 1.0

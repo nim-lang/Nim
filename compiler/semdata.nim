@@ -47,6 +47,11 @@ type
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck
   TExprFlags* = set[TExprFlag]
 
+  TTypeAttachedOp* = enum
+    attachedAsgn,
+    attachedDeepCopy,
+    attachedDestructor
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym              # the module sym belonging to the context
@@ -93,8 +98,8 @@ type
     lastGenericIdx*: int      # used for the generics stack
     hloLoopDetector*: int     # used to prevent endless loops in the HLO
     inParallelStmt*: int
-    instDeepCopy*: proc (c: PContext; dc: PSym; t: PType;
-                         info: TLineInfo): PSym {.nimcall.}
+    instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
+                            op: TTypeAttachedOp): PSym {.nimcall.}
 
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =

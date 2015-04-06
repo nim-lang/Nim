@@ -382,11 +382,11 @@ proc getRoot*(n: PNode): PSym =
     if getMagic(n) == mSlice: result = getRoot(n.sons[1])
   else: discard
 
-proc newIntLit(value: BiggestInt): PNode =
+proc newIntLit*(value: BiggestInt): PNode =
   result = nkIntLit.newIntNode(value)
   result.typ = getSysType(tyInt)
 
-proc genHigh(n: PNode): PNode =
+proc genHigh*(n: PNode): PNode =
   if skipTypes(n.typ, abstractVar).kind in {tyArrayConstr, tyArray}:
     result = newIntLit(lastOrd(skipTypes(n.typ, abstractVar)))
   else:

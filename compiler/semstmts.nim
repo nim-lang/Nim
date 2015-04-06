@@ -909,11 +909,12 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
-  of "destroy":
+  of "destroy", "=destroy":
     doDestructorStuff(c, s, n)
     if not experimentalMode(c):
       localError n.info, "use the {.experimental.} pragma to enable destructors"
-  of "deepcopy":
+    incl(s.flags, sfUsed)
+  of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
         s.typ.sons[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
         sameType(s.typ.sons[1], s.typ.sons[0]):
@@ -935,10 +936,35 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     else:
       localError(n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
-  of "=": discard
-  else: localError(n.info, errGenerated,
-                   "'destroy' or 'deepCopy' expected for 'override'")
-  incl(s.flags, sfUsed)
+    incl(s.flags, sfUsed)
+  of "=":
+    incl(s.flags, sfUsed)
+    let t = s.typ
+    if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar:
+      var obj = t.sons[1].sons[0]
+      while true:
+        incl(obj.flags, tfHasAsgn)
+        if obj.kind == tyGenericBody: obj = obj.lastSon
+        elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
+        else: break
+      var objB = t.sons[2]
+      while true:
+        if objB.kind == tyGenericBody: objB = objB.lastSon
+        elif objB.kind == tyGenericInvocation: objB = objB.sons[0]
+        else: break
+      if obj.kind in {tyObject, tyDistinct} and sameType(obj, objB):
+        if obj.assignment.isNil:
+          obj.assignment = s
+        else:
+          localError(n.info, errGenerated,
+                     "cannot bind another '=' to: " & typeToString(obj))
+        return
+    localError(n.info, errGenerated,
+               "signature for '=' must be proc[T: object](x: var T; y: T)")
+  else:
+    if sfOverriden in s.flags:
+      localError(n.info, errGenerated,
+                 "'destroy' or 'deepCopy' expected for 'override'")
 
 type
   TProcCompilationSteps = enum
@@ -1055,7 +1081,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner()
     pushOwner(s)
   s.options = gOptions
-  if sfOverriden in s.flags: semOverride(c, s, n)
+  if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:

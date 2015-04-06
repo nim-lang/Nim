@@ -16,9 +16,9 @@ const
 
 proc sharedPtrCheck(info: TLineInfo, t: PType) =
   if t.kind == tyPtr and t.len > 1:
-    if t.sons[0].sym.magic in {mShared, mGuarded}:
+    if t.sons[0].sym.magic == mShared:
       incl(t.flags, tfShared)
-      if t.sons[0].sym.magic == mGuarded: incl(t.flags, tfGuarded)
+      #if t.sons[0].sym.magic == mGuarded: incl(t.flags, tfGuarded)
       if tfHasGCedMem in t.flags or t.isGCedMem:
         localError(info, errGenerated,
                    "shared memory may not refer to GC'ed thread local memory")
@@ -307,7 +307,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
     # 'deepCopy' needs to be instantiated for
     # generics *when the type is constructed*:
-    newbody.deepCopy = cl.c.instDeepCopy(cl.c, dc, result, cl.info)
+    newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
+                                            attachedDeepCopy)
+  let asgn = newbody.assignment
+  if asgn != nil and sfFromGeneric notin asgn.flags:
+    # '=' needs to be instantiated for generics when the type is constructed:
+    newbody.assignment = cl.c.instTypeBoundOp(cl.c, asgn, result, cl.info,
+                                              attachedAsgn)
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
