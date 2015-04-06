@@ -69,6 +69,10 @@ News
     spacing around binary operators. Later versions of the language will parse
     these as unary operators instead so that ``echo $foo`` finally can do what
     people expect it to do.
+  - ``system.untyped`` and ``system.typed`` have been introduced as aliases
+    for ``expr`` and ``stmt``. The new names capture the semantics much better
+    and most likely  ``expr`` and ``stmt`` will be deprecated in favor of the
+    new names.
 
 
   Language Additions

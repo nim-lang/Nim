@@ -76,6 +76,10 @@ type
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* = expr
   any* = distinct auto
+  untyped* {.magic: Expr.} ## meta type to denote an expression that
+                           ## is not resolved (for templates)
+  typed* {.magic: Stmt.}   ## meta type to denote an expression that
+                           ## is resolved (for templates)
 
   SomeSignedInt* = int|int8|int16|int32|int64
     ## type class matching all signed integer types

@@ -2,8 +2,6 @@ version 0.10.4
 ==============
 
 - make 'nil' work for 'add' and 'len'
-- introduce typed/untyped types
-
 
 version 1.0
 ===========
