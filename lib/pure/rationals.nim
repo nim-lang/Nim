@@ -32,7 +32,7 @@ proc `$`*[T](x: Rational[T]): string =
   ## Turn a rational number into a string.
   result = $x.num & "/" & $x.den
 
-proc toRational*[T](x: SomeInteger): Rational[T] =
+proc toRational*[T](x: T): Rational[T] =
   ## Convert some integer `x` to a rational number.
   result.num = x
   result.den = 1
@@ -270,6 +270,6 @@ when isMainModule:
   y /= 9
   assert( y == 13//27 )
 
-  assert toRational[int, int](5) == 5//1
+  assert toRational(5) == 5//1
   assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
   assert toInt(z) == 0
