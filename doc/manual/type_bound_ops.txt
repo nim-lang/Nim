@@ -56,10 +56,9 @@ destructors
 -----------
 
 A destructor must have a single parameter with a concrete type (the name of a
-generic type is allowed too). The name of the destructor has to be ``destroy``
-and it need to be annotated with the ``override`` pragma.
+generic type is allowed too). The name of the destructor has to be ``=destroy``.
 
-``destroy(v)`` will be automatically invoked for every local stack
+``=destroy(v)`` will be automatically invoked for every local stack
 variable ``v`` that goes out of scope.
 
 If a structured type features a field with destructable type and
@@ -76,7 +75,7 @@ can then only be used in *destructible contexts* and as parameters:
       x, y: int
       p: pointer
 
-  proc destroy(o: var MyObj) {.override.} =
+  proc `=destroy`(o: var MyObj) =
     if o.p != nil: dealloc o.p
 
   proc open: MyObj =
@@ -108,7 +107,7 @@ be destructed at its scope exit. Later versions of the language will improve
 the support of destructors.
 
 Be aware that destructors are not called for objects allocated with ``new``.
-This may change in future versions of language, but for now the ``finalizer``
+This may change in future versions of language, but for now the `finalizer`:idx:
 parameter to ``new`` has to be used.
 
 **Note**: Destructors are still experimental and the spec might change
@@ -118,7 +117,7 @@ significantly in order to incorporate an escape analysis.
 deepCopy
 --------
 
-``deepCopy`` is a builtin that is invoked whenever data is passed to
+``=deepCopy`` is a builtin that is invoked whenever data is passed to
 a ``spawn``'ed proc to ensure memory safety. The programmer can override its
 behaviour for a specific ``ref`` or ``ptr`` type ``T``. (Later versions of the
 language may weaken this restriction.)
@@ -126,7 +125,7 @@ language may weaken this restriction.)
 The signature has to be:
 
 .. code-block:: nim
-  proc deepCopy(x: T): T {.override.}
+  proc `=deepCopy`(x: T): T
 
 This mechanism is used by most data structures that support shared memory like
 channels to implement thread safe automatic memory management.
