@@ -22,7 +22,7 @@ operator `=`
 ------------
 
 This operator is the assignment operator. Note that in the contexts
-like ``result = expr``, ``parameter = defaultValue`` or for
+``result = expr``, ``parameter = defaultValue`` or for
 parameter passing no assignment is performed. For a type ``T`` that has an
 overloaded assignment operator ``var v = T()`` is rewritten
 to ``var v: T; v = T()``; in other words ``var`` and ``let`` contexts do count

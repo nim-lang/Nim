@@ -113,6 +113,8 @@ News
 
   - Array and seq indexing can now use the builtin ``^`` operator to access
     things from backwards: ``a[^1]`` is like Python's ``a[-1]``.
+  - A first version of the specification and implementation of the overloading
+    of the assignment operator has arrived!
 
 
   Library additions

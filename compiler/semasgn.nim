@@ -190,6 +190,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyArrayConstr, tyArray, tySequence:
     if tfHasAsgn in t.flags:
       if t.kind == tySequence:
+        # XXX add 'nil' handling here
         body.add newSeqCall(c.c, x, y)
       let i = declareCounter(c, body, firstOrd(t))
       let whileLoop = genWhileLoop(c, i, x)

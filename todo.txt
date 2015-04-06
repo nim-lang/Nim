@@ -2,13 +2,13 @@ version 0.10.4
 ==============
 
 - make 'nil' work for 'add' and 'len'
-- overloading of '='
 - introduce typed/untyped types
 
 
 version 1.0
 ===========
 
+- macro support for '='; bind '=' to a memory region
 - remove   echo $foo  gotcha
 - add "all threads are blocked" detection to 'spawn'
 - figure out why C++ bootstrapping is so much slower

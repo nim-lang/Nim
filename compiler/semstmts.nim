@@ -340,6 +340,39 @@ proc checkNilable(v: PSym) =
     elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
       message(v.info, warnProveInit, v.name.s)
 
+include semasgn
+
+proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
+  # consider this:
+  #   var
+  #     x = 0
+  #     withOverloadedAssignment = foo()
+  #     y = use(withOverloadedAssignment)
+  # We need to split this into a statement list with multiple 'var' sections
+  # in order for this transformation to be correct.
+  let L = identDefs.len
+  let value = identDefs[L-1]
+  if value.typ != nil and tfHasAsgn in value.typ.flags:
+    # the spec says we need to rewrite 'var x = T()' to 'var x: T; x = T()':
+    identDefs.sons[L-1] = emptyNode
+    if result.kind != nkStmtList:
+      let oldResult = result
+      oldResult.add identDefs
+      result = newNodeI(nkStmtList, result.info)
+      result.add oldResult
+    else:
+      let o = copyNode(orig)
+      o.add identDefs
+      result.add o
+    for i in 0 .. L-3:
+      result.add overloadedAsgn(c, identDefs[i], value)
+  elif result.kind == nkStmtList:
+    let o = copyNode(orig)
+    o.add identDefs
+    result.add o
+  else:
+    result.add identDefs
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -396,7 +429,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         newSons(b, length)
         b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
         b.sons[length-1] = def
-        addSon(result, b)
+        addToVarSection(c, result, n, b)
     elif tup.kind == tyTuple and def.kind == nkPar and
         a.kind == nkIdentDefs and a.len > 3:
       message(a.info, warnEachIdentIsTuple)
@@ -429,7 +462,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addSon(b, newSymNode(v))
         addSon(b, a.sons[length-2])      # keep type desc for doc generator
         addSon(b, copyTree(def))
-        addSon(result, b)
+        addToVarSection(c, result, n, b)
       else:
         if def.kind == nkPar: v.ast = def[j]
         v.typ = tup.sons[j]
