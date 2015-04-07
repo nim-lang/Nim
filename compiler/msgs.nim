@@ -449,10 +449,10 @@ type
     fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
-    quotedName*: PRope         # cached quoted short name for codegen
+    quotedName*: Rope         # cached quoted short name for codegen
                                # purposes
 
-    lines*: seq[PRope]         # the source code of the module
+    lines*: seq[Rope]         # the source code of the module
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
@@ -493,7 +493,7 @@ proc toCChar*(c: char): string =
   of '\'', '\"', '\\': result = '\\' & c
   else: result = $(c)
 
-proc makeCString*(s: string): PRope =
+proc makeCString*(s: string): Rope =
   const
     MaxLineLength = 64
   result = nil
@@ -506,7 +506,7 @@ proc makeCString*(s: string): PRope =
       add(res, '\"')
     add(res, toCChar(s[i]))
   add(res, '\"')
-  app(result, toRope(res))
+  add(result, rope(res))
 
 
 proc newFileInfo(fullPath, projPath: string): TFileInfo =
@@ -564,7 +564,7 @@ var gCodegenLineInfo* = newLineInfo(int32(1), 1, 1)
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
-proc sourceLine*(i: TLineInfo): PRope
+proc sourceLine*(i: TLineInfo): Rope
 
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} -
@@ -848,9 +848,9 @@ template internalAssert*(e: bool): stmt =
   if not e: internalError($instantiationInfo())
 
 proc addSourceLine*(fileIdx: int32, line: string) =
-  fileInfos[fileIdx].lines.add line.toRope
+  fileInfos[fileIdx].lines.add line.rope
 
-proc sourceLine*(i: TLineInfo): PRope =
+proc sourceLine*(i: TLineInfo): Rope =
   if i.fileIndex < 0: return nil
 
   if not optPreserveOrigSource and fileInfos[i.fileIndex].lines.len == 0:
@@ -865,11 +865,11 @@ proc sourceLine*(i: TLineInfo): PRope =
 
   result = fileInfos[i.fileIndex].lines[i.line-1]
 
-proc quotedFilename*(i: TLineInfo): PRope =
+proc quotedFilename*(i: TLineInfo): Rope =
   internalAssert i.fileIndex >= 0
   result = fileInfos[i.fileIndex].quotedName
 
-ropes.errorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =
+ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   case err
   of rInvalidFormatStr:
     internalError("ropes: invalid format string: " & msg)

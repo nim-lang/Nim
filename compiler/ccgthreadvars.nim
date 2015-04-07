@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Thread var support for crappy architectures that lack native support for 
+## Thread var support for crappy architectures that lack native support for
 ## thread local storage. (**Thank you Mac OS X!**)
 
 # included from cgen.nim
@@ -19,12 +19,12 @@ proc accessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars() and not p.threadVarAccessed:
     p.threadVarAccessed = true
     p.module.usesThreadVars = true
-    appf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV;$n")
-    app(p.procSec(cpsInit),
+    addf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV;$n", [])
+    add(p.procSec(cpsInit),
       ropecg(p.module, "\tNimTV = (NimThreadVars*) #GetThreadLocalVars();$n"))
-    
+
 var
-  nimtv: PRope                 # nimrod thread vars; the struct body
+  nimtv: Rope                 # nimrod thread vars; the struct body
   nimtvDeps: seq[PType] = @[]  # type deps: every module needs whole struct
   nimtvDeclared = initIntSet() # so that every var/field exists only once
                                # in the struct
@@ -43,23 +43,23 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
     # allocator for it :-(
     if not containsOrIncl(nimtvDeclared, s.id):
       nimtvDeps.add(s.loc.t)
-      appf(nimtv, "$1 $2;$n", [getTypeDesc(m, s.loc.t), s.loc.r])
+      addf(nimtv, "$1 $2;$n", [getTypeDesc(m, s.loc.t), s.loc.r])
   else:
-    if isExtern: app(m.s[cfsVars], "extern ")
-    if optThreads in gGlobalOptions: app(m.s[cfsVars], "NIM_THREADVAR ")
-    app(m.s[cfsVars], getTypeDesc(m, s.loc.t))
-    appf(m.s[cfsVars], " $1;$n", [s.loc.r])
-  
+    if isExtern: add(m.s[cfsVars], "extern ")
+    if optThreads in gGlobalOptions: add(m.s[cfsVars], "NIM_THREADVAR ")
+    add(m.s[cfsVars], getTypeDesc(m, s.loc.t))
+    addf(m.s[cfsVars], " $1;$n", [s.loc.r])
+
 proc generateThreadLocalStorage(m: BModule) =
   if nimtv != nil and (m.usesThreadVars or sfMainModule in m.module.flags):
     for t in items(nimtvDeps): discard getTypeDesc(m, t)
-    appf(m.s[cfsSeqTypes], "typedef struct {$1} NimThreadVars;$n", [nimtv])
+    addf(m.s[cfsSeqTypes], "typedef struct {$1} NimThreadVars;$n", [nimtv])
 
 proc generateThreadVarsSize(m: BModule) =
   if nimtv != nil:
     let externc = if gCmd != cmdCompileToCpp and
                        sfCompileToCpp in m.module.flags: "extern \"C\""
                   else: ""
-    appf(m.s[cfsProcs],
+    addf(m.s[cfsProcs],
       "$#NI NimThreadVarsSize(){return (NI)sizeof(NimThreadVars);}$n",
-      [externc.toRope])
+      [externc.rope])

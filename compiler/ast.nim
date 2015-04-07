@@ -685,8 +685,8 @@ type
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
-    r*: PRope                 # rope value of location (code generators)
-    heapRoot*: PRope          # keeps track of the enclosing heap object that
+    r*: Rope                 # rope value of location (code generators)
+    heapRoot*: Rope          # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
 
@@ -698,7 +698,7 @@ type
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
-    name*: PRope
+    name*: Rope
     path*: PNode              # can be a string literal!
 
   TInstantiation* = object
