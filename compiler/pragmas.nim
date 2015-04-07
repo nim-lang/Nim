@@ -395,7 +395,7 @@ proc processCompile(c: PContext, n: PNode) =
   if found == "": found = s
   var trunc = changeFileExt(found, "")
   extccomp.addExternalFileToCompile(found)
-  extccomp.addFileToLink(completeCFilePath(trunc, false))
+  extccomp.addFileToLink(completeCFilePath(trunc, false, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
   var f = expectStrLit(c, n)
@@ -405,7 +405,7 @@ proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
   case feature
   of linkNormal: extccomp.addFileToLink(found)
   of linkSys:
-    extccomp.addFileToLink(libpath / completeCFilePath(found, false))
+    extccomp.addFileToLink(libpath / completeCFilePath(found, false, false))
   else: internalError(n.info, "processCommonLink")
 
 proc pragmaBreakpoint(c: PContext, n: PNode) =

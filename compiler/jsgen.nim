@@ -1733,7 +1733,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
         if options.outFile.isAbsolute: options.outFile
         else: getCurrentDir() / options.outFile
       else:
-       changeFileExt(completeCFilePath(m.module.filename), "js")
+       changeFileExt(completeCFilePath(m.module.filename, prependModule=false), "js")
     discard writeRopeIfNotEqual(con(genHeader(), code), outfile)
 
 proc myOpenCached(s: PSym, rd: PRodReader): PPassContext =
