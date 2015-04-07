@@ -12,6 +12,7 @@
 ## a denominator `den`, both of type int. The denominator can not be 0.
 
 import math
+import hashes
 
 type Rational*[T] = object
   ## a rational number, consisting of a numerator and denominator
@@ -205,6 +206,17 @@ proc abs*[T](x: Rational[T]): Rational[T] =
   result.num = abs x.num
   result.den = abs x.den
 
+proc hash*[T](x: Rational[T]): THash =
+  ## Computes hash for rational `x`
+  # reduce first so that hash(x) == hash(y) for x == y
+  var copy = x
+  reduce(copy)
+
+  var h: THash = 0
+  h = h !& hash(copy.num)
+  h = h !& hash(copy.den)
+  result = !$h
+  
 when isMainModule:
   var
     z = Rational[int](num: 0, den: 1)
@@ -242,11 +254,13 @@ when isMainModule:
   assert( not(o > o) )
   assert( cmp(o, o) == 0 )
   assert( cmp(z, z) == 0 )
+  assert( hash(o) == hash(o) )
 
   assert( a == b )
   assert( a >= b )
   assert( not(b > a) )
   assert( cmp(a, b) == 0 )
+  assert( hash(a) == hash(b) )
 
   var x = 1//3
 
