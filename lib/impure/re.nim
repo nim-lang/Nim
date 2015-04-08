@@ -474,7 +474,12 @@ when isMainModule:
   var accum: seq[string] = @[]
   for word in split("00232this02939is39an22example111", re"\d+"):
     accum.add(word)
-  assert(accum == @["this", "is", "an", "example"])
+  assert(accum == @["", "this", "is", "an", "example", ""])
+
+  accum = @[]
+  for word in split("AAA :   : BBB", re"\s*:\s*"):
+    accum.add(word)
+  assert(accum == @["AAA", "", "BBB"])
 
   for x in findAll("abcdef", re"^{.}", 3):
     assert x == "d"
