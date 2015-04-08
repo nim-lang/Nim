@@ -373,23 +373,26 @@ iterator split*(s: string, sep: Regex): string =
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##   ""
   ##   "this"
   ##   "is"
   ##   "an"
   ##   "example"
+  ##   ""
   ##
   var
-    first = 0
-    last = 0
+    first = -1
+    last = -1
   while last < len(s):
     var x = matchLen(s, sep, last)
     if x > 0: inc(last, x)
     first = last
+    if x == 0: inc(last)
     while last < len(s):
-      inc(last)
       x = matchLen(s, sep, last)
-      if x > 0: break
-    if first < last:
+      if x >= 0: break
+      inc(last)
+    if first <= last:
       yield substr(s, first, last-1)
 
 proc split*(s: string, sep: Regex): seq[string] =
