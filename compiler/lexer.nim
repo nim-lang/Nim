@@ -61,8 +61,7 @@ type
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
     tkOpr, tkComment, tkAccent,
-    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
-    tkUnderscore
+    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
   TTokTypes* = set[TTokType]
 
@@ -97,7 +96,7 @@ const
     ":", "::", "=", ".", "..",
     "tkOpr", "tkComment", "`",
     "tkSpaces", "tkInfixOpr",
-    "tkPrefixOpr", "tkPostfixOpr", "_"]
+    "tkPrefixOpr", "tkPostfixOpr"]
 
 type
   TNumericalBase* = enum
@@ -876,7 +875,8 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
       tok.tokType = tkAccent
       inc(L.bufpos)
     of '_':
-      tok.tokType = tkUnderscore
+      tok.tokType = tkSymbol
+      tok.ident = getIdent("_")
       inc(L.bufpos)
     of '\"':
       # check for extended raw string literal:

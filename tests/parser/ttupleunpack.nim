@@ -10,6 +10,9 @@ var (x, _, y) = foo()
 doAssert x == 4
 doAssert y == 3
 
+var (a, _, _) = foo()
+doAssert a == 4
+
 iterator bar(): tuple[x, y, z: int] =
   yield (1,2,3)
 

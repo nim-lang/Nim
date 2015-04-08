@@ -302,9 +302,6 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
   of tkSymbol, tkAddr, tkType:
     result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
-  of tkUnderscore:
-    result = newIdentNodeP(getIdent("_"), p)
-    getTok(p)
   of tkAccent:
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
@@ -645,9 +642,6 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
     getTok(p)
   of tkNil:
     result = newNodeP(nkNilLit, p)
-    getTok(p)
-  of tkUnderscore:
-    result = newIdentNodeP(getIdent("_"), p)
     getTok(p)
   of tkParLe:
     # () constructor
@@ -1820,7 +1814,7 @@ proc parseVarTuple(p: var TParser): PNode =
   result = newNodeP(nkVarTuple, p)
   getTok(p)                   # skip '('
   optInd(p, result)
-  while p.tok.tokType in {tkSymbol, tkAccent, tkUnderscore}:
+  while p.tok.tokType in {tkSymbol, tkAccent}:
     var a = identWithPragma(p)
     addSon(result, a)
     if p.tok.tokType != tkComma: break
