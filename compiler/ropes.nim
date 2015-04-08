@@ -82,6 +82,7 @@ var errorHandler*: proc(err: RopesError, msg: string, useWarning = false)
   # avoid dependency on msgs.nim
 
 proc len*(a: Rope): int =
+  ## the rope's length
   if a == nil: result = 0
   else: result = a.length
 
@@ -134,6 +135,7 @@ proc insertInCache(s: string): Rope =
     cache[h] = result
 
 proc rope*(s: string): Rope =
+  ## Converts a string to a rope.
   if s.len == 0:
     result = nil
   else:
@@ -141,33 +143,13 @@ proc rope*(s: string): Rope =
   assert(ropeInvariant(result))
 
 proc rope*(i: BiggestInt): Rope =
+  ## Converts an int to a rope.
   inc gCacheIntTries
   result = rope($i)
 
 proc rope*(f: BiggestFloat): Rope =
+  ## Converts a float to a rope.
   result = rope($f)
-
-proc ropeSeqInsert(rs: var RopeSeq, r: Rope, at: Natural) =
-  var length = len(rs)
-  if at > length:
-    setLen(rs, at + 1)
-  else:
-    setLen(rs, length + 1)    # move old rope elements:
-  for i in countdown(length, at + 1):
-    rs[i] = rs[i - 1] # this is correct, I used pen and paper to validate it
-  rs[at] = r
-
-proc newRecRopeToStr(result: var string, resultLen: var int, r: Rope) =
-  var stack = @[r]
-  while len(stack) > 0:
-    var it = pop(stack)
-    while it.data == nil:
-      add(stack, it.right)
-      it = it.left
-    assert(it.data != nil)
-    copyMem(addr(result[resultLen]), addr(it.data[0]), it.length)
-    inc(resultLen, it.length)
-    assert(resultLen <= len(result))
 
 proc `&`*(a, b: Rope): Rope =
   if a == nil:
@@ -181,45 +163,46 @@ proc `&`*(a, b: Rope): Rope =
     result.right = b
 
 proc `&`*(a: Rope, b: string): Rope =
+  ## the concatenation operator for ropes.
   result = a & rope(b)
 
 proc `&`*(a: string, b: Rope): Rope =
+  ## the concatenation operator for ropes.
   result = rope(a) & b
 
 proc `&`*(a: openArray[Rope]): Rope =
+  ## the concatenation operator for an openarray of ropes.
   for i in countup(0, high(a)): result = result & a[i]
 
 proc add*(a: var Rope, b: Rope) =
+  ## adds `b` to the rope `a`.
   a = a & b
 
 proc add*(a: var Rope, b: string) =
+  ## adds `b` to the rope `a`.
   a = a & b
 
-proc `$`*(p: Rope): string =
-  if p == nil:
-    result = ""
-  else:
-    result = newString(p.length)
-    var resultLen = 0
-    newRecRopeToStr(result, resultLen, p)
+iterator leaves*(r: Rope): string =
+  ## iterates over any leaf string in the rope `r`.
+  if r != nil:
+    var stack = @[r]
+    while stack.len > 0:
+      var it = stack.pop
+      while isNil(it.data):
+        stack.add(it.right)
+        it = it.left
+        assert(it != nil)
+      assert(it.data != nil)
+      yield it.data
 
-proc ropeConcat*(a: varargs[Rope]): Rope =
-  # not overloaded version of concat to speed-up `rfmt` a little bit
-  for i in countup(0, high(a)): result = result & a[i]
+iterator items*(r: Rope): char =
+  ## iterates over any character in the rope `r`.
+  for s in leaves(r):
+    for c in items(s): yield c
 
-proc prepend*(a: var Rope, b: Rope) = a = b & a
-proc prepend*(a: var Rope, b: string) = a = b & a
-
-proc writeRope*(f: File, c: Rope) =
-  var stack = @[c]
-  while len(stack) > 0:
-    var it = pop(stack)
-    while it.data == nil:
-      add(stack, it.right)
-      it = it.left
-      assert(it != nil)
-    assert(it.data != nil)
-    write(f, it.data)
+proc writeRope*(f: File, r: Rope) =
+  ## writes a rope to a file.
+  for s in leaves(r): write(f, s)
 
 proc writeRope*(head: Rope, filename: string, useWarning = false) =
   var f: File
@@ -228,6 +211,19 @@ proc writeRope*(head: Rope, filename: string, useWarning = false) =
     close(f)
   else:
     errorHandler(rCannotOpenFile, filename, useWarning)
+
+proc `$`*(r: Rope): string =
+  ## converts a rope back to a string.
+  result = newString(r.len)
+  setLen(result, 0)
+  for s in leaves(r): add(result, s)
+
+proc ropeConcat*(a: varargs[Rope]): Rope =
+  # not overloaded version of concat to speed-up `rfmt` a little bit
+  for i in countup(0, high(a)): result = result & a[i]
+
+proc prepend*(a: var Rope, b: Rope) = a = b & a
+proc prepend*(a: var Rope, b: string) = a = b & a
 
 var
   rnl* = tnl.newRope
@@ -291,6 +287,7 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
   assert(ropeInvariant(result))
 
 proc addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
+  ## shortcut for ``add(c, frmt % args)``.
   add(c, frmt % args)
 
 when true:
@@ -307,12 +304,17 @@ else:
 const
   bufSize = 1024              # 1 KB is reasonable
 
-proc auxEqualsFile(r: Rope, f: File, buf: var array[bufSize, char],
-                   bpos, blen: var int): bool =
-  if r.data != nil:
-    var dpos = 0
-    let dlen = r.data.len
-    while dpos < dlen:
+proc equalsFile*(r: Rope, f: File): bool =
+  ## returns true if the contents of the file `f` equal `r`.
+  var 
+    buf: array[bufSize, char]
+    bpos = buf.len
+    blen = buf.len
+
+  for s in leaves(r):
+    var spos = 0
+    let slen = s.len
+    while spos < slen:
       if bpos == blen:
         # Read more data
         bpos = 0
@@ -320,26 +322,19 @@ proc auxEqualsFile(r: Rope, f: File, buf: var array[bufSize, char],
         if blen == 0:  # no more data in file
           result = false
           return
-      let n = min(blen - bpos, dlen - dpos)
-      if not equalMem(addr(buf[bpos]), addr(r.data[dpos]), n):
+      let n = min(blen - bpos, slen - spos)
+      # TODO There's gotta be a better way of comparing here...
+      if not equalMem(addr(buf[bpos]), cast[pointer](cast[int](cstring(s))+spos), n):
         result = false
         return
-      dpos += n
+      spos += n
       bpos += n
-    result = true
-  else:
-    result = auxEqualsFile(r.left, f, buf, bpos, blen) and
-             auxEqualsFile(r.right, f, buf, bpos, blen)
 
-proc equalsFile*(r: Rope, f: File): bool =
-  var
-    buf: array[bufSize, char]
-    bpos = bufSize
-    blen = bufSize
-  result = auxEqualsFile(r, f, buf, bpos, blen) and
-           readBuffer(f, addr(buf[0]), 1) == 0  # check that we've read all
+  result = readBuffer(f, addr(buf[0]), 1) == 0  # check that we've read all
 
 proc equalsFile*(r: Rope, filename: string): bool =
+  ## returns true if the contents of the file `f` equal `r`. If `f` does not
+  ## exist, false is returned.
   var f: File
   result = open(f, filename)
   if result:
