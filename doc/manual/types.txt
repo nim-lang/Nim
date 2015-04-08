@@ -864,7 +864,9 @@ Future directions:
 * Builtin regions like ``private``, ``global`` and ``local`` will
   prove very useful for the upcoming OpenCL target.
 * Builtin "regions" can model ``lent`` and ``unique`` pointers.
-
+* An assignment operator can be attached to a region so that proper write
+  barriers can be generated. This would imply that the GC can be implemented
+  completely in user-space.
 
 
 Procedural type

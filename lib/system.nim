@@ -3034,8 +3034,8 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     result = a[pos]
   ##
   ##   when isMainModule:
-  ##     testException(EInvalidIndex, tester(30))
-  ##     testException(EInvalidIndex, tester(1))
+  ##     testException(IndexError, tester(30))
+  ##     testException(IndexError, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
@@ -3120,7 +3120,7 @@ template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
   ##
   ## .. code-block:: nim
   ##
-  ##   proc example(x: int): TErrorCode =
+  ##   proc example(x: int): ErrorCode =
   ##     onFailedAssert(msg):
   ##       log msg
   ##       return E_FAIL
@@ -3128,7 +3128,7 @@ template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
   ##     assert(...)
   ##
   ##     onFailedAssert(msg):
-  ##       raise newException(EMyException, msg)
+  ##       raise newException(MyError, msg)
   ##
   ##     assert(...)
   ##
