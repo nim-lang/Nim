@@ -10,6 +10,7 @@
 ## This module implements a simple logger. It has been designed to be as simple
 ## as possible to avoid bloat, if this library does not fullfill your needs,
 ## write your own.
+## Warning: the module is not GC-safe and cannot be used with threading.
 ## 
 ## Format strings support the following variables which must be prefixed with
 ## the dollar operator (``$``):
