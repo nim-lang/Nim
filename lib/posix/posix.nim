@@ -1580,8 +1580,11 @@ else:
 
 when defined(macosx):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
-  var
+  # Instead we should use SO_NOSIGPIPE in setsockopt
+  const
     MSG_NOSIGNAL* = 0'i32
+  var
+    SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
 else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint

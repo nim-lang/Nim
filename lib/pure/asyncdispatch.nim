@@ -841,6 +841,8 @@ else:
   proc newAsyncRawSocket*(domain: cint, typ: cint, protocol: cint): TAsyncFD =
     result = newRawSocket(domain, typ, protocol).TAsyncFD
     result.SocketHandle.setBlocking(false)
+    when defined(macosx):
+        result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
   proc newAsyncRawSocket*(domain: Domain = AF_INET,
@@ -848,6 +850,8 @@ else:
                protocol: Protocol = IPPROTO_TCP): TAsyncFD =
     result = newRawSocket(domain, typ, protocol).TAsyncFD
     result.SocketHandle.setBlocking(false)
+    when defined(macosx):
+        result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
   proc closeSocket*(sock: TAsyncFD) =
@@ -959,7 +963,6 @@ else:
       result = true
       let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
                      flags.toOSFlags())
-      #echo("recv cb res: ", res)
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
