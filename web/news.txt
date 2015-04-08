@@ -114,6 +114,8 @@ News
   - Array and seq indexing can now use the builtin ``^`` operator to access
     things from backwards: ``a[^1]`` is like Python's ``a[-1]``.
 
+  - A single underscore can now be used to discard values when unpacking tuples.
+
 
   Library additions
   -----------------
