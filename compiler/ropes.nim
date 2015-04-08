@@ -76,11 +76,6 @@ type
     rCannotOpenFile
     rInvalidFormatStr
 
-{.deprecated: [TFormatStr: FormatStr].}
-{.deprecated: [PRope: Rope].}
-{.deprecated: [TRopeSeq: RopeSeq].}
-{.deprecated: [TRopesError: RopesError].}
-
 # implementation
 
 var errorHandler*: proc(err: RopesError, msg: string, useWarning = false)
@@ -152,12 +147,6 @@ proc rope*(i: BiggestInt): Rope =
 proc rope*(f: BiggestFloat): Rope =
   result = rope($f)
 
-# TODO Old names - change invokations to rope
-proc toRope*(s: string): Rope {.deprecated.} =
-  result = rope(s)
-proc toRope*(i: BiggestInt): Rope {.deprecated.}  =
-  result = rope(i)
-
 proc ropeSeqInsert(rs: var RopeSeq, r: Rope, at: Natural) =
   var length = len(rs)
   if at > length:
@@ -214,19 +203,9 @@ proc `$`*(p: Rope): string =
     var resultLen = 0
     newRecRopeToStr(result, resultLen, p)
 
-# TODO Old names - change invokations to `&`
-proc con*(a, b: Rope): Rope {.deprecated.} = a & b
-proc con*(a: Rope, b: string): Rope {.deprecated.} = a & b
-proc con*(a: string, b: Rope): Rope {.deprecated.} = a & b
-proc con*(a: varargs[Rope]): Rope {.deprecated.} = `&`(a)
-
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
-  for i in countup(0, high(a)): result = con(result, a[i])
-
-# TODO Old names - change invokations to add
-proc app*(a: var Rope, b: Rope) {.deprecated.} = add(a, b)
-proc app*(a: var Rope, b: string) {.deprecated.} = add(a, b)
+  for i in countup(0, high(a)): result = result & a[i]
 
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
@@ -254,7 +233,7 @@ var
   rnl* = tnl.newRope
   softRnl* = tnl.newRope
 
-proc `%`*(frmt: TFormatStr, args: openArray[Rope]): Rope =
+proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
   var length = len(frmt)
   result = nil
@@ -311,23 +290,17 @@ proc `%`*(frmt: TFormatStr, args: openArray[Rope]): Rope =
       add(result, substr(frmt, start, i - 1))
   assert(ropeInvariant(result))
 
-proc addf*(c: var Rope, frmt: TFormatStr, args: openArray[Rope]) =
+proc addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
   add(c, frmt % args)
 
-# TODO Compatibility names
-proc ropef*(frmt: TFormatStr, args: varargs[Rope]): Rope {.deprecated.} =
-  result = frmt % args
-proc appf*(c: var Rope, frmt: TFormatStr, args: varargs[Rope]) {.deprecated.} =
-  addf(c, frmt, args)
-
 when true:
-  template `~`*(r: string): Rope = r.ropef
+  template `~`*(r: string): Rope = r % []
 else:
   {.push stack_trace: off, line_trace: off.}
   proc `~`*(r: static[string]): Rope =
     # this is the new optimized "to rope" operator
     # the mnemonic is that `~` looks a bit like a rope :)
-    var r {.global.} = r.ropef
+    var r {.global.} = r % []
     return r
   {.pop.}
 

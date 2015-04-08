@@ -89,7 +89,7 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
         invalidPragma(it)
 
 proc setExternName(s: PSym, extname: string) =
-  s.loc.r = toRope(extname % s.name.s)
+  s.loc.r = rope(extname % s.name.s)
   if gCmd == cmdPretty and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
@@ -677,7 +677,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.loc.flags, lfHeader)
           incl(sym.loc.flags, lfNoDecl)
           # implies nodecl, because otherwise header would not make sense
-          if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
+          if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
         of wDestructor:
           sym.flags.incl sfOverriden
           if sym.name.s.normalize != "destroy":
@@ -879,7 +879,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
-      if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
+      if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   if n == nil or n.sons == nil:
