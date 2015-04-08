@@ -227,11 +227,12 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
     of '.': considerAsgn(6)
     of '?': result = considerStrongSpaces(2)
     else: considerAsgn(2)
-  of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs: result = 5
+  of tkDiv, tkMod, tkShl, tkShr: result = considerStrongSpaces(9)
+  of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs:
+    result = considerStrongSpaces(5)
   of tkDotDot: result = considerStrongSpaces(6)
-  of tkAnd: result = 4
-  of tkOr, tkXor, tkPtr, tkRef: result = 3
+  of tkAnd: result = considerStrongSpaces(4)
+  of tkOr, tkXor, tkPtr, tkRef: result = considerStrongSpaces(3)
   else: result = -10
 
 proc isOperator(tok: TToken): bool =
