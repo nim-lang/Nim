@@ -73,7 +73,11 @@ News
     for ``expr`` and ``stmt``. The new names capture the semantics much better
     and most likely  ``expr`` and ``stmt`` will be deprecated in favor of the
     new names.
-
+  - The ``split`` method in module ``re`` has changed. It now handles the case
+    of matches having a length of 0, and empty strings being yielded from the
+    iterator. A notable change might be that a pattern being matched at the
+    beginning and end of a string, will result in an empty string being produced
+    at the start and the end of the iterator.
 
   Language Additions
   ------------------
