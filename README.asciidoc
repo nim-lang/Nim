@@ -36,7 +36,7 @@ Finds the given pattern in the string between the end and start positions.
 `start` :: The start point at which to start matching. `|abc` is `0`; `a|bc`
    is `1`
 `endpos` :: The maximum index for a match; `int.high` means the end of the
-   string, otherwise it's an exclusive upper bound.
+   string, otherwise it's an inclusive upper bound.
 
 [[proc-match]]
 ==== match(string, Regex, start = 0, endpos = int.high): RegexMatch

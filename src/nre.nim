@@ -311,7 +311,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   result.pcreMatchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
   result.pcreMatchBounds.setLen(vecsize div 3)
 
-  let strlen = if endpos == int.high: str.len else: endpos
+  let strlen = if endpos == int.high: str.len else: endpos+1
 
   let execRet = pcre.exec(pattern.pcreObj,
                           pattern.pcreExtra,
@@ -335,7 +335,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   # see pcredemo for explaination
   let matchesCrLf = pattern.matchesCrLf()
   let unicode = (getinfo[cint](pattern, pcre.INFO_OPTIONS) and pcre.UTF8) > 0
-  let endpos = if endpos == int.high: str.len else: endpos
+  let strlen = if endpos == int.high: str.len else: endpos+1
 
   var offset = start
   var match: Option[RegexMatch]
@@ -361,13 +361,13 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       elif unicode:
         # XXX what about invalid unicode?
         offset += str.runeLenAt(offset)
-        assert(offset <= endpos)
+        assert(offset <= strlen)
     else:
       offset = match.get.matchBounds.b + 1
 
       yield match.get
 
-    if offset >= endpos:
+    if offset >= strlen:
       # do while
       break
 
@@ -390,11 +390,11 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   var bounds = 0 .. -1
 
   for match in str.findIter(pattern, start = start):
-    # upper bound is exclusive, lower is inclusive:
+    # bounds are inclusive:
     #
     # 0123456
     #  ^^^
-    # (1, 4)
+    # (1, 3)
     bounds = match.matchBounds
 
     # "12".split("") would be @["", "1", "2"], but

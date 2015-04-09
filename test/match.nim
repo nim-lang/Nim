@@ -1,9 +1,10 @@
 include nre, unittest, optional_t.nonstrict
 
 suite "match":
-  test "upper bound must be exclusive":
-    check("abc".match(re"abc", endpos = 0) == None[RegexMatch]())
-    check("abc".match(re"abc", endpos = 3) != None[RegexMatch]())
+  test "upper bound must be inclusive":
+    check("abc".match(re"abc", endpos = -1) == None[RegexMatch]())
+    check("abc".match(re"abc", endpos = 1) == None[RegexMatch]())
+    check("abc".match(re"abc", endpos = 2) != None[RegexMatch]())
 
   test "match examples":
     check("abc".match(re"(\w)").captures[0] == "a")
