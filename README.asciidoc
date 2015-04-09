@@ -29,24 +29,24 @@ provides in its standard library is inadequate:
 === Operations
 
 [[proc-find]]
-==== find(string, Regex, start = 0, endpos = -1): RegexMatch
+==== find(string, Regex, start = 0, endpos = int.high): RegexMatch
 
 Finds the given pattern in the string between the end and start positions.
 
 `start` :: The start point at which to start matching. `|abc` is `0`; `a|bc`
    is `1`
-`endpos` :: The maximum index for a match; `-1` means the end of the string,
-   otherwise it's an exclusive upper bound.
+`endpos` :: The maximum index for a match; `int.high` means the end of the
+   string, otherwise it's an inclusive upper bound.
 
 [[proc-match]]
-==== match(string, Regex, start = 0, endpos = -1): RegexMatch
+==== match(string, Regex, start = 0, endpos = int.high): RegexMatch
 
 Like link:#proc-find[`find(...)`], but anchored to the start of the string.
 This means that `"foo".match(re"f") == true`, but `"foo".match(re"o") ==
 false`.
 
 [[iter-find]]
-==== iterator findIter(string, Regex, start = 0, endpos = -1): RegexMatch
+==== iterator findIter(string, Regex, start = 0, endpos = int.high): RegexMatch
 
 Works the same as link:#proc-find[`find(...)`], but finds every non-overlapping
 match. `"2222".find(re"22")` is `"22", "22"`, not `"22", "22", "22"`.
@@ -118,11 +118,10 @@ at that id. If the value is invalid, then behavior is undefined. If the id is
  - `"abc".match(re"(\w)\w").captures[-1] == "ab"`
 `captureBounds[]: Option[Slice[int]]` :: gets the bounds of the
 given capture according to the same rules as the above. If the capture is not
-filled, then `None` is returned. The upper bound is exclusive, the lower bound
-is inclusive.
- - `"abc".match(re"(\w)").captureBounds[0] == 0..1`
- - `"abc".match(re"").captureBounds[-1] == 0..0`
- - `"abc".match(re"abc").captureBounds[-1] == 0..3`
+filled, then `None` is returned. The bounds are both inclusive.
+ - `"abc".match(re"(\w)").captureBounds[0] == 0 .. 0`
+ - `"abc".match(re"").captureBounds[-1] == 0 .. -1`
+ - `"abc".match(re"abc").captureBounds[-1] == 0 .. 2`
 `match: string` :: the full text of the match.
 `matchBounds: Slice[int]` :: the bounds of the match, as in `captureBounds[]`
 `(captureBounds|captures).toTable` :: returns a table with each named capture

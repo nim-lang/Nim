@@ -10,7 +10,7 @@ suite "find":
   test "find bounds":
     check(toSeq(findIter("1 2 3 4 5 ", re" ")).map(
       proc (a: RegexMatch): Slice[int] = a.matchBounds
-    ) == @[1..2, 3..4, 5..6, 7..8, 9..10])
+    ) == @[1..1, 3..3, 5..5, 7..7, 9..9])
 
   test "overlapping find":
     check("222".findAll(re"22") == @["22"])
