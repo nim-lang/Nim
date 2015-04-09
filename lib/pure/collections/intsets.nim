@@ -14,7 +14,7 @@
 ## copy; use ``assign`` to get a deep copy.
 
 import
-  os, hashes, math
+  hashes, math
 
 type
   BitScalar = int
