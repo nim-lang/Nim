@@ -791,10 +791,10 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
 proc generateHeader(p: PProc, typ: PType): Rope =
   result = nil
   for i in countup(1, sonsLen(typ.n) - 1):
-    if result != nil: add(result, ", ")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
+    if result != nil: add(result, ", ")
     var name = mangleName(param)
     add(result, name)
     if mapType(param.typ) == etyBaseIndex:
