@@ -215,24 +215,25 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
     if L > 1 and tok.ident.s[L-1] == '>': return considerStrongSpaces(1)
 
     template considerAsgn(value: expr) =
-      result = if tok.ident.s[L-1] == '=': 1 else: considerStrongSpaces(value)
+      result = if tok.ident.s[L-1] == '=': 1 else: value
 
     case relevantChar
     of '$', '^': considerAsgn(10)
     of '*', '%', '/', '\\': considerAsgn(9)
-    of '~': result = considerStrongSpaces(8)
+    of '~': result = 8
     of '+', '-', '|': considerAsgn(8)
     of '&': considerAsgn(7)
-    of '=', '<', '>', '!': result = considerStrongSpaces(5)
+    of '=', '<', '>', '!': result = 5
     of '.': considerAsgn(6)
-    of '?': result = considerStrongSpaces(2)
+    of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
   of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs: result = 5
-  of tkDotDot: result = considerStrongSpaces(6)
+  of tkDotDot: result = 6
   of tkAnd: result = 4
   of tkOr, tkXor, tkPtr, tkRef: result = 3
-  else: result = -10
+  else: return -10
+  result = considerStrongSpaces(result)
 
 proc isOperator(tok: TToken): bool =
   ## Determines if the given token is an operator type token.

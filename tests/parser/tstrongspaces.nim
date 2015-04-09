@@ -2,6 +2,12 @@
 
 discard """
   output: '''35
+true
+true
+4
+true
+1
+false
 77
 (Field0: 1, Field1: 2, Field2: 2)
 ha
@@ -14,6 +20,17 @@ all args
 
 echo 2+5 * 5
 
+# Keyword operators
+echo 1 + 16 shl 1 == 1 + (16 shl 1)
+echo 2 and 1  in  {0, 30}
+echo 2+2 * 2 shr 1
+echo false  or  2 and 1  in  {0, 30}
+
+proc `^`(a, b: int): int = a + b div 2
+echo 19 mod 16 ^ 4  +  2 and 1
+echo 18 mod 16 ^ 4 > 0
+
+# echo $foo gotcha
 let foo = 77
 echo $foo
 
@@ -27,7 +44,7 @@ when true:
   let b = 66
   let c = 90
   let bar = 8000
-  if foo+4 * 4 == 8 and b&c | 9  ++
+  if foo+4 * 4 == 8  and  b&c | 9  ++
       bar:
     echo "ho"
   else:
