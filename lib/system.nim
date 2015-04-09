@@ -3052,7 +3052,7 @@ when true:
                                       tags: [].}
     THide(raiseAssert)(msg)
 
-template assert*(cond: bool, msg = "") =
+template assert*(cond: bool, msg = "") {.dirty, immediate.} =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
@@ -3061,7 +3061,6 @@ template assert*(cond: bool, msg = "") =
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
   bind instantiationInfo
-  mixin failedAssertImpl
   when compileOption("assertions"):
     {.line.}:
       if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
