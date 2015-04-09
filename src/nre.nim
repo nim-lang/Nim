@@ -97,7 +97,7 @@ proc `[]`*(pattern: CaptureBounds, i: int): Option[Slice[int]] =
   let pattern = RegexMatch(pattern)
   if pattern.pcreMatchBounds[i + 1].a != -1:
     let bounds = pattern.pcreMatchBounds[i + 1]
-    return Some(int(bounds.a) .. int(bounds.b))
+    return Some(int(bounds.a) .. int(bounds.b-1))
   else:
     return None[Slice[int]]()
 
@@ -111,7 +111,7 @@ proc `[]`*(pattern: Captures, i: int): string =
 
   if bounds:
     let bounds = bounds.get
-    return pattern.str.substr(bounds.a, bounds.b-1)
+    return pattern.str.substr(bounds.a, bounds.b)
   else:
     return nil
 
@@ -343,7 +343,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
     var flags = 0
 
     if match and
-       match.get.matchBounds.a == match.get.matchBounds.b:
+       match.get.matchBounds.a > match.get.matchBounds.b:
       # 0-len match
       flags = pcre.NOTEMPTY_ATSTART or pcre.ANCHORED
 
@@ -363,7 +363,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
         offset += str.runeLenAt(offset)
         assert(offset <= endpos)
     else:
-      offset = match.get.matchBounds.b
+      offset = match.get.matchBounds.b + 1
 
       yield match.get
 
@@ -387,7 +387,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   result = @[]
   var lastIdx = start
   var splits = 0
-  var bounds: Slice[int]
+  var bounds = 0 .. -1
 
   for match in str.findIter(pattern, start = start):
     # upper bound is exclusive, lower is inclusive:
@@ -400,11 +400,11 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
     # "12".split("") would be @["", "1", "2"], but
     # if we skip an empty first match, it's the correct
     # @["1", "2"]
-    if bounds.a < bounds.b or bounds.a > start:
+    if bounds.a <= bounds.b or bounds.a > start:
       result.add(str.substr(lastIdx, bounds.a - 1))
       splits += 1
 
-    lastIdx = bounds.b
+    lastIdx = bounds.b + 1
 
     for cap in match.captures:
       # if there are captures, include them in the result
@@ -416,11 +416,11 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   # "12".split("\b") would be @["1", "2", ""], but
   # if we skip an empty last match, it's the correct
   # @["1", "2"]
-  if bounds.a < bounds.b or bounds.b < str.len:
+  if bounds.a <= bounds.b or bounds.b < str.high:
     # last match: Each match takes the previous substring,
     # but "1 2".split(/ /) needs to return @["1", "2"].
     # This handles "2"
-    result.add(str.substr(bounds.b, str.len - 1))
+    result.add(str.substr(bounds.b + 1, str.high))
 
 template replaceImpl(str: string, pattern: Regex,
                      replacement: expr): stmt {.immediate, dirty.} =
@@ -435,7 +435,7 @@ template replaceImpl(str: string, pattern: Regex,
     assert(nextVal != nil)
     result.add(nextVal)
 
-    lastIdx = bounds.b
+    lastIdx = bounds.b + 1
 
   result.add(str.substr(lastIdx, str.len - 1))
   return result
