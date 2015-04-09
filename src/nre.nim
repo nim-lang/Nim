@@ -387,7 +387,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   result = @[]
   var lastIdx = start
   var splits = 0
-  var bounds = 0 .. -1
+  var bounds = 0 .. 0
 
   for match in str.findIter(pattern, start = start):
     # bounds are inclusive:

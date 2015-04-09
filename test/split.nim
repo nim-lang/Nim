@@ -7,7 +7,7 @@ suite "string splitting":
     check("1  2  ".split(re(" ")) == @["1", "", "2", "", ""])
     check("1 2".split(re(" ")) == @["1", "2"])
     check("foo".split(re("foo")) == @["", ""])
-    check("".split(re"foo") == newSeq[string]())
+    check("".split(re"foo") == @[""])
 
   test "captured patterns":
     check("12".split(re"(\d)") == @["", "1", "", "2", ""])
