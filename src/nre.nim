@@ -311,7 +311,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   result.pcreMatchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
   result.pcreMatchBounds.setLen(vecsize div 3)
 
-  let strlen = if endpos == -1: str.len else: endpos
+  let strlen = if endpos == int.high: str.len else: endpos
 
   let execRet = pcre.exec(pattern.pcreObj,
                           pattern.pcreExtra,
@@ -328,14 +328,14 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   else:
     raise newException(AssertionError, "Internal error: errno " & $execRet)
 
-proc match*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
+proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
-iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMatch =
+iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
   # see pcredemo for explaination
   let matchesCrLf = pattern.matchesCrLf()
   let unicode = (getinfo[cint](pattern, pcre.INFO_OPTIONS) and pcre.UTF8) > 0
-  let endpos = if endpos == -1: str.len else: endpos
+  let endpos = if endpos == int.high: str.len else: endpos
 
   var offset = start
   var match: Option[RegexMatch]
@@ -371,14 +371,14 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = -1): RegexMa
       # do while
       break
 
-proc find*(str: string, pattern: Regex, start = 0, endpos = -1): Option[RegexMatch] =
+proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   ## Returns a `RegexMatch` if there is a match between `start` and `endpos`, otherwise
   ## it returns nil.
   ##
-  ## if `endpos == -1`, then `endpos = str.len`
+  ## if `endpos == int.high`, then `endpos = str.len`
   return str.matchImpl(pattern, start, endpos, 0)
 
-proc findAll*(str: string, pattern: Regex, start = 0, endpos = -1): seq[string] =
+proc findAll*(str: string, pattern: Regex, start = 0, endpos = int.high): seq[string] =
   result = @[]
   for match in str.findIter(pattern, start, endpos):
     result.add(match.match)
