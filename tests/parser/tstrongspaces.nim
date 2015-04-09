@@ -15,6 +15,10 @@ true
 tester args
 all
 all args
+19
+-3
+false
+-2
 '''
 """
 
@@ -67,3 +71,13 @@ const
 echo tester & " " & args|"all"
 echo "all"  |  tester & " " & args
 echo "all"|tester & " " & args
+
+# Test arrow like operators. See also tests/macros/tclosuremacro.nim
+proc `-+>`(a, b: int): int = a + b*4
+template `===>`(a, b: int): expr = a - b shr 1
+
+echo 3 -+> 2 + 2 and 4
+var arrowed = 3-+>2 + 2 and 4  # arrowed = 4
+echo arrowed ===> 15
+echo (2 * 3-+>2) == (2*3 -+> 2)
+echo arrowed ===> 2 + 3-+>2
