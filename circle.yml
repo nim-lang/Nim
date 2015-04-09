@@ -1,0 +1,39 @@
+dependencies:
+  pre:
+    - |
+        if [ ! -x ~/nim/bin/nim ]; then
+          sudo apt-get install gcc
+          git clone -b devel --depth 1 git://github.com/araq/nim ~/nim/
+          git clone -b devel --depth 1 git://github.com/nim-lang/csources ~/nim/csources/
+          cd ~/nim/csources; sh build.sh; cd ..
+          rm -rf csources
+          bin/nim c koch
+          ./koch boot -d:release
+          ln -fs ~/nim/bin/nim ~/bin/nim
+        else
+          cd ~/nim
+          git fetch origin
+          if ! git merge FETCH_HEAD | grep "Already up-to-date"; then
+            bin/nim c koch
+            ./koch boot -d:release
+          fi
+        fi
+    - |
+        if [ ! -x ~/.nimble/bin/nimble ]; then
+          git clone --depth 1 git://github.com/nim-lang/nimble ~/nimble/
+          cd ~/nimble/
+          nim c src/nimble.nim
+          ./src/nimble install
+          ln -fs ~/.nimble/bin/nimble ~/bin/nimble
+        fi
+    - nimble update
+    - nimble build
+
+  cache_directories:
+    - "~/bin/"
+    - "~/nim/"
+    - "~/.nimble/"
+
+test:
+  override:
+    - ./runtests.sh
