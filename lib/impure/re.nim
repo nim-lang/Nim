@@ -231,6 +231,7 @@ iterator findAll*(s: string, pattern: Regex, start = 0): string =
     if res < 0'i32: break
     let a = rawMatches[0]
     let b = rawMatches[1]
+    if a == b and a == i: break
     yield substr(s, int(a), int(b)-1)
     i = b
 
