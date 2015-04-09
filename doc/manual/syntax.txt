@@ -15,8 +15,8 @@ Associativity
 Binary operators whose first character is ``^`` are right-associative, all
 other binary operators are left-associative.
 
-Operators ending in ``>`` but longer than a single character are 
-called `arrow like`:idx:.
+Operators whose the first character is either ``-`` or ``=`` and the last
+character is ``>`` are called `arrow like`:idx:.
 
 
 Precedence
@@ -43,14 +43,14 @@ Otherwise precedence is determined by the first character.
 Precedence level    Operators                                      First character     Terminal symbol
 ================  ===============================================  ==================  ===============
  10 (highest)                                                      ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``            ``* % \  /``        OP9
-  8               ``+    -``                                       ``+  ~  |``         OP8
+  9               ``*    /    div   mod   shl  shr  %``            ``*  %  \  /``      OP9
+  8               ``+    -``                                       ``+  -  ~  |``      OP8
   7               ``&``                                            ``&``               OP7
   6               ``..``                                           ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of``   ``= <  > !``        OP5
+  5               ``==  <= < >= > !=  in notin is isnot not of``   ``=  <  >  !``      OP5
   4               ``and``                                                              OP4
   3               ``or xor``                                                           OP3
-  2                                                                ``@  : ?``          OP2
+  2                                                                ``@  :  ?``         OP2
   1               *assignment operator* (like ``+=``, ``*=``)                          OP1
   0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                          OP0
 ================  ===============================================  ==================  ===============
@@ -67,7 +67,7 @@ is still parsed as ``1 + (3 * 4)``, but ``1+3 * 4`` is parsed as ``(1+3) * 4``:
 
 .. code-block:: nim
   #! strongSpaces
-  if foo+4 * 4 == 8 and b&c | 9  ++
+  if foo+4 * 4 == 8  and  b&c | 9  ++
       bar:
     echo ""
   # is parsed as
