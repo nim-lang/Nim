@@ -41,11 +41,11 @@ type
     reExtended = 3,      ## ignore whitespace and ``#`` comments
     reStudy = 4          ## study the expression (may be omitted if the
                          ## expression will be used only once)
-
-  RegexDesc = object
-    h: PPcre
-    e: ptr TExtra
-
+  
+  RegexDesc = object 
+    h: ptr Pcre
+    e: ptr ExtraData
+  
   Regex* = ref RegexDesc ## a compiled regular expression
 
   RegexError* = object of ValueError
@@ -60,7 +60,7 @@ proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   e.msg = msg
   raise e
 
-proc rawCompile(pattern: string, flags: cint): PPcre =
+proc rawCompile(pattern: string, flags: cint): ptr Pcre =
   var
     msg: cstring
     offset: cint
@@ -84,7 +84,7 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
   result.h = rawCompile(s, cast[cint](flags - {reStudy}))
   if reStudy in flags:
     var msg: cstring
-    result.e = pcre.study(result.h, 0, msg)
+    result.e = pcre.study(result.h, 0, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
 
 proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
