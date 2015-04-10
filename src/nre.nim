@@ -302,14 +302,14 @@ proc re*(pattern: string, options = ""): Regex = initRegex(pattern, options)
 
 # Operations {{{
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
-  var result = RegexMatch(pattern : pattern, str : str)
+  var myResult = RegexMatch(pattern : pattern, str : str)
   # See PCRE man pages.
   # 2x capture count to make room for start-end pairs
   # 1x capture count as slack space for PCRE
   let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
-  result.pcreMatchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
-  result.pcreMatchBounds.setLen(vecsize div 3)
+  myResult.pcreMatchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
+  myResult.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1
   doAssert(strlen <= str.len)  # don't want buffer overflows
@@ -320,10 +320,10 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
                           cint(strlen),
                           cint(start),
                           cint(flags),
-                          cast[ptr cint](addr result.pcreMatchBounds[0]),
+                          cast[ptr cint](addr myResult.pcreMatchBounds[0]),
                           cint(vecsize))
   if execRet >= 0:
-    return Some(result)
+    return Some(myResult)
   elif execRet == pcre.ERROR_NOMATCH:
     return None[RegexMatch]()
   else:
