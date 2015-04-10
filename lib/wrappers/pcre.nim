@@ -335,7 +335,7 @@ type
   JitCallback* = proc (a: pointer): ptr JitStack {.cdecl.}
 
 
-when not defined(pcreDll):
+when not defined(usePcreHeader):
   when hostOS == "windows":
     const pcreDll = "pcre.dll"
   elif hostOS == "macosx":
