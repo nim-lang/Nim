@@ -14,3 +14,7 @@ suite "replace":
     check("123".replace(re"(\d)(\d)", "$#$#") == "123")
     check("123".replace(re"(?<foo>\d)(\d)", "$foo$#$#") == "1123")
     check("123".replace(re"(?<foo>\d)(\d)", "${foo}$#$#") == "1123")
+
+  test "replacing missing captures should throw instead of segfaulting":
+    expect ValueError: discard "ab".replace(re"(a)|(b)", "$1$2")
+    expect ValueError: discard "b".replace(re"(a)?(b)", "$1$2")

@@ -95,6 +95,8 @@ If `sub` is a string, the syntax is as follows:
 - `$#` - first capture
 - `$0` - full match
 
+If a given capture is missing, a `ValueError` exception is thrown.
+
 [[proc-escapere]]
 ==== escapeRe(string): string
 
