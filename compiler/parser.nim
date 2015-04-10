@@ -2031,8 +2031,8 @@ proc parseString*(s: string; filename: string = ""; line: int = 0;
   var parser: TParser
   # XXX for now the builtin 'parseStmt/Expr' functions do not know about strong
   # spaces...
-  openParser(parser, filename, stream, false)
   parser.lex.errorHandler = errorHandler
+  openParser(parser, filename, stream, false)
 
   result = parser.parseAll
   closeParser(parser)
