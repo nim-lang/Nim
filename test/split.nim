@@ -21,6 +21,8 @@ suite "string splitting":
     check("12345".split(re("")) == @["1", "2", "3", "4", "5"])
     check("".split(re"") == newSeq[string]())
     check("word word".split(re"\b") == @["word", " ", "word"])
+    check("word\r\lword".split(re(r"$", "m<anycrlf>")) == @["word", "\r\lword"])
+    check("слово слово".split(re(r"(\b)", "uW")) == @["", "слово", "", " ", "", "слово", ""])
 
   test "perl split tests":
     check("forty-two"                    .split(re"")      .join(",") == "f,o,r,t,y,-,t,w,o")
