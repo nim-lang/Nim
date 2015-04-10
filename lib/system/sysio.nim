@@ -40,7 +40,8 @@ when defined(posix):
 
   proc funlockfile(stream: File) {.importc: "funlockfile", header: "<stdio.h>",
     tags: [ReadIOEffect].}
-elif defined(windows):
+elif false:
+  # doesn't work on Windows yet:
   proc getc_unlocked(stream: File): cint {.importc: "_fgetc_nolock",
     header: "<stdio.h>", tags: [ReadIOEffect].}
 
@@ -85,7 +86,7 @@ const
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
 
-when defined(posix) or defined(windows):
+when declared(getc_unlocked):
   proc readLine(f: File, line: var TaintedString): bool =
     setLen(line.string, 0) # reuse the buffer!
     flockfile(f)
