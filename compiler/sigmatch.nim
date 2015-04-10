@@ -1422,9 +1422,12 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
+    # XXX This is unsound! 'formal' can differ from overloaded routine to
+    # overloaded routine!
     let flags = if formal.kind == tyIter: {efDetermineType, efWantIterator}
-                elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
-                else: {efDetermineType}
+                else: {efDetermineType, efAllowStmt}
+                #elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
+                #else: {efDetermineType}
     result = c.semOperand(c, a, flags)
   else:
     result = a
