@@ -99,10 +99,12 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
     if callee.originatingModule == ctx.module:
-      let rootSym = if sfFromGeneric notin callee.flags: callee
-                    else: callee.owner
-      c.calleeScope = 2 #  rootSym.scope.depthLevel
-      #echo "SCOPE IS ", rootSym.scope.depthLevel
+      c.calleeScope = 2
+      var owner = callee
+      while true:
+        owner = owner.skipGenericOwner
+        if owner.kind == skModule: break
+        inc c.calleeScope
     else:
       c.calleeScope = 1
   else:

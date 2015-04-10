@@ -3044,13 +3044,12 @@ template currentSourcePath*: string = instantiationInfo(-1, true).filename
 proc raiseAssert*(msg: string) {.noinline.} =
   sysFatal(AssertionError, msg)
 
-when true:
-  proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
-    # trick the compiler to not list ``EAssertionFailed`` when called
-    # by ``assert``.
-    type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
-                                      tags: [].}
-    THide(raiseAssert)(msg)
+proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
+  # trick the compiler to not list ``AssertionError`` when called
+  # by ``assert``.
+  type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
+                                    tags: [].}
+  THide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
@@ -3115,24 +3114,18 @@ when not defined(nimhygiene):
 
 template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
   ## Sets an assertion failure handler that will intercept any assert
-  ## statements following `onFailedAssert` in the current lexical scope.
-  ## Can be defined multiple times in a single function.
+  ## statements following `onFailedAssert` in the current module scope.
   ##
   ## .. code-block:: nim
+  ##  # module-wide policy to change the failed assert
+  ##  # exception type in order to include a lineinfo
+  ##  onFailedAssert(msg):
+  ##    var e = new(TMyError)
+  ##    e.msg = msg
+  ##    e.lineinfo = instantiationInfo(-2)
+  ##    raise e
   ##
-  ##   proc example(x: int): ErrorCode =
-  ##     onFailedAssert(msg):
-  ##       log msg
-  ##       return E_FAIL
-  ##
-  ##     assert(...)
-  ##
-  ##     onFailedAssert(msg):
-  ##       raise newException(MyError, msg)
-  ##
-  ##     assert(...)
-  ##
-  template failedAssertImpl(msgIMPL: string): stmt {.dirty, immediate.} =
+  template failedAssertImpl(msgIMPL: string): stmt {.dirty.} =
     let msg = msgIMPL
     code
 

@@ -30,7 +30,7 @@ proc bar: int =
   # local overrides that are active only
   # in this proc
   onFailedAssert(msg): echo "WARNING: " & msg
-    
+
   assert(false, "first assertion from bar")
 
   onFailedAssert(msg):
