@@ -449,7 +449,7 @@ proc execExternalProgram*(cmd: string, prettyCmd = "") =
   if execWithEcho(cmd, prettyCmd) != 0:
     rawMessage(errExecutionOfProgramFailed, "")
 
-proc generateScript(projectFile: string, script: PRope) = 
+proc generateScript(projectFile: string, script: Rope) = 
   let (dir, name, ext) = splitFile(projectFile)
   writeRope(script, dir / addFileExt("compile_" & name, 
                                      platform.OS[targetOS].scriptExt))
@@ -604,7 +604,7 @@ proc addExternalFileToCompile*(filename: string) =
   if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
     appendStr(externalToCompile, filename)
 
-proc compileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
+proc compileCFile(list: TLinkedList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq, isExternal: bool) =
   var it = PStrEntry(list.head)
   while it != nil: 
@@ -615,8 +615,8 @@ proc compileCFile(list: TLinkedList, script: var PRope, cmds: var TStringSeq,
       let (dir, name, ext) = splitFile(it.data)
       add(prettyCmds, "CC: " & name)
     if optGenScript in gGlobalOptions: 
-      app(script, compileCmd)
-      app(script, tnl)
+      add(script, compileCmd)
+      add(script, tnl)
     it = PStrEntry(it.next)
 
 proc callCCompiler*(projectfile: string) =
@@ -627,7 +627,7 @@ proc callCCompiler*(projectfile: string) =
            # generated
   fileCounter = 0
   var c = cCompiler
-  var script: PRope = nil
+  var script: Rope = nil
   var cmds: TStringSeq = @[]
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
@@ -710,30 +710,30 @@ proc callCCompiler*(projectfile: string) =
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
-    app(script, linkCmd)
-    app(script, tnl)
+    add(script, linkCmd)
+    add(script, tnl)
     generateScript(projectfile, script)
 
-proc genMappingFiles(list: TLinkedList): PRope = 
+proc genMappingFiles(list: TLinkedList): Rope = 
   var it = PStrEntry(list.head)
   while it != nil: 
-    appf(result, "--file:r\"$1\"$N", [toRope(it.data)])
+    addf(result, "--file:r\"$1\"$N", [rope(it.data)])
     it = PStrEntry(it.next)
 
-proc writeMapping*(gSymbolMapping: PRope) = 
+proc writeMapping*(gSymbolMapping: Rope) = 
   if optGenMapping notin gGlobalOptions: return 
-  var code = toRope("[C_Files]\n")
-  app(code, genMappingFiles(toCompile))
-  app(code, genMappingFiles(externalToCompile))
-  app(code, "\n[C_Compiler]\nFlags=")
-  app(code, strutils.escape(getCompileOptions()))
+  var code = rope("[C_Files]\n")
+  add(code, genMappingFiles(toCompile))
+  add(code, genMappingFiles(externalToCompile))
+  add(code, "\n[C_Compiler]\nFlags=")
+  add(code, strutils.escape(getCompileOptions()))
   
-  app(code, "\n[Linker]\nFlags=")
-  app(code, strutils.escape(getLinkOptions() & " " & 
+  add(code, "\n[Linker]\nFlags=")
+  add(code, strutils.escape(getLinkOptions() & " " & 
                             getConfigVar(cCompiler, ".options.linker")))
 
-  app(code, "\n[Environment]\nlibpath=")
-  app(code, strutils.escape(libpath))
+  add(code, "\n[Environment]\nlibpath=")
+  add(code, strutils.escape(libpath))
   
-  appf(code, "\n[Symbols]$n$1", [gSymbolMapping])
+  addf(code, "\n[Symbols]$n$1", [gSymbolMapping])
   writeRope(code, joinPath(gProjectPath, "mapping.txt"))

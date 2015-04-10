@@ -472,7 +472,7 @@ type
                       # T and I here can bind to both typedesc and static types
                       # before this is determined, we'll consider them to be a
                       # wildcard type.
-    tfGuarded         # guarded pointer
+    tfHasAsgn         # type has overloaded assignment operator
     tfBorrowDot       # distinct type borrows '.'
 
   TTypeFlags* = set[TTypeFlag]
@@ -685,8 +685,8 @@ type
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
-    r*: PRope                 # rope value of location (code generators)
-    heapRoot*: PRope          # keeps track of the enclosing heap object that
+    r*: Rope                 # rope value of location (code generators)
+    heapRoot*: Rope          # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
 
@@ -698,7 +698,7 @@ type
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
-    name*: PRope
+    name*: Rope
     path*: PNode              # can be a string literal!
 
   TInstantiation* = object
@@ -728,7 +728,8 @@ type
       typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
-      scope*: PScope          # the scope where the proc was defined
+      gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
+      #scope*: PScope          # the scope where the proc was defined
     of skModule:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
@@ -804,6 +805,7 @@ type
                               # mean that there is no destructor.
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
+    assignment*: PSym         # overriden '=' operator
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
@@ -1218,6 +1220,7 @@ proc assignType*(dest, src: PType) =
   dest.align = src.align
   dest.destructor = src.destructor
   dest.deepCopy = src.deepCopy
+  dest.assignment = src.assignment
   dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
@@ -1333,6 +1336,13 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
+
+  if tfHasAsgn in elem.flags:
+    let o2 = elem.skipTypes({tyGenericInst})
+    if o2.kind in {tyTuple, tyObject, tyArray, tyArrayConstr,
+                   tySequence, tySet, tyDistinct}:
+      o2.flags.incl tfHasAsgn
+      owner.flags.incl tfHasAsgn
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation}:

@@ -193,13 +193,13 @@ proc mangle*(name: string): string =
     else:
       add(result, "HEX" & toHex(ord(c), 2))
 
-proc makeLLVMString*(s: string): PRope =
+proc makeLLVMString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = "c\""
   for i in countup(0, len(s) - 1):
     if (i + 1) mod MaxLineLength == 0:
-      app(result, toRope(res))
+      add(result, rope(res))
       setLen(res, 0)
     case s[i]
     of '\0'..'\x1F', '\x80'..'\xFF', '\"', '\\':
@@ -207,6 +207,6 @@ proc makeLLVMString*(s: string): PRope =
       add(res, toHex(ord(s[i]), 2))
     else: add(res, s[i])
   add(res, "\\00\"")
-  app(result, toRope(res))
+  add(result, rope(res))
 
 initTypeTables()

@@ -128,7 +128,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc rightSize*(count: int): int {.inline.} =
+proc rightSize*(count: Natural): int {.inline.} =
   ## Return the value of `initialSize` to support `count` items.
   ##
   ## If more items are expected to be added, simply add that

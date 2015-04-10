@@ -170,13 +170,19 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     let a = n.sons[1].typ
     if isFloatRange(a):
       # abs(-5.. 1) == (1..5)
-      result = makeRangeF(a, abs(getFloat(a.n.sons[1])),
-                             abs(getFloat(a.n.sons[0])))
+      if a.n[0].floatVal <= 0.0:
+        result = makeRangeF(a, 0.0, abs(getFloat(a.n.sons[0])))
+      else:
+        result = makeRangeF(a, abs(getFloat(a.n.sons[1])),
+                               abs(getFloat(a.n.sons[0])))
   of mAbsI, mAbsI64:
     let a = n.sons[1].typ
     if isIntRange(a):
-      result = makeRange(a, `|abs|`(getInt(a.n.sons[1])),
-                            `|abs|`(getInt(a.n.sons[0])))
+      if a.n[0].intVal <= 0:
+        result = makeRange(a, 0, `|abs|`(getInt(a.n.sons[0])))
+      else:
+        result = makeRange(a, `|abs|`(getInt(a.n.sons[1])),
+                              `|abs|`(getInt(a.n.sons[0])))
   of mSucc:
     let a = n.sons[1].typ
     let b = n.sons[2].typ

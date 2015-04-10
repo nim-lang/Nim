@@ -95,10 +95,11 @@ type
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Tino  ## File serial number.
     when defined(linux) or defined(macosx) or defined(bsd):
-      d_off*: TOff  ## Not an offset. Value that ``telldir()`` would return.
       d_reclen*: cshort ## Length of this record. (not POSIX)
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
+      when defined(linux) or defined(bsd):
+        d_off*: TOff  ## Not an offset. Value that ``telldir()`` would return.
     d_name*: array [0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
@@ -1579,8 +1580,11 @@ else:
 
 when defined(macosx):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
-  var
+  # Instead we should use SO_NOSIGPIPE in setsockopt
+  const
     MSG_NOSIGNAL* = 0'i32
+  var
+    SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
 else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint

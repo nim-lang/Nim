@@ -45,29 +45,29 @@ const
   ]
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
-proc genSectionStart*(fs: TCFileSection): PRope =
+proc genSectionStart*(fs: TCFileSection): Rope =
   if compilationCachePresent:
-    result = toRope(tnl)
-    app(result, "/*\t")
-    app(result, CFileSectionNames[fs])
-    app(result, ":*/")
-    app(result, tnl)
+    result = rope(tnl)
+    add(result, "/*\t")
+    add(result, CFileSectionNames[fs])
+    add(result, ":*/")
+    add(result, tnl)
 
-proc genSectionEnd*(fs: TCFileSection): PRope =
+proc genSectionEnd*(fs: TCFileSection): Rope =
   if compilationCachePresent:
-    result = toRope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & tnl)
 
-proc genSectionStart*(ps: TCProcSection): PRope =
+proc genSectionStart*(ps: TCProcSection): Rope =
   if compilationCachePresent:
-    result = toRope(tnl)
-    app(result, "/*\t")
-    app(result, CProcSectionNames[ps])
-    app(result, ":*/")
-    app(result, tnl)
+    result = rope(tnl)
+    add(result, "/*\t")
+    add(result, CProcSectionNames[ps])
+    add(result, ":*/")
+    add(result, tnl)
 
-proc genSectionEnd*(ps: TCProcSection): PRope =
+proc genSectionEnd*(ps: TCProcSection): Rope =
   if compilationCachePresent:
-    result = toRope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & tnl)
 
 proc writeTypeCache(a: TIdTable, s: var string) =
   var i = 0
@@ -79,7 +79,7 @@ proc writeTypeCache(a: TIdTable, s: var string) =
       s.add(' ')
     encodeVInt(id, s)
     s.add(':')
-    encodeStr(PRope(value).ropeToStr, s)
+    encodeStr($Rope(value), s)
     inc i
   s.add('}')
 
@@ -95,7 +95,7 @@ proc writeIntSet(a: IntSet, s: var string) =
     inc i
   s.add('}')
 
-proc genMergeInfo*(m: BModule): PRope =
+proc genMergeInfo*(m: BModule): Rope =
   if optSymbolFiles notin gGlobalOptions: return nil
   var s = "/*\tNIM_merge_INFO:"
   s.add(tnl)
@@ -111,7 +111,7 @@ proc genMergeInfo*(m: BModule): PRope =
   encodeVInt(ord(m.frameDeclared), s)
   s.add(tnl)
   s.add("*/")
-  result = s.toRope
+  result = s.rope
 
 template `^`(pos: int): expr = L.buf[pos]
 
@@ -145,7 +145,7 @@ proc atEndMark(buf: cstring, pos: int): bool =
   while s < NimMergeEndMark.len and buf[pos+s] == NimMergeEndMark[s]: inc s
   result = s == NimMergeEndMark.len
 
-proc readVerbatimSection(L: var TBaseLexer): PRope =
+proc readVerbatimSection(L: var TBaseLexer): Rope =
   var pos = L.bufpos
   var buf = L.buf
   var r = newStringOfCap(30_000)
@@ -169,7 +169,7 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
       r.add(buf[pos])
       inc pos
   L.bufpos = pos
-  result = r.toRope
+  result = r.rope
 
 proc readKey(L: var TBaseLexer, result: var string) =
   var pos = L.bufpos
@@ -197,7 +197,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TIdTable) =
     # XXX little hack: we create a "fake" type object with the correct Id
     # better would be to adapt the data structure to not even store the
     # object as key, but only the Id
-    idTablePut(result, newFakeType(key), value.toRope)
+    idTablePut(result, newFakeType(key), value.rope)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =
@@ -280,11 +280,11 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
 proc mergeRequired*(m: BModule): bool =
   for i in cfsHeaders..cfsProcs:
     if m.s[i] != nil:
-      #echo "not empty: ", i, " ", ropeToStr(m.s[i])
+      #echo "not empty: ", i, " ", m.s[i]
       return true
   for i in low(TCProcSection)..high(TCProcSection):
     if m.initProc.s(i) != nil:
-      #echo "not empty: ", i, " ", ropeToStr(m.initProc.s[i])
+      #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
 
 proc mergeFiles*(cfilename: string, m: BModule) =
@@ -293,6 +293,6 @@ proc mergeFiles*(cfilename: string, m: BModule) =
   readMergeSections(cfilename, old)
   # do the merge; old section before new section:
   for i in low(TCFileSection)..high(TCFileSection):
-    m.s[i] = con(old.f[i], m.s[i])
+    m.s[i] = old.f[i] & m.s[i]
   for i in low(TCProcSection)..high(TCProcSection):
-    m.initProc.s(i) = con(old.p[i], m.initProc.s(i))
+    m.initProc.s(i) = old.p[i] & m.initProc.s(i)

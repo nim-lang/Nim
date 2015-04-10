@@ -593,7 +593,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.position = pos
       if (rec != nil) and ({sfImportc, sfExportc} * rec.flags != {}) and
           (f.loc.r == nil):
-        f.loc.r = toRope(f.name.s)
+        f.loc.r = rope(f.name.s)
         f.flags = f.flags + ({sfImportc, sfExportc} * rec.flags)
       inc(pos)
       if containsOrIncl(check, f.name.id):

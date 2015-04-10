@@ -89,7 +89,7 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
         invalidPragma(it)
 
 proc setExternName(s: PSym, extname: string) =
-  s.loc.r = toRope(extname % s.name.s)
+  s.loc.r = rope(extname % s.name.s)
   if gCmd == cmdPretty and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
@@ -105,7 +105,7 @@ proc validateExternCName(s: PSym, info: TLineInfo) =
   ## Valid identifiers are those alphanumeric including the underscore not
   ## starting with a number. If the check fails, a generic error will be
   ## displayed to the user.
-  let target = ropeToStr(s.loc.r)
+  let target = $s.loc.r
   if target.len < 1 or target[0] notin IdentStartChars or
       not target.allCharsInSet(IdentChars):
     localError(info, errGenerated, "invalid exported symbol")
@@ -677,7 +677,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           incl(sym.loc.flags, lfHeader)
           incl(sym.loc.flags, lfNoDecl)
           # implies nodecl, because otherwise header would not make sense
-          if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
+          if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
         of wDestructor:
           sym.flags.incl sfOverriden
           if sym.name.s.normalize != "destroy":
@@ -865,9 +865,11 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
     while it != nil:
       let o = it.otherPragmas
       if not o.isNil:
+        pushInfoContext(n.info)
         for i in countup(0, sonsLen(o) - 1):
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(n.info, "implicitPragmas")
+        popInfoContext()
       it = it.next.POptionEntry
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
@@ -877,7 +879,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
       addToLib(lib, sym)
-      if sym.loc.r == nil: sym.loc.r = toRope(sym.name.s)
+      if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   if n == nil or n.sons == nil:

@@ -31,7 +31,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind == tyVar: result = newDeref(result)
-  elif efWantStmt in flags:
+  elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyEmpty, c)
   else:
     localError(n.info, errExprXHasNoType,
@@ -1298,6 +1298,9 @@ proc semAsgn(c: PContext, n: PNode): PNode =
           typeMismatch(n, lhs.typ, rhs.typ)
 
     n.sons[1] = fitNode(c, le, rhs)
+    if tfHasAsgn in lhs.typ.flags and not lhsIsResult:
+      return overloadedAsgn(c, lhs, n.sons[1])
+
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n
