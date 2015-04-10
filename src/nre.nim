@@ -312,6 +312,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   result.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1
+  doAssert(strlen <= str.len)  # don't want buffer overflows
 
   let execRet = pcre.exec(pattern.pcreObj,
                           pattern.pcreExtra,
