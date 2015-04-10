@@ -80,9 +80,9 @@ proc writeVersionInfo(pass: TCmdLinePass) =
                                  platform.OS[platform.hostOS].name,
                                  CPU[platform.hostCPU].name]))
 
-    discard """const gitHash = gorge("git log -n 1 --format=%H")
-    if gitHash.strip.len == 40:
-      msgWriteln("git hash: " & gitHash)"""
+    const gitHash = gorge("git log -n 1 --format=%H").strip
+    when gitHash.len == 40:
+      msgWriteln("git hash: " & gitHash)
 
     msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
       usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
