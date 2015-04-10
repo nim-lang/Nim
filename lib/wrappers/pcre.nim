@@ -296,13 +296,13 @@ type
 ## to remain compatible.
 type
   ExtraData* = object
-    flags*: culong                 ## Bits for which fields are set
+    flags*: clong                  ## Bits for which fields are set
     study_data*: pointer           ## Opaque data from pcre_study()
-    match_limit*: culong           ## Maximum number of calls to match()
+    match_limit*: clong            ## Maximum number of calls to match()
     callout_data*: pointer         ## Data passed back in callouts
-    tables*: ptr cuchar            ## Pointer to character tables
-    match_limit_recursion*: culong ## Max recursive calls to match()
-    mark*: ptr ptr cuchar          ## For passing back a mark pointer
+    tables*: pointer               ## Pointer to character tables
+    match_limit_recursion*: clong  ## Max recursive calls to match()
+    mark*: pointer                 ## For passing back a mark pointer
     executable_jit*: pointer       ## Contains a pointer to a compiled jit code
 
 ## The structure for passing out data via the pcre_callout_function. We use a
@@ -326,21 +326,9 @@ type
     pattern_position*: cint       ## Offset to next item in the pattern
     next_item_length*: cint       ## Length of next item in the pattern
     # ------------------- Added for Version 2 --------------------------
-    mark*            : ptr cuchar ## Pointer to current mark or NULL
+    mark*            : pointer    ## Pointer to current mark or NULL
     # ------------------------------------------------------------------
 
-# Indirection for store get and free functions. These can be set to
-# alternative malloc/free functions if required. Special ones are used in the
-# non-recursive case for "frames". There is also an optional callout function
-# that is triggered by the (?) regex item. For Virtual Pascal, these definitions
-# have to take another form.
-var
-  pcre_malloc*: proc (a: csize): pointer {.cdecl.}
-  pcre_free*: proc (a: pointer) {.cdecl.}
-  pcre_stack_malloc*: proc (a: csize): pointer {.cdecl.}
-  pcre_stack_free*: proc (a: pointer) {.cdecl.}
-  pcre_callout*: proc (a: ptr CalloutBlock): cint {.cdecl.}
-  pcre_stack_guard*: proc (): cint {.cdecl.}
 
 ## User defined callback which provides a stack just before the match starts.
 type
@@ -366,14 +354,14 @@ proc compile*(pattern: cstring,
               options: cint,
               errptr: ptr cstring,
               erroffset: ptr cint,
-              tableptr: ptr cuchar): ptr Pcre
+              tableptr: pointer): ptr Pcre
 
 proc compile2*(pattern: cstring,
                options: cint,
                errorcodeptr: ptr cint,
                errptr: ptr cstring,
                erroffset: ptr cint,
-               tableptr: ptr cuchar): ptr Pcre
+               tableptr: pointer): ptr Pcre
 
 proc config*(what: cint,
              where: pointer): cint
@@ -425,7 +413,7 @@ proc jit_exec*(code: ptr Pcre,
 
 proc free_substring*(stringptr: cstring)
 
-proc free_substring_list*(stringptr: ptr cstring)
+proc free_substring_list*(stringptr: cstringArray)
 
 proc fullinfo*(code: ptr Pcre,
                extra: ptr ExtraData,
@@ -458,7 +446,7 @@ proc get_substring_list*(subject: cstring,
                          stringcount: cint,
                          listptr: ptr cstringArray): cint
 
-proc maketables*(): ptr cuchar
+proc maketables*(): pointer
 
 proc refcount*(code: ptr Pcre,
                adjust: cint): cint
@@ -475,7 +463,7 @@ proc version*(): cstring
 
 proc pattern_to_host_byte_order*(code: ptr Pcre,
                                  extra: ptr ExtraData,
-                                 tables: ptr cuchar): cint
+                                 tables: pointer): cint
 
 # JIT compiler related functions.
 
