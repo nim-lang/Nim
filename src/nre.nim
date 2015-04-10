@@ -352,16 +352,16 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
     if match.isNone:
       # either the end of the input or the string
       # cannot be split here
-      offset += 1
-
       if matchesCrLf and offset < (str.len - 1) and
          str[offset] == '\r' and str[offset + 1] == '\l':
         # if PCRE treats CrLf as newline, skip both at the same time
-        offset += 1
+        offset += 2
       elif unicode:
         # XXX what about invalid unicode?
         offset += str.runeLenAt(offset)
         assert(offset <= strlen)
+      else:
+        offset += 1
     else:
       offset = match.get.matchBounds.b + 1
 
