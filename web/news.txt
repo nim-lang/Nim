@@ -34,10 +34,10 @@ News
     should be used instead.
   - ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
   - *arrow like* operators are not right associative anymore.
-  - *arrow like* operators are now required to start with ``=`` or ``-`` in
-    addition to end with ``>``. Examples of arrow like operators that continue
-    to work are: ``->``, ``==>``, ``=+>``. On the other hand, the following
-    operators are now considered regular operators: ``|>``, ``+->``, etc.
+  - *arrow like* operators are now required end with either ``->``, ``~>`` or
+    ``=>``, not just ``>``. Examples of operators still considered arrow like:
+    ``->``, ``==>``, ``+=>``. On the other hand, the following operators are now
+    considered regular operators again: ``|>``, ``-+>``, etc.
   - Typeless parameters are now only allowed in templates and macros. The old
     way turned out to be too error-prone.
   - The 'addr' and 'type' operators are now parsed as unary function

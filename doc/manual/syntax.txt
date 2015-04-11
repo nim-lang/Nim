@@ -15,8 +15,8 @@ Associativity
 Binary operators whose first character is ``^`` are right-associative, all
 other binary operators are left-associative.
 
-Operators whose the first character is either ``-`` or ``=`` and the last
-character is ``>`` are called `arrow like`:idx:.
+Operators ending in either ``->``, ``~>`` or ``=>`` are called
+`arrow like`:idx:.
 
 
 Precedence
