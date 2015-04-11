@@ -22,8 +22,8 @@
 ## available, nor is it always a good solution.
 ##
 ##
-## Example
-## =======
+## Tutorial
+## ========
 ##
 ## Let's start with an example: a procedure that finds the index of a character
 ## in a string.
@@ -75,6 +75,14 @@
 ##     echo "Match found at position ", pos
 ##   else:
 ##     assert(false)  # This will not be reached
+##
+## Or maybe you want to get the behavior of the standard library's ``find``,
+## which returns `-1` if nothing was found.
+##
+## .. code-block:: nim
+##
+##   assert(("team".find('i') or -1) == -1)
+##   assert(("nim".find('i') or -1) == 1)
 ##
 ##
 ## API Details
@@ -239,3 +247,82 @@ template `?=`*(into: expr, opt: Maybe): bool =
   if opt:
     into = opt.val
   opt
+
+
+
+when isMainModule:
+  import typetraits
+
+  template expect(E: expr, body: stmt): stmt {.immediate.} =
+    try:
+      body
+      assert false, "Exception not raised"
+    except E:
+      discard
+
+
+  proc find(haystack: string, needle: char): ?int =
+    for i, c in haystack:
+      if c == needle:
+        return just i
+
+  assert("abc".find('c')[] == 2)
+
+
+  let result = "team".find('i')
+
+  assert result == nothing[int]
+  assert result.has == false
+
+  expect FieldError:
+    echo result[]
+
+
+  if pos ?= "nim".find('i'):
+    assert pos is int
+    assert pos == 1
+  else:
+    assert false
+
+
+  assert(("team".find('i') or -1) == -1)
+  assert(("nim".find('i') or -1) == 1)
+
+
+  assert(?string is MaybeDistinct)
+  assert(?int is MaybeObj)
+
+
+  assert type(just 5) is ?int
+  assert just(5).has
+
+
+  assert type(nothing[string]) is ?string
+  assert nothing[string].has == false
+
+
+  proc isNil(s: Slice[int]): bool =
+    s.a == int.low and s.b == int.low
+
+  assert type(?Slice[int]) is MaybeDistinct
+  assert nothing(int.low..int.low).has == false
+
+
+  var nilstr: string
+  assert nothing[string] == nothing(nilstr)
+  assert just("abc") == just("abc")
+
+  assert nothing[int] == nothing[int]
+  assert just(7) == just(7)
+
+  expect ValueError:
+    discard just(nilstr)
+  expect ValueError:
+    discard just(int.low..int.low)
+
+  expect ValueError:
+    discard nothing("a")
+  expect ValueError:
+    discard nothing(int.low..6)
+  expect ValueError:
+    discard nothing[Slice[int]]
