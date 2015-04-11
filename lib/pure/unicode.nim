@@ -297,7 +297,11 @@ const
     0xffca,  0xffcf,  #  -    
     0xffd2,  0xffd7,  #  -    
     0xffda,  0xffdc]  #  -    
-
+  
+  numRanges = [
+    0x0030,  0x0039   #  the characters '0'-'9'
+  ]
+  
   alphaSinglets = [
     0x00aa,  #    
     0x00b5,  #    
@@ -1183,7 +1187,21 @@ proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   p = binarySearch(c, alphaSinglets, len(alphaSinglets), 1)
   if p >= 0 and c == alphaSinglets[p]:
     return true
-  
+
+proc isAlnum*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## returns true iff `c` is an *alphanumeric* Unicode character (i.e. a letter or a numerical (Arabic) digit)
+  if isAlpha(c):
+    return true
+  var c = RuneImpl(c)
+  var p = binarySearch(c, numRanges, len(numRanges) div 2, 2)
+  if p >= 0 and c >= numRanges[p] and c <= numRanges[p+1]:
+    return true
+
+proc isDigit*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## returns true iff `c` is a *numeric* Unicode character (i.e. an Arabic digit)
+  if not(isAlpha(c)) and isAlnum(c):
+    return true
+
 proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} = 
   return isUpper(c) and isLower(c)
 
