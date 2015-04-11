@@ -1,11 +1,13 @@
 discard """
-  errormsg: "expression 'generate(builder)' has no type (or is ambiguous)"
+  output: "empty"
 """
 
 # bug #898
 
+import typetraits
+
 proc measureTime(e: auto) =
-  discard
+  echo e.type.name
 
 proc generate(a: int): void =
   discard
