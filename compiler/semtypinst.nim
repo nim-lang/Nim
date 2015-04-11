@@ -418,15 +418,23 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     result = t
 
   of tyGenericInst:
+    result = PType(idTableGet(cl.localCache, t))
+    if result != nil: return result
     result = instCopyType(cl, t)
+    idTablePut(cl.localCache, t, result)
     for i in 1 .. <result.sonsLen:
       result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.lastSon)
 
   else:
     if containsGenericType(t):
+      #if not cl.allowMetaTypes:
+      result = PType(idTableGet(cl.localCache, t))
+      if result != nil: return result
       result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
+      #if not cl.allowMetaTypes:
+      idTablePut(cl.localCache, t, result)
 
       for i in countup(0, sonsLen(result) - 1):
         if result.sons[i] != nil:

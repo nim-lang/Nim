@@ -503,6 +503,7 @@ proc gsub(g: var TSrcGen, n: PNode) =
 
 proc hasCom(n: PNode): bool =
   result = false
+  if n.isNil: return false
   if n.comment != nil: return true
   case n.kind
   of nkEmpty..nkNilLit: discard

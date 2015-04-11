@@ -764,7 +764,7 @@ proc track(tracked: PEffects, n: PNode) =
     setLen(tracked.locked, oldLocked)
     tracked.currLockLevel = oldLockLevel
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
-      nkMacroDef, nkTemplateDef:
+      nkMacroDef, nkTemplateDef, nkLambda, nkDo:
     discard
   else:
     for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
