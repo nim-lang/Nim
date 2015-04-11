@@ -1587,8 +1587,6 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
         [getTypeDesc(p.module, dest), rdCharLoc(a)])
   else:
     initLocExpr(p, n.sons[0], a)
-    if not leValue(n.sons[1], n.sons[2]):
-      internalError(n.info, "range check will always fail; empty range")
     putIntoDest(p, d, dest, ropecg(p.module, "(($1)#$5($2, $3, $4))", [
         getTypeDesc(p.module, dest), rdCharLoc(a),
         genLiteral(p, n.sons[1], dest), genLiteral(p, n.sons[2], dest),
