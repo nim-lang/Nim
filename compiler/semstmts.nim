@@ -687,6 +687,16 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         #debug s.typ
       s.ast = a
       popOwner()
+    let aa = a.sons[2]
+    if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
+       aa.sons[0].kind == nkObjectTy:
+      # give anonymous object a dummy symbol:
+      var st = s.typ
+      if st.kind == tyGenericBody: st = st.lastSon
+      internalAssert st.kind in {tyPtr, tyRef}
+      internalAssert st.lastSon.sym == nil
+      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+                              getCurrOwner(), s.info)
 
 proc checkForMetaFields(n: PNode) =
   template checkMeta(t) =
@@ -730,16 +740,6 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       checkConstructedType(s.info, s.typ)
       if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
         checkForMetaFields(s.typ.n)
-    let aa = a.sons[2]
-    if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
-       aa.sons[0].kind == nkObjectTy:
-      # give anonymous object a dummy symbol:
-      var st = s.typ
-      if st.kind == tyGenericBody: st = st.lastSon
-      internalAssert st.kind in {tyPtr, tyRef}
-      internalAssert st.lastSon.sym == nil
-      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
-                              getCurrOwner(), s.info)
 
 proc semTypeSection(c: PContext, n: PNode): PNode =
   ## Processes a type section. This must be done in separate passes, in order
