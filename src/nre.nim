@@ -189,17 +189,17 @@ proc getinfo[T](pattern: Regex, opt: cint): T =
 
 # Regex accessors {{{
 proc captureCount*(pattern: Regex): int =
-  return getinfo[int](pattern, pcre.INFO_CAPTURECOUNT)
+  return getinfo[cint](pattern, pcre.INFO_CAPTURECOUNT)
 
 proc captureNameId*(pattern: Regex): Table[string, int] =
   return pattern.captureNameToId
 
 proc matchesCrLf(pattern: Regex): bool =
-  let flags = getinfo[cint](pattern, pcre.INFO_OPTIONS)
+  let flags = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS))
   let newlineFlags = flags and (pcre.NEWLINE_CRLF or
                                 pcre.NEWLINE_ANY or
                                 pcre.NEWLINE_ANYCRLF)
-  if newLineFlags > 0:
+  if newLineFlags > 0u32:
     return true
 
   # get flags from build config
@@ -464,7 +464,8 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   ## -  ``proc findAll(...)`` returns a ``seq[string]``
   # see pcredemo for explaination
   let matchesCrLf = pattern.matchesCrLf()
-  let unicode = (getinfo[cint](pattern, pcre.INFO_OPTIONS) and pcre.UTF8) > 0
+  let unicode = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS) and
+    pcre.UTF8) > 0u32
   let strlen = if endpos == int.high: str.len else: endpos+1
 
   var offset = start
