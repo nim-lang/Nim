@@ -69,26 +69,25 @@ type
     ## Flags
     ## .....
     ##
-    ## -  ``8`` - treat both the pattern and subject as UTF8
-    ## -  ``9`` - prevents the pattern from being interpreted as UTF, no matter
+    ## -  ``8``, ``u``, ``<utf8>`` - treat both the pattern and subject as UTF8
+    ## -  ``9``, ``<no_utf8>`` - prevents the pattern from being interpreted as UTF, no matter
     ##    what
-    ## -  ``A`` - as if the pattern had a ``^`` at the beginning
-    ## -  ``E`` - DOLLAR\_ENDONLY
-    ## -  ``f`` - fails if there is not a match on the first line
-    ## -  ``i`` - case insensitive
-    ## -  ``m`` - multi-line, ``^`` and ``$`` match the beginning and end of
+    ## -  ``A``, ``<anchored>`` - as if the pattern had a ``^`` at the beginning
+    ## -  ``E``, ``<dollar_endonly>`` - DOLLAR\_ENDONLY
+    ## -  ``f``, ``<firstline>`` - fails if there is not a match on the first line
+    ## -  ``i``, ``<case_insensitive>`` - case insensitive
+    ## -  ``m``, ``<multiline>`` - multi-line, ``^`` and ``$`` match the beginning and end of
     ##    lines, not of the subject string
-    ## -  ``N`` - turn off auto-capture, ``(?foo)`` is necessary to capture.
-    ## -  ``s`` - ``.`` matches newline
-    ## -  ``U`` - expressions are not greedy by default. ``?`` can be added to
+    ## -  ``N``, ``<no_auto_capture>`` - turn off auto-capture, ``(?foo)`` is necessary to capture.
+    ## -  ``s``, ``<dotall>`` - ``.`` matches newline
+    ## -  ``U``, ``<ungreedy>`` - expressions are not greedy by default. ``?`` can be added to
     ##    a qualifier to make it greedy.
-    ## -  ``u`` - same as ``8``
-    ## -  ``W`` - Unicode character properties; ``\w`` matches ``к``.
-    ## -  ``X`` - "Extra", character escapes without special meaning (``\w``
+    ## -  ``W``, ``<ucp>`` - Unicode character properties; ``\w`` matches ``к``.
+    ## -  ``X``, ``<extra>`` - "Extra", character escapes without special meaning (``\w``
     ##    vs. ``\a``) are errors
-    ## -  ``x`` - extended, comments (``#``) and newlines are ignored
+    ## -  ``x``, ``<extended>`` - extended, comments (``#``) and newlines are ignored
     ##    (extended)
-    ## -  ``Y`` - pcre.NO\_START\_OPTIMIZE,
+    ## -  ``Y``, ``<no_start_optimize>`` - pcre.NO\_START\_OPTIMIZE,
     ## -  ``<cr>`` - newlines are separated by ``\r``
     ## -  ``<crlf>`` - newlines are separated by ``\r\n`` (Windows default)
     ## -  ``<lf>`` - newlines are separated by ``\n`` (UNIX default)
@@ -310,21 +309,35 @@ proc `==`*(a, b: RegexMatch): bool =
 # PCRE Options {{{
 let Options: Table[string, int] = {
   "8" : pcre.UTF8,
+  "utf8" : pcre.UTF8,
   "9" : pcre.NEVER_UTF,
+  "no_utf8" : pcre.NEVER_UTF,
   "A" : pcre.ANCHORED,
+  "anchored" : pcre.ANCHORED,
   # "C" : pcre.AUTO_CALLOUT, unsuported XXX
   "E" : pcre.DOLLAR_ENDONLY,
+  "dollar_endonly" : pcre.DOLLAR_ENDONLY,
   "f" : pcre.FIRSTLINE,
+  "firstline" : pcre.FIRSTLINE,
   "i" : pcre.CASELESS,
+  "case_insensitive" : pcre.CASELESS,
   "m" : pcre.MULTILINE,
+  "multiline" : pcre.MULTILINE,
   "N" : pcre.NO_AUTO_CAPTURE,
+  "no_auto_capture" : pcre.NO_AUTO_CAPTURE,
   "s" : pcre.DOTALL,
+  "dotall" : pcre.DOTALL,
   "U" : pcre.UNGREEDY,
+  "ungreedy" : pcre.UNGREEDY,
   "u" : pcre.UTF8,
   "W" : pcre.UCP,
+  "ucp" : pcre.UCP,
   "X" : pcre.EXTRA,
+  "extra" : pcre.EXTRA,
   "x" : pcre.EXTENDED,
+  "extended" : pcre.EXTENDED,
   "Y" : pcre.NO_START_OPTIMIZE,
+  "no_start_optimize" : pcre.NO_START_OPTIMIZE,
 
   "any"         : pcre.NEWLINE_ANY,
   "anycrlf"     : pcre.NEWLINE_ANYCRLF,
