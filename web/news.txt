@@ -34,7 +34,7 @@ News
     should be used instead.
   - ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
   - *arrow like* operators are not right associative anymore.
-  - *arrow like* operators are now required end with either ``->``, ``~>`` or
+  - *arrow like* operators are now required to end with either ``->``, ``~>`` or
     ``=>``, not just ``>``. Examples of operators still considered arrow like:
     ``->``, ``==>``, ``+=>``. On the other hand, the following operators are now
     considered regular operators again: ``|>``, ``-+>``, etc.

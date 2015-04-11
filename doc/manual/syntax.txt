@@ -15,8 +15,6 @@ Associativity
 Binary operators whose first character is ``^`` are right-associative, all
 other binary operators are left-associative.
 
-Operators ending in either ``->``, ``~>`` or ``=>`` are called
-`arrow like`:idx:.
 
 
 Precedence
@@ -33,9 +31,12 @@ as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
 For binary operators that are not keywords the precedence is determined by the
 following rules:
 
+Operators ending in either ``->``, ``~>`` or ``=>`` are called
+`arrow like`:idx:, and have the lowest precedence of all operators.
+
 If the operator ends with ``=`` and its first character is none of 
 ``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
-has the lowest precedence.
+has the second lowest precedence.
 
 Otherwise precedence is determined by the first character.
 

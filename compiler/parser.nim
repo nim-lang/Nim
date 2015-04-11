@@ -212,8 +212,8 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
     let relevantChar = tok.ident.s[0]
 
     # arrow like?
-    if L > 1 and tok.ident.s[^1] == '>' and tok.ident.s[^2] in {'-', '~', '='}:
-      return considerStrongSpaces(1)
+    if L > 1 and tok.ident.s[L-1] == '>' and
+      tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
 
     template considerAsgn(value: expr) =
       result = if tok.ident.s[L-1] == '=': 1 else: value
