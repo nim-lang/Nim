@@ -789,7 +789,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(typ)
     else:
-      for i in 0 .. <paramType.sons.len:
+      for i in 0 .. <paramType.len:
         if paramType.sons[i] == paramType:
           globalError(info, errIllegalRecursionInTypeX, typeToString(paramType))
         var lifted = liftingWalk(paramType.sons[i])
