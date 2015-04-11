@@ -39,6 +39,12 @@
 ##     return nothing[int]  # This line is actually optional,
 ##                          # because the default is empty
 ##
+##   try:
+##     assert("abc".find('c')[] == 2)  # Immediately extract the value
+##   except FieldError:  # If there is no value
+##     assert false  # This will not be reached, because the value is present
+##
+##
 ## How to deal with an absence of a value:
 ##
 ## .. code-block:: nim
@@ -53,8 +59,8 @@
 ##   assert(not result)
 ##
 ##   try:
-##     echo result.get
-##     assert(false)  # This will never be reached
+##     echo result[]
+##     assert(false)  # This will not be reached
 ##   except FieldError:  # Because an exception is raised
 ##     discard
 ##
@@ -66,9 +72,9 @@
 ##
 ##   if pos ?= "nim".find('i'):
 ##     assert(pos is int)  # This is a normal integer, no tricks.
-##     echo "Match found at position ", pos 
+##     echo "Match found at position ", pos
 ##   else:
-##     assert(false)  # This will never be reached
+##     assert(false)  # This will not be reached
 ##
 ##
 ## API Details
@@ -104,14 +110,14 @@ type
   Maybe*[T] = MaybeDistinct[T] or MaybeObj[T]
 
 
-template `?`*(T: typedesc): typedesc = 
+template `?`*(T: typedesc): typedesc =
   ## Returns ``MaybeDistinct[T]`` for types that have ``isNil`` defined
   ## and ``MaybeObj[T]`` for others.
   ##
   ## .. code-block:: nim
   ##
-  ##   assert ?string is MaybeDistinct
-  ##   assert ?int is MaybeObj
+  ##   assert(?string is MaybeDistinct)
+  ##   assert(?int is MaybeObj)
   when T is Nullable:
     MaybeDistinct[T]
   else:
@@ -169,7 +175,6 @@ proc `()`*[T](nothing: type(nothing), val: T): auto =
   ##
   ##   assert type(?Slice[int]) is MaybeDistinct
   ##   assert nothing(int.low..int.low).has == false
-  ## 
   if not isNil(val):
     raise newException(ValueError, "Can't create a `nothing` from non-nil")
   when val is Nullable:
@@ -198,18 +203,22 @@ proc val*[T](opt: Maybe[T]): T =
     opt.val
 
 
-proc get*[T](opt: Maybe[T]): T =
+proc `[]`*[T](opt: Maybe[T]): T =
   ## Returns the value of `opt`. Raises ``FieldError`` if it is `nothing`.
   if not opt:
     raise newException(FieldError, "Can't obtain a value from a `nothing`")
   opt.val
 
-proc get*[T](opt: Maybe[T], default: T): T =
+proc `or`*[T](opt: Maybe[T], default: T): T =
   ## Returns the value of `opt`, or `default` if it is `nothing`.
-  if opt:
-    opt.val
-  else:
-    default
+  if opt: opt.val
+  else: default
+
+proc `or`*[T](a, b: Maybe[T]): Maybe[T] =
+  ## Returns `a` if it is `just`, otherwise `b`.
+  if a: a
+  else: b
+
 
 proc `==`*[T](a, b: Maybe[T]): bool =
   (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
