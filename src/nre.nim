@@ -307,71 +307,61 @@ proc `==`*(a, b: RegexMatch): bool =
 
 # Creation & Destruction {{{
 # PCRE Options {{{
-let Options: Table[string, int] = {
-  "8" : pcre.UTF8,
-  "utf8" : pcre.UTF8,
-  "9" : pcre.NEVER_UTF,
-  "no_utf8" : pcre.NEVER_UTF,
-  "A" : pcre.ANCHORED,
-  "anchored" : pcre.ANCHORED,
-  # "C" : pcre.AUTO_CALLOUT, unsuported XXX
-  "E" : pcre.DOLLAR_ENDONLY,
-  "dollar_endonly" : pcre.DOLLAR_ENDONLY,
-  "f" : pcre.FIRSTLINE,
-  "firstline" : pcre.FIRSTLINE,
-  "i" : pcre.CASELESS,
-  "case_insensitive" : pcre.CASELESS,
-  "m" : pcre.MULTILINE,
-  "multiline" : pcre.MULTILINE,
-  "N" : pcre.NO_AUTO_CAPTURE,
-  "no_auto_capture" : pcre.NO_AUTO_CAPTURE,
-  "s" : pcre.DOTALL,
-  "dotall" : pcre.DOTALL,
-  "U" : pcre.UNGREEDY,
-  "ungreedy" : pcre.UNGREEDY,
-  "u" : pcre.UTF8,
-  "W" : pcre.UCP,
-  "ucp" : pcre.UCP,
-  "X" : pcre.EXTRA,
-  "extra" : pcre.EXTRA,
-  "x" : pcre.EXTENDED,
-  "extended" : pcre.EXTENDED,
-  "Y" : pcre.NO_START_OPTIMIZE,
-  "no_start_optimize" : pcre.NO_START_OPTIMIZE,
-
-  "any"         : pcre.NEWLINE_ANY,
-  "anycrlf"     : pcre.NEWLINE_ANYCRLF,
-  "cr"          : pcre.NEWLINE_CR,
-  "crlf"        : pcre.NEWLINE_CRLF,
-  "lf"          : pcre.NEWLINE_LF,
-  "bsr_anycrlf" : pcre.BSR_ANYCRLF,
-  "bsr_unicode" : pcre.BSR_UNICODE,
-  "js"          : pcre.JAVASCRIPT_COMPAT,
+const PcreOptions = {
+  "NEVER_UTF": pcre.NEVER_UTF,
+  "ANCHORED": pcre.ANCHORED,
+  "DOLLAR_ENDONLY": pcre.DOLLAR_ENDONLY,
+  "FIRSTLINE": pcre.FIRSTLINE,
+  "NO_AUTO_CAPTURE": pcre.NO_AUTO_CAPTURE,
+  "JAVASCRIPT_COMPAT": pcre.JAVASCRIPT_COMPAT,
+  "U": pcre.UTF8 or pcre.UCP
 }.toTable
 
-proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
-  result = (0, true)
+# Options that are supported inside regular expressions themselves
+const SkipOptions = [
+  "LIMIT_MATCH=", "LIMIT_RECURSION=", "NO_AUTO_POSSESS", "NO_START_OPT",
+  "UTF8", "UTF16", "UTF32", "UTF", "UCP",
+  "CR", "LF", "CRLF", "ANYCRLF", "ANY", "BSR_ANYCRLF", "BSR_UNICODE"
+]
 
-  var longOpt: string = nil
-  for i, c in opts:
-    # Handle long options {{{
-    if c == '<':
-      longOpt = ""
-      continue
+proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: bool] =
+  result = ("", 0, true)
 
-    if longOpt != nil:
-      if c == '>':
-        if longOpt == "no_study":
-          result.study = false
-        else:
-          result.flags = result.flags or Options.fget(longOpt)
-        longOpt = nil
+  var optionStart = 0
+  var equals = false
+  for i, c in pattern:
+    if optionStart == i:
+      if c != '(':
+        break
+      optionStart = i
+
+    elif optionStart == i-1:
+      if c != '*':
+        break
+
+    elif c == ')':
+      let name = pattern[optionStart+2 .. i-1]
+      if equals or name in SkipOptions:
+        result.pattern.add pattern[optionStart .. i]
+      elif PcreOptions.hasKey name:
+        result.flags = result.flags or PcreOptions[name]
+      elif name == "NO_STUDY":
+        result.study = false
       else:
-        longOpt.add(c.toLower)
-      continue
-    # }}}
+        break
+      optionStart = i+1
+      equals = false
 
-    result.flags = result.flags or Options.fget($c)
+    elif not equals:
+      if c == '=':
+        equals = true
+        if pattern[optionStart+2 .. i] notin SkipOptions:
+          break
+      elif c notin {'A'..'Z', '0'..'9', '_'}:
+        break
+
+  result.pattern.add pattern[optionStart .. pattern.high]
+
 # }}}
 
 type UncheckedArray {.unchecked.}[T] = array[0 .. 0, T]
@@ -402,24 +392,22 @@ proc getNameToNumberTable(pattern: Regex): Table[string, int] =
 
     result[name] = num
 
-proc initRegex(pattern: string, options: string): Regex =
+proc initRegex(pattern: string, flags: int, study = true): Regex =
   new(result, destroyRegex)
   result.pattern = pattern
 
   var errorMsg: cstring
   var errOffset: cint
 
-  let opts = tokenizeOptions(options)
-
   result.pcreObj = pcre.compile(cstring(pattern),
                                 # better hope int is at least 4 bytes..
-                                cint(opts.flags), addr errorMsg,
+                                cint(flags), addr errorMsg,
                                 addr errOffset, nil)
   if result.pcreObj == nil:
     # failed to compile
     raise SyntaxError(msg: $errorMsg, pos: errOffset, pattern: pattern)
 
-  if opts.study:
+  if study:
     # XXX investigate JIT
     result.pcreExtra = pcre.study(result.pcreObj, 0x0, addr errorMsg)
     if errorMsg != nil:
@@ -427,7 +415,9 @@ proc initRegex(pattern: string, options: string): Regex =
 
   result.captureNameToId = result.getNameToNumberTable()
 
-proc re*(pattern: string, options = ""): Regex = initRegex(pattern, options)
+proc re*(pattern: string): Regex =
+  let (pattern, flags, study) = extractOptions(pattern)
+  initRegex(pattern, flags, study)
 # }}}
 
 # Operations {{{

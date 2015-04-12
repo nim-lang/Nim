@@ -1,24 +1,30 @@
-import unittest
-import nre
+import unittest, private/pcre
+include nre
 
 suite "Test NRE initialization":
   test "correct intialization":
     check(re("[0-9]+") != nil)
-    check(re("[0-9]+", "i") != nil)
+    check(re("(?i)[0-9]+") != nil)
 
-  test "correct options":
-    expect(SyntaxError):  # ValueError would be bad
-      discard re("[0-9]+",
-        "89AEfimNsUWXxY<any><anycrlf><cr><crlf><lf><bsr_anycrlf><bsr_unicode><js><no_study>")
-    expect(SyntaxError):
-      discard re("[0-9]+",
-        "<utf8><no_utf8><anchored><dollar_endonly><firstline>" &
-        "<case_insensitive><multiline><no_auto_capture><dotall><ungreedy>" &
-        "<ucp><extra><extended><no_start_optimize>")
+  test "options":
+    check(extractOptions("(*NEVER_UTF)") ==
+          ("", pcre.NEVER_UTF, true))
+    check(extractOptions("(*UTF8)(*ANCHORED)(*UCP)z") ==
+          ("(*UTF8)(*UCP)z", pcre.ANCHORED, true))
+    check(extractOptions("(*ANCHORED)(*UTF8)(*JAVASCRIPT_COMPAT)z") ==
+          ("(*UTF8)z", pcre.ANCHORED or pcre.JAVASCRIPT_COMPAT, true))
+
+    check(extractOptions("(*NO_STUDY)(") == ("(", 0, false))
+
+    check(extractOptions("(*LIMIT_MATCH=6)(*ANCHORED)z") ==
+          ("(*LIMIT_MATCH=6)z", pcre.ANCHORED, true))
 
   test "incorrect options":
-    expect(KeyError): discard re("[0-9]+", "a")
-    expect(KeyError): discard re("[0-9]+", "<does_not_exist>")
+    for s in ["CR", "(CR", "(*CR", "(*abc)", "(*abc)CR",
+              "(?i)",
+              "(*LIMIT_MATCH=5", "(*NO_AUTO_POSSESS=5)"]:
+      let ss = s & "(*NEVER_UTF)"
+      check(extractOptions(ss) == (ss, 0, true))
 
   test "invalid regex":
     expect(SyntaxError): discard re("[0-9")
@@ -28,4 +34,3 @@ suite "Test NRE initialization":
       let ex = SyntaxError(getCurrentException())
       check(ex.pos == 4)
       check(ex.pattern == "[0-9")
-
