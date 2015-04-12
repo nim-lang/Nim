@@ -489,7 +489,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
     if match and
        match.get.matchBounds.a > match.get.matchBounds.b:
       # 0-len match
-      flags = pcre.NOTEMPTY_ATSTART or pcre.ANCHORED
+      flags = pcre.NOTEMPTY_ATSTART
 
     match = str.matchImpl(pattern, offset, endpos, flags)
 
