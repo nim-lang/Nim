@@ -882,9 +882,9 @@ else:
       let data = PData(info.key.data)
       assert data.fd == info.key.fd.TAsyncFD
       #echo("In poll ", data.fd.cint)
-      if EvError in info.events:
-        closeSocket(data.fd)
-        continue
+      # There may be EvError here, but we handle them in callbacks,
+      # so that exceptions can be raised from `send(...)` and
+      # `recv(...)` routines.
 
       if EvRead in info.events:
         # Callback may add items to ``data.readCBs`` which causes issues if
