@@ -47,14 +47,7 @@ from unicode import runeLenAt
 type
   Regex* = ref object
     ## Represents the pattern that things are matched against, constructed with
-    ## ``re(string, string)``. Examples: ``re"foo"``, ``re(r"foo # comment",
-    ## "x<anycrlf>")``, ``re"(?x)(*ANYCRLF)foo # comment"``. For more details
-    ## on the leading option groups, see the `Option
-    ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`__
-    ## and the `Newline
-    ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`__
-    ## sections of the `PCRE syntax
-    ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
+    ## ``re(string)``. Examples: ``re"foo"``, ``re(r"(*ANYCRLF)(?x)foo # comment".
     ##
     ## ``pattern: string``
     ##     the string that was used to create the pattern.
@@ -66,33 +59,36 @@ type
     ##     a table from the capture names to their numeric id.
     ##
     ##
-    ## Flags
-    ## .....
+    ## Options
+    ## .......
     ##
-    ## -  ``8``, ``u``, ``<utf8>`` - treat both the pattern and subject as UTF8
-    ## -  ``9``, ``<no_utf8>`` - prevents the pattern from being interpreted as UTF, no matter
-    ##    what
-    ## -  ``A``, ``<anchored>`` - as if the pattern had a ``^`` at the beginning
-    ## -  ``E``, ``<dollar_endonly>`` - DOLLAR\_ENDONLY
-    ## -  ``f``, ``<firstline>`` - fails if there is not a match on the first line
-    ## -  ``i``, ``<case_insensitive>`` - case insensitive
-    ## -  ``m``, ``<multiline>`` - multi-line, ``^`` and ``$`` match the beginning and end of
+    ## The following options may appear anywhere in the pattern, and they affect
+    ## the rest of it.
+    ##
+    ## -  ``(?i)`` - case insensitive
+    ## -  ``(?m)`` - multi-line: ``^`` and ``$`` match the beginning and end of
     ##    lines, not of the subject string
-    ## -  ``N``, ``<no_auto_capture>`` - turn off auto-capture, ``(?foo)`` is necessary to capture.
-    ## -  ``s``, ``<dotall>`` - ``.`` matches newline
-    ## -  ``U``, ``<ungreedy>`` - expressions are not greedy by default. ``?`` can be added to
-    ##    a qualifier to make it greedy.
-    ## -  ``W``, ``<ucp>`` - Unicode character properties; ``\w`` matches ``к``.
-    ## -  ``X``, ``<extra>`` - "Extra", character escapes without special meaning (``\w``
-    ##    vs. ``\a``) are errors
-    ## -  ``x``, ``<extended>`` - extended, comments (``#``) and newlines are ignored
-    ##    (extended)
-    ## -  ``Y``, ``<no_start_optimize>`` - pcre.NO\_START\_OPTIMIZE,
-    ## -  ``<cr>`` - newlines are separated by ``\r``
-    ## -  ``<crlf>`` - newlines are separated by ``\r\n`` (Windows default)
-    ## -  ``<lf>`` - newlines are separated by ``\n`` (UNIX default)
-    ## -  ``<anycrlf>`` - newlines are separated by any of the above
-    ## -  ``<any>`` - newlines are separated by any of the above and Unicode
+    ## -  ``(?s)`` - ``.`` also matches newline (*dotall*)
+    ## -  ``(?U)`` - expressions are not greedy by default. ``?`` can be added
+    ##    to a qualifier to make it greedy
+    ## -  ``(?x)`` - whitespace and comments (``#``) are ignored (*extended*)
+    ## -  ``(?X)`` - character escapes without special meaning (``\w`` vs.
+    ##    ``\a``) are errors (*extra*)
+    ##
+    ## One or a combination of these options may appear only at the beginning
+    ## of the pattern:
+    ##
+    ## -  ``(*UTF8)`` - treat both the pattern and subject as UTF-8
+    ## -  ``(*UCP)`` - Unicode character properties; ``\w`` matches ``я``
+    ## -  ``(*U)`` - a combination of the two options above
+    ## -  ``(*FIRSTLINE*)`` - fails if there is not a match on the first line
+    ## -  ``(*NO_AUTO_CAPTURE)`` - turn off auto-capture for groups;
+    ##    ``(?<name>...)`` can be used to capture
+    ## -  ``(*CR)`` - newlines are separated by ``\r``
+    ## -  ``(*LF)`` - newlines are separated by ``\n`` (UNIX default)
+    ## -  ``(*CRLF)`` - newlines are separated by ``\r\n`` (Windows default)
+    ## -  ``(*ANYCRLF)`` - newlines are separated by any of the above
+    ## -  ``(*ANY)`` - newlines are separated by any of the above and Unicode
     ##    newlines:
     ##
     ##     single characters VT (vertical tab, U+000B), FF (form feed, U+000C),
@@ -101,10 +97,15 @@ type
     ##     are recognized only in UTF-8 mode.
     ##     —  man pcre
     ##
-    ## -  ``<bsr_anycrlf>`` - ``\R`` matches CR, LF, or CRLF
-    ## -  ``<bsr_unicode>`` - ``\R`` matches any unicode newline
-    ## -  ``<js>`` - Javascript compatibility
-    ## -  ``<no_study>`` - turn off studying; study is enabled by deafault
+    ## -  ``(*JAVASCRIPT_COMPAT)`` - JavaScript compatibility
+    ## -  ``(*NO_STUDY)`` - turn off studying; study is enabled by default
+    ##
+    ## For more details on the leading option groups, see the `Option
+    ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`__
+    ## and the `Newline
+    ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`__
+    ## sections of the `PCRE syntax
+    ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
