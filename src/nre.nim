@@ -496,6 +496,9 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
     if match.isNone:
       # either the end of the input or the string
       # cannot be split here
+      if offset >= strlen:
+        break
+
       if matchesCrLf and offset < (str.len - 1) and
          str[offset] == '\r' and str[offset + 1] == '\l':
         # if PCRE treats CrLf as newline, skip both at the same time
@@ -511,9 +514,6 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
 
       yield match.get
 
-    if offset >= strlen:
-      # do while
-      break
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   ## Finds the given pattern in the string between the end and start

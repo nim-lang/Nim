@@ -19,6 +19,7 @@ suite "find":
   test "len 0 find":
     check("".findAll(re"\ ") == newSeq[string]())
     check("".findAll(re"") == @[""])
+    check("abc".findAll(re"") == @["", "", "", ""])
     check("word word".findAll(re"\b") == @["", "", "", ""])
     check("word\r\lword".findAll(re(r"$", "m<anycrlf>")) == @["", ""])
     check("слово слово".findAll(re(r"\b", "uW")) == @["", "", "", ""])
