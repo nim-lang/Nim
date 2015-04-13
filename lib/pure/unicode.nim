@@ -1160,7 +1160,7 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc isAlnum*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is an *alphanumberic* Unicode character (i.e. a letter or a numerical (Arabic) digit)
+  ## returns true iff `c` is an *alphanumeric* Unicode character (i.e. a letter or a numerical (Arabic) digit)
   if isAlpha(c):
     return true
   var c = RuneImpl(c)
