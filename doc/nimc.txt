@@ -506,7 +506,7 @@ For example:
 .. code-block:: nim
 
   type Input {.importcpp: "System::Input".} = object
-  proc getSubsystem*[T](): ptr T {.importcpp: "SystemManager::getSubsystem<'*0>()".}
+  proc getSubsystem*[T](): ptr T {.importcpp: "SystemManager::getSubsystem<'*0>()", nodecl.}
 
   let x: ptr Input = getSubsystem[Input]()
 
