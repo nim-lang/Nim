@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -311,6 +311,10 @@ const
     0xffca,  0xffcf,  #  -
     0xffd2,  0xffd7,  #  -
     0xffda,  0xffdc]  #  -
+  
+  numRanges = [
+    0x0030,  0x0039   #  the characters '0'-'9'
+  ]
 
   alphaSinglets = [
     0x00aa,  #
@@ -1154,6 +1158,20 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == toupperSinglets[p]:
     return Rune(c + toupperSinglets[p+1] - 500)
   return Rune(c)
+
+proc isAlnum*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## returns true iff `c` is an *alphanumberic* Unicode character (i.e. a letter or a numerical (Arabic) digit)
+  if isAlpha(c):
+    return true
+  var c = RuneImpl(c)
+  var p = binarySearch(c, numRanges, len(numRanges) div 2, 2)
+  if p >= 0 and c >= numRanges[p] and c <= numRanges[p+1]:
+    return true
+
+proc isDigit*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## returns true iff `c` is a *numeric* Unicode character (i.e. an Arabic digit)
+  if not(isAlpha(c)) and isAlnum(c):
+    return true
 
 proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   var c = RuneImpl(c)
