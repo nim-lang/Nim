@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -30,6 +30,8 @@ type
     setPositionImpl*: proc (s: Stream, pos: int) {.nimcall, tags: [], gcsafe.}
     getPositionImpl*: proc (s: Stream): int {.nimcall, tags: [], gcsafe.}
     readDataImpl*: proc (s: Stream, buffer: pointer,
+                         bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
+    peekDataImpl*: proc (s: Stream, buffer: pointer, 
                          bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
     writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int) {.nimcall,
       tags: [WriteIOEffect], gcsafe.}
@@ -84,6 +86,11 @@ proc readData*(s, unused: Stream, buffer: pointer,
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
+proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
+  ## low level proc that reads data into an untyped `buffer` of `bufLen` size
+  ## without moving stream position
+  result = s.peekDataImpl(s, buffer, bufLen)
+
 proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   ## low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
@@ -121,44 +128,89 @@ proc read[T](s: Stream, result: var T) =
   if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
+proc peek[T](s: Stream, result: var T) =
+  ## generic peek procedure. Peeks `result` from the stream `s`.
+  if peekData(s, addr(result), sizeof(T)) != sizeof(T):
+    raise newEIO("cannot read from stream")
+
 proc readChar*(s: Stream): char =
   ## reads a char from the stream `s`. Raises `EIO` if an error occurred.
   ## Returns '\0' as an EOF marker.
   if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
+proc peekChar*(s: Stream): char =
+  ## peeks a char from the stream `s`. Raises `EIO` if an error occurred.
+  ## Returns '\0' as an EOF marker.
+  if peekData(s, addr(result), sizeof(result)) != 1: result = '\0'
+
 proc readBool*(s: Stream): bool = 
   ## reads a bool from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
+
+proc peekBool*(s: Stream): bool =
+  ## peeks a bool from the stream `s`. Raises `EIO` if an error occured.
+  peek(s, result)
 
 proc readInt8*(s: Stream): int8 = 
   ## reads an int8 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
+proc peekInt8*(s: Stream): int8 =
+  ## peeks an int8 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
+
 proc readInt16*(s: Stream): int16 = 
   ## reads an int16 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
+
+proc peekInt16*(s: Stream): int16 = 
+  ## peeks an int16 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
 
 proc readInt32*(s: Stream): int32 = 
   ## reads an int32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
+proc peekInt32*(s: Stream): int32 = 
+  ## peeks an int32 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
+
 proc readInt64*(s: Stream): int64 = 
   ## reads an int64 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
+
+proc peekInt64*(s: Stream): int64 = 
+  ## peeks an int64 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
 
 proc readFloat32*(s: Stream): float32 = 
   ## reads a float32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
+proc peekFloat32*(s: Stream): float32 = 
+  ## peeks a float32 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
+
 proc readFloat64*(s: Stream): float64 = 
   ## reads a float64 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
+
+proc peekFloat64*(s: Stream): float64 = 
+  ## peeks a float64 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
 
 proc readStr*(s: Stream, length: int): TaintedString = 
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if 
   ## an error occurred.
   result = newString(length).TaintedString
   var L = readData(s, addr(string(result)[0]), length)
+  if L != length: setLen(result.string, L)
+
+proc peekStr*(s: Stream, length: int): TaintedString = 
+  ## peeks a string of length `length` from the stream `s`. Raises `EIO` if 
+  ## an error occurred.
+  result = newString(length).TaintedString
+  var L = peekData(s, addr(string(result)[0]), length)
   if L != length: setLen(result.string, L)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =
@@ -181,6 +233,30 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     line.string.add(c)
   result = true
 
+proc peekLine*(s: Stream, line: var TaintedString): bool =
+  ## peeks a line of text from the stream `s` into `line`. `line` must not be
+  ## ``nil``! May throw an IO exception.
+  ## A line of text may be delimited by ``CR``, ``LF`` or
+  ## ``CRLF``. The newline character(s) are not part of the returned string.
+  ## Returns ``false`` if the end of the file has been reached, ``true``
+  ## otherwise. If ``false`` is returned `line` contains no new data.
+  line.string.setLen(0)
+  let pos = getPosition(s)
+  while true:
+    var c = readChar(s)
+    if c == '\c': 
+      c = readChar(s)
+      break
+    elif c == '\L': break
+    elif c == '\0':
+      if line.len > 0: break
+      else: 
+        setPosition(s, pos)
+        return false
+    line.string.add(c)
+  setPosition(s, pos)
+  result = true
+
 proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
   ## `EIO` if an error occurred.
@@ -191,6 +267,23 @@ proc readLine*(s: Stream): TaintedString =
       c = readChar(s)
       break
     if c == '\L' or c == '\0':
+      break
+    else:
+      result.string.add(c)
+
+proc peekLine*(s: Stream): TaintedString =
+  ## Peeks a line from a stream `s`. Note: This is not very efficient. Raises 
+  ## `EIO` if an error occurred.
+  result = TaintedString""
+  let pos = getPosition(s)
+  while true:
+    var c = readChar(s)
+    if c == '\c': 
+      c = readChar(s)
+      setPosition(s, pos)
+      break
+    if c == '\L' or c == '\0':
+      setPosition(s, pos)
       break
     else:
       result.string.add(c)
@@ -222,6 +315,12 @@ proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
     copyMem(buffer, addr(s.data[s.pos]), result)
     inc(s.pos, result)
 
+proc ssPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+  var s = StringStream(s)
+  result = min(bufLen, s.data.len - s.pos)
+  if result > 0: 
+    copyMem(buffer, addr(s.data[s.pos]), result)
+
 proc ssWriteData(s: Stream, buffer: pointer, bufLen: int) = 
   var s = StringStream(s)
   if bufLen <= 0:
@@ -245,6 +344,7 @@ proc newStringStream*(s: string = ""): StringStream =
   result.setPositionImpl = ssSetPosition
   result.getPositionImpl = ssGetPosition
   result.readDataImpl = ssReadData
+  result.peekDataImpl = ssPeekData
   result.writeDataImpl = ssWriteData
 
 when not defined(js):
@@ -266,6 +366,11 @@ when not defined(js):
 
   proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
     result = readBuffer(FileStream(s).f, buffer, bufLen)
+  
+  proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+    let pos = fsGetPosition(s)
+    result = readBuffer(FileStream(s).f, buffer, bufLen)
+    fsSetPosition(s, pos)
 
   proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
     if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
@@ -280,6 +385,7 @@ when not defined(js):
     result.setPositionImpl = fsSetPosition
     result.getPositionImpl = fsGetPosition
     result.readDataImpl = fsReadData
+    result.peekDataImpl = fsPeekData
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
 
@@ -329,6 +435,9 @@ else:
     proc hsReadData(s: FileHandleStream, buffer: pointer, bufLen: int): int = 
       result = posix.read(s.handle, buffer, bufLen)
       inc(s.pos, result)
+    
+    proc hsPeekData(s: FileHandleStream, buffer: pointer, bufLen: int): int =
+      result = posix.read(s.handle, buffer, bufLen)
       
     proc hsWriteData(s: FileHandleStream, buffer: pointer, bufLen: int) = 
       if posix.write(s.handle, buffer, bufLen) != bufLen: 
@@ -344,6 +453,7 @@ else:
     result.setPosition = hsSetPosition
     result.getPosition = hsGetPosition
     result.readData = hsReadData
+    result.peekData = hsPeekData
     result.writeData = hsWriteData
 
   proc newFileHandleStream*(filename: string, 
