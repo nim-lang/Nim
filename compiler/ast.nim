@@ -795,8 +795,8 @@ type
                               # for enum types a list of symbols
                               # for tyInt it can be the int literal
                               # for procs and tyGenericBody, it's the
-                              # the body of the user-defined type class
                               # formal param list
+                              # for concepts, the concept body
                               # else: unused
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them

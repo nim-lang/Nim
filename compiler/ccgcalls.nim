@@ -385,18 +385,11 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
       inc j
       inc i
     of '\'':
-      inc i
-      let stars = i
-      while pat[i] == '*': inc i
-      if pat[i] in Digits:
-        let j = pat[i].ord - '0'.ord
-        var t = typ.sons[j]
-        for k in 1..i-stars:
-          if t != nil and t.len > 0:
-            t = if t.kind == tyGenericInst: t.sons[1] else: t.elemType
+      var idx, stars: int
+      if scanCppGenericSlot(pat, i, idx, stars):
+        var t = resolveStarsInCppType(typ, idx, stars)
         if t == nil: result.add(~"void")
         else: result.add(getTypeDesc(p.module, t))
-        inc i
     else:
       let start = i
       while i < pat.len:

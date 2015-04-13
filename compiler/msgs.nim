@@ -827,6 +827,9 @@ proc localError*(info: TLineInfo, msg: TMsgKind, arg = "") =
 proc localError*(info: TLineInfo, arg: string) =
   liMessage(info, errGenerated, arg, doNothing)
 
+proc localError*(info: TLineInfo, format: string, params: openarray[string]) =
+  localError(info, format % params)
+
 proc message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
