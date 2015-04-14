@@ -87,7 +87,7 @@ when someGcc and hasThreadSupport:
 
   proc atomicCompareExchange*[T: TAtomType](p, expected, desired: ptr T,
     weak: bool, success_memmodel: AtomMemModel, failure_memmodel: AtomMemModel): bool {.
-    importc: "__atomic_compare_exchange_n ", nodecl.}
+    importc: "__atomic_compare_exchange", nodecl.}
     ## This proc implements the generic version of atomic_compare_exchange.
     ## The proc is virtually identical to atomic_compare_exchange_n, except the desired
     ## value is also a pointer.
