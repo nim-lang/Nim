@@ -7,8 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. Consider using the pegs module
-## instead.
+## Regular expression support for Nim. Consider using the pegs module instead.
+##
+## There is an alternative regular expressions library with a more unified API:
+## `nre <https://github.com/flaviut/nre>`_. It may be added to the standard
+## library in the future, instead of `re`.
 ##
 ## **Note:** The 're' proc defaults to the **extended regular expression
 ## syntax** which lets you use whitespace freely to make your regexes readable.
