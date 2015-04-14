@@ -944,8 +944,7 @@ proc parseDoBlock(p: var TParser): PNode =
   getTok(p)
   let params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
-  eat(p, tkColon)
-  skipComment(p, result)
+  colcom(p, result)
   result = newProcNode(nkDo, info, parseStmt(p),
                        params = params,
                        pragmas = pragmas)
@@ -1310,8 +1309,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
     var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
     addSon(branch, parseExpr(p))
-    eat(p, tkColon)
-    skipComment(p, branch)
+    colcom(p, branch)
     addSon(branch, parseStmt(p))
     skipComment(p, branch)
     addSon(result, branch)
@@ -1319,8 +1317,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   if p.tok.tokType == tkElse and sameOrNoInd(p):
     var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
-    eat(p, tkColon)
-    skipComment(p, branch)
+    colcom(p, branch)
     addSon(branch, parseStmt(p))
     addSon(result, branch)
 
@@ -1391,8 +1388,7 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
   #|            (optInd 'finally' colcom stmt)?
   result = newNodeP(nkTryStmt, p)
   getTok(p)
-  eat(p, tkColon)
-  skipComment(p, result)
+  colcom(p, result)
   addSon(result, parseStmt(p))
   var b: PNode = nil
   while sameOrNoInd(p) or isExpr:
