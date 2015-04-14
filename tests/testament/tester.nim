@@ -87,6 +87,25 @@ proc callCompiler(cmdTemplate, filename, options: string,
   elif suc =~ pegSuccess:
     result.err = reSuccess
 
+proc callCCompiler(cmdTemplate, filename, options: string,
+                  target: TTarget): TSpec =
+  let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+                       "options", options, "file", filename.quoteShell])
+  var p = startProcess(command="gcc", args=c[4.. ^1],
+                       options={poStdErrToStdOut, poUsePath})
+  let outp = p.outputStream
+  var x = newStringOfCap(120)
+  result.nimout = ""
+  result.msg = ""
+  result.file = ""
+  result.outp = ""
+  result.line = -1
+  while outp.readLine(x.TaintedString) or running(p):
+    result.nimout.add(x & "\n")
+  close(p)
+  if p.peekExitCode == 0:
+    result.err = reSuccess
+
 proc initResults: TResults =
   result.total = 0
   result.passed = 0
@@ -247,8 +266,22 @@ proc testNoSpec(r: var TResults, test: TTest) =
   r.addResult(test, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
 
+proc testC(r: var TResults, test: TTest) =
+  # runs C code. Doesn't support any specs, just goes by exit code.
+  let tname = test.name.addFileExt(".c")
+  inc(r.total)
+  styledEcho "Processing ", fgCyan, extractFilename(tname)
+  var given = callCCompiler(cmdTemplate, test.name & ".c", test.options, test.target)
+  if given.err != reSuccess:
+    r.addResult(test, "", given.msg, given.err)
+  elif test.action == actionRun:
+    let exeFile = changeFileExt(test.name, ExeExt)
+    var (buf, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUseShell})
+    if exitCode != 0: given.err = reExitCodesDiffer
+  if given.err == reSuccess: inc(r.passed)
+
 proc makeTest(test, options: string, cat: Category, action = actionCompile,
-              target = targetC): TTest =
+              target = targetC, env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
   result = TTest(cat: cat, name: test, options: options,
                  target: target, action: action)

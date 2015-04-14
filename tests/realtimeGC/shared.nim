@@ -4,6 +4,8 @@ discard """
 
 import strutils
 
+# Global state, accessing with threads, no locks. Don't do this at
+# home.
 var gCounter: uint64
 var gTxStatus: bool
 var gRxStatus: bool
@@ -55,7 +57,7 @@ proc count() {.exportc: "count", dynlib.} =
   gCounter += 1
   # echo("gCounter: ", gCounter)
 
-proc occupiedMem() {.exportc: "occupiedMem", dynlib.} =
-  echo("Occupied Memmory: ", getOccupiedMem())
+proc checkOccupiedMem() {.exportc: "checkOccupiedMem", dynlib.} =
+  if getOccupiedMem() > 10_000_000:
+    quit 1
   discard
-

@@ -21,24 +21,24 @@ int main(int argc, char* argv[])
     void* hndl;
     pFunc status;
     pFunc count;
-    pFunc occupiedMem;
+    pFunc checkOccupiedMem;
 
 #ifdef WIN
-    hndl = (void*) LoadLibrary((char const*)"./shared.dll");
+    hndl = (void*) LoadLibrary((char const*)"./tests/realtimeGC/shared.dll");
     status = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"status");
     count = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"count");
-    occupiedMem = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"occupiedMem");
+    checkOccupiedMem = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"checkOccupiedMem");
 #else /* OSX || NIX */
-    hndl = (void*) dlopen((char const*)"./libshared.so", RTLD_LAZY);
+    hndl = (void*) dlopen((char const*)"./tests/realtimeGC/libshared.so", RTLD_LAZY);
     status = (pFunc) dlsym(hndl, (char const*)"status");
     count = (pFunc) dlsym(hndl, (char const*)"count");
-    occupiedMem = (pFunc) dlsym(hndl, (char const*)"occupiedMem");
+    checkOccupiedMem = (pFunc) dlsym(hndl, (char const*)"checkOccupiedMem");
 #endif
 
     assert(hndl);
     assert(status);
     assert(count);
-    assert(occupiedMem);
+    assert(checkOccupiedMem);
 
     time_t startTime = time((time_t*)0);
     time_t runTime = (time_t)(RUNTIME);
@@ -52,9 +52,9 @@ int main(int argc, char* argv[])
             status();
         /* printf("2. sleeping...\n"); */
         sleep(1);
-        occupiedMem();
+        checkOccupiedMem();
         accumTime = time((time_t*)0) - startTime;
-        printf("--- Minutes left to run: %d\n", (int)(runTime-accumTime)/60);
+        /* printf("--- Minutes left to run: %d\n", (int)(runTime-accumTime)/60); */
     }
     printf("Cleaning up the shared object pointer...\n");
 #ifdef WIN
@@ -65,7 +65,3 @@ int main(int argc, char* argv[])
     printf("Done\n");
     return 0;
 }
-
-
-
-
