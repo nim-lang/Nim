@@ -2,7 +2,7 @@ module = stmt ^* (';' / IND{=})
 comma = ',' COMMENT?
 semicolon = ';' COMMENT?
 colon = ':' COMMENT?
-colcom = ':' COMMENT?
+colcom = (IND{>} | ':' COMMENT?)
 operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
          | 'or' | 'xor' | 'and'
          | 'is' | 'isnot' | 'in' | 'notin' | 'of'

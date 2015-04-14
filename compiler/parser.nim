@@ -33,6 +33,7 @@ type
     currInd: int              # current indentation level
     firstTok, strongSpaces: bool # Has the first token been read?
                                  # Is strongSpaces on?
+    optionalColon: bool       # Is optionalColon on?
     lex*: TLexer              # The lexer that is used for parsing
     tok*: TToken              # The current token
     inPragma: int             # Pragma level
@@ -72,7 +73,7 @@ proc getTok(p: var TParser) =
   rawGetTok(p.lex, p.tok)
 
 proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream,
-                 strongSpaces=false) =
+                 strongSpaces=false, optionalColon=false) =
   ## Open a parser, using the given arguments to set up its internal state.
   ##
   initToken(p.tok)
@@ -80,6 +81,7 @@ proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream,
   getTok(p)                   # read the first token
   p.firstTok = true
   p.strongSpaces = strongSpaces
+  p.optionalColon = optionalColon
 
 proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
                  strongSpaces=false) =
@@ -268,7 +270,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #| comma = ',' COMMENT?
 #| semicolon = ';' COMMENT?
 #| colon = ':' COMMENT?
-#| colcom = ':' COMMENT?
+#| colcom = (IND{>} | ':' COMMENT?)
 #|
 #| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 #|          | 'or' | 'xor' | 'and'
@@ -293,8 +295,9 @@ proc checkBinary(p: TParser) {.inline.} =
 #| dollarExpr = primary (OP10 optInd primary)*
 
 proc colcom(p: var TParser, n: PNode) =
-  eat(p, tkColon)
-  skipComment(p, n)
+  if not p.optionalColon or not realInd(p):
+    eat(p, tkColon)
+    skipComment(p, n)
 
 proc parseSymbol(p: var TParser, allowNil = false): PNode =
   #| symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
@@ -382,6 +385,7 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
   #| exprList = expr ^+ comma
   getTok(p)
   optInd(p, result)
+  if p.optionalColon and realInd(p): return
   while (p.tok.tokType != endTok) and (p.tok.tokType != tkEof):
     var a = parseExpr(p)
     addSon(result, a)
