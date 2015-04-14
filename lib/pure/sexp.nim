@@ -19,6 +19,7 @@ type
     sexpInt,             ## an integer literal
     sexpFloat,           ## a float literal
     sexpNil,             ## the value ``nil``
+    sexpDot,             ## the dot to separate car/cdr
     sexpListStart,       ## start of a list: the ``(`` token
     sexpListEnd,         ## end of a list: the ``)`` token
 
@@ -30,6 +31,7 @@ type
     tkInt,
     tkFloat,
     tkNil,
+    tkDot,
     tkParensLe,
     tkParensRi
     tkSpace
@@ -41,16 +43,11 @@ type
     errQuoteExpected,      ## ``"`` expected
     errEofExpected,        ## EOF expected
 
-  ParserState = enum
-    stateEof, stateStart, stateList, stateListExpectsSpace
-
   SexpParser* = object of BaseLexer ## the parser object.
     a: string
     tok: TTokKind
     kind: SexpEventKind
     err: SexpError
-    state: seq[ParserState]
-    filename: string
 
 const
   errorMessages: array [SexpError, string] = [
@@ -68,17 +65,9 @@ const
     "int literal",
     "float literal",
     "nil",
-    "(", ")", " "
+    ".",
+    "(", ")", "space"
   ]
-
-proc open*(my: var SexpParser, input: Stream, filename: string) =
-  ## initializes the parser with an input stream. `Filename` is only used
-  ## for nice error messages.
-  lexbase.open(my, input)
-  my.filename = filename
-  my.state = @[stateStart]
-  my.kind = sexpError
-  my.a = ""
 
 proc close*(my: var SexpParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
@@ -112,21 +101,15 @@ proc getLine*(my: SexpParser): int {.inline.} =
   ## get the current line the parser has arrived at.
   result = my.lineNumber
 
-proc getFilename*(my: SexpParser): string {.inline.} =
-  ## get the filename of the file that the parser processes.
-  result = my.filename
-
 proc errorMsg*(my: SexpParser): string =
   ## returns a helpful error message for the event ``sexpError``
   assert(my.kind == sexpError)
-  result = "$1($2, $3) Error: $4" % [
-    my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
+  result = "($1, $2) Error: $3" % [$getLine(my), $getColumn(my), errorMessages[my.err]]
 
 proc errorMsgExpected*(my: SexpParser, e: string): string =
   ## returns an error message "`e` expected" in the same format as the
   ## other error messages
-  result = "$1($2, $3) Error: $4" % [
-    my.filename, $getLine(my), $getColumn(my), e & " expected"]
+  result = "($1, $2) Error: $3" % [$getLine(my), $getColumn(my), e & " expected"]
 
 proc handleHexChar(c: char, x: var int): bool =
   result = true # Success
@@ -237,7 +220,8 @@ proc parseSymbol(my: var SexpParser) =
 proc getTok(my: var SexpParser): TTokKind =
   setLen(my.a, 0)
   case my.buf[my.bufpos]
-  of '-', '.', '0'..'9':
+  of '-', '0'..'9': # numbers that start with a . are not parsed
+                    # correctly.
     parseNumber(my)
     if {'.', 'e', 'E'} in my.a:
       result = tkFloat
@@ -262,64 +246,13 @@ proc getTok(my: var SexpParser): TTokKind =
   of ' ':
     result = tkSpace
     inc(my.bufpos)
+  of '.':
+    result = tkDot
+    inc(my.bufpos)
   else:
     inc(my.bufpos)
     result = tkError
   my.tok = result
-
-proc next*(my: var SexpParser) =
-  ## retrieves the first/next event. This controls the parser.
-  var tk = getTok(my)
-  var i = my.state.len-1
-  # the following code is a state machine. If we had proper coroutines,
-  # the code could be much simpler.
-  case my.state[i]
-  of stateEof:
-    if tk == tkEof:
-      my.kind = sexpEof
-    else:
-      my.kind = sexpError
-      my.err = errEofExpected
-  of stateStart:
-    # tokens allowed?
-    case tk
-    of tkString, tkInt, tkFloat, tkSymbol, tkNil:
-      my.state[i] = stateEof # expect EOF next!
-      my.kind = SexpEventKind(ord(tk))
-    of tkParensLe:
-      my.state.add(stateList)
-      my.kind = sexpListStart
-    of tkEof:
-      my.kind = sexpEof
-    else:
-      my.kind = sexpError
-      my.err = errEofExpected
-  of stateList:
-    case tk
-    of tkString, tkInt, tkFloat, tkSymbol, tkNil:
-      my.kind = SexpEventKind(ord(tk))
-      my.state.add(stateListExpectsSpace)
-    of tkParensLe:
-      my.state.add(stateList)
-      my.kind = sexpListStart
-    of tkParensRi:
-      my.kind = sexpListEnd
-      discard my.state.pop()
-    else:
-      my.kind = sexpError
-      my.err = errParensRiExpected
-  of stateListExpectsSpace:
-    case tk
-    of tkSpace:
-      discard my.state.pop()
-      next(my)
-    of tkParensLe:
-      my.kind = sexpListEnd
-      discard my.state.pop()
-      discard my.state.pop()
-    else:
-      my.kind = sexpError
-      my.err = errParensRiExpected
 
 # ------------- higher level interface ---------------------------------------
 
@@ -329,8 +262,9 @@ type
     SInt,
     SFloat,
     SString,
-    SSymbol
+    SSymbol,
     SList,
+    SCons
 
   SexpNode* = ref SexpNodeObj ## SEXP node
   SexpNodeObj* {.acyclic.} = object
@@ -345,8 +279,13 @@ type
       fnum*: float
     of SList:
       elems*: seq[SexpNode]
+    of SCons:
+      car: SexpNode
+      cdr: SexpNode
     of SNil:
       discard
+
+  Cons = tuple[car: SexpNode, cdr: SexpNode]
 
   SexpParsingError* = object of ValueError ## is raised for a SEXP error
 
@@ -380,6 +319,13 @@ proc newSFloat*(n: float): SexpNode =
 proc newSNil*(): SexpNode =
   ## Creates a new `SNil SexpNode`.
   new(result)
+
+proc newSCons*(car, cdr: SexpNode): SexpNode =
+  ## Creates a new `SCons SexpNode`
+  new(result)
+  result.kind = SCons
+  result.car = car
+  result.cdr = cdr
 
 proc newSList*(): SexpNode =
   ## Creates a new `SList SexpNode`
@@ -432,6 +378,14 @@ proc getElems*(n: SexpNode, default: seq[SexpNode] = @[]): seq[SexpNode] =
   if n.kind == SNil: return @[]
   elif n.kind != SList: return default
   else: return n.elems
+
+proc getCons*(n: SexpNode, defaults: Cons = (newSNil(), newSNil())): Cons =
+  ## Retrieves the cons value of a `SList SexpNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``SList``.
+  if n.kind == SCons: return (n.car, n.cdr)
+  elif n.kind == SList: return (n.elems[0], n.elems[1])
+  else: return defaults
 
 proc `sexp`*(s: string): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SString SexpNode`.
@@ -506,6 +460,8 @@ proc `==`* (a,b: SexpNode): bool =
       a.elems == b.elems
     of SSymbol:
       a.symbol == b.symbol
+    of SCons:
+      a.car == b.car and a.cdr == b.cdr
 
 proc hash* (n:SexpNode): THash =
   ## Compute the hash for a SEXP node
@@ -522,6 +478,8 @@ proc hash* (n:SexpNode): THash =
     result = hash(0)
   of SSymbol:
     result = hash(n.symbol)
+  of SCons:
+    result = hash(n.car) !& hash(n.cdr)
 
 proc len*(n: SexpNode): int =
   ## If `n` is a `SList`, it returns the number of elements.
@@ -571,6 +529,7 @@ proc escapeJson*(s: string): string =
       result.add("\\u")
       result.add(toHex(r, 4))
   result.add("\"")
+
 proc copy*(p: SexpNode): SexpNode =
   ## Performs a deep copy of `a`.
   case p.kind
@@ -588,6 +547,8 @@ proc copy*(p: SexpNode): SexpNode =
     result = newSList()
     for i in items(p.elems):
       result.elems.add(copy(i))
+  of SCons:
+    result = newSCons(copy(p.car), copy(p.cdr))
 
 proc toPretty(result: var string, node: SexpNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
@@ -622,9 +583,18 @@ proc toPretty(result: var string, node: SexpNode, indent = 2, ml = true,
       result.indent(currIndent)
       result.add(")")
     else: result.add("nil")
+  of SCons:
+    if lstArr: result.indent(currIndent)
+    result.add("(")
+    toPretty(result, node.car, indent, ml,
+        true, newIndent(currIndent, indent, ml))
+    result.add(" . ")
+    toPretty(result, node.cdr, indent, ml,
+        true, newIndent(currIndent, indent, ml))
+    result.add(")")
 
 proc pretty*(node: SexpNode, indent = 2): string =
-  ## Converts `node` to its JSON Representation, with indentation and
+  ## Converts `node` to its Sexp Representation, with indentation and
   ## on multiple lines.
   result = ""
   toPretty(result, node, indent)
@@ -675,41 +645,49 @@ proc parseSexp(p: var SexpParser): SexpNode =
   of tkParensLe:
     result = newSList()
     discard getTok(p)
-    while p.tok != tkParensRi:
+    while p.tok notin {tkParensRi, tkDot}:
       result.add(parseSexp(p))
       if p.tok != tkSpace: break
       discard getTok(p)
+    if p.tok == tkDot:
+      eat(p, tkDot)
+      eat(p, tkSpace)
+      result.add(parseSexp(p))
+      result = newSCons(result[0], result[1])
     eat(p, tkParensRi)
-  of tkSpace, tkError, tkParensRi, tkEof:
+  of tkSpace, tkDot, tkError, tkParensRi, tkEof:
     raiseParseErr(p, "(")
 
-proc parseSexp*(s: Stream, filename: string): SexpNode =
-  ## Parses from a stream `s` into a `SexpNode`. `filename` is only needed
-  ## for nice error messages.
+proc open*(my: var SexpParser, input: Stream) =
+  ## initializes the parser with an input stream.
+  lexbase.open(my, input)
+  my.kind = sexpError
+  my.a = ""
+
+proc parseSexp*(s: Stream): SexpNode =
+  ## Parses from a buffer `s` into a `SexpNode`.
   var p: SexpParser
-  p.open(s, filename)
+  p.open(s)
   discard getTok(p) # read first token
   result = p.parseSexp()
   p.close()
 
 proc parseSexp*(buffer: string): SexpNode =
-  ## Parses SEXP from `buffer`.
-  result = parseSexp(newStringStream(buffer), "input")
-
-proc parseFile*(filename: string): SexpNode =
-  ## Parses `file` into a `SexpNode`.
-  var stream = newFileStream(filename, fmRead)
-  if stream == nil:
-    raise newException(IOError, "cannot read from file: " & filename)
-  result = parseSexp(stream, filename)
+  ## Parses Sexp from `buffer`.
+  result = parseSexp(newStringStream(buffer))
 
 when isMainModule:
-  let testSexp = parseSexp("""(1 (98 2) nil (2) foobar "foo" 9.234)""")
-  assert(testSexp[0].getNum == 1)
-  assert(testSexp[1][0].getNum == 98)
-  assert(testSexp[2].getElems == @[])
-  assert(testSexp[4].getSymbol == "foobar")
-  assert(testSexp[5].getStr == "foo")
+  # let testSexp = parseSexp("""(1 (98 2) nil (2) foobar "foo" 9.234)""")
+  # assert(testSexp[0].getNum == 1)
+  # assert(testSexp[1][0].getNum == 98)
+  # assert(testSexp[2].getElems == @[])
+  # assert(testSexp[4].getSymbol == "foobar")
+  # assert(testSexp[5].getStr == "foo")
+
+  let alist = parseSexp("""((1 . 2) (2 . "foo"))""")
+  assert(alist[0].getCons.car.getNum == 1)
+  assert(alist[0].getCons.cdr.getNum == 2)
+  assert(alist[1].getCons.cdr.getStr == "foo")
 
   # Generator:
   var j = convertSexp([true, false, "foobar", [1, 2, "baz"]])

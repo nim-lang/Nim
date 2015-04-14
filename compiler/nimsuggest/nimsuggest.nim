@@ -11,7 +11,7 @@
 
 import strutils, os, parseopt, parseUtils
 import options, commands, modules, sem, passes, passaux, msgs, nimconf,
-  extccomp, condsyms, lists, net, rdstdin
+  extccomp, condsyms, lists, net, rdstdin, sexp
 
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
@@ -23,6 +23,7 @@ Options:
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
                           stdout instead of using sockets
+  --sexp                  talk in sexp, mainly for emacs epc.
 
 The server then listens to the connection and takes line-based commands.
 
