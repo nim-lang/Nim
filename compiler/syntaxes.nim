@@ -17,11 +17,11 @@ type
   TFilterKind* = enum 
     filtNone, filtTemplate, filtReplace, filtStrip
   TParserKind* = enum 
-    skinStandard, skinStrongSpaces, skinBraces, skinEndX
+    skinStandard, skinStrongSpaces, skinBraces, skinEndX, skinOptionalColon
 
 const 
   parserNames*: array[TParserKind, string] = ["standard", "strongspaces",
-                                              "braces", "endx"]
+                                              "braces", "endx", "optionalcolon"]
   filterNames*: array[TFilterKind, string] = ["none", "stdtmpl", "replace",
                                               "strip"]
 
@@ -55,7 +55,7 @@ proc parseFile(fileIdx: int32): PNode =
 
 proc parseAll(p: var TParsers): PNode = 
   case p.skin
-  of skinStandard, skinStrongSpaces:
+  of skinStandard, skinStrongSpaces, skinOptionalColon:
     result = parser.parseAll(p.parser)
   of skinBraces: 
     result = pbraces.parseAll(p.parser)
@@ -65,7 +65,7 @@ proc parseAll(p: var TParsers): PNode =
   
 proc parseTopLevelStmt(p: var TParsers): PNode = 
   case p.skin
-  of skinStandard, skinStrongSpaces:
+  of skinStandard, skinStrongSpaces, skinOptionalColon:
     result = parser.parseTopLevelStmt(p.parser)
   of skinBraces: 
     result = pbraces.parseTopLevelStmt(p.parser)
@@ -170,6 +170,8 @@ proc openParsers(p: var TParsers, fileIdx: int32, inputstream: PLLStream) =
   case p.skin
   of skinStandard, skinBraces, skinEndX:
     parser.openParser(p.parser, fileIdx, s, false)
+  of skinOptionalColon:
+    parser.openParser(p.parser, fileIdx, s, false, true)
   of skinStrongSpaces:
     parser.openParser(p.parser, fileIdx, s, true)
   
