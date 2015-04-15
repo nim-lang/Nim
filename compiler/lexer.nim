@@ -221,6 +221,10 @@ proc dispMessage(L: TLexer; info: TLineInfo; msg: TMsgKind; arg: string) =
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") =
   L.dispMessage(getLineInfo(L), msg, arg)
 
+proc lexMessageTok*(L: TLexer, msg: TMsgKind, tok: TToken, arg = "") =
+  var info = newLineInfo(L.fileIdx, tok.line, tok.col)
+  L.dispMessage(info, msg, arg)
+
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
   var info = newLineInfo(L.fileIdx, L.lineNumber, pos - L.lineStart)
   L.dispMessage(info, msg, arg)
