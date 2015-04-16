@@ -313,7 +313,214 @@ const
     0xffda,  0xffdc]  #  -
   
   numRanges = [
-    0x0030,  0x0039   #  the characters '0'-'9'
+    0x0030,  0x0039,  # digit zero..digit nine
+    0x00b2,  0x00b3,  # superscript two..superscript three
+    0x00bc,  0x00be,  # vulgar fraction one quarter..vulgar fraction three quarters]
+    0x0660,  0x0669,  # arabic-indic digit zero..arabic-indic digit nine
+    0x06f0,  0x06f9,  # extended arabic-indic digit zero..extended arabic-indic digit nine
+    0x07c0,  0x07c9,  # nko digit zero..nko digit nine
+    0x0966,  0x096f,  # devanagari digit zero..devanagari digit nine
+    0x09e6,  0x09ef,  # bengali digit zero..bengali digit nine
+    0x09f4,  0x09f9,  # bengali currency numerator one..bengali currency denominator sixteen
+    0x0a66,  0x0a6f,  # gurmukhi digit zero..gurmukhi digit nine
+    0x0ae6,  0x0aef,  # gujarati digit zero..gujarati digit nine
+    0x0b66,  0x0b6f,  # oriya digit zero..oriya digit nine
+    0x0b72,  0x0b77,  # oriya fraction one quarter..oriya fraction three sixteenths
+    0x0be6,  0x0bef,  # tamil digit zero..tamil digit nine
+    0x0bf0,  0x0bf2,  # tamil number ten..tamil number one thousand
+    0x0c66,  0x0c6f,  # telugu digit zero..telugu digit nine
+    0x0c78,  0x0c7e,  # telugu fraction digit zero for odd powers of four..telugu fraction digit three for even powers of four
+    0x0ce6,  0x0cef,  # kannada digit zero..kannada digit nine
+    0x0d66,  0x0d6f,  # malayalam digit zero..malayalam digit nine
+    0x0d70,  0x0d75,  # malayalam number ten..malayalam fraction three quarters
+    0x0de6,  0x0def,  # sinhala lith digit zero..sinhala lith digit nine
+    0x0e50,  0x0e59,  # thai digit zero..thai digit nine
+    0x0ed0,  0x0ed9,  # lao digit zero..lao digit nine
+    0x0f20,  0x0f29,  # tibetan digit zero..tibetan digit nine
+    0x0f2a,  0x0f33,  # tibetan digit half one..tibetan digit half zero
+    0x1040,  0x1049,  # myanmar digit zero..myanmar digit nine
+    0x1090,  0x1099,  # myanmar shan digit zero..myanmar shan digit nine
+    0x1369,  0x1371,  # ethiopic digit one..ethiopic digit nine
+    0x1372,  0x137c,  # ethiopic number ten..ethiopic number ten thousand
+    0x16ee,  0x16f0,  # runic arlaug symbol..runic belgthor symbol
+    0x17e0,  0x17e9,  # khmer digit zero..khmer digit nine
+    0x17f0,  0x17f9,  # khmer symbol lek attak son..khmer symbol lek attak pram-buon
+    0x1810,  0x1819,  # mongolian digit zero..mongolian digit nine
+    0x1946,  0x194f,  # limbu digit zero..limbu digit nine
+    0x19d0,  0x19d9,  # new tai lue digit zero..new tai lue digit nine
+    0x1a80,  0x1a89,  # tai tham hora digit zero..tai tham hora digit nine
+    0x1a90,  0x1a99,  # tai tham tham digit zero..tai tham tham digit nine
+    0x1b50,  0x1b59,  # balinese digit zero..balinese digit nine
+    0x1bb0,  0x1bb9,  # sundanese digit zero..sundanese digit nine
+    0x1c40,  0x1c49,  # lepcha digit zero..lepcha digit nine
+    0x1c50,  0x1c59,  # ol chiki digit zero..ol chiki digit nine
+    0x2074,  0x2079,  # superscript four..superscript nine
+    0x2080,  0x2089,  # subscript zero..subscript nine
+    0x2150,  0x215f,  # vulgar fraction one seventh..fraction numerator one
+    0x2160,  0x2182,  # roman numeral one..roman numeral ten thousand
+    0x2185,  0x2188,  # roman numeral six late form..roman numeral one hundred thousand
+    0x2460,  0x2468,  # circled digit one..circled digit nine
+    0x2469,  0x2473,  # circled number ten..circled number twenty
+    0x2474,  0x247c,  # parenthesized digit one..parenthesized digit nine
+    0x247d,  0x2487,  # parenthesized number ten..parenthesized number twenty
+    0x2488,  0x2490,  # digit one full stop..digit nine full stop
+    0x2491,  0x249b,  # number ten full stop..number twenty full stop
+    0x24eb,  0x24f4,  # negative circled number eleven..negative circled number twenty
+    0x24f5,  0x24fd,  # double circled digit one..double circled digit nine
+    0x2776,  0x277e,  # dingbat negative circled digit one..dingbat negative circled digit nine
+    0x2780,  0x2788,  # dingbat circled sans-serif digit one..dingbat circled sans-serif digit nine
+    0x278a,  0x2792,  # dingbat negative circled sans-serif digit one..dingbat negative circled sans-serif digit nine
+    0x3021,  0x3029,  # hangzhou numeral one..hangzhou numeral nine
+    0x3038,  0x303a,  # hangzhou numeral ten..hangzhou numeral thirty
+    0x3192,  0x3195,  # ideographic annotation one mark..ideographic annotation four mark
+    0x3220,  0x3229,  # parenthesized ideograph one..parenthesized ideograph ten
+    0x3248,  0x324f,  # circled number ten on black square..circled number eighty on black square
+    0x3251,  0x325f,  # circled number twenty one..circled number thirty five
+    0x3280,  0x3289,  # circled ideograph one..circled ideograph ten
+    0x32b1,  0x32bf,  # circled number thirty six..circled number fifty
+    0x4ebf,  0x4ec0,  # cjk unified ideograph-4ebf..cjk unified ideograph-4ec0
+    0x53c1,  0x53c4,  # cjk unified ideograph-53c1..cjk unified ideograph-53c4
+    0x5efe,  0x5eff,  # cjk unified ideograph-5efe..cjk unified ideograph-5eff
+    0x5f0c,  0x5f0e,  # cjk unified ideograph-5f0c..cjk unified ideograph-5f0e
+    0xa620,  0xa629,  # vai digit zero..vai digit nine
+    0xa6e6,  0xa6ef,  # bamum letter mo..bamum letter koghom
+    0xa830,  0xa835,  # north indic fraction one quarter..north indic fraction three sixteenths
+    0xa8d0,  0xa8d9,  # saurashtra digit zero..saurashtra digit nine
+    0xa900,  0xa909,  # kayah li digit zero..kayah li digit nine
+    0xa9d0,  0xa9d9,  # javanese digit zero..javanese digit nine
+    0xa9f0,  0xa9f9,  # myanmar tai laing digit zero..myanmar tai laing digit nine
+    0xaa50,  0xaa59,  # cham digit zero..cham digit nine
+    0xabf0,  0xabf9,  # meetei mayek digit zero..meetei mayek digit nine
+    0xff10,  0xff19,  # fullwidth digit zero..fullwidth digit nine
+    0x10107,  0x10133,  # aegean number one..aegean number ninety thousand
+    0x10140,  0x10174,  # greek acrophonic attic one quarter..greek acrophonic stratian fifty mnas
+    0x10175,  0x10178,  # greek one half sign..greek three quarters sign
+    0x1018a,  0x1018b,  # greek zero sign..greek one quarter sign
+    0x102e1,  0x102fb,  # coptic epact digit one..coptic epact number nine hundred
+    0x10320,  0x10323,  # old italic numeral one..old italic numeral fifty
+    0x103d1,  0x103d5,  # old persian number one..old persian number hundred
+    0x104a0,  0x104a9,  # osmanya digit zero..osmanya digit nine
+    0x10858,  0x1085f,  # imperial aramaic number one..imperial aramaic number ten thousand
+    0x10879,  0x1087f,  # palmyrene number one..palmyrene number twenty
+    0x108a7,  0x108af,  # nabataean number one..nabataean number one hundred
+    0x10916,  0x1091b,  # phoenician number one..phoenician number three
+    0x10a40,  0x10a43,  # kharoshthi digit one..kharoshthi digit four
+    0x10a44,  0x10a47,  # kharoshthi number ten..kharoshthi number one thousand
+    0x10a7d,  0x10a7e,  # old south arabian number one..old south arabian number fifty
+    0x10a9d,  0x10a9f,  # old north arabian number one..old north arabian number twenty
+    0x10aeb,  0x10aef,  # manichaean number one..manichaean number one hundred
+    0x10b58,  0x10b5f,  # inscriptional parthian number one..inscriptional parthian number one thousand
+    0x10b78,  0x10b7f,  # inscriptional pahlavi number one..inscriptional pahlavi number one thousand
+    0x10ba9,  0x10baf,  # psalter pahlavi number one..psalter pahlavi number one hundred
+    0x10e60,  0x10e68,  # rumi digit one..rumi digit nine
+    0x10e69,  0x10e7e,  # rumi number ten..rumi fraction two thirds
+    0x11052,  0x1105a,  # brahmi number one..brahmi number nine
+    0x1105b,  0x11065,  # brahmi number ten..brahmi number one thousand
+    0x11066,  0x1106f,  # brahmi digit zero..brahmi digit nine
+    0x110f0,  0x110f9,  # sora sompeng digit zero..sora sompeng digit nine
+    0x11136,  0x1113f,  # chakma digit zero..chakma digit nine
+    0x111d0,  0x111d9,  # sharada digit zero..sharada digit nine
+    0x111e1,  0x111f4,  # sinhala archaic digit one..sinhala archaic number one thousand
+    0x112f0,  0x112f9,  # khudawadi digit zero..khudawadi digit nine
+    0x114d0,  0x114d9,  # tirhuta digit zero..tirhuta digit nine
+    0x11650,  0x11659,  # modi digit zero..modi digit nine
+    0x116c0,  0x116c9,  # takri digit zero..takri digit nine
+    0x118e0,  0x118e9,  # warang citi digit zero..warang citi digit nine
+    0x118ea,  0x118f2,  # warang citi number ten..warang citi number ninety
+    0x12400,  0x1246e,  # cuneiform numeric sign two ash..cuneiform numeric sign nine u variant form
+    0x16a60,  0x16a69,  # mro digit zero..mro digit nine
+    0x16b50,  0x16b59,  # pahawh hmong digit zero..pahawh hmong digit nine
+    0x16b5b,  0x16b61,  # pahawh hmong number tens..pahawh hmong number trillions
+    0x1d360,  0x1d371,  # counting rod unit digit one..counting rod tens digit nine
+    0x1d7ce,  0x1d7ff,  # mathematical bold digit zero..mathematical monospace digit nine
+    0x1e8c7,  0x1e8cf,  # mende kikakui digit one..mende kikakui digit nine
+    0x1f100,  0x1f10a,  # digit zero full stop..digit nine comma
+    0x1f10b,  0x1f10c,  # dingbat circled sans-serif digit zero..dingbat negative circled sans-serif digit zero
+  ]
+  
+  numSinglets = [
+    0x00b9, # superscript one
+    0x19da, # new tai lue tham digit one
+    0x2070, # superscript zero
+    0x2189, # vulgar fraction zero thirds
+    0x24ea, # circled digit zero
+    0x24fe, # double circled number ten
+    0x24ff, # negative circled digit zero
+    0x277f, # dingbat negative circled number ten
+    0x2789, # dingbat circled sans-serif number ten
+    0x2793, # dingbat negative circled sans-serif number ten
+    0x2cfd, # coptic fraction one half
+    0x3007, # ideographic number zero
+    0x3405, # cjk unified ideograph-3405
+    0x3483, # cjk unified ideograph-3483
+    0x382a, # cjk unified ideograph-382a
+    0x3b4d, # cjk unified ideograph-3b4d
+    0x4e00, # cjk unified ideograph-4e00
+    0x4e03, # cjk unified ideograph-4e03
+    0x4e07, # cjk unified ideograph-4e07
+    0x4e09, # cjk unified ideograph-4e09
+    0x4e5d, # cjk unified ideograph-4e5d
+    0x4e8c, # cjk unified ideograph-4e8c
+    0x4e94, # cjk unified ideograph-4e94
+    0x4e96, # cjk unified ideograph-4e96
+    0x4edf, # cjk unified ideograph-4edf
+    0x4ee8, # cjk unified ideograph-4ee8
+    0x4f0d, # cjk unified ideograph-4f0d
+    0x4f70, # cjk unified ideograph-4f70
+    0x5104, # cjk unified ideograph-5104
+    0x5146, # cjk unified ideograph-5146
+    0x5169, # cjk unified ideograph-5169
+    0x516b, # cjk unified ideograph-516b
+    0x516d, # cjk unified ideograph-516d
+    0x5341, # cjk unified ideograph-5341
+    0x534c, # cjk unified ideograph-534c
+    0x56db, # cjk unified ideograph-56db
+    0x58f1, # cjk unified ideograph-58f1
+    0x58f9, # cjk unified ideograph-58f9
+    0x5e7a, # cjk unified ideograph-5e7a
+    0x5f10, # cjk unified ideograph-5f10
+    0x62fe, # cjk unified ideograph-62fe
+    0x634c, # cjk unified ideograph-634c
+    0x67d2, # cjk unified ideograph-67d2
+    0x6f06, # cjk unified ideograph-6f06
+    0x7396, # cjk unified ideograph-7396
+    0x767e, # cjk unified ideograph-767e
+    0x8086, # cjk unified ideograph-8086
+    0x842c, # cjk unified ideograph-842c
+    0x8cae, # cjk unified ideograph-8cae
+    0x8cb3, # cjk unified ideograph-8cb3
+    0x8d30, # cjk unified ideograph-8d30
+    0x9621, # cjk unified ideograph-9621
+    0x9646, # cjk unified ideograph-9646
+    0x964c, # cjk unified ideograph-964c
+    0x9678, # cjk unified ideograph-9678
+    0x96f6, # cjk unified ideograph-96f6
+    0xf96b, # cjk compatibility ideograph-f96b
+    0xf973, # cjk compatibility ideograph-f973
+    0xf978, # cjk compatibility ideograph-f978
+    0xf9b2, # cjk compatibility ideograph-f9b2
+    0xf9d1, # cjk compatibility ideograph-f9d1
+    0xf9d3, # cjk compatibility ideograph-f9d3
+    0xf9fd, # cjk compatibility ideograph-f9fd
+    0x10341, # gothic letter ninety
+    0x1034a, # gothic letter nine hundred
+    0x20001, # cjk unified ideograph-20001
+    0x20064, # cjk unified ideograph-20064
+    0x200e2, # cjk unified ideograph-200e2
+    0x200e2, # cjk unified ideograph-200e2
+    0x20121, # cjk unified ideograph-20121
+    0x2092a, # cjk unified ideograph-2092a
+    0x20983, # cjk unified ideograph-20983
+    0x2098c, # cjk unified ideograph-2098c
+    0x2099c, # cjk unified ideograph-2099c
+    0x20aea, # cjk unified ideograph-20aea
+    0x20afd, # cjk unified ideograph-20afd
+    0x20b19, # cjk unified ideograph-20b19
+    0x22390, # cjk unified ideograph-22390
+    0x22998, # cjk unified ideograph-22998
+    0x23b1b, # cjk unified ideograph-23b1b
+    0x2626d, # cjk unified ideograph-2626d
+    0x2f890, # cjk compatibility ideograph-2f890
   ]
 
   alphaSinglets = [
@@ -1159,18 +1366,19 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
     return Rune(c + toupperSinglets[p+1] - 500)
   return Rune(c)
 
-proc isAlnum*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is an *alphanumeric* Unicode character (i.e. a letter or a numerical (Arabic) digit)
-  if isAlpha(c):
-    return true
+proc isDigit*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## returns true iff `c` is a *numeric* Unicode character
   var c = RuneImpl(c)
   var p = binarySearch(c, numRanges, len(numRanges) div 2, 2)
   if p >= 0 and c >= numRanges[p] and c <= numRanges[p+1]:
     return true
+  p = binarySearch(c, numSinglets, len(numSinglets), 1)
+  if p >= 0 and c == numSinglets[p]:
+    return true
 
-proc isDigit*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a *numeric* Unicode character (i.e. an Arabic digit)
-  if not(isAlpha(c)) and isAlnum(c):
+proc isAlnum*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## returns true iff `c` is an *alphanumeric* Unicode character (i.e. in the alpha or numeric range)
+  if isAlpha(c) or isDigit(c):
     return true
 
 proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
