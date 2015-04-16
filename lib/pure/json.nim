@@ -725,13 +725,13 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) =
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
-  ## keys do not exist, returns nil
+  ## keys do not exist, returns nil. Also returns nil if one of the
+  ## intermediate data structures is not an object
   result = node
   for key in keys:
-    if isNil(result) or not result.hasKey(key):
-      return nil
-    else:
-      result=result[key]
+    if isNil(result) or result.kind!=JObject:
+      return nil    
+    result=result[key]
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
@@ -1090,11 +1090,13 @@ when isMainModule:
   except:
     assert(false, "EInvalidIndex thrown for valid index")
 
-  assert(parsed2{"after"}.str=="b85008345e2faa23024b222e2e6b17f7ef8b6270", "Couldn't fetch a singly nested key with {}") 
-  assert(isNil(parsed2{"nonexistent"}), "Non-existent keys should return nil") 
+  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}") 
+  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil") 
   assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
-
-
+  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
+  assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
+  
   discard """
   while true:
     var json = stdin.readLine()
