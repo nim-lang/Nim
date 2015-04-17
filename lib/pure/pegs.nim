@@ -902,7 +902,7 @@ proc replacef*(s: string, sub: Peg, by: string): string {.
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nim
-  ##   "var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2")
+  ##   "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")
   ##
   ## Results in:
   ##
