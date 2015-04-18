@@ -125,6 +125,7 @@ proc mean*[T](x: openArray[T]): float {.noSideEffect.} =
 proc variance*[T](x: openArray[T]): float {.noSideEffect.} =
   ## computes the variance of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
+  ## ``toFloat(x: T): float`` must be defined.
   result = 0.0
   var m = mean(x)
   for i in items(x):
