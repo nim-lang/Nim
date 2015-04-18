@@ -808,22 +808,25 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) =
       return
   obj.fields.add((key, val))
 
-proc `{}`*(node: JsonNode, key: string): JsonNode =
-  ## Transverses the node and gets the given value. If any of the
-  ## names does not exist, returns nil
+proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
+  ## Traverses the node and gets the given value. If any of the
+  ## keys do not exist, returns nil. Also returns nil if one of the
+  ## intermediate data structures is not an object
   result = node
-  if isNil(node): return nil
-  result = result[key]
+  for key in keys:
+    if isNil(result) or result.kind!=JObject:
+      return nil    
+    result=result[key]
 
-proc `{}=`*(node: JsonNode, names: varargs[string], value: JsonNode) =
-  ## Transverses the node and tries to set the value at the given location
-  ## to `value` If any of the names are missing, they are added
+proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
+  ## Traverses the node and tries to set the value at the given location
+  ## to `value` If any of the keys are missing, they are added
   var node = node
-  for i in 0..(names.len-2):
-    if isNil(node[names[i]]):
-      node[names[i]] = newJObject()
-    node = node[names[i]]
-  node[names[names.len-1]] = value
+  for i in 0..(keys.len-2):
+    if isNil(node[keys[i]]):
+      node[keys[i]] = newJObject()
+    node = node[keys[i]]
+  node[keys[keys.len-1]] = value
 
 proc delete*(obj: JsonNode, key: string) =
   ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
@@ -1186,9 +1189,17 @@ when isMainModule:
   except:
     assert(false, "EInvalidIndex thrown for valid index")
 
+  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}") 
+  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil") 
+  assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
+  assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
+ 
   # Generator:
   var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}] 
 
   var j2 = %*
     [
@@ -1216,7 +1227,7 @@ when isMainModule:
       }
     ]
   assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-
+  
   discard """
   while true:
     var json = stdin.readLine()
