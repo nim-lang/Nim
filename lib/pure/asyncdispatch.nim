@@ -923,9 +923,17 @@ else:
     var retFuture = newFuture[void]("connect")
 
     proc cb(fd: TAsyncFD): bool =
-      # We have connected.
-      retFuture.complete()
-      return true
+      var ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
+      if ret == 0:
+          # We have connected.
+          retFuture.complete()
+          return true
+      elif ret == EINTR:
+          # interrupted, keep waiting
+          return false
+      else:
+          retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+          return true
 
     var aiList = getAddrInfo(address, port, af)
     var success = false
