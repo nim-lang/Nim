@@ -175,9 +175,18 @@ proc genBreakState(p: BProc, n: PNode) =
 
 proc genVarPrototypeAux(m: BModule, sym: PSym)
 
+proc genGotoVar(p: BProc; value: PNode) =
+  if value.kind notin {nkCharLit..nkUInt64Lit}:
+    localError(value.info, "'goto' target must be a literal value")
+  else:
+    lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
+
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
-  if sfCompileTime in v.flags: return
+  if {sfCompileTime, sfGoto} * v.flags != {}:
+    # translate 'var state {.goto.} = X' into 'goto LX':
+    if sfGoto in v.flags: genGotoVar(p, a.sons[2])
+    return
   var targetProc = p
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
@@ -364,6 +373,19 @@ proc genReturnStmt(p: BProc, t: PNode) =
     var safePoint = p.finallySafePoints[p.finallySafePoints.len-1]
     linefmt(p, cpsStmts, "if ($1.status != 0) #popCurrentException();$n", safePoint)
   lineF(p, cpsStmts, "goto BeforeRet;$n", [])
+
+proc genGotoForCase(p: BProc; caseStmt: PNode) =
+  for i in 1 .. <caseStmt.len:
+    startBlock(p)
+    let it = caseStmt.sons[i]
+    for j in 0 .. it.len-2:
+      if it.sons[j].kind == nkRange:
+        localError(it.info, "range notation not available for computed goto")
+        return
+      let val = getOrdValue(it.sons[j])
+      lineF(p, cpsStmts, "NIMSTATE_$#:$n", [val.rope])
+    genStmts(p, it.lastSon)
+    endBlock(p)
 
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
@@ -737,7 +759,10 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
     genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                             "if ($1 == $2) goto $3;$n")
   else:
-    genOrdinalCase(p, t, d)
+    if t.sons[0].kind == nkSym and sfGoto in t.sons[0].sym.flags:
+      genGotoForCase(p, t)
+    else:
+      genOrdinalCase(p, t, d)
 
 proc hasGeneralExceptSection(t: PNode): bool =
   var length = sonsLen(t)
@@ -1065,7 +1090,9 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
 
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   genLineDir(p, e)
-  if not fieldDiscriminantCheckNeeded(p, e):
+  if e.sons[0].kind == nkSym and sfGoto in e.sons[0].sym.flags:
+    genGotoVar(p, e.sons[1])
+  elif not fieldDiscriminantCheckNeeded(p, e):
     var a: TLoc
     initLocExpr(p, e.sons[0], a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)

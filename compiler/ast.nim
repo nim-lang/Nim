@@ -296,6 +296,7 @@ const
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
   sfExperimental* = sfOverriden       # module uses the .experimental switch
+  sfGoto* = sfOverriden               # var is used for 'goto' code generation
 
 const
   # getting ready for the future expr/stmt merge
