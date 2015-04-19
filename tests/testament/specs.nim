@@ -42,7 +42,8 @@ type
     action*: TTestAction
     file*, cmd*: string
     outp*: string
-    line*, exitCode*: int
+    line*, column*: int
+    exitCode*: int
     msg*: string
     ccodeCheck*: string
     err*: TResultEnum
@@ -98,6 +99,8 @@ proc parseSpec*(filename: string): TSpec =
   result.nimout = ""
   result.ccodeCheck = ""
   result.cmd = cmdTemplate
+  result.line = 0
+  result.column = 0
   parseSpecAux:
     case normalize(e.key)
     of "action":
@@ -108,6 +111,7 @@ proc parseSpec*(filename: string): TSpec =
       else: echo ignoreMsg(p, e)
     of "file": result.file = e.value
     of "line": discard parseInt(e.value, result.line)
+    of "column": discard parseInt(e.value, result.column)
     of "output": 
       result.action = actionRun
       result.outp = e.value
