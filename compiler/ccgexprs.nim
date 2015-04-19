@@ -685,19 +685,23 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   else:
     var a: TLoc
     initLocExprSingleUse(p, e.sons[0], a)
-    let typ = skipTypes(a.t, abstractInst)
-    case typ.kind
-    of tyRef:
-      d.s = OnHeap
-    of tyVar:
-      d.s = OnUnknown
-      if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
-          e.kind == nkHiddenDeref:
-        putIntoDest(p, d, e.typ, rdLoc(a))
-        return
-    of tyPtr:
-      d.s = OnUnknown         # BUGFIX!
-    else: internalError(e.info, "genDeref " & $a.t.kind)
+    if d.k == locNone:
+      let typ = skipTypes(a.t, abstractInst)
+      # dest = *a;  <-- We do not know that 'dest' is on the heap!
+      # It is completely wrong to set 'd.s' here, unless it's not yet
+      # been assigned to.
+      case typ.kind
+      of tyRef:
+        d.s = OnHeap
+      of tyVar:
+        d.s = OnUnknown
+        if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
+            e.kind == nkHiddenDeref:
+          putIntoDest(p, d, e.typ, rdLoc(a))
+          return
+      of tyPtr:
+        d.s = OnUnknown         # BUGFIX!
+      else: internalError(e.info, "genDeref " & $a.t.kind)
     if enforceDeref and mt == ctPtrToArray:
       # we lie about the type for better C interop: 'ptr array[3,T]' is
       # translated to 'ptr T', but for deref'ing this produces wrong code.
