@@ -124,7 +124,7 @@ proc newProc(globals: PGlobals, module: BModule, procDef: PNode,
 
 const
   MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray,
-    tySet, tyVar, tyRef, tyPtr, tyBigNum, tyVarargs}
+    tySet, tyBigNum, tyVarargs}
 
 proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
@@ -163,7 +163,8 @@ proc mangleName(s: PSym): Rope =
     add(result, rope(s.id))
     s.loc.r = result
 
-proc makeJSString(s: string): Rope = strutils.escape(s).rope
+proc makeJSString(s: string): Rope =
+  (if s.isNil: "null".rope else: strutils.escape(s).rope)
 
 include jstypes
 
@@ -937,6 +938,12 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   r.address = nil
   r.kind = resExpr
 
+proc isIndirect(v: PSym): bool =
+  result = {sfAddrTaken, sfGlobal} * v.flags != {} and
+    #(mapType(v.typ) != etyObject) and
+    sfVolatile notin v.flags and
+    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator}
+
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   case n.sons[0].kind
   of nkSym:
@@ -945,12 +952,16 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     case s.kind
     of skVar, skLet, skResult:
       r.kind = resExpr
-      if mapType(n.sons[0].typ) == etyObject:
+      let jsType = mapType(n.typ)
+      if jsType == etyObject:
         # make addr() a no-op:
         r.typ = etyNone
-        r.res = s.loc.r
+        if isIndirect(s):
+          r.res = s.loc.r & "[0]"
+        else:
+          r.res = s.loc.r
         r.address = nil
-      elif {sfGlobal, sfAddrTaken} * s.flags != {}:
+      elif {sfGlobal, sfAddrTaken} * s.flags != {} or jsType == etyBaseIndex:
         # for ease of code generation, we do not distinguish between
         # sfAddrTaken and sfGlobal.
         r.typ = etyBaseIndex
@@ -992,7 +1003,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       else:
         r.address = s.loc.r
         r.res = s.loc.r & "_Idx"
-    elif k != etyObject and {sfAddrTaken, sfGlobal} * s.flags != {}:
+    elif isIndirect(s):
       r.res = "$1[0]" % [s.loc.r]
     else:
       r.res = s.loc.r
@@ -1124,7 +1135,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyRange, tyGenericInst:
     result = createVar(p, lastSon(typ), indirect)
   of tySet:
-    result = rope("{}")
+    result = putToSeq("{}", indirect)
   of tyBool:
     result = putToSeq("false", indirect)
   of tyArray, tyArrayConstr:
@@ -1144,6 +1155,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
         add(result, createVar(p, e, false))
         inc(i)
       add(result, "]")
+    if indirect: result = "[$1]" % [result]
   of tyTuple:
     result = rope("{")
     for i in 0.. <t.sonsLen:
@@ -1151,6 +1163,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       addf(result, "Field$1: $2" | "Field$# = $#", [i.rope,
            createVar(p, t.sons[i], false)])
     add(result, "}")
+    if indirect: result = "[$1]" % [result]
   of tyObject:
     result = rope("{")
     var c = 0
@@ -1161,6 +1174,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       add(result, createRecordVarAux(p, t.n, c))
       t = t.sons[0]
     add(result, "}")
+    if indirect: result = "[$1]" % [result]
   of tyVar, tyPtr, tyRef:
     if mapType(t) == etyBaseIndex:
       result = putToSeq("[null, 0]" | "{nil, 0}", indirect)
@@ -1171,11 +1185,6 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   else:
     internalError("createVar: " & $t.kind)
     result = nil
-
-proc isIndirect(v: PSym): bool =
-  result = {sfAddrTaken, sfGlobal} * v.flags != {} and
-    (mapType(v.typ) != etyObject) and
-    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator}
 
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
@@ -1239,7 +1248,7 @@ proc genNew(p: PProc, n: PNode) =
   var a: TCompRes
   gen(p, n.sons[1], a)
   var t = skipTypes(n.sons[1].typ, abstractVar).sons[0]
-  addf(p.body, "$1 = $2;$n", [a.res, createVar(p, t, true)])
+  addf(p.body, "$1 = $2;$n", [a.res, createVar(p, t, false)])
 
 proc genNewSeq(p: PProc, n: PNode) =
   var x, y: TCompRes

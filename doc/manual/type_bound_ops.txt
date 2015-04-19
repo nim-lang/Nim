@@ -127,8 +127,8 @@ The signature has to be:
 .. code-block:: nim
   proc `=deepCopy`(x: T): T
 
-This mechanism is used by most data structures that support shared memory like
-channels to implement thread safe automatic memory management.
+This mechanism will be used by most data structures that support shared memory
+like channels to implement thread safe automatic memory management.
 
 The builtin ``deepCopy`` can even clone closures and their environments. See
 the documentation of `spawn`_ for details.
