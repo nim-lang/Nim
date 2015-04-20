@@ -355,6 +355,12 @@ proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## macros that check its number of arguments.
   if n.len != len: error("macro expects a node with " & $len & " children")
 
+proc newTree*(kind: NimNodeKind,
+              children: varargs[NimNode]): NimNode {.compileTime.} =
+  ## produces a new node with children.
+  result = newNimNode(kind)
+  result.add(children)
+
 proc newCall*(theProc: NimNode,
               args: varargs[NimNode]): NimNode {.compileTime.} =
   ## produces a new call node. `theProc` is the proc that is called with
