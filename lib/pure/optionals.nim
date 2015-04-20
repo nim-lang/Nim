@@ -39,13 +39,7 @@
 ##     return nothing(int)  # This line is actually optional,
 ##                          # because the default is empty
 ##
-## The ``?`` operator (template) returns an appropriate ``Maybe`` type for its
-## argument. For types that can be `nil` there is an implementation with zero
-## memory overhead. The other implementation uses a boolean to store the state.
-##
-## For typical usage you don't really need to know about these types, just
-## use this operator. On the other hand, you don't have to use the operator;
-## just specify one of the ``Maybe`` types explicitly.
+## The ``?`` operator (template) is a shortcut for ``Maybe[T]``.
 ##
 ## .. code-block:: nim
 ##
@@ -60,7 +54,7 @@
 ## absolutely sure the value is present (e.g. after checking ``has``). If you do
 ## not care about the tiny overhead that ``[]`` causes, you should simply never
 ## use ``val``.
-
+##
 ## How to deal with an absence of a value:
 ##
 ## .. code-block:: nim
@@ -104,97 +98,47 @@ import typetraits
 
 
 type
-  Nullable = concept x
-    isNil(x) is bool
-
-  Just*[T] = distinct T
-    ## A ``Maybe`` type that can only be `just`; it always has a value.
-  Nothing*[T] = distinct T
-    ## A ``Maybe`` type that can only be `nothing`; it never has a value.
-
-  MaybeObj*[T] = object
-    ## A ``Maybe`` type that stores its value and state separately in a boolean.
-    ##
-    ## It works for all types of values.
+  Maybe*[T] = object
+    ## An optional type that stores its value and state separately in a boolean.
     val: T
     has: bool
 
-  MaybeDistinct*[T] = distinct T
-    ## A ``Maybe`` type that is `nothing` when the underlying object ``isNil``.
-    ##
-    ## ``MaybeDistinct`` relies on the value being `nil` or non-`nil` (so actual
-    ## `nil` values can't be stored in it). This doesn't necessarily mean
-    ## equality or inequality to ``nil``. This ``Maybe`` type is chosen by
-    ## ``?T`` for all types that have ``isNil`` defined. It also has the
-    ## requirement that the default state of the type without any initialization
-    ## (i.e. all zeros) is the ``isNil`` state. If this is not the case, you
-    ## need to also define a ``getNil`` proc that returns the `nil` state, like
-    ## in the example:
-    ##
-    ## .. code-block:: nim
-    ##
-    ##   proc getNil(T: typedesc[Slice[int]]): Slice[int] =
-    ##     int.low..int.low
-    ##   proc isNil(s: Slice[int]): bool =
-    ##     s.a == int.low and s.b == int.low
-    ##
-    ##   assert(?Slice[int] is MaybeDistinct) # Would've been `MaybeObj`
-    ##                                        # without previous procs
-    ##   assert(?nothing(int.low..int.low).has == false)
-
-  # Maybe*[T] = concept x
-  #   val(x) is T
-  #   has(x) is bool
-  Maybe*[T] = Just[T] or Nothing[T] or MaybeObj[T] or MaybeDistinct[T]
-
 
 template `?`*(T: typedesc): typedesc =
-  ## Returns ``MaybeDistinct[T]`` for types that have ``isNil`` defined
-  ## and ``MaybeObj[T]`` for others. This can be overridden.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   assert(?string is MaybeDistinct)
-  ##   assert(?int is MaybeObj)
-  ##
-  ##   template `?`*(T: typedesc[MyType]): typedesc = MaybeObj[T]
-  when T is Nullable:
-    MaybeDistinct[T]
-  else:
-    MaybeObj[T]
+  ## ``?T`` is equivalent to ``Maybe[T]``.
+  Maybe[T]
 
 
-proc has*[T](maybe: MaybeObj[T]): bool =
+proc just*[T](val: T): Maybe[T] =
+  ## Returns a ``Maybe`` that has this value.
+  result.has = true
+  result.val = val
+
+proc nothing*(T: typedesc): Maybe[T] =
+  ## Returns a ``Maybe`` for this type that has no value.
+  result.has = false
+
+
+proc has*(maybe: Maybe): bool =
   ## Returns ``true`` if `maybe` isn't `nothing`.
   maybe.has
-
-proc has*[T](maybe: MaybeDistinct[T]): bool =
-  ## Returns ``true`` if `maybe` isn't `nothing`.
-  mixin isNil
-  not isNil(T(maybe))
-
 
 converter toBool*(maybe: Maybe): bool =
   ## Same as ``has``. Allows to use a ``Maybe`` in boolean context.
   maybe.has
 
 
-proc val*[T](maybe: MaybeObj[T]): T =
-  ## Unsafe. Returns the value of a `just`. Behavior is undefined for `nothing`.
-  assert just.has, "nothing has no val"
-  maybe.val
-
-proc val*[T](maybe: MaybeDistinct[T]): T =
+proc val*[T](maybe: Maybe[T]): T =
   ## Unsafe. Returns the value of a `just`. Behavior is undefined for `nothing`.
   assert maybe.has, "nothing has no val"
-  T(maybe)
-
+  maybe.val
 
 proc `[]`*[T](maybe: Maybe[T]): T =
   ## Returns the value of `maybe`. Raises ``FieldError`` if it is `nothing`.
   if not maybe:
     raise newException(FieldError, "Can't obtain a value from a `nothing`")
   maybe.val
+
 
 template `or`*[T](maybe: Maybe[T], default: T): T =
   ## Returns the value of `maybe`, or `default` if it is `nothing`.
@@ -225,82 +169,7 @@ template `?=`*(into: expr, maybe: Maybe): bool =
   maybe
 
 
-proc just*[T](val: T): Just[T] =
-  ## Returns a ``Just`` from this value. It can be converted to more useful
-  ## ``Maybe`` types automatically, or ``?just(val)`` may be used to convert it
-  ## to ``?T``.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   assert(type(?just 5) is ?int)
-  ##   assert((just 5).has)
-  Just[T](val)
-
-proc has*(just: Just): bool =
-  ## Returns ``true``.
-  true
-
-proc val*[T](just: Just[T]): T =
-  ## Returns the underlying value. ``val`` is safe only for ``Just``,
-  ## because a ``Just`` can't not have a value.
-  T(just)
-
-converter toMaybeObj*[T](just: Just[T]): MaybeObj[T] =
-  MaybeObj[T](has: true, val: T(just))
-
-converter toMaybeDistinct*[T](just: Just[T]): MaybeDistinct[T] =
-  mixin isNil
-  if isNil(T(just)):
-    raise newException(ValueError, "Can't create a `just` from nil")
-  MaybeDistinct[T](T(just))
-
-
-proc nothing*(T: typedesc): Nothing[T] =
-  ## Returns a ``Nothing`` for this type. It can be converted to more useful
-  ## ``Maybe`` types automatically, or ``?nothing(T)`` may be used to convert it
-  ## to ``?T``.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   assert(type(?nothing(string)) is ?string)
-  ##   assert(nothing(string).has == false)
-  mixin getNil
-  var res: T
-  when compiles(getNil(T)):
-    res = getNil(T)
-  Nothing[T](res)
-
-proc has*[T](nothing: Nothing[T]): bool =
-  ## Returns ``false``.
-  false
-
-proc val*[T](nothing: Nothing[T]): T =
-  ## Unsafe. Undefined behavior.
-  assert false, "nothing has no val"
-
-converter toMaybeObj*[T](nothing: Nothing[T]): MaybeObj[T] =
-  MaybeObj[T]()
-
-converter toMaybeDistinct*[T](nothing: Nothing[T]): MaybeDistinct[T] =
-  if not isNil(T(nothing)):
-    raise newException(ValueError, "Can't create a `nothing` from non-nil")
-  MaybeDistinct[T](T(nothing))
-
-
-proc `?`*[T](m: Just[T] or Nothing[T]): auto =
-  ## This is not needed for typical usage. See also: ``?`` template.
-  ##
-  ## Converts a ``Just`` or ``Nothing`` (which are limited 0-overhead types that
-  ## cannot change state) into a ``MaybeObj`` or ``MaybeDistinct`` (decided by
-  ## the ``?T`` template), by applying one of the converters.
-  mixin `?`
-  let res: ?T = m
-  res
-
-
-# See issue #1385
-proc `==`*(a: Just or Nothing or MaybeObj or MaybeDistinct,
-           b: Just or Nothing or MaybeObj or MaybeDistinct): bool =
+proc `==`*(a, b: Maybe): bool =
   ## Returns ``true`` if both ``Maybe`` are `nothing`,
   ## or if they have equal values
   (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
@@ -322,24 +191,18 @@ when isMainModule:
       discard
 
 
-  block:
+  block: # example
     proc find(haystack: string, needle: char): ?int =
       for i, c in haystack:
         if c == needle:
           return just i
 
     assert("abc".find('c')[] == 2)
-    assert("abc".find('c') == just 2)
-
 
     let result = "team".find('i')
 
     assert result == nothing(int)
     assert result.has == false
-
-    expect FieldError:
-      discard result[]
-
 
     if pos ?= "nim".find('i'):
       assert pos is int
@@ -347,59 +210,53 @@ when isMainModule:
     else:
       assert false
 
-    if pos ?= nothing(int):
-      assert false
-
-
     assert(("team".find('i') or -1) == -1)
     assert(("nim".find('i') or -1) == 1)
 
+  block: # just
+    assert just(6)[] == 6
+    assert just("a").val == "a"
+    assert just(6).has
+    assert just("a")
 
-  block:
-    assert(?string is MaybeDistinct)
-    assert(?int is MaybeObj)
+  block: # nothing
+    expect FieldError:
+      discard nothing(int)[]
+    assert(not nothing(int).has)
+    assert(not nothing(string))
 
-    assert(type(?just 5) is ?int)
-    assert((?just 5).has)
+  block: # equality
+    assert just("a") == just("a")
+    assert just(7) != just(6)
+    assert just("a") != nothing(string)
+    assert nothing(int) == nothing(int)
 
+    when compiles(just("a") == just(5)):
+      assert false
+    when compiles(nothing(string) == nothing(int)):
+      assert false
 
-    assert(type(?nothing(string)) is ?string)
-    assert((?nothing(string)).has == false)
+  block: # stringification
+    assert "just(7)" == $just(7)
+    assert "nothing(int)" == $nothing(int)
 
+  block: # or
+    assert just(1) or just(2) == just(1)
+    assert nothing(string) or just("a") == just("a")
+    assert nothing(int) or nothing(int) == nothing(int)
+    assert just(5) or 2 == 2
+    assert nothing(string) or "a" == "a"
 
-    assert(?nothing(string) == ?nothing(string))
-    assert(?just("abc") == ?just("abc"))
+    when compiles(just(1) or "2"):
+      assert false
+    when compiles(nothing(int) or just("a")):
+      assert false
 
-    assert(?nothing(int) == ?nothing(int))
-    assert(?just(7) == ?just(7))
+  block: # extraction template
+    if a ?= just(5):
+      assert a == 5
+    else:
+      assert false
 
-    var nilstr: string
-    expect ValueError:
-      discard ?just(nilstr)
-
-
-  block:
-    proc getNil(T: typedesc[Slice[int]]): Slice[int] =
-      int.low..int.low
-    proc isNil(s: Slice[int]): bool =
-      s.a == int.low and s.b == int.low
-
-    assert(?Slice[int] is MaybeDistinct)
-    assert type(?nothing(Slice[int])) is MaybeDistinct
-    assert((?nothing(Slice[int])).has == false)
-    assert((?just(1..int.low)).has)
-
-    expect ValueError:
-      discard ?just(int.low..int.low)
-
-
-  block:
-    template `?`*(T: typedesc[seq[int]]): typedesc = MaybeObj[T]
-
-    assert type(?just(@[5])) is MaybeObj
-
-
-  block:
-    var a = toMaybeObj(just "abc")
-    var b = toMaybeDistinct(just "abc")
-    assert(a == b)
+    if b ?= nothing(string):
+      assert false
