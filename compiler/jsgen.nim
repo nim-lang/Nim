@@ -941,7 +941,7 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
 proc isIndirect(v: PSym): bool =
   result = {sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
-    sfVolatile notin v.flags and
+    {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
     v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator}
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
