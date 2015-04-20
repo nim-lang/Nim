@@ -1108,8 +1108,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       localError(f.n.info, errTypeExpected)
       result = isNone
 
+  of tyNone:
+    if a.kind == tyNone: result = isEqual
   else:
-    internalAssert false
+    internalError " unknown type kind " & $f.kind
 
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate

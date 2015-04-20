@@ -834,7 +834,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       cp.kind = tyUserTypeClassInst
       return addImplicitGeneric(cp)
 
-    for i in 1 .. (paramType.sons.len - 2):
+    for i in 1 .. paramType.len-2:
       var lifted = liftingWalk(paramType.sons[i])
       if lifted != nil:
         paramType.sons[i] = lifted
@@ -847,7 +847,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.shouldHaveMeta
 
   of tyGenericInvocation:
-    for i in 1 .. <paramType.sonsLen:
+    for i in 1 .. <paramType.len:
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
     when false:

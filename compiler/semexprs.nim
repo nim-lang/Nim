@@ -389,7 +389,7 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
-    let match = typeRel(m, t2, t1) != isNone
+    let match = typeRel(m, t2, t1) >= isSubtype # isNone
     result = newIntNode(nkIntLit, ord(match))
 
   result.typ = n.typ

@@ -247,6 +247,7 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
@@ -254,12 +255,14 @@ proc makeOrType*(c: PContext, t1, t2: PType): PType =
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c)
   result.sons = @[t1]
   propagateToOwner(result, t1)
   result.flags.incl(t1.flags * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc nMinusOne*(n: PNode): PNode =
   result = newNode(nkCall, n.info, @[

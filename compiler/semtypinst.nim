@@ -233,7 +233,9 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
   result = copyType(t, t.owner, cl.allowMetaTypes)
   result.flags.incl tfFromGeneric
-  result.flags.excl tfInstClearedFlags
+  if not (t.kind in tyMetaTypes or
+         (t.kind == tyStatic and t.n == nil)):
+    result.flags.excl tfInstClearedFlags
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]

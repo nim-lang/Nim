@@ -1,4 +1,4 @@
-# tests to see if a symbol returned from macros.getType() can 
+# tests to see if a symbol returned from macros.getType() can
 # be used as a type
 import macros
 
@@ -20,7 +20,7 @@ static: assert iii is TestFN
 
 proc foo11 : testTypesym(void) =
     echo "HI!"
-static: assert foo11 is proc():void
+static: assert foo11 is (proc():void {.nimcall.})
 
 var sss: testTypesym(seq[int])
 static: assert sss is seq[int]
