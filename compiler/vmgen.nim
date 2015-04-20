@@ -1364,7 +1364,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
   of tyVar, tyPointer, tyPtr, tySequence, tyExpr,
-     tyStmt, tyTypeDesc, tyStatic, tyRef:
+     tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
     if t.callConv != ccClosure:
@@ -1391,7 +1391,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  else: internalError("getNullValue: " & $t.kind)
+  else: internalError(info, "getNullValue: " & $t.kind)
 
 proc ldNullOpcode(t: PType): TOpcode =
   if fitsRegister(t): opcLdNullReg else: opcLdNull
@@ -1610,7 +1610,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genBreak(c, n)
   of nkTryStmt: genTry(c, n, dest)
   of nkStmtList:
-    unused(n, dest)
+    #unused(n, dest)
+    # XXX Fix this bug properly, lexim triggers it
     for x in n: gen(c, x)
   of nkStmtListExpr:
     let L = n.len-1
