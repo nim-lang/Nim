@@ -506,7 +506,7 @@ For example:
 .. code-block:: nim
 
   type Input {.importcpp: "System::Input".} = object
-  proc getSubsystem*[T](): ptr T {.importcpp: "SystemManager::getSubsystem<'*0>()".}
+  proc getSubsystem*[T](): ptr T {.importcpp: "SystemManager::getSubsystem<'*0>()", nodecl.}
 
   let x: ptr Input = getSubsystem[Input]()
 
@@ -594,6 +594,25 @@ Produces:
 .. code-block:: C
   std::map<int, double> x;
   x[6] = 91.4;
+
+
+- If more precise control is needed, the apostrophe ``'`` can be used in the
+  supplied pattern to denote the concrete type parameters of the generic type.
+  See the usage of the apostrophe operator in proc patterns for more details.
+
+.. code-block:: nim
+
+  type
+    VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+
+  var x: VectorIterator[cint]
+
+
+Produces:
+
+.. code-block:: C
+  
+  std::vector<int>::iterator x;
 
 
 ImportObjC pragma

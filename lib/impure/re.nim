@@ -7,8 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. Consider using the pegs module
-## instead.
+## Regular expression support for Nim. Consider using the pegs module instead.
+##
+## There is an alternative regular expressions library with a more unified API:
+## `nre <https://github.com/flaviut/nre>`_. It may be added to the standard
+## library in the future, instead of `re`.
 ##
 ## **Note:** The 're' proc defaults to the **extended regular expression
 ## syntax** which lets you use whitespace freely to make your regexes readable.
@@ -413,22 +416,28 @@ proc escapeRe*(s: string): string =
       result.add(toHex(ord(c), 2))
 
 const ## common regular expressions
-  reIdentifier* = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"  ## describes an identifier
-  reNatural* = r"\b\d+\b" ## describes a natural number
-  reInteger* = r"\b[-+]?\d+\b" ## describes an integer
-  reHex* = r"\b0[xX][0-9a-fA-F]+\b" ## describes a hexadecimal number
-  reBinary* = r"\b0[bB][01]+\b" ## describes a binary number (example: 0b11101)
-  reOctal* = r"\b0[oO][0-7]+\b" ## describes an octal number (example: 0o777)
-  reFloat* = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
+  reIdentifier* {.deprecated.} = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"
+    ## describes an identifier
+  reNatural* {.deprecated.} = r"\b\d+\b"
+    ## describes a natural number
+  reInteger* {.deprecated.} = r"\b[-+]?\d+\b"
+    ## describes an integer
+  reHex* {.deprecated.} = r"\b0[xX][0-9a-fA-F]+\b"
+    ## describes a hexadecimal number
+  reBinary* {.deprecated.} = r"\b0[bB][01]+\b"
+    ## describes a binary number (example: 0b11101)
+  reOctal* {.deprecated.} = r"\b0[oO][0-7]+\b"
+    ## describes an octal number (example: 0o777)
+  reFloat* {.deprecated.} = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
     ## describes a floating point number
-  reEmail* = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\. &" &
-             r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)" &
-             r"*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+" &
-             r"(?:[a-zA-Z]{2}|com|org|" &
-             r"net|gov|mil|biz|info|mobi|name|aero|jobs|museum)\b"
+  reEmail* {.deprecated.} = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\. &" &
+                            r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@" &
+                            r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+" &
+                            r"(?:[a-zA-Z]{2}|com|org|net|gov|mil|biz|" &
+                            r"info|mobi|name|aero|jobs|museum)\b"
     ## describes a common email address
-  reURL* = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms\-help):" &
-           r"((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
+  reURL* {.deprecated.} = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms-help)" &
+                          r":((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
     ## describes an URL
 
 when isMainModule:

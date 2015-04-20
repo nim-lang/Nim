@@ -495,6 +495,33 @@ proc getTupleDesc(m: BModule, typ: PType, name: Rope,
   else: add(result, desc)
   add(result, "};" & tnl)
 
+proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
+  # A helper proc for handling cppimport patterns, involving numeric
+  # placeholders for generic types (e.g. '0, '**2, etc).
+  # pre: the cursor must be placed at the ' symbol
+  # post: the cursor will be placed after the final digit
+  # false will returned if the input is not recognized as a placeholder
+  inc cursor
+  let begin = cursor
+  while pat[cursor] == '*': inc cursor
+  if pat[cursor] in Digits:
+    outIdx = pat[cursor].ord - '0'.ord
+    outStars = cursor - begin
+    inc cursor
+    return true
+  else:
+    return false
+
+proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
+  # XXX: we should catch this earlier and report it as a semantic error
+  if idx >= typ.len: internalError "invalid apostrophe type parameter index"
+
+  result = typ.sons[idx]
+  for i in 1..stars:
+    if result != nil and result.len > 0:
+      result = if result.kind == tyGenericInst: result.sons[1]
+               else: result.elemType
+
 proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   # returns only the type's name
   var t = getUniqueType(typ)
@@ -597,11 +624,33 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     if isImportedCppType(t) and typ.kind == tyGenericInst:
       # for instantiated templates we do not go through the type cache as the
       # the type cache is not aware of 'tyGenericInst'.
-      result = getTypeName(t) & "<"
-      for i in 1 .. typ.len-2:
-        if i > 1: result.add(", ")
-        result.add(getTypeDescAux(m, typ.sons[i], check))
-      result.add("> ")
+      let cppName = getTypeName(t)
+      var i = 0
+      var chunkStart = 0
+      while i < cppName.data.len:
+        if cppName.data[i] == '\'':
+          var chunkEnd = <i
+          var idx, stars: int
+          if scanCppGenericSlot(cppName.data, i, idx, stars):
+            result.add cppName.data.substr(chunkStart, chunkEnd)
+            chunkStart = i
+
+            let typeInSlot = resolveStarsInCppType(typ, idx + 1, stars)
+            if typeInSlot == nil or typeInSlot.kind == tyEmpty:
+              result.add(~"void")
+            else:
+              result.add getTypeDescAux(m, typeInSlot, check)
+        else:
+          inc i
+      
+      if chunkStart != 0:
+        result.add cppName.data.substr(chunkStart)
+      else:
+        result = cppName & "<"
+        for i in 1 .. typ.len-2:
+          if i > 1: result.add(", ")
+          result.add(getTypeDescAux(m, typ.sons[i], check))
+        result.add("> ")
       # always call for sideeffects:
       assert t.kind != tyTuple
       discard getRecordDesc(m, t, result, check)

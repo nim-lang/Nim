@@ -289,7 +289,7 @@ Numerical constants are of a single type and have the form::
   INT32_LIT = INT_LIT ['\''] ('i' | 'I') '32'
   INT64_LIT = INT_LIT ['\''] ('i' | 'I') '64'
 
-  UINT8_LIT = INT_LIT ['\''] ('u' | 'U')
+  UINT_LIT = INT_LIT ['\''] ('u' | 'U')
   UINT8_LIT = INT_LIT ['\''] ('u' | 'U') '8'
   UINT16_LIT = INT_LIT ['\''] ('u' | 'U') '16'
   UINT32_LIT = INT_LIT ['\''] ('u' | 'U') '32'
