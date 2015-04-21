@@ -197,7 +197,7 @@ proc empty*(s: IntSet): bool {.inline, deprecated.} =
   ## worked reliably and so is deprecated.
   result = s.counter == 0
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var x = initIntSet()
   x.incl(1)
   x.incl(2)

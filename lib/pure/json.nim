@@ -1153,19 +1153,22 @@ when false:
 when isMainModule:
   #var node = parse("{ \"test\": null }")
   #echo(node.existsKey("test56"))
+  
   var parsed = parseFile("tests/testdata/jsontest.json")
   var parsed2 = parseFile("tests/testdata/jsontest2.json")
-  echo(parsed)
-  echo()
-  echo(pretty(parsed, 2))
-  echo()
-  echo(parsed["keyÄÖöoßß"])
-  echo()
-  echo(pretty(parsed2))
-  try:
-    echo(parsed["key2"][12123])
-    raise newException(ValueError, "That line was expected to fail")
-  except IndexError: echo()
+
+  when not defined(testing):
+    echo(parsed)
+    echo()
+    echo(pretty(parsed, 2))
+    echo()
+    echo(parsed["keyÄÖöoßß"])
+    echo()
+    echo(pretty(parsed2))
+    try:
+      echo(parsed["key2"][12123])
+      raise newException(ValueError, "That line was expected to fail")
+    except IndexError: echo()
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
@@ -1228,11 +1231,12 @@ when isMainModule:
     ]
   assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
   
-  discard """
-  while true:
-    var json = stdin.readLine()
-    var node = parse(json)
-    echo(node)
-    echo()
-    echo()
-  """
+  when not defined(testing):
+    discard """
+    while true:
+      var json = stdin.readLine()
+      var node = parse(json)
+      echo(node)
+      echo()
+      echo()
+    """

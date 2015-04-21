@@ -70,5 +70,6 @@ proc unidecode*(s: string): string =
 
 when isMainModule:
   loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
-  echo unidecode("Äußerst")
+  when not defined(testing):
+    echo unidecode("Äußerst")
 

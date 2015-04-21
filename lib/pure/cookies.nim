@@ -53,7 +53,7 @@ proc setCookie*(key, value: string, expires: TimeInfo,
                    format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"),
                    noname, secure, httpOnly)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var tim = Time(int(getTime()) + 76 * (60 * 60 * 24))
 
   echo(setCookie("test", "value", tim.getGMTime()))

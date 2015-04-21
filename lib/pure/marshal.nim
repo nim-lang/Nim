@@ -244,7 +244,7 @@ proc to*[T](data: string): T =
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
   
-when isMainModule:
+when not defined(testing) and isMainModule:
   template testit(x: expr) = echo($$to[type(x)]($$x))
 
   var x: array[0..4, array[0..4, string]] = [

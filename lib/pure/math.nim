@@ -372,7 +372,9 @@ when isMainModule and not defined(JS):
   randomize(seed)
   for i in 0..SIZE-1:
     assert buf[i] == random(high(int)), "non deterministic random seeding"
-  echo "random values equal after reseeding"
+
+  when not defined(testing):
+    echo "random values equal after reseeding"
 
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =

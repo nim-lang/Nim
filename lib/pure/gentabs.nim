@@ -186,8 +186,9 @@ when isMainModule:
   assert( z["first"]["one"] == 1)   # retrieve from first inner table
   assert( z["second"]["red"] == 10) # retrieve from second inner table
   
-  for k,v in pairs(z):
-    echo( "$# ($#) ->" % [k,$len(v)] )
-    #for k2,v2 in pairs(v):
-    #  echo( "   $# <-> $#" % [k2,$v2] )
-  echo()
+  when not defined(testing) :
+    for k,v in pairs(z):
+      echo( "$# ($#) ->" % [k,$len(v)] )
+      #for k2,v2 in pairs(v):
+      #  echo( "   $# <-> $#" % [k2,$v2] )
+    echo()

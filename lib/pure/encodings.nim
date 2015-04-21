@@ -451,7 +451,7 @@ proc convert*(s: string, destEncoding = "UTF-8",
   finally:
     close(c)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   let
     orig = "öäüß"
     cp1252 = convert(orig, "CP1252", "UTF-8")

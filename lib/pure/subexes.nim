@@ -386,8 +386,9 @@ when isMainModule:
     longishA, 
     longish)"""
   
-  echo "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA", 
-    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]
+  when not defined(testing):
+    echo "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA", 
+      "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]
   
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
   
@@ -395,7 +396,8 @@ when isMainModule:
   
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
   
-  echo subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
-    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
+  when not defined(testing):
+    echo subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
+      "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
   
   

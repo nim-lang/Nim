@@ -324,7 +324,9 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
 
 when isMainModule:
   for k, v in interpolatedFragments("$test{}  $this is ${an{  example}}  "):
-    echo "(", k, ", \"", v, "\")"
+    when not defined(testing):
+      echo "(", k, ", \"", v, "\")"
+
   var value = 0
   discard parseHex("0x38", value)
   assert value == 56

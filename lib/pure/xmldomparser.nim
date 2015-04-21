@@ -155,7 +155,7 @@ proc loadXMLFile*(path: string): PDocument =
   return loadXMLStream(s)
 
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var xml = loadXMLFile("nim/xmldom/test.xml")
   #echo(xml.getElementsByTagName("m:test2")[0].namespaceURI)
   #echo(xml.getElementsByTagName("bla:test")[0].namespaceURI)

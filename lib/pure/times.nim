@@ -1036,8 +1036,9 @@ when isMainModule:
   # Tue 19 Jan 03:14:07 GMT 2038
 
   var t = getGMTime(fromSeconds(2147483647))
-  echo t.format("ddd dd MMM hh:mm:ss ZZZ yyyy")
-  echo t.format("ddd ddMMMhhmmssZZZyyyy")
+  when not defined(testing):
+    echo t.format("ddd dd MMM hh:mm:ss ZZZ yyyy")
+    echo t.format("ddd ddMMMhhmmssZZZyyyy")
   assert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
   assert t.format("ddd ddMMMhh:mm:ssZZZyyyy") == "Tue 19Jan03:14:07UTC2038"
 
@@ -1112,4 +1113,5 @@ when isMainModule:
   # Kitchen     = "3:04PM"
   s = "3:04PM"
   f = "h:mmtt"
-  echo "Kitchen: " & $s.parse(f)
+  when not defined(testing):
+    echo "Kitchen: " & $s.parse(f)

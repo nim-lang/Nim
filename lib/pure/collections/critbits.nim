@@ -292,12 +292,15 @@ when isMainModule:
   r.incl "def"
   r.incl "definition"
   r.incl "prefix"
-  doAssert r.contains"def"
-  #r.del "def"
 
-  for w in r.items:
-    echo w
-    
-  for w in r.itemsWithPrefix("de"):
-    echo w
+  doAssert r.contains"def"
+
+  when not defined(testing):
+    #r.del "def"
+
+    for w in r.items:
+      echo w
+
+    for w in r.itemsWithPrefix("de"):
+      echo w
 

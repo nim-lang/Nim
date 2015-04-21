@@ -88,6 +88,6 @@ proc generatedTime*(oid: Oid): Time =
   bigEndian32(addr(tmp), addr(dummy))
   result = Time(tmp)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   let xo = genOid()
   echo xo.generatedTime

@@ -278,7 +278,7 @@ proc getLogFilter*(): Level =
 
 # --------------
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var L = newConsoleLogger()
   var fL = newFileLogger("test.log", fmtStr = verboseFmtStr)
   var rL = newRollingFileLogger("rolling.log", fmtStr = verboseFmtStr)
