@@ -50,7 +50,7 @@ type
 
 let
   pegLineError =
-    peg"{[^(]*} '(' {\d+} ', ' \d+ ') ' ('Error') ':' \s* {.*}"
+    peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Error') ':' \s* {.*}"
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
@@ -77,11 +77,13 @@ proc callCompiler(cmdTemplate, filename, options: string,
   result.msg = ""
   result.file = ""
   result.outp = ""
-  result.line = -1
+  result.line = 0
+  result.column = 0
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
-    result.msg = matches[2]
+    result.column = parseInt(matches[2])
+    result.msg = matches[3]
   elif err =~ pegOtherError:
     result.msg = matches[0]
   elif suc =~ pegSuccess:
@@ -130,8 +132,11 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, expected.file, given.file, reFilesDiffer)
-  elif expected.line != given.line and expected.line != 0:
-    r.addResult(test, $expected.line, $given.line, reLinesDiffer)
+  elif expected.line   != given.line   and expected.line   != 0 or
+       expected.column != given.column and expected.column != 0:
+    r.addResult(test, $expected.line & ':' & $expected.column,
+                      $given.line    & ':' & $given.column,
+                      reLinesDiffer)
   else:
     r.addResult(test, expected.msg, given.msg, reSuccess)
     inc(r.passed)
