@@ -144,7 +144,9 @@ proc mapType(typ: PType): TCTypeKind =
   of tyCString: result = ctCString
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
-  else: internalError("mapType")
+  else:
+    internalError("mapType: could not map 'typ:" & $typ.kind &
+      "' to a TCTypeKind")
 
 proc mapReturnType(typ: PType): TCTypeKind =
   if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
