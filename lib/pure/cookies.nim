@@ -53,9 +53,15 @@ proc setCookie*(key, value: string, expires: TimeInfo,
                    format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"),
                    noname, secure, httpOnly)
 
-when not defined(testing) and isMainModule:
+when isMainModule:
   var tim = Time(int(getTime()) + 76 * (60 * 60 * 24))
 
-  echo(setCookie("test", "value", tim.getGMTime()))
+  let cookie = setCookie("test", "value", tim.getGMTime())
+  when not defined(testing):
+    echo cookie
+  let start = "Set-Cookie: test=value; Expires="
+  assert cookie[0..start.high] == start
   
-  echo parseCookies("uid=1; kp=2")
+  let table = parseCookies("uid=1; kp=2")
+  assert table["uid"] == "1"
+  assert table["kp"] == "2"

@@ -1250,6 +1250,7 @@ proc rstToHtml*(s: string, options: TRstParseOptions,
   renderRstToOut(d, rst, result)
 
 
-when not defined(testing) and isMainModule:
-  echo rstToHtml("*Hello* **world**!", {},
-    newStringTable(modeStyleInsensitive))
+when isMainModule:
+  assert rstToHtml("*Hello* **world**!", {},
+    newStringTable(modeStyleInsensitive)) ==
+    "<em>Hello</em> <strong>world</strong>!"

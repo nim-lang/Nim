@@ -386,9 +386,13 @@ when isMainModule:
     longishA, 
     longish)"""
   
-  when not defined(testing):
-    echo "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA", 
-      "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]
+  assert "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
+    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"] ==
+    strutils.unindent """
+      type TMyEnum* = enum
+        fieldA, fieldB, 
+        FiledClkad, fieldD, 
+        fieldE, longishFieldName"""
   
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
   
@@ -396,8 +400,12 @@ when isMainModule:
   
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
   
-  when not defined(testing):
-    echo subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
-      "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
+  assert subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
+    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"] ==
+    strutils.unindent """
+      type
+        TEnum = enum
+          fieldNameA, fieldNameB, fieldNameC, 
+          fieldNameD"""
   
   

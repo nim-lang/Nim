@@ -482,8 +482,9 @@ macro `var`*(e: expr): expr {.immediate.} =
   let e = callsite()
   result = xmlCheckedTag(e, "var", commonAttr)
 
-when not defined(testing) and isMainModule:
-  var nim = "Nim"
-  echo h1(a(href="http://nim-lang.org", nim))
-  echo form(action="test", `accept-charset` = "Content-Type")
-
+when isMainModule:
+  let nim = "Nim"
+  assert h1(a(href="http://nim-lang.org", nim)) ==
+    """<h1><a href="http://nim-lang.org">Nim</a></h1>"""
+  assert form(action="test", `accept-charset` = "Content-Type") ==
+    """<form action="test" accept-charset="Content-Type"></form>"""

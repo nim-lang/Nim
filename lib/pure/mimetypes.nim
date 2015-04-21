@@ -516,7 +516,7 @@ proc register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   ## Adds ``mimetype`` to the ``mimedb``.
   mimedb.mimes[ext] = mimetype
 
-when not defined(testing) and isMainModule:
+when isMainModule:
   var m = newMimetypes()
-  echo m.getMimetype("mp4")
-  echo m.getExt("text/html")
+  assert m.getMimetype("mp4") == "video/mp4"
+  assert m.getExt("text/html") == "html"

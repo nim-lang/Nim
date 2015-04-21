@@ -286,6 +286,8 @@ proc `$`*[T](c: CritBitTree[T]): string =
     result.add("}")
 
 when isMainModule:
+  import sequtils
+
   var r: CritBitTree[void]
   r.incl "abc"
   r.incl "xyz"
@@ -295,12 +297,8 @@ when isMainModule:
 
   doAssert r.contains"def"
 
-  when not defined(testing):
-    #r.del "def"
+  r.excl "def"
 
-    for w in r.items:
-      echo w
+  assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 
-    for w in r.itemsWithPrefix("de"):
-      echo w
-
+  assert toSeq(r.itemsWithPrefix("de")) == @["definition"]

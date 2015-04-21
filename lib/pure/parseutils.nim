@@ -323,9 +323,11 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
     i = j
 
 when isMainModule:
-  for k, v in interpolatedFragments("$test{}  $this is ${an{  example}}  "):
-    when not defined(testing):
-      echo "(", k, ", \"", v, "\")"
+  import sequtils
+  let input = "$test{}  $this is ${an{  example}}  "
+  let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
+                   (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
+  assert toSeq(interpolatedFragments(input)) == expected
 
   var value = 0
   discard parseHex("0x38", value)
