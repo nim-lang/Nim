@@ -2,6 +2,7 @@ version 0.10.4
 ==============
 
 - make 'nil' work for 'add' and 'len'
+- add '..^' and '..<' operators to system
 
 version 1.0
 ===========

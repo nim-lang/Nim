@@ -663,7 +663,7 @@ proc `+` *(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
 proc `+` *(x: int8): int8 {.magic: "UnaryPlusI", noSideEffect.}
 proc `+` *(x: int16): int16 {.magic: "UnaryPlusI", noSideEffect.}
 proc `+` *(x: int32): int32 {.magic: "UnaryPlusI", noSideEffect.}
-proc `+` *(x: int64): int64 {.magic: "UnaryPlusI64", noSideEffect.}
+proc `+` *(x: int64): int64 {.magic: "UnaryPlusI", noSideEffect.}
   ## Unary `+` operator for an integer. Has no effect.
 
 proc `-` *(x: int): int {.magic: "UnaryMinusI", noSideEffect.}
@@ -1638,7 +1638,7 @@ proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
 proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
-proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.} =
+proc min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
   ## The minimum value of two integers.
   if x <= y: x else: y
 
@@ -1656,7 +1656,7 @@ proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
 proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
-proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.} =
+proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
   ## The maximum value of two integers.
   if y <= x: x else: y
 
@@ -3255,5 +3255,15 @@ proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
   ## this is a builtin, it automatically works for all kinds of
   ## overloaded ``[]`` or ``[]=`` accessors.
   discard
+
+template `..^`*(a, b: expr): expr =
+  ## a shortcut for '.. ^' to avoid the common gotcha that a space between
+  ## '..' and '^' is required.
+  a .. ^b
+
+template `..<`*(a, b: expr): expr =
+  ## a shortcut for '.. <' to avoid the common gotcha that a space between
+  ## '..' and '<' is required.
+  a .. <b
 
 {.pop.} #{.push warning[GcMem]: off.}

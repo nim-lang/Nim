@@ -566,8 +566,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($4)($1 & $2)",            # BitandI64
       "($4)($1 | $2)",            # BitorI64
       "($4)($1 ^ $2)",            # BitxorI64
-      "(($1 <= $2) ? $1 : $2)", # MinI64
-      "(($1 >= $2) ? $1 : $2)", # MaxI64
       "(($1 <= $2) ? $1 : $2)", # MinF64
       "(($1 >= $2) ? $1 : $2)", # MaxF64
       "($4)((NU$3)($1) + (NU$3)($2))", # AddU
@@ -640,7 +638,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     unArithTab: array[mNot..mToBiggestInt, string] = ["!($1)", # Not
       "$1",                   # UnaryPlusI
       "($3)((NU$2) ~($1))",   # BitnotI
-      "$1",                   # UnaryPlusI64
       "($3)((NU$2) ~($1))",   # BitnotI64
       "$1",                   # UnaryPlusF64
       "-($1)",                # UnaryMinusF64

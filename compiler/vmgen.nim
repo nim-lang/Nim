@@ -791,7 +791,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     genUnaryABC(c, n, dest, opcUnaryMinusInt)
     genNarrow(c, n, dest)
   of mUnaryMinusF64: genUnaryABC(c, n, dest, opcUnaryMinusFloat)
-  of mUnaryPlusI, mUnaryPlusI64, mUnaryPlusF64: gen(c, n.sons[1], dest)
+  of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
   of mBitnotI, mBitnotI64:
     genUnaryABC(c, n, dest, opcBitnotInt)
     genNarrowU(c, n, dest)
@@ -1008,7 +1008,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
-  of mMinI, mMaxI, mMinI64, mMaxI64, mAbsF64, mMinF64, mMaxF64, mAbsI,
+  of mMinI, mMaxI, mAbsF64, mMinF64, mMaxF64, mAbsI,
      mAbsI64, mDotDot:
     c.genCall(n, dest)
   of mExpandToAst:

@@ -281,8 +281,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
     ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
-    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI64
-    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -326,7 +324,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "!($1)", "!($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "+($1)", "+($1)"], # UnaryPlusI64
     ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
@@ -383,8 +380,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
     ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
-    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI64
-    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -428,7 +423,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "not ($1)", "not ($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "+($1)", "+($1)"], # UnaryPlusI64
     ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
