@@ -118,6 +118,9 @@ proc makeRange(typ: PType, first, last: BiggestInt): PType =
   let lowerNode = newIntNode(nkIntLit, minA)
   if typ.kind == tyInt and minA == maxA:
     result = getIntLitType(lowerNode)
+  elif typ.kind in {tyUint, tyUInt64}:
+    # these are not ordinal types, so you get no subrange type for these:
+    result = typ
   else:
     var n = newNode(nkRange)
     addSon(n, lowerNode)
@@ -135,8 +138,9 @@ proc makeRangeF(typ: PType, first, last: BiggestFloat): PType =
   addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
 
 proc getIntervalType*(m: TMagic, n: PNode): PType =
-  # Nimrod requires interval arithmetic for ``range`` types. Lots of tedious
+  # Nim requires interval arithmetic for ``range`` types. Lots of tedious
   # work but the feature is very nice for reducing explicit conversions.
+  const ordIntLit = {nkIntLit..nkUInt64Lit}
   result = n.typ
 
   template commutativeOp(opr: expr) {.immediate.} =
@@ -208,15 +212,15 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     var a = n.sons[1]
     var b = n.sons[2]
     # symmetrical:
-    if b.kind notin {nkIntLit..nkUInt32Lit}: swap(a, b)
-    if b.kind in {nkIntLit..nkUInt32Lit}:
+    if b.kind notin ordIntLit: swap(a, b)
+    if b.kind in ordIntLit:
       let x = b.intVal|+|1
       if (x and -x) == x and x >= 0:
         result = makeRange(a.typ, 0, b.intVal)
   of mModU:
     let a = n.sons[1]
     let b = n.sons[2]
-    if b.kind in {nkIntLit..nkUInt32Lit}:
+    if a.kind in ordIntLit:
       if b.intVal >= 0:
         result = makeRange(a.typ, 0, b.intVal-1)
       else:
@@ -232,9 +236,9 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
         result = makeRange(a.typ, b.intVal+1, -(b.intVal+1))
   of mDivI, mDivI64, mDivU:
     binaryOp(`|div|`)
-  of mMinI, mMinI64:
+  of mMinI:
     commutativeOp(min)
-  of mMaxI, mMaxI64:
+  of mMaxI:
     commutativeOp(max)
   else: discard
 
@@ -285,7 +289,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mLengthStr: result = newIntNodeT(len(getStr(a)), n)
   of mLengthArray: result = newIntNodeT(lengthOrd(a.typ), n)
   of mLengthSeq, mLengthOpenArray: result = newIntNodeT(sonsLen(a), n) # BUGFIX
-  of mUnaryPlusI, mUnaryPlusI64, mUnaryPlusF64: result = a # throw `+` away
+  of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   of mToFloat, mToBiggestFloat:
     result = newFloatNodeT(toFloat(int(getInt(a))), n)
   of mToInt, mToBiggestInt: result = newIntNodeT(system.toInt(getFloat(a)), n)
@@ -305,10 +309,10 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mAddI, mAddI64: result = newIntNodeT(getInt(a) + getInt(b), n)
   of mSubI, mSubI64: result = newIntNodeT(getInt(a) - getInt(b), n)
   of mMulI, mMulI64: result = newIntNodeT(getInt(a) * getInt(b), n)
-  of mMinI, mMinI64:
+  of mMinI:
     if getInt(a) > getInt(b): result = newIntNodeT(getInt(b), n)
     else: result = newIntNodeT(getInt(a), n)
-  of mMaxI, mMaxI64:
+  of mMaxI:
     if getInt(a) > getInt(b): result = newIntNodeT(getInt(a), n)
     else: result = newIntNodeT(getInt(b), n)
   of mShlI, mShlI64:
