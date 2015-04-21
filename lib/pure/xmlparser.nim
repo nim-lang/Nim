@@ -143,7 +143,7 @@ proc loadXml*(path: string): XmlNode =
   result = loadXml(path, errors)
   if errors.len > 0: raiseInvalidXml(errors)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   import os
 
   var errors: seq[string] = @[]  

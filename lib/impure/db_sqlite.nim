@@ -205,7 +205,7 @@ proc setEncoding*(connection: TDbConn, encoding: string): bool {.
   exec(connection, sql"PRAGMA encoding = ?", [encoding])
   result = connection.getValue(sql"PRAGMA encoding") == encoding
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var db = open("db.sql", "", "", "")
   exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
   exec(db, sql"insert into tbl1 values('hello!',10)", [])

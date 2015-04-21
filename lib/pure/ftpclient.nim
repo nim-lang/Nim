@@ -629,7 +629,7 @@ when isMainModule:
       if not d.poll(): break
   main()
 
-when isMainModule and false:
+when not defined(testing) and isMainModule:
   var ftp = ftpClient("example.com", user = "foo", pass = "bar")
   ftp.connect()
   echo ftp.pwd()

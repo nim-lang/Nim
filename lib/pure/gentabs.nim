@@ -186,8 +186,19 @@ when isMainModule:
   assert( z["first"]["one"] == 1)   # retrieve from first inner table
   assert( z["second"]["red"] == 10) # retrieve from second inner table
   
-  for k,v in pairs(z):
-    echo( "$# ($#) ->" % [k,$len(v)] )
-    #for k2,v2 in pairs(v):
-    #  echo( "   $# <-> $#" % [k2,$v2] )
-  echo()
+  var output = ""
+  for k, v in pairs(z):
+    output.add( "$# ($#) ->\n" % [k,$len(v)] )
+    for k2,v2 in pairs(v):
+      output.add( "  $# <-> $#\n" % [k2,$v2] )
+
+  let expected = unindent """
+    first (3) ->
+      two <-> 2
+      three <-> 3
+      one <-> 1
+    second (2) ->
+      red <-> 10
+      blue <-> 20
+  """
+  assert output == expected

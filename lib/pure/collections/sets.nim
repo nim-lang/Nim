@@ -970,6 +970,7 @@ when isMainModule and not defined(release):
       if s <= i or mustRehash(s, i):
         echo "performance issue: rightSize() will not elide enlarge() at ", i
 
-    echo "Micro tests run successfully."
+    when not defined(testing):
+      echo "Micro tests run successfully."
 
   testModule()

@@ -1080,7 +1080,7 @@ proc assertListsIdentical(listA, listB: seq[string]) =
     assert(item == listB[i])
     i = i + 1
   
-when isMainModule:
+when not defined(testing) and isMainModule:
   when false:
     var r = open()
 

@@ -198,7 +198,7 @@ proc register*(d: Dispatcher, monitor: FSMonitor,
   var deleg = toDelegate(monitor)
   d.register(deleg)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   proc main =
     var disp = newDispatcher()
     var monitor = newMonitor()

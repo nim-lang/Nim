@@ -593,7 +593,7 @@ proc loadHtml*(path: string): XmlNode =
   var errors: seq[string] = @[]
   result = loadHtml(path, errors)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   import os
 
   var errors: seq[string] = @[]  

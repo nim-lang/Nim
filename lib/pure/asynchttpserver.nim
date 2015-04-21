@@ -260,7 +260,7 @@ proc close*(server: AsyncHttpServer) =
   ## Terminates the async http server instance.
   server.socket.close()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   proc main =
     var server = newAsyncHttpServer()
     proc cb(req: Request) {.async.} =

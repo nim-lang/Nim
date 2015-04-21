@@ -458,7 +458,7 @@ proc isClosed*(socket: AsyncSocket): bool =
   ## Determines whether the socket has been closed.
   return socket.closed
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   type
     TestCases = enum
       HighClient, LowClient, LowServer

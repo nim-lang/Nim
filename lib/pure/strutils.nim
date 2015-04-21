@@ -1402,14 +1402,20 @@ when isMainModule:
   doAssert align("a", 0) == "a"
   doAssert align("1232", 6) == "  1232"
   doAssert align("1232", 6, '#') == "##1232"
-  echo wordWrap(""" this is a long text --  muchlongerthan10chars and here
-                   it goes""", 10, false)
+
+  let
+    inp = """ this is a long text --  muchlongerthan10chars and here
+               it goes"""
+    outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
+  doAssert wordWrap(inp, 10, false) == outp
+
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-  echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
-  echo formatSize(1'i64 shl 31)
+  when not defined(testing):
+    echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
+    echo formatSize(1'i64 shl 31)
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."

@@ -1251,5 +1251,6 @@ proc rstToHtml*(s: string, options: TRstParseOptions,
 
 
 when isMainModule:
-  echo rstToHtml("*Hello* **world**!", {},
-    newStringTable(modeStyleInsensitive))
+  assert rstToHtml("*Hello* **world**!", {},
+    newStringTable(modeStyleInsensitive)) ==
+    "<em>Hello</em> <strong>world</strong>!"

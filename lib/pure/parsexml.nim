@@ -628,7 +628,7 @@ proc next*(my: var XmlParser) =
     my.kind = xmlError
     my.state = stateNormal
   
-when isMainModule:
+when not defined(testing) and isMainModule:
   import os
   var s = newFileStream(paramStr(1), fmRead)
   if s == nil: quit("cannot open the file" & paramStr(1))

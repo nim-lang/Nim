@@ -70,5 +70,5 @@ proc unidecode*(s: string): string =
 
 when isMainModule:
   loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
-  echo unidecode("Äußerst")
+  assert unidecode("Äußerst") == "Ausserst"
 
