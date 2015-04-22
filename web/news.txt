@@ -127,6 +127,7 @@ News
     things from backwards: ``a[^1]`` is like Python's ``a[-1]``.
   - A first version of the specification and implementation of the overloading
     of the assignment operator has arrived!
+  - ``system.len`` for strings and sequences now returns 0 for nil.
 
 
   Library additions
@@ -137,6 +138,10 @@ News
     with a ``newMultipartData`` proc.
   - Added `%*` operator for JSON.
   - The compiler is now available as Nimble package for c2nim.
+  - Added ``..^`` and ``..<`` templates to system so that the rather annoying
+    space between ``.. <`` and ``.. ^`` is not necessary anymore.
+  - Added ``system.xlen`` for strings and sequences to get back the old ``len``
+    operation that doesn't check for ``nil`` for efficiency.
 
 
   Bugfixes
