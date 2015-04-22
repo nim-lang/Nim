@@ -11,7 +11,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sequtils
+import algorithm, sequtils, strutils
 
 const
   sep = '\t'
@@ -39,50 +39,14 @@ var
 
 template origModuleName(m: PSym): string = m.name.s
 
-proc parseSection(s: string): Section =
-  case s:
-  of "sug": result = sug
-  of "con": result = con
-  of "use": result = use
-  of "def": result = def
-  else: raise newException(ERecoverableError, "Answer type incorrect")
-
-proc parseSymKind(s: string): TSymKind =
-  case s:
-  of "skDynLib": result = skDynLib
-  of "skParam": result = skParam
-  of "skGenericParam": result = skGenericParam
-  of "skTemp": result = skTemp
-  of "skModule": result = skModule
-  of "skType": result = skType
-  of "skVar": result = skVar
-  of "skLet": result = skLet
-  of "skConst": result = skConst
-  of "skResult": result = skResult
-  of "skProc": result = skProc
-  of "skMethod": result = skMethod
-  of "skIterator": result = skIterator
-  of "skClosureIterator": result = skClosureIterator
-  of "skConverter": result = skConverter
-  of "skMacro": result = skMacro
-  of "skTemplate": result = skTemplate
-  of "skField": result = skField
-  of "skEnumField": result = skEnumField
-  of "skForVar": result = skForVar
-  of "skLabel": result = skLabel
-  of "skStub": result = skStub
-  of "skPackage": result = skPackage
-  of "skAlias": result = skAlias
-  else: raise newException(ERecoverableError, "TSymKind not found")
-
 proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo): Suggest = 
-  result.section = parseSection(section)
+  result.section = parseEnum[Section](section)
   if optIdeTerse in gGlobalOptions:
     if s.kind in routineKinds:
-      result.symkind = parseSymKind(renderTree(s.ast, {renderNoBody, renderNoComments,
+      result.symkind = parseEnum[TSymKind](renderTree(s.ast, {renderNoBody, renderNoComments,
                                     renderDocComments, renderNoPragmas}))
     else:
-      result.symkind = parseSymKind(s.name.s)
+      result.symkind = parseEnum[TSymKind](s.name.s)
     result.filePath = toFullPath(li)
     result.line = toLinenumber(li)
     result.column = toColumn(li)
