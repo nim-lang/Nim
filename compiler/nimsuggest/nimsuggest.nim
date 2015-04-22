@@ -23,18 +23,20 @@ Options:
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
                           stdout instead of using sockets
-  --sexp                  talk in sexp, mainly for emacs epc.
+  --epc                   use emacs epc mode
 
 The server then listens to the connection and takes line-based commands.
 
 In addition, all command line options of Nim that do not affect code generation
 are supported.
 """
+type
+  Mode = enum mstdin, mtcp, mepc
 
 var
   gPort = 6000.Port
   gAddress = ""
-  gUseStdin: bool
+  gMode: Mode
 
 const
   seps = {':', ';', ' ', '\t'}
@@ -109,14 +111,15 @@ proc action(cmd: string) =
 proc serve() =
   # do not stop after the first error:
   msgs.gErrorMax = high(int)
-  if gUseStdin:
+  case gMode:
+  of mstdin:
     echo Help
     var line = ""
     while readLineFromStdin("> ", line):
       action line
       echo ""
       flushFile(stdout)
-  else:
+  of mtcp:
     var server = newSocket()
     server.bindAddr(gPort, gAddress)
     var inp = "".TaintedString
@@ -134,6 +137,8 @@ proc serve() =
 
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
+  of mepc:
+    discard
 
 proc mainCommand =
   registerPass verbosePass
@@ -157,9 +162,14 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     of cmdEnd: break 
     of cmdLongoption, cmdShortOption: 
       case p.key.normalize
-      of "port": gPort = parseInt(p.val).Port
-      of "address": gAddress = p.val
-      of "stdin": gUseStdin = true
+      of "port":
+        gPort = parseInt(p.val).Port
+        gMode = mtcp
+      of "address":
+        gAddress = p.val
+        gMode = mtcp
+      of "stdin": gMode = mstdin
+      of "epc": gMode = mepc
       else: processSwitch(pass, p)
     of cmdArgument:
       options.gProjectName = unixToNativePath(p.key)
