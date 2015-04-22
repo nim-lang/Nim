@@ -95,6 +95,7 @@ compiler llvmGcc:
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
   result.buildLib = "llvm-ar rcs $libfile $objfiles"
+  result.buildGui = ""
 
 # Clang (LLVM) C/C++ Compiler
 compiler clang:
