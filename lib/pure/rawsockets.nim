@@ -39,6 +39,9 @@ export
   SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR,
   MSG_PEEK
 
+when defined(macosx):
+    export SO_NOSIGPIPE
+
 type
   Port* = distinct uint16  ## port type
   
@@ -427,10 +430,6 @@ proc selectWrite*(writefds: var seq[SocketHandle],
     result = int(select(cint(m+1), nil, addr(wr), nil, nil))
   
   pruneSocketSet(writefds, (wr))
-
-# We ignore signal SIGPIPE on Darwin
-when defined(macosx):
-  signal(SIGPIPE, SIG_IGN)
 
 when defined(Windows):
   var wsa: WSAData

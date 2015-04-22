@@ -190,6 +190,8 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
         result = arLocalLValue
       else:
         result = arLValue
+    elif n.sym.kind == skParam and n.sym.typ.kind == tyVar:
+      result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
       if t.kind == tyVar: result = arStrange

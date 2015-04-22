@@ -300,7 +300,7 @@ proc newAsyncFtpClient*(address: string, port = Port(21),
   result.dsockConnected = false
   result.csock = newAsyncSocket()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
   proc main(ftp: AsyncFtpClient) {.async.} =
     await ftp.connect()

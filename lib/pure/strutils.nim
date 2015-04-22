@@ -386,7 +386,7 @@ proc split*(s: string, sep: string): seq[string] {.noSideEffect,
   ## `split iterator <#split.i,string,string>`_.
   accumulateResult(split(s, sep))
 
-proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
+proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
   ## Converts `x` to its hexadecimal representation.
   ##
@@ -403,7 +403,7 @@ proc toHex*(x: BiggestInt, len: int): string {.noSideEffect,
     # handle negative overflow
     if n == 0 and x < 0: n = -1
 
-proc intToStr*(x: int, minchars: int = 1): string {.noSideEffect,
+proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation.
   ##
@@ -499,7 +499,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
       return e
   result = default
 
-proc repeat*(c: char, count: int): string {.noSideEffect,
+proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
   ## the character `c`. You can use this proc to left align strings. Example:
@@ -514,7 +514,7 @@ proc repeat*(c: char, count: int): string {.noSideEffect,
   result = newString(count)
   for i in 0..count-1: result[i] = c
 
-proc repeat*(s: string, n: int): string {.noSideEffect,
+proc repeat*(s: string, n: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatStr".} =
   ## Returns String `s` concatenated `n` times.  Example:
   ##
@@ -523,7 +523,7 @@ proc repeat*(s: string, n: int): string {.noSideEffect,
   result = newStringOfCap(n * s.len)
   for i in 1..n: result.add(s)
 
-template spaces*(n: int): string =  repeat(' ',n)
+template spaces*(n: Natural): string =  repeat(' ',n)
   ## Returns a String with `n` space characters. You can use this proc
   ## to left align strings. Example:
   ##
@@ -535,15 +535,15 @@ template spaces*(n: int): string =  repeat(' ',n)
   ##   echo text1 & spaces(max(0, width - text1.len)) & "|"
   ##   echo text2 & spaces(max(0, width - text2.len)) & "|"
 
-proc repeatChar*(count: int, c: char = ' '): string {.deprecated.} = repeat(c, count)
+proc repeatChar*(count: Natural, c: char = ' '): string {.deprecated.} = repeat(c, count)
   ## deprecated: use repeat() or spaces()
 
-proc repeatStr*(count: int, s: string): string {.deprecated.} = repeat(s, count)
+proc repeatStr*(count: Natural, s: string): string {.deprecated.} = repeat(s, count)
   ## deprecated: use repeat(string, count) or string.repeat(count)
 
-proc align*(s: string, count: int, padding = ' '): string {.
+proc align*(s: string, count: Natural, padding = ' '): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
-  ## Aligns a string `s` with `padding`, so that is of length `count`.
+  ## Aligns a string `s` with `padding`, so that it is of length `count`.
   ##
   ## `padding` characters (by default spaces) are added before `s` resulting in
   ## right alignment. If ``s.len >= count``, no spaces are added and `s` is
@@ -682,7 +682,7 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
     inc(i)
   if suffix[i] == '\0': return true
 
-proc continuesWith*(s, substr: string, start: int): bool {.noSideEffect,
+proc continuesWith*(s, substr: string, start: Natural): bool {.noSideEffect,
   rtl, extern: "nsuContinuesWith".} =
   ## Returns true iff ``s`` continues with ``substr`` at position ``start``.
   ##
@@ -693,8 +693,8 @@ proc continuesWith*(s, substr: string, start: int): bool {.noSideEffect,
     if s[i+start] != substr[i]: return false
     inc(i)
 
-proc addSep*(dest: var string, sep = ", ", startLen = 0) {.noSideEffect,
-                                                           inline.} =
+proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
+  {.noSideEffect, inline.} =
   ## Adds a separator to `dest` only if its length is bigger than `startLen`.
   ##
   ## A shorthand for:
@@ -784,7 +784,7 @@ proc findAux(s, sub: string, start: int, a: SkipTable): int =
     inc(j, a[s[j+m]])
   return -1
 
-proc find*(s, sub: string, start: int = 0): int {.noSideEffect,
+proc find*(s, sub: string, start: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` starting at position `start`.
   ##
@@ -793,7 +793,7 @@ proc find*(s, sub: string, start: int = 0): int {.noSideEffect,
   preprocessSub(sub, a)
   result = findAux(s, sub, start, a)
 
-proc find*(s: string, sub: char, start: int = 0): int {.noSideEffect,
+proc find*(s: string, sub: char, start: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindChar".} =
   ## Searches for `sub` in `s` starting at position `start`.
   ##
@@ -802,7 +802,7 @@ proc find*(s: string, sub: char, start: int = 0): int {.noSideEffect,
     if sub == s[i]: return i
   return -1
 
-proc find*(s: string, chars: set[char], start: int = 0): int {.noSideEffect,
+proc find*(s: string, chars: set[char], start: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindCharSet".} =
   ## Searches for `chars` in `s` starting at position `start`.
   ##
@@ -933,7 +933,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
     var j = findAux(s, sub, i, a)
     if j < 0: break
     # word boundary?
-    if (j == 0 or s[j-1] notin wordChars) and 
+    if (j == 0 or s[j-1] notin wordChars) and
         (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
       add result, substr(s, i, j - 1)
       add result, by
@@ -976,7 +976,7 @@ proc parseOctInt*(s: string): int {.noSideEffect,
     of '\0': break
     else: raise newException(ValueError, "invalid integer: " & s)
 
-proc toOct*(x: BiggestInt, len: int): string {.noSideEffect,
+proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
   ## Converts `x` into its octal representation.
   ##
@@ -992,7 +992,7 @@ proc toOct*(x: BiggestInt, len: int): string {.noSideEffect,
     shift = shift + 3
     mask = mask shl 3
 
-proc toBin*(x: BiggestInt, len: int): string {.noSideEffect,
+proc toBin*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToBin".} =
   ## Converts `x` into its binary representation.
   ##
@@ -1221,7 +1221,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``biggestFloat`` type.
-  ## 
+  ##
   ## If ``precision == 0``, it tries to format it nicely.
   const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
   var
@@ -1286,7 +1286,7 @@ proc findNormalized(x: string, inArray: openArray[string]): int =
   return -1
 
 proc invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")  
+  raise newException(ValueError, "invalid format string")
 
 proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
   noSideEffect, rtl, extern: "nsuAddf".} =
@@ -1402,21 +1402,27 @@ when isMainModule:
   doAssert align("a", 0) == "a"
   doAssert align("1232", 6) == "  1232"
   doAssert align("1232", 6, '#') == "##1232"
-  echo wordWrap(""" this is a long text --  muchlongerthan10chars and here
-                   it goes""", 10, false)
+
+  let
+    inp = """ this is a long text --  muchlongerthan10chars and here
+               it goes"""
+    outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
+  doAssert wordWrap(inp, 10, false) == outp
+
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-  echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
-  echo formatSize(1'i64 shl 31)
+  when not defined(testing):
+    echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
+    echo formatSize(1'i64 shl 31)
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
 
   doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
   doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
-  
+
   type MyEnum = enum enA, enB, enC, enuD, enE
   doAssert parseEnum[MyEnum]("enu_D") == enuD
 

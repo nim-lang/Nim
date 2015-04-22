@@ -16,9 +16,9 @@ const
 
 proc sharedPtrCheck(info: TLineInfo, t: PType) =
   if t.kind == tyPtr and t.len > 1:
-    if t.sons[0].sym.magic in {mShared, mGuarded}:
+    if t.sons[0].sym.magic == mShared:
       incl(t.flags, tfShared)
-      if t.sons[0].sym.magic == mGuarded: incl(t.flags, tfGuarded)
+      #if t.sons[0].sym.magic == mGuarded: incl(t.flags, tfGuarded)
       if tfHasGCedMem in t.flags or t.isGCedMem:
         localError(info, errGenerated,
                    "shared memory may not refer to GC'ed thread local memory")
@@ -233,7 +233,9 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
   result = copyType(t, t.owner, cl.allowMetaTypes)
   result.flags.incl tfFromGeneric
-  result.flags.excl tfInstClearedFlags
+  if not (t.kind in tyMetaTypes or
+         (t.kind == tyStatic and t.n == nil)):
+    result.flags.excl tfInstClearedFlags
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
@@ -307,7 +309,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
     # 'deepCopy' needs to be instantiated for
     # generics *when the type is constructed*:
-    newbody.deepCopy = cl.c.instDeepCopy(cl.c, dc, result, cl.info)
+    newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
+                                            attachedDeepCopy)
+  let asgn = newbody.assignment
+  if asgn != nil and sfFromGeneric notin asgn.flags:
+    # '=' needs to be instantiated for generics when the type is constructed:
+    newbody.assignment = cl.c.instTypeBoundOp(cl.c, asgn, result, cl.info,
+                                              attachedAsgn)
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
@@ -412,15 +420,23 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     result = t
 
   of tyGenericInst:
+    result = PType(idTableGet(cl.localCache, t))
+    if result != nil: return result
     result = instCopyType(cl, t)
+    idTablePut(cl.localCache, t, result)
     for i in 1 .. <result.sonsLen:
       result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.lastSon)
 
   else:
     if containsGenericType(t):
+      #if not cl.allowMetaTypes:
+      result = PType(idTableGet(cl.localCache, t))
+      if result != nil: return result
       result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
+      #if not cl.allowMetaTypes:
+      idTablePut(cl.localCache, t, result)
 
       for i in countup(0, sonsLen(result) - 1):
         if result.sons[i] != nil:

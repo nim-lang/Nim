@@ -340,6 +340,39 @@ proc checkNilable(v: PSym) =
     elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
       message(v.info, warnProveInit, v.name.s)
 
+include semasgn
+
+proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
+  # consider this:
+  #   var
+  #     x = 0
+  #     withOverloadedAssignment = foo()
+  #     y = use(withOverloadedAssignment)
+  # We need to split this into a statement list with multiple 'var' sections
+  # in order for this transformation to be correct.
+  let L = identDefs.len
+  let value = identDefs[L-1]
+  if value.typ != nil and tfHasAsgn in value.typ.flags:
+    # the spec says we need to rewrite 'var x = T()' to 'var x: T; x = T()':
+    identDefs.sons[L-1] = emptyNode
+    if result.kind != nkStmtList:
+      let oldResult = result
+      oldResult.add identDefs
+      result = newNodeI(nkStmtList, result.info)
+      result.add oldResult
+    else:
+      let o = copyNode(orig)
+      o.add identDefs
+      result.add o
+    for i in 0 .. L-3:
+      result.add overloadedAsgn(c, identDefs[i], value)
+  elif result.kind == nkStmtList:
+    let o = copyNode(orig)
+    o.add identDefs
+    result.add o
+  else:
+    result.add identDefs
+
 proc isDiscardUnderscore(n: PNode): bool =
   if n.kind != nkIdent: return false
   return n.ident.s == "_"
@@ -400,7 +433,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         newSons(b, length)
         b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
         b.sons[length-1] = def
-        addSon(result, b)
+        addToVarSection(c, result, n, b)
     elif tup.kind == tyTuple and def.kind == nkPar and
         a.kind == nkIdentDefs and a.len > 3:
       message(a.info, warnEachIdentIsTuple)
@@ -434,7 +467,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addSon(b, newSymNode(v))
         addSon(b, a.sons[length-2])      # keep type desc for doc generator
         addSon(b, copyTree(def))
-        addSon(result, b)
+        addToVarSection(c, result, n, b)
       else:
         if def.kind == nkPar: v.ast = def[j]
         v.typ = tup.sons[j]
@@ -659,6 +692,16 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         #debug s.typ
       s.ast = a
       popOwner()
+    let aa = a.sons[2]
+    if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
+       aa.sons[0].kind == nkObjectTy:
+      # give anonymous object a dummy symbol:
+      var st = s.typ
+      if st.kind == tyGenericBody: st = st.lastSon
+      internalAssert st.kind in {tyPtr, tyRef}
+      internalAssert st.lastSon.sym == nil
+      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+                              getCurrOwner(), s.info)
 
 proc checkForMetaFields(n: PNode) =
   template checkMeta(t) =
@@ -702,16 +745,6 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       checkConstructedType(s.info, s.typ)
       if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
         checkForMetaFields(s.typ.n)
-    let aa = a.sons[2]
-    if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
-       aa.sons[0].kind == nkObjectTy:
-      # give anonymous object a dummy symbol:
-      var st = s.typ
-      if st.kind == tyGenericBody: st = st.lastSon
-      internalAssert st.kind in {tyPtr, tyRef}
-      internalAssert st.lastSon.sym == nil
-      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
-                              getCurrOwner(), s.info)
 
 proc semTypeSection(c: PContext, n: PNode): PNode =
   ## Processes a type section. This must be done in separate passes, in order
@@ -914,11 +947,12 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
-  of "destroy":
+  of "destroy", "=destroy":
     doDestructorStuff(c, s, n)
     if not experimentalMode(c):
       localError n.info, "use the {.experimental.} pragma to enable destructors"
-  of "deepcopy":
+    incl(s.flags, sfUsed)
+  of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
         s.typ.sons[1].skipTypes(abstractInst).kind in {tyRef, tyPtr} and
         sameType(s.typ.sons[1], s.typ.sons[0]):
@@ -940,10 +974,35 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     else:
       localError(n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
-  of "=": discard
-  else: localError(n.info, errGenerated,
-                   "'destroy' or 'deepCopy' expected for 'override'")
-  incl(s.flags, sfUsed)
+    incl(s.flags, sfUsed)
+  of "=":
+    incl(s.flags, sfUsed)
+    let t = s.typ
+    if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar:
+      var obj = t.sons[1].sons[0]
+      while true:
+        incl(obj.flags, tfHasAsgn)
+        if obj.kind == tyGenericBody: obj = obj.lastSon
+        elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
+        else: break
+      var objB = t.sons[2]
+      while true:
+        if objB.kind == tyGenericBody: objB = objB.lastSon
+        elif objB.kind == tyGenericInvocation: objB = objB.sons[0]
+        else: break
+      if obj.kind in {tyObject, tyDistinct} and sameType(obj, objB):
+        if obj.assignment.isNil:
+          obj.assignment = s
+        else:
+          localError(n.info, errGenerated,
+                     "cannot bind another '=' to: " & typeToString(obj))
+        return
+    localError(n.info, errGenerated,
+               "signature for '=' must be proc[T: object](x: var T; y: T)")
+  else:
+    if sfOverriden in s.flags:
+      localError(n.info, errGenerated,
+                 "'destroy' or 'deepCopy' expected for 'override'")
 
 type
   TProcCompilationSteps = enum
@@ -975,7 +1034,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       s = semIdentDef(c, n.sons[0], kind)
     n.sons[namePos] = newSymNode(s)
     s.ast = n
-    s.scope = c.currentScope
+    #s.scope = c.currentScope
 
     if sfNoForward in c.module.flags and
        sfSystemModule notin c.module.flags:
@@ -987,14 +1046,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.owner = getCurrOwner()
     typeIsDetermined = s.typ == nil
     s.ast = n
-    s.scope = c.currentScope
+    #s.scope = c.currentScope
 
     # if typeIsDetermined: assert phase == stepCompileBody
     # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
-  c.currentScope = s.scope
+  #c.currentScope = s.scope
   pushOwner(s)
   openScope(c)
   var gp: PNode
@@ -1019,7 +1078,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if s.kind in skIterators:
     s.typ.flags.incl(tfIterator)
 
-  var proto = searchForProc(c, s.scope, s)
+  var proto = searchForProc(c, oldScope, s)
   if proto == nil:
     if s.kind == skClosureIterator: s.typ.callConv = ccClosure
     else: s.typ.callConv = lastOptionEntry(c).defaultCC
@@ -1027,10 +1086,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfGenSym in s.flags: discard
     elif kind in OverloadableSyms:
       if not typeIsDetermined:
-        addInterfaceOverloadableSymAt(c, s.scope, s)
+        addInterfaceOverloadableSymAt(c, oldScope, s)
     else:
       if not typeIsDetermined:
-        addInterfaceDeclAt(c, s.scope, s)
+        addInterfaceDeclAt(c, oldScope, s)
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
     else:
@@ -1060,7 +1119,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner()
     pushOwner(s)
   s.options = gOptions
-  if sfOverriden in s.flags: semOverride(c, s, n)
+  if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:
@@ -1098,7 +1157,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
   closeScope(c)           # close scope for parameters
-  c.currentScope = oldScope
+  # c.currentScope = oldScope
   popOwner()
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)

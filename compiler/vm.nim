@@ -1043,7 +1043,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
-      else: setLen(regs[ra].node.sons, newLen)
+      else:
+        let oldLen = regs[ra].node.len
+        setLen(regs[ra].node.sons, newLen)
+        if oldLen < newLen:
+          # XXX This is still not entirely correct
+          # set to default value:
+          for i in oldLen .. <newLen:
+            regs[ra].node.sons[i] = newNodeI(nkEmpty, c.debug[pc])
     of opcSwap:
       let rb = instr.regB
       if regs[ra].kind == regs[rb].kind:

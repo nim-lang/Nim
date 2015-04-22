@@ -1,14 +1,26 @@
 version 0.10.4
 ==============
 
-- improve GC-unsafety warnings
-- make 'nil' work for 'add' and 'len'
-- overloading of '='
+- make 'nil' work for 'add':
+  - resizeString
+  - incrSeq
+  - addChar
+
+
+version 0.10.6 (RC1?)
+=====================
+
+- make '--implicitStatic:on' the default; then we can also clean up the
+  'static[T]' mess in the compiler!
+- finish 'parallel' or mark as experimental
+- Deprecate ``immediate`` for templates and macros
+- special case varargs[untyped] and varargs[typed]
 
 
 version 1.0
 ===========
 
+- macro support for '='; bind '=' to a memory region
 - remove   echo $foo  gotcha
 - add "all threads are blocked" detection to 'spawn'
 - figure out why C++ bootstrapping is so much slower
@@ -37,8 +49,6 @@ Low priority:
 Misc
 ----
 
-- make '--implicitStatic:on' the default; then we can also clean up the
-  'static[T]' mess in the compiler!
 - make tuple unpacking work in a non-var/let context
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
@@ -52,6 +62,7 @@ Bugs
 - scopes are still broken for generic instantiation!
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - ConcreteTypes in a 'case' means we don't check for duplicated case branches
+- typedesc matches a generic type T!
 
 
 version 0.9.x

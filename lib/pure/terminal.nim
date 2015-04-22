@@ -375,7 +375,7 @@ when not defined(windows):
     result = stdin.readChar()
     discard fd.tcsetattr(TCSADRAIN, addr oldMode)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   system.addQuitProc(resetAttributes)
   write(stdout, "never mind")
   eraseLine()

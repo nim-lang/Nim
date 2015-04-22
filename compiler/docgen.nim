@@ -17,9 +17,9 @@ import
   importer, sempass2, json, xmltree, cgi, typesrenderer
 
 type
-  TSections = array[TSymKind, PRope]
+  TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.TRstGenerator
-    modDesc: PRope           # module description
+    modDesc: Rope           # module description
     id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
@@ -82,9 +82,9 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
 
-proc dispA(dest: var PRope, xml, tex: string, args: openArray[PRope]) =
-  if gCmd != cmdRst2tex: appf(dest, xml, args)
-  else: appf(dest, tex, args)
+proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
+  if gCmd != cmdRst2tex: addf(dest, xml, args)
+  else: addf(dest, tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
   for i in countup(0, high(varnames)):
@@ -92,8 +92,8 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
       return i
   result = -1
 
-proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
-                         varvalues: openArray[PRope]): PRope =
+proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
+                         varvalues: openArray[Rope]): Rope =
   var i = 0
   var L = len(frmt)
   result = nil
@@ -103,11 +103,11 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
       inc(i)                  # skip '$'
       case frmt[i]
       of '#':
-        app(result, varvalues[num])
+        add(result, varvalues[num])
         inc(num)
         inc(i)
       of '$':
-        app(result, "$")
+        add(result, "$")
         inc(i)
       of '0'..'9':
         var j = 0
@@ -117,7 +117,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
           if (i > L + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
         if j > high(varvalues) + 1: internalError("ropeFormatNamedVars")
         num = j
-        app(result, varvalues[j - 1])
+        add(result, varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF':
         var id = ""
         while true:
@@ -125,7 +125,7 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
           inc(i)
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break
         var idx = getVarIdx(varnames, id)
-        if idx >= 0: app(result, varvalues[idx])
+        if idx >= 0: add(result, varvalues[idx])
         else: rawMessage(errUnknownSubstitionVar, id)
       of '{':
         var id = ""
@@ -137,14 +137,14 @@ proc ropeFormatNamedVars(frmt: TFormatStr, varnames: openArray[string],
         inc(i)                # skip }
                               # search for the variable:
         var idx = getVarIdx(varnames, id)
-        if idx >= 0: app(result, varvalues[idx])
+        if idx >= 0: add(result, varvalues[idx])
         else: rawMessage(errUnknownSubstitionVar, id)
       else: internalError("ropeFormatNamedVars")
     var start = i
     while i < L:
       if frmt[i] != '$': inc(i)
       else: break
-    if i - 1 >= start: app(result, substr(frmt, start, i - 1))
+    if i - 1 >= start: add(result, substr(frmt, start, i - 1))
 
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
@@ -154,9 +154,9 @@ proc genComment(d: PDoc, n: PNode): string =
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options + {roSkipPounds}), result)
 
-proc genRecComment(d: PDoc, n: PNode): PRope =
+proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
-  result = genComment(d, n).toRope
+  result = genComment(d, n).rope
   if result == nil:
     if n.kind notin {nkEmpty..nkNilLit}:
       for i in countup(0, len(n)-1):
@@ -331,9 +331,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(nameNode): return
   let
     name = getName(d, nameNode)
-    nameRope = name.toRope
+    nameRope = name.rope
     plainDocstring = getPlainDocstring(n) # call here before genRecComment!
-  var result: PRope = nil
+  var result: Rope = nil
   var literal, plainName = ""
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
@@ -356,69 +356,69 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break
     of tkComment:
       dispA(result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
-            [toRope(esc(d.target, literal))])
+            [rope(esc(d.target, literal))])
     of tokKeywordLow..tokKeywordHigh:
       dispA(result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
-            [toRope(literal)])
+            [rope(literal)])
     of tkOpr:
       dispA(result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
-            [toRope(esc(d.target, literal))])
+            [rope(esc(d.target, literal))])
     of tkStrLit..tkTripleStrLit:
       dispA(result, "<span class=\"StringLit\">$1</span>",
-            "\\spanStringLit{$1}", [toRope(esc(d.target, literal))])
+            "\\spanStringLit{$1}", [rope(esc(d.target, literal))])
     of tkCharLit:
       dispA(result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
-            [toRope(esc(d.target, literal))])
+            [rope(esc(d.target, literal))])
     of tkIntLit..tkUInt64Lit:
       dispA(result, "<span class=\"DecNumber\">$1</span>",
-            "\\spanDecNumber{$1}", [toRope(esc(d.target, literal))])
+            "\\spanDecNumber{$1}", [rope(esc(d.target, literal))])
     of tkFloatLit..tkFloat128Lit:
       dispA(result, "<span class=\"FloatNumber\">$1</span>",
-            "\\spanFloatNumber{$1}", [toRope(esc(d.target, literal))])
+            "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
     of tkSymbol:
       dispA(result, "<span class=\"Identifier\">$1</span>",
-            "\\spanIdentifier{$1}", [toRope(esc(d.target, literal))])
+            "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
     of tkSpaces, tkInvalid:
-      app(result, literal)
+      add(result, literal)
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
        tkBracketDotLe, tkBracketDotRi, tkCurlyDotLe, tkCurlyDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
        tkAccent, tkColonColon,
        tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr:
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
-            [toRope(esc(d.target, literal))])
+            [rope(esc(d.target, literal))])
   inc(d.id)
   let
-    plainNameRope = toRope(xmltree.escape(plainName.strip))
+    plainNameRope = rope(xmltree.escape(plainName.strip))
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
-    plainSymbolRope = toRope(cleanPlainSymbol)
-    plainSymbolEncRope = toRope(encodeUrl(cleanPlainSymbol))
-    itemIDRope = toRope(d.id)
+    plainSymbolRope = rope(cleanPlainSymbol)
+    plainSymbolEncRope = rope(encodeUrl(cleanPlainSymbol))
+    itemIDRope = rope(d.id)
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
-    symbolOrIdRope = symbolOrId.toRope
-    symbolOrIdEncRope = encodeUrl(symbolOrId).toRope
+    symbolOrIdRope = symbolOrId.rope
+    symbolOrIdEncRope = encodeUrl(symbolOrId).rope
 
-  var seeSrcRope: PRope = nil
+  var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar("doc.item.seesrc")
   if docItemSeeSrc.len > 0 and options.docSeeSrcUrl.len > 0:
     # XXX toFilename doesn't really work. We need to ensure that this keeps
     # returning a relative path.
     let urlRope = ropeFormatNamedVars(options.docSeeSrcUrl,
-      ["path", "line"], [n.info.toFilename.toRope, toRope($n.info.line)])
+      ["path", "line"], [n.info.toFilename.rope, rope($n.info.line)])
     dispA(seeSrcRope, "$1", "", [ropeFormatNamedVars(docItemSeeSrc,
-        ["path", "line", "url"], [n.info.toFilename.toRope,
-        toRope($n.info.line), urlRope])])
+        ["path", "line", "url"], [n.info.toFilename.rope,
+        rope($n.info.line), urlRope])])
 
-  app(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
+  add(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
-  app(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
+  add(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
-    [toRope(getName(d, nameNode, d.splitAfter)), result, comm,
+    [rope(getName(d, nameNode, d.splitAfter)), result, comm,
       itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
       plainSymbolEncRope, symbolOrIdEncRope]))
 
@@ -436,7 +436,7 @@ proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
   if not isVisible(nameNode): return
   var
     name = getName(d, nameNode)
-    comm = genRecComment(d, n).ropeToStr()
+    comm = $genRecComment(d, n)
     r: TSrcGen
 
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
@@ -453,14 +453,14 @@ proc checkForFalse(n: PNode): bool =
 
 proc traceDeps(d: PDoc, n: PNode) =
   const k = skModule
-  if d.section[k] != nil: app(d.section[k], ", ")
+  if d.section[k] != nil: add(d.section[k], ", ")
   dispA(d.section[k],
         "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-        "$1", [toRope(getModuleName(n))])
+        "$1", [rope(getModuleName(n))])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
-  of nkCommentStmt: app(d.modDesc, genComment(d, n))
+  of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
     genItem(d, n, n.sons[namePos], skProc)
@@ -540,28 +540,28 @@ proc genSection(d: PDoc, kind: TSymKind) =
     "Iterators", "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
-  var title = sectionNames[kind].toRope
+  var title = sectionNames[kind].rope
   d.section[kind] = ropeFormatNamedVars(getConfigVar("doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
-      ord(kind).toRope, title, toRope(ord(kind) + 50), d.section[kind]])
+      ord(kind).rope, title, rope(ord(kind) + 50), d.section[kind]])
   d.toc[kind] = ropeFormatNamedVars(getConfigVar("doc.section.toc"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
-      ord(kind).toRope, title, toRope(ord(kind) + 50), d.toc[kind]])
+      ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
-proc genOutFile(d: PDoc): PRope =
+proc genOutFile(d: PDoc): Rope =
   var
-    code, content: PRope
+    code, content: Rope
     title = ""
   var j = 0
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
-  var toc = tmp.toRope
+  var toc = tmp.rope
   for i in countup(low(TSymKind), high(TSymKind)):
     genSection(d, i)
-    app(toc, d.toc[i])
+    add(toc, d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(getConfigVar("doc.toc"), ["content"], [toc])
-  for i in countup(low(TSymKind), high(TSymKind)): app(code, d.section[i])
+  for i in countup(low(TSymKind), high(TSymKind)): add(code, d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
@@ -574,16 +574,16 @@ proc genOutFile(d: PDoc): PRope =
   let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
       "tableofcontents", "moduledesc", "date", "time", "content"],
-      [title.toRope, toc, d.modDesc, toRope(getDateStr()),
-      toRope(getClockStr()), code])
+      [title.rope, toc, d.modDesc, rope(getDateStr()),
+      rope(getClockStr()), code])
   if optCompileOnly notin gGlobalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
         "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics"],
-        [title.toRope, toc, d.modDesc, toRope(getDateStr()),
-                     toRope(getClockStr()), content, d.meta[metaAuthor].toRope,
-                     d.meta[metaVersion].toRope, d.analytics.toRope])
+        [title.rope, toc, d.modDesc, rope(getDateStr()),
+                     rope(getClockStr()), content, d.meta[metaAuthor].rope,
+                     d.meta[metaVersion].rope, d.analytics.rope])
   else:
     code = content
   result = code
@@ -618,7 +618,7 @@ proc commandRstAux(filename, outExt: string) =
   #d.modDesc = newMutableRope(30_000)
   renderRstToOut(d[], rst, modDesc)
   #freezeMutableRope(d.modDesc)
-  d.modDesc = toRope(modDesc)
+  d.modDesc = rope(modDesc)
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
@@ -635,7 +635,7 @@ proc commandJSON*() =
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
   var json = generateJson(d, ast)
-  var content = newRope(pretty(json))
+  var content = rope(pretty(json))
 
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
@@ -644,12 +644,12 @@ proc commandJSON*() =
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
 proc commandBuildIndex*() =
-  var content = mergeIndexes(gProjectFull).toRope
+  var content = mergeIndexes(gProjectFull).rope
 
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
       "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
-      ["Index".toRope, nil, nil, toRope(getDateStr()),
-                   toRope(getClockStr()), content, nil, nil, nil])
+      ["Index".rope, nil, nil, rope(getDateStr()),
+                   rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
   writeRope(code, getOutFile("theindex", HtmlExt))

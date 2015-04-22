@@ -99,9 +99,12 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
     if callee.originatingModule == ctx.module:
-      let rootSym = if sfFromGeneric notin callee.flags: callee
-                    else: callee.owner
-      c.calleeScope = rootSym.scope.depthLevel
+      c.calleeScope = 2
+      var owner = callee
+      while true:
+        owner = owner.skipGenericOwner
+        if owner.kind == skModule: break
+        inc c.calleeScope
     else:
       c.calleeScope = 1
   else:
@@ -1105,8 +1108,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       localError(f.n.info, errTypeExpected)
       result = isNone
 
+  of tyNone:
+    if a.kind == tyNone: result = isEqual
   else:
-    internalAssert false
+    internalError " unknown type kind " & $f.kind
 
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate
@@ -1419,9 +1424,12 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
+    # XXX This is unsound! 'formal' can differ from overloaded routine to
+    # overloaded routine!
     let flags = if formal.kind == tyIter: {efDetermineType, efWantIterator}
-                elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
-                else: {efDetermineType}
+                else: {efDetermineType, efAllowStmt}
+                #elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
+                #else: {efDetermineType}
     result = c.semOperand(c, a, flags)
   else:
     result = a
@@ -1627,12 +1635,15 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   # instantiate generic converters for that
   result = res != nil
 
-proc instDeepCopy*(c: PContext; dc: PSym; t: PType; info: TLineInfo): PSym {.
-                    procvar.} =
+proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
+                      op: TTypeAttachedOp): PSym {.procvar.} =
   var m: TCandidate
   initCandidate(c, m, dc.typ)
   var f = dc.typ.sons[1]
-  if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  if op == attachedDeepCopy:
+    if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  else:
+    if f.kind == tyVar: f = f.lastSon
   if typeRel(m, f, t) == isNone:
     localError(info, errGenerated, "cannot instantiate 'deepCopy'")
   else:

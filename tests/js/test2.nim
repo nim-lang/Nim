@@ -1,6 +1,7 @@
 discard """
   output: '''foo
-js 3.14'''
+js 3.14
+7'''
 """
 
 # This file tests the JavaScript generator
@@ -20,3 +21,11 @@ else:
   proc foo(val: float): string = "js " & $val
 
 echo foo(3.14)
+
+# #2495
+type C = concept x
+
+proc test(x: C, T: typedesc): T =
+  cast[T](x)
+
+echo 7.test(int8)

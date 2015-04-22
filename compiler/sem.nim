@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings
+  semparallel, lowerings, plugins
 
 when defined(nimfix):
   import nimfix.prettybase
@@ -398,7 +398,7 @@ proc myOpen(module: PSym): PPassContext =
   c.semInferredLambda = semInferredLambda
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
-  c.instDeepCopy = sigmatch.instDeepCopy
+  c.instTypeBoundOp = sigmatch.instTypeBoundOp
 
   pushProcCon(c, module)
   pushOwner(c.module)

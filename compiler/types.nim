@@ -541,6 +541,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyProc:
     result = if tfIterator in t.flags: "iterator (" else: "proc ("
     for i in countup(1, sonsLen(t) - 1):
+      if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
+        add(result, t.n[i].sym.name.s)
+        add(result, ": ")
       add(result, typeToString(t.sons[i]))
       if i < sonsLen(t) - 1: add(result, ", ")
     add(result, ')')

@@ -368,7 +368,7 @@ proc sameConstant*(a, b: PNode): bool =
     case a.kind
     of nkSym: result = a.sym == b.sym
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
@@ -742,9 +742,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.gABC(n, opcNewStr, dest, tmp)
     c.freeTemp(tmp)
     # XXX buggy
-  of mLengthOpenArray, mLengthArray, mLengthSeq:
+  of mLengthOpenArray, mLengthArray, mLengthSeq, mXLenSeq:
     genUnaryABI(c, n, dest, opcLenSeq)
-  of mLengthStr:
+  of mLengthStr, mXLenStr:
     genUnaryABI(c, n, dest, opcLenStr)
   of mIncl, mExcl:
     unused(n, dest)
@@ -791,7 +791,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     genUnaryABC(c, n, dest, opcUnaryMinusInt)
     genNarrow(c, n, dest)
   of mUnaryMinusF64: genUnaryABC(c, n, dest, opcUnaryMinusFloat)
-  of mUnaryPlusI, mUnaryPlusI64, mUnaryPlusF64: gen(c, n.sons[1], dest)
+  of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
   of mBitnotI, mBitnotI64:
     genUnaryABC(c, n, dest, opcBitnotInt)
     genNarrowU(c, n, dest)
@@ -1008,7 +1008,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
-  of mMinI, mMaxI, mMinI64, mMaxI64, mAbsF64, mMinF64, mMaxF64, mAbsI,
+  of mMinI, mMaxI, mAbsF64, mMinF64, mMaxF64, mAbsI,
      mAbsI64, mDotDot:
     c.genCall(n, dest)
   of mExpandToAst:
@@ -1364,7 +1364,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
   of tyVar, tyPointer, tyPtr, tySequence, tyExpr,
-     tyStmt, tyTypeDesc, tyStatic, tyRef:
+     tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
     if t.callConv != ccClosure:
@@ -1391,7 +1391,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  else: internalError("getNullValue: " & $t.kind)
+  else: internalError(info, "getNullValue: " & $t.kind)
 
 proc ldNullOpcode(t: PType): TOpcode =
   if fitsRegister(t): opcLdNullReg else: opcLdNull
@@ -1610,7 +1610,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genBreak(c, n)
   of nkTryStmt: genTry(c, n, dest)
   of nkStmtList:
-    unused(n, dest)
+    #unused(n, dest)
+    # XXX Fix this bug properly, lexim triggers it
     for x in n: gen(c, x)
   of nkStmtListExpr:
     let L = n.len-1

@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -296,6 +296,7 @@ const
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
   sfExperimental* = sfOverriden       # module uses the .experimental switch
+  sfGoto* = sfOverriden               # var is used for 'goto' code generation
 
 const
   # getting ready for the future expr/stmt merge
@@ -472,7 +473,7 @@ type
                       # T and I here can bind to both typedesc and static types
                       # before this is determined, we'll consider them to be a
                       # wildcard type.
-    tfGuarded         # guarded pointer
+    tfHasAsgn         # type has overloaded assignment operator
     tfBorrowDot       # distinct type borrows '.'
 
   TTypeFlags* = set[TTypeFlag]
@@ -529,19 +530,20 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof,
+    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref,
-    mGCunref,
+    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mIncl, mExcl, mCard, mChr,
+    mGCref, mGCunref,
 
     mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
     mDivI64, mModI64, mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
 
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64,
+    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
@@ -550,7 +552,7 @@ type
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
     mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mEqProc, mUnaryMinusI,
     mUnaryMinusI64, mAbsI, mAbsI64, mNot,
-    mUnaryPlusI, mBitnotI, mUnaryPlusI64,
+    mUnaryPlusI, mBitnotI,
     mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
@@ -589,11 +591,12 @@ type
 const
   ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr,
+    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
     mDivI64, mModI64, mAddF64, mSubF64, mMulF64, mDivF64,
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64,
+    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
@@ -602,7 +605,7 @@ const
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
     mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI,
     mUnaryMinusI64, mAbsI, mAbsI64, mNot,
-    mUnaryPlusI, mBitnotI, mUnaryPlusI64,
+    mUnaryPlusI, mBitnotI,
     mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
@@ -685,8 +688,8 @@ type
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
-    r*: PRope                 # rope value of location (code generators)
-    heapRoot*: PRope          # keeps track of the enclosing heap object that
+    r*: Rope                 # rope value of location (code generators)
+    heapRoot*: Rope          # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
 
@@ -698,7 +701,7 @@ type
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
-    name*: PRope
+    name*: Rope
     path*: PNode              # can be a string literal!
 
   TInstantiation* = object
@@ -728,7 +731,8 @@ type
       typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
-      scope*: PScope          # the scope where the proc was defined
+      gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
+      #scope*: PScope          # the scope where the proc was defined
     of skModule:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
@@ -794,8 +798,8 @@ type
                               # for enum types a list of symbols
                               # for tyInt it can be the int literal
                               # for procs and tyGenericBody, it's the
-                              # the body of the user-defined type class
                               # formal param list
+                              # for concepts, the concept body
                               # else: unused
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
@@ -804,6 +808,7 @@ type
                               # mean that there is no destructor.
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
+    assignment*: PSym         # overriden '=' operator
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
@@ -1168,7 +1173,9 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
-  #if result.id < 2000:
+  #if result.id == 92231:
+  #  echo "KNID ", kind
+  #  writeStackTrace()
   #  messageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
@@ -1218,6 +1225,7 @@ proc assignType*(dest, src: PType) =
   dest.align = src.align
   dest.destructor = src.destructor
   dest.deepCopy = src.deepCopy
+  dest.assignment = src.assignment
   dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
@@ -1314,6 +1322,13 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result.kind in kinds: result = lastSon(result)
 
+proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
+  ## same as skipTypes but handles 'nil'
+  result = t
+  while result != nil and result.kind in kinds:
+    if result.len == 0: return nil
+    result = lastSon(result)
+
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
            t.kind == tyProc and t.callConv == ccClosure
@@ -1333,6 +1348,13 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
+
+  if tfHasAsgn in elem.flags:
+    let o2 = elem.skipTypes({tyGenericInst})
+    if o2.kind in {tyTuple, tyObject, tyArray, tyArrayConstr,
+                   tySequence, tySet, tyDistinct}:
+      o2.flags.incl tfHasAsgn
+      owner.flags.incl tfHasAsgn
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation}:

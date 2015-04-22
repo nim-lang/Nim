@@ -2710,7 +2710,7 @@ proc workspace_window_set_icon*(w: ptr TWorkspaceWindow, icon: ptr TImage){.
 claro_base_init()
 claro_graphics_init()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var w = newWindow(nil, newBounds(100, 100, 230, 230), 0)
   window_set_title(w, "Hello, World!")
 

@@ -34,6 +34,10 @@ News
     should be used instead.
   - ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
   - *arrow like* operators are not right associative anymore.
+  - *arrow like* operators are now required to end with either ``->``, ``~>`` or
+    ``=>``, not just ``>``. Examples of operators still considered arrow like:
+    ``->``, ``==>``, ``+=>``. On the other hand, the following operators are now
+    considered regular operators again: ``|>``, ``-+>``, etc.
   - Typeless parameters are now only allowed in templates and macros. The old
     way turned out to be too error-prone.
   - The 'addr' and 'type' operators are now parsed as unary function
@@ -69,7 +73,15 @@ News
     spacing around binary operators. Later versions of the language will parse
     these as unary operators instead so that ``echo $foo`` finally can do what
     people expect it to do.
-
+  - ``system.untyped`` and ``system.typed`` have been introduced as aliases
+    for ``expr`` and ``stmt``. The new names capture the semantics much better
+    and most likely  ``expr`` and ``stmt`` will be deprecated in favor of the
+    new names.
+  - The ``split`` method in module ``re`` has changed. It now handles the case
+    of matches having a length of 0, and empty strings being yielded from the
+    iterator. A notable change might be that a pattern being matched at the
+    beginning and end of a string, will result in an empty string being produced
+    at the start and the end of the iterator.
 
   Language Additions
   ------------------
@@ -113,6 +125,9 @@ News
 
   - Array and seq indexing can now use the builtin ``^`` operator to access
     things from backwards: ``a[^1]`` is like Python's ``a[-1]``.
+  - A first version of the specification and implementation of the overloading
+    of the assignment operator has arrived!
+  - ``system.len`` for strings and sequences now returns 0 for nil.
 
   - A single underscore can now be used to discard values when unpacking tuples.
 
@@ -125,6 +140,10 @@ News
     with a ``newMultipartData`` proc.
   - Added `%*` operator for JSON.
   - The compiler is now available as Nimble package for c2nim.
+  - Added ``..^`` and ``..<`` templates to system so that the rather annoying
+    space between ``.. <`` and ``.. ^`` is not necessary anymore.
+  - Added ``system.xlen`` for strings and sequences to get back the old ``len``
+    operation that doesn't check for ``nil`` for efficiency.
 
 
   Bugfixes

@@ -387,7 +387,7 @@ const
     warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
     warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
     warnGcUnsafe: "not GC-safe: '$1' [GcUnsafe]",
-    warnGcUnsafe2: "cannot prove '$1' is GC-safe. Does not compile with --threads:on.",
+    warnGcUnsafe2: "$1",
     warnUninit: "'$1' might not have been initialized [Uninit]",
     warnGcMem: "'$1' uses GC'ed memory [GcMem]",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future. [Destructor]",
@@ -449,10 +449,10 @@ type
     fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
-    quotedName*: PRope         # cached quoted short name for codegen
+    quotedName*: Rope         # cached quoted short name for codegen
                                # purposes
 
-    lines*: seq[PRope]         # the source code of the module
+    lines*: seq[Rope]         # the source code of the module
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
@@ -493,24 +493,20 @@ proc toCChar*(c: char): string =
   of '\'', '\"', '\\': result = '\\' & c
   else: result = $(c)
 
-proc makeCString*(s: string): PRope =
-  # BUGFIX: We have to split long strings into many ropes. Otherwise
-  # this could trigger an internalError(). See the ropes module for
-  # further information.
+proc makeCString*(s: string): Rope =
   const
     MaxLineLength = 64
   result = nil
-  var res = "\""
+  var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
+  add(res, "\"")
   for i in countup(0, len(s) - 1):
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
       add(res, tnl)
-      app(result, toRope(res)) # reset:
-      setLen(res, 1)
-      res[0] = '\"'
+      add(res, '\"')
     add(res, toCChar(s[i]))
   add(res, '\"')
-  app(result, toRope(res))
+  add(result, rope(res))
 
 
 proc newFileInfo(fullPath, projPath: string): TFileInfo =
@@ -568,7 +564,7 @@ var gCodegenLineInfo* = newLineInfo(int32(1), 1, 1)
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
-proc sourceLine*(i: TLineInfo): PRope
+proc sourceLine*(i: TLineInfo): Rope
 
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} -
@@ -776,7 +772,7 @@ proc rawMessage*(msg: TMsgKind, arg: string) =
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
-  msgWriteln(indent & info.sourceLine.ropeToStr)
+  msgWriteln(indent & $info.sourceLine)
   msgWriteln(indent & spaces(info.col) & '^')
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
@@ -831,6 +827,9 @@ proc localError*(info: TLineInfo, msg: TMsgKind, arg = "") =
 proc localError*(info: TLineInfo, arg: string) =
   liMessage(info, errGenerated, arg, doNothing)
 
+proc localError*(info: TLineInfo, format: string, params: openarray[string]) =
+  localError(info, format % params)
+
 proc message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
@@ -852,9 +851,9 @@ template internalAssert*(e: bool): stmt =
   if not e: internalError($instantiationInfo())
 
 proc addSourceLine*(fileIdx: int32, line: string) =
-  fileInfos[fileIdx].lines.add line.toRope
+  fileInfos[fileIdx].lines.add line.rope
 
-proc sourceLine*(i: TLineInfo): PRope =
+proc sourceLine*(i: TLineInfo): Rope =
   if i.fileIndex < 0: return nil
 
   if not optPreserveOrigSource and fileInfos[i.fileIndex].lines.len == 0:
@@ -869,16 +868,14 @@ proc sourceLine*(i: TLineInfo): PRope =
 
   result = fileInfos[i.fileIndex].lines[i.line-1]
 
-proc quotedFilename*(i: TLineInfo): PRope =
+proc quotedFilename*(i: TLineInfo): Rope =
   internalAssert i.fileIndex >= 0
   result = fileInfos[i.fileIndex].quotedName
 
-ropes.errorHandler = proc (err: TRopesError, msg: string, useWarning: bool) =
+ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   case err
   of rInvalidFormatStr:
     internalError("ropes: invalid format string: " & msg)
-  of rTokenTooLong:
-    internalError("ropes: token too long: " & msg)
   of rCannotOpenFile:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
 

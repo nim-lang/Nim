@@ -261,7 +261,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
       if not isOrdinalType(indx):
         localError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx):
-        localError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
+        localError(n.sons[1].info, errEnumXHasHoles,
+                   typeToString(indx.skipTypes({tyRange})))
     base = semTypeNode(c, n.sons[2], nil)
     addSonSkipIntLit(result, base)
   else:
@@ -593,7 +594,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.position = pos
       if (rec != nil) and ({sfImportc, sfExportc} * rec.flags != {}) and
           (f.loc.r == nil):
-        f.loc.r = toRope(f.name.s)
+        f.loc.r = rope(f.name.s)
         f.flags = f.flags + ({sfImportc, sfExportc} * rec.flags)
       inc(pos)
       if containsOrIncl(check, f.name.id):
@@ -646,14 +647,17 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   # n.sons[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3)
   if n.sons[1].kind != nkEmpty:
-    base = skipTypes(semTypeNode(c, n.sons[1].sons[0], nil), skipPtrs)
-    var concreteBase = skipGenericInvocation(base).skipTypes(skipPtrs)
-    if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
-      addInheritedFields(c, check, pos, concreteBase)
+    base = skipTypesOrNil(semTypeNode(c, n.sons[1].sons[0], nil), skipPtrs)
+    if base.isNil:
+      localError(n.info, errIllegalRecursionInTypeX, "object")
     else:
-      if concreteBase.kind != tyError:
-        localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
-      base = nil
+      var concreteBase = skipGenericInvocation(base).skipTypes(skipPtrs)
+      if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
+        addInheritedFields(c, check, pos, concreteBase)
+      else:
+        if concreteBase.kind != tyError:
+          localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
+        base = nil
   if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, base)
@@ -786,7 +790,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(typ)
     else:
-      for i in 0 .. <paramType.sons.len:
+      for i in 0 .. <paramType.len:
         if paramType.sons[i] == paramType:
           globalError(info, errIllegalRecursionInTypeX, typeToString(paramType))
         var lifted = liftingWalk(paramType.sons[i])
@@ -831,7 +835,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       cp.kind = tyUserTypeClassInst
       return addImplicitGeneric(cp)
 
-    for i in 1 .. (paramType.sons.len - 2):
+    for i in 1 .. paramType.len-2:
       var lifted = liftingWalk(paramType.sons[i])
       if lifted != nil:
         paramType.sons[i] = lifted
@@ -844,7 +848,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.shouldHaveMeta
 
   of tyGenericInvocation:
-    for i in 1 .. <paramType.sonsLen:
+    for i in 1 .. <paramType.len:
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
     when false:

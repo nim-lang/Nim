@@ -1330,7 +1330,7 @@ proc renderSQL*(n: SqlNode): string =
   result = ""
   ra(n, result, 0)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   echo(renderSQL(parseSQL(newStringStream("""
       CREATE TYPE happiness AS ENUM ('happy', 'very happy', 'ecstatic');
       CREATE TABLE holidays (

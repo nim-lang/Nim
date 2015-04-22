@@ -78,7 +78,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     result = doNothing
   inc s.calls
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   proc busyLoop() =
     while true:
       discard random(80)

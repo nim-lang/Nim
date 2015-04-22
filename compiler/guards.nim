@@ -22,7 +22,8 @@ const
   someLt = {mLtI, mLtI64, mLtF64, mLtU, mLtU64, mLtEnum,
             mLtCh, mLtB, mLtPtr, mLtStr}
 
-  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}
+  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
+             mXLenStr, mXLenSeq}
 
   someIn = {mInRange, mInSet}
 
@@ -34,8 +35,8 @@ const
   someMul = {mMulI, mMulI64, mMulF64}
   someDiv = {mDivI, mDivI64, mDivF64}
   someMod = {mModI, mModI64}
-  someMax = {mMaxI, mMaxI64, mMaxF64}
-  someMin = {mMinI, mMinI64, mMinF64}
+  someMax = {mMaxI, mMaxF64}
+  someMin = {mMinI, mMinF64}
 
 proc isValue(n: PNode): bool = n.kind in {nkCharLit..nkNilLit}
 proc isLocation(n: PNode): bool = not n.isValue

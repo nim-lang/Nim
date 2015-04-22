@@ -660,7 +660,7 @@ proc len*(disp: Dispatcher): int =
   ## Retrieves the amount of delegates in ``disp``.
   return disp.delegates.len
 
-when isMainModule:
+when not defined(testing) and isMainModule:
 
   proc testConnect(s: AsyncSocket, no: int) =
     echo("Connected! " & $no)
