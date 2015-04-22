@@ -196,4 +196,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
         result.add newSymNode(createMagic("-", mSubI), n.info)
         result.add lenExprB
         result.add n.sons[1]
+  of mPlugin:
+    let plugin = getPlugin(n[0].sym)
+    if plugin.isNil:
+      localError(n.info, "cannot find plugin " & n[0].sym.name.s)
+      result = n
+    else:
+      result = plugin(c, n)
   else: result = n

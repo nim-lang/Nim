@@ -1352,15 +1352,15 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: unaryExpr(p, e, d, "$1Len0")
   of tyCString:
     useStringh(p.module)
-    if op == mHigh: unaryExpr(p, e, d, "(strlen($1)-1)")
-    else: unaryExpr(p, e, d, "strlen($1)")
+    if op == mHigh: unaryExpr(p, e, d, "($1 ? (strlen($1)-1) : -1)")
+    else: unaryExpr(p, e, d, "($1 ? strlen($1) : 0)")
   of tyString, tySequence:
     if not p.module.compileToCpp:
-      if op == mHigh: unaryExpr(p, e, d, "($1->Sup.len-1)")
-      else: unaryExpr(p, e, d, "$1->Sup.len")
+      if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->Sup.len-1) : -1)")
+      else: unaryExpr(p, e, d, "($1 ? $1->Sup.len : 0)")
     else:
-      if op == mHigh: unaryExpr(p, e, d, "($1->len-1)")
-      else: unaryExpr(p, e, d, "$1->len")
+      if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->len-1) : -1)")
+      else: unaryExpr(p, e, d, "($1 ? $1->len : 0)")
   of tyArray, tyArrayConstr:
     # YYY: length(sideeffect) is optimized away incorrectly?
     if op == mHigh: putIntoDest(p, d, e.typ, rope(lastOrd(typ)))
@@ -1721,6 +1721,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
     genArrayLen(p, e, d, op)
+  of mXLenStr, mXLenSeq:
+    if not p.module.compileToCpp:
+      unaryExpr(p, e, d, "($1->Sup.len-1)")
+    else:
+      unaryExpr(p, e, d, "$1->len")
   of mGCref: unaryStmt(p, e, d, "#nimGCref($1);$n")
   of mGCunref: unaryStmt(p, e, d, "#nimGCunref($1);$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)

@@ -22,7 +22,8 @@ const
   someLt = {mLtI, mLtI64, mLtF64, mLtU, mLtU64, mLtEnum,
             mLtCh, mLtB, mLtPtr, mLtStr}
 
-  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}
+  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
+             mXLenStr, mXLenSeq}
 
   someIn = {mInRange, mInSet}
 

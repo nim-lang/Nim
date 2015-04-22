@@ -530,12 +530,13 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof,
+    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref,
-    mGCunref,
+    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mIncl, mExcl, mCard, mChr,
+    mGCref, mGCunref,
 
     mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
     mDivI64, mModI64, mSucc, mPred,
@@ -590,7 +591,8 @@ type
 const
   ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr,
+    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
     mDivI64, mModI64, mAddF64, mSubF64, mMulF64, mDivF64,
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,

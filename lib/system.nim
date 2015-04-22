@@ -3266,4 +3266,9 @@ template `..<`*(a, b: expr): expr =
   ## '..' and '<' is required.
   a .. <b
 
+proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.}
+proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.}
+  ## returns the length of a sequence or a string without testing for 'nil'.
+  ## This is an optimization that rarely makes sense.
+
 {.pop.} #{.push warning[GcMem]: off.}
