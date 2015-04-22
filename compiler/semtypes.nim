@@ -261,7 +261,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
       if not isOrdinalType(indx):
         localError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx):
-        localError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
+        localError(n.sons[1].info, errEnumXHasHoles,
+                   typeToString(indx.skipTypes({tyRange})))
     base = semTypeNode(c, n.sons[2], nil)
     addSonSkipIntLit(result, base)
   else:

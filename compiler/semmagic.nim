@@ -54,7 +54,7 @@ proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
     result.typ = newType(tyString, context)
     result.info = trait.info
   of "arity":
-    result = newIntNode(nkIntLit, typ.n.len-1)
+    result = newIntNode(nkIntLit, typ.len - ord(typ.kind==tyProc))
     result.typ = newType(tyInt, context)
     result.info = trait.info
   else:
