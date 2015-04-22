@@ -677,12 +677,12 @@ proc parseSexp*(buffer: string): SexpNode =
   result = parseSexp(newStringStream(buffer))
 
 when isMainModule:
-  # let testSexp = parseSexp("""(1 (98 2) nil (2) foobar "foo" 9.234)""")
-  # assert(testSexp[0].getNum == 1)
-  # assert(testSexp[1][0].getNum == 98)
-  # assert(testSexp[2].getElems == @[])
-  # assert(testSexp[4].getSymbol == "foobar")
-  # assert(testSexp[5].getStr == "foo")
+  let testSexp = parseSexp("""(1 (98 2) nil (2) foobar "foo" 9.234)""")
+  assert(testSexp[0].getNum == 1)
+  assert(testSexp[1][0].getNum == 98)
+  assert(testSexp[2].getElems == @[])
+  assert(testSexp[4].getSymbol == "foobar")
+  assert(testSexp[5].getStr == "foo")
 
   let alist = parseSexp("""((1 . 2) (2 . "foo"))""")
   assert(alist[0].getCons.car.getNum == 1)
