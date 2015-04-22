@@ -389,7 +389,6 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
     if p.tok.tokType != tkComma: break
     getTok(p)
     optInd(p, a)
-  eat(p, endTok)
 
 proc dotExpr(p: var TParser, a: PNode): PNode =
   #| dotExpr = expr '.' optInd symbol
@@ -945,8 +944,7 @@ proc parseDoBlock(p: var TParser): PNode =
   getTok(p)
   let params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
-  eat(p, tkColon)
-  skipComment(p, result)
+  colcom(p, result)
   result = newProcNode(nkDo, info, parseStmt(p),
                        params = params,
                        pragmas = pragmas)
@@ -1156,16 +1154,14 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
         getTok(p)
         optInd(p, b)
         addSon(b, parseExpr(p))
-        eat(p, tkColon)
       of tkExcept:
         b = newNodeP(nkExceptBranch, p)
         exprList(p, tkColon, b)
-        skipComment(p, b)
       of tkElse:
         b = newNodeP(nkElse, p)
         getTok(p)
-        eat(p, tkColon)
       else: break
+      eat(p, tkColon)
       addSon(b, parseStmt(p))
       addSon(stmtList, b)
       if b.kind == nkElse: break
@@ -1318,8 +1314,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
     var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
     addSon(branch, parseExpr(p))
-    eat(p, tkColon)
-    skipComment(p, branch)
+    colcom(p, branch)
     addSon(branch, parseStmt(p))
     skipComment(p, branch)
     addSon(result, branch)
@@ -1327,8 +1322,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   if p.tok.tokType == tkElse and sameOrNoInd(p):
     var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
-    eat(p, tkColon)
-    skipComment(p, branch)
+    colcom(p, branch)
     addSon(branch, parseStmt(p))
     addSon(result, branch)
 
@@ -1376,13 +1370,11 @@ proc parseCase(p: var TParser): PNode =
       getTok(p)
       optInd(p, b)
       addSon(b, parseExpr(p))
-      eat(p, tkColon)
     of tkElse:
       b = newNodeP(nkElse, p)
       getTok(p)
-      eat(p, tkColon)
     else: break
-    skipComment(p, b)
+    colcom(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
     if b.kind == nkElse: break
@@ -1399,8 +1391,7 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
   #|            (optInd 'finally' colcom stmt)?
   result = newNodeP(nkTryStmt, p)
   getTok(p)
-  eat(p, tkColon)
-  skipComment(p, result)
+  colcom(p, result)
   addSon(result, parseStmt(p))
   var b: PNode = nil
   while sameOrNoInd(p) or isExpr:
@@ -1410,10 +1401,9 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
       exprList(p, tkColon, b)
     of tkFinally:
       b = newNodeP(nkFinally, p)
-      getTokNoInd(p)
-      eat(p, tkColon)
+      getTok(p)
     else: break
-    skipComment(p, b)
+    colcom(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
     if b.kind == nkFinally: break
@@ -1422,7 +1412,7 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
 proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =
   #| exceptBlock = 'except' colcom stmt
   result = newNodeP(kind, p)
-  getTokNoInd(p)
+  getTok(p)
   colcom(p, result)
   addSon(result, parseStmt(p))
 
@@ -1455,7 +1445,7 @@ proc parseStaticOrDefer(p: var TParser; k: TNodeKind): PNode =
   #| staticStmt = 'static' colcom stmt
   #| deferStmt = 'defer' colcom stmt
   result = newNodeP(k, p)
-  getTokNoInd(p)
+  getTok(p)
   colcom(p, result)
   addSon(result, parseStmt(p))
 
@@ -1694,9 +1684,8 @@ proc parseObjectCase(p: var TParser): PNode =
     of tkElse:
       b = newNodeP(nkElse, p)
       getTok(p)
-      eat(p, tkColon)
     else: break
-    skipComment(p, b)
+    colcom(p, b)
     var fields = parseObjectPart(p)
     if fields.kind == nkEmpty:
       parMessage(p, errIdentifierExpected, p.tok)
