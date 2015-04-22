@@ -936,7 +936,8 @@ proc isIndirect(v: PSym): bool =
   result = {sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
     {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
-    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator}
+    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator,
+                  skConst, skTemp, skLet}
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   case n.sons[0].kind
@@ -1210,7 +1211,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       s = a.res
     if isIndirect(v):
-      addf(p.body, "var $1 = [$2];$n" | "local $1 = {$2};$n", [v.loc.r, s])
+      addf(p.body, "var $1 = /**/[$2];$n" | "local $1 = {$2};$n", [v.loc.r, s])
     else:
       addf(p.body, "var $1 = $2;$n" | "local $1 = $2;$n", [v.loc.r, s])
 
@@ -1328,14 +1329,17 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     # XXX: range checking?
     if not (optOverflowCheck in p.options): unaryExpr(p, n, r, "", "$1 - 1")
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
-  of mAppendStrCh: binaryExpr(p, n, r, "addChar", "addChar($1, $2)")
+  of mAppendStrCh: binaryExpr(p, n, r, "addChar",
+        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
   of mAppendStrStr:
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
-        binaryExpr(p, n, r, "", "$1 += $2")
+        binaryExpr(p, n, r, "", "if ($1 != null) { $1 += $2; } else { $1 = $2; }")
     else:
-      binaryExpr(p, n, r, "", "$1 = ($1.slice(0, -1)).concat($2)")
+      binaryExpr(p, n, r, "",
+        "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
     # XXX: make a copy of $2, because of Javascript's sucking semantics
-  of mAppendSeqElem: binaryExpr(p, n, r, "", "$1.push($2)")
+  of mAppendSeqElem: binaryExpr(p, n, r, "",
+        "if ($1 != null) { $1.push($2); } else { $1 = $2; }")
   of mConStrStr: genConStrStr(p, n, r)
   of mEqStr: binaryExpr(p, n, r, "eqStrings", "eqStrings($1, $2)")
   of mLeStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) <= 0)")
@@ -1346,14 +1350,17 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mSizeOf: r.res = rope(getSize(n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
-  of mLengthStr: unaryExpr(p, n, r, "", "($1.length-1)")
+  of mLengthStr: unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)")
+  of mXLenStr: unaryExpr(p, n, r, "", "$1.length-1")
   of mLengthSeq, mLengthOpenArray, mLengthArray:
+    unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
+  of mXLenSeq:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
     if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
-      unaryExpr(p, n, r, "", "($1.length-2)")
+      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-2) : -1)")
     else:
-      unaryExpr(p, n, r, "", "($1.length-1)")
+      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
   of mInc:
     if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
     else: binaryExpr(p, n, r, "addInt", "$1 = addInt($1, $2)")
