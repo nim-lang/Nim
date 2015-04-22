@@ -128,8 +128,8 @@ converter toBool*(maybe: Maybe): bool =
   maybe.has
 
 
-proc val*[T](maybe: Maybe[T]): T =
-  ## Unsafe. Returns the value of a `just`. Behavior is undefined for `nothing`.
+proc unsafeVal*[T](maybe: Maybe[T]): T =
+  ## Returns the value of a `just`. Behavior is undefined for `nothing`.
   assert maybe.has, "nothing has no val"
   maybe.val
 
@@ -215,7 +215,7 @@ when isMainModule:
 
   block: # just
     assert just(6)[] == 6
-    assert just("a").val == "a"
+    assert just("a").unsafeVal == "a"
     assert just(6).has
     assert just("a")
 
