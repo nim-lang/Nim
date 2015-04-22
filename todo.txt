@@ -7,6 +7,16 @@ version 0.10.4
   - addChar
 
 
+version 0.10.6 (RC1?)
+=====================
+
+- make '--implicitStatic:on' the default; then we can also clean up the
+  'static[T]' mess in the compiler!
+- finish 'parallel' or mark as experimental
+- Deprecate ``immediate`` for templates and macros
+- special case varargs[untyped] and varargs[typed]
+
+
 version 1.0
 ===========
 
@@ -39,8 +49,6 @@ Low priority:
 Misc
 ----
 
-- make '--implicitStatic:on' the default; then we can also clean up the
-  'static[T]' mess in the compiler!
 - make tuple unpacking work in a non-var/let context
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
