@@ -1339,7 +1339,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
         "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
     # XXX: make a copy of $2, because of Javascript's sucking semantics
   of mAppendSeqElem: binaryExpr(p, n, r, "",
-        "if ($1 != null) { $1.push($2); } else { $1 = $2; }")
+        "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }")
   of mConStrStr: genConStrStr(p, n, r)
   of mEqStr: binaryExpr(p, n, r, "eqStrings", "eqStrings($1, $2)")
   of mLeStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) <= 0)")
