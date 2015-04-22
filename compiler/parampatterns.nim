@@ -184,7 +184,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   case n.kind
   of nkSym:
     # don't list 'skLet' here:
-    if n.sym.kind in {skVar, skResult, skTemp}:
+    if n.sym.kind in {skVar, skResult, skTemp, skParam}:
       if owner != nil and owner.id == n.sym.owner.id and
           sfGlobal notin n.sym.flags:
         result = arLocalLValue

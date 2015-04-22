@@ -118,7 +118,6 @@ proc newOptionEntry*(): POptionEntry
 proc newLib*(kind: TLibKind): PLib
 proc addToLib*(lib: PLib, sym: PSym)
 proc makePtrType*(c: PContext, baseType: PType): PType
-proc makeVarType*(c: PContext, baseType: PType): PType
 proc newTypeS*(kind: TTypeKind, c: PContext): PType
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
 
@@ -213,9 +212,12 @@ proc makePtrType(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
   addSonSkipIntLit(result, baseType.assertNotNil)
 
-proc makeVarType(c: PContext, baseType: PType): PType =
-  result = newTypeS(tyVar, c)
-  addSonSkipIntLit(result, baseType.assertNotNil)
+proc makeVarType*(c: PContext, baseType: PType): PType =
+  if baseType.kind == tyVar:
+    result = baseType
+  else:
+    result = newTypeS(tyVar, c)
+    addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
