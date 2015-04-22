@@ -11,7 +11,8 @@
 
 # included from sigmatch.nim
 
-import algorithm, sequtils, strutils
+import algorithm, sequtils, strutils, ast, msgs, options, renderer,
+  types, docgen, lexer, semdata, astalgo, idents, sigmatch, lookups
 
 const
   sep = '\t'
@@ -21,16 +22,16 @@ const
   sectionUsage = "use"
 
 type
-  Section = enum sug, def, con, use
-  Suggest = object
-    section: Section
-    qualifiedPath: seq[string]
-    filePath: string
-    line: int                   # Starts at 1
-    column: int                 # Starts at 0
-    doc: string           # Not escaped (yet)
-    symkind: TSymKind
-    forth: string               # XXX TODO object on symkind
+  Section* = enum sug, def, con, use
+  Suggest* = object
+    section*: Section
+    qualifiedPath*: seq[string]
+    filePath*: string
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    doc*: string           # Not escaped (yet)
+    symkind*: TSymKind
+    forth*: string               # XXX TODO object on symkind
 
 var
   suggestionResultHook*: proc (result: Suggest) {.closure.}

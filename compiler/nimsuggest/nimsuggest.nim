@@ -9,9 +9,9 @@
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
-import strutils, os, parseopt, parseUtils
+import strutils, os, parseopt, parseutils, sequtils
 import options, commands, modules, sem, passes, passaux, msgs, nimconf,
-  extccomp, condsyms, lists, net, rdstdin, sexp
+  extccomp, condsyms, lists, net, rdstdin, sexp, suggest, ast
 
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
@@ -53,6 +53,35 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
   else:
     i += parseUntil(cmd, outp, seps, i)
   result = i
+
+# make sure it's in the same order as the proc below
+let order: SexpNode =
+  sexp(@["section", "symkind", "qualifiedPath", "filePath", "forth", "line", "column", "doc"].map(newSSymbol))
+
+proc sexp(s: Section): SexpNode = sexp($s)
+
+proc sexp(s: TSymKind): SexpNode = sexp($s)
+
+proc sexp(s: Suggest): SexpNode =
+  result = convertSexp([
+    s.section,
+    s.symkind,
+    s.qualifiedPath.map(newSString),
+    s.filePath,
+    s.forth,
+    s.line,
+    s.column,
+    s.doc
+  ])
+
+proc sexp(s: seq[Suggest]): SexpNode =
+  result = sexp(s)
+
+proc listEPC(): SexpNode =
+  discard
+
+proc executeEPC(body: SexpNode) =
+  discard
 
 proc action(cmd: string) =
   template toggle(sw) =
@@ -138,7 +167,52 @@ proc serve() =
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
   of mepc:
-    discard
+    let port = 98294 # guaranteed to be random
+    var server = newSocket()
+    server.bindaddr(port.Port, "localhost")
+    var inp = "".TaintedString
+    server.listen()
+    echo(port)
+    while true:
+      var results: seq[Suggest] = @[]
+      var client = newSocket()
+      suggest.suggestionResultHook = proc (s: Suggest) =
+        results.add(s)
+
+      accept(server, client)
+      var sizeHex = ""
+      if client.recv(sizeHex, 6, 1000) != 6:
+        raise newException(ValueError, "didn't get all the hexbytes")
+      var size = 0
+      if parseHex(sizeHex, size) == 0:
+        raiseRecoverableError("invalid size hex: " & $sizeHex)
+      var messageBuffer = ""
+      if client.recv(messageBuffer, size, 3000) != size:
+        raise newException(ValueError, "didn't get all the bytes")
+      let message = parseSexp($messageBuffer)
+      let messageType = message[0].getSymbol
+      let body = message[1]
+      case messageType:
+      of "call":
+        executeEPC(body)
+        let response = $sexp(results)
+        client.send(toHex(len(response), 6))
+        client.send(response)
+        client.close()
+      of "return":
+        raise newException(ValueError, "no return expected")
+      of "return-error":
+        raise newException(ValueError, "no return expected")
+      of "epc-error":
+        stderr.writeln("recieved epc error: " & $messageBuffer)
+        raise newException(ValueError, "epc error")
+      of "methods":
+        let response = $listEPC()
+        client.send(toHex(len(response), 6))
+        client.send(response)
+        client.close()
+      else:
+        raise newException(ValueError, "unexpected call: " & messageType)
 
 proc mainCommand =
   registerPass verbosePass
@@ -169,7 +243,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         gAddress = p.val
         gMode = mtcp
       of "stdin": gMode = mstdin
-      of "epc": gMode = mepc
+      of "epc":
+        gMode = mepc
+        gVerbosity = 0          # Port number gotta be first.
       else: processSwitch(pass, p)
     of cmdArgument:
       options.gProjectName = unixToNativePath(p.key)
