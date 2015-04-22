@@ -103,6 +103,7 @@ compiler clang:
   result.name = "clang"
   result.compilerExe = "clang"
   result.cppCompiler = "clang++"
+  result.buildGui = ""
 
 # Microsoft Visual C/C++ Compiler
 compiler vcc:
