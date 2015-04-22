@@ -184,12 +184,14 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   case n.kind
   of nkSym:
     # don't list 'skLet' here:
-    if n.sym.kind in {skVar, skResult, skTemp, skParam}:
+    if n.sym.kind in {skVar, skResult, skTemp}:
       if owner != nil and owner.id == n.sym.owner.id and
           sfGlobal notin n.sym.flags:
         result = arLocalLValue
       else:
         result = arLValue
+    elif n.sym.kind == skParam and n.sym.typ.kind == tyVar:
+      result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
       if t.kind == tyVar: result = arStrange
