@@ -524,7 +524,7 @@ proc rangeCheck(n: PNode, value: BiggestInt) =
 proc foldConv*(n, a: PNode; check = false): PNode =
   # XXX range checks?
   case skipTypes(n.typ, abstractRange).kind
-  of tyInt..tyInt64:
+  of tyInt..tyInt64, tyUInt..tyUInt64:
     case skipTypes(a.typ, abstractRange).kind
     of tyFloat..tyFloat64:
       result = newIntNodeT(int(getFloat(a)), n)
