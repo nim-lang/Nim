@@ -21,10 +21,9 @@
 ##
 ##    var server = newAsyncHttpServer()
 ##    proc cb(req: Request) {.async.} =
-##      req.respond(Http200, "Hello World")
+##      await req.respond(Http200, "Hello World")
 ##
-##    asyncCheck server.serve(Port(8080), cb)
-##    runForever()
+##    waitFor server.serve(Port(8080), cb)
 
 import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
 type
@@ -38,7 +37,7 @@ type
     body*: string
 
   AsyncHttpServer* = ref object
-    socket*: AsyncSocket
+    socket: AsyncSocket
     reuseAddr: bool
 
   HttpCode* = enum
@@ -112,9 +111,9 @@ proc sendHeaders*(req: Request, headers: StringTableRef): Future[void] =
 proc respond*(req: Request, code: HttpCode, content: string,
               headers: StringTableRef = nil): Future[void] =
   ## Responds to the request with the specified ``HttpCode``, headers and
-  ## content. This template returns a Future[void].
+  ## content.
   ##
-  ## This template will **not** close the client socket.
+  ## This procedure will **not** close the client socket.
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
   if headers != nil:

@@ -69,13 +69,13 @@ type
   # TODO: I would prefer to just do:
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc  = object
-    fd*: SocketHandle
+    fd: SocketHandle
     closed: bool ## determines whether this socket has been closed
     case isBuffered: bool ## determines whether this socket is buffered.
     of true:
       buffer: array[0..BufferSize, char]
       currPos: int # current index in buffer
-      bufLen*: int # current length of buffer
+      bufLen: int # current length of buffer
     of false: nil
     case isSsl: bool
     of true:
