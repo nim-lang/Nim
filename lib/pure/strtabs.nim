@@ -168,6 +168,12 @@ proc newStringTable*(mode: StringTableMode): StringTableRef {.
   result.counter = 0
   newSeq(result.data, startSize)
 
+proc clear*(s: StringTableRef, mode: StringTableMode) =
+  ## resets a string table to be empty again.
+  s.mode = mode
+  s.counter = 0
+  s.data.setLen(startSize)
+
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): StringTableRef {.
   rtl, extern: "nst$1WithPairs".} =
@@ -227,7 +233,7 @@ proc `$`*(t: StringTableRef): string {.rtl, extern: "nstDollar".} =
     result = "{:}"
   else:
     result = "{"
-    for key, val in pairs(t): 
+    for key, val in pairs(t):
       if result.len > 1: result.add(", ")
       result.add(key)
       result.add(": ")
