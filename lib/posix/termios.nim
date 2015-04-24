@@ -10,28 +10,28 @@
 {.deadCodeElim: on.}
 import posix
 
-type 
+type
   Speed* = cuint
   Tcflag* = cuint
 
-const 
+const
   NCCS* = 32
 
-type 
-  Termios* = object {.importc: "struct termios", header: "<termios.h>", final, pure.}
-    iflag*: Tcflag        # input mode flags 
-    oflag*: Tcflag        # output mode flags 
-    cflag*: Tcflag        # control mode flags 
-    lflag*: Tcflag        # local mode flags 
-    line*: cuchar             # line discipline 
-    cc*: array[NCCS, cuchar]  # control characters 
-    ispeed*: Speed        # input speed 
-    ospeed*: Speed        # output speed 
-  
+type
+  Termios* {.importc: "struct termios", header: "<termios.h>".} = object
+    iflag*: Tcflag        # input mode flags
+    oflag*: Tcflag        # output mode flags
+    cflag*: Tcflag        # control mode flags
+    lflag*: Tcflag        # local mode flags
+    line*: cuchar             # line discipline
+    cc*: array[NCCS, cuchar]  # control characters
+    ispeed*: Speed        # input speed
+    ospeed*: Speed        # output speed
 
-# cc characters 
 
-const 
+# cc characters
+
+const
   VINTR* = 0
   VQUIT* = 1
   VERASE* = 2
@@ -50,9 +50,9 @@ const
   VLNEXT* = 15
   VEOL2* = 16
 
-# iflag bits 
+# iflag bits
 
-const 
+const
   IGNBRK* = 1
   BRKINT* = 2
   IGNPAR* = 4
@@ -69,9 +69,9 @@ const
   IMAXBEL* = 20000
   IUTF8* = 40000
 
-# oflag bits 
+# oflag bits
 
-const 
+const
   OPOST* = 1
   OLCUC* = 2
   ONLCR* = 4
@@ -104,9 +104,9 @@ const
   VT1* = 40000
   XTABS* = 14000
 
-# cflag bit meaning 
+# cflag bit meaning
 
-const 
+const
   CBAUD* = 10017
   B0* = 0
   B50* = 1
@@ -158,9 +158,9 @@ const
   CMSPAR* = 0o010000000000
   CRTSCTS* = 0o020000000000
 
-# lflag bits 
+# lflag bits
 
-const 
+const
   ISIG* = 1
   ICANON* = 2
   XCASE* = 4
@@ -178,87 +178,87 @@ const
   IEXTEN* = 0o000000100000
   EXTPROC* = 0o000000200000
 
-# tcflow() and TCXONC use these 
+# tcflow() and TCXONC use these
 
-const 
+const
   TCOOFF* = 0
   TCOON* = 1
   TCIOFF* = 2
   TCION* = 3
 
-# tcflush() and TCFLSH use these 
+# tcflush() and TCFLSH use these
 
-const 
+const
   TCIFLUSH* = 0
   TCOFLUSH* = 1
   TCIOFLUSH* = 2
 
-# tcsetattr uses these 
+# tcsetattr uses these
 
-const 
+const
   TCSANOW* = 0
   TCSADRAIN* = 1
   TCSAFLUSH* = 2
 
 # Compare a character C to a value VAL from the `cc' array in a
-#   `struct termios'.  If VAL is _POSIX_VDISABLE, no character can match it.  
+#   `struct termios'.  If VAL is _POSIX_VDISABLE, no character can match it.
 
-template cceq*(val, c: expr): expr = 
+template cceq*(val, c: expr): expr =
   c == val and val != POSIX_VDISABLE
 
-# Return the output baud rate stored in *TERMIOS_P.  
+# Return the output baud rate stored in *TERMIOS_P.
 
-proc cfGetOspeed*(termios: ptr Termios): Speed {.importc: "cfgetospeed", 
+proc cfGetOspeed*(termios: ptr Termios): Speed {.importc: "cfgetospeed",
     header: "<termios.h>".}
-# Return the input baud rate stored in *TERMIOS_P.  
+# Return the input baud rate stored in *TERMIOS_P.
 
-proc cfGetIspeed*(termios: ptr Termios): Speed {.importc: "cfgetispeed", 
+proc cfGetIspeed*(termios: ptr Termios): Speed {.importc: "cfgetispeed",
     header: "<termios.h>".}
-# Set the output baud rate stored in *TERMIOS_P to SPEED.  
+# Set the output baud rate stored in *TERMIOS_P to SPEED.
 
 proc cfSetOspeed*(termios: ptr Termios; speed: Speed): cint {.
     importc: "cfsetospeed", header: "<termios.h>".}
-# Set the input baud rate stored in *TERMIOS_P to SPEED.  
+# Set the input baud rate stored in *TERMIOS_P to SPEED.
 
 proc cfSetIspeed*(termios: ptr Termios; speed: Speed): cint {.
     importc: "cfsetispeed", header: "<termios.h>".}
-# Set both the input and output baud rates in *TERMIOS_OP to SPEED.  
+# Set both the input and output baud rates in *TERMIOS_OP to SPEED.
 
 proc cfSetSpeed*(termios: ptr Termios; speed: Speed): cint {.
     importc: "cfsetspeed", header: "<termios.h>".}
-# Put the state of FD into *TERMIOS_P.  
+# Put the state of FD into *TERMIOS_P.
 
 proc tcGetAttr*(fd: cint; termios: ptr Termios): cint {.
     importc: "tcgetattr", header: "<termios.h>".}
 # Set the state of FD to *TERMIOS_P.
-#   Values for OPTIONAL_ACTIONS (TCSA*) are in <bits/termios.h>.  
+#   Values for OPTIONAL_ACTIONS (TCSA*) are in <bits/termios.h>.
 
 proc tcSetAttr*(fd: cint; optional_actions: cint; termios: ptr Termios): cint {.
     importc: "tcsetattr", header: "<termios.h>".}
-# Set *TERMIOS_P to indicate raw mode.  
+# Set *TERMIOS_P to indicate raw mode.
 
-proc cfMakeRaw*(termios: ptr Termios) {.importc: "cfmakeraw", 
+proc cfMakeRaw*(termios: ptr Termios) {.importc: "cfmakeraw",
     header: "<termios.h>".}
-# Send zero bits on FD.  
+# Send zero bits on FD.
 
-proc tcSendBreak*(fd: cint; duration: cint): cint {.importc: "tcsendbreak", 
+proc tcSendBreak*(fd: cint; duration: cint): cint {.importc: "tcsendbreak",
     header: "<termios.h>".}
 # Wait for pending output to be written on FD.
 #
 #   This function is a cancellation point and therefore not marked with
-#  .  
+#  .
 
 proc tcDrain*(fd: cint): cint {.importc: "tcdrain", header: "<termios.h>".}
 # Flush pending data on FD.
-#   Values for QUEUE_SELECTOR (TC{I,O,IO}FLUSH) are in <bits/termios.h>.  
+#   Values for QUEUE_SELECTOR (TC{I,O,IO}FLUSH) are in <bits/termios.h>.
 
-proc tcFlush*(fd: cint; queue_selector: cint): cint {.importc: "tcflush", 
+proc tcFlush*(fd: cint; queue_selector: cint): cint {.importc: "tcflush",
     header: "<termios.h>".}
 # Suspend or restart transmission on FD.
-#   Values for ACTION (TC[IO]{OFF,ON}) are in <bits/termios.h>.  
+#   Values for ACTION (TC[IO]{OFF,ON}) are in <bits/termios.h>.
 
-proc tcFlow*(fd: cint; action: cint): cint {.importc: "tcflow", 
+proc tcFlow*(fd: cint; action: cint): cint {.importc: "tcflow",
     header: "<termios.h>".}
-# Get process group ID for session leader for controlling terminal FD.  
+# Get process group ID for session leader for controlling terminal FD.
 
 proc tcGetSid*(fd: cint): TPid {.importc: "tcgetsid", header: "<termios.h>".}
