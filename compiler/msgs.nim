@@ -738,7 +738,7 @@ proc writeContext(lastinfo: TLineInfo) =
     if msgContext[i] != lastinfo and msgContext[i] != info:
       msgWriteln(PosContextFormat % [toMsgFilename(msgContext[i]),
                                      coordToStr(msgContext[i].line),
-                                     coordToStr(msgContext[i].col),
+                                     coordToStr(msgContext[i].col+1),
                                      getMessageStr(errInstantiationFrom, "")])
     info = msgContext[i]
 
@@ -781,7 +781,7 @@ proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
              of hintMin..hintMax: PosHintFormat
              else: PosErrorFormat
   result = frmt % [toMsgFilename(info), coordToStr(info.line),
-                   coordToStr(info.col), getMessageStr(msg, arg)]
+                   coordToStr(info.col+1), getMessageStr(msg, arg)]
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
