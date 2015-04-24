@@ -11,10 +11,8 @@
 ## to convert Nim code into a consistent style.
 
 import 
-  strutils, os, intsets, strtabs, ropes,
-  compiler/options, compiler/ast, compiler/astalgo,
-  compiler/msgs, compiler/idents, compiler/semdata,
-  prettybase
+  strutils, os, options, ast, astalgo, msgs, ropes, idents,
+  intsets, strtabs, semdata, prettybase
 
 type
   StyleCheck* {.pure.} = enum None, Warn, Auto
