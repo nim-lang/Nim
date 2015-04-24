@@ -135,7 +135,7 @@ else:
     var cur, old: Termios
     discard fd.tcgetattr(cur.addr)
     old = cur
-    cur.lflag = cur.lflag and not Tcflag(ECHO)
+    cur.c_lflag = cur.c_lflag and not Tcflag(ECHO)
     discard fd.tcsetattr(TCSADRAIN, cur.addr)
     stdout.write prompt
     result = stdin.readLine(password)

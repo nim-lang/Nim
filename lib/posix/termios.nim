@@ -19,15 +19,12 @@ const
 
 type
   Termios* {.importc: "struct termios", header: "<termios.h>".} = object
-    iflag*: Tcflag        # input mode flags
-    oflag*: Tcflag        # output mode flags
-    cflag*: Tcflag        # control mode flags
-    lflag*: Tcflag        # local mode flags
-    line*: cuchar             # line discipline
-    cc*: array[NCCS, cuchar]  # control characters
-    ispeed*: Speed        # input speed
-    ospeed*: Speed        # output speed
-
+    c_iflag*: Tcflag        # input mode flags
+    c_oflag*: Tcflag        # output mode flags
+    c_cflag*: Tcflag        # control mode flags
+    c_lflag*: Tcflag        # local mode flags
+    c_line*: cuchar         # line discipline
+    c_cc*: array[NCCS, cuchar]  # control characters
 
 # cc characters
 
