@@ -61,7 +61,7 @@ type
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
     tkOpr, tkComment, tkAccent,
-    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
+    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
   TTokTypes* = set[TTokType]
 
@@ -862,6 +862,10 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '`':
       tok.tokType = tkAccent
+      inc(L.bufpos)
+    of '_':
+      tok.tokType = tkSymbol
+      tok.ident = getIdent("_")
       inc(L.bufpos)
     of '\"':
       # check for extended raw string literal:
