@@ -386,6 +386,25 @@ Example:
 As can be seen from the example, to Nim symbols can be referred via backticks.
 Use two backticks to produce a single verbatim backtick.
 
+For a toplevel emit statement the section where in the generated C/C++ file
+the code should be emitted can be influenced via the
+prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/``:
+
+.. code-block:: Nim
+  {.emit: """/*TYPESECTION*/
+  struct Vector3 {
+  public:
+    Vector3(): x(5) {}
+    Vector3(float x_): x(x_) {}
+    float x;
+  };
+  """.}
+
+  type Vector3 {.importcpp: "Vector3", nodecl} = object
+    x: cfloat
+
+  proc constructVector3(a: cfloat): Vector3 {.importcpp: "Vector3(@)", nodecl}
+
 
 ImportCpp pragma
 ----------------
@@ -611,7 +630,7 @@ Produces:
 Produces:
 
 .. code-block:: C
-  
+
   std::vector<int>::iterator x;
 
 

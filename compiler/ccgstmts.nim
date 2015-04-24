@@ -1001,12 +1001,19 @@ proc genAsmStmt(p: BProc, t: PNode) =
   else:
     lineF(p, cpsStmts, CC[cCompiler].asmStmtFrmt, [s])
 
+proc determineSection(n: PNode): TCFileSection =
+  result = cfsProcHeaders
+  if n.len >= 1 and n.sons[0].kind in {nkStrLit..nkTripleStrLit}:
+    if n.sons[0].strVal.startsWith("/*TYPESECTION*/"): result = cfsTypes
+    elif n.sons[0].strVal.startsWith("/*VARSECTION*/"): result = cfsVars
+
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t.sons[1])
   if p.prc == nil:
     # top level emit pragma?
-    genCLineDir(p.module.s[cfsProcHeaders], t.info)
-    add(p.module.s[cfsProcHeaders], s)
+    let section = determineSection(t[1])
+    genCLineDir(p.module.s[section], t.info)
+    add(p.module.s[section], s)
   else:
     genLineDir(p, t)
     line(p, cpsStmts, s)
