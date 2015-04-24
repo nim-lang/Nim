@@ -11,19 +11,20 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-proc mangleField(name: string): string =
-  result = mangle(name)
-  result[0] = result[0].toUpper # Mangling makes everything lowercase,
-                                # but some identifiers are C keywords
-
 proc isKeyword(w: PIdent): bool =
-  # nimrod and C++ share some keywords
-  # it's more efficient to test the whole nimrod keywords range
+  # Nim and C++ share some keywords
+  # it's more efficient to test the whole Nim keywords range
   case w.id
   of ccgKeywordsLow..ccgKeywordsHigh,
      nimKeywordsLow..nimKeywordsHigh,
      ord(wInline): return true
   else: return false
+
+proc mangleField(name: PIdent): string =
+  result = mangle(name.s)
+  if isKeyword(name):
+    result[0] = result[0].toUpper # Mangling makes everything lowercase,
+                                  # but some identifiers are C keywords
 
 proc mangleName(s: PSym): Rope =
   result = s.loc.r
@@ -379,7 +380,7 @@ proc mangleRecFieldName(field: PSym, rectype: PType): Rope =
       ({sfImportc, sfExportc} * rectype.sym.flags != {}):
     result = field.loc.r
   else:
-    result = rope(mangleField(field.name.s))
+    result = rope(mangleField(field.name))
   if result == nil: internalError(field.info, "mangleRecFieldName")
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
@@ -642,7 +643,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
               result.add getTypeDescAux(m, typeInSlot, check)
         else:
           inc i
-      
+
       if chunkStart != 0:
         result.add cppName.data.substr(chunkStart)
       else:

@@ -176,7 +176,7 @@ proc mangle*(name: string): string =
   result = newStringOfCap(name.len)
   case name[0]
   of Letters:
-    result.add(name[0].toLower)
+    result.add(name[0])
   of Digits:
     result.add("N" & name[0])
   else:
