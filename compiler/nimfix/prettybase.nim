@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, msgs, strutils, idents, lexbase, streams
+import strutils, lexbase, streams, compiler/ast, compiler/msgs,
+       compiler/idents
 from os import splitFile
 
 type
