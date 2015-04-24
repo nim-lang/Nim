@@ -51,12 +51,13 @@ else:
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
     discard fd.tcgetattr(addr mode)
-    mode.iflag = mode.iflag and not Tcflag(BRKINT or ICRNL or INPCK or ISTRIP or IXON)
-    mode.oflag = mode.oflag and not Tcflag(OPOST)
-    mode.cflag = (mode.cflag and not Tcflag(CSIZE or PARENB)) or CS8
-    mode.lflag = mode.lflag and not Tcflag(ECHO or ICANON or IEXTEN or ISIG)
-    mode.cc[VMIN] = 1.cuchar
-    mode.cc[VTIME] = 0.cuchar
+    mode.c_iflag = mode.c_iflag and not Tcflag(BRKINT or ICRNL or INPCK or
+      ISTRIP or IXON)
+    mode.c_oflag = mode.c_oflag and not Tcflag(OPOST)
+    mode.c_cflag = (mode.c_cflag and not Tcflag(CSIZE or PARENB)) or CS8
+    mode.c_lflag = mode.c_lflag and not Tcflag(ECHO or ICANON or IEXTEN or ISIG)
+    mode.c_cc[VMIN] = 1.cuchar
+    mode.c_cc[VTIME] = 0.cuchar
     discard fd.tcsetattr(time, addr mode)
 
 proc setCursorPos*(x, y: int) =
