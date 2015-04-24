@@ -196,7 +196,12 @@ proc testSpec(r: var TResults, test: TTest) =
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
   styledEcho "Processing ", fgCyan, extractFilename(tname)
-  var expected = parseSpec(tname)
+  var expected: TSpec
+  if test.action != actionRunNoSpec:
+    expected = parseSpec(tname)
+  else:
+    specDefaults expected
+    expected.action = actionRunNoSpec
   if expected.err == reIgnored:
     r.addResult(test, "", "", reIgnored)
     inc(r.skipped)
@@ -206,7 +211,7 @@ proc testSpec(r: var TResults, test: TTest) =
       var given = callCompiler(expected.cmd, test.name,
         test.options & " --hint[Path]:off --hint[Processing]:off", test.target)
       compilerOutputTests(test, given, expected, r)
-    of actionRun:
+    of actionRun, actionRunNoSpec:
       var given = callCompiler(expected.cmd, test.name, test.options,
                                test.target)
       if given.err != reSuccess:

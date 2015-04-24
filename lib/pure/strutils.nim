@@ -1410,7 +1410,8 @@ when isMainModule:
   doAssert wordWrap(inp, 10, false) == outp
 
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
+  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) in
+                                                   ["1.0e-11", "1.0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   when not defined(testing):
