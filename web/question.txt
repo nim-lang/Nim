@@ -110,6 +110,7 @@ General
   - Scite: Included
   - Gedit: The `Aporia .lang file <https://github.com/nimrod-code/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nimrod.lang>`_
   - jEdit: https://github.com/exhu/nimrod-misc/tree/master/jedit
+  - LiClipse: http://www.liclipse.com/ (Eclipse based plugin)
 
 
 .. container:: standout
