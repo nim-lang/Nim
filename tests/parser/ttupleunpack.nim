@@ -4,6 +4,11 @@ discard """
   exitcode: 0
 """
 
+proc returnsTuple(): (int, int, int) = (4, 2, 3)
+
+proc main2 =
+  let (x, _, z) = returnsTuple()
+
 proc main() =
 
   proc foo(): tuple[x, y, z: int] =
@@ -16,8 +21,8 @@ proc main() =
   var (a, _, _) = foo()
   doAssert a == 4
 
-  var (a, _, _xx) = foo()
-  doAssert a == 4
+  var (aa, _, _) = foo()
+  doAssert aa == 4
 
   iterator bar(): tuple[x, y, z: int] =
     yield (1,2,3)
@@ -27,3 +32,4 @@ proc main() =
     doAssert y == 2
 
 main()
+main2()

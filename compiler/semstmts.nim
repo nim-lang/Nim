@@ -369,9 +369,10 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
   else:
     result.add identDefs
 
-proc isDiscardUnderscore(n: PNode): bool =
-  if n.kind != nkIdent: return false
-  return n.ident.s == "_"
+proc isDiscardUnderscore(v: PSym): bool =
+  if v.name.s == "_":
+    v.flags.incl(sfGenSym)
+    result = true
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
@@ -436,10 +437,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
-      if sfGenSym notin v.flags and
-         not isDiscardUnderscore(a.sons[j]): addInterfaceDecl(c, v)
-      if isDiscardUnderscore(a.sons[j]):
-        v.flags.incl(sfGenSym)
+      if sfGenSym notin v.flags and not isDiscardUnderscore(v):
+        addInterfaceDecl(c, v)
       when oKeepVariableNames:
         if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:
@@ -554,7 +553,8 @@ proc semForVars(c: PContext, n: PNode): PNode =
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)
-      if sfGenSym notin v.flags: addForVarDecl(c, v)
+      if sfGenSym notin v.flags and not isDiscardUnderscore(v):
+        addForVarDecl(c, v)
   inc(c.p.nestedLoopCounter)
   n.sons[length-1] = semStmt(c, n.sons[length-1])
   dec(c.p.nestedLoopCounter)

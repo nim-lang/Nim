@@ -868,9 +868,14 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       tok.tokType = tkAccent
       inc(L.bufpos)
     of '_':
-      tok.tokType = tkSymbol
-      tok.ident = getIdent("_")
       inc(L.bufpos)
+      if L.buf[L.bufpos] notin SymChars:
+        tok.tokType = tkSymbol
+        tok.ident = getIdent("_")
+      else:
+        tok.literal = $c
+        tok.tokType = tkInvalid
+        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     of '\"':
       # check for extended raw string literal:
       var rawMode = L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars
