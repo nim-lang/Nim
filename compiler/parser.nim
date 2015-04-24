@@ -91,7 +91,7 @@ proc closeParser(p: var TParser) =
 
 proc parMessage(p: TParser, msg: TMsgKind, arg = "") =
   ## Produce and emit the parser message `arg` to output.
-  lexMessage(p.lex, msg, arg)
+  lexMessageTok(p.lex, msg, p.tok, arg)
 
 proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) =
   ## Produce and emit a parser message to output about the token `tok`
@@ -154,7 +154,7 @@ proc eat(p: var TParser, tokType: TTokType) =
   if p.tok.tokType == tokType:
     getTok(p)
   else:
-    lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
+    lexMessageTok(p.lex, errTokenExpected, p.tok, TokTypeToStr[tokType])
 
 proc parLineInfo(p: TParser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
@@ -1626,7 +1626,7 @@ proc parseEnum(p: var TParser): PNode =
         p.tok.tokType == tkEof:
       break
   if result.len <= 1:
-    lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
+    lexMessageTok(p.lex, errIdentifierExpected, p.tok, prettyTok(p.tok))
 
 proc parseObjectPart(p: var TParser): PNode
 proc parseObjectWhen(p: var TParser): PNode =
