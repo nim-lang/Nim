@@ -1881,7 +1881,7 @@ proc simpleStmt(p: var TParser): PNode =
 
 proc complexOrSimpleStmt(p: var TParser): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
-  #|                     | tryStmt | finallyStmt | exceptStmt | forStmt
+  #|                     | tryStmt | forStmt
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
   #|                     | 'proc' routine
   #|                     | 'method' routine
