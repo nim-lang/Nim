@@ -3207,7 +3207,7 @@ when hostOS != "standalone":
     if x == nil: x = y
     else: x.add(y)
 
-proc locals*(): RootObj {.magic: "Locals", noSideEffect.} =
+proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
   ## in the current scope. This is quite fast as it does not rely
   ## on any debug or runtime information. Note that in constrast to what

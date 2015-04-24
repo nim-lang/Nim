@@ -102,10 +102,6 @@ proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
         c.p.owner.kind notin {skTemplate, skMacro}:
       localError(n.info, errGenerated, "value expected, but got a type")
 
-proc newDeref(n: PNode): PNode {.inline.} =
-  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
-  addSon(result, n)
-
 proc semExprBranch(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
   if result.typ != nil:
