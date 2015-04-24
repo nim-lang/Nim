@@ -147,6 +147,7 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
 
 proc sumGeneric(t: PType): int =
   var t = t
+  var isvar = 1
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyArrayConstr,
@@ -154,8 +155,9 @@ proc sumGeneric(t: PType): int =
       t = t.lastSon
       inc result
     of tyVar:
-      # but do not make 'var T' more specific than 'T'!
       t = t.sons[0]
+      inc result
+      inc isvar
     of tyGenericInvocation, tyTuple:
       result = ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
@@ -164,7 +166,7 @@ proc sumGeneric(t: PType): int =
     of tyBool, tyChar, tyEnum, tyObject, tyProc, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
-      return 1
+      return isvar
     else: return 0
 
 #var ggDebug: bool
@@ -1470,9 +1472,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
     if formal.typ.kind == tyVar:
-      if n.isLValue:
-        inc(m.genericMatches, 100)
-      else:
+      if not n.isLValue:
         m.state = csNoMatch
         return
 

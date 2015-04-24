@@ -11,7 +11,8 @@ ref T
 123
 2
 1
-@[123, 2, 1]'''
+@[123, 2, 1]
+Called!'''
 """
 
 # Things that's even in the spec now!
@@ -79,3 +80,31 @@ proc takeV[T](a: varargs[T]) =
 
 takeV([123, 2, 1]) # takeV's T is "int", not "array of int"
 echo(@[123, 2, 1])
+
+# bug #2600
+
+type
+  FutureBase* = ref object of RootObj ## Untyped future.
+
+  Future*[T] = ref object of FutureBase ## Typed future.
+    value: T ## Stored value
+
+  FutureVar*[T] = distinct Future[T]
+
+proc newFuture*[T](): Future[T] =
+  new(result)
+
+proc newFutureVar*[T](): FutureVar[T] =
+  result = FutureVar[T](newFuture[T]())
+
+proc mget*[T](future: FutureVar[T]): var T =
+  Future[T](future).value
+
+proc reset*[T](future: FutureVar[T]) =
+  echo "Called!"
+
+when true:
+  var foo = newFutureVar[string]()
+  foo.mget() = ""
+  foo.mget.add("Foobar")
+  foo.reset()
