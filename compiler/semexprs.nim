@@ -24,7 +24,7 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
-  if result.kind == nkEmpty:
+  if result.kind == nkEmpty and result.typ.isNil:
     # do not produce another redundant error message:
     #raiseRecoverableError("")
     result = errorNode(c, n)
