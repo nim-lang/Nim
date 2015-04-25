@@ -15,8 +15,8 @@
 ## type than its compiletime type:
 ##
 ## .. code-block:: nim
-## 
-##   type 
+##
+##   type
 ##     TA = object
 ##     TB = object of TA
 ##       f: int
@@ -28,6 +28,8 @@
 ##   new(b)
 ##   a = b
 ##   echo($$a[]) # produces "{}", not "{f: 0}"
+##
+## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
 
 import streams, typeinfo, json, intsets, tables
 
@@ -38,7 +40,12 @@ proc storeAny(s: Stream, a: TAny, stored: var IntSet) =
   case a.kind
   of akNone: assert false
   of akBool: s.write($getBool(a))
-  of akChar: s.write(escapeJson($getChar(a)))
+  of akChar:
+    let ch = getChar(a)
+    if ch < '\128':
+      s.write(escapeJson($ch))
+    else:
+      s.write($int(ch))
   of akArray, akSequence:
     if a.kind == akSequence and isNil(a): s.write("null")
     else:
@@ -92,7 +99,7 @@ proc storeAny(s: Stream, a: TAny, stored: var IntSet) =
 proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
   case a.kind
   of akNone: assert false
-  of akBool: 
+  of akBool:
     case p.kind
     of jsonFalse: setBiggestInt(a, 0)
     of jsonTrue: setBiggestInt(a, 1)
@@ -105,8 +112,12 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
         setBiggestInt(a, ord(x[0]))
         next(p)
         return
+    elif p.kind == jsonInt:
+      setBiggestInt(a, getInt(p))
+      next(p)
+      return
     raiseParseErr(p, "string of length 1 expected for a char")
-  of akEnum: 
+  of akEnum:
     if p.kind == jsonString:
       setBiggestInt(a, getEnumOrdinal(a, p.str))
       next(p)
@@ -122,7 +133,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
   of akSequence:
-    case p.kind 
+    case p.kind
     of jsonNull:
       setPointer(a, nil)
       next(p)
@@ -143,7 +154,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
     if p.kind != jsonObjectStart: raiseParseErr(p, "'{' expected for an object")
     next(p)
     while p.kind != jsonObjectEnd and p.kind != jsonEof:
-      if p.kind != jsonString: 
+      if p.kind != jsonString:
         raiseParseErr(p, "string expected for a field name")
       var fieldName = p.str
       next(p)
@@ -160,7 +171,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
   of akPtr, akRef:
-    case p.kind 
+    case p.kind
     of jsonNull:
       setPointer(a, nil)
       next(p)
@@ -170,7 +181,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
     of jsonArrayStart:
       next(p)
       if a.kind == akRef: invokeNew(a)
-      else: setPointer(a, alloc0(a.baseTypeSize))      
+      else: setPointer(a, alloc0(a.baseTypeSize))
       if p.kind == jsonInt:
         t[p.getInt] = getPointer(a)
         next(p)
@@ -179,8 +190,8 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
       if p.kind == jsonArrayEnd: next(p)
       else: raiseParseErr(p, "']' end of ref-address pair expected")
     else: raiseParseErr(p, "int for pointer type expected")
-  of akProc, akPointer, akCString: 
-    case p.kind 
+  of akProc, akPointer, akCString:
+    case p.kind
     of jsonNull:
       setPointer(a, nil)
       next(p)
@@ -189,7 +200,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
       next(p)
     else: raiseParseErr(p, "int for pointer type expected")
   of akString:
-    case p.kind 
+    case p.kind
     of jsonNull:
       setPointer(a, nil)
       next(p)
@@ -197,7 +208,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
       setString(a, p.str)
       next(p)
     else: raiseParseErr(p, "string expected")
-  of akInt..akInt64, akUInt..akUInt64: 
+  of akInt..akInt64, akUInt..akUInt64:
     if p.kind == jsonInt:
       setBiggestInt(a, getInt(p))
       next(p)
@@ -243,22 +254,22 @@ proc to*[T](data: string): T =
   ## reads data and transforms it to a ``T``.
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
-  
+
 when not defined(testing) and isMainModule:
   template testit(x: expr) = echo($$to[type(x)]($$x))
 
   var x: array[0..4, array[0..4, string]] = [
-    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
-    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
+    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
+    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
     ["test", "1", "2", "3", "4"]]
   testit(x)
   var test2: tuple[name: string, s: uint] = ("tuple test", 56u)
   testit(test2)
-  
+
   type
     TE = enum
       blah, blah2
-  
+
     TestObj = object
       test, asd: int
       case test2: TE
@@ -266,7 +277,7 @@ when not defined(testing) and isMainModule:
         help: string
       else:
         nil
-        
+
     PNode = ref TNode
     TNode = object
       next, prev: PNode
@@ -294,7 +305,7 @@ when not defined(testing) and isMainModule:
   test4.a = "ref string test: A"
   test4.b = "ref string test: B"
   testit(test4)
-  
+
   var test5 = @[(0,1),(2,3),(4,5)]
   testit(test5)
 
@@ -305,7 +316,7 @@ when not defined(testing) and isMainModule:
   echo($$test7)
   testit(test7)
 
-  type 
+  type
     TA {.inheritable.} = object
     TB = object of TA
       f: int

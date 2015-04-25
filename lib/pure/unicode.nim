@@ -105,6 +105,31 @@ template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
     result = Rune(ord(s[i]))
     when doInc: inc(i)
 
+proc validateUtf8*(s: string): int =
+  ## returns the position of the invalid byte in ``s`` if the string ``s`` does
+  ## not hold valid UTF-8 data. Otherwise -1 is returned.
+  var i = 0
+  let L = s.len
+  while i < L:
+    if ord(s[i]) <=% 127:
+      inc(i)
+    elif ord(s[i]) shr 5 == 0b110:
+      if i+1 < L and ord(s[i+1]) shr 6 == 0b10: inc(i, 2)
+      else: return i
+    elif ord(s[i]) shr 4 == 0b1110:
+      if i+2 < L and ord(s[i+1]) shr 6 == 0b10 and ord(s[i+2]) shr 6 == 0b10:
+        inc i, 3
+      else: return i
+    elif ord(s[i]) shr 3 == 0b11110:
+      if i+3 < L and ord(s[i+1]) shr 6 == 0b10 and
+                     ord(s[i+2]) shr 6 == 0b10 and
+                     ord(s[i+3]) shr 6 == 0b10:
+        inc i, 4
+      else: return i
+    else:
+      return i
+  return -1
+
 proc runeAt*(s: string, i: Natural): Rune =
   ## returns the unicode character in `s` at byte index `i`
   fastRuneAt(s, i, result, false)

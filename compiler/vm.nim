@@ -16,7 +16,8 @@ import ast except getstr
 
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
-  parser, vmdeps, idents, trees, renderer, options, transf, parseutils
+  parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
+  vmmarshal
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -370,11 +371,6 @@ template handleJmpBack() {.dirty.} =
       stackTraceAux(c, tos, pc)
       globalError(c.debug[pc], errTooManyIterations)
   dec(c.loopIterations)
-
-proc skipColon(n: PNode): PNode =
-  result = n
-  if n.kind == nkExprColonExpr:
-    result = n.sons[1]
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -1369,6 +1365,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       while typ.kind == tyTypeDesc and typ.len > 0: typ = typ.sons[0]
       createStr regs[ra]
       regs[ra].node.strVal = typ.typeToString(preferExported)
+    of opcMarshalLoad:
+      let ra = instr.regA
+      let rb = instr.regB
+      inc pc
+      let typ = c.types[c.code[pc].regBx - wordExcess]
+      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ))
+    of opcMarshalStore:
+      decodeB(rkNode)
+      inc pc
+      let typ = c.types[c.code[pc].regBx - wordExcess]
+      createStrKeepNode(regs[ra])
+      if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
+      storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode)
     inc pc
 
 proc execute(c: PCtx, start: int): PNode =

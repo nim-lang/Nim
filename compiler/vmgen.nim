@@ -76,6 +76,11 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     elif opc in {opcLdConst, opcAsgnConst}:
       result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA,
         c.constants[x.regBx-wordExcess].renderTree)
+    elif opc in {opcMarshalLoad, opcMarshalStore}:
+      let y = c.code[i+1]
+      result.addf("\t$#\tr$#, r$#, $#", ($opc).substr(3), x.regA, x.regB,
+        c.types[y.regBx-wordExcess].typeToString)
+      inc i
     else:
       result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
     result.add("\t#")
@@ -696,8 +701,7 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.gABC(n, opcCard, dest, tmp)
   c.freeTemp(tmp)
 
-proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
-  let m = n.sons[0].sym.magic
+proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
   of mOr:  c.genAndOr(n, opcTJmp, dest)
@@ -1027,6 +1031,22 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   else:
     # mGCref, mGCunref,
     internalError(n.info, "cannot generate code for: " & $m)
+
+proc genMarshalLoad(c: PCtx, n: PNode, dest: var TDest) =
+  ## Signature: proc to*[T](data: string): T
+  if dest < 0: dest = c.getTemp(n.typ)
+  var tmp = c.genx(n.sons[1])
+  c.gABC(n, opcMarshalLoad, dest, tmp)
+  c.gABx(n, opcMarshalLoad, 0, c.genType(n.typ))
+  c.freeTemp(tmp)
+
+proc genMarshalStore(c: PCtx, n: PNode, dest: var TDest) =
+  ## Signature: proc `$$`*[T](x: T): string
+  if dest < 0: dest = c.getTemp(n.typ)
+  var tmp = c.genx(n.sons[1])
+  c.gABC(n, opcMarshalStore, dest, tmp)
+  c.gABx(n, opcMarshalStore, 0, c.genType(n.sons[1].typ))
+  c.freeTemp(tmp)
 
 const
   atomicTypes = {tyBool, tyChar,
@@ -1533,6 +1553,15 @@ proc matches(s: PSym; x: string): bool =
     dec L
   result = true
 
+proc matches(s: PSym; y: varargs[string]): bool =
+  var s = s
+  var L = y.len-1
+  while L >= 0:
+    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
+    dec L
+  result = true
+
 proc procIsCallback(c: PCtx; s: PSym): bool =
   if s.offset < -1: return true
   var i = -2
@@ -1570,8 +1599,17 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       internalError(n.info, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
-    if n.sons[0].kind == nkSym and n.sons[0].sym.magic != mNone:
-      genMagic(c, n, dest)
+    if n.sons[0].kind == nkSym:
+      let s = n.sons[0].sym
+      if s.magic != mNone:
+        genMagic(c, n, dest, s.magic)
+      elif matches(s, "stdlib", "marshal", "to"):
+        genMarshalLoad(c, n, dest)
+      elif matches(s, "stdlib", "marshal", "$$"):
+        genMarshalStore(c, n, dest)
+      else:
+        genCall(c, n, dest)
+        clearDest(c, n, dest)
     else:
       genCall(c, n, dest)
       clearDest(c, n, dest)

@@ -66,7 +66,8 @@ type
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcSwap, opcIsNil, opcOf, opcIs,
-    opcSubStr, opcParseFloat, opcConv, opcCast, opcQuit, opcReset,
+    opcSubStr, opcParseFloat, opcConv, opcCast,
+    opcQuit, opcReset,
     opcNarrowS, opcNarrowU,
 
     opcAddStrCh,
@@ -132,7 +133,8 @@ type
     opcLdImmInt,  # dest = immediate value
     opcNBindSym,
     opcSetType,   # dest.typ = types[Bx]
-    opcTypeTrait
+    opcTypeTrait,
+    opcMarshalLoad, opcMarshalStore
 
   TBlock* = object
     label*: PSym
@@ -221,7 +223,8 @@ proc registerCallback*(c: PCtx; name: string; callback: VmCallback) =
 const
   firstABxInstr* = opcTJmp
   largeInstrs* = { # instructions which use 2 int32s instead of 1:
-    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf}
+    opcSubStr, opcConv, opcCast, opcNewSeq, opcOf,
+    opcMarshalLoad, opcMarshalStore}
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 

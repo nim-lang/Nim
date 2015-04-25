@@ -130,6 +130,7 @@ News
   - ``system.len`` for strings and sequences now returns 0 for nil.
 
   - A single underscore can now be used to discard values when unpacking tuples.
+  - ``marshal.$$`` and ``marshal.to`` can be executed at compile-time.
 
 
   Library additions
