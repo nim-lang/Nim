@@ -159,7 +159,7 @@ proc sumGeneric(t: PType): int =
       inc result
       inc isvar
     of tyGenericInvocation, tyTuple:
-      result = ord(t.kind == tyGenericInvocation)
+      result += ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
@@ -167,7 +167,8 @@ proc sumGeneric(t: PType): int =
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
       return isvar
-    else: return 0
+    else:
+      return 0
 
 #var ggDebug: bool
 

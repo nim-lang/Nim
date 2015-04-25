@@ -12,7 +12,9 @@ ref T
 2
 1
 @[123, 2, 1]
-Called!'''
+Called!
+merge with var
+merge no var'''
 """
 
 # Things that's even in the spec now!
@@ -103,8 +105,14 @@ proc mget*[T](future: FutureVar[T]): var T =
 proc reset*[T](future: FutureVar[T]) =
   echo "Called!"
 
+proc merge[T](x: Future[T]) = echo "merge no var"
+proc merge[T](x: var Future[T]) = echo "merge with var"
+
 when true:
   var foo = newFutureVar[string]()
   foo.mget() = ""
   foo.mget.add("Foobar")
   foo.reset()
+  var bar = newFuture[int]()
+  bar.merge # merge with var
+  merge(newFuture[int]()) # merge no var
