@@ -45,6 +45,9 @@ const
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
 
+type
+  EUnexpectedCommand = object of Exception
+
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)
@@ -80,16 +83,38 @@ proc sexp(s: seq[Suggest]): SexpNode =
 proc listEPC(): SexpNode =
   discard
 
+proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int) =
+  gIdeCmd = cmd
+  if cmd == ideUse:
+    modules.resetAllModules()
+  var isKnownFile = true
+  let dirtyIdx = file.fileInfoIdx(isKnownFile)
+
+  if dirtyfile.len != 0: msgs.setDirtyFile(dirtyIdx, dirtyfile)
+  else: msgs.setDirtyFile(dirtyIdx, nil)
+
+  resetModule dirtyIdx
+  if dirtyIdx != gProjectMainIdx:
+    resetModule gProjectMainIdx
+
+  gTrackPos = newLineInfo(dirtyIdx, line, col)
+  #echo dirtyfile, gDirtyBufferIdx, " project ", gProjectMainIdx
+  gErrorCounter = 0
+  if not isKnownFile:
+    compileProject(dirtyIdx)
+  else:
+    compileProject()
+
 proc executeEPC(cmd: IdeCmd, args: SexpNode) =
   let
     file = args[0].getStr
     line = args[1].getNum
     column = args[2].getNum
     dirtyfile = args[3].getStr(nil)
-  discard
+  execute(cmd, file, dirtyfile, int(line), int(column))
 
-proc returnEPC(socket: var Socket, uid: string, s: SexpNode) =
-  let response = $convertSexp([newSSymbol("return"), [uid, s]])
+proc returnEPC(socket: var Socket, uid: string, s: SexpNode, return_symbol = "return") =
+  let response = $convertSexp([newSSymbol(return_symbol), [uid, s]])
   socket.send(toHex(len(response), 6))
   socket.send(response)
   socket.close()
@@ -97,7 +122,7 @@ proc returnEPC(socket: var Socket, uid: string, s: SexpNode) =
 proc findEPCPort(): int =
   98294 # guaranteed to be random
 
-proc action(cmd: string) =
+proc parseCmdLine(cmd: string) =
   template toggle(sw) =
     if sw in gGlobalOptions:
       excl(gGlobalOptions, sw)
@@ -115,9 +140,7 @@ proc action(cmd: string) =
   of "sug": gIdeCmd = ideSug
   of "con": gIdeCmd = ideCon
   of "def": gIdeCmd = ideDef
-  of "use":
-    modules.resetAllModules()
-    gIdeCmd = ideUse
+  of "use": gIdeCmd = ideUse
   of "quit": quit()
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
@@ -133,23 +156,7 @@ proc action(cmd: string) =
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
 
-  var isKnownFile = true
-  if orig.len == 0: err()
-  let dirtyIdx = orig.fileInfoIdx(isKnownFile)
-
-  if dirtyfile.len != 0: msgs.setDirtyFile(dirtyIdx, dirtyfile)
-  else: msgs.setDirtyFile(dirtyIdx, nil)
-
-  resetModule dirtyIdx
-  if dirtyIdx != gProjectMainIdx:
-    resetModule gProjectMainIdx
-  gTrackPos = newLineInfo(dirtyIdx, line, col)
-  #echo dirtyfile, gDirtyBufferIdx, " project ", gProjectMainIdx
-  gErrorCounter = 0
-  if not isKnownFile:
-    compileProject(dirtyIdx)
-  else:
-    compileProject()
+  execute(gIdeCmd, orig, dirtyfile, line, col)
 
 proc serve() =
   # do not stop after the first error:
@@ -159,7 +166,7 @@ proc serve() =
     echo Help
     var line = ""
     while readLineFromStdin("> ", line):
-      action line
+      parseCmdLine line
       echo ""
       flushFile(stdout)
   of mtcp:
@@ -176,7 +183,7 @@ proc serve() =
       accept(server, stdoutSocket)
 
       stdoutSocket.readLine(inp)
-      action inp.string
+      parseCmdLine inp.string
 
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
@@ -189,11 +196,7 @@ proc serve() =
     server.listen()
     echo(port)
     while true:
-      var results: seq[Suggest] = @[]
       var client = newSocket()
-      suggest.suggestionResultHook = proc (s: Suggest) =
-        results.add(s)
-
       accept(server, client)
       var sizeHex = ""
       if client.recv(sizeHex, 6, 1000) != 6:
@@ -207,25 +210,32 @@ proc serve() =
       let message = parseSexp($messageBuffer)
       let messageType = message[0].getSymbol
       let body = message[1]
-      case messageType:
-      of "call":
-        let
-          uid = body[0].getStr
-          cmd = parseIdeCmd(body[1].getStr)
-          args = body[2]
-        executeEPC(cmd, args)
-        returnEPC(client, uid, sexp(results))
-      of "return":
-        raise newException(ValueError, "no return expected")
-      of "return-error":
-        raise newException(ValueError, "no return expected")
-      of "epc-error":
-        stderr.writeln("recieved epc error: " & $messageBuffer)
-        raise newException(ValueError, "epc error")
-      of "methods":
-        returnEPC(client, body[0].getStr, listEPC())
-      else:
-        raise newException(ValueError, "unexpected call: " & messageType)
+      try:
+        case messageType:
+        of "call":
+          var results: seq[Suggest] = @[]
+          suggest.suggestionResultHook = proc (s: Suggest) =
+            results.add(s)
+
+          let
+            uid = body[0].getStr
+            cmd = parseIdeCmd(body[1].getStr)
+            args = body[2]
+          executeEPC(cmd, args)
+          returnEPC(client, uid, sexp(results))
+        of "return":
+          raise newException(EUnexpectedCommand, "no return expected")
+        of "return-error":
+          raise newException(EUnexpectedCommand, "no return expected")
+        of "epc-error":
+          stderr.writeln("recieved epc error: " & $messageBuffer)
+          raise newException(IOError, "epc error")
+        of "methods":
+          returnEPC(client, body[0].getStr, listEPC())
+        else:
+          raise newException(EUnexpectedCommand, "unexpected call: " & messageType)
+      except:
+        returnEPC(client, body[0].getStr, sexp(getCurrentExceptionMsg()), "return-error")
 
 proc mainCommand =
   registerPass verbosePass
