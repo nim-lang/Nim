@@ -325,6 +325,9 @@ proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
   ##
   ## **Warning**: ``recvLineInto`` on unbuffered sockets assumes that the
   ## protocol uses ``\r\L`` to delimit a new line.
+  ##
+  ## **Warning**: ``recvLineInto`` currently uses a raw pointer to a string for
+  ## performance reasons. This will likely change soon to use FutureVars.
   assert SocketFlag.Peek notin flags ## TODO:
   result = newFuture[void]("asyncnet.recvLineInto")
 
