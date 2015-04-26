@@ -148,8 +148,7 @@ proc processClient(client: AsyncSocket, address: string,
   var request: Request
   request.url = initUri()
   request.headers = newStringTable(modeCaseInsensitive)
-  var lineFut = newFutureVar[string]("asynchttpserver.processClient")
-  lineFut.mget() = newStringOfCap(80)
+  var line = newStringOfCap(80)
   var key, value = ""
 
   while not client.isClosed:
@@ -162,15 +161,14 @@ proc processClient(client: AsyncSocket, address: string,
     request.client = client
 
     # First line - GET /path HTTP/1.1
-    lineFut.mget().setLen(0)
-    lineFut.clean()
-    await client.recvLineInto(lineFut) # TODO: Timeouts.
-    if lineFut.mget == "":
+    line.setLen(0)
+    await client.recvLineInto(addr line) # TODO: Timeouts.
+    if line == "":
       client.close()
       return
 
     var i = 0
-    for linePart in lineFut.mget.split(' '):
+    for linePart in line.split(' '):
       case i
       of 0: request.reqMethod.shallowCopy(linePart.normalize)
       of 1: parseUri(linePart, request.url)
@@ -182,21 +180,20 @@ proc processClient(client: AsyncSocket, address: string,
             "Invalid request protocol. Got: " & linePart)
           continue
       else:
-        await request.respond(Http400, "Invalid request. Got: " & lineFut.mget)
+        await request.respond(Http400, "Invalid request. Got: " & line)
         continue
       inc i
 
     # Headers
     while true:
       i = 0
-      lineFut.mget.setLen(0)
-      lineFut.clean()
-      await client.recvLineInto(lineFut)
+      line.setLen(0)
+      await client.recvLineInto(addr line)
 
-      if lineFut.mget == "":
+      if line == "":
         client.close(); return
-      if lineFut.mget == "\c\L": break
-      let (key, value) = parseHeader(lineFut.mget)
+      if line == "\c\L": break
+      let (key, value) = parseHeader(line)
       request.headers[key] = value
 
     if request.reqMethod == "post":

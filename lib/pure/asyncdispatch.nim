@@ -145,8 +145,6 @@ type
   Future*[T] = ref object of FutureBase ## Typed future.
     value: T ## Stored value
 
-  FutureVar*[T] = distinct Future[T]
-
 {.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
 
 
@@ -163,19 +161,6 @@ proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
     result.id = currentID
     result.fromProc = fromProc
     currentID.inc()
-
-proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
-  ## Create a new ``FutureVar``. This Future type is ideally suited for
-  ## situations where you want to avoid unnecessary allocations of Futures.
-  ##
-  ## Specifying ``fromProc``, which is a string specifying the name of the proc
-  ## that this future belongs to, is a good habit as it helps with debugging.
-  result = FutureVar[T](newFuture[T](fromProc))
-
-proc clean*[T](future: FutureVar[T]) =
-  ## Resets the ``finished`` status of ``future``.
-  Future[T](future).finished = false
-  Future[T](future).error = nil
 
 proc checkFinished[T](future: Future[T]) =
   when not defined(release):
@@ -208,15 +193,6 @@ proc complete*(future: Future[void]) =
   future.finished = true
   if future.cb != nil:
     future.cb()
-
-proc complete*[T](future: FutureVar[T]) =
-  ## Completes a ``FutureVar``.
-  template fut: expr = Future[T](future)
-  checkFinished(fut)
-  assert(fut.error == nil)
-  fut.finished = true
-  if fut.cb != nil:
-    fut.cb()
 
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
@@ -287,13 +263,6 @@ proc readError*[T](future: Future[T]): ref Exception =
   if future.error != nil: return future.error
   else:
     raise newException(ValueError, "No error in future.")
-
-proc mget*[T](future: FutureVar[T]): var T =
-  ## Returns a mutable value stored in ``future``.
-  ##
-  ## Unlike ``read``, this function will not raise an exception if the
-  ## Future has not been finished.
-  result = Future[T](future).value
 
 proc finished*[T](future: Future[T]): bool =
   ## Determines whether ``future`` has completed.
