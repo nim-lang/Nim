@@ -196,7 +196,7 @@ proc serve() =
         raise newException(ValueError, "didn't get all the hexbytes")
       var size = 0
       if parseHex(sizeHex, size) == 0:
-        raiseRecoverableError("invalid size hex: " & $sizeHex)
+        raise newException(ValueError, "invalid size hex: " & $sizeHex)
       var messageBuffer = ""
       if client.recv(messageBuffer, size, 3000) != size:
         raise newException(ValueError, "didn't get all the bytes")
