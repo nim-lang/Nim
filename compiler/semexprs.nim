@@ -447,6 +447,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
   of nkPar:
     let tup = newType.skipTypes({tyGenericInst})
     if tup.kind != tyTuple:
+      if tup.kind == tyObject: return
       internalError(n.info, "changeType: no tuple type for constructor")
     elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr:
       # named tuple?
