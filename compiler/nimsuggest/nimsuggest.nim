@@ -94,6 +94,9 @@ proc returnEPC(socket: var Socket, uid: string, s: SexpNode) =
   socket.send(response)
   socket.close()
 
+proc findEPCPort(): int =
+  98294 # guaranteed to be random
+
 proc action(cmd: string) =
   template toggle(sw) =
     if sw in gGlobalOptions:
@@ -178,7 +181,8 @@ proc serve() =
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
   of mepc:
-    let port = 98294 # guaranteed to be random
+    let port = findEPCPort()
+    echo(port)
     var server = newSocket()
     server.bindaddr(port.Port, "localhost")
     var inp = "".TaintedString
