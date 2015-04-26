@@ -81,7 +81,18 @@ proc sexp(s: seq[Suggest]): SexpNode =
   result = sexp(s)
 
 proc listEPC(): SexpNode =
-  discard
+  let
+    argspecs = sexp("file line column dirtyfile".split(" ").map(newSSymbol))
+    docstring = sexp("line starts at 1, column at 0, dirtyfile is optional")
+  result = newSList()
+  for command in ["sug", "con", "def", "use"]:
+    let
+      cmd = sexp(command)
+      methodDesc = newSList()
+    methodDesc.add(cmd)
+    methodDesc.add(argspecs)
+    methodDesc.add(docstring)
+    result.add(methodDesc)
 
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int) =
   gIdeCmd = cmd
