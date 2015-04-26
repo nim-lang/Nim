@@ -58,7 +58,7 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
 let order: SexpNode =
   sexp(@["section", "symkind", "qualifiedPath", "filePath", "forth", "line", "column", "doc"].map(newSSymbol))
 
-proc sexp(s: Section): SexpNode = sexp($s)
+proc sexp(s: IdeCmd): SexpNode = sexp($s)
 
 proc sexp(s: TSymKind): SexpNode = sexp($s)
 
@@ -80,7 +80,7 @@ proc sexp(s: seq[Suggest]): SexpNode =
 proc listEPC(): SexpNode =
   discard
 
-proc executeEPC(section: Section, args: SexpNode) =
+proc executeEPC(cmd: IdeCmd, args: SexpNode) =
   let
     file = args[0].getStr
     line = args[1].getNum
@@ -211,9 +211,9 @@ proc serve() =
       of "call":
         let
           uid = body[0].getStr
-          section = parseEnum[Section](body[1].getStr)
+          cmd = parseIdeCmd(body[1].getStr)
           args = body[2]
-        executeEPC(section, args)
+        executeEPC(cmd, args)
         returnEPC(client, uid, sexp(results))
       of "return":
         raise newException(ValueError, "no return expected")
