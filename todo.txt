@@ -1,10 +1,6 @@
 version 0.10.4
 ==============
 
-- make 'nil' work for 'add':
-  - resizeString
-  - incrSeq
-  - addChar
 
 
 version 0.10.6 (RC1?)
@@ -15,6 +11,10 @@ version 0.10.6 (RC1?)
 - finish 'parallel' or mark as experimental
 - Deprecate ``immediate`` for templates and macros
 - special case varargs[untyped] and varargs[typed]
+- make 'nil' work for 'add':
+  - resizeString
+  - incrSeq
+  - addChar
 
 
 version 1.0
