@@ -422,6 +422,9 @@ proc sexp*(elements: openArray[SexpNode]): SexpNode =
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
+proc sexp*(s: SexpNode): SexpNode =
+  result = s
+
 proc toSexp(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket:
