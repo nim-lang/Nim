@@ -80,8 +80,19 @@ proc sexp(s: seq[Suggest]): SexpNode =
 proc listEPC(): SexpNode =
   discard
 
-proc executeEPC(body: SexpNode) =
+proc executeEPC(section: Section, args: SexpNode) =
+  let
+    file = args[0].getStr
+    line = args[1].getNum
+    column = args[2].getNum
+    dirtyfile = args[3].getStr(nil)
   discard
+
+proc returnEPC(socket: var Socket, uid: string, s: SexpNode) =
+  let response = $convertSexp([newSSymbol("return"), [uid, s]])
+  socket.send(toHex(len(response), 6))
+  socket.send(response)
+  socket.close()
 
 proc action(cmd: string) =
   template toggle(sw) =
@@ -194,11 +205,12 @@ proc serve() =
       let body = message[1]
       case messageType:
       of "call":
-        executeEPC(body)
-        let response = $sexp(results)
-        client.send(toHex(len(response), 6))
-        client.send(response)
-        client.close()
+        let
+          uid = body[0].getStr
+          section = parseEnum[Section](body[1].getStr)
+          args = body[2]
+        executeEPC(section, args)
+        returnEPC(client, uid, sexp(results))
       of "return":
         raise newException(ValueError, "no return expected")
       of "return-error":
@@ -207,10 +219,7 @@ proc serve() =
         stderr.writeln("recieved epc error: " & $messageBuffer)
         raise newException(ValueError, "epc error")
       of "methods":
-        let response = $listEPC()
-        client.send(toHex(len(response), 6))
-        client.send(response)
-        client.close()
+        returnEPC(client, body[0].getStr, listEPC())
       else:
         raise newException(ValueError, "unexpected call: " & messageType)
 
