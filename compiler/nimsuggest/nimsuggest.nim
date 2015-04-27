@@ -9,7 +9,7 @@
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
-import strutils, os, parseopt, parseutils, sequtils
+import strutils, os, parseopt, parseutils, sequtils, net
 import options, commands, modules, sem, passes, passaux, msgs, nimconf,
   extccomp, condsyms, lists, net, rdstdin, sexp, suggest, ast
 
@@ -131,7 +131,7 @@ proc returnEPC(socket: var Socket, uid: string, s: SexpNode, return_symbol = "re
   socket.close()
 
 proc findEPCPort(): int =
-  98294 # guaranteed to be random
+  55822 # guaranteed to be random
 
 proc parseCmdLine(cmd: string) =
   template toggle(sw) =
@@ -200,9 +200,8 @@ proc serve() =
       stdoutSocket.close()
   of mepc:
     let port = findEPCPort()
-    echo(port)
     var server = newSocket()
-    server.bindaddr(port.Port, "localhost")
+    server.bindaddr(Port(port), "localhost")
     var inp = "".TaintedString
     server.listen()
     echo(port)
