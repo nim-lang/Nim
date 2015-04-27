@@ -87,12 +87,6 @@ type
     of false: nil
   AsyncSocket* = ref AsyncSocketDesc
 
-when defined(ssl):
-  type HandshakeType* = enum
-    handshakeNone,
-    handshakeAsClient,
-    handshakeAsServer
-
 {.deprecated: [PAsyncSocket: AsyncSocket].}
 
 # TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
@@ -424,7 +418,7 @@ proc close*(socket: AsyncSocket) =
   socket.closed = true # TODO: Add extra debugging checks for this.
 
 when defined(ssl):
-  proc wrapSocket*(ctx: SslContext, socket: AsyncSocket, handshake: HandshakeType = handshakeNone) =
+  proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## ``socket`` into an SSL socket.
     ##
@@ -440,9 +434,10 @@ when defined(ssl):
     socket.bioOut = bioNew(bio_s_mem())
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
+  proc wrapSocket*(ctx: SslContext, socket: AsyncSocket, handshake: SslHandshakeType) =
+    wrapSocket(ctx, socket)
+
     case handshake
-    of handshakeNone:
-      discard
     of handshakeAsClient:
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:

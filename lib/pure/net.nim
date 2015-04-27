@@ -35,6 +35,9 @@ when defined(ssl):
     SslAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
+    SslHandshakeType* = enum
+      handshakeAsClient, handshakeAsServer
+
   {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
     TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
     TSSLAcceptResult: SSLAcceptResult].}
@@ -97,6 +100,8 @@ type
 
 proc isIpAddress*(address_str: string): bool {.tags: [].}
 proc parseIpAddress*(address_str: string): TIpAddress
+proc socketError*(socket: Socket, err: int = -1, async = false,
+lastError = (-1).OSErrorCode): void
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -235,9 +240,13 @@ when defined(ssl):
     ## Wraps a socket in an SSL context. This function effectively turns
     ## ``socket`` into an SSL socket.
     ##
+    ## This must be called on an unconnected socket; an SSL session will
+    ## be started when the socket is connected.
+    ##
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
-    
+
+    assert (not socket.isSSL)
     socket.isSSL = true
     socket.sslContext = ctx
     socket.sslHandle = SSLNew(SSLCTX(socket.sslContext))
@@ -248,6 +257,24 @@ when defined(ssl):
     
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
+
+  proc wrapSocket*(ctx: SSLContext, socket: Socket, handshake: SslHandshakeType) =
+    ## Wraps a socket in an SSL context. This function effectively turns
+    ## ``socket`` into an SSL socket.
+    ##
+    ## This should be called on a connected socket, and will perform
+    ## an SSL handshake immediately.
+    ##
+    ## **Disclaimer**: This code is not well tested, may be very unsafe and
+    ## prone to security vulnerabilities.
+    wrapSocket(ctx, socket)
+    case handshake
+    of handshakeAsClient:
+      let ret = SSLConnect(socket.sslHandle)
+      socketError(socket, ret)
+    of handshakeAsServer:
+      let ret = SSLAccept(socket.sslHandle)
+      socketError(socket, ret)
 
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
