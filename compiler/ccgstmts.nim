@@ -551,12 +551,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc getRaiseFrmt(p: BProc): string =
-  if p.module.compileToCpp:
-    result = "throw NimException($1, $2);$n"
-  elif getCompilerProc("Exception") != nil:
-    result = "#raiseException((#Exception*)$1, $2);$n"
-  else:
-    result = "#raiseException((#E_Base*)$1, $2);$n"
+  result = "#raiseException((#Exception*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
@@ -797,11 +792,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #  finallyPart();
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  var
-    exc: Rope
-    i, length, blen: int
   genLineDir(p, t)
-  exc = getTempName()
+  let exc = getTempName()
   if getCompilerProc("Exception") != nil:
     discard cgsym(p.module, "Exception")
   else:
@@ -809,20 +801,23 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
-  length = sonsLen(t)
+  let length = sonsLen(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR);$n")
   inc p.inExceptBlock
-  i = 1
+  var i = 1
   var catchAllPresent = false
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
-    blen = sonsLen(t.sons[i])
+    let blen = sonsLen(t.sons[i])
     if i > 1: addf(p.s(cpsStmts), "else ", [])
     if blen == 1:
       # general except section:
       catchAllPresent = true
-      exprBlock(p, t.sons[i].sons[0], d)
+      startBlock(p)
+      expr(p, t.sons[i].sons[0], d)
+      linefmt(p, cpsStmts, "#popCurrentException();$n")
+      endBlock(p)
     else:
       var orExpr: Rope = nil
       for j in countup(0, blen - 2):
@@ -832,7 +827,10 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
               "#isObj($1.exp->m_type, $2)",
               [exc, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       lineF(p, cpsStmts, "if ($1) ", [orExpr])
-      exprBlock(p, t.sons[i].sons[blen-1], d)
+      startBlock(p)
+      expr(p, t.sons[i].sons[blen-1], d)
+      linefmt(p, cpsStmts, "#popCurrentException();$n")
+      endBlock(p)
     inc(i)
 
   # reraise the exception if there was no catch all

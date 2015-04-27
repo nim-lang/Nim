@@ -3,7 +3,7 @@ News
 ====
 
 ..
-  2015-03-01 Version 0.10.4 released
+  2015-03-01 Version 0.11.0 released
   ==================================
 
 
@@ -131,6 +131,9 @@ News
 
   - A single underscore can now be used to discard values when unpacking tuples.
   - ``marshal.$$`` and ``marshal.to`` can be executed at compile-time.
+  - Interoperability with C++ improved tremendously; C++'s templates and
+    operators can be wrapped directly. See `this <nimc.html#ImportCpp-pragma>`_
+    for more information.
 
 
   Library additions
