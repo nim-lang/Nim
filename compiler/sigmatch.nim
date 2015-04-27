@@ -922,6 +922,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyAnd:
     considerPreviousT:
+      result = isEqual
       for branch in f.sons:
         let x = typeRel(c, branch, aOrig)
         if x < isSubtype: return isNone
