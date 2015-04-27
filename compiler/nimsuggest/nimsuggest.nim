@@ -205,17 +205,18 @@ proc serve() =
     var inp = "".TaintedString
     server.listen()
     echo(port)
+    var client = newSocket()
+    # Wait for connection
+    accept(server, client)
     while true:
-      var client = newSocket()
-      accept(server, client)
       var sizeHex = ""
-      if client.recv(sizeHex, 6, 1000) != 6:
+      if client.recv(sizeHex, 6) != 6:
         raise newException(ValueError, "didn't get all the hexbytes")
       var size = 0
       if parseHex(sizeHex, size) == 0:
         raise newException(ValueError, "invalid size hex: " & $sizeHex)
       var messageBuffer = ""
-      if client.recv(messageBuffer, size, 3000) != size:
+      if client.recv(messageBuffer, size) != size:
         raise newException(ValueError, "didn't get all the bytes")
       let message = parseSexp($messageBuffer)
       let messageType = message[0].getSymbol
