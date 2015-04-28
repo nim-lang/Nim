@@ -18567,8 +18567,14 @@ proc FlushInstructionCache*(hProcess: HANDLE, lpBaseAddress: LPCVOID,
 proc VirtualAlloc*(lpAddress: LPVOID, dwSize: SIZE_T, flAllocationType: DWORD,
                    flProtect: DWORD): LPVOID{.stdcall, dynlib: "kernel32",
     importc: "VirtualAlloc".}
+proc VirtualAllocEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T,
+                     flAllocationType: DWORD, flProtect: DWORD): LPVOID
+                     {.stdcall, dynlib: "kernel32", importc: "VirtualAllocEx".}
 proc VirtualFree*(lpAddress: LPVOID, dwSize: SIZE_T, dwFreeType: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "VirtualFree".}
+proc VirtualFreeEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T,
+                    dwFreeType: DWORD): WINBOOL
+                    {.stdcall, dynlib: "kernel32", importc: "VirtualFree".}
 proc VirtualProtect*(lpAddress: LPVOID, dwSize: DWORD, flNewProtect: DWORD,
                      lpflOldProtect: PDWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "VirtualProtect".}
