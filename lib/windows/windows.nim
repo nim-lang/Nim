@@ -19227,9 +19227,9 @@ proc FindNextChangeNotification*(hChangeHandle: HANDLE): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "FindNextChangeNotification".}
 proc FindCloseChangeNotification*(hChangeHandle: HANDLE): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "FindCloseChangeNotification".}
-proc VirtualLock*(lpAddress: LPVOID, dwSize: DWORD): WINBOOL{.stdcall,
+proc VirtualLock*(lpAddress: LPVOID, dwSize: SIZE_T): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "VirtualLock".}
-proc VirtualUnlock*(lpAddress: LPVOID, dwSize: DWORD): WINBOOL{.stdcall,
+proc VirtualUnlock*(lpAddress: LPVOID, dwSize: SIZE_T): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "VirtualUnlock".}
 proc MapViewOfFileEx*(hFileMappingObject: HANDLE, dwDesiredAccess: DWORD,
                       dwFileOffsetHigh: DWORD, dwFileOffsetLow: DWORD,
