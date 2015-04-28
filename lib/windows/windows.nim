@@ -18513,11 +18513,11 @@ proc DisableThreadLibraryCalls*(hLibModule: HMODULE): WINBOOL{.stdcall,
 proc GetProcAddress*(hModule: HINST, lpProcName: LPCSTR): FARPROC{.stdcall,
     dynlib: "kernel32", importc: "GetProcAddress".}
 proc GetVersion*(): DWORD{.stdcall, dynlib: "kernel32", importc: "GetVersion".}
-proc GlobalAlloc*(uFlags: int32, dwBytes: DWORD): HGLOBAL{.stdcall,
+proc GlobalAlloc*(uFlags: int32, dwBytes: SIZE_T): HGLOBAL{.stdcall,
     dynlib: "kernel32", importc: "GlobalAlloc".}
-proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: DWORD, uFlags: int32): HGLOBAL{.
+proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: SIZE_T, uFlags: int32): HGLOBAL{.
     stdcall, dynlib: "kernel32", importc: "GlobalReAlloc".}
-proc GlobalSize*(hMem: HGLOBAL): DWORD{.stdcall, dynlib: "kernel32",
+proc GlobalSize*(hMem: HGLOBAL): SIZE_T{.stdcall, dynlib: "kernel32",
                                         importc: "GlobalSize".}
 proc GlobalFlags*(hMem: HGLOBAL): WINUINT{.stdcall, dynlib: "kernel32",
                                         importc: "GlobalFlags".}
@@ -18541,9 +18541,9 @@ proc GlobalUnWire*(hMem: HGLOBAL): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "GlobalUnWire".}
 proc GlobalMemoryStatus*(lpBuffer: LPMEMORYSTATUS){.stdcall, dynlib: "kernel32",
     importc: "GlobalMemoryStatus".}
-proc LocalAlloc*(uFlags: WINUINT, uBytes: WINUINT): HLOCAL{.stdcall,
+proc LocalAlloc*(uFlags: WINUINT, uBytes: SIZE_T): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalAlloc".}
-proc LocalReAlloc*(hMem: HLOCAL, uBytes: WINUINT, uFlags: WINUINT): HLOCAL{.stdcall,
+proc LocalReAlloc*(hMem: HLOCAL, uBytes: SIZE_T, uFlags: WINUINT): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalReAlloc".}
 proc LocalLock*(hMem: HLOCAL): LPVOID{.stdcall, dynlib: "kernel32",
                                        importc: "LocalLock".}
