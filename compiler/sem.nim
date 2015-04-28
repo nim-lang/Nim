@@ -89,6 +89,10 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
       let x = result.skipConv
       if x.kind == nkPar and formal.kind != tyExpr:
         changeType(x, formal, check=true)
+      else:
+        result = skipHiddenSubConv(result)
+        #result.typ = takeType(formal, arg.typ)
+        #echo arg.info, " picked ", result.typ.typeToString
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode

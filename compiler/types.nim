@@ -1439,3 +1439,45 @@ proc skipConv*(n: PNode): PNode =
 proc skipConvTakeType*(n: PNode): PNode =
   result = n.skipConv
   result.typ = n.typ
+
+proc isEmptyContainer*(t: PType): bool =
+  case t.kind
+  of tyExpr, tyNil: result = true
+  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
+  of tySet, tySequence, tyOpenArray, tyVarargs:
+    result = t.sons[0].kind == tyEmpty
+  of tyGenericInst: result = isEmptyContainer(t.lastSon)
+  else: result = false
+
+proc takeType*(formal, arg: PType): PType =
+  # param: openArray[string] = []
+  # [] is an array constructor of length 0 of type string!
+  if arg.kind == tyNil:
+    # and not (formal.kind == tyProc and formal.callConv == ccClosure):
+    result = formal
+  elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
+      arg.isEmptyContainer:
+    let a = copyType(arg.skipTypes({tyGenericInst}), arg.owner, keepId=false)
+    a.sons[ord(arg.kind in {tyArray, tyArrayConstr})] = formal.sons[0]
+    result = a
+  elif formal.kind == tySet and arg.kind == tySet:
+    result = formal
+  else:
+    result = arg
+
+proc skipHiddenSubConv*(n: PNode): PNode =
+  if n.kind == nkHiddenSubConv:
+    # param: openArray[string] = []
+    # [] is an array constructor of length 0 of type string!
+    let formal = n.typ
+    result = n.sons[1]
+    let arg = result.typ
+    let dest = takeType(formal, arg)
+    if dest == arg and formal.kind != tyExpr:
+      #echo n.info, " came here for ", formal.typeToString
+      result = n
+    else:
+      result = copyTree(result)
+      result.typ = dest
+  else:
+    result = n

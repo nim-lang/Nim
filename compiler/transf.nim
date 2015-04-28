@@ -379,6 +379,9 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result = transformSons(c, n)
   of tyOpenArray, tyVarargs:
     result = transform(c, n.sons[1])
+    PNode(result).typ = takeType(n.typ, n.sons[1].typ)
+    #echo n.info, " came here and produced ", typeToString(PNode(result).typ),
+    #   " from ", typeToString(n.typ), " and ", typeToString(n.sons[1].typ)
   of tyCString:
     if source.kind == tyString:
       result = newTransNode(nkStringToCString, n, 1)

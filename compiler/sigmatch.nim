@@ -1200,15 +1200,6 @@ proc isInlineIterator*(t: PType): bool =
   result = t.kind == tyIter or
           (t.kind == tyBuiltInTypeClass and t.base.kind == tyIter)
 
-proc isEmptyContainer*(t: PType): bool =
-  case t.kind
-  of tyExpr, tyNil: result = true
-  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
-  of tySet, tySequence, tyOpenArray, tyVarargs:
-    result = t.sons[0].kind == tyEmpty
-  of tyGenericInst: result = isEmptyContainer(t.lastSon)
-  else: result = false
-
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
   of isConvertible, isIntConv: inc(m.convMatches, convMatch)
@@ -1313,7 +1304,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     if arg.typ == nil:
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
-      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+      result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
       result.typ = getInstantiatedType(c, arg, m, f)
@@ -1328,7 +1319,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     inc(m.exactMatches)
     result = arg
     if skipTypes(f, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-      result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+      result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infere T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
@@ -1580,6 +1571,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           #assert(container == nil)
           if container.isNil:
             container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+          else:
+            incrIndexType(container.typ)
           addSon(container, arg)
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))

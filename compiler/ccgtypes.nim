@@ -111,7 +111,7 @@ proc mapSetType(typ: PType): TCTypeKind =
   else: result = ctArray
 
 proc mapType(typ: PType): TCTypeKind =
-  ## Maps a nimrod type to a C type
+  ## Maps a Nim type to a C type
   case typ.kind
   of tyNone, tyStmt: result = ctVoid
   of tyBool: result = ctBool

@@ -431,7 +431,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mExit, mInc, ast.mDec, mEcho, mSwap, mAppendStrCh,
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq,
      mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait, mDotDot,
-     mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn, mParallel:
+     mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn,
+     mParallel, mPlugin:
     discard
   else: internalError(a.info, "evalOp(" & $m & ')')
 
@@ -544,7 +545,7 @@ proc foldConv*(n, a: PNode; check = false): PNode =
     discard
   else:
     result = a
-    result.typ = n.typ
+    result.typ = takeType(n.typ, a.typ)
 
 proc getArrayConstr(m: PSym, n: PNode): PNode =
   if n.kind == nkBracket:
