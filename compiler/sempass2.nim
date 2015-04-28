@@ -560,7 +560,10 @@ proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n.sons[0])
   let oldState = tracked.init.len
   let oldFacts = tracked.guards.len
-  let interesting = interestingCaseExpr(n.sons[0]) and warnProveField in gNotes
+  let stringCase = skipTypes(n.sons[0].typ,
+        abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString}
+  let interesting = not stringCase and interestingCaseExpr(n.sons[0]) and
+        warnProveField in gNotes
   var inter: TIntersection = @[]
   var toCover = 0
   for i in 1.. <n.len:
@@ -575,13 +578,8 @@ proc trackCase(tracked: PEffects, n: PNode) =
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
 
-  let exh = case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
-            of tyFloat..tyFloat128, tyString:
-              lastSon(n).kind == nkElse
-            else:
-              true
   setLen(tracked.init, oldState)
-  if exh:
+  if not stringCase or lastSon(n).kind == nkElse:
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge

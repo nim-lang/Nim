@@ -123,7 +123,7 @@ proc neg(n: PNode): PNode =
         let eAsNode = newIntNode(nkIntLit, e.sym.position)
         if not inSet(n.sons[1], eAsNode): s.add eAsNode
       result.sons[1] = s
-    elif lengthOrd(t) < 1000:
+    elif t.kind notin {tyString, tySequence} and lengthOrd(t) < 1000:
       result.sons[1] = complement(n.sons[1])
     else:
       # not ({2, 3, 4}.contains(x))   x != 2 and x != 3 and x != 4
@@ -908,5 +908,5 @@ proc buildProperFieldCheck(access, check: PNode): PNode =
 proc checkFieldAccess*(m: TModel, n: PNode) =
   for i in 1..n.len-1:
     let check = buildProperFieldCheck(n.sons[0], n.sons[i])
-    if m.doesImply(check) != impYes:
+    if check != nil and m.doesImply(check) != impYes:
       message(n.info, warnProveField, renderTree(n.sons[0])); break
