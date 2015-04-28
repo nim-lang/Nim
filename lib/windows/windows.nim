@@ -18564,10 +18564,10 @@ proc LocalCompact*(uMinFree: WINUINT): WINUINT{.stdcall, dynlib: "kernel32",
 proc FlushInstructionCache*(hProcess: HANDLE, lpBaseAddress: LPCVOID,
                             dwSize: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "FlushInstructionCache".}
-proc VirtualAlloc*(lpAddress: LPVOID, dwSize: DWORD, flAllocationType: DWORD,
+proc VirtualAlloc*(lpAddress: LPVOID, dwSize: SIZE_T, flAllocationType: DWORD,
                    flProtect: DWORD): LPVOID{.stdcall, dynlib: "kernel32",
     importc: "VirtualAlloc".}
-proc VirtualFree*(lpAddress: LPVOID, dwSize: DWORD, dwFreeType: DWORD): WINBOOL{.
+proc VirtualFree*(lpAddress: LPVOID, dwSize: SIZE_T, dwFreeType: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "VirtualFree".}
 proc VirtualProtect*(lpAddress: LPVOID, dwSize: DWORD, flNewProtect: DWORD,
                      lpflOldProtect: PDWORD): WINBOOL{.stdcall,
