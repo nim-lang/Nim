@@ -18575,17 +18575,17 @@ proc VirtualFree*(lpAddress: LPVOID, dwSize: SIZE_T, dwFreeType: DWORD): WINBOOL
 proc VirtualFreeEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T,
                     dwFreeType: DWORD): WINBOOL
                     {.stdcall, dynlib: "kernel32", importc: "VirtualFree".}
-proc VirtualProtect*(lpAddress: LPVOID, dwSize: DWORD, flNewProtect: DWORD,
+proc VirtualProtect*(lpAddress: LPVOID, dwSize: SIZE_T, flNewProtect: DWORD,
                      lpflOldProtect: PDWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "VirtualProtect".}
 proc VirtualQuery*(lpAddress: LPCVOID, lpBuffer: PMEMORY_BASIC_INFORMATION,
                    dwLength: DWORD): DWORD{.stdcall, dynlib: "kernel32",
     importc: "VirtualQuery".}
-proc VirtualProtectEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: DWORD,
+proc VirtualProtectEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T,
                        flNewProtect: DWORD, lpflOldProtect: PDWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "VirtualProtectEx".}
 proc VirtualQueryEx*(hProcess: HANDLE, lpAddress: LPCVOID,
-                     lpBuffer: PMEMORY_BASIC_INFORMATION, dwLength: DWORD): DWORD{.
+                     lpBuffer: PMEMORY_BASIC_INFORMATION, dwLength: SIZE_T): DWORD{.
     stdcall, dynlib: "kernel32", importc: "VirtualQueryEx".}
 proc HeapCreate*(flOptions: DWORD, dwInitialSize: DWORD, dwMaximumSize: DWORD): HANDLE{.
     stdcall, dynlib: "kernel32", importc: "HeapCreate".}
