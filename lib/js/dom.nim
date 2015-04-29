@@ -152,10 +152,12 @@ type
   DocumentObj {.importc.} = object of NodeObj
     alinkColor*: cstring
     bgColor*: cstring
+    body*: Element
     charset*: cstring
     cookie*: cstring
     defaultCharset*: cstring
     fgColor*: cstring
+    head*: Element
     lastModified*: cstring
     linkColor*: cstring
     referrer*: cstring
