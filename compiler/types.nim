@@ -1460,7 +1460,7 @@ proc takeType*(formal, arg: PType): PType =
     let a = copyType(arg.skipTypes({tyGenericInst}), arg.owner, keepId=false)
     a.sons[ord(arg.kind in {tyArray, tyArrayConstr})] = formal.sons[0]
     result = a
-  elif formal.kind == tySet and arg.kind == tySet:
+  elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:
     result = formal
   else:
     result = arg
