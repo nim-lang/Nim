@@ -106,6 +106,12 @@ proc zip(args: string) =
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
+proc targz(args: string) =
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
+       [VersionAsString, compileNimInst, findNim()])
+  exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim targz compiler/installer.ini" %
+       ["tools" / "niminst" / "niminst".exe, VersionAsString])
+
 proc buildTool(toolname, args: string) =
   exec("$# cc $# $#" % [findNim(), args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
@@ -118,7 +124,7 @@ proc nsis(args: string) =
   exec "nim c compiler" / "nim.nim"
   copyExe("compiler/nim".exe, "bin/nim_debug".exe)
   exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
-        " nsis compiler/nim") % [VersionAsString, $(sizeof(pointer)*8)])
+        " nsis compiler/installer.ini") % [VersionAsString, $(sizeof(pointer)*8)])
 
 proc install(args: string) =
   exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
@@ -308,12 +314,14 @@ proc winRelease() =
   #buildTool("tools/niminst/niminst", " -d:release")
   buildTool("tools/nimgrep", " -d:release")
   buildTool("compiler/nimfix/nimfix", " -d:release")
+  buildTool("compiler/nimsuggest/nimsuggest", " -d:release")
 
-  run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
-        "bin/nimfix.exe",
-        "bin/nimble.exe", "bin/*.dll",
-        "config", "dist/*.dll", "examples", "lib",
-        "readme.txt", "contributors.txt", "copying.txt")
+  #run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
+  #      "bin/nimfix.exe",
+  #      "bin/nimble.exe", "bin/*.dll",
+  #      "config", "dist/*.dll", "examples", "lib",
+  #      "readme.txt", "contributors.txt", "copying.txt")
+
   # second step: XXX build 64 bit version
 
 # -------------- tests --------------------------------------------------------
@@ -357,6 +365,7 @@ of cmdArgument:
   of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
+  of "targz": targz(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
