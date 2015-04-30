@@ -121,8 +121,8 @@ proc nsis(args: string) =
   buildTool("tools/niminst/niminst", args)
   #buildTool("tools/nimgrep", args)
   # produce 'nim_debug.exe':
-  exec "nim c compiler" / "nim.nim"
-  copyExe("compiler/nim".exe, "bin/nim_debug".exe)
+  #exec "nim c compiler" / "nim.nim"
+  #copyExe("compiler/nim".exe, "bin/nim_debug".exe)
   exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
         " nsis compiler/installer.ini") % [VersionAsString, $(sizeof(pointer)*8)])
 

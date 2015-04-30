@@ -30,7 +30,7 @@ summer 2015. What's left:
 * ``immediate`` templates and macros will be deprecated as these will soon be
   completely unnecessary, instead the ``typed`` or ``untyped`` metatypes can
   be used.
-* The standard library needs cleanups and use the features we have for
+* The standard library needs cleanups and should use the features we have for
   concurrency and parallelism.
 
 
@@ -52,10 +52,11 @@ Changes affecting backwards compatibility
   doIt:
     echo str # Error: undeclared identifier: 'str'
 
+  This used to inject the ``str`` parameter into the scope of the body.
   Declare the ``doIt`` template as ``immediate, dirty`` to get the old
   behaviour.
 - Tuple field names are not ignored anymore, this caused too many problems
-  in practice so now the behaviour as it was for version 0.9.6: If field
+  in practice so now the behaviour is as it was for version 0.9.6: If field
   names exist for the tuple type, they are checked.
 - ``logging.level`` and ``logging.handlers`` are no longer exported.
   ``addHandler``, ``getHandlers``, ``setLogFilter`` and ``getLogFilter``
@@ -110,6 +111,9 @@ Needs to be replaced by something like this:
   iterator. A notable change might be that a pattern being matched at the
   beginning and end of a string, will result in an empty string being produced
   at the start and the end of the iterator.
+- The compiler and nimsuggest now count columns starting with 1, not 0 for
+  consistency with the rest of the world.
+
 
 Language Additions
 ------------------
