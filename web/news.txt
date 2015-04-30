@@ -6,6 +6,19 @@ News
 2015-04-30 Version 0.11.0 released
 ==================================
 
+With this release we are one step closer to reaching version 1.0 and by
+extension the persistence of the Nim specification. As mentioned in the
+previous release notes, starting with version 1.0, we will not be introducing
+any more breaking changes to Nim.
+
+The *language* itself is very close to 1.0, the primary area that requires
+more work is the standard library.
+
+Take a look at the `download <download.html>`_ page for binaries (Windows-only)
+and 0.11.0 snapshots of the source code. The Windows installer now also
+includes `Aporia <https://github.com/nim-lang/aporia>`_,
+`Nimble <https://github.com/nim-lang/nimble>`_ and other useful tools to get
+you started with Nim.
 
 What's left to be done
 ~~~~~~~~~~~~~~~~~~~~~~
