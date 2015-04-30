@@ -119,7 +119,7 @@ proc buildTool(toolname, args: string) =
 proc nsis(args: string) =
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
-  buildTool("tools/nimgrep", args)
+  #buildTool("tools/nimgrep", args)
   # produce 'nim_debug.exe':
   exec "nim c compiler" / "nim.nim"
   copyExe("compiler/nim".exe, "bin/nim_debug".exe)

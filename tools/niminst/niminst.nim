@@ -593,8 +593,9 @@ proc targzDist(c: var ConfigData) =
   let oldDir = getCurrentDir()
   setCurrentDir(tmpDir)
   try:
-    if execShellCmd("7z a -ttar $1.tar $1" % proj) != 0 or
-       execShellCmd("7z a -tgzip $1.tar.gz $1.tar" % proj) != 0:
+    #if execShellCmd("7z a -ttar $1.tar $1" % proj) != 0 or
+    #   execShellCmd("7z a -tgzip $1.tar.gz $1.tar" % proj) != 0 or
+    if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
       echo("External program failed")
   finally:
     setCurrentDir(oldDir)
