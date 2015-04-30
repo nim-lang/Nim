@@ -26,12 +26,18 @@ What's left to be done
 The 1.0 release is expected by the end of this year. Rumors say it will be in
 summer 2015. What's left:
 
-* Bug fixes, bug fixes, bug fixes!
+* Bug fixes, bug fixes, bug fixes, in particular:
+  - The remaining bugs of the lambda lifting pass that is responsible to enable
+    closures and closure iterators need to be fixed.
+  - ``concept`` needs to be refined, a nice name for the feature is not enough.
+  - Destructors need to be refined.
+  - ``static[T]`` needs to be fixed.
+  - Finish the implementation of the 'parallel' statement.
 * ``immediate`` templates and macros will be deprecated as these will soon be
   completely unnecessary, instead the ``typed`` or ``untyped`` metatypes can
   be used.
-* The standard library needs cleanups and should use the features we have for
-  concurrency and parallelism.
+* More of the standard library should be moved to Nimble packages and what's
+  left should use the features we have for concurrency and parallelism.
 
 
 
@@ -51,6 +57,7 @@ Changes affecting backwards compatibility
 
   doIt:
     echo str # Error: undeclared identifier: 'str'
+..
 
   This used to inject the ``str`` parameter into the scope of the body.
   Declare the ``doIt`` template as ``immediate, dirty`` to get the old
@@ -61,9 +68,10 @@ Changes affecting backwards compatibility
 - ``logging.level`` and ``logging.handlers`` are no longer exported.
   ``addHandler``, ``getHandlers``, ``setLogFilter`` and ``getLogFilter``
   should be used instead.
-- ``nim idetools`` has been replaced by a separate tool `nimsuggest`_.
-- *arrow like* operators are not right associative anymore.
-- *arrow like* operators are now required to end with either ``->``, ``~>`` or
+- ``nim idetools`` has been replaced by a separate
+  tool `nimsuggest <0.11.0/nimsuggest.html>`_.
+- *arrow like* operators are not right associative anymore and are required
+  to end with either ``->``, ``~>`` or
   ``=>``, not just ``>``. Examples of operators still considered arrow like:
   ``->``, ``==>``, ``+=>``. On the other hand, the following operators are now
   considered regular operators again: ``|>``, ``-+>``, etc.
@@ -122,7 +130,8 @@ Language Additions
   of ``nil``.
 - Automatic dereferencing is now done for the first argument of a routine
   call if overloading resolution produces no match otherwise. This feature
-  has to be enabled with the `experimental`_ pragma.
+  has to be enabled with
+  the `experimental <0.11.0/manual.html#pragmas-experimental-pragma>`_ pragma.
 - Objects that do not use inheritance nor ``case`` can be put into ``const``
   sections. This means that finally this is possible and produces rather
   nice code:
@@ -170,8 +179,11 @@ Language Additions
 - ``marshal.$$`` and ``marshal.to`` can be executed at compile-time.
 - Interoperability with C++ improved tremendously; C++'s templates and
   operators can be wrapped directly. See
-  `this <nimc.html#additional-features-importcpp-pragma>`_
+  `this <0.11.0/nimc.html#additional-features-importcpp-pragma>`_
   for more information.
+- ``macros.getType`` can be used to query an AST's type at compile-time. This
+  enables more powerful macros, for instance *currying* can now be done with
+  a macro.
 
 
 Library additions
