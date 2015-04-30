@@ -21,7 +21,7 @@ type
     ## is performed. Deprecated, do not use anymore!
   AquireEffect* {.deprecated.} = object of LockEffect  ## \
     ## effect that denotes that some lock is
-    ## aquired. Deprecated, do not use anymore!
+    ## acquired. Deprecated, do not use anymore!
   ReleaseEffect* {.deprecated.} = object of LockEffect ## \
     ## effect that denotes that some lock is
     ## released. Deprecated, do not use anymore!

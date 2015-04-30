@@ -1,4 +1,5 @@
 import osproc, streams, os, strutils, re
+{.experimental.}
 
 ## Compiler as a service tester.
 ##
@@ -10,7 +11,7 @@ type
     ProcRun, CaasRun, SymbolProcRun
 
   NimSession* = object
-    nim: PProcess # Holds the open process for CaasRun sessions, nil otherwise.
+    nim: Process # Holds the open process for CaasRun sessions, nil otherwise.
     mode: TRunMode # Stores the type of run mode the session was started with.
     lastOutput: string # Preserves the last output, needed for ProcRun mode.
     filename: string # Appended to each command starting with '>'. Also a var.
@@ -70,8 +71,10 @@ proc doCaasCommand(session: var NimSession, command: string): string =
       break
 
 proc doProcCommand(session: var NimSession, command: string): string =
-  assert session.mode == ProcRun or session.mode == SymbolProcRun
-  except: result = "FAILED TO EXECUTE: " & command & "\n" & result
+  try:
+    assert session.mode == ProcRun or session.mode == SymbolProcRun
+  except:
+    result = "FAILED TO EXECUTE: " & command & "\n" & result
   var
     process = startProcess(NimBin, args = session.replaceVars(command).split)
     stream = outputStream(process)
@@ -102,11 +105,11 @@ proc doCommand(session: var NimSession, command: string) =
     session.lastOutput = doProcCommand(session,
                                        command & " " & session.filename)
 
-proc close(session: var NimSession) {.destructor.} =
+proc destroy(session: var NimSession) {.destructor.} =
   if session.mode == CaasRun:
     session.nim.close
 
-proc doScenario(script: string, output: PStream, mode: TRunMode, verbose: bool): bool =
+proc doScenario(script: string, output: Stream, mode: TRunMode, verbose: bool): bool =
   result = true
 
   var f = open(script)
@@ -171,7 +174,7 @@ when isMainModule:
     failures = 0
     verbose = false
 
-  for i in 0..ParamCount() - 1:
+  for i in 0..paramCount() - 1:
     let param = string(paramStr(i + 1))
     case param
     of "verbose": verbose = true

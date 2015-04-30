@@ -7,8 +7,8 @@ import marshal
 template testit(x: expr) = discard $$to[type(x)]($$x)
 
 var x: array[0..4, array[0..4, string]] = [
-  ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
-  ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
+  ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
+  ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
   ["test", "1", "2", "3", "4"]]
 testit(x)
 var test2: tuple[name: string, s: int] = ("tuple test", 56)
@@ -24,7 +24,7 @@ type
     of blah:
       help: string
     else:
-      nil
+      discard
       
   PNode = ref TNode
   TNode = object

@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Dominik Picheta
+#        (c) Copyright 2015 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -16,9 +16,11 @@ type
   Uri* = object
     scheme*, username*, password*: string 
     hostname*, port*, path*, query*, anchor*: string
+    opaque*: bool
 
 {.deprecated: [TUrl: Url, TUri: Uri].}
 
+{.push warning[deprecated]: off.}
 proc `$`*(url: Url): string {.deprecated.} =
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   return string(url)
@@ -43,6 +45,7 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   url = url / a
+{.pop.}
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
@@ -50,10 +53,10 @@ proc parseAuthority(authority: string, result: var Uri) =
   while true:
     case authority[i]
     of '@':
-      result.password = result.port
-      result.port = ""
-      result.username = result.hostname
-      result.hostname = ""
+      swap result.password, result.port
+      result.port.setLen(0)
+      swap result.username, result.hostname
+      result.hostname.setLen(0)
       inPort = false
     of ':':
       inPort = true
@@ -72,7 +75,7 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
   # The 'mailto' scheme's PATH actually contains the hostname/username
   if result.scheme.toLower == "mailto":
     parseAuthority(result.path, result)
-    result.path = ""
+    result.path.setLen(0)
 
   if uri[i] == '?':
     i.inc # Skip '?'
@@ -82,13 +85,21 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
-proc initUri(): Uri =
+proc initUri*(): Uri =
+  ## Initializes a URI.
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
-proc parseUri*(uri: string): Uri =
-  ## Parses a URI.
-  result = initUri()
+proc resetUri(uri: var Uri) =
+  for f in uri.fields:
+    when f is string:
+      f.setLen(0)
+    else:
+      f = false
+
+proc parseUri*(uri: string, result: var Uri) =
+  ## Parses a URI. The `result` variable will be cleared before.
+  resetUri(result)
 
   var i = 0
 
@@ -102,7 +113,7 @@ proc parseUri*(uri: string): Uri =
   if uri[i] != ':':
     # Assume this is a reference URI (relative URI)
     i = 0
-    result.scheme = ""
+    result.scheme.setLen(0)
     parsePath(uri, i, result)
     return
   i.inc # Skip ':'
@@ -115,9 +126,16 @@ proc parseUri*(uri: string): Uri =
     if authority == "":
       raise newException(ValueError, "Expected authority got nothing.")
     parseAuthority(authority, result)
+  else:
+    result.opaque = true
 
   # Path
   parsePath(uri, i, result)
+
+proc parseUri*(uri: string): Uri =
+  ## Parses a URI and returns it.
+  result = initUri()
+  parseUri(uri, result)
 
 proc removeDotSegments(path: string): string =
   var collection: seq[string] = @[]
@@ -179,10 +197,10 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ##   assert foo.path == "/baz"
   ##
   ##   let bar = combine(parseUri("http://example.com/foo/bar"), parseUri("baz"))
-  ##   assert foo.path == "/foo/baz"
+  ##   assert bar.path == "/foo/baz"
   ##
   ##   let bar = combine(parseUri("http://example.com/foo/bar/"), parseUri("baz"))
-  ##   assert foo.path == "/foo/bar/baz"
+  ##   assert bar.path == "/foo/bar/baz"
   
   template setAuthority(dest, src: expr): stmt =
     dest.hostname = src.hostname
@@ -236,10 +254,10 @@ proc `/`*(x: Uri, path: string): Uri =
   ##   assert foo.path == "/foo/bar/baz"
   ##
   ##   let bar = parseUri("http://example.com/foo/bar") / parseUri("baz")
-  ##   assert foo.path == "/foo/bar/baz"
+  ##   assert bar.path == "/foo/bar/baz"
   ##
   ##   let bar = parseUri("http://example.com/foo/bar/") / parseUri("baz")
-  ##   assert foo.path == "/foo/bar/baz"
+  ##   assert bar.path == "/foo/bar/baz"
   result = x
   if result.path[result.path.len-1] == '/':
     if path[0] == '/':
@@ -256,7 +274,10 @@ proc `$`*(u: Uri): string =
   result = ""
   if u.scheme.len > 0:
     result.add(u.scheme)
-    result.add("://")
+    if u.opaque:
+      result.add(":")
+    else:
+      result.add("://")
   if u.username.len > 0:
     result.add(u.username)
     if u.password.len > 0:
@@ -268,22 +289,38 @@ proc `$`*(u: Uri): string =
     result.add(":")
     result.add(u.port)
   if u.path.len > 0:
-    if u.path[0] != '/': result.add("/")
     result.add(u.path)
-  result.add(u.query)
-  result.add(u.anchor)
+  if u.query.len > 0:
+    result.add("?")
+    result.add(u.query)
+  if u.anchor.len > 0:
+    result.add("#")
+    result.add(u.anchor)
 
 when isMainModule:
   block:
-    let test = parseUri("http://localhost:8080/test")
+    let str = "http://localhost"
+    let test = parseUri(str)
+    doAssert test.path == ""
+
+  block:
+    let str = "http://localhost/"
+    let test = parseUri(str)
+    doAssert test.path == "/"
+
+  block:
+    let str = "http://localhost:8080/test"
+    let test = parseUri(str)
     doAssert test.scheme == "http"
     doAssert test.port == "8080"
     doAssert test.path == "/test"
     doAssert test.hostname == "localhost"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("foo://username:password@example.com:8042/over/there" &
-                        "/index.dtb?type=animal&name=narwhal#nose")
+    let str = "foo://username:password@example.com:8042/over/there" &
+              "/index.dtb?type=animal&name=narwhal#nose"
+    let test = parseUri(str)
     doAssert test.scheme == "foo"
     doAssert test.username == "username"
     doAssert test.password == "password"
@@ -292,34 +329,45 @@ when isMainModule:
     doAssert test.path == "/over/there/index.dtb"
     doAssert test.query == "type=animal&name=narwhal"
     doAssert test.anchor == "nose"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("urn:example:animal:ferret:nose")
+    let str = "urn:example:animal:ferret:nose"
+    let test = parseUri(str)
     doAssert test.scheme == "urn"
     doAssert test.path == "example:animal:ferret:nose"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("mailto:username@example.com?subject=Topic")
+    let str = "mailto:username@example.com?subject=Topic"
+    let test = parseUri(str)
     doAssert test.scheme == "mailto"
     doAssert test.username == "username"
     doAssert test.hostname == "example.com"
     doAssert test.query == "subject=Topic"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("magnet:?xt=urn:sha1:72hsga62ba515sbd62&dn=foobar")
+    let str = "magnet:?xt=urn:sha1:72hsga62ba515sbd62&dn=foobar"
+    let test = parseUri(str)
     doAssert test.scheme == "magnet"
     doAssert test.query == "xt=urn:sha1:72hsga62ba515sbd62&dn=foobar"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("/test/foo/bar?q=2#asdf")
+    let str = "/test/foo/bar?q=2#asdf"
+    let test = parseUri(str)
     doAssert test.scheme == ""
     doAssert test.path == "/test/foo/bar"
     doAssert test.query == "q=2"
     doAssert test.anchor == "asdf"
+    doAssert($test == str)
 
   block:
-    let test = parseUri("test/no/slash")
+    let str = "test/no/slash"
+    let test = parseUri(str)
     doAssert test.path == "test/no/slash"
+    doAssert($test == str)
 
   # Remove dot segments tests
   block:
@@ -371,5 +419,3 @@ when isMainModule:
   block:
     let test = parseUri("http://example.com/foo/") / "/bar/asd"
     doAssert test.path == "/foo/bar/asd"
-
-  

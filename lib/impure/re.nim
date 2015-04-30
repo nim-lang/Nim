@@ -7,8 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. Consider using the pegs module
-## instead.
+## Regular expression support for Nim. Consider using the pegs module instead.
+##
+## There is an alternative regular expressions library with a more unified API:
+## `nre <https://github.com/flaviut/nre>`_. It may be added to the standard
+## library in the future, instead of `re`.
+##
+## **Note:** The 're' proc defaults to the **extended regular expression
+## syntax** which lets you use whitespace freely to make your regexes readable.
+## However, this means to match whitespace ``\s`` or something similar has
+## to be used.
+##
 ## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
 ## C library. This means that your application will depend on the PRCE
@@ -30,42 +39,42 @@ const
 type
   RegexFlag* = enum     ## options for regular expressions
     reIgnoreCase = 0,    ## do caseless matching
-    reMultiLine = 1,     ## ``^`` and ``$`` match newlines within data 
+    reMultiLine = 1,     ## ``^`` and ``$`` match newlines within data
     reDotAll = 2,        ## ``.`` matches anything including NL
     reExtended = 3,      ## ignore whitespace and ``#`` comments
     reStudy = 4          ## study the expression (may be omitted if the
                          ## expression will be used only once)
-    
+  
   RegexDesc = object 
-    h: PPcre
-    e: ptr TExtra
-    
+    h: ptr Pcre
+    e: ptr ExtraData
+  
   Regex* = ref RegexDesc ## a compiled regular expression
-    
+
   RegexError* = object of ValueError
     ## is raised if the pattern is no valid regular expression.
 
 {.deprecated: [TRegexFlag: RegexFlag, TRegexDesc: RegexDesc, TRegex: Regex,
     EInvalidRegEx: RegexError].}
 
-proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} = 
+proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
   new(e)
   e.msg = msg
   raise e
 
-proc rawCompile(pattern: string, flags: cint): PPcre =
+proc rawCompile(pattern: string, flags: cint): ptr Pcre =
   var
     msg: cstring
     offset: cint
   result = pcre.compile(pattern, flags, addr(msg), addr(offset), nil)
   if result == nil:
-    raiseInvalidRegex($msg & "\n" & pattern & "\n" & repeatChar(offset) & "^\n")
+    raiseInvalidRegex($msg & "\n" & pattern & "\n" & spaces(offset) & "^\n")
 
-proc finalizeRegEx(x: Regex) = 
+proc finalizeRegEx(x: Regex) =
   # XXX This is a hack, but PCRE does not export its "free" function properly.
   # Sigh. The hack relies on PCRE's implementation (see ``pcre_get.c``).
-  # Fortunately the implementation is unlikely to change. 
+  # Fortunately the implementation is unlikely to change.
   pcre.free_substring(cast[cstring](x.h))
   if not isNil(x.e):
     pcre.free_substring(cast[cstring](x.e))
@@ -78,7 +87,7 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
   result.h = rawCompile(s, cast[cint](flags - {reStudy}))
   if reStudy in flags:
     var msg: cstring
-    result.e = pcre.study(result.h, 0, msg)
+    result.e = pcre.study(result.h, 0, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
 
 proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
@@ -95,10 +104,10 @@ proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
     if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
     else: matches[i-1] = nil
   return rawMatches[1] - rawMatches[0]
-  
+
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
                  start = 0): tuple[first, last: int] =
-  ## returns the starting position and end position of `pattern` in `s` 
+  ## returns the starting position and end position of `pattern` in `s`
   ## and the captured
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and ``(-1,0)`` is returned.
@@ -114,12 +123,12 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
     if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
     else: matches[i-1] = nil
   return (rawMatches[0].int, rawMatches[1].int - 1)
-  
-proc findBounds*(s: string, pattern: Regex, 
+
+proc findBounds*(s: string, pattern: Regex,
                  matches: var openArray[tuple[first, last: int]],
                  start = 0): tuple[first, last: int] =
-  ## returns the starting position and end position of ``pattern`` in ``s`` 
-  ## and the captured substrings in the array `matches`. 
+  ## returns the starting position and end position of ``pattern`` in ``s``
+  ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing is written into `matches` and
   ## ``(-1,0)`` is returned.
   var
@@ -135,7 +144,7 @@ proc findBounds*(s: string, pattern: Regex,
     else: matches[i-1] = (-1,0)
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
-proc findBounds*(s: string, pattern: Regex, 
+proc findBounds*(s: string, pattern: Regex,
                  start = 0): tuple[first, last: int] =
   ## returns the starting position of `pattern` in `s`. If it does not
   ## match, ``(-1,0)`` is returned.
@@ -146,7 +155,7 @@ proc findBounds*(s: string, pattern: Regex,
       cast[ptr cint](rawMatches), 3)
   if res < 0'i32: return (int(res), 0)
   return (int(rawMatches[0]), int(rawMatches[1]-1))
-  
+
 proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint =
   var
     rtarray = initRtArray[cint](3)
@@ -155,19 +164,6 @@ proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint =
                     cast[ptr cint](rawMatches), 3)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
-
-proc match*(s: string, pattern: Regex, matches: var openArray[string],
-           start = 0): bool =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
-  ## the captured substrings in the array ``matches``. If it does not
-  ## match, nothing is written into ``matches`` and ``false`` is
-  ## returned.
-  return matchOrFind(s, pattern, matches, start.cint, 
-                     pcre.ANCHORED) == cint(s.len - start)
-
-proc match*(s: string, pattern: Regex, start = 0): bool =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
-  return matchOrFind(s, pattern, start.cint, pcre.ANCHORED) == cint(s.len-start)
 
 proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
               start = 0): int =
@@ -179,8 +175,20 @@ proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
 proc matchLen*(s: string, pattern: Regex, start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
-  ## of zero can happen. 
+  ## of zero can happen.
   return matchOrFind(s, pattern, start.cint, pcre.ANCHORED)
+
+proc match*(s: string, pattern: Regex, start = 0): bool =
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
+  result = matchLen(s, pattern, start) != -1
+
+proc match*(s: string, pattern: Regex, matches: var openArray[string],
+           start = 0): bool =
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
+  ## the captured substrings in the array ``matches``. If it does not
+  ## match, nothing is written into ``matches`` and ``false`` is
+  ## returned.
+  result = matchLen(s, pattern, matches, start) != -1
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
            start = 0): int =
@@ -211,7 +219,7 @@ proc find*(s: string, pattern: Regex, start = 0): int =
   if res < 0'i32: return res
   return rawMatches[0]
 
-iterator findAll*(s: string, pattern: Regex, start = 0): string = 
+iterator findAll*(s: string, pattern: Regex, start = 0): string =
   ## Yields all matching *substrings* of `s` that match `pattern`.
   ##
   ## Note that since this is an iterator you should not modify the string you
@@ -226,10 +234,11 @@ iterator findAll*(s: string, pattern: Regex, start = 0): string =
     if res < 0'i32: break
     let a = rawMatches[0]
     let b = rawMatches[1]
+    if a == b and a == i: break
     yield substr(s, int(a), int(b)-1)
     i = b
 
-proc findAll*(s: string, pattern: Regex, start = 0): seq[string] = 
+proc findAll*(s: string, pattern: Regex, start = 0): seq[string] =
   ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
@@ -237,13 +246,13 @@ proc findAll*(s: string, pattern: Regex, start = 0): seq[string] =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template `=~` *(s: string, pattern: Regex): expr = 
-  ## This calls ``match`` with an implicit declared ``matches`` array that 
-  ## can be used in the scope of the ``=~`` call: 
-  ## 
+template `=~` *(s: string, pattern: Regex): expr =
+  ## This calls ``match`` with an implicit declared ``matches`` array that
+  ## can be used in the scope of the ``=~`` call:
+  ##
   ## .. code-block:: nim
   ##
-  ##   if line =~ re"\s*(\w+)\s*\=\s*(\w+)": 
+  ##   if line =~ re"\s*(\w+)\s*\=\s*(\w+)":
   ##     # matches a key=value pair:
   ##     echo("Key: ", matches[0])
   ##     echo("Value: ", matches[1])
@@ -255,9 +264,9 @@ template `=~` *(s: string, pattern: Regex): expr =
   ##   else:
   ##     echo("syntax error")
   ##
-  bind MaxSubPatterns
+  bind MaxSubpatterns
   when not declaredInScope(matches):
-    var matches {.inject.}: array[0..MaxSubpatterns-1, string]
+    var matches {.inject.}: array[MaxSubpatterns, string]
   match(s, pattern, matches)
 
 # ------------------------- more string handling ------------------------------
@@ -281,11 +290,11 @@ proc endsWith*(s: string, suffix: Regex): bool =
     if matchLen(s, suffix, i) == s.len - i: return true
 
 proc replace*(s: string, sub: Regex, by = ""): string =
-  ## Replaces `sub` in `s` by the string `by`. Captures cannot be 
+  ## Replaces `sub` in `s` by the string `by`. Captures cannot be
   ## accessed in `by`. Examples:
   ##
   ## .. code-block:: nim
-  ##   "var1=key; var2=key2".replace(re"(\w+)'='(\w+)")
+  ##   "var1=key; var2=key2".replace(re"(\w+)=(\w+)")
   ##
   ## Results in:
   ##
@@ -301,13 +310,13 @@ proc replace*(s: string, sub: Regex, by = ""): string =
     add(result, by)
     prev = match.last + 1
   add(result, substr(s, prev))
-  
+
 proc replacef*(s: string, sub: Regex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nim
-  ## "var1=key; var2=key2".replacef(re"(\w+)'='(\w+)", "$1<-$2$2")
+  ##   "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2")
   ##
   ## Results in:
   ##
@@ -315,7 +324,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ##
   ## "var1<-keykey; val2<-key2key2"
   result = ""
-  var caps: array[0..MaxSubpatterns-1, string]
+  var caps: array[MaxSubpatterns, string]
   var prev = 0
   while true:
     var match = findBounds(s, sub, caps, prev)
@@ -333,7 +342,7 @@ proc parallelReplace*(s: string, subs: openArray[
   ## applied in parallel.
   result = ""
   var i = 0
-  var caps: array[0..MaxSubpatterns-1, string]
+  var caps: array[MaxSubpatterns, string]
   while i < s.len:
     block searchSubs:
       for j in 0..high(subs):
@@ -354,7 +363,7 @@ proc transformFile*(infile, outfile: string,
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
   writeFile(outfile, x.parallelReplace(subs))
-  
+
 iterator split*(s: string, sep: Regex): string =
   ## Splits the string `s` into substrings.
   ##
@@ -368,64 +377,73 @@ iterator split*(s: string, sep: Regex): string =
   ## Results in:
   ##
   ## .. code-block:: nim
+  ##   ""
   ##   "this"
   ##   "is"
   ##   "an"
   ##   "example"
+  ##   ""
   ##
   var
-    first = 0
-    last = 0
+    first = -1
+    last = -1
   while last < len(s):
     var x = matchLen(s, sep, last)
     if x > 0: inc(last, x)
     first = last
+    if x == 0: inc(last)
     while last < len(s):
-      inc(last)
       x = matchLen(s, sep, last)
-      if x > 0: break
-    if first < last:
+      if x >= 0: break
+      inc(last)
+    if first <= last:
       yield substr(s, first, last-1)
 
 proc split*(s: string, sep: Regex): seq[string] =
   ## Splits the string `s` into substrings.
   accumulateResult(split(s, sep))
-  
-proc escapeRe*(s: string): string = 
-  ## escapes `s` so that it is matched verbatim when used as a regular 
+
+proc escapeRe*(s: string): string =
+  ## escapes `s` so that it is matched verbatim when used as a regular
   ## expression.
   result = ""
   for c in items(s):
     case c
     of 'a'..'z', 'A'..'Z', '0'..'9', '_':
       result.add(c)
-    else: 
+    else:
       result.add("\\x")
       result.add(toHex(ord(c), 2))
-  
+
 const ## common regular expressions
-  reIdentifier* = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"  ## describes an identifier
-  reNatural* = r"\b\d+\b" ## describes a natural number
-  reInteger* = r"\b[-+]?\d+\b" ## describes an integer
-  reHex* = r"\b0[xX][0-9a-fA-F]+\b" ## describes a hexadecimal number
-  reBinary* = r"\b0[bB][01]+\b" ## describes a binary number (example: 0b11101)
-  reOctal* = r"\b0[oO][0-7]+\b" ## describes an octal number (example: 0o777)
-  reFloat* = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
+  reIdentifier* {.deprecated.} = r"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b"
+    ## describes an identifier
+  reNatural* {.deprecated.} = r"\b\d+\b"
+    ## describes a natural number
+  reInteger* {.deprecated.} = r"\b[-+]?\d+\b"
+    ## describes an integer
+  reHex* {.deprecated.} = r"\b0[xX][0-9a-fA-F]+\b"
+    ## describes a hexadecimal number
+  reBinary* {.deprecated.} = r"\b0[bB][01]+\b"
+    ## describes a binary number (example: 0b11101)
+  reOctal* {.deprecated.} = r"\b0[oO][0-7]+\b"
+    ## describes an octal number (example: 0o777)
+  reFloat* {.deprecated.} = r"\b[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?\b"
     ## describes a floating point number
-  reEmail* = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\. &" &
-             r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)" &
-             r"*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+" &
-             r"(?:[a-zA-Z]{2}|com|org|" &
-             r"net|gov|mil|biz|info|mobi|name|aero|jobs|museum)\b"
+  reEmail* {.deprecated.} = r"\b[a-zA-Z0-9!#$%&'*+/=?^_`{|}~\-]+(?:\. &" &
+                            r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@" &
+                            r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+" &
+                            r"(?:[a-zA-Z]{2}|com|org|net|gov|mil|biz|" &
+                            r"info|mobi|name|aero|jobs|museum)\b"
     ## describes a common email address
-  reURL* = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms\-help):" &
-           r"((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
+  reURL* {.deprecated.} = r"\b(http(s)?|ftp|gopher|telnet|file|notes|ms-help)" &
+                          r":((//)|(\\\\))+[\w\d:#@%/;$()~_?\+\-\=\\\.\&]*\b"
     ## describes an URL
 
 when isMainModule:
   assert match("(a b c)", re"\( .* \)")
   assert match("WHiLe", re("while", {reIgnoreCase}))
-  
+
   assert "0158787".match(re"\d+")
   assert "ABC 0232".match(re"\w+\s+\d+")
   assert "ABC".match(re"\d+ | \w+")
@@ -434,21 +452,21 @@ when isMainModule:
 
   var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+"
   assert matchLen("key1=  cal9", pattern) == 11
-  
+
   assert find("_____abc_______", re"abc") == 5
-  
-  var matches: array[0..5, string]
-  if match("abcdefg", re"c(d)ef(g)", matches, 2): 
+
+  var matches: array[6, string]
+  if match("abcdefg", re"c(d)ef(g)", matches, 2):
     assert matches[0] == "d"
     assert matches[1] == "g"
   else:
     assert false
-  
+
   if "abc" =~ re"(a)bcxyz|(\w+)":
     assert matches[1] == "abc"
   else:
     assert false
-  
+
   if "abc" =~ re"(cba)?.*":
     assert matches[0] == nil
   else: assert false
@@ -456,23 +474,35 @@ when isMainModule:
   if "abc" =~ re"().*":
     assert matches[0] == ""
   else: assert false
-    
+
   assert "var1=key; var2=key2".endsWith(re"\w+=\w+")
   assert("var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
          "var1<-keykey; var2<-key2key2")
   assert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
          "$1<-$2$2; $1<-$2$2")
 
+  var accum: seq[string] = @[]
   for word in split("00232this02939is39an22example111", re"\d+"):
-    writeln(stdout, word)
+    accum.add(word)
+  assert(accum == @["", "this", "is", "an", "example", ""])
+
+  accum = @[]
+  for word in split("AAA :   : BBB", re"\s*:\s*"):
+    accum.add(word)
+  assert(accum == @["AAA", "", "BBB"])
 
   for x in findAll("abcdef", re"^{.}", 3):
     assert x == "d"
+  accum = @[]
   for x in findAll("abcdef", re".", 3):
-    echo x
+    accum.add(x)
+  assert(accum == @["d", "e", "f"])
+
+  assert("XYZ".find(re"^\d*") == 0)
+  assert("XYZ".match(re"^\d*") == true)
 
   block:
-    var matches: array[0..15, string]
+    var matches: array[16, string]
     if match("abcdefghijklmnop", re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)(n)(o)(p)", matches):
       for i in 0..matches.high:
         assert matches[i] == $chr(i + 'a'.ord)

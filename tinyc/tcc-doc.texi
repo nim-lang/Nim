@@ -673,7 +673,7 @@ They can be defined several times in the same source. Use 'b'
 @cindex asciz directive
 @cindex ascii directive
 
-All directives are preceeded by a '.'. The following directives are
+All directives are preceded by a '.'. The following directives are
 supported:
 
 @itemize
@@ -892,7 +892,7 @@ reverse order, a first pass is done to reverse the argument order.
 
 @section Types
 
-The types are stored in a single 'int' variable. It was choosen in the
+The types are stored in a single 'int' variable. It was chosen in the
 first stages of development when tcc was much simpler. Now, it may not
 be the best solution.
 
@@ -1017,7 +1017,7 @@ are used when bound checking is activated
 
 @item stab_section
 @itemx stabstr_section
-are used when debugging is actived to store debug information
+are used when debugging is activated to store debug information
 
 @item symtab_section
 @itemx strtab_section

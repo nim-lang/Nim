@@ -139,7 +139,7 @@ Numbers
 Numerical literals are written as in most other languages. As a special twist,
 underscores are allowed for better readability: ``1_000_000`` (one million).
 A number that contains a dot (or 'e' or 'E') is a floating point literal:
-``1.0e9`` (one million). Hexadecimal literals are prefixed with ``0x``,
+``1.0e9`` (one billion). Hexadecimal literals are prefixed with ``0x``,
 binary literals with ``0b`` and octal literals with ``0o``. A leading zero
 alone does not produce an octal.
 
@@ -749,7 +749,8 @@ Forward declarations
 --------------------
 
 Every variable, procedure, etc. needs to be declared before it can be used.
-(The reason for this is compilation efficiency.)
+(The reason for this is that it is non-trivial to do better than that in a
+language that supports meta programming as extensively as Nim does.)
 However, this cannot be done for mutually recursive procedures:
 
 .. code-block:: nim
@@ -767,7 +768,7 @@ introduced to the compiler before it is completely defined. The syntax for
 such a forward declaration is simple: just omit the ``=`` and the
 procedure's body.
 
-Later versions of the language may get rid of the need for forward
+Later versions of the language will weaken the requirements for forward
 declarations.
 
 The example also shows that a proc's body can consist of a single expression
@@ -1070,7 +1071,7 @@ Operation             Comment
 ``dec(x, n)``         decrements `x` by `n`; `n` is an integer
 ``succ(x)``           returns the successor of `x`
 ``succ(x, n)``        returns the `n`'th successor of `x`
-``prec(x)``           returns the predecessor of `x`
+``pred(x)``           returns the predecessor of `x`
 ``pred(x, n)``        returns the `n`'th predecessor of `x`
 -----------------     --------------------------------------------------------
 
@@ -1323,7 +1324,7 @@ define operators which accept Slice objects to define ranges.
     a = "Nim is a progamming language"
     b = "Slices are useless."
 
-  echo a[10..15] # --> 'a prog'
+  echo a[7..12] # --> 'a prog'
   b[11.. -2] = "useful"
   echo b # --> 'Slices are useful.'
 
@@ -1350,11 +1351,11 @@ integer.
 .. code-block:: nim
 
   type
-    TPerson = tuple[name: string, age: int] # type representing a person:
-                                            # a person consists of a name
-                                            # and an age
+    Person = tuple[name: string, age: int] # type representing a person:
+                                           # a person consists of a name
+                                           # and an age
   var
-    person: TPerson
+    person: Person
   person = (name: "Peter", age: 30)
   # the same, but less readable:
   person = ("Peter", 30)
@@ -1373,7 +1374,7 @@ integer.
   # The following line does not compile, they are different tuples!
   #person = building
   # --> Error: type mismatch: got (tuple[street: string, number: int])
-  #     but expected 'TPerson'
+  #     but expected 'Person'
   
   # The following works because the field names and types are the same.
   var teacher: tuple[name: string, age: int] = ("Mark", 42)

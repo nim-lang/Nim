@@ -499,7 +499,7 @@ template withEvents*(surf: PSurface, event: expr, actions: stmt): stmt {.
 if sdl.init(sdl.INIT_VIDEO) < 0: raiseEGraphics()
 if sdl_ttf.init() < 0: raiseEGraphics()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var surf = newScreenSurface(800, 600)
 
   surf.fillSurface(colWhite)

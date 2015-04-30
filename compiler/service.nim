@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -14,7 +14,7 @@ import
   extccomp, strutils, os, platform, parseopt
 
 when useCaas:
-  import sockets
+  import net
 
 # We cache modules and the dependency graph. However, we don't check for
 # file changes but expect the client to tell us about them, otherwise the
@@ -33,7 +33,12 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption: processSwitch(pass, p)
+    of cmdLongoption, cmdShortOption:
+      if p.key == " ":
+        p.key = "-"
+        if processArgument(pass, p, argsCount): break
+      else:
+        processSwitch(pass, p)
     of cmdArgument:
       if processArgument(pass, p, argsCount): break
   if pass == passCmd2:
@@ -45,8 +50,6 @@ proc serve*(action: proc (){.nimcall.}) =
     curCaasCmd = cmd
     processCmdLine(passCmd2, cmd)
     action()
-    gDirtyBufferIdx = 0
-    gDirtyOriginalIdx = 0
     gErrorCounter = 0
 
   let typ = getConfigVar("server.type")
@@ -61,14 +64,16 @@ proc serve*(action: proc (){.nimcall.}) =
 
   of "tcp", "":
     when useCaas:
-      var server = socket()
-      if server == invalidSocket: raiseOSError(osLastError())
+      var server = newSocket()
       let p = getConfigVar("server.port")
       let port = if p.len > 0: parseInt(p).Port else: 6000.Port
       server.bindAddr(port, getConfigVar("server.address"))
       var inp = "".TaintedString
       server.listen()
-      new(stdoutSocket)
+      var stdoutSocket = newSocket()
+      msgs.writelnHook = proc (line: string) =
+        stdoutSocket.send(line & "\c\L")
+
       while true:
         accept(server, stdoutSocket)
         stdoutSocket.readLine(inp)
@@ -76,7 +81,7 @@ proc serve*(action: proc (){.nimcall.}) =
         stdoutSocket.send("\c\L")
         stdoutSocket.close()
     else:
-      quit "server.type not supported; compiler built without caas support"
+      msgQuit "server.type not supported; compiler built without caas support"
   else:
     echo "Invalid server.type:", typ
-    quit 1
+    msgQuit 1

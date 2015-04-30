@@ -49,3 +49,56 @@ proc catch() {.async.} =
     assert false
 
 asyncCheck catch()
+
+proc test(): Future[bool] {.async.} =
+  result = false
+  try:
+    raise newException(OSError, "Foobar")
+  except:
+    result = true
+    return
+
+proc foo(): Future[bool] {.async.} = discard
+
+proc test2(): Future[bool] {.async.} =
+  result = false
+  try:
+    discard await foo()
+    raise newException(OSError, "Foobar")
+  except:
+    result = true
+    return
+
+proc test3(): Future[int] {.async.} =
+  result = 0
+  try:
+    try:
+      discard await foo()
+      raise newException(OSError, "Hello")
+    except:
+      result = 1
+      raise
+  except:
+    result = 2
+    return
+
+proc test4(): Future[int] {.async.} =
+  try:
+    discard await foo()
+    raise newException(ValueError, "Test4")
+  except OSError:
+    result = 1
+  except:
+    result = 2
+
+var x = test()
+assert x.read
+
+x = test2()
+assert x.read
+
+var y = test3()
+assert y.read == 2
+
+y = test4()
+assert y.read == 2

@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -58,7 +58,7 @@ proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
 proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
-proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} = 
+proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
   e.parent = currException
   currException = e
 
@@ -69,12 +69,12 @@ proc popCurrentException {.compilerRtl, inl.} =
 const
   nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
                               not NimStackTrace
-  hasSomeStackTrace = NimStackTrace or 
+  hasSomeStackTrace = NimStackTrace or
     defined(nativeStackTrace) and nativeStackTraceSupported
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
-    TDl_info {.importc: "Dl_info", header: "<dlfcn.h>", 
+    TDl_info {.importc: "Dl_info", header: "<dlfcn.h>",
                final, pure.} = object
       dli_fname: cstring
       dli_fbase: pointer
@@ -98,7 +98,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
         tempDlInfo: TDl_info
     # This is allowed to be expensive since it only happens during crashes
     # (but this way you don't need manual stack tracing)
-    var size = backtrace(cast[ptr pointer](addr(tempAddresses)), 
+    var size = backtrace(cast[ptr pointer](addr(tempAddresses)),
                          len(tempAddresses))
     var enabled = false
     for i in 0..size-1:
@@ -123,7 +123,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 when not hasThreadSupport:
   var
     tempFrames: array [0..127, PFrame] # should not be alloc'd on stack
-  
+
 proc auxWriteStackTrace(f: PFrame, s: var string) =
   when hasThreadSupport:
     var
@@ -160,7 +160,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     inc(i)
     b = b.prev
   for j in countdown(i-1, 0):
-    if tempFrames[j] == nil: 
+    if tempFrames[j] == nil:
       add(s, "(")
       add(s, $skipped)
       add(s, " calls omitted) ...")
@@ -175,6 +175,8 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
       add(s, tempFrames[j].procname)
     add(s, "\n")
 
+proc stackTraceAvailable*(): bool
+
 when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
     when NimStackTrace:
@@ -188,6 +190,18 @@ when hasSomeStackTrace:
       auxWriteStackTraceWithBacktrace(s)
     else:
       add(s, "No stack traceback available\n")
+  proc stackTraceAvailable(): bool =
+    when NimStackTrace:
+      if framePtr == nil:
+        result = false
+      else:
+        result = true
+    elif defined(nativeStackTrace) and nativeStackTraceSupported:
+      result = true
+    else:
+      result = false
+else:
+  proc stackTraceAvailable*(): bool = result = false
 
 proc quitOrDebug() {.inline.} =
   when not defined(endb):
@@ -200,41 +214,49 @@ proc raiseExceptionAux(e: ref Exception) =
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
-  if excHandler != nil:
-    if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
-      pushCurrentException(e)
-      c_longjmp(excHandler.context, 1)
-  elif e[] of OutOfMemError:
-    showErrorMessage(e.name)
-    quitOrDebug()
-  else:
-    when hasSomeStackTrace:
-      var buf = newStringOfCap(2000)
-      if isNil(e.trace): rawWriteStackTrace(buf)
-      else: add(buf, e.trace)
-      add(buf, "Error: unhandled exception: ")
-      if not isNil(e.msg): add(buf, e.msg)
-      add(buf, " [")
-      add(buf, $e.name)
-      add(buf, "]\n")
-      showErrorMessage(buf)
+  when defined(cpp):
+    if e[] of OutOfMemError:
+      showErrorMessage(e.name)
+      quitOrDebug()
     else:
-      # ugly, but avoids heap allocations :-)
-      template xadd(buf, s, slen: expr) =
-        if L + slen < high(buf):
-          copyMem(addr(buf[L]), cstring(s), slen)
-          inc L, slen
-      template add(buf, s: expr) =
-        xadd(buf, s, s.len)
-      var buf: array [0..2000, char]
-      var L = 0
-      add(buf, "Error: unhandled exception: ")
-      if not isNil(e.msg): add(buf, e.msg)
-      add(buf, " [")
-      xadd(buf, e.name, c_strlen(e.name))
-      add(buf, "]\n")
-      showErrorMessage(buf)
-    quitOrDebug()
+      pushCurrentException(e)
+      {.emit: "throw NimException(`e`, `e`->name);".}
+  else:
+    if excHandler != nil:
+      if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
+        pushCurrentException(e)
+        c_longjmp(excHandler.context, 1)
+    elif e[] of OutOfMemError:
+      showErrorMessage(e.name)
+      quitOrDebug()
+    else:
+      when hasSomeStackTrace:
+        var buf = newStringOfCap(2000)
+        if isNil(e.trace): rawWriteStackTrace(buf)
+        else: add(buf, e.trace)
+        add(buf, "Error: unhandled exception: ")
+        if not isNil(e.msg): add(buf, e.msg)
+        add(buf, " [")
+        add(buf, $e.name)
+        add(buf, "]\n")
+        showErrorMessage(buf)
+      else:
+        # ugly, but avoids heap allocations :-)
+        template xadd(buf, s, slen: expr) =
+          if L + slen < high(buf):
+            copyMem(addr(buf[L]), cstring(s), slen)
+            inc L, slen
+        template add(buf, s: expr) =
+          xadd(buf, s, s.len)
+        var buf: array [0..2000, char]
+        var L = 0
+        add(buf, "Error: unhandled exception: ")
+        if not isNil(e.msg): add(buf, e.msg)
+        add(buf, " [")
+        xadd(buf, e.name, c_strlen(e.name))
+        add(buf, "]\n")
+        showErrorMessage(buf)
+      quitOrDebug()
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   e.name = ename
@@ -295,8 +317,8 @@ when not defined(noSignalHandler):
   proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: expr) {.immediate,  dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
-      elif s == SIGSEGV: 
-        action("SIGSEGV: Illegal storage access. (Try to compile with -d:useSysAssert -d:useGcAssert for details.)\n")
+      elif s == SIGSEGV:
+        action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
       elif s == SIGABRT:
         when defined(endb):
           if dbgAborting: return # the debugger wants to abort
@@ -304,7 +326,7 @@ when not defined(noSignalHandler):
       elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
       elif s == SIGILL: action("SIGILL: Illegal operation.\n")
       elif s == SIGBUS:
-        action("SIGBUS: Illegal storage access.  (Try to compile with -d:useSysAssert -d:useGcAssert for details.)\n")
+        action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
       else:
         block platformSpecificSignal:
           when declared(SIGPIPE):
@@ -341,7 +363,7 @@ when not defined(noSignalHandler):
 
   registerSignalHandler() # call it in initialization section
 
-proc setControlCHook(hook: proc () {.noconv.}) =
+proc setControlCHook(hook: proc () {.noconv.} not nil) =
   # ugly cast, but should work on all architectures:
   type TSignalHandler = proc (sig: cint) {.noconv, benign.}
   c_signal(SIGINT, cast[TSignalHandler](hook))

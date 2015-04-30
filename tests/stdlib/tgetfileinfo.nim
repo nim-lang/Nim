@@ -32,7 +32,7 @@ proc caseOneAndTwo(followLink: bool) =
   try:
     discard getFileInfo(getAppFilename(), followLink)
     #echo("String : Existing File : Symlink $# : Success" % $followLink)
-  except EOS:
+  except OSError:
     echo("String : Existing File : Symlink $# : Failure" % $followLink)
 
 proc caseThreeAndFour(followLink: bool) =
@@ -40,7 +40,8 @@ proc caseThreeAndFour(followLink: bool) =
   try:
     discard getFileInfo(invalidName, true)
     echo("String : Non-existing File : Symlink $# : Failure" % $followLink)
-  except EOS:
+  except OSError:
+    discard
     #echo("String : Non-existing File : Symlink $# : Success" % $followLink)
 
 proc testGetFileInfo =
@@ -64,13 +65,13 @@ proc testGetFileInfo =
     try:
       discard getFileInfo(testFile)
       #echo("Handle : Valid File : Success")
-    except EIO:
+    except IOError:
       echo("Handle : Valid File : Failure")
 
     try:
       discard getFileInfo(testHandle)
       #echo("Handle : Valid File : Success")
-    except EIO:
+    except IOError:
       echo("Handle : Valid File : Failure")
 
   # Case 6 and 8
@@ -81,13 +82,15 @@ proc testGetFileInfo =
     try:
       discard getFileInfo(testFile)
       echo("Handle : Invalid File : Failure")
-    except EIO, EOS:
+    except IOError, OSError:
+      discard
       #echo("Handle : Invalid File : Success")
 
     try:
       discard getFileInfo(testHandle)
       echo("Handle : Invalid File : Failure")
-    except EIO, EOS:
+    except IOError, OSError:
+      discard
       #echo("Handle : Invalid File : Success")
 
 testGetFileInfo()

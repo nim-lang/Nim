@@ -7,7 +7,10 @@ discard """
 1
 2
 3'''
+  disabled: "true"
 """
+
+# Disabled since some versions of GCC ignore the 'packed' attribute
 
 # Test 
 

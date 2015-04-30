@@ -2,7 +2,7 @@ discard """
   cmd: "nim check $options $file"
   errormsg: "'proc' is not a concrete type"
   errormsg: "'Foo' is not a concrete type."
-  errormsg: "invalid type: 'TBaseMed'"
+  errormsg: "invalid type: 'proc' in this context: 'TBaseMed'"
 """
 
 type

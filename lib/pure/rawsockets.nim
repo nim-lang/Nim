@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Dominik Picheta
+#        (c) Copyright 2015 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -38,6 +38,9 @@ export
   SO_ACCEPTCONN, SO_BROADCAST, SO_DEBUG, SO_DONTROUTE,
   SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR,
   MSG_PEEK
+
+when defined(macosx):
+    export SO_NOSIGPIPE
 
 type
   Port* = distinct uint16  ## port type

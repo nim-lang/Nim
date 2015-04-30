@@ -87,14 +87,14 @@ is triggered.
 Time measurement
 ----------------
 
-The GC's way of measing time uses (see ``lib/system/timers.nim`` for the 
+The GC's way of measuring time uses (see ``lib/system/timers.nim`` for the 
 implementation):
 
 1) ``QueryPerformanceCounter`` and ``QueryPerformanceFrequency`` on Windows.
 2) ``mach_absolute_time`` on Mac OS X.
 3) ``gettimeofday`` on Posix systems.
 
-As such it supports a resolution of nano seconds internally; however the API
+As such it supports a resolution of nanoseconds internally; however the API
 uses microseconds for convenience. 
 
 

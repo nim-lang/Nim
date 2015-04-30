@@ -1,5 +1,5 @@
 discard """
-  output: '''3060
+  output: '''3030
 true
 3'''
 """

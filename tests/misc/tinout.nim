@@ -1,7 +1,7 @@
 discard """
   file: "tinout.nim"
   line: 12
-  errormsg: "for a \'var\' type a variable needs to be passed"
+  errormsg: "type mismatch: got (int literal(3))"
 """
 # Test in out checking for parameters
 

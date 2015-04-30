@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nim
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -18,7 +18,7 @@ when defined(gcc) and defined(windows):
 import
   os, strutils, parseopt, osproc, streams
 
-import "compiler/nversion.nim"
+const VersionAsString = system.NimVersion #"0.10.2"
 
 when defined(withUpdate):
   import httpclient
@@ -30,7 +30,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nim                             |
 |             Version $1|
-|             (c) 2014 Andreas Rumpf                              |
+|             (c) 2015 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -40,8 +40,8 @@ Options:
   --help, -h               shows this help and quits
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  install [bindir]         installs to given directory
-  clean                    cleans Nimrod project; removes generated files
+  install [bindir]         installs to given directory; Unix only!
+  clean                    cleans Nim project; removes generated files
   web [options]            generates the website and the full documentation
   website [options]        generates only the website
   csource [options]        builds the C sources for installation
@@ -59,8 +59,11 @@ Boot options:
   -d:useGnuReadline        use the GNU readline library for interactive mode
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
-  -d:noCaas                build Nimrod without CAAS support
+  -d:noCaas                build Nim without CAAS support
   -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
+Web options:
+  --googleAnalytics:UA-... add the given google analytics code to the docs. To
+                           build the official docs, use UA-48159761-1
 """
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)
@@ -74,11 +77,11 @@ proc findNim(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-proc exec(cmd: string) =
+proc exec(cmd: string, errorcode: int = QuitFailure) =
   echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE")
+  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
 
-proc tryExec(cmd: string): bool = 
+proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
 
@@ -93,58 +96,59 @@ proc copyExe(source, dest: string) =
 const
   compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
 
-proc csource(args: string) = 
-  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=mingw32 csource compiler/nim.ini $1" %
+proc csource(args: string) =
+  exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource --main:compiler/nim.nim compiler/installer.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
 proc zip(args: string) =
-  exec("$3 cc -r $2 --var:version=$1 --var:mingw=mingw32 scripts compiler/nim.ini" %
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
-  exec("$# --var:version=$# --var:mingw=mingw32 zip compiler/nim.ini" %
+  exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
-  
-proc buildTool(toolname, args: string) = 
+
+proc targz(args: string) =
+  exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
+       [VersionAsString, compileNimInst, findNim()])
+  exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim targz compiler/installer.ini" %
+       ["tools" / "niminst" / "niminst".exe, VersionAsString])
+
+proc buildTool(toolname, args: string) =
   exec("$# cc $# $#" % [findNim(), args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
 proc nsis(args: string) =
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
-  buildTool("tools/nimgrep", args)
-  # produce 'nimrod_debug.exe':
-  exec "nim c compiler" / "nim.nim"
-  copyExe("compiler/nim".exe, "bin/nim_debug".exe)
-  exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw32" &
-        " nsis compiler/nim") % VersionAsString)
+  #buildTool("tools/nimgrep", args)
+  # produce 'nim_debug.exe':
+  #exec "nim c compiler" / "nim.nim"
+  #copyExe("compiler/nim".exe, "bin/nim_debug".exe)
+  exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
+        " nsis compiler/installer.ini") % [VersionAsString, $(sizeof(pointer)*8)])
 
-proc install(args: string) = 
-  exec("$# cc -r $# --var:version=$# --var:mingw=mingw32 scripts compiler/nim.ini" %
+proc install(args: string) =
+  exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [findNim(), compileNimInst, VersionAsString])
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
-  exec("$# cc -r tools/nimweb.nim $# web/nim --putenv:nimversion=$#" %
+  exec("$# cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
        [findNim(), args, VersionAsString])
 
 proc website(args: string) =
-  exec("$# cc -r tools/nimweb.nim $# --website web/nim --putenv:nimversion=$#" %
+  exec("$# cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
        [findNim(), args, VersionAsString])
 
 proc pdf(args="") =
-  exec("$# cc -r tools/nimweb.nim $# --pdf web/nim --putenv:nimversion=$#" %
+  exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
        [findNim(), args, VersionAsString])
 
 # -------------- boot ---------------------------------------------------------
 
-const
-  bootOptions = "" # options to pass to the bootstrap process
-
-proc findStartNim: string = 
+proc findStartNim: string =
   # we try several things before giving up:
   # * bin/nim
   # * $PATH/nim
-  # * bin/nimrod
-  # * $PATH/nimrod
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
   var nim = "nim".exe
   result = "bin" / nim
@@ -152,36 +156,31 @@ proc findStartNim: string =
   for dir in split(getEnv("PATH"), PathSep):
     if existsFile(dir / nim): return dir / nim
 
-  # try the old "nimrod.exe":
-  var nimrod = "nimrod".exe
-  result = "bin" / nimrod
-  if existsFile(result): return
-  for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nimrod
-
   when defined(Posix):
     const buildScript = "build.sh"
-    if existsFile(buildScript): 
+    if existsFile(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
   else:
     const buildScript = "build.bat"
-    if existsFile(buildScript): 
+    if existsFile(buildScript):
       if tryExec(buildScript): return "bin" / nim
 
   echo("Found no nim compiler and every attempt to build one failed!")
   quit("FAILURE")
 
-proc thVersion(i: int): string = 
+proc thVersion(i: int): string =
   result = ("compiler" / "nim" & $i).exe
-  
+
 proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
-  
+  # default to use the 'c' command:
+  let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
+
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " c $# $# compiler" / "nim.nim" % [bootOptions, args]
+    exec i.thVersion & " $# $# compiler" / "nim.nim" % [bootOptions, args]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -202,7 +201,7 @@ const
     ".bzrignore", "nim", "nim.exe", "koch", "koch.exe", ".gitignore"
   ]
 
-proc cleanAux(dir: string) = 
+proc cleanAux(dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
@@ -213,25 +212,25 @@ proc cleanAux(dir: string) =
           removeFile(path)
     of pcDir:
       case splitPath(path).tail
-      of "nimcache": 
+      of "nimcache":
         echo "removing dir: ", path
         removeDir(path)
       of "dist", ".git", "icons": discard
       else: cleanAux(path)
     else: discard
 
-proc removePattern(pattern: string) = 
-  for f in walkFiles(pattern): 
+proc removePattern(pattern: string) =
+  for f in walkFiles(pattern):
     echo "removing: ", f
     removeFile(f)
 
-proc clean(args: string) = 
+proc clean(args: string) =
   if existsFile("koch.dat"): removeFile("koch.dat")
   removePattern("web/*.html")
   removePattern("doc/*.html")
   cleanAux(getCurrentDir())
   for kind, path in walkDir(getCurrentDir() / "build"):
-    if kind == pcDir: 
+    if kind == pcDir:
       echo "removing dir: ", path
       removeDir(path)
 
@@ -267,20 +266,20 @@ when defined(withUpdate):
           echo("Fetching updates from repo...")
           var pullout = execCmdEx(git & " pull origin master")
           if pullout[1] != 0:
-            quit("An error has occured.")
+            quit("An error has occurred.")
           else:
             if pullout[0].startsWith("Already up-to-date."):
               quit("No new changes fetched from the repo. " &
                    "Local branch must be ahead of it. Exiting...")
       else:
-        quit("An error has occured.")
-      
+        quit("An error has occurred.")
+
     else:
       echo("No repo or executable found!")
       when defined(haveZipLib):
         echo("Falling back.. Downloading source code from repo...")
         # use dom96's httpclient to download zip
-        downloadFile("https://github.com/Araq/Nimrod/zipball/master",
+        downloadFile("https://github.com/Araq/Nim/zipball/master",
                      thisDir / "update.zip")
         try:
           echo("Extracting source code from archive...")
@@ -291,7 +290,7 @@ when defined(withUpdate):
           quit("Error reading archive.")
       else:
         quit("No failback available. Exiting...")
-    
+
     echo("Starting update...")
     boot(args)
     echo("Update complete!")
@@ -315,12 +314,14 @@ proc winRelease() =
   #buildTool("tools/niminst/niminst", " -d:release")
   buildTool("tools/nimgrep", " -d:release")
   buildTool("compiler/nimfix/nimfix", " -d:release")
+  buildTool("compiler/nimsuggest/nimsuggest", " -d:release")
 
-  run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
-        "bin/nimfix.exe",
-        "bin/babel.exe", "bin/*.dll",
-        "config", "dist/*.dll", "examples", "lib",
-        "readme.txt", "contributors.txt", "copying.txt")
+  #run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
+  #      "bin/nimfix.exe",
+  #      "bin/nimble.exe", "bin/*.dll",
+  #      "config", "dist/*.dll", "examples", "lib",
+  #      "readme.txt", "contributors.txt", "copying.txt")
+
   # second step: XXX build 64 bit version
 
 # -------------- tests --------------------------------------------------------
@@ -338,12 +339,14 @@ proc tests(args: string) =
 proc temp(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim_temp".exe
-  exec("nim c compiler" / "nim")
+  # 125 is the magic number to tell git bisect to skip the current
+  # commit.
+  exec("nim c compiler" / "nim", 125)
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)
 
-proc showHelp() = 
-  quit(HelpText % [VersionAsString & repeatChar(44-len(VersionAsString)), 
+proc showHelp() =
+  quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
 var op = initOptParser()
@@ -355,10 +358,14 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
-  of "website": website(op.cmdLineRest)
+  of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
+  of "web0":
+    # undocumented command for Araq-the-merciful:
+    web(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
   of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
+  of "targz": targz(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)

@@ -9,13 +9,13 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import 
+import
   strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
-  wordrecg, 
-  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math, 
+  wordrecg,
+  ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
   magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef
 
-type 
+type
   TOptionEntry* = object of lists.TListEntry # entries to put on a
                                              # stack for pragma parsing
     options*: TOptions
@@ -26,7 +26,7 @@ type
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
-  TProcCon*{.final.} = object # procedure context; also used for top-level
+  TProcCon* = object          # procedure context; also used for top-level
                               # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
@@ -35,15 +35,23 @@ type
     inTryStmt*: int           # whether we are in a try statement; works also
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
-  
+    wasForwarded*: bool       # whether the current proc has a separate header
+    bracketExpr*: PNode       # current bracket expression (for ^ support)
+
   TInstantiationPair* = object
     genericSym*: PSym
     inst*: PInstantiation
 
-  TExprFlag* = enum 
-    efLValue, efWantIterator, efInTypeof, efWantStmt, efDetermineType,
+  TExprFlag* = enum
+    efLValue, efWantIterator, efInTypeof,
+    efWantStmt, efAllowStmt, efDetermineType,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck
   TExprFlags* = set[TExprFlag]
+
+  TTypeAttachedOp* = enum
+    attachedAsgn,
+    attachedDeepCopy,
+    attachedDestructor
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
@@ -56,7 +64,7 @@ type
                                # this is used so that generic instantiations
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
-   
+
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     inTypeClass*: int          # > 0 if we are in a user-defined type class
@@ -91,10 +99,10 @@ type
     lastGenericIdx*: int      # used for the generics stack
     hloLoopDetector*: int     # used to prevent endless loops in the HLO
     inParallelStmt*: int
-    instDeepCopy*: proc (c: PContext; dc: PSym; t: PType;
-                         info: TLineInfo): PSym {.nimcall.}
+    instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
+                            op: TTypeAttachedOp): PSym {.nimcall.}
 
-   
+
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
   result.inst = inst
@@ -110,7 +118,6 @@ proc newOptionEntry*(): POptionEntry
 proc newLib*(kind: TLibKind): PLib
 proc addToLib*(lib: PLib, sym: PSym)
 proc makePtrType*(c: PContext, baseType: PType): PType
-proc makeVarType*(c: PContext, baseType: PType): PType
 proc newTypeS*(kind: TTypeKind, c: PContext): PType
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
 
@@ -126,7 +133,7 @@ proc popOwner*()
 
 var gOwners*: seq[PSym] = @[]
 
-proc getCurrOwner(): PSym = 
+proc getCurrOwner(): PSym =
   # owner stack (used for initializing the
   # owner field of syms)
   # the documentation comment always gets
@@ -134,19 +141,19 @@ proc getCurrOwner(): PSym =
   # BUGFIX: global array is needed!
   result = gOwners[high(gOwners)]
 
-proc pushOwner(owner: PSym) = 
+proc pushOwner(owner: PSym) =
   add(gOwners, owner)
 
-proc popOwner() = 
+proc popOwner() =
   var length = len(gOwners)
   if length > 0: setLen(gOwners, length - 1)
   else: internalError("popOwner")
 
-proc lastOptionEntry(c: PContext): POptionEntry = 
+proc lastOptionEntry(c: PContext): POptionEntry =
   result = POptionEntry(c.optionStack.tail)
 
-proc pushProcCon*(c: PContext, owner: PSym) {.inline.} = 
-  if owner == nil: 
+proc pushProcCon*(c: PContext, owner: PSym) {.inline.} =
+  if owner == nil:
     internalError("owner is nil")
     return
   var x: PProcCon
@@ -157,7 +164,7 @@ proc pushProcCon*(c: PContext, owner: PSym) {.inline.} =
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
-proc newOptionEntry(): POptionEntry = 
+proc newOptionEntry(): POptionEntry =
   new(result)
   result.options = gOptions
   result.defaultCC = ccDefault
@@ -181,8 +188,8 @@ proc newContext(module: PSym): PContext =
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
-  for i in countup(0, L - 1): 
-    if sq[i].id == s.id: return 
+  for i in countup(0, L - 1):
+    if sq[i].id == s.id: return
   setLen(sq, L + 1)
   sq[L] = s
 
@@ -192,22 +199,25 @@ proc addConverter*(c: PContext, conv: PSym) =
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
 
-proc newLib(kind: TLibKind): PLib = 
+proc newLib(kind: TLibKind): PLib =
   new(result)
   result.kind = kind          #initObjectSet(result.syms)
-  
+
 proc addToLib(lib: PLib, sym: PSym) =
   #if sym.annex != nil and not isGenericRoutine(sym):
   #  LocalError(sym.info, errInvalidPragma)
   sym.annex = lib
 
-proc makePtrType(c: PContext, baseType: PType): PType = 
+proc makePtrType(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
   addSonSkipIntLit(result, baseType.assertNotNil)
 
-proc makeVarType(c: PContext, baseType: PType): PType = 
-  result = newTypeS(tyVar, c)
-  addSonSkipIntLit(result, baseType.assertNotNil)
+proc makeVarType*(c: PContext, baseType: PType): PType =
+  if baseType.kind == tyVar:
+    result = baseType
+  else:
+    result = newTypeS(tyVar, c)
+    addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
@@ -220,6 +230,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
+  assert n != nil
   result.n = n
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
@@ -238,6 +249,7 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
@@ -245,12 +257,14 @@ proc makeOrType*(c: PContext, t1, t2: PType): PType =
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c)
   result.sons = @[t1]
   propagateToOwner(result, t1)
   result.flags.incl(t1.flags * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc nMinusOne*(n: PNode): PNode =
   result = newNode(nkCall, n.info, @[
@@ -268,7 +282,7 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
 
 template rangeHasStaticIf*(t: PType): bool =
   # this accepts the ranges's node
-  t.n[1].kind == nkStaticExpr
+  t.n != nil and t.n.len > 1 and t.n[1].kind == nkStaticExpr
 
 template getStaticTypeFromRange*(t: PType): PType =
   t.n[1][0][1].typ
@@ -284,7 +298,7 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
-proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) = 
+proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
   dest.owner = getCurrOwner()
   dest.size = - 1
@@ -306,13 +320,16 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
 proc illFormedAst*(n: PNode) =
   globalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
-proc checkSonsLen*(n: PNode, length: int) = 
+proc illFormedAstLocal*(n: PNode) =
+  localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+
+proc checkSonsLen*(n: PNode, length: int) =
   if sonsLen(n) != length: illFormedAst(n)
-  
-proc checkMinSonsLen*(n: PNode, length: int) = 
+
+proc checkMinSonsLen*(n: PNode, length: int) =
   if sonsLen(n) < length: illFormedAst(n)
 
-proc isTopLevel*(c: PContext): bool {.inline.} = 
+proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
 proc experimentalMode*(c: PContext): bool {.inline.} =

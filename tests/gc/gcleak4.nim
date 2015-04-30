@@ -38,12 +38,14 @@ proc newPlus(a, b: ref TExpr): ref TPlusExpr =
   result.b = b
   result.op2 = $getOccupiedMem()
 
+const Limit = when compileOption("gc", "markAndSweep"): 5*1024*1024 else: 500_000
+
 for i in 0..100_000:
   var s: array[0..11, ref TExpr]
   for j in 0..high(s):
     s[j] = newPlus(newPlus(newLit(j), newLit(2)), newLit(4))
     if eval(s[j]) != j+6:
       quit "error: wrong result"
-  if getOccupiedMem() > 500_000: quit("still a leak!")
+  if getOccupiedMem() > Limit: quit("still a leak!")
 
 echo "no leak: ", getOccupiedMem()

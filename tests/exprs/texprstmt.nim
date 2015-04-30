@@ -7,6 +7,6 @@ discard """
 
 proc test: string =
   result = "blah"
-  result[1 .. -1]
+  result[1 .. ^1]
 
 echo test()

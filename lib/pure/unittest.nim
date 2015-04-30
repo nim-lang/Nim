@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Nim Contributors
+#        (c) Copyright 2015 Nim Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,12 +9,27 @@
 
 ## :Author: Zahary Karadjov
 ##
-## This module implements the standard unit testing facilities such as
-## suites, fixtures and test cases as well as facilities for combinatorial 
-## and randomzied test case generation (not yet available) 
-## and object mocking (not yet available)
+## This module implements boilerplate to make testing easy.
 ##
-## It is loosely based on C++'s boost.test and Haskell's QuickTest
+## Example:
+##
+## .. code:: nim
+##
+##   suite "description for this stuff":
+##     test "essential truths":
+##       # give up and stop if this fails
+##       require(true)
+##
+##     test "slightly less obvious stuff":
+##       # print a nasty message and move on, skipping
+##       # the remainder of this block
+##       check(1 != 1)
+##       check("asd"[2] == 'd')
+##
+##     test "out of bounds error is thrown on bad access":
+##       let v = @[1, 2, 3]  # you can do initialization here
+##       expect(IndexError):
+##         discard v[4]
 
 import
   macros
@@ -24,6 +39,7 @@ when declared(stdout):
 
 when not defined(ECMAScript):
   import terminal
+  system.addQuitProc(resetAttributes)
 
 type
   TestStatus* = enum OK, FAILED
@@ -31,7 +47,7 @@ type
 
 {.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
 
-var 
+var
   abortOnError* {.threadvar.}: bool
   outputLevel* {.threadvar.}: OutputLevel
   colorOutput* {.threadvar.}: bool
@@ -84,6 +100,7 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
 
     except:
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
+      echo getCurrentException().getStackTrace()
       fail()
 
     finally:
@@ -127,16 +144,25 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     when compiles(string($value)):
       checkpoint(name & " was " & $value)
 
-  proc inspectArgs(exp: PNimrodNode) =
+  proc inspectArgs(exp: NimNode) =
     for i in 1 .. <exp.len:
       if exp[i].kind notin nnkLiterals:
         inc counter
         var arg = newIdentNode(":p" & $counter)
         var argStr = exp[i].toStrLit
+        var paramAst = exp[i]
         if exp[i].kind in nnkCallKinds: inspectArgs(exp[i])
-        argsAsgns.add getAst(asgn(arg, exp[i]))
+        if exp[i].kind == nnkExprEqExpr:
+          # ExprEqExpr
+          #   Ident !"v"
+          #   IntLit 2
+          paramAst = exp[i][1]
+        argsAsgns.add getAst(asgn(arg, paramAst))
         argsPrintOuts.add getAst(print(argStr, arg))
-        exp[i] = arg
+        if exp[i].kind != nnkExprEqExpr:
+          exp[i] = arg
+        else:
+          exp[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:
@@ -176,7 +202,7 @@ template require*(conditions: stmt): stmt {.immediate, dirty.} =
 macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
   let exp = callsite()
   template expectBody(errorTypes, lineInfoLit: expr,
-                      body: stmt): PNimrodNode {.dirty.} =
+                      body: stmt): NimNode {.dirty.} =
     try:
       body
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")

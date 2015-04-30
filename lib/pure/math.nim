@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -93,9 +93,9 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = x - 1 
   when defined(cpu64):
     result = result or (result shr 32)
-  when sizeof(int) > 16:
+  when sizeof(int) > 2:
     result = result or (result shr 16)
-  when sizeof(int) > 8:
+  when sizeof(int) > 1:
     result = result or (result shr 8)
   result = result or (result shr 4)
   result = result or (result shr 2)
@@ -129,29 +129,30 @@ proc variance*(x: openArray[float]): float {.noSideEffect.} =
     result = result + diff*diff
   result = result / toFloat(len(x))
 
-proc random*(max: int): int {.gcsafe.}
+proc random*(max: int): int {.benign.}
   ## returns a random number in the range 0..max-1. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
 
-proc random*(max: float): float {.gcsafe.}
+proc random*(max: float): float {.benign.}
   ## returns a random number in the range 0..<max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount. This has a 16-bit resolution on windows
   ## and a 48-bit resolution on other platforms.
 
-proc randomize*() {.gcsafe.}
+proc randomize*() {.benign.}
   ## initializes the random number generator with a "random"
   ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
   ## as JavaScript does not support this.
   
-proc randomize*(seed: int) {.gcsafe.}
+proc randomize*(seed: int) {.benign.}
   ## initializes the random number generator with a specific seed.
   ## Note: Does nothing for the JavaScript target,
   ## as JavaScript does not support this.
 
+{.push noSideEffect.}
 when not defined(JS):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
@@ -273,6 +274,8 @@ else:
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
 
+{.pop.}
+
 proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
 
@@ -280,7 +283,7 @@ proc random*[T](x: Slice[T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = random(x.b - x.a) + x.a
 
-proc random[T](a: openArray[T]): T =
+proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
@@ -329,6 +332,31 @@ proc standardDeviation*(s: RunningStat): float =
 {.pop.}
 {.pop.}
 
+proc `^`*[T](x, y: T): T =
+  ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
+  ## `pow <#pow,float,float>` for negative exponents.
+  assert y >= 0
+  var (x, y) = (x, y)
+  result = 1
+
+  while y != 0:
+    if (y and 1) != 0:
+      result *= x
+    y = y shr 1
+    x *= x
+
+proc gcd*[T](x, y: T): T =
+  ## Computes the greatest common divisor of ``x`` and ``y``.
+  var (x,y) = (x,y)
+  while y != 0:
+    x = x mod y
+    swap x, y
+  abs x
+
+proc lcm*[T](x, y: T): T =
+  ## Computes the least common multiple of ``x`` and ``y``.
+  x div gcd(x, y) * y
+
 when isMainModule and not defined(JS):
   proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
 
@@ -344,4 +372,10 @@ when isMainModule and not defined(JS):
   randomize(seed)
   for i in 0..SIZE-1:
     assert buf[i] == random(high(int)), "non deterministic random seeding"
-  echo "random values equal after reseeding"
+
+  when not defined(testing):
+    echo "random values equal after reseeding"
+
+  # Check for no side effect annotation
+  proc mySqrt(num: float): float {.noSideEffect.} =
+    return sqrt(num)

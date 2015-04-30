@@ -16,7 +16,7 @@ type
     i*      : GLuint
     size*   : GLint
     stride* : GLsizei
-    offset* : PGLvoid
+    offset* : GLvoid
   TVertMode* = enum
     vmTriStrip = GLtriangleStrip,
     vmTriFan   = GLtriangleFan
@@ -44,7 +44,7 @@ proc newVertQuad*(min, minRight, maxLeft, max: TV2[TR]): seq[TVert] =
 proc newVert*(rect: rect.TRect): seq[TVert] =
   newVertQuad(rect.min, newV2(rect.max.x, rect.min.y), newV2(rect.min.x, rect.max.y), rect.max)
 
-proc newVertAttrib(i: GLuint, size: GLint, stride: GLsizei, offset: PGLvoid): TVertAttrib =
+proc newVertAttrib(i: GLuint, size: GLint, stride: GLsizei, offset: GLvoid): TVertAttrib =
   TVertAttrib(i: i, size: size, stride: stride, offset: offset)
 
 proc genBuf*[T](vboTarget, objUsage: GLenum, data: var openarray[T]): GLuint =
@@ -90,7 +90,7 @@ proc disableVertAttribArrs*() =
 proc setVertAttribPointers*() =
   let vertSize {.global.} = TVert.sizeof.GLint
   ?glVertexAttribPointer(0, 2, glRealType, false, vertSize, nil)
-  ?glVertexAttribPointer(1, 2, glRealType, false, vertSize, cast[PGLvoid](TR.sizeof * 2))
+  ?glVertexAttribPointer(1, 2, glRealType, false, vertSize, cast[GLvoid](TR.sizeof * 2))
 
 proc updVerts*(o: PPrimitive, start, `end`: int, f: proc(i: int, vert: var TVert)) =
   assert start <= `end`
@@ -105,7 +105,7 @@ proc updVerts*(o: PPrimitive, start, `end`: int, f: proc(i: int, vert: var TVert
   ?glBufferSubData(GLarrayBuffer,
                    byteOffset.GLintptr, # Offset. Is this right?
                    byteLen.GLsizeiptr, # Size.
-                   cast[PGLvoid](cast[int](o.verts[0].addr) + byteOffset))
+                   cast[GLvoid](cast[int](o.verts[0].addr) + byteOffset))
 
 proc updAllVerts(o: PPrimitive, f: proc(i: int, vert: var TVert)) =
   for i in 0 .. <o.verts.len:

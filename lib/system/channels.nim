@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -233,8 +233,9 @@ proc tryRecv*[TMsg](c: var TChannel[TMsg]): tuple[dataAvailable: bool,
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):
-      llRecv(q, addr(result.msg), cast[PNimType](getTypeInfo(result.msg)))
-      result.dataAvailable = true
+      if q.count > 0:
+        llRecv(q, addr(result.msg), cast[PNimType](getTypeInfo(result.msg)))
+        result.dataAvailable = true
       releaseSys(q.lock)
 
 proc peek*[TMsg](c: var TChannel[TMsg]): int =

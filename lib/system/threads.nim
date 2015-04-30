@@ -84,8 +84,18 @@ when defined(windows):
       importc: "TlsAlloc", stdcall, header: "<windows.h>".}
     proc threadVarSetValue(dwTlsIndex: TThreadVarSlot, lpTlsValue: pointer) {.
       importc: "TlsSetValue", stdcall, header: "<windows.h>".}
-    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
+    proc tlsGetValue(dwTlsIndex: TThreadVarSlot): pointer {.
       importc: "TlsGetValue", stdcall, header: "<windows.h>".}
+
+    proc getLastError(): uint32 {.
+      importc: "GetLastError", stdcall, header: "<windows.h>".}
+    proc setLastError(x: uint32) {.
+      importc: "SetLastError", stdcall, header: "<windows.h>".}
+
+    proc threadVarGetValue(dwTlsIndex: TThreadVarSlot): pointer =
+      let realLastError = getLastError()
+      result = tlsGetValue(dwTlsIndex)
+      setLastError(realLastError)
   else:
     proc threadVarAlloc(): TThreadVarSlot {.
       importc: "TlsAlloc", stdcall, dynlib: "kernel32".}
@@ -95,7 +105,9 @@ when defined(windows):
       importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
   
 else:
-  {.passL: "-pthread".}
+  when not defined(macosx):
+    {.passL: "-pthread".}
+
   {.passC: "-pthread".}
 
   type
@@ -115,7 +127,7 @@ else:
     importc, header: "<pthread.h>".}
 
   proc pthread_create(a1: var TSysThread, a2: var TPthread_attr,
-            a3: proc (x: pointer) {.noconv.}, 
+            a3: proc (x: pointer): pointer {.noconv.}, 
             a4: pointer): cint {.importc: "pthread_create", 
             header: "<pthread.h>".}
   proc pthread_join(a1: TSysThread, a2: ptr pointer): cint {.
@@ -303,7 +315,7 @@ when defined(windows):
     threadProcWrapperBody(closure)
     # implicitly return 0
 else:
-  proc threadProcWrapper[TArg](closure: pointer) {.noconv.} = 
+  proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} = 
     threadProcWrapperBody(closure)
 {.pop.}
 

@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Dominik Picheta
+#        (c) Copyright 2015 Dominik Picheta
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
@@ -61,8 +61,8 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
-  var ip = nums[0.. -3]
-  var port = nums[-2.. -1]
+  var ip = nums[0.. ^3]
+  var port = nums[^2.. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
   await ftp.dsock.connect(ip.join("."), Port(properPort.toU16))
   ftp.dsockConnected = true
@@ -149,7 +149,7 @@ proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false){.async.} =
     assertReply reply, "257"
 
 proc chmod*(ftp: AsyncFtpClient, path: string,
-            permissions: set[TFilePermission]) {.async.} =
+            permissions: set[FilePermission]) {.async.} =
   ## Changes permission of ``path`` to ``permissions``.
   var userOctal = 0
   var groupOctal = 0
@@ -188,7 +188,7 @@ proc retrText*(ftp: AsyncFtpClient, file: string): Future[string] {.async.} =
 
   result = await ftp.getLines()
 
-proc getFile(ftp: AsyncFtpClient, file: TFile, total: BiggestInt,
+proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
              onProgressChanged: ProgressChangedProc) {.async.} =
   assert ftp.dsockConnected
   var progress = 0
@@ -240,7 +240,7 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
 
   await getFile(ftp, destFile, fileSize, onProgressChanged)
 
-proc doUpload(ftp: AsyncFtpClient, file: TFile,
+proc doUpload(ftp: AsyncFtpClient, file: File,
               onProgressChanged: ProgressChangedProc) {.async.} =
   assert ftp.dsockConnected
 
@@ -300,7 +300,7 @@ proc newAsyncFtpClient*(address: string, port = Port(21),
   result.dsockConnected = false
   result.csock = newAsyncSocket()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
   proc main(ftp: AsyncFtpClient) {.async.} =
     await ftp.connect()

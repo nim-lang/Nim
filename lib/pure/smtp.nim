@@ -238,7 +238,7 @@ proc sendMail*(smtp: AsyncSmtp, fromAddr: string,
   await smtp.sock.send("MAIL FROM:<" & fromAddr & ">\c\L")
   await smtp.checkReply("250")
   for address in items(toAddrs):
-    await smtp.sock.send("RCPT TO:<" & smtp.address & ">\c\L")
+    await smtp.sock.send("RCPT TO:<" & address & ">\c\L")
     await smtp.checkReply("250")
   
   # Send the message
@@ -253,7 +253,7 @@ proc close*(smtp: AsyncSmtp) {.async.} =
   await smtp.sock.send("QUIT\c\L")
   smtp.sock.close()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   #var msg = createMessage("Test subject!", 
   #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
   #echo(msg)

@@ -1,6 +1,6 @@
 discard """
   line: "13"
-  errormsg: "for a 'var' type a variable needs to be passed"
+  errormsg: "type mismatch: got (int literal(8), int literal(5), int, int)"
 """
 
 proc divmod(a, b: int, res, remainder: var int) =

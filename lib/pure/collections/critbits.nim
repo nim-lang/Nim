@@ -12,7 +12,7 @@
 ## by Adam Langley.
 
 type
-  NodeObj[T] = object {.pure, final, acyclic.}
+  NodeObj[T] = object {.acyclic.}
     byte: int ## byte index of the difference
     otherbits: char
     case isLeaf: bool
@@ -23,11 +23,10 @@ type
         val: T
     
   Node[T] = ref NodeObj[T]
-  CritBitTree*[T] = object {.
-      pure, final.} ## The crit bit tree can either be used
-                    ## as a mapping from strings to
-                    ## some type ``T`` or as a set of
-                    ## strings if ``T`` is void.
+  CritBitTree*[T] = object ## The crit bit tree can either be used
+                           ## as a mapping from strings to
+                           ## some type ``T`` or as a set of
+                           ## strings if ``T`` is void.
     root: Node[T]
     count: int
 
@@ -175,7 +174,7 @@ proc excl*[T](c: var CritBitTree[T], key: string) =
 iterator leaves[T](n: Node[T]): Node[T] =
   if n != nil:
     # XXX actually we could compute the necessary stack size in advance:
-    # it's rougly log2(c.count).
+    # it's roughly log2(c.count).
     var stack = @[n]
     while stack.len > 0: 
       var it = stack.pop
@@ -287,18 +286,19 @@ proc `$`*[T](c: CritBitTree[T]): string =
     result.add("}")
 
 when isMainModule:
+  import sequtils
+
   var r: CritBitTree[void]
   r.incl "abc"
   r.incl "xyz"
   r.incl "def"
   r.incl "definition"
   r.incl "prefix"
+
   doAssert r.contains"def"
-  #r.del "def"
 
-  for w in r.items:
-    echo w
-    
-  for w in r.itemsWithPrefix("de"):
-    echo w
+  r.excl "def"
 
+  assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
+
+  assert toSeq(r.itemsWithPrefix("de")) == @["definition"]

@@ -45,7 +45,7 @@ proc parseFile(fileIdx: int32): PNode =
   var 
     p: TParsers
     f: File
-  let filename = fileIdx.toFullPath
+  let filename = fileIdx.toFullPathConsiderDirty
   if not open(f, filename):
     rawMessage(errCannotOpenFile, filename)
     return 
@@ -163,7 +163,7 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string,
 proc openParsers(p: var TParsers, fileIdx: int32, inputstream: PLLStream) = 
   var s: PLLStream
   p.skin = skinStandard
-  let filename = fileIdx.toFullPath
+  let filename = fileIdx.toFullPathConsiderDirty
   var pipe = parsePipe(filename, inputstream)
   if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
   else: s = inputstream

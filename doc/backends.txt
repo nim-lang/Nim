@@ -225,7 +225,7 @@ The JavaScript target doesn't have any further interfacing considerations
 since it also has garbage collection, but the C targets require you to
 initialize Nim's internals, which is done calling a ``NimMain`` function.
 Also, C code requires you to specify a forward declaration for functions or
-the compiler will asume certain types for the return value and parameters
+the compiler will assume certain types for the return value and parameters
 which will likely make your program crash at runtime.
 
 The Nim compiler can generate a C interface header through the ``--header``
@@ -335,18 +335,18 @@ Nimcache and C like targets
 
 The C like backends will place their temporary ``.c``, ``.cpp`` or ``.m`` files
 in the ``nimcache`` directory. The naming of these files follows the pattern
-``babelPackageName_`` + ``nimSource``:
+``nimblePackageName_`` + ``nimSource``:
 
-* Filenames for modules imported from `Babel packages
-  <https://github.com/nim-code/babel>`_ will end up with
-  ``babelPackageName_module.c``. For example, if you import the
-  ``argument_parser`` module from the same name Babel package you
+* Filenames for modules imported from `nimble packages
+  <https://github.com/nim-lang/nimble>`_ will end up with
+  ``nimblePackageName_module.c``. For example, if you import the
+  ``argument_parser`` module from the same name nimble package you
   will end up with a ``argument_parser_argument_parser.c`` file
-  under ``nimcache``.  The name of the Babel package comes from the
-  ``proj.babel`` file, the actual contents are not read by the
+  under ``nimcache``.  The name of the nimble package comes from the
+  ``proj.nimble`` file, the actual contents are not read by the
   compiler.
 
-* Filenames for non babel packages (like your project) will be
+* Filenames for non nimble packages (like your project) will be
   renamed from ``.nim`` to have the extension of your target backend
   (from now on ``.c`` for these examples), but otherwise nothing
   else will change. This will quickly break if your project consists
@@ -360,13 +360,13 @@ in the ``nimcache`` directory. The naming of these files follows the pattern
   module <system.html>`_ is always imported automatically. Same for
   the `hashes module <hashes.html>`_ which will be named
   ``stdlib_hashes.c``. The ``stdlib_`` prefix comes from the *fake*
-  ``lib/stdlib.babel`` file.
+  ``lib/stdlib.nimble`` file.
 
-To find the name of a Babel package the compiler searches for a ``*.babel``
+To find the name of a nimble package the compiler searches for a ``*.nimble``
 file in the parent directory hierarchy of whatever module you are compiling.
-Even if you are in a subdirectory of your project, a parent ``*.babel`` file
+Even if you are in a subdirectory of your project, a parent ``*.nimble`` file
 will influence the naming of the nimcache name. This means that on Unix systems
-creating the file ``~/foo.babel`` will automatically prefix all nimcache files
+creating the file ``~/foo.nimble`` will automatically prefix all nimcache files
 not part of another package with the string ``foo_``.
 
 
@@ -427,7 +427,7 @@ Custom data types
 -----------------
 
 Just like strings, custom data types that are to be shared between Nim and
-the backend will need careful consideration of who controlls who. If you want
+the backend will need careful consideration of who controls who. If you want
 to hand a Nim reference to C code, you will need to use `GC_ref
 <system.html#GC_ref>`_ to mark the reference as used, so it does not get
 freed. And for the C backend you will need to expose the `GC_unref
@@ -456,11 +456,7 @@ can then attach a GC to this thread via
 
 .. code-block:: nim
 
-  setStackBottom(addr(someLocal))
-  initGC()
-
-At the moment this support is still experimental so you need to expose these
-functions yourself or submit patches to request a public API. 
+  system.setupForeignThreadGc()
 
 It is **not** safe to disable the garbage collector and enable it after the
 call from your background thread even if the code you are calling is short

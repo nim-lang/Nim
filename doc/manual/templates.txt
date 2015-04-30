@@ -67,7 +67,7 @@ special ``:`` syntax:
 .. code-block:: nim
 
   template withFile(f, fn, mode: expr, actions: stmt): stmt {.immediate.} =
-    var f: TFile
+    var f: File
     if open(f, fn, mode):
       try:
         actions
@@ -140,12 +140,12 @@ shadowed by the same argument name even when fully qualified:
   # module 'm'
 
   type
-    TLev = enum
+    Lev = enum
       levA, levB
 
   var abclev = levB
 
-  template tstLev(abclev: TLev) =
+  template tstLev(abclev: Lev) =
     echo abclev, " ", m.abclev
 
   tstLev(levA)
@@ -157,12 +157,12 @@ But the global symbol can properly be captured by a ``bind`` statement:
   # module 'm'
 
   type
-    TLev = enum
+    Lev = enum
       levA, levB
 
   var abclev = levB
 
-  template tstLev(abclev: TLev) =
+  template tstLev(abclev: Lev) =
     bind m.abclev
     echo abclev, " ", m.abclev
 
@@ -202,7 +202,7 @@ template parameter, it is an inject'ed symbol:
 .. code-block:: nim
   template withFile(f, fn, mode: expr, actions: stmt): stmt {.immediate.} =
     block:
-      var f: TFile  # since 'f' is a template param, it's injected implicitly
+      var f: File  # since 'f' is a template param, it's injected implicitly
       ...
       
   withFile(txt, "ttempl3.txt", fmWrite):

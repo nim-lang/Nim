@@ -8,19 +8,19 @@ discard """
 var raiseEx = true
 var returnA = true
 var returnB = false
- 
-proc main: int = 
+
+proc main: int =
   try: #A
     try: #B
       if raiseEx:
-        raise newException(EOS, "")
+        raise newException(OSError, "")
       return 3
     finally: #B
       echo "B1"
       if returnB:
         return 2
       echo "B2"
-  except EOS: #A
+  except OSError: #A
     echo "catch"
   finally: #A
     echo "A1"

@@ -58,7 +58,7 @@ proc `[]=` *(p:var Poly;idx:int,v:float)=
     
       
 iterator items*(p:Poly):float=
-  ## Iterates through the corfficients of the polynomial.
+  ## Iterates through the coefficients of the polynomial.
   var i=p.degree
   while i>=0:
     yield p[i]

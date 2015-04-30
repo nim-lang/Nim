@@ -6,7 +6,7 @@ discard """
 
 import macros
 
-proc test(f: var PNimrodNode) {.compileTime.} =
+proc test(f: var NimNode) {.compileTime.} =
   f = newNimNode(nnkStmtList)
   f.add newCall(newIdentNode("echo"), newLit(10))
 

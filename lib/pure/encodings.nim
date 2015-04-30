@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -301,7 +301,7 @@ proc getCurrentEncoding*(): string =
   
 proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
-  ## Raises `EIO` if it cannot fullfill the request.
+  ## Raises `EIO` if it cannot fulfill the request.
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
     if result == nil:
@@ -451,7 +451,7 @@ proc convert*(s: string, destEncoding = "UTF-8",
   finally:
     close(c)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   let
     orig = "öäüß"
     cp1252 = convert(orig, "CP1252", "UTF-8")

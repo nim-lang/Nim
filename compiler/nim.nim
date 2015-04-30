@@ -9,13 +9,14 @@
 
 when defined(gcc) and defined(windows):
   when defined(x86):
-    {.link: "icons/nimrod.res".}
+    {.link: "icons/nim.res".}
   else:
-    {.link: "icons/nimrod_icon.o".}
+    {.link: "icons/nim_icon.o".}
 
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt, service
+  extccomp, strutils, os, osproc, platform, main, parseopt, service,
+  nodejs
 
 when hasTinyCBackend:
   import tccgen
@@ -60,6 +61,8 @@ proc handleCmdLine() =
         if gCmd == cmdRun:
           tccgen.run(commands.arguments)
       if optRun in gGlobalOptions:
+        if gProjectName == "-":
+          gProjectFull = "stdinfile"
         if gCmd == cmdCompileToJS:
           var ex: string
           if options.outFile.len > 0:
@@ -67,7 +70,7 @@ proc handleCmdLine() =
           else:
             ex = quoteShell(
               completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
-          execExternalProgram("node " & ex & ' ' & commands.arguments)
+          execExternalProgram(findNodeJs() & " " & ex & ' ' & commands.arguments)
         else:
           var binPath: string
           if options.outFile.len > 0:
@@ -89,4 +92,4 @@ condsyms.initDefines()
 
 when not defined(selftest):
   handleCmdLine()
-  quit(int8(msgs.gErrorCounter > 0))
+  msgQuit(int8(msgs.gErrorCounter > 0))

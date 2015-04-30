@@ -14,7 +14,7 @@ template optRe{re(x)}(x: string{lit}): Regex =
   g
 
 template `=~`(s: string, pattern: Regex): bool =
-  when not definedInScope(matches):
+  when not declaredInScope(matches):
     var matches {.inject.}: array[maxSubPatterns, string]
   match(s, pattern, matches)
 

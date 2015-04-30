@@ -1,14 +1,14 @@
 discard """
-  output: '''(k: kindA, a: (x: abc, z: [1, 1, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 2, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 3, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 4, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 5, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 6, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 7, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 8, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 9, 3]), empty: ())
-(k: kindA, a: (x: abc, z: [1, 10, 3]), empty: ())'''
+  output: '''(k: kindA, a: (x: abc, z: [1, 1, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 2, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 3, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 4, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 5, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 6, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 7, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 8, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 9, 3]), method: ())
+(k: kindA, a: (x: abc, z: [1, 10, 3]), method: ())'''
 """
 
 type
@@ -20,9 +20,9 @@ type
   TDummy = ref object
     case k: TKind
     of kindXY: x, y: int
-    of kindA: 
+    of kindA:
       a: TArg
-      empty: TEmpty
+      `method`: TEmpty # bug #1791
 
 proc `$`[T](s: seq[T]): string =
   # XXX why is that not in the stdlib?
@@ -34,7 +34,7 @@ proc `$`[T](s: seq[T]): string =
 
 proc main() =
   for i in 1..10:
-    let d = TDummy(k: kindA, a: TArg(x: "abc", z: @[1,i,3]), empty: TEmpty())
+    let d = TDummy(k: kindA, a: TArg(x: "abc", z: @[1,i,3]), `method`: TEmpty())
     echo d[]
 
 main()

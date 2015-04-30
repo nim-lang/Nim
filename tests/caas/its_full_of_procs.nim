@@ -2,7 +2,7 @@ import unicode, sequtils
 
 # This example shows that idetools returns proc as signature for everything
 # which can be called. While a clever person would use the second column to
-# differentiate betwen procs, methods and others, why does the output contain
+# differentiate between procs, methods and others, why does the output contain
 # incorrect information?
 
 type

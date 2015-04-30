@@ -18,9 +18,9 @@ proc `$`*[T](x: seq[T]): string =
     result.add($x[i])
   result.add ']'
 
-macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} = 
+macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
   result = newNimNode(nnkStmtList)
-  let 
+  let
     typeName = quoted2ident(typeNameN)
     packetID = ^"p"
     streamID = ^"s"
@@ -66,7 +66,7 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
     readBody = newNimNode(nnkStmtList)
     lenNames = 0
   for i in 0.. typeFields.len - 1:
-    let 
+    let
       name = typeFields[i][0]
       dotName = packetID.dot(name)
       resName = newIdentNode(!"result").dot(name)
@@ -91,11 +91,11 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
           newNimNode(nnkDiscardStmt).und(
             newCall("readData", streamID, newNimNode(nnkAddr).und(resName), newCall("sizeof", resName))))
         packBody.add(
-          newCall("writeData", streamID, newNimNode(nnkAddr).und(dotName), newCall("sizeof", dotName))) 
+          newCall("writeData", streamID, newNimNode(nnkAddr).und(dotName), newCall("sizeof", dotName)))
       of "seq":
         ## let lenX = readInt16(s)
         newLenName()
-        let 
+        let
           item = ^"item"  ## item name in our iterators
           seqType = typeFields[i][1][1] ## type of seq
           readName = newIdentNode("read"& $seqType.ident)
@@ -107,7 +107,7 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
         readBody.add(      ## result.name = @[]
           resName := ("@".prefix(newNimNode(nnkBracket))),
           newNimNode(nnkForStmt).und(  ## for item in 1..len:
-            item, 
+            item,
             infix(1.lit, "..", lenName),
             newNimNode(nnkStmtList).und(
               newCall(  ## add(result.name, unpack[seqType](stream))
@@ -117,7 +117,7 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
           newNimNode(nnkVarSection).und(newNimNode(nnkIdentDefs).und(
             lenName,  ## var lenName = int16(len(p.name))
             newIdentNode("int16"),
-            newCall("int16", newCall("len", dotName)))), 
+            newCall("int16", newCall("len", dotName)))),
           newCall("writeData", streamID, newNimNode(nnkAddr).und(lenName), 2.lit),
           newNimNode(nnkForStmt).und(  ## for item in 0..length - 1: pack(p.name[item], stream)
             item,
@@ -143,8 +143,8 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
         readBody.add(resName := newCall("read"& $typeFields[i][1].ident, streamID))
     else:
       error("I dont know what to do with: "& treerepr(typeFields[i]))
-  
-  var 
+
+  var
     toStringFunc = newNimNode(nnkProcDef).und(
       newNimNode(nnkPostfix).und(
         ^"*",
@@ -161,12 +161,12 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
       emptyNode(),
       newNimNode(nnkStmtList).und(#[6]
         newNimNode(nnkAsgn).und(
-          ^"result",                  ## result = 
+          ^"result",                  ## result =
           newNimNode(nnkCall).und(#[6][0][1]
             ^"format",  ## format
             emptyNode()))))  ## "[TypeName   $1   $2]"
     formatStr = "["& $typeName.ident
-  
+
   const emptyFields = {nnkEmpty, nnkNilLit}
   var objFields = newNimNode(nnkRecList)
   for i in 0.. < len(typeFields):
@@ -186,10 +186,10 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
       prefix("$", packetID.dot(fname)))
     formatStr.add "   $"
     formatStr.add($(i + 1))
-  
+
   formatStr.add ']'
   toStringFunc[6][0][1][1] = formatStr.lit()
-  
+
   result.add(
     newNimNode(nnkTypeSection).und(
       newNimNode(nnkTypeDef).und(
@@ -206,15 +206,15 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
   when defined(GenPacketShowOutput):
     echo(repr(result))
 
-proc `->`(a: string, b: string): PNimrodNode {.compileTime.} =
+proc `->`(a: string, b: string): NimNode {.compileTime.} =
   result = newNimNode(nnkIdentDefs).und(^a, ^b, newNimNode(nnkEmpty))
-proc `->`(a: string, b: PNimrodNode): PNimrodNode {.compileTime.} =
+proc `->`(a: string, b: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkIdentDefs).und(^a, b, newNimNode(nnkEmpty))
-proc `->`(a, b: PNimrodNode): PNimrodNode {.compileTime.} =
+proc `->`(a, b: NimNode): NimNode {.compileTime.} =
   a[2] = b
   result = a
 
-proc newProc*(name: string, params: varargs[PNimrodNode], resultType: PNimrodNode): PNimrodNode {.compileTime.} =
+proc newProc*(name: string, params: varargs[NimNode], resultType: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkProcDef).und(
     ^name,
     emptyNode(),
@@ -227,7 +227,7 @@ proc newProc*(name: string, params: varargs[PNimrodNode], resultType: PNimrodNod
 macro forwardPacket*(typeName: expr, underlyingType: typedesc): stmt {.immediate.} =
   result = newNimNode(nnkStmtList).und(
     newProc(
-      "read"& $typeName.ident, 
+      "read"& $typeName.ident,
       ["s" -> "PStream" -> newNimNode(nnkNilLit)],
       typeName),
     newProc(
@@ -258,21 +258,21 @@ when isMainModule:
       A = 0'i8,
       B, C
   forwardPacket(SomeEnum, int8)
-  
-  
+
+
   defPacket(Foo, tuple[x: array[0..4, int8]])
   var f = newFoo([4'i8, 3'i8, 2'i8, 1'i8, 0'i8])
   var s2 = newStringStream("")
   f.pack(s2)
   assert s2.data == "\4\3\2\1\0"
-  
+
   var s = newStringStream()
   s.flushImpl = proc(s: PStream) =
     var z = PStringStream(s)
     z.setPosition(0)
     z.data.setLen(0)
-  
-  
+
+
   s.setPosition(0)
   s.data.setLen(0)
   var o = B
@@ -283,7 +283,7 @@ when isMainModule:
   o.pack(s)
   assert s.data == "\1\0\2"
   s.flush
-  
+
   defPacket(Y, tuple[z: int8])
   proc `$`(z: Y): string = result = "Y("& $z.z &")"
   defPacket(TestPkt, tuple[x: seq[Y]])

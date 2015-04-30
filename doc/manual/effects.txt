@@ -29,9 +29,9 @@ compatibility:
 
 .. code-block:: nim
   type
-    TCallback = proc (s: string) {.raises: [IOError].}
+    Callback = proc (s: string) {.raises: [IOError].}
   var
-    c: TCallback
+    c: Callback
 
   proc p(x: string) =
     raise newException(OSError, "OS")

@@ -19,7 +19,7 @@ template processInterpolations(e: expr) =
 
 macro formatStyleInterpolation(e: expr): expr =
   let e = callsite()
-  var 
+  var
     formatString = ""
     arrayNode = newNimNode(nnkBracket)
     idx = 1
@@ -27,14 +27,14 @@ macro formatStyleInterpolation(e: expr): expr =
   proc addString(s: string) =
     formatString.add(s)
 
-  proc addExpr(e: PNimrodNode) =
+  proc addExpr(e: NimNode) =
     arrayNode.add(e)
     formatString.add("$" & $(idx))
     inc idx
 
   proc addDollar() =
     formatString.add("$$")
-    
+
   processInterpolations(e)
 
   result = parseExpr("\"x\" % [y]")
@@ -43,11 +43,11 @@ macro formatStyleInterpolation(e: expr): expr =
 
 macro concatStyleInterpolation(e: expr): expr =
   let e = callsite()
-  var args: seq[PNimrodNode]
+  var args: seq[NimNode]
   newSeq(args, 0)
 
   proc addString(s: string)    = args.add(newStrLitNode(s))
-  proc addExpr(e: PNimrodNode) = args.add(e)
+  proc addExpr(e: NimNode) = args.add(e)
   proc addDollar()             = args.add(newStrLitNode"$")
 
   processInterpolations(e)
@@ -59,7 +59,7 @@ macro concatStyleInterpolation(e: expr): expr =
 proc sum(a, b, c: int): int =
   return (a + b + c)
 
-var 
+var
   alice = "Alice"
   bob = "Bob"
   a = 10

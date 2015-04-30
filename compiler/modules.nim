@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -33,9 +33,6 @@ var
 proc getModule(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
     result = gCompiledModules[fileIdx]
-
-template compiledAt(x: PSym): expr =
-  gMemCacheData[x.position].compiledAt
 
 template crc(x: PSym): expr =
   gMemCacheData[x.position].crc
@@ -74,10 +71,12 @@ proc addDep(x: PSym, dep: int32) =
 
 proc resetModule*(fileIdx: int32) =
   # echo "HARD RESETTING ", fileIdx.toFilename
-  gMemCacheData[fileIdx].needsRecompile = Yes
-  gCompiledModules[fileIdx] = nil
-  cgendata.gModules[fileIdx] = nil
-  resetSourceMap(fileIdx)
+  if fileIdx <% gMemCacheData.len:
+    gMemCacheData[fileIdx].needsRecompile = Yes
+  if fileIdx <% gCompiledModules.len:
+    gCompiledModules[fileIdx] = nil
+  if fileIdx <% cgendata.gModules.len:
+    cgendata.gModules[fileIdx] = nil
 
 proc resetAllModules* =
   for i in 0..gCompiledModules.high:
@@ -117,7 +116,7 @@ proc newModule(fileIdx: int32): PSym =
   result.kind = skModule
   let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
-  if not isNimIdentifier(result.name.s):
+  if result.name.s != "-" and not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
   
   result.info = newLineInfo(fileIdx, 1, 1)

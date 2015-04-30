@@ -1,6 +1,5 @@
 discard """
-  line: 21
-  errormsg: "invalid type: 'Table[string, proc (string){.gcsafe.}]'"
+  output: "action 3 arg"
 """
 
 import tables

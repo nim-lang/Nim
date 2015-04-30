@@ -1,7 +1,7 @@
 #
 #
 #           Nim Website Generator
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -23,6 +23,7 @@ type
     gitCommit: string
     quotations: Table[string, tuple[quote, author: string]]
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
+    gaId: string  # google analytics ID, nil means analytics are disabled
   TRssItem = object
     year, month, day, title: string
   TAction = enum
@@ -47,7 +48,7 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
-  c.gitRepo = "https://github.com/Araq/Nimrod/tree"
+  c.gitRepo = "https://github.com/Araq/Nim/tree"
   c.gitCommit = "master"
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
@@ -65,7 +66,7 @@ const
   version = "0.7"
   usage = "nimweb - Nim Website Generator Version " & version & """
 
-  (c) 2014 Andreas Rumpf
+  (c) 2015 Andreas Rumpf
 Usage:
   nimweb [options] ini-file[.ini] [compile_options]
 Options:
@@ -98,8 +99,8 @@ macro updated(e: expr): expr {.immediate.} =
 proc updatedDate(year, month, day: string): string =
   ## wrapper around the update macro with easy input.
   result = updated("$1-$2-$3T00:00:00Z" % [year,
-    repeatStr(2 - len(month), "0") & month,
-    repeatStr(2 - len(day), "0") & day])
+    repeat("0", 2 - len(month)) & month,
+    repeat("0", 2 - len(day)) & day])
 
 macro entry(e: expr): expr {.immediate.} =
   ## generates the rss xml ``entry`` element.
@@ -144,7 +145,12 @@ proc parseCmdLine(c: var TConfigData) =
         c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
       of "website": action = actOnlyWebsite
       of "pdf": action = actPdf
-      else: quit(usage)
+      of "googleanalytics":
+        c.gaId = val
+        c.nimArgs.add("--doc.googleAnalytics:" & val & " ")
+      else:
+        echo("Invalid argument $1" % [key])
+        quit(usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(usage)
 
@@ -262,24 +268,26 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
   exec("nim doc2 $# -o:$# $#" %
     [c.nimArgs, destPath / "docgen_sample2.html", src])
 
+proc pathPart(d: string): string = splitFile(d).dir.replace('\\', '/')
+
 proc buildDoc(c: var TConfigData, destPath: string) =
   # call nim for the documentation:
   var
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
@@ -311,8 +319,8 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$# -o:$# $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, doc.pathPart,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
 

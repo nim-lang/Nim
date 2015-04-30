@@ -1,13 +1,13 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Dominik Picheta
+#        (c) Copyright 2015 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module implements asynchronous file handling.
+## This module implements asynchronous file reading and writing.
 ##
 ## .. code-block:: Nim
 ##    import asyncfile, asyncdispatch, os
@@ -24,18 +24,18 @@
 
 import asyncdispatch, os
 
-when defined(windows):
+when defined(windows) or defined(nimdoc):
   import winlean
 else:
   import posix
 
 type
-  AsyncFile = ref object
+  AsyncFile* = ref object
     fd: TAsyncFd
     offset: int64
 
-when defined(windows):
-  proc getDesiredAccess(mode: TFileMode): int32 =
+when defined(windows) or defined(nimdoc):
+  proc getDesiredAccess(mode: FileMode): int32 =
     case mode
     of fmRead:
       result = GENERIC_READ
@@ -44,7 +44,7 @@ when defined(windows):
     of fmReadWrite, fmReadWriteExisting:
       result = GENERIC_READ or GENERIC_WRITE
 
-  proc getCreationDisposition(mode: TFileMode, filename: string): int32 =
+  proc getCreationDisposition(mode: FileMode, filename: string): int32 =
     case mode
     of fmRead, fmReadWriteExisting:
       OPEN_EXISTING
@@ -54,7 +54,7 @@ when defined(windows):
       else:
         CREATE_NEW
 else:
-  proc getPosixFlags(mode: TFileMode): cint =
+  proc getPosixFlags(mode: FileMode): cint =
     case mode
     of fmRead:
       result = O_RDONLY
@@ -70,18 +70,18 @@ else:
 
 proc getFileSize(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     var high: DWord
     let low = getFileSize(f.fd.THandle, addr high)
     if low == INVALID_FILE_SIZE:
-      raiseOSError()
+      raiseOSError(osLastError())
     return (high shl 32) or low
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
   ## the specified ``mode`` asynchronously.
   new result
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)
     let creationDisposition = getCreationDisposition(mode, filename)
@@ -95,7 +95,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
           nil, creationDisposition, flags, 0).TAsyncFd
 
     if result.fd.THandle == INVALID_HANDLE_VALUE:
-      raiseOSError()
+      raiseOSError(osLastError())
 
     register(result.fd)
 
@@ -108,7 +108,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let perm = S_IRUSR or S_IWUSR or S_IRGRP or S_IWGRP or S_IROTH
     result.fd = open(filename, flags, perm).TAsyncFD
     if result.fd.cint == -1:
-      raiseOSError()
+      raiseOSError(osLastError())
 
     register(result.fd)
 
@@ -120,7 +120,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
   ## returned.
   var retFuture = newFuture[string]("asyncfile.read")
 
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     var buffer = alloc0(size)
 
     var ol = PCustomOverlapped()
@@ -185,7 +185,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       elif res == 0:
@@ -224,10 +224,10 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero. 
   f.offset = pos
-  when not defined(windows):
+  when not defined(windows) and not defined(nimdoc):
     let ret = lseek(f.fd.cint, pos, SEEK_SET)
     if ret == -1:
-      raiseOSError()
+      raiseOSError(osLastError())
 
 proc readAll*(f: AsyncFile): Future[string] {.async.} =
   ## Reads all data from the specified file.
@@ -245,7 +245,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
   ## specified file.
   var retFuture = newFuture[void]("asyncfile.write")
   var copy = data
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     var buffer = alloc0(data.len)
     copyMem(buffer, addr copy[0], data.len)
 
@@ -299,7 +299,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
-          retFuture.fail(newException(EOS, osErrorMsg(lastError)))
+          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
         else:
           result = false # We still want this callback to be called.
       else:
@@ -316,10 +316,10 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
 proc close*(f: AsyncFile) =
   ## Closes the file specified.
-  when defined(windows):
+  when defined(windows) or defined(nimdoc):
     if not closeHandle(f.fd.THandle).bool:
-      raiseOSError()
+      raiseOSError(osLastError())
   else:
     if close(f.fd.cint) == -1:
-      raiseOSError()
+      raiseOSError(osLastError())
 

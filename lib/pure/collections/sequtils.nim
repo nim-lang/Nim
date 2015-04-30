@@ -47,6 +47,24 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
+proc repeat*[T](s: seq[T], n: Natural): seq[T] =
+  ## Returns a new sequence with the items of `s` repeated `n` times.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:
+  ##
+  ##   let
+  ##     s = @[1, 2, 3]
+  ##     total = s.repeat(3)
+  ##   assert total == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+  result = newSeq[T](n * s.len)
+  var o = 0
+  for x in 1..n:
+    for e in s:
+      result[o] = e
+      inc o
+
 proc deduplicate*[T](seq1: seq[T]): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
@@ -63,7 +81,7 @@ proc deduplicate*[T](seq1: seq[T]): seq[T] =
     if not result.contains(itm): result.add(itm)
 
 {.deprecated: [distnct: deduplicate].}
-    
+
 proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input sequences.
   ##
@@ -86,7 +104,7 @@ proc zip*[S, T](seq1: seq[S], seq2: seq[T]): seq[tuple[a: S, b: T]] =
   newSeq(result, m)
   for i in 0 .. m-1: result[i] = (seq1[i], seq2[i])
 
-proc distribute*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
+proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub sequences.
   ##
   ## Returns a sequence of `num` sequences. For some input values this is the
@@ -113,10 +131,11 @@ proc distribute*[T](s: seq[T], num: int, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
   assert(not s.isNil, "`s` can't be nil")
-  assert(num > 0, "`num` has to be greater than zero")
   if num < 2:
     result = @[s]
     return
+
+  let num = int(num) # XXX probably only needed because of .. bug
 
   # Create the result and calculate the stride size and the remainder if any.
   result = newSeq[seq[T]](num)
@@ -162,7 +181,7 @@ iterator filter*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): T =
   ##   for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
   ##     echo($n)
   ##   # echoes 4, 8, 4 in separate lines
-  for i in countup(0, len(seq1) -1):
+  for i in countup(0, len(seq1)-1):
     var item = seq1[i]
     if pred(item): yield seq1[i]
 
@@ -209,7 +228,7 @@ proc delete*[T](s: var seq[T], first=0, last=0) =
   ##   var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
   ##   dest.delete(3, 8)
   ##   assert outcome == dest
-  
+
   var i = first
   var j = last+1
   var newLen = len(s)-j+i
@@ -227,12 +246,12 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
   ##
   ##.. code-block::
   ##   var dest = @[1,1,1,1,1,1,1,1]
-  ##   let 
+  ##   let
   ##     src = @[2,2,2,2,2,2]
   ##     outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
   ##   dest.insert(src, 3)
   ##   assert dest == outcome
-  
+
   var j = len(dest) - 1
   var i = len(dest) + len(src) - 1
   dest.setLen(i + 1)
@@ -320,7 +339,7 @@ template foldl*(sequence, operation: expr): expr =
   ##
   ## The ``operation`` parameter should be an expression which uses the
   ## variables ``a`` and ``b`` for each step of the fold. Since this is a left
-  ## fold, for non associative binary operations like substraction think that
+  ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (((1) - 2) -
   ## 3).  Example:
   ##
@@ -328,12 +347,12 @@ template foldl*(sequence, operation: expr): expr =
   ##   let
   ##     numbers = @[5, 9, 11]
   ##     addition = foldl(numbers, a + b)
-  ##     substraction = foldl(numbers, a - b)
+  ##     subtraction = foldl(numbers, a - b)
   ##     multiplication = foldl(numbers, a * b)
   ##     words = @["nim", "is", "cool"]
   ##     concatenation = foldl(words, a & b)
   ##   assert addition == 25, "Addition is (((5)+9)+11)"
-  ##   assert substraction == -15, "Substraction is (((5)-9)-11)"
+  ##   assert subtraction == -15, "Subtraction is (((5)-9)-11)"
   ##   assert multiplication == 495, "Multiplication is (((5)*9)*11)"
   ##   assert concatenation == "nimiscool"
   assert sequence.len > 0, "Can't fold empty sequences"
@@ -356,7 +375,7 @@ template foldr*(sequence, operation: expr): expr =
   ##
   ## The ``operation`` parameter should be an expression which uses the
   ## variables ``a`` and ``b`` for each step of the fold. Since this is a right
-  ## fold, for non associative binary operations like substraction think that
+  ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (1 - (2 -
   ## (3))). Example:
   ##
@@ -364,12 +383,12 @@ template foldr*(sequence, operation: expr): expr =
   ##   let
   ##     numbers = @[5, 9, 11]
   ##     addition = foldr(numbers, a + b)
-  ##     substraction = foldr(numbers, a - b)
+  ##     subtraction = foldr(numbers, a - b)
   ##     multiplication = foldr(numbers, a * b)
   ##     words = @["nim", "is", "cool"]
   ##     concatenation = foldr(words, a & b)
   ##   assert addition == 25, "Addition is (5+(9+(11)))"
-  ##   assert substraction == 7, "Substraction is (5-(9-(11)))"
+  ##   assert subtraction == 7, "Subtraction is (5-(9-(11)))"
   ##   assert multiplication == 495, "Multiplication is (5*(9*(11)))"
   ##   assert concatenation == "nimiscool"
   assert sequence.len > 0, "Can't fold empty sequences"
@@ -382,7 +401,7 @@ template foldr*(sequence, operation: expr): expr =
     result = operation
   result
 
-template mapIt*(seq1, typ, pred: expr): expr =
+template mapIt*(seq1, typ, op: expr): expr =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -397,10 +416,10 @@ template mapIt*(seq1, typ, pred: expr): expr =
   ##   assert strings == @["4", "8", "12", "16"]
   var result {.gensym.}: seq[typ] = @[]
   for it {.inject.} in items(seq1):
-    result.add(pred)
+    result.add(op)
   result
 
-template mapIt*(varSeq, pred: expr) =
+template mapIt*(varSeq, op: expr) =
   ## Convenience template around the mutable ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -413,7 +432,7 @@ template mapIt*(varSeq, pred: expr) =
   ##   assert nums[0] + nums[3] == 15
   for i in 0 .. <len(varSeq):
     let it {.inject.} = varSeq[i]
-    varSeq[i] = pred
+    varSeq[i] = op
 
 template newSeqWith*(len: int, init: expr): expr =
   ## creates a new sequence, calling `init` to initialize each value. Example:
@@ -473,9 +492,8 @@ when isMainModule:
 
   block: # filter iterator test
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
-    for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
-      echo($n)
-    # echoes 4, 8, 4 in separate lines
+    assert toSeq(filter(numbers, proc (x: int): bool = x mod 2 == 0)) ==
+      @[4, 8, 4]
 
   block: # keepIf test
     var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
@@ -507,12 +525,12 @@ when isMainModule:
     let
       numbers = @[5, 9, 11]
       addition = foldl(numbers, a + b)
-      substraction = foldl(numbers, a - b)
+      subtraction = foldl(numbers, a - b)
       multiplication = foldl(numbers, a * b)
       words = @["nim", "is", "cool"]
       concatenation = foldl(words, a & b)
     assert addition == 25, "Addition is (((5)+9)+11)"
-    assert substraction == -15, "Substraction is (((5)-9)-11)"
+    assert subtraction == -15, "Subtraction is (((5)-9)-11)"
     assert multiplication == 495, "Multiplication is (((5)*9)*11)"
     assert concatenation == "nimiscool"
 
@@ -520,12 +538,12 @@ when isMainModule:
     let
       numbers = @[5, 9, 11]
       addition = foldr(numbers, a + b)
-      substraction = foldr(numbers, a - b)
+      subtraction = foldr(numbers, a - b)
       multiplication = foldr(numbers, a * b)
       words = @["nim", "is", "cool"]
       concatenation = foldr(words, a & b)
     assert addition == 25, "Addition is (5+(9+(11)))"
-    assert substraction == 7, "Substraction is (5-(9-(11)))"
+    assert subtraction == 7, "Subtraction is (5-(9-(11)))"
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
@@ -534,12 +552,12 @@ when isMainModule:
     var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     dest.delete(3, 8)
     assert outcome == dest, """\
-    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1] 
+    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     is [1,1,1,1,1,1,1,1]"""
 
   block: # insert tests
     var dest = @[1,1,1,1,1,1,1,1]
-    let 
+    let
       src = @[2,2,2,2,2,2]
       outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     dest.insert(src, 3)
@@ -587,4 +605,15 @@ when isMainModule:
     seq2D[0][1] = true
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 
-  echo "Finished doc tests"
+  block: # repeat tests
+    let
+      a = @[1, 2, 3]
+      b: seq[int] = @[]
+
+    doAssert a.repeat(3) == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+    doAssert a.repeat(0) == @[]
+    #doAssert a.repeat(-1) == @[] # will not compile!
+    doAssert b.repeat(3) == @[]
+
+  when not defined(testing):
+    echo "Finished doc tests"

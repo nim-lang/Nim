@@ -1,5 +1,5 @@
 discard """
-  ouput: '''foo
+  output: '''foo
 true'''
 """
 

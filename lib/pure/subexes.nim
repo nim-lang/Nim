@@ -353,11 +353,11 @@ when isMainModule:
 
   proc `%`(formatstr: string, a: openarray[string]): string =
     result = newStringOfCap(formatstr.len + a.len shl 4)
-    addf(result, formatstr.TSubex, a)
+    addf(result, formatstr.Subex, a)
 
   proc `%`(formatstr: string, a: string): string =
     result = newStringOfCap(formatstr.len + a.len)
-    addf(result, formatstr.TSubex, [a])
+    addf(result, formatstr.Subex, [a])
 
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
@@ -386,8 +386,13 @@ when isMainModule:
     longishA, 
     longish)"""
   
-  echo "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA", 
-    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]
+  assert "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
+    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"] ==
+    strutils.unindent """
+      type TMyEnum* = enum
+        fieldA, fieldB, 
+        FiledClkad, fieldD, 
+        fieldE, longishFieldName"""
   
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
   
@@ -395,7 +400,12 @@ when isMainModule:
   
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
   
-  echo subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
-    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]
+  assert subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
+    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"] ==
+    strutils.unindent """
+      type
+        TEnum = enum
+          fieldNameA, fieldNameB, fieldNameC, 
+          fieldNameD"""
   
   

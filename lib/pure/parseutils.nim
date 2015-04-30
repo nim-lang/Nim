@@ -181,7 +181,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   token = substr(s, start, i-1)
 
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
-  ## Finds the first occurence of ``first``, then returns everything from there
+  ## Finds the first occurrence of ``first``, then returns everything from there
   ## up to ``second``(if ``second`` is '\0', then ``first`` is used).
   var i = skipUntil(s, first, start)+1+start
   result = ""
@@ -228,7 +228,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   if (sizeof(int) <= 4) and
       ((res < low(int)) or (res > high(int))):
     raise newException(OverflowError, "overflow")
-  else:
+  elif result != 0:
     number = int(res)
 
 proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
@@ -240,11 +240,12 @@ proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
 proc parseFloat*(s: string, number: var float, start = 0): int {.
   rtl, extern: "npuParseFloat", noSideEffect.} =
   ## parses a float starting at `start` and stores the value into `number`.
-  ## Result is the number of processed chars or 0 if there occured a parsing
+  ## Result is the number of processed chars or 0 if there occurred a parsing
   ## error.
   var bf: BiggestFloat
   result = parseBiggestFloat(s, bf, start)
-  number = bf
+  if result != 0:
+    number = bf
   
 type
   InterpolatedKind* = enum   ## describes for `interpolatedFragments`
@@ -294,7 +295,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
             dec nesting
           of '\0':
             raise newException(ValueError, 
-              "Expected closing '}': " & s[i..s.len])
+              "Expected closing '}': " & substr(s, i, s.high))
           else: discard
           inc j
         inc i, 2 # skip ${
@@ -310,7 +311,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
         kind = ikDollar
       else:
         raise newException(ValueError, 
-          "Unable to parse a varible name at " & s[i..s.len])
+          "Unable to parse a varible name at " & substr(s, i, s.high))
     else:
       while j < s.len and s[j] != '$': inc j
       kind = ikStr
@@ -322,8 +323,12 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
     i = j
 
 when isMainModule:
-  for k, v in interpolatedFragments("$test{}  $this is ${an{  example}}  "):
-    echo "(", k, ", \"", v, "\")"
+  import sequtils
+  let input = "$test{}  $this is ${an{  example}}  "
+  let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
+                   (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
+  assert toSeq(interpolatedFragments(input)) == expected
+
   var value = 0
   discard parseHex("0x38", value)
   assert value == 56

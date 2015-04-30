@@ -7,7 +7,7 @@ from strutils import join
 type
   TFoo * = object
     id: int
-    func: proc(){.closure.}
+    fn: proc(){.closure.}
 var foo_counter = 0
 var alive_foos = newseq[int](0)
 
@@ -26,7 +26,7 @@ for i in 0 .. <10:
 
 for i in 0 .. <10:
   let f = newFoo()
-  f.func = proc = 
+  f.fn = proc = 
     echo f.id
 
 GC_fullcollect()

@@ -9,11 +9,13 @@
 
 ## This module contains the data structures for the C code generation phase.
 
-import 
+import
   ast, astalgo, ropes, passes, options, intsets, lists, platform
 
+from msgs import TLineInfo
+
 type
-  TLabel* = PRope             # for the C generator a label is just a rope
+  TLabel* = Rope             # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
     cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
@@ -43,34 +45,35 @@ type
     ctUInt, ctUInt8, ctUInt16, ctUInt32, ctUInt64,
     ctArray, ctPtrToArray, ctStruct, ctPtr, ctNimStr, ctNimSeq, ctProc,
     ctCString
-  TCFileSections* = array[TCFileSection, PRope] # represents a generated C file
+  TCFileSections* = array[TCFileSection, Rope] # represents a generated C file
   TCProcSection* = enum       # the sections a generated C proc consists of
     cpsLocals,                # section of local variables for C proc
     cpsInit,                  # section for init of variables for C proc
     cpsStmts                  # section of local statements for C proc
-  TCProcSections* = array[TCProcSection, PRope] # represents a generated C proc
+  TCProcSections* = array[TCProcSection, Rope] # represents a generated C proc
   BModule* = ref TCGen
   BProc* = ref TCProc
-  TBlock*{.final.} = object 
+  TBlock*{.final.} = object
     id*: int                  # the ID of the label; positive means that it
-    label*: PRope             # generated text for the label
+    label*: Rope             # generated text for the label
                               # nil if label is not used
     sections*: TCProcSections # the code beloging
     isLoop*: bool             # whether block is a loop
     nestedTryStmts*: int16    # how many try statements is it nested into
     nestedExceptStmts*: int16 # how many except statements is it nested into
     frameLen*: int16
-  
+
   TCProc{.final.} = object    # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
+    lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     nestedTryStmts*: seq[PNode]   # in how many nested try statements we are
                                   # (the vars must be volatile then)
     inExceptBlock*: int       # are we currently inside an except block?
                               # leaving such scopes by raise or by return must
                               # execute any applicable finally blocks
-    finallySafePoints*: seq[PRope]  # For correctly cleaning up exceptions when
+    finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                     # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
     blocks*: seq[TBlock]      # nested blocks
@@ -82,9 +85,12 @@ type
     maxFrameLen*: int         # max length of frame descriptor
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
+    splitDecls*: int          # > 0 if we are in some context for C++ that
+                              # requires 'T x = T()' to become 'T x; x = T()'
+                              # (yes, C++ is weird like that)
     gcFrameId*: Natural       # for the GC stack marking
-    gcFrameType*: PRope       # the struct {} we put the GC markers into
-  
+    gcFrameType*: Rope       # the struct {} we put the GC markers into
+
   TTypeSeq* = seq[PType]
   TCGen = object of TPassContext # represents a C source file
     module*: PSym
@@ -112,24 +118,24 @@ type
     dataCache*: TNodeTable
     forwardedProcs*: TSymSeq  # keep forwarded procs here
     typeNodes*, nimTypes*: int # used for type info generation
-    typeNodesName*, nimTypesName*: PRope # used for type info generation
+    typeNodesName*, nimTypesName*: Rope # used for type info generation
     labels*: Natural          # for generating unique module-scope names
-    extensionLoaders*: array['0'..'9', PRope] # special procs for the
+    extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                               # OpenGL wrapper
-    injectStmt*: PRope
+    injectStmt*: Rope
 
 var
-  mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: PRope
+  mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     # varuious parts of the main module
-  gMapping*: PRope             # the generated mapping file (if requested)
+  gMapping*: Rope             # the generated mapping file (if requested)
   gModules*: seq[BModule] = @[] # list of all compiled modules
   gForwardedProcsCounter*: int = 0
 
-proc s*(p: BProc, s: TCProcSection): var PRope {.inline.} =
+proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # section in the current block
   result = p.blocks[p.blocks.len - 1].sections[s]
 
-proc procSec*(p: BProc, s: TCProcSection): var PRope {.inline.} =
+proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
 
@@ -137,7 +143,7 @@ proc bmod*(module: PSym): BModule =
   # obtains the BModule for a given module PSym
   result = gModules[module.position]
 
-proc newProc*(prc: PSym, module: BModule): BProc = 
+proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
   result.module = module

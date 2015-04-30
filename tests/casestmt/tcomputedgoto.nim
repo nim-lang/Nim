@@ -15,7 +15,7 @@ yeah A enumB'''
 
 type
   MyEnum = enum
-    enumA, enumB, enumC, enumD, enumE
+    enumA, enumB, enumC, enumD, enumE, enumLast
 
 proc vm() =
   var instructions: array [0..100, MyEnum]
@@ -42,6 +42,7 @@ proc vm() =
       echo "yeah B ", ra
     of enumE:
       break
+    of enumLast: discard
     inc(pc)
-  
+
 vm()

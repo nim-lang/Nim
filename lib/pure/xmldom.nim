@@ -365,23 +365,21 @@ discard """proc getElementById*(doc: PDocument, elementId: string): PElement =
 proc getElementsByTagName*(doc: PDocument, tagName: string): seq[PNode] =
   ## Returns a NodeList of all the Elements with a given tag name in
   ## the order in which they are encountered in a preorder traversal of the Document tree.
-  var result: seq[PNode] = @[]
+  result = @[]
   if doc.fDocumentElement.fNodeName == tagName or tagName == "*":
     result.add(doc.fDocumentElement)
 
   result.add(doc.fDocumentElement.findNodes(tagName))
-  return result
 
 proc getElementsByTagNameNS*(doc: PDocument, namespaceURI: string, localName: string): seq[PNode] =
   ## Returns a NodeList of all the Elements with a given localName and namespaceURI
   ## in the order in which they are encountered in a preorder traversal of the Document tree.
-  var result: seq[PNode] = @[]
+  result = @[]
   if doc.fDocumentElement.fLocalName == localName or localName == "*":
     if doc.fDocumentElement.fNamespaceURI == namespaceURI or namespaceURI == "*":
       result.add(doc.fDocumentElement)
 
   result.add(doc.fDocumentElement.findNodesNS(namespaceURI, localName))
-  return result
 
 proc importNode*(doc: PDocument, importedNode: PNode, deep: bool): PNode =
   ## Imports a node from another document to this document
@@ -642,7 +640,7 @@ proc isEmpty(s: string): bool =
   return true
 
 proc normalize*(n: PNode) =
-  ## Merges all seperated TextNodes together, and removes any empty TextNodes
+  ## Merges all separated TextNodes together, and removes any empty TextNodes
   var curTextNode: PNode = nil
   var i: int = 0
 
@@ -677,7 +675,7 @@ proc removeChild*(n: PNode, oldChild: PNode): PNode =
       if n.childNodes[i] == oldChild:
         result = n.childNodes[i]
         n.childNodes.delete(i)
-        return result
+        return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -693,7 +691,7 @@ proc replaceChild*(n: PNode, newChild: PNode, oldChild: PNode): PNode =
       if n.childNodes[i] == oldChild:
         result = n.childNodes[i]
         n.childNodes[i] = newChild
-        return result
+        return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -740,7 +738,7 @@ proc removeNamedItem*(nList: var seq[PNode], name: string): PNode =
     if nList[i].fNodeName == name:
       result = nList[i]
       nList.delete(i)
-      return result
+      return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -750,7 +748,7 @@ proc removeNamedItemNS*(nList: var seq[PNode], namespaceURI: string, localName: 
     if nList[i].fLocalName == localName and nList[i].fNamespaceURI == namespaceURI:
       result = nList[i]
       nList.delete(i)
-      return result
+      return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -965,7 +963,7 @@ proc removeAttributeNode*(el: PElement, oldAttr: PAttr): PAttr =
       if el.attributes[i] == oldAttr:
         result = el.attributes[i]
         el.attributes.delete(i)
-        return result
+        return
 
   raise newException(ENotFoundErr, "oldAttr is not a member of el's Attributes")
 
@@ -1083,7 +1081,7 @@ proc addEscaped(s: string): string =
     else: result.add(c)
 
 proc nodeToXml(n: PNode, indent: int = 0): string =
-  result = repeatChar(indent, ' ') & "<" & n.nodeName
+  result = spaces(indent) & "<" & n.nodeName
   if not isNil(n.attributes):
     for i in items(n.attributes):
       result.add(" " & i.name & "=\"" & addEscaped(i.value) & "\"")
@@ -1098,23 +1096,23 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
       of ElementNode:
         result.add(nodeToXml(i, indent + 2))
       of TextNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add(addEscaped(i.nodeValue))
       of CDataSectionNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add("<![CDATA[" & i.nodeValue & "]]>")
       of ProcessingInstructionNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add("<?" & PProcessingInstruction(i).target & " " &
                           PProcessingInstruction(i).data & " ?>")
       of CommentNode:
-        result.add(repeatChar(indent * 2, ' '))
+        result.add(spaces(indent * 2))
         result.add("<!-- " & i.nodeValue & " -->")
       else:
         continue
       result.add("\n")
     # Add the ending tag - </tag>
-    result.add(repeatChar(indent, ' ') & "</" & n.nodeName & ">")
+    result.add(spaces(indent) & "</" & n.nodeName & ">")
 
 proc `$`*(doc: PDocument): string =
   ## Converts a PDocument object into a string representation of it's XML

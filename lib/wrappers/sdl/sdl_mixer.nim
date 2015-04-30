@@ -136,7 +136,7 @@
 #  Windows unit not used in this file, so it was removed to keep the code tidy.
 #
 #  Revision 1.3  2004/03/31 10:05:08  savage
-#  Better defines for Endianess under FreePascal and Borland compilers.
+#  Better defines for Endianness under FreePascal and Borland compilers.
 #
 #  Revision 1.2  2004/03/30 20:23:28  savage
 #  Tidied up use of UNIX compiler directive.

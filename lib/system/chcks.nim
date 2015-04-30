@@ -11,7 +11,7 @@
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noreturn, noinline.} =
   when hostOS == "standalone":
-    sysFatal(EOutOfRange, "value out of range")
+    sysFatal(RangeError, "value out of range")
   else:
     sysFatal(RangeError, "value out of range: ", $val)
 
@@ -44,7 +44,7 @@ proc chckRangeF(x, a, b: float): float =
     return x
   else:
     when hostOS == "standalone":
-      sysFatal(EOutOfRange, "value out of range")
+      sysFatal(RangeError, "value out of range")
     else:
       sysFatal(RangeError, "value out of range: ", $x)
 

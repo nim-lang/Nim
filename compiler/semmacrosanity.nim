@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -16,9 +16,9 @@ proc ithField(n: PNode, field: int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1): 
+    for i in countup(0, sonsLen(n) - 1):
       result = ithField(n.sons[i], field-i)
-      if result != nil: return 
+      if result != nil: return
   of nkRecCase:
     if n.sons[0].kind != nkSym: internalError(n.info, "ithField")
     result = ithField(n.sons[0], field-1)
@@ -34,7 +34,7 @@ proc ithField(n: PNode, field: int): PSym =
   else: discard
 
 proc annotateType*(n: PNode, t: PType) =
-  let x = t.skipTypes(abstractInst)
+  let x = t.skipTypes(abstractInst+{tyRange})
   # Note: x can be unequal to t and we need to be careful to use 't'
   # to not to skip tyGenericInst
   case n.kind
@@ -80,7 +80,7 @@ proc annotateType*(n: PNode, t: PType) =
     if x.kind in {tyString, tyCString}:
       n.typ = t
     else:
-      globalError(n.info, "string literal must be of some string type")    
+      globalError(n.info, "string literal must be of some string type")
   of nkNilLit:
     if x.kind in NilableTypes:
       n.typ = t

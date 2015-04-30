@@ -136,7 +136,7 @@ are also lots of procs that aid in debugging:
   debug(someType)
   echo symbol.name.s
   debug(symbol)
-  # pretty prints the nimrod ast, but annotates symbol IDs:
+  # pretty prints the Nim ast, but annotates symbol IDs:
   echo renderTree(someNode, {renderIds})
   if n.info ?? "temp.nim":
     # only output when it comes from "temp.nim"
@@ -145,6 +145,19 @@ are also lots of procs that aid in debugging:
     # why does it process temp.nim here?
     writeStackTrace()
 
+To create a new compiler for each run, use ``koch temp``::
+
+  ./koch temp c /tmp/test.nim
+
+``koch temp`` creates a debug build of the compiler, which is useful
+to create stacktraces for compiler debugging.
+
+``koch temp`` returns 125 as the exit code in case the compiler
+compilation fails. This exit code tells ``git bisect`` to skip the
+current commit.::
+
+  git bisect start bad-commit good-commit
+  git bisect ./koch -r c test-source.nim
 
 The compiler's architecture
 ===========================
@@ -223,7 +236,7 @@ too. Type converters fall into this category:
 
 If in the above example module ``B`` is re-compiled, but ``A`` is not then
 ``B`` needs to be aware of ``toBool`` even though  ``toBool`` is not referenced
-in ``B`` *explicitely*. 
+in ``B`` *explicitly*. 
 
 Both the multi method and the type converter problems are solved by storing 
 them in special sections in the ROD file that are loaded *unconditionally*
@@ -357,7 +370,7 @@ needed as the data structures needs to be rebuilt periodically anyway.
 
 Complete traversal is done in this way::
 
-  for each page decriptor d:
+  for each page descriptor d:
     for each bit in d:
       if bit == 1:
         traverse the pointer belonging to this bit
@@ -393,7 +406,7 @@ The generated code looks roughly like this:
     setRef(&r->left)
   }
 
-Note that for systems with a continous stack (which most systems have)
+Note that for systems with a continuous stack (which most systems have)
 the check whether the ref is on the stack is very cheap (only two
 comparisons).
 

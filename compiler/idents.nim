@@ -25,7 +25,7 @@ type
     next*: PIdent             # for hash-table chaining
     h*: THash                 # hash value of s
 
-var firstCharIsCS*: bool
+var firstCharIsCS*: bool = true
 var buckets*: array[0..4096 * 2 - 1, PIdent]
 
 proc cmpIgnoreStyle(a, b: cstring, blen: int): int =

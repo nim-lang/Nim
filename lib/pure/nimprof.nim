@@ -132,7 +132,7 @@ else:
   proc hook(st: TStackTrace) {.nimcall.} =
     if interval == 0:
       hookAux(st, 1)
-    elif getTicks() - t0 > interval:
+    elif int64(t0) == 0 or getTicks() - t0 > interval:
       hookAux(st, 1)
       t0 = getTicks()
 

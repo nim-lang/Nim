@@ -1,5 +1,5 @@
 #! stdtmpl | standard
-#proc generateInnoSetup(c: TConfigData): string =
+#proc generateInnoSetup(c: ConfigData): string =
 #  result = ""
 ; Default Template for NimInst
 [Setup]
@@ -19,7 +19,7 @@ ChangesEnvironment=yes
 Name: english; MessagesFile: compiler:Default.isl
 
 [Files] 
-  #for i in low(TFileCategory)..fcWindows:
+  #for i in low(FileCategory)..fcWindows:
   #  for f in items(c.cat[i]):
 Source: ${expandFilename(f).toWin}; DestDir: {app}\${splitFile(f).dir.toWin}; Flags: ignoreversion
   #  end for

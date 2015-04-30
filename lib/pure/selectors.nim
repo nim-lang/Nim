@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Dominik Picheta
+#        (c) Copyright 2015 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -23,7 +23,7 @@ proc `$`*(x: SocketHandle): string {.borrow.}
 
 type
   Event* = enum
-    EvRead, EvWrite
+    EvRead, EvWrite, EvError
 
   SelectorKey* = ref object
     fd*: SocketHandle
@@ -35,7 +35,7 @@ type
 when defined(nimdoc):
   type
     Selector* = ref object
-      ## An object which holds file descripters to be checked for read/write
+      ## An object which holds file descriptors to be checked for read/write
       ## status.
       fds: Table[SocketHandle, SelectorKey]
 
@@ -48,11 +48,20 @@ when defined(nimdoc):
                events: set[Event]): SelectorKey {.discardable.} =
     ## Updates the events which ``fd`` wants notifications for.
 
+  proc unregister*(s: Selector, fd: SocketHandle): SelectorKey {.discardable.} =
+    ## Unregisters file descriptor ``fd`` from selector ``s``.
+
+  proc close*(s: Selector) =
+    ## Closes the selector
+
   proc select*(s: Selector, timeout: int): seq[ReadyInfo] =
     ## The ``events`` field of the returned ``key`` contains the original events
     ## for which the ``fd`` was bound. This is contrary to the ``events`` field
     ## of the ``TReadyInfo`` tuple which determines which events are ready
     ## on the ``fd``.
+
+  proc newSelector*(): Selector =
+    ## Creates a new selector
 
   proc contains*(s: Selector, fd: SocketHandle): bool =
     ## Determines whether selector contains a file descriptor.
@@ -78,8 +87,6 @@ elif defined(linux):
   
   proc register*(s: Selector, fd: SocketHandle, events: set[Event],
       data: RootRef): SelectorKey {.discardable.} =
-    ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
-    ## ``events``.
     var event = createEventStruct(events, fd)
     if events != {}:
       if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
@@ -92,7 +99,6 @@ elif defined(linux):
   
   proc update*(s: Selector, fd: SocketHandle,
       events: set[Event]): SelectorKey {.discardable.} =
-    ## Updates the events which ``fd`` wants notifications for.
     if s.fds[fd].events != events:
       if events == {}:
         # This fd is idle -- it should not be registered to epoll.
@@ -146,12 +152,17 @@ elif defined(linux):
     ## on the ``fd``.
     result = @[]
     let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
-    if evNum < 0: raiseOSError(osLastError())
+    if evNum < 0:
+      let err = osLastError()
+      if err.cint == EINTR:
+        return @[]
+      raiseOSError(osLastError())
     if evNum == 0: return @[]
     for i in 0 .. <evNum:
       let fd = s.events[i].data.fd.SocketHandle
     
       var evSet: set[Event] = {}
+      if (s.events[i].events and EPOLLERR) != 0 or (s.events[i].events and EPOLLHUP) != 0: evSet = evSet + {EvError}
       if (s.events[i].events and EPOLLIN) != 0: evSet = evSet + {EvRead}
       if (s.events[i].events and EPOLLOUT) != 0: evSet = evSet + {EvWrite}
       let selectorKey = s.fds[fd]
@@ -199,7 +210,6 @@ elif not defined(nimdoc):
 
   proc update*(s: Selector, fd: SocketHandle,
       events: set[Event]): SelectorKey {.discardable.} =
-    ## Updates the events which ``fd`` wants notifications for.
     if not s.fds.hasKey(fd):
       raise newException(ValueError, "File descriptor not found.")
 
@@ -286,7 +296,7 @@ proc contains*(s: Selector, key: SelectorKey): bool =
    TReadyInfo: ReadyInfo, PSelector: Selector].}
 
 
-when isMainModule and not defined(nimdoc):
+when not defined(testing) and isMainModule and not defined(nimdoc):
   # Select()
   import sockets
   type
@@ -294,7 +304,7 @@ when isMainModule and not defined(nimdoc):
       sock: Socket
   
   var sock = socket()
-  if sock == sockets.InvalidSocket: raiseOSError(osLastError())
+  if sock == sockets.invalidSocket: raiseOSError(osLastError())
   #sock.setBlocking(false)
   sock.connect("irc.freenode.net", Port(6667))
   

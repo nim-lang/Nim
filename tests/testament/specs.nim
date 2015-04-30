@@ -1,7 +1,7 @@
 #
 #
 #            Nim Tester
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,13 +10,14 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 const
-  cmdTemplate* = r"nim $target --hints:on $options $file"
+  cmdTemplate* = r"nim $target --hints:on -d:testing $options $file"
 
 type
   TTestAction* = enum
     actionCompile = "compile"
     actionRun = "run"
     actionReject = "reject"
+    actionRunNoSpec = "runNoSpec"
   TResultEnum* = enum
     reNimcCrash,     # nim compiler seems to have crashed
     reMsgsDiffer,       # error messages differ
@@ -42,12 +43,14 @@ type
     action*: TTestAction
     file*, cmd*: string
     outp*: string
-    line*, exitCode*: int
+    line*, column*: int
+    exitCode*: int
     msg*: string
     ccodeCheck*: string
     err*: TResultEnum
     substr*, sortoutput*: bool
     targets*: set[TTarget]
+    nimout*: string
 
 const
   targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
@@ -76,7 +79,7 @@ proc extractSpec(filename: string): string =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template parseSpecAux(fillResult: stmt) {.immediate.} =
+template parseSpecAux(fillResult: untyped) =
   var ss = newStringStream(extractSpec(filename))
   var p {.inject.}: CfgParser
   open(p, ss, filename, 1)
@@ -90,12 +93,18 @@ template parseSpecAux(fillResult: stmt) {.immediate.} =
       fillResult
   close(p)
 
-proc parseSpec*(filename: string): TSpec =
-  result.file = filename
+proc specDefaults*(result: var TSpec) =
   result.msg = ""
   result.outp = ""
+  result.nimout = ""
   result.ccodeCheck = ""
   result.cmd = cmdTemplate
+  result.line = 0
+  result.column = 0
+
+proc parseSpec*(filename: string): TSpec =
+  specDefaults(result)
+  result.file = filename
   parseSpecAux:
     case normalize(e.key)
     of "action":
@@ -106,7 +115,8 @@ proc parseSpec*(filename: string): TSpec =
       else: echo ignoreMsg(p, e)
     of "file": result.file = e.value
     of "line": discard parseInt(e.value, result.line)
-    of "output": 
+    of "column": discard parseInt(e.value, result.column)
+    of "output":
       result.action = actionRun
       result.outp = e.value
     of "outputsub":
@@ -115,7 +125,7 @@ proc parseSpec*(filename: string): TSpec =
       result.substr = true
     of "sortoutput":
       result.sortoutput = parseCfgBool(e.value)
-    of "exitcode": 
+    of "exitcode":
       discard parseInt(e.value, result.exitCode)
     of "msg":
       result.msg = e.value
@@ -124,6 +134,8 @@ proc parseSpec*(filename: string): TSpec =
     of "errormsg":
       result.msg = e.value
       result.action = actionReject
+    of "nimout":
+      result.nimout = e.value
     of "disabled":
       if parseCfgBool(e.value): result.err = reIgnored
     of "cmd": result.cmd = e.value

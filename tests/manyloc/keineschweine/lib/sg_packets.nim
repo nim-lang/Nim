@@ -9,8 +9,8 @@ template idpacket(pktName, id, s2c, c2s: expr): stmt {.immediate, dirty.} =
   defPacket(`Sc pktName`, s2c)
   defPacket(`Cs pktName`, c2s)
 
-forwardPacketT(Uint8, int8)
-forwardPacketT(Uint16, int16)
+forwardPacketT(uint8, int8)
+forwardPacketT(uint16, int16)
 forwardPacketT(TPort, int16)
 
 idPacket(Login, 'a',
@@ -51,7 +51,7 @@ defPacket(ScTeamList, tuple[teams: seq[ScTeam]])
 let HTeamChange* = 't'
 
 idPacket(ZoneQuery, 'Q',
-  tuple[playerCount: Uint16], ##i should include a time here or something
+  tuple[playerCount: uint16], ##i should include a time here or something
   tuple[pad: char = '\0'])
 
 type SpawnKind = enum

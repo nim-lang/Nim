@@ -54,7 +54,7 @@ else:
     glRealType* = cGLfloat
 
 proc setUniformV4*[T](loc: GLint, vecs: var openarray[TV4[T]]) =
-  glUniform4fv(loc, vecs.len.GLsizei, cast[PGLfloat](vecs[0].addr))
+  glUniform4fv(loc, vecs.len.GLsizei, cast[ptr GLfloat](vecs[0].addr))
 
 proc setUniformV4*[T](loc: GLint, vec: TV4[T]) =
   var vecs = [vec]

@@ -28,8 +28,9 @@ proc hashTree(n: PNode): THash =
   of nkFloatLit..nkFloat64Lit:
     if (n.floatVal >= - 1000000.0) and (n.floatVal <= 1000000.0): 
       result = result !& toInt(n.floatVal)
-  of nkStrLit..nkTripleStrLit: 
-    result = result !& hash(n.strVal)
+  of nkStrLit..nkTripleStrLit:
+    if not n.strVal.isNil:
+      result = result !& hash(n.strVal)
   else: 
     for i in countup(0, sonsLen(n) - 1): 
       result = result !& hashTree(n.sons[i])

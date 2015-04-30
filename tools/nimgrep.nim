@@ -24,7 +24,7 @@ Options:
   --re                pattern is a regular expression (default); extended 
                       syntax for the regular expression is always turned on
   --recursive         process directories recursively
-  --confirm           confirm each occurence/replacement; there is a chance 
+  --confirm           confirm each occurrence/replacement; there is a chance 
                       to abort any time without touching the file
   --stdin             read pattern from stdin (to avoid the shell's confusing
                       quoting rules)
@@ -109,7 +109,7 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
   for i in t.last+1 .. y: stdout.write(s[i])
   stdout.write("\n")
   if showRepl:
-    stdout.write(repeatChar(alignment-1), "-> ")
+    stdout.write(spaces(alignment-1), "-> ")
     for i in x .. t.first-1: stdout.write(s[i])
     writeColored(repl)
     for i in t.last+1 .. y: stdout.write(s[i])

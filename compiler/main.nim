@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -18,12 +18,6 @@ import
   tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists
 
 from magicsys import systemModule, resetSysTypes
-
-const
-  hasLLVM_Backend = false
-
-when hasLLVM_Backend:
-  import llvmgen
 
 proc rodPass =
   if optSymbolFiles in gGlobalOptions:
@@ -60,20 +54,16 @@ proc commandDoc2 =
   finishDoc2Pass(gProjectName)
 
 proc commandCompileToC =
+  extccomp.initVars()
   semanticPasses()
   registerPass(cgenPass)
   rodPass()
   #registerPass(cleanupPass())
-  if optCaasEnabled in gGlobalOptions:
-    # echo "BEFORE CHECK DEP"
-    # discard checkDepMem(gProjectMainIdx)
-    # echo "CHECK DEP COMPLETE"
-    discard
 
   compileProject()
   cgenWriteModules()
   if gCmd != cmdRun:
-    extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
+    extccomp.callCCompiler(if gProjectName == "-": "stdinfile" else: changeFileExt(gProjectFull, ""))
 
   if isServing:
     # caas will keep track only of the compilation commands
@@ -110,14 +100,6 @@ proc commandCompileToC =
     resetCompilationLists()
     ccgutils.resetCaches()
     GC_fullCollect()
-
-when hasLLVM_Backend:
-  proc commandCompileToLLVM =
-    semanticPasses()
-    registerPass(llvmgen.llvmgenPass())
-    rodPass()
-    #registerPass(cleanupPass())
-    compileProject()
 
 proc commandCompileToJS =
   #incl(gGlobalOptions, optSafeCode)
@@ -188,20 +170,18 @@ proc commandSuggest =
     # cache in a state where "no recompilation is necessary", but the
     # cgen pass was never executed at all.
     commandCompileToC()
-    if gDirtyBufferIdx != 0:
-      discard compileModule(gDirtyBufferIdx, {sfDirty})
-      resetModule(gDirtyBufferIdx)
-    if optDef in gGlobalOptions:
-      defFromSourceMap(optTrackPos)
+    let gDirtyBufferIdx = gTrackPos.fileIndex
+    discard compileModule(gDirtyBufferIdx, {sfDirty})
+    resetModule(gDirtyBufferIdx)
   else:
     msgs.gErrorMax = high(int)  # do not stop after first error
     semanticPasses()
     rodPass()
     # XXX: this handles the case when the dirty buffer is the main file,
     # but doesn't handle the case when it's imported module
-    var projFile = if gProjectMainIdx == gDirtyOriginalIdx: gDirtyBufferIdx
-                   else: gProjectMainIdx
-    compileProject(projFile)
+    #var projFile = if gProjectMainIdx == gDirtyOriginalIdx: gDirtyBufferIdx
+    #               else: gProjectMainIdx
+    compileProject() #(projFile)
 
 proc resetMemory =
   resetCompilationLists()
@@ -232,7 +212,6 @@ proc resetMemory =
   # rodread.gMods
 
   # !! ropes.cache
-  # semthreads.computed?
   #
   # suggest.usageSym
   #
@@ -273,7 +252,6 @@ proc mainCommand* =
     commandCompileToC()
   of "cpp", "compiletocpp":
     gCmd = cmdCompileToCpp
-    if cCompiler == ccGcc: setCC("gcc")
     defineSymbol("cpp")
     commandCompileToC()
   of "objc", "compiletooc":
@@ -290,12 +268,6 @@ proc mainCommand* =
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
     commandCompileToJS()
-  of "compiletollvm":
-    gCmd = cmdCompileToLLVM
-    when hasLLVM_Backend:
-      CommandCompileToLLVM()
-    else:
-      rawMessage(errInvalidCommandX, command)
   of "doc":
     wantMainModule()
     gCmd = cmdDoc
@@ -392,7 +364,9 @@ proc mainCommand* =
       gVerbosity > 0):
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
-               formatSize(getTotalMem())])
+               formatSize(getTotalMem()),
+               if condSyms.isDefined("release"): "Release Build"
+               else: "Debug Build"])
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "

@@ -1,8 +1,14 @@
 discard """
   msg: "static 10\ndynamic\nstatic 20\n"
   output: "s\nd\nd\ns"
-  disabled: "true"
 """
+
+type
+  semistatic[T] =
+    static[T] or T
+
+template isStatic*(x): expr =
+  compiles(static(x))
 
 proc foo(x: semistatic[int]) =
   when isStatic(x):

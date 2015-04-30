@@ -48,6 +48,7 @@ proc dbError*(msg: string) {.noreturn.} =
   raise e
 
 proc dbQuote(s: string): string =
+  if s.isNil: return "NULL"
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
@@ -61,7 +62,7 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
     if c == '?':
       add(result, dbQuote(args[a]))
       inc(a)
-    else: 
+    else:
       add(result, c)
   
 proc tryExec*(db: TDbConn, query: TSqlQuery, 
@@ -191,8 +192,20 @@ proc open*(connection, user, password, database: string): TDbConn {.
     result = db
   else:
     dbError(db)
-   
-when isMainModule:
+
+proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+  tags: [FDb].} =
+  ## sets the encoding of a database connection, returns true for 
+  ## success, false for failure.
+  ##
+  ## Note that the encoding cannot be changed once it's been set.
+  ## According to SQLite3 documentation, any attempt to change 
+  ## the encoding after the database is created will be silently 
+  ## ignored.
+  exec(connection, sql"PRAGMA encoding = ?", [encoding])
+  result = connection.getValue(sql"PRAGMA encoding") == encoding
+
+when not defined(testing) and isMainModule:
   var db = open("db.sql", "", "", "")
   exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
   exec(db, sql"insert into tbl1 values('hello!',10)", [])

@@ -32,21 +32,12 @@
 ## the server.
 ##
 ## .. code-block:: Nim
-##   var headers: string = "Content-Type: multipart/form-data; boundary=xyz\c\L"
-##   var body: string = "--xyz\c\L"
-##   # soap 1.2 output
-##   body.add("Content-Disposition: form-data; name=\"output\"\c\L")
-##   body.add("\c\Lsoap12\c\L")
+##   var data = newMultipartData()
+##   data["output"] = "soap12"
+##   data["uploaded_file"] = ("test.html", "text/html",
+##     "<html><head></head><body><p>test</p></body></html>")
 ##
-##   # html
-##   body.add("--xyz\c\L")
-##   body.add("Content-Disposition: form-data; name=\"uploaded_file\";" &
-##            " filename=\"test.html\"\c\L")
-##   body.add("Content-Type: text/html\c\L")
-##   body.add("\c\L<html><head></head><body><p>test</p></body></html>\c\L")
-##   body.add("--xyz--")
-##
-##   echo(postContent("http://validator.w3.org/check", headers, body))
+##   echo postContent("http://validator.w3.org/check", multipart=data)
 ##
 ## Asynchronous HTTP requests
 ## ==========================
@@ -88,7 +79,7 @@
 ## constructor should be used for this purpose. However,
 ## currently only basic authentication is supported.
 
-import net, strutils, uri, parseutils, strtabs, base64, os
+import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
 import asyncnet, asyncdispatch
 import rawsockets
 
@@ -102,6 +93,10 @@ type
   Proxy* = ref object
     url*: Uri
     auth*: string
+
+  MultipartEntries* = openarray[tuple[name, content: string]]
+  MultipartData* = ref object
+    content: seq[string]
 
   ProtocolError* = object of IOError   ## exception that is raised when server
                                        ## does not conform to the implemented
@@ -232,7 +227,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       inc(linei, le)
       # Status code
       linei.inc skipWhitespace(line, linei)
-      result.status = line[linei .. -1]
+      result.status = line[linei .. ^1]
       parsedStatus = true
     else:
       # Parse headers
@@ -243,7 +238,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
 
-      result.headers[name] = line[linei.. -1].strip()
+      result.headers[name] = line[linei.. ^1].strip()
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
@@ -282,19 +277,126 @@ proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
   result = Proxy(url: parseUri(url), auth: auth)
 
-proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
-              body = "",
-              sslContext: SSLContext = defaultSSLContext,
-              timeout = -1, userAgent = defUserAgent,
-              proxy: Proxy = nil): Response =
-  ## | Requests ``url`` with the specified ``httpMethod``.
-  ## | Extra headers can be specified and must be seperated by ``\c\L``
+proc newMultipartData*: MultipartData =
+  ## Constructs a new ``MultipartData`` object.
+  MultipartData(content: @[])
+
+proc add*(p: var MultipartData, name, content: string, filename: string = nil,
+          contentType: string = nil) =
+  ## Add a value to the multipart data. Raises a `ValueError` exception if
+  ## `name`, `filename` or `contentType` contain newline characters.
+
+  if {'\c','\L'} in name:
+    raise newException(ValueError, "name contains a newline character")
+  if filename != nil and {'\c','\L'} in filename:
+    raise newException(ValueError, "filename contains a newline character")
+  if contentType != nil and {'\c','\L'} in contentType:
+    raise newException(ValueError, "contentType contains a newline character")
+
+  var str = "Content-Disposition: form-data; name=\"" & name & "\""
+  if filename != nil:
+    str.add("; filename=\"" & filename & "\"")
+  str.add("\c\L")
+  if contentType != nil:
+    str.add("Content-Type: " & contentType & "\c\L")
+  str.add("\c\L" & content & "\c\L")
+
+  p.content.add(str)
+
+proc add*(p: var MultipartData, xs: MultipartEntries): MultipartData
+         {.discardable.} =
+  ## Add a list of multipart entries to the multipart data `p`. All values are
+  ## added without a filename and without a content type.
+  ##
+  ## .. code-block:: Nim
+  ##   data.add({"action": "login", "format": "json"})
+  for name, content in xs.items:
+    p.add(name, content)
+  result = p
+
+proc newMultipartData*(xs: MultipartEntries): MultipartData =
+  ## Create a new multipart data object and fill it with the entries `xs`
+  ## directly.
+  ##
+  ## .. code-block:: Nim
+  ##   var data = newMultipartData({"action": "login", "format": "json"})
+  result = MultipartData(content: @[])
+  result.add(xs)
+
+proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
+              MultipartData {.discardable.} =
+  ## Add files to a multipart data object. The file will be opened from your
+  ## disk, read and sent with the automatically determined MIME type. Raises an
+  ## `IOError` if the file cannot be opened or reading fails. To manually
+  ## specify file content, filename and MIME type, use `[]=` instead.
+  ##
+  ## .. code-block:: Nim
+  ##   data.addFiles({"uploaded_file": "public/test.html"})
+  var m = newMimetypes()
+  for name, file in xs.items:
+    var contentType: string
+    let (dir, fName, ext) = splitFile(file)
+    if ext.len > 0:
+      contentType = m.getMimetype(ext[1..ext.high], nil)
+    p.add(name, readFile(file), fName & ext, contentType)
+  result = p
+
+proc `[]=`*(p: var MultipartData, name, content: string) =
+  ## Add a multipart entry to the multipart data `p`. The value is added
+  ## without a filename and without a content type.
+  ##
+  ## .. code-block:: Nim
+  ##   data["username"] = "NimUser"
+  p.add(name, content)
+
+proc `[]=`*(p: var MultipartData, name: string,
+            file: tuple[name, contentType, content: string]) =
+  ## Add a file to the multipart data `p`, specifying filename, contentType and
+  ## content manually.
+  ##
+  ## .. code-block:: Nim
+  ##   data["uploaded_file"] = ("test.html", "text/html",
+  ##     "<html><head></head><body><p>test</p></body></html>")
+  p.add(name, file.content, file.name, file.contentType)
+
+proc format(p: MultipartData): tuple[header, body: string] =
+  if p == nil or p.content == nil or p.content.len == 0:
+    return ("", "")
+
+  # Create boundary that is not in the data to be formatted
+  var bound: string
+  while true:
+    bound = $random(int.high)
+    var found = false
+    for s in p.content:
+      if bound in s:
+        found = true
+    if not found:
+      break
+
+  result.header = "Content-Type: multipart/form-data; boundary=" & bound & "\c\L"
+  result.body = ""
+  for s in p.content:
+    result.body.add("--" & bound & "\c\L" & s)
+  result.body.add("--" & bound & "--\c\L")
+
+proc request*(url: string, httpMethod: string, extraHeaders = "",
+              body = "", sslContext = defaultSSLContext, timeout = -1,
+              userAgent = defUserAgent, proxy: Proxy = nil): Response =
+  ## | Requests ``url`` with the custom method string specified by the
+  ## | ``httpMethod`` parameter.
+  ## | Extra headers can be specified and must be separated by ``\c\L``
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
-  var headers = substr($httpMethod, len("http"))
+  var headers = substr(httpMethod, len("http"))
+  # TODO: Use generateHeaders further down once it supports proxies.
   if proxy == nil:
-    headers.add(" /" & r.path & r.query)
+    headers.add ' '
+    if r.path[0] != '/': headers.add '/'
+    headers.add(r.path)
+    if r.query.len > 0:
+      headers.add("?" & r.query)
   else:
     headers.add(" " & url)
 
@@ -330,8 +432,18 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
   if body != "":
     s.send(body)
 
-  result = parseResponse(s, httpMethod != httpHEAD, timeout)
+  result = parseResponse(s, httpMethod != "httpHEAD", timeout)
   s.close()
+
+proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
+              body = "", sslContext = defaultSSLContext, timeout = -1,
+              userAgent = defUserAgent, proxy: Proxy = nil): Response =
+  ## | Requests ``url`` with the specified ``httpMethod``.
+  ## | Extra headers can be specified and must be separated by ``\c\L``
+  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## server takes longer than specified an ETimeout exception will be raised.
+  result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout,
+                   userAgent, proxy)
 
 proc redirection(status: string): bool =
   const redirectionNRs = ["301", "302", "303", "307"]
@@ -387,22 +499,37 @@ proc post*(url: string, extraHeaders = "", body = "",
            maxRedirects = 5,
            sslContext: SSLContext = defaultSSLContext,
            timeout = -1, userAgent = defUserAgent,
-           proxy: Proxy = nil): Response =
+           proxy: Proxy = nil,
+           multipart: MultipartData = nil): Response =
   ## | POSTs ``body`` to the ``url`` and returns a ``Response`` object.
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
-  var xh = extraHeaders & "Content-Length: " & $len(body) & "\c\L"
-  result = request(url, httpPOST, xh, body, sslContext, timeout, userAgent,
+  ## | The optional ``multipart`` parameter can be used to create
+  ## ``multipart/form-data`` POSTs comfortably.
+  let (mpHeaders, mpBody) = format(multipart)
+
+  template withNewLine(x): expr =
+    if x.len > 0 and not x.endsWith("\c\L"):
+      x & "\c\L"
+    else:
+      x
+
+  var xb = mpBody.withNewLine() & body
+
+  var xh = extraHeaders.withNewLine() & mpHeaders.withNewLine() &
+    withNewLine("Content-Length: " & $len(xb))
+
+  result = request(url, httpPOST, xh, xb, sslContext, timeout, userAgent,
                    proxy)
   var lastUrl = ""
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": httpGet else: httpPost
-      result = request(redirectTo, meth, xh, body, sslContext, timeout,
+      result = request(redirectTo, meth, xh, xb, sslContext, timeout,
                        userAgent, proxy)
       lastUrl = redirectTo
 
@@ -410,14 +537,17 @@ proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
                   sslContext: SSLContext = defaultSSLContext,
                   timeout = -1, userAgent = defUserAgent,
-                  proxy: Proxy = nil): string =
+                  proxy: Proxy = nil,
+                  multipart: MultipartData = nil): string =
   ## | POSTs ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in miliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
+  ## | The optional ``multipart`` parameter can be used to create
+  ## ``multipart/form-data`` POSTs comfortably.
   var r = post(url, extraHeaders, body, maxRedirects, sslContext, timeout,
-               userAgent, proxy)
+               userAgent, proxy, multipart)
   if r.status[0] in {'4','5'}:
     raise newException(HttpRequestError, r.status)
   else:
@@ -438,11 +568,16 @@ proc downloadFile*(url: string, outputFilename: string,
   else:
     fileError("Unable to open file")
 
-proc generateHeaders(r: Uri, httpMethod: HttpMethod,
+proc generateHeaders(r: Uri, httpMethod: string,
                      headers: StringTableRef): string =
-  result = substr($httpMethod, len("http"))
+  # TODO: Use this in the blocking HttpClient once it supports proxies.
+  result = substr(httpMethod, len("http"))
   # TODO: Proxies
-  result.add(" /" & r.path & r.query)
+  result.add ' '
+  if r.path[0] != '/': result.add '/'
+  result.add(r.path)
+  if r.query.len > 0:
+    result.add("?" & r.query)
   result.add(" HTTP/1.1\c\L")
 
   add(result, "Host: " & r.hostname & "\c\L")
@@ -590,7 +725,7 @@ proc parseResponse(client: AsyncHttpClient,
       inc(linei, le)
       # Status code
       linei.inc skipWhitespace(line, linei)
-      result.status = line[linei .. -1]
+      result.status = line[linei .. ^1]
       parsedStatus = true
     else:
       # Parse headers
@@ -601,7 +736,7 @@ proc parseResponse(client: AsyncHttpClient,
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
 
-      result.headers[name] = line[linei.. -1].strip()
+      result.headers[name] = line[linei.. ^1].strip()
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
@@ -635,10 +770,10 @@ proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
     client.currentURL = url
     client.connected = true
 
-proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
+proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
               body = ""): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a request
-  ## using the method specified.
+  ## using the custom method string specified by ``httpMethod``.
   ##
   ## Connection will kept alive. Further requests on the same ``client`` to
   ## the same hostname will not require a new connection to be made. The
@@ -651,13 +786,25 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
     client.headers["User-Agent"] = client.userAgent
 
-  var headers = generateHeaders(r, httpMethod, client.headers)
+  var headers = generateHeaders(r, $httpMethod, client.headers)
 
   await client.socket.send(headers)
   if body != "":
     await client.socket.send(body)
 
-  result = await parseResponse(client, httpMethod != httpHEAD)
+  result = await parseResponse(client, httpMethod != "httpHEAD")
+
+proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
+              body = ""): Future[Response] =
+  ## Connects to the hostname specified by the URL and performs a request
+  ## using the method specified.
+  ##
+  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## the same hostname will not require a new connection to be made. The
+  ## connection can be closed by using the ``close`` procedure.
+  ##
+  ## The returned future will complete once the request is completed.
+  result = request(client, url, $httpMethod, body)
 
 proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a GET request.
@@ -672,7 +819,7 @@ proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
       result = await client.request(redirectTo, httpGET)
       lastUrl = redirectTo
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   when true:
     # Async
     proc main() {.async.} =
@@ -706,18 +853,9 @@ when isMainModule:
     #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
     #  charset=%28detect+automatically%29&doctype=Inline&group=0")
 
-    var headers: string = "Content-Type: multipart/form-data; boundary=xyz\c\L"
-    var body: string = "--xyz\c\L"
-    # soap 1.2 output
-    body.add("Content-Disposition: form-data; name=\"output\"\c\L")
-    body.add("\c\Lsoap12\c\L")
+    var data = newMultipartData()
+    data["output"] = "soap12"
+    data["uploaded_file"] = ("test.html", "text/html",
+      "<html><head></head><body><p>test</p></body></html>")
 
-    # html
-    body.add("--xyz\c\L")
-    body.add("Content-Disposition: form-data; name=\"uploaded_file\";" &
-             " filename=\"test.html\"\c\L")
-    body.add("Content-Type: text/html\c\L")
-    body.add("\c\L<html><head></head><body><p>test</p></body></html>\c\L")
-    body.add("--xyz--")
-
-    echo(postContent("http://validator.w3.org/check", headers, body))
+    echo postContent("http://validator.w3.org/check", multipart=data)

@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Dominik Picheta
+#        (c) Copyright 2015 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,7 +12,7 @@
 
 import macros
 
-proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
+proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   #echo treeRepr(p)
   #echo treeRepr(b)
   result = newNimNode(nnkProcTy)
@@ -44,7 +44,7 @@ proc createProcType(p, b: PNimrodNode): PNimrodNode {.compileTime.} =
     formalParams.add identDefs
   else:
     error("Incorrect type list in proc type declaration.")
-  
+
   result.add formalParams
   result.add newEmptyNode()
   #echo(treeRepr(result))
@@ -59,10 +59,10 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
   ##     f(2, 2)
   ##
   ##   passTwoAndTwo((x, y) => x + y) # 4
-  
+
   #echo treeRepr(p)
   #echo(treeRepr(b))
-  var params: seq[PNimrodNode] = @[newIdentNode("auto")]
+  var params: seq[NimNode] = @[newIdentNode("auto")]
 
   case p.kind
   of nnkPar:
@@ -118,7 +118,7 @@ macro `->`*(p, b: expr): expr {.immediate.} =
   ##
   ##   proc pass2(f: (float, float) -> float): float =
   ##     f(2, 2)
-  ##   
+  ##
   ##   # is the same as:
   ##
   ##   proc pass2(f: proc (x, y: float): float): float =
@@ -155,7 +155,6 @@ macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
 
   for i in countdown(comp[2].len-1, 0):
     let x = comp[2][i]
-    expectKind(x, nnkInfix)
     expectMinLen(x, 1)
     if x[0].kind == nnkIdent and $x[0].ident == "<-":
       expectLen(x, 3)

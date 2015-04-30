@@ -27,7 +27,7 @@ integrations <https://github.com/Araq/Nim/wiki/Editor-Support>`_
 already available.
 
 
-Idetools invokation
+Idetools invocation
 ===================
 
 Specifying the location of the query
@@ -35,7 +35,7 @@ Specifying the location of the query
 
 All of the available idetools commands require you to specify a
 query location through the ``--track`` or ``--trackDirty`` switches.
-The general idetools invokations are::
+The general idetools invocations are::
 
     nim idetools --track:FILE,LINE,COL <switches> proj.nim
 
@@ -129,7 +129,7 @@ the suggestions sorted first by scope (from innermost to outermost)
 and then by item name.
 
 
-Invokation context
+Invocation context
 ------------------
 
 The ``--context`` idetools switch is very similar to the suggestions
@@ -145,7 +145,7 @@ The ``--usages`` idetools switch lists all usages of the symbol at
 a position. IDEs can use this to find all the places in the file
 where the symbol is used and offer the user to rename it in all
 places at the same time. Again, a pure string based search and
-replace may catch symbols out of the scope of a funcion/loop.
+replace may catch symbols out of the scope of a function/loop.
 
 For this kind of query the IDE will most likely ignore all the
 type/signature info provided by idetools and concentrate on the
@@ -163,7 +163,7 @@ running/debugged user project.
 Compiler as a service (CAAS)
 ============================
 
-The ocasional use of idetools is acceptable for things like
+The occasional use of idetools is acceptable for things like
 definitions, where the user puts the cursor on a symbol or double
 clicks it and after a second or two the IDE displays where that
 symbol is defined. Such latencies would be terrible for features
@@ -213,7 +213,7 @@ tab characters (``\t``). The values of each column are:
    ``proj.symbolName``.
 4. Type/signature. For variables and enums this will contain the
    type of the symbol, for procs, methods and templates this will
-   contain the full unique signature (e.g. ``proc (TFile)``).
+   contain the full unique signature (e.g. ``proc (File)``).
 5. Full path to the file containing the symbol.
 6. Line where the symbol is located in the file. Lines start to
    count at **1**.
@@ -258,8 +258,8 @@ skEnumField
 
 .. code-block:: nim
     Open(filename, fmWrite)
-    --> col 2: system.TFileMode.fmWrite
-        col 3: TFileMode
+    --> col 2: system.FileMode.fmWrite
+        col 3: FileMode
         col 7: ""
 
 
@@ -296,7 +296,7 @@ posterior instances of the iterator.
       text = "some text"
       letters = toSeq(runes(text))
     --> col 2: unicode.runes
-        col 3: iterator (string): TRune
+        col 3: iterator (string): Rune
         col 7: "iterates over any unicode character of the string `s`."
 
 
@@ -421,9 +421,9 @@ returned by idetools returns also the pragmas for the proc.
 | **Docstring**: docstring if available.
 
 .. code-block:: nim
-    Open(filename, fmWrite)
+    open(filename, fmWrite)
     --> col 2: system.Open
-        col 3: proc (var TFile, string, TFileMode, int): bool
+        col 3: proc (var File, string, FileMode, int): bool
         col 7:
     "Opens a file named `filename` with given `mode`.
 
@@ -487,9 +487,9 @@ skType
 
 .. code-block:: nim
     proc writeTempFile() =
-      var output: TFile
-    --> col 2: system.TFile
-        col 3: TFile
+      var output: File
+    --> col 2: system.File
+        col 3: File
         col 7: ""
 
 
@@ -502,11 +502,11 @@ skVar
 
 .. code-block:: nim
     proc writeTempFile() =
-      var output: TFile
+      var output: File
       output.open("/tmp/somefile", fmWrite)
       output.write("test")
     --> col 2: $MODULE.writeTempFile.output
-        col 3: TFile
+        col 3: File
         col 7: ""
 
 
@@ -533,10 +533,10 @@ run it manually. First you have to compile the tester::
 Running the ``caasdriver`` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds
 nothing will be printed and the process will exit with zero. If any
-test fails, the specific line of the test preceeding the failure
+test fails, the specific line of the test preceding the failure
 and the failure itself will be dumped to stdout, along with a final
 indicator of the success state and operation mode. You can pass the
-parameter ``verbose`` to force all output even on successfull tests.
+parameter ``verbose`` to force all output even on successful tests.
 
 The normal operation mode is called ``ProcRun`` and it involves
 starting a process for each command or query, similar to running

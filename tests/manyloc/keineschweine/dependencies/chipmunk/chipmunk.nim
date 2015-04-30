@@ -74,7 +74,7 @@ type
     contacts*: PContact
     stamp*: TTimestamp
     handler*: PCollisionHandler
-    swappedColl*: bool32
+    swappedColl*: Bool32
     state*: TArbiterState
   PCollisionHandler* = ptr TCollisionHandler
   TCollisionHandler*{.pf.} = object 
@@ -108,7 +108,7 @@ type
   #/ Collision begin event function callback type.
   #/ Returning false from a begin callback causes the collision to be ignored until
   #/ the the separate callback is called when the objects stop colliding.
-  TCollisionBeginFunc* = proc (arb: PArbiter; space: PSpace; data: pointer): Bool{.
+  TCollisionBeginFunc* = proc (arb: PArbiter; space: PSpace; data: pointer): bool{.
       cdecl.}
   #/ Collision pre-solve event function callback type.
   #/ Returning false from a pre-step callback causes the collision to be ignored until the next step.
@@ -142,14 +142,14 @@ type
   PSpatialIndex = ptr TSpatialIndex
   TSpatialIndex{.pf.} = object 
     klass: PSpatialIndexClass
-    bbfunc: TSpatialIndexBBFunc
+    bbfun: TSpatialIndexBBFunc
     staticIndex: PSpatialIndex
     dynamicIndex: PSpatialIndex
 
   TSpatialIndexDestroyImpl* = proc (index: PSpatialIndex){.cdecl.}
   TSpatialIndexCountImpl* = proc (index: PSpatialIndex): cint{.cdecl.}
   TSpatialIndexEachImpl* = proc (index: PSpatialIndex; 
-                                 func: TSpatialIndexIteratorFunc; data: pointer){.
+                                 fun: TSpatialIndexIteratorFunc; data: pointer){.
       cdecl.}
   TSpatialIndexContainsImpl* = proc (index: PSpatialIndex; obj: pointer; 
                                      hashid: THashValue): Bool32 {.cdecl.}
@@ -161,15 +161,15 @@ type
   TSpatialIndexReindexObjectImpl* = proc (index: PSpatialIndex; 
       obj: pointer; hashid: THashValue){.cdecl.}
   TSpatialIndexReindexQueryImpl* = proc (index: PSpatialIndex; 
-      func: TSpatialIndexQueryFunc; data: pointer){.cdecl.}
+      fun: TSpatialIndexQueryFunc; data: pointer){.cdecl.}
   TSpatialIndexPointQueryImpl* = proc (index: PSpatialIndex; point: TVector; 
-                                       func: TSpatialIndexQueryFunc; 
+                                       fun: TSpatialIndexQueryFunc; 
                                        data: pointer){.cdecl.}
   TSpatialIndexSegmentQueryImpl* = proc (index: PSpatialIndex; obj: pointer; 
-      a: TVector; b: TVector; t_exit: CpFloat; func: TSpatialIndexSegmentQueryFunc; 
+      a: TVector; b: TVector; t_exit: CpFloat; fun: TSpatialIndexSegmentQueryFunc; 
       data: pointer){.cdecl.}
   TSpatialIndexQueryImpl* = proc (index: PSpatialIndex; obj: pointer; 
-                                  bb: TBB; func: TSpatialIndexQueryFunc; 
+                                  bb: TBB; fun: TSpatialIndexQueryFunc; 
                                   data: pointer){.cdecl.}
   PSpatialIndexClass* = ptr TSpatialIndexClass
   TSpatialIndexClass*{.pf.} = object 
@@ -279,14 +279,14 @@ type
   PSegmentQueryInfo* = ptr TSegmentQueryInfo
   #/ Segment query info struct.
   TSegmentQueryInfo*{.pf.} = object 
-    shape*: PShape         #/ The shape that was hit, NULL if no collision occured.
+    shape*: PShape         #/ The shape that was hit, NULL if no collision occurred.
     t*: CpFloat            #/ The normalized distance along the query segment in the range [0, 1].
     n*: TVector            #/ The normal of the surface hit.
   TShapeType*{.size: sizeof(cint).} = enum 
     CP_CIRCLE_SHAPE, CP_SEGMENT_SHAPE, CP_POLY_SHAPE, CP_NUM_SHAPES
   TShapeCacheDataImpl* = proc (shape: PShape; p: TVector; rot: TVector): TBB{.cdecl.}
   TShapeDestroyImpl* = proc (shape: PShape){.cdecl.}
-  TShapePointQueryImpl* = proc (shape: PShape; p: TVector): bool32 {.cdecl.}
+  TShapePointQueryImpl* = proc (shape: PShape; p: TVector): Bool32 {.cdecl.}
   TShapeSegmentQueryImpl* = proc (shape: PShape; a: TVector; b: TVector; 
                                   info: PSegmentQueryInfo){.cdecl.}
   PShapeClass* = ptr TShapeClass
@@ -427,7 +427,7 @@ defGetter(PSpace, CpFloat, currDt, CurrentTimeStep)
 
 
 #/ returns true from inside a callback and objects cannot be added/removed.
-proc isLocked*(space: PSpace): Bool{.inline.} = 
+proc isLocked*(space: PSpace): bool{.inline.} = 
   result = space.locked.bool
 
 #/ Set a default collision handler for this space.
@@ -478,24 +478,24 @@ proc removeBody*(space: PSpace; body: PBody){.
 proc RemoveConstraint*(space: PSpace; constraint: PConstraint){.
   cdecl, importc: "cpSpaceRemoveConstraint", dynlib: Lib.}
 #/ Test if a collision shape has been added to the space.
-proc containsShape*(space: PSpace; shape: PShape): Bool{.
+proc containsShape*(space: PSpace; shape: PShape): bool{.
   cdecl, importc: "cpSpaceContainsShape", dynlib: Lib.}
 #/ Test if a rigid body has been added to the space.
-proc containsBody*(space: PSpace; body: PBody): Bool{.
+proc containsBody*(space: PSpace; body: PBody): bool{.
   cdecl, importc: "cpSpaceContainsBody", dynlib: Lib.}
 #/ Test if a constraint has been added to the space.
 
-proc containsConstraint*(space: PSpace; constraint: PConstraint): Bool{.
+proc containsConstraint*(space: PSpace; constraint: PConstraint): bool{.
   cdecl, importc: "cpSpaceContainsConstraint", dynlib: Lib.}
 #/ Schedule a post-step callback to be called when cpSpaceStep() finishes.
 #/ @c obj is used a key, you can only register one callback per unique value for @c obj
-proc addPostStepCallback*(space: PSpace; func: TPostStepFunc; 
+proc addPostStepCallback*(space: PSpace; fun: TPostStepFunc; 
                                obj: pointer; data: pointer){.
   cdecl, importc: "cpSpaceAddPostStepCallback", dynlib: Lib.}
                                         
 #/ Query the space at a point and call @c func for each shape found.
 proc pointQuery*(space: PSpace; point: TVector; layers: TLayers; 
-                      group: TGroup; func: TSpacePointQueryFunc; data: pointer){.
+                      group: TGroup; fun: TSpacePointQueryFunc; data: pointer){.
   cdecl, importc: "cpSpacePointQuery", dynlib: Lib.}
 
 #/ Query the space at a point and return the first shape found. Returns NULL if no shapes were found.
@@ -506,7 +506,7 @@ proc pointQueryFirst*(space: PSpace; point: TVector; layers: TLayers;
 #/ Perform a directed line segment query (like a raycast) against the space calling @c func for each shape intersected.
 proc segmentQuery*(space: PSpace; start: TVector; to: TVector; 
                     layers: TLayers; group: TGroup; 
-                    func: TSpaceSegmentQueryFunc; data: pointer){.
+                    fun: TSpaceSegmentQueryFunc; data: pointer){.
   cdecl, importc: "cpSpaceSegmentQuery", dynlib: Lib.}
 #/ Perform a directed line segment query (like a raycast) against the space and return the first shape hit. Returns NULL if no shapes were hit.
 proc segmentQueryFirst*(space: PSpace; start: TVector; to: TVector; 
@@ -517,26 +517,26 @@ proc segmentQueryFirst*(space: PSpace; start: TVector; to: TVector;
 #/ Perform a fast rectangle query on the space calling @c func for each shape found.
 #/ Only the shape's bounding boxes are checked for overlap, not their full shape.
 proc BBQuery*(space: PSpace; bb: TBB; layers: TLayers; group: TGroup; 
-                   func: TSpaceBBQueryFunc; data: pointer){.
+                   fun: TSpaceBBQueryFunc; data: pointer){.
   cdecl, importc: "cpSpaceBBQuery", dynlib: Lib.}
 
 #/ Query a space for any shapes overlapping the given shape and call @c func for each shape found.
-proc shapeQuery*(space: PSpace; shape: PShape; func: TSpaceShapeQueryFunc; data: pointer): Bool {.
+proc shapeQuery*(space: PSpace; shape: PShape; fun: TSpaceShapeQueryFunc; data: pointer): bool {.
   cdecl, importc: "cpSpaceShapeQuery", dynlib: Lib.}
 #/ Call cpBodyActivate() for any shape that is overlaps the given shape.
 proc activateShapesTouchingShape*(space: PSpace; shape: PShape){.
     cdecl, importc: "cpSpaceActivateShapesTouchingShape", dynlib: Lib.}
 
 #/ Call @c func for each body in the space.
-proc eachBody*(space: PSpace; func: TSpaceBodyIteratorFunc; data: pointer){.
+proc eachBody*(space: PSpace; fun: TSpaceBodyIteratorFunc; data: pointer){.
   cdecl, importc: "cpSpaceEachBody", dynlib: Lib.}
 
 #/ Call @c func for each shape in the space.
-proc eachShape*(space: PSpace; func: TSpaceShapeIteratorFunc; 
+proc eachShape*(space: PSpace; fun: TSpaceShapeIteratorFunc; 
                      data: pointer){.
   cdecl, importc: "cpSpaceEachShape", dynlib: Lib.}
 #/ Call @c func for each shape in the space.
-proc eachConstraint*(space: PSpace; func: TSpaceConstraintIteratorFunc; 
+proc eachConstraint*(space: PSpace; fun: TSpaceConstraintIteratorFunc; 
                           data: pointer){.
   cdecl, importc: "cpSpaceEachConstraint", dynlib: Lib.}
 #/ Update the collision detection info for the static shapes in the space.
@@ -674,7 +674,7 @@ proc dist*(v1, v2: TVector): CpFloat {.inline.} =
 proc distsq*(v1, v2: TVector): CpFloat {.inline.} = 
   result = (v1 - v2).lenSq  #vlengthsq(vsub(v1, v2))
 #/ Returns true if the distance between v1 and v2 is less than dist.
-proc near*(v1, v2: TVector; dist: CpFloat): Bool{.inline.} = 
+proc near*(v1, v2: TVector; dist: CpFloat): bool{.inline.} = 
   result = v1.distSq(v2) < dist * dist
 
 
@@ -706,13 +706,13 @@ proc Sleep*(body: PBody){.importc: "cpBodySleep", dynlib: Lib.}
 proc SleepWithGroup*(body: PBody; group: PBody){.
     importc: "cpBodySleepWithGroup", dynlib: Lib.}
 #/ Returns true if the body is sleeping.
-proc isSleeping*(body: PBody): Bool {.inline.} = 
+proc isSleeping*(body: PBody): bool {.inline.} = 
   return body.node.root != nil
 #/ Returns true if the body is static.
 proc isStatic*(body: PBody): bool {.inline.} = 
   return body.node.idleTime == CpInfinity
 #/ Returns true if the body has not been added to a space.
-proc isRogue*(body: PBody): Bool {.inline.} = 
+proc isRogue*(body: PBody): bool {.inline.} = 
   return body.space == nil
 
 # #define CP_DefineBodyStructGetter(type, member, name) \
@@ -808,15 +808,15 @@ proc kineticEnergy*(body: PBOdy): CpFloat =
   result = (body.v.dot(body.v) * body.m) + (body.w * body.w * body.i)
 
 #/ Call @c func once for each shape attached to @c body and added to the space.
-proc eachShape*(body: PBody; func: TBodyShapeIteratorFunc; 
+proc eachShape*(body: PBody; fun: TBodyShapeIteratorFunc; 
                       data: pointer){.
   cdecl, importc: "cpBodyEachShape", dynlib: Lib.}
 #/ Call @c func once for each constraint attached to @c body and added to the space.
-proc eachConstraint*(body: PBody; func: TBodyConstraintIteratorFunc; 
+proc eachConstraint*(body: PBody; fun: TBodyConstraintIteratorFunc; 
                            data: pointer) {.
   cdecl, importc: "cpBodyEachConstraint", dynlib: Lib.}
 #/ Call @c func once for each arbiter that is currently active on the body.
-proc eachArbiter*(body: PBody; func: TBodyArbiterIteratorFunc; 
+proc eachArbiter*(body: PBody; fun: TBodyArbiterIteratorFunc; 
                         data: pointer){.
   cdecl, importc: "cpBodyEachArbiter", dynlib: Lib.}
 #/ Allocate a spatial hash.
@@ -824,10 +824,10 @@ proc SpaceHashAlloc*(): PSpaceHash{.
   cdecl, importc: "cpSpaceHashAlloc", dynlib: Lib.}
 #/ Initialize a spatial hash. 
 proc SpaceHashInit*(hash: PSpaceHash; celldim: CpFloat; numcells: cint; 
-                    bbfunc: TSpatialIndexBBFunc; staticIndex: PSpatialIndex): PSpatialIndex{.
+                    bbfun: TSpatialIndexBBFunc; staticIndex: PSpatialIndex): PSpatialIndex{.
   cdecl, importc: "cpSpaceHashInit", dynlib: Lib.}
 #/ Allocate and initialize a spatial hash.
-proc SpaceHashNew*(celldim: CpFloat; cells: cint; bbfunc: TSpatialIndexBBFunc; 
+proc SpaceHashNew*(celldim: CpFloat; cells: cint; bbfun: TSpatialIndexBBFunc; 
                    staticIndex: PSpatialIndex): PSpatialIndex{.
   cdecl, importc: "cpSpaceHashNew", dynlib: Lib.}
 #/ Change the cell dimensions and table size of the spatial hash to tune it.
@@ -842,18 +842,18 @@ proc SpaceHashResize*(hash: PSpaceHash; celldim: CpFloat; numcells: cint){.
 #/ Allocate a bounding box tree.
 proc BBTreeAlloc*(): PBBTree{.cdecl, importc: "cpBBTreeAlloc", dynlib: Lib.}
 #/ Initialize a bounding box tree.
-proc BBTreeInit*(tree: PBBTree; bbfunc: TSpatialIndexBBFunc; 
+proc BBTreeInit*(tree: PBBTree; bbfun: TSpatialIndexBBFunc; 
                  staticIndex: ptr TSpatialIndex): ptr TSpatialIndex{.cdecl, 
     importc: "cpBBTreeInit", dynlib: Lib.}
 #/ Allocate and initialize a bounding box tree.
-proc BBTreeNew*(bbfunc: TSpatialIndexBBFunc; staticIndex: PSpatialIndex): PSpatialIndex{.
+proc BBTreeNew*(bbfun: TSpatialIndexBBFunc; staticIndex: PSpatialIndex): PSpatialIndex{.
     cdecl, importc: "cpBBTreeNew", dynlib: Lib.}
 #/ Perform a static top down optimization of the tree.
 proc BBTreeOptimize*(index: PSpatialIndex){.
   cdecl, importc: "cpBBTreeOptimize", dynlib: Lib.}
 #/ Set the velocity function for the bounding box tree to enable temporal coherence.
 
-proc BBTreeSetVelocityFunc*(index: PSpatialIndex; func: TBBTreeVelocityFunc){.
+proc BBTreeSetVelocityFunc*(index: PSpatialIndex; fun: TBBTreeVelocityFunc){.
     cdecl, importc: "cpBBTreeSetVelocityFunc", dynlib: Lib.}
 #MARK: Single Axis Sweep
 
@@ -864,12 +864,12 @@ proc Sweep1DAlloc*(): ptr TSweep1D{.cdecl, importc: "cpSweep1DAlloc",
                                     dynlib: Lib.}
 #/ Initialize a 1D sort and sweep broadphase.
 
-proc Sweep1DInit*(sweep: ptr TSweep1D; bbfunc: TSpatialIndexBBFunc; 
+proc Sweep1DInit*(sweep: ptr TSweep1D; bbfun: TSpatialIndexBBFunc; 
                   staticIndex: ptr TSpatialIndex): ptr TSpatialIndex{.cdecl, 
     importc: "cpSweep1DInit", dynlib: Lib.}
 #/ Allocate and initialize a 1D sort and sweep broadphase.
 
-proc Sweep1DNew*(bbfunc: TSpatialIndexBBFunc; staticIndex: ptr TSpatialIndex): ptr TSpatialIndex{.
+proc Sweep1DNew*(bbfun: TSpatialIndexBBFunc; staticIndex: ptr TSpatialIndex): ptr TSpatialIndex{.
     cdecl, importc: "cpSweep1DNew", dynlib: Lib.}
 
 
@@ -1359,7 +1359,7 @@ defCProp(SlideJoint, TVector, anchr2, Anchr2)
 defCProp(SlideJoint, CpFloat, min, Min)
 defCProp(SlideJoint, CpFloat, max, Max)
 
-proc pivotJointGetClass*(): PConstraintClass {.
+proc PivotJointGetClass*(): PConstraintClass {.
   cdecl, importc: "cpPivotJointGetClass", dynlib: Lib.}
 
 #/ Allocate a pivot joint

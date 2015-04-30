@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -119,8 +119,8 @@ proc hashType(c: var MD5Context, t: PType) =
     c.hashSym(t.sym)
     
   case t.kind
-  of tyGenericBody, tyGenericInst, tyGenericInvokation:
-    for i in countup(0, sonsLen(t) -1 -ord(t.kind != tyGenericInvokation)):
+  of tyGenericBody, tyGenericInst, tyGenericInvocation:
+    for i in countup(0, sonsLen(t) -1 -ord(t.kind != tyGenericInvocation)):
       c.hashType t.sons[i]
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
@@ -243,24 +243,24 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
       encodeNode(w, n.info, n.sons[i], result)
   add(result, ')')
 
-proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) = 
+proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
-  if loc.s != low(loc.s): 
+  if loc.s != low(loc.s):
     add(result, '*')
     encodeVInt(ord(loc.s), result)
-  if loc.flags != {}: 
+  if loc.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](loc.flags), result)
   if loc.t != nil:
     add(result, '^')
     encodeVInt(cast[int32](loc.t.id), result)
     pushType(w, loc.t)
-  if loc.r != nil: 
+  if loc.r != nil:
     add(result, '!')
-    encodeStr(ropeToStr(loc.r), result)
-  if loc.a != 0: 
+    encodeStr($loc.r, result)
+  if loc.a != 0:
     add(result, '?')
     encodeVInt(loc.a, result)
   if oldLen + 1 == result.len:
@@ -317,7 +317,7 @@ proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   add(result, '|')
   encodeVInt(ord(lib.kind), result)
   add(result, '|')
-  encodeStr(ropeToStr(lib.name), result)
+  encodeStr($lib.name, result)
   add(result, '|')
   encodeNode(w, info, lib.path, result)
 

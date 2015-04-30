@@ -15,5 +15,6 @@ const
   valid = 45
   a = test("foo&&")
   b = test("valid")
+  c = test("\"") # bug #2504
 
 echo a, " ", b

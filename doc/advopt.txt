@@ -12,19 +12,6 @@ Advanced commands:
                             module dependency graph
   //dump                    dump all defined conditionals and search paths
   //check                   checks the project for syntax and semantic
-  //idetools                compiler support for IDEs: possible options:
-    --track:FILE,LINE,COL   track a file/cursor position
-    --trackDirty:DIRTY_FILE,ORIG_FILE,LINE,COL
-                            track a file, currently not saved to disk
-    --suggest               suggest all possible symbols at position
-    --def                   list all possible definitions at position
-    --context               list possible invokation context
-    --usages                list all usages of the symbol at position
-    --eval                  evaluates an expression
-  //serve                   start the compiler as a service mode (CAAS)
-    --server.type:TYPE      either stdin or tcp
-    --server.port:PORT      port for tcp mode, by default 6000
-    --server.address:HOST   binds to that address, by default ""
 
 Advanced options:
   -o, --out:FILE            set the output filename
@@ -48,7 +35,6 @@ Advanced options:
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo               enables debug information
-  --debugger:on|off         turn Embedded Nim Debugger on|off
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
   --cincludes:DIR           modify the C compiler header search path
@@ -66,7 +52,6 @@ Advanced options:
   --threadanalysis:on|off   turn thread analysis on|off
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
-  --symbolFiles:on|off      turn symbol files on|off (experimental)
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --patterns:on|off         turn pattern matching on|off
   --skipCfg                 do not read the general configuration file
@@ -83,13 +68,11 @@ Advanced options:
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
                             symbol matching is fuzzy so
-                            that --dynlibOverride:lua matches 
+                            that --dynlibOverride:lua matches
                             dynlib: "liblua.so.3"
   --listCmd                 list the commands used to execute external programs
-  --parallelBuild=0|1|...   perform a parallel build
+  --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
-  --cs:none|partial         set case sensitivity level (default: none);
-                            do not use! this setting affects the whole language
   --experimental            enable experimental language features
   -v, --version             show detailed version information

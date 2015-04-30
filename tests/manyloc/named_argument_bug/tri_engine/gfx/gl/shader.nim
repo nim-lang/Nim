@@ -25,7 +25,7 @@ proc setSrc*(shader: TShader, src: string) =
   ?glShaderSource(shader.id, 1, cast[cstringarray](s.addr), nil)
 
 proc newShader*(id: GL_handle): TShader =
-  if id != 0 and not (?glIsShader(id)).bool:
+  if id.int != 0 and not (?glIsShader(id)).bool:
     raise newException(E_GL, "Invalid shader ID: " & $id)
 
   result.id = id
@@ -33,7 +33,7 @@ proc newShader*(id: GL_handle): TShader =
 proc shaderInfoLog*(o: TShader): string =
   var log {.global.}: array[0..1024, char]
   var logLen: GLsizei
-  ?glGetShaderInfoLog(o.id, log.len.GLsizei, logLen, cast[PGLchar](log.addr))
+  ?glGetShaderInfoLog(o.id.GLuint, log.len.GLsizei, addr logLen, cast[cstring](log.addr))
   cast[string](log.addr).substr(0, logLen)
 
 proc compile*(shader: TShader, path="") =
@@ -67,7 +67,7 @@ proc attach*(o: TProgram, shader: TShader) =
 proc infoLog*(o: TProgram): string =
   var log {.global.}: array[0..1024, char]
   var logLen: GLsizei
-  ?glGetProgramInfoLog(o.id, log.len.GLsizei, logLen, cast[PGLchar](log.addr))
+  ?glGetProgramInfoLog(o.id.GLuint, log.len.GLsizei, addr logLen, cast[cstring](log.addr))
   cast[string](log.addr).substr(0, logLen)
 
 proc link*(o: TProgram) =
@@ -86,11 +86,11 @@ proc validate*(o: TProgram) =
 
 proc newProgram*(shaders: seq[TShader]): TProgram =
   result.id = ?glCreateProgram()
-  if result.id == 0:
+  if result.id.int == 0:
     return
 
   for shader in shaders:
-    if shader.id == 0:
+    if shader.id.int == 0:
       return
 
     ?result.attach(shader)

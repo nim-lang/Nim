@@ -8,9 +8,9 @@ can also be used to include elements (and ranges of elements):
 
 .. code-block:: nim
   type
-    TCharSet = set[char]
+    CharSet = set[char]
   var
-    x: TCharSet
+    x: CharSet
   x = {'a'..'z', '0'..'9'} # This constructs a set that contains the
                            # letters from 'a' to 'z' and the digits
                            # from '0' to '9'

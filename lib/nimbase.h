@@ -1,7 +1,7 @@
 /*
 
             Nim's Runtime Library
-        (c) Copyright 2014 Andreas Rumpf
+        (c) Copyright 2015 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -67,7 +67,7 @@ __clang__
 #endif
 
 #if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-#  define NIM_THREADVAR __declspec(thread) 
+#  define NIM_THREADVAR __declspec(thread)
 #else
 #  define NIM_THREADVAR __thread
 #endif
@@ -103,7 +103,11 @@ __clang__
 #  define N_FASTCALL_PTR(rettype, name) rettype (__fastcall *name)
 #  define N_SAFECALL_PTR(rettype, name) rettype (__safecall *name)
 
-#  define N_LIB_EXPORT  extern __declspec(dllexport)
+#  ifdef __cplusplus
+#    define N_LIB_EXPORT  extern "C" __declspec(dllexport)
+#  else
+#    define N_LIB_EXPORT  extern __declspec(dllexport)
+#  endif
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
 #  define N_CDECL(rettype, name) rettype name
@@ -118,7 +122,11 @@ __clang__
 #  define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #  define N_SAFECALL_PTR(rettype, name) rettype (*name)
 
-#  define N_LIB_EXPORT  extern
+#  ifdef __cplusplus
+#    define N_LIB_EXPORT  extern "C"
+#  else
+#    define N_LIB_EXPORT  extern
+#  endif
 #  define N_LIB_IMPORT  extern
 #endif
 
@@ -335,17 +343,17 @@ struct TFrame {
 };
 
 #define nimfr(proc, file) \
-  TFrame F; \
-  F.procname = proc; F.filename = file; F.line = 0; F.len = 0; nimFrame(&F);
+  TFrame FR; \
+  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
 
 #define nimfrs(proc, file, slots, length) \
-  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} F; \
-  F.procname = proc; F.filename = file; F.line = 0; F.len = length; nimFrame((TFrame*)&F);
+  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} FR; \
+  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
 
 #define nimln(n, file) \
-  F.line = n; F.filename = file;
+  FR.line = n; FR.filename = file;
 
-#define NIM_POSIX_INIT  __attribute__((constructor)) 
+#define NIM_POSIX_INIT  __attribute__((constructor))
 
 #if defined(_MSCVER) && defined(__i386__)
 __declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {
@@ -379,8 +387,8 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #  define GC_GUARD
 #endif
 
-/* Test to see if nimrod and the C compiler agree on the size of a pointer.
-   On disagreement, your C compiler will say something like: 
+/* Test to see if Nim and the C compiler agree on the size of a pointer.
+   On disagreement, your C compiler will say something like:
    "error: 'assert_numbits' declared as an array with a negative size" */
 typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
 #endif
@@ -389,4 +397,15 @@ typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(
 #  define NIM_EXTERNC extern "C"
 #else
 #  define NIM_EXTERNC
+#endif
+
+/* ---------------- platform specific includes ----------------------- */
+
+/* VxWorks related includes */
+#if defined(__VXWORKS__)
+#  include <sys/types.h>
+#  include <types/vxWind.h>
+#  include <tool/gnu/toolMacros.h>
+#elif defined(__FreeBSD__)
+#  include <sys/types.h>
 #endif

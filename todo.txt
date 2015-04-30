@@ -1,14 +1,37 @@
-version 0.10
-============
+version 0.10.4
+==============
 
+
+
+version 0.10.6 (RC1?)
+=====================
+
+- make '--implicitStatic:on' the default; then we can also clean up the
+  'static[T]' mess in the compiler!
+- finish 'parallel' or mark as experimental
+- Deprecate ``immediate`` for templates and macros
+- special case varargs[untyped] and varargs[typed]
+- make 'nil' work for 'add':
+  - resizeString
+  - incrSeq
+  - addChar
+
+
+version 1.0
+===========
+
+- macro support for '='; bind '=' to a memory region
+- remove   echo $foo  gotcha
+- add "all threads are blocked" detection to 'spawn'
+- figure out why C++ bootstrapping is so much slower
+- nimsuggest: auto-completion needs to work in 'class' macros
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
-
-- c2nim depends on the compiler
+- iterators always require a return type
 - make nimble part of the distribution
-- split idetools into separate tool
 - split docgen into separate tool
-
+- special rule for ``[]=``, items, pairs
+- BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
 
 
 Concurrency
@@ -21,18 +44,14 @@ Low priority:
 - support for exception propagation? (hard to implement)
 - the copying of the 'ref Promise' into the thead local storage only
   happens to work due to the write barrier's implementation
-- clean up the C code generator. Full of cruft.
 
 
 Misc
 ----
 
-- make '--implicitStatic:on' the default
 - make tuple unpacking work in a non-var/let context
-- special rule for ``[]=``, items, pairs
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
-- some table related tests are wrong (memory usage checks)
 
 
 Bugs
@@ -41,25 +60,22 @@ Bugs
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
 - scopes are still broken for generic instantiation!
-- compilation of niminst takes way too long. looks like a regression
 - blocks can "export" an identifier but the CCG generates {} for them ...
+- ConcreteTypes in a 'case' means we don't check for duplicated case branches
+- typedesc matches a generic type T!
 
 
 version 0.9.x
 =============
 
-- implicit deref for parameter matching; but only for  x.f(a, b) --> looks like
-  a nice compromise
-- overloading of '='
+- pragmas need 'bindSym' support
 - allow simple read accesses to global variables --> difficult to ensure that
   no data races happen
-- pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
 - memory manager: add a measure of fragmentation
 - implement 'bits' pragmas
 - we need a magic thisModule symbol
-- ensure (ref T)(a, b) works as a type conversion and type constructor
 - optimize 'genericReset'; 'newException' leads to code bloat
 - The 'do' notation might be trimmed so that its only purpose is to pass
   multiple multi line constructs to a macro.
@@ -69,9 +85,6 @@ version 0.9.X
 =============
 
 - macros as type pragmas
-- implement type API for macros
-- lazy overloading resolution:
-  * special case ``tyStmt``
 - document NimMain and check whether it works for threading
 
 GC
@@ -88,4 +101,3 @@ CGEN
 ====
 - codegen should use "NIM_CAST" macro and respect aliasing rules for GCC
 - ``restrict`` pragma + backend support
-- 'const' objects including case objects

@@ -6,7 +6,7 @@ def\tskType\tsystem.string\tstring
 > idetools --track:$TESTNIM,12,35 --def $SILENT
 def\tskLet\t$MODULE.failtest.input\tTaintedString
 
-# The following fail because they seem shifted one colum to the right.
+# The following fail because they seem shifted one column to the right.
 > idetools --track:$TESTNIM,12,16 --def $SILENT
 def\tskTemplate\tsequtils.toSeq\tproc \(expr\): expr
 > idetools --track:$TESTNIM,12,22 --def $SILENT

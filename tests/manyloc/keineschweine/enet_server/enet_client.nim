@@ -105,6 +105,7 @@ proc tryLogin*(b: PButton) =
     passwd = u_passwd.getText())
   dirServer.send HLogin, login
 proc tryTransition*(b: PButton) =
+  discard
   #zone.writePkt HZoneJoinReq, myCreds
 proc tryConnect*(b: PButton) =
   if not dirServer.connected:

@@ -30,47 +30,32 @@ type
   
   PLLStream* = ref TLLStream
 
-proc llStreamOpen*(data: string): PLLStream
-proc llStreamOpen*(f: var File): PLLStream
-proc llStreamOpen*(filename: string, mode: FileMode): PLLStream
-proc llStreamOpen*(): PLLStream
-proc llStreamOpenStdIn*(): PLLStream
-proc llStreamClose*(s: PLLStream)
-proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int
-proc llStreamReadLine*(s: PLLStream, line: var string): bool
-proc llStreamReadAll*(s: PLLStream): string
-proc llStreamWrite*(s: PLLStream, data: string)
-proc llStreamWrite*(s: PLLStream, data: char)
-proc llStreamWrite*(s: PLLStream, buf: pointer, buflen: int)
-proc llStreamWriteln*(s: PLLStream, data: string)
-# implementation
-
-proc llStreamOpen(data: string): PLLStream = 
+proc llStreamOpen*(data: string): PLLStream = 
   new(result)
   result.s = data
   result.kind = llsString
 
-proc llStreamOpen(f: var File): PLLStream = 
+proc llStreamOpen*(f: File): PLLStream = 
   new(result)
   result.f = f
   result.kind = llsFile
 
-proc llStreamOpen(filename: string, mode: FileMode): PLLStream = 
+proc llStreamOpen*(filename: string, mode: FileMode): PLLStream = 
   new(result)
   result.kind = llsFile
   if not open(result.f, filename, mode): result = nil
   
-proc llStreamOpen(): PLLStream = 
+proc llStreamOpen*(): PLLStream = 
   new(result)
   result.kind = llsNone
 
-proc llStreamOpenStdIn(): PLLStream = 
+proc llStreamOpenStdIn*(): PLLStream = 
   new(result)
   result.kind = llsStdIn
   result.s = ""
   result.lineOffset = -1
 
-proc llStreamClose(s: PLLStream) = 
+proc llStreamClose*(s: PLLStream) = 
   case s.kind
   of llsNone, llsString, llsStdIn: 
     discard
@@ -130,7 +115,7 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
     copyMem(buf, addr(s.s[s.rd]), result)
     inc(s.rd, result)
 
-proc llStreamRead(s: PLLStream, buf: pointer, bufLen: int): int = 
+proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int = 
   case s.kind
   of llsNone: 
     result = 0
@@ -144,7 +129,7 @@ proc llStreamRead(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsStdIn: 
     result = llReadFromStdin(s, buf, bufLen)
   
-proc llStreamReadLine(s: PLLStream, line: var string): bool =
+proc llStreamReadLine*(s: PLLStream, line: var string): bool =
   setLen(line, 0)
   case s.kind
   of llsNone:
@@ -168,7 +153,7 @@ proc llStreamReadLine(s: PLLStream, line: var string): bool =
   of llsStdIn:
     result = readLine(stdin, line)
     
-proc llStreamWrite(s: PLLStream, data: string) = 
+proc llStreamWrite*(s: PLLStream, data: string) = 
   case s.kind
   of llsNone, llsStdIn: 
     discard
@@ -178,11 +163,11 @@ proc llStreamWrite(s: PLLStream, data: string) =
   of llsFile: 
     write(s.f, data)
   
-proc llStreamWriteln(s: PLLStream, data: string) = 
+proc llStreamWriteln*(s: PLLStream, data: string) = 
   llStreamWrite(s, data)
   llStreamWrite(s, "\n")
 
-proc llStreamWrite(s: PLLStream, data: char) = 
+proc llStreamWrite*(s: PLLStream, data: char) = 
   var c: char
   case s.kind
   of llsNone, llsStdIn: 
@@ -194,7 +179,7 @@ proc llStreamWrite(s: PLLStream, data: char) =
     c = data
     discard writeBuffer(s.f, addr(c), sizeof(c))
 
-proc llStreamWrite(s: PLLStream, buf: pointer, buflen: int) = 
+proc llStreamWrite*(s: PLLStream, buf: pointer, buflen: int) = 
   case s.kind
   of llsNone, llsStdIn: 
     discard
@@ -206,7 +191,7 @@ proc llStreamWrite(s: PLLStream, buf: pointer, buflen: int) =
   of llsFile: 
     discard writeBuffer(s.f, buf, buflen)
   
-proc llStreamReadAll(s: PLLStream): string = 
+proc llStreamReadAll*(s: PLLStream): string = 
   const 
     bufSize = 2048
   case s.kind

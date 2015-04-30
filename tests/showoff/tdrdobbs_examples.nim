@@ -13,7 +13,7 @@ var g = 70
 ++g
 g ++ 7
 g.`++`(10, 20)
-echo g 
+echo g
 
 
 #let lv = stdin.readline
@@ -56,7 +56,7 @@ type
     fkLit,        ## element is a literal like 0.1
     fkAdd,        ## element is an addition operation
     fkMul,        ## element is a multiplication operation
-    fkExp         ## element is an exponentiation operation 
+    fkExp         ## element is an exponentiation operation
 
 type
   Formula = ref object
@@ -78,16 +78,16 @@ proc evaluate(n: Formula, varToVal: proc (name: string): float): float =
 echo evaluate(Formula(kind: fkLit, value: 0.4), nil)
 
 proc isPolyTerm(n: Formula): bool =
-  n.kind == fkMul and n.left.kind == fkLit and (let e = n.right; 
+  n.kind == fkMul and n.left.kind == fkLit and (let e = n.right;
     e.kind == fkExp and e.left.kind == fkVar and e.right.kind == fkLit)
 
 proc isPolynomial(n: Formula): bool =
-  isPolyTerm(n) or 
+  isPolyTerm(n) or
     (n.kind == fkAdd and isPolynomial(n.left) and isPolynomial(n.right))
 
 let myFormula = Formula(kind: fkMul,
                         left: Formula(kind: fkLit, value: 2.0),
-                        right: Formula(kind: fkExp, 
+                        right: Formula(kind: fkExp,
                           left: Formula(kind: fkVar, name: "x"),
                           right: Formula(kind: fkLit, value: 5.0)))
 
@@ -104,7 +104,7 @@ proc pat2kind(pattern: string): FormulaKind =
 
 import macros
 
-proc matchAgainst(n, pattern: PNimrodNode): PNimrodNode {.compileTime.} =
+proc matchAgainst(n, pattern: NimNode): NimNode {.compileTime.} =
   template `@`(current, field: expr): expr =
     newDotExpr(current, newIdentNode(astToStr(field)))
 

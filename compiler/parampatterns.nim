@@ -24,7 +24,7 @@ type
     ppEof = 1, # end of compiled pattern
     ppOr,      # we could short-cut the evaluation for 'and' and 'or',
     ppAnd,     # but currently we don't
-    ppNot, 
+    ppNot,
     ppSym,
     ppAtom,
     ppLit,
@@ -41,7 +41,7 @@ type
 const
   MaxStackSize* = 64 ## max required stack size by the VM
 
-proc patternError(n: PNode) = 
+proc patternError(n: PNode) =
   localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc add(code: var TPatternCode, op: TOpcode) {.inline.} =
@@ -56,7 +56,7 @@ proc whichAlias*(p: PSym): TAliasRequest =
 proc compileConstraints(p: PNode, result: var TPatternCode) =
   case p.kind
   of nkCallKinds:
-    if p.sons[0].kind != nkIdent: 
+    if p.sons[0].kind != nkIdent:
       patternError(p.sons[0])
       return
     let op = p.sons[0].ident
@@ -131,11 +131,10 @@ proc semNodeKindConstraints*(p: PNode): PNode =
   result.strVal.add(ppEof)
 
 type
-  TSideEffectAnalysis = enum
+  TSideEffectAnalysis* = enum
     seUnknown, seSideEffect, seNoSideEffect
 
-proc checkForSideEffects(n: PNode): TSideEffectAnalysis =
-  # XXX is 'raise' a side effect?
+proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
   case n.kind
   of nkCallKinds:
     # only calls can produce side effects:
@@ -162,19 +161,22 @@ proc checkForSideEffects(n: PNode): TSideEffectAnalysis =
     # an atom cannot produce a side effect:
     result = seNoSideEffect
   else:
+    # assume no side effect:
+    result = seNoSideEffect
     for i in 0 .. <n.len:
       let ret = checkForSideEffects(n.sons[i])
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
         result = seUnknown
 
-type 
-  TAssignableResult* = enum 
+type
+  TAssignableResult* = enum
     arNone,                   # no l-value and no discriminant
     arLValue,                 # is an l-value
     arLocalLValue,            # is an l-value, but local var; must not escape
                               # its stack frame!
-    arDiscriminant            # is a discriminant
+    arDiscriminant,           # is a discriminant
+    arStrange                 # it is a strange beast like 'typedesc[var T]'
 
 proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   ## 'owner' can be nil!
@@ -183,26 +185,31 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   of nkSym:
     # don't list 'skLet' here:
     if n.sym.kind in {skVar, skResult, skTemp}:
-      if owner != nil and owner.id == n.sym.owner.id and 
+      if owner != nil and owner.id == n.sym.owner.id and
           sfGlobal notin n.sym.flags:
         result = arLocalLValue
       else:
         result = arLValue
-  of nkDotExpr: 
-    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in 
-        {tyVar, tyPtr, tyRef}: 
+    elif n.sym.kind == skParam and n.sym.typ.kind == tyVar:
       result = arLValue
-    else:
-      result = isAssignable(owner, n.sons[0])
-    if result != arNone and sfDiscriminant in n.sons[1].sym.flags: 
-      result = arDiscriminant
-  of nkBracketExpr: 
+    elif n.sym.kind == skType:
+      let t = n.sym.typ.skipTypes({tyTypeDesc})
+      if t.kind == tyVar: result = arStrange
+  of nkDotExpr:
     if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in
-        {tyVar, tyPtr, tyRef}: 
+        {tyVar, tyPtr, tyRef}:
       result = arLValue
     else:
       result = isAssignable(owner, n.sons[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: 
+    if result != arNone and sfDiscriminant in n.sons[1].sym.flags:
+      result = arDiscriminant
+  of nkBracketExpr:
+    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in
+        {tyVar, tyPtr, tyRef}:
+      result = arLValue
+    else:
+      result = isAssignable(owner, n.sons[0])
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     # Object and tuple conversions are still addressable, so we skip them
     # XXX why is 'tyOpenArray' allowed here?
     if skipTypes(n.typ, abstractPtrs-{tyTypeDesc}).kind in
@@ -211,9 +218,9 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
     elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:
       result = isAssignable(owner, n.sons[1])
-  of nkHiddenDeref, nkDerefExpr: 
+  of nkHiddenDeref, nkDerefExpr, nkHiddenAddr:
     result = arLValue
-  of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: 
+  of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
     result = isAssignable(owner, n.sons[0])
   of nkCallKinds:
     # builtin slice keeps lvalue-ness:
@@ -221,24 +228,27 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   else:
     discard
 
+proc isLValue*(n: PNode): bool =
+  isAssignable(nil, n) in {arLValue, arLocalLValue, arStrange}
+
 proc matchNodeKinds*(p, n: PNode): bool =
-  # matches the parameter constraint 'p' against the concrete AST 'n'. 
+  # matches the parameter constraint 'p' against the concrete AST 'n'.
   # Efficiency matters here.
   var stack {.noinit.}: array[0..MaxStackSize, bool]
   # empty patterns are true:
   stack[0] = true
   var sp = 1
-  
+
   template push(x: bool) =
     stack[sp] = x
     inc sp
-  
+
   let code = p.strVal
   var pc = 1
   while true:
     case TOpcode(code[pc])
     of ppEof: break
-    of ppOr: 
+    of ppOr:
       stack[sp-2] = stack[sp-1] or stack[sp-2]
       dec sp
     of ppAnd:
@@ -264,4 +274,4 @@ proc matchNodeKinds*(p, n: PNode): bool =
     of ppNoSideEffect: push checkForSideEffects(n) != seSideEffect
     inc pc
   result = stack[sp-1]
-  
+

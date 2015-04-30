@@ -113,7 +113,7 @@ when defined(recordMode):
     isRecording = false
   proc zeroPad*(s: string; minLen: int): string =
     if s.len < minLen:
-      result = repeatChar(minLen - s.len, '0')
+      result = repeat(0, minLen - s.len)
       result.add s
     else:
       result = s
@@ -143,7 +143,7 @@ proc mouseToSpace*(): TVector =
 proc explode*(b: PLiveBullet)
 ## TCollisionBeginFunc
 proc collisionBulletPlayer(arb: PArbiter; space: PSpace; 
-                            data: pointer): Bool{.cdecl.} =
+                            data: pointer): bool{.cdecl.} =
   var 
     bullet = cast[PLiveBullet](arb.a.data)
     target = cast[PVehicle](arb.b.data)
@@ -152,7 +152,7 @@ proc collisionBulletPlayer(arb: PArbiter; space: PSpace;
 
 proc angularDampingSim(body: PBody, gravity: TVector, damping, dt: CpFloat){.cdecl.} =
   body.w -= (body.w * 0.98 * dt) 
-  body.updateVelocity(gravity, damping, dt)
+  body.UpdateVelocity(gravity, damping, dt)
 
 proc initLevel() =
   loadAllAssets()
@@ -227,7 +227,7 @@ proc explode*(b: PLiveBullet) =
   playSound(b.record.explosion.sound, b.body.getPos())
 
 proc bulletUpdate(body: PBody, gravity: TVector, damping, dt: CpFloat){.cdecl.} =
-  body.updateVelocity(gravity, damping, dt)
+  body.UpdateVelocity(gravity, damping, dt)
 
 template getPhysical() {.immediate.} =
   result.body = space.addBody(newBody(
@@ -237,7 +237,7 @@ template getPhysical() {.immediate.} =
     chipmunk.newCircleShape(
       result.body,
       record.physics.radius,
-      vectorZero))
+      VectorZero))
 
 proc newBullet*(record: PBulletRecord; fromPlayer: PPlayer): PLiveBullet =
   new(result, free)
@@ -480,7 +480,7 @@ when defined(DebugKeys):
       echo(repr(activeVehicle.record))
     elif keyPressed(KeyH):
       activeVehicle.body.setPos(vector(100.0, 100.0))
-      activeVehicle.body.setVel(vectorZero)
+      activeVehicle.body.setVel(VectorZero)
     elif keyPressed(KeyComma):
       activeVehicle.body.setPos mouseToSpace())
   ingameClient.registerHandler(KeyY, down, proc() =
@@ -507,7 +507,7 @@ when defined(DebugKeys):
       return
     let body = shape.getBody()
     mouseJoint = space.addConstraint(
-      newPivotJoint(mouseBody, body, vectorZero, body.world2local(point)))
+      newPivotJoint(mouseBody, body, VectorZero, body.world2local(point)))
     mouseJoint.maxForce = 50000.0
     mouseJoint.errorBias = pow(1.0 - 0.15, 60))
 
@@ -539,15 +539,15 @@ proc mainUpdate(dt: float) =
   elif not activeVehicle.isNil:
     if keyPressed(KeyUp):
       activeVehicle.accel(dt)
-    elif keyPressed(keyDown):
+    elif keyPressed(KeyDown):
       activeVehicle.reverse(dt)
     if keyPressed(KeyRight):
       activeVehicle.turn_right(dt)
     elif keyPressed(KeyLeft):
       activeVehicle.turn_left(dt)
-    if keyPressed(keyz):
+    if keyPressed(Keyz):
       activeVehicle.strafe_left(dt)
-    elif keyPressed(keyx):
+    elif keyPressed(Keyx):
       activeVehicle.strafe_right(dt)
     if keyPressed(KeyLControl):
       localPlayer.useItem 0
@@ -557,7 +557,7 @@ proc mainUpdate(dt: float) =
       localPlayer.useItem 2
     if keyPressed(KeyW):
       localPlayer.useItem 3
-    if Keypressed(keyA):
+    if keyPressed(KeyA):
       localPlayer.useItem 4
     if keyPressed(sfml.KeyS):
       localPlayer.useItem 5
@@ -666,7 +666,7 @@ when isMainModule:
   import parseopt
   
   localPlayer = newPlayer()
-  LobbyInit()
+  lobbyInit()
   
   videoMode = getClientSettings().resolution
   window = newRenderWindow(videoMode, "sup", sfDefaultStyle)
@@ -683,7 +683,7 @@ when isMainModule:
     mouseSprite.setOutlineThickness 1.4
     mouseSprite.setOrigin vec2f(14, 14)
   
-  LobbyReady()
+  lobbyReady()
   playBtn = specGui.newButton(
     "Unspec - F12", position = vec2f(680.0, 8.0), onClick = proc(b: PButton) =
       toggleSpec())

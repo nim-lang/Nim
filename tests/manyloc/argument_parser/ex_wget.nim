@@ -8,8 +8,8 @@ const
   PARAM_BACKGROUND = @["-b", "--background"]
   PARAM_OUTPUT = @["-o", "--output"]
   PARAM_NO_CLOBBER = @["-nc", "--no-clobber"]
-  PARAM_PROGRESS = "--progress"
-  PARAM_NO_PROXY = "--no-proxy"
+  PARAM_PROGRESS = @["--progress"]
+  PARAM_NO_PROXY = @["--no-proxy"]
 
 
 template P(tnames: varargs[string], thelp: string, ttype = PK_EMPTY,
@@ -77,8 +77,8 @@ proc process_commandline(): Tcommandline_results =
       quit()
     echo "Will download to $1" % [result.options[PARAM_OUTPUT[0]].str_val]
 
-  if result.options.hasKey(PARAM_PROGRESS):
-    echo "Will use progress type $1" % [result.options[PARAM_PROGRESS].str_val]
+  if result.options.hasKey(PARAM_PROGRESS[0]):
+    echo "Will use progress type $1" % [result.options[PARAM_PROGRESS[0]].str_val]
 
 
 when isMainModule:

@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -42,7 +42,7 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
   case toLower(x)
   of "com", "org", "net", "gov", "mil", "biz", "info", "mobi", "name",
      "aero", "jobs", "museum": return true
-  return false
+  else: return false
 
 proc parseInt*(s: string, value: var int, validRange: Slice[int]) {.
   noSideEffect, rtl, extern: "nmatchParseInt".} =

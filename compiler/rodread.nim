@@ -277,7 +277,7 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
       loc.t = nil
     if r.s[r.pos] == '!': 
       inc(r.pos)
-      loc.r = toRope(decodeStr(r.s, r.pos))
+      loc.r = rope(decodeStr(r.s, r.pos))
     else: 
       loc.r = nil
     if r.s[r.pos] == '>': inc(r.pos)
@@ -344,7 +344,7 @@ proc decodeLib(r: PRodReader, info: TLineInfo): PLib =
     result.kind = TLibKind(decodeVInt(r.s, r.pos))
     if r.s[r.pos] != '|': internalError("decodeLib: 1")
     inc(r.pos)
-    result.name = toRope(decodeStr(r.s, r.pos))
+    result.name = rope(decodeStr(r.s, r.pos))
     if r.s[r.pos] != '|': internalError("decodeLib: 2")
     inc(r.pos)
     result.path = decodeNode(r, info)
@@ -666,7 +666,7 @@ proc newRodReader(modfilename: string, crc: TCrc32,
   r.readerIndex = readerIndex
   r.filename = modfilename
   initIdTable(r.syms)
-  # we terminate the file explicitely with ``\0``, so the cast to `cstring`
+  # we terminate the file explicitly with ``\0``, so the cast to `cstring`
   # is safe:
   r.s = cast[cstring](r.memfile.mem)
   if startsWith(r.s, "NIM:"): 

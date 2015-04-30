@@ -6,16 +6,17 @@ Nim's Documentation
   Standards & Guides
   ------------------
 
+  .. container:: libraries
 
-  - | `Standard Library <lib.html>`_
-    | This document describes Nim's standard library.
+    - | `Standard Library <0.11.0/lib.html>`_
+      | This document describes Nim's standard library.
 
-  - | `Language Manual <manual.html>`_
-    | The Nim manual is a draft that will evolve into a proper specification.
+    - | `Language Manual <0.11.0/manual.html>`_
+      | The Nim manual is a draft that will evolve into a proper specification.
 
-  - | `Compiler user guide <nimc.html>`_
-    | The user guide lists command line arguments, special features of the
-      compiler, etc.
+    - | `Compiler User Guide <0.11.0/nimc.html>`_
+      | The user guide lists command line arguments, special features of the
+        compiler, etc.
 
 
 .. container:: standout
@@ -23,12 +24,14 @@ Nim's Documentation
   Tools & Features
   ----------------
 
-  - | `Source code filters <filters.html>`_
-    | The Nim compiler supports source code filters as a simple yet powerful
-      builtin templating system.
+  .. container:: tools
 
-  - | `Tools documentation <tools.html>`_
-    | Description of some tools that come with the standard distribution.
+    - | `Source Code Filters <0.11.0/filters.html>`_
+      | The Nim compiler supports source code filters as a simple yet powerful
+        builtin templating system.
+
+    - | `Tools Documentation <0.11.0/tools.html>`_
+      | Description of some tools that come with the standard distribution.
 
 
 .. container:: standout
@@ -36,16 +39,19 @@ Nim's Documentation
   Internal Details
   ----------------
 
-  - | `Garbage Collector <gc.html>`_
-    | Additional documentation about Nim's GC and how to operate it in a
-    | realtime setting.
+  .. container:: internals
 
-  - | `Internal documentation <intern.html>`_
-    | The internal documentation describes how the compiler is implemented. Read
-      this if you want to hack the compiler.
+    - | `Garbage Collector <0.11.0/gc.html>`_
+      | Additional documentation about Nim's GC and how to operate it in a
+        realtime setting.
+
+    - | `Internal Documentation <0.11.0/intern.html>`_
+      | The internal documentation describes how the compiler is implemented.
+        Read this if you want to hack the compiler.
 
 
 Search Options
 --------------
 
-`Documentation Index <theindex.html>`_ - The generated index. **Index + (Ctrl+F) == Joy**
+`Documentation Index <0.11.0/theindex.html>`_ - The generated
+index. **Index + (Ctrl+F) == Joy**

@@ -16,7 +16,7 @@
                        # of the standard library!
 
 
-proc fputs(c: cstring, f: File) {.importc: "fputs", header: "<stdio.h>", 
+proc fputs(c: cstring, f: File) {.importc: "fputs", header: "<stdio.h>",
   tags: [WriteIOEffect].}
 proc fgets(c: cstring, n: int, f: File): cstring {.
   importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
@@ -26,11 +26,30 @@ proc ungetc(c: cint, f: File) {.importc: "ungetc", header: "<stdio.h>",
   tags: [].}
 proc putc(c: char, stream: File) {.importc: "putc", header: "<stdio.h>",
   tags: [WriteIOEffect].}
-proc fprintf(f: File, frmt: cstring) {.importc: "fprintf", 
+proc fprintf(f: File, frmt: cstring) {.importc: "fprintf",
   header: "<stdio.h>", varargs, tags: [WriteIOEffect].}
 proc strlen(c: cstring): int {.
   importc: "strlen", header: "<string.h>", tags: [].}
 
+when defined(posix):
+  proc getc_unlocked(stream: File): cint {.importc: "getc_unlocked",
+    header: "<stdio.h>", tags: [ReadIOEffect].}
+
+  proc flockfile(stream: File) {.importc: "flockfile", header: "<stdio.h>",
+    tags: [ReadIOEffect].}
+
+  proc funlockfile(stream: File) {.importc: "funlockfile", header: "<stdio.h>",
+    tags: [ReadIOEffect].}
+elif false:
+  # doesn't work on Windows yet:
+  proc getc_unlocked(stream: File): cint {.importc: "_fgetc_nolock",
+    header: "<stdio.h>", tags: [ReadIOEffect].}
+
+  proc flockfile(stream: File) {.importc: "_lock_file", header: "<stdio.h>",
+    tags: [ReadIOEffect].}
+
+  proc funlockfile(stream: File) {.importc: "_unlock_file", header: "<stdio.h>",
+    tags: [ReadIOEffect].}
 
 # C routine that is used here:
 proc fread(buf: pointer, size, n: int, f: File): int {.
@@ -67,39 +86,57 @@ const
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
 
-proc readLine(f: File, line: var TaintedString): bool =
-  # of course this could be optimized a bit; but IO is slow anyway...
-  # and it was difficult to get this CORRECT with Ansi C's methods
-  setLen(line.string, 0) # reuse the buffer!
-  while true:
-    var c = fgetc(f)
-    if c < 0'i32:
-      if line.len > 0: break
-      else: return false
-    if c == 10'i32: break # LF
-    if c == 13'i32:  # CR
-      c = fgetc(f) # is the next char LF?
-      if c != 10'i32: ungetc(c, f) # no, put the character back
-      break
-    add line.string, chr(int(c))
-  result = true
+when declared(getc_unlocked):
+  proc readLine(f: File, line: var TaintedString): bool =
+    setLen(line.string, 0) # reuse the buffer!
+    flockfile(f)
+    while true:
+      var c = getc_unlocked(f)
+      if c < 0'i32:
+        if line.len > 0: break
+        else: return false
+      if c == 10'i32: break # LF
+      if c == 13'i32:  # CR
+        c = getc_unlocked(f) # is the next char LF?
+        if c != 10'i32: ungetc(c, f) # no, put the character back
+        break
+      add line.string, chr(int(c))
+    result = true
+    funlockfile(f)
+else:
+  proc readLine(f: File, line: var TaintedString): bool =
+    # of course this could be optimized a bit; but IO is slow anyway...
+    # and it was difficult to get this CORRECT with Ansi C's methods
+    setLen(line.string, 0) # reuse the buffer!
+    while true:
+      var c = fgetc(f)
+      if c < 0'i32:
+        if line.len > 0: break
+        else: return false
+      if c == 10'i32: break # LF
+      if c == 13'i32:  # CR
+        c = fgetc(f) # is the next char LF?
+        if c != 10'i32: ungetc(c, f) # no, put the character back
+        break
+      add line.string, chr(int(c))
+    result = true
 
 proc readLine(f: File): TaintedString =
   result = TaintedString(newStringOfCap(80))
   if not readLine(f, result): raiseEIO("EOF reached")
 
-proc write(f: File, i: int) = 
+proc write(f: File, i: int) =
   when sizeof(int) == 8:
     fprintf(f, "%lld", i)
   else:
     fprintf(f, "%ld", i)
 
-proc write(f: File, i: BiggestInt) = 
+proc write(f: File, i: BiggestInt) =
   when sizeof(BiggestInt) == 8:
     fprintf(f, "%lld", i)
   else:
     fprintf(f, "%ld", i)
-    
+
 proc write(f: File, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
@@ -110,7 +147,7 @@ proc write(f: File, c: char) = putc(c, f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
-proc readAllBuffer(file: File): string = 
+proc readAllBuffer(file: File): string =
   # This proc is for File we want to read but don't know how many
   # bytes we need to read before the buffer is empty.
   result = ""
@@ -123,8 +160,8 @@ proc readAllBuffer(file: File): string =
       buffer.setLen(bytesRead)
       result.add(buffer)
       break
-  
-proc rawFileSize(file: File): int = 
+
+proc rawFileSize(file: File): int =
   # this does not raise an error opposed to `getFileSize`
   var oldPos = ftell(file)
   discard fseek(file, 0, 2) # seek the end of the file
@@ -132,7 +169,7 @@ proc rawFileSize(file: File): int =
   discard fseek(file, clong(oldPos), 0)
 
 proc readAllFile(file: File, len: int): string =
-  # We aquire the filesize beforehand and hope it doesn't change.
+  # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(int(len))
   if readBuffer(file, addr(result[0]), int(len)) != len:
@@ -141,20 +178,20 @@ proc readAllFile(file: File, len: int): string =
 proc readAllFile(file: File): string =
   var len = rawFileSize(file)
   result = readAllFile(file, len)
-  
-proc readAll(file: File): TaintedString = 
+
+proc readAll(file: File): TaintedString =
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the File.
-  var len = rawFileSize(file)
-  if len >= 0:
+  let len = if file != stdin: rawFileSize(file) else: -1
+  if len > 0:
     result = readAllFile(file, len).TaintedString
   else:
     result = readAllBuffer(file).TaintedString
-  
+
 proc readFile(filename: string): TaintedString =
   var f = open(filename)
   try:
-    result = readAllFile(f).TaintedString
+    result = readAll(f).TaintedString
   finally:
     close(f)
 
@@ -183,11 +220,17 @@ proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 when (defined(windows) and not defined(useWinAnsi)) or defined(nimdoc):
   include "system/widestrs"
 
-when defined(windows) and not defined(useWinAnsi):  
-  proc wfopen(filename, mode: WideCString): pointer {.
-    importc: "_wfopen", nodecl.}
-  proc wfreopen(filename, mode: WideCString, stream: File): File {.
-    importc: "_wfreopen", nodecl.}
+when defined(windows) and not defined(useWinAnsi):
+  when defined(cpp):
+    proc wfopen(filename, mode: WideCString): pointer {.
+      importcpp: "_wfopen((const wchar_t*)#, (const wchar_t*)#)", nodecl.}
+    proc wfreopen(filename, mode: WideCString, stream: File): File {.
+      importcpp: "_wfreopen((const wchar_t*)#, (const wchar_t*)#, #)", nodecl.}
+  else:
+    proc wfopen(filename, mode: WideCString): pointer {.
+      importc: "_wfopen", nodecl.}
+    proc wfreopen(filename, mode: WideCString, stream: File): File {.
+      importc: "_wfreopen", nodecl.}
 
   proc fopen(filename, mode: cstring): pointer =
     var f = newWideCString(filename)
@@ -223,7 +266,7 @@ proc open(f: var File, filename: string,
     elif bufSize == 0:
       discard setvbuf(f, nil, IONBF, 0)
 
-proc reopen(f: File, filename: string, mode: FileMode = fmRead): bool = 
+proc reopen(f: File, filename: string, mode: FileMode = fmRead): bool =
   var p: pointer = freopen(filename, FormatOpen[mode], f)
   result = p != nil
 
@@ -237,23 +280,23 @@ proc open(f: var File, filehandle: FileHandle, mode: FileMode): bool =
 proc fwrite(buf: pointer, size, n: int, f: File): int {.
   importc: "fwrite", noDecl.}
 
-proc readBuffer(f: File, buffer: pointer, len: int): int =
+proc readBuffer(f: File, buffer: pointer, len: Natural): int =
   result = fread(buffer, 1, len, f)
 
-proc readBytes(f: File, a: var openArray[int8], start, len: int): int =
+proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
   result = readBuffer(f, addr(a[start]), len)
 
-proc readChars(f: File, a: var openArray[char], start, len: int): int =
+proc readChars(f: File, a: var openArray[char], start, len: Natural): int =
   result = readBuffer(f, addr(a[start]), len)
 
 {.push stackTrace:off, profiler:off.}
-proc writeBytes(f: File, a: openArray[int8], start, len: int): int =
+proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
-proc writeChars(f: File, a: openArray[char], start, len: int): int =
+proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
-proc writeBuffer(f: File, buffer: pointer, len: int): int =
+proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
   result = fwrite(buffer, 1, len, f)
 
 proc write(f: File, s: string) =

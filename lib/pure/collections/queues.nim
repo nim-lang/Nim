@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implementation of a queue. The underlying implementation uses a ``seq``.
+## Implementation of a `queue`:idx:. The underlying implementation uses a ``seq``.
 ## Note: For inter thread communication use
 ## a `TChannel <channels.html>`_ instead.
 
@@ -31,6 +31,15 @@ proc len*[T](q: Queue[T]): int =
   result = q.count
 
 iterator items*[T](q: Queue[T]): T =
+  ## yields every element of `q`.
+  var i = q.rd
+  var c = q.count
+  while c > 0:
+    dec c
+    yield q.data[i]
+    i = (i + 1) and q.mask
+
+iterator mitems*[T](q: var Queue[T]): var T =
   ## yields every element of `q`.
   var i = q.rd
   var c = q.count

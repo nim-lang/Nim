@@ -122,41 +122,41 @@ proc read[T](s: Stream, result: var T) =
     raise newEIO("cannot read from stream")
 
 proc readChar*(s: Stream): char =
-  ## reads a char from the stream `s`. Raises `EIO` if an error occured.
+  ## reads a char from the stream `s`. Raises `EIO` if an error occurred.
   ## Returns '\0' as an EOF marker.
   if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc readBool*(s: Stream): bool = 
-  ## reads a bool from the stream `s`. Raises `EIO` if an error occured.
+  ## reads a bool from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
 proc readInt8*(s: Stream): int8 = 
-  ## reads an int8 from the stream `s`. Raises `EIO` if an error occured.
+  ## reads an int8 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
 proc readInt16*(s: Stream): int16 = 
-  ## reads an int16 from the stream `s`. Raises `EIO` if an error occured.
+  ## reads an int16 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
 proc readInt32*(s: Stream): int32 = 
-  ## reads an int32 from the stream `s`. Raises `EIO` if an error occured.
+  ## reads an int32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
 proc readInt64*(s: Stream): int64 = 
-  ## reads an int64 from the stream `s`. Raises `EIO` if an error occured.
+  ## reads an int64 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
 proc readFloat32*(s: Stream): float32 = 
-  ## reads a float32 from the stream `s`. Raises `EIO` if an error occured.
+  ## reads a float32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
 proc readFloat64*(s: Stream): float64 = 
-  ## reads a float64 from the stream `s`. Raises `EIO` if an error occured.
+  ## reads a float64 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
 proc readStr*(s: Stream, length: int): TaintedString = 
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if 
-  ## an error occured.
+  ## an error occurred.
   result = newString(length).TaintedString
   var L = readData(s, addr(string(result)[0]), length)
   if L != length: setLen(result.string, L)
@@ -183,7 +183,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
 
 proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
-  ## `EIO` if an error occured.
+  ## `EIO` if an error occurred.
   result = TaintedString""
   while true:
     var c = readChar(s)
@@ -224,10 +224,12 @@ proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
 
 proc ssWriteData(s: Stream, buffer: pointer, bufLen: int) = 
   var s = StringStream(s)
-  if bufLen > 0: 
-    setLen(s.data, s.data.len + bufLen)
-    copyMem(addr(s.data[s.pos]), buffer, bufLen)
-    inc(s.pos, bufLen)
+  if bufLen <= 0:
+    return
+  if s.pos + bufLen > s.data.len:
+    setLen(s.data, s.pos + bufLen)
+  copyMem(addr(s.data[s.pos]), buffer, bufLen)
+  inc(s.pos, bufLen)
 
 proc ssClose(s: Stream) =
   var s = StringStream(s)
@@ -284,7 +286,7 @@ when not defined(js):
   proc newFileStream*(filename: string, mode: FileMode): FileStream =
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, nil is returned. See the `system
-    ## <system.html>`_ module for a list of available TFileMode enums.
+    ## <system.html>`_ module for a list of available FileMode enums.
     var f: File
     if open(f, filename, mode): result = newFileStream(f)
 

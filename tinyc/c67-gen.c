@@ -235,7 +235,7 @@ void gsym(int t)
 }
 
 // these are regs that tcc doesn't really know about, 
-// but asign them unique values so the mapping routines
+// but assign them unique values so the mapping routines
 // can distinquish them
 
 #define C67_A0 105

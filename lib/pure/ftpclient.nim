@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Dominik Picheta
+#        (c) Copyright 2015 Dominik Picheta
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
@@ -15,8 +15,8 @@ from rawsockets import nil
 from asyncdispatch import PFuture
 
 ## This module **partially** implements an FTP client as specified
-## by `RFC 959 <http://tools.ietf.org/html/rfc959>`_. 
-## 
+## by `RFC 959 <http://tools.ietf.org/html/rfc959>`_.
+##
 ## This module provides both a synchronous and asynchronous implementation.
 ## The asynchronous implementation requires you to use the ``asyncFTPClient``
 ## function. You are then required to register the ``AsyncFTPClient`` with a
@@ -27,7 +27,7 @@ from asyncdispatch import PFuture
 ## file transfers, calls to functions which use the command socket will block.
 ##
 ## Here is some example usage of this module:
-## 
+##
 ## .. code-block:: Nim
 ##    var ftp = ftpClient("example.org", user = "user", pass = "pass")
 ##    ftp.connect()
@@ -51,7 +51,7 @@ type
       port*: rawsockets.Port
     else:
       port*: Port
-    
+
     jobInProgress*: bool
     job*: FTPJob[SockType]
 
@@ -91,7 +91,7 @@ type
     of EvLines:
       lines*: string ## Lines that have been transferred.
     of EvRetr, EvStore: ## Retr/Store operation finished.
-      nil 
+      nil
     of EvTransferProgress:
       bytesTotal*: BiggestInt     ## Bytes total.
       bytesFinished*: BiggestInt  ## Bytes transferred.
@@ -107,7 +107,7 @@ type
   EInvalidReply: ReplyError, EFTP: FTPError
 ].}
 
-proc ftpClient*(address: string, port = TPort(21),
+proc ftpClient*(address: string, port = Port(21),
                 user, pass = ""): FtpClient =
   ## Create a ``FtpClient`` object.
   new(result)
@@ -120,10 +120,10 @@ proc ftpClient*(address: string, port = TPort(21),
   result.csock = socket()
   if result.csock == invalidSocket: raiseOSError(osLastError())
 
-template blockingOperation(sock: TSocket, body: stmt) {.immediate.} =
+template blockingOperation(sock: Socket, body: stmt) {.immediate.} =
   body
 
-template blockingOperation(sock: asyncio.PAsyncSocket, body: stmt) {.immediate.} =
+template blockingOperation(sock: asyncio.AsyncSocket, body: stmt) {.immediate.} =
   sock.setBlocking(true)
   body
   sock.setBlocking(false)
@@ -145,14 +145,14 @@ proc send*[T](ftp: FtpBase[T], m: string): TaintedString =
 
 proc assertReply(received: TaintedString, expected: string) =
   if not received.string.startsWith(expected):
-    raise newException(EInvalidReply,
+    raise newException(ReplyError,
                        "Expected reply '$1' got: $2" % [
                        expected, received.string])
 
 proc assertReply(received: TaintedString, expected: varargs[string]) =
   for i in items(expected):
     if received.string.startsWith(i): return
-  raise newException(EInvalidReply,
+  raise newException(ReplyError,
                      "Expected reply '$1' got: $2" %
                      [expected.join("' or '"), received.string])
 
@@ -161,7 +161,7 @@ proc createJob[T](ftp: FtpBase[T],
                           nimcall,gcsafe.},
                cmd: FTPJobType) =
   if ftp.jobInProgress:
-    raise newException(EFTP, "Unable to do two jobs at once.")
+    raise newException(FTPError, "Unable to do two jobs at once.")
   ftp.jobInProgress = true
   new(ftp.job)
   ftp.job.prc = prc
@@ -182,11 +182,11 @@ proc deleteJob[T](ftp: FtpBase[T]) =
     ftp.job.file.close()
   ftp.dsock.close()
 
-proc handleTask(s: PAsyncSocket, ftp: PAsyncFTPClient) =
+proc handleTask(s: AsyncSocket, ftp: AsyncFTPClient) =
   if ftp.jobInProgress:
     if ftp.job.typ in {JRetr, JStore}:
       if epochTime() - ftp.job.lastProgressReport >= 1.0:
-        var r: TFTPEvent
+        var r: FTPEvent
         ftp.job.lastProgressReport = epochTime()
         r.typ = EvTransferProgress
         r.bytesTotal = ftp.job.total
@@ -195,57 +195,57 @@ proc handleTask(s: PAsyncSocket, ftp: PAsyncFTPClient) =
         r.filename = ftp.job.filename
         r.currentJob = ftp.job.typ
         ftp.job.oneSecond = 0
-        ftp.handleEvent(PAsyncFTPClient(ftp), r)
+        ftp.handleEvent(ftp, r)
 
-proc handleWrite(s: PAsyncSocket, ftp: PAsyncFTPClient) =
+proc handleWrite(s: AsyncSocket, ftp: AsyncFTPClient) =
   if ftp.jobInProgress:
     if ftp.job.typ == JStore:
       assert (not ftp.job.prc(ftp, true))
 
-proc handleConnect(s: PAsyncSocket, ftp: PAsyncFTPClient) =
+proc handleConnect(s: AsyncSocket, ftp: AsyncFTPClient) =
   ftp.dsockConnected = true
   assert(ftp.jobInProgress)
   if ftp.job.typ == JStore:
-    s.setHandleWrite(proc (s: PAsyncSocket) = handleWrite(s, ftp))
+    s.setHandleWrite(proc (s: AsyncSocket) = handleWrite(s, ftp))
   else:
     s.delHandleWrite()
 
-proc handleRead(s: PAsyncSocket, ftp: PAsyncFTPClient) =
+proc handleRead(s: AsyncSocket, ftp: AsyncFTPClient) =
   assert ftp.jobInProgress
   assert ftp.job.typ != JStore
-  # This can never return true, because it shouldn't check for code 
+  # This can never return true, because it shouldn't check for code
   # 226 from csock.
   assert(not ftp.job.prc(ftp, true))
 
 proc pasv[T](ftp: FtpBase[T]) =
   ## Negotiate a data connection.
-  when T is TSocket:
+  when T is Socket:
     ftp.dsock = socket()
     if ftp.dsock == invalidSocket: raiseOSError(osLastError())
-  elif T is PAsyncSocket:
+  elif T is AsyncSocket:
     ftp.dsock = asyncSocket()
     ftp.dsock.handleRead =
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         handleRead(s, ftp)
     ftp.dsock.handleConnect =
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         handleConnect(s, ftp)
     ftp.dsock.handleTask =
-      proc (s: PAsyncSocket) =
+      proc (s: AsyncSocket) =
         handleTask(s, ftp)
     ftp.disp.register(ftp.dsock)
   else:
     {.fatal: "Incorrect socket instantiation".}
-  
+
   var pasvMsg = ftp.send("PASV").string.strip.TaintedString
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
-  var ip = nums[0.. -3]
-  var port = nums[-2.. -1]
+  var ip = nums[0.. ^3]
+  var port = nums[^2.. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
-  ftp.dsock.connect(ip.join("."), TPort(properPort.toU16))
-  when T is PAsyncSocket:
+  ftp.dsock.connect(ip.join("."), Port(properPort.toU16))
+  when T is AsyncSocket:
     ftp.dsockConnected = false
   else:
     ftp.dsockConnected = true
@@ -255,10 +255,10 @@ proc normalizePathSep(path: string): string =
 
 proc connect*[T](ftp: FtpBase[T]) =
   ## Connect to the FTP server specified by ``ftp``.
-  when T is PAsyncSocket:
+  when T is AsyncSocket:
     blockingOperation(ftp.csock):
       ftp.csock.connect(ftp.address, ftp.port)
-  elif T is TSocket:
+  elif T is Socket:
     ftp.csock.connect(ftp.address, ftp.port)
   else:
     {.fatal: "Incorrect socket instantiation".}
@@ -292,13 +292,13 @@ proc getLines[T](ftp: FtpBase[T], async: bool = false): bool =
   ## It doesn't if `async` is true, because it doesn't check for 226 then.
   if ftp.dsockConnected:
     var r = TaintedString""
-    when T is PAsyncSocket:
+    when T is AsyncSocket:
       if ftp.asyncDSock.readLine(r):
         if r.string == "":
           ftp.dsockConnected = false
         else:
           ftp.job.lines.add(r.string & "\n")
-    elif T is TSocket:
+    elif T is Socket:
       assert(not async)
       ftp.dsock.readLine(r)
       if r.string == "":
@@ -307,9 +307,9 @@ proc getLines[T](ftp: FtpBase[T], async: bool = false): bool =
         ftp.job.lines.add(r.string & "\n")
     else:
       {.fatal: "Incorrect socket instantiation".}
-  
+
   if not async:
-    var readSocks: seq[TSocket] = @[ftp.csock]
+    var readSocks: seq[Socket] = @[ftp.csock]
     # This is only needed here. Asyncio gets this socket...
     blockingOperation(ftp.csock):
       if readSocks.select(1) != 0 and ftp.csock in readSocks:
@@ -372,7 +372,7 @@ proc createDir*[T](ftp: FtpBase[T], dir: string, recursive: bool = false) =
     assertReply reply, "257"
 
 proc chmod*[T](ftp: FtpBase[T], path: string,
-            permissions: set[TFilePermission]) =
+            permissions: set[FilePermission]) =
   ## Changes permission of ``path`` to ``permissions``.
   var userOctal = 0
   var groupOctal = 0
@@ -396,7 +396,7 @@ proc chmod*[T](ftp: FtpBase[T], path: string,
 proc list*[T](ftp: FtpBase[T], dir: string = "", async = false): string =
   ## Lists all files in ``dir``. If ``dir`` is ``""``, uses the current
   ## working directory. If ``async`` is true, this function will return
-  ## immediately and it will be your job to call asyncio's 
+  ## immediately and it will be your job to call asyncio's
   ## ``poll`` to progress this operation.
   ftp.createJob(getLines[T], JRetrText)
   ftp.pasv()
@@ -417,7 +417,7 @@ proc retrText*[T](ftp: FtpBase[T], file: string, async = false): string =
   ftp.createJob(getLines[T], JRetrText)
   ftp.pasv()
   assertReply ftp.send("RETR " & file.normalizePathSep), ["125", "150"]
-  
+
   if not async:
     while not ftp.job.prc(ftp, false): discard
     result = ftp.job.lines
@@ -431,12 +431,12 @@ proc getFile[T](ftp: FtpBase[T], async = false): bool =
     var bytesRead = 0
     var returned = false
     if async:
-      when T is TSocket:
-        raise newException(EFTP, "FTPClient must be async.")
+      when T is Socket:
+        raise newException(FTPError, "FTPClient must be async.")
       else:
         bytesRead = ftp.dsock.recvAsync(r, BufferSize)
         returned = bytesRead != -1
-    else: 
+    else:
       bytesRead = ftp.dsock.recv(r, BufferSize)
       returned = true
     let r2 = r.string
@@ -447,9 +447,9 @@ proc getFile[T](ftp: FtpBase[T], async = false): bool =
     elif returned and r2 == "":
       ftp.dsockConnected = false
 
-  when T is TSocket:
+  when T is Socket:
     if not async:
-      var readSocks: seq[TSocket] = @[ftp.csock]
+      var readSocks: seq[Socket] = @[ftp.csock]
       blockingOperation(ftp.csock):
         if readSocks.select(1) != 0 and ftp.csock in readSocks:
           assertReply ftp.expectReply(), "226"
@@ -458,7 +458,7 @@ proc getFile[T](ftp: FtpBase[T], async = false): bool =
 proc retrFile*[T](ftp: FtpBase[T], file, dest: string, async = false) =
   ## Downloads ``file`` and saves it to ``dest``. Usage of this function
   ## asynchronously is recommended to view the progress of the download.
-  ## The ``EvRetr`` event is passed to the specified ``handleEvent`` function 
+  ## The ``EvRetr`` event is passed to the specified ``handleEvent`` function
   ## when the download is finished, and the ``filename`` field will be equal
   ## to ``file``.
   ftp.createJob(getFile[T], JRetr)
@@ -467,11 +467,11 @@ proc retrFile*[T](ftp: FtpBase[T], file, dest: string, async = false) =
   var reply = ftp.send("RETR " & file.normalizePathSep)
   assertReply reply, ["125", "150"]
   if {'(', ')'} notin reply.string:
-    raise newException(EInvalidReply, "Reply has no file size.")
+    raise newException(ReplyError, "Reply has no file size.")
   var fileSize: BiggestInt
   if reply.string.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
-    raise newException(EInvalidReply, "Reply has no file size.")
-    
+    raise newException(ReplyError, "Reply has no file size.")
+
   ftp.job.total = fileSize
   ftp.job.lastProgressReport = epochTime()
   ftp.job.filename = file.normalizePathSep
@@ -488,7 +488,7 @@ proc doUpload[T](ftp: FtpBase[T], async = false): bool =
       if bytesSent == ftp.job.toStore.len:
         ftp.job.toStore = ""
       elif bytesSent != ftp.job.toStore.len and bytesSent != 0:
-        ftp.job.toStore = ftp.job.toStore[bytesSent .. -1]
+        ftp.job.toStore = ftp.job.toStore[bytesSent .. ^1]
       ftp.job.progress.inc(bytesSent)
       ftp.job.oneSecond.inc(bytesSent)
     else:
@@ -499,12 +499,12 @@ proc doUpload[T](ftp: FtpBase[T], async = false): bool =
         # File finished uploading.
         ftp.dsock.close()
         ftp.dsockConnected = false
-  
+
         if not async:
           assertReply ftp.expectReply(), "226"
           return true
         return false
-    
+
       if not async:
         ftp.dsock.send(s)
       else:
@@ -512,9 +512,9 @@ proc doUpload[T](ftp: FtpBase[T], async = false): bool =
         if bytesSent == 0:
           ftp.job.toStore.add(s)
         elif bytesSent != s.len:
-          ftp.job.toStore.add(s[bytesSent .. -1])
+          ftp.job.toStore.add(s[bytesSent .. ^1])
         len = bytesSent
-      
+
       ftp.job.progress.inc(len)
       ftp.job.oneSecond.inc(len)
 
@@ -522,8 +522,8 @@ proc store*[T](ftp: FtpBase[T], file, dest: string, async = false) =
   ## Uploads ``file`` to ``dest`` on the remote FTP server. Usage of this
   ## function asynchronously is recommended to view the progress of
   ## the download.
-  ## The ``EvStore`` event is passed to the specified ``handleEvent`` function 
-  ## when the upload is finished, and the ``filename`` field will be 
+  ## The ``EvStore`` event is passed to the specified ``handleEvent`` function
+  ## when the upload is finished, and the ``filename`` field will be
   ## equal to ``file``.
   ftp.createJob(doUpload[T], JStore)
   ftp.job.file = open(file)
@@ -531,7 +531,7 @@ proc store*[T](ftp: FtpBase[T], file, dest: string, async = false) =
   ftp.job.lastProgressReport = epochTime()
   ftp.job.filename = file
   ftp.pasv()
-  
+
   assertReply ftp.send("STOR " & dest.normalizePathSep), ["125", "150"]
 
   if not async:
@@ -545,10 +545,10 @@ proc close*[T](ftp: FtpBase[T]) =
   ftp.csock.close()
   ftp.dsock.close()
 
-proc csockHandleRead(s: PAsyncSocket, ftp: PAsyncFTPClient) =
+proc csockHandleRead(s: AsyncSocket, ftp: AsyncFTPClient) =
   if ftp.jobInProgress:
     assertReply ftp.expectReply(), "226" # Make sure the transfer completed.
-    var r: TFTPEvent
+    var r: FTPEvent
     case ftp.job.typ
     of JRetrText:
       r.typ = EvLines
@@ -557,21 +557,21 @@ proc csockHandleRead(s: PAsyncSocket, ftp: PAsyncFTPClient) =
       r.typ = EvRetr
       r.filename = ftp.job.filename
       if ftp.job.progress != ftp.job.total:
-        raise newException(EFTP, "Didn't download full file.")
+        raise newException(FTPError, "Didn't download full file.")
     of JStore:
       r.typ = EvStore
       r.filename = ftp.job.filename
       if ftp.job.progress != ftp.job.total:
-        raise newException(EFTP, "Didn't upload full file.")
+        raise newException(FTPError, "Didn't upload full file.")
     ftp.deleteJob()
-    
+
     ftp.handleEvent(ftp, r)
 
-proc asyncFTPClient*(address: string, port = TPort(21),
+proc asyncFTPClient*(address: string, port = Port(21),
                      user, pass = "",
-    handleEvent: proc (ftp: PAsyncFTPClient, ev: TFTPEvent) {.closure,gcsafe.} = 
-      (proc (ftp: PAsyncFTPClient, ev: TFTPEvent) = discard)): PAsyncFTPClient =
-  ## Create a ``PAsyncFTPClient`` object.
+    handleEvent: proc (ftp: AsyncFTPClient, ev: FTPEvent) {.closure,gcsafe.} =
+      (proc (ftp: AsyncFTPClient, ev: FTPEvent) = discard)): AsyncFTPClient =
+  ## Create a ``AsyncFTPClient`` object.
   ##
   ## Use this if you want to use asyncio's dispatcher.
   var dres: AsyncFtpClient
@@ -588,12 +588,12 @@ proc asyncFTPClient*(address: string, port = TPort(21),
       csockHandleRead(s, dres)
   result = dres
 
-proc register*(d: PDispatcher, ftp: PAsyncFTPClient): PDelegate {.discardable.} =
+proc register*(d: Dispatcher, ftp: AsyncFTPClient): Delegate {.discardable.} =
   ## Registers ``ftp`` with dispatcher ``d``.
   ftp.disp = d
   return ftp.disp.register(ftp.csock)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   proc main =
     var d = newDispatcher()
     let hev =
@@ -617,7 +617,7 @@ when isMainModule:
           echo d.len
         else: assert(false)
     var ftp = asyncFTPClient("example.com", user = "foo", pass = "bar", handleEvent = hev)
-    
+
     d.register(ftp)
     d.len.echo()
     ftp.connect()
@@ -629,7 +629,7 @@ when isMainModule:
       if not d.poll(): break
   main()
 
-when isMainModule and false:
+when not defined(testing) and isMainModule:
   var ftp = ftpClient("example.com", user = "foo", pass = "bar")
   ftp.connect()
   echo ftp.pwd()

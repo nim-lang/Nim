@@ -10,7 +10,7 @@
 ## Template evaluation engine. Now hygienic.
 
 import
-  strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer, 
+  strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer,
   rodread
 
 type
@@ -29,7 +29,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   of nkSym:
     var s = templ.sym
     if s.owner.id == c.owner.id:
-      if s.kind == skParam:
+      if s.kind == skParam and sfGenSym notin s.flags:
         let x = actual.sons[s.position]
         if x.kind == nkArgList:
           for y in items(x): result.add(y)
@@ -49,7 +49,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     result.add copyNode(c, templ, actual)
   else:
     var res = copyNode(c, templ, actual)
-    for i in countup(0, sonsLen(templ) - 1): 
+    for i in countup(0, sonsLen(templ) - 1):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
 
@@ -86,14 +86,14 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym): PNode =
   ctx.owner = tmpl
   ctx.genSymOwner = genSymOwner
   initIdTable(ctx.mapping)
-  
+
   let body = tmpl.getBody
-  if isAtom(body): 
+  if isAtom(body):
     result = newNodeI(nkPar, body.info)
     evalTemplateAux(body, args, ctx, result)
     if result.len == 1: result = result.sons[0]
     else:
-      globalError(result.info, errIllFormedAstX,
+      localError(result.info, errIllFormedAstX,
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)
@@ -102,5 +102,5 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym): PNode =
     if ctx.instLines: result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
-  
+
   dec(evalTemplateCounter)

@@ -5,7 +5,8 @@ import
 from strutils import
   formatFloat,
   TFloatFormat,
-  `%`
+  `%`,
+  ffDecimal
 
 from unsigned import
   `shr`,

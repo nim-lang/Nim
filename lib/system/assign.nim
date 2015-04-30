@@ -27,7 +27,7 @@ proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
     var m = selectBranch(src, n)
     # reset if different branches are in use; note different branches also
     # imply that's not self-assignment (``x = x``)!
-    if m != dd and dd != nil: 
+    if m != dd and dd != nil:
       genericResetAux(dest, dd)
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
             n.typ.size)
@@ -205,9 +205,13 @@ proc genericReset(dest: pointer, mt: PNimType) =
   case mt.kind
   of tyString, tyRef, tySequence:
     unsureAsgnRef(cast[PPointer](dest), nil)
-  of tyObject, tyTuple:
-    # we don't need to reset m_type field for tyObject
+  of tyTuple:
     genericResetAux(dest, mt.node)
+  of tyObject:
+    genericResetAux(dest, mt.node)
+    # also reset the type field for tyObject, for correct branch switching!
+    var pint = cast[ptr PNimType](dest)
+    pint[] = nil
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
       genericReset(cast[pointer](d +% i*% mt.base.size), mt.base)

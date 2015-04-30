@@ -261,9 +261,9 @@ A character is not an Unicode character but a single byte. The reason for this
 is efficiency: for the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
 this. Another reason is that Nim can thus support ``array[char, int]`` or
-``set[char]`` efficiently as many algorithms rely on this feature.  The `TRune`
+``set[char]`` efficiently as many algorithms rely on this feature.  The `Rune`
 type is used for Unicode characters, it can represent any Unicode character.
-``TRune`` is declared in the `unicode module <unicode.html>`_.
+``Rune`` is declared in the `unicode module <unicode.html>`_.
 
 
 Numerical constants
@@ -289,7 +289,7 @@ Numerical constants are of a single type and have the form::
   INT32_LIT = INT_LIT ['\''] ('i' | 'I') '32'
   INT64_LIT = INT_LIT ['\''] ('i' | 'I') '64'
 
-  UINT8_LIT = INT_LIT ['\''] ('u' | 'U')
+  UINT_LIT = INT_LIT ['\''] ('u' | 'U')
   UINT8_LIT = INT_LIT ['\''] ('u' | 'U') '8'
   UINT16_LIT = INT_LIT ['\''] ('u' | 'U') '16'
   UINT32_LIT = INT_LIT ['\''] ('u' | 'U') '32'

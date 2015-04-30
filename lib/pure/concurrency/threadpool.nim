@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -204,7 +204,7 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
     inc fv.ai.cv.counter
     release(fv.ai.cv.L)
     signal(fv.ai.cv.c)
-  if fv.usesSemaphore: 
+  if fv.usesSemaphore:
     signal(fv.cv)
 
 proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =

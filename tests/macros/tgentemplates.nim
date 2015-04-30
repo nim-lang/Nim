@@ -2,7 +2,7 @@
 
 import parseutils, macros
 
-proc parse_until_symbol(node: PNimrodNode, value: string, index: var int): bool {.compiletime.} =
+proc parse_until_symbol(node: NimNode, value: string, index: var int): bool {.compiletime.} =
     var splitValue: string
     var read = value.parseUntil(splitValue, '$', index)
 
@@ -15,7 +15,7 @@ proc parse_until_symbol(node: PNimrodNode, value: string, index: var int): bool 
     if splitValue.len > 0:
         node.insert node.len, newCall("add", ident("result"), newStrLitNode(splitValue))
 
-proc parse_template(node: PNimrodNode, value: string) {.compiletime.} =
+proc parse_template(node: NimNode, value: string) {.compiletime.} =
     var index = 0
     while index < value.len and
         parse_until_symbol(node, value, index): discard

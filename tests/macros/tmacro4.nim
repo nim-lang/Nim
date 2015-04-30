@@ -7,7 +7,7 @@ import
 
 macro test_macro*(n: stmt): stmt {.immediate.} =
   result = newNimNode(nnkStmtList)
-  var ass : PNimrodNode = newNimNode(nnkAsgn)
+  var ass : NimNode = newNimNode(nnkAsgn)
   add(ass, newIdentNode("str"))
   add(ass, newStrLitNode("after"))
   add(result, ass)

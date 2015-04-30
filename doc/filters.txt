@@ -173,7 +173,7 @@ The template engine is quite flexible. It is easy to produce a procedure that
 writes the template code directly to a file::
 
   #! stdtmpl(emit="f.write") | standard
-  #proc writeHTMLPage(f: TFile, title, currentTab, content: string,
+  #proc writeHTMLPage(f: File, title, currentTab, content: string,
   #                   tabs: openArray[string]) = 
   <head><title>$title</title></head>
   <body>

@@ -45,6 +45,21 @@ when defined(windows):
   var
     oldAttr = getAttributes()
 
+else:
+  import termios, unsigned
+
+  proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
+    var mode: Termios
+    discard fd.tcgetattr(addr mode)
+    mode.c_iflag = mode.c_iflag and not Tcflag(BRKINT or ICRNL or INPCK or
+      ISTRIP or IXON)
+    mode.c_oflag = mode.c_oflag and not Tcflag(OPOST)
+    mode.c_cflag = (mode.c_cflag and not Tcflag(CSIZE or PARENB)) or CS8
+    mode.c_lflag = mode.c_lflag and not Tcflag(ECHO or ICANON or IEXTEN or ISIG)
+    mode.c_cc[VMIN] = 1.cuchar
+    mode.c_cc[VTIME] = 0.cuchar
+    discard fd.tcsetattr(time, addr mode)
+
 proc setCursorPos*(x, y: int) =
   ## sets the terminal's cursor to the (x,y) position. (0,0) is the
   ## upper left of the screen.
@@ -185,13 +200,15 @@ proc eraseScreen* =
     var numwrote: DWORD
     var origin: TCOORD # is inititalized to 0, 0
     var hStdout = conHandle
+
     if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
-    if FillConsoleOutputCharacter(hStdout, ' ', scrbuf.dwSize.X*scrbuf.dwSize.Y,
+    let numChars = int32(scrbuf.dwSize.X)*int32(scrbuf.dwSize.Y)
+
+    if FillConsoleOutputCharacter(hStdout, ' ', numChars,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
-    if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes,
-                                  scrbuf.dwSize.X * scrbuf.dwSize.Y,
+    if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, numChars,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
     setCursorXPos(0)
@@ -327,7 +344,7 @@ proc isatty*(f: File): bool =
   else:
     proc isatty(fildes: FileHandle): cint {.
       importc: "_isatty", header: "<io.h>".}
-  
+
   result = isatty(getFileHandle(f)) != 0'i32
 
 proc styledEchoProcessArg(s: string) = write stdout, s
@@ -347,7 +364,19 @@ macro styledEcho*(m: varargs[expr]): stmt =
   result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\n")))
   result.add(newCall(bindSym"resetAttributes"))
 
-when isMainModule:
+when not defined(windows):
+  proc getch*(): char =
+    ## Read a single character from the terminal, blocking until it is entered.
+    ## The character is not printed to the terminal. This is not available for
+    ## Windows.
+    let fd = getFileHandle(stdin)
+    var oldMode: Termios
+    discard fd.tcgetattr(addr oldMode)
+    fd.setRaw()
+    result = stdin.readChar()
+    discard fd.tcsetattr(TCSADRAIN, addr oldMode)
+
+when not defined(testing) and isMainModule:
   system.addQuitProc(resetAttributes)
   write(stdout, "never mind")
   eraseLine()
@@ -357,5 +386,5 @@ when isMainModule:
   setForeGroundColor(fgBlue)
   writeln(stdout, "ordinary text")
 
-  styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore}) 
-  
+  styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore})
+

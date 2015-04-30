@@ -45,29 +45,29 @@ const
   ]
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
-proc genSectionStart*(fs: TCFileSection): PRope =
+proc genSectionStart*(fs: TCFileSection): Rope =
   if compilationCachePresent:
-    result = toRope(tnl)
-    app(result, "/*\t")
-    app(result, CFileSectionNames[fs])
-    app(result, ":*/")
-    app(result, tnl)
+    result = rope(tnl)
+    add(result, "/*\t")
+    add(result, CFileSectionNames[fs])
+    add(result, ":*/")
+    add(result, tnl)
 
-proc genSectionEnd*(fs: TCFileSection): PRope =
+proc genSectionEnd*(fs: TCFileSection): Rope =
   if compilationCachePresent:
-    result = toRope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & tnl)
 
-proc genSectionStart*(ps: TCProcSection): PRope =
+proc genSectionStart*(ps: TCProcSection): Rope =
   if compilationCachePresent:
-    result = toRope(tnl)
-    app(result, "/*\t")
-    app(result, CProcSectionNames[ps])
-    app(result, ":*/")
-    app(result, tnl)
+    result = rope(tnl)
+    add(result, "/*\t")
+    add(result, CProcSectionNames[ps])
+    add(result, ":*/")
+    add(result, tnl)
 
-proc genSectionEnd*(ps: TCProcSection): PRope =
+proc genSectionEnd*(ps: TCProcSection): Rope =
   if compilationCachePresent:
-    result = toRope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & tnl)
 
 proc writeTypeCache(a: TIdTable, s: var string) =
   var i = 0
@@ -79,7 +79,7 @@ proc writeTypeCache(a: TIdTable, s: var string) =
       s.add(' ')
     encodeVInt(id, s)
     s.add(':')
-    encodeStr(PRope(value).ropeToStr, s)
+    encodeStr($Rope(value), s)
     inc i
   s.add('}')
 
@@ -94,8 +94,8 @@ proc writeIntSet(a: IntSet, s: var string) =
     encodeVInt(x, s)
     inc i
   s.add('}')
-  
-proc genMergeInfo*(m: BModule): PRope =
+
+proc genMergeInfo*(m: BModule): Rope =
   if optSymbolFiles notin gGlobalOptions: return nil
   var s = "/*\tNIM_merge_INFO:"
   s.add(tnl)
@@ -111,9 +111,9 @@ proc genMergeInfo*(m: BModule): PRope =
   encodeVInt(ord(m.frameDeclared), s)
   s.add(tnl)
   s.add("*/")
-  result = s.toRope
+  result = s.rope
 
-template `^`(pos: expr): expr = L.buf[pos]
+template `^`(pos: int): expr = L.buf[pos]
 
 proc skipWhite(L: var TBaseLexer) =
   var pos = L.bufpos
@@ -132,7 +132,7 @@ proc skipUntilCmd(L: var TBaseLexer) =
     of CR: pos = nimlexbase.handleCR(L, pos)
     of LF: pos = nimlexbase.handleLF(L, pos)
     of '\0': break
-    of '/': 
+    of '/':
       if ^(pos+1) == '*' and ^(pos+2) == '\t':
         inc pos, 3
         break
@@ -145,7 +145,7 @@ proc atEndMark(buf: cstring, pos: int): bool =
   while s < NimMergeEndMark.len and buf[pos+s] == NimMergeEndMark[s]: inc s
   result = s == NimMergeEndMark.len
 
-proc readVerbatimSection(L: var TBaseLexer): PRope = 
+proc readVerbatimSection(L: var TBaseLexer): Rope =
   var pos = L.bufpos
   var buf = L.buf
   var r = newStringOfCap(30_000)
@@ -162,14 +162,14 @@ proc readVerbatimSection(L: var TBaseLexer): PRope =
     of '\0':
       internalError("ccgmerge: expected: " & NimMergeEndMark)
       break
-    else: 
+    else:
       if atEndMark(buf, pos):
         inc pos, NimMergeEndMark.len
         break
       r.add(buf[pos])
       inc pos
   L.bufpos = pos
-  result = r.toRope
+  result = r.rope
 
 proc readKey(L: var TBaseLexer, result: var string) =
   var pos = L.bufpos
@@ -181,7 +181,7 @@ proc readKey(L: var TBaseLexer, result: var string) =
   if buf[pos] != ':': internalError("ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
-proc newFakeType(id: int): PType = 
+proc newFakeType(id: int): PType =
   new(result)
   result.id = id
 
@@ -197,7 +197,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TIdTable) =
     # XXX little hack: we create a "fake" type object with the correct Id
     # better would be to adapt the data structure to not even store the
     # object as key, but only the Id
-    idTablePut(result, newFakeType(key), value.toRope)
+    idTablePut(result, newFakeType(key), value.rope)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =
@@ -223,12 +223,12 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "hasframe":  m.frameDeclared = decodeVInt(L.buf, L.bufpos) != 0
-    else: internalError("ccgmerge: unkown key: " & k)
+    else: internalError("ccgmerge: unknown key: " & k)
 
 when not defined(nimhygiene):
   {.pragma: inject.}
-  
-template withCFile(cfilename: string, body: stmt) {.immediate.} = 
+
+template withCFile(cfilename: string, body: stmt) {.immediate.} =
   var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer
@@ -239,7 +239,7 @@ template withCFile(cfilename: string, body: stmt) {.immediate.} =
     if ^L.bufpos == '\0': break
     body
   closeBaseLexer(L)
-  
+
 proc readMergeInfo*(cfilename: string, m: BModule) =
   ## reads the merge meta information into `m`.
   withCFile(cfilename):
@@ -257,7 +257,7 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
   ## reads the merge sections into `m`.
   withCFile(cfilename):
     readKey(L, k)
-    if k == "NIM_merge_INFO":   
+    if k == "NIM_merge_INFO":
       discard
     elif ^L.bufpos == '*' and ^(L.bufpos+1) == '/':
       inc(L.bufpos, 2)
@@ -280,19 +280,19 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
 proc mergeRequired*(m: BModule): bool =
   for i in cfsHeaders..cfsProcs:
     if m.s[i] != nil:
-      #echo "not empty: ", i, " ", ropeToStr(m.s[i])
+      #echo "not empty: ", i, " ", m.s[i]
       return true
   for i in low(TCProcSection)..high(TCProcSection):
-    if m.initProc.s(i) != nil: 
-      #echo "not empty: ", i, " ", ropeToStr(m.initProc.s[i])
+    if m.initProc.s(i) != nil:
+      #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
 
 proc mergeFiles*(cfilename: string, m: BModule) =
   ## merges the C file with the old version on hard disc.
   var old: TMergeSections
   readMergeSections(cfilename, old)
-  # do the merge; old section before new section:    
+  # do the merge; old section before new section:
   for i in low(TCFileSection)..high(TCFileSection):
-    m.s[i] = con(old.f[i], m.s[i])
+    m.s[i] = old.f[i] & m.s[i]
   for i in low(TCProcSection)..high(TCProcSection):
-    m.initProc.s(i) = con(old.p[i], m.initProc.s(i))
+    m.initProc.s(i) = old.p[i] & m.initProc.s(i)

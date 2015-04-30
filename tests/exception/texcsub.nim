@@ -5,12 +5,12 @@ discard """
 # Test inheritance for exception matching:
 
 try:
-  raise newException(EOS, "dummy message")
-except E_Base:
+  raise newException(OSError, "dummy message")
+except Exception:
   echo "caught!"
-except: 
+except:
   echo "wtf!?"
-  
+
 #OUT caught!
 
 

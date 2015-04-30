@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -78,7 +78,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     result = doNothing
   inc s.calls
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   proc busyLoop() =
     while true:
       discard random(80)

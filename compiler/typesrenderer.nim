@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -68,7 +68,6 @@ proc renderType(n: PNode): string =
       assert n[i].kind == nkIdent
       result.add(',' & typeStr)
   of nkTupleTy:
-    assert len(n) > 0
     result = "tuple["
     for i in 0 .. <len(n): result.add(renderType(n[i]) & ',')
     result[<len(result)] = ']'

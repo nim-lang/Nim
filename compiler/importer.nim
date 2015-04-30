@@ -9,7 +9,7 @@
 
 # This module implements the symbol importing mechanism.
 
-import 
+import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
   semdata, passes, renderer
 
@@ -27,7 +27,7 @@ proc getModuleName*(n: PNode): string =
     result = n.ident.s
   of nkSym:
     result = n.sym.name.s
-  of nkInfix:
+  of nkInfix, nkPrefix:
     if n.sons[0].kind == nkIdent and n.sons[0].ident.id == getIdent("as").id:
       # XXX hack ahead:
       n.kind = nkImportAs
@@ -73,12 +73,12 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if etyp.kind in {tyBool, tyEnum} and sfPure notin s.flags:
       for j in countup(0, sonsLen(etyp.n) - 1):
         var e = etyp.n.sons[j].sym
-        if e.kind != skEnumField: 
-          internalError(s.info, "rawImportSymbol") 
+        if e.kind != skEnumField:
+          internalError(s.info, "rawImportSymbol")
           # BUGFIX: because of aliases for enums the symbol may already
           # have been put into the symbol table
           # BUGFIX: but only iff they are the same symbols!
-        var it: TIdentIter 
+        var it: TIdentIter
         check = initIdentIter(it, c.importTable.symbols, e.name)
         while check != nil:
           if check.id == e.id:
@@ -92,7 +92,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if s.kind == skConverter: addConverter(c, s)
     if hasPattern(s): addPattern(c, s)
 
-proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =        
+proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   let ident = lookups.considerQuotedIdent(n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
@@ -143,7 +143,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
   of nkExportExceptStmt:
     localError(n.info, errGenerated, "'export except' not implemented")
   else:
-    for i in 0 ..safeLen(n)-1:
+    for i in 0..safeLen(n)-1:
       importForwarded(c, n.sons[i], exceptSet)
 
 proc importModuleAs(n: PNode, realModule: PSym): PSym =
@@ -155,7 +155,7 @@ proc importModuleAs(n: PNode, realModule: PSym): PSym =
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, n.sons[1].ident, realModule.info)
 
-proc myImportModule(c: PContext, n: PNode): PSym = 
+proc myImportModule(c: PContext, n: PNode): PSym =
   var f = checkModuleName(n)
   if f != InvalidFileIDX:
     result = importModuleAs(n, gImportModule(c.module, f))
@@ -164,10 +164,10 @@ proc myImportModule(c: PContext, n: PNode): PSym =
     if sfDeprecated in result.flags:
       message(n.info, warnDeprecated, result.name.s)
 
-proc evalImport(c: PContext, n: PNode): PNode = 
+proc evalImport(c: PContext, n: PNode): PNode =
   result = n
   var emptySet: IntSet
-  for i in countup(0, sonsLen(n) - 1): 
+  for i in countup(0, sonsLen(n) - 1):
     var m = myImportModule(c, n.sons[i])
     if m != nil:
       # ``addDecl`` needs to be done before ``importAllSymbols``!
@@ -175,7 +175,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
       importAllSymbolsExcept(c, m, emptySet)
       #importForwarded(c, m.ast, emptySet)
 
-proc evalFrom(c: PContext, n: PNode): PNode = 
+proc evalFrom(c: PContext, n: PNode): PNode =
   result = n
   checkMinSonsLen(n, 2)
   var m = myImportModule(c, n.sons[0])
@@ -186,7 +186,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
       if n.sons[i].kind != nkNilLit:
         importSymbol(c, n.sons[i], m)
 
-proc evalImportExcept*(c: PContext, n: PNode): PNode = 
+proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = n
   checkMinSonsLen(n, 2)
   var m = myImportModule(c, n.sons[0])
@@ -194,7 +194,7 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
     n.sons[0] = newSymNode(m)
     addDecl(c, m)               # add symbol to symbol table of module
     var exceptSet = initIntSet()
-    for i in countup(1, sonsLen(n) - 1): 
+    for i in countup(1, sonsLen(n) - 1):
       let ident = lookups.considerQuotedIdent(n.sons[i])
       exceptSet.incl(ident.id)
     importAllSymbolsExcept(c, m, exceptSet)

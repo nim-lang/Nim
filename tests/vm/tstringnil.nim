@@ -8,9 +8,9 @@ type
     suiteDesc: string
     testName: string
     testDesc: string
-    testBlock: PNimrodNode
+    testBlock: NimNode
 
-proc buildSuiteContents(suiteName, suiteDesc, suiteBloc: PNimrodNode): tuple[tests: seq[SuiteTest]]  {.compileTime.} =
+proc buildSuiteContents(suiteName, suiteDesc, suiteBloc: NimNode): tuple[tests: seq[SuiteTest]]  {.compileTime.} =
   var
     tests:seq[SuiteTest] = @[]
 
@@ -40,7 +40,7 @@ proc buildSuiteContents(suiteName, suiteDesc, suiteBloc: PNimrodNode): tuple[tes
       discard
 
   return (tests: tests)
- 
+
 macro suite(suiteName, suiteDesc: expr, suiteBloc: stmt): stmt {.immediate.} =
   let contents = buildSuiteContents(suiteName, suiteDesc, suiteBloc)
 

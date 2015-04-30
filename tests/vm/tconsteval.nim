@@ -24,7 +24,7 @@ Possible Commands:
   csource [options]        builds the C sources for installation
   zip                      builds the installation ZIP package
   inno                     builds the Inno Setup installer
-""" % [NimVersion & repeatChar(44-len(NimVersion)), 
+""" % [NimVersion & spaces(44-len(NimVersion)), 
        CompileDate, CompileTime]
 
 echo HelpText

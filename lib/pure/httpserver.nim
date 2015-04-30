@@ -363,7 +363,7 @@ proc run*(handleRequest: proc (client: Socket,
           port = Port(80)) =
   ## encapsulates the server object and main loop
   var s: TServer
-  open(s, port)
+  open(s, port, reuseAddr = true)
   #echo("httpserver running on port ", s.port)
   while true:
     next(s)
@@ -514,7 +514,7 @@ proc close*(h: PAsyncHTTPServer) =
   ## Closes the ``PAsyncHTTPServer``.
   h.asyncSocket.close()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var counter = 0
 
   var s: TServer

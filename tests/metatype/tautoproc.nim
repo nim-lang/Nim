@@ -1,7 +1,13 @@
+discard """
+  output: "empty"
+"""
+
 # bug #898
 
+import typetraits
+
 proc measureTime(e: auto) =
-  discard
+  echo e.type.name
 
 proc generate(a: int): void =
   discard

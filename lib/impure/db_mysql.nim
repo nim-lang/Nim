@@ -16,11 +16,11 @@ type
   TDbConn* = PMySQL    ## encapsulates a database connection
   TRow* = seq[string]  ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
-  EDb* = object of EIO ## exception that is raised if a database error occurs
+  EDb* = object of IOError ## exception that is raised if a database error occurs
 
   TSqlQuery* = distinct string ## an SQL query string
 
-  FDb* = object of FIO ## effect that denotes a database operation
+  FDb* = object of IOEffect ## effect that denotes a database operation
   FReadDb* = object of FDb   ## effect that denotes a read operation
   FWriteDb* = object of FDb  ## effect that denotes a write operation
 
@@ -229,3 +229,9 @@ proc open*(connection, user, password, database: string): TDbConn {.
     var errmsg = $mysql.error(result)
     db_mysql.close(result)
     dbError(errmsg)
+
+proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+  tags: [FDb].} =
+  ## sets the encoding of a database connection, returns true for 
+  ## success, false for failure.
+  result = mysql.set_character_set(connection, encoding) == 0

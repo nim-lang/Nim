@@ -165,5 +165,5 @@ proc getCurrentLine(L: BaseLexer, marker: bool = true): string =
     inc(i)
   add(result, "\n")
   if marker:
-    add(result, repeatChar(getColNumber(L, L.bufpos)) & "^\n")
+    add(result, spaces(getColNumber(L, L.bufpos)) & "^\n")
 

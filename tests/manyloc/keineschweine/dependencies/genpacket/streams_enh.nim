@@ -1,5 +1,5 @@
 import streams
-from strutils import repeatChar
+from strutils import repeat
 
 proc readPaddedStr*(s: PStream, length: int, padChar = '\0'): TaintedString = 
   var lastChr = length
@@ -10,7 +10,7 @@ proc readPaddedStr*(s: PStream, length: int, padChar = '\0'): TaintedString =
 proc writePaddedStr*(s: PStream, str: string, length: int, padChar = '\0') =
   if str.len < length:
     s.write(str)
-    s.write(repeatChar(length - str.len, padChar))
+    s.write(repeat(padChar, length - str.len))
   elif str.len > length:
     s.write(str.substr(0, length - 1))
   else:
@@ -37,7 +37,7 @@ when isMainModule:
   testStream.setPosition 0
   testStream.writePaddedStr("Sup", 10)
   echo(repr(testStream), testStream.data.len)
-  doAssert testStream.data == "Sup"&repeatChar(7, '\0')
+  doAssert testStream.data == "Sup"&repeat('\0', 7)
   
   testStream.setPosition 0
   res = testStream.readPaddedStr(10)

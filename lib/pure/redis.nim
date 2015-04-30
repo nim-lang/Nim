@@ -285,6 +285,30 @@ proc keys*(r: Redis, pattern: string): RedisList =
   r.sendCommand("KEYS", pattern)
   return r.readArray()
 
+proc scan*(r: Redis, cursor: var BiggestInt): RedisList =
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using default Redis values for MATCH and COUNT parameters
+  r.sendCommand("SCAN", $cursor)
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
+proc scan*(r: Redis, cursor: var BiggestInt, pattern: string): RedisList =
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using cursor as a client query identifier. Using default Redis value for COUNT argument
+  r.sendCommand("SCAN", $cursor, ["MATCH", pattern])
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
+proc scan*(r: Redis, cursor: var BiggestInt, pattern: string, count: int): RedisList = 
+  ## Find all keys matching the given pattern and yield it to client in portions
+  ## using cursor as a client query identifier.
+  r.sendCommand("SCAN", $cursor, ["MATCH", pattern, "COUNT", $count])
+  let reply = r.readArray()
+  cursor = strutils.parseBiggestInt(reply[0])
+  return reply[1..high(reply)]
+
 proc move*(r: Redis, key: string, db: int): bool =
   ## Move a key to another database. Returns `true` on a successful move.
   r.sendCommand("MOVE", key, $db)
@@ -798,6 +822,22 @@ proc zunionstore*(r: Redis, destination: string, numkeys: string,
   
   return r.readInteger()
 
+# HyperLogLog
+
+proc pfadd*(r: Redis, key: string, elements: varargs[string]): RedisInteger = 
+  ## Add variable number of elements into special 'HyperLogLog' set type
+  r.sendCommand("PFADD", key, elements)
+  return r.readInteger()
+
+proc pfcount*(r: Redis, key: string): RedisInteger =
+  ## Count approximate number of elements in 'HyperLogLog'
+  r.sendCommand("PFCOUNT", key)
+  return r.readInteger()
+
+proc pfmerge*(r: Redis, destination: string, sources: varargs[string]) =
+  ## Merge several source HyperLogLog's into one specified by destKey
+  r.sendCommand("PFMERGE", destination, sources)
+  raiseNoOK(r.readStatus(), r.pipeline.enabled)
 
 # Pub/Sub
 
@@ -1040,7 +1080,7 @@ proc assertListsIdentical(listA, listB: seq[string]) =
     assert(item == listB[i])
     i = i + 1
   
-when isMainModule:
+when not defined(testing) and isMainModule:
   when false:
     var r = open()
 

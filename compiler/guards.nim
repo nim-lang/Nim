@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2014 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -15,14 +15,15 @@ import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
 const
   someEq = {mEqI, mEqI64, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqUntracedRef, mEqStr, mEqSet, mEqCString}
-  
+
   # set excluded here as the semantics are vastly different:
   someLe = {mLeI, mLeI64, mLeF64, mLeU, mLeU64, mLeEnum,
             mLeCh, mLeB, mLePtr, mLeStr}
-  someLt = {mLtI, mLtI64, mLtF64, mLtU, mLtU64, mLtEnum, 
+  someLt = {mLtI, mLtI64, mLtF64, mLtU, mLtU64, mLtEnum,
             mLtCh, mLtB, mLtPtr, mLtStr}
 
-  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}
+  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
+             mXLenStr, mXLenSeq}
 
   someIn = {mInRange, mInSet}
 
@@ -34,8 +35,8 @@ const
   someMul = {mMulI, mMulI64, mMulF64}
   someDiv = {mDivI, mDivI64, mDivF64}
   someMod = {mModI, mModI64}
-  someMax = {mMaxI, mMaxI64, mMaxF64}
-  someMin = {mMinI, mMinI64, mMinF64}
+  someMax = {mMaxI, mMaxF64}
+  someMin = {mMinI, mMinF64}
 
 proc isValue(n: PNode): bool = n.kind in {nkCharLit..nkNilLit}
 proc isLocation(n: PNode): bool = not n.isValue
@@ -44,7 +45,7 @@ proc isLet(n: PNode): bool =
   if n.kind == nkSym:
     if n.sym.kind in {skLet, skTemp, skForVar}:
       result = true
-    elif n.sym.kind == skParam and skipTypes(n.sym.typ, 
+    elif n.sym.kind == skParam and skipTypes(n.sym.typ,
                                              abstractInst).kind != tyVar:
       result = true
 
@@ -81,18 +82,12 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
 
 proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
-proc createMagic*(name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-  result.magic = m
-
 let
   opLe = createMagic("<=", mLeI)
   opLt = createMagic("<", mLtI)
   opAnd = createMagic("and", mAnd)
   opOr = createMagic("or", mOr)
-  opNot = createMagic("not", mNot)
   opIsNil = createMagic("isnil", mIsNil)
-  opContains = createMagic("contains", mInSet)
   opEq = createMagic("==", mEqI)
   opAdd = createMagic("+", mAddI)
   opSub = createMagic("-", mSubI)
@@ -123,12 +118,12 @@ proc neg(n: PNode): PNode =
     result.sons[0] = n.sons[0]
     result.sons[2] = n.sons[2]
     if t.kind == tyEnum:
-      var s = newNodeIT(nkCurly, n.info, n.sons[1].typ)    
+      var s = newNodeIT(nkCurly, n.info, n.sons[1].typ)
       for e in t.n:
         let eAsNode = newIntNode(nkIntLit, e.sym.position)
         if not inSet(n.sons[1], eAsNode): s.add eAsNode
       result.sons[1] = s
-    elif lengthOrd(t) < 1000:
+    elif t.kind notin {tyString, tySequence} and lengthOrd(t) < 1000:
       result.sons[1] = complement(n.sons[1])
     else:
       # not ({2, 3, 4}.contains(x))   x != 2 and x != 3 and x != 4
@@ -195,13 +190,17 @@ proc zero(): PNode = nkIntLit.newIntNode(0)
 proc one(): PNode = nkIntLit.newIntNode(1)
 proc minusOne(): PNode = nkIntLit.newIntNode(-1)
 
-proc lowBound*(x: PNode): PNode = 
+proc lowBound*(x: PNode): PNode =
   result = nkIntLit.newIntNode(firstOrd(x.typ))
   result.info = x.info
 
 proc highBound*(x: PNode): PNode =
-  result = if x.typ.skipTypes(abstractInst).kind == tyArray:
-             nkIntLit.newIntNode(lastOrd(x.typ))
+  let typ = x.typ.skipTypes(abstractInst)
+  result = if typ.kind in {tyArrayConstr, tyArray}:
+             nkIntLit.newIntNode(lastOrd(typ))
+           elif typ.kind == tySequence and x.kind == nkSym and
+               x.sym.kind == skConst:
+             nkIntLit.newIntNode(x.sym.ast.len-1)
            else:
              opAdd.buildCall(opLen.buildCall(x), minusOne())
   result.info = x.info
@@ -211,14 +210,21 @@ proc reassociation(n: PNode): PNode =
   # (foo+5)+5 --> foo+10;  same for '*'
   case result.getMagic
   of someAdd:
-    if result[2].isValue and 
+    if result[2].isValue and
         result[1].getMagic in someAdd and result[1][2].isValue:
       result = opAdd.buildCall(result[1][1], result[1][2] |+| result[2])
   of someMul:
-    if result[2].isValue and 
+    if result[2].isValue and
         result[1].getMagic in someMul and result[1][2].isValue:
       result = opAdd.buildCall(result[1][1], result[1][2] |*| result[2])
   else: discard
+
+proc pred(n: PNode): PNode =
+  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(BiggestInt):
+    result = copyNode(n)
+    dec result.intVal
+  else:
+    result = n
 
 proc canon*(n: PNode): PNode =
   # XXX for now only the new code in 'semparallel' uses this
@@ -226,6 +232,10 @@ proc canon*(n: PNode): PNode =
     result = shallowCopy(n)
     for i in 0 .. < n.len:
       result.sons[i] = canon(n.sons[i])
+  elif n.kind == nkSym and n.sym.kind == skLet and
+      n.sym.ast.getMagic in (someEq + someAdd + someMul + someMin +
+      someMax + someHigh + {mUnaryLt} + someSub + someLen):
+    result = n.sym.ast.copyTree
   else:
     result = n
   case result.getMagic
@@ -237,34 +247,40 @@ proc canon*(n: PNode): PNode =
   of someHigh:
     # high == len+(-1)
     result = opAdd.buildCall(opLen.buildCall(result[1]), minusOne())
-  of mUnaryMinusI, mUnaryMinusI64:
+  of mUnaryLt:
     result = buildCall(opAdd, result[1], newIntNode(nkIntLit, -1))
   of someSub:
     # x - 4  -->  x + (-4)
     result = negate(result[1], result[2], result)
   of someLen:
     result.sons[0] = opLen.newSymNode
+  of someLt:
+    # x < y  same as x <= y-1:
+    let y = n[2].canon
+    let p = pred(y)
+    let minus = if p != y: p else: opAdd.buildCall(y, minusOne()).canon
+    result = opLe.buildCall(n[1].canon, minus)
   else: discard
 
   result = skipConv(result)
   result = reassociation(result)
-  # most important rule: (x-4) < a.len -->  x < a.len+4
+  # most important rule: (x-4) <= a.len -->  x <= a.len+4
   case result.getMagic
-  of someLe, someLt:
+  of someLe:
     let x = result[1]
     let y = result[2]
-    if x.kind in nkCallKinds and x.len == 3 and x[2].isValue and 
+    if x.kind in nkCallKinds and x.len == 3 and x[2].isValue and
         isLetLocation(x[1], true):
       case x.getMagic
       of someSub:
-        result = buildCall(result[0].sym, x[1], 
+        result = buildCall(result[0].sym, x[1],
                            reassociation(opAdd.buildCall(y, x[2])))
       of someAdd:
         # Rule A:
         let plus = negate(y, x[2], nil).reassociation
         if plus != nil: result = buildCall(result[0].sym, x[1], plus)
       else: discard
-    elif y.kind in nkCallKinds and y.len == 3 and y[2].isValue and 
+    elif y.kind in nkCallKinds and y.len == 3 and y[2].isValue and
         isLetLocation(y[1], true):
       # a.len < x-3
       case y.getMagic
@@ -323,7 +339,7 @@ proc usefulFact(n: PNode): PNode =
   of mOr:
     # 'or' sucks! (p.isNil or q.isNil) --> hard to do anything
     # with that knowledge...
-    # DeMorgan helps a little though: 
+    # DeMorgan helps a little though:
     #   not a or not b --> not (a and b)
     #  (x == 3) or (y == 2)  ---> not ( not (x==3) and not (y == 2))
     #  not (x != 3 and y != 2)
@@ -354,17 +370,32 @@ proc addFact*(m: var TModel, n: PNode) =
   let n = usefulFact(n)
   if n != nil: m.add n
 
-proc addFactNeg*(m: var TModel, n: PNode) = 
+proc addFactNeg*(m: var TModel, n: PNode) =
   let n = n.neg
   if n != nil: addFact(m, n)
 
-proc sameTree*(a, b: PNode): bool = 
+proc canonOpr(opr: PSym): PSym =
+  case opr.magic
+  of someEq: result = opEq
+  of someLe: result = opLe
+  of someLt: result = opLt
+  of someLen: result = opLen
+  of someAdd: result = opAdd
+  of someSub: result = opSub
+  of someMul: result = opMul
+  of someDiv: result = opDiv
+  else: result = opr
+
+proc sameTree*(a, b: PNode): bool =
   result = false
   if a == b:
     result = true
-  elif (a != nil) and (b != nil) and (a.kind == b.kind):
+  elif a != nil and b != nil and a.kind == b.kind:
     case a.kind
-    of nkSym: result = a.sym == b.sym
+    of nkSym:
+      result = a.sym == b.sym
+      if not result and a.sym.magic != mNone:
+        result = a.sym.magic == b.sym.magic or canonOpr(a.sym) == canonOpr(b.sym)
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
@@ -388,8 +419,8 @@ proc invalidateFacts*(m: var TModel, n: PNode) =
   # 'while p != nil: f(p); p = p.next'
   # This is actually quite easy to do:
   # Re-assignments (incl. pass to a 'var' param) trigger an invalidation
-  # of every fact that contains 'v'. 
-  # 
+  # of every fact that contains 'v'.
+  #
   #   if x < 4:
   #     if y < 5
   #       x = unknown()
@@ -408,16 +439,9 @@ proc valuesUnequal(a, b: PNode): bool =
   if a.isValue and b.isValue:
     result = not sameValue(a, b)
 
-proc pred(n: PNode): PNode =
-  if n.kind in {nkCharLit..nkUInt64Lit} and n.intVal != low(BiggestInt):
-    result = copyNode(n)
-    dec result.intVal
-  else:
-    result = n
-
 proc impliesEq(fact, eq: PNode): TImplication =
   let (loc, val) = if isLocation(eq.sons[1]): (1, 2) else: (2, 1)
-  
+
   case fact.sons[0].sym.magic
   of someEq:
     if sameTree(fact.sons[1], eq.sons[loc]):
@@ -434,12 +458,12 @@ proc impliesEq(fact, eq: PNode): TImplication =
       else: result = impNo
   of mNot, mOr, mAnd: internalError(eq.info, "impliesEq")
   else: discard
-  
+
 proc leImpliesIn(x, c, aSet: PNode): TImplication =
   if c.kind in {nkCharLit..nkUInt64Lit}:
     # fact:  x <= 4;  question x in {56}?
     # --> true if every value <= 4 is in the set {56}
-    #   
+    #
     var value = newIntNode(c.kind, firstOrd(x.typ))
     # don't iterate too often:
     if c.intVal - value.intVal < 1000:
@@ -455,7 +479,7 @@ proc geImpliesIn(x, c, aSet: PNode): TImplication =
   if c.kind in {nkCharLit..nkUInt64Lit}:
     # fact:  x >= 4;  question x in {56}?
     # --> true iff every value >= 4 is in the set {56}
-    #   
+    #
     var value = newIntNode(c.kind, c.intVal)
     let max = lastOrd(x.typ)
     # don't iterate too often:
@@ -574,19 +598,19 @@ proc impliesLe(fact, x, c: PNode): TImplication =
         # fact:  x < 4;  question x <= 2? --> we don't know
     elif sameTree(fact.sons[2], x):
       # fact: 3 < x; question: x <= 1 ?  --> false iff 1 <= 3
-      if isValue(fact.sons[1]) and isValue(c): 
+      if isValue(fact.sons[1]) and isValue(c):
         if leValue(c, fact.sons[1]): result = impNo
-    
+
   of someLe:
     if sameTree(fact.sons[1], x):
       if isValue(fact.sons[2]) and isValue(c):
         # fact:  x <= 4;  question x <= 56? --> true iff 4 <= 56
         if leValue(fact.sons[2], c): result = impYes
         # fact:  x <= 4;  question x <= 2? --> we don't know
-    
+
     elif sameTree(fact.sons[2], x):
       # fact: 3 <= x; question: x <= 2 ?  --> false iff 2 < 3
-      if isValue(fact.sons[1]) and isValue(c): 
+      if isValue(fact.sons[1]) and isValue(c):
         if leValue(c, fact.sons[1].pred): result = impNo
 
   of mNot, mOr, mAnd: internalError(x.info, "impliesLe")
@@ -620,7 +644,7 @@ proc factImplies(fact, prop: PNode): TImplication =
     # it's provably wrong if every value > 4 is in the set {56}
     # That's because we compute the implication and  'a -> not b' cannot
     # be treated the same as 'not a -> b'
-    
+
     #  (not a) -> b  compute as  not (a -> b) ???
     #  == not a or not b == not (a and b)
     let arg = fact.sons[1]
@@ -635,13 +659,13 @@ proc factImplies(fact, prop: PNode): TImplication =
       if a == b: return ~a
       return impUnknown
     else:
-      internalError(fact.info, "invalid fact")
+      return impUnknown
   of mAnd:
     result = factImplies(fact.sons[1], prop)
     if result != impUnknown: return result
     return factImplies(fact.sons[2], prop)
   else: discard
-  
+
   case prop.sons[0].sym.magic
   of mNot: result = ~fact.factImplies(prop.sons[1])
   of mIsNil: result = impliesIsNil(fact, prop)
@@ -649,7 +673,7 @@ proc factImplies(fact, prop: PNode): TImplication =
   of someLe: result = impliesLe(fact, prop.sons[1], prop.sons[2])
   of someLt: result = impliesLt(fact, prop.sons[1], prop.sons[2])
   of mInSet: result = impliesIn(fact, prop.sons[2], prop.sons[1])
-  else: internalError(prop.info, "invalid proposition")
+  else: result = impUnknown
 
 proc doesImply*(facts: TModel, prop: PNode): TImplication =
   assert prop.kind in nkCallKinds
@@ -677,6 +701,7 @@ proc pleViaModel(model: TModel; aa, bb: PNode): TImplication
 
 proc ple(m: TModel; a, b: PNode): TImplication =
   template `<=?`(a,b): expr = ple(m,a,b) == impYes
+
   #   0 <= 3
   if a.isValue and b.isValue:
     return if leValue(a, b): impYes else: impNo
@@ -750,16 +775,21 @@ proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
       # mark as used:
       m[i] = nil
       if ple(m, a, x) == impYes:
-        if ple(m, y, b) == impYes: return impYes
+        if ple(m, y, b) == impYes:
+          return impYes
         #if pleViaModelRec(m, y, b): return impYes
       # fact:  16 <= i
       #         x    y
       # question: i <= 15? no!
       result = impliesLe(fact, a, b)
-      if result != impUnknown: return result
-      if sameTree(y, a):
-        result = ple(m, b, x)
-        if result != impUnknown: return result
+      if result != impUnknown:
+        return result
+      when false:
+        # given: x <= y;  y==a;  x <= a this means: a <= b  if  x <= b
+        if sameTree(y, a):
+          result = ple(m, b, x)
+          if result != impUnknown:
+            return result
 
 proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
   # compute replacements:
@@ -878,5 +908,5 @@ proc buildProperFieldCheck(access, check: PNode): PNode =
 proc checkFieldAccess*(m: TModel, n: PNode) =
   for i in 1..n.len-1:
     let check = buildProperFieldCheck(n.sons[0], n.sons[i])
-    if m.doesImply(check) != impYes:
+    if check != nil and m.doesImply(check) != impYes:
       message(n.info, warnProveField, renderTree(n.sons[0])); break

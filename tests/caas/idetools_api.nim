@@ -58,7 +58,7 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
   ## Expect docstrings
   let exp = callsite()
   template expectBody(errorTypes, lineInfoLit: expr,
-                      body: stmt): PNimrodNode {.dirty.} =
+                      body: stmt): NimNode {.dirty.} =
     try:
       body
       assert false
