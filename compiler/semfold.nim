@@ -548,7 +548,7 @@ proc foldConv*(n, a: PNode; check = false): PNode =
     discard
   else:
     result = a
-    result.typ = takeType(n.typ, a.typ)
+    result.typ = n.typ
 
 proc getArrayConstr(m: PSym, n: PNode): PNode =
   if n.kind == nkBracket:
