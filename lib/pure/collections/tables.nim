@@ -819,15 +819,18 @@ proc enlarge[A](t: var CountTable[A]) =
   swap(t.data, n)
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
-  ## puts a (key, value)-pair into `t`. `val` has to be positive.
+  ## puts a (key, value)-pair into `t`.
   assert val > 0
   var h = rawGet(t, key)
   if h >= 0:
     t.data[h].val = val
   else:
-    h = -1 - h
-    t.data[h].key = key
-    t.data[h].val = val
+    if mustRehash(len(t.data), t.counter): enlarge(t)
+    rawInsert(t, t.data, key, val)
+    inc(t.counter)
+    #h = -1 - h
+    #t.data[h].key = key
+    #t.data[h].val = val
 
 proc initCountTable*[A](initialSize=64): CountTable[A] =
   ## creates a new count table that is empty.
