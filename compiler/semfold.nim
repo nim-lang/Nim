@@ -652,7 +652,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     result = copyNode(n)
   of nkIfExpr:
     result = getConstIfExpr(m, n)
-  of nkCall, nkCommand, nkCallStrLit, nkPrefix, nkInfix:
+  of nkCallKinds:
     if n.sons[0].kind != nkSym: return
     var s = n.sons[0].sym
     if s.kind != skProc: return
