@@ -13,6 +13,11 @@ import strutils, os, parseopt, parseutils, sequtils, net
 import options, commands, modules, sem, passes, passaux, msgs, nimconf,
   extccomp, condsyms, lists, net, rdstdin, sexp, suggest, ast
 
+when defined(windows):
+  import winlean
+else:
+  import posix
+
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
 Usage:
@@ -130,8 +135,21 @@ proc returnEPC(socket: var Socket, uid: string, s: SexpNode, return_symbol = "re
   socket.send(response)
   socket.close()
 
-proc findEPCPort(): int =
-  55822 # guaranteed to be random
+proc nextFreePort(server: Socket, host: string, start = 30000): int =
+  result = start
+  while true:
+    try:
+      server.bindaddr(Port(result), host)
+      return
+    except OsError:
+      when defined(windows):
+        let checkFor = WSAEADDRINUSE.OSErrorCode
+      else:
+        let checkFor = EADDRINUSE.OSErrorCode
+      if osLastError() != checkFor:
+        raise getCurrentException()
+      else:
+        result += 1
 
 proc parseCmdLine(cmd: string) =
   template toggle(sw) =
@@ -199,9 +217,8 @@ proc serve() =
       stdoutSocket.send("\c\L")
       stdoutSocket.close()
   of mepc:
-    let port = findEPCPort()
     var server = newSocket()
-    server.bindaddr(Port(port), "localhost")
+    let port = nextFreePort(server, "localhost")
     var inp = "".TaintedString
     server.listen()
     echo(port)
