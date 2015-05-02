@@ -964,8 +964,11 @@ proc genEcho(p: BProc, n: PNode) =
   var args: Rope = nil
   var a: TLoc
   for i in countup(0, n.len-1):
-    initLocExpr(p, n.sons[i], a)
-    addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
+    if n.sons[i].skipConv.kind == nkNilLit:
+      add(args, ", \"nil\"")
+    else:
+      initLocExpr(p, n.sons[i], a)
+      addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeat("%s", n.len) & tnl), args)
 
