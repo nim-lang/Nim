@@ -286,10 +286,13 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mNot: result = newIntNodeT(1 - getInt(a), n)
   of mCard: result = newIntNodeT(nimsets.cardSet(a), n)
   of mBitnotI, mBitnotI64: result = newIntNodeT(not getInt(a), n)
-  of mLengthStr, mXLenStr: result = newIntNodeT(len(getStr(a)), n)
+  of mLengthStr, mXLenStr:
+    if a.kind == nkNilLit: result = newIntNodeT(0, n)
+    else: result = newIntNodeT(len(getStr(a)), n)
   of mLengthArray: result = newIntNodeT(lengthOrd(a.typ), n)
   of mLengthSeq, mLengthOpenArray, mXLenSeq:
-    result = newIntNodeT(sonsLen(a), n) # BUGFIX
+    if a.kind == nkNilLit: result = newIntNodeT(0, n)
+    else: result = newIntNodeT(sonsLen(a), n) # BUGFIX
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   of mToFloat, mToBiggestFloat:
     result = newFloatNodeT(toFloat(int(getInt(a))), n)
