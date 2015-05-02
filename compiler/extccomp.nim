@@ -422,6 +422,14 @@ proc toObjFile*(filename: string): string =
   result = changeFileExt(filename, CC[cCompiler].objExt)
 
 proc addFileToCompile*(filename: string) =
+  let filesize = getFileSize(completeCFilePath(filename))
+  var it = PStrEntry(toCompile.head)
+  while it != nil:
+    # toCompile should store the filesizes instead
+    if filesize > getFileSize(completeCFilePath(it.data)):
+      insertBefore(toCompile, it, newStrEntry(filename))
+      return
+    it = PStrEntry(it.next)
   appendStr(toCompile, filename)
 
 proc resetCompilationLists* =
