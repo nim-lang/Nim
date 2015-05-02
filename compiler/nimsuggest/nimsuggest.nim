@@ -241,12 +241,10 @@ proc serve() =
       let
         message = parseSexp($messageBuffer)
         messageType = message[0].getSymbol
-      echo("received message: " & $message)
       case messageType:
       of "call":
         var results: seq[Suggest] = @[]
         suggest.suggestionResultHook = proc (s: Suggest) =
-          echo(s)
           results.add(s)
 
         let
