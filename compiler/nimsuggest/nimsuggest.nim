@@ -183,12 +183,13 @@ proc parseCmdLine(cmd: string) =
   if cmd[i] == ';':
     i = parseQuoted(cmd, dirtyfile, i+1)
   i += skipWhile(cmd, seps, i)
-  var line, col = -1
+  var line = -1
+  var col = 0
   i += parseInt(cmd, line, i)
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
 
-  execute(gIdeCmd, orig, dirtyfile, line, col)
+  execute(gIdeCmd, orig, dirtyfile, line, col-1)
 
 proc serve() =
   # do not stop after the first error:
