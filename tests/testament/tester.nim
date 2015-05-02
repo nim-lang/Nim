@@ -149,7 +149,7 @@ proc generatedFile(path, name: string, target: TTarget): string =
 
 proc codegenCheck(test: TTest, check: string, given: var TSpec) =
   try:
-    let (path, name, ext2) = test.name.splitFile
+    let (path, name, _) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
     let contents = readFile(genFile).string
     if check[0] == '\\':
@@ -219,7 +219,7 @@ proc testSpec(r: var TResults, test: TTest) =
       else:
         var exeFile: string
         if test.target == targetJS:
-          let (dir, file, ext) = splitFile(tname)
+          let (dir, file, _) = splitFile(tname)
           exeFile = dir / "nimcache" / file & ".js"
         else:
           exeFile = changeFileExt(tname, ExeExt)
