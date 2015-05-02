@@ -133,7 +133,6 @@ proc returnEPC(socket: var Socket, uid: string, s: SexpNode, return_symbol = "re
   let response = $convertSexp([newSSymbol(return_symbol), [uid, s]])
   socket.send(toHex(len(response), 6))
   socket.send(response)
-  socket.close()
 
 proc nextFreePort(server: Socket, host: string, start = 30000): int =
   result = start
@@ -235,9 +234,9 @@ proc serve() =
       var messageBuffer = ""
       if client.recv(messageBuffer, size) != size:
         raise newException(ValueError, "didn't get all the bytes")
-      let message = parseSexp($messageBuffer)
-      let messageType = message[0].getSymbol
-      let body = message[1]
+      let
+        message = parseSexp($messageBuffer)
+        messageType = message[0].getSymbol
       try:
         case messageType:
         of "call":
@@ -246,9 +245,9 @@ proc serve() =
             results.add(s)
 
           let
-            uid = body[0].getStr
-            cmd = parseIdeCmd(body[1].getStr)
-            args = body[2]
+            uid = message[1].getStr
+            cmd = parseIdeCmd(message[2].getStr)
+            args = message[3]
           executeEPC(cmd, args)
           returnEPC(client, uid, sexp(results))
         of "return":
@@ -259,11 +258,11 @@ proc serve() =
           stderr.writeln("recieved epc error: " & $messageBuffer)
           raise newException(IOError, "epc error")
         of "methods":
-          returnEPC(client, body[0].getStr, listEPC())
+          returnEPC(client, message[1].getStr, listEPC())
         else:
           raise newException(EUnexpectedCommand, "unexpected call: " & messageType)
       except:
-        returnEPC(client, body[0].getStr, sexp(getCurrentExceptionMsg()), "return-error")
+        returnEPC(client, message[1].getStr, sexp(getCurrentException().getStackTrace()), "return-error")
 
 proc mainCommand =
   registerPass verbosePass
