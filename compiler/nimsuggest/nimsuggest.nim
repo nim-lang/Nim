@@ -249,7 +249,7 @@ proc serve() =
 
         let
           uid = message[1].getNum
-          cmd = parseIdeCmd(message[2].getStr)
+          cmd = parseIdeCmd(message[2].getSymbol)
           args = message[3]
         executeEPC(cmd, args)
         returnEPC(client, uid, sexp(results))
