@@ -1,14 +1,14 @@
-version 0.10.4
+version 0.11.2
 ==============
 
-
-
-version 0.10.6 (RC1?)
-=====================
-
+- The remaining bugs of the lambda lifting pass that is responsible to enable
+  closures and closure iterators need to be fixed.
+- ``concept`` needs to be refined, a nice name for the feature is not enough.
+- Destructors need to be refined.
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
-- finish 'parallel' or mark as experimental
+
+- Finish the implementation of the 'parallel' statement.
 - Deprecate ``immediate`` for templates and macros
 - special case varargs[untyped] and varargs[typed]
 - make 'nil' work for 'add':

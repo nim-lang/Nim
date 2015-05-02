@@ -2,6 +2,21 @@
 News
 ====
 
+..
+  2015-05-05 Version 0.11.2 released
+  ==================================
+
+  Changes affecting backwards compatibility
+  -----------------------------------------
+
+
+  Language Additions
+  ------------------
+
+
+  Bugfixes
+  --------
+
 
 2015-04-30 Version 0.11.0 released
 ==================================
