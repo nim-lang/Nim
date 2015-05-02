@@ -339,6 +339,8 @@ proc `[]`*(x: TAny, fieldName: string): TAny =
   if n != nil:
     result.value = x.value +!! n.offset
     result.rawType = n.typ
+  elif x.rawType.kind == tyObject and x.rawType.base != nil:
+    return `[]`(TAny(value: x.value, rawType: x.rawType.base), fieldName)
   else:
     raise newException(ValueError, "invalid field name: " & fieldName)
 
