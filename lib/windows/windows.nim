@@ -18515,8 +18515,12 @@ proc GetProcAddress*(hModule: HINST, lpProcName: LPCSTR): FARPROC{.stdcall,
 proc GetVersion*(): DWORD{.stdcall, dynlib: "kernel32", importc: "GetVersion".}
 proc GlobalAlloc*(uFlags: int32, dwBytes: SIZE_T): HGLOBAL{.stdcall,
     dynlib: "kernel32", importc: "GlobalAlloc".}
+proc GlobalAlloc*(uFlags: int32, dwBytes: DWORD): HGLOBAL{.stdcall,
+    dynlib: "kernel32", importc: "GlobalAlloc", deprecated.}
 proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: SIZE_T, uFlags: int32): HGLOBAL{.
     stdcall, dynlib: "kernel32", importc: "GlobalReAlloc".}
+proc GlobalReAlloc*(hMem: HGLOBAL, dwBytes: DWORD, uFlags: int32): HGLOBAL{.
+    stdcall, dynlib: "kernel32", importc: "GlobalReAlloc", deprecated.}
 proc GlobalSize*(hMem: HGLOBAL): SIZE_T{.stdcall, dynlib: "kernel32",
                                         importc: "GlobalSize".}
 proc GlobalFlags*(hMem: HGLOBAL): WINUINT{.stdcall, dynlib: "kernel32",
@@ -18543,8 +18547,12 @@ proc GlobalMemoryStatus*(lpBuffer: LPMEMORYSTATUS){.stdcall, dynlib: "kernel32",
     importc: "GlobalMemoryStatus".}
 proc LocalAlloc*(uFlags: WINUINT, uBytes: SIZE_T): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalAlloc".}
+proc LocalAlloc*(uFlags: WINUINT, uBytes: DWORD): HLOCAL{.stdcall,
+    dynlib: "kernel32", importc: "LocalAlloc", deprecated.}
 proc LocalReAlloc*(hMem: HLOCAL, uBytes: SIZE_T, uFlags: WINUINT): HLOCAL{.stdcall,
     dynlib: "kernel32", importc: "LocalReAlloc".}
+proc LocalReAlloc*(hMem: HLOCAL, uBytes: DWORD, uFlags: WINUINT): HLOCAL{.stdcall,
+    dynlib: "kernel32", importc: "LocalReAlloc", deprecated.}
 proc LocalLock*(hMem: HLOCAL): LPVOID{.stdcall, dynlib: "kernel32",
                                        importc: "LocalLock".}
 proc LocalHandle*(pMem: LPCVOID): HLOCAL{.stdcall, dynlib: "kernel32",
@@ -18567,34 +18575,61 @@ proc FlushInstructionCache*(hProcess: HANDLE, lpBaseAddress: LPCVOID,
 proc VirtualAlloc*(lpAddress: LPVOID, dwSize: SIZE_T, flAllocationType: DWORD,
                    flProtect: DWORD): LPVOID{.stdcall, dynlib: "kernel32",
     importc: "VirtualAlloc".}
+proc VirtualAlloc*(lpAddress: LPVOID, dwSize: DWORD, flAllocationType: DWORD,
+                   flProtect: DWORD): LPVOID{.stdcall, dynlib: "kernel32",
+    importc: "VirtualAlloc", deprecated.}
 proc VirtualAllocEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T,
                      flAllocationType: DWORD, flProtect: DWORD): LPVOID
                      {.stdcall, dynlib: "kernel32", importc: "VirtualAllocEx".}
+proc VirtualAllocEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: DWORD,
+                     flAllocationType: DWORD, flProtect: DWORD): LPVOID
+                     {.stdcall, dynlib: "kernel32", importc: "VirtualAllocEx", 
+                       deprecated.}
 proc VirtualFree*(lpAddress: LPVOID, dwSize: SIZE_T, dwFreeType: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "VirtualFree".}
+proc VirtualFree*(lpAddress: LPVOID, dwSize: DWORD, dwFreeType: DWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "VirtualFree", deprecated.}
 proc VirtualFreeEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T,
+                    dwFreeType: DWORD): WINBOOL
+                    {.stdcall, dynlib: "kernel32", importc: "VirtualFree".}
+proc VirtualFreeEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: DWORD,
                     dwFreeType: DWORD): WINBOOL
                     {.stdcall, dynlib: "kernel32", importc: "VirtualFree".}
 proc VirtualProtect*(lpAddress: LPVOID, dwSize: SIZE_T, flNewProtect: DWORD,
                      lpflOldProtect: PDWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "VirtualProtect".}
+proc VirtualProtect*(lpAddress: LPVOID, dwSize: DWORD, flNewProtect: DWORD,
+                     lpflOldProtect: PDWORD): WINBOOL{.stdcall,
+    dynlib: "kernel32", importc: "VirtualProtect", deprecated.}
 proc VirtualQuery*(lpAddress: LPCVOID, lpBuffer: PMEMORY_BASIC_INFORMATION,
                    dwLength: DWORD): DWORD{.stdcall, dynlib: "kernel32",
     importc: "VirtualQuery".}
 proc VirtualProtectEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T,
                        flNewProtect: DWORD, lpflOldProtect: PDWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "VirtualProtectEx".}
+proc VirtualProtectEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: DWORD,
+                       flNewProtect: DWORD, lpflOldProtect: PDWORD): WINBOOL{.
+    stdcall, dynlib: "kernel32", importc: "VirtualProtectEx", deprecated.}
 proc VirtualQueryEx*(hProcess: HANDLE, lpAddress: LPCVOID,
                      lpBuffer: PMEMORY_BASIC_INFORMATION, dwLength: SIZE_T): DWORD{.
     stdcall, dynlib: "kernel32", importc: "VirtualQueryEx".}
+proc VirtualQueryEx*(hProcess: HANDLE, lpAddress: LPCVOID,
+                     lpBuffer: PMEMORY_BASIC_INFORMATION, dwLength: DWORD): DWORD{.
+    stdcall, dynlib: "kernel32", importc: "VirtualQueryEx", deprecated.}
 proc HeapCreate*(flOptions: DWORD, dwInitialSize: SIZE_T, dwMaximumSize: SIZE_T): HANDLE{.
     stdcall, dynlib: "kernel32", importc: "HeapCreate".}
+proc HeapCreate*(flOptions: DWORD, dwInitialSize: DWORD, dwMaximumSize: DWORD): HANDLE{.
+    stdcall, dynlib: "kernel32", importc: "HeapCreate", deprecated.}
 proc HeapDestroy*(hHeap: HANDLE): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "HeapDestroy".}
 proc HeapAlloc*(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T): LPVOID{.stdcall,
     dynlib: "kernel32", importc: "HeapAlloc".}
+proc HeapAlloc*(hHeap: HANDLE, dwFlags: DWORD, dwBytes: DWORD): LPVOID{.stdcall,
+    dynlib: "kernel32", importc: "HeapAlloc", deprecated.}
 proc HeapReAlloc*(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T): LPVOID{.
     stdcall, dynlib: "kernel32", importc: "HeapReAlloc".}
+proc HeapReAlloc*(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: DWORD): LPVOID{.
+    stdcall, dynlib: "kernel32", importc: "HeapReAlloc", deprecated.}
 proc HeapFree*(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "HeapFree".}
 proc HeapSize*(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPCVOID): SIZE_T{.stdcall,
@@ -19229,8 +19264,12 @@ proc FindCloseChangeNotification*(hChangeHandle: HANDLE): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "FindCloseChangeNotification".}
 proc VirtualLock*(lpAddress: LPVOID, dwSize: SIZE_T): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "VirtualLock".}
+proc VirtualLock*(lpAddress: LPVOID, dwSize: DWORD): WINBOOL{.stdcall,
+    dynlib: "kernel32", importc: "VirtualLock", deprecated.}
 proc VirtualUnlock*(lpAddress: LPVOID, dwSize: SIZE_T): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "VirtualUnlock".}
+proc VirtualUnlock*(lpAddress: LPVOID, dwSize: DWORD): WINBOOL{.stdcall,
+    dynlib: "kernel32", importc: "VirtualUnlock", deprecated.}
 proc MapViewOfFileEx*(hFileMappingObject: HANDLE, dwDesiredAccess: DWORD,
                       dwFileOffsetHigh: DWORD, dwFileOffsetLow: DWORD,
                       dwNumberOfBytesToMap: DWORD, lpBaseAddress: LPVOID): LPVOID{.
