@@ -83,7 +83,9 @@ proc sexp(s: Suggest): SexpNode =
   ])
 
 proc sexp(s: seq[Suggest]): SexpNode =
-  result = sexp(s)
+  result = newSList()
+  for sug in s:
+    result.add(sexp(sug))
 
 proc listEPC(): SexpNode =
   let
@@ -126,11 +128,13 @@ proc executeEPC(cmd: IdeCmd, args: SexpNode) =
     file = args[0].getStr
     line = args[1].getNum
     column = args[2].getNum
+  var dirtyfile = ""
+  if len(args) > 3:
     dirtyfile = args[3].getStr(nil)
   execute(cmd, file, dirtyfile, int(line), int(column))
 
-proc returnEPC(socket: var Socket, uid: string, s: SexpNode, return_symbol = "return") =
-  let response = $convertSexp([newSSymbol(return_symbol), [uid, s]])
+proc returnEPC(socket: var Socket, uid: BiggestInt, s: SexpNode, return_symbol = "return") =
+  let response = $convertSexp([newSSymbol(return_symbol), uid, s])
   socket.send(toHex(len(response), 6))
   socket.send(response)
 
@@ -237,32 +241,31 @@ proc serve() =
       let
         message = parseSexp($messageBuffer)
         messageType = message[0].getSymbol
-      try:
-        case messageType:
-        of "call":
-          var results: seq[Suggest] = @[]
-          suggest.suggestionResultHook = proc (s: Suggest) =
-            results.add(s)
+      echo("received message: " & $message)
+      case messageType:
+      of "call":
+        var results: seq[Suggest] = @[]
+        suggest.suggestionResultHook = proc (s: Suggest) =
+          echo(s)
+          results.add(s)
 
-          let
-            uid = message[1].getStr
-            cmd = parseIdeCmd(message[2].getStr)
-            args = message[3]
-          executeEPC(cmd, args)
-          returnEPC(client, uid, sexp(results))
-        of "return":
-          raise newException(EUnexpectedCommand, "no return expected")
-        of "return-error":
-          raise newException(EUnexpectedCommand, "no return expected")
-        of "epc-error":
-          stderr.writeln("recieved epc error: " & $messageBuffer)
-          raise newException(IOError, "epc error")
-        of "methods":
-          returnEPC(client, message[1].getStr, listEPC())
-        else:
-          raise newException(EUnexpectedCommand, "unexpected call: " & messageType)
-      except:
-        returnEPC(client, message[1].getStr, sexp(getCurrentException().getStackTrace()), "return-error")
+        let
+          uid = message[1].getNum
+          cmd = parseIdeCmd(message[2].getStr)
+          args = message[3]
+        executeEPC(cmd, args)
+        returnEPC(client, uid, sexp(results))
+      of "return":
+        raise newException(EUnexpectedCommand, "no return expected")
+      of "return-error":
+        raise newException(EUnexpectedCommand, "no return expected")
+      of "epc-error":
+        stderr.writeln("recieved epc error: " & $messageBuffer)
+        raise newException(IOError, "epc error")
+      of "methods":
+        returnEPC(client, message[1].getNum, listEPC())
+      else:
+        raise newException(EUnexpectedCommand, "unexpected call: " & messageType)
 
 proc mainCommand =
   registerPass verbosePass
