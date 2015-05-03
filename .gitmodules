@@ -1,0 +1,3 @@
+[submodule "csources"]
+	path = csources
+	url = ../../nim-lang/csources.git
