@@ -8,6 +8,75 @@
 #
 
 
+# Only clang has __has_builtin (so far)
+#
+# TODO: This is emitted at the wrong position so we don't actually have an
+#       emit. Could we add this to nimbase.h instead?
+{.emit: """#ifndef __has_builtin
+  #define __has_builtin(x) 0
+#endif""".}
+
+# Builtin compiler functions for improved performance
+
+proc checkFunction(name: string): string =
+  "((__has_builtin(__builtin_" & name & "_overflow)) || __GNUC__ >= 5)"
+
+# TODO: This is totally ugly. But we can't reliably detect this from Nim,
+# especially with cross-compiling where the user may be using an older compiler
+# version. Switching this on/off manually with a define seems weird as well.
+when sizeof(clong) == 8:
+  const hasAddInt64Overflow = checkFunction("saddl")
+  proc addInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+    importc: "__builtin_saddl_overflow", nodecl, nosideeffect.}
+
+  const hasSubInt64Overflow = checkFunction("ssubl")
+  proc subInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+    importc: "__builtin_ssubl_overflow", nodecl, nosideeffect.}
+
+  const hasMulInt64Overflow = checkFunction("smull")
+  proc mulInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+    importc: "__builtin_smull_overflow", nodecl, nosideeffect.}
+
+elif sizeof(clonglong) == 8:
+  const hasAddInt64Overflow = checkFunction("saddll")
+  proc addInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+    importc: "__builtin_saddll_overflow", nodecl, nosideeffect.}
+
+  const hasSubInt64Overflow = checkFunction("ssubll")
+  proc subInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+    importc: "__builtin_ssubll_overflow", nodecl, nosideeffect.}
+
+  const hasMulInt64Overflow = checkFunction("smulll")
+  proc mulInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+    importc: "__builtin_smulll_overflow", nodecl, nosideeffect.}
+
+when sizeof(int) == 8:
+  const hasAddIntOverflow = hasAddInt64Overflow
+  proc addIntOverflow(a, b: int, c: var int): bool {.inline.} =
+    addInt64Overflow(a, b, c)
+
+  const hasSubIntOverflow = hasSubInt64Overflow
+  proc subIntOverflow(a, b: int, c: var int): bool {.inline.} =
+    subInt64Overflow(a, b, c)
+
+  const hasMulIntOverflow = hasMulInt64Overflow
+  proc mulIntOverflow(a, b: int, c: var int): bool {.inline.} =
+    mulInt64Overflow(a, b, c)
+
+elif sizeof(int) == 4 and sizeof(cint) == 4:
+  const hasAddIntOverflow = checkFunction("sadd")
+  proc addIntOverflow(a, b: int, c: var int): bool {.
+    importc: "__builtin_sadd_overflow", nodecl, nosideeffect.}
+
+  const hasSubIntOverflow = checkFunction("ssub")
+  proc subIntOverflow(a, b: int, c: var int): bool {.
+    importc: "__builtin_ssub_overflow", nodecl, nosideeffect.}
+
+  const hasMulIntOverflow = checkFunction("smul")
+  proc mulIntOverflow(a, b: int, c: var int): bool {.
+    importc: "__builtin_smul_overflow", nodecl, nosideeffect.}
+
+
 # simple integer arithmetic with overflow checking
 
 proc raiseOverflow {.compilerproc, noinline, noreturn.} =
@@ -18,16 +87,26 @@ proc raiseDivByZero {.compilerproc, noinline, noreturn.} =
   sysFatal(DivByZeroError, "division by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
+  {.emit: "#if `hasAddInt64Overflow`".}
+  if addInt64Overflow(a, b, result):
+    raiseOverflow()
+  {.emit: "#else".}
   result = a +% b
   if (result xor a) >= int64(0) or (result xor b) >= int64(0):
     return result
   raiseOverflow()
+  {.emit: "#endif".}
 
 proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
+  {.emit: "#if `hasSubInt64Overflow`".}
+  if subInt64Overflow(a, b, result):
+    raiseOverflow()
+  {.emit: "#else".}
   result = a -% b
   if (result xor a) >= int64(0) or (result xor not b) >= int64(0):
     return result
   raiseOverflow()
+  {.emit: "#endif".}
 
 proc negInt64(a: int64): int64 {.compilerProc, inline.} =
   if a != low(int64): return -a
@@ -72,6 +151,10 @@ proc modInt64(a, b: int64): int64 {.compilerProc, inline.} =
 # product that must have overflowed.
 #
 proc mulInt64(a, b: int64): int64 {.compilerproc.} =
+  {.emit: "#if `hasMulInt64Overflow`".}
+  if mulInt64Overflow(a, b, result):
+    raiseOverflow()
+  {.emit: "#else".}
   var
     resAsFloat, floatProd: float64
   result = a *% b
@@ -93,6 +176,7 @@ proc mulInt64(a, b: int64): int64 {.compilerproc.} =
   if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
     return result
   raiseOverflow()
+  {.emit: "#endif".}
 
 
 proc absInt(a: int): int {.compilerProc, inline.} =
@@ -249,17 +333,27 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
 # Platform independent versions of the above (slower!)
 when not declared(addInt):
   proc addInt(a, b: int): int {.compilerProc, inline.} =
+    {.emit: "#if `hasAddIntOverflow`".}
+    if addIntOverflow(a, b, result):
+      raiseOverflow()
+    {.emit: "#else".}
     result = a +% b
     if (result xor a) >= 0 or (result xor b) >= 0:
       return result
     raiseOverflow()
+    {.emit: "#endif".}
 
 when not declared(subInt):
   proc subInt(a, b: int): int {.compilerProc, inline.} =
+    {.emit: "#if `hasSubIntOverflow`".}
+    if subIntOverflow(a, b, result):
+      raiseOverflow()
+    {.emit: "#else".}
     result = a -% b
     if (result xor a) >= 0 or (result xor not b) >= 0:
       return result
     raiseOverflow()
+    {.emit: "#endif".}
 
 when not declared(negInt):
   proc negInt(a: int): int {.compilerProc, inline.} =
@@ -302,6 +396,10 @@ when not declared(mulInt):
   # native int product that must have overflowed.
   #
   proc mulInt(a, b: int): int {.compilerProc.} =
+    {.emit: "#if `hasMulIntOverflow`".}
+    if mulIntOverflow(a, b, result):
+      raiseOverflow()
+    {.emit: "#else".}
     var
       resAsFloat, floatProd: float
 
@@ -323,6 +421,7 @@ when not declared(mulInt):
     if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
       return result
     raiseOverflow()
+    {.emit: "#endif".}
 
 # We avoid setting the FPU control word here for compatibility with libraries
 # written in other languages.
