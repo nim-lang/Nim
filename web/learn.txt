@@ -8,10 +8,10 @@ Learning Nim
 
   .. container:: tutorials
 
-    - | `Tutorial (part I) <0.11.2/tut1.html>`_
+    - | `Tutorial (part I) <docs/tut1.html>`_
       | Learn the basics of Nim's types, variables, procedures, control flow, etc...
 
-    - | `Tutorial (part II) <0.11.2/tut2.html>`_
+    - | `Tutorial (part II) <docs/tut2.html>`_
       | Learn Nim's more advanced features such as OOP, generics, macros, etc...
 
 
@@ -52,5 +52,5 @@ Learning Nim
 Documentation
 -------------
 
-More examples of Nim code can be found in the `Nim Language Documentation <0.11.2/manual.html>`_.
+More examples of Nim code can be found in the `Nim Language Documentation <docs/manual.html>`_.
 
