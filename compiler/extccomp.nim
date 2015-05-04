@@ -27,7 +27,9 @@ type
     hasGcGuard,               # CC supports GC_GUARD to keep stack roots
     hasGnuAsm,                # CC's asm uses the absurd GNU assembler syntax
     hasNakedDeclspec,         # CC has __declspec(naked)
-    hasNakedAttribute         # CC has __attribute__((naked))
+    hasNakedAttribute,        # CC has __attribute__((naked))
+    hasNoreturnAttribute,     # CC has __attribute__((noreturn))
+    hasNoreturnDeclspec       # CC has __declspec(noreturn)
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -85,7 +87,7 @@ compiler gcc:
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     packedPragma: "__attribute__((__packed__))",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasNakedAttribute})
+            hasNakedAttribute, hasNoreturnAttribute})
 
 # LLVM Frontend for GCC/G++
 compiler llvmGcc:
@@ -127,7 +129,7 @@ compiler vcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     packedPragma: "#pragma pack(1)",
-    props: {hasCpp, hasAssume, hasNakedDeclspec})
+    props: {hasCpp, hasAssume, hasNakedDeclspec, hasNoreturnDeclspec})
 
 # Intel C/C++ Compiler
 compiler icl:

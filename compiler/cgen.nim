@@ -676,6 +676,9 @@ proc genProcAux(m: BModule, prc: PSym) =
   closureSetup(p, prc)
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
+  if sfNoReturn in prc.flags:
+    if hasNoreturnDeclspec in extccomp.CC[extccomp.cCompiler].props:
+      header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
     if hasNakedDeclspec in extccomp.CC[extccomp.cCompiler].props:
       header = "__declspec(naked) " & header
@@ -722,6 +725,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
       header = "extern \"C\" " & header
     if sfPure in sym.flags and hasNakedAttribute in CC[cCompiler].props:
       header.add(" __attribute__((naked))")
+    if sfNoReturn in sym.flags and hasNoreturnAttribute in CC[cCompiler].props:
+      header.add(" __attribute__((noreturn))")
     add(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", header))
 
 proc genProcNoForward(m: BModule, prc: PSym) =
