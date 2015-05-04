@@ -710,9 +710,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABI(n, opcSubImmInt, dest, tmp, 1)
     c.freeTemp(tmp)
-  of mPred, mSubI, mSubI64:
+  of mPred, mSubI:
     c.genAddSubInt(n, dest, opcSubInt)
-  of mSucc, mAddI, mAddI64:
+  of mSucc, mAddI:
     c.genAddSubInt(n, dest, opcAddInt)
   of mInc, mDec:
     unused(n, dest)
@@ -759,9 +759,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(d)
     c.freeTemp(tmp)
   of mCard: genCard(c, n, dest)
-  of mMulI, mMulI64: genBinaryABCnarrow(c, n, dest, opcMulInt)
-  of mDivI, mDivI64: genBinaryABCnarrow(c, n, dest, opcDivInt)
-  of mModI, mModI64: genBinaryABCnarrow(c, n, dest, opcModInt)
+  of mMulI: genBinaryABCnarrow(c, n, dest, opcMulInt)
+  of mDivI: genBinaryABCnarrow(c, n, dest, opcDivInt)
+  of mModI: genBinaryABCnarrow(c, n, dest, opcModInt)
   of mAddF64: genBinaryABC(c, n, dest, opcAddFloat)
   of mSubF64: genBinaryABC(c, n, dest, opcSubFloat)
   of mMulF64: genBinaryABC(c, n, dest, opcMulFloat)

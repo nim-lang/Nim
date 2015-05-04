@@ -30,11 +30,11 @@ const
   someHigh = {mHigh}
   # we don't list unsigned here because wrap around semantics suck for
   # proving anything:
-  someAdd = {mAddI, mAddI64, mAddF64, mSucc}
-  someSub = {mSubI, mSubI64, mSubF64, mPred}
-  someMul = {mMulI, mMulI64, mMulF64}
-  someDiv = {mDivI, mDivI64, mDivF64}
-  someMod = {mModI, mModI64}
+  someAdd = {mAddI, mAddF64, mSucc}
+  someSub = {mSubI, mSubF64, mPred}
+  someMul = {mMulI, mMulF64}
+  someDiv = {mDivI, mDivF64}
+  someMod = {mModI}
   someMax = {mMaxI, mMaxF64}
   someMin = {mMinI, mMinF64}
 

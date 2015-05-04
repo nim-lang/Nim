@@ -684,28 +684,28 @@ proc `+` *(x, y: int): int {.magic: "AddI", noSideEffect.}
 proc `+` *(x, y: int8): int8 {.magic: "AddI", noSideEffect.}
 proc `+` *(x, y: int16): int16 {.magic: "AddI", noSideEffect.}
 proc `+` *(x, y: int32): int32 {.magic: "AddI", noSideEffect.}
-proc `+` *(x, y: int64): int64 {.magic: "AddI64", noSideEffect.}
+proc `+` *(x, y: int64): int64 {.magic: "AddI", noSideEffect.}
   ## Binary `+` operator for an integer.
 
 proc `-` *(x, y: int): int {.magic: "SubI", noSideEffect.}
 proc `-` *(x, y: int8): int8 {.magic: "SubI", noSideEffect.}
 proc `-` *(x, y: int16): int16 {.magic: "SubI", noSideEffect.}
 proc `-` *(x, y: int32): int32 {.magic: "SubI", noSideEffect.}
-proc `-` *(x, y: int64): int64 {.magic: "SubI64", noSideEffect.}
+proc `-` *(x, y: int64): int64 {.magic: "SubI", noSideEffect.}
   ## Binary `-` operator for an integer.
 
 proc `*` *(x, y: int): int {.magic: "MulI", noSideEffect.}
 proc `*` *(x, y: int8): int8 {.magic: "MulI", noSideEffect.}
 proc `*` *(x, y: int16): int16 {.magic: "MulI", noSideEffect.}
 proc `*` *(x, y: int32): int32 {.magic: "MulI", noSideEffect.}
-proc `*` *(x, y: int64): int64 {.magic: "MulI64", noSideEffect.}
+proc `*` *(x, y: int64): int64 {.magic: "MulI", noSideEffect.}
   ## Binary `*` operator for an integer.
 
 proc `div` *(x, y: int): int {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int16): int16 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
-proc `div` *(x, y: int64): int64 {.magic: "DivI64", noSideEffect.}
+proc `div` *(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
   ##
@@ -718,7 +718,7 @@ proc `mod` *(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
-proc `mod` *(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
+proc `mod` *(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
   ## computes the integer modulo operation. This is the same as
   ## ``x - (x div y) * y``.
 

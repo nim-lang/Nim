@@ -258,11 +258,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
     ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
     ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
-    ["addInt64", "", "addInt64($1, $2)", "($1 + $2)"], # AddI64
-    ["subInt64", "", "subInt64($1, $2)", "($1 - $2)"], # SubI64
-    ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
-    ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
-    ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
@@ -357,11 +352,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
     ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
     ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
-    ["addInt64", "", "addInt64($1, $2)", "($1 + $2)"], # AddI64
-    ["subInt64", "", "subInt64($1, $2)", "($1 - $2)"], # SubI64
-    ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
-    ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
-    ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64

@@ -200,11 +200,11 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     if isIntRange(a) and isIntLit(b):
       result = makeRange(a, pickMinInt(n.sons[1]) |-| pickMinInt(n.sons[2]),
                             pickMaxInt(n.sons[1]) |-| pickMaxInt(n.sons[2]))
-  of mAddI, mAddI64, mAddU:
+  of mAddI, mAddU:
     commutativeOp(`|+|`)
-  of mMulI, mMulI64, mMulU:
+  of mMulI, mMulU:
     commutativeOp(`|*|`)
-  of mSubI, mSubI64, mSubU:
+  of mSubI, mSubU:
     binaryOp(`|-|`)
   of mBitandI, mBitandI64:
     # since uint64 is still not even valid for 'range' (since it's no ordinal
@@ -225,7 +225,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
         result = makeRange(a.typ, 0, b.intVal-1)
       else:
         result = makeRange(a.typ, b.intVal+1, 0)
-  of mModI, mModI64:
+  of mModI:
     # so ... if you ever wondered about modulo's signedness; this defines it:
     let a = n.sons[1]
     let b = n.sons[2]
@@ -234,7 +234,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
         result = makeRange(a.typ, -(b.intVal-1), b.intVal-1)
       else:
         result = makeRange(a.typ, b.intVal+1, -(b.intVal+1))
-  of mDivI, mDivI64, mDivU:
+  of mDivI, mDivU:
     binaryOp(`|div|`)
   of mMinI:
     commutativeOp(min)
@@ -310,9 +310,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mUnaryLt: result = newIntNodeT(getOrdValue(a) - 1, n)
   of mSucc: result = newIntNodeT(getOrdValue(a) + getInt(b), n)
   of mPred: result = newIntNodeT(getOrdValue(a) - getInt(b), n)
-  of mAddI, mAddI64: result = newIntNodeT(getInt(a) + getInt(b), n)
-  of mSubI, mSubI64: result = newIntNodeT(getInt(a) - getInt(b), n)
-  of mMulI, mMulI64: result = newIntNodeT(getInt(a) * getInt(b), n)
+  of mAddI: result = newIntNodeT(getInt(a) + getInt(b), n)
+  of mSubI: result = newIntNodeT(getInt(a) - getInt(b), n)
+  of mMulI: result = newIntNodeT(getInt(a) * getInt(b), n)
   of mMinI:
     if getInt(a) > getInt(b): result = newIntNodeT(getInt(b), n)
     else: result = newIntNodeT(getInt(a), n)
@@ -335,11 +335,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     of tyInt64, tyInt, tyUInt..tyUInt64:
       result = newIntNodeT(`shr`(getInt(a), getInt(b)), n)
     else: internalError(n.info, "constant folding for shr")
-  of mDivI, mDivI64:
+  of mDivI:
     let y = getInt(b)
     if y != 0:
       result = newIntNodeT(getInt(a) div y, n)
-  of mModI, mModI64:
+  of mModI:
     let y = getInt(b)
     if y != 0:
       result = newIntNodeT(getInt(a) mod y, n)

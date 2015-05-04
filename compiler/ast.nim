@@ -539,8 +539,8 @@ type
     mIncl, mExcl, mCard, mChr,
     mGCref, mGCunref,
 
-    mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
-    mDivI64, mModI64, mSucc, mPred,
+    mAddI, mSubI, mMulI, mDivI, mModI,
+    mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
 
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
@@ -594,8 +594,8 @@ const
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
-    mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
-    mDivI64, mModI64, mAddF64, mSubF64, mMulF64, mDivF64,
+    mAddI, mSubI, mMulI, mDivI, mModI,
+    mAddF64, mSubF64, mMulF64, mDivF64,
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
     mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
