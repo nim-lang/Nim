@@ -471,3 +471,13 @@ else:
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)
+
+when defined(testing):
+  var ss = newStringStream("The quick brown fox jumped over the lazy dog.\nThe lazy dog ran")
+  assert(ss.getPosition == 0)
+  assert(ss.peekStr(5) == "The q")
+  assert(ss.getPosition == 0) # haven't moved
+  assert(ss.readStr(5) == "The q")
+  assert(ss.getPosition == 5) # did move
+  assert(ss.peekLine() == "uick brown fox jumped over the lazy dog.")
+  assert(ss.getPosition == 5) # haven't moved
