@@ -167,13 +167,22 @@ type
   Captures* = distinct RegexMatch
   CaptureBounds* = distinct RegexMatch
 
-  SyntaxError* = ref object of Exception
+  RegexException* = ref object of Exception
+
+  RegexInternalError* = ref object of RegexException
+    ## Internal error in the module, this probably means that there is a bug
+
+  InvalidUnicodeError* = ref object of RegexException
+    ## Thrown when matching fails due to invalid unicode in strings
+    pos*: int  ## the location of the invalid unicode in bytes
+
+  SyntaxError* = ref object of RegexException
     ## Thrown when there is a syntax error in the
     ## regular expression string passed in
     pos*: int  ## the location of the syntax error in bytes
     pattern*: string  ## the pattern that caused the problem
 
-  StudyError* = ref object of Exception
+  StudyError* = ref object of RegexException
     ## Thrown when studying the regular expression failes
     ## for whatever reason. The message contains the error
     ## code.
@@ -454,10 +463,20 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
                           cint(vecsize))
   if execRet >= 0:
     return Some(myResult)
-  elif execRet == pcre.ERROR_NOMATCH:
-    return None[RegexMatch]()
-  else:
-    raise newException(AssertionError, "Internal error: errno " & $execRet)
+
+  case execRet:
+    of pcre.ERROR_NOMATCH:
+      return None[RegexMatch]()
+    of pcre.ERROR_NULL:
+      raise newException(AccessViolationError, "Expected non-null parameters")
+    of pcre.ERROR_BADOPTION:
+      raise RegexInternalError(msg : "Unknown pattern flag. Either a bug or " &
+        "outdated PCRE.")
+    of pcre.ERROR_BADUTF8, pcre.ERROR_SHORTUTF8, pcre.ERROR_BADUTF8_OFFSET:
+      raise InvalidUnicodeError(msg : "Invalid unicode byte sequence",
+        pos : myResult.pcreMatchBounds[0].a)
+    else:
+      raise RegexInternalError(msg : "Unknown internal error: " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   ## Like ```find(...)`` <#proc-find>`__, but anchored to the start of the
