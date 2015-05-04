@@ -206,7 +206,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     commutativeOp(`|*|`)
   of mSubI, mSubU:
     binaryOp(`|-|`)
-  of mBitandI, mBitandI64:
+  of mBitandI:
     # since uint64 is still not even valid for 'range' (since it's no ordinal
     # yet), we exclude it from the list (see bug #1638) for now:
     var a = n.sons[1]
@@ -243,8 +243,8 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
   else: discard
 
 discard """
-  mShlI, mShlI64,
-  mShrI, mShrI64, mAddF64, mSubF64, mMulF64, mDivF64, mMaxF64, mMinF64
+  mShlI,
+  mShrI, mAddF64, mSubF64, mMulF64, mDivF64, mMaxF64, mMinF64
 """
 
 proc evalIs(n, a: PNode): PNode =
@@ -319,7 +319,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mMaxI:
     if getInt(a) > getInt(b): result = newIntNodeT(getInt(a), n)
     else: result = newIntNodeT(getInt(b), n)
-  of mShlI, mShlI64:
+  of mShlI:
     case skipTypes(n.typ, abstractRange).kind
     of tyInt8: result = newIntNodeT(int8(getInt(a)) shl int8(getInt(b)), n)
     of tyInt16: result = newIntNodeT(int16(getInt(a)) shl int16(getInt(b)), n)
@@ -327,7 +327,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     of tyInt64, tyInt, tyUInt..tyUInt64:
       result = newIntNodeT(`shl`(getInt(a), getInt(b)), n)
     else: internalError(n.info, "constant folding for shl")
-  of mShrI, mShrI64:
+  of mShrI:
     case skipTypes(n.typ, abstractRange).kind
     of tyInt8: result = newIntNodeT(int8(getInt(a)) shr int8(getInt(b)), n)
     of tyInt16: result = newIntNodeT(int16(getInt(a)) shr int16(getInt(b)), n)
@@ -375,9 +375,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = newIntNodeT(ord(`<%`(getOrdValue(a), getOrdValue(b))), n)
   of mLeU, mLeU64:
     result = newIntNodeT(ord(`<=%`(getOrdValue(a), getOrdValue(b))), n)
-  of mBitandI, mBitandI64, mAnd: result = newIntNodeT(a.getInt and b.getInt, n)
-  of mBitorI, mBitorI64, mOr: result = newIntNodeT(getInt(a) or getInt(b), n)
-  of mBitxorI, mBitxorI64, mXor: result = newIntNodeT(a.getInt xor b.getInt, n)
+  of mBitandI, mAnd: result = newIntNodeT(a.getInt and b.getInt, n)
+  of mBitorI, mOr: result = newIntNodeT(getInt(a) or getInt(b), n)
+  of mBitxorI, mXor: result = newIntNodeT(a.getInt xor b.getInt, n)
   of mAddU: result = newIntNodeT(`+%`(getInt(a), getInt(b)), n)
   of mSubU: result = newIntNodeT(`-%`(getInt(a), getInt(b)), n)
   of mMulU: result = newIntNodeT(`*%`(getInt(a), getInt(b)), n)

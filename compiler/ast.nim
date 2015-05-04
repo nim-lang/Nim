@@ -544,7 +544,6 @@ type
     mAddF64, mSubF64, mMulF64, mDivF64,
 
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
@@ -597,7 +596,6 @@ const
     mAddI, mSubI, mMulI, mDivI, mModI,
     mAddF64, mSubF64, mMulF64, mDivF64,
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
