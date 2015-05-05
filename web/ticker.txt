@@ -1,6 +1,6 @@
-<a class="news" href="news.html#Z2015-04-30-version-0-11-0-released">
-  <h4>Apr 30, 2015</h4>
-  <p>Nim version 0.11.0 has been released!</p>
+<a class="news" href="news.html#Z2015-05-04-version-0-11-2-released">
+  <h4>May 4, 2015</h4>
+  <p>Nim version 0.11.2 has been released!</p>
 </a>
 
 <a class="news" href="news.html#Z2014-12-29-version-0-10-2-released">

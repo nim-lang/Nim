@@ -13,8 +13,8 @@ Binaries
 --------
 
 Unfortunately for now we only provide builds for Windows.
-* 32 bit: `nim-0.11.0_x32.exe <download/nim-0.11.0_x32.exe>`_
-* 64 bit: `nim-0.11.0_x64.exe <download/nim-0.11.0_x64.exe>`_
+* 32 bit: `nim-0.11.2_x32.exe <download/nim-0.11.2_x32.exe>`_
+* 64 bit: `nim-0.11.2_x64.exe <download/nim-0.11.2_x64.exe>`_
 
 
 Installation based on generated C code
@@ -26,8 +26,8 @@ like systems. Binary packages may be provided later.
 
 Download one of these:
 
-* `nim-0.11.0.zip (28 MB) <download/nim-0.11.0.zip>`_
-* `nim-0.11.0.tar.xz (2.6MB) <download/nim-0.11.0.tar.xz>`_
+* `nim-0.11.2.zip (28 MB) <download/nim-0.11.2.zip>`_
+* `nim-0.11.2.tar.xz (2.6MB) <download/nim-0.11.2.tar.xz>`_
 
 Extract the file and follow these instructions:
 

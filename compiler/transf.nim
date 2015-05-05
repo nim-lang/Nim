@@ -716,8 +716,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     add(result, PTransNode(newSymNode(labl)))
   of nkBreakStmt: result = transformBreak(c, n)
   of nkWhileStmt: result = transformWhile(c, n)
-  of nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix,
-     nkCallStrLit:
+  of nkCallKinds:
     result = transformCall(c, n)
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)

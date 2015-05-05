@@ -535,7 +535,18 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result.sons[i] = fitNode(c, typ, result.sons[i])
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
-template fixAbstractType(c: PContext, n: PNode) =
+proc fixAbstractType(c: PContext, n: PNode) =
+  for i in 1 .. < n.len:
+    let it = n.sons[i]
+    # do not get rid of nkHiddenSubConv for OpenArrays, the codegen needs it:
+    if it.kind == nkHiddenSubConv and
+        skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
+      if skipTypes(it.sons[1].typ, abstractVar).kind in
+            {tyNil, tyArrayConstr, tyTuple, tySet}:
+        var s = skipTypes(it.typ, abstractVar)
+        if s.kind != tyExpr:
+          changeType(it.sons[1], s, check=true)
+        n.sons[i] = it.sons[1]
   when false:
     # XXX finally rewrite that crap!
     for i in countup(1, sonsLen(n) - 1):
@@ -2042,7 +2053,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkEmpty, nkNone, nkCommentStmt:
     discard
   of nkNilLit:
-    result.typ = getSysType(tyNil)
+    if result.typ == nil: result.typ = getSysType(tyNil)
   of nkIntLit:
     if result.typ == nil: setIntLitType(result)
   of nkInt8Lit:
