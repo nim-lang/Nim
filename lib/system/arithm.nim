@@ -10,11 +10,11 @@
 
 # simple integer arithmetic with overflow checking
 
-proc raiseOverflow {.compilerproc, noinline, noreturn.} =
+proc raiseOverflow {.compilerproc, noinline.} =
   # a single proc to reduce code size to a minimum
   sysFatal(OverflowError, "over- or underflow")
 
-proc raiseDivByZero {.compilerproc, noinline, noreturn.} =
+proc raiseDivByZero {.compilerproc, noinline.} =
   sysFatal(DivByZeroError, "division by zero")
 
 proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
@@ -327,13 +327,13 @@ when not declared(mulInt):
 # We avoid setting the FPU control word here for compatibility with libraries
 # written in other languages.
 
-proc raiseFloatInvalidOp {.noinline, noreturn.} =
+proc raiseFloatInvalidOp {.noinline.} =
   sysFatal(FloatInvalidOpError, "FPU operation caused a NaN result")
 
 proc nanCheck(x: float64) {.compilerProc, inline.} =
   if x != x: raiseFloatInvalidOp()
 
-proc raiseFloatOverflow(x: float64) {.noinline, noreturn.} =
+proc raiseFloatOverflow(x: float64) {.noinline.} =
   if x > 0.0:
     sysFatal(FloatOverflowError, "FPU operation caused an overflow")
   else:

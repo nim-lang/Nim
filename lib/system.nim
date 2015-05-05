@@ -1110,7 +1110,7 @@ var programResult* {.exportc: "nim_program_result".}: int
   ## prematurely using ``quit``, this value is ignored.
 
 proc quit*(errorcode: int = QuitSuccess) {.
-  magic: "Exit", importc: "exit", header: "<stdlib.h>", noReturn.}
+  magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
   ## Stops the program immediately with an exit code.
   ##
   ## Before stopping the program the "quit procedures" are called in the
@@ -2270,20 +2270,21 @@ when hostOS == "standalone":
   include panicoverride
 
 when not declared(sysFatal):
-  template sysFatal(exceptn: typedesc, message: string) =
-    when hostOS == "standalone":
+  when hostOS == "standalone":
+    proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
       panic(message)
-    else:
+
+    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline.} =
+      rawoutput(message)
+      panic(arg)
+  else:
+    proc sysFatal(exceptn: typedesc, message: string) {.inline, noReturn.} =
       var e: ref exceptn
       new(e)
       e.msg = message
       raise e
 
-  template sysFatal(exceptn: typedesc, message, arg: string) =
-    when hostOS == "standalone":
-      rawoutput(message)
-      panic(arg)
-    else:
+    proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noReturn.} =
       var e: ref exceptn
       new(e)
       e.msg = message & arg
