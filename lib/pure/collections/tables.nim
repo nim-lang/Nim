@@ -215,6 +215,10 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   var hc: THash
   result = rawGet(t, key, hc) >= 0
 
+proc contains*[A, B](t: Table[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
+
 proc rawInsert[A, B](t: var Table[A, B], data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: THash, h: THash) =
   rawInsertImpl()
@@ -411,6 +415,10 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
+proc contains*[A, B](t: TableRef[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
+
 proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   t[][key] = val
@@ -531,6 +539,10 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   var hc: THash
   result = rawGet(t, key, hc) >= 0
+
+proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
@@ -704,6 +716,10 @@ proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
+proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
+
 proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   t[][key] = val
@@ -803,6 +819,10 @@ proc mget*[A](t: var CountTable[A], key: A): var int =
 proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
+
+proc contains*[A](t: CountTable[A], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A](t, key)
 
 proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
@@ -944,6 +964,10 @@ proc mget*[A](t: CountTableRef[A], key: A): var int =
 proc hasKey*[A](t: CountTableRef[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
+
+proc contains*[A](t: CountTableRef[A], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A](t, key)
 
 proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`. `val` has to be positive.
