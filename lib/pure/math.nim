@@ -87,10 +87,10 @@ proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Zero and negative numbers are not a power of two.
   return (x > 0) and ((x and (x - 1)) == 0)
 
-proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
+proc nextPowerOfTwo*(x: Natural): Natural {.noSideEffect.} =
   ## returns `x` rounded up to the nearest power of two.
-  ## Zero and negative numbers get rounded up to 1.
-  result = x - 1 
+  ## The result loops back to 1 after the greatest Natural power of two.
+  result = x - 1
   when defined(cpu64):
     result = result or (result shr 32)
   when sizeof(int) > 2:
@@ -100,7 +100,12 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 4)
   result = result or (result shr 2)
   result = result or (result shr 1)
-  result += 1 + ord(x<=0)
+  result += 1 
+  # Handle the case where x is higher than the greatest power of two.
+  let bitwidth = sizeof(Natural) shl 3
+  let mask = not (1 shl (bitwidth - 1))
+  result = result and mask
+  result += ord(result == 0)
 
 proc countBits32*(n: int32): int {.noSideEffect.} =
   ## counts the set bits in `n`.
@@ -377,6 +382,18 @@ when isMainModule and not defined(JS):
   randomize(seed)
   for i in 0..SIZE-1:
     assert buf[i] == random(high(int)), "non deterministic random seeding"
+
+  # Tests for nextPowerOfTwo
+  assert nextPowerOfTwo(0) == 1
+  assert nextPowerOfTwo(1) == 1
+  assert nextPowerOfTwo(2) == 2
+  assert nextPowerOfTwo(3) == 4
+  let bitwidth = sizeof(int) * 8
+  let maxPowerOfTwo = 1 shl (bitwidth - 2)
+  assert nextPowerOfTwo(maxPowerOfTwo) == maxPowerOfTwo
+  assert nextPowerOfTwo(maxPowerOfTwo - 1) == maxPowerOfTwo
+  assert nextPowerOfTwo((maxPowerOfTwo div 2) + 1) == maxPowerOfTwo
+  assert nextPowerOfTwo(maxPowerOfTwo + 1) == 1
 
   when not defined(testing):
     echo "random values equal after reseeding"
