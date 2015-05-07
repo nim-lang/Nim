@@ -28,8 +28,6 @@ type
     hasGnuAsm,                # CC's asm uses the absurd GNU assembler syntax
     hasDeclspec,              # CC has __declspec(X)
     hasAttribute,             # CC has __attribute__((X))
-    hasNaked,                 # CC has naked declspec/attribute
-    hasNoreturn               # CC has noreturn declspec/attribute
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
@@ -87,7 +85,7 @@ compiler gcc:
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     packedPragma: "__attribute__((__packed__))",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
-            hasAttribute, hasNaked, hasNoreturn})
+            hasAttribute})
 
 # LLVM Frontend for GCC/G++
 compiler llvmGcc:
@@ -129,7 +127,7 @@ compiler vcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     packedPragma: "#pragma pack(1)",
-    props: {hasCpp, hasAssume, hasDeclspec, hasNaked, hasNoreturn})
+    props: {hasCpp, hasAssume, hasDeclspec})
 
 # Intel C/C++ Compiler
 compiler icl:

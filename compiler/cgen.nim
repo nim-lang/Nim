@@ -677,10 +677,10 @@ proc genProcAux(m: BModule, prc: PSym) =
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
   if sfNoReturn in prc.flags:
-    if {hasNoreturn, hasDeclspec} <= extccomp.CC[extccomp.cCompiler].props:
+    if hasDeclspec in extccomp.CC[extccomp.cCompiler].props:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
-    if {hasNaked, hasDeclspec} <= extccomp.CC[extccomp.cCompiler].props:
+    if hasDeclspec in extccomp.CC[extccomp.cCompiler].props:
       header = "__declspec(naked) " & header
     generatedProc = rfmt(nil, "$N$1 {$n$2$3$4}$N$N",
                          header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts))
@@ -723,9 +723,9 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     var header = genProcHeader(m, sym)
     if sym.typ.callConv != ccInline and crossesCppBoundary(m, sym):
       header = "extern \"C\" " & header
-    if sfPure in sym.flags and {hasNaked, hasAttribute} <= CC[cCompiler].props:
+    if sfPure in sym.flags and hasAttribute in CC[cCompiler].props:
       header.add(" __attribute__((naked))")
-    if sfNoReturn in sym.flags and {hasNoreturn, hasAttribute} <= CC[cCompiler].props:
+    if sfNoReturn in sym.flags and hasAttribute in CC[cCompiler].props:
       header.add(" __attribute__((noreturn))")
     add(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", header))
 
