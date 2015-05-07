@@ -668,7 +668,7 @@ proc callCCompiler*(projectfile: string) =
       it = PStrEntry(it.next)
 
     if optGenStaticLib in gGlobalOptions:
-      let (_, name, _) = splitFile(gProjectName)
+      let name = splitFile(gProjectName).name
       linkCmd = CC[c].buildLib % ["libfile", (libNameTmpl() % name),
                                   "objfiles", objfiles]
     else:
