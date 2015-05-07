@@ -119,7 +119,7 @@ type
                               ## in the range 0 to 23.
     monthday*: range[1..31]   ## The day of the month, in the range 1 to 31.
     month*: Month             ## The current month.
-    year*: range[-10_000..10_000] ## The current year.
+    year*: int                ## The current year.
     weekday*: WeekDay         ## The current day of the week.
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
@@ -379,7 +379,7 @@ when not defined(JS):
     result.hour = t.hour
     result.monthday = t.monthday
     result.month = ord(t.month)
-    result.year = t.year - 1900
+    result.year = cint(t.year - 1900)
     result.weekday = weekDays[t.weekday]
     result.yearday = t.yearday
     result.isdst = if t.isDST: 1 else: 0
