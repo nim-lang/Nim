@@ -2,7 +2,7 @@
 set -e
 set -x
 
-if [ ! -d "csources" ]; then
+if [ ! -e csources/.git ]; then
 	git submodule update --init --depth 1
 fi
 
