@@ -668,7 +668,8 @@ proc callCCompiler*(projectfile: string) =
       it = PStrEntry(it.next)
 
     if optGenStaticLib in gGlobalOptions:
-      linkCmd = CC[c].buildLib % ["libfile", (libNameTmpl() % gProjectName),
+      let (_, name, _) = splitFile(gProjectName)
+      linkCmd = CC[c].buildLib % ["libfile", (libNameTmpl() % name),
                                   "objfiles", objfiles]
     else:
       var linkerExe = getConfigVar(c, ".linkerexe")
