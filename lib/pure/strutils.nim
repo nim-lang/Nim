@@ -169,14 +169,12 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 
 {.pop.}
 
-proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
-  rtl, extern: "nsuStrip".} =
-  ## Strips whitespace from `s` and returns the resulting string.
+proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string 
+  {.noSideEffect, rtl, extern: "nsuStrip".} =
+  ## Strips `chars` from `s` and returns the resulting string.
   ##
-  ## If `leading` is true, leading whitespace is stripped.
-  ## If `trailing` is true, trailing whitespace is stripped.
-  const
-    chars: set[char] = Whitespace
+  ## If `leading` is true, leading `chars` are stripped.
+  ## If `trailing` is true, trailing `chars` are stripped.
   var
     first = 0
     last = len(s)-1
@@ -1433,3 +1431,11 @@ when isMainModule:
   doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
   doAssert count("foofoofoo", 'f') == 3
   doAssert count("foofoofoobar", {'f','b'}) == 4
+
+  doAssert strip("  foofoofoo  ") == "foofoofoo"
+  doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
+  doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
+  doAssert strip("stripme but don't strip this stripme",
+                 chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) == " but don't strip this "
+  doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
+  doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
