@@ -10,8 +10,11 @@
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
 import strutils, os, parseopt, parseutils, sequtils, net
+# Do NOT import suggest. It will lead to wierd bugs with
+# suggestionResultHook, because suggest.nim is included by sigmatch.
+# So we import that one instead.
 import options, commands, modules, sem, passes, passaux, msgs, nimconf,
-  extccomp, condsyms, lists, net, rdstdin, sexp, suggest, ast
+  extccomp, condsyms, lists, net, rdstdin, sexp, sigmatch, ast
 
 when defined(windows):
   import winlean
@@ -116,7 +119,6 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int) =
     resetModule gProjectMainIdx
 
   gTrackPos = newLineInfo(dirtyIdx, line, col)
-  #echo dirtyfile, gDirtyBufferIdx, " project ", gProjectMainIdx
   gErrorCounter = 0
   if not isKnownFile:
     compileProject(dirtyIdx)
@@ -245,7 +247,7 @@ proc serve() =
       case messageType:
       of "call":
         var results: seq[Suggest] = @[]
-        suggest.suggestionResultHook = proc (s: Suggest) =
+        suggestionResultHook = proc (s: Suggest) =
           results.add(s)
 
         let
