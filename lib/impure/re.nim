@@ -146,8 +146,8 @@ proc findBounds*(s: string, pattern: Regex,
 
 proc findBounds*(s: string, pattern: Regex,
                  start = 0): tuple[first, last: int] =
-  ## returns the starting position of `pattern` in `s`. If it does not
-  ## match, ``(-1,0)`` is returned.
+  ## returns the starting position and end position of ``pattern`` in ``s``.
+  ## If it does not match, ``(-1,0)`` is returned.
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
