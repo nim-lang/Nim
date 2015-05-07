@@ -114,18 +114,23 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-proc mean*(x: openArray[float]): float {.noSideEffect.} = 
-  ## computes the mean of the elements in `x`. 
-  ## If `x` is empty, NaN is returned.
-  result = sum(x) / toFloat(len(x))
+template toFloat(f: float): float = f
 
-proc variance*(x: openArray[float]): float {.noSideEffect.} = 
+proc mean*[T](x: openArray[T]): float {.noSideEffect.} =
+  ## computes the mean of the elements in `x`, which are first converted to floats.
+  ## If `x` is empty, NaN is returned.
+  ## ``toFloat(x: T): float`` must be defined.
+  for i in items(x): result = result + toFloat(i)
+  result = result / toFloat(len(x))
+
+proc variance*[T](x: openArray[T]): float {.noSideEffect.} =
   ## computes the variance of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
+  ## ``toFloat(x: T): float`` must be defined.
   result = 0.0
   var m = mean(x)
-  for i in 0 .. high(x):
-    var diff = x[i] - m
+  for i in items(x):
+    var diff = toFloat(i) - m
     result = result + diff*diff
   result = result / toFloat(len(x))
 
