@@ -11,8 +11,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sequtils, strutils, ast, msgs, options, renderer,
-  types, docgen, lexer, semdata, astalgo, idents, sigmatch, lookups
+import algorithm, sequtils
 
 const
   sep = '\t'
