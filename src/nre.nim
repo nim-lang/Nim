@@ -47,14 +47,7 @@ from unicode import runeLenAt
 type
   Regex* = ref object
     ## Represents the pattern that things are matched against, constructed with
-    ## ``re(string, string)``. Examples: ``re"foo"``, ``re(r"foo # comment",
-    ## "x<anycrlf>")``, ``re"(?x)(*ANYCRLF)foo # comment"``. For more details
-    ## on the leading option groups, see the `Option
-    ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`__
-    ## and the `Newline
-    ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`__
-    ## sections of the `PCRE syntax
-    ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
+    ## ``re(string)``. Examples: ``re"foo"``, ``re(r"(*ANYCRLF)(?x)foo # comment".
     ##
     ## ``pattern: string``
     ##     the string that was used to create the pattern.
@@ -66,33 +59,36 @@ type
     ##     a table from the capture names to their numeric id.
     ##
     ##
-    ## Flags
-    ## .....
+    ## Options
+    ## .......
     ##
-    ## -  ``8``, ``u``, ``<utf8>`` - treat both the pattern and subject as UTF8
-    ## -  ``9``, ``<no_utf8>`` - prevents the pattern from being interpreted as UTF, no matter
-    ##    what
-    ## -  ``A``, ``<anchored>`` - as if the pattern had a ``^`` at the beginning
-    ## -  ``E``, ``<dollar_endonly>`` - DOLLAR\_ENDONLY
-    ## -  ``f``, ``<firstline>`` - fails if there is not a match on the first line
-    ## -  ``i``, ``<case_insensitive>`` - case insensitive
-    ## -  ``m``, ``<multiline>`` - multi-line, ``^`` and ``$`` match the beginning and end of
+    ## The following options may appear anywhere in the pattern, and they affect
+    ## the rest of it.
+    ##
+    ## -  ``(?i)`` - case insensitive
+    ## -  ``(?m)`` - multi-line: ``^`` and ``$`` match the beginning and end of
     ##    lines, not of the subject string
-    ## -  ``N``, ``<no_auto_capture>`` - turn off auto-capture, ``(?foo)`` is necessary to capture.
-    ## -  ``s``, ``<dotall>`` - ``.`` matches newline
-    ## -  ``U``, ``<ungreedy>`` - expressions are not greedy by default. ``?`` can be added to
-    ##    a qualifier to make it greedy.
-    ## -  ``W``, ``<ucp>`` - Unicode character properties; ``\w`` matches ``к``.
-    ## -  ``X``, ``<extra>`` - "Extra", character escapes without special meaning (``\w``
-    ##    vs. ``\a``) are errors
-    ## -  ``x``, ``<extended>`` - extended, comments (``#``) and newlines are ignored
-    ##    (extended)
-    ## -  ``Y``, ``<no_start_optimize>`` - pcre.NO\_START\_OPTIMIZE,
-    ## -  ``<cr>`` - newlines are separated by ``\r``
-    ## -  ``<crlf>`` - newlines are separated by ``\r\n`` (Windows default)
-    ## -  ``<lf>`` - newlines are separated by ``\n`` (UNIX default)
-    ## -  ``<anycrlf>`` - newlines are separated by any of the above
-    ## -  ``<any>`` - newlines are separated by any of the above and Unicode
+    ## -  ``(?s)`` - ``.`` also matches newline (*dotall*)
+    ## -  ``(?U)`` - expressions are not greedy by default. ``?`` can be added
+    ##    to a qualifier to make it greedy
+    ## -  ``(?x)`` - whitespace and comments (``#``) are ignored (*extended*)
+    ## -  ``(?X)`` - character escapes without special meaning (``\w`` vs.
+    ##    ``\a``) are errors (*extra*)
+    ##
+    ## One or a combination of these options may appear only at the beginning
+    ## of the pattern:
+    ##
+    ## -  ``(*UTF8)`` - treat both the pattern and subject as UTF-8
+    ## -  ``(*UCP)`` - Unicode character properties; ``\w`` matches ``я``
+    ## -  ``(*U)`` - a combination of the two options above
+    ## -  ``(*FIRSTLINE*)`` - fails if there is not a match on the first line
+    ## -  ``(*NO_AUTO_CAPTURE)`` - turn off auto-capture for groups;
+    ##    ``(?<name>...)`` can be used to capture
+    ## -  ``(*CR)`` - newlines are separated by ``\r``
+    ## -  ``(*LF)`` - newlines are separated by ``\n`` (UNIX default)
+    ## -  ``(*CRLF)`` - newlines are separated by ``\r\n`` (Windows default)
+    ## -  ``(*ANYCRLF)`` - newlines are separated by any of the above
+    ## -  ``(*ANY)`` - newlines are separated by any of the above and Unicode
     ##    newlines:
     ##
     ##     single characters VT (vertical tab, U+000B), FF (form feed, U+000C),
@@ -101,10 +97,15 @@ type
     ##     are recognized only in UTF-8 mode.
     ##     —  man pcre
     ##
-    ## -  ``<bsr_anycrlf>`` - ``\R`` matches CR, LF, or CRLF
-    ## -  ``<bsr_unicode>`` - ``\R`` matches any unicode newline
-    ## -  ``<js>`` - Javascript compatibility
-    ## -  ``<no_study>`` - turn off studying; study is enabled by deafault
+    ## -  ``(*JAVASCRIPT_COMPAT)`` - JavaScript compatibility
+    ## -  ``(*NO_STUDY)`` - turn off studying; study is enabled by default
+    ##
+    ## For more details on the leading option groups, see the `Option
+    ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`__
+    ## and the `Newline
+    ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`__
+    ## sections of the `PCRE syntax
+    ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
@@ -316,71 +317,61 @@ proc `==`*(a, b: RegexMatch): bool =
 
 # Creation & Destruction {{{
 # PCRE Options {{{
-let Options: Table[string, int] = {
-  "8" : pcre.UTF8,
-  "utf8" : pcre.UTF8,
-  "9" : pcre.NEVER_UTF,
-  "no_utf8" : pcre.NEVER_UTF,
-  "A" : pcre.ANCHORED,
-  "anchored" : pcre.ANCHORED,
-  # "C" : pcre.AUTO_CALLOUT, unsuported XXX
-  "E" : pcre.DOLLAR_ENDONLY,
-  "dollar_endonly" : pcre.DOLLAR_ENDONLY,
-  "f" : pcre.FIRSTLINE,
-  "firstline" : pcre.FIRSTLINE,
-  "i" : pcre.CASELESS,
-  "case_insensitive" : pcre.CASELESS,
-  "m" : pcre.MULTILINE,
-  "multiline" : pcre.MULTILINE,
-  "N" : pcre.NO_AUTO_CAPTURE,
-  "no_auto_capture" : pcre.NO_AUTO_CAPTURE,
-  "s" : pcre.DOTALL,
-  "dotall" : pcre.DOTALL,
-  "U" : pcre.UNGREEDY,
-  "ungreedy" : pcre.UNGREEDY,
-  "u" : pcre.UTF8,
-  "W" : pcre.UCP,
-  "ucp" : pcre.UCP,
-  "X" : pcre.EXTRA,
-  "extra" : pcre.EXTRA,
-  "x" : pcre.EXTENDED,
-  "extended" : pcre.EXTENDED,
-  "Y" : pcre.NO_START_OPTIMIZE,
-  "no_start_optimize" : pcre.NO_START_OPTIMIZE,
-
-  "any"         : pcre.NEWLINE_ANY,
-  "anycrlf"     : pcre.NEWLINE_ANYCRLF,
-  "cr"          : pcre.NEWLINE_CR,
-  "crlf"        : pcre.NEWLINE_CRLF,
-  "lf"          : pcre.NEWLINE_LF,
-  "bsr_anycrlf" : pcre.BSR_ANYCRLF,
-  "bsr_unicode" : pcre.BSR_UNICODE,
-  "js"          : pcre.JAVASCRIPT_COMPAT,
+const PcreOptions = {
+  "NEVER_UTF": pcre.NEVER_UTF,
+  "ANCHORED": pcre.ANCHORED,
+  "DOLLAR_ENDONLY": pcre.DOLLAR_ENDONLY,
+  "FIRSTLINE": pcre.FIRSTLINE,
+  "NO_AUTO_CAPTURE": pcre.NO_AUTO_CAPTURE,
+  "JAVASCRIPT_COMPAT": pcre.JAVASCRIPT_COMPAT,
+  "U": pcre.UTF8 or pcre.UCP
 }.toTable
 
-proc tokenizeOptions(opts: string): tuple[flags: int, study: bool] =
-  result = (0, true)
+# Options that are supported inside regular expressions themselves
+const SkipOptions = [
+  "LIMIT_MATCH=", "LIMIT_RECURSION=", "NO_AUTO_POSSESS", "NO_START_OPT",
+  "UTF8", "UTF16", "UTF32", "UTF", "UCP",
+  "CR", "LF", "CRLF", "ANYCRLF", "ANY", "BSR_ANYCRLF", "BSR_UNICODE"
+]
 
-  var longOpt: string = nil
-  for i, c in opts:
-    # Handle long options {{{
-    if c == '<':
-      longOpt = ""
-      continue
+proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: bool] =
+  result = ("", 0, true)
 
-    if longOpt != nil:
-      if c == '>':
-        if longOpt == "no_study":
-          result.study = false
-        else:
-          result.flags = result.flags or Options.fget(longOpt)
-        longOpt = nil
+  var optionStart = 0
+  var equals = false
+  for i, c in pattern:
+    if optionStart == i:
+      if c != '(':
+        break
+      optionStart = i
+
+    elif optionStart == i-1:
+      if c != '*':
+        break
+
+    elif c == ')':
+      let name = pattern[optionStart+2 .. i-1]
+      if equals or name in SkipOptions:
+        result.pattern.add pattern[optionStart .. i]
+      elif PcreOptions.hasKey name:
+        result.flags = result.flags or PcreOptions[name]
+      elif name == "NO_STUDY":
+        result.study = false
       else:
-        longOpt.add(c.toLower)
-      continue
-    # }}}
+        break
+      optionStart = i+1
+      equals = false
 
-    result.flags = result.flags or Options.fget($c)
+    elif not equals:
+      if c == '=':
+        equals = true
+        if pattern[optionStart+2 .. i] notin SkipOptions:
+          break
+      elif c notin {'A'..'Z', '0'..'9', '_'}:
+        break
+
+  result.pattern.add pattern[optionStart .. pattern.high]
+
 # }}}
 
 type UncheckedArray {.unchecked.}[T] = array[0 .. 0, T]
@@ -411,24 +402,22 @@ proc getNameToNumberTable(pattern: Regex): Table[string, int] =
 
     result[name] = num
 
-proc initRegex(pattern: string, options: string): Regex =
+proc initRegex(pattern: string, flags: int, study = true): Regex =
   new(result, destroyRegex)
   result.pattern = pattern
 
   var errorMsg: cstring
   var errOffset: cint
 
-  let opts = tokenizeOptions(options)
-
   result.pcreObj = pcre.compile(cstring(pattern),
                                 # better hope int is at least 4 bytes..
-                                cint(opts.flags), addr errorMsg,
+                                cint(flags), addr errorMsg,
                                 addr errOffset, nil)
   if result.pcreObj == nil:
     # failed to compile
     raise SyntaxError(msg: $errorMsg, pos: errOffset, pattern: pattern)
 
-  if opts.study:
+  if study:
     # XXX investigate JIT
     result.pcreExtra = pcre.study(result.pcreObj, 0x0, addr errorMsg)
     if errorMsg != nil:
@@ -436,7 +425,9 @@ proc initRegex(pattern: string, options: string): Regex =
 
   result.captureNameToId = result.getNameToNumberTable()
 
-proc re*(pattern: string, options = ""): Regex = initRegex(pattern, options)
+proc re*(pattern: string): Regex =
+  let (pattern, flags, study) = extractOptions(pattern)
+  initRegex(pattern, flags, study)
 # }}}
 
 # Operations {{{
