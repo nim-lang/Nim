@@ -65,15 +65,13 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
     i += parseUntil(cmd, outp, seps, i)
   result = i
 
-# make sure it's in the same order as the proc below
-let order: SexpNode =
-  sexp(@["section", "symkind", "qualifiedPath", "filePath", "forth", "line", "column", "doc"].map(newSSymbol))
-
 proc sexp(s: IdeCmd): SexpNode = sexp($s)
 
 proc sexp(s: TSymKind): SexpNode = sexp($s)
 
 proc sexp(s: Suggest): SexpNode =
+  # If you change the oder here, make sure to change it over in
+  # nim-mode.el too.
   result = convertSexp([
     s.section,
     s.symkind,
