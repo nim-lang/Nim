@@ -564,7 +564,7 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
 
 proc parsePostfix(p: var TRstParser, n: PRstNode): PRstNode =
   result = n
-  if isInlineMarkupEnd(p, "_"):
+  if isInlineMarkupEnd(p, "_") or isInlineMarkupEnd(p, "__"):
     inc(p.idx)
     if p.tok[p.idx-2].symbol == "`" and p.tok[p.idx-3].symbol == ">":
       var a = newRstNode(rnInner)

@@ -738,7 +738,7 @@ proc writeContext(lastinfo: TLineInfo) =
     if msgContext[i] != lastinfo and msgContext[i] != info:
       msgWriteln(PosContextFormat % [toMsgFilename(msgContext[i]),
                                      coordToStr(msgContext[i].line),
-                                     coordToStr(msgContext[i].col),
+                                     coordToStr(msgContext[i].col+1),
                                      getMessageStr(errInstantiationFrom, "")])
     info = msgContext[i]
 
@@ -781,7 +781,7 @@ proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
              of hintMin..hintMax: PosHintFormat
              else: PosErrorFormat
   result = frmt % [toMsgFilename(info), coordToStr(info.line),
-                   coordToStr(info.col), getMessageStr(msg, arg)]
+                   coordToStr(info.col+1), getMessageStr(msg, arg)]
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
@@ -804,8 +804,11 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     frmt = PosHintFormat
     inc(gHintCounter)
+  # NOTE: currently line info line numbers start with 1,
+  # but column numbers start with 0, however most editors expect
+  # first column to be 1, so we need to +1 here
   let s = frmt % [toMsgFilename(info), coordToStr(info.line),
-                  coordToStr(info.col), getMessageStr(msg, arg)]
+                  coordToStr(info.col+1), getMessageStr(msg, arg)]
   if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
     msgWriteln(s)
     if optPrintSurroundingSrc and msg in errMin..errMax:

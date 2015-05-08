@@ -61,7 +61,7 @@ type
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
     tkOpr, tkComment, tkAccent,
-    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
+    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
   TTokTypes* = set[TTokType]
 
@@ -220,6 +220,10 @@ proc dispMessage(L: TLexer; info: TLineInfo; msg: TMsgKind; arg: string) =
 
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") =
   L.dispMessage(getLineInfo(L), msg, arg)
+
+proc lexMessageTok*(L: TLexer, msg: TMsgKind, tok: TToken, arg = "") =
+  var info = newLineInfo(L.fileIdx, tok.line, tok.col)
+  L.dispMessage(info, msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
   var info = newLineInfo(L.fileIdx, L.lineNumber, pos - L.lineStart)
@@ -863,6 +867,15 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
     of '`':
       tok.tokType = tkAccent
       inc(L.bufpos)
+    of '_':
+      inc(L.bufpos)
+      if L.buf[L.bufpos] notin SymChars:
+        tok.tokType = tkSymbol
+        tok.ident = getIdent("_")
+      else:
+        tok.literal = $c
+        tok.tokType = tkInvalid
+        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     of '\"':
       # check for extended raw string literal:
       var rawMode = L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars

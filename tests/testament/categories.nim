@@ -226,7 +226,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
   for test in os.walkFiles(pattern):
     let contents = readFile(test).string
     if contents.contains("when isMainModule"):
-      testSpec r, makeTest(test, options, cat, actionRun)
+      testSpec r, makeTest(test, options, cat, actionRunNoSpec)
     else:
       testNoSpec r, makeTest(test, options, cat, actionCompile)
 

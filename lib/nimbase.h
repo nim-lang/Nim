@@ -343,15 +343,15 @@ struct TFrame {
 };
 
 #define nimfr(proc, file) \
-  TFrame F; \
-  F.procname = proc; F.filename = file; F.line = 0; F.len = 0; nimFrame(&F);
+  TFrame FR; \
+  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
 
 #define nimfrs(proc, file, slots, length) \
-  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} F; \
-  F.procname = proc; F.filename = file; F.line = 0; F.len = length; nimFrame((TFrame*)&F);
+  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} FR; \
+  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
 
 #define nimln(n, file) \
-  F.line = n; F.filename = file;
+  FR.line = n; FR.filename = file;
 
 #define NIM_POSIX_INIT  __attribute__((constructor))
 

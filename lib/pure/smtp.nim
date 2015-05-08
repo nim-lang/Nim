@@ -253,7 +253,7 @@ proc close*(smtp: AsyncSmtp) {.async.} =
   await smtp.sock.send("QUIT\c\L")
   smtp.sock.close()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   #var msg = createMessage("Test subject!", 
   #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
   #echo(msg)

@@ -91,7 +91,7 @@ proc closeParser(p: var TParser) =
 
 proc parMessage(p: TParser, msg: TMsgKind, arg = "") =
   ## Produce and emit the parser message `arg` to output.
-  lexMessage(p.lex, msg, arg)
+  lexMessageTok(p.lex, msg, p.tok, arg)
 
 proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) =
   ## Produce and emit a parser message to output about the token `tok`
@@ -154,7 +154,7 @@ proc eat(p: var TParser, tokType: TTokType) =
   if p.tok.tokType == tokType:
     getTok(p)
   else:
-    lexMessage(p.lex, errTokenExpected, TokTypeToStr[tokType])
+    lexMessageTok(p.lex, errTokenExpected, p.tok, TokTypeToStr[tokType])
 
 proc parLineInfo(p: TParser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
@@ -212,7 +212,8 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
     let relevantChar = tok.ident.s[0]
 
     # arrow like?
-    if L > 1 and tok.ident.s[L-1] == '>': return considerStrongSpaces(1)
+    if L > 1 and tok.ident.s[L-1] == '>' and
+      tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
 
     template considerAsgn(value: expr) =
       result = if tok.ident.s[L-1] == '=': 1 else: value
@@ -388,7 +389,6 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
     if p.tok.tokType != tkComma: break
     getTok(p)
     optInd(p, a)
-  eat(p, endTok)
 
 proc dotExpr(p: var TParser, a: PNode): PNode =
   #| dotExpr = expr '.' optInd symbol
@@ -944,8 +944,7 @@ proc parseDoBlock(p: var TParser): PNode =
   getTok(p)
   let params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
-  eat(p, tkColon)
-  skipComment(p, result)
+  colcom(p, result)
   result = newProcNode(nkDo, info, parseStmt(p),
                        params = params,
                        pragmas = pragmas)
@@ -1139,9 +1138,11 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
     result = makeCall(result)
     getTok(p)
     skipComment(p, result)
+    let stmtList = newNodeP(nkStmtList, p)
     if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
       let body = parseStmt(p)
-      addSon(result, makeStmtList(body))
+      stmtList.add body
+      #addSon(result, makeStmtList(body))
     while sameInd(p):
       var b: PNode
       case p.tok.tokType
@@ -1153,19 +1154,22 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
         getTok(p)
         optInd(p, b)
         addSon(b, parseExpr(p))
-        eat(p, tkColon)
       of tkExcept:
         b = newNodeP(nkExceptBranch, p)
         exprList(p, tkColon, b)
-        skipComment(p, b)
       of tkElse:
         b = newNodeP(nkElse, p)
         getTok(p)
-        eat(p, tkColon)
       else: break
+      eat(p, tkColon)
       addSon(b, parseStmt(p))
-      addSon(result, b)
+      addSon(stmtList, b)
       if b.kind == nkElse: break
+    if stmtList.len == 1 and stmtList[0].kind == nkStmtList:
+      # to keep backwards compatibility (see tests/vm/tstringnil)
+      result.add stmtList[0]
+    else:
+      result.add stmtList
 
 proc parseExprStmt(p: var TParser): PNode =
   #| exprStmt = simpleExpr
@@ -1310,8 +1314,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
     var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
     addSon(branch, parseExpr(p))
-    eat(p, tkColon)
-    skipComment(p, branch)
+    colcom(p, branch)
     addSon(branch, parseStmt(p))
     skipComment(p, branch)
     addSon(result, branch)
@@ -1319,8 +1322,7 @@ proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   if p.tok.tokType == tkElse and sameOrNoInd(p):
     var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
-    eat(p, tkColon)
-    skipComment(p, branch)
+    colcom(p, branch)
     addSon(branch, parseStmt(p))
     addSon(result, branch)
 
@@ -1368,13 +1370,11 @@ proc parseCase(p: var TParser): PNode =
       getTok(p)
       optInd(p, b)
       addSon(b, parseExpr(p))
-      eat(p, tkColon)
     of tkElse:
       b = newNodeP(nkElse, p)
       getTok(p)
-      eat(p, tkColon)
     else: break
-    skipComment(p, b)
+    colcom(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
     if b.kind == nkElse: break
@@ -1391,8 +1391,7 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
   #|            (optInd 'finally' colcom stmt)?
   result = newNodeP(nkTryStmt, p)
   getTok(p)
-  eat(p, tkColon)
-  skipComment(p, result)
+  colcom(p, result)
   addSon(result, parseStmt(p))
   var b: PNode = nil
   while sameOrNoInd(p) or isExpr:
@@ -1402,10 +1401,9 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
       exprList(p, tkColon, b)
     of tkFinally:
       b = newNodeP(nkFinally, p)
-      getTokNoInd(p)
-      eat(p, tkColon)
+      getTok(p)
     else: break
-    skipComment(p, b)
+    colcom(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
     if b.kind == nkFinally: break
@@ -1414,7 +1412,7 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
 proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =
   #| exceptBlock = 'except' colcom stmt
   result = newNodeP(kind, p)
-  getTokNoInd(p)
+  getTok(p)
   colcom(p, result)
   addSon(result, parseStmt(p))
 
@@ -1447,7 +1445,7 @@ proc parseStaticOrDefer(p: var TParser; k: TNodeKind): PNode =
   #| staticStmt = 'static' colcom stmt
   #| deferStmt = 'defer' colcom stmt
   result = newNodeP(k, p)
-  getTokNoInd(p)
+  getTok(p)
   colcom(p, result)
   addSon(result, parseStmt(p))
 
@@ -1628,7 +1626,7 @@ proc parseEnum(p: var TParser): PNode =
         p.tok.tokType == tkEof:
       break
   if result.len <= 1:
-    lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
+    lexMessageTok(p.lex, errIdentifierExpected, p.tok, prettyTok(p.tok))
 
 proc parseObjectPart(p: var TParser): PNode
 proc parseObjectWhen(p: var TParser): PNode =
@@ -1686,9 +1684,8 @@ proc parseObjectCase(p: var TParser): PNode =
     of tkElse:
       b = newNodeP(nkElse, p)
       getTok(p)
-      eat(p, tkColon)
     else: break
-    skipComment(p, b)
+    colcom(p, b)
     var fields = parseObjectPart(p)
     if fields.kind == nkEmpty:
       parMessage(p, errIdentifierExpected, p.tok)
@@ -1884,7 +1881,7 @@ proc simpleStmt(p: var TParser): PNode =
 
 proc complexOrSimpleStmt(p: var TParser): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
-  #|                     | tryStmt | finallyStmt | exceptStmt | forStmt
+  #|                     | tryStmt | forStmt
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
   #|                     | 'proc' routine
   #|                     | 'method' routine

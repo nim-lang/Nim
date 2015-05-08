@@ -54,7 +54,7 @@ proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
     result.typ = newType(tyString, context)
     result.info = trait.info
   of "arity":
-    result = newIntNode(nkIntLit, typ.n.len-1)
+    result = newIntNode(nkIntLit, typ.len - ord(typ.kind==tyProc))
     result.typ = newType(tyInt, context)
     result.info = trait.info
   else:
@@ -101,34 +101,6 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   else:
     localError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
 
-proc semLocals(c: PContext, n: PNode): PNode =
-  var counter = 0
-  var tupleType = newTypeS(tyTuple, c)
-  result = newNodeIT(nkPar, n.info, tupleType)
-  tupleType.n = newNodeI(nkRecList, n.info)
-  # for now we skip openarrays ...
-  for scope in walkScopes(c.currentScope):
-    if scope == c.topLevelScope: break
-    for it in items(scope.symbols):
-      # XXX parameters' owners are wrong for generics; this caused some pain
-      # for closures too; we should finally fix it.
-      #if it.owner != c.p.owner: return result
-      if it.kind in skLocalVars and
-          it.typ.skipTypes({tyGenericInst, tyVar}).kind notin
-            {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyExpr, tyStmt, tyEmpty}:
-
-        var field = newSym(skField, it.name, getCurrOwner(), n.info)
-        field.typ = it.typ.skipTypes({tyGenericInst, tyVar})
-        field.position = counter
-        inc(counter)
-
-        addSon(tupleType.n, newSymNode(field))
-        addSonSkipIntLit(tupleType, field.typ)
-
-        var a = newSymNode(it, result.info)
-        if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
-        result.add(a)
-
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc isStrangeArray(t: PType): bool =
@@ -161,7 +133,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mNBindSym: result = semBindSym(c, n)
-  of mLocals: result = semLocals(c, n)
   of mProcCall:
     result = n
     result.typ = n[1].typ
@@ -196,4 +167,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
         result.add newSymNode(createMagic("-", mSubI), n.info)
         result.add lenExprB
         result.add n.sons[1]
+  of mPlugin:
+    let plugin = getPlugin(n[0].sym)
+    if plugin.isNil:
+      localError(n.info, "cannot find plugin " & n[0].sym.name.s)
+      result = n
+    else:
+      result = plugin(c, n)
   else: result = n

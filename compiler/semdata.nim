@@ -118,7 +118,6 @@ proc newOptionEntry*(): POptionEntry
 proc newLib*(kind: TLibKind): PLib
 proc addToLib*(lib: PLib, sym: PSym)
 proc makePtrType*(c: PContext, baseType: PType): PType
-proc makeVarType*(c: PContext, baseType: PType): PType
 proc newTypeS*(kind: TTypeKind, c: PContext): PType
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
 
@@ -213,9 +212,12 @@ proc makePtrType(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
   addSonSkipIntLit(result, baseType.assertNotNil)
 
-proc makeVarType(c: PContext, baseType: PType): PType =
-  result = newTypeS(tyVar, c)
-  addSonSkipIntLit(result, baseType.assertNotNil)
+proc makeVarType*(c: PContext, baseType: PType): PType =
+  if baseType.kind == tyVar:
+    result = baseType
+  else:
+    result = newTypeS(tyVar, c)
+    addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
@@ -247,6 +249,7 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
@@ -254,12 +257,14 @@ proc makeOrType*(c: PContext, t1, t2: PType): PType =
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc makeNotType*(c: PContext, t1: PType): PType =
   result = newTypeS(tyNot, c)
   result.sons = @[t1]
   propagateToOwner(result, t1)
   result.flags.incl(t1.flags * {tfHasStatic})
+  result.flags.incl tfHasMeta
 
 proc nMinusOne*(n: PNode): PNode =
   result = newNode(nkCall, n.info, @[

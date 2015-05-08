@@ -379,6 +379,9 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
       result = transformSons(c, n)
   of tyOpenArray, tyVarargs:
     result = transform(c, n.sons[1])
+    PNode(result).typ = takeType(n.typ, n.sons[1].typ)
+    #echo n.info, " came here and produced ", typeToString(PNode(result).typ),
+    #   " from ", typeToString(n.typ), " and ", typeToString(n.sons[1].typ)
   of tyCString:
     if source.kind == tyString:
       result = newTransNode(nkStringToCString, n, 1)
@@ -713,8 +716,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     add(result, PTransNode(newSymNode(labl)))
   of nkBreakStmt: result = transformBreak(c, n)
   of nkWhileStmt: result = transformWhile(c, n)
-  of nkCall, nkHiddenCallConv, nkCommand, nkInfix, nkPrefix, nkPostfix,
-     nkCallStrLit:
+  of nkCallKinds:
     result = transformCall(c, n)
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)

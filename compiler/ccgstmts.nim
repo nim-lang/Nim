@@ -175,9 +175,18 @@ proc genBreakState(p: BProc, n: PNode) =
 
 proc genVarPrototypeAux(m: BModule, sym: PSym)
 
+proc genGotoVar(p: BProc; value: PNode) =
+  if value.kind notin {nkCharLit..nkUInt64Lit}:
+    localError(value.info, "'goto' target must be a literal value")
+  else:
+    lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
+
 proc genSingleVar(p: BProc, a: PNode) =
   var v = a.sons[0].sym
-  if sfCompileTime in v.flags: return
+  if {sfCompileTime, sfGoto} * v.flags != {}:
+    # translate 'var state {.goto.} = X' into 'goto LX':
+    if sfGoto in v.flags: genGotoVar(p, a.sons[2])
+    return
   var targetProc = p
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
@@ -365,6 +374,19 @@ proc genReturnStmt(p: BProc, t: PNode) =
     linefmt(p, cpsStmts, "if ($1.status != 0) #popCurrentException();$n", safePoint)
   lineF(p, cpsStmts, "goto BeforeRet;$n", [])
 
+proc genGotoForCase(p: BProc; caseStmt: PNode) =
+  for i in 1 .. <caseStmt.len:
+    startBlock(p)
+    let it = caseStmt.sons[i]
+    for j in 0 .. it.len-2:
+      if it.sons[j].kind == nkRange:
+        localError(it.info, "range notation not available for computed goto")
+        return
+      let val = getOrdValue(it.sons[j])
+      lineF(p, cpsStmts, "NIMSTATE_$#:$n", [val.rope])
+    genStmts(p, it.lastSon)
+    endBlock(p)
+
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
   var casePos = -1
@@ -529,12 +551,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc getRaiseFrmt(p: BProc): string =
-  if p.module.compileToCpp:
-    result = "throw NimException($1, $2);$n"
-  elif getCompilerProc("Exception") != nil:
-    result = "#raiseException((#Exception*)$1, $2);$n"
-  else:
-    result = "#raiseException((#E_Base*)$1, $2);$n"
+  result = "#raiseException((#Exception*)$1, $2);$n"
 
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
@@ -737,7 +754,10 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
     genCaseGeneric(p, t, d, "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                             "if ($1 == $2) goto $3;$n")
   else:
-    genOrdinalCase(p, t, d)
+    if t.sons[0].kind == nkSym and sfGoto in t.sons[0].sym.flags:
+      genGotoForCase(p, t)
+    else:
+      genOrdinalCase(p, t, d)
 
 proc hasGeneralExceptSection(t: PNode): bool =
   var length = sonsLen(t)
@@ -772,11 +792,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #  finallyPart();
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  var
-    exc: Rope
-    i, length, blen: int
   genLineDir(p, t)
-  exc = getTempName()
+  let exc = getTempName()
   if getCompilerProc("Exception") != nil:
     discard cgsym(p.module, "Exception")
   else:
@@ -784,20 +801,23 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
-  length = sonsLen(t)
+  let length = sonsLen(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.options:
-    linefmt(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
+    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR);$n")
   inc p.inExceptBlock
-  i = 1
+  var i = 1
   var catchAllPresent = false
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
-    blen = sonsLen(t.sons[i])
+    let blen = sonsLen(t.sons[i])
     if i > 1: addf(p.s(cpsStmts), "else ", [])
     if blen == 1:
       # general except section:
       catchAllPresent = true
-      exprBlock(p, t.sons[i].sons[0], d)
+      startBlock(p)
+      expr(p, t.sons[i].sons[0], d)
+      linefmt(p, cpsStmts, "#popCurrentException();$n")
+      endBlock(p)
     else:
       var orExpr: Rope = nil
       for j in countup(0, blen - 2):
@@ -807,7 +827,10 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
               "#isObj($1.exp->m_type, $2)",
               [exc, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       lineF(p, cpsStmts, "if ($1) ", [orExpr])
-      exprBlock(p, t.sons[i].sons[blen-1], d)
+      startBlock(p)
+      expr(p, t.sons[i].sons[blen-1], d)
+      linefmt(p, cpsStmts, "#popCurrentException();$n")
+      endBlock(p)
     inc(i)
 
   # reraise the exception if there was no catch all
@@ -887,7 +910,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   startBlock(p, "else {$n")
   linefmt(p, cpsStmts, "#popSafePoint();$n")
   if optStackTrace in p.options:
-    linefmt(p, cpsStmts, "#setFrame((TFrame*)&F);$n")
+    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR);$n")
   inc p.inExceptBlock
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
@@ -976,12 +999,19 @@ proc genAsmStmt(p: BProc, t: PNode) =
   else:
     lineF(p, cpsStmts, CC[cCompiler].asmStmtFrmt, [s])
 
+proc determineSection(n: PNode): TCFileSection =
+  result = cfsProcHeaders
+  if n.len >= 1 and n.sons[0].kind in {nkStrLit..nkTripleStrLit}:
+    if n.sons[0].strVal.startsWith("/*TYPESECTION*/"): result = cfsTypes
+    elif n.sons[0].strVal.startsWith("/*VARSECTION*/"): result = cfsVars
+
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t.sons[1])
   if p.prc == nil:
     # top level emit pragma?
-    genCLineDir(p.module.s[cfsProcHeaders], t.info)
-    add(p.module.s[cfsProcHeaders], s)
+    let section = determineSection(t[1])
+    genCLineDir(p.module.s[section], t.info)
+    add(p.module.s[section], s)
   else:
     genLineDir(p, t)
     line(p, cpsStmts, s)
@@ -1065,7 +1095,9 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
 
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   genLineDir(p, e)
-  if not fieldDiscriminantCheckNeeded(p, e):
+  if e.sons[0].kind == nkSym and sfGoto in e.sons[0].sym.flags:
+    genGotoVar(p, e.sons[1])
+  elif not fieldDiscriminantCheckNeeded(p, e):
     var a: TLoc
     initLocExpr(p, e.sons[0], a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)

@@ -663,7 +663,7 @@ proc `+` *(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
 proc `+` *(x: int8): int8 {.magic: "UnaryPlusI", noSideEffect.}
 proc `+` *(x: int16): int16 {.magic: "UnaryPlusI", noSideEffect.}
 proc `+` *(x: int32): int32 {.magic: "UnaryPlusI", noSideEffect.}
-proc `+` *(x: int64): int64 {.magic: "UnaryPlusI64", noSideEffect.}
+proc `+` *(x: int64): int64 {.magic: "UnaryPlusI", noSideEffect.}
   ## Unary `+` operator for an integer. Has no effect.
 
 proc `-` *(x: int): int {.magic: "UnaryMinusI", noSideEffect.}
@@ -1532,10 +1532,10 @@ const
   NimMajor*: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 10
+  NimMinor*: int = 11
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 3
+  NimPatch*: int = 2
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -1638,7 +1638,7 @@ proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
 proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
-proc min*(x, y: int64): int64 {.magic: "MinI64", noSideEffect.} =
+proc min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
   ## The minimum value of two integers.
   if x <= y: x else: y
 
@@ -1656,7 +1656,7 @@ proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
 proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
-proc max*(x, y: int64): int64 {.magic: "MaxI64", noSideEffect.} =
+proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
   ## The maximum value of two integers.
   if y <= x: x else: y
 
@@ -1743,6 +1743,12 @@ iterator items*(E: typedesc[enum]): E =
   ## iterates over the values of the enum ``E``.
   for v in low(E)..high(E):
     yield v
+
+iterator items*[T](s: Slice[T]): T =
+  ## iterates over the slice `s`, yielding each value between `s.a` and `s.b`
+  ## (inclusively).
+  for x in s.a..s.b:
+    yield x
 
 iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
@@ -3201,7 +3207,7 @@ when hostOS != "standalone":
     if x == nil: x = y
     else: x.add(y)
 
-proc locals*(): RootObj {.magic: "Locals", noSideEffect.} =
+proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
   ## in the current scope. This is quite fast as it does not rely
   ## on any debug or runtime information. Note that in constrast to what
@@ -3248,6 +3254,22 @@ proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
   ## expression must not have side effects for this to compile. Note that since
   ## this is a builtin, it automatically works for all kinds of
   ## overloaded ``[]`` or ``[]=`` accessors.
+  discard
+
+template `..^`*(a, b: expr): expr =
+  ## a shortcut for '.. ^' to avoid the common gotcha that a space between
+  ## '..' and '^' is required.
+  a .. ^b
+
+template `..<`*(a, b: expr): expr =
+  ## a shortcut for '.. <' to avoid the common gotcha that a space between
+  ## '..' and '<' is required.
+  a .. <b
+
+proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
+proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
+  ## returns the length of a sequence or a string without testing for 'nil'.
+  ## This is an optimization that rarely makes sense.
   discard
 
 {.pop.} #{.push warning[GcMem]: off.}

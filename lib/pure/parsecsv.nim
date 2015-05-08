@@ -166,7 +166,7 @@ proc close*(my: var CsvParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   import os
   var s = newFileStream(paramStr(1), fmRead)
   if s == nil: quit("cannot open the file" & paramStr(1))

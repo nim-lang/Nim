@@ -566,8 +566,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($4)($1 & $2)",            # BitandI64
       "($4)($1 | $2)",            # BitorI64
       "($4)($1 ^ $2)",            # BitxorI64
-      "(($1 <= $2) ? $1 : $2)", # MinI64
-      "(($1 >= $2) ? $1 : $2)", # MaxI64
       "(($1 <= $2) ? $1 : $2)", # MinF64
       "(($1 >= $2) ? $1 : $2)", # MaxF64
       "($4)((NU$3)($1) + (NU$3)($2))", # AddU
@@ -640,7 +638,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     unArithTab: array[mNot..mToBiggestInt, string] = ["!($1)", # Not
       "$1",                   # UnaryPlusI
       "($3)((NU$2) ~($1))",   # BitnotI
-      "$1",                   # UnaryPlusI64
       "($3)((NU$2) ~($1))",   # BitnotI64
       "$1",                   # UnaryPlusF64
       "-($1)",                # UnaryMinusF64
@@ -676,7 +673,7 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   let mt = mapType(e.sons[0].typ)
-  if (mt in {ctArray, ctPtrToArray} and not enforceDeref):
+  if mt in {ctArray, ctPtrToArray} and not enforceDeref:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
     #if e[0].kind != nkBracketExpr:
@@ -685,19 +682,29 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
   else:
     var a: TLoc
     initLocExprSingleUse(p, e.sons[0], a)
-    let typ = skipTypes(a.t, abstractInst)
-    case typ.kind
-    of tyRef:
-      d.s = OnHeap
-    of tyVar:
-      d.s = OnUnknown
-      if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
-          e.kind == nkHiddenDeref:
+    if d.k == locNone:
+      let typ = skipTypes(a.t, abstractInst)
+      # dest = *a;  <-- We do not know that 'dest' is on the heap!
+      # It is completely wrong to set 'd.s' here, unless it's not yet
+      # been assigned to.
+      case typ.kind
+      of tyRef:
+        d.s = OnHeap
+      of tyVar:
+        d.s = OnUnknown
+        if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
+            e.kind == nkHiddenDeref:
+          putIntoDest(p, d, e.typ, rdLoc(a))
+          return
+      of tyPtr:
+        d.s = OnUnknown         # BUGFIX!
+      else: internalError(e.info, "genDeref " & $a.t.kind)
+    elif p.module.compileToCpp:
+      let typ = skipTypes(a.t, abstractInst)
+      if typ.kind == tyVar and tfVarIsPtr notin typ.flags and
+           e.kind == nkHiddenDeref:
         putIntoDest(p, d, e.typ, rdLoc(a))
         return
-    of tyPtr:
-      d.s = OnUnknown         # BUGFIX!
-    else: internalError(e.info, "genDeref " & $a.t.kind)
     if enforceDeref and mt == ctPtrToArray:
       # we lie about the type for better C interop: 'ptr array[3,T]' is
       # translated to 'ptr T', but for deref'ing this produces wrong code.
@@ -957,8 +964,11 @@ proc genEcho(p: BProc, n: PNode) =
   var args: Rope = nil
   var a: TLoc
   for i in countup(0, n.len-1):
-    initLocExpr(p, n.sons[i], a)
-    addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
+    if n.sons[i].skipConv.kind == nkNilLit:
+      add(args, ", \"nil\"")
+    else:
+      initLocExpr(p, n.sons[i], a)
+      addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeat("%s", n.len) & tnl), args)
 
@@ -1345,15 +1355,15 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: unaryExpr(p, e, d, "$1Len0")
   of tyCString:
     useStringh(p.module)
-    if op == mHigh: unaryExpr(p, e, d, "(strlen($1)-1)")
-    else: unaryExpr(p, e, d, "strlen($1)")
+    if op == mHigh: unaryExpr(p, e, d, "($1 ? (strlen($1)-1) : -1)")
+    else: unaryExpr(p, e, d, "($1 ? strlen($1) : 0)")
   of tyString, tySequence:
     if not p.module.compileToCpp:
-      if op == mHigh: unaryExpr(p, e, d, "($1->Sup.len-1)")
-      else: unaryExpr(p, e, d, "$1->Sup.len")
+      if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->Sup.len-1) : -1)")
+      else: unaryExpr(p, e, d, "($1 ? $1->Sup.len : 0)")
     else:
-      if op == mHigh: unaryExpr(p, e, d, "($1->len-1)")
-      else: unaryExpr(p, e, d, "$1->len")
+      if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->len-1) : -1)")
+      else: unaryExpr(p, e, d, "($1 ? $1->len : 0)")
   of tyArray, tyArrayConstr:
     # YYY: length(sideeffect) is optimized away incorrectly?
     if op == mHigh: putIntoDest(p, d, e.typ, rope(lastOrd(typ)))
@@ -1714,6 +1724,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
     genArrayLen(p, e, d, op)
+  of mXLenStr, mXLenSeq:
+    if not p.module.compileToCpp:
+      unaryExpr(p, e, d, "($1->Sup.len-1)")
+    else:
+      unaryExpr(p, e, d, "$1->len")
   of mGCref: unaryStmt(p, e, d, "#nimGCref($1);$n")
   of mGCunref: unaryStmt(p, e, d, "#nimGCunref($1);$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)

@@ -169,14 +169,12 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 
 {.pop.}
 
-proc strip*(s: string, leading = true, trailing = true): string {.noSideEffect,
-  rtl, extern: "nsuStrip".} =
-  ## Strips whitespace from `s` and returns the resulting string.
+proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string 
+  {.noSideEffect, rtl, extern: "nsuStrip".} =
+  ## Strips `chars` from `s` and returns the resulting string.
   ##
-  ## If `leading` is true, leading whitespace is stripped.
-  ## If `trailing` is true, trailing whitespace is stripped.
-  const
-    chars: set[char] = Whitespace
+  ## If `leading` is true, leading `chars` are stripped.
+  ## If `trailing` is true, trailing `chars` are stripped.
   var
     first = 0
     last = len(s)-1
@@ -1402,14 +1400,21 @@ when isMainModule:
   doAssert align("a", 0) == "a"
   doAssert align("1232", 6) == "  1232"
   doAssert align("1232", 6, '#') == "##1232"
-  echo wordWrap(""" this is a long text --  muchlongerthan10chars and here
-                   it goes""", 10, false)
+
+  let
+    inp = """ this is a long text --  muchlongerthan10chars and here
+               it goes"""
+    outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
+  doAssert wordWrap(inp, 10, false) == outp
+
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) == "1.0e-11"
+  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) in
+                                                   ["1.0e-11", "1.0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-  echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
-  echo formatSize(1'i64 shl 31)
+  when not defined(testing):
+    echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
+    echo formatSize(1'i64 shl 31)
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
@@ -1426,3 +1431,11 @@ when isMainModule:
   doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
   doAssert count("foofoofoo", 'f') == 3
   doAssert count("foofoofoobar", {'f','b'}) == 4
+
+  doAssert strip("  foofoofoo  ") == "foofoofoo"
+  doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
+  doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
+  doAssert strip("stripme but don't strip this stripme",
+                 chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) == " but don't strip this "
+  doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
+  doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"

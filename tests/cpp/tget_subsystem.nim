@@ -16,7 +16,8 @@ struct SystemManager {
 """.}
 
 type Input {.importcpp: "System::Input".} = object
-proc getSubsystem*[T](): ptr T {.importcpp: "SystemManager::getSubsystem<'*0>()".}
+proc getSubsystem*[T](): ptr T {.
+  importcpp: "SystemManager::getSubsystem<'*0>()", nodecl.}
 
 let input: ptr Input = getSubsystem[Input]()
 

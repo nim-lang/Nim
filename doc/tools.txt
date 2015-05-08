@@ -4,6 +4,11 @@ Tools available with Nim
 
 The standard distribution ships with the following tools:
 
+- | `Nimsuggest for IDE support <nimsuggest.html>`_
+  | Through the ``nimsuggest`` tool, any IDE can query a ``.nim`` source file
+    and obtain useful information like definition of symbols or suggestions for
+    completion.
+
 - | `Nim Installation Generator <niminst.html>`_
   | How to generate a nice installer for your Nim program.
 

@@ -819,7 +819,7 @@ proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
       result = await client.request(redirectTo, httpGET)
       lastUrl = redirectTo
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   when true:
     # Async
     proc main() {.async.} =

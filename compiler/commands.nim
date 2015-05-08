@@ -319,7 +319,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     undefSymbol(arg)
   of "symbol":
     expectArg(switch, arg, pass, info)
-    declareSymbol(arg)
+    # deprecated, do nothing
   of "compile":
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: processCompile(arg)
@@ -488,7 +488,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       if theOS == osNone: localError(info, errUnknownOS, arg)
       elif theOS != platform.hostOS:
         setTarget(theOS, targetCPU)
-        condsyms.initDefines()
   of "cpu":
     expectArg(switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
@@ -496,7 +495,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       if cpu == cpuNone: localError(info, errUnknownCPU, arg)
       elif cpu != platform.hostCPU:
         setTarget(targetOS, cpu)
-        condsyms.initDefines()
   of "run", "r":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optRun)

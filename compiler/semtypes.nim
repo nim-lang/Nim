@@ -261,7 +261,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
       if not isOrdinalType(indx):
         localError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indx):
-        localError(n.sons[1].info, errEnumXHasHoles, indx.sym.name.s)
+        localError(n.sons[1].info, errEnumXHasHoles,
+                   typeToString(indx.skipTypes({tyRange})))
     base = semTypeNode(c, n.sons[2], nil)
     addSonSkipIntLit(result, base)
   else:
@@ -628,7 +629,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   result = t
   if result.kind == tyGenericInvocation:
     result = result.sons[0]
-  if result.kind == tyGenericBody:
+  while result.kind in {tyGenericInst, tyGenericBody}:
     result = lastSon(result)
 
 proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
@@ -834,7 +835,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       cp.kind = tyUserTypeClassInst
       return addImplicitGeneric(cp)
 
-    for i in 1 .. (paramType.sons.len - 2):
+    for i in 1 .. paramType.len-2:
       var lifted = liftingWalk(paramType.sons[i])
       if lifted != nil:
         paramType.sons[i] = lifted
@@ -847,7 +848,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.shouldHaveMeta
 
   of tyGenericInvocation:
-    for i in 1 .. <paramType.sonsLen:
+    for i in 1 .. <paramType.len:
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
     when false:

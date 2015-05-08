@@ -15,6 +15,10 @@ const
 import ast, astalgo, types, idents, magicsys, msgs, options
 from trees import getMagic
 
+proc newDeref*(n: PNode): PNode {.inline.} =
+  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
+  addSon(result, n)
+
 proc newTupleAccess*(tup: PNode, i: int): PNode =
   result = newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(
                      abstractInst).sons[i])

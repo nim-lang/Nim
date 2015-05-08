@@ -198,14 +198,21 @@ proc empty*(s: IntSet): bool {.inline, deprecated.} =
   result = s.counter == 0
 
 when isMainModule:
+  import sequtils, algorithm
+
   var x = initIntSet()
   x.incl(1)
   x.incl(2)
   x.incl(7)
   x.incl(1056)
-  for e in items(x): echo e
 
-  var y: TIntSet
+  var xs = toSeq(items(x))
+  xs.sort(cmp[int])
+  assert xs == @[1, 2, 7, 1056]
+
+  var y: IntSet
   assign(y, x)
-  for e in items(y): echo e
+  var ys = toSeq(items(y))
+  ys.sort(cmp[int])
+  assert ys == @[1, 2, 7, 1056]
 

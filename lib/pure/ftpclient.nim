@@ -593,7 +593,7 @@ proc register*(d: Dispatcher, ftp: AsyncFTPClient): Delegate {.discardable.} =
   ftp.disp = d
   return ftp.disp.register(ftp.csock)
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   proc main =
     var d = newDispatcher()
     let hev =
@@ -629,7 +629,7 @@ when isMainModule:
       if not d.poll(): break
   main()
 
-when isMainModule and false:
+when not defined(testing) and isMainModule:
   var ftp = ftpClient("example.com", user = "foo", pass = "bar")
   ftp.connect()
   echo ftp.pwd()

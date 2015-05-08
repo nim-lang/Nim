@@ -1,5 +1,11 @@
 discard """
-  output: '''true true false yes'''
+  output: '''true true false yes
+false
+false
+false
+true
+true
+no'''
 """
 
 proc IsVoid[T](): string =
@@ -28,7 +34,7 @@ no  s.items is iterator: float
 yes s.items is iterator: TNumber
 no  s.items is iterator: object
 
-type 
+type
   Iter[T] = iterator: T
 
 yes s.items is Iter[TNumber]
@@ -51,3 +57,34 @@ yes Foo[4, int] is Bar[int]
 no Foo[4, int] is Baz[4]
 yes Foo[4, float] is Baz[4]
 
+
+# bug #2505
+
+echo(8'i8 is int32)
+
+# bug #1853
+type SeqOrSet[E] = seq[E] or set[E]
+type SeqOfInt = seq[int]
+type SeqOrSetOfInt = SeqOrSet[int]
+
+# This prints "false", which seems less correct that (1) printing "true" or (2)
+# raising a compiler error.
+echo seq is SeqOrSet
+
+# This prints "false", as expected.
+echo seq is SeqOrSetOfInt
+
+# This prints "true", as expected.
+echo SeqOfInt is SeqOrSet
+
+# This causes an internal error (filename: compiler/semtypes.nim, line: 685).
+echo SeqOfInt is SeqOrSetOfInt
+
+# bug #2522
+proc test[T](x: T) =
+  when T is typedesc:
+    echo "yes"
+  else:
+    echo "no"
+
+test(7)

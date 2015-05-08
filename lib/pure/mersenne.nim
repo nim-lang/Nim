@@ -32,7 +32,7 @@ proc getNum*(m: var MersenneTwister): int =
   return int(y)
 
 # Test
-when isMainModule:
+when not defined(testing) and isMainModule:
   var mt = newMersenneTwister(2525)
 
   for i in 0..99:

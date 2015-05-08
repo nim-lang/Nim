@@ -187,7 +187,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       let param = copySym(oldParam)
       param.owner = prc
       param.typ = result.sons[i]
-      param.ast = oldParam.ast.copyTree
+      if oldParam.ast != nil:
+        param.ast = fitNode(c, param.typ, oldParam.ast)
+
       # don't be lazy here and call replaceTypeVarsN(cl, originalParams[i])!
       result.n.sons[i] = newSymNode(param)
       addDecl(c, param)

@@ -102,10 +102,6 @@ proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
         c.p.owner.kind notin {skTemplate, skMacro}:
       localError(n.info, errGenerated, "value expected, but got a type")
 
-proc newDeref(n: PNode): PNode {.inline.} =
-  result = newNodeIT(nkHiddenDeref, n.info, n.typ.sons[0])
-  addSon(result, n)
-
 proc semExprBranch(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
   if result.typ != nil:
@@ -373,6 +369,11 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
   else:
     result.add identDefs
 
+proc isDiscardUnderscore(v: PSym): bool =
+  if v.name.s == "_":
+    v.flags.incl(sfGenSym)
+    result = true
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -436,7 +437,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], symkind)
-      if sfGenSym notin v.flags: addInterfaceDecl(c, v)
+      if sfGenSym notin v.flags and not isDiscardUnderscore(v):
+        addInterfaceDecl(c, v)
       when oKeepVariableNames:
         if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:
@@ -551,7 +553,8 @@ proc semForVars(c: PContext, n: PNode): PNode =
       if getCurrOwner().kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)
-      if sfGenSym notin v.flags: addForVarDecl(c, v)
+      if sfGenSym notin v.flags and not isDiscardUnderscore(v):
+        addForVarDecl(c, v)
   inc(c.p.nestedLoopCounter)
   n.sons[length-1] = semStmt(c, n.sons[length-1])
   dec(c.p.nestedLoopCounter)

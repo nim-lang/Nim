@@ -60,7 +60,7 @@ const
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject}
   letPragmas* = varPragmas
@@ -843,6 +843,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
             invalidPragma(it)
           else:
             sym.guard = pragmaGuard(c, it, sym.kind)
+        of wGoto:
+          if sym == nil or sym.kind notin {skVar, skLet}:
+            invalidPragma(it)
+          else:
+            sym.flags.incl sfGoto
         of wInjectStmt:
           if it.kind != nkExprColonExpr:
             localError(it.info, errExprExpected)

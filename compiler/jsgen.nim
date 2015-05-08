@@ -124,7 +124,7 @@ proc newProc(globals: PGlobals, module: BModule, procDef: PNode,
 
 const
   MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray,
-    tySet, tyVar, tyRef, tyPtr, tyBigNum, tyVarargs}
+    tySet, tyBigNum, tyVarargs}
 
 proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
@@ -163,7 +163,8 @@ proc mangleName(s: PSym): Rope =
     add(result, rope(s.id))
     s.loc.r = result
 
-proc makeJSString(s: string): Rope = strutils.escape(s).rope
+proc makeJSString(s: string): Rope =
+  (if s.isNil: "null".rope else: strutils.escape(s).rope)
 
 include jstypes
 
@@ -280,8 +281,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
     ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
-    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI64
-    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -325,7 +324,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "!($1)", "!($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "+($1)", "+($1)"], # UnaryPlusI64
     ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
@@ -382,8 +380,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
     ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
-    ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI64
-    ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -427,7 +423,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "not ($1)", "not ($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "+($1)", "+($1)"], # UnaryPlusI64
     ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
@@ -937,6 +932,13 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   r.address = nil
   r.kind = resExpr
 
+proc isIndirect(v: PSym): bool =
+  result = {sfAddrTaken, sfGlobal} * v.flags != {} and
+    #(mapType(v.typ) != etyObject) and
+    {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
+    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator,
+                  skConst, skTemp, skLet}
+
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   case n.sons[0].kind
   of nkSym:
@@ -945,12 +947,16 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     case s.kind
     of skVar, skLet, skResult:
       r.kind = resExpr
-      if mapType(n.sons[0].typ) == etyObject:
+      let jsType = mapType(n.typ)
+      if jsType == etyObject:
         # make addr() a no-op:
         r.typ = etyNone
-        r.res = s.loc.r
+        if isIndirect(s):
+          r.res = s.loc.r & "[0]"
+        else:
+          r.res = s.loc.r
         r.address = nil
-      elif {sfGlobal, sfAddrTaken} * s.flags != {}:
+      elif {sfGlobal, sfAddrTaken} * s.flags != {} or jsType == etyBaseIndex:
         # for ease of code generation, we do not distinguish between
         # sfAddrTaken and sfGlobal.
         r.typ = etyBaseIndex
@@ -992,7 +998,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       else:
         r.address = s.loc.r
         r.res = s.loc.r & "_Idx"
-    elif k != etyObject and {sfAddrTaken, sfGlobal} * s.flags != {}:
+    elif isIndirect(s):
       r.res = "$1[0]" % [s.loc.r]
     else:
       r.res = s.loc.r
@@ -1124,7 +1130,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyRange, tyGenericInst:
     result = createVar(p, lastSon(typ), indirect)
   of tySet:
-    result = rope("{}")
+    result = putToSeq("{}", indirect)
   of tyBool:
     result = putToSeq("false", indirect)
   of tyArray, tyArrayConstr:
@@ -1144,6 +1150,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
         add(result, createVar(p, e, false))
         inc(i)
       add(result, "]")
+    if indirect: result = "[$1]" % [result]
   of tyTuple:
     result = rope("{")
     for i in 0.. <t.sonsLen:
@@ -1151,6 +1158,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       addf(result, "Field$1: $2" | "Field$# = $#", [i.rope,
            createVar(p, t.sons[i], false)])
     add(result, "}")
+    if indirect: result = "[$1]" % [result]
   of tyObject:
     result = rope("{")
     var c = 0
@@ -1161,6 +1169,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       add(result, createRecordVarAux(p, t.n, c))
       t = t.sons[0]
     add(result, "}")
+    if indirect: result = "[$1]" % [result]
   of tyVar, tyPtr, tyRef:
     if mapType(t) == etyBaseIndex:
       result = putToSeq("[null, 0]" | "{nil, 0}", indirect)
@@ -1171,11 +1180,6 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   else:
     internalError("createVar: " & $t.kind)
     result = nil
-
-proc isIndirect(v: PSym): bool =
-  result = {sfAddrTaken, sfGlobal} * v.flags != {} and
-    (mapType(v.typ) != etyObject) and
-    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator}
 
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
@@ -1207,7 +1211,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       s = a.res
     if isIndirect(v):
-      addf(p.body, "var $1 = [$2];$n" | "local $1 = {$2};$n", [v.loc.r, s])
+      addf(p.body, "var $1 = /**/[$2];$n" | "local $1 = {$2};$n", [v.loc.r, s])
     else:
       addf(p.body, "var $1 = $2;$n" | "local $1 = $2;$n", [v.loc.r, s])
 
@@ -1239,7 +1243,7 @@ proc genNew(p: PProc, n: PNode) =
   var a: TCompRes
   gen(p, n.sons[1], a)
   var t = skipTypes(n.sons[1].typ, abstractVar).sons[0]
-  addf(p.body, "$1 = $2;$n", [a.res, createVar(p, t, true)])
+  addf(p.body, "$1 = $2;$n", [a.res, createVar(p, t, false)])
 
 proc genNewSeq(p: PProc, n: PNode) =
   var x, y: TCompRes
@@ -1325,14 +1329,17 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     # XXX: range checking?
     if not (optOverflowCheck in p.options): unaryExpr(p, n, r, "", "$1 - 1")
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
-  of mAppendStrCh: binaryExpr(p, n, r, "addChar", "addChar($1, $2)")
+  of mAppendStrCh: binaryExpr(p, n, r, "addChar",
+        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
   of mAppendStrStr:
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
-        binaryExpr(p, n, r, "", "$1 += $2")
+        binaryExpr(p, n, r, "", "if ($1 != null) { $1 += $2; } else { $1 = $2; }")
     else:
-      binaryExpr(p, n, r, "", "$1 = ($1.slice(0, -1)).concat($2)")
+      binaryExpr(p, n, r, "",
+        "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
     # XXX: make a copy of $2, because of Javascript's sucking semantics
-  of mAppendSeqElem: binaryExpr(p, n, r, "", "$1.push($2)")
+  of mAppendSeqElem: binaryExpr(p, n, r, "",
+        "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }")
   of mConStrStr: genConStrStr(p, n, r)
   of mEqStr: binaryExpr(p, n, r, "eqStrings", "eqStrings($1, $2)")
   of mLeStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) <= 0)")
@@ -1343,14 +1350,17 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mSizeOf: r.res = rope(getSize(n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
-  of mLengthStr: unaryExpr(p, n, r, "", "($1.length-1)")
+  of mLengthStr: unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)")
+  of mXLenStr: unaryExpr(p, n, r, "", "$1.length-1")
   of mLengthSeq, mLengthOpenArray, mLengthArray:
+    unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
+  of mXLenSeq:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
     if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
-      unaryExpr(p, n, r, "", "($1.length-2)")
+      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-2) : -1)")
     else:
-      unaryExpr(p, n, r, "", "($1.length-1)")
+      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
   of mInc:
     if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
     else: binaryExpr(p, n, r, "addInt", "$1 = addInt($1, $2)")

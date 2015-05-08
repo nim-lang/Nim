@@ -82,7 +82,7 @@ proc close*(sock: TSecureSocket) =
     ERR_print_errors_fp(stderr)
     raiseOSError(osLastError())
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var s: TSecureSocket
   echo connect(s, "smtp.gmail.com", 465)
   

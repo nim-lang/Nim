@@ -1,7 +1,21 @@
-version 0.10.4
+version 0.11.2
 ==============
 
-- make 'nil' work for 'add' and 'len'
+- The remaining bugs of the lambda lifting pass that is responsible to enable
+  closures and closure iterators need to be fixed.
+- ``concept`` needs to be refined, a nice name for the feature is not enough.
+- Destructors need to be refined.
+- make '--implicitStatic:on' the default; then we can also clean up the
+  'static[T]' mess in the compiler!
+
+- Finish the implementation of the 'parallel' statement.
+- Deprecate ``immediate`` for templates and macros
+- special case varargs[untyped] and varargs[typed]
+- make 'nil' work for 'add':
+  - resizeString
+  - incrSeq
+  - addChar
+
 
 version 1.0
 ===========
@@ -35,8 +49,6 @@ Low priority:
 Misc
 ----
 
-- make '--implicitStatic:on' the default; then we can also clean up the
-  'static[T]' mess in the compiler!
 - make tuple unpacking work in a non-var/let context
 - built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
@@ -50,6 +62,7 @@ Bugs
 - scopes are still broken for generic instantiation!
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - ConcreteTypes in a 'case' means we don't check for duplicated case branches
+- typedesc matches a generic type T!
 
 
 version 0.9.x

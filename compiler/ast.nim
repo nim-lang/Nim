@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -296,6 +296,7 @@ const
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
   sfExperimental* = sfOverriden       # module uses the .experimental switch
+  sfGoto* = sfOverriden               # var is used for 'goto' code generation
 
 const
   # getting ready for the future expr/stmt merge
@@ -529,19 +530,20 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof,
+    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr, mGCref,
-    mGCunref,
+    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mIncl, mExcl, mCard, mChr,
+    mGCref, mGCunref,
 
     mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
     mDivI64, mModI64, mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
 
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64,
+    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
@@ -550,7 +552,7 @@ type
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
     mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mEqProc, mUnaryMinusI,
     mUnaryMinusI64, mAbsI, mAbsI64, mNot,
-    mUnaryPlusI, mBitnotI, mUnaryPlusI64,
+    mUnaryPlusI, mBitnotI,
     mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
@@ -589,11 +591,12 @@ type
 const
   ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mIncl, mExcl, mCard, mChr,
+    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
     mDivI64, mModI64, mAddF64, mSubF64, mMulF64, mDivF64,
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64, mMinI64, mMaxI64,
+    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
@@ -602,7 +605,7 @@ const
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
     mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI,
     mUnaryMinusI64, mAbsI, mAbsI64, mNot,
-    mUnaryPlusI, mBitnotI, mUnaryPlusI64,
+    mUnaryPlusI, mBitnotI,
     mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
@@ -1170,7 +1173,9 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
-  #if result.id < 2000:
+  #if result.id == 92231:
+  #  echo "KNID ", kind
+  #  writeStackTrace()
   #  messageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
