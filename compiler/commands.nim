@@ -229,7 +229,8 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "experimental": result = gExperimentalMode
   else: invalidCmdLineOption(passCmd1, switch, info)
 
-proc processPath(path: string, notRelativeToProj = false): string =
+proc processPath(path: string, notRelativeToProj = false,
+                               cfginfo = unknownLineInfo()): string =
   let p = if notRelativeToProj or os.isAbsolute(path) or
               '$' in path or path[0] == '.':
             path
@@ -239,6 +240,7 @@ proc processPath(path: string, notRelativeToProj = false): string =
     "nim", getPrefixDir(),
     "lib", libpath,
     "home", removeTrailingDirSep(os.getHomeDir()),
+    "config", cfginfo.toFullPath().splitFile().dir,
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath])
 
@@ -281,7 +283,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   case switch.normalize
   of "path", "p":
     expectArg(switch, arg, pass, info)
-    addPath(processPath(arg), info)
+    addPath(processPath(arg, cfginfo=info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and not options.gNoNimblePath:
