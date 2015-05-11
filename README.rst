@@ -30,21 +30,14 @@ By default, NRE compiles it’s own PCRE. If this is undesirable, pass
 ``-d:pcreDynlib`` to use whatever dynamic library is available on the
 system. This may have unexpected consequences if the dynamic library
 doesn’t have certain features enabled.
-
 Types
 -----
 
 ``type Regex* = ref object``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Represents the pattern that things are matched against, constructed with
-``re(string, string)``. Examples: ``re"foo"``, ``re(r"foo # comment",
-"x<anycrlf>")``, ``re"(?x)(*ANYCRLF)foo # comment"``. For more details
-on the leading option groups, see the `Option
-Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`__
-and the `Newline
-Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`__
-sections of the `PCRE syntax
-manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
+``re(string)``. Examples: ``re"foo"``, ``re(r"(*ANYCRLF)(?x)foo #
+comment".``
 
 ``pattern: string``
     the string that was used to create the pattern.
@@ -56,34 +49,36 @@ manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
     a table from the capture names to their numeric id.
 
 
-Flags
-.....
+Options
+.......
 
--  ``8`` - treat both the pattern and subject as UTF8
--  ``9`` - prevents the pattern from being interpreted as UTF, no matter
-   what
--  ``A`` - as if the pattern had a ``^`` at the beginning
--  ``E`` - DOLLAR\_ENDONLY
--  ``f`` - fails if there is not a match on the first line
--  ``i`` - case insensitive
--  ``m`` - multi-line, ``^`` and ``$`` match the beginning and end of
+The following options may appear anywhere in the pattern, and they affect
+the rest of it.
+
+-  ``(?i)`` - case insensitive
+-  ``(?m)`` - multi-line: ``^`` and ``$`` match the beginning and end of
    lines, not of the subject string
--  ``N`` - turn off auto-capture, ``(?foo)`` is necessary to capture.
--  ``s`` - ``.`` matches newline
--  ``U`` - expressions are not greedy by default. ``?`` can be added to
-   a qualifier to make it greedy.
--  ``u`` - same as ``8``
--  ``W`` - Unicode character properties; ``\w`` matches ``к``.
--  ``X`` - "Extra", character escapes without special meaning (``\w``
-   vs. ``\a``) are errors
--  ``x`` - extended, comments (``#``) and newlines are ignored
-   (extended)
--  ``Y`` - pcre.NO\_START\_OPTIMIZE,
--  ``<cr>`` - newlines are separated by ``\r``
--  ``<crlf>`` - newlines are separated by ``\r\n`` (Windows default)
--  ``<lf>`` - newlines are separated by ``\n`` (UNIX default)
--  ``<anycrlf>`` - newlines are separated by any of the above
--  ``<any>`` - newlines are separated by any of the above and Unicode
+-  ``(?s)`` - ``.`` also matches newline (*dotall*)
+-  ``(?U)`` - expressions are not greedy by default. ``?`` can be added
+   to a qualifier to make it greedy
+-  ``(?x)`` - whitespace and comments (``#``) are ignored (*extended*)
+-  ``(?X)`` - character escapes without special meaning (``\w`` vs.
+   ``\a``) are errors (*extra*)
+
+One or a combination of these options may appear only at the beginning
+of the pattern:
+
+-  ``(*UTF8)`` - treat both the pattern and subject as UTF-8
+-  ``(*UCP)`` - Unicode character properties; ``\w`` matches ``я``
+-  ``(*U)`` - a combination of the two options above
+-  ``(*FIRSTLINE*)`` - fails if there is not a match on the first line
+-  ``(*NO_AUTO_CAPTURE)`` - turn off auto-capture for groups;
+   ``(?<name>...)`` can be used to capture
+-  ``(*CR)`` - newlines are separated by ``\r``
+-  ``(*LF)`` - newlines are separated by ``\n`` (UNIX default)
+-  ``(*CRLF)`` - newlines are separated by ``\r\n`` (Windows default)
+-  ``(*ANYCRLF)`` - newlines are separated by any of the above
+-  ``(*ANY)`` - newlines are separated by any of the above and Unicode
    newlines:
 
     single characters VT (vertical tab, U+000B), FF (form feed, U+000C),
@@ -92,10 +87,15 @@ Flags
     are recognized only in UTF-8 mode.
     —  man pcre
 
--  ``<bsr_anycrlf>`` - ``\R`` matches CR, LF, or CRLF
--  ``<bsr_unicode>`` - ``\R`` matches any unicode newline
--  ``<js>`` - Javascript compatibility
--  ``<no_study>`` - turn off studying; study is enabled by deafault
+-  ``(*JAVASCRIPT_COMPAT)`` - JavaScript compatibility
+-  ``(*NO_STUDY)`` - turn off studying; study is enabled by default
+
+For more details on the leading option groups, see the `Option
+Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`__
+and the `Newline
+Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`__
+sections of the `PCRE syntax
+manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
 
 
 ``type RegexMatch* = object``
@@ -146,14 +146,24 @@ fields are as follows:
     same as ``match``
 
 
-``type SyntaxError* = ref object of Exception``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``type RegexInternalError* = ref object of RegexException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Internal error in the module, this probably means that there is a bug
+
+
+``type InvalidUnicodeError* = ref object of RegexException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Thrown when matching fails due to invalid unicode in strings
+
+
+``type SyntaxError* = ref object of RegexException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Thrown when there is a syntax error in the
 regular expression string passed in
 
 
-``type StudyError* = ref object of Exception``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``type StudyError* = ref object of RegexException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Thrown when studying the regular expression failes
 for whatever reason. The message contains the error
 code.
@@ -244,3 +254,5 @@ If a given capture is missing, a ``ValueError`` exception is thrown.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Escapes the string so it doesn’t match any special characters.
 Incompatible with the Extra flag (``X``).
+
+

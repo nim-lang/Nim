@@ -47,7 +47,8 @@ from unicode import runeLenAt
 type
   Regex* = ref object
     ## Represents the pattern that things are matched against, constructed with
-    ## ``re(string)``. Examples: ``re"foo"``, ``re(r"(*ANYCRLF)(?x)foo # comment".
+    ## ``re(string)``. Examples: ``re"foo"``, ``re(r"(*ANYCRLF)(?x)foo #
+    ## comment".``
     ##
     ## ``pattern: string``
     ##     the string that was used to create the pattern.
