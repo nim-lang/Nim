@@ -66,7 +66,7 @@ type
   Logger* = ref object of RootObj ## abstract logger; the base type of all loggers
     levelThreshold*: Level    ## only messages of level >= levelThreshold
                               ## should be processed
-    fmtStr: string ## = defaultFmtStr by default, see substituteLog for $date etc.
+    fmtStr*: string ## = defaultFmtStr by default, see substituteLog for $date etc.
 
   ConsoleLogger* = ref object of Logger ## logger that writes the messages to the
                                         ## console
