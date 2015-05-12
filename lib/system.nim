@@ -172,10 +172,16 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
-proc new*(T: typedesc): ref T =
+proc new*(T: typedesc): auto =
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it as result value
-  new(result)
+  when (T is ref):
+      var r: T
+  else:
+      var r: ref T
+  new(r)
+  return r
+
 
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
