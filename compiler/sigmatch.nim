@@ -1281,7 +1281,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isSubtype:
     inc(m.subtypeMatches)
-    result = implicitConv(nkHiddenSubConv, f, arg, m, c)
+    if f.kind == tyTypeDesc:
+      result = arg
+    else:
+      result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
     inc(m.subtypeMatches)
     if f.kind == tyVar:
