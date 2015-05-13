@@ -352,6 +352,9 @@ proc `^`*[T](x, y: T): T =
 
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common divisor of ``x`` and ``y``.
+  ## Note that for floats, the result cannot always be interpreted as
+  ## "greatest decimal `z` such that ``z*N == x and z*M == y``
+  ## where N and M are positive integers."
   var (x,y) = (x,y)
   while y != 0:
     x = x mod y
