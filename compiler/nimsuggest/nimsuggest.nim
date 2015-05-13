@@ -138,7 +138,7 @@ proc returnEPC(socket: var Socket, uid: BiggestInt, s: SexpNode, return_symbol =
   socket.send(toHex(len(response), 6))
   socket.send(response)
 
-proc nextFreePort(server: Socket, host: string, start = 30000): int =
+proc connectToNextFreePort(server: Socket, host: string, start = 30000): int =
   result = start
   while true:
     try:
@@ -222,7 +222,7 @@ proc serve() =
       stdoutSocket.close()
   of mepc:
     var server = newSocket()
-    let port = nextFreePort(server, "localhost")
+    let port = connectToNextFreePort(server, "localhost")
     var inp = "".TaintedString
     server.listen()
     echo(port)
