@@ -364,7 +364,13 @@ macro styledEcho*(m: varargs[expr]): stmt =
   result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\n")))
   result.add(newCall(bindSym"resetAttributes"))
 
-when not defined(windows):
+when defined(nimdoc):
+  proc getch*(): char =
+    ## Read a single character from the terminal, blocking until it is entered.
+    ## The character is not printed to the terminal. This is not available for
+    ## Windows.
+    discard
+elif not defined(windows):
   proc getch*(): char =
     ## Read a single character from the terminal, blocking until it is entered.
     ## The character is not printed to the terminal. This is not available for
