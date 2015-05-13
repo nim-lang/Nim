@@ -61,7 +61,7 @@ type
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
     tkOpr, tkComment, tkAccent,
-    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
+    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
   TTokTypes* = set[TTokType]
 
@@ -131,24 +131,10 @@ type
 
 var gLinesCompiled*: int  # all lines that have been compiled
 
-proc isKeyword*(kind: TTokType): bool
-proc openLexer*(lex: var TLexer, fileidx: int32, inputstream: PLLStream)
-proc rawGetTok*(L: var TLexer, tok: var TToken)
-  # reads in the next token into tok and skips it
-
 proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
   newLineInfo(L.fileIdx, tok.line, tok.col)
 
-proc closeLexer*(lex: var TLexer)
-proc printTok*(tok: TToken)
-proc tokToStr*(tok: TToken): string
-
-proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) =
-  openLexer(lex, filename.fileInfoIdx, inputstream)
-
-proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "")
-
-proc isKeyword(kind: TTokType): bool =
+proc isKeyword*(kind: TTokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
 proc isNimIdentifier*(s: string): bool =
@@ -206,14 +192,17 @@ proc fillToken(L: var TToken) =
   L.base = base10
   L.ident = dummyIdent
 
-proc openLexer(lex: var TLexer, fileIdx: int32, inputstream: PLLStream) =
+proc openLexer*(lex: var TLexer, fileIdx: int32, inputstream: PLLStream) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
   lex.indentAhead = - 1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
 
-proc closeLexer(lex: var TLexer) =
+proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) =
+  openLexer(lex, filename.fileInfoIdx, inputstream)
+
+proc closeLexer*(lex: var TLexer) =
   inc(gLinesCompiled, lex.lineNumber)
   closeBaseLexer(lex)
 
@@ -229,8 +218,12 @@ proc dispMessage(L: TLexer; info: TLineInfo; msg: TMsgKind; arg: string) =
   else:
     L.errorHandler(info, msg, arg)
 
-proc lexMessage(L: TLexer, msg: TMsgKind, arg = "") =
+proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") =
   L.dispMessage(getLineInfo(L), msg, arg)
+
+proc lexMessageTok*(L: TLexer, msg: TMsgKind, tok: TToken, arg = "") =
+  var info = newLineInfo(L.fileIdx, tok.line, tok.col)
+  L.dispMessage(info, msg, arg)
 
 proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
   var info = newLineInfo(L.fileIdx, L.lineNumber, pos - L.lineStart)
@@ -785,7 +778,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       break                   # EndOfFile also leaves the loop
   L.bufpos = pos
 
-proc rawGetTok(L: var TLexer, tok: var TToken) =
+proc rawGetTok*(L: var TLexer, tok: var TToken) =
   fillToken(tok)
   if L.indentAhead >= 0:
     tok.indent = L.indentAhead
@@ -874,6 +867,15 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
     of '`':
       tok.tokType = tkAccent
       inc(L.bufpos)
+    of '_':
+      inc(L.bufpos)
+      if L.buf[L.bufpos] notin SymChars:
+        tok.tokType = tkSymbol
+        tok.ident = getIdent("_")
+      else:
+        tok.literal = $c
+        tok.tokType = tkInvalid
+        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     of '\"':
       # check for extended raw string literal:
       var rawMode = L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars

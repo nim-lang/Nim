@@ -296,7 +296,7 @@ proc contains*(s: Selector, key: SelectorKey): bool =
    TReadyInfo: ReadyInfo, PSelector: Selector].}
 
 
-when isMainModule and not defined(nimdoc):
+when not defined(testing) and isMainModule and not defined(nimdoc):
   # Select()
   import sockets
   type

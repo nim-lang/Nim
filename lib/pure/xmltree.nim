@@ -353,5 +353,6 @@ proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   findAll(n, tag, result)
 
 when isMainModule:
-  assert """<a href="http://nim-lang.org">Nim rules.</a>""" ==
+  let link = "http://nim-lang.org"
+  assert """<a href="""" & escape(link) & """">Nim rules.</a>""" ==
     $(<>a(href="http://nim-lang.org", newText("Nim rules.")))

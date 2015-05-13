@@ -10,7 +10,7 @@
 # Unforunately this cannot be a module yet:
 #import vmdeps, vm
 from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
-  arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc, 
+  arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, fmod
 
 from os import getEnv, existsEnv, dirExists, fileExists

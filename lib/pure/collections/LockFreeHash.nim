@@ -525,7 +525,7 @@ proc get*[K,V](table: var PConcTable[K,V], key: var K): V =
 
 
 #Tests ----------------------------
-when isMainModule:
+when not defined(testing) and isMainModule:
   import locks, times, mersenne
   
   const 

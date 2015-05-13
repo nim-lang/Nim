@@ -119,7 +119,7 @@ type
                               ## in the range 0 to 23.
     monthday*: range[1..31]   ## The day of the month, in the range 1 to 31.
     month*: Month             ## The current month.
-    year*: range[-10_000..10_000] ## The current year.
+    year*: int                ## The current year.
     weekday*: WeekDay         ## The current day of the week.
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
@@ -379,7 +379,7 @@ when not defined(JS):
     result.hour = t.hour
     result.monthday = t.monthday
     result.month = ord(t.month)
-    result.year = t.year - 1900
+    result.year = cint(t.year - 1900)
     result.weekday = weekDays[t.weekday]
     result.yearday = t.yearday
     result.isdst = if t.isDST: 1 else: 0
@@ -540,6 +540,8 @@ elif defined(JS):
   proc toSeconds(time: Time): float = result = time.valueOf() / 1000
 
   proc getTimezone(): int = result = newDate().getTimezoneOffset()
+
+  proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
 
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
@@ -762,7 +764,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     info.monthday = value[j..j+1].parseInt()
     j += 2
   of "ddd":
-    case value[j..j+2].toLower():
+    case value[j..j+2].toLower()
     of "sun":
       info.weekday = dSun
     of "mon":
@@ -1034,8 +1036,6 @@ when isMainModule:
   # Tue 19 Jan 03:14:07 GMT 2038
 
   var t = getGMTime(fromSeconds(2147483647))
-  echo t.format("ddd dd MMM hh:mm:ss ZZZ yyyy")
-  echo t.format("ddd ddMMMhhmmssZZZyyyy")
   assert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
   assert t.format("ddd ddMMMhh:mm:ssZZZyyyy") == "Tue 19Jan03:14:07UTC2038"
 
@@ -1068,46 +1068,48 @@ when isMainModule:
   var f = "dddd at hh:mmtt on MMM d, yyyy"
   assert($s.parse(f) == "Tue Dec 15 09:04:00 2015")
   # ANSIC       = "Mon Jan _2 15:04:05 2006"
-  s = "Mon Jan 2 15:04:05 2006"
-  f = "ddd MMM d HH:mm:ss yyyy"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  s = "Thu Jan 12 15:04:05 2006"
+  f = "ddd MMM dd HH:mm:ss yyyy"
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-  s = "Mon Jan 2 15:04:05 MST 2006"
-  f = "ddd MMM d HH:mm:ss ZZZ yyyy"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  s = "Thu Jan 12 15:04:05 MST 2006"
+  f = "ddd MMM dd HH:mm:ss ZZZ yyyy"
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
-  s = "Mon Jan 02 15:04:05 -07:00 2006"
+  s = "Thu Jan 12 15:04:05 -07:00 2006"
   f = "ddd MMM dd HH:mm:ss zzz yyyy"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # RFC822      = "02 Jan 06 15:04 MST"
-  s = "02 Jan 06 15:04 MST"
+  s = "12 Jan 16 15:04 MST"
   f = "dd MMM yy HH:mm ZZZ"
-  assert($s.parse(f) == "Mon Jan  2 15:04:00 2006")
+  assert($s.parse(f) == "Tue Jan 12 15:04:00 2016")
   # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
-  s = "02 Jan 06 15:04 -07:00"
+  s = "12 Jan 16 15:04 -07:00"
   f = "dd MMM yy HH:mm zzz"
-  assert($s.parse(f) == "Mon Jan  2 15:04:00 2006")
+  assert($s.parse(f) == "Tue Jan 12 15:04:00 2016")
   # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
-  s = "Monday, 02-Jan-06 15:04:05 MST"
+  s = "Monday, 12-Jan-06 15:04:05 MST"
   f = "dddd, dd-MMM-yy HH:mm:ss ZZZ"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
-  s = "Mon, 02 Jan 2006 15:04:05 MST"
+  s = "Thu, 12 Jan 2006 15:04:05 MST"
   f = "ddd, dd MMM yyyy HH:mm:ss ZZZ"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
-  s = "Mon, 02 Jan 2006 15:04:05 -07:00"
+  s = "Thu, 12 Jan 2006 15:04:05 -07:00"
   f = "ddd, dd MMM yyyy HH:mm:ss zzz"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # RFC3339     = "2006-01-02T15:04:05Z07:00"
-  s = "2006-01-02T15:04:05Z-07:00"
+  s = "2006-01-12T15:04:05Z-07:00"
   f = "yyyy-MM-ddTHH:mm:ssZzzz"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
-  s = "2006-01-02T15:04:05.999999999Z-07:00"
+  s = "2006-01-12T15:04:05.999999999Z-07:00"
   f = "yyyy-MM-ddTHH:mm:ss.999999999Zzzz"
-  assert($s.parse(f) == "Mon Jan  2 15:04:05 2006")
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # Kitchen     = "3:04PM"
   s = "3:04PM"
   f = "h:mmtt"
-  echo "Kitchen: " & $s.parse(f)
+  assert "15:04:00" in $s.parse(f)
+  when not defined(testing):
+    echo "Kitchen: " & $s.parse(f)

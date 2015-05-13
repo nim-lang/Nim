@@ -7,7 +7,7 @@ discard """
 
 proc test1() =
 
-  finally: echo "A"
+  defer: echo "A"
 
   try:
     raise newException(OSError, "Problem")
@@ -19,7 +19,7 @@ test1()
 
 proc test2() =
 
-  finally: echo "B"
+  defer: echo "B"
 
   try:
     return

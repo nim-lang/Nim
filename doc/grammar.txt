@@ -179,7 +179,7 @@ simpleStmt = ((returnStmt | raiseStmt | yieldStmt | discardStmt | breakStmt
            | continueStmt | pragmaStmt | importStmt | exportStmt | fromStmt
            | includeStmt | commentStmt) / exprStmt) COMMENT?
 complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
-                    | tryStmt | finallyStmt | exceptStmt | forStmt
+                    | tryStmt | forStmt
                     | blockStmt | staticStmt | deferStmt | asmStmt
                     | 'proc' routine
                     | 'method' routine

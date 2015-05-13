@@ -300,7 +300,7 @@ proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
   minPoolSize = size
 
 proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
-  ## sets the minimal thread pool size. The default value of this
+  ## sets the maximal thread pool size. The default value of this
   ## is ``MaxThreadPoolSize``.
   maxPoolSize = size
   if currentPoolSize > maxPoolSize:

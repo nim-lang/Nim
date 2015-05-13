@@ -76,6 +76,11 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     elif opc in {opcLdConst, opcAsgnConst}:
       result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA,
         c.constants[x.regBx-wordExcess].renderTree)
+    elif opc in {opcMarshalLoad, opcMarshalStore}:
+      let y = c.code[i+1]
+      result.addf("\t$#\tr$#, r$#, $#", ($opc).substr(3), x.regA, x.regB,
+        c.types[y.regBx-wordExcess].typeToString)
+      inc i
     else:
       result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
     result.add("\t#")
@@ -368,7 +373,7 @@ proc sameConstant*(a, b: PNode): bool =
     case a.kind
     of nkSym: result = a.sym == b.sym
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
@@ -696,8 +701,7 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.gABC(n, opcCard, dest, tmp)
   c.freeTemp(tmp)
 
-proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
-  let m = n.sons[0].sym.magic
+proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
   of mOr:  c.genAndOr(n, opcTJmp, dest)
@@ -742,9 +746,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     c.gABC(n, opcNewStr, dest, tmp)
     c.freeTemp(tmp)
     # XXX buggy
-  of mLengthOpenArray, mLengthArray, mLengthSeq:
+  of mLengthOpenArray, mLengthArray, mLengthSeq, mXLenSeq:
     genUnaryABI(c, n, dest, opcLenSeq)
-  of mLengthStr:
+  of mLengthStr, mXLenStr:
     genUnaryABI(c, n, dest, opcLenStr)
   of mIncl, mExcl:
     unused(n, dest)
@@ -791,7 +795,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     genUnaryABC(c, n, dest, opcUnaryMinusInt)
     genNarrow(c, n, dest)
   of mUnaryMinusF64: genUnaryABC(c, n, dest, opcUnaryMinusFloat)
-  of mUnaryPlusI, mUnaryPlusI64, mUnaryPlusF64: gen(c, n.sons[1], dest)
+  of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
   of mBitnotI, mBitnotI64:
     genUnaryABC(c, n, dest, opcBitnotInt)
     genNarrowU(c, n, dest)
@@ -1008,7 +1012,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
-  of mMinI, mMaxI, mMinI64, mMaxI64, mAbsF64, mMinF64, mMaxF64, mAbsI,
+  of mMinI, mMaxI, mAbsF64, mMinF64, mMaxF64, mAbsI,
      mAbsI64, mDotDot:
     c.genCall(n, dest)
   of mExpandToAst:
@@ -1027,6 +1031,22 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest) =
   else:
     # mGCref, mGCunref,
     internalError(n.info, "cannot generate code for: " & $m)
+
+proc genMarshalLoad(c: PCtx, n: PNode, dest: var TDest) =
+  ## Signature: proc to*[T](data: string): T
+  if dest < 0: dest = c.getTemp(n.typ)
+  var tmp = c.genx(n.sons[1])
+  c.gABC(n, opcMarshalLoad, dest, tmp)
+  c.gABx(n, opcMarshalLoad, 0, c.genType(n.typ))
+  c.freeTemp(tmp)
+
+proc genMarshalStore(c: PCtx, n: PNode, dest: var TDest) =
+  ## Signature: proc `$$`*[T](x: T): string
+  if dest < 0: dest = c.getTemp(n.typ)
+  var tmp = c.genx(n.sons[1])
+  c.gABC(n, opcMarshalStore, dest, tmp)
+  c.gABx(n, opcMarshalStore, 0, c.genType(n.sons[1].typ))
+  c.freeTemp(tmp)
 
 const
   atomicTypes = {tyBool, tyChar,
@@ -1364,7 +1384,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
   of tyVar, tyPointer, tyPtr, tySequence, tyExpr,
-     tyStmt, tyTypeDesc, tyStatic, tyRef:
+     tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
     if t.callConv != ccClosure:
@@ -1391,7 +1411,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  else: internalError("getNullValue: " & $t.kind)
+  else: internalError(info, "getNullValue: " & $t.kind)
 
 proc ldNullOpcode(t: PType): TOpcode =
   if fitsRegister(t): opcLdNullReg else: opcLdNull
@@ -1533,6 +1553,15 @@ proc matches(s: PSym; x: string): bool =
     dec L
   result = true
 
+proc matches(s: PSym; y: varargs[string]): bool =
+  var s = s
+  var L = y.len-1
+  while L >= 0:
+    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
+    dec L
+  result = true
+
 proc procIsCallback(c: PCtx; s: PSym): bool =
   if s.offset < -1: return true
   var i = -2
@@ -1570,8 +1599,17 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       internalError(n.info, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
-    if n.sons[0].kind == nkSym and n.sons[0].sym.magic != mNone:
-      genMagic(c, n, dest)
+    if n.sons[0].kind == nkSym:
+      let s = n.sons[0].sym
+      if s.magic != mNone:
+        genMagic(c, n, dest, s.magic)
+      elif matches(s, "stdlib", "marshal", "to"):
+        genMarshalLoad(c, n, dest)
+      elif matches(s, "stdlib", "marshal", "$$"):
+        genMarshalStore(c, n, dest)
+      else:
+        genCall(c, n, dest)
+        clearDest(c, n, dest)
     else:
       genCall(c, n, dest)
       clearDest(c, n, dest)
@@ -1610,7 +1648,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genBreak(c, n)
   of nkTryStmt: genTry(c, n, dest)
   of nkStmtList:
-    unused(n, dest)
+    #unused(n, dest)
+    # XXX Fix this bug properly, lexim triggers it
     for x in n: gen(c, x)
   of nkStmtListExpr:
     let L = n.len-1

@@ -492,9 +492,8 @@ when isMainModule:
 
   block: # filter iterator test
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
-    for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
-      echo($n)
-    # echoes 4, 8, 4 in separate lines
+    assert toSeq(filter(numbers, proc (x: int): bool = x mod 2 == 0)) ==
+      @[4, 8, 4]
 
   block: # keepIf test
     var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
@@ -616,4 +615,5 @@ when isMainModule:
     #doAssert a.repeat(-1) == @[] # will not compile!
     doAssert b.repeat(3) == @[]
 
-  echo "Finished doc tests"
+  when not defined(testing):
+    echo "Finished doc tests"

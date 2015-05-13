@@ -82,7 +82,8 @@ proc action(cmd: string) =
   if cmd[i] == ';':
     i = parseQuoted(cmd, dirtyfile, i+1)
   i += skipWhile(cmd, seps, i)
-  var line, col = -1
+  var line = -1
+  var col = 0
   i += parseInt(cmd, line, i)
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
@@ -97,7 +98,7 @@ proc action(cmd: string) =
   resetModule dirtyIdx
   if dirtyIdx != gProjectMainIdx:
     resetModule gProjectMainIdx
-  gTrackPos = newLineInfo(dirtyIdx, line, col)
+  gTrackPos = newLineInfo(dirtyIdx, line, col-1)
   #echo dirtyfile, gDirtyBufferIdx, " project ", gProjectMainIdx
   gErrorCounter = 0
   if not isKnownFile:
@@ -150,11 +151,11 @@ proc mainCommand =
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
-  while true: 
+  while true:
     parseopt.next(p)
     case p.kind
-    of cmdEnd: break 
-    of cmdLongoption, cmdShortOption: 
+    of cmdEnd: break
+    of cmdLongoption, cmdShortOption:
       case p.key.normalize
       of "port": gPort = parseInt(p.val).Port
       of "address": gAddress = p.val

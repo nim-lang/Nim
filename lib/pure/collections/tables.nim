@@ -128,7 +128,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc rightSize*(count: int): int {.inline.} =
+proc rightSize*(count: Natural): int {.inline.} =
   ## Return the value of `initialSize` to support `count` items.
   ##
   ## If more items are expected to be added, simply add that
@@ -214,6 +214,10 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   var hc: THash
   result = rawGet(t, key, hc) >= 0
+
+proc contains*[A, B](t: Table[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
 
 proc rawInsert[A, B](t: var Table[A, B], data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: THash, h: THash) =
@@ -411,6 +415,10 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
+proc contains*[A, B](t: TableRef[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
+
 proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   t[][key] = val
@@ -531,6 +539,10 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   var hc: THash
   result = rawGet(t, key, hc) >= 0
+
+proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
@@ -704,6 +716,10 @@ proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
+proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
+
 proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   t[][key] = val
@@ -804,6 +820,10 @@ proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
+proc contains*[A](t: CountTable[A], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A](t, key)
+
 proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
   var h: THash = hash(key) and high(data)
@@ -819,15 +839,18 @@ proc enlarge[A](t: var CountTable[A]) =
   swap(t.data, n)
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
-  ## puts a (key, value)-pair into `t`. `val` has to be positive.
+  ## puts a (key, value)-pair into `t`.
   assert val > 0
   var h = rawGet(t, key)
   if h >= 0:
     t.data[h].val = val
   else:
-    h = -1 - h
-    t.data[h].key = key
-    t.data[h].val = val
+    if mustRehash(len(t.data), t.counter): enlarge(t)
+    rawInsert(t, t.data, key, val)
+    inc(t.counter)
+    #h = -1 - h
+    #t.data[h].key = key
+    #t.data[h].val = val
 
 proc initCountTable*[A](initialSize=64): CountTable[A] =
   ## creates a new count table that is empty.
@@ -942,6 +965,10 @@ proc hasKey*[A](t: CountTableRef[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
+proc contains*[A](t: CountTableRef[A], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A](t, key)
+
 proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`. `val` has to be positive.
   assert val > 0
@@ -984,6 +1011,22 @@ proc sort*[A](t: CountTableRef[A]) =
   ## `t` in the sorted order.
   t[].sort
 
+proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
+  ## merges the second table into the first one
+  for key, value in t:
+    s.inc(key, value)
+
+proc merge*[A](s, t: CountTable[A]): CountTable[A] =
+  ## merges the two tables into a new one
+  result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
+  for table in @[s, t]:
+    for key, value in table:
+      result.inc(key, value)
+
+proc merge*[A](s, t: CountTableRef[A]) =
+  ## merges the second table into the first one
+  s[].merge(t[])
+
 when isMainModule:
   type
     Person = object
@@ -1012,3 +1055,48 @@ when isMainModule:
   s2[p2] = 45_000
   s3[p1] = 30_000
   s3[p2] = 45_000
+
+  var
+    t1 = initCountTable[string]()
+    t2 = initCountTable[string]()
+  t1.inc("foo")
+  t1.inc("bar", 2)
+  t1.inc("baz", 3)
+  t2.inc("foo", 4)
+  t2.inc("bar")
+  t2.inc("baz", 11)
+  merge(t1, t2)
+  assert(t1["foo"] == 5)
+  assert(t1["bar"] == 3)
+  assert(t1["baz"] == 14)
+
+  let
+    t1r = newCountTable[string]()
+    t2r = newCountTable[string]()
+  t1r.inc("foo")
+  t1r.inc("bar", 2)
+  t1r.inc("baz", 3)
+  t2r.inc("foo", 4)
+  t2r.inc("bar")
+  t2r.inc("baz", 11)
+  merge(t1r, t2r)
+  assert(t1r["foo"] == 5)
+  assert(t1r["bar"] == 3)
+  assert(t1r["baz"] == 14)
+
+  var
+    t1l = initCountTable[string]()
+    t2l = initCountTable[string]()
+  t1l.inc("foo")
+  t1l.inc("bar", 2)
+  t1l.inc("baz", 3)
+  t2l.inc("foo", 4)
+  t2l.inc("bar")
+  t2l.inc("baz", 11)
+  let
+    t1merging = t1l
+    t2merging = t2l
+  let merged = merge(t1merging, t2merging)
+  assert(merged["foo"] == 5)
+  assert(merged["bar"] == 3)
+  assert(merged["baz"] == 14)

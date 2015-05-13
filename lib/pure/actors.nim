@@ -221,7 +221,7 @@ proc spawn*[TIn](p: var TActorPool[TIn, void], input: TIn,
   setupTask()
   schedule()
   
-when isMainModule:
+when not defined(testing) and isMainModule:
   var
     a: TActorPool[int, void]
   createActorPool(a)

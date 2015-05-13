@@ -125,8 +125,8 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
       opacity 1s ease-in-out; }
 	#slideshow > div.active { visibility:visible; opacity:1; transition-delay:0s; }
 	#slideshow > div.init { transition-delay:0s; }
-	#slideshow-nav { z-index:3; position:absolute; top:110px;; right:-12px; }
-	#slideshow-nav > div { margin:5px 0; width:23px; height:23px; background:url("images/slideshow-nav.png") no-repeat; }
+	#slideshow-nav { z-index:3; position:absolute; top:341px; left:18px; }
+	#slideshow-nav > div { display:inline-block; margin:5px 0; width:23px; height:23px; background:url("images/slideshow-nav.png") no-repeat; }
 	#slideshow-nav > div:hover { background-image:url("images/slideshow-nav_active.png"); opacity:0.5; }
 	#slideshow-nav > div.active { background-image:url("images/slideshow-nav_active.png"); opacity:1; }
     

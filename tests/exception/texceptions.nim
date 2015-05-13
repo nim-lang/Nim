@@ -35,9 +35,9 @@ echo ""
 proc reraise_in_except =
   try:
     echo "BEFORE"
-    raise newException(EIO, "")
+    raise newException(IOError, "")
 
-  except EIO:
+  except IOError:
     echo "EXCEPT"
     raise
 
@@ -52,7 +52,7 @@ echo ""
 proc return_in_except =
   try:
     echo "BEFORE"
-    raise newException(EIO, "")
+    raise newException(IOError, "")
 
   except:
     echo "EXCEPT"

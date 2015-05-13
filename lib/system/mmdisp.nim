@@ -109,24 +109,24 @@ when defined(boehmgc):
 
   when not defined(useNimRtl):
 
-    proc alloc(size: int): pointer =
+    proc alloc(size: Natural): pointer =
       result = boehmAlloc(size)
       if result == nil: raiseOutOfMem()
-    proc alloc0(size: int): pointer =
+    proc alloc0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc realloc(p: pointer, newsize: int): pointer =
+    proc realloc(p: pointer, newsize: Natural): pointer =
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: pointer) = boehmDealloc(p)
 
-    proc allocShared(size: int): pointer =
+    proc allocShared(size: Natural): pointer =
       result = boehmAlloc(size)
       if result == nil: raiseOutOfMem()
-    proc allocShared0(size: int): pointer =
+    proc allocShared0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc reallocShared(p: pointer, newsize: int): pointer =
+    proc reallocShared(p: pointer, newsize: Natural): pointer =
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = boehmDealloc(p)
@@ -196,24 +196,24 @@ when defined(boehmgc):
 elif defined(nogc) and defined(useMalloc):
 
   when not defined(useNimRtl):
-    proc alloc(size: int): pointer =
+    proc alloc(size: Natural): pointer =
       result = cmalloc(size)
       if result == nil: raiseOutOfMem()
-    proc alloc0(size: int): pointer =
+    proc alloc0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc realloc(p: pointer, newsize: int): pointer =
+    proc realloc(p: pointer, newsize: Natural): pointer =
       result = crealloc(p, newsize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: pointer) = cfree(p)
 
-    proc allocShared(size: int): pointer =
+    proc allocShared(size: Natural): pointer =
       result = cmalloc(size)
       if result == nil: raiseOutOfMem()
-    proc allocShared0(size: int): pointer =
+    proc allocShared0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
-    proc reallocShared(p: pointer, newsize: int): pointer =
+    proc reallocShared(p: pointer, newsize: Natural): pointer =
       result = crealloc(p, newsize)
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = cfree(p)

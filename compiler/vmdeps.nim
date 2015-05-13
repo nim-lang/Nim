@@ -144,7 +144,9 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   of tyIter: result = mapTypeToBracket("iter", t, info)
   of tyProxy: result = atomicType"error"
   of tyBuiltInTypeClass: result = mapTypeToBracket("builtinTypeClass", t, info)
-  of tyUserTypeClass: result = mapTypeToBracket("userTypeClass", t, info)
+  of tyUserTypeClass:
+    result = mapTypeToBracket("concept", t, info)
+    result.add t.n.copyTree
   of tyCompositeTypeClass: result = mapTypeToBracket("compositeTypeClass", t, info)
   of tyAnd: result = mapTypeToBracket("and", t, info)
   of tyOr: result = mapTypeToBracket("or", t, info)

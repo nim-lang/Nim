@@ -99,9 +99,12 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
     if callee.originatingModule == ctx.module:
-      let rootSym = if sfFromGeneric notin callee.flags: callee
-                    else: callee.owner
-      c.calleeScope = rootSym.scope.depthLevel
+      c.calleeScope = 2
+      var owner = callee
+      while true:
+        owner = owner.skipGenericOwner
+        if owner.kind == skModule: break
+        inc c.calleeScope
     else:
       c.calleeScope = 1
   else:
@@ -144,6 +147,7 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
 
 proc sumGeneric(t: PType): int =
   var t = t
+  var isvar = 1
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyArrayConstr,
@@ -151,18 +155,20 @@ proc sumGeneric(t: PType): int =
       t = t.lastSon
       inc result
     of tyVar:
-      # but do not make 'var T' more specific than 'T'!
       t = t.sons[0]
+      inc result
+      inc isvar
     of tyGenericInvocation, tyTuple:
-      result = ord(t.kind == tyGenericInvocation)
+      result += ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
     of tyBool, tyChar, tyEnum, tyObject, tyProc, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
-      return 1
-    else: return 0
+      return isvar
+    else:
+      return 0
 
 #var ggDebug: bool
 
@@ -916,6 +922,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyAnd:
     considerPreviousT:
+      result = isEqual
       for branch in f.sons:
         let x = typeRel(c, branch, aOrig)
         if x < isSubtype: return isNone
@@ -1105,8 +1112,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       localError(f.n.info, errTypeExpected)
       result = isNone
 
+  of tyNone:
+    if a.kind == tyNone: result = isEqual
   else:
-    internalAssert false
+    internalError " unknown type kind " & $f.kind
 
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate
@@ -1190,15 +1199,6 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 proc isInlineIterator*(t: PType): bool =
   result = t.kind == tyIter or
           (t.kind == tyBuiltInTypeClass and t.base.kind == tyIter)
-
-proc isEmptyContainer*(t: PType): bool =
-  case t.kind
-  of tyExpr, tyNil: result = true
-  of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
-  of tySet, tySequence, tyOpenArray, tyVarargs:
-    result = t.sons[0].kind == tyEmpty
-  of tyGenericInst: result = isEmptyContainer(t.lastSon)
-  else: result = false
 
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
@@ -1304,7 +1304,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     if arg.typ == nil:
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
-      result = implicitConv(nkHiddenStdConv, f, copyTree(arg), m, c)
+      result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
       result.typ = getInstantiatedType(c, arg, m, f)
@@ -1319,7 +1319,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     inc(m.exactMatches)
     result = arg
     if skipTypes(f, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
-      result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+      result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
     # do not do this in ``typeRel`` as it then can't infere T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
@@ -1419,9 +1419,12 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
+    # XXX This is unsound! 'formal' can differ from overloaded routine to
+    # overloaded routine!
     let flags = if formal.kind == tyIter: {efDetermineType, efWantIterator}
-                elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
-                else: {efDetermineType}
+                else: {efDetermineType, efAllowStmt}
+                #elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
+                #else: {efDetermineType}
     result = c.semOperand(c, a, flags)
   else:
     result = a
@@ -1462,9 +1465,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
     if formal.typ.kind == tyVar:
-      if n.isLValue:
-        inc(m.genericMatches, 100)
-      else:
+      if not n.isLValue:
         m.state = csNoMatch
         return
 
@@ -1570,6 +1571,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           #assert(container == nil)
           if container.isNil:
             container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+          else:
+            incrIndexType(container.typ)
           addSon(container, arg)
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
@@ -1627,12 +1630,15 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   # instantiate generic converters for that
   result = res != nil
 
-proc instDeepCopy*(c: PContext; dc: PSym; t: PType; info: TLineInfo): PSym {.
-                    procvar.} =
+proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
+                      op: TTypeAttachedOp): PSym {.procvar.} =
   var m: TCandidate
   initCandidate(c, m, dc.typ)
   var f = dc.typ.sons[1]
-  if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  if op == attachedDeepCopy:
+    if f.kind in {tyRef, tyPtr}: f = f.lastSon
+  else:
+    if f.kind == tyVar: f = f.lastSon
   if typeRel(m, f, t) == isNone:
     localError(info, errGenerated, "cannot instantiate 'deepCopy'")
   else:

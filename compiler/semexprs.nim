@@ -24,14 +24,14 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
-  if result.kind == nkEmpty:
+  if result.kind == nkEmpty and result.typ.isNil:
     # do not produce another redundant error message:
     #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind == tyVar: result = newDeref(result)
-  elif efWantStmt in flags:
+  elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyEmpty, c)
   else:
     localError(n.info, errExprXHasNoType,
@@ -389,7 +389,7 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
-    let match = typeRel(m, t2, t1) != isNone
+    let match = typeRel(m, t2, t1) >= isSubtype # isNone
     result = newIntNode(nkIntLit, ord(match))
 
   result.typ = n.typ
@@ -447,6 +447,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
   of nkPar:
     let tup = newType.skipTypes({tyGenericInst})
     if tup.kind != tyTuple:
+      if tup.kind == tyObject: return
       internalError(n.info, "changeType: no tuple type for constructor")
     elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr:
       # named tuple?
@@ -535,43 +536,55 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
 proc fixAbstractType(c: PContext, n: PNode) =
-  # XXX finally rewrite that crap!
-  for i in countup(1, sonsLen(n) - 1):
-    var it = n.sons[i]
-    case it.kind
-    of nkHiddenStdConv, nkHiddenSubConv:
-      if it.sons[1].kind == nkBracket:
-        it.sons[1].typ = arrayConstrType(c, it.sons[1])
-        #it.sons[1] = semArrayConstr(c, it.sons[1])
-      if skipTypes(it.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
-        #if n.sons[0].kind == nkSym and IdentEq(n.sons[0].sym.name, "[]="):
-        #  debug(n)
-
-        var s = skipTypes(it.sons[1].typ, abstractVar)
-        if s.kind == tyArrayConstr and s.sons[1].kind == tyEmpty:
-          s = copyType(s, getCurrOwner(), false)
-          skipTypes(s, abstractVar).sons[1] = elemType(
-              skipTypes(it.typ, abstractVar))
-          it.sons[1].typ = s
-        elif s.kind == tySequence and s.sons[0].kind == tyEmpty:
-          s = copyType(s, getCurrOwner(), false)
-          skipTypes(s, abstractVar).sons[0] = elemType(
-              skipTypes(it.typ, abstractVar))
-          it.sons[1].typ = s
-
-      elif skipTypes(it.sons[1].typ, abstractVar).kind in
-          {tyNil, tyArrayConstr, tyTuple, tySet}:
+  for i in 1 .. < n.len:
+    let it = n.sons[i]
+    # do not get rid of nkHiddenSubConv for OpenArrays, the codegen needs it:
+    if it.kind == nkHiddenSubConv and
+        skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
+      if skipTypes(it.sons[1].typ, abstractVar).kind in
+            {tyNil, tyArrayConstr, tyTuple, tySet}:
         var s = skipTypes(it.typ, abstractVar)
         if s.kind != tyExpr:
           changeType(it.sons[1], s, check=true)
         n.sons[i] = it.sons[1]
-    of nkBracket:
-      # an implicitly constructed array (passed to an open array):
-      n.sons[i] = semArrayConstr(c, it, {})
-    else:
-      discard
-      #if (it.typ == nil):
-      #  InternalError(it.info, "fixAbstractType: " & renderTree(it))
+  when false:
+    # XXX finally rewrite that crap!
+    for i in countup(1, sonsLen(n) - 1):
+      var it = n.sons[i]
+      case it.kind
+      of nkHiddenStdConv, nkHiddenSubConv:
+        if it.sons[1].kind == nkBracket:
+          it.sons[1].typ = arrayConstrType(c, it.sons[1])
+          #it.sons[1] = semArrayConstr(c, it.sons[1])
+        if skipTypes(it.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
+          #if n.sons[0].kind == nkSym and IdentEq(n.sons[0].sym.name, "[]="):
+          #  debug(n)
+
+          var s = skipTypes(it.sons[1].typ, abstractVar)
+          if s.kind == tyArrayConstr and s.sons[1].kind == tyEmpty:
+            s = copyType(s, getCurrOwner(), false)
+            skipTypes(s, abstractVar).sons[1] = elemType(
+                skipTypes(it.typ, abstractVar))
+            it.sons[1].typ = s
+          elif s.kind == tySequence and s.sons[0].kind == tyEmpty:
+            s = copyType(s, getCurrOwner(), false)
+            skipTypes(s, abstractVar).sons[0] = elemType(
+                skipTypes(it.typ, abstractVar))
+            it.sons[1].typ = s
+
+        elif skipTypes(it.sons[1].typ, abstractVar).kind in
+            {tyNil, tyArrayConstr, tyTuple, tySet}:
+          var s = skipTypes(it.typ, abstractVar)
+          if s.kind != tyExpr:
+            changeType(it.sons[1], s, check=true)
+          n.sons[i] = it.sons[1]
+      of nkBracket:
+        # an implicitly constructed array (passed to an open array):
+        n.sons[i] = semArrayConstr(c, it, {})
+      else:
+        discard
+        #if (it.typ == nil):
+        #  InternalError(it.info, "fixAbstractType: " & renderTree(it))
 
 proc skipObjConv(n: PNode): PNode =
   case n.kind
@@ -1298,6 +1311,9 @@ proc semAsgn(c: PContext, n: PNode): PNode =
           typeMismatch(n, lhs.typ, rhs.typ)
 
     n.sons[1] = fitNode(c, le, rhs)
+    if tfHasAsgn in lhs.typ.flags and not lhsIsResult:
+      return overloadedAsgn(c, lhs, n.sons[1])
+
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
   result = n
@@ -2037,7 +2053,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkEmpty, nkNone, nkCommentStmt:
     discard
   of nkNilLit:
-    result.typ = getSysType(tyNil)
+    if result.typ == nil: result.typ = getSysType(tyNil)
   of nkIntLit:
     if result.typ == nil: setIntLitType(result)
   of nkInt8Lit:

@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings
+  semparallel, lowerings, plugins, plugins.active
 
 when defined(nimfix):
   import nimfix.prettybase
@@ -89,6 +89,10 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
       let x = result.skipConv
       if x.kind == nkPar and formal.kind != tyExpr:
         changeType(x, formal, check=true)
+      else:
+        result = skipHiddenSubConv(result)
+        #result.typ = takeType(formal, arg.typ)
+        #echo arg.info, " picked ", result.typ.typeToString
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
@@ -398,7 +402,7 @@ proc myOpen(module: PSym): PPassContext =
   c.semInferredLambda = semInferredLambda
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
-  c.instDeepCopy = sigmatch.instDeepCopy
+  c.instTypeBoundOp = sigmatch.instTypeBoundOp
 
   pushProcCon(c, module)
   pushOwner(c.module)

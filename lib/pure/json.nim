@@ -605,6 +605,49 @@ proc newJArray*(): JsonNode =
   result.kind = JArray
   result.elems = @[]
 
+proc getStr*(n: JsonNode, default: string = ""): string =
+  ## Retrieves the string value of a `JString JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JString``.
+  if n.kind != JString: return default
+  else: return n.str
+
+proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
+  ## Retrieves the int value of a `JInt JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JInt``.
+  if n.kind != JInt: return default
+  else: return n.num
+
+proc getFNum*(n: JsonNode, default: float = 0.0): float =
+  ## Retrieves the float value of a `JFloat JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JFloat``.
+  if n.kind != JFloat: return default
+  else: return n.fnum
+
+proc getBVal*(n: JsonNode, default: bool = false): bool =
+  ## Retrieves the bool value of a `JBool JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JBool``.
+  if n.kind != JBool: return default
+  else: return n.bval
+
+proc getFields*(n: JsonNode,
+    default: seq[tuple[key: string, val: JsonNode]] = @[]):
+        seq[tuple[key: string, val: JsonNode]] =
+  ## Retrieves the key, value pairs of a `JObject JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JObject``.
+  if n.kind != JObject: return default
+  else: return n.fields
+
+proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
+  ## Retrieves the int value of a `JArray JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JArray``.
+  if n.kind != JArray: return default
+  else: return n.elems
 
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
@@ -765,22 +808,25 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) =
       return
   obj.fields.add((key, val))
 
-proc `{}`*(node: JsonNode, key: string): JsonNode =
-  ## Transverses the node and gets the given value. If any of the
-  ## names does not exist, returns nil
+proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
+  ## Traverses the node and gets the given value. If any of the
+  ## keys do not exist, returns nil. Also returns nil if one of the
+  ## intermediate data structures is not an object
   result = node
-  if isNil(node): return nil
-  result = result[key]
+  for key in keys:
+    if isNil(result) or result.kind!=JObject:
+      return nil    
+    result=result[key]
 
-proc `{}=`*(node: JsonNode, names: varargs[string], value: JsonNode) =
-  ## Transverses the node and tries to set the value at the given location
-  ## to `value` If any of the names are missing, they are added
+proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
+  ## Traverses the node and tries to set the value at the given location
+  ## to `value` If any of the keys are missing, they are added
   var node = node
-  for i in 0..(names.len-2):
-    if isNil(node[names[i]]):
-      node[names[i]] = newJObject()
-    node = node[names[i]]
-  node[names[names.len-1]] = value
+  for i in 0..(keys.len-2):
+    if isNil(node[keys[i]]):
+      node[keys[i]] = newJObject()
+    node = node[keys[i]]
+  node[keys[keys.len-1]] = value
 
 proc delete*(obj: JsonNode, key: string) =
   ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
@@ -1107,19 +1153,22 @@ when false:
 when isMainModule:
   #var node = parse("{ \"test\": null }")
   #echo(node.existsKey("test56"))
+  
   var parsed = parseFile("tests/testdata/jsontest.json")
   var parsed2 = parseFile("tests/testdata/jsontest2.json")
-  echo(parsed)
-  echo()
-  echo(pretty(parsed, 2))
-  echo()
-  echo(parsed["keyÄÖöoßß"])
-  echo()
-  echo(pretty(parsed2))
-  try:
-    echo(parsed["key2"][12123])
-    raise newException(ValueError, "That line was expected to fail")
-  except IndexError: echo()
+
+  when not defined(testing):
+    echo(parsed)
+    echo()
+    echo(pretty(parsed, 2))
+    echo()
+    echo(parsed["keyÄÖöoßß"])
+    echo()
+    echo(pretty(parsed2))
+    try:
+      echo(parsed["key2"][12123])
+      raise newException(ValueError, "That line was expected to fail")
+    except IndexError: echo()
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
@@ -1143,9 +1192,17 @@ when isMainModule:
   except:
     assert(false, "EInvalidIndex thrown for valid index")
 
+  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}") 
+  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil") 
+  assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
+  assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
+ 
   # Generator:
   var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}] 
 
   var j2 = %*
     [
@@ -1173,12 +1230,13 @@ when isMainModule:
       }
     ]
   assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-
-  discard """
-  while true:
-    var json = stdin.readLine()
-    var node = parse(json)
-    echo(node)
-    echo()
-    echo()
-  """
+  
+  when not defined(testing):
+    discard """
+    while true:
+      var json = stdin.readLine()
+      var node = parse(json)
+      echo(node)
+      echo()
+      echo()
+    """

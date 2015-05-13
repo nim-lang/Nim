@@ -514,7 +514,7 @@ proc close*(h: PAsyncHTTPServer) =
   ## Closes the ``PAsyncHTTPServer``.
   h.asyncSocket.close()
 
-when isMainModule:
+when not defined(testing) and isMainModule:
   var counter = 0
 
   var s: TServer

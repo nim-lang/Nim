@@ -176,7 +176,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
   for i in 1 .. <result.len:
     # twrong_field_caching requires these 'resetIdTable' calls:
-    if i > 1: resetIdTable(cl.symMap)
+    if i > 1:
+      resetIdTable(cl.symMap)
+      resetIdTable(cl.localCache)
     result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.sons[i])
     internalAssert originalParams[i].kind == nkSym
@@ -185,7 +187,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       let param = copySym(oldParam)
       param.owner = prc
       param.typ = result.sons[i]
-      param.ast = oldParam.ast.copyTree
+      if oldParam.ast != nil:
+        param.ast = fitNode(c, param.typ, oldParam.ast)
+
       # don't be lazy here and call replaceTypeVarsN(cl, originalParams[i])!
       result.n.sons[i] = newSymNode(param)
       addDecl(c, param)
@@ -196,6 +200,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       addDecl(c, result.n.sons[i].sym)
 
   resetIdTable(cl.symMap)
+  resetIdTable(cl.localCache)
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
   result.n.sons[0] = originalParams[0].copyTree
 

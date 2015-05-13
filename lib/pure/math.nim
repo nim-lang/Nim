@@ -85,7 +85,7 @@ proc fac*(n: int): int {.noSideEffect.} =
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## returns true, if `x` is a power of two, false otherwise.
   ## Zero and negative numbers are not a power of two.
-  return (x != 0) and ((x and (x - 1)) == 0)
+  return (x > 0) and ((x and (x - 1)) == 0)
 
 proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   ## returns `x` rounded up to the nearest power of two.
@@ -114,18 +114,23 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-proc mean*(x: openArray[float]): float {.noSideEffect.} = 
-  ## computes the mean of the elements in `x`. 
-  ## If `x` is empty, NaN is returned.
-  result = sum(x) / toFloat(len(x))
+template toFloat(f: float): float = f
 
-proc variance*(x: openArray[float]): float {.noSideEffect.} = 
+proc mean*[T](x: openArray[T]): float {.noSideEffect.} =
+  ## computes the mean of the elements in `x`, which are first converted to floats.
+  ## If `x` is empty, NaN is returned.
+  ## ``toFloat(x: T): float`` must be defined.
+  for i in items(x): result = result + toFloat(i)
+  result = result / toFloat(len(x))
+
+proc variance*[T](x: openArray[T]): float {.noSideEffect.} =
   ## computes the variance of the elements in `x`. 
   ## If `x` is empty, NaN is returned.
+  ## ``toFloat(x: T): float`` must be defined.
   result = 0.0
   var m = mean(x)
-  for i in 0 .. high(x):
-    var diff = x[i] - m
+  for i in items(x):
+    var diff = toFloat(i) - m
     result = result + diff*diff
   result = result / toFloat(len(x))
 
@@ -152,6 +157,7 @@ proc randomize*(seed: int) {.benign.}
   ## Note: Does nothing for the JavaScript target,
   ## as JavaScript does not support this.
 
+{.push noSideEffect.}
 when not defined(JS):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
@@ -273,6 +279,8 @@ else:
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
 
+{.pop.}
+
 proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
 
@@ -369,4 +377,10 @@ when isMainModule and not defined(JS):
   randomize(seed)
   for i in 0..SIZE-1:
     assert buf[i] == random(high(int)), "non deterministic random seeding"
-  echo "random values equal after reseeding"
+
+  when not defined(testing):
+    echo "random values equal after reseeding"
+
+  # Check for no side effect annotation
+  proc mySqrt(num: float): float {.noSideEffect.} =
+    return sqrt(num)

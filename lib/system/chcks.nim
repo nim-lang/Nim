@@ -9,16 +9,16 @@
 
 # Implementation of some runtime checks.
 
-proc raiseRangeError(val: BiggestInt) {.compilerproc, noreturn, noinline.} =
+proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
     sysFatal(RangeError, "value out of range")
   else:
     sysFatal(RangeError, "value out of range: ", $val)
 
-proc raiseIndexError() {.compilerproc, noreturn, noinline.} =
+proc raiseIndexError() {.compilerproc, noinline.} =
   sysFatal(IndexError, "index out of bounds")
 
-proc raiseFieldError(f: string) {.compilerproc, noreturn, noinline.} =
+proc raiseFieldError(f: string) {.compilerproc, noinline.} =
   sysFatal(FieldError, f, " is not accessible")
 
 proc chckIndx(i, a, b: int): int =
