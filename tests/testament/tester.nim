@@ -93,7 +93,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell])
-  var p = startProcess(command="gcc", args=c[4.. ^1],
+  var p = startProcess(command="gcc", args=c[5.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
   var x = newStringOfCap(120)

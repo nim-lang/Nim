@@ -147,7 +147,7 @@ proc longGCTests(r: var TResults, cat: Category, options: string) =
   var c = initResults()
   # According to ioTests, this should compile the file
   testNoSpec c, makeTest("tests/realtimeGC/shared", options, cat, actionCompile)
-  # testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat, actionRun)
+  testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat, actionRun)
   testSpec r, makeTest("tests/realtimeGC/nmain", options & "--threads: on", cat, actionRun)
 
 # ------------------------- threading tests -----------------------------------
