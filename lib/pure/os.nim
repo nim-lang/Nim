@@ -2033,10 +2033,10 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
   else:
     var rawInfo: TStat
     if followSymlink:
-      if lstat(path, rawInfo) < 0'i32:
+      if stat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError())
     else:
-      if stat(path, rawInfo) < 0'i32:
+      if lstat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
 
