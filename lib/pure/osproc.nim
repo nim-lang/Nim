@@ -195,43 +195,43 @@ proc peekExitCode*(p: Process): int {.tags: [].}
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## returns ``p``'s input stream for writing to.
   ##
-  ## **Warning**: The returned `PStream` should not be closed manually as it
-  ## is closed when closing the PProcess ``p``.
+  ## **Warning**: The returned `Stream` should not be closed manually as it
+  ## is closed when closing the Process ``p``.
 
 proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## returns ``p``'s output stream for reading from.
   ##
-  ## **Warning**: The returned `PStream` should not be closed manually as it
-  ## is closed when closing the PProcess ``p``.
+  ## **Warning**: The returned `Stream` should not be closed manually as it
+  ## is closed when closing the Process ``p``.
 
 proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## returns ``p``'s error stream for reading from.
   ##
-  ## **Warning**: The returned `PStream` should not be closed manually as it
-  ## is closed when closing the PProcess ``p``.
+  ## **Warning**: The returned `Stream` should not be closed manually as it
+  ## is closed when closing the Process ``p``.
 
 proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## returns ``p``'s input file handle for writing to.
   ##
-  ## **Warning**: The returned `TFileHandle` should not be closed manually as
-  ## it is closed when closing the PProcess ``p``.
+  ## **Warning**: The returned `FileHandle` should not be closed manually as
+  ## it is closed when closing the Process ``p``.
   result = p.inHandle
 
 proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## returns ``p``'s output file handle for reading from.
   ##
-  ## **Warning**: The returned `TFileHandle` should not be closed manually as
-  ## it is closed when closing the PProcess ``p``.
+  ## **Warning**: The returned `FileHandle` should not be closed manually as
+  ## it is closed when closing the Process ``p``.
   result = p.outHandle
 
 proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## returns ``p``'s error file handle for reading from.
   ##
-  ## **Warning**: The returned `TFileHandle` should not be closed manually as
-  ## it is closed when closing the PProcess ``p``.
+  ## **Warning**: The returned `FileHandle` should not be closed manually as
+  ## it is closed when closing the Process ``p``.
   result = p.errHandle
 
 proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
