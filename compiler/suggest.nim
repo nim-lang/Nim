@@ -37,11 +37,7 @@ template origModuleName(m: PSym): string = m.name.s
 proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo): Suggest = 
   result.section = parseIdeCmd(section)
   if optIdeTerse in gGlobalOptions:
-    if s.kind in routineKinds:
-      result.symkind = parseEnum[TSymKind](renderTree(s.ast, {renderNoBody, renderNoComments,
-                                    renderDocComments, renderNoPragmas}))
-    else:
-      result.symkind = parseEnum[TSymKind](s.name.s)
+    result.symkind = s.kind
     result.filePath = toFullPath(li)
     result.line = toLinenumber(li)
     result.column = toColumn(li)
