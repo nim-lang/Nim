@@ -223,6 +223,7 @@ Library additions
   space between ``.. <`` and ``.. ^`` is not necessary anymore.
 - Added ``system.xlen`` for strings and sequences to get back the old ``len``
   operation that doesn't check for ``nil`` for efficiency.
+- Added sexp.nim to parse and generate sexp.
 
 
 Bugfixes

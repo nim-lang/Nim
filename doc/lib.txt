@@ -325,6 +325,10 @@ Parsers
 * `rstgen <rstgen.html>`_
   This module implements a generator of HTML/Latex from reStructuredText.
 
+* `sexp <sexp.html>`_
+  High performance sexp parser and generator, mainly for communication
+  with emacs.
+
 
 XML Processing
 --------------
