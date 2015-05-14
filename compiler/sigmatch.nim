@@ -1421,6 +1421,10 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # {tyTypeDesc, tyExpr, tyStmt, tyProxy}:
     # a.typ == nil is valid
     result = a
+  elif formal.kind == tyVarargs and formal.sons[0].kind == tyExpr and
+      c.p.owner.kind notin {skProc, skMacro}:
+    result = a
+    result.typ = formal.sons[0]
   elif a.typ.isNil:
     # XXX This is unsound! 'formal' can differ from overloaded routine to
     # overloaded routine!
