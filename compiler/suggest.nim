@@ -15,57 +15,79 @@ import algorithm, sequtils
 
 const
   sep = '\t'
-  sectionSuggest = "sug"
-  sectionDef = "def"
-  sectionContext = "con"
-  sectionUsage = "use"
+
+type
+  Suggest* = object
+    section*: IdeCmd
+    qualifiedPath*: seq[string]
+    filePath*: string
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    doc*: string           # Not escaped (yet)
+    symkind*: TSymKind
+    forth*: string               # XXX TODO object on symkind
+
+var
+  suggestionResultHook*: proc (result: Suggest) {.closure.}
 
 #template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
 
 template origModuleName(m: PSym): string = m.name.s
 
-proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
-  result = section
-  result.add(sep)
+proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo): Suggest = 
+  result.section = parseIdeCmd(section)
   if optIdeTerse in gGlobalOptions:
-    if s.kind in routineKinds:
-      result.add renderTree(s.ast, {renderNoBody, renderNoComments,
-                                    renderDocComments, renderNoPragmas})
-    else:
-      result.add s.name.s
-    result.add(sep)
-    result.add(toFullPath(li))
-    result.add(sep)
-    result.add($toLinenumber(li))
-    result.add(sep)
-    result.add($toColumn(li))
+    result.symkind = s.kind
+    result.filePath = toFullPath(li)
+    result.line = toLinenumber(li)
+    result.column = toColumn(li)
   else:
-    result.add($s.kind)
-    result.add(sep)
+    result.symkind = s.kind
+    result.qualifiedPath = @[]
     if not isLocal and s.kind != skModule:
       let ow = s.owner
       if ow.kind != skModule and ow.owner != nil:
         let ow2 = ow.owner
-        result.add(ow2.origModuleName)
-        result.add('.')
-      result.add(ow.origModuleName)
-      result.add('.')
-    result.add(s.name.s)
-    result.add(sep)
-    if s.typ != nil: 
-      result.add(typeToString(s.typ))
-    result.add(sep)
-    result.add(toFullPath(li))
-    result.add(sep)
-    result.add($toLinenumber(li))
-    result.add(sep)
-    result.add($toColumn(li))
-    result.add(sep)
-    when not defined(noDocgen):
-      result.add(s.extractDocComment.escape)
+        result.qualifiedPath.add(ow2.origModuleName)
+      result.qualifiedPath.add(ow.origModuleName)
+    result.qualifiedPath.add(s.name.s)
 
-proc symToStr(s: PSym, isLocal: bool, section: string): string = 
-  result = symToStr(s, isLocal, section, s.info)
+    if s.typ != nil: 
+      result.forth = typeToString(s.typ)
+    else:
+      result.forth = ""
+    result.filePath = toFullPath(li)
+    result.line = toLinenumber(li)
+    result.column = toColumn(li)
+    when not defined(noDocgen):
+      result.doc = s.extractDocComment
+
+proc `$`(suggest: Suggest): string = 
+  result = $suggest.section
+  result.add(sep)
+  result.add($suggest.symkind)
+  result.add(sep)
+  result.add(suggest.qualifiedPath.join("."))
+  result.add(sep)
+  result.add(suggest.forth)
+  result.add(sep)
+  result.add(suggest.filePath)
+  result.add(sep)
+  result.add($suggest.line)
+  result.add(sep)
+  result.add($suggest.column)
+  result.add(sep)
+  when not defined(noDocgen):
+    result.add(suggest.doc.escape)
+
+proc symToSuggest(s: PSym, isLocal: bool, section: string): Suggest = 
+  result = symToSuggest(s, isLocal, section, s.info)
+
+proc suggestResult(s: Suggest) =
+  if not isNil(suggestionResultHook):
+    suggestionResultHook(s)
+  else:
+    suggestWriteln($(s))
 
 proc filterSym(s: PSym): bool {.inline.} =
   result = s.kind != skModule
@@ -84,7 +106,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
 
 proc suggestField(c: PContext, s: PSym, outputs: var int) = 
   if filterSym(s) and fieldVisible(c, s):
-    suggestWriteln(symToStr(s, isLocal=true, sectionSuggest))
+    suggestResult(symToSuggest(s, isLocal=true, $ideSug))
     inc outputs
 
 template wholeSymTab(cond, section: expr) {.immediate.} =
@@ -97,7 +119,7 @@ template wholeSymTab(cond, section: expr) {.immediate.} =
     for item in entries:
       let it {.inject.} = item
       if cond:
-        suggestWriteln(symToStr(it, isLocal = isLocal, section))
+        suggestResult(symToSuggest(it, isLocal = isLocal, section))
         inc outputs
 
 proc suggestSymList(c: PContext, list: PNode, outputs: var int) = 
@@ -140,7 +162,7 @@ proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
 
 proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) = 
   wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
-              sectionContext)
+              $ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
   if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
@@ -157,7 +179,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
 
 proc suggestOperations(c: PContext, n: PNode, typ: PType, outputs: var int) =
   assert typ != nil
-  wholeSymTab(filterSymNoOpr(it) and typeFits(c, it, typ), sectionSuggest)
+  wholeSymTab(filterSymNoOpr(it) and typeFits(c, it, typ), $ideSug)
 
 proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
   # do not produce too many symbols:
@@ -166,7 +188,7 @@ proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
     if scope == c.topLevelScope: isLocal = false
     for it in items(scope.symbols):
       if filterSym(it):
-        suggestWriteln(symToStr(it, isLocal = isLocal, sectionSuggest))
+        suggestResult(symToSuggest(it, isLocal = isLocal, $ideSug))
         inc outputs
     if scope == c.topLevelScope: break
 
@@ -181,12 +203,12 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
         # all symbols accessible, because we are in the current module:
         for it in items(c.topLevelScope.symbols):
           if filterSym(it): 
-            suggestWriteln(symToStr(it, isLocal=false, sectionSuggest))
+            suggestResult(symToSuggest(it, isLocal=false, $ideSug))
             inc outputs
       else: 
         for it in items(n.sym.tab): 
           if filterSym(it): 
-            suggestWriteln(symToStr(it, isLocal=false, sectionSuggest))
+            suggestResult(symToSuggest(it, isLocal=false, $ideSug))
             inc outputs
     else:
       # fallback:
@@ -263,16 +285,16 @@ var
 proc findUsages(info: TLineInfo; s: PSym) =
   if usageSym == nil and isTracked(info, s.name.s.len):
     usageSym = s
-    suggestWriteln(symToStr(s, isLocal=false, sectionUsage))
+    suggestResult(symToSuggest(s, isLocal=false, $ideUse))
   elif s == usageSym:
     if lastLineInfo != info:
-      suggestWriteln(symToStr(s, isLocal=false, sectionUsage, info))
+      suggestResult(symToSuggest(s, isLocal=false, $ideUse, info))
     lastLineInfo = info
 
 proc findDefinition(info: TLineInfo; s: PSym) =
   if s.isNil: return
   if isTracked(info, s.name.s.len):
-    suggestWriteln(symToStr(s, isLocal=false, sectionDef))
+    suggestResult(symToSuggest(s, isLocal=false, $ideDef))
     suggestQuit()
 
 proc ensureIdx[T](x: var T, y: int) =

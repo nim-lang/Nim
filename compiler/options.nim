@@ -83,11 +83,11 @@ type                          # please make sure we have under 32 options
   TGCMode* = enum             # the selected GC
     gcNone, gcBoehm, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
 
-  TIdeCmd* = enum
+  IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse
 
 var
-  gIdeCmd*: TIdeCmd
+  gIdeCmd*: IdeCmd
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
@@ -395,3 +395,18 @@ template cnimdbg*: expr = p.module.module.fileIdx == gProjectMainIdx
 template pnimdbg*: expr = p.lex.fileIdx == gProjectMainIdx
 template lnimdbg*: expr = L.fileIdx == gProjectMainIdx
 
+proc parseIdeCmd*(s: string): IdeCmd =
+  case s:
+  of "sug": ideSug
+  of "con": ideCon
+  of "def": ideDef
+  of "use": ideUse
+  else: ideNone
+
+proc `$`*(c: IdeCmd): string =
+  case c:
+  of ideSug: "sug"
+  of ideCon: "con"
+  of ideDef: "def"
+  of ideUse: "use"
+  of ideNone: "none"
