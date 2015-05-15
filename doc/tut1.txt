@@ -1325,7 +1325,7 @@ define operators which accept Slice objects to define ranges.
     b = "Slices are useless."
 
   echo a[7..12] # --> 'a prog'
-  b[11.. -2] = "useful"
+  b[11.. ^2] = "useful"
   echo b # --> 'Slices are useful.'
 
 In the previous example slices are used to modify a part of a string, and even
