@@ -37,7 +37,7 @@ that contains GC'ed memory (``string``, ``seq``, ``ref`` or a closure) either
 directly or indirectly through a call to a GC unsafe proc.
 
 The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
-otherwise this property is inferred by the compiler. Note that ``noSideEfect``
+otherwise this property is inferred by the compiler. Note that ``noSideEffect``
 implies ``gcsafe``. The only way to create a thread is via ``spawn`` or
 ``createThead``. ``spawn`` is usually the preferable method. Either way
 the invoked proc must not use ``var`` parameters nor must any of its parameters
@@ -146,7 +146,7 @@ wait on multiple flow variables at the same time:
 
   # wait until 2 out of 3 servers received the update:
   proc main =
-    var responses = newSeq[RawFlowVar](3)
+    var responses = newSeq[FlowVarBase](3)
     for i in 0..2:
       responses[i] = spawn tellServer(Update, "key", "value")
     var index = awaitAny(responses)

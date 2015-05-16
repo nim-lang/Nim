@@ -210,8 +210,7 @@ template sortedByIt*(seq1, op: expr): expr =
   ##     p2: Person = (name: "p2", age: 20)
   ##     p3: Person = (name: "p3", age: 30)
   ##     p4: Person = (name: "p4", age: 30)
-  ##
-  ##   people = @[p1,p2,p4,p3]
+  ##     people = @[p1,p2,p4,p3]
   ##
   ##   echo people.sortedByIt(it.name)
   ##
