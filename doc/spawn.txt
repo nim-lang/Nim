@@ -33,7 +33,7 @@ variables at the same time:
   
   # wait until 2 out of 3 servers received the update:
   proc main =
-    var responses = newSeq[RawFlowVar](3)
+    var responses = newSeq[FlowVarBase](3)
     for i in 0..2:
       responses[i] = spawn tellServer(Update, "key", "value")
     var index = awaitAny(responses)
