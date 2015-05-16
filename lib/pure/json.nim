@@ -951,7 +951,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
 
 proc toUgly*(result: var string, node: JsonNode) =
   ## Converts `node` to its JSON Representation, without
-  ## regard for human redability.
+  ## regard for human readability.
   var comma = false
   case node.kind:
   of JArray:
