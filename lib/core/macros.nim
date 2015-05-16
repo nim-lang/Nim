@@ -712,6 +712,10 @@ iterator children*(n: NimNode): NimNode {.inline.}=
   for i in 0 .. high(n):
     yield n[i]
 
+iterator items*(n: NimNode): NimNode {.inline.}=
+  for i in 0 .. high(n):
+    yield n[i]
+
 template findChild*(n: NimNode; cond: expr): NimNode {.
   immediate, dirty.} =
   ## Find the first child node matching condition (or nil).
