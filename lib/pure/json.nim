@@ -956,34 +956,34 @@ proc toUgly*(result: var string, node: JsonNode) =
   var comma = false
   case node.kind:
   of JArray:
-      result.add "["
-      for child in node.elems:
-          if comma: result.add ","
-          else:     comma = true
-          result.toUgly child
-      result.add "]"
+    result.add "["
+    for child in node.elems:
+      if comma: result.add ","
+      else:     comma = true
+      result.toUgly child
+    result.add "]"
   of JObject:
-      result.add "{"
-      for key, value in items(node.fields):
-          if comma: result.add ","
-          else:     comma = true
-          result.add "\""
-          result.add key.escapeJson()
-          result.add "\":"
-          result.toUgly value
+    result.add "{"
+    for key, value in items(node.fields):
+      if comma: result.add ","
+      else:     comma = true
+      result.add "\""
+      result.add key.escapeJson()
+      result.add "\":"
+      result.toUgly value
       result.add "}"
   of JString:
-      result.add "\""
-      result.add node.str.escapeJson()
-      result.add "\""
+    result.add "\""
+    result.add node.str.escapeJson()
+    result.add "\""
   of JInt:
-      result.add($node.num)
+    result.add($node.num)
   of JFloat:
-      result.add($node.fnum)
+    result.add($node.fnum)
   of JBool:
-      result.add(if node.bval: "true" else: "false")
+    result.add(if node.bval: "true" else: "false")
   of JNull:
-      result.add "null"
+    result.add "null"
 
 proc toUgly*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
