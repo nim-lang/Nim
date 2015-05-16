@@ -971,7 +971,7 @@ proc toUgly*(result: var string, node: JsonNode) =
       result.add key.escapeJson()
       result.add "\":"
       result.toUgly value
-      result.add "}"
+    result.add "}"
   of JString:
     result.add "\""
     result.add node.str.escapeJson()
