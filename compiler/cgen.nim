@@ -727,6 +727,9 @@ proc genProcPrototype(m: BModule, sym: PSym) =
       header.add(" __attribute__((naked))")
     if sfNoReturn in sym.flags and hasAttribute in CC[cCompiler].props:
       header.add(" __attribute__((noreturn))")
+    if sfNoSideEffect in sym.flags and not (sfSideEffect in sym.flags) and
+       hasAttribute in CC[cCompiler].props:
+      header.add(" __attribute__((pure))")
     add(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", header))
 
 proc genProcNoForward(m: BModule, prc: PSym) =
