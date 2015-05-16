@@ -24,6 +24,17 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   var y = order.ord - 1
   result = (x xor y) - y
 
+proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
+  ## fills the array ``a[first..last]`` with `value`.
+  var x = first
+  while x <= last:
+    a[x] = value
+    inc(x)
+
+proc fill*[T](a: var openArray[T], value: T) =
+  ## fills the array `a` with `value`.
+  fill(a, 0, a.high, value)
+
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## reverses the array ``a[first..last]``.
   var x = first
