@@ -56,7 +56,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 		width:917px;
 		height:268px;
 		pointer-events:none;
-		background:url("images/logo.png") no-repeat; }
+		background:url("images/nim-logo.svg") no-repeat; }
 	#head.docs #head-logo { left:-381px; position:fixed; }
 	#head.forum #head-logo { left:-370px; }
 	
