@@ -709,7 +709,7 @@ proc ident*(name: string): NimNode {.compileTime,inline.} = newIdentNode(name)
   ## Create a new ident node from a string
 
 iterator items*(n: NimNode): NimNode {.inline.} =
-  if n[0] != nil:
+  if n.kind in {nnkType, nnkMetaNode .. nnkReturnToken}:
     for i in 0 .. high(n):
       yield n[i]
 
