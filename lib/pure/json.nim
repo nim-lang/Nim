@@ -951,8 +951,11 @@ proc pretty*(node: JsonNode, indent = 2): string =
 
 proc toUgly*(result: var string, node: JsonNode) =
   ## Converts `node` to its JSON Representation, without
-  ## regard for human readability. Meant to improve '$' string 
+  ## regard for human readability. Meant to improve ``$`` string
   ## conversion performance.
+  ##
+  ## This provides higher efficiency than the ``toPretty`` procedure as it
+  ## does **not** attempt to format the resulting JSON to make it human readable.
   var comma = false
   case node.kind:
   of JArray:
@@ -984,11 +987,6 @@ proc toUgly*(result: var string, node: JsonNode) =
     result.add(if node.bval: "true" else: "false")
   of JNull:
     result.add "null"
-
-proc toUgly*(node: JsonNode): string =
-  ## Converts `node` to its JSON Representation on one line.
-  result = newStringOfCap(node.len shl 1)
-  toUgly(result, node)
 
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
