@@ -708,9 +708,10 @@ proc `$`*(node: NimNode): string {.compileTime.} =
 proc ident*(name: string): NimNode {.compileTime,inline.} = newIdentNode(name)
   ## Create a new ident node from a string
 
-iterator items*(n: NimNode): NimNode {.inline.}=
-  for i in 0 .. high(n):
-    yield n[i]
+iterator items*(n: NimNode): NimNode {.inline.} =
+  if n[0] != nil:
+    for i in 0 .. high(n):
+      yield n[i]
 
 {.deprecated: [children: items].}
 
