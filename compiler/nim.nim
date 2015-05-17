@@ -42,6 +42,7 @@ proc handleCmdLine() =
       gProjectName = "stdinfile"
       gProjectFull = "stdinfile"
       gProjectPath = getCurrentDir()
+      gProjectIsStdin = true
     elif gProjectName != "":
       try:
         gProjectFull = canonicalizePath(gProjectName)

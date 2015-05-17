@@ -148,7 +148,7 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
         return
     else:
       result.id = getID()
-    if sfMainModule in flags and gProjectName == "-":
+    if sfMainModule in flags and gProjectIsStdin:
       processModule(result, llStreamOpen(stdin), rd)
     else:
       processModule(result, nil, rd)
