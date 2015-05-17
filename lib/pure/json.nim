@@ -761,7 +761,7 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode =
+proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, returns nil
   assert(not isNil(node))
@@ -771,7 +771,7 @@ proc `[]`*(node: JsonNode, name: string): JsonNode =
       return item
   return nil
 
-proc `[]`*(node: JsonNode, index: int): JsonNode =
+proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds
   assert(not isNil(node))
@@ -799,7 +799,7 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
   assert obj.kind == JObject
   obj.fields.add((key, val))
 
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) =
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`. Performs a check for duplicate keys.
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
@@ -815,7 +815,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   result = node
   for key in keys:
     if isNil(result) or result.kind!=JObject:
-      return nil    
+      return nil
     result=result[key]
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
@@ -1153,7 +1153,7 @@ when false:
 when isMainModule:
   #var node = parse("{ \"test\": null }")
   #echo(node.existsKey("test56"))
-  
+
   var parsed = parseFile("tests/testdata/jsontest.json")
   var parsed2 = parseFile("tests/testdata/jsontest2.json")
 
@@ -1192,17 +1192,17 @@ when isMainModule:
   except:
     assert(false, "EInvalidIndex thrown for valid index")
 
-  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}") 
-  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil") 
+  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
+  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
   assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
   assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
   assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
- 
+
   # Generator:
   var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}] 
+  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
   var j2 = %*
     [
@@ -1230,7 +1230,7 @@ when isMainModule:
       }
     ]
   assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-  
+
   when not defined(testing):
     discard """
     while true:
