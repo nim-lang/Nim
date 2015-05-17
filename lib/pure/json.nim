@@ -761,7 +761,7 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode =
+proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, returns nil
   assert(not isNil(node))
@@ -771,7 +771,7 @@ proc `[]`*(node: JsonNode, name: string): JsonNode =
       return item
   return nil
 
-proc `[]`*(node: JsonNode, index: int): JsonNode =
+proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds
   assert(not isNil(node))
@@ -799,7 +799,7 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
   assert obj.kind == JObject
   obj.fields.add((key, val))
 
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) =
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`. Performs a check for duplicate keys.
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
