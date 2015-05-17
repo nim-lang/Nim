@@ -9,6 +9,10 @@ News
   Changes affecting backwards compatibility
   -----------------------------------------
 
+  - The ``miliseconds`` property of ``times.TimeInterval`` is now ``milliseconds``.
+    Code accessing that property is deprecated and code using ``miliseconds``
+    during object initialization or as a named parameter of ``initInterval()``
+    will need to be updated.
 
   Language Additions
   ------------------

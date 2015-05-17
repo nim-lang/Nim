@@ -64,7 +64,7 @@
 ## ========
 ## Currently all functions support an optional timeout, by default the timeout is set to
 ## `-1` which means that the function will never time out. The timeout is
-## measured in miliseconds, once it is set any call on a socket which may
+## measured in milliseconds, once it is set any call on a socket which may
 ## block will be susceptible to this timeout, however please remember that the
 ## function as a whole can take longer than the specified timeout, only
 ## individual internal calls on the socket are affected. In practice this means
@@ -386,7 +386,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   ## | Requests ``url`` with the custom method string specified by the
   ## | ``httpMethod`` parameter.
   ## | Extra headers can be specified and must be separated by ``\c\L``
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var headers = substr(httpMethod, len("http"))
@@ -440,7 +440,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               userAgent = defUserAgent, proxy: Proxy = nil): Response =
   ## | Requests ``url`` with the specified ``httpMethod``.
   ## | Extra headers can be specified and must be separated by ``\c\L``
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout,
                    userAgent, proxy)
@@ -467,7 +467,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
   ## | GETs the ``url`` and returns a ``Response`` object
   ## | This proc also handles redirection
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
@@ -486,7 +486,7 @@ proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
   ## | GETs the body and returns it as a string.
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = get(url, extraHeaders, maxRedirects, sslContext, timeout, userAgent,
               proxy)
@@ -505,7 +505,7 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   ## | The optional ``multipart`` parameter can be used to create
   ## ``multipart/form-data`` POSTs comfortably.
@@ -542,7 +542,7 @@ proc postContent*(url: string, extraHeaders = "", body = "",
   ## | POSTs ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   ## | The optional ``multipart`` parameter can be used to create
   ## ``multipart/form-data`` POSTs comfortably.
@@ -558,7 +558,7 @@ proc downloadFile*(url: string, outputFilename: string,
                    timeout = -1, userAgent = defUserAgent,
                    proxy: Proxy = nil) =
   ## | Downloads ``url`` and saves it to ``outputFilename``
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var f: File
   if open(f, outputFilename, fmWrite):

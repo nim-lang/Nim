@@ -1154,7 +1154,7 @@ else:
 
 proc sleepAsync*(ms: int): Future[void] =
   ## Suspends the execution of the current async procedure for the next
-  ## ``ms`` miliseconds.
+  ## ``ms`` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
   let p = getGlobalDispatcher()
   p.timers.add((epochTime() + (ms / 1000), retFuture))

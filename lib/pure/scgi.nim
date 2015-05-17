@@ -126,7 +126,7 @@ proc close*(s: var ScgiState) =
   s.server.close()
 
 proc next*(s: var ScgiState, timeout: int = -1): bool = 
-  ## proceed to the first/next request. Waits ``timeout`` miliseconds for a
+  ## proceed to the first/next request. Waits ``timeout`` milliseconds for a
   ## request, if ``timeout`` is `-1` then this function will never time out.
   ## Returns `true` if a new request has been processed.
   var rsocks = @[s.server]

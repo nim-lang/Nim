@@ -134,7 +134,7 @@ type
   ## everything should be positive or everything negative. Zero is
   ## fine too. Mixed signs will lead to unexpected results.
   TimeInterval* = object ## a time interval
-    miliseconds*: int ## The number of miliseconds
+    milliseconds*: int ## The number of milliseconds
     seconds*: int     ## The number of seconds
     minutes*: int     ## The number of minutes
     hours*: int       ## The number of hours
@@ -144,6 +144,11 @@ type
 
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
+
+proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
+
+proc `miliseconds=`*(t:var TimeInterval, milliseconds: int) {.deprecated.} =
+  t.milliseconds = milliseconds
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
@@ -208,13 +213,13 @@ proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
 
 proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
-  ## get the miliseconds from the start of the program. **Deprecated since
+  ## get the milliseconds from the start of the program. **Deprecated since
   ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
 
-proc initInterval*(miliseconds, seconds, minutes, hours, days, months,
+proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval =
   ## creates a new ``TimeInterval``.
-  result.miliseconds = miliseconds
+  result.milliseconds = milliseconds
   result.seconds = seconds
   result.minutes = minutes
   result.hours = hours
@@ -264,7 +269,7 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
   result += float(newinterv.hours * 60 * 60)
   result += float(newinterv.minutes * 60)
   result += float(newinterv.seconds)
-  result += newinterv.miliseconds / 1000
+  result += newinterv.milliseconds / 1000
 
 proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## adds ``interval`` time.
@@ -530,7 +535,7 @@ elif defined(JS):
     startMilsecs = getTime()
 
   proc getStartMilsecs(): int =
-    ## get the miliseconds from the start of the program
+    ## get the milliseconds from the start of the program
     return int(getTime() - startMilsecs)
 
   proc valueOf(time: Time): float {.importcpp: "getTime", tags:[]}

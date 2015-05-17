@@ -303,7 +303,7 @@ proc execProcesses*(cmds: openArray[string],
       close(p)
 
 proc select*(readfds: var seq[Process], timeout = 500): int
-  ## `select` with a sensible Nim interface. `timeout` is in miliseconds.
+  ## `select` with a sensible Nim interface. `timeout` is in milliseconds.
   ## Specify -1 for no timeout. Returns the number of processes that are
   ## ready to read from. The processes that are ready to be read from are
   ## removed from `readfds`.

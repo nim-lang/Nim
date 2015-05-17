@@ -986,7 +986,7 @@ proc select*(readfds, writefds, exceptfds: var seq[Socket],
   ## Traditional select function. This function will return the number of
   ## sockets that are ready to be read from, written to, or which have errors.
   ## If there are none; 0 is returned. 
-  ## ``Timeout`` is in miliseconds and -1 can be specified for no timeout.
+  ## ``Timeout`` is in milliseconds and -1 can be specified for no timeout.
   ## 
   ## Sockets which are **not** ready for reading, writing or which don't have
   ## errors waiting on them are removed from the ``readfds``, ``writefds``,
@@ -1040,7 +1040,7 @@ proc selectWrite*(writefds: var seq[Socket],
   ## written to. The sockets which **cannot** be written to will also be removed
   ## from ``writefds``.
   ##
-  ## ``timeout`` is specified in miliseconds and ``-1`` can be specified for
+  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   
@@ -1174,7 +1174,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
 
 proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
   tags: [ReadIOEffect, TimeEffect].} =
-  ## overload with a ``timeout`` parameter in miliseconds.
+  ## overload with a ``timeout`` parameter in milliseconds.
   var waited = 0.0 # number of seconds already waited  
   
   var read = 0
@@ -1197,7 +1197,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1): int =
   ## This function will throw an EOS exception when an error occurs. A value
   ## lower than 0 is never returned.
   ##
-  ## A timeout may be specified in miliseconds, if enough data is not received
+  ## A timeout may be specified in milliseconds, if enough data is not received
   ## within the time specified an ETimeout exception will be raised.
   ##
   ## **Note**: ``data`` must be initialised.
@@ -1258,7 +1258,7 @@ proc recvLine*(socket: Socket, line: var TaintedString, timeout = -1): bool {.
   ## If the socket is disconnected, ``line`` will be set to ``""`` and ``True``
   ## will be returned.
   ##
-  ## A timeout can be specified in miliseconds, if data is not received within
+  ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
   ##
   ## **Deprecated since version 0.9.2**: This function has been deprecated in
@@ -1302,7 +1302,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1) {.
   ##
   ## An EOS exception will be raised in the case of a socket error.
   ##
-  ## A timeout can be specified in miliseconds, if data is not received within
+  ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
   
   template addNLIfEmpty(): stmt =
@@ -1433,7 +1433,7 @@ proc recv*(socket: Socket): TaintedString {.tags: [ReadIOEffect], deprecated.} =
 proc recvTimeout*(socket: Socket, timeout: int): TaintedString {.
   tags: [ReadIOEffect], deprecated.} =
   ## overloaded variant to support a ``timeout`` parameter, the ``timeout``
-  ## parameter specifies the amount of miliseconds to wait for data on the
+  ## parameter specifies the amount of milliseconds to wait for data on the
   ## socket.
   ##
   ## **Deprecated since version 0.9.2**: This function is not safe for use.
@@ -1554,7 +1554,7 @@ proc skip*(socket: Socket) {.tags: [ReadIOEffect], deprecated.} =
 proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.
   ##
-  ## An optional timeout can be specified in miliseconds, if skipping the
+  ## An optional timeout can be specified in milliseconds, if skipping the
   ## bytes takes longer than specified an ETimeout exception will be raised.
   ##
   ## Returns the number of skipped bytes.
@@ -1708,7 +1708,7 @@ proc connect*(socket: Socket, address: string, port = Port(0), timeout: int,
              af: Domain = AF_INET) {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Connects to server as specified by ``address`` on port specified by ``port``.
   ##
-  ## The ``timeout`` paremeter specifies the time in miliseconds to allow for
+  ## The ``timeout`` paremeter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
   let originalStatus = not socket.nonblocking
   socket.setBlocking(false)
