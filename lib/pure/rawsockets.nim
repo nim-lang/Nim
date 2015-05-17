@@ -392,7 +392,7 @@ proc select*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## Traditional select function. This function will return the number of
   ## sockets that are ready to be read from, written to, or which have errors.
   ## If there are none; 0 is returned. 
-  ## ``Timeout`` is in miliseconds and -1 can be specified for no timeout.
+  ## ``Timeout`` is in milliseconds and -1 can be specified for no timeout.
   ## 
   ## A socket is removed from the specific ``seq`` when it has data waiting to
   ## be read/written to or has errors (``exceptfds``).
@@ -416,7 +416,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ## written to. The sockets which can be written to will also be removed
   ## from ``writefds``.
   ##
-  ## ``timeout`` is specified in miliseconds and ``-1`` can be specified for
+  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
   

@@ -704,7 +704,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
 
 proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
   tags: [ReadIOEffect, TimeEffect].} =
-  ## overload with a ``timeout`` parameter in miliseconds.
+  ## overload with a ``timeout`` parameter in milliseconds.
   var waited = 0.0 # number of seconds already waited  
   
   var read = 0
@@ -729,7 +729,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ## This function will throw an EOS exception when an error occurs. A value
   ## lower than 0 is never returned.
   ##
-  ## A timeout may be specified in miliseconds, if enough data is not received
+  ## A timeout may be specified in milliseconds, if enough data is not received
   ## within the time specified an ETimeout exception will be raised.
   ##
   ## **Note**: ``data`` must be initialised.
@@ -777,7 +777,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
   ##
   ## An EOS exception will be raised in the case of a socket error.
   ##
-  ## A timeout can be specified in miliseconds, if data is not received within
+  ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
@@ -844,7 +844,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
 proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.
   ##
-  ## An optional timeout can be specified in miliseconds, if skipping the
+  ## An optional timeout can be specified in milliseconds, if skipping the
   ## bytes takes longer than specified an ETimeout exception will be raised.
   ##
   ## Returns the number of skipped bytes.
@@ -967,7 +967,7 @@ proc connect*(socket: Socket, address: string, port = Port(0), timeout: int,
              af: Domain = AF_INET) {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Connects to server as specified by ``address`` on port specified by ``port``.
   ##
-  ## The ``timeout`` paremeter specifies the time in miliseconds to allow for
+  ## The ``timeout`` paremeter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
   socket.fd.setBlocking(false)
   
