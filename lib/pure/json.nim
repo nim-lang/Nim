@@ -970,15 +970,12 @@ proc toUgly*(result: var string, node: JsonNode) =
     for key, value in items(node.fields):
       if comma: result.add ","
       else:     comma = true
-      result.add "\""
       result.add key.escapeJson()
-      result.add "\":"
+      result.add ":"
       result.toUgly value
     result.add "}"
   of JString:
-    result.add "\""
     result.add node.str.escapeJson()
-    result.add "\""
   of JInt:
     result.add($node.num)
   of JFloat:
@@ -1214,6 +1211,11 @@ when isMainModule:
   assert(testJson{"doesnt_exist"}{"anything"}.isNil)
   testJson{["c", "d"]} = %true
   assert(testJson["c"]["d"].bval)
+
+  # test `$`
+  let stringified = $testJson
+  let parsedAgain = parseJson(stringified)
+  assert(parsedAgain["b"].str == "asd")
 
   # Bounds checking
   try:
