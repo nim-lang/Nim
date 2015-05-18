@@ -1276,7 +1276,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNSetIntVal:
       decodeB(rkNode)
       var dest = regs[ra].node
-      if dest.kind in {nkCharLit..nkInt64Lit} and
+      if dest.kind in {nkCharLit..nkUInt64Lit} and
          regs[rb].kind in {rkInt}:
         dest.intVal = regs[rb].intVal
       else:
