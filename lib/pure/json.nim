@@ -815,7 +815,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   result = node
   for key in keys:
     if isNil(result) or result.kind!=JObject:
-      return nil
+      return nil    
     result=result[key]
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
@@ -949,49 +949,10 @@ proc pretty*(node: JsonNode, indent = 2): string =
   result = ""
   toPretty(result, node, indent)
 
-proc toUgly*(result: var string, node: JsonNode) =
-  ## Converts `node` to its JSON Representation, without
-  ## regard for human readability. Meant to improve ``$`` string
-  ## conversion performance.
-  ##
-  ## This provides higher efficiency than the ``toPretty`` procedure as it
-  ## does **not** attempt to format the resulting JSON to make it human readable.
-  var comma = false
-  case node.kind:
-  of JArray:
-    result.add "["
-    for child in node.elems:
-      if comma: result.add ","
-      else:     comma = true
-      result.toUgly child
-    result.add "]"
-  of JObject:
-    result.add "{"
-    for key, value in items(node.fields):
-      if comma: result.add ","
-      else:     comma = true
-      result.add "\""
-      result.add key.escapeJson()
-      result.add "\":"
-      result.toUgly value
-    result.add "}"
-  of JString:
-    result.add "\""
-    result.add node.str.escapeJson()
-    result.add "\""
-  of JInt:
-    result.add($node.num)
-  of JFloat:
-    result.add($node.fnum)
-  of JBool:
-    result.add(if node.bval: "true" else: "false")
-  of JNull:
-    result.add "null"
-
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
-  result = newStringOfCap(node.len shl 1)
-  toUgly(result, node)
+  result = ""
+  toPretty(result, node, 0, false)
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
@@ -1192,7 +1153,7 @@ when false:
 when isMainModule:
   #var node = parse("{ \"test\": null }")
   #echo(node.existsKey("test56"))
-
+  
   var parsed = parseFile("tests/testdata/jsontest.json")
   var parsed2 = parseFile("tests/testdata/jsontest2.json")
 
@@ -1231,17 +1192,17 @@ when isMainModule:
   except:
     assert(false, "EInvalidIndex thrown for valid index")
 
-  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
-  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
+  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}") 
+  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil") 
   assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
   assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
   assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
-
+ 
   # Generator:
   var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}] 
 
   var j2 = %*
     [
@@ -1269,7 +1230,7 @@ when isMainModule:
       }
     ]
   assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-
+  
   when not defined(testing):
     discard """
     while true:
