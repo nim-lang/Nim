@@ -1121,7 +1121,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       let a = regs[rb].node
       case a.kind
-      of nkCharLit..nkInt64Lit: regs[ra].intVal = a.intVal
+      of nkCharLit..nkUInt64Lit: regs[ra].intVal = a.intVal
       else: stackTrace(c, tos, pc, errFieldXNotFound, "intVal")
     of opcNFloatVal:
       decodeB(rkFloat)
