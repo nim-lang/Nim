@@ -117,50 +117,45 @@ proc `==`*(a, b: Option): bool =
 
 
 when isMainModule:
-  template expect(E: expr, body: stmt) =
-    try:
-      body
-      assert false, E.type.name & " not raised"
-    except E:
-      discard
+  import unittest
 
+  suite "optionals":
+    # work around a bug in unittest
+    let intNone = none(int)
+    let stringNone = none(string)
 
-  block: # example
-    proc find(haystack: string, needle: char): Option[int] =
-      for i, c in haystack:
-        if c == needle:
-          return some i
+    test "example":
+      proc find(haystack: string, needle: char): Option[int] =
+        for i, c in haystack:
+          if c == needle:
+            return some i
 
-    assert("abc".find('c').get() == 2)
+      check("abc".find('c').get() == 2)
 
-    let result = "team".find('i')
+      let result = "team".find('i')
 
-    assert result == none(int)
-    assert result.has == false
+      check result == intNone
+      check result.isNone
 
-  block: # some
-    assert some(6).get() == 6
-    assert some("a").unsafeGet() == "a"
-    assert some(6).isSome
-    assert some("a").isSome
+    test "some":
+      check some(6).get() == 6
+      check some("a").unsafeGet() == "a"
+      check some(6).isSome
+      check some("a").isSome
 
-  block: # none
-    expect FieldError:
-      discard none(int).get()
-    assert(none(int).isNone)
-    assert(not none(string).isSome)
+    test "none":
+      expect FieldError:
+        discard none(int).get()
+      check(none(int).isNone)
+      check(not none(string).isSome)
 
-  block: # equality
-    assert some("a") == some("a")
-    assert some(7) != some(6)
-    assert some("a") != none(string)
-    assert none(int) == none(int)
+    test "equality":
+      check some("a") == some("a")
+      check some(7) != some(6)
+      check some("a") != stringNone
+      check intNone == intNone
 
-    when compiles(some("a") == some(5)):
-      assert false
-    when compiles(none(string) == none(int)):
-      assert false
-
-  block: # stringification
-    assert "some(7)" == $some(7)
-    assert "none(int)" == $none(int)
+      when compiles(some("a") == some(5)):
+        check false
+      when compiles(none(string) == none(int)):
+        check false
