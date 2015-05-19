@@ -1052,11 +1052,13 @@ proc genArg(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
   add(r.res, "(")
+  var hasArgs = false
   for i in countup(1, sonsLen(n) - 1):
     let it = n.sons[i]
     if it.typ.isCompileTimeOnly: continue
-    if i > 1: add(r.res, ", ")
+    if hasArgs: add(r.res, ", ")
     genArg(p, it, r)
+    hasArgs = true
   add(r.res, ")")
   r.kind = resExpr
 
