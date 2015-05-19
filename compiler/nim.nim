@@ -38,7 +38,12 @@ proc handleCmdLine() =
   else:
     # Process command line arguments:
     processCmdLine(passCmd1, "")
-    if gProjectName != "":
+    if gProjectName == "-":
+      gProjectName = "stdinfile"
+      gProjectFull = "stdinfile"
+      gProjectPath = getCurrentDir()
+      gProjectIsStdin = true
+    elif gProjectName != "":
       try:
         gProjectFull = canonicalizePath(gProjectName)
       except OSError:
@@ -61,8 +66,6 @@ proc handleCmdLine() =
         if gCmd == cmdRun:
           tccgen.run(commands.arguments)
       if optRun in gGlobalOptions:
-        if gProjectName == "-":
-          gProjectFull = "stdinfile"
         if gCmd == cmdCompileToJS:
           var ex: string
           if options.outFile.len > 0:

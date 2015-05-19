@@ -149,6 +149,7 @@ var
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
   gProjectFull* = "" # projectPath/projectName
+  gProjectIsStdin* = false # whether we're compiling from stdin
   gProjectMainIdx*: int32 # the canonical path id of the main module
   nimcacheDir* = ""
   command* = "" # the main command (e.g. cc, check, scan, etc)
