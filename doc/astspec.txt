@@ -23,7 +23,7 @@ contains:
       case kind: NimNodeKind           ## the node's kind
       of nnkNone, nnkEmpty, nnkNilLit:
         discard                        ## node contains no additional fields
-      of nnkCharLit..nnkInt64Lit:
+      of nnkCharLit..nnkUInt64Lit:
         intVal: biggestInt             ## the int literal
       of nnkFloatLit..nnkFloat64Lit:
         floatVal: biggestFloat         ## the float literal
