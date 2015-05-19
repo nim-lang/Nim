@@ -43,11 +43,11 @@
 ##
 ##   try:
 ##     assert("abc".find('c').get() == 2)  # Immediately extract the value
-##   except FieldError:  # If there is no value
+##   except UnpackError:  # If there is no value
 ##     assert false  # This will not be reached, because the value is present
 ##
 ## The ``get`` operation demonstrated above returns the underlying value, or
-## raises ``FieldError`` if there is no value. There is another option for
+## raises ``UnpackError`` if there is no value. There is another option for
 ## obtaining the value: ``unsafeGet``, but you must only use it when you are
 ## absolutely sure the value is present (e.g. after checking ``isSome``). If
 ## you do not care about the tiny overhead that ``get`` causes, you should
@@ -67,7 +67,7 @@
 ##   try:
 ##     echo result.get()
 ##     assert(false)  # This will not be reached
-##   except FieldError:  # Because an exception is raised
+##   except UnpackError:  # Because an exception is raised
 ##     discard
 
 import typetraits
@@ -78,6 +78,7 @@ type
     ## An optional type that stores its value and state separately in a boolean.
     val: T
     has: bool
+  UnpackError* = ref object of ValueError
 
 
 proc some*[T](val: T): Option[T] =
@@ -106,7 +107,7 @@ proc get*[T](self: Option[T]): T =
   ## Returns contents of the Option. If it is none, then an exception is
   ## thrown.
   if self.isNone:
-    raise newException(FieldError, "Can't obtain a value from a `none`")
+    raise UnpackError(msg : "Can't obtain a value from a `none`")
   self.val
 
 
@@ -144,7 +145,7 @@ when isMainModule:
       check some("a").isSome
 
     test "none":
-      expect FieldError:
+      expect UnpackError:
         discard none(int).get()
       check(none(int).isNone)
       check(not none(string).isSome)
