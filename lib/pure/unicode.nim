@@ -1305,6 +1305,18 @@ proc reversed*(s: string): string =
 
   reverseUntil(len(s))
 
+proc UTF8toLower*(s: string): string =
+    ## Converts a string containing UTF8 characters to lowercase.
+    result = ""
+    for r in runes(s):
+        result.add(r.toLower.toUTF8)
+
+proc UTF8toUpper*(s: string): string =
+    ## Converts a string containing UTF8 characters to uppercase.
+    result = ""
+    for r in runes(s):
+        result.add(r.toUpper.toUTF8)
+
 when isMainModule:
   let
     someString = "öÑ"
