@@ -193,11 +193,17 @@ when not defined(useNimRtl):
   proc reprRecord(result: var string, p: pointer, typ: PNimType,
                   cl: var TReprClosure) =
     add result, "["
-    let oldLen = result.len
-    reprRecordAux(result, p, typ.node, cl)
-    if typ.base != nil: 
-      if oldLen != result.len: add result, ",\n"
-      reprRecordAux(result, p, typ.base.node, cl)
+    var curTyp = typ
+    var lastPart = ""
+    while curTyp.base != nil:
+      var part = ""
+      reprRecordAux(part, p, curTyp.node, cl)
+      if part.len > 0:
+        if lastPart.len > 0:
+          add result, ",\n"
+        add result, part
+      lastPart = part
+      curTyp = curTyp.base
     add result, "]"
 
   proc reprRef(result: var string, p: pointer, typ: PNimType,
