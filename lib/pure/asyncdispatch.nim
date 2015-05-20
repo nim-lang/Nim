@@ -1328,7 +1328,7 @@ proc processBody(node, retFutureSym: NimNode,
     else: discard
   of nnkDiscardStmt:
     # discard await x
-    if node[0].kind != nnkEmpty and node[0][0].kind == nnkIdent and
+    if node[0].kind == nnkCommand and node[0][0].kind == nnkIdent and
           node[0][0].ident == !"await":
       var newDiscard = node
       result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
