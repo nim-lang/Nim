@@ -194,15 +194,15 @@ when not defined(useNimRtl):
                   cl: var TReprClosure) =
     add result, "["
     var curTyp = typ
-    var lastPart = ""
+    var first = true
     while curTyp.base != nil:
       var part = ""
       reprRecordAux(part, p, curTyp.node, cl)
       if part.len > 0:
-        if lastPart.len > 0:
+        if not first:
           add result, ",\n"
         add result, part
-      lastPart = part
+        first = false
       curTyp = curTyp.base
     add result, "]"
 
