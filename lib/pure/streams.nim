@@ -240,22 +240,9 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
   ## ``CRLF``. The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
-  line.string.setLen(0)
   let pos = getPosition(s)
-  while true:
-    var c = readChar(s)
-    if c == '\c': 
-      c = readChar(s)
-      break
-    elif c == '\L': break
-    elif c == '\0':
-      if line.len > 0: break
-      else: 
-        setPosition(s, pos)
-        return false
-    line.string.add(c)
-  setPosition(s, pos)
-  result = true
+  defer: setPosition(s, pos)
+  readLine(s, line)
 
 proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises 
@@ -274,19 +261,9 @@ proc readLine*(s: Stream): TaintedString =
 proc peekLine*(s: Stream): TaintedString =
   ## Peeks a line from a stream `s`. Note: This is not very efficient. Raises 
   ## `EIO` if an error occurred.
-  result = TaintedString""
   let pos = getPosition(s)
-  while true:
-    var c = readChar(s)
-    if c == '\c': 
-      c = readChar(s)
-      setPosition(s, pos)
-      break
-    if c == '\L' or c == '\0':
-      setPosition(s, pos)
-      break
-    else:
-      result.string.add(c)
+  defer: setPosition(s, pos)
+  readLine(s)
 
 type
   StringStream* = ref StringStreamObj ## a stream that encapsulates a string
