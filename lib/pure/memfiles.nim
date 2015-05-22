@@ -196,7 +196,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if mappedSize != -1:
       result.size = mappedSize
     else:
-      var stat: TStat
+      var stat: Stat
       if fstat(result.handle, stat) != -1:
         # XXX: Hmm, this could be unsafe
         # Why is mmap taking int anyway?

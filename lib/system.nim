@@ -249,7 +249,7 @@ when defined(nimNewShared):
     guarded* {.magic: "Guarded".}
 
 # comparison operators:
-proc `==` *[TEnum: enum](x, y: TEnum): bool {.magic: "EqEnum", noSideEffect.}
+proc `==` *[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
 proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
 proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
@@ -260,7 +260,7 @@ proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
 proc `==` *[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
 
-proc `<=` *[TEnum: enum](x, y: TEnum): bool {.magic: "LeEnum", noSideEffect.}
+proc `<=` *[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}
 proc `<=` *(x, y: char): bool {.magic: "LeCh", noSideEffect.}
 proc `<=` *[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
@@ -268,7 +268,7 @@ proc `<=` *(x, y: bool): bool {.magic: "LeB", noSideEffect.}
 proc `<=` *[T](x, y: ref T): bool {.magic: "LePtr", noSideEffect.}
 proc `<=` *(x, y: pointer): bool {.magic: "LePtr", noSideEffect.}
 
-proc `<` *[TEnum: enum](x, y: TEnum): bool {.magic: "LtEnum", noSideEffect.}
+proc `<` *[Enum: enum](x, y: Enum): bool {.magic: "LtEnum", noSideEffect.}
 proc `<` *(x, y: string): bool {.magic: "LtStr", noSideEffect.}
 proc `<` *(x, y: char): bool {.magic: "LtCh", noSideEffect.}
 proc `<` *[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
@@ -311,6 +311,8 @@ when not defined(JS):
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: UncheckedCharArray
     NimString = ptr NimStringDesc
+    GenericSeq = TGenericSeq
+#  {.deprecated: [TGenericSeq: GenericSeq].}
 
 when not defined(JS) and not defined(NimrodVM):
   template space(s: PGenericSeq): int {.dirty.} =
@@ -332,7 +334,7 @@ type
 
   RootObj* {.exportc: "TNimObject", inheritable.} =
     object ## the root of Nim's object hierarchy. Objects should
-           ## inherit from TObject or one of its descendants. However,
+           ## inherit from RootObj or one of its descendants. However,
            ## objects that have no ancestor are allowed.
   RootRef* = ref RootObj ## reference to RootObj
 
@@ -1505,7 +1507,7 @@ proc `$` *(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
-proc `$` *[TEnum: enum](x: TEnum): string {.magic: "EnumToStr", noSideEffect.}
+proc `$` *[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## The stringify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic. If
   ## a ``$`` operator for a concrete enumeration is provided, this is
@@ -2213,6 +2215,7 @@ type
     filename*: cstring  ## filename of the proc that is currently executing
     len*: int16         ## length of the inspectable slots
     calldepth*: int16   ## used for max call depth checking
+#{.deprecated: [TFrame: Frame].}
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -2414,7 +2417,7 @@ when not defined(JS): #and not defined(NimrodVM):
 
     proc open*(f: var File, filehandle: FileHandle,
                mode: FileMode = fmRead): bool {.tags: [], benign.}
-      ## Creates a ``TFile`` from a `filehandle` with given `mode`.
+      ## Creates a ``File`` from a `filehandle` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
 
@@ -2604,6 +2607,8 @@ when not defined(JS): #and not defined(NimrodVM):
       context: C_JmpBuf
       hasRaiseAction: bool
       raiseAction: proc (e: ref Exception): bool {.closure.}
+    SafePoint = TSafePoint
+#  {.deprecated: [TSafePoint: SafePoint].}
 
   when declared(initAllocator):
     initAllocator()
@@ -3054,9 +3059,10 @@ proc raiseAssert*(msg: string) {.noinline.} =
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   # trick the compiler to not list ``AssertionError`` when called
   # by ``assert``.
-  type THide = proc (msg: string) {.noinline, raises: [], noSideEffect,
+  type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
-  THide(raiseAssert)(msg)
+  {.deprecated: [THide: Hide].}
+  Hide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note

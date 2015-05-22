@@ -68,7 +68,7 @@ type
     jsonArrayStart,      ## start of an array: the ``[`` token
     jsonArrayEnd         ## start of an array: the ``]`` token
 
-  TTokKind = enum        # must be synchronized with TJsonEventKind!
+  TokKind = enum         # must be synchronized with TJsonEventKind!
     tkError,
     tkEof,
     tkString,
@@ -103,14 +103,14 @@ type
 
   JsonParser* = object of BaseLexer ## the parser object.
     a: string
-    tok: TTokKind
+    tok: TokKind
     kind: JsonEventKind
     err: JsonError
     state: seq[ParserState]
     filename: string
 
 {.deprecated: [TJsonEventKind: JsonEventKind, TJsonError: JsonError,
-  TJsonParser: JsonParser].}
+  TJsonParser: JsonParser, TTokKind: TokKind].}
 
 const
   errorMessages: array [JsonError, string] = [
@@ -126,7 +126,7 @@ const
     "EOF expected",
     "expression expected"
   ]
-  tokToStr: array [TTokKind, string] = [
+  tokToStr: array [TokKind, string] = [
     "invalid token",
     "EOF",
     "string literal",
@@ -203,7 +203,7 @@ proc handleHexChar(c: char, x: var int): bool =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: result = false # error
 
-proc parseString(my: var JsonParser): TTokKind =
+proc parseString(my: var JsonParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
   var buf = my.buf
@@ -359,7 +359,7 @@ proc parseName(my: var JsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc getTok(my: var JsonParser): TTokKind =
+proc getTok(my: var JsonParser): TokKind =
   setLen(my.a, 0)
   skip(my) # skip whitespace, comments
   case my.buf[my.bufpos]
@@ -734,7 +734,7 @@ proc `==`* (a,b: JsonNode): bool =
     of JObject:
       a.fields == b.fields
 
-proc hash* (n:JsonNode): THash =
+proc hash* (n:JsonNode): Hash =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
@@ -1016,7 +1016,7 @@ iterator mpairs*(node: var JsonNode): var tuple[key: string, val: JsonNode] =
   for keyVal in mitems(node.fields):
     yield keyVal
 
-proc eat(p: var JsonParser, tok: TTokKind) =
+proc eat(p: var JsonParser, tok: TokKind) =
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])
 
@@ -1091,8 +1091,10 @@ when not defined(js):
 else:
   from math import `mod`
   type
-    TJSObject = object
-  proc parseNativeJson(x: cstring): TJSObject {.importc: "JSON.parse".}
+    JSObject = object
+  {.deprecated: [TJSObject: JSObject].}
+
+  proc parseNativeJson(x: cstring): JSObject {.importc: "JSON.parse".}
 
   proc getVarType(x): JsonNodeKind =
     result = JNull
@@ -1111,25 +1113,25 @@ else:
     of "[object String]": return JString
     else: assert false
 
-  proc len(x: TJSObject): int =
+  proc len(x: JSObject): int =
     assert x.getVarType == JArray
     asm """
       return `x`.length;
     """
 
-  proc `[]`(x: TJSObject, y: string): TJSObject =
+  proc `[]`(x: JSObject, y: string): JSObject =
     assert x.getVarType == JObject
     asm """
       return `x`[`y`];
     """
 
-  proc `[]`(x: TJSObject, y: int): TJSObject =
+  proc `[]`(x: JSObject, y: int): JSObject =
     assert x.getVarType == JArray
     asm """
       return `x`[`y`];
     """
 
-  proc convertObject(x: TJSObject): JsonNode =
+  proc convertObject(x: JSObject): JsonNode =
     case getVarType(x)
     of JArray:
       result = newJArray()
@@ -1141,7 +1143,7 @@ else:
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
-      var nimValue: TJSObject
+      var nimValue: JSObject
       asm "`nimProperty` = property; `nimValue` = `x`[property];"
       result[$nimProperty] = nimValue.convertObject()
       asm "}}"

@@ -38,7 +38,7 @@ type                          # Network Control Block
     ncb_lana_num*: char       # lana (adapter) number
     ncb_cmd_cplt*: char       # 0xff => commmand pending
     ncb_reserve*: array[0..9, char] # reserved, used by BIOS
-    ncb_event*: THandle       # HANDLE to Win32 event which
+    ncb_event*: Handle        # HANDLE to Win32 event which
                               # will be set to the signalled
                               # state when an ASYNCH command
                               # completes

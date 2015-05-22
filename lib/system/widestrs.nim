@@ -14,8 +14,9 @@ when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 type
-  TUtf16Char* = distinct int16
-  WideCString* = ref array[0.. 1_000_000, TUtf16Char]
+  Utf16Char* = distinct int16
+  WideCString* = ref array[0.. 1_000_000, Utf16Char]
+{.deprecated: [TUtf16Char: Utf16Char].}
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to

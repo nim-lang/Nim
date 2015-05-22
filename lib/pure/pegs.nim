@@ -74,8 +74,8 @@ type
     line: int                     ## line the symbol has been declared/used in
     col: int                      ## column the symbol has been declared/used in
     flags: set[NonTerminalFlag]   ## the nonterminal's flags
-    rule: TNode                   ## the rule that the symbol refers to
-  TNode {.shallow.} = object
+    rule: Node                   ## the rule that the symbol refers to
+  Node {.shallow.} = object
     case kind: PegKind
     of pkEmpty..pkWhitespace: nil
     of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle: term: string
@@ -83,12 +83,12 @@ type
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
     of pkNonTerminal: nt: NonTerminal
     of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
-    else: sons: seq[TNode]
+    else: sons: seq[Node]
   NonTerminal* = ref NonTerminalObj
 
-  Peg* = TNode ## type that represents a PEG
+  Peg* = Node ## type that represents a PEG
 
-{.deprecated: [TPeg: Peg].}
+{.deprecated: [TPeg: Peg, TNode: Node].}
 
 proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
@@ -1014,12 +1014,12 @@ proc split*(s: string, sep: Peg): seq[string] {.
 # ------------------- scanner -------------------------------------------------
 
 type
-  TModifier = enum
+  Modifier = enum
     modNone,
     modVerbatim,
     modIgnoreCase,
     modIgnoreStyle
-  TTokKind = enum       ## enumeration of all tokens
+  TokKind = enum       ## enumeration of all tokens
     tkInvalid,          ## invalid token
     tkEof,              ## end of file reached
     tkAny,              ## .
@@ -1046,9 +1046,9 @@ type
     tkDollar,           ## '$'
     tkHat               ## '^'
 
-  TToken {.final.} = object  ## a token
-    kind: TTokKind           ## the type of the token
-    modifier: TModifier
+  Token {.final.} = object  ## a token
+    kind: TokKind           ## the type of the token
+    modifier: Modifier
     literal: string          ## the parsed (string) literal
     charset: set[char]       ## if kind == tkCharSet
     index: int               ## if kind == tkBackref
@@ -1060,9 +1060,10 @@ type
     lineStart: int            ## index of last line start in buffer
     colOffset: int            ## column to add
     filename: string
+{.deprecated: [TTokKind: TokKind, TToken: Token, TModifier: Modifier].}
 
 const
-  tokKindToStr: array[TTokKind, string] = [
+  tokKindToStr: array[TokKind, string] = [
     "invalid", "[EOF]", ".", "_", "identifier", "string literal",
     "character set", "(", ")", "{", "}", "{@}",
     "<-", "/", "*", "+", "&", "!", "?",
@@ -1114,7 +1115,7 @@ proc handleHexChar(c: var PegLexer, xi: var int) =
     inc(c.bufpos)
   else: discard
 
-proc getEscapedChar(c: var PegLexer, tok: var TToken) =
+proc getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)
   case c.buf[c.bufpos]
   of 'r', 'R', 'c', 'C':
@@ -1185,7 +1186,7 @@ proc skip(c: var PegLexer) =
       break                   # EndOfFile also leaves the loop
   c.bufpos = pos
 
-proc getString(c: var PegLexer, tok: var TToken) =
+proc getString(c: var PegLexer, tok: var Token) =
   tok.kind = tkStringLit
   var pos = c.bufpos + 1
   var buf = c.buf
@@ -1207,7 +1208,7 @@ proc getString(c: var PegLexer, tok: var TToken) =
       inc(pos)
   c.bufpos = pos
 
-proc getDollar(c: var PegLexer, tok: var TToken) =
+proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
   var buf = c.buf
   if buf[pos] in {'0'..'9'}:
@@ -1220,7 +1221,7 @@ proc getDollar(c: var PegLexer, tok: var TToken) =
     tok.kind = tkDollar
   c.bufpos = pos
 
-proc getCharSet(c: var PegLexer, tok: var TToken) =
+proc getCharSet(c: var PegLexer, tok: var Token) =
   tok.kind = tkCharSet
   tok.charset = {}
   var pos = c.bufpos + 1
@@ -1271,7 +1272,7 @@ proc getCharSet(c: var PegLexer, tok: var TToken) =
   c.bufpos = pos
   if caret: tok.charset = {'\1'..'\xFF'} - tok.charset
 
-proc getSymbol(c: var PegLexer, tok: var TToken) =
+proc getSymbol(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos
   var buf = c.buf
   while true:
@@ -1281,7 +1282,7 @@ proc getSymbol(c: var PegLexer, tok: var TToken) =
   c.bufpos = pos
   tok.kind = tkIdentifier
 
-proc getBuiltin(c: var PegLexer, tok: var TToken) =
+proc getBuiltin(c: var PegLexer, tok: var Token) =
   if c.buf[c.bufpos+1] in strutils.Letters:
     inc(c.bufpos)
     getSymbol(c, tok)
@@ -1290,7 +1291,7 @@ proc getBuiltin(c: var PegLexer, tok: var TToken) =
     tok.kind = tkEscaped
     getEscapedChar(c, tok) # may set tok.kind to tkInvalid
 
-proc getTok(c: var PegLexer, tok: var TToken) =
+proc getTok(c: var PegLexer, tok: var Token) =
   tok.kind = tkInvalid
   tok.modifier = modNone
   setLen(tok.literal, 0)
@@ -1408,9 +1409,9 @@ type
   EInvalidPeg* = object of ValueError ## raised if an invalid
                                          ## PEG has been detected
   PegParser = object of PegLexer ## the PEG parser object
-    tok: TToken
+    tok: Token
     nonterms: seq[NonTerminal]
-    modifier: TModifier
+    modifier: Modifier
     captures: int
     identIsVerbatim: bool
     skip: Peg
@@ -1425,7 +1426,7 @@ proc getTok(p: var PegParser) =
   getTok(p, p.tok)
   if p.tok.kind == tkInvalid: pegError(p, "invalid token")
 
-proc eat(p: var PegParser, kind: TTokKind) =
+proc eat(p: var PegParser, kind: TokKind) =
   if p.tok.kind == kind: getTok(p)
   else: pegError(p, tokKindToStr[kind] & " expected")
 
@@ -1439,13 +1440,13 @@ proc getNonTerminal(p: var PegParser, name: string): NonTerminal =
   result = newNonTerminal(name, getLine(p), getColumn(p))
   add(p.nonterms, result)
 
-proc modifiedTerm(s: string, m: TModifier): Peg =
+proc modifiedTerm(s: string, m: Modifier): Peg =
   case m
   of modNone, modVerbatim: result = term(s)
   of modIgnoreCase: result = termIgnoreCase(s)
   of modIgnoreStyle: result = termIgnoreStyle(s)
 
-proc modifiedBackref(s: int, m: TModifier): Peg =
+proc modifiedBackref(s: int, m: Modifier): Peg =
   case m
   of modNone, modVerbatim: result = backref(s)
   of modIgnoreCase: result = backrefIgnoreCase(s)

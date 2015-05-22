@@ -15,11 +15,12 @@
 import openssl, strutils, os
 
 type
-  TSecureSocket* = object
+  SecureSocket* = object
     ssl: SslPtr
     bio: BIO
+{.deprecated: [TSecureSocket: SecureSocket].}
 
-proc connect*(sock: var TSecureSocket, address: string, 
+proc connect*(sock: var SecureSocket, address: string, 
     port: int): int =
   ## Connects to the specified `address` on the specified `port`.
   ## Returns the result of the certificate validation.
@@ -52,7 +53,7 @@ proc connect*(sock: var TSecureSocket, address: string,
   
   result = SSL_get_verify_result(sock.ssl)
 
-proc recvLine*(sock: TSecureSocket, line: var TaintedString): bool =
+proc recvLine*(sock: SecureSocket, line: var TaintedString): bool =
   ## Acts in a similar fashion to the `recvLine` in the sockets module.
   ## Returns false when no data is available to be read.
   ## `Line` must be initialized and not nil!
@@ -71,19 +72,19 @@ proc recvLine*(sock: TSecureSocket, line: var TaintedString): bool =
     add(line.string, c)
 
 
-proc send*(sock: TSecureSocket, data: string) =
+proc send*(sock: SecureSocket, data: string) =
   ## Writes `data` to the socket.
   if BIO_write(sock.bio, data, data.len.cint) <= 0:
     raiseOSError(osLastError())
 
-proc close*(sock: TSecureSocket) =
+proc close*(sock: SecureSocket) =
   ## Closes the socket
   if BIO_free(sock.bio) <= 0:
     ERR_print_errors_fp(stderr)
     raiseOSError(osLastError())
 
 when not defined(testing) and isMainModule:
-  var s: TSecureSocket
+  var s: SecureSocket
   echo connect(s, "smtp.gmail.com", 465)
   
   #var buffer: array[0..255, char]

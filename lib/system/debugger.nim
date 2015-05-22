@@ -10,22 +10,23 @@
 ## This file implements basic features for any debugger.
 
 type
-  TVarSlot* {.compilerproc, final.} = object ## a slot in a frame
+  VarSlot* {.compilerproc, final.} = object ## a slot in a frame
     address*: pointer ## the variable's address
     typ*: PNimType    ## the variable's type
     name*: cstring    ## the variable's name; for globals this is "module.name"
 
-  PExtendedFrame = ptr TExtendedFrame
-  TExtendedFrame = object  # If the debugger is enabled the compiler
+  PExtendedFrame = ptr ExtendedFrame
+  ExtendedFrame = object  # If the debugger is enabled the compiler
                            # provides an extended frame. Of course
                            # only slots that are
                            # needed are allocated and not 10_000,
                            # except for the global data description.
-    f: TFrame
-    slots: array[0..10_000, TVarSlot]
+    f: Frame
+    slots: array[0..10_000, VarSlot]
+{.deprecated: [TVarSlot: VarSlot, TExtendedFrame: ExtendedFrame].}
 
 var
-  dbgGlobalData: TExtendedFrame # this reserves much space, but
+  dbgGlobalData: ExtendedFrame  # this reserves much space, but
                                 # for now it is the most practical way
 
 proc dbgRegisterGlobal(name: cstring, address: pointer,
@@ -39,7 +40,7 @@ proc dbgRegisterGlobal(name: cstring, address: pointer,
   dbgGlobalData.slots[i].address = address
   inc(dbgGlobalData.f.len)
 
-proc getLocal*(frame: PFrame; slot: int): TVarSlot {.inline.} =
+proc getLocal*(frame: PFrame; slot: int): VarSlot {.inline.} =
   ## retrieves the meta data for the local variable at `slot`. CAUTION: An
   ## invalid `slot` value causes a corruption!
   result = cast[PExtendedFrame](frame).slots[slot]
@@ -48,7 +49,7 @@ proc getGlobalLen*(): int {.inline.} =
   ## gets the number of registered globals.
   result = dbgGlobalData.f.len
 
-proc getGlobal*(slot: int): TVarSlot {.inline.} =
+proc getGlobal*(slot: int): VarSlot {.inline.} =
   ## retrieves the meta data for the global variable at `slot`. CAUTION: An
   ## invalid `slot` value causes a corruption!
   result = dbgGlobalData.slots[slot]
@@ -56,13 +57,13 @@ proc getGlobal*(slot: int): TVarSlot {.inline.} =
 # ------------------- breakpoint support ------------------------------------
 
 type
-  TBreakpoint* = object  ## represents a break point
+  Breakpoint* = object   ## represents a break point
     low*, high*: int     ## range from low to high; if disabled
                          ## both low and high are set to their negative values
     filename*: cstring   ## the filename of the breakpoint
 
 var
-  dbgBP: array[0..127, TBreakpoint] # breakpoints
+  dbgBP: array[0..127, Breakpoint] # breakpoints
   dbgBPlen: int
   dbgBPbloom: int64  # we use a bloom filter to speed up breakpoint checking
   
@@ -131,16 +132,16 @@ proc canonFilename*(filename: cstring): cstring =
     if fileMatches(result, filename): return result
   result = nil
 
-iterator listBreakpoints*(): ptr TBreakpoint =
+iterator listBreakpoints*(): ptr Breakpoint =
   ## lists all breakpoints.
   for i in 0..dbgBPlen-1: yield addr(dbgBP[i])
 
-proc isActive*(b: ptr TBreakpoint): bool = b.low > 0
-proc flip*(b: ptr TBreakpoint) =
+proc isActive*(b: ptr Breakpoint): bool = b.low > 0
+proc flip*(b: ptr Breakpoint) =
   ## enables or disables 'b' depending on its current state.
   b.low = -b.low; b.high = -b.high
 
-proc checkBreakpoints*(filename: cstring, line: int): ptr TBreakpoint =
+proc checkBreakpoints*(filename: cstring, line: int): ptr Breakpoint =
   ## in which breakpoint (if any) we are.
   if (dbgBPbloom and line) != line: return nil
   for b in listBreakpoints():
@@ -149,29 +150,30 @@ proc checkBreakpoints*(filename: cstring, line: int): ptr TBreakpoint =
 # ------------------- watchpoint support ------------------------------------
 
 type
-  THash = int
-  TWatchpoint {.pure, final.} = object
+  Hash = int
+  Watchpoint {.pure, final.} = object
     name: cstring
     address: pointer
     typ: PNimType
-    oldValue: THash
+    oldValue: Hash
+{.deprecated: [THash: Hash, TWatchpoint: Watchpoint].}
 
 var
-  watchpoints: array [0..99, TWatchpoint]
+  watchpoints: array [0..99, Watchpoint]
   watchpointsLen: int
 
-proc `!&`(h: THash, val: int): THash {.inline.} =
+proc `!&`(h: Hash, val: int): Hash {.inline.} =
   result = h +% val
   result = result +% result shl 10
   result = result xor (result shr 6)
 
-proc `!$`(h: THash): THash {.inline.} =
+proc `!$`(h: Hash): Hash {.inline.} =
   result = h +% h shl 3
   result = result xor (result shr 11)
   result = result +% result shl 15
 
-proc hash(data: pointer, size: int): THash =
-  var h: THash = 0
+proc hash(data: pointer, size: int): Hash =
+  var h: Hash = 0
   var p = cast[cstring](data)
   var i = 0
   var s = size
@@ -181,14 +183,14 @@ proc hash(data: pointer, size: int): THash =
     dec(s)
   result = !$h
 
-proc hashGcHeader(data: pointer): THash =
+proc hashGcHeader(data: pointer): Hash =
   const headerSize = sizeof(int)*2
   result = hash(cast[pointer](cast[int](data) -% headerSize), headerSize)
 
 proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool,
-                    h: THash): THash
+                    h: Hash): Hash
 proc genericHashAux(dest: pointer, n: ptr TNimNode, shallow: bool,
-                    h: THash): THash =
+                    h: Hash): Hash =
   var d = cast[ByteAddress](dest)
   case n.kind
   of nkSlot:
@@ -204,7 +206,7 @@ proc genericHashAux(dest: pointer, n: ptr TNimNode, shallow: bool,
   of nkNone: sysAssert(false, "genericHashAux")
 
 proc genericHashAux(dest: pointer, mt: PNimType, shallow: bool, 
-                    h: THash): THash =
+                    h: Hash): Hash =
   sysAssert(mt != nil, "genericHashAux 2")
   case mt.kind
   of tyString:

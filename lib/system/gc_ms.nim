@@ -26,49 +26,50 @@ when defined(memProfiler):
   proc nimProfile(requestedSize: int)
 
 type
-  TWalkOp = enum
+  WalkOp = enum
     waMarkGlobal,  # we need to mark conservatively for global marker procs
                    # as these may refer to a global var and not to a thread
                    # local
     waMarkPrecise  # fast precise marking
 
-  TFinalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
-  TGlobalMarkerProc = proc () {.nimcall, benign.}
+  GlobalMarkerProc = proc () {.nimcall, benign.}
 
-  TGcStat = object
+  GcStat = object
     collections: int         # number of performed full collections
     maxThreshold: int        # max threshold that has been set
     maxStackSize: int        # max stack size
     freedObjects: int        # max entries in cycle table
 
-  TGcHeap = object           # this contains the zero count and
+  GcHeap = object            # this contains the zero count and
                              # non-zero count table
     stackBottom: pointer
     cycleThreshold: int
     when useCellIds:
       idGenerator: int
     when withBitvectors:
-      allocated, marked: TCellSet
-    tempStack: TCellSeq      # temporary stack for recursion elimination
+      allocated, marked: CellSet
+    tempStack: CellSeq       # temporary stack for recursion elimination
     recGcLock: int           # prevent recursion via finalizers; no thread lock
-    region: TMemRegion       # garbage collected region
-    stat: TGcStat
-    additionalRoots: TCellSeq # dummy roots for GC_ref/unref
-
+    region: MemRegion        # garbage collected region
+    stat: GcStat
+    additionalRoots: CellSeq # dummy roots for GC_ref/unref
+{.deprecated: [TWalkOp: WalkOp, TFinalizer: Finalizer, TGcStat: GcStat,
+              TGlobalMarkerProc: GlobalMarkerProc, TGcHeap, GcHeap].}
 var
-  gch {.rtlThreadVar.}: TGcHeap
+  gch {.rtlThreadVar.}: GcHeap
 
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
 
-template acquire(gch: TGcHeap) =
+template acquire(gch: GcHeap) =
   when hasThreadSupport and hasSharedHeap:
     acquireSys(HeapLock)
 
-template release(gch: TGcHeap) =
+template release(gch: GcHeap) =
   when hasThreadSupport and hasSharedHeap:
     releaseSys(HeapLock)
 
@@ -80,11 +81,11 @@ template gcAssert(cond: bool, msg: string) =
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
-  result = cast[pointer](cast[ByteAddress](cell)+%ByteAddress(sizeof(TCell)))
+  result = cast[pointer](cast[ByteAddress](cell)+%ByteAddress(sizeof(Cell)))
 
 proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
-  result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(TCell)))
+  result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
 
 proc canbeCycleRoot(c: PCell): bool {.inline.} =
   result = ntfAcyclic notin c.typ.flags
@@ -101,9 +102,9 @@ proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
 
 var
   globalMarkersLen: int
-  globalMarkers: array[0.. 7_000, TGlobalMarkerProc]
+  globalMarkers: array[0.. 7_000, GlobalMarkerProc]
 
-proc nimRegisterGlobalMarker(markerProc: TGlobalMarkerProc) {.compilerProc.} =
+proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
   if globalMarkersLen <= high(globalMarkers):
     globalMarkers[globalMarkersLen] = markerProc
     inc globalMarkersLen
@@ -116,11 +117,11 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
 
 # forward declarations:
-proc collectCT(gch: var TGcHeap) {.benign.}
+proc collectCT(gch: var GcHeap) {.benign.}
 proc isOnStack*(p: pointer): bool {.noinline, benign.}
-proc forAllChildren(cell: PCell, op: TWalkOp) {.benign.}
-proc doOperation(p: pointer, op: TWalkOp) {.benign.}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) {.benign.}
+proc forAllChildren(cell: PCell, op: WalkOp) {.benign.}
+proc doOperation(p: pointer, op: WalkOp) {.benign.}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
 proc prepareDealloc(cell: PCell) =
@@ -131,7 +132,7 @@ proc prepareDealloc(cell: PCell) =
     # prevend recursive entering here by a lock.
     # XXX: we should set the cell's children to nil!
     inc(gch.recGcLock)
-    (cast[TFinalizer](cell.typ.finalizer))(cellToUsr(cell))
+    (cast[Finalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(gch.recGcLock)
 
 proc nimGCref(p: pointer) {.compilerProc.} =
@@ -182,7 +183,7 @@ proc setupForeignThreadGc*() =
     setStackBottom(addr(stackTop))
     initGC()
 
-proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) {.benign.} =
+proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
   case n.kind
   of nkSlot: forAllChildrenAux(cast[pointer](d +% n.offset), n.typ, op)
@@ -194,7 +195,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: TWalkOp) {.benign.} =
     if m != nil: forAllSlotsAux(dest, m, op)
   of nkNone: sysAssert(false, "forAllSlotsAux")
 
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) =
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
   var d = cast[ByteAddress](dest)
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
@@ -208,7 +209,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: TWalkOp) =
         forAllChildrenAux(cast[pointer](d +% i *% mt.base.size), mt.base, op)
     else: discard
 
-proc forAllChildren(cell: PCell, op: TWalkOp) =
+proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
   gcAssert(cell.typ != nil, "forAllChildren: 2")
   gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
@@ -228,12 +229,12 @@ proc forAllChildren(cell: PCell, op: TWalkOp) =
             GenericSeqSize), cell.typ.base, op)
     else: discard
 
-proc rawNewObj(typ: PNimType, size: int, gch: var TGcHeap): pointer =
+proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   acquire(gch)
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(TCell)))
+  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
@@ -285,20 +286,20 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
 
-proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
+proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   acquire(gch)
   collectCT(gch)
   var ol = usrToCell(old)
   sysAssert(ol.typ != nil, "growObj: 1")
   gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
 
-  var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(TCell)))
+  var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
   var elemSize = 1
   if ol.typ.kind != tyString: elemSize = ol.typ.base.size
 
   var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
-  copyMem(res, ol, oldsize + sizeof(TCell))
-  zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(TCell)),
+  copyMem(res, ol, oldsize + sizeof(Cell))
+  zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
           newsize-oldsize)
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
   when false:
@@ -306,7 +307,7 @@ proc growObj(old: pointer, newsize: int, gch: var TGcHeap): pointer =
     when withBitvectors: excl(gch.allocated, ol)
     when reallyDealloc: rawDealloc(gch.region, ol)
     else:
-      zeroMem(ol, sizeof(TCell))
+      zeroMem(ol, sizeof(Cell))
   when withBitvectors: incl(gch.allocated, res)
   when useCellIds:
     inc gch.idGenerator
@@ -322,7 +323,7 @@ proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
 
 # ----------------- collector -----------------------------------------------
 
-proc mark(gch: var TGcHeap, c: PCell) =
+proc mark(gch: var GcHeap, c: PCell) =
   when withBitvectors:
     incl(gch.marked, c)
     gcAssert gch.tempStack.len == 0, "stack not empty!"
@@ -344,7 +345,7 @@ proc mark(gch: var TGcHeap, c: PCell) =
         d.refCount = rcBlack
         forAllChildren(d, waMarkPrecise)
 
-proc doOperation(p: pointer, op: TWalkOp) =
+proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
   var c: PCell = usrToCell(p)
   gcAssert(c != nil, "doOperation: 1")
@@ -359,17 +360,17 @@ proc doOperation(p: pointer, op: TWalkOp) =
   of waMarkPrecise: add(gch.tempStack, c)
 
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
-  doOperation(d, TWalkOp(op))
+  doOperation(d, WalkOp(op))
 
-proc freeCyclicCell(gch: var TGcHeap, c: PCell) =
+proc freeCyclicCell(gch: var GcHeap, c: PCell) =
   inc gch.stat.freedObjects
   prepareDealloc(c)
   when reallyDealloc: rawDealloc(gch.region, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
-    zeroMem(c, sizeof(TCell))
+    zeroMem(c, sizeof(Cell))
 
-proc sweep(gch: var TGcHeap) =
+proc sweep(gch: var GcHeap) =
   when withBitvectors:
     for c in gch.allocated.elementsExcept(gch.marked):
       gch.allocated.excl(c)
@@ -391,12 +392,12 @@ when false:
           writeStackTrace()
           quit 1
 
-proc markGlobals(gch: var TGcHeap) =
+proc markGlobals(gch: var GcHeap) =
   for i in 0 .. < globalMarkersLen: globalMarkers[i]()
   let d = gch.additionalRoots.d
   for i in 0 .. < gch.additionalRoots.len: mark(gch, d[i])
 
-proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
+proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
   var cell = usrToCell(p)
   var c = cast[ByteAddress](cell)
@@ -446,7 +447,7 @@ when defined(sparc): # For SPARC architecture.
     var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
-  proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
+  proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
     when defined(sparcv9):
       asm  """"flushw \n" """
     else:
@@ -479,10 +480,10 @@ elif stackIncreases:
 
   var
     jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
-      # a little hack to get the size of a TJmpBuf in the generated C code
+      # a little hack to get the size of a JmpBuf in the generated C code
       # in a platform independent way
 
-  proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
+  proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
     var registers: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       var max = cast[ByteAddress](gch.stackBottom)
@@ -505,7 +506,7 @@ else:
     var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
-  proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
+  proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
     # We use a jmp_buf buffer that is in the C stack.
     # Used to traverse the stack and registers assuming
     # that 'setjmp' will save registers in the C stack.
@@ -534,7 +535,7 @@ else:
 # end of non-portable code
 # ----------------------------------------------------------------------------
 
-proc collectCTBody(gch: var TGcHeap) =
+proc collectCTBody(gch: var GcHeap) =
   gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
   prepareForInteriorPointerChecking(gch.region)
   markStackAndRegisters(gch)
@@ -549,7 +550,7 @@ proc collectCTBody(gch: var TGcHeap) =
   gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
   sysAssert(allocInv(gch.region), "collectCT: end")
 
-proc collectCT(gch: var TGcHeap) =
+proc collectCT(gch: var GcHeap) =
   if getOccupiedMem(gch.region) >= gch.cycleThreshold and gch.recGcLock == 0:
     collectCTBody(gch)
 

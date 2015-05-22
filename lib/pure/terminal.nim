@@ -20,7 +20,7 @@ when defined(windows):
   import windows, os
 
   var
-    conHandle: THandle
+    conHandle: Handle
   # = createFile("CONOUT$", GENERIC_WRITE, 0, nil, OPEN_ALWAYS, 0, 0)
 
   block:
@@ -51,11 +51,11 @@ else:
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
     discard fd.tcgetattr(addr mode)
-    mode.c_iflag = mode.c_iflag and not Tcflag(BRKINT or ICRNL or INPCK or
+    mode.c_iflag = mode.c_iflag and not Cflag(BRKINT or ICRNL or INPCK or
       ISTRIP or IXON)
-    mode.c_oflag = mode.c_oflag and not Tcflag(OPOST)
-    mode.c_cflag = (mode.c_cflag and not Tcflag(CSIZE or PARENB)) or CS8
-    mode.c_lflag = mode.c_lflag and not Tcflag(ECHO or ICANON or IEXTEN or ISIG)
+    mode.c_oflag = mode.c_oflag and not Cflag(OPOST)
+    mode.c_cflag = (mode.c_cflag and not Cflag(CSIZE or PARENB)) or CS8
+    mode.c_lflag = mode.c_lflag and not Cflag(ECHO or ICANON or IEXTEN or ISIG)
     mode.c_cc[VMIN] = 1.cuchar
     mode.c_cc[VTIME] = 0.cuchar
     discard fd.tcsetattr(time, addr mode)

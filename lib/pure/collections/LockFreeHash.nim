@@ -46,24 +46,25 @@ const
 
 when sizeof(int) == 4: # 32bit
   type 
-    TRaw = range[0..1073741823]
+    Raw = range[0..1073741823]
     ## The range of uint values that can be stored directly in a value slot
     ## when on a 32 bit platform
-
+  {.deprecated: [TRaw: Raw].}
 elif sizeof(int) == 8: # 64bit
   type
-    TRaw = range[0..4611686018427387903]
+    Raw = range[0..4611686018427387903]
     ## The range of uint values that can be stored directly in a value slot
     ## when on a 64 bit platform
+  {.deprecated: [TRaw: Raw].}
 else: 
   {.error: "unsupported platform".}
   
 type  
-  TEntry = tuple
+  Entry = tuple
     key: int
     value: int
 
-  TEntryArr = ptr array[0..10_000_000, TEntry]
+  EntryArr = ptr array[0..10_000_000, Entry]
   
   PConcTable[K,V] = ptr object {.pure.}
     len: int
@@ -72,8 +73,8 @@ type
     copyIdx: int
     copyDone: int
     next: PConcTable[K,V]    
-    data: TEntryArr
-
+    data: EntryArr
+{.deprecated: [TEntry: Entry, TEntryArr: EntryArr.}
 
 proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
   expVal: int, match: bool): int 
@@ -84,7 +85,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
 proc newLFTable*[K,V](size: int = minTableSize): PConcTable[K,V]  =
   let 
     dataLen = max(nextPowerOfTwo(size), minTableSize)   
-    dataSize = dataLen*sizeof(TEntry) 
+    dataSize = dataLen*sizeof(Entry) 
     dataMem = allocShared0(dataSize) 
     tableSize = 7 * intSize
     tableMem = allocShared0(tableSize)
@@ -95,7 +96,7 @@ proc newLFTable*[K,V](size: int = minTableSize): PConcTable[K,V]  =
   table.copyIdx = 0
   table.copyDone = 0
   table.next = nil
-  table.data = cast[TEntryArr](dataMem)
+  table.data = cast[EntryArr](dataMem)
   result = table
 
 #------------------------------------------------------------------------------  
@@ -107,7 +108,7 @@ proc deleteConcTable[K,V](tbl: PConcTable[K,V]) =
 
 #------------------------------------------------------------------------------  
 
-proc `[]`[K,V](table: var PConcTable[K,V], i: int): var TEntry {.inline.} =
+proc `[]`[K,V](table: var PConcTable[K,V], i: int): var Entry {.inline.} =
   table.data[i]
 
 #------------------------------------------------------------------------------
@@ -191,7 +192,7 @@ proc resize[K,V](self: PConcTable[K,V]): PConcTable[K,V] =
 #proc keyEQ[K](key1: ptr K, key2: ptr K): bool {.inline.} = 
 proc keyEQ[K](key1: int, key2: int): bool {.inline.} = 
   result = false
-  when K is TRaw:
+  when K is Raw:
     if key1 == key2: 
       result = true
   else:
@@ -236,7 +237,7 @@ proc copySlot[K,V](idx: int, oldTbl: var PConcTable[K,V], newTbl: var PConcTable
       break
   #echo("oldVal was = ", oldVal, "  set it to prime ", box)
   if isPrime(oldVal) and isTomb(oldVal): 
-    #when not (K is TRaw):
+    #when not (K is Raw):
     #  deallocShared(popPtr[K](oldKey)) 
     return false
   if isTomb(oldVal): 
@@ -343,7 +344,7 @@ proc helpCopy[K,V](table: var PConcTable[K,V]): PConcTable[K,V] =
 proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
   expVal: int, match: bool): int =
   #echo("-try set- in table ", " key = ", (popPtr[K](key)[]), " val = ", val)   
-  when K is TRaw: 
+  when K is Raw: 
     var idx = hashInt(key)    
   else:
     var idx = popPtr[K](key)[].hash                
@@ -428,7 +429,7 @@ proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
 
 proc getVal[K,V](table: var PConcTable[K,V], key: int): int = 
   #echo("-try get-  key = " & $key)
-  when K is TRaw: 
+  when K is Raw: 
     var idx = hashInt(key)
   else:
     var idx = popPtr[K](key)[].hash 
@@ -468,37 +469,37 @@ proc getVal[K,V](table: var PConcTable[K,V], key: int): int =
 
 #------------------------------------------------------------------------------
    
-#proc set*(table: var PConcTable[TRaw,TRaw], key: TRaw, val: TRaw) =
+#proc set*(table: var PConcTable[Raw,Raw], key: Raw, val: Raw) =
 #  discard setVal(table, pack(key), pack(key), 0, false)
 
-#proc set*[V](table: var PConcTable[TRaw,V], key: TRaw, val: ptr V) =
+#proc set*[V](table: var PConcTable[Raw,V], key: Raw, val: ptr V) =
 #  discard setVal(table, pack(key), cast[int](val), 0, false)
 
 proc set*[K,V](table: var PConcTable[K,V], key: var K, val: var V) =
-  when not (K is TRaw): 
+  when not (K is Raw): 
     var newKey = cast[int](copyShared(key))
   else: 
     var newKey = pack(key)
-  when not (V is TRaw): 
+  when not (V is Raw): 
     var newVal = cast[int](copyShared(val))
   else: 
     var newVal = pack(val)
   var oldPtr = pop(setVal(table, newKey, newVal, 0, false))
     #echo("oldPtr = ", cast[int](oldPtr), " newPtr = ", cast[int](newPtr))
-  when not (V is TRaw): 
+  when not (V is Raw): 
     if newVal != oldPtr and oldPtr != 0: 
       deallocShared(cast[ptr V](oldPtr))
   
  
 
 proc get*[K,V](table: var PConcTable[K,V], key: var K): V =
-  when not (V is TRaw):
-    when not (K is TRaw):
+  when not (V is Raw):
+    when not (K is Raw):
       return popPtr[V](getVal(table, cast[int](key.addr)))[]
     else: 
       return popPtr[V](getVal(table, pack(key)))[]
   else:
-    when not (K is TRaw):
+    when not (K is Raw):
       return popRaw(getVal(table, cast[int](key.addr)))
     else: 
       return popRaw(getVal(table, pack(key)))   
@@ -535,23 +536,24 @@ when not defined(testing) and isMainModule:
 
     
   type
-    TTestObj = tuple
+    TestObj = tuple
       thr: int      
       f0: int
       f1: int
 
-    TData = tuple[k: string,v: TTestObj]
-    PDataArr = array[0..numTests-1, TData]
-    Dict = PConcTable[string,TTestObj]
+    Data = tuple[k: string,v: TestObj]
+    PDataArr = array[0..numTests-1, Data]
+    Dict = PConcTable[string,TestObj]
+  {.deprecated: [TTestObj: TestObj, TData: Data].}
     
   var 
-    thr: array[0..numThreads-1, TThread[Dict]]
+    thr: array[0..numThreads-1, Thread[Dict]]
     
-    table = newLFTable[string,TTestObj](8)        
+    table = newLFTable[string,TestObj](8)        
     rand = newMersenneTwister(2525)
 
   proc createSampleData(len: int): PDataArr = 
-    #result = cast[PDataArr](allocShared0(sizeof(TData)*numTests))             
+    #result = cast[PDataArr](allocShared0(sizeof(Data)*numTests))             
     for i in 0..len-1:
       result[i].k = "mark" & $(i+1)
       #echo("mark" & $(i+1), " ", hash("mark" & $(i+1)))      

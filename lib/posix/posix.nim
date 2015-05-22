@@ -81,9 +81,10 @@ const
   DT_WHT* = 14
 
 type
-  TDIR* {.importc: "DIR", header: "<dirent.h>",
+  DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
     ## A type representing a directory stream.
+{.deprecated: [TDIR: DIR].}
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
@@ -91,47 +92,47 @@ type
 {.deprecated: [TSocketHandle: SocketHandle].}
 
 type
-  Tdirent* {.importc: "struct dirent",
+  Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
-    d_ino*: Tino  ## File serial number.
+    d_ino*: Ino  ## File serial number.
     when defined(linux) or defined(macosx) or defined(bsd):
       d_reclen*: cshort ## Length of this record. (not POSIX)
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
       when defined(linux) or defined(bsd):
-        d_off*: TOff  ## Not an offset. Value that ``telldir()`` would return.
+        d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
     d_name*: array [0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
             header: "<fcntl.h>".} = object ## flock type
     l_type*: cshort   ## Type of lock; F_RDLCK, F_WRLCK, F_UNLCK.
     l_whence*: cshort ## Flag for starting offset.
-    l_start*: TOff    ## Relative offset in bytes.
-    l_len*: TOff      ## Size; if 0 then until EOF.
-    l_pid*: TPid      ## Process ID of the process holding the lock;
+    l_start*: Off     ## Relative offset in bytes.
+    l_len*: Off       ## Size; if 0 then until EOF.
+    l_pid*: Pid      ## Process ID of the process holding the lock;
                       ## returned with F_GETLK.
 
-  TFTW* {.importc: "struct FTW", header: "<ftw.h>", final, pure.} = object
+  FTW* {.importc: "struct FTW", header: "<ftw.h>", final, pure.} = object
     base*: cint
     level*: cint
 
-  TGlob* {.importc: "glob_t", header: "<glob.h>",
+  Glob* {.importc: "glob_t", header: "<glob.h>",
            final, pure.} = object ## glob_t
     gl_pathc*: int          ## Count of paths matched by pattern.
     gl_pathv*: cstringArray ## Pointer to a list of matched pathnames.
     gl_offs*: int           ## Slots to reserve at the beginning of gl_pathv.
 
-  TGroup* {.importc: "struct group", header: "<grp.h>",
+  Group* {.importc: "struct group", header: "<grp.h>",
             final, pure.} = object ## struct group
     gr_name*: cstring     ## The name of the group.
-    gr_gid*: TGid         ## Numerical group ID.
+    gr_gid*: Gid         ## Numerical group ID.
     gr_mem*: cstringArray ## Pointer to a null-terminated array of character
                           ## pointers to member names.
 
-  Ticonv* {.importc: "iconv_t", header: "<iconv.h>", final, pure.} =
+  Iconv* {.importc: "iconv_t", header: "<iconv.h>", final, pure.} =
     object ## Identifies the conversion from one codeset to another.
 
-  Tlconv* {.importc: "struct lconv", header: "<locale.h>", final,
+  Lconv* {.importc: "struct lconv", header: "<locale.h>", final,
             pure.} = object
     currency_symbol*: cstring
     decimal_point*: cstring
@@ -158,8 +159,8 @@ type
     p_sign_posn*: char
     thousands_sep*: cstring
 
-  TMqd* {.importc: "mqd_t", header: "<mqueue.h>", final, pure.} = object
-  TMqAttr* {.importc: "struct mq_attr",
+  Mqd* {.importc: "mqd_t", header: "<mqueue.h>", final, pure.} = object
+  MqAttr* {.importc: "struct mq_attr",
              header: "<mqueue.h>",
              final, pure.} = object ## message queue attribute
     mq_flags*: int   ## Message queue flags.
@@ -167,64 +168,64 @@ type
     mq_msgsize*: int ## Maximum message size.
     mq_curmsgs*: int ## Number of messages currently queued.
 
-  TPasswd* {.importc: "struct passwd", header: "<pwd.h>",
+  Passwd* {.importc: "struct passwd", header: "<pwd.h>",
              final, pure.} = object ## struct passwd
     pw_name*: cstring   ## User's login name.
-    pw_uid*: Tuid       ## Numerical user ID.
-    pw_gid*: TGid       ## Numerical group ID.
+    pw_uid*: Uid        ## Numerical user ID.
+    pw_gid*: Gid        ## Numerical group ID.
     pw_dir*: cstring    ## Initial working directory.
     pw_shell*: cstring  ## Program to use as shell.
 
-  Tblkcnt* {.importc: "blkcnt_t", header: "<sys/types.h>".} = int
+  Blkcnt* {.importc: "blkcnt_t", header: "<sys/types.h>".} = int
     ## used for file block counts
-  Tblksize* {.importc: "blksize_t", header: "<sys/types.h>".} = int
+  Blksize* {.importc: "blksize_t", header: "<sys/types.h>".} = int
     ## used for block sizes
-  TClock* {.importc: "clock_t", header: "<sys/types.h>".} = int
-  TClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = int
-  TDev* {.importc: "dev_t", header: "<sys/types.h>".} = int
-  Tfsblkcnt* {.importc: "fsblkcnt_t", header: "<sys/types.h>".} = int
-  Tfsfilcnt* {.importc: "fsfilcnt_t", header: "<sys/types.h>".} = int
-  TGid* {.importc: "gid_t", header: "<sys/types.h>".} = int
-  Tid* {.importc: "id_t", header: "<sys/types.h>".} = int
-  Tino* {.importc: "ino_t", header: "<sys/types.h>".} = int
-  TKey* {.importc: "key_t", header: "<sys/types.h>".} = int
-  TMode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
-  TNlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
-  TOff* {.importc: "off_t", header: "<sys/types.h>".} = int64
-  TPid* {.importc: "pid_t", header: "<sys/types.h>".} = int
-  Tpthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
-  Tpthread_barrier* {.importc: "pthread_barrier_t",
+  Clock* {.importc: "clock_t", header: "<sys/types.h>".} = int
+  ClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = int
+  Dev* {.importc: "dev_t", header: "<sys/types.h>".} = int
+  Fsblkcnt* {.importc: "fsblkcnt_t", header: "<sys/types.h>".} = int
+  Fsfilcnt* {.importc: "fsfilcnt_t", header: "<sys/types.h>".} = int
+  Gid* {.importc: "gid_t", header: "<sys/types.h>".} = int
+  Id* {.importc: "id_t", header: "<sys/types.h>".} = int
+  Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
+  Key* {.importc: "key_t", header: "<sys/types.h>".} = int
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
+  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
+  Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
+  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int
+  Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
+  Pthread_barrier* {.importc: "pthread_barrier_t",
                       header: "<sys/types.h>".} = int
-  Tpthread_barrierattr* {.importc: "pthread_barrierattr_t",
+  Pthread_barrierattr* {.importc: "pthread_barrierattr_t",
                           header: "<sys/types.h>".} = int
-  Tpthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>".} = int
-  Tpthread_condattr* {.importc: "pthread_condattr_t",
+  Pthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>".} = int
+  Pthread_condattr* {.importc: "pthread_condattr_t",
                        header: "<sys/types.h>".} = int
-  Tpthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = int
-  Tpthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
-  Tpthread_mutexattr* {.importc: "pthread_mutexattr_t",
+  Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = int
+  Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
+  Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>".} = int
-  Tpthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = int
-  Tpthread_rwlock* {.importc: "pthread_rwlock_t",
+  Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = int
+  Pthread_rwlock* {.importc: "pthread_rwlock_t",
                      header: "<sys/types.h>".} = int
-  Tpthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
+  Pthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
                          header: "<sys/types.h>".} = int
-  Tpthread_spinlock* {.importc: "pthread_spinlock_t",
+  Pthread_spinlock* {.importc: "pthread_spinlock_t",
                        header: "<sys/types.h>".} = int
-  Tpthread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
-  Tsuseconds* {.importc: "suseconds_t", header: "<sys/types.h>".} = int
+  Pthread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
+  Suseconds* {.importc: "suseconds_t", header: "<sys/types.h>".} = int
   #Ttime* {.importc: "time_t", header: "<sys/types.h>".} = int
-  Ttimer* {.importc: "timer_t", header: "<sys/types.h>".} = int
-  Ttrace_attr* {.importc: "trace_attr_t", header: "<sys/types.h>".} = int
-  Ttrace_event_id* {.importc: "trace_event_id_t",
+  Timer* {.importc: "timer_t", header: "<sys/types.h>".} = int
+  Trace_attr* {.importc: "trace_attr_t", header: "<sys/types.h>".} = int
+  Trace_event_id* {.importc: "trace_event_id_t",
                      header: "<sys/types.h>".} = int
-  Ttrace_event_set* {.importc: "trace_event_set_t",
+  Trace_event_set* {.importc: "trace_event_set_t",
                       header: "<sys/types.h>".} = int
-  Ttrace_id* {.importc: "trace_id_t", header: "<sys/types.h>".} = int
-  Tuid* {.importc: "uid_t", header: "<sys/types.h>".} = int
-  Tuseconds* {.importc: "useconds_t", header: "<sys/types.h>".} = int
+  Trace_id* {.importc: "trace_id_t", header: "<sys/types.h>".} = int
+  Uid* {.importc: "uid_t", header: "<sys/types.h>".} = int
+  Useconds* {.importc: "useconds_t", header: "<sys/types.h>".} = int
 
-  Tutsname* {.importc: "struct utsname",
+  Utsname* {.importc: "struct utsname",
               header: "<sys/utsname.h>",
               final, pure.} = object ## struct utsname
     sysname*,      ## Name of this implementation of the operating system.
@@ -235,25 +236,25 @@ type
       machine*: array [0..255, char] ## Name of the hardware type on which the
                                      ## system is running.
 
-  TSem* {.importc: "sem_t", header: "<semaphore.h>", final, pure.} = object
-  Tipc_perm* {.importc: "struct ipc_perm",
+  Sem* {.importc: "sem_t", header: "<semaphore.h>", final, pure.} = object
+  Ipc_perm* {.importc: "struct ipc_perm",
                header: "<sys/ipc.h>", final, pure.} = object ## struct ipc_perm
-    uid*: Tuid    ## Owner's user ID.
-    gid*: TGid    ## Owner's group ID.
-    cuid*: Tuid   ## Creator's user ID.
-    cgid*: TGid   ## Creator's group ID.
-    mode*: TMode  ## Read/write permission.
+    uid*: Uid    ## Owner's user ID.
+    gid*: Gid    ## Owner's group ID.
+    cuid*: Uid   ## Creator's user ID.
+    cgid*: Gid   ## Creator's group ID.
+    mode*: Mode  ## Read/write permission.
 
-  TStat* {.importc: "struct stat",
+  Stat* {.importc: "struct stat",
            header: "<sys/stat.h>", final, pure.} = object ## struct stat
-    st_dev*: TDev          ## Device ID of device containing file.
-    st_ino*: Tino          ## File serial number.
-    st_mode*: TMode        ## Mode of file (see below).
-    st_nlink*: TNlink      ## Number of hard links to the file.
-    st_uid*: Tuid          ## User ID of file.
-    st_gid*: TGid          ## Group ID of file.
-    st_rdev*: TDev         ## Device ID (if file is character or block special).
-    st_size*: TOff         ## For regular files, the file size in bytes.
+    st_dev*: Dev          ## Device ID of device containing file.
+    st_ino*: Ino          ## File serial number.
+    st_mode*: Mode        ## Mode of file (see below).
+    st_nlink*: Nlink      ## Number of hard links to the file.
+    st_uid*: Uid          ## User ID of file.
+    st_gid*: Gid          ## Group ID of file.
+    st_rdev*: Dev         ## Device ID (if file is character or block special).
+    st_size*: Off         ## For regular files, the file size in bytes.
                            ## For symbolic links, the length in bytes of the
                            ## pathname contained in the symbolic link.
                            ## For a shared memory object, the length in bytes.
@@ -263,34 +264,34 @@ type
     st_atime*: Time        ## Time of last access.
     st_mtime*: Time        ## Time of last data modification.
     st_ctime*: Time        ## Time of last status change.
-    st_blksize*: Tblksize  ## A file system-specific preferred I/O block size
+    st_blksize*: Blksize   ## A file system-specific preferred I/O block size
                            ## for this object. In some file system types, this
                            ## may vary from file to file.
-    st_blocks*: Tblkcnt    ## Number of blocks allocated for this object.
+    st_blocks*: Blkcnt     ## Number of blocks allocated for this object.
 
 
-  TStatvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
+  Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
               final, pure.} = object ## struct statvfs
     f_bsize*: int        ## File system block size.
     f_frsize*: int       ## Fundamental file system block size.
-    f_blocks*: Tfsblkcnt ## Total number of blocks on file system
+    f_blocks*: Fsblkcnt  ## Total number of blocks on file system
                          ## in units of f_frsize.
-    f_bfree*: Tfsblkcnt  ## Total number of free blocks.
-    f_bavail*: Tfsblkcnt ## Number of free blocks available to
+    f_bfree*: Fsblkcnt   ## Total number of free blocks.
+    f_bavail*: Fsblkcnt  ## Number of free blocks available to
                          ## non-privileged process.
-    f_files*: Tfsfilcnt  ## Total number of file serial numbers.
-    f_ffree*: Tfsfilcnt  ## Total number of free file serial numbers.
-    f_favail*: Tfsfilcnt ## Number of file serial numbers available to
+    f_files*: Fsfilcnt   ## Total number of file serial numbers.
+    f_ffree*: Fsfilcnt   ## Total number of free file serial numbers.
+    f_favail*: Fsfilcnt  ## Number of file serial numbers available to
                          ## non-privileged process.
     f_fsid*: int         ## File system ID.
     f_flag*: int         ## Bit mask of f_flag values.
     f_namemax*: int      ## Maximum filename length.
 
-  Tposix_typed_mem_info* {.importc: "struct posix_typed_mem_info",
+  Posix_typed_mem_info* {.importc: "struct posix_typed_mem_info",
                            header: "<sys/mman.h>", final, pure.} = object
     posix_tmi_length*: int
 
-  Ttm* {.importc: "struct tm", header: "<time.h>",
+  Tm* {.importc: "struct tm", header: "<time.h>",
          final, pure.} = object ## struct tm
     tm_sec*: cint   ## Seconds [0,60].
     tm_min*: cint   ## Minutes [0,59].
@@ -301,79 +302,79 @@ type
     tm_wday*: cint  ## Day of week [0,6] (Sunday =0).
     tm_yday*: cint  ## Day of year [0,365].
     tm_isdst*: cint ## Daylight Savings flag.
-  Ttimespec* {.importc: "struct timespec",
+  Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
     tv_sec*: Time  ## Seconds.
     tv_nsec*: int  ## Nanoseconds.
-  titimerspec* {.importc: "struct itimerspec", header: "<time.h>",
+  Itimerspec* {.importc: "struct itimerspec", header: "<time.h>",
                  final, pure.} = object ## struct itimerspec
-    it_interval*: Ttimespec ## Timer period.
-    it_value*: Ttimespec    ## Timer expiration.
+    it_interval*: Timespec  ## Timer period.
+    it_value*: Timespec     ## Timer expiration.
 
-  Tsig_atomic* {.importc: "sig_atomic_t", header: "<signal.h>".} = cint
+  Sig_atomic* {.importc: "sig_atomic_t", header: "<signal.h>".} = cint
     ## Possibly volatile-qualified integer type of an object that can be
     ## accessed as an atomic entity, even in the presence of asynchronous
     ## interrupts.
-  Tsigset* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
+  Sigset* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
 
-  TsigEvent* {.importc: "struct sigevent",
+  SigEvent* {.importc: "struct sigevent",
                header: "<signal.h>", final, pure.} = object ## struct sigevent
     sigev_notify*: cint           ## Notification type.
     sigev_signo*: cint            ## Signal number.
-    sigev_value*: TsigVal         ## Signal value.
-    sigev_notify_function*: proc (x: TsigVal) {.noconv.} ## Notification func.
-    sigev_notify_attributes*: ptr Tpthread_attr ## Notification attributes.
+    sigev_value*: SigVal          ## Signal value.
+    sigev_notify_function*: proc (x: SigVal) {.noconv.} ## Notification func.
+    sigev_notify_attributes*: ptr PthreadAttr ## Notification attributes.
 
-  TsigVal* {.importc: "union sigval",
+  SigVal* {.importc: "union sigval",
              header: "<signal.h>", final, pure.} = object ## struct sigval
     sival_ptr*: pointer ## pointer signal value;
                         ## integer signal value not defined!
-  TSigaction* {.importc: "struct sigaction",
+  Sigaction* {.importc: "struct sigaction",
                 header: "<signal.h>", final, pure.} = object ## struct sigaction
     sa_handler*: proc (x: cint) {.noconv.}  ## Pointer to a signal-catching
                                             ## function or one of the macros
                                             ## SIG_IGN or SIG_DFL.
-    sa_mask*: Tsigset ## Set of signals to be blocked during execution of
+    sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
-    sa_sigaction*: proc (x: cint, y: var TsigInfo, z: pointer) {.noconv.}
+    sa_sigaction*: proc (x: cint, y: var SigInfo, z: pointer) {.noconv.}
 
-  TStack* {.importc: "stack_t",
+  Stack* {.importc: "stack_t",
             header: "<signal.h>", final, pure.} = object ## stack_t
     ss_sp*: pointer  ## Stack base or pointer.
     ss_size*: int    ## Stack size.
     ss_flags*: cint  ## Flags.
 
-  TSigStack* {.importc: "struct sigstack",
+  SigStack* {.importc: "struct sigstack",
                header: "<signal.h>", final, pure.} = object ## struct sigstack
     ss_onstack*: cint ## Non-zero when signal stack is in use.
     ss_sp*: pointer   ## Signal stack pointer.
 
-  TsigInfo* {.importc: "siginfo_t",
+  SigInfo* {.importc: "siginfo_t",
               header: "<signal.h>", final, pure.} = object ## siginfo_t
     si_signo*: cint    ## Signal number.
     si_code*: cint     ## Signal code.
     si_errno*: cint    ## If non-zero, an errno value associated with
                        ## this signal, as defined in <errno.h>.
-    si_pid*: TPid      ## Sending process ID.
-    si_uid*: Tuid      ## Real user ID of sending process.
+    si_pid*: Pid       ## Sending process ID.
+    si_uid*: Uid       ## Real user ID of sending process.
     si_addr*: pointer  ## Address of faulting instruction.
     si_status*: cint   ## Exit value or signal.
     si_band*: int      ## Band event for SIGPOLL.
-    si_value*: TsigVal ## Signal value.
+    si_value*: SigVal  ## Signal value.
 
-  Tnl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
-  Tnl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = cint
+  Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
+  Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = cint
 
-  Tsched_param* {.importc: "struct sched_param",
+  Sched_param* {.importc: "struct sched_param",
                   header: "<sched.h>",
                   final, pure.} = object ## struct sched_param
     sched_priority*: cint
     sched_ss_low_priority*: cint     ## Low scheduling priority for
                                      ## sporadic server.
-    sched_ss_repl_period*: Ttimespec ## Replenishment period for
+    sched_ss_repl_period*: Timespec  ## Replenishment period for
                                      ## sporadic server.
-    sched_ss_init_budget*: Ttimespec ## Initial budget for sporadic server.
+    sched_ss_init_budget*: Timespec  ## Initial budget for sporadic server.
     sched_ss_max_repl*: cint         ## Maximum pending replenishments for
                                      ## sporadic server.
 
@@ -383,28 +384,52 @@ type
     tv_usec*: int ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
-  Tmcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
+  Mcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
                final, pure.} = object
-  Tucontext* {.importc: "ucontext_t", header: "<ucontext.h>",
+  Ucontext* {.importc: "ucontext_t", header: "<ucontext.h>",
                final, pure.} = object ## ucontext_t
-    uc_link*: ptr Tucontext ## Pointer to the context that is resumed
+    uc_link*: ptr Ucontext  ## Pointer to the context that is resumed
                             ## when this context returns.
-    uc_sigmask*: Tsigset    ## The set of signals that are blocked when this
+    uc_sigmask*: Sigset     ## The set of signals that are blocked when this
                             ## context is active.
-    uc_stack*: TStack       ## The stack used by this context.
-    uc_mcontext*: Tmcontext ## A machine-specific representation of the saved
+    uc_stack*: Stack        ## The stack used by this context.
+    uc_mcontext*: Mcontext  ## A machine-specific representation of the saved
                             ## context.
-
+{.deprecated: [TOff: Off, TPid: Pid, TGid: Gid, TMode: Mode, TDev: Dev,
+              TNlink: Nlink, TStack: Stack, TGroup: Group, TMqd: Mqd,
+              TPasswd: Passwd, TClock: Clock, TClockId: ClockId, TKey: Key,
+              TSem: Sem, Tpthread_attr: PthreadAttr, Ttimespec: Timespec,
+              Tdirent: Dirent, TFTW: FTW, TGlob: Glob,
+              # Tflock: Flock, # Naming conflict if we drop the `T`
+              Ticonv: Iconv, Tlconv: Lconv, TMqAttr: MqAttr, Tblkcnt: Blkcnt,
+              Tblksize: Blksize, Tfsblkcnt: Fsblkcnt, Tfsfilcnt: Fsfilcnt,
+              Tid: Id, Tino: Ino, Tpthread_barrier: Pthread_barrier,
+              Tpthread_barrierattr: Pthread_barrierattr, Tpthread_cond: Pthread_cond,
+              TPthread_condattr: Pthread_condattr, Tpthread_key: Pthread_key,
+              Tpthread_mutex: Pthread_mutex, Tpthread_mutexattr: Pthread_mutexattr,
+              Tpthread_once: Pthread_once, Tpthread_rwlock: Pthread_rwlock,
+              Tpthread_rwlockattr: Pthread_rwlockattr, Tpthread_spinlock: Pthread_spinlock,
+              Tpthread: Pthread, Tsuseconds: Suseconds, Ttimer: Timer,
+              Ttrace_attr: Trace_attr, Ttrace_event_id: Trace_event_id,
+              Ttrace_event_set: Trace_event_set, Ttrace_id: Trace_id,
+              Tuid: Uid, Tuseconds: Useconds, Tutsname: Utsname, Tipc_perm: Ipc_perm,
+              TStat: Stat, TStatvfs: Statvfs, Tposix_typed_mem_info: Posix_typed_mem_info,
+              Ttm: Tm, titimerspec: Itimerspec, Tsig_atomic: Sig_atomic, Tsigset: Sigset,
+              TsigEvent: SigEvent, TsigVal: SigVal, TSigaction: Sigaction,
+              TSigStack: SigStack, TsigInfo: SigInfo, Tnl_item: Nl_item,
+              Tnl_catd: Nl_catd, Tsched_param: Sched_param,
+              # TFdSet: FdSet, # Naming conflict if we drop the `T`
+              Tmcontext: Mcontext, Tucontext: Ucontext].}
 when hasAioH:
   type
     Taiocb* {.importc: "struct aiocb", header: "<aio.h>",
               final, pure.} = object ## struct aiocb
       aio_fildes*: cint         ## File descriptor.
-      aio_offset*: TOff         ## File offset.
+      aio_offset*: Off          ## File offset.
       aio_buf*: pointer         ## Location of buffer.
       aio_nbytes*: int          ## Length of transfer.
       aio_reqprio*: cint        ## Request priority offset.
-      aio_sigevent*: TsigEvent  ## Signal number and value.
+      aio_sigevent*: SigEvent   ## Signal number and value.
       aio_lio_opcode: cint      ## Operation to be performed.
 
 when hasSpawnH:
@@ -434,7 +459,7 @@ type
     if_name*: cstring ## Null-terminated name of the interface.
 
 
-  TIOVec* {.importc: "struct iovec", pure, final,
+  IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/uio.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
     iov_len*: int    ## The size of the memory pointed to by iov_base.
@@ -443,7 +468,7 @@ type
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
     msg_namelen*: Socklen  ## Size of address.
-    msg_iov*: ptr TIOVec    ## Scatter/gather array.
+    msg_iov*: ptr IOVec    ## Scatter/gather array.
     msg_iovlen*: cint   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
     msg_controllen*: Socklen ## Ancillary data buffer len.
@@ -461,37 +486,37 @@ type
     l_onoff*: cint  ## Indicates whether linger option is enabled.
     l_linger*: cint ## Linger time, in seconds.
 
-  TInPort* = int16 ## unsigned!
-  TInAddrScalar* = int32 ## unsigned!
+  InPort* = int16 ## unsigned!
+  InAddrScalar* = int32 ## unsigned!
 
-  TInAddrT* {.importc: "in_addr_t", pure, final,
+  InAddrT* {.importc: "in_addr_t", pure, final,
              header: "<netinet/in.h>".} = int32 ## unsigned!
 
   InAddr* {.importc: "struct in_addr", pure, final,
              header: "<netinet/in.h>".} = object ## struct in_addr
-    s_addr*: TInAddrScalar
+    s_addr*: InAddrScalar
 
   Sockaddr_in* {.importc: "struct sockaddr_in", pure, final,
                   header: "<netinet/in.h>".} = object ## struct sockaddr_in
     sin_family*: TSa_Family ## AF_INET.
-    sin_port*: TInPort      ## Port number.
+    sin_port*: InPort      ## Port number.
     sin_addr*: InAddr      ## IP address.
 
-  TIn6Addr* {.importc: "struct in6_addr", pure, final,
+  In6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr
     s6_addr*: array [0..15, char]
 
   Tsockaddr_in6* {.importc: "struct sockaddr_in6", pure, final,
                    header: "<netinet/in.h>".} = object ## struct sockaddr_in6
     sin6_family*: TSa_Family ## AF_INET6.
-    sin6_port*: TInPort      ## Port number.
+    sin6_port*: InPort      ## Port number.
     sin6_flowinfo*: int32    ## IPv6 traffic class and flow information.
-    sin6_addr*: TIn6Addr     ## IPv6 address.
+    sin6_addr*: In6Addr     ## IPv6 address.
     sin6_scope_id*: int32    ## Set of interfaces for a scope.
 
   Tipv6_mreq* {.importc: "struct ipv6_mreq", pure, final,
                 header: "<netinet/in.h>".} = object ## struct ipv6_mreq
-    ipv6mr_multiaddr*: TIn6Addr ## IPv6 multicast address.
+    ipv6mr_multiaddr*: In6Addr ## IPv6 multicast address.
     ipv6mr_interface*: cint     ## Interface index.
 
   Hostent* {.importc: "struct hostent", pure, final,
@@ -516,7 +541,7 @@ type
     n_addrtype*: cint        ## The address type of the network.
     n_net*: int32            ## The network number, in host byte order.
 
-  TProtoent* {.importc: "struct protoent", pure, final,
+  Protoent* {.importc: "struct protoent", pure, final,
               header: "<netdb.h>".} = object ## struct protoent
     p_name*: cstring         ## Official name of the protocol.
     p_aliases*: cstringArray ## A pointer to an array of pointers to
@@ -557,7 +582,8 @@ type
 {.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
     TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
     Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr].}
+    TInAddr: InAddr, TIOVec: IOVec, TInPort: InPort, TInAddrT: InAddrT,
+    TIn6Addr: In6Addr, TInAddrScalar: InAddrScalar, TProtoent: Protoent].}
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -1629,9 +1655,9 @@ var
   IPPROTO_UDP* {.importc, header: "<netinet/in.h>".}: cint
     ## User datagram protocol.
 
-  INADDR_ANY* {.importc, header: "<netinet/in.h>".}: TInAddrScalar
+  INADDR_ANY* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 local host address.
-  INADDR_BROADCAST* {.importc, header: "<netinet/in.h>".}: TInAddrScalar
+  INADDR_BROADCAST* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 broadcast address.
 
   INET_ADDRSTRLEN* {.importc, header: "<netinet/in.h>".}: cint
@@ -1766,11 +1792,11 @@ when hasAioH:
   proc aio_fsync*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
   proc aio_read*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
   proc aio_return*(a1: ptr Taiocb): int {.importc, header: "<aio.h>".}
-  proc aio_suspend*(a1: ptr ptr Taiocb, a2: cint, a3: ptr Ttimespec): cint {.
+  proc aio_suspend*(a1: ptr ptr Taiocb, a2: cint, a3: ptr Timespec): cint {.
                    importc, header: "<aio.h>".}
   proc aio_write*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
   proc lio_listio*(a1: cint, a2: ptr ptr Taiocb, a3: cint,
-               a4: ptr TsigEvent): cint {.importc, header: "<aio.h>".}
+               a4: ptr SigEvent): cint {.importc, header: "<aio.h>".}
 
 # arpa/inet.h
 proc htonl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
@@ -1778,7 +1804,7 @@ proc htons*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
 proc ntohl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
 proc ntohs*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
 
-proc inet_addr*(a1: cstring): TInAddrT {.importc, header: "<arpa/inet.h>".}
+proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
 proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
 proc inet_ntop*(a1: cint, a2: pointer, a3: cstring, a4: int32): cstring {.
   importc, header: "<arpa/inet.h>".}
@@ -1786,21 +1812,21 @@ proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
   importc, header: "<arpa/inet.h>".}
 
 var
-  in6addr_any* {.importc, header: "<netinet/in.h>".}: TIn6Addr
-  in6addr_loopback* {.importc, header: "<netinet/in.h>".}: TIn6Addr
+  in6addr_any* {.importc, header: "<netinet/in.h>".}: In6Addr
+  in6addr_loopback* {.importc, header: "<netinet/in.h>".}: In6Addr
 
-proc IN6ADDR_ANY_INIT* (): TIn6Addr {.importc, header: "<netinet/in.h>".}
-proc IN6ADDR_LOOPBACK_INIT* (): TIn6Addr {.importc, header: "<netinet/in.h>".}
+proc IN6ADDR_ANY_INIT* (): In6Addr {.importc, header: "<netinet/in.h>".}
+proc IN6ADDR_LOOPBACK_INIT* (): In6Addr {.importc, header: "<netinet/in.h>".}
 
 # dirent.h
-proc closedir*(a1: ptr TDIR): cint  {.importc, header: "<dirent.h>".}
-proc opendir*(a1: cstring): ptr TDIR {.importc, header: "<dirent.h>".}
-proc readdir*(a1: ptr TDIR): ptr Tdirent  {.importc, header: "<dirent.h>".}
-proc readdir_r*(a1: ptr TDIR, a2: ptr Tdirent, a3: ptr ptr Tdirent): cint  {.
+proc closedir*(a1: ptr DIR): cint  {.importc, header: "<dirent.h>".}
+proc opendir*(a1: cstring): ptr DIR {.importc, header: "<dirent.h>".}
+proc readdir*(a1: ptr DIR): ptr Dirent  {.importc, header: "<dirent.h>".}
+proc readdir_r*(a1: ptr DIR, a2: ptr Dirent, a3: ptr ptr Dirent): cint  {.
                 importc, header: "<dirent.h>".}
-proc rewinddir*(a1: ptr TDIR)  {.importc, header: "<dirent.h>".}
-proc seekdir*(a1: ptr TDIR, a2: int)  {.importc, header: "<dirent.h>".}
-proc telldir*(a1: ptr TDIR): int {.importc, header: "<dirent.h>".}
+proc rewinddir*(a1: ptr DIR)  {.importc, header: "<dirent.h>".}
+proc seekdir*(a1: ptr DIR, a2: int)  {.importc, header: "<dirent.h>".}
+proc telldir*(a1: ptr DIR): int {.importc, header: "<dirent.h>".}
 
 # dlfcn.h
 proc dlclose*(a1: pointer): cint {.importc, header: "<dlfcn.h>".}
@@ -1808,12 +1834,12 @@ proc dlerror*(): cstring {.importc, header: "<dlfcn.h>".}
 proc dlopen*(a1: cstring, a2: cint): pointer {.importc, header: "<dlfcn.h>".}
 proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>".}
 
-proc creat*(a1: cstring, a2: TMode): cint {.importc, header: "<fcntl.h>".}
+proc creat*(a1: cstring, a2: Mode): cint {.importc, header: "<fcntl.h>".}
 proc fcntl*(a1: cint | SocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
 proc open*(a1: cstring, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
-proc posix_fadvise*(a1: cint, a2, a3: TOff, a4: cint): cint {.
+proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
-proc posix_fallocate*(a1: cint, a2, a3: TOff): cint {.
+proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
   importc, header: "<fcntl.h>".}
 
 when not defined(haiku) and not defined(OpenBSD):
@@ -1822,248 +1848,248 @@ when not defined(haiku) and not defined(OpenBSD):
 
 proc fnmatch*(a1, a2: cstring, a3: cint): cint {.importc, header: "<fnmatch.h>".}
 proc ftw*(a1: cstring,
-         a2: proc (x1: cstring, x2: ptr TStat, x3: cint): cint {.noconv.},
+         a2: proc (x1: cstring, x2: ptr Stat, x3: cint): cint {.noconv.},
          a3: cint): cint {.importc, header: "<ftw.h>".}
 proc nftw*(a1: cstring,
-          a2: proc (x1: cstring, x2: ptr TStat,
-                    x3: cint, x4: ptr TFTW): cint {.noconv.},
+          a2: proc (x1: cstring, x2: ptr Stat,
+                    x3: cint, x4: ptr FTW): cint {.noconv.},
           a3: cint,
           a4: cint): cint {.importc, header: "<ftw.h>".}
 
 proc glob*(a1: cstring, a2: cint,
           a3: proc (x1: cstring, x2: cint): cint {.noconv.},
-          a4: ptr TGlob): cint {.importc, header: "<glob.h>".}
-proc globfree*(a1: ptr TGlob) {.importc, header: "<glob.h>".}
+          a4: ptr Glob): cint {.importc, header: "<glob.h>".}
+proc globfree*(a1: ptr Glob) {.importc, header: "<glob.h>".}
 
-proc getgrgid*(a1: TGid): ptr TGroup {.importc, header: "<grp.h>".}
-proc getgrnam*(a1: cstring): ptr TGroup {.importc, header: "<grp.h>".}
-proc getgrgid_r*(a1: TGid, a2: ptr TGroup, a3: cstring, a4: int,
-                 a5: ptr ptr TGroup): cint {.importc, header: "<grp.h>".}
-proc getgrnam_r*(a1: cstring, a2: ptr TGroup, a3: cstring,
-                  a4: int, a5: ptr ptr TGroup): cint {.
+proc getgrgid*(a1: Gid): ptr Group {.importc, header: "<grp.h>".}
+proc getgrnam*(a1: cstring): ptr Group {.importc, header: "<grp.h>".}
+proc getgrgid_r*(a1: Gid, a2: ptr Group, a3: cstring, a4: int,
+                 a5: ptr ptr Group): cint {.importc, header: "<grp.h>".}
+proc getgrnam_r*(a1: cstring, a2: ptr Group, a3: cstring,
+                  a4: int, a5: ptr ptr Group): cint {.
                  importc, header: "<grp.h>".}
-proc getgrent*(): ptr TGroup {.importc, header: "<grp.h>".}
+proc getgrent*(): ptr Group {.importc, header: "<grp.h>".}
 proc endgrent*() {.importc, header: "<grp.h>".}
 proc setgrent*() {.importc, header: "<grp.h>".}
 
 
-proc iconv_open*(a1, a2: cstring): Ticonv {.importc, header: "<iconv.h>".}
-proc iconv*(a1: Ticonv, a2: var cstring, a3: var int, a4: var cstring,
+proc iconv_open*(a1, a2: cstring): Iconv {.importc, header: "<iconv.h>".}
+proc iconv*(a1: Iconv, a2: var cstring, a3: var int, a4: var cstring,
             a5: var int): int {.importc, header: "<iconv.h>".}
-proc iconv_close*(a1: Ticonv): cint {.importc, header: "<iconv.h>".}
+proc iconv_close*(a1: Iconv): cint {.importc, header: "<iconv.h>".}
 
-proc nl_langinfo*(a1: Tnl_item): cstring {.importc, header: "<langinfo.h>".}
+proc nl_langinfo*(a1: Nl_item): cstring {.importc, header: "<langinfo.h>".}
 
 proc basename*(a1: cstring): cstring {.importc, header: "<libgen.h>".}
 proc dirname*(a1: cstring): cstring {.importc, header: "<libgen.h>".}
 
-proc localeconv*(): ptr Tlconv {.importc, header: "<locale.h>".}
+proc localeconv*(): ptr Lconv {.importc, header: "<locale.h>".}
 proc setlocale*(a1: cint, a2: cstring): cstring {.
                 importc, header: "<locale.h>".}
 
 proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
 
-proc mq_close*(a1: TMqd): cint {.importc, header: "<mqueue.h>".}
-proc mq_getattr*(a1: TMqd, a2: ptr TMqAttr): cint {.
+proc mq_close*(a1: Mqd): cint {.importc, header: "<mqueue.h>".}
+proc mq_getattr*(a1: Mqd, a2: ptr MqAttr): cint {.
   importc, header: "<mqueue.h>".}
-proc mq_notify*(a1: TMqd, a2: ptr TsigEvent): cint {.
+proc mq_notify*(a1: Mqd, a2: ptr SigEvent): cint {.
   importc, header: "<mqueue.h>".}
-proc mq_open*(a1: cstring, a2: cint): TMqd {.
+proc mq_open*(a1: cstring, a2: cint): Mqd {.
   varargs, importc, header: "<mqueue.h>".}
-proc mq_receive*(a1: TMqd, a2: cstring, a3: int, a4: var int): int {.
+proc mq_receive*(a1: Mqd, a2: cstring, a3: int, a4: var int): int {.
   importc, header: "<mqueue.h>".}
-proc mq_send*(a1: TMqd, a2: cstring, a3: int, a4: int): cint {.
+proc mq_send*(a1: Mqd, a2: cstring, a3: int, a4: int): cint {.
   importc, header: "<mqueue.h>".}
-proc mq_setattr*(a1: TMqd, a2, a3: ptr TMqAttr): cint {.
+proc mq_setattr*(a1: Mqd, a2, a3: ptr MqAttr): cint {.
   importc, header: "<mqueue.h>".}
 
-proc mq_timedreceive*(a1: TMqd, a2: cstring, a3: int, a4: int,
-                      a5: ptr Ttimespec): int {.importc, header: "<mqueue.h>".}
-proc mq_timedsend*(a1: TMqd, a2: cstring, a3: int, a4: int,
-                   a5: ptr Ttimespec): cint {.importc, header: "<mqueue.h>".}
+proc mq_timedreceive*(a1: Mqd, a2: cstring, a3: int, a4: int,
+                      a5: ptr Timespec): int {.importc, header: "<mqueue.h>".}
+proc mq_timedsend*(a1: Mqd, a2: cstring, a3: int, a4: int,
+                   a5: ptr Timespec): cint {.importc, header: "<mqueue.h>".}
 proc mq_unlink*(a1: cstring): cint {.importc, header: "<mqueue.h>".}
 
 
-proc getpwnam*(a1: cstring): ptr TPasswd {.importc, header: "<pwd.h>".}
-proc getpwuid*(a1: Tuid): ptr TPasswd {.importc, header: "<pwd.h>".}
-proc getpwnam_r*(a1: cstring, a2: ptr TPasswd, a3: cstring, a4: int,
-                 a5: ptr ptr TPasswd): cint {.importc, header: "<pwd.h>".}
-proc getpwuid_r*(a1: Tuid, a2: ptr TPasswd, a3: cstring,
-      a4: int, a5: ptr ptr TPasswd): cint {.importc, header: "<pwd.h>".}
+proc getpwnam*(a1: cstring): ptr Passwd {.importc, header: "<pwd.h>".}
+proc getpwuid*(a1: Uid): ptr Passwd {.importc, header: "<pwd.h>".}
+proc getpwnam_r*(a1: cstring, a2: ptr Passwd, a3: cstring, a4: int,
+                 a5: ptr ptr Passwd): cint {.importc, header: "<pwd.h>".}
+proc getpwuid_r*(a1: Uid, a2: ptr Passwd, a3: cstring,
+      a4: int, a5: ptr ptr Passwd): cint {.importc, header: "<pwd.h>".}
 proc endpwent*() {.importc, header: "<pwd.h>".}
-proc getpwent*(): ptr TPasswd {.importc, header: "<pwd.h>".}
+proc getpwent*(): ptr Passwd {.importc, header: "<pwd.h>".}
 proc setpwent*() {.importc, header: "<pwd.h>".}
 
-proc uname*(a1: var Tutsname): cint {.importc, header: "<sys/utsname.h>".}
+proc uname*(a1: var Utsname): cint {.importc, header: "<sys/utsname.h>".}
 
 proc pthread_atfork*(a1, a2, a3: proc () {.noconv.}): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_destroy*(a1: ptr Tpthread_attr): cint {.
+proc pthread_attr_destroy*(a1: ptr PthreadAttr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getdetachstate*(a1: ptr Tpthread_attr, a2: cint): cint {.
+proc pthread_attr_getdetachstate*(a1: ptr PthreadAttr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getguardsize*(a1: ptr Tpthread_attr, a2: var cint): cint {.
+proc pthread_attr_getguardsize*(a1: ptr PthreadAttr, a2: var cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getinheritsched*(a1: ptr Tpthread_attr,
+proc pthread_attr_getinheritsched*(a1: ptr PthreadAttr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getschedparam*(a1: ptr Tpthread_attr,
-          a2: ptr Tsched_param): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getschedpolicy*(a1: ptr Tpthread_attr,
+proc pthread_attr_getschedparam*(a1: ptr PthreadAttr,
+          a2: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
+proc pthread_attr_getschedpolicy*(a1: ptr PthreadAttr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getscope*(a1: ptr Tpthread_attr,
+proc pthread_attr_getscope*(a1: ptr PthreadAttr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstack*(a1: ptr Tpthread_attr,
+proc pthread_attr_getstack*(a1: ptr PthreadAttr,
          a2: var pointer, a3: var int): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstackaddr*(a1: ptr Tpthread_attr,
+proc pthread_attr_getstackaddr*(a1: ptr PthreadAttr,
           a2: var pointer): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstacksize*(a1: ptr Tpthread_attr,
+proc pthread_attr_getstacksize*(a1: ptr PthreadAttr,
           a2: var int): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_init*(a1: ptr Tpthread_attr): cint {.
+proc pthread_attr_init*(a1: ptr PthreadAttr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setdetachstate*(a1: ptr Tpthread_attr, a2: cint): cint {.
+proc pthread_attr_setdetachstate*(a1: ptr PthreadAttr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setguardsize*(a1: ptr Tpthread_attr, a2: int): cint {.
+proc pthread_attr_setguardsize*(a1: ptr PthreadAttr, a2: int): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setinheritsched*(a1: ptr Tpthread_attr, a2: cint): cint {.
+proc pthread_attr_setinheritsched*(a1: ptr PthreadAttr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setschedparam*(a1: ptr Tpthread_attr,
-          a2: ptr Tsched_param): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_setschedpolicy*(a1: ptr Tpthread_attr, a2: cint): cint {.
+proc pthread_attr_setschedparam*(a1: ptr PthreadAttr,
+          a2: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
+proc pthread_attr_setschedpolicy*(a1: ptr PthreadAttr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setscope*(a1: ptr Tpthread_attr, a2: cint): cint {.importc,
+proc pthread_attr_setscope*(a1: ptr PthreadAttr, a2: cint): cint {.importc,
   header: "<pthread.h>".}
-proc pthread_attr_setstack*(a1: ptr Tpthread_attr, a2: pointer, a3: int): cint {.
+proc pthread_attr_setstack*(a1: ptr PthreadAttr, a2: pointer, a3: int): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setstackaddr*(a1: ptr Tpthread_attr, a2: pointer): cint {.
+proc pthread_attr_setstackaddr*(a1: ptr PthreadAttr, a2: pointer): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setstacksize*(a1: ptr Tpthread_attr, a2: int): cint {.
+proc pthread_attr_setstacksize*(a1: ptr PthreadAttr, a2: int): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_barrier_destroy*(a1: ptr Tpthread_barrier): cint {.
+proc pthread_barrier_destroy*(a1: ptr Pthread_barrier): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_barrier_init*(a1: ptr Tpthread_barrier,
-         a2: ptr Tpthread_barrierattr, a3: cint): cint {.
+proc pthread_barrier_init*(a1: ptr Pthread_barrier,
+         a2: ptr Pthread_barrierattr, a3: cint): cint {.
          importc, header: "<pthread.h>".}
-proc pthread_barrier_wait*(a1: ptr Tpthread_barrier): cint {.
+proc pthread_barrier_wait*(a1: ptr Pthread_barrier): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_barrierattr_destroy*(a1: ptr Tpthread_barrierattr): cint {.
+proc pthread_barrierattr_destroy*(a1: ptr Pthread_barrierattr): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_barrierattr_getpshared*(
-          a1: ptr Tpthread_barrierattr, a2: var cint): cint {.
+          a1: ptr Pthread_barrierattr, a2: var cint): cint {.
           importc, header: "<pthread.h>".}
-proc pthread_barrierattr_init*(a1: ptr Tpthread_barrierattr): cint {.
+proc pthread_barrierattr_init*(a1: ptr Pthread_barrierattr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_barrierattr_setpshared*(a1: ptr Tpthread_barrierattr,
+proc pthread_barrierattr_setpshared*(a1: ptr Pthread_barrierattr,
   a2: cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_cancel*(a1: Tpthread): cint {.importc, header: "<pthread.h>".}
+proc pthread_cancel*(a1: Pthread): cint {.importc, header: "<pthread.h>".}
 proc pthread_cleanup_push*(a1: proc (x: pointer) {.noconv.}, a2: pointer) {.
   importc, header: "<pthread.h>".}
 proc pthread_cleanup_pop*(a1: cint) {.importc, header: "<pthread.h>".}
-proc pthread_cond_broadcast*(a1: ptr Tpthread_cond): cint {.
+proc pthread_cond_broadcast*(a1: ptr Pthread_cond): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_cond_destroy*(a1: ptr Tpthread_cond): cint {.importc, header: "<pthread.h>".}
-proc pthread_cond_init*(a1: ptr Tpthread_cond,
-          a2: ptr Tpthread_condattr): cint {.importc, header: "<pthread.h>".}
-proc pthread_cond_signal*(a1: ptr Tpthread_cond): cint {.importc, header: "<pthread.h>".}
-proc pthread_cond_timedwait*(a1: ptr Tpthread_cond,
-          a2: ptr Tpthread_mutex, a3: ptr Ttimespec): cint {.importc, header: "<pthread.h>".}
+proc pthread_cond_destroy*(a1: ptr Pthread_cond): cint {.importc, header: "<pthread.h>".}
+proc pthread_cond_init*(a1: ptr Pthread_cond,
+          a2: ptr Pthread_condattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_cond_signal*(a1: ptr Pthread_cond): cint {.importc, header: "<pthread.h>".}
+proc pthread_cond_timedwait*(a1: ptr Pthread_cond,
+          a2: ptr Pthread_mutex, a3: ptr Timespec): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_cond_wait*(a1: ptr Tpthread_cond,
-          a2: ptr Tpthread_mutex): cint {.importc, header: "<pthread.h>".}
-proc pthread_condattr_destroy*(a1: ptr Tpthread_condattr): cint {.importc, header: "<pthread.h>".}
-proc pthread_condattr_getclock*(a1: ptr Tpthread_condattr,
-          a2: var TClockId): cint {.importc, header: "<pthread.h>".}
-proc pthread_condattr_getpshared*(a1: ptr Tpthread_condattr,
+proc pthread_cond_wait*(a1: ptr Pthread_cond,
+          a2: ptr Pthread_mutex): cint {.importc, header: "<pthread.h>".}
+proc pthread_condattr_destroy*(a1: ptr Pthread_condattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_condattr_getclock*(a1: ptr Pthread_condattr,
+          a2: var ClockId): cint {.importc, header: "<pthread.h>".}
+proc pthread_condattr_getpshared*(a1: ptr Pthread_condattr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_condattr_init*(a1: ptr Tpthread_condattr): cint {.importc, header: "<pthread.h>".}
-proc pthread_condattr_setclock*(a1: ptr Tpthread_condattr,a2: TClockId): cint {.importc, header: "<pthread.h>".}
-proc pthread_condattr_setpshared*(a1: ptr Tpthread_condattr, a2: cint): cint {.importc, header: "<pthread.h>".}
+proc pthread_condattr_init*(a1: ptr Pthread_condattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_condattr_setclock*(a1: ptr Pthread_condattr,a2: ClockId): cint {.importc, header: "<pthread.h>".}
+proc pthread_condattr_setpshared*(a1: ptr Pthread_condattr, a2: cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_create*(a1: ptr Tpthread, a2: ptr Tpthread_attr,
+proc pthread_create*(a1: ptr Pthread, a2: ptr PthreadAttr,
           a3: proc (x: pointer): pointer {.noconv.}, a4: pointer): cint {.importc, header: "<pthread.h>".}
-proc pthread_detach*(a1: Tpthread): cint {.importc, header: "<pthread.h>".}
-proc pthread_equal*(a1, a2: Tpthread): cint {.importc, header: "<pthread.h>".}
+proc pthread_detach*(a1: Pthread): cint {.importc, header: "<pthread.h>".}
+proc pthread_equal*(a1, a2: Pthread): cint {.importc, header: "<pthread.h>".}
 proc pthread_exit*(a1: pointer) {.importc, header: "<pthread.h>".}
 proc pthread_getconcurrency*(): cint {.importc, header: "<pthread.h>".}
-proc pthread_getcpuclockid*(a1: Tpthread, a2: var TClockId): cint {.importc, header: "<pthread.h>".}
-proc pthread_getschedparam*(a1: Tpthread,  a2: var cint,
-          a3: ptr Tsched_param): cint {.importc, header: "<pthread.h>".}
-proc pthread_getspecific*(a1: Tpthread_key): pointer {.importc, header: "<pthread.h>".}
-proc pthread_join*(a1: Tpthread, a2: ptr pointer): cint {.importc, header: "<pthread.h>".}
-proc pthread_key_create*(a1: ptr Tpthread_key, a2: proc (x: pointer) {.noconv.}): cint {.importc, header: "<pthread.h>".}
-proc pthread_key_delete*(a1: Tpthread_key): cint {.importc, header: "<pthread.h>".}
+proc pthread_getcpuclockid*(a1: Pthread, a2: var ClockId): cint {.importc, header: "<pthread.h>".}
+proc pthread_getschedparam*(a1: Pthread,  a2: var cint,
+          a3: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
+proc pthread_getspecific*(a1: Pthread_key): pointer {.importc, header: "<pthread.h>".}
+proc pthread_join*(a1: Pthread, a2: ptr pointer): cint {.importc, header: "<pthread.h>".}
+proc pthread_key_create*(a1: ptr Pthread_key, a2: proc (x: pointer) {.noconv.}): cint {.importc, header: "<pthread.h>".}
+proc pthread_key_delete*(a1: Pthread_key): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_mutex_destroy*(a1: ptr Tpthread_mutex): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutex_getprioceiling*(a1: ptr Tpthread_mutex,
+proc pthread_mutex_destroy*(a1: ptr Pthread_mutex): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutex_getprioceiling*(a1: ptr Pthread_mutex,
          a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutex_init*(a1: ptr Tpthread_mutex,
-          a2: ptr Tpthread_mutexattr): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutex_lock*(a1: ptr Tpthread_mutex): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutex_setprioceiling*(a1: ptr Tpthread_mutex,a2: cint,
+proc pthread_mutex_init*(a1: ptr Pthread_mutex,
+          a2: ptr Pthread_mutexattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutex_lock*(a1: ptr Pthread_mutex): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutex_setprioceiling*(a1: ptr Pthread_mutex,a2: cint,
           a3: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutex_timedlock*(a1: ptr Tpthread_mutex,
-          a2: ptr Ttimespec): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutex_trylock*(a1: ptr Tpthread_mutex): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutex_unlock*(a1: ptr Tpthread_mutex): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_destroy*(a1: ptr Tpthread_mutexattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutex_timedlock*(a1: ptr Pthread_mutex,
+          a2: ptr Timespec): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutex_trylock*(a1: ptr Pthread_mutex): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutex_unlock*(a1: ptr Pthread_mutex): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutexattr_destroy*(a1: ptr Pthread_mutexattr): cint {.importc, header: "<pthread.h>".}
 
 proc pthread_mutexattr_getprioceiling*(
-          a1: ptr Tpthread_mutexattr, a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_getprotocol*(a1: ptr Tpthread_mutexattr,
+          a1: ptr Pthread_mutexattr, a2: var cint): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutexattr_getprotocol*(a1: ptr Pthread_mutexattr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_getpshared*(a1: ptr Tpthread_mutexattr,
+proc pthread_mutexattr_getpshared*(a1: ptr Pthread_mutexattr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_gettype*(a1: ptr Tpthread_mutexattr,
+proc pthread_mutexattr_gettype*(a1: ptr Pthread_mutexattr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_mutexattr_init*(a1: ptr Tpthread_mutexattr): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_setprioceiling*(a1: ptr Tpthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_setprotocol*(a1: ptr Tpthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_setpshared*(a1: ptr Tpthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_mutexattr_settype*(a1: ptr Tpthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutexattr_init*(a1: ptr Pthread_mutexattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutexattr_setprioceiling*(a1: ptr Pthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutexattr_setprotocol*(a1: ptr Pthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutexattr_setpshared*(a1: ptr Pthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
+proc pthread_mutexattr_settype*(a1: ptr Pthread_mutexattr, a2: cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_once*(a1: ptr Tpthread_once, a2: proc () {.noconv.}): cint {.importc, header: "<pthread.h>".}
+proc pthread_once*(a1: ptr Pthread_once, a2: proc () {.noconv.}): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_rwlock_destroy*(a1: ptr Tpthread_rwlock): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlock_init*(a1: ptr Tpthread_rwlock,
-          a2: ptr Tpthread_rwlockattr): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlock_rdlock*(a1: ptr Tpthread_rwlock): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlock_timedrdlock*(a1: ptr Tpthread_rwlock,
-          a2: ptr Ttimespec): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlock_timedwrlock*(a1: ptr Tpthread_rwlock,
-          a2: ptr Ttimespec): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_destroy*(a1: ptr Pthread_rwlock): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_init*(a1: ptr Pthread_rwlock,
+          a2: ptr Pthread_rwlockattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_rdlock*(a1: ptr Pthread_rwlock): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_timedrdlock*(a1: ptr Pthread_rwlock,
+          a2: ptr Timespec): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_timedwrlock*(a1: ptr Pthread_rwlock,
+          a2: ptr Timespec): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_rwlock_tryrdlock*(a1: ptr Tpthread_rwlock): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlock_trywrlock*(a1: ptr Tpthread_rwlock): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlock_unlock*(a1: ptr Tpthread_rwlock): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlock_wrlock*(a1: ptr Tpthread_rwlock): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlockattr_destroy*(a1: ptr Tpthread_rwlockattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_tryrdlock*(a1: ptr Pthread_rwlock): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_trywrlock*(a1: ptr Pthread_rwlock): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_unlock*(a1: ptr Pthread_rwlock): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlock_wrlock*(a1: ptr Pthread_rwlock): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlockattr_destroy*(a1: ptr Pthread_rwlockattr): cint {.importc, header: "<pthread.h>".}
 proc pthread_rwlockattr_getpshared*(
-          a1: ptr Tpthread_rwlockattr, a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlockattr_init*(a1: ptr Tpthread_rwlockattr): cint {.importc, header: "<pthread.h>".}
-proc pthread_rwlockattr_setpshared*(a1: ptr Tpthread_rwlockattr, a2: cint): cint {.importc, header: "<pthread.h>".}
+          a1: ptr Pthread_rwlockattr, a2: var cint): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlockattr_init*(a1: ptr Pthread_rwlockattr): cint {.importc, header: "<pthread.h>".}
+proc pthread_rwlockattr_setpshared*(a1: ptr Pthread_rwlockattr, a2: cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_self*(): Tpthread {.importc, header: "<pthread.h>".}
+proc pthread_self*(): Pthread {.importc, header: "<pthread.h>".}
 proc pthread_setcancelstate*(a1: cint, a2: var cint): cint {.importc, header: "<pthread.h>".}
 proc pthread_setcanceltype*(a1: cint, a2: var cint): cint {.importc, header: "<pthread.h>".}
 proc pthread_setconcurrency*(a1: cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_setschedparam*(a1: Tpthread, a2: cint,
-          a3: ptr Tsched_param): cint {.importc, header: "<pthread.h>".}
+proc pthread_setschedparam*(a1: Pthread, a2: cint,
+          a3: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_setschedprio*(a1: Tpthread, a2: cint): cint {.
+proc pthread_setschedprio*(a1: Pthread, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_setspecific*(a1: Tpthread_key, a2: pointer): cint {.
+proc pthread_setspecific*(a1: Pthread_key, a2: pointer): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_spin_destroy*(a1: ptr Tpthread_spinlock): cint {.
+proc pthread_spin_destroy*(a1: ptr Pthread_spinlock): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_spin_init*(a1: ptr Tpthread_spinlock, a2: cint): cint {.
+proc pthread_spin_init*(a1: ptr Pthread_spinlock, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_spin_lock*(a1: ptr Tpthread_spinlock): cint {.
+proc pthread_spin_lock*(a1: ptr Pthread_spinlock): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_spin_trylock*(a1: ptr Tpthread_spinlock): cint{.
+proc pthread_spin_trylock*(a1: ptr Pthread_spinlock): cint{.
   importc, header: "<pthread.h>".}
-proc pthread_spin_unlock*(a1: ptr Tpthread_spinlock): cint {.
+proc pthread_spin_unlock*(a1: ptr Pthread_spinlock): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_testcancel*() {.importc, header: "<pthread.h>".}
 
@@ -2072,7 +2098,7 @@ proc exitnow*(code: int): void {.importc: "_exit", header: "<unistd.h>".}
 proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
-proc chown*(a1: cstring, a2: Tuid, a3: TGid): cint {.importc, header: "<unistd.h>".}
+proc chown*(a1: cstring, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>".}
 proc close*(a1: cint | SocketHandle): cint {.importc, header: "<unistd.h>".}
 proc confstr*(a1: cint, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
 proc crypt*(a1, a2: cstring): cstring {.importc, header: "<unistd.h>".}
@@ -2089,19 +2115,19 @@ proc execve*(a1: cstring, a2, a3: cstringArray): cint {.
   importc, header: "<unistd.h>".}
 proc execvp*(a1: cstring, a2: cstringArray): cint {.importc, header: "<unistd.h>".}
 proc execvpe*(a1: cstring, a2: cstringArray, a3: cstringArray): cint {.importc, header: "<unistd.h>".}
-proc fchown*(a1: cint, a2: Tuid, a3: TGid): cint {.importc, header: "<unistd.h>".}
+proc fchown*(a1: cint, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>".}
 proc fchdir*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc fdatasync*(a1: cint): cint {.importc, header: "<unistd.h>".}
-proc fork*(): TPid {.importc, header: "<unistd.h>".}
+proc fork*(): Pid {.importc, header: "<unistd.h>".}
 proc fpathconf*(a1, a2: cint): int {.importc, header: "<unistd.h>".}
 proc fsync*(a1: cint): cint {.importc, header: "<unistd.h>".}
-proc ftruncate*(a1: cint, a2: TOff): cint {.importc, header: "<unistd.h>".}
+proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
 proc getcwd*(a1: cstring, a2: int): cstring {.importc, header: "<unistd.h>".}
-proc getegid*(): TGid {.importc, header: "<unistd.h>".}
-proc geteuid*(): Tuid {.importc, header: "<unistd.h>".}
-proc getgid*(): TGid {.importc, header: "<unistd.h>".}
+proc getegid*(): Gid {.importc, header: "<unistd.h>".}
+proc geteuid*(): Uid {.importc, header: "<unistd.h>".}
+proc getgid*(): Gid {.importc, header: "<unistd.h>".}
 
-proc getgroups*(a1: cint, a2: ptr array[0..255, TGid]): cint {.
+proc getgroups*(a1: cint, a2: ptr array[0..255, Gid]): cint {.
   importc, header: "<unistd.h>".}
 proc gethostid*(): int {.importc, header: "<unistd.h>".}
 proc gethostname*(a1: cstring, a2: int): cint {.importc, header: "<unistd.h>".}
@@ -2110,120 +2136,120 @@ proc getlogin_r*(a1: cstring, a2: int): cint {.importc, header: "<unistd.h>".}
 
 proc getopt*(a1: cint, a2: cstringArray, a3: cstring): cint {.
   importc, header: "<unistd.h>".}
-proc getpgid*(a1: TPid): TPid {.importc, header: "<unistd.h>".}
-proc getpgrp*(): TPid {.importc, header: "<unistd.h>".}
-proc getpid*(): TPid {.importc, header: "<unistd.h>".}
-proc getppid*(): TPid {.importc, header: "<unistd.h>".}
-proc getsid*(a1: TPid): TPid {.importc, header: "<unistd.h>".}
-proc getuid*(): Tuid {.importc, header: "<unistd.h>".}
+proc getpgid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
+proc getpgrp*(): Pid {.importc, header: "<unistd.h>".}
+proc getpid*(): Pid {.importc, header: "<unistd.h>".}
+proc getppid*(): Pid {.importc, header: "<unistd.h>".}
+proc getsid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
+proc getuid*(): Uid {.importc, header: "<unistd.h>".}
 proc getwd*(a1: cstring): cstring {.importc, header: "<unistd.h>".}
 proc isatty*(a1: cint): cint {.importc, header: "<unistd.h>".}
-proc lchown*(a1: cstring, a2: Tuid, a3: TGid): cint {.importc, header: "<unistd.h>".}
+proc lchown*(a1: cstring, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>".}
 proc link*(a1, a2: cstring): cint {.importc, header: "<unistd.h>".}
 
-proc lockf*(a1, a2: cint, a3: TOff): cint {.importc, header: "<unistd.h>".}
-proc lseek*(a1: cint, a2: TOff, a3: cint): TOff {.importc, header: "<unistd.h>".}
+proc lockf*(a1, a2: cint, a3: Off): cint {.importc, header: "<unistd.h>".}
+proc lseek*(a1: cint, a2: Off, a3: cint): Off {.importc, header: "<unistd.h>".}
 proc nice*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc pathconf*(a1: cstring, a2: cint): int {.importc, header: "<unistd.h>".}
 
 proc pause*(): cint {.importc, header: "<unistd.h>".}
 proc pipe*(a: array[0..1, cint]): cint {.importc, header: "<unistd.h>".}
-proc pread*(a1: cint, a2: pointer, a3: int, a4: TOff): int {.
+proc pread*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
   importc, header: "<unistd.h>".}
-proc pwrite*(a1: cint, a2: pointer, a3: int, a4: TOff): int {.
+proc pwrite*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
   importc, header: "<unistd.h>".}
 proc read*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
 proc readlink*(a1, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
 
 proc rmdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
-proc setegid*(a1: TGid): cint {.importc, header: "<unistd.h>".}
-proc seteuid*(a1: Tuid): cint {.importc, header: "<unistd.h>".}
-proc setgid*(a1: TGid): cint {.importc, header: "<unistd.h>".}
+proc setegid*(a1: Gid): cint {.importc, header: "<unistd.h>".}
+proc seteuid*(a1: Uid): cint {.importc, header: "<unistd.h>".}
+proc setgid*(a1: Gid): cint {.importc, header: "<unistd.h>".}
 
-proc setpgid*(a1, a2: TPid): cint {.importc, header: "<unistd.h>".}
-proc setpgrp*(): TPid {.importc, header: "<unistd.h>".}
-proc setregid*(a1, a2: TGid): cint {.importc, header: "<unistd.h>".}
-proc setreuid*(a1, a2: Tuid): cint {.importc, header: "<unistd.h>".}
-proc setsid*(): TPid {.importc, header: "<unistd.h>".}
-proc setuid*(a1: Tuid): cint {.importc, header: "<unistd.h>".}
+proc setpgid*(a1, a2: Pid): cint {.importc, header: "<unistd.h>".}
+proc setpgrp*(): Pid {.importc, header: "<unistd.h>".}
+proc setregid*(a1, a2: Gid): cint {.importc, header: "<unistd.h>".}
+proc setreuid*(a1, a2: Uid): cint {.importc, header: "<unistd.h>".}
+proc setsid*(): Pid {.importc, header: "<unistd.h>".}
+proc setuid*(a1: Uid): cint {.importc, header: "<unistd.h>".}
 proc sleep*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc swab*(a1, a2: pointer, a3: int) {.importc, header: "<unistd.h>".}
 proc symlink*(a1, a2: cstring): cint {.importc, header: "<unistd.h>".}
 proc sync*() {.importc, header: "<unistd.h>".}
 proc sysconf*(a1: cint): int {.importc, header: "<unistd.h>".}
-proc tcgetpgrp*(a1: cint): TPid {.importc, header: "<unistd.h>".}
-proc tcsetpgrp*(a1: cint, a2: TPid): cint {.importc, header: "<unistd.h>".}
-proc truncate*(a1: cstring, a2: TOff): cint {.importc, header: "<unistd.h>".}
+proc tcgetpgrp*(a1: cint): Pid {.importc, header: "<unistd.h>".}
+proc tcsetpgrp*(a1: cint, a2: Pid): cint {.importc, header: "<unistd.h>".}
+proc truncate*(a1: cstring, a2: Off): cint {.importc, header: "<unistd.h>".}
 proc ttyname*(a1: cint): cstring {.importc, header: "<unistd.h>".}
 proc ttyname_r*(a1: cint, a2: cstring, a3: int): cint {.
   importc, header: "<unistd.h>".}
-proc ualarm*(a1, a2: Tuseconds): Tuseconds {.importc, header: "<unistd.h>".}
+proc ualarm*(a1, a2: Useconds): Useconds {.importc, header: "<unistd.h>".}
 proc unlink*(a1: cstring): cint {.importc, header: "<unistd.h>".}
-proc usleep*(a1: Tuseconds): cint {.importc, header: "<unistd.h>".}
-proc vfork*(): TPid {.importc, header: "<unistd.h>".}
+proc usleep*(a1: Useconds): cint {.importc, header: "<unistd.h>".}
+proc vfork*(): Pid {.importc, header: "<unistd.h>".}
 proc write*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
 
-proc sem_close*(a1: ptr TSem): cint {.importc, header: "<semaphore.h>".}
-proc sem_destroy*(a1: ptr TSem): cint {.importc, header: "<semaphore.h>".}
-proc sem_getvalue*(a1: ptr TSem, a2: var cint): cint {.
+proc sem_close*(a1: ptr Sem): cint {.importc, header: "<semaphore.h>".}
+proc sem_destroy*(a1: ptr Sem): cint {.importc, header: "<semaphore.h>".}
+proc sem_getvalue*(a1: ptr Sem, a2: var cint): cint {.
   importc, header: "<semaphore.h>".}
-proc sem_init*(a1: ptr TSem, a2: cint, a3: cint): cint {.
+proc sem_init*(a1: ptr Sem, a2: cint, a3: cint): cint {.
   importc, header: "<semaphore.h>".}
-proc sem_open*(a1: cstring, a2: cint): ptr TSem {.
+proc sem_open*(a1: cstring, a2: cint): ptr Sem {.
   varargs, importc, header: "<semaphore.h>".}
-proc sem_post*(a1: ptr TSem): cint {.importc, header: "<semaphore.h>".}
-proc sem_timedwait*(a1: ptr TSem, a2: ptr Ttimespec): cint {.
+proc sem_post*(a1: ptr Sem): cint {.importc, header: "<semaphore.h>".}
+proc sem_timedwait*(a1: ptr Sem, a2: ptr Timespec): cint {.
   importc, header: "<semaphore.h>".}
-proc sem_trywait*(a1: ptr TSem): cint {.importc, header: "<semaphore.h>".}
+proc sem_trywait*(a1: ptr Sem): cint {.importc, header: "<semaphore.h>".}
 proc sem_unlink*(a1: cstring): cint {.importc, header: "<semaphore.h>".}
-proc sem_wait*(a1: ptr TSem): cint {.importc, header: "<semaphore.h>".}
+proc sem_wait*(a1: ptr Sem): cint {.importc, header: "<semaphore.h>".}
 
-proc ftok*(a1: cstring, a2: cint): TKey {.importc, header: "<sys/ipc.h>".}
+proc ftok*(a1: cstring, a2: cint): Key {.importc, header: "<sys/ipc.h>".}
 
-proc statvfs*(a1: cstring, a2: var TStatvfs): cint {.
+proc statvfs*(a1: cstring, a2: var Statvfs): cint {.
   importc, header: "<sys/statvfs.h>".}
-proc fstatvfs*(a1: cint, a2: var TStatvfs): cint {.
+proc fstatvfs*(a1: cint, a2: var Statvfs): cint {.
   importc, header: "<sys/statvfs.h>".}
 
-proc chmod*(a1: cstring, a2: TMode): cint {.importc, header: "<sys/stat.h>".}
-proc fchmod*(a1: cint, a2: TMode): cint {.importc, header: "<sys/stat.h>".}
-proc fstat*(a1: cint, a2: var TStat): cint {.importc, header: "<sys/stat.h>".}
-proc lstat*(a1: cstring, a2: var TStat): cint {.importc, header: "<sys/stat.h>".}
-proc mkdir*(a1: cstring, a2: TMode): cint {.importc, header: "<sys/stat.h>".}
-proc mkfifo*(a1: cstring, a2: TMode): cint {.importc, header: "<sys/stat.h>".}
-proc mknod*(a1: cstring, a2: TMode, a3: TDev): cint {.
+proc chmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
+proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
+proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
+proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
+proc mkdir*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
+proc mkfifo*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
+proc mknod*(a1: cstring, a2: Mode, a3: Dev): cint {.
   importc, header: "<sys/stat.h>".}
-proc stat*(a1: cstring, a2: var TStat): cint {.importc, header: "<sys/stat.h>".}
-proc umask*(a1: TMode): TMode {.importc, header: "<sys/stat.h>".}
+proc stat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
+proc umask*(a1: Mode): Mode {.importc, header: "<sys/stat.h>".}
 
-proc S_ISBLK*(m: TMode): bool {.importc, header: "<sys/stat.h>".}
+proc S_ISBLK*(m: Mode): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a block special file.
-proc S_ISCHR*(m: TMode): bool {.importc, header: "<sys/stat.h>".}
+proc S_ISCHR*(m: Mode): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a character special file.
-proc S_ISDIR*(m: TMode): bool {.importc, header: "<sys/stat.h>".}
+proc S_ISDIR*(m: Mode): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a directory.
-proc S_ISFIFO*(m: TMode): bool {.importc, header: "<sys/stat.h>".}
+proc S_ISFIFO*(m: Mode): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a pipe or FIFO special file.
-proc S_ISREG*(m: TMode): bool {.importc, header: "<sys/stat.h>".}
+proc S_ISREG*(m: Mode): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a regular file.
-proc S_ISLNK*(m: TMode): bool {.importc, header: "<sys/stat.h>".}
+proc S_ISLNK*(m: Mode): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a symbolic link.
-proc S_ISSOCK*(m: TMode): bool {.importc, header: "<sys/stat.h>".}
+proc S_ISSOCK*(m: Mode): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a socket.
 
-proc S_TYPEISMQ*(buf: var TStat): bool {.importc, header: "<sys/stat.h>".}
+proc S_TYPEISMQ*(buf: var Stat): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a message queue.
-proc S_TYPEISSEM*(buf: var TStat): bool {.importc, header: "<sys/stat.h>".}
+proc S_TYPEISSEM*(buf: var Stat): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a semaphore.
-proc S_TYPEISSHM*(buf: var TStat): bool {.importc, header: "<sys/stat.h>".}
+proc S_TYPEISSHM*(buf: var Stat): bool {.importc, header: "<sys/stat.h>".}
   ## Test for a shared memory object.
 
-proc S_TYPEISTMO*(buf: var TStat): bool {.importc, header: "<sys/stat.h>".}
+proc S_TYPEISTMO*(buf: var Stat): bool {.importc, header: "<sys/stat.h>".}
   ## Test macro for a typed memory object.
 
 proc mlock*(a1: pointer, a2: int): cint {.importc, header: "<sys/mman.h>".}
 proc mlockall*(a1: cint): cint {.importc, header: "<sys/mman.h>".}
-proc mmap*(a1: pointer, a2: int, a3, a4, a5: cint, a6: TOff): pointer {.
+proc mmap*(a1: pointer, a2: int, a3, a4, a5: cint, a6: Off): pointer {.
   importc, header: "<sys/mman.h>".}
 proc mprotect*(a1: pointer, a2: int, a3: cint): cint {.
   importc, header: "<sys/mman.h>".}
@@ -2233,119 +2259,119 @@ proc munlockall*(): cint {.importc, header: "<sys/mman.h>".}
 proc munmap*(a1: pointer, a2: int): cint {.importc, header: "<sys/mman.h>".}
 proc posix_madvise*(a1: pointer, a2: int, a3: cint): cint {.
   importc, header: "<sys/mman.h>".}
-proc posix_mem_offset*(a1: pointer, a2: int, a3: var TOff,
+proc posix_mem_offset*(a1: pointer, a2: int, a3: var Off,
            a4: var int, a5: var cint): cint {.importc, header: "<sys/mman.h>".}
 proc posix_typed_mem_get_info*(a1: cint,
-  a2: var Tposix_typed_mem_info): cint {.importc, header: "<sys/mman.h>".}
+  a2: var Posix_typed_mem_info): cint {.importc, header: "<sys/mman.h>".}
 proc posix_typed_mem_open*(a1: cstring, a2, a3: cint): cint {.
   importc, header: "<sys/mman.h>".}
-proc shm_open*(a1: cstring, a2: cint, a3: TMode): cint {.
+proc shm_open*(a1: cstring, a2: cint, a3: Mode): cint {.
   importc, header: "<sys/mman.h>".}
 proc shm_unlink*(a1: cstring): cint {.importc, header: "<sys/mman.h>".}
 
-proc asctime*(a1: var Ttm): cstring{.importc, header: "<time.h>".}
+proc asctime*(a1: var Tm): cstring{.importc, header: "<time.h>".}
 
-proc asctime_r*(a1: var Ttm, a2: cstring): cstring {.importc, header: "<time.h>".}
-proc clock*(): TClock {.importc, header: "<time.h>".}
-proc clock_getcpuclockid*(a1: TPid, a2: var TClockId): cint {.
+proc asctime_r*(a1: var Tm, a2: cstring): cstring {.importc, header: "<time.h>".}
+proc clock*(): Clock {.importc, header: "<time.h>".}
+proc clock_getcpuclockid*(a1: Pid, a2: var ClockId): cint {.
   importc, header: "<time.h>".}
-proc clock_getres*(a1: TClockId, a2: var Ttimespec): cint {.
+proc clock_getres*(a1: ClockId, a2: var Timespec): cint {.
   importc, header: "<time.h>".}
-proc clock_gettime*(a1: TClockId, a2: var Ttimespec): cint {.
+proc clock_gettime*(a1: ClockId, a2: var Timespec): cint {.
   importc, header: "<time.h>".}
-proc clock_nanosleep*(a1: TClockId, a2: cint, a3: var Ttimespec,
-               a4: var Ttimespec): cint {.importc, header: "<time.h>".}
-proc clock_settime*(a1: TClockId, a2: var Ttimespec): cint {.
+proc clock_nanosleep*(a1: ClockId, a2: cint, a3: var Timespec,
+               a4: var Timespec): cint {.importc, header: "<time.h>".}
+proc clock_settime*(a1: ClockId, a2: var Timespec): cint {.
   importc, header: "<time.h>".}
 
 proc ctime*(a1: var Time): cstring {.importc, header: "<time.h>".}
 proc ctime_r*(a1: var Time, a2: cstring): cstring {.importc, header: "<time.h>".}
 proc difftime*(a1, a2: Time): cdouble {.importc, header: "<time.h>".}
-proc getdate*(a1: cstring): ptr Ttm {.importc, header: "<time.h>".}
+proc getdate*(a1: cstring): ptr Tm {.importc, header: "<time.h>".}
 
-proc gmtime*(a1: var Time): ptr Ttm {.importc, header: "<time.h>".}
-proc gmtime_r*(a1: var Time, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
-proc localtime*(a1: var Time): ptr Ttm {.importc, header: "<time.h>".}
-proc localtime_r*(a1: var Time, a2: var Ttm): ptr Ttm {.importc, header: "<time.h>".}
-proc mktime*(a1: var Ttm): Time  {.importc, header: "<time.h>".}
-proc timegm*(a1: var Ttm): Time  {.importc, header: "<time.h>".}
-proc nanosleep*(a1, a2: var Ttimespec): cint {.importc, header: "<time.h>".}
+proc gmtime*(a1: var Time): ptr Tm {.importc, header: "<time.h>".}
+proc gmtime_r*(a1: var Time, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
+proc localtime*(a1: var Time): ptr Tm {.importc, header: "<time.h>".}
+proc localtime_r*(a1: var Time, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
+proc mktime*(a1: var Tm): Time  {.importc, header: "<time.h>".}
+proc timegm*(a1: var Tm): Time  {.importc, header: "<time.h>".}
+proc nanosleep*(a1, a2: var Timespec): cint {.importc, header: "<time.h>".}
 proc strftime*(a1: cstring, a2: int, a3: cstring,
-           a4: var Ttm): int {.importc, header: "<time.h>".}
-proc strptime*(a1, a2: cstring, a3: var Ttm): cstring {.importc, header: "<time.h>".}
+           a4: var Tm): int {.importc, header: "<time.h>".}
+proc strptime*(a1, a2: cstring, a3: var Tm): cstring {.importc, header: "<time.h>".}
 proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
-proc timer_create*(a1: var TClockId, a2: var TsigEvent,
-               a3: var Ttimer): cint {.importc, header: "<time.h>".}
-proc timer_delete*(a1: var Ttimer): cint {.importc, header: "<time.h>".}
-proc timer_gettime*(a1: Ttimer, a2: var titimerspec): cint {.
+proc timer_create*(a1: var ClockId, a2: var SigEvent,
+               a3: var Timer): cint {.importc, header: "<time.h>".}
+proc timer_delete*(a1: var Timer): cint {.importc, header: "<time.h>".}
+proc timer_gettime*(a1: Timer, a2: var Itimerspec): cint {.
   importc, header: "<time.h>".}
-proc timer_getoverrun*(a1: Ttimer): cint {.importc, header: "<time.h>".}
-proc timer_settime*(a1: Ttimer, a2: cint, a3: var titimerspec,
-               a4: var titimerspec): cint {.importc, header: "<time.h>".}
+proc timer_getoverrun*(a1: Timer): cint {.importc, header: "<time.h>".}
+proc timer_settime*(a1: Timer, a2: cint, a3: var Itimerspec,
+               a4: var Itimerspec): cint {.importc, header: "<time.h>".}
 proc tzset*() {.importc, header: "<time.h>".}
 
 
-proc wait*(a1: var cint): TPid {.importc, header: "<sys/wait.h>".}
-proc waitid*(a1: cint, a2: Tid, a3: var TsigInfo, a4: cint): cint {.
+proc wait*(a1: var cint): Pid {.importc, header: "<sys/wait.h>".}
+proc waitid*(a1: cint, a2: Id, a3: var SigInfo, a4: cint): cint {.
   importc, header: "<sys/wait.h>".}
-proc waitpid*(a1: TPid, a2: var cint, a3: cint): TPid {.
+proc waitpid*(a1: Pid, a2: var cint, a3: cint): Pid {.
   importc, header: "<sys/wait.h>".}
 
 proc bsd_signal*(a1: cint, a2: proc (x: pointer) {.noconv.}) {.
   importc, header: "<signal.h>".}
-proc kill*(a1: TPid, a2: cint): cint {.importc, header: "<signal.h>".}
-proc killpg*(a1: TPid, a2: cint): cint {.importc, header: "<signal.h>".}
-proc pthread_kill*(a1: Tpthread, a2: cint): cint {.importc, header: "<signal.h>".}
-proc pthread_sigmask*(a1: cint, a2, a3: var Tsigset): cint {.
+proc kill*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>".}
+proc killpg*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>".}
+proc pthread_kill*(a1: Pthread, a2: cint): cint {.importc, header: "<signal.h>".}
+proc pthread_sigmask*(a1: cint, a2, a3: var Sigset): cint {.
   importc, header: "<signal.h>".}
 proc `raise`*(a1: cint): cint {.importc, header: "<signal.h>".}
-proc sigaction*(a1: cint, a2, a3: var TSigaction): cint {.
+proc sigaction*(a1: cint, a2, a3: var Sigaction): cint {.
   importc, header: "<signal.h>".}
-proc sigaddset*(a1: var Tsigset, a2: cint): cint {.importc, header: "<signal.h>".}
-proc sigaltstack*(a1, a2: var TStack): cint {.importc, header: "<signal.h>".}
-proc sigdelset*(a1: var Tsigset, a2: cint): cint {.importc, header: "<signal.h>".}
-proc sigemptyset*(a1: var Tsigset): cint {.importc, header: "<signal.h>".}
-proc sigfillset*(a1: var Tsigset): cint {.importc, header: "<signal.h>".}
+proc sigaddset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
+proc sigaltstack*(a1, a2: var Stack): cint {.importc, header: "<signal.h>".}
+proc sigdelset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
+proc sigemptyset*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
+proc sigfillset*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
 proc sighold*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigignore*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc siginterrupt*(a1, a2: cint): cint {.importc, header: "<signal.h>".}
-proc sigismember*(a1: var Tsigset, a2: cint): cint {.importc, header: "<signal.h>".}
+proc sigismember*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
 proc signal*(a1: cint, a2: proc (x: cint) {.noconv.}) {.
   importc, header: "<signal.h>".}
 proc sigpause*(a1: cint): cint {.importc, header: "<signal.h>".}
-proc sigpending*(a1: var Tsigset): cint {.importc, header: "<signal.h>".}
-proc sigprocmask*(a1: cint, a2, a3: var Tsigset): cint {.
+proc sigpending*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
+proc sigprocmask*(a1: cint, a2, a3: var Sigset): cint {.
   importc, header: "<signal.h>".}
-proc sigqueue*(a1: TPid, a2: cint, a3: TsigVal): cint {.
+proc sigqueue*(a1: Pid, a2: cint, a3: SigVal): cint {.
   importc, header: "<signal.h>".}
 proc sigrelse*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigset*(a1: int, a2: proc (x: cint) {.noconv.}) {.
   importc, header: "<signal.h>".}
-proc sigsuspend*(a1: var Tsigset): cint {.importc, header: "<signal.h>".}
-proc sigtimedwait*(a1: var Tsigset, a2: var TsigInfo,
-                   a3: var Ttimespec): cint {.importc, header: "<signal.h>".}
-proc sigwait*(a1: var Tsigset, a2: var cint): cint {.
+proc sigsuspend*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
+proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
+                   a3: var Timespec): cint {.importc, header: "<signal.h>".}
+proc sigwait*(a1: var Sigset, a2: var cint): cint {.
   importc, header: "<signal.h>".}
-proc sigwaitinfo*(a1: var Tsigset, a2: var TsigInfo): cint {.
+proc sigwaitinfo*(a1: var Sigset, a2: var SigInfo): cint {.
   importc, header: "<signal.h>".}
 
 
-proc catclose*(a1: Tnl_catd): cint {.importc, header: "<nl_types.h>".}
-proc catgets*(a1: Tnl_catd, a2, a3: cint, a4: cstring): cstring {.
+proc catclose*(a1: Nl_catd): cint {.importc, header: "<nl_types.h>".}
+proc catgets*(a1: Nl_catd, a2, a3: cint, a4: cstring): cstring {.
   importc, header: "<nl_types.h>".}
-proc catopen*(a1: cstring, a2: cint): Tnl_catd {.
+proc catopen*(a1: cstring, a2: cint): Nl_catd {.
   importc, header: "<nl_types.h>".}
 
 proc sched_get_priority_max*(a1: cint): cint {.importc, header: "<sched.h>".}
 proc sched_get_priority_min*(a1: cint): cint {.importc, header: "<sched.h>".}
-proc sched_getparam*(a1: TPid, a2: var Tsched_param): cint {.
+proc sched_getparam*(a1: Pid, a2: var Sched_param): cint {.
   importc, header: "<sched.h>".}
-proc sched_getscheduler*(a1: TPid): cint {.importc, header: "<sched.h>".}
-proc sched_rr_get_interval*(a1: TPid, a2: var Ttimespec): cint {.
+proc sched_getscheduler*(a1: Pid): cint {.importc, header: "<sched.h>".}
+proc sched_rr_get_interval*(a1: Pid, a2: var Timespec): cint {.
   importc, header: "<sched.h>".}
-proc sched_setparam*(a1: TPid, a2: var Tsched_param): cint {.
+proc sched_setparam*(a1: Pid, a2: var Sched_param): cint {.
   importc, header: "<sched.h>".}
-proc sched_setscheduler*(a1: TPid, a2: cint, a3: var Tsched_param): cint {.
+proc sched_setscheduler*(a1: Pid, a2: cint, a3: var Sched_param): cint {.
   importc, header: "<sched.h>".}
 proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 
@@ -2359,13 +2385,13 @@ proc FD_SET*(a1: cint | SocketHandle, a2: var TFdSet) {.
   importc: "FD_SET", header: "<sys/select.h>".}
 proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
 
-proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Ttimespec,
-         a6: var Tsigset): cint  {.importc, header: "<sys/select.h>".}
+proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Timespec,
+         a6: var Sigset): cint  {.importc, header: "<sys/select.h>".}
 proc select*(a1: cint | SocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Timeval): cint {.
              importc, header: "<sys/select.h>".}
 
 when hasSpawnH:
-  proc posix_spawn*(a1: var TPid, a2: cstring,
+  proc posix_spawn*(a1: var Pid, a2: cstring,
             a3: var Tposix_spawn_file_actions,
             a4: var Tposix_spawnattr,
             a5, a6: cstringArray): cint {.importc, header: "<spawn.h>".}
@@ -2374,7 +2400,7 @@ when hasSpawnH:
   proc posix_spawn_file_actions_adddup2*(a1: var Tposix_spawn_file_actions,
             a2, a3: cint): cint {.importc, header: "<spawn.h>".}
   proc posix_spawn_file_actions_addopen*(a1: var Tposix_spawn_file_actions,
-            a2: cint, a3: cstring, a4: cint, a5: TMode): cint {.
+            a2: cint, a3: cstring, a4: cint, a5: Mode): cint {.
             importc, header: "<spawn.h>".}
   proc posix_spawn_file_actions_destroy*(
     a1: var Tposix_spawn_file_actions): cint {.importc, header: "<spawn.h>".}
@@ -2383,48 +2409,48 @@ when hasSpawnH:
   proc posix_spawnattr_destroy*(a1: var Tposix_spawnattr): cint {.
     importc, header: "<spawn.h>".}
   proc posix_spawnattr_getsigdefault*(a1: var Tposix_spawnattr,
-            a2: var Tsigset): cint {.importc, header: "<spawn.h>".}
+            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getflags*(a1: var Tposix_spawnattr,
             a2: var cshort): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getpgroup*(a1: var Tposix_spawnattr,
-            a2: var TPid): cint {.importc, header: "<spawn.h>".}
+            a2: var Pid): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getschedparam*(a1: var Tposix_spawnattr,
-            a2: var Tsched_param): cint {.importc, header: "<spawn.h>".}
+            a2: var Sched_param): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getschedpolicy*(a1: var Tposix_spawnattr,
             a2: var cint): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_getsigmask*(a1: var Tposix_spawnattr,
-            a2: var Tsigset): cint {.importc, header: "<spawn.h>".}
+            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
 
   proc posix_spawnattr_init*(a1: var Tposix_spawnattr): cint {.
     importc, header: "<spawn.h>".}
   proc posix_spawnattr_setsigdefault*(a1: var Tposix_spawnattr,
-            a2: var Tsigset): cint {.importc, header: "<spawn.h>".}
+            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_setflags*(a1: var Tposix_spawnattr, a2: cint): cint {.
     importc, header: "<spawn.h>".}
-  proc posix_spawnattr_setpgroup*(a1: var Tposix_spawnattr, a2: TPid): cint {.
+  proc posix_spawnattr_setpgroup*(a1: var Tposix_spawnattr, a2: Pid): cint {.
     importc, header: "<spawn.h>".}
 
   proc posix_spawnattr_setschedparam*(a1: var Tposix_spawnattr,
-            a2: var Tsched_param): cint {.importc, header: "<spawn.h>".}
+            a2: var Sched_param): cint {.importc, header: "<spawn.h>".}
   proc posix_spawnattr_setschedpolicy*(a1: var Tposix_spawnattr,
                                        a2: cint): cint {.
                                        importc, header: "<spawn.h>".}
   proc posix_spawnattr_setsigmask*(a1: var Tposix_spawnattr,
-            a2: var Tsigset): cint {.importc, header: "<spawn.h>".}
-  proc posix_spawnp*(a1: var TPid, a2: cstring,
+            a2: var Sigset): cint {.importc, header: "<spawn.h>".}
+  proc posix_spawnp*(a1: var Pid, a2: cstring,
             a3: var Tposix_spawn_file_actions,
             a4: var Tposix_spawnattr,
             a5, a6: cstringArray): cint {.importc, header: "<spawn.h>".}
 
-proc getcontext*(a1: var Tucontext): cint {.importc, header: "<ucontext.h>".}
-proc makecontext*(a1: var Tucontext, a4: proc (){.noconv.}, a3: cint) {.
+proc getcontext*(a1: var Ucontext): cint {.importc, header: "<ucontext.h>".}
+proc makecontext*(a1: var Ucontext, a4: proc (){.noconv.}, a3: cint) {.
   varargs, importc, header: "<ucontext.h>".}
-proc setcontext*(a1: var Tucontext): cint {.importc, header: "<ucontext.h>".}
-proc swapcontext*(a1, a2: var Tucontext): cint {.importc, header: "<ucontext.h>".}
+proc setcontext*(a1: var Ucontext): cint {.importc, header: "<ucontext.h>".}
+proc swapcontext*(a1, a2: var Ucontext): cint {.importc, header: "<ucontext.h>".}
 
-proc readv*(a1: cint, a2: ptr TIOVec, a3: cint): int {.
+proc readv*(a1: cint, a2: ptr IOVec, a3: cint): int {.
   importc, header: "<sys/uio.h>".}
-proc writev*(a1: cint, a2: ptr TIOVec, a3: cint): int {.
+proc writev*(a1: cint, a2: ptr IOVec, a3: cint): int {.
   importc, header: "<sys/uio.h>".}
 
 proc CMSG_DATA*(cmsg: ptr Tcmsghdr): cstring {.
@@ -2491,40 +2517,40 @@ proc if_indextoname*(a1: cint, a2: cstring): cstring {.
 proc if_nameindex*(): ptr Tif_nameindex {.importc, header: "<net/if.h>".}
 proc if_freenameindex*(a1: ptr Tif_nameindex) {.importc, header: "<net/if.h>".}
 
-proc IN6_IS_ADDR_UNSPECIFIED* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_UNSPECIFIED* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unspecified address.
-proc IN6_IS_ADDR_LOOPBACK* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_LOOPBACK* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Loopback address.
-proc IN6_IS_ADDR_MULTICAST* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_MULTICAST* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast address.
-proc IN6_IS_ADDR_LINKLOCAL* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_LINKLOCAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unicast link-local address.
-proc IN6_IS_ADDR_SITELOCAL* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_SITELOCAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unicast site-local address.
-proc IN6_IS_ADDR_V4MAPPED* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_V4MAPPED* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## IPv4 mapped address.
-proc IN6_IS_ADDR_V4COMPAT* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_V4COMPAT* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## IPv4-compatible address.
-proc IN6_IS_ADDR_MC_NODELOCAL* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_MC_NODELOCAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast node-local address.
-proc IN6_IS_ADDR_MC_LINKLOCAL* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_MC_LINKLOCAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast link-local address.
-proc IN6_IS_ADDR_MC_SITELOCAL* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_MC_SITELOCAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast site-local address.
-proc IN6_IS_ADDR_MC_ORGLOCAL* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_MC_ORGLOCAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast organization-local address.
-proc IN6_IS_ADDR_MC_GLOBAL* (a1: ptr TIn6Addr): cint {.
+proc IN6_IS_ADDR_MC_GLOBAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Multicast global address.
 
@@ -2552,9 +2578,9 @@ proc getnetbyaddr*(a1: int32, a2: cint): ptr Tnetent {.importc, header: "<netdb.
 proc getnetbyname*(a1: cstring): ptr Tnetent {.importc, header: "<netdb.h>".}
 proc getnetent*(): ptr Tnetent {.importc, header: "<netdb.h>".}
 
-proc getprotobyname*(a1: cstring): ptr TProtoent {.importc, header: "<netdb.h>".}
-proc getprotobynumber*(a1: cint): ptr TProtoent {.importc, header: "<netdb.h>".}
-proc getprotoent*(): ptr TProtoent {.importc, header: "<netdb.h>".}
+proc getprotobyname*(a1: cstring): ptr Protoent {.importc, header: "<netdb.h>".}
+proc getprotobynumber*(a1: cint): ptr Protoent {.importc, header: "<netdb.h>".}
+proc getprotoent*(): ptr Protoent {.importc, header: "<netdb.h>".}
 
 proc getservbyname*(a1, a2: cstring): ptr Servent {.importc, header: "<netdb.h>".}
 proc getservbyport*(a1: cint, a2: cstring): ptr Servent {.

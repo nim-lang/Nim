@@ -188,34 +188,34 @@ const
       (LIBMIKMOD_VERSION_MINOR shl 8) or (LIBMIKMOD_REVISION))
 
 type                          #music_cmd.h types
-  PMusicCMD* = ptr TMusicCMD
-  TMusicCMD*{.final.} = object  #wavestream.h types
+  PMusicCMD* = ptr MusicCMD
+  MusicCMD*{.final.} = object  #wavestream.h types
     filename*: array[0..PATH_MAX - 1, char]
     cmd*: array[0..PATH_MAX - 1, char]
     pid*: TSYS_ThreadHandle
 
-  PWAVStream* = ptr TWAVStream
-  TWAVStream*{.final.} = object  #playmidi.h types
+  PWAVStream* = ptr WAVStream
+  WAVStream*{.final.} = object  #playmidi.h types
     wavefp*: pointer
     start*: int32
     stop*: int32
     cvt*: TAudioCVT
 
-  PMidiEvent* = ptr TMidiEvent
-  TMidiEvent*{.final.} = object 
+  PMidiEvent* = ptr MidiEvent
+  MidiEvent*{.final.} = object 
     time*: int32
     channel*: byte
     typ*: byte
     a*: byte
     b*: byte
 
-  PMidiSong* = ptr TMidiSong
-  TMidiSong*{.final.} = object  #music_ogg.h types
+  PMidiSong* = ptr MidiSong
+  MidiSong*{.final.} = object  #music_ogg.h types
     samples*: int32
     events*: PMidiEvent
 
-  POGG_Music* = ptr TOGG_Music
-  TOGG_Music*{.final.} = object  # mikmod.h types
+  POGG_Music* = ptr OGG_Music
+  OGG_Music*{.final.} = object  # mikmod.h types
                                  #*
                                  #  * Error codes
                                  #  *
@@ -226,7 +226,7 @@ type                          #music_cmd.h types
     lenAvailable*: int32
     sndAvailable*: pointer
 
-  TErrorEnum* = enum 
+  ErrorEnum* = enum 
     MMERR_OPENING_FILE, MMERR_OUT_OF_MEMORY, MMERR_DYNAMIC_LINKING, 
     MMERR_SAMPLE_TOO_BIG, MMERR_OUT_OF_HANDLES, MMERR_UNKNOWN_WAVE_TYPE, 
     MMERR_LOADING_PATTERN, MMERR_LOADING_TRACK, MMERR_LOADING_HEADER, 
@@ -246,37 +246,41 @@ type                          #music_cmd.h types
     MMERR_DS_EVENT, MMERR_DS_THREAD, MMERR_DS_UPDATE, MMERR_WINMM_HANDLE, 
     MMERR_WINMM_ALLOCATED, MMERR_WINMM_DEVICEID, MMERR_WINMM_FORMAT, 
     MMERR_WINMM_UNKNOWN, MMERR_MAC_SPEED, MMERR_MAC_START, MMERR_MAX
-  PMODULE* = ptr TMODULE
-  TMODULE*{.final.} = object 
-  PUNIMOD* = ptr TUNIMOD
-  TUNIMOD* = TMODULE          #SDL_mixer.h types
+  PMODULE* = ptr MODULE
+  MODULE*{.final.} = object 
+  PUNIMOD* = ptr UNIMOD
+  UNIMOD* = MODULE          #SDL_mixer.h types
                               # The internal format for an audio chunk
-  PChunk* = ptr TChunk
-  TChunk*{.final.} = object 
+  PChunk* = ptr Chunk
+  Chunk*{.final.} = object 
     allocated*: cint
     abuf*: pointer
     alen*: uint32
     volume*: byte            # Per-sample volume, 0-128
   
-  TFading* = enum 
+  Fading* = enum 
     MIX_NO_FADING, MIX_FADING_OUT, MIX_FADING_IN
-  TMusicType* = enum 
+  MusicType* = enum 
     MUS_NONE, MUS_CMD, MUS_WAV, MUS_MOD, MUS_MID, MUS_OGG, MUS_MP3
-  PMusic* = ptr TMusic
-  TMusic*{.final.} = object  # The internal format for a music chunk interpreted via mikmod
-    mixtype*: TMusicType      # other fields are not aviable
-                              #    data : TMusicUnion;
+  PMusic* = ptr Music
+  Music*{.final.} = object  # The internal format for a music chunk interpreted via mikmod
+    mixtype*: MusicType      # other fields are not aviable
+                              #    data : MusicUnion;
                               #    fading : TMix_Fading;
                               #    fade_volume : integer;
                               #    fade_step : integer;
                               #    fade_steps : integer;
                               #    error : integer;
   
-  TMixFunction* = proc (udata, stream: pointer, length: cint): pointer{.
+  MixFunction* = proc (udata, stream: pointer, length: cint): pointer{.
       cdecl.} # This macro can be used to fill a version structure with the compile-time
               #  version of the SDL_mixer library.
+{.deprecated: [TMusicCMD: MusicCMD, TWAVStream: WAVStream, TMidiEvent: MidiEvent,
+              TMidiSong: MidiSong, TOGG_Music: OGG_Music, TErrorEnum: ErrorEnum,
+              TMODULE: MODULE, TUNIMOD: UNIMOD, TChunk: Chunk, TFading: Fading,
+              TMusicType: MusicType, TMusic: Music, TMixFunction: MixFunction].}
 
-proc version*(x: var sdl.Tversion)
+proc version*(x: var sdl.Version)
   # This function gets the version of the dynamically linked SDL_mixer library.
   #     It should NOT be used to fill a version structure, instead you should use the
   #     SDL_MIXER_VERSION() macro.
@@ -314,18 +318,18 @@ proc freeMusic*(music: PMusic){.cdecl, importc: "Mix_FreeMusic",
                                         dynlib: MixerLibName.}
   # Find out the music format of a mixer music, or the currently playing
   #   music, if 'music' is NULL.
-proc getMusicType*(music: PMusic): TMusicType{.cdecl, 
+proc getMusicType*(music: PMusic): MusicType{.cdecl, 
     importc: "Mix_GetMusicType", dynlib: MixerLibName.}
   # Set a function that is called after all mixing is performed.
   #   This can be used to provide real-time visual display of the audio stream
   #   or add a custom mixer filter for the stream data.
   #
-proc setPostMix*(mixFunc: TMixFunction, arg: pointer){.cdecl, 
+proc setPostMix*(mixFunc: MixFunction, arg: pointer){.cdecl, 
     importc: "Mix_SetPostMix", dynlib: MixerLibName.}
   # Add your own music player or additional mixer function.
   #   If 'mix_func' is NULL, the default music player is re-enabled.
   #
-proc hookMusic*(mixFunc: TMixFunction, arg: pointer){.cdecl, 
+proc hookMusic*(mixFunc: MixFunction, arg: pointer){.cdecl, 
     importc: "Mix_HookMusic", dynlib: MixerLibName.}
   # Add your own callback when the music has finished playing.
   #
@@ -337,9 +341,10 @@ proc getMusicHookData*(): pointer{.cdecl, importc: "Mix_GetMusicHookData",
   #* Add your own callback when a channel has finished playing. NULL
   # * to disable callback.*
 type 
-  TChannelFinished* = proc (channel: cint){.cdecl.}
+  ChannelFinished* = proc (channel: cint){.cdecl.}
+{.deprecated: [TChannelFinished: ChannelFinished].}
 
-proc channelFinished*(channelFinished: TChannelFinished){.cdecl, 
+proc channelFinished*(channelFinished: ChannelFinished){.cdecl, 
     importc: "Mix_ChannelFinished", dynlib: MixerLibName.}
 const 
   CHANNEL_POST* = - 2     
@@ -430,9 +435,9 @@ proc fadeOutGroup*(tag: cint, ms: cint): cint{.cdecl,
 proc fadeOutMusic*(ms: cint): cint{.cdecl, importc: "Mix_FadeOutMusic", 
                                       dynlib: MixerLibName.}
   # Query the fading status of a channel
-proc fadingMusic*(): TFading{.cdecl, importc: "Mix_FadingMusic", 
+proc fadingMusic*(): Fading{.cdecl, importc: "Mix_FadingMusic", 
                                       dynlib: MixerLibName.}
-proc fadingChannel*(which: cint): TFading{.cdecl, 
+proc fadingChannel*(which: cint): Fading{.cdecl, 
     importc: "Mix_FadingChannel", dynlib: MixerLibName.}
 
 proc pause*(channel: cint){.cdecl, importc: "Mix_Pause", dynlib: MixerLibName.}
@@ -468,7 +473,7 @@ proc getChunk*(channel: cint): PChunk{.cdecl, importc: "Mix_GetChunk",
 
 proc closeAudio*(){.cdecl, importc: "Mix_CloseAudio", dynlib: MixerLibName.}
 
-proc version(x: var sdl.Tversion) = 
+proc version(x: var sdl.Version) = 
   x.major = MAJOR_VERSION
   x.minor = MINOR_VERSION
   x.patch = PATCHLEVEL

@@ -24,13 +24,13 @@
 ##
 ##   Error: type mismatch: got (Person)
 ##   but expected one of:
-##   hashes.hash(x: openarray[A]): THash
-##   hashes.hash(x: int): THash
-##   hashes.hash(x: float): THash
+##   hashes.hash(x: openarray[A]): Hash
+##   hashes.hash(x: int): Hash
+##   hashes.hash(x: float): Hash
 ##   …
 ##
 ## What is happening here is that the types used for table keys require to have
-## a ``hash()`` proc which will convert them to a `THash <hashes.html#THash>`_
+## a ``hash()`` proc which will convert them to a `Hash <hashes.html#Hash>`_
 ## value, and the compiler is listing all the hash functions it knows.
 ## Additionally there has to be a ``==`` operator that provides the same
 ## semantics as its corresponding ``hash`` proc.
@@ -46,7 +46,7 @@
 ##     Person = object
 ##       firstName, lastName: string
 ##
-##   proc hash(x: Person): THash =
+##   proc hash(x: Person): Hash =
 ##     ## Piggyback on the already available string hash proc.
 ##     ##
 ##     ## Without this proc nothing works!
@@ -71,7 +71,7 @@ import
 {.pragma: myShallow.}
 
 type
-  KeyValuePair[A, B] = tuple[hcode: THash, key: A, val: B]
+  KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]
   Table* {.myShallow.}[A, B] = object ## generic hash table
     data: KeyValuePairSeq[A, B]
@@ -85,10 +85,10 @@ when not defined(nimhygiene):
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: THash): bool {.inline.} =
+proc isEmpty(hcode: Hash): bool {.inline.} =
   result = hcode == 0
 
-proc isFilled(hcode: THash): bool {.inline.} =
+proc isFilled(hcode: Hash): bool {.inline.} =
   result = hcode != 0
 
 proc len*[A, B](t: Table[A, B]): int =
@@ -137,15 +137,15 @@ proc rightSize*(count: Natural): int {.inline.} =
   ## Internally, we want mustRehash(rightSize(x), x) == false.
   result = nextPowerOfTwo(count * 3 div 2  +  4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
 template rawGetKnownHCImpl() {.dirty.} =
-  var h: THash = hc and high(t.data)   # start with real hash value
+  var h: Hash = hc and high(t.data)   # start with real hash value
   while isFilled(t.data[h].hcode):
     # Compare hc THEN key with boolean short circuit. This makes the common case
     # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
-    # It does slow down succeeding lookups by one extra THash cmp&and..usually
+    # It does slow down succeeding lookups by one extra Hash cmp&and..usually
     # just a few clock cycles, generally worth it for any non-integer-like A.
     if t.data[h].hcode == hc and t.data[h].key == key:
       return h
@@ -162,7 +162,7 @@ template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   hc = hash(key)
   if hc == 0:
     hc = 314159265
-  var h: THash = hc and high(t.data)
+  var h: Hash = hc and high(t.data)
   while isFilled(t.data[h].hcode):
     h = nextTry(h, high(t.data))
   result = h
@@ -172,13 +172,13 @@ template rawInsertImpl() {.dirty.} =
   data[h].val = val
   data[h].hcode = hc
 
-proc rawGetKnownHC[A, B](t: Table[A, B], key: A, hc: THash): int {.inline.} =
+proc rawGetKnownHC[A, B](t: Table[A, B], key: A, hc: Hash): int {.inline.} =
   rawGetKnownHCImpl()
 
-proc rawGetDeep[A, B](t: Table[A, B], key: A, hc: var THash): int {.inline.} =
+proc rawGetDeep[A, B](t: Table[A, B], key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
 
-proc rawGet[A, B](t: Table[A, B], key: A, hc: var THash): int {.inline.} =
+proc rawGet[A, B](t: Table[A, B], key: A, hc: var Hash): int {.inline.} =
   rawGetImpl()
 
 proc `[]`*[A, B](t: Table[A, B], key: A): B =
@@ -186,14 +186,14 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var hc: THash
+  var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var Table[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  var hc: THash
+  var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else:
@@ -204,7 +204,7 @@ proc mget*[A, B](t: var Table[A, B], key: A): var B =
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
-  var h: THash = hash(key) and high(t.data)
+  var h: Hash = hash(key) and high(t.data)
   while isFilled(t.data[h].hcode):
     if t.data[h].key == key:
       yield t.data[h].val
@@ -212,7 +212,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
-  var hc: THash
+  var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
 proc contains*[A, B](t: Table[A, B], key: A): bool =
@@ -220,7 +220,7 @@ proc contains*[A, B](t: Table[A, B], key: A): bool =
   return hasKey[A, B](t, key)
 
 proc rawInsert[A, B](t: var Table[A, B], data: var KeyValuePairSeq[A, B],
-                     key: A, val: B, hc: THash, h: THash) =
+                     key: A, val: B, hc: Hash, h: Hash) =
   rawInsertImpl()
 
 proc enlarge[A, B](t: var Table[A, B]) =
@@ -234,7 +234,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
 
 template addImpl() {.dirty.} =
   if mustRehash(len(t.data), t.counter): enlarge(t)
-  var hc: THash
+  var hc: Hash
   var j = rawGetDeep(t, key, hc)
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
@@ -248,19 +248,19 @@ template maybeRehashPutImpl() {.dirty.} =
   inc(t.counter)
 
 template putImpl() {.dirty.} =
-  var hc: THash
+  var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
   else: maybeRehashPutImpl()
 
 template mgetOrPutImpl() {.dirty.} =
-  var hc: THash
+  var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0: maybeRehashPutImpl()    # not present: insert (flipping index)
   result = t.data[index].val            # either way return modifiable val
 
 template hasKeyOrPutImpl() {.dirty.} =
-  var hc: THash
+  var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
     result = false
@@ -291,7 +291,7 @@ template doWhile(a: expr, b: stmt): stmt =
 
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## deletes `key` from hash table `t`.
-  var hc: THash
+  var hc: Hash
   var i = rawGet(t, key, hc)
   let msk = high(t.data)
   if i >= 0:
@@ -460,7 +460,7 @@ proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B]
 
 type
   OrderedKeyValuePair[A, B] = tuple[
-    hcode: THash, next: int, key: A, val: B]
+    hcode: Hash, next: int, key: A, val: B]
   OrderedKeyValuePairSeq[A, B] = seq[OrderedKeyValuePair[A, B]]
   OrderedTable* {.
       myShallow.}[A, B] = object ## table that remembers insertion order
@@ -509,13 +509,13 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: THash): int =
+proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: Hash): int =
   rawGetKnownHCImpl()
 
-proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var THash): int {.inline.} =
+proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
 
-proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var THash): int =
+proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
   rawGetImpl()
 
 proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
@@ -523,21 +523,21 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ## default empty value for the type `B` is returned
   ## and no exception is raised. One can check with ``hasKey`` whether the key
   ## exists.
-  var hc: THash
+  var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
 proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``EInvalidKey`` exception is raised.
-  var hc: THash
+  var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else: raise newException(KeyError, "key not found: " & $key)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
-  var hc: THash
+  var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
 proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
@@ -546,7 +546,7 @@ proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: B, hc: THash, h: THash) =
+                     key: A, val: B, hc: Hash, h: Hash) =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
@@ -796,7 +796,7 @@ iterator mvalues*[A](t: CountTable[A]): var int =
     if t.data[h].val != 0: yield t.data[h].val
 
 proc rawGet[A](t: CountTable[A], key: A): int =
-  var h: THash = hash(key) and high(t.data) # start with real hash value
+  var h: Hash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].val != 0:
     if t.data[h].key == key: return h
     h = nextTry(h, high(t.data))
@@ -826,7 +826,7 @@ proc contains*[A](t: CountTable[A], key: A): bool =
 
 proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
-  var h: THash = hash(key) and high(data)
+  var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
@@ -1032,7 +1032,7 @@ when isMainModule:
     Person = object
       firstName, lastName: string
 
-  proc hash(x: Person): THash =
+  proc hash(x: Person): Hash =
     ## Piggyback on the already available string hash proc.
     ##
     ## Without this proc nothing works!

@@ -148,7 +148,7 @@ const
 # This macro can be used to fill a version structure with the compile-time
 #  version of the SDL_image library. 
 
-proc imageVersion*(x: var Tversion)
+proc imageVersion*(x: var Version)
   # This function gets the version of the dynamically linked SDL_image library.
   #   it should NOT be used to fill a version structure, instead you should
   #   use the SDL_IMAGE_VERSION() macro.
@@ -236,7 +236,7 @@ proc imgLoadXV_RW*(src: PRWops): PSurface{.cdecl, importc: "IMG_LoadXV_RW",
 proc imgReadXPMFromArray*(xpm: cstringArray): PSurface{.cdecl, 
     importc: "IMG_ReadXPMFromArray", dynlib: ImageLibName.}
 
-proc imageVersion(x: var Tversion) = 
+proc imageVersion(x: var Version) = 
   x.major = IMAGE_MAJOR_VERSION
   x.minor = IMAGE_MINOR_VERSION
   x.patch = IMAGE_PATCHLEVEL

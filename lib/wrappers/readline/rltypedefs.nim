@@ -19,27 +19,32 @@
 #
 
 type 
-  TFunction* = proc (): cint{.cdecl.}
-  TVFunction* = proc (){.cdecl.}
-  TCPFunction* = proc (): cstring{.cdecl.}
-  TCPPFunction* = proc (): cstringArray{.cdecl.}
+  Function* = proc (): cint{.cdecl.}
+  VFunction* = proc (){.cdecl.}
+  CPFunction* = proc (): cstring{.cdecl.}
+  CPPFunction* = proc (): cstringArray{.cdecl.}
+{.deprecated: [TFunction: Function, TVFunction: VFunction,
+              TCPFunction: CPFunction, TCPPFunction: CPPFunction].}
 
 # Bindable functions 
 
 type 
-  Tcommand_func* = proc (a2: cint, a3: cint): cint{.cdecl.}
+  Command_func* = proc (a2: cint, a3: cint): cint{.cdecl.}
+{.deprecated: [Tcommand_func: Command_func].}
 
 # Typedefs for the completion system 
 
 type 
-  Tcompentry_func* = proc (a2: cstring, a3: cint): cstring{.cdecl.}
-  Tcompletion_func* = proc (a2: cstring, a3: cint, a4: cint): cstringArray{.
+  Compentry_func* = proc (a2: cstring, a3: cint): cstring{.cdecl.}
+  Completion_func* = proc (a2: cstring, a3: cint, a4: cint): cstringArray{.
       cdecl.}
-  Tquote_func* = proc (a2: cstring, a3: cint, a4: cstring): cstring{.cdecl.}
-  Tdequote_func* = proc (a2: cstring, a3: cint): cstring{.cdecl.}
-  Tcompignore_func* = proc (a2: cstringArray): cint{.cdecl.}
-  Tcompdisp_func* = proc (a2: cstringArray, a3: cint, a4: cint){.cdecl.}
-
+  Quote_func* = proc (a2: cstring, a3: cint, a4: cstring): cstring{.cdecl.}
+  Dequote_func* = proc (a2: cstring, a3: cint): cstring{.cdecl.}
+  Compignore_func* = proc (a2: cstringArray): cint{.cdecl.}
+  Compdisp_func* = proc (a2: cstringArray, a3: cint, a4: cint){.cdecl.}
+{.deprecated: [Tcompentry_func: Compentry_func,Tcompletion_func: Completion_func,
+              Tquote_func: Quote_func, Tdequote_func: Dequote_func,
+              Tcompignore_func: Compignore_func, Tcompdisp_func: Compdisp_func].}
 # Type for input and pre-read hook functions like rl_event_hook 
 
 type 
