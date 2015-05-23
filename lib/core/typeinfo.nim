@@ -68,7 +68,7 @@ type
 
   TGenericSeq {.importc.} = object
     len, space: int
-  PGenSeq = ptr GenericSeq
+  PGenSeq = ptr TGenericSeq
 {.deprecated: [TAny: Any, TAnyKind: AnyKind].}
 
 const
