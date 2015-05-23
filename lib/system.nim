@@ -311,8 +311,6 @@ when not defined(JS):
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: UncheckedCharArray
     NimString = ptr NimStringDesc
-    GenericSeq = TGenericSeq
-#  {.deprecated: [TGenericSeq: GenericSeq].}
 
 when not defined(JS) and not defined(NimrodVM):
   template space(s: PGenericSeq): int {.dirty.} =
