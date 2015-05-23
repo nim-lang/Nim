@@ -42,6 +42,11 @@ proc `==`*(a, b: SecureHash): bool =
   SHA1Digest(a) == SHA1Digest(b)
 
 
+when isMainModule:
+  let hash1 = secureHash("a93tgj0p34jagp9[agjp98ajrhp9aej]")
+  doAssert hash1 == hash1
+  doAssert parseSecureHash($hash1) == hash1
+
 
 # Copyright (c) 2011, Micael Hildenborg
 # All rights reserved.
