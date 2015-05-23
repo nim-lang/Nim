@@ -48,13 +48,13 @@ else:
 proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
   var s = space
   if s < 7: s = 7
-  result = allocStrNoInit(sizeof(GenericSeq) + s + 1)
+  result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
 
 proc rawNewString(space: int): NimString {.compilerProc.} =
   var s = space
   if s < 7: s = 7
-  result = allocStr(sizeof(GenericSeq) + s + 1)
+  result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
 
 proc mnewString(len: int): NimString {.compilerProc.} =
@@ -97,7 +97,7 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     when declared(newObjRC1):
       var s = src.len
       if s < 7: s = 7
-      result = cast[NimString](newObjRC1(addr(strDesc), sizeof(GenericSeq) +
+      result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
                                s+1))
       result.reserved = s
     else:
@@ -125,7 +125,7 @@ proc addChar(s: NimString, c: char): NimString =
   if result.len >= result.space:
     result.reserved = resize(result.space)
     result = cast[NimString](growObj(result,
-      sizeof(GenericSeq) + result.reserved + 1))
+      sizeof(TGenericSeq) + result.reserved + 1))
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -166,10 +166,10 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
-    result = cast[NimString](growObj(dest, sizeof(GenericSeq) + sp + 1))
+    result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
     result.reserved = sp
     #result = rawNewString(sp)
-    #copyMem(result, dest, dest.len + sizeof(GenericSeq))
+    #copyMem(result, dest, dest.len + sizeof(TGenericSeq))
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =

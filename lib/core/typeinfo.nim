@@ -66,10 +66,10 @@ type
   ppointer = ptr pointer
   pbyteArray = ptr array[0.. 0xffff, int8]
 
-  GenericSeq {.importc.} = object
+  TGenericSeq {.importc.} = object
     len, space: int
   PGenSeq = ptr GenericSeq
-{.deprecated: [TGenericSeq: GenericSeq, TAny: Any, TAnyKind: AnyKind].}
+{.deprecated: [TAny: Any, TAnyKind: AnyKind].}
 
 const
   GenericSeqSize = (2 * sizeof(int))
