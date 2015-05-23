@@ -585,13 +585,11 @@ proc externalFileChanged(filename: string): bool =
     return false
 
   var crcFile = toGeneratedFile(filename.withPackageName, "crc")
-  var currentCrc = int(footprint(filename))
+  var currentCrc = footprint(filename)
   var f: File
   if open(f, crcFile, fmRead):
-    var line = newStringOfCap(40)
-    if not f.readLine(line): line = "0"
+    let oldCrc = parseSecureHash(f.readLine())
     close(f)
-    var oldCrc = parseInt(line)
     result = oldCrc != currentCrc
   else:
     result = true

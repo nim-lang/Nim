@@ -541,7 +541,8 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
 proc processRodFile(r: PRodReader, crc: SecureHash) = 
   var 
     w: string
-    d, inclCrc: int
+    d: int
+  var inclCrc: SecureHash
   while r.s[r.pos] != '\0': 
     var section = rdWord(r)
     if r.reason != rrNone: 
@@ -549,7 +550,8 @@ proc processRodFile(r: PRodReader, crc: SecureHash) =
     case section 
     of "CRC": 
       inc(r.pos)              # skip ':'
-      if int(crc) != decodeVInt(r.s, r.pos): r.reason = rrCrcChange
+      if crc != parseSecureHash(decodeStr(r.s, r.pos)):
+        r.reason = rrCrcChange
     of "ID": 
       inc(r.pos)              # skip ':'
       r.moduleID = decodeVInt(r.s, r.pos)
@@ -596,9 +598,9 @@ proc processRodFile(r: PRodReader, crc: SecureHash) =
       while r.s[r.pos] != ')': 
         w = r.files[decodeVInt(r.s, r.pos)].toFullPath
         inc(r.pos)            # skip ' '
-        inclCrc = decodeVInt(r.s, r.pos)
+        inclCrc = parseSecureHash(decodeStr(r.s, r.pos))
         if r.reason == rrNone: 
-          if not existsFile(w) or (inclCrc != int(secureHashFile(w))): 
+          if not existsFile(w) or (inclCrc != secureHashFile(w)): 
             r.reason = rrInclDeps
         if r.s[r.pos] == '\x0A': 
           inc(r.pos)
@@ -649,7 +651,7 @@ proc startsWith(buf: cstring, token: string, pos = 0): bool =
   while s < token.len and buf[pos+s] == token[s]: inc s
   result = s == token.len
 
-proc newRodReader(modfilename: string, crc: SecureHash, 
+proc newRodReader(modfilename: string, crc: SecureHash,
                   readerIndex: int): PRodReader = 
   new(result)
   try:
@@ -1017,7 +1019,7 @@ proc writeType(f: File; t: PType) =
   f.write("]\n")
 
 proc viewFile(rodfile: string) =
-  var r = newRodReader(rodfile, 0, 0)
+  var r = newRodReader(rodfile, secureHash(""), 0)
   if r == nil:
     rawMessage(errGenerated, "cannot open file (or maybe wrong version):" &
        rodfile)

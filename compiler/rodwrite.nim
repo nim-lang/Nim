@@ -96,7 +96,7 @@ proc addInclDep(w: PRodWriter, dep: string) =
   var resolved = dep.findModule(w.module.info.toFullPath)
   encodeVInt(fileIdx(w, dep), w.inclDeps)
   add(w.inclDeps, " ")
-  encodeVInt(secureHashFile(resolved), w.inclDeps)
+  encodeStr($secureHashFile(resolved), w.inclDeps)
   add(w.inclDeps, rodNL)
 
 proc pushType(w: PRodWriter, t: PType) =
@@ -440,7 +440,7 @@ proc writeRod(w: PRodWriter) =
   f.write(rodNL)
   
   var crc = "CRC:"
-  encodeVInt(w.crc, crc)
+  encodeStr($w.crc, crc)
   f.write(crc)
   f.write(rodNL)
   
