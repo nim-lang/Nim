@@ -11,18 +11,12 @@ import
   strutils
 
 type 
-  TCrc32* = int32
+  SecureHash* = int32
 
 const 
-  InitCrc32* = TCrc32(- 1)
-  InitAdler32* = int32(1)
+  InitCrc32 = SecureHash(- 1)
 
-proc updateCrc32*(val: int8, crc: TCrc32): TCrc32 {.inline.}
-proc updateCrc32*(val: char, crc: TCrc32): TCrc32 {.inline.}
-proc crcFromBuf*(buf: pointer, length: int): TCrc32
-proc strCrc32*(s: string): TCrc32
-proc crcFromFile*(filename: string): TCrc32
-proc updateAdler32*(adler: int32, buf: pointer, length: int): int32
+proc secureHashFile*(filename: string): SecureHash
 # implementation
 
 type 
@@ -74,31 +68,22 @@ const
     - 1000256840, 1567103746, 711928724, - 1274298825, - 1022587231, 1510334235, 
     755167117]
 
-proc updateCrc32(val: int8, crc: TCrc32): TCrc32 = 
-  result = TCrc32(crc32table[(int(crc) xor (int(val) and 0x000000FF)) and
-      0x000000FF]) xor (crc shr TCrc32(8))
+proc updateCrc32(val: int8, crc: SecureHash): SecureHash = 
+  result = SecureHash(crc32table[(int(crc) xor (int(val) and 0x000000FF)) and
+      0x000000FF]) xor (crc shr SecureHash(8))
 
-proc updateCrc32(val: char, crc: TCrc32): TCrc32 = 
+proc updateCrc32(val: char, crc: SecureHash): SecureHash = 
   result = updateCrc32(toU8(ord(val)), crc)
 
-proc strCrc32(s: string): TCrc32 = 
+proc secureHash*(s: string): SecureHash = 
   result = InitCrc32
-  for i in countup(0, len(s) - 1): result = updateCrc32(s[i], result)
-  
-proc `><`*(c: TCrc32, s: string): TCrc32 = 
-  result = c
   for i in 0..len(s)-1: result = updateCrc32(s[i], result)  
   
 type 
   TByteArray = array[0..10000000, int8]
   PByteArray = ref TByteArray
 
-proc crcFromBuf(buf: pointer, length: int): TCrc32 = 
-  var p = cast[PByteArray](buf)
-  result = InitCrc32
-  for i in countup(0, length - 1): result = updateCrc32(p[i], result)
-  
-proc crcFromFile(filename: string): TCrc32 = 
+proc secureHashFile(filename: string): SecureHash = 
   const 
     bufSize = 8000 # don't use 8K for the memory allocator!
   var 
@@ -114,34 +99,3 @@ proc crcFromFile(filename: string): TCrc32 =
     if readBytes != bufSize: break 
   dealloc(buf)
   close(bin)
-
-const 
-  base = int32(65521) # largest prime smaller than 65536 
-                      # NMAX = 5552; original code with unsigned 32 bit integer 
-                      # NMAX is the largest n 
-                      # such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1 
-  nmax = 3854 # code with signed 32 bit integer 
-              # NMAX is the largest n such that 
-              # 255n(n+1)/2 + (n+1)(BASE-1) <= 2^31-1 
-              # The penalty is the time loss in the extra MOD-calls. 
-
-proc updateAdler32(adler: int32, buf: pointer, length: int): int32 = 
-  var 
-    s1, s2: int32
-    L, k, b: int
-  s1 = adler and int32(0x0000FFFF)
-  s2 = (adler shr int32(16)) and int32(0x0000FFFF)
-  L = length
-  b = 0
-  while (L > 0): 
-    if L < nmax: k = L
-    else: k = nmax
-    dec(L, k)
-    while (k > 0): 
-      s1 = s1 +% int32((cast[cstring](buf))[b])
-      s2 = s2 +% s1
-      inc(b)
-      dec(k)
-    s1 = `%%`(s1, base)
-    s2 = `%%`(s2, base)
-  result = (s2 shl int32(16)) or s1

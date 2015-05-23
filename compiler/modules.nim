@@ -19,7 +19,7 @@ type
 
   TModuleInMemory* = object
     compiledAt*: float
-    crc*: TCrc32
+    crc*: SecureHash
     deps*: seq[int32] ## XXX: slurped files are currently not tracked
     needsRecompile*: TNeedRecompile
     crcStatus*: TCrcStatus
@@ -51,19 +51,19 @@ proc crcChanged(fileIdx: int32): bool =
   of crcNotChanged:
     result = false
   of crcCached:
-    let newCrc = crcFromFile(fileIdx.toFilename)
+    let newCrc = secureHashFile(fileIdx.toFilename)
     result = newCrc != gMemCacheData[fileIdx].crc
     gMemCacheData[fileIdx].crc = newCrc
     updateStatus()
   of crcNotTaken:
-    gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
+    gMemCacheData[fileIdx].crc = secureHashFile(fileIdx.toFilename)
     result = true
     updateStatus()
 
 proc doCRC(fileIdx: int32) =
   if gMemCacheData[fileIdx].crcStatus == crcNotTaken:
     # echo "FIRST CRC: ", fileIdx.ToFilename
-    gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
+    gMemCacheData[fileIdx].crc = secureHashFile(fileIdx.toFilename)
 
 proc addDep(x: PSym, dep: int32) =
   growCache gMemCacheData, dep

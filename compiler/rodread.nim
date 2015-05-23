@@ -538,7 +538,7 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
   # else: trigger recompilation:
   result = true
   
-proc processRodFile(r: PRodReader, crc: TCrc32) = 
+proc processRodFile(r: PRodReader, crc: SecureHash) = 
   var 
     w: string
     d, inclCrc: int
@@ -598,7 +598,7 @@ proc processRodFile(r: PRodReader, crc: TCrc32) =
         inc(r.pos)            # skip ' '
         inclCrc = decodeVInt(r.s, r.pos)
         if r.reason == rrNone: 
-          if not existsFile(w) or (inclCrc != int(crcFromFile(w))): 
+          if not existsFile(w) or (inclCrc != int(secureHashFile(w))): 
             r.reason = rrInclDeps
         if r.s[r.pos] == '\x0A': 
           inc(r.pos)
@@ -649,7 +649,7 @@ proc startsWith(buf: cstring, token: string, pos = 0): bool =
   while s < token.len and buf[pos+s] == token[s]: inc s
   result = s == token.len
 
-proc newRodReader(modfilename: string, crc: TCrc32, 
+proc newRodReader(modfilename: string, crc: SecureHash, 
                   readerIndex: int): PRodReader = 
   new(result)
   try:
@@ -701,7 +701,7 @@ type
     filename*: string
     reason*: TReasonForRecompile
     rd*: PRodReader
-    crc*: TCrc32
+    crc*: SecureHash
     crcDone*: bool
 
   TFileModuleMap = seq[TFileModuleRec]
@@ -794,13 +794,13 @@ proc loadMethods(r: PRodReader) =
     r.methods.add(rrGetSym(r, d, unknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
 
-proc getCRC*(fileIdx: int32): TCrc32 =
+proc getCRC*(fileIdx: int32): SecureHash =
   internalAssert fileIdx >= 0 and fileIdx < gMods.len
 
   if gMods[fileIdx].crcDone:
     return gMods[fileIdx].crc
   
-  result = crcFromFile(fileIdx.toFilename)
+  result = secureHashFile(fileIdx.toFilename)
   gMods[fileIdx].crc = result
 
 template growCache*(cache, pos) =
