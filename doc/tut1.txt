@@ -1303,7 +1303,7 @@ type conversions in this context:
 
   myWriteln(stdout, 123, "abc", 4.0)
   # is transformed by the compiler to:
-  myWriteln(stdout, [$123, $"def", $4.0])
+  myWriteln(stdout, [$123, $"abc", $4.0])
 
 In this example `$ <system.html#$>`_ is applied to any argument that is passed
 to the parameter ``a``. Note that `$ <system.html#$>`_ applied to strings is a
