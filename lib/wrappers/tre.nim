@@ -27,16 +27,16 @@ const
 #   structs and enums ourselves. 
 
 type 
-  TRegoff* = cint
-  TRegex*{.pure, final.} = object 
+  Regoff* = cint
+  Regex*{.pure, final.} = object 
     re_nsub*: int          ## Number of parenthesized subexpressions. 
     value*: pointer        ## For internal use only. 
   
-  TRegmatch*{.pure, final.} = object 
-    rm_so*: TRegoff
-    rm_eo*: TRegoff
+  Regmatch*{.pure, final.} = object 
+    rm_so*: Regoff
+    rm_eo*: Regoff
 
-  TReg_errcode*{.size: 4.} = enum  ## POSIX tre_regcomp() return error codes. 
+  Reg_errcode*{.size: 4.} = enum  ## POSIX tre_regcomp() return error codes. 
                                    ## (In the order listed in the standard.)	 
     REG_OK = 0,               ## No error. 
     REG_NOMATCH,              ## No match. 
@@ -52,6 +52,8 @@ type
     REG_ERANGE,               ## Invalid use of range operator 
     REG_ESPACE,               ## Out of memory.  
     REG_BADRPT                ## Invalid use of repetition operators. 
+{.deprecated: [TRegoff: Regoff, TRegex: Regex, TRegmatch: Regmatch,
+              TReg_errcode: Reg_errcode].}
 
 # POSIX tre_regcomp() flags. 
 
@@ -88,22 +90,22 @@ const
 
 # The POSIX.2 regexp functions 
 
-proc regcomp*(preg: var TRegex, regex: cstring, cflags: cint): cint{.cdecl, 
+proc regcomp*(preg: var Regex, regex: cstring, cflags: cint): cint{.cdecl, 
     importc: "tre_regcomp", dynlib: treDll.}
-proc regexec*(preg: var TRegex, string: cstring, nmatch: int, 
-              pmatch: ptr TRegmatch, eflags: cint): cint{.cdecl, 
+proc regexec*(preg: var Regex, string: cstring, nmatch: int, 
+              pmatch: ptr Regmatch, eflags: cint): cint{.cdecl, 
     importc: "tre_regexec", dynlib: treDll.}
-proc regerror*(errcode: cint, preg: var TRegex, errbuf: cstring, 
+proc regerror*(errcode: cint, preg: var Regex, errbuf: cstring, 
                errbuf_size: int): int{.cdecl, importc: "tre_regerror", 
     dynlib: treDll.}
-proc regfree*(preg: var TRegex){.cdecl, importc: "tre_regfree", dynlib: treDll.}
+proc regfree*(preg: var Regex){.cdecl, importc: "tre_regfree", dynlib: treDll.}
 # Versions with a maximum length argument and therefore the capability to
 #   handle null characters in the middle of the strings (not in POSIX.2). 
 
-proc regncomp*(preg: var TRegex, regex: cstring, len: int, cflags: cint): cint{.
+proc regncomp*(preg: var Regex, regex: cstring, len: int, cflags: cint): cint{.
     cdecl, importc: "tre_regncomp", dynlib: treDll.}
-proc regnexec*(preg: var TRegex, string: cstring, len: int, nmatch: int, 
-               pmatch: ptr TRegmatch, eflags: cint): cint{.cdecl, 
+proc regnexec*(preg: var Regex, string: cstring, len: int, nmatch: int, 
+               pmatch: ptr Regmatch, eflags: cint): cint{.cdecl, 
     importc: "tre_regnexec", dynlib: treDll.}
 # Approximate matching parameter struct. 
 
@@ -124,7 +126,7 @@ type
 type 
   TRegamatch*{.pure, final.} = object 
     nmatch*: int              ## Length of pmatch[] array. 
-    pmatch*: ptr TRegmatch    ## Submatch data. 
+    pmatch*: ptr Regmatch     ## Submatch data. 
     cost*: cint               ## Cost of the match. 
     num_ins*: cint            ## Number of inserts in the match. 
     num_del*: cint            ## Number of deletes in the match. 
@@ -133,10 +135,10 @@ type
 
 # Approximate matching functions. 
 
-proc regaexec*(preg: var TRegex, string: cstring, match: ptr TRegamatch, 
+proc regaexec*(preg: var Regex, string: cstring, match: ptr TRegamatch, 
                params: TRegaparams, eflags: cint): cint{.cdecl, 
     importc: "tre_regaexec", dynlib: treDll.}
-proc reganexec*(preg: var TRegex, string: cstring, len: int, 
+proc reganexec*(preg: var Regex, string: cstring, len: int, 
                 match: ptr TRegamatch, params: TRegaparams, 
                 eflags: cint): cint{.
     cdecl, importc: "tre_reganexec", dynlib: treDll.}
@@ -155,8 +157,8 @@ type
     context*: pointer
 
 
-proc reguexec*(preg: var TRegex, string: ptr TStrSource, nmatch: int, 
-               pmatch: ptr TRegmatch, eflags: cint): cint{.cdecl, 
+proc reguexec*(preg: var Regex, string: ptr TStrSource, nmatch: int, 
+               pmatch: ptr Regmatch, eflags: cint): cint{.cdecl, 
     importc: "tre_reguexec", dynlib: treDll.}
 
 proc runtimeVersion*(): cstring{.cdecl, importc: "tre_version", dynlib: treDll.}
@@ -177,10 +179,10 @@ const
 
 # Returns 1 if the compiled pattern has back references, 0 if not. 
 
-proc have_backrefs*(preg: var TRegex): cint{.cdecl, 
+proc have_backrefs*(preg: var Regex): cint{.cdecl, 
     importc: "tre_have_backrefs", dynlib: treDll.}
 # Returns 1 if the compiled pattern uses approximate matching features,
 #   0 if not. 
 
-proc have_approx*(preg: var TRegex): cint{.cdecl, importc: "tre_have_approx", 
+proc have_approx*(preg: var Regex): cint{.cdecl, importc: "tre_have_approx", 
     dynlib: treDll.}

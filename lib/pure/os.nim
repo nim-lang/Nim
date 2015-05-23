@@ -359,7 +359,7 @@ when defined(windows):
 
     template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
       var varname = winApiProc(newWideCString(arg), arg2)
-    proc findFirstFile(a: string, b: var TWIN32_FIND_DATA): THandle =
+    proc findFirstFile(a: string, b: var TWIN32_FIND_DATA): Handle =
       result = findFirstFileW(newWideCString(a), b)
     template findNextFile(a, b: expr): expr = findNextFileW(a, b)
     template getCommandLine(): expr = getCommandLineW()
@@ -390,7 +390,7 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
   else:
-    var res: TStat
+    var res: Stat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect].} =
@@ -404,7 +404,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   else:
-    var res: TStat
+    var res: Stat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
@@ -419,7 +419,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
   else:
-    var res: TStat
+    var res: Stat
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
 proc fileExists*(filename: string): bool {.inline.} =
@@ -433,7 +433,7 @@ proc dirExists*(dir: string): bool {.inline.} =
 proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
-    var res: TStat
+    var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     return res.st_mtime
   else:
@@ -446,7 +446,7 @@ proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
 proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
-    var res: TStat
+    var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     return res.st_atime
   else:
@@ -461,7 +461,7 @@ proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   ## Note that under posix OS's, the returned time may actually be the time at
   ## which the file's attribute's were last modified.
   when defined(posix):
-    var res: TStat
+    var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     return res.st_ctime
   else:
@@ -794,7 +794,7 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     result = path[0] == '/'
 
 when defined(Windows):
-  proc openHandle(path: string, followSymlink=true): THandle =
+  proc openHandle(path: string, followSymlink=true): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
       flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
@@ -846,7 +846,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
     if not success: raiseOSError(lastErr)
   else:
-    var a, b: TStat
+    var a, b: Stat
     if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
       raiseOSError(osLastError())
     else:
@@ -903,7 +903,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
   ## an error. On Windows, only the ``readonly`` flag is checked, every other
   ## permission is available in any case.
   when defined(posix):
-    var a: TStat
+    var a: Stat
     if stat(filename, a) < 0'i32: raiseOSError(osLastError())
     result = {}
     if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
@@ -1232,7 +1232,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
       findClose(res)
   else: # here we use glob
     var
-      f: TGlob
+      f: Glob
       res: int
     f.gl_offs = 0
     f.gl_pathc = 0
@@ -1297,7 +1297,7 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
         if x == nil: break
         var y = $x.d_name
         if y != "." and y != "..":
-          var s: TStat
+          var s: Stat
           y = dir / y
           var k = pcFile
 
@@ -1842,7 +1842,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
   when defined(windows):
     winlean.sleep(int32(milsecs))
   else:
-    var a, b: Ttimespec
+    var a, b: Timespec
     a.tv_sec = Time(milsecs div 1000)
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
@@ -1907,8 +1907,8 @@ when defined(Windows):
     FileId* = int64
 else:
   type
-    DeviceId* = TDev
-    FileId* = Tino
+    DeviceId* = Dev
+    FileId* = Ino
 
 type
   FileInfo* = object
@@ -1925,7 +1925,7 @@ type
 template rawToFormalFileInfo(rawInfo, formalInfo): expr =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
-  ## or a 'TStat' structure on posix
+  ## or a 'Stat' structure on posix
   when defined(Windows):
     template toTime(e): expr = winTimeToUnixTime(rdFileTime(e))
     template merge(a, b): expr = a or (b shl 32)
@@ -1996,7 +1996,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
       raiseOSError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
   else:
-    var rawInfo: TStat
+    var rawInfo: Stat
     if fstat(handle, rawInfo) < 0'i32:
       raiseOSError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
@@ -2031,7 +2031,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
     rawToFormalFileInfo(rawInfo, result)
     discard closeHandle(handle)
   else:
-    var rawInfo: TStat
+    var rawInfo: Stat
     if followSymlink:
       if stat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError())

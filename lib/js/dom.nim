@@ -14,56 +14,56 @@ when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
 type
-  TEventHandlers* {.importc.} = object of RootObj
-    onabort*: proc (event: ref TEvent) {.nimcall.}
-    onblur*: proc (event: ref TEvent) {.nimcall.}
-    onchange*: proc (event: ref TEvent) {.nimcall.}
-    onclick*: proc (event: ref TEvent) {.nimcall.}
-    ondblclick*: proc (event: ref TEvent) {.nimcall.}
-    onerror*: proc (event: ref TEvent) {.nimcall.}
-    onfocus*: proc (event: ref TEvent) {.nimcall.}
-    onkeydown*: proc (event: ref TEvent) {.nimcall.}
-    onkeypress*: proc (event: ref TEvent) {.nimcall.}
-    onkeyup*: proc (event: ref TEvent) {.nimcall.}
-    onload*: proc (event: ref TEvent) {.nimcall.}
-    onmousedown*: proc (event: ref TEvent) {.nimcall.}
-    onmousemove*: proc (event: ref TEvent) {.nimcall.}
-    onmouseout*: proc (event: ref TEvent) {.nimcall.}
-    onmouseover*: proc (event: ref TEvent) {.nimcall.}
-    onmouseup*: proc (event: ref TEvent) {.nimcall.}
-    onreset*: proc (event: ref TEvent) {.nimcall.}
-    onselect*: proc (event: ref TEvent) {.nimcall.}
-    onsubmit*: proc (event: ref TEvent) {.nimcall.}
-    onunload*: proc (event: ref TEvent) {.nimcall.}
+  EventHandlers* {.importc.} = object of RootObj
+    onabort*: proc (event: ref Event) {.nimcall.}
+    onblur*: proc (event: ref Event) {.nimcall.}
+    onchange*: proc (event: ref Event) {.nimcall.}
+    onclick*: proc (event: ref Event) {.nimcall.}
+    ondblclick*: proc (event: ref Event) {.nimcall.}
+    onerror*: proc (event: ref Event) {.nimcall.}
+    onfocus*: proc (event: ref Event) {.nimcall.}
+    onkeydown*: proc (event: ref Event) {.nimcall.}
+    onkeypress*: proc (event: ref Event) {.nimcall.}
+    onkeyup*: proc (event: ref Event) {.nimcall.}
+    onload*: proc (event: ref Event) {.nimcall.}
+    onmousedown*: proc (event: ref Event) {.nimcall.}
+    onmousemove*: proc (event: ref Event) {.nimcall.}
+    onmouseout*: proc (event: ref Event) {.nimcall.}
+    onmouseover*: proc (event: ref Event) {.nimcall.}
+    onmouseup*: proc (event: ref Event) {.nimcall.}
+    onreset*: proc (event: ref Event) {.nimcall.}
+    onselect*: proc (event: ref Event) {.nimcall.}
+    onsubmit*: proc (event: ref Event) {.nimcall.}
+    onunload*: proc (event: ref Event) {.nimcall.}
 
-    addEventListener*: proc(ev: cstring, cb: proc(ev: ref TEvent), useCapture: bool = false) {.nimcall.}
+    addEventListener*: proc(ev: cstring, cb: proc(ev: ref Event), useCapture: bool = false) {.nimcall.}
 
   Window* = ref WindowObj
-  WindowObj {.importc.} = object of TEventHandlers
+  WindowObj {.importc.} = object of EventHandlers
     document*: Document
-    event*: ref TEvent
-    history*: ref THistory
-    location*: ref TLocation
+    event*: ref Event
+    history*: ref History
+    location*: ref Location
     closed*: bool
     defaultStatus*: cstring
     innerHeight*, innerWidth*: int
-    locationbar*: ref TLocationBar
-    menubar*: ref TMenuBar
+    locationbar*: ref LocationBar
+    menubar*: ref MenuBar
     name*: cstring
     outerHeight*, outerWidth*: int
     pageXOffset*, pageYOffset*: int
-    personalbar*: ref TPersonalBar
-    scrollbars*: ref TScrollBars
-    statusbar*: ref TStatusBar
+    personalbar*: ref PersonalBar
+    scrollbars*: ref ScrollBars
+    statusbar*: ref StatusBar
     status*: cstring
-    toolbar*: ref TToolBar
+    toolbar*: ref ToolBar
 
     alert*: proc (msg: cstring) {.nimcall.}
     back*: proc () {.nimcall.}
     blur*: proc () {.nimcall.}
     captureEvents*: proc (eventMask: int) {.nimcall.}
-    clearInterval*: proc (interval: ref TInterval) {.nimcall.}
-    clearTimeout*: proc (timeout: ref TTimeOut) {.nimcall.}
+    clearInterval*: proc (interval: ref Interval) {.nimcall.}
+    clearTimeout*: proc (timeout: ref TimeOut) {.nimcall.}
     close*: proc () {.nimcall.}
     confirm*: proc (msg: cstring): bool {.nimcall.}
     disableExternalCapture*: proc () {.nimcall.}
@@ -72,7 +72,7 @@ type
                  backwards = false) {.nimcall.}
     focus*: proc () {.nimcall.}
     forward*: proc () {.nimcall.}
-    handleEvent*: proc (e: ref TEvent) {.nimcall.}
+    handleEvent*: proc (e: ref Event) {.nimcall.}
     home*: proc () {.nimcall.}
     moveBy*: proc (x, y: int) {.nimcall.}
     moveTo*: proc (x, y: int) {.nimcall.}
@@ -83,13 +83,13 @@ type
     releaseEvents*: proc (eventMask: int) {.nimcall.}
     resizeBy*: proc (x, y: int) {.nimcall.}
     resizeTo*: proc (x, y: int) {.nimcall.}
-    routeEvent*: proc (event: ref TEvent) {.nimcall.}
+    routeEvent*: proc (event: ref Event) {.nimcall.}
     scrollBy*: proc (x, y: int) {.nimcall.}
     scrollTo*: proc (x, y: int) {.nimcall.}
-    setInterval*: proc (code: cstring, pause: int): ref TInterval {.nimcall.}
-    setTimeout*: proc (code: cstring, pause: int): ref TTimeOut {.nimcall.}
+    setInterval*: proc (code: cstring, pause: int): ref Interval {.nimcall.}
+    setTimeout*: proc (code: cstring, pause: int): ref TimeOut {.nimcall.}
     stop*: proc () {.nimcall.}
-    frames*: seq[TFrame]
+    frames*: seq[FrameObj]
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -100,7 +100,7 @@ type
     contains*: proc (class: cstring):bool {.nimcall.}
     toggle*: proc (class: cstring) {.nimcall.}
 
-  TNodeType* = enum
+  NodeType* = enum
     ElementNode = 1,
     AttributeNode,
     TextNode,
@@ -115,7 +115,7 @@ type
     NotationNode
 
   Node* = ref NodeObj
-  NodeObj {.importc.} = object of TEventHandlers
+  NodeObj {.importc.} = object of EventHandlers
     attributes*: seq[Node]
     childNodes*: seq[Node]
     children*: seq[Node]
@@ -124,7 +124,7 @@ type
     lastChild*: Node
     nextSibling*: Node
     nodeName*: cstring
-    nodeType*: TNodeType
+    nodeType*: NodeType
     nodeValue*: cstring
     parentNode*: Node
     previousSibling*: Node
@@ -146,7 +146,7 @@ type
     scrollIntoView*: proc () {.nimcall.}
     setAttribute*: proc (name, value: cstring) {.nimcall.}
     setAttributeNode*: proc (attr: Node) {.nimcall.}
-    style*: ref TStyle
+    style*: ref Style
 
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
@@ -173,16 +173,16 @@ type
     getElementsByTagName*: proc (name: cstring): seq[Element] {.nimcall.}
     getElementsByClassName*: proc (name: cstring): seq[Element] {.nimcall.}
     getSelection*: proc (): cstring {.nimcall.}
-    handleEvent*: proc (event: ref TEvent) {.nimcall.}
+    handleEvent*: proc (event: ref Event) {.nimcall.}
     open*: proc () {.nimcall.}
     releaseEvents*: proc (eventMask: int) {.nimcall.}
-    routeEvent*: proc (event: ref TEvent) {.nimcall.}
+    routeEvent*: proc (event: ref Event) {.nimcall.}
     write*: proc (text: cstring) {.nimcall.}
     writeln*: proc (text: cstring) {.nimcall.}
     anchors*: seq[AnchorElement]
     forms*: seq[FormElement]
     images*: seq[ImageElement]
-    applets*: seq[ref TApplet]
+    applets*: seq[ref Applet]
     embeds*: seq[EmbedElement]
     links*: seq[LinkElement]
 
@@ -199,7 +199,7 @@ type
     blur*: proc () {.nimcall.}
     click*: proc () {.nimcall.}
     focus*: proc () {.nimcall.}
-    handleEvent*: proc (event: ref TEvent) {.nimcall.}
+    handleEvent*: proc (event: ref Event) {.nimcall.}
     select*: proc () {.nimcall.}
     options*: seq[OptionElement]
     getElementsByTagName*: proc (name: cstring): seq[Element] {.nimcall.}
@@ -228,7 +228,7 @@ type
     text*: cstring
     x*, y*: int
 
-  TApplet* {.importc.} = object of RootObj
+  Applet* {.importc.} = object of RootObj
 
   OptionElement* = ref OptionObj
   OptionObj {.importc.} = object of ElementObj
@@ -260,7 +260,7 @@ type
     width*: int
 
 
-  TStyle* {.importc.} = object of RootObj
+  Style* {.importc.} = object of RootObj
     background*: cstring
     backgroundAttachment*: cstring
     backgroundColor*: cstring
@@ -354,7 +354,7 @@ type
     removeAttribute*: proc (attr: cstring, caseSensitive=false) {.nimcall.}
     setAttribute*: proc (attr, value: cstring, caseSensitive=false) {.nimcall.}
 
-  TEvent* {.importc.} = object of RootObj
+  Event* {.importc.} = object of RootObj
     target*: Node
     altKey*, ctrlKey*, shiftKey*: bool
     button*: int
@@ -393,7 +393,7 @@ type
     SUBMIT*: int
     UNLOAD*: int
 
-  TLocation* {.importc.} = object of RootObj
+  Location* {.importc.} = object of RootObj
     hash*: cstring
     host*: cstring
     hostname*: cstring
@@ -405,13 +405,13 @@ type
     reload*: proc () {.nimcall.}
     replace*: proc (s: cstring) {.nimcall.}
 
-  THistory* {.importc.} = object of RootObj
+  History* {.importc.} = object of RootObj
     length*: int
     back*: proc () {.nimcall.}
     forward*: proc () {.nimcall.}
     go*: proc (pagesToJump: int) {.nimcall.}
 
-  TNavigator* {.importc.} = object of RootObj
+  Navigator* {.importc.} = object of RootObj
     appCodeName*: cstring
     appName*: cstring
     appVersion*: cstring
@@ -420,28 +420,28 @@ type
     platform*: cstring
     userAgent*: cstring
     javaEnabled*: proc (): bool {.nimcall.}
-    mimeTypes*: seq[ref TMimeType]
+    mimeTypes*: seq[ref MimeType]
 
-  TPlugin* {.importc.} = object of RootObj
+  Plugin* {.importc.} = object of RootObj
     description*: cstring
     filename*: cstring
     name*: cstring
 
-  TMimeType* {.importc.} = object of RootObj
+  MimeType* {.importc.} = object of RootObj
     description*: cstring
-    enabledPlugin*: ref TPlugin
+    enabledPlugin*: ref Plugin
     suffixes*: seq[cstring]
     `type`*: cstring
 
-  TLocationBar* {.importc.} = object of RootObj
+  LocationBar* {.importc.} = object of RootObj
     visible*: bool
-  TMenuBar* = TLocationBar
-  TPersonalBar* = TLocationBar
-  TScrollBars* = TLocationBar
-  TToolBar* = TLocationBar
-  TStatusBar* = TLocationBar
+  MenuBar* = LocationBar
+  PersonalBar* = LocationBar
+  ScrollBars* = LocationBar
+  ToolBar* = LocationBar
+  StatusBar* = LocationBar
 
-  TScreen* {.importc.} = object of RootObj
+  Screen* {.importc.} = object of RootObj
     availHeight*: int
     availWidth*: int
     colorDepth*: int
@@ -449,14 +449,20 @@ type
     pixelDepth*: int
     width*: int
 
-  TTimeOut* {.importc.} = object of RootObj
-  TInterval* {.importc.} = object of RootObj
+  TimeOut* {.importc.} = object of RootObj
+  Interval* {.importc.} = object of RootObj
+{.deprecated: [TEventHandlers: EventHandlers, TEvent: Event, TNodeType: NodeType,
+              TInterval: Interval, TTimeOut: TimeOut, TStatusBar: StatusBar,
+              TMenuBar: MenuBar, TApplet: Applet, TLocation: Location,
+              THistory: History, TNavigator: Navigator, TPlugin: Plugin,
+              TMimeType: MimeType, TLocationBar: LocationBar, TPersonalBar: PersonalBar,
+              TScrollBars: ScrollBars, TToolBar: ToolBar, TScreen: Screen].}
 
 var
   window* {.importc, nodecl.}: Window
   document* {.importc, nodecl.}: Document
-  navigator* {.importc, nodecl.}: ref TNavigator
-  screen* {.importc, nodecl.}: ref TScreen
+  navigator* {.importc, nodecl.}: ref Navigator
+  screen* {.importc, nodecl.}: ref Screen
 
 proc decodeURI*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURI*(uri: cstring): cstring {.importc, nodecl.}

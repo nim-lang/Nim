@@ -19,9 +19,9 @@ when not declared(NimString):
 
 type
   CondVar = object
-    c: TSysCond
+    c: SysCond
     when defined(posix):
-      stupidLock: TSysLock
+      stupidLock: SysLock
       counter: int
 
 proc createCondVar(): CondVar =

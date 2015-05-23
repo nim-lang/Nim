@@ -31,7 +31,7 @@ import
   windows
 
 type
-  HDROP* = THandle
+  HDROP* = Handle
   UINT_PTR* = ptr uint32
   DWORD_PTR* = ptr DWORD
   PHICON* = ptr HICON
@@ -332,7 +332,7 @@ proc SHFileOperation*(lpFileOp: LPSHFILEOPSTRUCTA): int32{.stdcall,
     dynlib: "shell32.dll", importc: "SHFileOperationA".}
 proc SHFileOperation*(lpFileOp: LPSHFILEOPSTRUCTW): int32{.stdcall,
     dynlib: "shell32.dll", importc: "SHFileOperationW".}
-proc SHFreeNameMappings*(hNameMappings: THandle){.stdcall,
+proc SHFreeNameMappings*(hNameMappings: Handle){.stdcall,
     dynlib: "shell32.dll", importc: "SHFreeNameMappings".}
 type
   SHNAMEMAPPINGA* {.final.} = object

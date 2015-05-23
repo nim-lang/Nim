@@ -12,14 +12,15 @@
 # Get the platform-dependent flags.  
 # Structure describing an inotify event.  
 type 
-  Tinotify_event*{.pure, final, importc: "struct inotify_event", 
+  InotifyEvent*{.pure, final, importc: "struct inotify_event", 
                    header: "<sys/inotify.h>".} = object 
     wd*{.importc: "wd".}: cint # Watch descriptor.  
     mask*{.importc: "mask".}: uint32 # Watch mask.  
     cookie*{.importc: "cookie".}: uint32 # Cookie to synchronize two events.  
     len*{.importc: "len".}: uint32 # Length (including NULs) of name.  
     name*{.importc: "name".}: char # Name.  
-    
+{.deprecated: [Tinotify_event: InotifyEvent].}
+
 # Supported events suitable for MASK parameter of INOTIFY_ADD_WATCH.  
 const 
   IN_ACCESS* = 0x00000001   # File was accessed.  

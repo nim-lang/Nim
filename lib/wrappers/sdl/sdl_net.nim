@@ -143,34 +143,34 @@ type  # SDL_net.h types
       #***********************************************************************
       #* IPv4 hostname resolution API                                        *
       #***********************************************************************
-  PIPAddress* = ptr TIPAddress
-  TIPAddress*{.final.} = object  #* TCP network API                                                     
+  PIPAddress* = ptr IPAddress
+  IPAddress*{.final.} = object  #* TCP network API                                                     
     host*: uint32             # 32-bit IPv4 host address */
     port*: uint16             # 16-bit protocol port */
   
-  PTCPSocket* = ptr TTCPSocket
-  TTCPSocket*{.final.} = object  # UDP network API
+  PTCPSocket* = ptr TCPSocket
+  TCPSocket*{.final.} = object  # UDP network API
     ready*: int
     channel*: int
-    remoteAddress*: TIPAddress
-    localAddress*: TIPAddress
+    remoteAddress*: IPAddress
+    localAddress*: IPAddress
     sflag*: int
 
-  PUDP_Channel* = ptr TUDP_Channel
-  TUDP_Channel*{.final.} = object 
+  PUDP_Channel* = ptr UDP_Channel
+  UDP_Channel*{.final.} = object 
     numbound*: int
-    address*: array[0..MAX_UDPADDRESSES - 1, TIPAddress]
+    address*: array[0..MAX_UDPADDRESSES - 1, IPAddress]
 
-  PUDPSocket* = ptr TUDPSocket
-  TUDPSocket*{.final.} = object 
+  PUDPSocket* = ptr UDPSocket
+  UDPSocket*{.final.} = object 
     ready*: int
     channel*: int
-    address*: TIPAddress
-    binding*: array[0..MAX_UDPCHANNELS - 1, TUDP_Channel]
+    address*: IPAddress
+    binding*: array[0..MAX_UDPCHANNELS - 1, UDP_Channel]
 
-  PUDPpacket* = ptr TUDPpacket
+  PUDPpacket* = ptr UDPpacket
   PPUDPpacket* = ptr PUDPpacket
-  TUDPpacket*{.final.} = object  #***********************************************************************
+  UDPpacket*{.final.} = object  #***********************************************************************
                                  #* Hooks for checking sockets for available data                       *
                                  #***********************************************************************
     channel*: int             #* The src/dst channel of the packet *
@@ -178,25 +178,27 @@ type  # SDL_net.h types
     length*: int              #* The length of the packet data *
     maxlen*: int              #* The size of the data buffer *
     status*: int              #* packet status after sending *
-    address*: TIPAddress      #* The source/dest address of an incoming/outgoing packet *
+    address*: IPAddress       #* The source/dest address of an incoming/outgoing packet *
   
-  PSocket* = ptr TSocket
-  TSocket*{.final.} = object 
+  PSocket* = ptr Socket
+  Socket*{.final.} = object 
     ready*: int
     channel*: int
 
-  PSocketSet* = ptr TSocketSet
-  TSocketSet*{.final.} = object  # Any network socket can be safely cast to this socket type *
+  PSocketSet* = ptr SocketSet
+  SocketSet*{.final.} = object  # Any network socket can be safely cast to this socket type *
     numsockets*: int
     maxsockets*: int
     sockets*: PSocket
 
-  PGenericSocket* = ptr TGenericSocket
-  TGenericSocket*{.final.} = object 
+  PGenericSocket* = ptr GenericSocket
+  GenericSocket*{.final.} = object 
     ready*: int
+{.deprecated: [TSocket: Socket, TSocketSet: SocketSet, TIPAddress: IpAddress,
+        TTCPSocket: TCPSocket, TUDP_Channel: UDP_Channel, TUDPSocket: UDPSocket,
+        TUDPpacket: UDPpacket, TGenericSocket: GenericSocket].}
 
-
-proc version*(x: var Tversion)
+proc version*(x: var Version)
   #* Initialize/Cleanup the network API
   #   SDL must be initialized before calls to functions in this library,
   #   because this library uses utility functions from the SDL library.
@@ -209,14 +211,14 @@ proc quit*(){.cdecl, importc: "SDLNet_Quit", dynlib: NetLibName.}
   #   address will be INADDR_NONE, and the function will return -1.
   #   If 'host' is NULL, the resolved host will be set to INADDR_ANY.
   # *
-proc resolveHost*(address: var TIPAddress, host: cstring, port: uint16): int{.
+proc resolveHost*(address: var IPAddress, host: cstring, port: uint16): int{.
     cdecl, importc: "SDLNet_ResolveHost", dynlib: NetLibName.}
   #* Resolve an ip address to a host name in canonical form.
   #   If the ip couldn't be resolved, this function returns NULL,
   #   otherwise a pointer to a static buffer containing the hostname
   #   is returned.  Note that this function is not thread-safe.
   #*
-proc resolveIP*(ip: var TIPAddress): cstring{.cdecl, 
+proc resolveIP*(ip: var IPAddress): cstring{.cdecl, 
     importc: "SDLNet_ResolveIP", dynlib: NetLibName.}
   #***********************************************************************
   #* TCP network API                                                     *
@@ -229,7 +231,7 @@ proc resolveIP*(ip: var TIPAddress): cstring{.cdecl,
   #   in the correct form).
   #   The newly created socket is returned, or NULL if there was an error.
   #*
-proc tcpOpen*(ip: var TIPAddress): PTCPSocket{.cdecl, 
+proc tcpOpen*(ip: var IPAddress): PTCPSocket{.cdecl, 
     importc: "SDLNet_TCP_Open", dynlib: NetLibName.}
   #* Accept an incoming connection on the given server socket.
   #   The newly created socket is returned, or NULL if there was an error.
@@ -295,7 +297,7 @@ proc udpOpen*(port: uint16): PUDPSocket{.cdecl, importc: "SDLNet_UDP_Open",
   #   address, to which all outbound packets on the channel are sent.
   #   This function returns the channel which was bound, or -1 on error.
   #*
-proc udpBind*(sock: PUDPSocket, channel: int, address: var TIPAddress): int{.
+proc udpBind*(sock: PUDPSocket, channel: int, address: var IPAddress): int{.
     cdecl, importc: "SDLNet_UDP_Bind", dynlib: NetLibName.}
   #* Unbind all addresses from the given channel *
 proc udpUnbind*(sock: PUDPSocket, channel: int){.cdecl, 
@@ -405,7 +407,7 @@ proc read16*(area: pointer): uint16{.cdecl, importc: "SDLNet_Read16",
 proc read32*(area: pointer): uint32{.cdecl, importc: "SDLNet_Read32", 
     dynlib: NetLibName.}
 
-proc version(x: var Tversion) = 
+proc version(x: var Version) = 
   x.major = MAJOR_VERSION
   x.minor = MINOR_VERSION
   x.patch = PATCHLEVEL

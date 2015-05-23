@@ -29,12 +29,12 @@ import
 type
   MMRESULT* = uint32
   MMVERSION* = uint32
-  HWAVEOUT* = THandle
+  HWAVEOUT* = Handle
   LPHWAVEOUT* = ptr HWAVEOUT
-  HWAVEIN* = THandle
+  HWAVEIN* = Handle
   LPHWAVEIN* = ptr HWAVEOUT
-  HWAVE* = THandle
-  LPHWAVE* = ptr THandle
+  HWAVE* = Handle
+  LPHWAVE* = ptr Handle
   LPUINT* = ptr uint32
 
 const
@@ -151,7 +151,7 @@ const
   CALLBACK_FUNCTION* = 0x00030000
 
 type
-  HDRVR* = THandle
+  HDRVR* = Handle
 
 const
   DRV_LOAD* = 1
@@ -178,7 +178,7 @@ const
   DRV_MCI_LAST* = (DRV_RESERVED + 0x00000FFF)
 
 type
-  PDRVCALLBACK* = proc (hdrvr: THandle, uMsg: uint32, dwUser, dw1, dw2: DWORD){.
+  PDRVCALLBACK* = proc (hdrvr: Handle, uMsg: uint32, dwUser, dw1, dw2: DWORD){.
       stdcall.}
 
 proc sndPlaySoundA*(Name: LPCSTR, flags: uint32): bool{.stdcall,
@@ -1127,10 +1127,10 @@ type
   LPWAVEFORMATEX* = ptr WAVEFORMATEX
   LPCWAVEFORMATEX* = ptr WAVEFORMATEX
   TWAVEFORMATEX* = WAVEFORMATEX
-  HMIDI* = THandle
-  HMIDIIN* = THandle
-  HMIDIOUT* = THandle
-  HMIDISTRM* = THandle
+  HMIDI* = Handle
+  HMIDIIN* = Handle
+  HMIDIOUT* = Handle
+  HMIDISTRM* = Handle
   LPHMIDI* = ptr HMIDI
   LPHMIDIIN* = ptr HMIDIIN
   LPHMIDIOUT* = ptr HMIDIOUT
@@ -1299,9 +1299,9 @@ else:
     LPAUXCAPS* = LPAUXCAPSA
 type
   TAUXCAPS* = AUXCAPS
-  HMIXEROBJ* = THandle
+  HMIXEROBJ* = Handle
   LPHMIXEROBJ* = ptr HMIXEROBJ
-  HMIXER* = THandle
+  HMIXER* = Handle
   LPHMIXER* = ptr HMIXER
 
 proc mixerGetNumDevs*(): uint32{.stdcall, dynlib: "winmm.dll",
@@ -1647,7 +1647,7 @@ type
   TJOYINFOEX* = JOYINFOEX
   FOURCC* = DWORD
   HPSTR* = cstring
-  HMMIO* = THandle
+  HMMIO* = Handle
   LPMMIOPROC* = proc (x1: LPSTR, x2: uint32, x3, x4: LPARAM): LRESULT{.stdcall.}
   TMMIOPROC* = LPMMIOPROC
   MMIOINFO* {.final.} = object

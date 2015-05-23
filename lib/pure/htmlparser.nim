@@ -52,7 +52,7 @@
 import strutils, streams, parsexml, xmltree, unicode, strtabs
 
 type
-  THtmlTag* = enum ## list of all supported HTML tags; order will always be
+  HtmlTag* = enum ## list of all supported HTML tags; order will always be
                    ## alphabetically
     tagUnknown,    ## unknown HTML element
     tagA,          ## the HTML ``a`` element
@@ -178,6 +178,7 @@ type
     tagVar,        ## the HTML ``var`` element
     tagVideo,      ## the HTML ``video`` element
     tagWbr         ## the HTML ``wbr`` element
+{.deprecated: [THtmlTag: HtmlTag].}
 
 const
   tagToStr* = [
@@ -295,7 +296,7 @@ proc allLower(s: string): bool =
     if c < 'a' or c > 'z': return false
   return true
 
-proc toHtmlTag(s: string): THtmlTag =
+proc toHtmlTag(s: string): HtmlTag =
   case s
   of "a": tagA
   of "abbr": tagAbbr
@@ -422,14 +423,14 @@ proc toHtmlTag(s: string): THtmlTag =
   of "wbr": tagWbr
   else: tagUnknown
 
-proc htmlTag*(n: XmlNode): THtmlTag = 
-  ## gets `n`'s tag as a ``THtmlTag``.
+proc htmlTag*(n: XmlNode): HtmlTag = 
+  ## gets `n`'s tag as a ``HtmlTag``.
   if n.clientData == 0:
     n.clientData = toHtmlTag(n.tag).ord
-  result = THtmlTag(n.clientData)
+  result = HtmlTag(n.clientData)
 
-proc htmlTag*(s: string): THtmlTag =
-  ## converts `s` to a ``THtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
+proc htmlTag*(s: string): HtmlTag =
+  ## converts `s` to a ``HtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
   ## returned.
   let s = if allLower(s): s else: s.toLower
   result = toHtmlTag(s)

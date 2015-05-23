@@ -106,9 +106,10 @@ proc serveFile*(client: Socket, filename: string) =
 when false:
   # TODO: Fix this, or get rid of it.
   type
-    TRequestMethod = enum reqGet, reqPost
+    RequestMethod = enum reqGet, reqPost
+  {.deprecated: [TRequestMethod: RequestMethod].}
 
-  proc executeCgi(client: Socket, path, query: string, meth: TRequestMethod) =
+  proc executeCgi(client: Socket, path, query: string, meth: RequestMethod) =
     var env = newStringTable(modeCaseInsensitive)
     var contentLength = -1
     case meth
@@ -208,7 +209,7 @@ when false:
         executeCgi(client, path, query, meth)
 
 type
-  TServer* = object of RootObj  ## contains the current server state
+  Server* = object of RootObj  ## contains the current server state
     socket: Socket
     port: Port
     client*: Socket          ## the socket to write the file data to
@@ -218,11 +219,12 @@ type
     body*: string            ## only set with POST requests
     ip*: string              ## ip address of the requesting client
   
-  PAsyncHTTPServer* = ref TAsyncHTTPServer
-  TAsyncHTTPServer = object of TServer
+  PAsyncHTTPServer* = ref AsyncHTTPServer
+  AsyncHTTPServer = object of Server
     asyncSocket: AsyncSocket
+  {.deprecated: [TAsyncHTTPServer: AsyncHTTPServer, TServer: Server].}
   
-proc open*(s: var TServer, port = Port(80), reuseAddr = false) =
+proc open*(s: var Server, port = Port(80), reuseAddr = false) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
   s.socket = socket(AF_INET)
@@ -243,11 +245,11 @@ proc open*(s: var TServer, port = Port(80), reuseAddr = false) =
   s.query = ""
   s.headers = {:}.newStringTable()
 
-proc port*(s: var TServer): Port =
+proc port*(s: var Server): Port =
   ## get the port number the server has acquired.
   result = s.port
 
-proc next*(s: var TServer) =
+proc next*(s: var Server) =
   ## proceed to the first/next request.
   var client: Socket
   new(client)
@@ -354,7 +356,7 @@ proc next*(s: var TServer) =
     s.query = ""
     s.path = data.substr(i, last-1)
 
-proc close*(s: TServer) =
+proc close*(s: Server) =
   ## closes the server (and the socket the server uses).
   close(s.socket)
 
@@ -362,7 +364,7 @@ proc run*(handleRequest: proc (client: Socket,
                                path, query: string): bool {.closure.},
           port = Port(80)) =
   ## encapsulates the server object and main loop
-  var s: TServer
+  var s: Server
   open(s, port, reuseAddr = true)
   #echo("httpserver running on port ", s.port)
   while true:
@@ -517,7 +519,7 @@ proc close*(h: PAsyncHTTPServer) =
 when not defined(testing) and isMainModule:
   var counter = 0
 
-  var s: TServer
+  var s: Server
   open(s, Port(0))
   echo("httpserver running on port ", s.port)
   while true:

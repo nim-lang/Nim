@@ -91,9 +91,9 @@ type
 
 # TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
 
-proc newAsyncSocket*(fd: TAsyncFD, isBuff: bool): AsyncSocket =
+proc newAsyncSocket*(fd: AsyncFD, isBuff: bool): AsyncSocket =
   ## Creates a new ``AsyncSocket`` based on the supplied params.
-  assert fd != osInvalidSocket.TAsyncFD
+  assert fd != osInvalidSocket.AsyncFD
   new(result)
   result.fd = fd.SocketHandle
   result.isBuffered = isBuff
@@ -142,7 +142,7 @@ when defined(ssl):
       if read < 0:
         raiseSslError()
       data.setLen(read)
-      await socket.fd.TAsyncFd.send(data, flags)
+      await socket.fd.AsyncFd.send(data, flags)
 
   proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
                   sslError: cint) {.async.} =
@@ -150,7 +150,7 @@ when defined(ssl):
     of SSL_ERROR_WANT_WRITE:
       await sendPendingSslData(socket, flags)
     of SSL_ERROR_WANT_READ:
-      var data = await recv(socket.fd.TAsyncFD, BufferSize, flags)
+      var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
       let ret = bioWrite(socket.bioIn, addr data[0], data.len.cint)
       if ret < 0:
         raiseSSLError()
@@ -175,7 +175,7 @@ proc connect*(socket: AsyncSocket, address: string, port: Port,
   ##
   ## Returns a ``Future`` which will complete when the connection succeeds
   ## or an error occurs.
-  await connect(socket.fd.TAsyncFD, address, port, af)
+  await connect(socket.fd.AsyncFD, address, port, af)
   if socket.isSsl:
     when defined(ssl):
       let flags = {SocketFlag.SafeDisconn}
@@ -194,7 +194,7 @@ template readInto(buf: cstring, size: int, socket: AsyncSocket,
         sslRead(socket.sslHandle, buf, size.cint))
       res = opResult
   else:
-    var recvIntoFut = recvInto(socket.fd.TAsyncFD, buf, size, flags)
+    var recvIntoFut = recvInto(socket.fd.AsyncFD, buf, size, flags)
     yield recvIntoFut
     # Not in SSL mode.
     res = recvIntoFut.read()
@@ -271,7 +271,7 @@ proc send*(socket: AsyncSocket, data: string,
         sslWrite(socket.sslHandle, addr copy[0], copy.len.cint))
       await sendPendingSslData(socket, flags)
   else:
-    await send(socket.fd.TAsyncFD, data, flags)
+    await send(socket.fd.AsyncFD, data, flags)
 
 proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
       Future[tuple[address: string, client: AsyncSocket]] =
@@ -279,9 +279,9 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
   ## corresponding to that connection and the remote address of the client.
   ## The future will complete when the connection is successfully accepted.
   var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
-  var fut = acceptAddr(socket.fd.TAsyncFD, flags)
+  var fut = acceptAddr(socket.fd.AsyncFD, flags)
   fut.callback =
-    proc (future: Future[tuple[address: string, client: TAsyncFD]]) =
+    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
       assert future.finished
       if future.failed:
         retFuture.fail(future.readError)
@@ -445,7 +445,7 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.
   defer:
-    socket.fd.TAsyncFD.closeSocket()
+    socket.fd.AsyncFD.closeSocket()
   when defined(ssl):
     if socket.isSSL:
       let res = SslShutdown(socket.sslHandle)
