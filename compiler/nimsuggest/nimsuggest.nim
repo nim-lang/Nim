@@ -118,7 +118,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int) =
 
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   gErrorCounter = 0
-  if not isKnownFile:
+  if isKnownFile:
     compileProject(dirtyIdx)
   else:
     compileProject()
