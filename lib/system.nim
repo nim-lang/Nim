@@ -61,7 +61,7 @@ const
   on* = true    ## alias for ``true``
   off* = false  ## alias for ``false``
 
-{.push warning[GcMem]: off.}
+{.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
 type
@@ -3273,4 +3273,4 @@ proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
   ## This is an optimization that rarely makes sense.
   discard
 
-{.pop.} #{.push warning[GcMem]: off.}
+{.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
