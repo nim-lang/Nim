@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Oleh Prypin
-##
 ## Abstract
 ## ========
 ##
