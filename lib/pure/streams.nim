@@ -346,8 +346,8 @@ when not defined(js):
   
   proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
     let pos = fsGetPosition(s)
+    defer: fsSetPosition(s, pos)
     result = readBuffer(FileStream(s).f, buffer, bufLen)
-    fsSetPosition(s, pos)
 
   proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
     if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
