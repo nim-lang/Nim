@@ -514,6 +514,15 @@ else:
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       var max = cast[ByteAddress](gch.stackBottom)
       var sp = cast[ByteAddress](addr(registers))
+      when defined(amd64):
+        # words within the jmp_buf structure may not be properly aligned.
+        let regEnd = sp +% sizeof(registers)
+        while sp <% regEnd:
+          gcMark(gch, cast[PPointer](sp)[])
+          gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
+          sp = sp +% sizeof(pointer)
+      # Make sure sp is word-aligned
+      sp = sp and not (sizeof(pointer) - 1)
       # loop unrolled:
       while sp <% max - 8*sizeof(pointer):
         gcMark(gch, cast[PStackSlice](sp)[0])
