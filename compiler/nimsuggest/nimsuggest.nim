@@ -119,9 +119,8 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int) =
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   gErrorCounter = 0
   if not isKnownFile:
-    compileProject(dirtyIdx)
-  else:
     compileProject()
+  compileProject(dirtyIdx)
 
 proc executeEPC(cmd: IdeCmd, args: SexpNode) =
   let
@@ -192,8 +191,6 @@ proc parseCmdLine(cmd: string) =
   execute(gIdeCmd, orig, dirtyfile, line, col-1)
 
 proc serve() =
-  # do not stop after the first error:
-  msgs.gErrorMax = high(int)
   case gMode:
   of mstdin:
     echo Help
@@ -278,6 +275,9 @@ proc mainCommand =
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
 
+  # do not stop after the first error:
+  msgs.gErrorMax = high(int)
+  compileProject()
   serve()
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
