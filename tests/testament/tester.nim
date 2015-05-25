@@ -31,6 +31,7 @@ Arguments:
 Options:
   --print                   also print results to the console
   --failing                 only show failing/ignored tests
+  --pedantic                return non-zero status code if there are failures
 """ % resultsFile
 
 type
@@ -310,12 +311,14 @@ proc main() =
   backend.open()
   var optPrintResults = false
   var optFailing = false
+  var optPedantic = false
   var p = initOptParser()
   p.next()
   while p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
+    of "pedantic": optPedantic = true
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
@@ -348,8 +351,10 @@ proc main() =
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
   backend.close()
+  if optPedantic:
+    var failed = r.total - r.passed - r.skipped
+    if failed > 0 : quit(QuitFailure)
 
 if paramCount() == 0:
   quit Usage
 main()
-

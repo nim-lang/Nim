@@ -333,8 +333,10 @@ proc tests(args: string) =
   # taint mode test :-)
   exec "nim cc --taintMode:on tests/testament/tester"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
-  exec tester & " " & (args|"all")
+  let success = tryExec tester & " " & (args|"all")
   exec tester & " html"
+  if not success:
+    quit("tests failed", QuitFailure)
 
 proc temp(args: string) =
   var output = "compiler" / "nim".exe
