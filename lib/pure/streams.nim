@@ -242,7 +242,7 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
   ## otherwise. If ``false`` is returned `line` contains no new data.
   let pos = getPosition(s)
   defer: setPosition(s, pos)
-  readLine(s, line)
+  result = readLine(s, line)
 
 proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises
@@ -263,7 +263,7 @@ proc peekLine*(s: Stream): TaintedString =
   ## `EIO` if an error occurred.
   let pos = getPosition(s)
   defer: setPosition(s, pos)
-  readLine(s)
+  result = readLine(s)
 
 type
   StringStream* = ref StringStreamObj ## a stream that encapsulates a string
@@ -457,4 +457,8 @@ when defined(testing):
   assert(ss.readStr(5) == "The q")
   assert(ss.getPosition == 5) # did move
   assert(ss.peekLine() == "uick brown fox jumped over the lazy dog.")
+  assert(ss.getPosition == 5) # haven't moved
+  var str = newString(100)
+  assert(ss.peekLine(str))
+  assert(str == "uick brown fox jumped over the lazy dog.")
   assert(ss.getPosition == 5) # haven't moved
