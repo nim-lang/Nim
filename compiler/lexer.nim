@@ -476,13 +476,17 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
-    if tok.tokType == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
-    add(tok.literal, tnl)
+    add(tok.literal, LF)
     inc(L.bufpos)
-  of 'r', 'R', 'c', 'C':
+  of 'r', 'R':
+    add(tok.literal, CR)
+    inc(L.bufpos)
+  of 'c', 'C':
+    L.lexMessage(warnCLDeprecated)
     add(tok.literal, CR)
     inc(L.bufpos)
   of 'l', 'L':
+    L.lexMessage(warnCLDeprecated)
     add(tok.literal, LF)
     inc(L.bufpos)
   of 'f', 'F':
