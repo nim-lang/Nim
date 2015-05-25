@@ -98,9 +98,8 @@ type  # WinDef.h -- Basic Windows Type Definitions
   LRESULT* = LONG_PTR
 
   ATOM* = int16
-  TAtom* = ATOM
   HANDLE* = int
-  THandle* = HANDLE
+#  Handle* = HANDLE
   PHANDLE* = ptr HANDLE
   LPHANDLE* = ptr HANDLE
   HWND* = HANDLE
@@ -150,11 +149,8 @@ type  # WinDef.h -- Basic Windows Type Definitions
     y*: LONG
   PPOINTL* = ptr POINTL
 
-  TPOINT* = POINT
-  TPOINTL* = POINTL
-
   RECT* {.final, pure.} = object
-    TopLeft*, BottomRight*: TPoint
+    TopLeft*, BottomRight*: Point
   PRECT* = ptr RECT
   LPRECT* = ptr RECT
 
@@ -179,19 +175,14 @@ type  # WinDef.h -- Basic Windows Type Definitions
     y*: SHORT
   PPOINTS* = ptr POINTS
 
-  TRECT* = RECT
-  TRECTL* = RECTL
-  TSIZE* = SIZE
-  TSIZEL* = SIZE
-  TPOINTS* = POINTS
-
   FILETIME* {.final, pure.} = object
     dwLowDateTime*: DWORD
     dwHighDateTime*: DWORD
   PFILETIME* = ptr FILETIME
   LPFILETIME* = ptr FILETIME
-
-  TFILETIME* = FILETIME
+{.deprecated: [THandle: Handle, TAtom: ATOM, TFILETIME: FILETIME, TRECT: RECT,
+              TRECTL: RECTL, TSIZE: SIZE, TSIZEL: SIZE, TPOINTS: POINTS,
+              TPOINT: POINT, TPOINTL: POINTL].}
 
 const
   MAX_PATH* = 260
@@ -238,7 +229,6 @@ type
   CALTYPE* = int
   CALID* = int
   CCHAR* = char
-  TCOLORREF* = COLORREF
   WINT* = int32
   PINTEGER* = ptr int32
   PBOOL* = ptr WINBOOL
@@ -269,6 +259,7 @@ type
   LCTYPE* = DWORD
   LP* = ptr int16
   LPBOOL* = ptr WINBOOL
+{.deprecated: [TCOLORREF: COLORREF].}
 
 when defined(winUnicode):
   type
@@ -316,14 +307,16 @@ type
 
 when defined(winUnicode):
   type
-    TBYTE* = uint16
-    TCHAR* = widechar
+    BYTE* = uint16
+    CHAR* = widechar
     BCHAR* = int16
+  {.deprecated: [TBYTE: BYTE, TCHAR: CHAR].}
 else:
   type
-    TBYTE* = uint8
-    TCHAR* = char
+    BYTE* = uint8
+    CHAR* = char
     BCHAR* = int8
+  {.deprecated: [TBYTE: BYTE, TCHAR: CHAR].}
 type
   WCHAR* = WideChar
   PLPSTR* = ptr LPSTR
@@ -367,7 +360,7 @@ type
     TokenUser = 1, TokenGroups, TokenPrivileges, TokenOwner, TokenPrimaryGroup,
     TokenDefaultDacl, TokenSource, TokenType, TokenImpersonationLevel,
     TokenStatistics
-  TTOKEN_TYPE* = enum
+  TTOKEN_TYPE* = enum # Name conflict if we drop the `T`
     TokenPrimary = 1, TokenImpersonation
   MakeIntResourceA* = cstring
   MakeIntResourceW* = PWideChar
@@ -405,8 +398,7 @@ type
   WNDPROC* = proc (para1: HWND, para2: WINUINT, para3: WPARAM, para4: LPARAM): LRESULT{.
       stdcall.}
   FARPROC* = pointer
-  TFarProc* = FARPROC
-  TProc* = pointer
+  Proc* = pointer
   ENUMRESTYPEPROC* = proc (para1: HANDLE, para2: LPTSTR, para3: LONG): WINBOOL{.
       stdcall.}
   ENUMRESNAMEPROC* = proc (para1: HANDLE, para2: LPCTSTR, para3: LPTSTR,
@@ -431,7 +423,7 @@ type
       stdcall.}
   ENUMOBJECTSPROC* = proc (para1: LPVOID, para2: LPARAM){.stdcall.}
   LINEDDAPROC* = proc (para1: int32, para2: int32, para3: LPARAM){.stdcall.}
-  TABORTPROC* = proc (para1: HDC, para2: int32): WINBOOL{.stdcall.}
+  ABORTPROC* = proc (para1: HDC, para2: int32): WINBOOL{.stdcall.}
   LPPAGEPAINTHOOK* = proc (para1: HWND, para2: WINUINT, para3: WPARAM,
                            para4: LPARAM): WINUINT{.stdcall.}
   LPPAGESETUPHOOK* = proc (para1: HWND, para2: WINUINT, para3: WPARAM,
@@ -454,6 +446,7 @@ type
       stdcall.}
   PFNPROCESSPOLICIES* = proc (para1: HWND, para2: LPCTSTR, para3: LPCTSTR,
                               para4: LPCTSTR, para5: DWORD): WINBOOL{.stdcall.}
+{.deprecated: [TFarProc: FARPROC, TProc: Proc, TABORTPROC: ABORTPROC].}
 
 const
   SE_CREATE_TOKEN_NAME* = "SeCreateTokenPrivilege"
@@ -5385,9 +5378,10 @@ const
   # TV_INSERTSTRUCT structure
 
 type
-  TTREEITEM* {.final, pure.} = object
-  HTREEITEM* = ptr TTREEITEM
-  PTREEITEM* = ptr TTREEITEM
+  TREEITEM* {.final, pure.} = object
+  HTREEITEM* = ptr TREEITEM
+  PTREEITEM* = ptr TREEITEM
+{.deprecated: [TTREEITEM: TREEITEM].}
 
 const
   TVI_ROOT* =  cast[HTREEITEM](0xFFFF0000)
@@ -6870,32 +6864,31 @@ type
   #      va_list is just a dummy record
   #      MvdV: Nevertheless it should be a pointer type, not a record
   va_list* = cstring
-  TABC* {.final, pure.} = object
+  ABC* {.final, pure.} = object
     abcA*: int32
     abcB*: WINUINT
     abcC*: int32
 
-  LPABC* = ptr TABC
-  PABC* = ptr TABC
-  TABCFLOAT* {.final, pure.} = object
+  LPABC* = ptr ABC
+  PABC* = ptr ABC
+  ABCFLOAT* {.final, pure.} = object
     abcfA*: float32
     abcfB*: float32
     abcfC*: float32
-  LPABCFLOAT* = ptr TABCFLOAT
-  PABCFLOAT* = ptr TABCFLOAT
+  LPABCFLOAT* = ptr ABCFLOAT
+  PABCFLOAT* = ptr ABCFLOAT
 
-  TACCEL* {.final, pure.} = object
+  ACCEL* {.final, pure.} = object
     fVirt*: int8
     key*: int16
     cmd*: int16
-  LPACCEL* = ptr TACCEL
-  PACCEL* = ptr TACCEL
+  LPACCEL* = ptr ACCEL
+  PACCEL* = ptr ACCEL
   ACE_HEADER* {.final, pure.} = object
     AceType*: int8
     AceFlags*: int8
     AceSize*: int16
 
-  TACE_HEADER* = ACE_HEADER
   PACE_HEADER* = ptr ACE_HEADER
   ACCESS_MASK* = DWORD
   REGSAM* = ACCESS_MASK
@@ -6904,20 +6897,17 @@ type
     Mask*: ACCESS_MASK
     SidStart*: DWORD
 
-  TACCESS_ALLOWED_ACE* = ACCESS_ALLOWED_ACE
   PACCESS_ALLOWED_ACE* = ptr ACCESS_ALLOWED_ACE
   ACCESS_DENIED_ACE* {.final, pure.} = object
     Header*: ACE_HEADER
     Mask*: ACCESS_MASK
     SidStart*: DWORD
 
-  TACCESS_DENIED_ACE* = ACCESS_DENIED_ACE
   ACCESSTIMEOUT* {.final, pure.} = object
     cbSize*: WINUINT
     dwFlags*: DWORD
     iTimeOutMSec*: DWORD
 
-  TACCESSTIMEOUT* = ACCESSTIMEOUT
   PACCESSTIMEOUT* = ptr ACCESSTIMEOUT
   ACL* {.final, pure.} = object
     AclRevision*: int8
@@ -6927,12 +6917,11 @@ type
     Sbz2*: int16
 
   PACL* = ptr ACL
-  TACL* = ACL
-  TACL_REVISION_INFORMATION* {.final, pure.} = object
+  TACL_REVISION_INFORMATION* {.final, pure.} = object # Name conflit if we drop the `T`
     AclRevision*: DWORD
   PACLREVISIONINFORMATION* = ptr TACL_REVISION_INFORMATION
 
-  TACL_SIZE_INFORMATION* {.final, pure.} = object
+  TACL_SIZE_INFORMATION* {.final, pure.} = object # Name conflict if we drop the `T`
     AceCount*: DWORD
     AclBytesInUse*: DWORD
     AclBytesFree*: DWORD
@@ -6942,7 +6931,6 @@ type
     action_code*: USHORT
     reserved*: USHORT
 
-  TACTIONHEADER* = ACTION_HEADER
   PACTIONHEADER* = ptr ACTION_HEADER
   ADAPTER_STATUS* {.final, pure.} = object
     adapter_address*: array[0..5, UCHAR]
@@ -6973,20 +6961,17 @@ type
     max_sess_pkt_size*: int16
     name_count*: int16
 
-  TADAPTERSTATUS* = ADAPTER_STATUS
   PADAPTERSTATUS* = ptr ADAPTER_STATUS
   ADDJOB_INFO_1* {.final, pure.} = object
     Path*: LPTSTR
     JobId*: DWORD
 
-  TADDJOB_INFO_1* = ADDJOB_INFO_1
   PADDJOB_INFO_1* = ptr ADDJOB_INFO_1
   ANIMATIONINFO* {.final, pure.} = object
     cbSize*: WINUINT
     iMinAnimate*: int32
 
   LPANIMATIONINFO* = ptr ANIMATIONINFO
-  TANIMATIONINFO* = ANIMATIONINFO
   PANIMATIONINFO* = ptr ANIMATIONINFO
 
   APPBARDATA* {.final, pure.} = object
@@ -6997,7 +6982,6 @@ type
     rc*: RECT
     lParam*: LPARAM
 
-  TAppBarData* = APPBARDATA
   PAppBarData* = ptr APPBARDATA
   BITMAP* {.final, pure.} = object
     bmType*: LONG
@@ -7011,7 +6995,6 @@ type
   PBITMAP* = ptr BITMAP
   NPBITMAP* = ptr BITMAP
   LPBITMAP* = ptr BITMAP
-  TBITMAP* = BITMAP
   BITMAPCOREHEADER* {.final, pure.} = object
     bcSize*: DWORD
     bcWidth*: int16
@@ -7019,14 +7002,12 @@ type
     bcPlanes*: int16
     bcBitCount*: int16
 
-  TBITMAPCOREHEADER* = BITMAPCOREHEADER
   PBITMAPCOREHEADER* = ptr BITMAPCOREHEADER
   RGBTRIPLE* {.final, pure.} = object
     rgbtBlue*: int8
     rgbtGreen*: int8
     rgbtRed*: int8
 
-  TRGBTRIPLE* = RGBTRIPLE
   PRGBTRIPLE* = ptr RGBTRIPLE
   BITMAPCOREINFO* {.final, pure.} = object
     bmciHeader*: BITMAPCOREHEADER
@@ -7034,7 +7015,7 @@ type
 
   PBITMAPCOREINFO* = ptr BITMAPCOREINFO
   LPBITMAPCOREINFO* = ptr BITMAPCOREINFO
-  TBITMAPCOREINFO* = BITMAPCOREINFO # error
+# TBITMAPCOREINFO* = BITMAPCOREINFO # error
                                     #  WORD    bfReserved1;
                                     #  WORD    bfReserved2;
                                     # in declarator_list
@@ -7052,7 +7033,6 @@ type
     biClrImportant*: DWORD
 
   LPBITMAPINFOHEADER* = ptr BITMAPINFOHEADER
-  TBITMAPINFOHEADER* = BITMAPINFOHEADER
   PBITMAPINFOHEADER* = ptr BITMAPINFOHEADER
   RGBQUAD* {.final, pure.} = object
     rgbBlue*: int8
@@ -7060,7 +7040,6 @@ type
     rgbRed*: int8
     rgbReserved*: int8
 
-  TRGBQUAD* = RGBQUAD
   PRGBQUAD* = ptr RGBQUAD
   BITMAPINFO* {.final, pure.} = object
     bmiHeader*: BITMAPINFOHEADER
@@ -7068,7 +7047,6 @@ type
 
   LPBITMAPINFO* = ptr BITMAPINFO
   PBITMAPINFO* = ptr BITMAPINFO
-  TBITMAPINFO* = BITMAPINFO
   FXPT2DOT30* = int32
   LPFXPT2DOT30* = ptr FXPT2DOT30
   TPFXPT2DOT30* = FXPT2DOT30
@@ -7079,7 +7057,6 @@ type
     ciexyzZ*: FXPT2DOT30
 
   LPCIEXYZ* = ptr CIEXYZ
-  TPCIEXYZ* = CIEXYZ
   PCIEXYZ* = ptr CIEXYZ
   CIEXYZTRIPLE* {.final, pure.} = object
     ciexyzRed*: CIEXYZ
@@ -7087,7 +7064,6 @@ type
     ciexyzBlue*: CIEXYZ
 
   LPCIEXYZTRIPLE* = ptr CIEXYZTRIPLE
-  TCIEXYZTRIPLE* = CIEXYZTRIPLE
   PCIEXYZTRIPLE* = ptr CIEXYZTRIPLE
   BITMAPV4HEADER* {.final, pure.} = object
     bV4Size*: DWORD
@@ -7112,7 +7088,6 @@ type
     bV4GammaBlue*: DWORD
 
   LPBITMAPV4HEADER* = ptr BITMAPV4HEADER
-  TBITMAPV4HEADER* = BITMAPV4HEADER
   PBITMAPV4HEADER* = ptr BITMAPV4HEADER
   BITMAPFILEHEADER* {.final, pure.} = object
     bfType*: int16
@@ -7125,7 +7100,6 @@ type
     cbSize*: ULONG
     pBlobData*: ptr int8
 
-  TBLOB* = BLOB
   PBLOB* = ptr BLOB
   SHITEMID* {.final, pure.} = object
     cb*: USHORT
@@ -7133,14 +7107,12 @@ type
 
   LPSHITEMID* = ptr SHITEMID
   LPCSHITEMID* = ptr SHITEMID
-  TSHITEMID* = SHITEMID
   PSHITEMID* = ptr SHITEMID
   ITEMIDLIST* {.final, pure.} = object
     mkid*: SHITEMID
 
   LPITEMIDLIST* = ptr ITEMIDLIST
   LPCITEMIDLIST* = ptr ITEMIDLIST
-  TITEMIDLIST* = ITEMIDLIST
   PITEMIDLIST* = ptr ITEMIDLIST
   BROWSEINFO* {.final, pure.} = object
     hwndOwner*: HWND
@@ -7153,7 +7125,6 @@ type
     iImage*: int32
 
   LPBROWSEINFO* = ptr BROWSEINFO
-  Tbrowseinfo* = BROWSEINFO
   PBROWSEINFO* = ptr BROWSEINFO
 
   BY_HANDLE_FILE_INFORMATION* {.final, pure.} = object
@@ -7169,22 +7140,19 @@ type
     nFileIndexLow*: DWORD
 
   LPBY_HANDLE_FILE_INFORMATION* = ptr BY_HANDLE_FILE_INFORMATION
-  TBYHANDLEFILEINFORMATION* = BY_HANDLE_FILE_INFORMATION
   PBYHANDLEFILEINFORMATION* = ptr BY_HANDLE_FILE_INFORMATION
   FIXED* {.final, pure.} = object
     fract*: int16
     value*: SHORT
 
-  TFIXED* = FIXED
   PFIXED* = ptr FIXED
   POINTFX* {.final, pure.} = object
     x*: FIXED
     y*: FIXED
 
-  TPOINTFX* = POINTFX
   PPOINTFX* = ptr POINTFX
 
-  TSmallPoint* {.final, pure.} = object
+  SmallPoint* {.final, pure.} = object
     X*, Y*: SHORT
 
   CANDIDATEFORM* {.final, pure.} = object
@@ -7194,7 +7162,6 @@ type
     rcArea*: RECT
 
   LPCANDIDATEFORM* = ptr CANDIDATEFORM
-  TCANDIDATEFORM* = CANDIDATEFORM
   PCANDIDATEFORM* = ptr CANDIDATEFORM
   CANDIDATELIST* {.final, pure.} = object
     dwSize*: DWORD
@@ -7206,7 +7173,6 @@ type
     dwOffset*: array[0..0, DWORD]
 
   LPCANDIDATELIST* = ptr CANDIDATELIST
-  TCANDIDATELIST* = CANDIDATELIST
   PCANDIDATELIST* = ptr CANDIDATELIST
   CREATESTRUCT* {.final, pure.} = object
     lpCreateParams*: LPVOID
@@ -7223,25 +7189,21 @@ type
     dwExStyle*: DWORD
 
   LPCREATESTRUCT* = ptr CREATESTRUCT
-  TCREATESTRUCT* = CREATESTRUCT
   PCREATESTRUCT* = ptr CREATESTRUCT
   CBT_CREATEWND* {.final, pure.} = object
     lpcs*: LPCREATESTRUCT
     hwndInsertAfter*: HWND
 
-  TCBT_CREATEWND* = CBT_CREATEWND
   PCBT_CREATEWND* = ptr CBT_CREATEWND
   CBTACTIVATESTRUCT* {.final, pure.} = object
     fMouse*: WINBOOL
     hWndActive*: HWND
 
-  TCBTACTIVATESTRUCT* = CBTACTIVATESTRUCT
   PCBTACTIVATESTRUCT* = ptr CBTACTIVATESTRUCT
   CHAR_INFO* {.final, pure.} = object
     UnicodeChar*: WCHAR
     Attributes*: int16        # other union part: AsciiChar : CHAR
 
-  TCHAR_INFO* = CHAR_INFO
   PCHAR_INFO* = ptr CHAR_INFO
   CHARFORMAT* {.final, pure.} = object
     cbSize*: WINUINT
@@ -7252,28 +7214,24 @@ type
     crTextColor*: COLORREF
     bCharSet*: int8
     bPitchAndFamily*: int8
-    szFaceName*: array[0..(LF_FACESIZE) - 1, TCHAR]
+    szFaceName*: array[0..(LF_FACESIZE) - 1, CHAR]
 
-  Tcharformat* = CHARFORMAT
   Pcharformat* = ptr CHARFORMAT
   CHARRANGE* {.final, pure.} = object
     cpMin*: LONG
     cpMax*: LONG
 
-  Tcharrange* = CHARRANGE
   Pcharrange* = ptr CHARRANGE
   CHARSET* {.final, pure.} = object
     aflBlock*: array[0..2, DWORD]
     flLang*: DWORD
 
-  TCHARSET* = CHARSET
   PCHARSET* = ptr CHARSET
   FONTSIGNATURE* {.final, pure.} = object
     fsUsb*: array[0..3, DWORD]
     fsCsb*: array[0..1, DWORD]
 
   LPFONTSIGNATURE* = ptr FONTSIGNATURE
-  TFONTSIGNATURE* = FONTSIGNATURE
   PFONTSIGNATURE* = ptr FONTSIGNATURE
   CHARSETINFO* {.final, pure.} = object
     ciCharset*: WINUINT
@@ -7281,7 +7239,6 @@ type
     fs*: FONTSIGNATURE
 
   LPCHARSETINFO* = ptr CHARSETINFO
-  TCHARSETINFO* = CHARSETINFO
   PCHARSETINFO* = ptr CHARSETINFO
   #CHOOSECOLOR = record confilcts with function ChooseColor
   TCHOOSECOLOR* {.final, pure.} = object
@@ -7311,11 +7268,9 @@ type
     lfClipPrecision*: int8
     lfQuality*: int8
     lfPitchAndFamily*: int8
-    lfFaceName*: array[0..(LF_FACESIZE) - 1, TCHAR]
+    lfFaceName*: array[0..(LF_FACESIZE) - 1, CHAR]
 
   LPLOGFONT* = ptr LOGFONT
-  TLOGFONT* = LOGFONT
-  TLOGFONTA* = LOGFONT
   PLOGFONT* = ptr LOGFONT
   PLOGFONTA* = PLOGFONT
   LOGFONTW* {.final, pure.} = object
@@ -7336,9 +7291,8 @@ type
 
   LPLOGFONTW* = ptr LOGFONTW
   NPLOGFONTW* = ptr LOGFONTW
-  TLogFontW* = LOGFONTW
-  PLogFontW* = ptr TLogFontW
-  TCHOOSEFONT* {.final, pure.} = object
+  PLogFontW* = ptr LogFontW
+  TCHOOSEFONT* {.final, pure.} = object # Name conflict if we drop the `T`
     lStructSize*: DWORD
     hwndOwner*: HWND
     hDC*: HDC
@@ -7363,14 +7317,12 @@ type
     aoffset*: array[0..0, WINUINT]
 
   LPIDA* = ptr CIDA
-  TIDA* = CIDA
   PIDA* = ptr CIDA
   CLIENTCREATESTRUCT* {.final, pure.} = object
     hWindowMenu*: HANDLE
     idFirstChild*: WINUINT
 
   LPCLIENTCREATESTRUCT* = ptr CLIENTCREATESTRUCT
-  TCLIENTCREATESTRUCT* = CLIENTCREATESTRUCT
   PCLIENTCREATESTRUCT* = ptr CLIENTCREATESTRUCT
   CMINVOKECOMMANDINFO* {.final, pure.} = object
     cbSize*: DWORD
@@ -7384,7 +7336,6 @@ type
     hIcon*: HANDLE
 
   LPCMINVOKECOMMANDINFO* = ptr CMINVOKECOMMANDINFO
-  TCMInvokeCommandInfo* = CMINVOKECOMMANDINFO
   PCMInvokeCommandInfo* = ptr CMINVOKECOMMANDINFO
   COLORADJUSTMENT* {.final, pure.} = object
     caSize*: int16
@@ -7401,14 +7352,12 @@ type
     caRedGreenTint*: SHORT
 
   LPCOLORADJUSTMENT* = ptr COLORADJUSTMENT
-  TCOLORADJUSTMENT* = COLORADJUSTMENT
   PCOLORADJUSTMENT* = ptr COLORADJUSTMENT
   COLORMAP* {.final, pure.} = object
     `from`*: COLORREF
     `to`*: COLORREF          # XXX!
 
   LPCOLORMAP* = ptr COLORMAP
-  TCOLORMAP* = COLORMAP
   PCOLORMAP* = ptr COLORMAP
   DCB* {.final, pure.} = object
     DCBlength*: DWORD
@@ -7428,8 +7377,28 @@ type
     wReserved1*: int16
 
   LPDCB* = ptr DCB
-  TDCB* = DCB
   PDCB* = ptr DCB
+{.deprecated: [TABC: ABC, TABCFLOAT: ABCFLOAT, TACCEL: ACCEL, TACE_HEADER: ACE_HEADER,
+    TACCESS_ALLOWED_ACE: ACCESS_ALLOWED_ACE, TACCESS_DENIED_ACE: ACCESS_DENIED_ACE,
+    TACCESSTIMEOUT: ACCESSTIMEOUT, TACL: ACL, TACTIONHEADER: ACTION_HEADER,
+    TADAPTERSTATUS: ADAPTER_STATUS, TADDJOB_INFO_1: ADDJOB_INFO_1,
+    TANIMATIONINFO: ANIMATIONINFO, TAppBarData: APPBARDATA, TBITMAP: BITMAP,
+    TBITMAPCOREHEADER: BITMAPCOREHEADER, TRGBTRIPLE: RGBTRIPLE,
+    TBITMAPCOREINFO: BITMAPCOREINFO, TBITMAPINFOHEADER: BITMAPINFOHEADER,
+    TRGBQUAD: RGBQUAD, TBITMAPINFO: BITMAPINFO, TPCIEXYZ: CIEXYZ,
+    TCIEXYZTRIPLE: CIEXYZTRIPLE, TBITMAPV4HEADER: BITMAPV4HEADER, TBLOB: BLOB,
+    TSHITEMID: SHITEMID, TITEMIDLIST: ITEMIDLIST, Tbrowseinfo: BROWSEINFO,
+    TBYHANDLEFILEINFORMATION: BY_HANDLE_FILE_INFORMATION, TFIXED: FIXED,
+    TPOINTFX: POINTFX, TSmallPoint: SmallPoint, TCANDIDATEFORM: CANDIDATEFORM,
+    TCANDIDATELIST: CANDIDATELIST, TCREATESTRUCT: CREATESTRUCT,
+    TCBT_CREATEWND: CBT_CREATEWND, TCBTACTIVATESTRUCT: CBTACTIVATESTRUCT,
+    TCHAR_INFO: CHAR_INFO, Tcharformat: CHARFORMAT, Tcharrange: CHARRANGE,
+    TCHARSET: CHARSET, TFONTSIGNATURE: FONTSIGNATURE, TCHARSETINFO: CHARSETINFO,
+    TLOGFONT: LOGFONT, TLOGFONTA: LOGFONT, TLogFontW: LOGFONTW,
+    TIDA: CIDA, TCLIENTCREATESTRUCT: CLIENTCREATESTRUCT,
+    TCMInvokeCommandInfo: CMINVOKECOMMANDINFO, TCOLORADJUSTMENT: COLORADJUSTMENT,
+    TCOLORMAP: COLORMAP, TDCB: DCB
+].}
 
 const
   bm_DCB_fBinary* = 1
@@ -7501,7 +7470,6 @@ type
     wcProviderData*: array[0..0, WCHAR]
 
   LPCOMMCONFIG* = ptr COMMCONFIG
-  TCOMMCONFIG* = COMMCONFIG
   PCOMMCONFIG* = ptr COMMCONFIG
   COMMPROP* {.final, pure.} = object
     wPacketLength*: int16
@@ -7524,7 +7492,6 @@ type
     wcProvChar*: array[0..0, WCHAR]
 
   LPCOMMPROP* = ptr COMMPROP
-  TCOMMPROP* = COMMPROP
   PCOMMPROP* = ptr COMMPROP
   COMMTIMEOUTS* {.final, pure.} = object
     ReadIntervalTimeout*: DWORD
@@ -7534,7 +7501,6 @@ type
     WriteTotalTimeoutConstant*: DWORD
 
   LPCOMMTIMEOUTS* = ptr COMMTIMEOUTS
-  TCOMMTIMEOUTS* = COMMTIMEOUTS
   PCOMMTIMEOUTS* = ptr COMMTIMEOUTS
   COMPAREITEMSTRUCT* {.final, pure.} = object
     CtlType*: WINUINT
@@ -7545,14 +7511,12 @@ type
     itemID2*: WINUINT
     itemData2*: ULONG_PTR
 
-  TCOMPAREITEMSTRUCT* = COMPAREITEMSTRUCT
   PCOMPAREITEMSTRUCT* = ptr COMPAREITEMSTRUCT
   COMPCOLOR* {.final, pure.} = object
     crText*: COLORREF
     crBackground*: COLORREF
     dwEffects*: DWORD
 
-  TCOMPCOLOR* = COMPCOLOR
   PCOMPCOLOR* = ptr COMPCOLOR
   COMPOSITIONFORM* {.final, pure.} = object
     dwStyle*: DWORD
@@ -7560,18 +7524,19 @@ type
     rcArea*: RECT
 
   LPCOMPOSITIONFORM* = ptr COMPOSITIONFORM
-  TCOMPOSITIONFORM* = COMPOSITIONFORM
-  PCOMPOSITIONFORM* = ptr COMPOSITIONFORM #     TComStatFlags = set of (fCtsHold, fDsrHold, fRlsdHold , fXoffHold ,
+  PCOMPOSITIONFORM* = ptr COMPOSITIONFORM #     ComStatFlags = set of (fCtsHold, fDsrHold, fRlsdHold , fXoffHold ,
                                           #                    fXoffSent , fEof ,  fTxim  , fReserved);
   COMSTAT* {.final, pure.} = object
-    flag0*: DWORD             # can't use tcomstatflags, set packing issues
+    flag0*: DWORD             # can't use comstatflags, set packing issues
                               # and conflicts with macro's
     cbInQue*: DWORD
     cbOutQue*: DWORD
 
   LPCOMSTAT* = ptr COMSTAT
-  TCOMSTAT* = COMSTAT
   PCOMSTAT* = ptr COMSTAT
+{.deprecated: [TCOMSTAT: COMSTAT, TCOMPOSITIONFORM: COMPOSITIONFORM,
+    TCOMPCOLOR: COMPCOLOR, TCOMPAREITEMSTRUCT: COMPAREITEMSTRUCT,
+    TCOMMTIMEOUTS: COMMTIMEOUTS, TCOMMPROP: COMMPROP, TCOMMCONFIG: COMMCONFIG].}
 
 const
   bm_COMSTAT_fCtsHold* = 0x00000001
@@ -7614,13 +7579,10 @@ type
     bVisible*: WINBOOL
 
   PCONSOLE_CURSOR_INFO* = ptr CONSOLE_CURSOR_INFO
-  TCONSOLECURSORINFO* = CONSOLE_CURSOR_INFO
-  TCURSORINFO* = CONSOLE_CURSOR_INFO
   COORD* {.final, pure.} = object
     X*: SHORT
     Y*: SHORT
 
-  TCOORD* = COORD
   PCOORD* = ptr COORD
   SMALL_RECT* {.final, pure.} = object
     Left*: SHORT
@@ -7628,7 +7590,6 @@ type
     Right*: SHORT
     Bottom*: SHORT
 
-  TSMALL_RECT* = SMALL_RECT
   PSMALL_RECT* = ptr SMALL_RECT
   CONSOLE_SCREEN_BUFFER_INFO* {.final, pure.} = object
     dwSize*: COORD
@@ -7638,7 +7599,10 @@ type
     dwMaximumWindowSize*: COORD
 
   PCONSOLE_SCREEN_BUFFER_INFO* = ptr CONSOLE_SCREEN_BUFFER_INFO
-  TCONSOLESCREENBUFFERINFO* = CONSOLE_SCREEN_BUFFER_INFO
+
+{.deprecated: [TCONSOLECURSORINFO: CONSOLE_CURSOR_INFO,
+      TCURSORINFO: CONSOLE_CURSOR_INFO, TCOORD: COORD, TSMALL_RECT: SMALL_RECT,
+      TCONSOLESCREENBUFFERINFO: CONSOLE_SCREEN_BUFFER_INFO].}
 
 when defined(i386):
   type
@@ -7653,7 +7617,6 @@ when defined(i386):
       RegisterArea*: array[0..79, int8]
       Cr0NpxState*: DWORD
 
-    TFLOATINGSAVEAREA* = FLOATING_SAVE_AREA
     PFLOATINGSAVEAREA* = ptr FLOATING_SAVE_AREA
     CONTEXT* {.final, pure.} = object
       ContextFlags*: DWORD
@@ -7680,6 +7643,7 @@ when defined(i386):
       EFlags*: DWORD
       Esp*: DWORD
       SegSs*: DWORD
+  {.deprecated: [TFLOATINGSAVEAREA: FLOATING_SAVE_AREA].}
 
 elif defined(x86_64):
   #
@@ -7690,8 +7654,7 @@ elif defined(x86_64):
       Low*: ULONGLONG
       High*: LONGLONG
 
-    TM128A* = M128A
-    PM128A* = TM128A #typedef struct _XMM_SAVE_AREA32 {
+    PM128A* = M128A #typedef struct _XMM_SAVE_AREA32 {
     XMM_SAVE_AREA32* {.final, pure.} = object
       ControlWord*: int16
       StatusWord*: int16
@@ -7710,8 +7673,9 @@ elif defined(x86_64):
       XmmRegisters*: array[0..16, M128A]
       Reserved4*: array[0..95, int8]
 
-    TXmmSaveArea* = XMM_SAVE_AREA32
-    PXmmSaveArea* = ptr TXmmSaveArea
+    PXmmSaveArea* = ptr XmmSaveArea32
+  {.deprecated: [TM128A: M128A, TXmmSaveArea: XMM_SAVE_AREA32].}
+    
   type
     CONTEXT* {.final, pure.} = object
       P1Home*: DWORD64
@@ -7891,20 +7855,19 @@ else:
 
 type
   LPCONTEXT* = ptr CONTEXT
-  TCONTEXT* = CONTEXT
   PCONTEXT* = ptr CONTEXT
+{.deprecated: [TCONTEXT: CONTEXT].}
 
 type
   LIST_ENTRY* {.final, pure.} = object
     Flink*: ptr LIST_ENTRY
     Blink*: ptr LIST_ENTRY
 
-  TLISTENTRY* = LIST_ENTRY
   PLISTENTRY* = ptr LIST_ENTRY
   CRITICAL_SECTION_DEBUG* {.final, pure.} = object
     `type`*: int16
     CreatorBackTraceIndex*: int16
-    CriticalSection*: ptr TCRITICAL_SECTION
+    CriticalSection*: ptr TRTL_CRITICAL_SECTION
     ProcessLocksList*: LIST_ENTRY
     EntryCount*: DWORD
     ContentionCount*: DWORD
@@ -7923,8 +7886,6 @@ type
 
   LPCRITICAL_SECTION_DEBUG* = ptr CRITICAL_SECTION_DEBUG
   PCRITICAL_SECTION_DEBUG* = ptr CRITICAL_SECTION_DEBUG
-  TCRITICALSECTIONDEBUG* = CRITICAL_SECTION_DEBUG
-  TCRITICAL_SECTION* = TRTLCriticalSection
   PCRITICAL_SECTION* = PRTLCriticalSection
   LPCRITICAL_SECTION* = PRTLCriticalSection
   SECURITY_QUALITY_OF_SERVICE* {.final, pure.} = object
@@ -7934,7 +7895,6 @@ type
     EffectiveOnly*: bool
 
   PSECURITY_QUALITY_OF_SERVICE* = ptr SECURITY_QUALITY_OF_SERVICE
-  TSECURITYQUALITYOFSERVICE* = SECURITY_QUALITY_OF_SERVICE
   CONVCONTEXT* {.final, pure.} = object
     cb*: WINUINT
     wFlags*: WINUINT
@@ -7944,7 +7904,6 @@ type
     dwSecurity*: DWORD
     qos*: SECURITY_QUALITY_OF_SERVICE
 
-  TCONVCONTEXT* = CONVCONTEXT
   PCONVCONTEXT* = ptr CONVCONTEXT
   CONVINFO* {.final, pure.} = object
     cb*: DWORD
@@ -7964,14 +7923,12 @@ type
     hwnd*: HWND
     hwndPartner*: HWND
 
-  TCONVINFO* = CONVINFO
   PCONVINFO* = ptr CONVINFO
   COPYDATASTRUCT* {.final, pure.} = object
     dwData*: DWORD
     cbData*: DWORD
     lpData*: PVOID
 
-  TCOPYDATASTRUCT* = COPYDATASTRUCT
   PCOPYDATASTRUCT* = ptr COPYDATASTRUCT
   CPINFO* {.final, pure.} = object
     MaxCharSize*: WINUINT
@@ -7979,7 +7936,6 @@ type
     LeadByte*: array[0..(MAX_LEADBYTES) - 1, int8]
 
   LPCPINFO* = ptr CPINFO
-  Tcpinfo* = CPINFO
   Pcpinfo* = ptr CPINFO
   CPLINFO* {.final, pure.} = object
     idIcon*: int32
@@ -7987,7 +7943,6 @@ type
     idInfo*: int32
     lData*: LONG
 
-  TCPLINFO* = CPLINFO
   PCPLINFO* = ptr CPLINFO
   CREATE_PROCESS_DEBUG_INFO* {.final, pure.} = object
     hFile*: HANDLE
@@ -8001,14 +7956,12 @@ type
     lpImageName*: LPVOID
     fUnicode*: int16
 
-  TCREATEPROCESSDEBUGINFO* = CREATE_PROCESS_DEBUG_INFO
   PCREATEPROCESSDEBUGINFO* = ptr CREATE_PROCESS_DEBUG_INFO
   CREATE_THREAD_DEBUG_INFO* {.final, pure.} = object
     hThread*: HANDLE
     lpThreadLocalBase*: LPVOID
     lpStartAddress*: LPTHREAD_START_ROUTINE
-
-  TCREATETHREADDEBUGINFO* = CREATE_THREAD_DEBUG_INFO
+  
   PCREATETHREADDEBUGINFO* = ptr CREATE_THREAD_DEBUG_INFO
 
   CURRENCYFMT* {.final, pure.} = object
@@ -8021,7 +7974,6 @@ type
     PositiveOrder*: WINUINT
     lpCurrencySymbol*: LPTSTR
 
-  Tcurrencyfmt* = CURRENCYFMT
   Pcurrencyfmt* = ptr CURRENCYFMT
   CURSORSHAPE* {.final, pure.} = object
     xHotSpot*: int32
@@ -8033,7 +7985,6 @@ type
     BitsPixel*: int8
 
   LPCURSORSHAPE* = ptr CURSORSHAPE
-  TCURSORSHAPE* = CURSORSHAPE
   PCURSORSHAPE* = ptr CURSORSHAPE
   CWPRETSTRUCT* {.final, pure.} = object
     lResult*: LRESULT
@@ -8042,7 +7993,6 @@ type
     message*: DWORD
     hwnd*: HWND
 
-  TCWPRETSTRUCT* = CWPRETSTRUCT
   PCWPRETSTRUCT* = ptr CWPRETSTRUCT
   CWPSTRUCT* {.final, pure.} = object
     lParam*: LPARAM
@@ -8050,18 +8000,24 @@ type
     message*: WINUINT
     hwnd*: HWND
 
-  TCWPSTRUCT* = CWPSTRUCT
   PCWPSTRUCT* = ptr CWPSTRUCT
   DATATYPES_INFO_1* {.final, pure.} = object
     pName*: LPTSTR
 
-  TDATATYPESINFO1* = DATATYPES_INFO_1
   PDATATYPESINFO1* = ptr DATATYPES_INFO_1
   DDEACK* {.final, pure.} = object
     flag0*: int16
 
-  TDDEACK* = DDEACK
   PDDEACK* = ptr DDEACK
+{.deprecated: [TLISTENTRY: LIST_ENTRY, TDATATYPESINFO1: DATATYPES_INFO_1,
+  TCWPSTRUCT: CWPSTRUCT, TCWPRETSTRUCT: CWPRETSTRUCT, TCURSORSHAPE: CURSORSHAPE,
+  Tcurrencyfmt: CURRENCYFMT, TCREATETHREADDEBUGINFO: CREATE_THREAD_DEBUG_INFO,
+  TCREATEPROCESSDEBUGINFO: CREATE_PROCESS_DEBUG_INFO, TCPLINFO: CPLINFO,
+  Tcpinfo: CPINFO, TCOPYDATASTRUCT: COPYDATASTRUCT, TCONVINFO: CONVINFO,
+  TCONVCONTEXT: CONVCONTEXT, TSECURITYQUALITYOFSERVICE: SECURITY_QUALITY_OF_SERVICE,
+  TCRITICAL_SECTION: TRTLCriticalSection, TCRITICALSECTIONDEBUG: CRITICAL_SECTION_DEBUG,
+  TDDEACK: DDEACK
+].}
 
 const
   bm_DDEACK_bAppReturnCode* = 0x000000FF'i16
@@ -8086,8 +8042,8 @@ type
     flag0*: int16
     cfFormat*: SHORT
 
-  TDDEADVISE* = DDEADVISE
   PDDEADVISE* = ptr DDEADVISE
+{.deprecated: [TDDEADVISE: DDEADVISE].}
 
 const
   bm_DDEADVISE_reserved* = 0x00003FFF'i16
@@ -8138,8 +8094,8 @@ type
     flag0*: int16
     cfFormat*: SHORT
 
-  TDDELN* = DDELN
   PDDELN* = ptr DDELN
+{.deprecated: [TDDELN: DDELN].}
 
 const
   bm_DDELN_unused* = 0x00001FFF'i16
@@ -8166,15 +8122,14 @@ type
     cbData*: DWORD
     Data*: array[0..7, DWORD]
 
-  TDDEMLMSGHOOKDATA* = DDEML_MSG_HOOK_DATA
   PDDEMLMSGHOOKDATA* = ptr DDEML_MSG_HOOK_DATA
   DDEPOKE* {.final, pure.} = object
     flag0*: int16
     cfFormat*: SHORT
     Value*: array[0..0, int8]
 
-  TDDEPOKE* = DDEPOKE
   PDDEPOKE* = ptr DDEPOKE
+{.deprecated: [TDDEMLMSGHOOKDATA: DDEML_MSG_HOOK_DATA, TDDEPOKE: DDEPOKE].}
 
 const
   bm_DDEPOKE_unused* = 0x00001FFF'i16
@@ -8196,8 +8151,8 @@ type
     cfFormat*: SHORT
     rgb*: array[0..0, int8]
 
-  TDDEUP* = DDEUP
   PDDEUP* = ptr DDEUP
+{.deprecated: [TDDEUP: DDEUP].}
 
 const
   bm_DDEUP_unused* = 0x00000FFF'i16
@@ -8232,13 +8187,11 @@ type
                                  ULONG_PTR]
 
   PEXCEPTION_RECORD* = ptr EXCEPTION_RECORD
-  TEXCEPTIONRECORD* = EXCEPTION_RECORD
   EXCEPTION_DEBUG_INFO* {.final, pure.} = object
     ExceptionRecord*: EXCEPTION_RECORD
     dwFirstChance*: DWORD
 
   PEXCEPTION_DEBUG_INFO* = ptr EXCEPTION_DEBUG_INFO
-  TEXCEPTIONDEBUGINFO* = EXCEPTION_DEBUG_INFO
   EXCEPTION_RECORD32* {.final, pure.} = object
     ExceptionCode*: DWORD
     ExceptionFlags*: DWORD
@@ -8248,13 +8201,11 @@ type
     ExceptionInformation*: array[0..(EXCEPTION_MAXIMUM_PARAMETERS) - 1, DWORD]
 
   PEXCEPTION_RECORD32* = ptr EXCEPTION_RECORD32
-  TExceptionRecord32* = EXCEPTION_RECORD32
   EXCEPTION_DEBUG_INFO32* {.final, pure.} = object
     ExceptionRecord*: EXCEPTION_RECORD32
     dwFirstChance*: DWORD
 
   PEXCEPTION_DEBUG_INFO32* = ptr EXCEPTION_DEBUG_INFO32
-  TExceptionDebugInfo32* = EXCEPTION_DEBUG_INFO32
   EXCEPTION_RECORD64* {.final, pure.} = object
     ExceptionCode*: DWORD
     ExceptionFlags*: DWORD
@@ -8265,22 +8216,18 @@ type
     ExceptionInformation*: array[0..(EXCEPTION_MAXIMUM_PARAMETERS) - 1, DWORD64]
 
   PEXCEPTION_RECORD64* = ptr EXCEPTION_RECORD64
-  TExceptionRecord64* = EXCEPTION_RECORD64
   EXCEPTION_DEBUG_INFO64* {.final, pure.} = object
     ExceptionRecord*: EXCEPTION_RECORD64
     dwFirstChance*: DWORD
 
   PEXCEPTION_DEBUG_INFO64* = ptr EXCEPTION_DEBUG_INFO64
-  TExceptionDebugInfo64* = EXCEPTION_DEBUG_INFO64
   EXIT_PROCESS_DEBUG_INFO* {.final, pure.} = object
     dwExitCode*: DWORD
 
-  TEXITPROCESSDEBUGINFO* = EXIT_PROCESS_DEBUG_INFO
   PEXITPROCESSDEBUGINFO* = ptr EXIT_PROCESS_DEBUG_INFO
   EXIT_THREAD_DEBUG_INFO* {.final, pure.} = object
     dwExitCode*: DWORD
 
-  TEXITTHREADDEBUGINFO* = EXIT_THREAD_DEBUG_INFO
   PEXITTHREADDEBUGINFO* = ptr EXIT_THREAD_DEBUG_INFO
   LOAD_DLL_DEBUG_INFO* {.final, pure.} = object
     hFile*: HANDLE
@@ -8290,25 +8237,21 @@ type
     lpImageName*: LPVOID
     fUnicode*: int16
 
-  TLOADDLLDEBUGINFO* = LOAD_DLL_DEBUG_INFO
   PLOADDLLDEBUGINFO* = ptr LOAD_DLL_DEBUG_INFO
   UNLOAD_DLL_DEBUG_INFO* {.final, pure.} = object
     lpBaseOfDll*: LPVOID
 
-  TUNLOADDLLDEBUGINFO* = UNLOAD_DLL_DEBUG_INFO
   PUNLOADDLLDEBUGINFO* = ptr UNLOAD_DLL_DEBUG_INFO
   OUTPUT_DEBUG_STRING_INFO* {.final, pure.} = object
     lpDebugStringData*: LPSTR
     fUnicode*: int16
     nDebugStringLength*: int16
 
-  TOUTPUTDEBUGSTRINGINFO* = OUTPUT_DEBUG_STRING_INFO
   POUTPUTDEBUGSTRINGINFO* = ptr OUTPUT_DEBUG_STRING_INFO
   RIP_INFO* {.final, pure.} = object
     dwError*: DWORD
     dwType*: DWORD
 
-  TRIPINFO* = RIP_INFO
   PRIPINFO* = ptr RIP_INFO
   DEBUG_EVENT* {.final, pure.} = object
     dwDebugEventCode*: DWORD
@@ -8317,7 +8260,6 @@ type
     data*: array[0..15, DWORD]
 
   LPDEBUG_EVENT* = ptr DEBUG_EVENT
-  TDEBUGEVENT* = DEBUG_EVENT
   PDEBUGEVENT* = ptr DEBUG_EVENT
   DEBUGHOOKINFO* {.final, pure.} = object
     idThread*: DWORD
@@ -8326,7 +8268,6 @@ type
     wParam*: WPARAM
     code*: int32
 
-  TDEBUGHOOKINFO* = DEBUGHOOKINFO
   PDEBUGHOOKINFO* = ptr DEBUGHOOKINFO
   DELETEITEMSTRUCT* {.final, pure.} = object
     CtlType*: WINUINT
@@ -8335,7 +8276,6 @@ type
     hwndItem*: HWND
     itemData*: ULONG_PTR
 
-  TDELETEITEMSTRUCT* = DELETEITEMSTRUCT
   PDELETEITEMSTRUCT* = ptr DELETEITEMSTRUCT
   DEV_BROADCAST_HDR* {.final, pure.} = object
     dbch_size*: ULONG
@@ -8343,7 +8283,6 @@ type
     dbch_reserved*: ULONG
 
   PDEV_BROADCAST_HDR* = ptr DEV_BROADCAST_HDR
-  TDEVBROADCASTHDR* = DEV_BROADCAST_HDR
   DEV_BROADCAST_OEM* {.final, pure.} = object
     dbco_size*: ULONG
     dbco_devicetype*: ULONG
@@ -8352,7 +8291,6 @@ type
     dbco_suppfunc*: ULONG
 
   PDEV_BROADCAST_OEM* = ptr DEV_BROADCAST_OEM
-  TDEVBROADCASTOEM* = DEV_BROADCAST_OEM
   DEV_BROADCAST_PORT* {.final, pure.} = object
     dbcp_size*: ULONG
     dbcp_devicetype*: ULONG
@@ -8360,13 +8298,11 @@ type
     dbcp_name*: array[0..0, char]
 
   PDEV_BROADCAST_PORT* = ptr DEV_BROADCAST_PORT
-  TDEVBROADCASTPORT* = DEV_BROADCAST_PORT
   DEV_BROADCAST_USERDEFINED* {.final, pure.} = object
     dbud_dbh*: DEV_BROADCAST_HDR
     dbud_szName*: array[0..0, char]
     dbud_rgbUserDefined*: array[0..0, int8]
 
-  TDEVBROADCASTUSERDEFINED* = DEV_BROADCAST_USERDEFINED
   PDEVBROADCASTUSERDEFINED* = ptr DEV_BROADCAST_USERDEFINED
   DEV_BROADCAST_VOLUME* {.final, pure.} = object
     dbcv_size*: ULONG
@@ -8376,7 +8312,6 @@ type
     dbcv_flags*: USHORT
 
   PDEV_BROADCAST_VOLUME* = ptr DEV_BROADCAST_VOLUME
-  TDEVBROADCASTVOLUME* = DEV_BROADCAST_VOLUME
   DEVMODE* {.final, pure.} = object
     dmDeviceName*: array[0..(CCHDEVICENAME) - 1, BCHAR]
     dmSpecVersion*: int16
@@ -8416,11 +8351,8 @@ type
 
   LPDEVMODE* = ptr DEVMODE
   Devicemode* = DEVMODE
-  TDevicemode* = DEVMODE
-  TDevicemodeA* = DEVMODE
   PDeviceModeA* = LPDEVMODE
   PDeviceMode* = LPDEVMODE
-  TDEVMODE* = DEVMODE
   PDEVMODE* = LPDEVMODE
   DEVMODEW* {.final, pure.} = object
     dmDeviceName*: array[0..CCHDEVICENAME - 1, WCHAR]
@@ -8460,9 +8392,7 @@ type
 
   LPDEVMODEW* = ptr DEVMODEW
   DevicemodeW* = DEVMODEW
-  TDeviceModeW* = DEVMODEW
   PDeviceModeW* = LPDEVMODEW
-  TDEVMODEW* = DEVMODEW
   PDEVMODEW* = LPDEVMODEW
   DEVNAMES* {.final, pure.} = object
     wDriverOffset*: int16
@@ -8471,7 +8401,6 @@ type
     wDefault*: int16
 
   LPDEVNAMES* = ptr DEVNAMES
-  TDEVNAMES* = DEVNAMES
   PDEVNAMES* = ptr DEVNAMES
   DIBSECTION* {.final, pure.} = object
     dsBm*: BITMAP
@@ -8480,7 +8409,6 @@ type
     dshSection*: HANDLE
     dsOffset*: DWORD
 
-  TDIBSECTION* = DIBSECTION
   PDIBSECTION* = ptr DIBSECTION #
                                 #     LARGE_INTEGER = record
                                 #        case byte of
@@ -8497,9 +8425,7 @@ type
   LARGE_INTEGER* = int64
   ULARGE_INTEGER* = int64
   PLARGE_INTEGER* = ptr LARGE_INTEGER
-  TLargeInteger* = int64
   PULARGE_INTEGER* = ptr ULARGE_INTEGER
-  TULargeInteger* = int64
   DISK_GEOMETRY* {.final, pure.} = object
     Cylinders*: LARGE_INTEGER
     MediaType*: MEDIA_TYPE
@@ -8507,7 +8433,6 @@ type
     SectorsPerTrack*: DWORD
     BytesPerSector*: DWORD
 
-  TDISKGEOMETRY* = DISK_GEOMETRY
   PDISKGEOMETRY* = ptr DISK_GEOMETRY
   DISK_PERFORMANCE* {.final, pure.} = object
     BytesRead*: LARGE_INTEGER
@@ -8518,7 +8443,6 @@ type
     WriteCount*: DWORD
     QueueDepth*: DWORD
 
-  TDISKPERFORMANCE* = DISK_PERFORMANCE
   PDISKPERFORMANCE* = ptr DISK_PERFORMANCE
   DLGITEMTEMPLATE* {.final, pure.} = object
     style*: DWORD
@@ -8530,7 +8454,6 @@ type
     id*: int16
 
   LPDLGITEMTEMPLATE* = ptr DLGITEMTEMPLATE
-  TDLGITEMTEMPLATE* = DLGITEMTEMPLATE
   PDLGITEMTEMPLATE* = ptr DLGITEMTEMPLATE
   DLGTEMPLATE* {.final, pure.} = object
     style*: DWORD
@@ -8543,14 +8466,12 @@ type
 
   LPDLGTEMPLATE* = ptr DLGTEMPLATE
   LPCDLGTEMPLATE* = ptr DLGTEMPLATE
-  TDLGTEMPLATE* = DLGTEMPLATE
   PDLGTEMPLATE* = ptr DLGTEMPLATE
   DOC_INFO_1* {.final, pure.} = object
     pDocName*: LPTSTR
     pOutputFile*: LPTSTR
     pDatatype*: LPTSTR
 
-  TDOCINFO1* = DOC_INFO_1
   PDOCINFO1* = ptr DOC_INFO_1
   DOC_INFO_2* {.final, pure.} = object
     pDocName*: LPTSTR
@@ -8559,7 +8480,6 @@ type
     dwMode*: DWORD
     JobId*: DWORD
 
-  TDOCINFO2* = DOC_INFO_2
   PDOCINFO2* = ptr DOC_INFO_2
   DOCINFO* {.final, pure.} = object
     cbSize*: int32
@@ -8568,8 +8488,6 @@ type
     lpszDatatype*: LPCTSTR
     fwType*: DWORD
 
-  TDOCINFO* = DOCINFO
-  TDOCINFOA* = DOCINFO
   PDOCINFO* = ptr DOCINFO
   DRAGLISTINFO* {.final, pure.} = object
     uNotification*: WINUINT
@@ -8577,7 +8495,6 @@ type
     ptCursor*: POINT
 
   LPDRAGLISTINFO* = ptr DRAGLISTINFO
-  TDRAGLISTINFO* = DRAGLISTINFO
   PDRAGLISTINFO* = ptr DRAGLISTINFO
   DRAWITEMSTRUCT* {.final, pure.} = object
     CtlType*: WINUINT
@@ -8591,7 +8508,6 @@ type
     itemData*: ULONG_PTR
 
   LPDRAWITEMSTRUCT* = ptr DRAWITEMSTRUCT
-  TDRAWITEMSTRUCT* = DRAWITEMSTRUCT
   PDRAWITEMSTRUCT* = ptr DRAWITEMSTRUCT
   DRAWTEXTPARAMS* {.final, pure.} = object
     cbSize*: WINUINT
@@ -8601,7 +8517,6 @@ type
     uiLengthDrawn*: WINUINT
 
   LPDRAWTEXTPARAMS* = ptr DRAWTEXTPARAMS
-  TDRAWTEXTPARAMS* = DRAWTEXTPARAMS
   PDRAWTEXTPARAMS* = ptr DRAWTEXTPARAMS
   PARTITION_INFORMATION* {.final, pure.} = object
     PartitionType*: int8
@@ -8612,19 +8527,16 @@ type
     PartitionLength*: LARGE_INTEGER
     HiddenSectors*: LARGE_INTEGER
 
-  TPARTITIONINFORMATION* = PARTITION_INFORMATION
   PPARTITIONINFORMATION* = ptr PARTITION_INFORMATION
   DRIVE_LAYOUT_INFORMATION* {.final, pure.} = object
     PartitionCount*: DWORD
     Signature*: DWORD
     PartitionEntry*: array[0..0, PARTITION_INFORMATION]
 
-  TDRIVELAYOUTINFORMATION* = DRIVE_LAYOUT_INFORMATION
   PDRIVELAYOUTINFORMATION* = ptr DRIVE_LAYOUT_INFORMATION
   DRIVER_INFO_1* {.final, pure.} = object
     pName*: LPTSTR
 
-  TDRIVERINFO1* = DRIVER_INFO_1
   PDRIVERINFO1* = ptr DRIVER_INFO_1
   DRIVER_INFO_2* {.final, pure.} = object
     cVersion*: DWORD
@@ -8634,7 +8546,6 @@ type
     pDataFile*: LPTSTR
     pConfigFile*: LPTSTR
 
-  TDRIVERINFO2* = DRIVER_INFO_2
   PDRIVERINFO2* = ptr DRIVER_INFO_2
   DRIVER_INFO_3* {.final, pure.} = object
     cVersion*: DWORD
@@ -8648,20 +8559,17 @@ type
     pMonitorName*: LPTSTR
     pDefaultDataType*: LPTSTR
 
-  TDRIVERINFO3* = DRIVER_INFO_3
   PDRIVERINFO3* = ptr DRIVER_INFO_3
   EDITSTREAM* {.final, pure.} = object
     dwCookie*: DWORD
     dwError*: DWORD
     pfnCallback*: EDITSTREAMCALLBACK
 
-  Teditstream* = EDITSTREAM
   Peditstream* = ptr EDITSTREAM
   EMR* {.final, pure.} = object
     iType*: DWORD
     nSize*: DWORD
 
-  TEMR* = EMR
   PEMR* = ptr EMR
   EMRANGLEARC* {.final, pure.} = object
     emr*: EMR
@@ -8670,7 +8578,6 @@ type
     eStartAngle*: float32
     eSweepAngle*: float32
 
-  TEMRANGLEARC* = EMRANGLEARC
   PEMRANGLEARC* = ptr EMRANGLEARC
   EMRARC* {.final, pure.} = object
     emr*: EMR
@@ -8678,16 +8585,12 @@ type
     ptlStart*: POINTL
     ptlEnd*: POINTL
 
-  TEMRARC* = EMRARC
   PEMRARC* = ptr EMRARC
   EMRARCTO* = EMRARC
-  TEMRARCTO* = EMRARC
   PEMRARCTO* = ptr EMRARC
   EMRCHORD* = EMRARC
-  TEMRCHORD* = EMRARC
   PEMRCHORD* = ptr EMRARC
   EMRPIE* = EMRARC
-  TEMRPIE* = EMRARC
   PEMRPIE* = ptr EMRARC
   XFORM* {.final, pure.} = object
     eM11*: float32
@@ -8698,7 +8601,6 @@ type
     eDy*: float32
 
   LPXFORM* = ptr XFORM
-  TXFORM* = XFORM
   PXFORM* = ptr XFORM
   EMRBITBLT* {.final, pure.} = object
     emr*: EMR
@@ -8717,21 +8619,18 @@ type
     offBitsSrc*: DWORD
     cbBitsSrc*: DWORD
 
-  TEMRBITBLT* = EMRBITBLT
   PEMRBITBLT* = ptr EMRBITBLT
   LOGBRUSH* {.final, pure.} = object
     lbStyle*: WINUINT
     lbColor*: COLORREF
     lbHatch*: LONG
 
-  TLOGBRUSH* = LOGBRUSH
   PLOGBRUSH* = ptr LOGBRUSH
   EMRCREATEBRUSHINDIRECT* {.final, pure.} = object
     emr*: EMR
     ihBrush*: DWORD
     lb*: LOGBRUSH
 
-  TEMRCREATEBRUSHINDIRECT* = EMRCREATEBRUSHINDIRECT
   PEMRCREATEBRUSHINDIRECT* = ptr EMRCREATEBRUSHINDIRECT
   LCSCSTYPE* = LONG
   LCSGAMUTMATCH* = LONG
@@ -8745,18 +8644,15 @@ type
     lcsGammaRed*: DWORD
     lcsGammaGreen*: DWORD
     lcsGammaBlue*: DWORD
-    lcsFilename*: array[0..(MAX_PATH) - 1, TCHAR]
+    lcsFilename*: array[0..(MAX_PATH) - 1, CHAR]
 
   LPLOGCOLORSPACE* = ptr LOGCOLORSPACE
-  TLOGCOLORSPACE* = LOGCOLORSPACE
-  TLOGCOLORSPACEA* = LOGCOLORSPACE
   PLOGCOLORSPACE* = ptr LOGCOLORSPACE
   EMRCREATECOLORSPACE* {.final, pure.} = object
     emr*: EMR
     ihCS*: DWORD
     lcs*: LOGCOLORSPACE
 
-  TEMRCREATECOLORSPACE* = EMRCREATECOLORSPACE
   PEMRCREATECOLORSPACE* = ptr EMRCREATECOLORSPACE
   EMRCREATEDIBPATTERNBRUSHPT* {.final, pure.} = object
     emr*: EMR
@@ -8767,7 +8663,6 @@ type
     offBits*: DWORD
     cbBits*: DWORD
 
-  TEMRCREATEDIBPATTERNBRUSHPT* = EMRCREATEDIBPATTERNBRUSHPT
   PEMRCREATEDIBPATTERNBRUSHPT* = EMRCREATEDIBPATTERNBRUSHPT
   EMRCREATEMONOBRUSH* {.final, pure.} = object
     emr*: EMR
@@ -8778,7 +8673,6 @@ type
     offBits*: DWORD
     cbBits*: DWORD
 
-  TEMRCREATEMONOBRUSH* = EMRCREATEMONOBRUSH
   PEMRCREATEMONOBRUSH* = ptr EMRCREATEMONOBRUSH
   PALETTEENTRY* {.final, pure.} = object
     peRed*: int8
@@ -8787,7 +8681,6 @@ type
     peFlags*: int8
 
   LPPALETTEENTRY* = ptr PALETTEENTRY
-  TPALETTEENTRY* = PALETTEENTRY
   PPALETTEENTRY* = ptr PALETTEENTRY
   LOGPALETTE* {.final, pure.} = object
     palVersion*: int16
@@ -8796,37 +8689,31 @@ type
 
   LPLOGPALETTE* = ptr LOGPALETTE
   NPLOGPALETTE* = ptr LOGPALETTE
-  TLOGPALETTE* = LOGPALETTE
   PLOGPALETTE* = ptr LOGPALETTE
   EMRCREATEPALETTE* {.final, pure.} = object
     emr*: EMR
     ihPal*: DWORD
     lgpl*: LOGPALETTE
 
-  TEMRCREATEPALETTE* = EMRCREATEPALETTE
   PEMRCREATEPALETTE* = ptr EMRCREATEPALETTE
   LOGPEN* {.final, pure.} = object
     lopnStyle*: WINUINT
     lopnWidth*: POINT
     lopnColor*: COLORREF
 
-  TLOGPEN* = LOGPEN
   PLOGPEN* = ptr LOGPEN
   EMRCREATEPEN* {.final, pure.} = object
     emr*: EMR
     ihPen*: DWORD
     lopn*: LOGPEN
 
-  TEMRCREATEPEN* = EMRCREATEPEN
   PEMRCREATEPEN* = ptr EMRCREATEPEN
   EMRELLIPSE* {.final, pure.} = object
     emr*: EMR
     rclBox*: RECTL
 
-  TEMRELLIPSE* = EMRELLIPSE
   PEMRELLIPSE* = ptr EMRELLIPSE
   EMRRECTANGLE* = EMRELLIPSE
-  TEMRRECTANGLE* = EMRELLIPSE
   PEMRRECTANGLE* = ptr EMRELLIPSE
   EMREOF* {.final, pure.} = object
     emr*: EMR
@@ -8834,16 +8721,13 @@ type
     offPalEntries*: DWORD
     nSizeLast*: DWORD
 
-  TEMREOF* = EMREOF
   PEMREOF* = ptr EMREOF
   EMREXCLUDECLIPRECT* {.final, pure.} = object
     emr*: EMR
     rclClip*: RECTL
 
-  TEMREXCLUDECLIPRECT* = EMREXCLUDECLIPRECT
   PEMREXCLUDECLIPRECT* = ptr EMREXCLUDECLIPRECT
   EMRINTERSECTCLIPRECT* = EMREXCLUDECLIPRECT
-  TEMRINTERSECTCLIPRECT* = EMREXCLUDECLIPRECT
   PEMRINTERSECTCLIPRECT* = ptr EMREXCLUDECLIPRECT
   PANOSE* {.final, pure.} = object
     bFamilyType*: int8
@@ -8857,7 +8741,6 @@ type
     bMidline*: int8
     bXHeight*: int8
 
-  TPANOSE* = PANOSE
   PPANOSE* = ptr PANOSE
   EXTLOGFONT* {.final, pure.} = object
     elfLogFont*: LOGFONT
@@ -8871,14 +8754,12 @@ type
     elfCulture*: DWORD
     elfPanose*: PANOSE
 
-  TEXTLOGFONT* = EXTLOGFONT
   PEXTLOGFONT* = ptr EXTLOGFONT
   EMREXTCREATEFONTINDIRECTW* {.final, pure.} = object
     emr*: EMR
     ihFont*: DWORD
     elfw*: EXTLOGFONT
 
-  TEMREXTCREATEFONTINDIRECTW* = EMREXTCREATEFONTINDIRECTW
   PEMREXTCREATEFONTINDIRECTW* = ptr EMREXTCREATEFONTINDIRECTW
   EXTLOGPEN* {.final, pure.} = object
     elpPenStyle*: WINUINT
@@ -8889,7 +8770,6 @@ type
     elpNumEntries*: DWORD
     elpStyleEntry*: array[0..0, DWORD]
 
-  TEXTLOGPEN* = EXTLOGPEN
   PEXTLOGPEN* = ptr EXTLOGPEN
   EMREXTCREATEPEN* {.final, pure.} = object
     emr*: EMR
@@ -8900,7 +8780,6 @@ type
     cbBits*: DWORD
     elp*: EXTLOGPEN
 
-  TEMREXTCREATEPEN* = EMREXTCREATEPEN
   PEMREXTCREATEPEN* = ptr EMREXTCREATEPEN
   EMREXTFLOODFILL* {.final, pure.} = object
     emr*: EMR
@@ -8908,7 +8787,6 @@ type
     crColor*: COLORREF
     iMode*: DWORD
 
-  TEMREXTFLOODFILL* = EMREXTFLOODFILL
   PEMREXTFLOODFILL* = ptr EMREXTFLOODFILL
   EMREXTSELECTCLIPRGN* {.final, pure.} = object
     emr*: EMR
@@ -8916,7 +8794,6 @@ type
     iMode*: DWORD
     RgnData*: array[0..0, int8]
 
-  TEMREXTSELECTCLIPRGN* = EMREXTSELECTCLIPRGN
   PEMREXTSELECTCLIPRGN* = ptr EMREXTSELECTCLIPRGN
   EMRTEXT* {.final, pure.} = object
     ptlReference*: POINTL
@@ -8926,7 +8803,6 @@ type
     rcl*: RECTL
     offDx*: DWORD
 
-  TEMRTEXT* = EMRTEXT
   PEMRTEXT* = ptr EMRTEXT
   EMREXTTEXTOUTA* {.final, pure.} = object
     emr*: EMR
@@ -8936,22 +8812,17 @@ type
     eyScale*: float32
     emrtext*: EMRTEXT
 
-  TEMREXTTEXTOUTA* = EMREXTTEXTOUTA
   PEMREXTTEXTOUTA* = ptr EMREXTTEXTOUTA
   EMREXTTEXTOUTW* = EMREXTTEXTOUTA
-  TEMREXTTEXTOUTW* = EMREXTTEXTOUTA
   PEMREXTTEXTOUTW* = ptr EMREXTTEXTOUTA
   EMRFILLPATH* {.final, pure.} = object
     emr*: EMR
     rclBounds*: RECTL
 
-  TEMRFILLPATH* = EMRFILLPATH
   PEMRFILLPATH* = ptr EMRFILLPATH
   EMRSTROKEANDFILLPATH* = EMRFILLPATH
-  TEMRSTROKEANDFILLPATH* = EMRFILLPATH
   PEMRSTROKEANDFILLPATH* = ptr EMRFILLPATH
   EMRSTROKEPATH* = EMRFILLPATH
-  TEMRSTROKEPATH* = EMRFILLPATH
   PEMRSTROKEPATH* = ptr EMRFILLPATH
   EMRFILLRGN* {.final, pure.} = object
     emr*: EMR
@@ -8960,7 +8831,6 @@ type
     ihBrush*: DWORD
     RgnData*: array[0..0, int8]
 
-  TEMRFILLRGN* = EMRFILLRGN
   PEMRFILLRGN* = ptr EMRFILLRGN
   EMRFORMAT* {.final, pure.} = object
     dSignature*: DWORD
@@ -8968,7 +8838,6 @@ type
     cbData*: DWORD
     offData*: DWORD
 
-  TEMRFORMAT* = EMRFORMAT
   PEMRFORMAT* = ptr EMRFORMAT
 
   EMRFRAMERGN* {.final, pure.} = object
@@ -8979,14 +8848,12 @@ type
     szlStroke*: SIZEL
     RgnData*: array[0..0, int8]
 
-  TEMRFRAMERGN* = EMRFRAMERGN
   PEMRFRAMERGN* = ptr EMRFRAMERGN
   EMRGDICOMMENT* {.final, pure.} = object
     emr*: EMR
     cbData*: DWORD
     Data*: array[0..0, int8]
 
-  TEMRGDICOMMENT* = EMRGDICOMMENT
   PEMRGDICOMMENT* = ptr EMRGDICOMMENT
   EMRINVERTRGN* {.final, pure.} = object
     emr*: EMR
@@ -8994,19 +8861,15 @@ type
     cbRgnData*: DWORD
     RgnData*: array[0..0, int8]
 
-  TEMRINVERTRGN* = EMRINVERTRGN
   PEMRINVERTRGN* = ptr EMRINVERTRGN
   EMRPAINTRGN* = EMRINVERTRGN
-  TEMRPAINTRGN* = EMRINVERTRGN
   PEMRPAINTRGN* = ptr EMRINVERTRGN
   EMRLINETO* {.final, pure.} = object
     emr*: EMR
     ptl*: POINTL
 
-  TEMRLINETO* = EMRLINETO
   PEMRLINETO* = ptr EMRLINETO
   EMRMOVETOEX* = EMRLINETO
-  TEMRMOVETOEX* = EMRLINETO
   PEMRMOVETOEX* = ptr EMRLINETO
   EMRMASKBLT* {.final, pure.} = object
     emr*: EMR
@@ -9033,20 +8896,17 @@ type
     offBitsMask*: DWORD
     cbBitsMask*: DWORD
 
-  TEMRMASKBLT* = EMRMASKBLT
   PEMRMASKBLT* = ptr EMRMASKBLT
   EMRMODIFYWORLDTRANSFORM* {.final, pure.} = object
     emr*: EMR
     xform*: XFORM
     iMode*: DWORD
 
-  TEMRMODIFYWORLDTRANSFORM* = EMRMODIFYWORLDTRANSFORM
   PEMRMODIFYWORLDTRANSFORM* = EMRMODIFYWORLDTRANSFORM
   EMROFFSETCLIPRGN* {.final, pure.} = object
     emr*: EMR
     ptlOffset*: POINTL
 
-  TEMROFFSETCLIPRGN* = EMROFFSETCLIPRGN
   PEMROFFSETCLIPRGN* = ptr EMROFFSETCLIPRGN
   EMRPLGBLT* {.final, pure.} = object
     emr*: EMR
@@ -9071,7 +8931,6 @@ type
     offBitsMask*: DWORD
     cbBitsMask*: DWORD
 
-  TEMRPLGBLT* = EMRPLGBLT
   PEMRPLGBLT* = ptr EMRPLGBLT
   EMRPOLYDRAW* {.final, pure.} = object
     emr*: EMR
@@ -9080,7 +8939,6 @@ type
     aptl*: array[0..0, POINTL]
     abTypes*: array[0..0, int8]
 
-  TEMRPOLYDRAW* = EMRPOLYDRAW
   PEMRPOLYDRAW* = ptr EMRPOLYDRAW
   EMRPOLYDRAW16* {.final, pure.} = object
     emr*: EMR
@@ -9089,7 +8947,6 @@ type
     apts*: array[0..0, POINTS]
     abTypes*: array[0..0, int8]
 
-  TEMRPOLYDRAW16* = EMRPOLYDRAW16
   PEMRPOLYDRAW16* = ptr EMRPOLYDRAW16
   EMRPOLYLINE* {.final, pure.} = object
     emr*: EMR
@@ -9097,19 +8954,14 @@ type
     cptl*: DWORD
     aptl*: array[0..0, POINTL]
 
-  TEMRPOLYLINE* = EMRPOLYLINE
   PEMRPOLYLINE* = ptr EMRPOLYLINE
   EMRPOLYBEZIER* = EMRPOLYLINE
-  TEMRPOLYBEZIER* = EMRPOLYLINE
   PEMRPOLYBEZIER* = ptr EMRPOLYLINE
   EMRPOLYGON* = EMRPOLYLINE
-  TEMRPOLYGON* = EMRPOLYLINE
   PEMRPOLYGON* = ptr EMRPOLYLINE
   EMRPOLYBEZIERTO* = EMRPOLYLINE
-  TEMRPOLYBEZIERTO* = EMRPOLYLINE
   PEMRPOLYBEZIERTO* = ptr EMRPOLYLINE
   EMRPOLYLINETO* = EMRPOLYLINE
-  TEMRPOLYLINETO* = EMRPOLYLINE
   PEMRPOLYLINETO* = ptr EMRPOLYLINE
   EMRPOLYLINE16* {.final, pure.} = object
     emr*: EMR
@@ -9117,19 +8969,14 @@ type
     cpts*: DWORD
     apts*: array[0..0, POINTL]
 
-  TEMRPOLYLINE16* = EMRPOLYLINE16
   PEMRPOLYLINE16* = ptr EMRPOLYLINE16
   EMRPOLYBEZIER16* = EMRPOLYLINE16
-  TEMRPOLYBEZIER16* = EMRPOLYLINE16
   PEMRPOLYBEZIER16* = ptr EMRPOLYLINE16
   EMRPOLYGON16* = EMRPOLYLINE16
-  TEMRPOLYGON16* = EMRPOLYLINE16
   PEMRPOLYGON16* = ptr EMRPOLYLINE16
   EMRPOLYBEZIERTO16* = EMRPOLYLINE16
-  TEMRPOLYBEZIERTO16* = EMRPOLYLINE16
   PEMRPOLYBEZIERTO16* = ptr EMRPOLYLINE16
   EMRPOLYLINETO16* = EMRPOLYLINE16
-  TEMRPOLYLINETO16* = EMRPOLYLINE16
   PEMRPOLYLINETO16* = ptr EMRPOLYLINE16
   EMRPOLYPOLYLINE* {.final, pure.} = object
     emr*: EMR
@@ -9139,10 +8986,8 @@ type
     aPolyCounts*: array[0..0, DWORD]
     aptl*: array[0..0, POINTL]
 
-  TEMRPOLYPOLYLINE* = EMRPOLYPOLYLINE
   PEMRPOLYPOLYLINE* = ptr EMRPOLYPOLYLINE
   EMRPOLYPOLYGON* = EMRPOLYPOLYLINE
-  TEMRPOLYPOLYGON* = EMRPOLYPOLYLINE
   PEMRPOLYPOLYGON* = ptr EMRPOLYPOLYLINE
   EMRPOLYPOLYLINE16* {.final, pure.} = object
     emr*: EMR
@@ -9152,10 +8997,8 @@ type
     aPolyCounts*: array[0..0, DWORD]
     apts*: array[0..0, POINTS]
 
-  TEMRPOLYPOLYLINE16* = EMRPOLYPOLYLINE16
   PEMRPOLYPOLYLINE16* = ptr EMRPOLYPOLYLINE16
   EMRPOLYPOLYGON16* = EMRPOLYPOLYLINE16
-  TEMRPOLYPOLYGON16* = EMRPOLYPOLYLINE16
   PEMRPOLYPOLYGON16* = ptr EMRPOLYPOLYLINE16
   EMRPOLYTEXTOUTA* {.final, pure.} = object
     emr*: EMR
@@ -9166,30 +9009,25 @@ type
     cStrings*: LONG
     aemrtext*: array[0..0, EMRTEXT]
 
-  TEMRPOLYTEXTOUTA* = EMRPOLYTEXTOUTA
   PEMRPOLYTEXTOUTA* = ptr EMRPOLYTEXTOUTA
   EMRPOLYTEXTOUTW* = EMRPOLYTEXTOUTA
-  TEMRPOLYTEXTOUTW* = EMRPOLYTEXTOUTA
   PEMRPOLYTEXTOUTW* = ptr EMRPOLYTEXTOUTA
   EMRRESIZEPALETTE* {.final, pure.} = object
     emr*: EMR
     ihPal*: DWORD
     cEntries*: DWORD
 
-  TEMRRESIZEPALETTE* = EMRRESIZEPALETTE
   PEMRRESIZEPALETTE* = ptr EMRRESIZEPALETTE
   EMRRESTOREDC* {.final, pure.} = object
     emr*: EMR
     iRelative*: LONG
 
-  TEMRRESTOREDC* = EMRRESTOREDC
   PEMRRESTOREDC* = ptr EMRRESTOREDC
   EMRROUNDRECT* {.final, pure.} = object
     emr*: EMR
     rclBox*: RECTL
     szlCorner*: SIZEL
 
-  TEMRROUNDRECT* = EMRROUNDRECT
   PEMRROUNDRECT* = ptr EMRROUNDRECT
   EMRSCALEVIEWPORTEXTEX* {.final, pure.} = object
     emr*: EMR
@@ -9198,56 +9036,45 @@ type
     yNum*: LONG
     yDenom*: LONG
 
-  TEMRSCALEVIEWPORTEXTEX* = EMRSCALEVIEWPORTEXTEX
   PEMRSCALEVIEWPORTEXTEX* = ptr EMRSCALEVIEWPORTEXTEX
   EMRSCALEWINDOWEXTEX* = EMRSCALEVIEWPORTEXTEX
-  TEMRSCALEWINDOWEXTEX* = EMRSCALEVIEWPORTEXTEX
   PEMRSCALEWINDOWEXTEX* = ptr EMRSCALEVIEWPORTEXTEX
   EMRSELECTCOLORSPACE* {.final, pure.} = object
     emr*: EMR
 
     ihCS*: DWORD
 
-  TEMRSELECTCOLORSPACE* = EMRSELECTCOLORSPACE
   PEMRSELECTCOLORSPACE* = ptr EMRSELECTCOLORSPACE
   EMRDELETECOLORSPACE* = EMRSELECTCOLORSPACE
-  TEMRDELETECOLORSPACE* = EMRSELECTCOLORSPACE
   PEMRDELETECOLORSPACE* = ptr EMRSELECTCOLORSPACE
   EMRSELECTOBJECT* {.final, pure.} = object
     emr*: EMR
     ihObject*: DWORD
 
-  TEMRSELECTOBJECT* = EMRSELECTOBJECT
   PEMRSELECTOBJECT* = ptr EMRSELECTOBJECT
   EMRDELETEOBJECT* = EMRSELECTOBJECT
-  TEMRDELETEOBJECT* = EMRSELECTOBJECT
   PEMRDELETEOBJECT* = ptr EMRSELECTOBJECT
   EMRSELECTPALETTE* {.final, pure.} = object
     emr*: EMR
     ihPal*: DWORD
 
-  TEMRSELECTPALETTE* = EMRSELECTPALETTE
   PEMRSELECTPALETTE* = ptr EMRSELECTPALETTE
   EMRSETARCDIRECTION* {.final, pure.} = object
     emr*: EMR
     iArcDirection*: DWORD
 
-  TEMRSETARCDIRECTION* = EMRSETARCDIRECTION
   PEMRSETARCDIRECTION* = ptr EMRSETARCDIRECTION
   EMRSETBKCOLOR* {.final, pure.} = object
     emr*: EMR
     crColor*: COLORREF
 
-  TEMRSETBKCOLOR* = EMRSETBKCOLOR
   PEMRSETBKCOLOR* = ptr EMRSETBKCOLOR
   EMRSETTEXTCOLOR* = EMRSETBKCOLOR
-  TEMRSETTEXTCOLOR* = EMRSETBKCOLOR
   PEMRSETTEXTCOLOR* = ptr EMRSETBKCOLOR
   EMRSETCOLORADJUSTMENT* {.final, pure.} = object
     emr*: EMR
     ColorAdjustment*: COLORADJUSTMENT
 
-  TEMRSETCOLORADJUSTMENT* = EMRSETCOLORADJUSTMENT
   PEMRSETCOLORADJUSTMENT* = ptr EMRSETCOLORADJUSTMENT
   EMRSETDIBITSTODEVICE* {.final, pure.} = object
     emr*: EMR
@@ -9266,19 +9093,16 @@ type
     iStartScan*: DWORD
     cScans*: DWORD
 
-  TEMRSETDIBITSTODEVICE* = EMRSETDIBITSTODEVICE
   PEMRSETDIBITSTODEVICE* = ptr EMRSETDIBITSTODEVICE
   EMRSETMAPPERFLAGS* {.final, pure.} = object
     emr*: EMR
     dwFlags*: DWORD
 
-  TEMRSETMAPPERFLAGS* = EMRSETMAPPERFLAGS
   PEMRSETMAPPERFLAGS* = ptr EMRSETMAPPERFLAGS
   EMRSETMITERLIMIT* {.final, pure.} = object
     emr*: EMR
     eMiterLimit*: float32
 
-  TEMRSETMITERLIMIT* = EMRSETMITERLIMIT
   PEMRSETMITERLIMIT* = ptr EMRSETMITERLIMIT
   EMRSETPALETTEENTRIES* {.final, pure.} = object
     emr*: EMR
@@ -9287,41 +9111,33 @@ type
     cEntries*: DWORD
     aPalEntries*: array[0..0, PALETTEENTRY]
 
-  TEMRSETPALETTEENTRIES* = EMRSETPALETTEENTRIES
   PEMRSETPALETTEENTRIES* = ptr EMRSETPALETTEENTRIES
   EMRSETPIXELV* {.final, pure.} = object
     emr*: EMR
     ptlPixel*: POINTL
     crColor*: COLORREF
 
-  TEMRSETPIXELV* = EMRSETPIXELV
   PEMRSETPIXELV* = ptr EMRSETPIXELV
   EMRSETVIEWPORTEXTEX* {.final, pure.} = object
     emr*: EMR
     szlExtent*: SIZEL
 
-  TEMRSETVIEWPORTEXTEX* = EMRSETVIEWPORTEXTEX
   PEMRSETVIEWPORTEXTEX* = ptr EMRSETVIEWPORTEXTEX
   EMRSETWINDOWEXTEX* = EMRSETVIEWPORTEXTEX
-  TEMRSETWINDOWEXTEX* = EMRSETVIEWPORTEXTEX
   PEMRSETWINDOWEXTEX* = ptr EMRSETVIEWPORTEXTEX
   EMRSETVIEWPORTORGEX* {.final, pure.} = object
     emr*: EMR
     ptlOrigin*: POINTL
 
-  TEMRSETVIEWPORTORGEX* = EMRSETVIEWPORTORGEX
   PEMRSETVIEWPORTORGEX* = ptr EMRSETVIEWPORTORGEX
   EMRSETWINDOWORGEX* = EMRSETVIEWPORTORGEX
-  TEMRSETWINDOWORGEX* = EMRSETVIEWPORTORGEX
   PEMRSETWINDOWORGEX* = ptr EMRSETVIEWPORTORGEX
   EMRSETBRUSHORGEX* = EMRSETVIEWPORTORGEX
-  TEMRSETBRUSHORGEX* = EMRSETVIEWPORTORGEX
   PEMRSETBRUSHORGEX* = ptr EMRSETVIEWPORTORGEX
   EMRSETWORLDTRANSFORM* {.final, pure.} = object
     emr*: EMR
     xform*: XFORM
 
-  TEMRSETWORLDTRANSFORM* = EMRSETWORLDTRANSFORM
   PEMRSETWORLDTRANSFORM* = ptr EMRSETWORLDTRANSFORM
   EMRSTRETCHBLT* {.final, pure.} = object
     emr*: EMR
@@ -9343,7 +9159,6 @@ type
     cxSrc*: LONG
     cySrc*: LONG
 
-  TEMRSTRETCHBLT* = EMRSTRETCHBLT
   PEMRSTRETCHBLT* = ptr EMRSTRETCHBLT
   EMRSTRETCHDIBITS* {.final, pure.} = object
     emr*: EMR
@@ -9363,99 +9178,79 @@ type
     cxDest*: LONG
     cyDest*: LONG
 
-  TEMRSTRETCHDIBITS* = EMRSTRETCHDIBITS
   PEMRSTRETCHDIBITS* = ptr EMRSTRETCHDIBITS
   EMRABORTPATH* {.final, pure.} = object
     emr*: EMR
 
-  TEMRABORTPATH* = EMRABORTPATH
   PEMRABORTPATH* = ptr EMRABORTPATH
-  TABORTPATH* = EMRABORTPATH
   EMRBEGINPATH* = EMRABORTPATH
-  TEMRBEGINPATH* = EMRABORTPATH
   PEMRBEGINPATH* = ptr EMRABORTPATH
   EMRENDPATH* = EMRABORTPATH
-  TEMRENDPATH* = EMRABORTPATH
   PEMRENDPATH* = ptr EMRABORTPATH
   EMRCLOSEFIGURE* = EMRABORTPATH
-  TEMRCLOSEFIGURE* = EMRABORTPATH
   PEMRCLOSEFIGURE* = ptr EMRABORTPATH
   EMRFLATTENPATH* = EMRABORTPATH
-  TEMRFLATTENPATH* = EMRABORTPATH
   PEMRFLATTENPATH* = ptr EMRABORTPATH
   EMRWIDENPATH* = EMRABORTPATH
-  TEMRWIDENPATH* = EMRABORTPATH
   PEMRWIDENPATH* = ptr EMRABORTPATH
   EMRSETMETARGN* = EMRABORTPATH
-  TEMRSETMETARGN* = EMRABORTPATH
   PEMRSETMETARGN* = ptr EMRABORTPATH
   EMRSAVEDC* = EMRABORTPATH
-  TEMRSAVEDC* = EMRABORTPATH
   PEMRSAVEDC* = ptr EMRABORTPATH
   EMRREALIZEPALETTE* = EMRABORTPATH
-  TEMRREALIZEPALETTE* = EMRABORTPATH
   PEMRREALIZEPALETTE* = ptr EMRABORTPATH
   EMRSELECTCLIPPATH* {.final, pure.} = object
     emr*: EMR
     iMode*: DWORD
 
-  TEMRSELECTCLIPPATH* = EMRSELECTCLIPPATH
   PEMRSELECTCLIPPATH* = ptr EMRSELECTCLIPPATH
   EMRSETBKMODE* = EMRSELECTCLIPPATH
-  TEMRSETBKMODE* = EMRSELECTCLIPPATH
   PEMRSETBKMODE* = ptr EMRSELECTCLIPPATH
   EMRSETMAPMODE* = EMRSELECTCLIPPATH
-  TEMRSETMAPMODE* = EMRSELECTCLIPPATH
   PEMRSETMAPMODE* = ptr EMRSELECTCLIPPATH
   EMRSETPOLYFILLMODE* = EMRSELECTCLIPPATH
-  TEMRSETPOLYFILLMODE* = EMRSELECTCLIPPATH
   PEMRSETPOLYFILLMODE* = ptr EMRSELECTCLIPPATH
   EMRSETROP2* = EMRSELECTCLIPPATH
-  TEMRSETROP2* = EMRSELECTCLIPPATH
   PEMRSETROP2* = ptr EMRSELECTCLIPPATH
   EMRSETSTRETCHBLTMODE* = EMRSELECTCLIPPATH
-  TEMRSETSTRETCHBLTMODE* = EMRSELECTCLIPPATH
   PEMRSETSTRETCHBLTMODE* = ptr EMRSELECTCLIPPATH
   EMRSETTEXTALIGN* = EMRSELECTCLIPPATH
-  TEMRSETTEXTALIGN* = EMRSELECTCLIPPATH
   PEMRSETTEXTALIGN* = ptr EMRSELECTCLIPPATH
   EMRENABLEICM* = EMRSELECTCLIPPATH
-  TEMRENABLEICM* = EMRSELECTCLIPPATH
   PEMRENABLEICM* = ptr EMRSELECTCLIPPATH
   NMHDR* {.final, pure.} = object
     hwndFrom*: HWND
     idFrom*: WINUINT
     code*: WINUINT
 
-  TNMHDR* = NMHDR
   PNMHDR* = ptr NMHDR
-  TENCORRECTTEXT* {.final, pure.} = object
+  TENCORRECTTEXT* {.final, pure.} = object # Name conflict if we drop the `T`
     nmhdr*: NMHDR
     chrg*: CHARRANGE
     seltyp*: int16
 
   Pencorrecttext* = ptr TENCORRECTTEXT
-  TENDROPFILES* {.final, pure.} = object
+  TENDROPFILES* {.final, pure.} = object # Name conflict if we drop the `T`
     nmhdr*: NMHDR
     hDrop*: HANDLE
     cp*: LONG
     fProtected*: WINBOOL
 
   Pendropfiles* = ptr TENDROPFILES
-  TENSAVECLIPBOARD* {.final, pure.} = object
+  TENSAVECLIPBOARD* {.final, pure.} = object # Name conflict if we drop the `T`
     nmhdr*: NMHDR
     cObjectCount*: LONG
     cch*: LONG
 
   PENSAVECLIPBOARD* = ptr TENSAVECLIPBOARD
-  TENOLEOPFAILED* {.final, pure.} = object
+  TENOLEOPFAILED* {.final, pure.} = object # Name conflict if we drop the `T`
     nmhdr*: NMHDR
     iob*: LONG
     lOper*: LONG
     hr*: HRESULT
 
   PENOLEOPFAILED* = ptr TENOLEOPFAILED
-  TENHMETAHEADER* {.final, pure.} = object
+  ENHMETAHEADER* {.final, pure.} = object
     iType*: DWORD
     nSize*: DWORD
     rclBounds*: RECTL
@@ -9472,16 +9267,16 @@ type
     szlDevice*: SIZEL
     szlMillimeters*: SIZEL
 
-  LPENHMETAHEADER* = ptr TENHMETAHEADER
-  PENHMETAHEADER* = ptr TENHMETAHEADER
-  TENHMETARECORD* {.final, pure.} = object
+  LPENHMETAHEADER* = ptr ENHMETAHEADER
+  PENHMETAHEADER* = ptr ENHMETAHEADER
+  ENHMETARECORD* {.final, pure.} = object
     iType*: DWORD
     nSize*: DWORD
     dParm*: array[0..0, DWORD]
 
-  LPENHMETARECORD* = ptr TENHMETARECORD
-  PENHMETARECORD* = ptr TENHMETARECORD
-  TENPROTECTED* {.final, pure.} = object
+  LPENHMETARECORD* = ptr ENHMETARECORD
+  PENHMETARECORD* = ptr ENHMETARECORD
+  TENPROTECTED* {.final, pure.} = object # Name conflict if we drop the `T`
     nmhdr*: NMHDR
     msg*: WINUINT
     wParam*: WPARAM
@@ -9499,7 +9294,6 @@ type
     dwWaitHint*: DWORD
 
   LPSERVICE_STATUS* = ptr SERVICE_STATUS
-  TSERVICESTATUS* = SERVICE_STATUS
   PSERVICESTATUS* = ptr SERVICE_STATUS
   ENUM_SERVICE_STATUS* {.final, pure.} = object
     lpServiceName*: LPTSTR
@@ -9507,14 +9301,12 @@ type
     ServiceStatus*: SERVICE_STATUS
 
   LPENUM_SERVICE_STATUS* = ptr ENUM_SERVICE_STATUS
-  TENUMSERVICESTATUS* = ENUM_SERVICE_STATUS
   PENUMSERVICESTATUS* = ptr ENUM_SERVICE_STATUS
   ENUMLOGFONT* {.final, pure.} = object
     elfLogFont*: LOGFONT
     elfFullName*: array[0..(LF_FULLFACESIZE) - 1, BCHAR]
     elfStyle*: array[0..(LF_FACESIZE) - 1, BCHAR]
 
-  TENUMLOGFONT* = ENUMLOGFONT
   PENUMLOGFONT* = ptr ENUMLOGFONT
   ENUMLOGFONTEX* {.final, pure.} = object
     elfLogFont*: LOGFONT
@@ -9522,7 +9314,6 @@ type
     elfStyle*: array[0..(LF_FACESIZE) - 1, BCHAR]
     elfScript*: array[0..(LF_FACESIZE) - 1, BCHAR]
 
-  TENUMLOGFONTEX* = ENUMLOGFONTEX
   PENUMLOGFONTEX* = ptr ENUMLOGFONTEX
 
   EVENTLOGRECORD* {.final, pure.} = object
@@ -9543,7 +9334,6 @@ type
     DataLength*: DWORD
     DataOffset*: DWORD
 
-  TEVENTLOGRECORD* = EVENTLOGRECORD
   PEVENTLOGRECORD* = ptr EVENTLOGRECORD
   EVENTMSG* {.final, pure.} = object
     message*: WINUINT
@@ -9552,7 +9342,6 @@ type
     time*: DWORD
     hwnd*: HWND
 
-  TEVENTMSG* = EVENTMSG
   PEVENTMSG* = ptr EVENTMSG
   EXCEPTION_POINTERS* {.final, pure.} = object
     ExceptionRecord*: PEXCEPTION_RECORD
@@ -9560,14 +9349,12 @@ type
 
   LPEXCEPTION_POINTERS* = ptr EXCEPTION_POINTERS
   PEXCEPTION_POINTERS* = ptr EXCEPTION_POINTERS
-  TEXCEPTIONPOINTERS* = EXCEPTION_POINTERS
   EXT_BUTTON* {.final, pure.} = object
     idCommand*: int16
     idsHelp*: int16
     fsStyle*: int16
 
   LPEXT_BUTTON* = ptr EXT_BUTTON
-  TEXTBUTTON* = EXT_BUTTON
   PEXTBUTTON* = ptr EXT_BUTTON
   FILTERKEYS* {.final, pure.} = object
     cbSize*: WINUINT
@@ -9577,7 +9364,6 @@ type
     iRepeatMSec*: DWORD
     iBounceMSec*: DWORD
 
-  TFILTERKEYS* = FILTERKEYS
   PFILTERKEYS* = ptr FILTERKEYS
   FIND_NAME_BUFFER* {.final, pure.} = object
     len*: UCHAR
@@ -9587,14 +9373,12 @@ type
     source_addr*: array[0..5, UCHAR]
     routing_info*: array[0..17, UCHAR]
 
-  TFINDNAMEBUFFER* = FIND_NAME_BUFFER
   PFINDNAMEBUFFER* = ptr FIND_NAME_BUFFER
   FIND_NAME_HEADER* {.final, pure.} = object
     node_count*: int16
     reserved*: UCHAR
     unique_group*: UCHAR
 
-  TFINDNAMEHEADER* = FIND_NAME_HEADER
   PFINDNAMEHEADER* = ptr FIND_NAME_HEADER
   FINDREPLACE* {.final, pure.} = object
     lStructSize*: DWORD
@@ -9610,7 +9394,6 @@ type
     lpTemplateName*: LPCTSTR
 
   LPFINDREPLACE* = ptr FINDREPLACE
-  TFINDREPLACE* = FINDREPLACE
   PFINDREPLACE* = ptr FINDREPLACE
   #FINDTEXT = record conflicts with FindText function
   TFINDTEXT* {.final, pure.} = object
@@ -9623,32 +9406,28 @@ type
     lpstrText*: LPSTR
     chrgText*: CHARRANGE
 
-  Tfindtextex* = FINDTEXTEX
   Pfindtextex* = ptr FINDTEXTEX
   FMS_GETDRIVEINFO* {.final, pure.} = object
     dwTotalSpace*: DWORD
     dwFreeSpace*: DWORD
-    szPath*: array[0..259, TCHAR]
-    szVolume*: array[0..13, TCHAR]
-    szShare*: array[0..127, TCHAR]
+    szPath*: array[0..259, CHAR]
+    szVolume*: array[0..13, CHAR]
+    szShare*: array[0..127, CHAR]
 
-  TFMSGETDRIVEINFO* = FMS_GETDRIVEINFO
   PFMSGETDRIVEINFO* = ptr FMS_GETDRIVEINFO
   FMS_GETFILESEL* {.final, pure.} = object
     ftTime*: FILETIME
     dwSize*: DWORD
     bAttr*: int8
-    szName*: array[0..259, TCHAR]
+    szName*: array[0..259, CHAR]
 
-  TFMSGETFILESEL* = FMS_GETFILESEL
   PFMSGETFILESEL* = ptr FMS_GETFILESEL
   FMS_LOAD* {.final, pure.} = object
     dwSize*: DWORD
-    szMenuName*: array[0..(MENU_TEXT_LEN) - 1, TCHAR]
+    szMenuName*: array[0..(MENU_TEXT_LEN) - 1, CHAR]
     hMenu*: HMENU
     wMenuDelta*: WINUINT
 
-  TFMSLOAD* = FMS_LOAD
   PFMSLOAD* = ptr FMS_LOAD
   FMS_TOOLBARLOAD* {.final, pure.} = object
     dwSize*: DWORD
@@ -9658,12 +9437,10 @@ type
     idBitmap*: int16
     hBitmap*: HBITMAP
 
-  TFMSTOOLBARLOAD* = FMS_TOOLBARLOAD
   PFMSTOOLBARLOAD* = ptr FMS_TOOLBARLOAD
   FOCUS_EVENT_RECORD* {.final, pure.} = object
     bSetFocus*: WINBOOL
 
-  TFOCUSEVENTRECORD* = FOCUS_EVENT_RECORD
   PFOCUSEVENTRECORD* = ptr FOCUS_EVENT_RECORD
   FORM_INFO_1* {.final, pure.} = object
     Flags*: DWORD
@@ -9671,7 +9448,6 @@ type
     Size*: SIZEL
     ImageableArea*: RECTL
 
-  TFORMINFO1* = FORM_INFO_1
   PFORMINFO1* = ptr FORM_INFO_1
   FORMAT_PARAMETERS* {.final, pure.} = object
     MediaType*: MEDIA_TYPE
@@ -9680,7 +9456,6 @@ type
     StartHeadNumber*: DWORD
     EndHeadNumber*: DWORD
 
-  TFORMATPARAMETERS* = FORMAT_PARAMETERS
   PFORMATPARAMETERS* = ptr FORMAT_PARAMETERS
   FORMATRANGE* {.final, pure.} = object
     hdc*: HDC
@@ -9689,7 +9464,6 @@ type
     rcPage*: RECT
     chrg*: CHARRANGE
 
-  Tformatrange* = FORMATRANGE
   Pformatrange* = ptr FORMATRANGE
   GCP_RESULTS* {.final, pure.} = object
     lStructSize*: DWORD
@@ -9703,7 +9477,6 @@ type
     nMaxFit*: WINUINT
 
   LPGCP_RESULTS* = ptr GCP_RESULTS
-  TGCPRESULTS* = GCP_RESULTS
   PGCPRESULTS* = ptr GCP_RESULTS
   GENERIC_MAPPING* {.final, pure.} = object
     GenericRead*: ACCESS_MASK
@@ -9712,7 +9485,6 @@ type
     GenericAll*: ACCESS_MASK
 
   PGENERIC_MAPPING* = ptr GENERIC_MAPPING
-  TGENERICMAPPING* = GENERIC_MAPPING
   GLYPHMETRICS* {.final, pure.} = object
     gmBlackBoxX*: WINUINT
     gmBlackBoxY*: WINUINT
@@ -9721,19 +9493,16 @@ type
     gmCellIncY*: SHORT
 
   LPGLYPHMETRICS* = ptr GLYPHMETRICS
-  TGLYPHMETRICS* = GLYPHMETRICS
   PGLYPHMETRICS* = ptr GLYPHMETRICS
   HANDLETABLE* {.final, pure.} = object
     objectHandle*: array[0..0, HGDIOBJ]
 
-  THANDLETABLE* = HANDLETABLE
   LPHANDLETABLE* = ptr HANDLETABLE
   HD_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
     flags*: WINUINT
     iItem*: int32
 
-  THDHITTESTINFO* = HD_HITTESTINFO
   PHDHITTESTINFO* = ptr HD_HITTESTINFO
   HD_ITEM* {.final, pure.} = object
     mask*: WINUINT
@@ -9744,7 +9513,6 @@ type
     fmt*: int32
     lParam*: LPARAM
 
-  THDITEM* = HD_ITEM
   PHDITEM* = ptr HD_ITEM
   WINDOWPOS* {.final, pure.} = object
     hwnd*: HWND
@@ -9756,13 +9524,11 @@ type
     flags*: WINUINT
 
   LPWINDOWPOS* = ptr WINDOWPOS
-  TWINDOWPOS* = WINDOWPOS
   PWINDOWPOS* = ptr WINDOWPOS
   HD_LAYOUT* {.final, pure.} = object
     prc*: ptr RECT
     pwpos*: ptr WINDOWPOS
 
-  THDLAYOUT* = HD_LAYOUT
   PHDLAYOUT* = ptr HD_LAYOUT
   HD_NOTIFY* {.final, pure.} = object
     hdr*: NMHDR
@@ -9770,7 +9536,6 @@ type
     iButton*: int32
     pitem*: ptr HD_ITEM
 
-  THDNOTIFY* = HD_NOTIFY
   PHDNOTIFY* = ptr HD_NOTIFY
   HELPINFO* {.final, pure.} = object
     cbSize*: WINUINT
@@ -9781,7 +9546,6 @@ type
     MousePos*: POINT
 
   LPHELPINFO* = ptr HELPINFO
-  THELPINFO* = HELPINFO
   PHELPINFO* = ptr HELPINFO
   HELPWININFO* {.final, pure.} = object
     wStructSize*: int32
@@ -9790,9 +9554,8 @@ type
     dx*: int32
     dy*: int32
     wMax*: int32
-    rgchMember*: array[0..1, TCHAR]
+    rgchMember*: array[0..1, CHAR]
 
-  THELPWININFO* = HELPWININFO
   PHELPWININFO* = ptr HELPWININFO
   HIGHCONTRAST* {.final, pure.} = object
     cbSize*: WINUINT
@@ -9800,13 +9563,11 @@ type
     lpszDefaultScheme*: LPTSTR
 
   LPHIGHCONTRAST* = ptr HIGHCONTRAST
-  THIGHCONTRAST* = HIGHCONTRAST
   PHIGHCONTRAST* = ptr HIGHCONTRAST
   HSZPAIR* {.final, pure.} = object
     hszSvc*: HSZ
     hszTopic*: HSZ
 
-  THSZPAIR* = HSZPAIR
   PHSZPAIR* = ptr HSZPAIR
   ICONINFO* {.final, pure.} = object
     fIcon*: WINBOOL
@@ -9815,7 +9576,6 @@ type
     hbmMask*: HBITMAP
     hbmColor*: HBITMAP
 
-  TICONINFO* = ICONINFO
   PICONINFO* = ptr ICONINFO
   ICONMETRICS* {.final, pure.} = object
     cbSize*: WINUINT
@@ -9825,7 +9585,6 @@ type
     lfFont*: LOGFONT
 
   LPICONMETRICS* = ptr ICONMETRICS
-  TICONMETRICS* = ICONMETRICS
   PICONMETRICS* = ptr ICONMETRICS
   IMAGEINFO* {.final, pure.} = object
     hbmImage*: HBITMAP
@@ -9834,7 +9593,6 @@ type
     Unused2*: int32
     rcImage*: RECT
 
-  TIMAGEINFO* = IMAGEINFO
   PIMAGEINFO* = ptr IMAGEINFO
   KEY_EVENT_RECORD* {.final, pure.} = object
     bKeyDown*: WINBOOL
@@ -9844,7 +9602,6 @@ type
     UnicodeChar*: WCHAR
     dwControlKeyState*: DWORD # other union part: AsciiChar: CHAR
 
-  TKEYEVENTRECORD* = KEY_EVENT_RECORD
   PKEYEVENTRECORD* = ptr KEY_EVENT_RECORD
   MOUSE_EVENT_RECORD* {.final, pure.} = object
     dwMousePosition*: COORD
@@ -9852,25 +9609,21 @@ type
     dwControlKeyState*: DWORD
     dwEventFlags*: DWORD
 
-  TMOUSEEVENTRECORD* = MOUSE_EVENT_RECORD
   PMOUSEEVENTRECORD* = ptr MOUSE_EVENT_RECORD
   WINDOW_BUFFER_SIZE_RECORD* {.final, pure.} = object
     dwSize*: COORD
 
-  TWINDOWBUFFERSIZERECORD* = WINDOW_BUFFER_SIZE_RECORD
   PWINDOWBUFFERSIZERECORD* = ptr WINDOW_BUFFER_SIZE_RECORD
   MENU_EVENT_RECORD* {.final, pure.} = object
     dwCommandId*: WINUINT
 
   PMENU_EVENT_RECORD* = ptr MENU_EVENT_RECORD
-  TMENUEVENTRECORD* = MENU_EVENT_RECORD
   INPUT_RECORD* {.final, pure.} = object
     EventType*: int16
     Reserved*: int16
     event*: array[0..5, DWORD]
 
   PINPUT_RECORD* = ptr INPUT_RECORD
-  TINPUTRECORD* = INPUT_RECORD
   SYSTEMTIME* {.final, pure.} = object
     wYear*: int16
     wMonth*: int16
@@ -9882,7 +9635,6 @@ type
     wMilliseconds*: int16
 
   LPSYSTEMTIME* = ptr SYSTEMTIME
-  TSYSTEMTIME* = SYSTEMTIME
   PSYSTEMTIME* = ptr SYSTEMTIME
   JOB_INFO_1* {.final, pure.} = object
     JobId*: DWORD
@@ -9899,25 +9651,21 @@ type
     PagesPrinted*: DWORD
     Submitted*: SYSTEMTIME
 
-  TJOBINFO1* = JOB_INFO_1
   PJOBINFO1* = ptr JOB_INFO_1
   SID_IDENTIFIER_AUTHORITY* {.final, pure.} = object
     Value*: array[0..5, int8]
 
   LPSID_IDENTIFIER_AUTHORITY* = ptr SID_IDENTIFIER_AUTHORITY
   PSID_IDENTIFIER_AUTHORITY* = ptr SID_IDENTIFIER_AUTHORITY
-  TSIDIDENTIFIERAUTHORITY* = SID_IDENTIFIER_AUTHORITY
   SID* {.final, pure.} = object
     Revision*: int8
     SubAuthorityCount*: int8
     IdentifierAuthority*: SID_IDENTIFIER_AUTHORITY
     SubAuthority*: array[0..(ANYSIZE_ARRAY) - 1, DWORD]
 
-  TSID* = SID
   PSID* = ptr SID
   SECURITY_DESCRIPTOR_CONTROL* = int16
   PSECURITY_DESCRIPTOR_CONTROL* = ptr SECURITY_DESCRIPTOR_CONTROL
-  TSECURITYDESCRIPTORCONTROL* = SECURITY_DESCRIPTOR_CONTROL
   SECURITY_DESCRIPTOR* {.final, pure.} = object
     Revision*: int8
     Sbz1*: int8
@@ -9928,7 +9676,6 @@ type
     Dacl*: PACL
 
   PSECURITY_DESCRIPTOR* = ptr SECURITY_DESCRIPTOR
-  TSECURITYDESCRIPTOR* = SECURITY_DESCRIPTOR
   JOB_INFO_2* {.final, pure.} = object
     JobId*: DWORD
     pPrinterName*: LPTSTR
@@ -9954,7 +9701,6 @@ type
     Time*: DWORD
     PagesPrinted*: DWORD
 
-  TJOBINFO2* = JOB_INFO_2
   PJOBINFO2* = ptr JOB_INFO_2
   KERNINGPAIR* {.final, pure.} = object
     wFirst*: int16
@@ -9968,7 +9714,6 @@ type
     len*: UCHAR
     lana*: array[0..(MAX_LANA) - 1, UCHAR]
 
-  TLANAENUM* = LANA_ENUM
   PLANAENUM* = ptr LANA_ENUM
   LDT_ENTRY* {.final, pure.} = object
     LimitLow*: int16
@@ -9980,7 +9725,16 @@ type
 
   LPLDT_ENTRY* = ptr LDT_ENTRY
   PLDT_ENTRY* = ptr LDT_ENTRY
-  TLDTENTRY* = LDT_ENTRY
+
+{.deprecated: [TEXCEPTIONRECORD: EXCEPTION_RECORD, TEXCEPTIONDEBUGINFO: EXCEPTION_DEBUG_INFO, TExceptionRecord32: EXCEPTION_RECORD32, TExceptionDebugInfo32: EXCEPTION_DEBUG_INFO32, TExceptionRecord64: EXCEPTION_RECORD64, TExceptionDebugInfo64: EXCEPTION_DEBUG_INFO64, TEXITPROCESSDEBUGINFO: EXIT_PROCESS_DEBUG_INFO, TEXITTHREADDEBUGINFO: EXIT_THREAD_DEBUG_INFO, TLOADDLLDEBUGINFO: LOAD_DLL_DEBUG_INFO, TUNLOADDLLDEBUGINFO: UNLOAD_DLL_DEBUG_INFO, TOUTPUTDEBUGSTRINGINFO: OUTPUT_DEBUG_STRING_INFO, TRIPINFO: RIP_INFO, TDEBUGEVENT: DEBUG_EVENT, TDEBUGHOOKINFO: DEBUGHOOKINFO, TDELETEITEMSTRUCT: DELETEITEMSTRUCT, TDEVBROADCASTHDR: DEV_BROADCAST_HDR, TDEVBROADCASTOEM: DEV_BROADCAST_OEM, TDEVBROADCASTPORT: DEV_BROADCAST_PORT, TDEVBROADCASTUSERDEFINED: DEV_BROADCAST_USERDEFINED, TDEVBROADCASTVOLUME: DEV_BROADCAST_VOLUME, TDevicemode: DEVMODE, TDevicemodeA: DEVMODE, TDEVMODE: DEVMODE, TDEVNAMES: DEVNAMES, TDEVMODEW: DEVMODEW, TDeviceModeW: DEVMODEW, TDIBSECTION: DIBSECTION, TLargeInteger: LargeInteger, TULargeInteger: ULargeInteger, TDISKPERFORMANCE: DISK_PERFORMANCE, TDISKGEOMETRY: DISK_GEOMETRY, TDOCINFO1: DOC_INFO_1, TDLGTEMPLATE: DLGTEMPLATE, TDLGITEMTEMPLATE: DLGITEMTEMPLATE, TDRAWTEXTPARAMS: DRAWTEXTPARAMS, TDRAWITEMSTRUCT: DRAWITEMSTRUCT, TDRAGLISTINFO: DRAGLISTINFO, TDOCINFO: DOCINFO, TDOCINFOA: DOCINFO, TDOCINFO2: DOC_INFO_2, TPARTITIONINFORMATION: PARTITION_INFORMATION, TDRIVELAYOUTINFORMATION: DRIVE_LAYOUT_INFORMATION, TEMRARC: EMRARC, TEMRANGLEARC: EMRANGLEARC, TEMR: EMR, Teditstream: EDITSTREAM, TDRIVERINFO3: DRIVER_INFO_3, TDRIVERINFO2: DRIVER_INFO_2, TDRIVERINFO1: DRIVER_INFO_1, TEMREXTCREATEFONTINDIRECTW: EMREXTCREATEFONTINDIRECTW].}
+
+{.deprecated: [TEXTLOGFONT: EXTLOGFONT, TPANOSE: PANOSE, TEMRINTERSECTCLIPRECT: EMREXCLUDECLIPRECT, TEMREXCLUDECLIPRECT: EMREXCLUDECLIPRECT, TEMREOF: EMREOF, TEMRRECTANGLE: EMRELLIPSE, TEMRELLIPSE: EMRELLIPSE, TEMRCREATEPEN: EMRCREATEPEN, TLOGPEN: LOGPEN, TEMRCREATEPALETTE: EMRCREATEPALETTE, TLOGPALETTE: LOGPALETTE, TPALETTEENTRY: PALETTEENTRY, TEMRCREATEMONOBRUSH: EMRCREATEMONOBRUSH, TEMRCREATEDIBPATTERNBRUSHPT: EMRCREATEDIBPATTERNBRUSHPT, TEMRCREATECOLORSPACE: EMRCREATECOLORSPACE, TLOGCOLORSPACE: LOGCOLORSPACE, TLOGCOLORSPACEA: LOGCOLORSPACE, TEMRCREATEBRUSHINDIRECT: EMRCREATEBRUSHINDIRECT, TLOGBRUSH: LOGBRUSH, TEMRBITBLT: EMRBITBLT, TXFORM: XFORM, TEMRPIE: EMRARC, TEMRCHORD: EMRARC, TEMRARCTO: EMRARC, TSERVICESTATUS: SERVICE_STATUS, TENUMSERVICESTATUS: ENUM_SERVICE_STATUS, TENUMLOGFONT: ENUMLOGFONT, TENUMLOGFONTEX: ENUMLOGFONTEX, TEVENTLOGRECORD: EVENTLOGRECORD, TEVENTMSG: EVENTMSG, TEXCEPTIONPOINTERS: EXCEPTION_POINTERS, TEXTBUTTON: EXT_BUTTON, TFILTERKEYS: FILTERKEYS, TFINDNAMEBUFFER: FIND_NAME_BUFFER, TFINDNAMEHEADER: FIND_NAME_HEADER, TFINDREPLACE: FINDREPLACE, Tfindtextex: FINDTEXTEX, TFMSGETDRIVEINFO: FMS_GETDRIVEINFO, TFMSGETFILESEL: FMS_GETFILESEL, TFMSLOAD: FMS_LOAD, TFMSTOOLBARLOAD: FMS_TOOLBARLOAD, TFOCUSEVENTRECORD: FOCUS_EVENT_RECORD, TFORMINFO1: FORM_INFO_1, TFORMATPARAMETERS: FORMAT_PARAMETERS, Tformatrange: FORMATRANGE, TGCPRESULTS: GCP_RESULTS, TGENERICMAPPING: GENERIC_MAPPING, TGLYPHMETRICS: GLYPHMETRICS, THANDLETABLE: HANDLETABLE, THDHITTESTINFO: HD_HITTESTINFO, THDITEM: HD_ITEM, TWINDOWPOS: WINDOWPOS, THDLAYOUT: HD_LAYOUT, THDNOTIFY: HD_NOTIFY, THELPINFO: HELPINFO, THELPWININFO: HELPWININFO, THIGHCONTRAST: HIGHCONTRAST, THSZPAIR: HSZPAIR, TICONINFO: ICONINFO, TICONMETRICS: ICONMETRICS, TIMAGEINFO: IMAGEINFO, TKEYEVENTRECORD: KEY_EVENT_RECORD, TMOUSEEVENTRECORD: MOUSE_EVENT_RECORD, TWINDOWBUFFERSIZERECORD: WINDOW_BUFFER_SIZE_RECORD, TMENUEVENTRECORD: MENU_EVENT_RECORD, TINPUTRECORD: INPUT_RECORD, TSYSTEMTIME: SYSTEMTIME, TJOBINFO1: JOB_INFO_1].}
+
+{.deprecated: [TSIDIDENTIFIERAUTHORITY: SID_IDENTIFIER_AUTHORITY, TSID: SID, TSECURITYDESCRIPTORCONTROL: SECURITY_DESCRIPTOR_CONTROL, TSECURITYDESCRIPTOR: SECURITY_DESCRIPTOR, TJOBINFO2: JOB_INFO_2, TLANAENUM: LANA_ENUM, TLDTENTRY: LDT_ENTRY, TEMRPOLYPOLYGON: EMRPOLYPOLYLINE, TEMRPOLYPOLYLINE: EMRPOLYPOLYLINE, TEMRPOLYLINETO16: EMRPOLYLINE16, TEMRPOLYBEZIERTO16: EMRPOLYLINE16, TEMRPOLYGON16: EMRPOLYLINE16, TEMRPOLYBEZIER16: EMRPOLYLINE16, TEMRPOLYLINE16: EMRPOLYLINE16, TEMRPOLYLINETO: EMRPOLYLINE, TEMRPOLYBEZIERTO: EMRPOLYLINE, TEMRPOLYGON: EMRPOLYLINE, TEMRPOLYBEZIER: EMRPOLYLINE, TEMRPOLYLINE: EMRPOLYLINE, TEMRPOLYDRAW16: EMRPOLYDRAW16, TEMRPOLYDRAW: EMRPOLYDRAW, TEMRPLGBLT: EMRPLGBLT, TEMROFFSETCLIPRGN: EMROFFSETCLIPRGN, TEMRMODIFYWORLDTRANSFORM: EMRMODIFYWORLDTRANSFORM, TEMRMASKBLT: EMRMASKBLT, TEMRMOVETOEX: EMRLINETO, TEMRLINETO: EMRLINETO, TEMRPAINTRGN: EMRINVERTRGN, TEMRINVERTRGN: EMRINVERTRGN, TEMRGDICOMMENT: EMRGDICOMMENT, TEMRFRAMERGN: EMRFRAMERGN, TEMRFORMAT: EMRFORMAT, TEMRFILLRGN: EMRFILLRGN, TEMRSTROKEPATH: EMRFILLPATH, TEMRSTROKEANDFILLPATH: EMRFILLPATH, TEMRFILLPATH: EMRFILLPATH, TEMREXTTEXTOUTW: EMREXTTEXTOUTA, TEMREXTTEXTOUTA: EMREXTTEXTOUTA, TEMRTEXT: EMRTEXT, TEMREXTSELECTCLIPRGN: EMREXTSELECTCLIPRGN, TEMREXTFLOODFILL: EMREXTFLOODFILL, TEMREXTCREATEPEN: EMREXTCREATEPEN, TEXTLOGPEN: EXTLOGPEN, TNMHDR: NMHDR, TEMRENABLEICM: EMRSELECTCLIPPATH, TEMRSETTEXTALIGN: EMRSELECTCLIPPATH, TEMRSETSTRETCHBLTMODE: EMRSELECTCLIPPATH, TEMRSETROP2: EMRSELECTCLIPPATH, TEMRSETPOLYFILLMODE: EMRSELECTCLIPPATH, TEMRSETMAPMODE: EMRSELECTCLIPPATH, TEMRSETBKMODE: EMRSELECTCLIPPATH, TEMRSELECTCLIPPATH: EMRSELECTCLIPPATH, TEMRREALIZEPALETTE: EMRABORTPATH, TEMRSAVEDC: EMRABORTPATH, TEMRSETMETARGN: EMRABORTPATH, TEMRWIDENPATH: EMRABORTPATH].}
+
+{.deprecated: [TEMRFLATTENPATH: EMRABORTPATH, TEMRCLOSEFIGURE: EMRABORTPATH, TEMRENDPATH: EMRABORTPATH, TEMRBEGINPATH: EMRABORTPATH, TABORTPATH: EMRABORTPATH, TEMRABORTPATH: EMRABORTPATH, TEMRSTRETCHDIBITS: EMRSTRETCHDIBITS, TEMRSTRETCHBLT: EMRSTRETCHBLT, TEMRSETWORLDTRANSFORM: EMRSETWORLDTRANSFORM, TEMRSETBRUSHORGEX: EMRSETVIEWPORTORGEX, TEMRSETWINDOWORGEX: EMRSETVIEWPORTORGEX, TEMRSETVIEWPORTORGEX: EMRSETVIEWPORTORGEX, TEMRSETWINDOWEXTEX: EMRSETVIEWPORTEXTEX, TEMRSETVIEWPORTEXTEX: EMRSETVIEWPORTEXTEX, TEMRSETPIXELV: EMRSETPIXELV, TEMRSETPALETTEENTRIES: EMRSETPALETTEENTRIES, TEMRSETMITERLIMIT: EMRSETMITERLIMIT, TEMRSETMAPPERFLAGS: EMRSETMAPPERFLAGS, TEMRSETDIBITSTODEVICE: EMRSETDIBITSTODEVICE, TEMRSETCOLORADJUSTMENT: EMRSETCOLORADJUSTMENT, TEMRSETTEXTCOLOR: EMRSETBKCOLOR, TEMRSETBKCOLOR: EMRSETBKCOLOR, TEMRSETARCDIRECTION: EMRSETARCDIRECTION, TEMRSELECTPALETTE: EMRSELECTPALETTE, TEMRDELETEOBJECT: EMRSELECTOBJECT, TEMRSELECTOBJECT: EMRSELECTOBJECT, TEMRDELETECOLORSPACE: EMRSELECTCOLORSPACE, TEMRSELECTCOLORSPACE: EMRSELECTCOLORSPACE, TEMRSCALEWINDOWEXTEX: EMRSCALEVIEWPORTEXTEX, TEMRSCALEVIEWPORTEXTEX: EMRSCALEVIEWPORTEXTEX, TEMRROUNDRECT: EMRROUNDRECT, TEMRRESTOREDC: EMRRESTOREDC, TEMRRESIZEPALETTE: EMRRESIZEPALETTE, TEMRPOLYTEXTOUTW: EMRPOLYTEXTOUTA, TEMRPOLYTEXTOUTA: EMRPOLYTEXTOUTA, TEMRPOLYPOLYGON16: EMRPOLYPOLYLINE16, TEMRPOLYPOLYLINE16: EMRPOLYPOLYLINE16, TENHMETAHEADER: ENHMETAHEADER, TENHMETARECORD: ENHMETARECORD].}
+
+
 
 const
   bm_LDT_ENTRY_BaseMid* = 0x000000FF
@@ -10010,34 +9764,27 @@ type
     lsCsbDefault*: array[0..1, DWORD]
     lsCsbSupported*: array[0..1, DWORD]
 
-  TLOCALESIGNATURE* = LOCALESIGNATURE
   PLOCALESIGNATURE* = ptr LOCALESIGNATURE
   LOCALGROUP_MEMBERS_INFO_0* {.final, pure.} = object
     lgrmi0_sid*: PSID
 
-  TLOCALGROUPMEMBERSINFO0* = LOCALGROUP_MEMBERS_INFO_0
   PLOCALGROUPMEMBERSINFO0* = ptr LOCALGROUP_MEMBERS_INFO_0
   LOCALGROUP_MEMBERS_INFO_3* {.final, pure.} = object
     lgrmi3_domainandname*: LPWSTR
 
-  TLOCALGROUPMEMBERSINFO3* = LOCALGROUP_MEMBERS_INFO_3
   PLOCALGROUPMEMBERSINFO3* = ptr LOCALGROUP_MEMBERS_INFO_3
   FXPT16DOT16* = int32
   LPFXPT16DOT16* = ptr FXPT16DOT16
-  TFXPT16DOT16* = FXPT16DOT16
   PFXPT16DOT16* = ptr FXPT16DOT16
-  LUID* = TlargeInteger
-  TLUID* = LUID
+  LUID* = LargeInteger
   PLUID* = ptr LUID
   LUID_AND_ATTRIBUTES* {.final, pure.} = object
     Luid*: LUID
     Attributes*: DWORD
 
-  TLUIDANDATTRIBUTES* = LUID_AND_ATTRIBUTES
   PLUIDANDATTRIBUTES* = ptr LUID_AND_ATTRIBUTES
   LUID_AND_ATTRIBUTES_ARRAY* = array[0..(ANYSIZE_ARRAY) - 1, LUID_AND_ATTRIBUTES]
   PLUID_AND_ATTRIBUTES_ARRAY* = ptr LUID_AND_ATTRIBUTES_ARRAY
-  TLUIDANDATTRIBUTESARRAY* = LUID_AND_ATTRIBUTES_ARRAY
   LV_COLUMN* {.final, pure.} = object
     mask*: WINUINT
     fmt*: int32
@@ -10046,7 +9793,6 @@ type
     cchTextMax*: int32
     iSubItem*: int32
 
-  TLVCOLUMN* = LV_COLUMN
   PLVCOLUMN* = ptr LV_COLUMN
   LV_ITEM* {.final, pure.} = object
     mask*: WINUINT
@@ -10059,13 +9805,11 @@ type
     iImage*: int32
     lParam*: LPARAM
 
-  TLVITEM* = LV_ITEM
   PLVITEM* = ptr LV_ITEM
   LV_DISPINFO* {.final, pure.} = object
     hdr*: NMHDR
     item*: LV_ITEM
 
-  TLVDISPINFO* = LV_DISPINFO
   PLVDISPINFO* = ptr LV_DISPINFO
   LV_FINDINFO* {.final, pure.} = object
     flags*: WINUINT
@@ -10074,21 +9818,18 @@ type
     pt*: POINT
     vkDirection*: WINUINT
 
-  TLVFINDINFO* = LV_FINDINFO
   PLVFINDINFO* = ptr LV_FINDINFO
   LV_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
     flags*: WINUINT
     iItem*: int32
 
-  TLVHITTESTINFO* = LV_HITTESTINFO
   PLVHITTESTINFO* = ptr LV_HITTESTINFO
   LV_KEYDOWN* {.final, pure.} = object
     hdr*: NMHDR
     wVKey*: int16
     flags*: WINUINT
 
-  TLVKEYDOWN* = LV_KEYDOWN
   PLVKEYDOWN* = ptr LV_KEYDOWN
   MAT2* {.final, pure.} = object
     eM11*: FIXED
@@ -10096,7 +9837,6 @@ type
     eM21*: FIXED
     eM22*: FIXED
 
-  TMAT2* = MAT2
   PMAT2* = ptr MAT2
   MDICREATESTRUCT* {.final, pure.} = object
     szClass*: LPCTSTR
@@ -10110,7 +9850,6 @@ type
     lParam*: LPARAM
 
   LPMDICREATESTRUCT* = ptr MDICREATESTRUCT
-  TMDICREATESTRUCT* = MDICREATESTRUCT
   PMDICREATESTRUCT* = ptr MDICREATESTRUCT
   MEASUREITEMSTRUCT* {.final, pure.} = object
     CtlType*: WINUINT
@@ -10121,7 +9860,6 @@ type
     itemData*: ULONG_PTR
 
   LPMEASUREITEMSTRUCT* = ptr MEASUREITEMSTRUCT
-  TMEASUREITEMSTRUCT* = MEASUREITEMSTRUCT
   PMEASUREITEMSTRUCT* = ptr MEASUREITEMSTRUCT
   MEMORY_BASIC_INFORMATION* {.final, pure.} = object
     BaseAddress*: PVOID
@@ -10133,7 +9871,6 @@ type
     `type`*: DWORD
 
   PMEMORY_BASIC_INFORMATION* = ptr MEMORY_BASIC_INFORMATION
-  TMEMORYBASICINFORMATION* = MEMORY_BASIC_INFORMATION
   MEMORYSTATUS* {.final, pure.} = object
     dwLength*: DWORD
     dwMemoryLoad*: DWORD
@@ -10144,21 +9881,19 @@ type
     dwTotalVirtual*: int
     dwAvailVirtual*: int
 
-  TGUID* {.final, pure.} = object
+  GUID* {.final, pure.} = object
     D1*: int32
     D2*: int16
     D3*: int16
     D4*: array [0..7, int8]
 
   LPMEMORYSTATUS* = ptr MEMORYSTATUS
-  TMEMORYSTATUS* = MEMORYSTATUS
   PMEMORYSTATUS* = ptr MEMORYSTATUS
   MENUEX_TEMPLATE_HEADER* {.final, pure.} = object
     wVersion*: int16
     wOffset*: int16
     dwHelpId*: DWORD
 
-  TMENUXTEMPLATEHEADER* = MENUEX_TEMPLATE_HEADER
   PMENUXTEMPLATEHEADER* = ptr MENUEX_TEMPLATE_HEADER
   MENUEX_TEMPLATE_ITEM* {.final, pure.} = object
     dwType*: DWORD
@@ -10168,7 +9903,6 @@ type
     szText*: array[0..0, WCHAR]
     dwHelpId*: DWORD
 
-  TMENUEXTEMPLATEITEM* = MENUEX_TEMPLATE_ITEM
   PMENUEXTEMPLATEITEM* = ptr MENUEX_TEMPLATE_ITEM
   MENUINFO* {.final, pure.} = object
     cbSize*: DWORD
@@ -10181,7 +9915,6 @@ type
 
   LPMENUINFO* = ptr MENUINFO
   LPCMENUINFO* = ptr MENUINFO
-  TMENUINFO* = MENUINFO
   PMENUINFO* = ptr MENUINFO
   MENUITEMINFO* {.final, pure.} = object
     cbSize*: WINUINT
@@ -10199,25 +9932,20 @@ type
 
   LPMENUITEMINFO* = ptr MENUITEMINFO
   LPCMENUITEMINFO* = ptr MENUITEMINFO
-  TMENUITEMINFO* = MENUITEMINFO
-  TMENUITEMINFOA* = MENUITEMINFO
   PMENUITEMINFO* = ptr MENUITEMINFO
   MENUITEMTEMPLATE* {.final, pure.} = object
     mtOption*: int16
     mtID*: int16
     mtString*: array[0..0, WCHAR]
 
-  TMENUITEMTEMPLATE* = MENUITEMTEMPLATE
   PMENUITEMTEMPLATE* = ptr MENUITEMTEMPLATE
   MENUITEMTEMPLATEHEADER* {.final, pure.} = object
     versionNumber*: int16
     offset*: int16
 
-  TMENUITEMTEMPLATEHEADER* = MENUITEMTEMPLATEHEADER
   PMENUITEMTEMPLATEHEADER* = ptr MENUITEMTEMPLATEHEADER
   MENUTEMPLATE* {.final, pure.} = object
   LPMENUTEMPLATE* = ptr MENUTEMPLATE
-  TMENUTEMPLATE* = MENUTEMPLATE
   PMENUTEMPLATE* = ptr MENUTEMPLATE
   METAFILEPICT* {.final, pure.} = object
     mm*: LONG
@@ -10226,7 +9954,6 @@ type
     hMF*: HMETAFILE
 
   LPMETAFILEPICT* = ptr METAFILEPICT
-  TMETAFILEPICT* = METAFILEPICT
   PMETAFILEPICT* = ptr METAFILEPICT
   METAHEADER* {.final, pure.} = object
     mtType*: int16
@@ -10237,7 +9964,6 @@ type
     mtMaxRecord*: DWORD
     mtNoParameters*: int16
 
-  TMETAHEADER* = METAHEADER
   PMETAHEADER* = ptr METAHEADER
   METARECORD* {.final, pure.} = object
     rdSize*: DWORD
@@ -10245,7 +9971,6 @@ type
     rdParm*: array[0..0, int16]
 
   LPMETARECORD* = ptr METARECORD
-  TMETARECORD* = METARECORD
   PMETARECORD* = ptr METARECORD
   MINIMIZEDMETRICS* {.final, pure.} = object
     cbSize*: WINUINT
@@ -10255,7 +9980,6 @@ type
     iArrange*: int32
 
   LPMINIMIZEDMETRICS* = ptr MINIMIZEDMETRICS
-  TMINIMIZEDMETRICS* = MINIMIZEDMETRICS
   PMINIMIZEDMETRICS* = ptr MINIMIZEDMETRICS
   MINMAXINFO* {.final, pure.} = object
     ptReserved*: POINT
@@ -10264,7 +9988,6 @@ type
     ptMinTrackSize*: POINT
     ptMaxTrackSize*: POINT
 
-  TMINMAXINFO* = MINMAXINFO
   PMINMAXINFO* = ptr MINMAXINFO
   MODEMDEVCAPS* {.final, pure.} = object
     dwActualSize*: DWORD
@@ -10289,7 +10012,6 @@ type
     abVariablePortion*: array[0..0, int8]
 
   LPMODEMDEVCAPS* = ptr MODEMDEVCAPS
-  TMODEMDEVCAPS* = MODEMDEVCAPS
   PMODEMDEVCAPS* = ptr MODEMDEVCAPS
   MODEMSETTINGS* {.final, pure.} = object
     dwActualSize*: DWORD
@@ -10306,7 +10028,6 @@ type
     abVariablePortion*: array[0..0, int8]
 
   LPMODEMSETTINGS* = ptr MODEMSETTINGS
-  TMODEMSETTINGS* = MODEMSETTINGS
   PMODEMSETTINGS* = ptr MODEMSETTINGS
   MONCBSTRUCT* {.final, pure.} = object
     cb*: WINUINT
@@ -10325,7 +10046,6 @@ type
     cbData*: DWORD
     Data*: array[0..7, DWORD]
 
-  TMONCBSTRUCT* = MONCBSTRUCT
   PMONCBSTRUCT* = ptr MONCBSTRUCT
   MONCONVSTRUCT* {.final, pure.} = object
     cb*: WINUINT
@@ -10337,7 +10057,6 @@ type
     hConvClient*: HCONV
     hConvServer*: HCONV
 
-  TMONCONVSTRUCT* = MONCONVSTRUCT
   PMONCONVSTRUCT* = ptr MONCONVSTRUCT
   MONERRSTRUCT* {.final, pure.} = object
     cb*: WINUINT
@@ -10345,7 +10064,6 @@ type
     dwTime*: DWORD
     hTask*: HANDLE
 
-  TMONERRSTRUCT* = MONERRSTRUCT
   PMONERRSTRUCT* = ptr MONERRSTRUCT
   MONHSZSTRUCT* {.final, pure.} = object
     cb*: WINUINT
@@ -10353,21 +10071,18 @@ type
     dwTime*: DWORD
     hsz*: HSZ
     hTask*: HANDLE
-    str*: array[0..0, TCHAR]
+    str*: array[0..0, CHAR]
 
-  TMONHSZSTRUCT* = MONHSZSTRUCT
   PMONHSZSTRUCT* = ptr MONHSZSTRUCT
   MONITOR_INFO_1* {.final, pure.} = object
     pName*: LPTSTR
 
-  TMONITORINFO1* = MONITOR_INFO_1
   PMONITORINFO1* = ptr MONITOR_INFO_1
   MONITOR_INFO_2* {.final, pure.} = object
     pName*: LPTSTR
     pEnvironment*: LPTSTR
     pDLLName*: LPTSTR
 
-  TMONITORINFO2* = MONITOR_INFO_2
   PMONITORINFO2* = ptr MONITOR_INFO_2
   MONLINKSTRUCT* {.final, pure.} = object
     cb*: WINUINT
@@ -10383,7 +10098,6 @@ type
     hConvServer*: HCONV
     hConvClient*: HCONV
 
-  TMONLINKSTRUCT* = MONLINKSTRUCT
   PMONLINKSTRUCT* = ptr MONLINKSTRUCT
   MONMSGSTRUCT* {.final, pure.} = object
     cb*: WINUINT
@@ -10395,7 +10109,6 @@ type
     lParam*: LPARAM
     dmhd*: DDEML_MSG_HOOK_DATA
 
-  TMONMSGSTRUCT* = MONMSGSTRUCT
   PMONMSGSTRUCT* = ptr MONMSGSTRUCT
   MOUSEHOOKSTRUCT* {.final, pure.} = object
     pt*: POINT
@@ -10404,7 +10117,6 @@ type
     dwExtraInfo*: DWORD
 
   LPMOUSEHOOKSTRUCT* = ptr MOUSEHOOKSTRUCT
-  TMOUSEHOOKSTRUCT* = MOUSEHOOKSTRUCT
   PMOUSEHOOKSTRUCT* = ptr MOUSEHOOKSTRUCT
   MOUSEKEYS* {.final, pure.} = object
     cbSize*: DWORD
@@ -10415,7 +10127,6 @@ type
     dwReserved1*: DWORD
     dwReserved2*: DWORD
 
-  TMOUSEKEYS* = MOUSEKEYS
   PMOUSEKEYS* = ptr MOUSEKEYS
   MSGBOXCALLBACK* = proc (lpHelpInfo: LPHELPINFO){.stdcall.}
   TMSGBOXCALLBACK* = MSGBOXCALLBACK
@@ -10432,8 +10143,6 @@ type
     dwLanguageId*: DWORD
 
   LPMSGBOXPARAMS* = ptr MSGBOXPARAMS
-  TMSGBOXPARAMS* = MSGBOXPARAMS
-  TMSGBOXPARAMSA* = MSGBOXPARAMS
   PMSGBOXPARAMS* = ptr MSGBOXPARAMS
   MSGFILTER* {.final, pure.} = object
     nmhdr*: NMHDR
@@ -10441,21 +10150,18 @@ type
     wParam*: WPARAM
     lParam*: LPARAM
 
-  Tmsgfilter* = MSGFILTER
   Pmsgfilter* = ptr MSGFILTER
   MULTIKEYHELP* {.final, pure.} = object
     mkSize*: DWORD
-    mkKeylist*: TCHAR
-    szKeyphrase*: array[0..0, TCHAR]
+    mkKeylist*: CHAR
+    szKeyphrase*: array[0..0, CHAR]
 
-  TMULTIKEYHELP* = MULTIKEYHELP
   PMULTIKEYHELP* = ptr MULTIKEYHELP
   NAME_BUFFER* {.final, pure.} = object
     name*: array[0..(NCBNAMSZ) - 1, UCHAR]
     name_num*: UCHAR
     name_flags*: UCHAR
 
-  TNAMEBUFFER* = NAME_BUFFER
   PNAMEBUFFER* = ptr NAME_BUFFER
   p_NCB* = ptr NCB
   NCB* {.final, pure.} = object
@@ -10475,7 +10181,6 @@ type
     ncb_reserve*: array[0..9, UCHAR]
     ncb_event*: HANDLE
 
-  TNCB* = NCB
   NCCALCSIZE_PARAMS* {.final, pure.} = object
     rgrc*: array[0..2, RECT]
     lppos*: PWINDOWPOS
@@ -10495,7 +10200,6 @@ type
     cNumItems*: LONG
     lpszItemList*: LPTSTR
 
-  TNDDESHAREINFO* = NDDESHAREINFO
   PNDDESHAREINFO* = ptr NDDESHAREINFO
   NETRESOURCE* {.final, pure.} = object
     dwScope*: DWORD
@@ -10508,8 +10212,6 @@ type
     lpProvider*: LPTSTR
 
   LPNETRESOURCE* = ptr NETRESOURCE
-  TNETRESOURCE* = NETRESOURCE
-  TNETRESOURCEA* = NETRESOURCE
   PNETRESOURCE* = ptr NETRESOURCE
   PNETRESOURCEA* = ptr NETRESOURCE
   NEWCPLINFO* {.final, pure.} = object
@@ -10518,11 +10220,10 @@ type
     dwHelpContext*: DWORD
     lData*: LONG
     hIcon*: HICON
-    szName*: array[0..31, TCHAR]
-    szInfo*: array[0..63, TCHAR]
-    szHelpFile*: array[0..127, TCHAR]
+    szName*: array[0..31, CHAR]
+    szInfo*: array[0..63, CHAR]
+    szHelpFile*: array[0..127, CHAR]
 
-  TNEWCPLINFO* = NEWCPLINFO
   PNEWCPLINFO* = ptr NEWCPLINFO
   NEWTEXTMETRIC* {.final, pure.} = object
     tmHeight*: LONG
@@ -10550,13 +10251,11 @@ type
     ntmCellHeight*: WINUINT
     ntmAvgWidth*: WINUINT
 
-  TNEWTEXTMETRIC* = NEWTEXTMETRIC
   PNEWTEXTMETRIC* = ptr NEWTEXTMETRIC
   NEWTEXTMETRICEX* {.final, pure.} = object
     ntmentm*: NEWTEXTMETRIC
     ntmeFontSignature*: FONTSIGNATURE
 
-  TNEWTEXTMETRICEX* = NEWTEXTMETRICEX
   PNEWTEXTMETRICEX* = ptr NEWTEXTMETRICEX
   NM_LISTVIEW* {.final, pure.} = object
     hdr*: NMHDR
@@ -10568,7 +10267,6 @@ type
     ptAction*: POINT
     lParam*: LPARAM
 
-  TNMLISTVIEW* = NM_LISTVIEW
   PNMLISTVIEW* = ptr NM_LISTVIEW
   TV_ITEM* {.final, pure.} = object
     mask*: WINUINT
@@ -10583,7 +10281,6 @@ type
     lParam*: LPARAM
 
   LPTV_ITEM* = ptr TV_ITEM
-  TTVITEM* = TV_ITEM
   PTVITEM* = ptr TV_ITEM
   NM_TREEVIEW* {.final, pure.} = object
     hdr*: NMHDR
@@ -10593,14 +10290,12 @@ type
     ptDrag*: POINT
 
   LPNM_TREEVIEW* = ptr NM_TREEVIEW
-  TNMTREEVIEW* = NM_TREEVIEW
   PNMTREEVIEW* = ptr NM_TREEVIEW
   NM_UPDOWNW* {.final, pure.} = object
     hdr*: NMHDR
     iPos*: int32
     iDelta*: int32
 
-  TNMUPDOWN* = NM_UPDOWNW
   PNMUPDOWN* = ptr NM_UPDOWNW
   NONCLIENTMETRICS* {.final, pure.} = object
     cbSize*: WINUINT
@@ -10620,7 +10315,6 @@ type
     lfMessageFont*: LOGFONT
 
   LPNONCLIENTMETRICS* = ptr NONCLIENTMETRICS
-  TNONCLIENTMETRICS* = NONCLIENTMETRICS
   PNONCLIENTMETRICS* = ptr NONCLIENTMETRICS
   SERVICE_ADDRESS* {.final, pure.} = object
     dwAddressType*: DWORD
@@ -10630,20 +10324,17 @@ type
     lpAddress*: ptr int8
     lpPrincipal*: ptr int8
 
-  TSERVICEADDRESS* = SERVICE_ADDRESS
   PSERVICEADDRESS* = ptr SERVICE_ADDRESS
   SERVICE_ADDRESSES* {.final, pure.} = object
     dwAddressCount*: DWORD
     Addresses*: array[0..0, SERVICE_ADDRESS]
 
   LPSERVICE_ADDRESSES* = ptr SERVICE_ADDRESSES
-  TSERVICEADDRESSES* = SERVICE_ADDRESSES
   PSERVICEADDRESSES* = ptr SERVICE_ADDRESSES
-  LPGUID* = ptr TGUID
-  PGUID* = ptr TGUID
-  CLSID* = TGUID
+  LPGUID* = ptr GUID
+  PGUID* = ptr GUID
+  CLSID* = GUID
   LPCLSID* = ptr CLSID
-  TCLSID* = CLSID
   PCLSID* = ptr CLSID
   SERVICE_INFO* {.final, pure.} = object
     lpServiceType*: LPGUID
@@ -10657,13 +10348,11 @@ type
     lpServiceAddress*: LPSERVICE_ADDRESSES
     ServiceSpecificInfo*: BLOB
 
-  TSERVICEINFO* = SERVICE_INFO
   PSERVICEINFO* = ptr SERVICE_INFO
   NS_SERVICE_INFO* {.final, pure.} = object
     dwNameSpace*: DWORD
     ServiceInfo*: SERVICE_INFO
 
-  TNSSERVICEINFO* = NS_SERVICE_INFO
   PNSSERVICEINFO* = ptr NS_SERVICE_INFO
   NUMBERFMT* {.final, pure.} = object
     NumDigits*: WINUINT
@@ -10673,7 +10362,6 @@ type
     lpThousandSep*: LPTSTR
     NegativeOrder*: WINUINT
 
-  Tnumberfmt* = NUMBERFMT
   Pnumberfmt* = ptr NUMBERFMT
   OFSTRUCT* {.final, pure.} = object
     cBytes*: int8
@@ -10684,7 +10372,6 @@ type
     szPathName*: array[0..(OFS_MAXPATHNAME) - 1, char]
 
   LPOFSTRUCT* = ptr OFSTRUCT
-  TOFSTRUCT* = OFSTRUCT
   POFSTRUCT* = ptr OFSTRUCT
   OPENFILENAME_NT4* {.final, pure.} = object
     lStructSize*: DWORD
@@ -10709,9 +10396,8 @@ type
     lpTemplateName*: LPCTSTR
 
   LPOPENFILENAME_NT4* = ptr OPENFILENAME_NT4
-  TOPENFILENAME_NT4* = OPENFILENAME_NT4
   POPENFILENAME_NT4* = ptr OPENFILENAME_NT4
-  TOPENFILENAME* {.final, pure.} = object
+  OPENFILENAME* {.final, pure.} = object
     lStructSize*: DWORD
     hwndOwner*: HWND
     hInstance*: HINST
@@ -10736,17 +10422,16 @@ type
     dwreserved*: DWORD
     FlagsEx*: DWORD
 
-  LPOPENFILENAME* = ptr TOPENFILENAME
-  POPENFILENAME* = ptr TOPENFILENAME
-  OFN* = TOPENFILENAME
-  POFN* = ptr TOPENFILENAME
+  LPOPENFILENAME* = ptr OPENFILENAME
+  POPENFILENAME* = ptr OPENFILENAME
+  OFN* = OPENFILENAME
+  POFN* = ptr OPENFILENAME
   OFNOTIFY* {.final, pure.} = object
     hdr*: NMHDR
     lpOFN*: LPOPENFILENAME
     pszFile*: LPTSTR
 
   LPOFNOTIFY* = ptr OFNOTIFY
-  TOFNOTIFY* = OFNOTIFY
   POFNOTIFY* = ptr OFNOTIFY
   OSVERSIONINFO* {.final, pure.} = object
     dwOSVersionInfoSize*: DWORD
@@ -10754,10 +10439,9 @@ type
     dwMinorVersion*: DWORD
     dwBuildNumber*: DWORD
     dwPlatformId*: DWORD
-    szCSDVersion*: array[0..127, TCHAR]
+    szCSDVersion*: array[0..127, CHAR]
 
   LPOSVERSIONINFO* = ptr OSVERSIONINFO
-  TOSVERSIONINFO* = OSVERSIONINFO
   POSVERSIONINFO* = ptr OSVERSIONINFO
   OSVERSIONINFOW* {.final, pure.} = object
     dwOSVersionInfoSize*: DWORD
@@ -10768,7 +10452,6 @@ type
     szCSDVersion*: array[0..127, WCHAR]
 
   LPOSVERSIONINFOW* = ptr OSVERSIONINFOW
-  TOSVERSIONINFOW* = OSVERSIONINFOW
   POSVERSIONINFOW* = ptr OSVERSIONINFOW
   TEXTMETRIC* {.final, pure.} = object
     tmHeight*: LONG
@@ -10793,7 +10476,6 @@ type
     tmCharSet*: int8
 
   LPTEXTMETRIC* = ptr TEXTMETRIC
-  TTEXTMETRIC* = TEXTMETRIC
   PTEXTMETRIC* = ptr TEXTMETRIC
   TEXTMETRICW* {.final, pure.} = object
     tmHeight*: LONG
@@ -10818,7 +10500,6 @@ type
     tmCharSet*: int8
 
   LPTEXTMETRICW* = ptr TEXTMETRICW
-  TTEXTMETRICW* = TEXTMETRICW
   PTEXTMETRICW* = ptr TEXTMETRICW
   OUTLINETEXTMETRIC* {.final, pure.} = object
     otmSize*: WINUINT
@@ -10855,7 +10536,6 @@ type
     otmpFullName*: PSTR
 
   LPOUTLINETEXTMETRIC* = ptr OUTLINETEXTMETRIC
-  TOUTLINETEXTMETRIC* = OUTLINETEXTMETRIC
   POUTLINETEXTMETRIC* = ptr OUTLINETEXTMETRIC
   OVERLAPPED* {.final, pure.} = object
     Internal*: DWORD
@@ -10865,7 +10545,6 @@ type
     hEvent*: HANDLE
 
   LPOVERLAPPED* = ptr OVERLAPPED
-  TOVERLAPPED* = OVERLAPPED
   POVERLAPPED* = ptr OVERLAPPED
   #PAGESETUPDLG = record conflicts with function PageSetupDlg
   TPAGESETUPDLG* {.final, pure.} = object
@@ -10886,7 +10565,6 @@ type
 
   LPPAGESETUPDLG* = ptr TPAGESETUPDLG
   PPAGESETUPDLG* = ptr TPAGESETUPDLG
-  TPSD* = TPAGESETUPDLG
   PPSD* = ptr TPAGESETUPDLG
   PAINTSTRUCT* {.final, pure.} = object
     hdc*: HDC
@@ -10897,7 +10575,6 @@ type
     rgbReserved*: array[0..31, int8]
 
   LPPAINTSTRUCT* = ptr PAINTSTRUCT
-  TPAINTSTRUCT* = PAINTSTRUCT
   PPAINTSTRUCT* = ptr PAINTSTRUCT
   PARAFORMAT* {.final, pure.} = object
     cbSize*: WINUINT
@@ -10911,12 +10588,10 @@ type
     cTabCount*: SHORT
     rgxTabs*: array[0..(MAX_TAB_STOPS) - 1, LONG]
 
-  Tparaformat* = PARAFORMAT
   Pparaformat* = ptr PARAFORMAT
   PERF_COUNTER_BLOCK* {.final, pure.} = object
     ByteLength*: DWORD
 
-  TPERFCOUNTERBLOCK* = PERF_COUNTER_BLOCK
   PPERFCOUNTERBLOCK* = ptr PERF_COUNTER_BLOCK
   PERF_COUNTER_DEFINITION* {.final, pure.} = object
     ByteLength*: DWORD
@@ -10930,7 +10605,6 @@ type
     CounterSize*: DWORD
     CounterOffset*: DWORD
 
-  TPERFCOUNTERDEFINITION* = PERF_COUNTER_DEFINITION
   PPERFCOUNTERDEFINITION* = ptr PERF_COUNTER_DEFINITION
   PERF_DATA_BLOCK* {.final, pure.} = object
     Signature*: array[0..3, WCHAR]
@@ -10948,7 +10622,6 @@ type
     SystemNameLength*: DWORD
     SystemNameOffset*: DWORD
 
-  TPERFDATABLOCK* = PERF_DATA_BLOCK
   PPERFDATABLOCK* = ptr PERF_DATA_BLOCK
   PERF_INSTANCE_DEFINITION* {.final, pure.} = object
     ByteLength*: DWORD
@@ -10958,7 +10631,6 @@ type
     NameOffset*: DWORD
     NameLength*: DWORD
 
-  TPERFINSTANCEDEFINITION* = PERF_INSTANCE_DEFINITION
   PPERFINSTANCEDEFINITION* = PERF_INSTANCE_DEFINITION
   PERF_OBJECT_TYPE* {.final, pure.} = object
     TotalByteLength*: DWORD
@@ -10976,7 +10648,6 @@ type
     PerfTime*: LARGE_INTEGER
     PerfFreq*: LARGE_INTEGER
 
-  TPERFOBJECTTYPE* = PERF_OBJECT_TYPE
   PPERFOBJECTTYPE* = ptr PERF_OBJECT_TYPE
   POLYTEXT* {.final, pure.} = object
     x*: int32
@@ -10987,12 +10658,10 @@ type
     rcl*: RECT
     pdx*: ptr int32
 
-  TPOLYTEXT* = POLYTEXT
   PPOLYTEXT* = ptr POLYTEXT
   PORT_INFO_1* {.final, pure.} = object
     pName*: LPTSTR
 
-  TPORTINFO1* = PORT_INFO_1
   PPORTINFO1* = ptr PORT_INFO_1
   PORT_INFO_2* {.final, pure.} = object
     pPortName*: LPSTR
@@ -11001,12 +10670,10 @@ type
     fPortType*: DWORD
     Reserved*: DWORD
 
-  TPORTINFO2* = PORT_INFO_2
   PPORTINFO2* = ptr PORT_INFO_2
   PREVENT_MEDIA_REMOVAL* {.final, pure.} = object
     PreventMediaRemoval*: bool
 
-  TPREVENTMEDIAREMOVAL* = PREVENT_MEDIA_REMOVAL
   PPREVENTMEDIAREMOVAL* = ptr PREVENT_MEDIA_REMOVAL
   #PRINTDLG = record conflicts with PrintDlg function
   TPRINTDLG* {.final, pure.} = object
@@ -11032,14 +10699,12 @@ type
 
   LPPRINTDLG* = ptr TPRINTDLG
   PPRINTDLG* = ptr TPRINTDLG
-  TPD* = TPRINTDLG
   PPD* = ptr TPRINTDLG
   PRINTER_DEFAULTS* {.final, pure.} = object
     pDatatype*: LPTSTR
     pDevMode*: LPDEVMODE
     DesiredAccess*: ACCESS_MASK
 
-  TPRINTERDEFAULTS* = PRINTER_DEFAULTS
   PPRINTERDEFAULTS* = ptr PRINTER_DEFAULTS
   PRINTER_INFO_1* {.final, pure.} = object
     Flags*: DWORD
@@ -11049,7 +10714,6 @@ type
 
   LPPRINTER_INFO_1* = ptr PRINTER_INFO_1
   PPRINTER_INFO_1* = ptr PRINTER_INFO_1
-  TPRINTERINFO1* = PRINTER_INFO_1
   PRINTER_INFO_2* {.final, pure.} = object
     pServerName*: LPTSTR
     pPrinterName*: LPTSTR
@@ -11073,19 +10737,16 @@ type
     cJobs*: DWORD
     AveragePPM*: DWORD
 
-  TPRINTERINFO2* = PRINTER_INFO_2
   PPRINTERINFO2* = ptr PRINTER_INFO_2
   PRINTER_INFO_3* {.final, pure.} = object
     pSecurityDescriptor*: PSECURITY_DESCRIPTOR
 
-  TPRINTERINFO3* = PRINTER_INFO_3
   PPRINTERINFO3* = ptr PRINTER_INFO_3
   PRINTER_INFO_4* {.final, pure.} = object
     pPrinterName*: LPTSTR
     pServerName*: LPTSTR
     Attributes*: DWORD
 
-  TPRINTERINFO4* = PRINTER_INFO_4
   PPRINTERINFO4* = ptr PRINTER_INFO_4
   PRINTER_INFO_5* {.final, pure.} = object
     pPrinterName*: LPTSTR
@@ -11094,7 +10755,6 @@ type
     DeviceNotSelectedTimeout*: DWORD
     TransmissionRetryTimeout*: DWORD
 
-  TPRINTERINFO5* = PRINTER_INFO_5
   PPRINTERINFO5* = ptr PRINTER_INFO_5
   PRINTER_NOTIFY_INFO_DATA* {.final, pure.} = object
     `type`*: int16
@@ -11104,7 +10764,6 @@ type
     cbBuf*: DWORD
     pBuf*: LPVOID
 
-  TPRINTERNOTIFYINFODATA* = PRINTER_NOTIFY_INFO_DATA
   PPRINTERNOTIFYINFODATA* = ptr PRINTER_NOTIFY_INFO_DATA
   PRINTER_NOTIFY_INFO* {.final, pure.} = object
     Version*: DWORD
@@ -11112,7 +10771,6 @@ type
     Count*: DWORD
     aData*: array[0..0, PRINTER_NOTIFY_INFO_DATA]
 
-  TPRINTERNOTIFYINFO* = PRINTER_NOTIFY_INFO
   PPRINTERNOTIFYINFO* = ptr PRINTER_NOTIFY_INFO
   PRINTER_NOTIFY_OPTIONS_TYPE* {.final, pure.} = object
     `type`*: int16
@@ -11123,19 +10781,16 @@ type
     pFields*: PWORD
 
   PPRINTER_NOTIFY_OPTIONS_TYPE* = ptr PRINTER_NOTIFY_OPTIONS_TYPE
-  TPRINTERNOTIFYOPTIONSTYPE* = PRINTER_NOTIFY_OPTIONS_TYPE
   PRINTER_NOTIFY_OPTIONS* {.final, pure.} = object
     Version*: DWORD
     Flags*: DWORD
     Count*: DWORD
     pTypes*: PPRINTER_NOTIFY_OPTIONS_TYPE
 
-  TPRINTERNOTIFYOPTIONS* = PRINTER_NOTIFY_OPTIONS
   PPRINTERNOTIFYOPTIONS* = ptr PRINTER_NOTIFY_OPTIONS
   PRINTPROCESSOR_INFO_1* {.final, pure.} = object
     pName*: LPTSTR
 
-  TPRINTPROCESSORINFO1* = PRINTPROCESSOR_INFO_1
   PPRINTPROCESSORINFO1* = ptr PRINTPROCESSOR_INFO_1
   PRIVILEGE_SET* {.final, pure.} = object
     PrivilegeCount*: DWORD
@@ -11144,7 +10799,6 @@ type
 
   LPPRIVILEGE_SET* = ptr PRIVILEGE_SET
   PPRIVILEGE_SET* = ptr PRIVILEGE_SET
-  TPRIVILEGESET* = PRIVILEGE_SET
   PROCESS_HEAPENTRY* {.final, pure.} = object
     lpData*: PVOID
     cbData*: DWORD
@@ -11158,7 +10812,6 @@ type
     hMem*: HANDLE
 
   LPPROCESS_HEAP_ENTRY* = ptr PROCESS_HEAPENTRY
-  TPROCESSHEAPENTRY* = PROCESS_HEAPENTRY
   PPROCESSHEAPENTRY* = ptr PROCESS_HEAPENTRY
   PROCESS_INFORMATION* {.final, pure.} = object
     hProcess*: HANDLE
@@ -11167,11 +10820,9 @@ type
     dwThreadId*: DWORD
 
   LPPROCESS_INFORMATION* = ptr PROCESS_INFORMATION
-  TPROCESSINFORMATION* = PROCESS_INFORMATION
   PPROCESSINFORMATION* = ptr PROCESS_INFORMATION
   LPFNPSPCALLBACK* = proc (para1: HWND, para2: WINUINT, para3: LPVOID): WINUINT{.
       stdcall.}
-  TFNPSPCALLBACK* = LPFNPSPCALLBACK
   PROPSHEETPAGE* {.final, pure.} = object
     dwSize*: DWORD
     dwFlags*: DWORD
@@ -11185,7 +10836,6 @@ type
 
   LPPROPSHEETPAGE* = ptr PROPSHEETPAGE
   LPCPROPSHEETPAGE* = ptr PROPSHEETPAGE
-  TPROPSHEETPAGE* = PROPSHEETPAGE
   PPROPSHEETPAGE* = ptr PROPSHEETPAGE
   emptyrecord* {.final, pure.} = object
   lpemptyrecord* = ptr emptyrecord
@@ -11207,15 +10857,12 @@ type
 
   LPPROPSHEETHEADER* = ptr PROPSHEETHEADER
   LPCPROPSHEETHEADER* = ptr PROPSHEETHEADER
-  TPROPSHEETHEADER* = PROPSHEETHEADER
   PPROPSHEETHEADER* = ptr PROPSHEETHEADER
   # PropertySheet callbacks
   LPFNADDPROPSHEETPAGE* = proc (para1: HPROPSHEETPAGE, para2: LPARAM): WINBOOL{.
       stdcall.}
-  TFNADDPROPSHEETPAGE* = LPFNADDPROPSHEETPAGE
   LPFNADDPROPSHEETPAGES* = proc (para1: LPVOID, para2: LPFNADDPROPSHEETPAGE,
                                  para3: LPARAM): WINBOOL{.stdcall.}
-  TFNADDPROPSHEETPAGES* = LPFNADDPROPSHEETPAGES
   PROTOCOL_INFO* {.final, pure.} = object
     dwServiceFlags*: DWORD
     iAddressFamily*: WINT
@@ -11226,29 +10873,25 @@ type
     dwMessageSize*: DWORD
     lpProtocol*: LPTSTR
 
-  TPROTOCOLINFO* = PROTOCOL_INFO
   PPROTOCOLINFO* = ptr PROTOCOL_INFO
   PROVIDOR_INFO_1* {.final, pure.} = object
     pName*: LPTSTR
     pEnvironment*: LPTSTR
     pDLLName*: LPTSTR
 
-  TPROVIDORINFO1* = PROVIDOR_INFO_1
   PPROVIDORINFO1* = ptr PROVIDOR_INFO_1
   PSHNOTIFY* {.final, pure.} = object
     hdr*: NMHDR
     lParam*: LPARAM
 
   LPPSHNOTIFY* = ptr PSHNOTIFY
-  TPSHNOTIFY* = PSHNOTIFY
   PPSHNOTIFY* = ptr PSHNOTIFY
   PUNCTUATION* {.final, pure.} = object
     iSize*: WINUINT
     szPunctuation*: LPSTR
 
-  Tpunctuation* = PUNCTUATION
   Ppunctuation* = ptr PUNCTUATION
-  TQUERY_SERVICE_CONFIG* {.final, pure.} = object
+  TQUERY_SERVICE_CONFIG* {.final, pure.} = object # Name conflict if we drop the `T`
     dwServiceType*: DWORD
     dwStartType*: DWORD
     dwErrorControl*: DWORD
@@ -11261,7 +10904,7 @@ type
 
   LPQUERY_SERVICE_CONFIG* = ptr TQUERY_SERVICE_CONFIG
   PQUERYSERVICECONFIG* = ptr TQUERY_SERVICE_CONFIG
-  TQUERY_SERVICE_LOCK_STATUS* {.final, pure.} = object
+  TQUERY_SERVICE_LOCK_STATUS* {.final, pure.} = object # Name conflict if we drop the `T`
     fIsLocked*: DWORD
     lpLockOwner*: LPTSTR
     dwLockDuration*: DWORD
@@ -11271,28 +10914,25 @@ type
   RASAMB* {.final, pure.} = object
     dwSize*: DWORD
     dwError*: DWORD
-    szNetBiosError*: array[0..(NETBIOS_NAME_LEN + 1) - 1, TCHAR]
+    szNetBiosError*: array[0..(NETBIOS_NAME_LEN + 1) - 1, CHAR]
     bLana*: int8
 
-  TRASAMB* = RASAMB
   PRASAMB* = ptr RASAMB
   RASCONN* {.final, pure.} = object
     dwSize*: DWORD
     hrasconn*: HRASCONN
-    szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, TCHAR]
+    szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, CHAR]
     szDeviceType*: array[0..(RAS_MaxDeviceType + 1) - 1, char]
     szDeviceName*: array[0..(RAS_MaxDeviceName + 1) - 1, char]
 
-  TRASCONN* = RASCONN
   PRASCONN* = ptr RASCONN
   RASCONNSTATUS* {.final, pure.} = object
     dwSize*: DWORD
     rasconnstate*: RASCONNSTATE
     dwError*: DWORD
-    szDeviceType*: array[0..(RAS_MaxDeviceType + 1) - 1, TCHAR]
-    szDeviceName*: array[0..(RAS_MaxDeviceName + 1) - 1, TCHAR]
+    szDeviceType*: array[0..(RAS_MaxDeviceType + 1) - 1, CHAR]
+    szDeviceName*: array[0..(RAS_MaxDeviceName + 1) - 1, CHAR]
 
-  TRASCONNSTATUS* = RASCONNSTATUS
   PRASCONNSTATUS* = ptr RASCONNSTATUS
   RASDIALEXTENSIONS* {.final, pure.} = object
     dwSize*: DWORD
@@ -11300,48 +10940,42 @@ type
     hwndParent*: HWND
     reserved*: DWORD
 
-  TRASDIALEXTENSIONS* = RASDIALEXTENSIONS
   PRASDIALEXTENSIONS* = ptr RASDIALEXTENSIONS
   RASDIALPARAMS* {.final, pure.} = object
     dwSize*: DWORD
-    szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, TCHAR]
-    szPhoneNumber*: array[0..(RAS_MaxPhoneNumber + 1) - 1, TCHAR]
-    szCallbackNumber*: array[0..(RAS_MaxCallbackNumber + 1) - 1, TCHAR]
-    szUserName*: array[0..(UNLEN + 1) - 1, TCHAR]
-    szPassword*: array[0..(PWLEN + 1) - 1, TCHAR]
-    szDomain*: array[0..(DNLEN + 1) - 1, TCHAR]
+    szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, CHAR]
+    szPhoneNumber*: array[0..(RAS_MaxPhoneNumber + 1) - 1, CHAR]
+    szCallbackNumber*: array[0..(RAS_MaxCallbackNumber + 1) - 1, CHAR]
+    szUserName*: array[0..(UNLEN + 1) - 1, CHAR]
+    szPassword*: array[0..(PWLEN + 1) - 1, CHAR]
+    szDomain*: array[0..(DNLEN + 1) - 1, CHAR]
 
-  TRASDIALPARAMS* = RASDIALPARAMS
   PRASDIALPARAMS* = ptr RASDIALPARAMS
   RASENTRYNAME* {.final, pure.} = object
     dwSize*: DWORD
-    szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, TCHAR]
+    szEntryName*: array[0..(RAS_MaxEntryName + 1) - 1, CHAR]
 
-  TRASENTRYNAME* = RASENTRYNAME
   PRASENTRYNAME* = ptr RASENTRYNAME
   RASPPPIP* {.final, pure.} = object
     dwSize*: DWORD
     dwError*: DWORD
-    szIpAddress*: array[0..(RAS_MaxIpAddress + 1) - 1, TCHAR]
+    szIpAddress*: array[0..(RAS_MaxIpAddress + 1) - 1, CHAR]
 
-  TRASPPPIP* = RASPPPIP
   PRASPPPIP* = ptr RASPPPIP
   RASPPPIPX* {.final, pure.} = object
     dwSize*: DWORD
     dwError*: DWORD
-    szIpxAddress*: array[0..(RAS_MaxIpxAddress + 1) - 1, TCHAR]
+    szIpxAddress*: array[0..(RAS_MaxIpxAddress + 1) - 1, CHAR]
 
-  TRASPPPIPX* = RASPPPIPX
   PRASPPPIPX* = ptr RASPPPIPX
   RASPPPNBF* {.final, pure.} = object
     dwSize*: DWORD
     dwError*: DWORD
     dwNetBiosError*: DWORD
-    szNetBiosError*: array[0..(NETBIOS_NAME_LEN + 1) - 1, TCHAR]
-    szWorkstationName*: array[0..(NETBIOS_NAME_LEN + 1) - 1, TCHAR]
+    szNetBiosError*: array[0..(NETBIOS_NAME_LEN + 1) - 1, CHAR]
+    szWorkstationName*: array[0..(NETBIOS_NAME_LEN + 1) - 1, CHAR]
     bLana*: int8
 
-  TRASPPPNBF* = RASPPPNBF
   PRASPPPNBF* = ptr RASPPPNBF
   RASTERIZER_STATUS* {.final, pure.} = object
     nSize*: SHORT
@@ -11349,34 +10983,29 @@ type
     nLanguageID*: SHORT
 
   LPRASTERIZER_STATUS* = ptr RASTERIZER_STATUS
-  TRASTERIZERSTATUS* = RASTERIZER_STATUS
   PRASTERIZERSTATUS* = ptr RASTERIZER_STATUS
   REASSIGN_BLOCKS* {.final, pure.} = object
     Reserved*: int16
     Count*: int16
     BlockNumber*: array[0..0, DWORD]
 
-  TREASSIGNBLOCKS* = REASSIGN_BLOCKS
   PREASSIGNBLOCKS* = ptr REASSIGN_BLOCKS
   REMOTE_NAME_INFO* {.final, pure.} = object
     lpUniversalName*: LPTSTR
     lpConnectionName*: LPTSTR
     lpRemainingPath*: LPTSTR
 
-  TREMOTENAMEINFO* = REMOTE_NAME_INFO
   PREMOTENAMEINFO* = ptr REMOTE_NAME_INFO
 
   REPASTESPECIAL* {.final, pure.} = object
     dwAspect*: DWORD
     dwParam*: DWORD
 
-  Trepastespecial* = REPASTESPECIAL
   Prepastespecial* = ptr REPASTESPECIAL
   REQRESIZE* {.final, pure.} = object
     nmhdr*: NMHDR
     rc*: RECT
 
-  Treqresize* = REQRESIZE
   Preqresize* = ptr REQRESIZE
   RGNDATAHEADER* {.final, pure.} = object
     dwSize*: DWORD
@@ -11385,14 +11014,12 @@ type
     nRgnSize*: DWORD
     rcBound*: RECT
 
-  TRGNDATAHEADER* = RGNDATAHEADER
   PRGNDATAHEADER* = ptr RGNDATAHEADER
   RGNDATA* {.final, pure.} = object
     rdh*: RGNDATAHEADER
     Buffer*: array[0..0, char]
 
   LPRGNDATA* = ptr RGNDATA
-  TRGNDATA* = RGNDATA
   PRGNDATA* = ptr RGNDATA
   SCROLLINFO* {.final, pure.} = object
     cbSize*: WINUINT
@@ -11405,7 +11032,6 @@ type
 
   LPSCROLLINFO* = ptr SCROLLINFO
   LPCSCROLLINFO* = ptr SCROLLINFO
-  TSCROLLINFO* = SCROLLINFO
   PSCROLLINFO* = ptr SCROLLINFO
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: DWORD
@@ -11413,17 +11039,14 @@ type
     bInheritHandle*: WINBOOL
 
   LPSECURITY_ATTRIBUTES* = ptr SECURITY_ATTRIBUTES
-  TSECURITYATTRIBUTES* = SECURITY_ATTRIBUTES
   PSECURITYATTRIBUTES* = ptr SECURITY_ATTRIBUTES
   SECURITY_INFORMATION* = DWORD
   PSECURITY_INFORMATION* = ptr SECURITY_INFORMATION
-  TSECURITYINFORMATION* = SECURITY_INFORMATION
   SELCHANGE* {.final, pure.} = object
     nmhdr*: NMHDR
     chrg*: CHARRANGE
     seltyp*: int16
 
-  Tselchange* = SELCHANGE
   Pselchange* = ptr SELCHANGE
   SERIALKEYS* {.final, pure.} = object
     cbSize*: DWORD
@@ -11434,14 +11057,12 @@ type
     iPortState*: DWORD
 
   LPSERIALKEYS* = ptr SERIALKEYS
-  TSERIALKEYS* = SERIALKEYS
   PSERIALKEYS* = ptr SERIALKEYS
   SERVICE_TABLE_ENTRY* {.final, pure.} = object
     lpServiceName*: LPTSTR
     lpServiceProc*: LPSERVICE_MAIN_FUNCTION
 
   LPSERVICE_TABLE_ENTRY* = ptr SERVICE_TABLE_ENTRY
-  TSERVICETABLEENTRY* = SERVICE_TABLE_ENTRY
   PSERVICETABLEENTRY* = ptr SERVICE_TABLE_ENTRY
   SERVICE_TYPE_VALUE_ABS* {.final, pure.} = object
     dwNameSpace*: DWORD
@@ -11450,14 +11071,12 @@ type
     lpValueName*: LPTSTR
     lpValue*: PVOID
 
-  TSERVICETYPEVALUEABS* = SERVICE_TYPE_VALUE_ABS
   PSERVICETYPEVALUEABS* = ptr SERVICE_TYPE_VALUE_ABS
   SERVICE_TYPE_INFO_ABS* {.final, pure.} = object
     lpTypeName*: LPTSTR
     dwValueCount*: DWORD
     Values*: array[0..0, SERVICE_TYPE_VALUE_ABS]
 
-  TSERVICETYPEINFOABS* = SERVICE_TYPE_INFO_ABS
   PSERVICETYPEINFOABS* = ptr SERVICE_TYPE_INFO_ABS
   SESSION_BUFFER* {.final, pure.} = object
     lsn*: UCHAR
@@ -11467,7 +11086,6 @@ type
     rcvs_outstanding*: UCHAR
     sends_outstanding*: UCHAR
 
-  TSESSIONBUFFER* = SESSION_BUFFER
   PSESSIONBUFFER* = ptr SESSION_BUFFER
   SESSION_HEADER* {.final, pure.} = object
     sess_name*: UCHAR
@@ -11475,16 +11093,13 @@ type
     rcv_dg_outstanding*: UCHAR
     rcv_any_outstanding*: UCHAR
 
-  TSESSIONHEADER* = SESSION_HEADER
   PSESSIONHEADER* = ptr SESSION_HEADER
   SET_PARTITION_INFORMATION* {.final, pure.} = object
     PartitionType*: int8
 
-  TSETPARTITIONINFORMATION* = SET_PARTITION_INFORMATION
   PSETPARTITIONINFORMATION* = ptr SET_PARTITION_INFORMATION
   SHCONTF* = enum
     SHCONTF_FOLDERS = 32, SHCONTF_NONFOLDERS = 64, SHCONTF_INCLUDEHIDDEN = 128
-  TSHCONTF* = SHCONTF
   SHFILEINFO* {.final, pure.} = object
     hIcon*: HICON
     iIcon*: int32
@@ -11492,10 +11107,8 @@ type
     szDisplayName*: array[0..(MAX_PATH) - 1, char]
     szTypeName*: array[0..79, char]
 
-  TSHFILEINFO* = SHFILEINFO
   PSHFILEINFO* = ptr SHFILEINFO
   FILEOP_FLAGS* = int16
-  TFILEOPFLAGS* = FILEOP_FLAGS
   PFILEOPFLAGS* = ptr FILEOP_FLAGS
   SHFILEOPSTRUCT* {.final, pure.} = object
     hwnd*: HWND
@@ -11508,11 +11121,9 @@ type
     lpszProgressTitle*: LPCSTR
 
   LPSHFILEOPSTRUCT* = ptr SHFILEOPSTRUCT
-  TSHFILEOPSTRUCT* = SHFILEOPSTRUCT
   PSHFILEOPSTRUCT* = ptr SHFILEOPSTRUCT
   SHGNO* = enum
     SHGDN_NORMAL = 0, SHGDN_INFOLDER = 1, SHGDN_FORPARSING = 0x00008000
-  TSHGDN* = SHGNO
   SHNAMEMAPPING* {.final, pure.} = object
     pszOldPath*: LPSTR
     pszNewPath*: LPSTR
@@ -11520,21 +11131,17 @@ type
     cchNewPath*: int32
 
   LPSHNAMEMAPPING* = ptr SHNAMEMAPPING
-  TSHNAMEMAPPING* = SHNAMEMAPPING
   PSHNAMEMAPPING* = ptr SHNAMEMAPPING
   SID_AND_ATTRIBUTES* {.final, pure.} = object
     Sid*: PSID
     Attributes*: DWORD
 
-  TSIDANDATTRIBUTES* = SID_AND_ATTRIBUTES
   PSIDANDATTRIBUTES* = ptr SID_AND_ATTRIBUTES
   SID_AND_ATTRIBUTES_ARRAY* = array[0..(ANYSIZE_ARRAY) - 1, SID_AND_ATTRIBUTES]
   PSID_AND_ATTRIBUTES_ARRAY* = ptr SID_AND_ATTRIBUTES_ARRAY
-  TSIDANDATTRIBUTESARRAY* = SID_AND_ATTRIBUTES_ARRAY
   SINGLE_LIST_ENTRY* {.final, pure.} = object
     Next*: ptr SINGLE_LIST_ENTRY
 
-  TSINGLELISTENTRY* = SINGLE_LIST_ENTRY
   PSINGLELISTENTRY* = ptr SINGLE_LIST_ENTRY
   SOUNDSENTRY* {.final, pure.} = object
     cbSize*: WINUINT
@@ -11551,7 +11158,6 @@ type
     iWindowsEffectOrdinal*: DWORD
 
   LPSOUNDSENTRY* = ptr SOUNDSENTRY
-  TSOUNDSENTRY* = SOUNDSENTRY
   PSOUNDSENTRY* = ptr SOUNDSENTRY
   STARTUPINFO* {.final, pure.} = object
     cb*: DWORD
@@ -11574,42 +11180,36 @@ type
     hStdError*: HANDLE
 
   LPSTARTUPINFO* = ptr STARTUPINFO
-  TSTARTUPINFO* = STARTUPINFO
   PSTARTUPINFO* = ptr STARTUPINFO
   STICKYKEYS* {.final, pure.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
 
   LPSTICKYKEYS* = ptr STICKYKEYS
-  TSTICKYKEYS* = STICKYKEYS
   PSTICKYKEYS* = ptr STICKYKEYS
   STRRET* {.final, pure.} = object
     uType*: WINUINT
     cStr*: array[0..(MAX_PATH) - 1, char]
 
   LPSTRRET* = ptr STRRET
-  TSTRRET* = STRRET
   PSTRRET* = ptr STRRET
   STYLEBUF* {.final, pure.} = object
     dwStyle*: DWORD
     szDescription*: array[0..31, char]
 
   LPSTYLEBUF* = ptr STYLEBUF
-  TSTYLEBUF* = STYLEBUF
   PSTYLEBUF* = ptr STYLEBUF
   STYLESTRUCT* {.final, pure.} = object
     styleOld*: DWORD
     styleNew*: DWORD
 
   LPSTYLESTRUCT* = ptr STYLESTRUCT
-  TSTYLESTRUCT* = STYLESTRUCT
   PSTYLESTRUCT* = ptr STYLESTRUCT
   SYSTEM_AUDIT_ACE* {.final, pure.} = object
     Header*: ACE_HEADER
     Mask*: ACCESS_MASK
     SidStart*: DWORD
 
-  TSYSTEMAUDITACE* = SYSTEM_AUDIT_ACE
   PSYSTEMAUDITACE* = ptr SYSTEM_AUDIT_ACE
   SYSTEM_INFO* {.final, pure.} = object
     dwOemId*: DWORD
@@ -11624,7 +11224,6 @@ type
     wProcessorRevision*: int16
 
   LPSYSTEM_INFO* = ptr SYSTEM_INFO
-  TSYSTEMINFO* = SYSTEM_INFO
   PSYSTEMINFO* = ptr SYSTEM_INFO
   SYSTEM_POWER_STATUS* {.final, pure.} = object
     ACLineStatus*: int8
@@ -11634,13 +11233,11 @@ type
     BatteryLifeTime*: DWORD
     BatteryFullLifeTime*: DWORD
 
-  TSYSTEMPOWERSTATUS* = SYSTEM_POWER_STATUS
   PSYSTEMPOWERSTATUS* = ptr SYSTEM_POWER_STATUS
   LPSYSTEM_POWER_STATUS* = ptr emptyrecord
   TAPE_ERASE* {.final, pure.} = object
     `type`*: ULONG
 
-  TTAPEERASE* = TAPE_ERASE
   PTAPEERASE* = ptr TAPE_ERASE
   TAPE_GET_DRIVE_PARAMETERS* {.final, pure.} = object
     ECC*: bool
@@ -11655,7 +11252,6 @@ type
     FeaturesHigh*: ULONG
     EOTWarningZoneSize*: ULONG
 
-  TTAPEGETDRIVEPARAMETERS* = TAPE_GET_DRIVE_PARAMETERS
   PTAPEGETDRIVEPARAMETERS* = ptr TAPE_GET_DRIVE_PARAMETERS
   TAPE_GET_MEDIA_PARAMETERS* {.final, pure.} = object
     Capacity*: LARGE_INTEGER
@@ -11664,7 +11260,6 @@ type
     PartitionCount*: DWORD
     WriteProtected*: bool
 
-  TTAPEGETMEDIAPARAMETERS* = TAPE_GET_MEDIA_PARAMETERS
   PTAPEGETMEDIAPARAMETERS* = ptr TAPE_GET_MEDIA_PARAMETERS
   TAPE_GET_POSITION* {.final, pure.} = object
     `type`*: ULONG
@@ -11672,12 +11267,10 @@ type
     OffsetLow*: ULONG
     OffsetHigh*: ULONG
 
-  TTAPEGETPOSITION* = TAPE_GET_POSITION
   PTAPEGETPOSITION* = ptr TAPE_GET_POSITION
   TAPE_PREPARE* {.final, pure.} = object
     Operation*: ULONG
 
-  TTAPEPREPARE* = TAPE_PREPARE
   PTAPEPREPARE* = ptr TAPE_PREPARE
   TAPE_SET_DRIVE_PARAMETERS* {.final, pure.} = object
     ECC*: bool
@@ -11686,12 +11279,10 @@ type
     ReportSetmarks*: bool
     EOTWarningZoneSize*: ULONG
 
-  TTAPESETDRIVEPARAMETERS* = TAPE_SET_DRIVE_PARAMETERS
   PTAPESETDRIVEPARAMETERS* = ptr TAPE_SET_DRIVE_PARAMETERS
   TAPE_SET_MEDIA_PARAMETERS* {.final, pure.} = object
     BlockSize*: ULONG
 
-  TTAPESETMEDIAPARAMETERS* = TAPE_SET_MEDIA_PARAMETERS
   PTAPESETMEDIAPARAMETERS* = ptr TAPE_SET_MEDIA_PARAMETERS
   TAPE_SET_POSITION* {.final, pure.} = object
     `Method`*: ULONG
@@ -11699,15 +11290,13 @@ type
     OffsetLow*: ULONG
     OffsetHigh*: ULONG
 
-  TTAPESETPOSITION* = TAPE_SET_POSITION
   PTAPESETPOSITION* = ptr TAPE_SET_POSITION
   TAPE_WRITE_MARKS* {.final, pure.} = object
     `type`*: ULONG
     Count*: ULONG
 
-  TTAPEWRITEMARKS* = TAPE_WRITE_MARKS
   PTAPEWRITEMARKS* = ptr TAPE_WRITE_MARKS
-  TTBADDBITMAP* {.final, pure.} = object
+  TTBADDBITMAP* {.final, pure.} = object # Name conflict if we drop the `T`
     hInst*: HINST
     nID*: WINUINT
 
@@ -11723,7 +11312,6 @@ type
 
   LPTBBUTTON* = ptr TBBUTTON
   LPCTBBUTTON* = ptr TBBUTTON
-  TTBBUTTON* = TBBUTTON
   PTBBUTTON* = ptr TBBUTTON
   TBNOTIFY* {.final, pure.} = object
     hdr*: NMHDR
@@ -11733,20 +11321,17 @@ type
     pszText*: LPTSTR
 
   LPTBNOTIFY* = ptr TBNOTIFY
-  TTBNOTIFY* = TBNOTIFY
   PTBNOTIFY* = ptr TBNOTIFY
   TBSAVEPARAMS* {.final, pure.} = object
     hkr*: HKEY
     pszSubKey*: LPCTSTR
     pszValueName*: LPCTSTR
 
-  TTBSAVEPARAMS* = TBSAVEPARAMS
   PTBSAVEPARAMS* = ptr TBSAVEPARAMS
   TC_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
     flags*: WINUINT
 
-  TTCHITTESTINFO* = TC_HITTESTINFO
   PTCHITTESTINFO* = ptr TC_HITTESTINFO
   TC_ITEM* {.final, pure.} = object
     mask*: WINUINT
@@ -11757,7 +11342,6 @@ type
     iImage*: int32
     lParam*: LPARAM
 
-  TTCITEM* = TC_ITEM
   PTCITEM* = ptr TC_ITEM
   TC_ITEMHEADER* {.final, pure.} = object
     mask*: WINUINT
@@ -11767,20 +11351,17 @@ type
     cchTextMax*: int32
     iImage*: int32
 
-  TTCITEMHEADER* = TC_ITEMHEADER
   PTCITEMHEADER* = ptr TC_ITEMHEADER
   TC_KEYDOWN* {.final, pure.} = object
     hdr*: NMHDR
     wVKey*: int16
     flags*: WINUINT
 
-  TTCKEYDOWN* = TC_KEYDOWN
   PTCKEYDOWN* = ptr TC_KEYDOWN
   TEXTRANGE* {.final, pure.} = object
     chrg*: CHARRANGE
     lpstrText*: LPSTR
 
-  Ttextrange* = TEXTRANGE
   Ptextrange* = ptr TEXTRANGE
   TIME_ZONE_INFORMATION* {.final, pure.} = object
     Bias*: LONG
@@ -11792,15 +11373,13 @@ type
     DaylightBias*: LONG
 
   LPTIME_ZONE_INFORMATION* = ptr TIME_ZONE_INFORMATION
-  TTIMEZONEINFORMATION* = TIME_ZONE_INFORMATION
   PTIMEZONEINFORMATION* = ptr TIME_ZONE_INFORMATION
   TOGGLEKEYS* {.final, pure.} = object
     cbSize*: DWORD
     dwFlags*: DWORD
 
-  TTOGGLEKEYS* = TOGGLEKEYS
   PTOGGLEKEYS* = ptr TOGGLEKEYS
-  TTOKEN_SOURCE* {.final, pure.} = object
+  TTOKEN_SOURCE* {.final, pure.} = object # Name confict if we drop the `T`
     SourceName*: array[0..7, char]
     SourceIdentifier*: LUID
 
@@ -11811,33 +11390,32 @@ type
     ModifiedId*: LUID
     TokenSource*: TTOKEN_SOURCE
 
-  TTOKENCONTROL* = TOKEN_CONTROL
   PTOKENCONTROL* = ptr TOKEN_CONTROL
   TTOKEN_DEFAULT_DACL* {.final, pure.} = object
     DefaultDacl*: PACL
 
-  PTOKENDEFAULTDACL* = ptr TTOKEN_DEFAULT_DACL
-  TTOKEN_GROUPS* {.final, pure.} = object
+  PTOKENDEFAULTDACL* = ptr TTOKEN_DEFAULT_DACL # Name conflict if we drop the `T`
+  TTOKEN_GROUPS* {.final, pure.} = object # Name conflict if we drop the `T`
     GroupCount*: DWORD
     Groups*: array[0..(ANYSIZE_ARRAY) - 1, SID_AND_ATTRIBUTES]
 
   LPTOKEN_GROUPS* = ptr TTOKEN_GROUPS
   PTOKENGROUPS* = ptr TTOKEN_GROUPS
-  TTOKEN_OWNER* {.final, pure.} = object
+  TTOKEN_OWNER* {.final, pure.} = object # Name conflict if we drop the `T`
     Owner*: PSID
 
   PTOKENOWNER* = ptr TTOKEN_OWNER
   TTOKEN_PRIMARY_GROUP* {.final, pure.} = object
     PrimaryGroup*: PSID
 
-  PTOKENPRIMARYGROUP* = ptr TTOKEN_PRIMARY_GROUP
-  TTOKEN_PRIVILEGES* {.final, pure.} = object
+  PTOKENPRIMARYGROUP* = ptr TTOKEN_PRIMARY_GROUP # Name conflict if we drop the `T`
+  TTOKEN_PRIVILEGES* {.final, pure.} = object # Name conflict if we drop the `T`
     PrivilegeCount*: DWORD
     Privileges*: array[0..(ANYSIZE_ARRAY) - 1, LUID_AND_ATTRIBUTES]
 
   PTOKEN_PRIVILEGES* = ptr TTOKEN_PRIVILEGES
   LPTOKEN_PRIVILEGES* = ptr TTOKEN_PRIVILEGES
-  TTOKEN_STATISTICS* {.final, pure.} = object
+  TTOKEN_STATISTICS* {.final, pure.} = object # Name conflict if we drop the `T`
     TokenId*: LUID
     AuthenticationId*: LUID
     ExpirationTime*: LARGE_INTEGER
@@ -11850,7 +11428,7 @@ type
     ModifiedId*: LUID
 
   PTOKENSTATISTICS* = ptr TTOKEN_STATISTICS
-  TTOKEN_USER* {.final, pure.} = object
+  TTOKEN_USER* {.final, pure.} = object # Name conflict if we drop the `T`
     User*: SID_AND_ATTRIBUTES
 
   PTOKENUSER* = ptr TTOKEN_USER
@@ -11864,7 +11442,6 @@ type
     lpszText*: LPTSTR
 
   LPTOOLINFO* = ptr TOOLINFO
-  TTOOLINFO* = TOOLINFO
   PTOOLINFO* = ptr TOOLINFO
   TOOLTIPTEXT* {.final, pure.} = object
     hdr*: NMHDR
@@ -11874,14 +11451,12 @@ type
     uFlags*: WINUINT
 
   LPTOOLTIPTEXT* = ptr TOOLTIPTEXT
-  TTOOLTIPTEXT* = TOOLTIPTEXT
   PTOOLTIPTEXT* = ptr TOOLTIPTEXT
   TPMPARAMS* {.final, pure.} = object
     cbSize*: WINUINT
     rcExclude*: RECT
 
   LPTPMPARAMS* = ptr TPMPARAMS
-  TTPMPARAMS* = TPMPARAMS
   PTPMPARAMS* = ptr TPMPARAMS
   TRANSMIT_FILE_BUFFERS* {.final, pure.} = object
     Head*: PVOID
@@ -11889,7 +11464,6 @@ type
     Tail*: PVOID
     TailLength*: DWORD
 
-  TTRANSMITFILEBUFFERS* = TRANSMIT_FILE_BUFFERS
   PTRANSMITFILEBUFFERS* = ptr TRANSMIT_FILE_BUFFERS
   TTHITTESTINFO* {.final, pure.} = object
     hwnd*: HWND
@@ -11897,7 +11471,6 @@ type
     ti*: TOOLINFO
 
   LPHITTESTINFO* = ptr TTHITTESTINFO
-  TTTHITTESTINFO* = TTHITTESTINFO
   PTTHITTESTINFO* = ptr TTHITTESTINFO
   TTPOLYCURVE* {.final, pure.} = object
     wType*: int16
@@ -11905,7 +11478,6 @@ type
     apfx*: array[0..0, POINTFX]
 
   LPTTPOLYCURVE* = ptr TTPOLYCURVE
-  TTTPOLYCURVE* = TTPOLYCURVE
   PTTPOLYCURVE* = ptr TTPOLYCURVE
   TTPOLYGONHEADER* {.final, pure.} = object
     cb*: DWORD
@@ -11913,13 +11485,11 @@ type
     pfxStart*: POINTFX
 
   LPTTPOLYGONHEADER* = ptr TTPOLYGONHEADER
-  TTTPOLYGONHEADER* = TTPOLYGONHEADER
   PTTPOLYGONHEADER* = ptr TTPOLYGONHEADER
   TV_DISPINFO* {.final, pure.} = object
     hdr*: NMHDR
     item*: TV_ITEM
 
-  TTVDISPINFO* = TV_DISPINFO
   PTVDISPINFO* = ptr TV_DISPINFO
   TV_HITTESTINFO* {.final, pure.} = object
     pt*: POINT
@@ -11927,7 +11497,6 @@ type
     hItem*: HTREEITEM
 
   LPTV_HITTESTINFO* = ptr TV_HITTESTINFO
-  TTVHITTESTINFO* = TV_HITTESTINFO
   PTVHITTESTINFO* = ptr TV_HITTESTINFO
   TV_INSERTSTRUCT* {.final, pure.} = object
     hParent*: HTREEITEM
@@ -11935,14 +11504,12 @@ type
     item*: TV_ITEM
 
   LPTV_INSERTSTRUCT* = ptr TV_INSERTSTRUCT
-  TTVINSERTSTRUCT* = TV_INSERTSTRUCT
   PTVINSERTSTRUCT* = ptr TV_INSERTSTRUCT
   TV_KEYDOWN* {.final, pure.} = object
     hdr*: NMHDR
     wVKey*: int16
     flags*: WINUINT
 
-  TTVKEYDOWN* = TV_KEYDOWN
   PTVKEYDOWN* = ptr TV_KEYDOWN
   TV_SORTCB* {.final, pure.} = object
     hParent*: HTREEITEM
@@ -11950,25 +11517,21 @@ type
     lParam*: LPARAM
 
   LPTV_SORTCB* = ptr TV_SORTCB
-  TTVSORTCB* = TV_SORTCB
   PTVSORTCB* = ptr TV_SORTCB
   UDACCEL* {.final, pure.} = object
     nSec*: WINUINT
     nInc*: WINUINT
 
-  TUDACCEL* = UDACCEL
   PUDACCEL* = ptr UDACCEL
   UNIVERSAL_NAME_INFO* {.final, pure.} = object
     lpUniversalName*: LPTSTR
 
-  TUNIVERSALNAMEINFO* = UNIVERSAL_NAME_INFO
   PUNIVERSALNAMEINFO* = ptr UNIVERSAL_NAME_INFO
   USEROBJECTFLAGS* {.final, pure.} = object
     fInherit*: WINBOOL
     fReserved*: WINBOOL
     dwFlags*: DWORD
 
-  TUSEROBJECTFLAGS* = USEROBJECTFLAGS
   PUSEROBJECTFLAGS* = ptr USEROBJECTFLAGS
   VALENT* {.final, pure.} = object
     ve_valuename*: LPTSTR
@@ -11976,16 +11539,13 @@ type
     ve_valueptr*: DWORD
     ve_type*: DWORD
 
-  TVALENT* = VALENT
   PVALENT* = ptr VALENT
   value_ent* = VALENT
-  Tvalue_ent* = VALENT
   Pvalue_ent* = ptr VALENT
   VERIFY_INFORMATION* {.final, pure.} = object
     StartingOffset*: LARGE_INTEGER
     len*: DWORD
 
-  TVERIFYINFORMATION* = VERIFY_INFORMATION
   PVERIFYINFORMATION* = ptr VERIFY_INFORMATION
   VS_FIXEDFILEINFO* {.final, pure.} = object
     dwSignature*: DWORD
@@ -12002,7 +11562,6 @@ type
     dwFileDateMS*: DWORD
     dwFileDateLS*: DWORD
 
-  TVSFIXEDFILEINFO* = VS_FIXEDFILEINFO
   PVSFIXEDFILEINFO* = ptr VS_FIXEDFILEINFO
   WIN32_FIND_DATA* {.final, pure.} = object
     dwFileAttributes*: DWORD
@@ -12013,13 +11572,11 @@ type
     nFileSizeLow*: DWORD
     dwReserved0*: DWORD
     dwReserved1*: DWORD
-    cFileName*: array[0..(MAX_PATH) - 1, TCHAR]
-    cAlternateFileName*: array[0..13, TCHAR]
+    cFileName*: array[0..(MAX_PATH) - 1, CHAR]
+    cAlternateFileName*: array[0..13, CHAR]
 
   LPWIN32_FIND_DATA* = ptr WIN32_FIND_DATA
   PWIN32_FIND_DATA* = ptr WIN32_FIND_DATA
-  TWIN32FINDDATA* = WIN32_FIND_DATA
-  TWIN32FINDDATAA* = WIN32_FIND_DATA
   WIN32_FIND_DATAW* {.final, pure.} = object
     dwFileAttributes*: DWORD
     ftCreationTime*: FILETIME
@@ -12034,7 +11591,6 @@ type
 
   LPWIN32_FIND_DATAW* = ptr WIN32_FIND_DATAW
   PWIN32_FIND_DATAW* = ptr WIN32_FIND_DATAW
-  TWIN32FINDDATAW* = WIN32_FIND_DATAW
   WIN32_STREAM_ID* {.final, pure.} = object
     dwStreamId*: DWORD
     dwStreamAttributes*: DWORD
@@ -12042,7 +11598,6 @@ type
     dwStreamNameSize*: DWORD
     cStreamName*: ptr WCHAR
 
-  TWIN32STREAMID* = WIN32_STREAM_ID
   PWIN32STREAMID* = ptr WIN32_STREAM_ID
   WINDOWPLACEMENT* {.final, pure.} = object
     len*: WINUINT
@@ -12052,7 +11607,6 @@ type
     ptMaxPosition*: POINT
     rcNormalPosition*: RECT
 
-  TWINDOWPLACEMENT* = WINDOWPLACEMENT
   PWINDOWPLACEMENT* = ptr WINDOWPLACEMENT
   WNDCLASS* {.final, pure.} = object
     style*: WINUINT
@@ -12067,8 +11621,6 @@ type
     lpszClassName*: LPCTSTR
 
   LPWNDCLASS* = ptr WNDCLASS
-  TWNDCLASS* = WNDCLASS
-  TWNDCLASSA* = WNDCLASS
   PWNDCLASS* = ptr WNDCLASS
   WNDCLASSW* {.final, pure.} = object
     style*: WINUINT
@@ -12083,7 +11635,6 @@ type
     lpszClassName*: LPCWSTR
 
   LPWNDCLASSW* = ptr WNDCLASSW
-  TWNDCLASSW* = WNDCLASSW
   PWNDCLASSW* = ptr WNDCLASSW
   WNDCLASSEX* {.final, pure.} = object
     cbSize*: WINUINT
@@ -12100,8 +11651,6 @@ type
     hIconSm*: HANDLE
 
   LPWNDCLASSEX* = ptr WNDCLASSEX
-  TWNDCLASSEX* = WNDCLASSEX
-  TWNDCLASSEXA* = WNDCLASSEX
   PWNDCLASSEX* = ptr WNDCLASSEX
   WNDCLASSEXW* {.final, pure.} = object
     cbSize*: WINUINT
@@ -12118,7 +11667,6 @@ type
     hIconSm*: HANDLE
 
   LPWNDCLASSEXW* = ptr WNDCLASSEXW
-  TWNDCLASSEXW* = WNDCLASSEXW
   PWNDCLASSEXW* = ptr WNDCLASSEXW
   CONNECTDLGSTRUCT* {.final, pure.} = object
     cbStructure*: DWORD
@@ -12128,7 +11676,6 @@ type
     dwDevNum*: DWORD
 
   LPCONNECTDLGSTRUCT* = ptr CONNECTDLGSTRUCT
-  TCONNECTDLGSTRUCT* = CONNECTDLGSTRUCT
   PCONNECTDLGSTRUCT* = ptr CONNECTDLGSTRUCT
   DISCDLGSTRUCT* {.final, pure.} = object
     cbStructure*: DWORD
@@ -12138,8 +11685,6 @@ type
     dwFlags*: DWORD
 
   LPDISCDLGSTRUCT* = ptr DISCDLGSTRUCT
-  TDISCDLGSTRUCT* = DISCDLGSTRUCT
-  TDISCDLGSTRUCTA* = DISCDLGSTRUCT
   PDISCDLGSTRUCT* = ptr DISCDLGSTRUCT
   NETINFOSTRUCT* {.final, pure.} = object
     cbStructure*: DWORD
@@ -12152,7 +11697,6 @@ type
     dwDrives*: DWORD
 
   LPNETINFOSTRUCT* = ptr NETINFOSTRUCT
-  TNETINFOSTRUCT* = NETINFOSTRUCT
   PNETINFOSTRUCT* = ptr NETINFOSTRUCT
   NETCONNECTINFOSTRUCT* {.final, pure.} = object
     cbStructure*: DWORD
@@ -12162,11 +11706,10 @@ type
     dwOptDataSize*: DWORD
 
   LPNETCONNECTINFOSTRUCT* = ptr NETCONNECTINFOSTRUCT
-  TNETCONNECTINFOSTRUCT* = NETCONNECTINFOSTRUCT
   PNETCONNECTINFOSTRUCT* = ptr NETCONNECTINFOSTRUCT
   ENUMMETAFILEPROC* = proc (para1: HDC, para2: HANDLETABLE, para3: METARECORD,
                             para4: int32, para5: LPARAM): int32{.stdcall.}
-  ENHMETAFILEPROC* = proc (para1: HDC, para2: HANDLETABLE, para3: TENHMETARECORD,
+  ENHMETAFILEPROC* = proc (para1: HDC, para2: HANDLETABLE, para3: ENHMETARECORD,
                            para4: int32, para5: LPARAM): int32{.stdcall.}
   ENUMFONTSPROC* = proc (para1: LPLOGFONT, para2: LPTEXTMETRIC, para3: DWORD,
                          para4: LPARAM): int32{.stdcall.}
@@ -12181,7 +11724,6 @@ type
     x*: float32
     y*: float32
 
-  TPOINTFLOAT* = POINTFLOAT
   PPOINTFLOAT* = ptr POINTFLOAT
   GLYPHMETRICSFLOAT* {.final, pure.} = object
     gmfBlackBoxX*: float32
@@ -12191,7 +11733,6 @@ type
     gmfCellIncY*: float32
 
   LPGLYPHMETRICSFLOAT* = ptr GLYPHMETRICSFLOAT
-  TGLYPHMETRICSFLOAT* = GLYPHMETRICSFLOAT
   PGLYPHMETRICSFLOAT* = ptr GLYPHMETRICSFLOAT
   LAYERPLANEDESCRIPTOR* {.final, pure.} = object
     nSize*: int16
@@ -12220,7 +11761,6 @@ type
     crTransparent*: COLORREF
 
   LPLAYERPLANEDESCRIPTOR* = ptr LAYERPLANEDESCRIPTOR
-  TLAYERPLANEDESCRIPTOR* = LAYERPLANEDESCRIPTOR
   PLAYERPLANEDESCRIPTOR* = ptr LAYERPLANEDESCRIPTOR
   PIXELFORMATDESCRIPTOR* {.final, pure.} = object
     nSize*: int16
@@ -12251,7 +11791,6 @@ type
     dwDamageMask*: DWORD
 
   LPPIXELFORMATDESCRIPTOR* = ptr PIXELFORMATDESCRIPTOR
-  TPIXELFORMATDESCRIPTOR* = PIXELFORMATDESCRIPTOR
   PPIXELFORMATDESCRIPTOR* = ptr PIXELFORMATDESCRIPTOR
   USER_INFO_2* {.final, pure.} = object
     usri2_name*: LPWSTR
@@ -12281,13 +11820,11 @@ type
 
   PUSER_INFO_2* = ptr USER_INFO_2
   LPUSER_INFO_2* = ptr USER_INFO_2
-  TUSERINFO2* = USER_INFO_2
   USER_INFO_0* {.final, pure.} = object
     usri0_name*: LPWSTR
 
   PUSER_INFO_0* = ptr USER_INFO_0
   LPUSER_INFO_0* = ptr USER_INFO_0
-  TUSERINFO0* = USER_INFO_0
   USER_INFO_3* {.final, pure.} = object
     usri3_name*: LPWSTR
     usri3_password*: LPWSTR
@@ -12321,7 +11858,6 @@ type
 
   PUSER_INFO_3* = ptr USER_INFO_3
   LPUSER_INFO_3* = ptr USER_INFO_3
-  TUSERINFO3* = USER_INFO_3
   GROUP_INFO_2* {.final, pure.} = object
     grpi2_name*: LPWSTR
     grpi2_comment*: LPWSTR
@@ -12329,13 +11865,11 @@ type
     grpi2_attributes*: DWORD
 
   PGROUP_INFO_2* = ptr GROUP_INFO_2
-  TGROUPINFO2* = GROUP_INFO_2
   LOCALGROUP_INFO_0* {.final, pure.} = object
     lgrpi0_name*: LPWSTR
 
   PLOCALGROUP_INFO_0* = ptr LOCALGROUP_INFO_0
   LPLOCALGROUP_INFO_0* = ptr LOCALGROUP_INFO_0
-  TLOCALGROUPINFO0* = LOCALGROUP_INFO_0
   IMAGE_DOS_HEADER* {.final, pure.} = object
     e_magic*: int16
     e_cblp*: int16
@@ -12358,7 +11892,6 @@ type
     e_lfanew*: LONG
 
   PIMAGE_DOS_HEADER* = ptr IMAGE_DOS_HEADER
-  TIMAGEDOSHEADER* = IMAGE_DOS_HEADER
   NOTIFYICONDATAA* {.final, pure.} = object
     cbSize*: DWORD
     Wnd*: HWND
@@ -12378,15 +11911,22 @@ type
     hIcon*: HICON
     szTip*: array[0..63, int16]
 
-  TNotifyIconDataA* = NOTIFYICONDATAA
-  TNotifyIconDataW* = NOTIFYICONDATAW
-  TNotifyIconData* = TNotifyIconDataA
-  PNotifyIconDataA* = ptr TNotifyIconDataA
-  PNotifyIconDataW* = ptr TNotifyIconDataW
+  PNotifyIconDataA* = ptr NotifyIconDataA
+  PNotifyIconDataW* = ptr NotifyIconDataW
   PNotifyIconData* = PNotifyIconDataA
-  TWOHandleArray* = array[0..MAXIMUM_WAIT_OBJECTS - 1, HANDLE]
-  PWOHandleArray* = ptr TWOHandleArray
+  WOHandleArray* = array[0..MAXIMUM_WAIT_OBJECTS - 1, HANDLE]
+  PWOHandleArray* = ptr WOHandleArray
   MMRESULT* = int32
+{.deprecated: [TPRINTERNOTIFYINFO: PRINTER_NOTIFY_INFO, TPRINTERNOTIFYINFODATA: PRINTER_NOTIFY_INFO_DATA, TPRINTERINFO5: PRINTER_INFO_5, TPRINTERINFO4: PRINTER_INFO_4, TPRINTERINFO3: PRINTER_INFO_3, TPRINTERINFO2: PRINTER_INFO_2, TPRINTERINFO1: PRINTER_INFO_1, TPRINTERDEFAULTS: PRINTER_DEFAULTS, TPD: TPRINTDLG, TPREVENTMEDIAREMOVAL: PREVENT_MEDIA_REMOVAL, TPORTINFO2: PORT_INFO_2, TPORTINFO1: PORT_INFO_1, TPOLYTEXT: POLYTEXT, TPERFOBJECTTYPE: PERF_OBJECT_TYPE, TPERFINSTANCEDEFINITION: PERF_INSTANCE_DEFINITION, TPERFDATABLOCK: PERF_DATA_BLOCK, TPERFCOUNTERDEFINITION: PERF_COUNTER_DEFINITION, TPERFCOUNTERBLOCK: PERF_COUNTER_BLOCK, Tparaformat: PARAFORMAT, TPAINTSTRUCT: PAINTSTRUCT, TPSD: TPAGESETUPDLG, TOVERLAPPED: OVERLAPPED, TOUTLINETEXTMETRIC: OUTLINETEXTMETRIC, TTEXTMETRICW: TEXTMETRICW, TTEXTMETRIC: TEXTMETRIC, TOSVERSIONINFOW: OSVERSIONINFOW, TOSVERSIONINFO: OSVERSIONINFO, TOFNOTIFY: OFNOTIFY, TOPENFILENAME_NT4: OPENFILENAME_NT4, TOFSTRUCT: OFSTRUCT, Tnumberfmt: NUMBERFMT, TNSSERVICEINFO: NS_SERVICE_INFO, TSERVICEINFO: SERVICE_INFO, TCLSID: CLSID, TSERVICEADDRESSES: SERVICE_ADDRESSES, TSERVICEADDRESS: SERVICE_ADDRESS, TNONCLIENTMETRICS: NONCLIENTMETRICS, TNMUPDOWN: NM_UPDOWNW, TNMTREEVIEW: NM_TREEVIEW, TTVITEM: TV_ITEM, TNMLISTVIEW: NM_LISTVIEW, TNEWTEXTMETRICEX: NEWTEXTMETRICEX, TNEWTEXTMETRIC: NEWTEXTMETRIC].}
+
+{.deprecated: [TNEWCPLINFO: NEWCPLINFO, TNETRESOURCE: NETRESOURCE, TNETRESOURCEA: NETRESOURCE, TNDDESHAREINFO: NDDESHAREINFO, TNCB: NCB, TNAMEBUFFER: NAME_BUFFER, TMULTIKEYHELP: MULTIKEYHELP, Tmsgfilter: MSGFILTER, TMSGBOXPARAMS: MSGBOXPARAMS, TMSGBOXPARAMSA: MSGBOXPARAMS, TMOUSEKEYS: MOUSEKEYS, TMOUSEHOOKSTRUCT: MOUSEHOOKSTRUCT, TMONMSGSTRUCT: MONMSGSTRUCT, TMONLINKSTRUCT: MONLINKSTRUCT, TMONITORINFO2: MONITOR_INFO_2, TMONITORINFO1: MONITOR_INFO_1, TMONHSZSTRUCT: MONHSZSTRUCT, TMONERRSTRUCT: MONERRSTRUCT, TMONCONVSTRUCT: MONCONVSTRUCT, TMONCBSTRUCT: MONCBSTRUCT, TMODEMSETTINGS: MODEMSETTINGS, TMODEMDEVCAPS: MODEMDEVCAPS, TMINMAXINFO: MINMAXINFO, TMINIMIZEDMETRICS: MINIMIZEDMETRICS, TMETARECORD: METARECORD, TMETAHEADER: METAHEADER, TMETAFILEPICT: METAFILEPICT, TMENUTEMPLATE: MENUTEMPLATE, TMENUITEMTEMPLATEHEADER: MENUITEMTEMPLATEHEADER, TMENUITEMTEMPLATE: MENUITEMTEMPLATE, TMENUITEMINFOA: MENUITEMINFO, TMENUITEMINFO: MENUITEMINFO, TMENUINFO: MENUINFO, TMENUEXTEMPLATEITEM: MENUEX_TEMPLATE_ITEM, TMENUXTEMPLATEHEADER: MENUEX_TEMPLATE_HEADER, TMEMORYSTATUS: MEMORYSTATUS, TMEMORYBASICINFORMATION: MEMORY_BASIC_INFORMATION, TMEASUREITEMSTRUCT: MEASUREITEMSTRUCT, TMDICREATESTRUCT: MDICREATESTRUCT, TMAT2: MAT2, TLVKEYDOWN: LV_KEYDOWN, TLVHITTESTINFO: LV_HITTESTINFO, TLVFINDINFO: LV_FINDINFO, TLVDISPINFO: LV_DISPINFO, TLVITEM: LV_ITEM, TLVCOLUMN: LV_COLUMN, TLUIDANDATTRIBUTESARRAY: LUID_AND_ATTRIBUTES_ARRAY, TLUIDANDATTRIBUTES: LUID_AND_ATTRIBUTES, TLUID: LUID, TFXPT16DOT16: FXPT16DOT16, TLOCALGROUPMEMBERSINFO3: LOCALGROUP_MEMBERS_INFO_3, TLOCALGROUPMEMBERSINFO0: LOCALGROUP_MEMBERS_INFO_0, TLOCALESIGNATURE: LOCALESIGNATURE, TGUID: GUID, TOPENFILENAME: OPENFILENAME].}
+
+{.deprecated: [TTOGGLEKEYS: TOGGLEKEYS, TTIMEZONEINFORMATION: TIME_ZONE_INFORMATION, Ttextrange: TEXTRANGE, TTCKEYDOWN: TC_KEYDOWN, TTCITEMHEADER: TC_ITEMHEADER, TTCITEM: TC_ITEM, TTCHITTESTINFO: TC_HITTESTINFO, TTBSAVEPARAMS: TBSAVEPARAMS, TTBNOTIFY: TBNOTIFY, TTBBUTTON: TBBUTTON, TTAPEWRITEMARKS: TAPE_WRITE_MARKS, TTAPESETPOSITION: TAPE_SET_POSITION, TTAPESETMEDIAPARAMETERS: TAPE_SET_MEDIA_PARAMETERS, TTAPESETDRIVEPARAMETERS: TAPE_SET_DRIVE_PARAMETERS, TTAPEPREPARE: TAPE_PREPARE, TTAPEGETPOSITION: TAPE_GET_POSITION, TTAPEGETMEDIAPARAMETERS: TAPE_GET_MEDIA_PARAMETERS, TTAPEGETDRIVEPARAMETERS: TAPE_GET_DRIVE_PARAMETERS, TTAPEERASE: TAPE_ERASE, TSYSTEMPOWERSTATUS: SYSTEM_POWER_STATUS, TSYSTEMINFO: SYSTEM_INFO, TSYSTEMAUDITACE: SYSTEM_AUDIT_ACE, TSTYLESTRUCT: STYLESTRUCT, TSTYLEBUF: STYLEBUF, TSTRRET: STRRET, TSTICKYKEYS: STICKYKEYS, TSTARTUPINFO: STARTUPINFO, TSOUNDSENTRY: SOUNDSENTRY, TSINGLELISTENTRY: SINGLE_LIST_ENTRY, TSIDANDATTRIBUTESARRAY: SID_AND_ATTRIBUTES_ARRAY, TSIDANDATTRIBUTES: SID_AND_ATTRIBUTES, TSHNAMEMAPPING: SHNAMEMAPPING, TSHGDN: SHGNO, TSHFILEOPSTRUCT: SHFILEOPSTRUCT, TFILEOPFLAGS: FILEOP_FLAGS, TSHFILEINFO: SHFILEINFO, TSHCONTF: SHCONTF, TSETPARTITIONINFORMATION: SET_PARTITION_INFORMATION, TSESSIONHEADER: SESSION_HEADER].}
+
+{.deprecated: [TSESSIONBUFFER: SESSION_BUFFER, TSERVICETYPEINFOABS: SERVICE_TYPE_INFO_ABS, TSERVICETYPEVALUEABS: SERVICE_TYPE_VALUE_ABS, TSERVICETABLEENTRY: SERVICE_TABLE_ENTRY, TSERIALKEYS: SERIALKEYS, Tselchange: SELCHANGE, TSECURITYINFORMATION: SECURITY_INFORMATION, TSECURITYATTRIBUTES: SECURITY_ATTRIBUTES, TSCROLLINFO: SCROLLINFO, TRGNDATA: RGNDATA, TRGNDATAHEADER: RGNDATAHEADER, Treqresize: REQRESIZE, Trepastespecial: REPASTESPECIAL, TREMOTENAMEINFO: REMOTE_NAME_INFO, TREASSIGNBLOCKS: REASSIGN_BLOCKS, TRASTERIZERSTATUS: RASTERIZER_STATUS, TRASPPPNBF: RASPPPNBF, TRASPPPIPX: RASPPPIPX, TRASPPPIP: RASPPPIP, TRASENTRYNAME: RASENTRYNAME, TRASDIALPARAMS: RASDIALPARAMS, TRASDIALEXTENSIONS: RASDIALEXTENSIONS, TRASCONNSTATUS: RASCONNSTATUS, TRASCONN: RASCONN, TRASAMB: RASAMB, Tpunctuation: PUNCTUATION, TPSHNOTIFY: PSHNOTIFY, TPROVIDORINFO1: PROVIDOR_INFO_1, TPROTOCOLINFO: PROTOCOL_INFO, TFNADDPROPSHEETPAGES: LPFNADDPROPSHEETPAGES, TFNADDPROPSHEETPAGE: LPFNADDPROPSHEETPAGE, TPROPSHEETHEADER: PROPSHEETHEADER, TPROPSHEETPAGE: PROPSHEETPAGE, TFNPSPCALLBACK: LPFNPSPCALLBACK, TPROCESSINFORMATION: PROCESS_INFORMATION, TPROCESSHEAPENTRY: PROCESS_HEAPENTRY, TPRIVILEGESET: PRIVILEGE_SET, TPRINTPROCESSORINFO1: PRINTPROCESSOR_INFO_1, TPRINTERNOTIFYOPTIONS: PRINTER_NOTIFY_OPTIONS, TPRINTERNOTIFYOPTIONSTYPE: PRINTER_NOTIFY_OPTIONS_TYPE].}
+
+{.deprecated: [TNotifyIconDataA: NOTIFYICONDATAA, TNotifyIconDataW: NOTIFYICONDATAW, TNotifyIconData: NotifyIconDataA, TIMAGEDOSHEADER: IMAGE_DOS_HEADER, TLOCALGROUPINFO0: LOCALGROUP_INFO_0, TGROUPINFO2: GROUP_INFO_2, TUSERINFO3: USER_INFO_3, TUSERINFO0: USER_INFO_0, TUSERINFO2: USER_INFO_2, TPIXELFORMATDESCRIPTOR: PIXELFORMATDESCRIPTOR, TLAYERPLANEDESCRIPTOR: LAYERPLANEDESCRIPTOR, TGLYPHMETRICSFLOAT: GLYPHMETRICSFLOAT, TPOINTFLOAT: POINTFLOAT, TNETCONNECTINFOSTRUCT: NETCONNECTINFOSTRUCT, TNETINFOSTRUCT: NETINFOSTRUCT, TDISCDLGSTRUCT: DISCDLGSTRUCT, TDISCDLGSTRUCTA: DISCDLGSTRUCT, TCONNECTDLGSTRUCT: CONNECTDLGSTRUCT, TWNDCLASSEXW: WNDCLASSEXW, TWNDCLASSEX: WNDCLASSEX, TWNDCLASSEXA: WNDCLASSEX, TWNDCLASSW: WNDCLASSW, TWNDCLASS: WNDCLASS, TWNDCLASSA: WNDCLASS, TWINDOWPLACEMENT: WINDOWPLACEMENT, TWIN32STREAMID: WIN32_STREAM_ID, TWIN32FINDDATAW: WIN32_FIND_DATAW, TWIN32FINDDATAA: WIN32_FIND_DATA, TWIN32FINDDATA: WIN32_FIND_DATA, TVSFIXEDFILEINFO: VS_FIXEDFILEINFO, TVERIFYINFORMATION: VERIFY_INFORMATION, Tvalue_ent: VALENT, TVALENT: VALENT, TUSEROBJECTFLAGS: USEROBJECTFLAGS, TUNIVERSALNAMEINFO: UNIVERSAL_NAME_INFO, TUDACCEL: UDACCEL, TTVSORTCB: TV_SORTCB, TTVKEYDOWN: TV_KEYDOWN, TTVINSERTSTRUCT: TV_INSERTSTRUCT, TTVHITTESTINFO: TV_HITTESTINFO, TTVDISPINFO: TV_DISPINFO, TTTPOLYGONHEADER: TTPOLYGONHEADER, TTTPOLYCURVE: TTPOLYCURVE, TTTHITTESTINFO: TTHITTESTINFO, TTRANSMITFILEBUFFERS: TRANSMIT_FILE_BUFFERS, TTPMPARAMS: TPMPARAMS, TTOOLTIPTEXT: TOOLTIPTEXT, TTOOLINFO: TOOLINFO, TTOKENCONTROL: TOKEN_CONTROL, TWOHandleArray: WOHandleArray].}
+
 
 type
   PWaveFormatEx* = ptr TWaveFormatEx
@@ -13643,13 +13183,13 @@ type
   TWMNCHitTest* {.final, pure.} = object
     Msg*: WINUINT
     Unused*: int32
-    Pos*: TSmallPoint
+    Pos*: SmallPoint
     Result*: LRESULT
 
   TWMMouse* {.final, pure.} = object
     Msg*: WINUINT
     Keys*: int32
-    Pos*: TSmallPoint
+    Pos*: SmallPoint
     Result*: LRESULT
 
   TWMLButtonDblClk* = TWMMouse
@@ -13662,7 +13202,7 @@ type
     Msg*: WINUINT
     Keys*: int16
     WheelDelta*: int16
-    Pos*: TSmallPoint
+    Pos*: SmallPoint
     Result*: LRESULT
 
   TWMNCHitMessage* {.final, pure.} = object
@@ -13718,7 +13258,7 @@ type
   TWMContextMenu* {.final, pure.} = object
     Msg*: WINUINT
     hWnd*: HWND
-    Pos*: TSmallPoint
+    Pos*: SmallPoint
     Result*: LRESULT
 
   TWMNCCalcSize* {.final, pure.} = object
@@ -13776,7 +13316,7 @@ type
   TWMMove* {.final, pure.} = object
     Msg*: WINUINT
     Unused*: int
-    Pos*: TSmallPoint
+    Pos*: SmallPoint
     Result*: LRESULT
 
   TWMWindowPosMsg* {.final, pure.} = object
@@ -13915,7 +13455,7 @@ type
   TWMSizeClipboard* {.final, pure.} = object
     Msg*: WINUINT
     Viewer*: HWND
-    RC*: THandle
+    RC*: Handle
     Result*: LRESULT
 
   TWMSpoolerStatus* {.final, pure.} = object
@@ -13950,7 +13490,7 @@ type
   TWMTimer* {.final, pure.} = object
     Msg*: WINUINT
     TimerID*: LPARAM
-    TimerProc*: TFarProc
+    TimerProc*: FarProc
     Result*: LRESULT
 
   TWMUndo* = TWMNoParams
@@ -13970,7 +13510,7 @@ type
 
   TWMDropFiles* {.final, pure.} = object
     Msg*: WINUINT
-    Drop*: THANDLE
+    Drop*: HANDLE
     Unused*: LPARAM
     Result*: LRESULT
 
@@ -18673,7 +18213,7 @@ proc ExitProcess*(uExitCode: WINUINT){.stdcall, dynlib: "kernel32",
                                     importc: "ExitProcess".}
 proc TerminateProcess*(hProcess: HANDLE, uExitCode: WINUINT): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "TerminateProcess".}
-proc SetProcessAffinityMask*(hProcess: THandle, dwProcessAffinityMask: DWORD): WINBOOL{.
+proc SetProcessAffinityMask*(hProcess: Handle, dwProcessAffinityMask: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetProcessAffinityMask".}
 proc GetExitCodeProcess*(hProcess: HANDLE, lpExitCode: LPDWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetExitCodeProcess".}
@@ -20215,7 +19755,7 @@ proc GetWinMetaFileBits*(para1: HENHMETAFILE, para2: WINUINT, para3: LPBYTE,
 proc PlayEnhMetaFile*(para1: HDC, para2: HENHMETAFILE, para3: RECT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PlayEnhMetaFile".}
 proc PlayEnhMetaFileRecord*(para1: HDC, para2: LPHANDLETABLE,
-                            para3: var TENHMETARECORD, para4: WINUINT): WINBOOL{.
+                            para3: var ENHMETARECORD, para4: WINUINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PlayEnhMetaFileRecord".}
 proc SetEnhMetaFileBits*(para1: WINUINT, para2: var int8): HENHMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetEnhMetaFileBits".}
@@ -20255,7 +19795,7 @@ proc StartPage*(para1: HDC): int32{.stdcall, dynlib: "gdi32",
                                     importc: "StartPage".}
 proc EndPage*(para1: HDC): int32{.stdcall, dynlib: "gdi32", importc: "EndPage".}
 proc AbortDoc*(para1: HDC): int32{.stdcall, dynlib: "gdi32", importc: "AbortDoc".}
-proc SetAbortProc*(para1: HDC, para2: TABORTPROC): int32{.stdcall,
+proc SetAbortProc*(para1: HDC, para2: ABORTPROC): int32{.stdcall,
     dynlib: "gdi32", importc: "SetAbortProc".}
 proc ArcTo*(para1: HDC, para2: int32, para3: int32, para4: int32, para5: int32,
             para6: int32, para7: int32, para8: int32, para9: int32): WINBOOL{.
@@ -20732,7 +20272,7 @@ proc wglDescribeLayerPlane*(para1: HDC, para2: int32, para3: int32, para4: WINUI
 proc wglGetLayerPaletteEntries*(para1: HDC, para2: int32, para3: int32,
                                 para4: int32, para5: var COLORREF): int32{.
     stdcall, dynlib: "opengl32", importc: "wglGetLayerPaletteEntries".}
-proc wglGetProcAddress*(para1: LPCSTR): TProc{.stdcall, dynlib: "opengl32",
+proc wglGetProcAddress*(para1: LPCSTR): Proc{.stdcall, dynlib: "opengl32",
     importc: "wglGetProcAddress".}
 proc wglRealizeLayerPalette*(para1: HDC, para2: int32, para3: WINBOOL): WINBOOL{.
     stdcall, dynlib: "opengl32", importc: "wglRealizeLayerPalette".}
@@ -20923,7 +20463,7 @@ proc SetLayeredWindowAttributes*(hwnd: HWND, crKey: COLORREF, bAlpha: int8,
     dynlib: "user32", importc: "SetLayeredWindowAttributes".}
 type
   PIID* = PGUID
-  TIID* = TGUID
+  TIID* = GUID
   TFNDlgProc* = FARPROC
   TFNThreadStartRoutine* = FARPROC
   TFNTimerAPCRoutine* = FARPROC
@@ -20956,7 +20496,7 @@ type
   TMaxLogPalette* {.final, pure.} = object
     palVersion*: int16
     palNumEntries*: int16
-    palPalEntry*: array[int8, TPaletteEntry]
+    palPalEntry*: array[int8, PaletteEntry]
 
   PMaxLogPalette* = ptr TMaxLogPalette
   POSVersionInfoA* = POSVERSIONINFO
@@ -21082,60 +20622,60 @@ proc SetCriticalSectionSpinCount*(CriticalSection: var TRTLCriticalSection,
 proc TryEnterCriticalSection*(CriticalSection: var TRTLCriticalSection): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "TryEnterCriticalSection".}
 proc ControlService*(hService: SC_HANDLE, dwControl: DWORD,
-                     ServiceStatus: var TSERVICESTATUS): WINBOOL{.stdcall,
+                     ServiceStatus: var SERVICESTATUS): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "ControlService".}
 proc QueryServiceStatus*(hService: SC_HANDLE,
-                         lpServiceStatus: var TSERVICESTATUS): WINBOOL{.stdcall,
+                         lpServiceStatus: var SERVICESTATUS): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "QueryServiceStatus".}
 proc SetServiceStatus*(hServiceStatus: SERVICE_STATUS_HANDLE,
-                       ServiceStatus: TSERVICESTATUS): WINBOOL{.stdcall,
+                       ServiceStatus: SERVICESTATUS): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "SetServiceStatus".}
-proc AdjustTokenPrivileges*(TokenHandle: THandle, DisableAllPrivileges: WINBOOL,
+proc AdjustTokenPrivileges*(TokenHandle: Handle, DisableAllPrivileges: WINBOOL,
                             NewState: TTokenPrivileges, BufferLength: DWORD,
                             PreviousState: var TTokenPrivileges,
                             ReturnLength: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "AdjustTokenPrivileges".}
-proc AdjustWindowRect*(lpRect: var TRect, dwStyle: DWORD, bMenu: WINBOOL): WINBOOL{.
+proc AdjustWindowRect*(lpRect: var Rect, dwStyle: DWORD, bMenu: WINBOOL): WINBOOL{.
     stdcall, dynlib: "user32", importc: "AdjustWindowRect".}
-proc AdjustWindowRectEx*(lpRect: var TRect, dwStyle: DWORD, bMenu: WINBOOL,
+proc AdjustWindowRectEx*(lpRect: var Rect, dwStyle: DWORD, bMenu: WINBOOL,
                          dwExStyle: DWORD): WINBOOL{.stdcall, dynlib: "user32",
     importc: "AdjustWindowRectEx".}
-proc AllocateAndInitializeSid*(pIdentifierAuthority: TSIDIdentifierAuthority,
+proc AllocateAndInitializeSid*(pIdentifierAuthority: SIDIdentifierAuthority,
                                nSubAuthorityCount: int8,
                                nSubAuthority0, nSubAuthority1: DWORD,
     nSubAuthority2, nSubAuthority3, nSubAuthority4: DWORD, nSubAuthority5,
     nSubAuthority6, nSubAuthority7: DWORD, pSid: var pointer): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "AllocateAndInitializeSid".}
-proc AllocateLocallyUniqueId*(Luid: var TLargeInteger): WINBOOL{.stdcall,
+proc AllocateLocallyUniqueId*(Luid: var LargeInteger): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "AllocateLocallyUniqueId".}
-proc BackupRead*(hFile: THandle, lpBuffer: PByte, nNumberOfBytesToRead: DWORD,
+proc BackupRead*(hFile: Handle, lpBuffer: PByte, nNumberOfBytesToRead: DWORD,
                  lpNumberOfBytesRead: var DWORD, bAbort: WINBOOL,
                  bProcessSecurity: WINBOOL, lpContext: var pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "BackupRead".}
-proc BackupSeek*(hFile: THandle, dwLowBytesToSeek, dwHighBytesToSeek: DWORD,
+proc BackupSeek*(hFile: Handle, dwLowBytesToSeek, dwHighBytesToSeek: DWORD,
                  lpdwLowByteSeeked, lpdwHighByteSeeked: var DWORD,
                  lpContext: pointer): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "BackupSeek".}
-proc BackupWrite*(hFile: THandle, lpBuffer: PByte, nNumberOfBytesToWrite: DWORD,
+proc BackupWrite*(hFile: Handle, lpBuffer: PByte, nNumberOfBytesToWrite: DWORD,
                   lpNumberOfBytesWritten: var DWORD,
                   bAbort, bProcessSecurity: WINBOOL, lpContext: var pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "BackupWrite".}
-proc BeginPaint*(wnd: HWND, lpPaint: var TPaintStruct): HDC{.stdcall,
+proc BeginPaint*(wnd: HWND, lpPaint: var PaintStruct): HDC{.stdcall,
     dynlib: "user32", importc: "BeginPaint".}
-proc BuildCommDCB*(lpDef: cstring, lpDCB: var TDCB): WINBOOL{.stdcall,
+proc BuildCommDCB*(lpDef: cstring, lpDCB: var DCB): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "BuildCommDCBA".}
-proc BuildCommDCBA*(lpDef: LPCSTR, lpDCB: var TDCB): WINBOOL{.stdcall,
+proc BuildCommDCBA*(lpDef: LPCSTR, lpDCB: var DCB): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "BuildCommDCBA".}
-proc BuildCommDCBAndTimeouts*(lpDef: cstring, lpDCB: var TDCB,
-                              lpCommTimeouts: var TCommTimeouts): WINBOOL{.
+proc BuildCommDCBAndTimeouts*(lpDef: cstring, lpDCB: var DCB,
+                              lpCommTimeouts: var CommTimeouts): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "BuildCommDCBAndTimeoutsA".}
-proc BuildCommDCBAndTimeoutsA*(lpDef: LPCSTR, lpDCB: var TDCB,
-                               lpCommTimeouts: var TCommTimeouts): WINBOOL{.
+proc BuildCommDCBAndTimeoutsA*(lpDef: LPCSTR, lpDCB: var DCB,
+                               lpCommTimeouts: var CommTimeouts): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "BuildCommDCBAndTimeoutsA".}
-proc BuildCommDCBAndTimeoutsW*(lpDef: LPWSTR, lpDCB: var TDCB,
-                               lpCommTimeouts: var TCommTimeouts): WINBOOL{.
+proc BuildCommDCBAndTimeoutsW*(lpDef: LPWSTR, lpDCB: var DCB,
+                               lpCommTimeouts: var CommTimeouts): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "BuildCommDCBAndTimeoutsW".}
-proc BuildCommDCBW*(lpDef: LPWSTR, lpDCB: var TDCB): WINBOOL{.stdcall,
+proc BuildCommDCBW*(lpDef: LPWSTR, lpDCB: var DCB): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "BuildCommDCBW".}
 proc CallMsgFilter*(lpMsg: var TMsg, nCode: int): WINBOOL{.stdcall,
     dynlib: "user32", importc: "CallMsgFilterA".}
@@ -21158,45 +20698,45 @@ proc CallNamedPipeW*(lpNamedPipeName: LPWSTR, lpInBuffer: pointer,
                      nOutBufferSize: DWORD, lpBytesRead: var DWORD,
                      nTimeOut: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "CallNamedPipeW".}
-proc CoRegisterClassObject*(para1: TCLSID, para2: pointer, para3: DWORD,
+proc CoRegisterClassObject*(para1: CLSID, para2: pointer, para3: DWORD,
                             para4: DWORD, out_para5: DWORD): HRESULT{.stdcall,
     dynlib: "ole32.dll", importc: "CoRegisterClassObject".}
-proc ChangeDisplaySettings*(lpDevMode: var TDeviceMode, dwFlags: DWORD): int32{.
+proc ChangeDisplaySettings*(lpDevMode: var DevMode, dwFlags: DWORD): int32{.
     stdcall, dynlib: "user32", importc: "ChangeDisplaySettingsA".}
-proc ChangeDisplaySettingsA*(lpDevMode: var TDeviceModeA, dwFlags: DWORD): int32{.
+proc ChangeDisplaySettingsA*(lpDevMode: var DevMode, dwFlags: DWORD): int32{.
     stdcall, dynlib: "user32", importc: "ChangeDisplaySettingsA".}
 proc ChangeDisplaySettingsEx*(lpszDeviceName: cstring,
-                              lpDevMode: var TDeviceMode, wnd: HWND,
+                              lpDevMode: var DevMode, wnd: HWND,
                               dwFlags: DWORD, lParam: pointer): int32{.stdcall,
     dynlib: "user32", importc: "ChangeDisplaySettingsExA".}
 proc ChangeDisplaySettingsExA*(lpszDeviceName: LPCSTR,
-                               lpDevMode: var TDeviceModeA, wnd: HWND,
+                               lpDevMode: var DevMode, wnd: HWND,
                                dwFlags: DWORD, lParam: pointer): int32{.stdcall,
     dynlib: "user32", importc: "ChangeDisplaySettingsExA".}
 proc ChangeDisplaySettingsExW*(lpszDeviceName: LPWSTR,
-                               lpDevMode: var TDeviceModeW, wnd: HWND,
+                               lpDevMode: var DevModeW, wnd: HWND,
                                dwFlags: DWORD, lParam: pointer): int32{.stdcall,
     dynlib: "user32", importc: "ChangeDisplaySettingsExW".}
-proc ChangeDisplaySettingsW*(lpDevMode: var TDeviceModeW, dwFlags: DWORD): int32{.
+proc ChangeDisplaySettingsW*(lpDevMode: var DevModeW, dwFlags: DWORD): int32{.
     stdcall, dynlib: "user32", importc: "ChangeDisplaySettingsW".}
   #function CheckColorsInGamut(DC: HDC; var RGBQuads, Results; Count: DWORD): WINBOOL; stdcall; external 'gdi32' name 'CheckColorsInGamut';
 proc ChoosePixelFormat*(para1: HDC, para2: var PIXELFORMATDESCRIPTOR): int32{.
     stdcall, dynlib: "gdi32", importc: "ChoosePixelFormat".}
-proc ClearCommError*(hFile: THandle, lpErrors: var DWORD, lpStat: PComStat): WINBOOL{.
+proc ClearCommError*(hFile: Handle, lpErrors: var DWORD, lpStat: PComStat): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ClearCommError".}
-proc ClientToScreen*(wnd: HWND, lpPoint: var TPoint): WINBOOL{.stdcall,
+proc ClientToScreen*(wnd: HWND, lpPoint: var Point): WINBOOL{.stdcall,
     dynlib: "user32", importc: "ClientToScreen".}
 proc ClipCursor*(lpRect: var RECT): WINBOOL{.stdcall, dynlib: "user32",
     importc: "ClipCursor".}
-  #function CombineTransform(var p1: TXForm; const p2, p3: TXForm): WINBOOL; stdcall; external 'gdi32' name 'CombineTransform';
-proc CommConfigDialog*(lpszName: cstring, wnd: HWND, lpCC: var TCommConfig): WINBOOL{.
+  #function CombineTransform(var p1: XForm; const p2, p3: XForm): WINBOOL; stdcall; external 'gdi32' name 'CombineTransform';
+proc CommConfigDialog*(lpszName: cstring, wnd: HWND, lpCC: var CommConfig): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CommConfigDialogA".}
-proc CommConfigDialogA*(lpszName: LPCSTR, wnd: HWND, lpCC: var TCommConfig): WINBOOL{.
+proc CommConfigDialogA*(lpszName: LPCSTR, wnd: HWND, lpCC: var CommConfig): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CommConfigDialogA".}
-proc CommConfigDialogW*(lpszName: LPWSTR, wnd: HWND, lpCC: var TCommConfig): WINBOOL{.
+proc CommConfigDialogW*(lpszName: LPWSTR, wnd: HWND, lpCC: var CommConfig): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CommConfigDialogW".}
-  #function CompareFileTime(const lpFileTime1, lpFileTime2: TFileTime): Longint; stdcall; external 'kernel32' name 'CompareFileTime';
-  #function ConvertToAutoInheritPrivateObjectSecurity(ParentDescriptor, CurrentSecurityDescriptor: PSecurityDescriptor; var NewDescriptor: PSecurityDescriptor; ObjectType: PGUID; IsDirectoryObject: WINBOOL; const GenericMapping: TGenericMapping): WINBOOL;
+  #function CompareFileTime(const lpFileTime1, lpFileTime2: FileTime): Longint; stdcall; external 'kernel32' name 'CompareFileTime';
+  #function ConvertToAutoInheritPrivateObjectSecurity(ParentDescriptor, CurrentSecurityDescriptor: PSecurityDescriptor; var NewDescriptor: PSecurityDescriptor; ObjectType: PGUID; IsDirectoryObject: WINBOOL; const GenericMapping: GenericMapping): WINBOOL;
   #  stdcall; external 'advapi32' name 'ConvertToAutoInheritPrivateObjectSecurity';
 proc CopyAcceleratorTable*(hAccelSrc: HACCEL, lpAccelDst: pointer,
                            cAccelEntries: int): int{.stdcall, dynlib: "user32",
@@ -21207,7 +20747,7 @@ proc CopyAcceleratorTableA*(hAccelSrc: HACCEL, lpAccelDst: pointer,
 proc CopyAcceleratorTableW*(hAccelSrc: HACCEL, lpAccelDst: pointer,
                             cAccelEntries: int): int{.stdcall, dynlib: "user32",
     importc: "CopyAcceleratorTableW".}
-proc CopyRect*(lprcDst: var TRect, lprcSrc: TRect): WINBOOL{.stdcall,
+proc CopyRect*(lprcDst: var Rect, lprcSrc: Rect): WINBOOL{.stdcall,
     dynlib: "user32", importc: "CopyRect".}
 proc CreateAcceleratorTable*(Accel: pointer, Count: int): HACCEL{.stdcall,
     dynlib: "user32", importc: "CreateAcceleratorTableA".}
@@ -21215,105 +20755,105 @@ proc CreateAcceleratorTableA*(Accel: pointer, Count: int): HACCEL{.stdcall,
     dynlib: "user32", importc: "CreateAcceleratorTableA".}
 proc CreateAcceleratorTableW*(Accel: pointer, Count: int): HACCEL{.stdcall,
     dynlib: "user32", importc: "CreateAcceleratorTableW".}
-  #function CreateBitmapIndirect(const p1: TBitmap): HBITMAP; stdcall; external 'gdi32' name 'CreateBitmapIndirect';
-  #function CreateBrushIndirect(const p1: TLogBrush): HBRUSH; stdcall; external 'gdi32' name 'CreateBrushIndirect';
-proc CreateColorSpace*(ColorSpace: var TLogColorSpace): HCOLORSPACE{.stdcall,
+  #function CreateBitmapIndirect(const p1: Bitmap): HBITMAP; stdcall; external 'gdi32' name 'CreateBitmapIndirect';
+  #function CreateBrushIndirect(const p1: LogBrush): HBRUSH; stdcall; external 'gdi32' name 'CreateBrushIndirect';
+proc CreateColorSpace*(ColorSpace: var LogColorSpace): HCOLORSPACE{.stdcall,
     dynlib: "gdi32", importc: "CreateColorSpaceA".}
-proc CreateColorSpaceA*(ColorSpace: var TLogColorSpaceA): HCOLORSPACE{.stdcall,
+proc CreateColorSpaceA*(ColorSpace: var LogColorSpace): HCOLORSPACE{.stdcall,
     dynlib: "gdi32", importc: "CreateColorSpaceA".}
-  #function CreateColorSpaceW(var ColorSpace: TLogColorSpaceW): HCOLORSPACE; stdcall; external 'gdi32' name 'CreateColorSpaceW';
-proc CreateDialogIndirectParam*(hInstance: HINST, lpTemplate: TDlgTemplate,
+  #function CreateColorSpaceW(var ColorSpace: LogColorSpaceW): HCOLORSPACE; stdcall; external 'gdi32' name 'CreateColorSpaceW';
+proc CreateDialogIndirectParam*(hInstance: HINST, lpTemplate: DlgTemplate,
                                 hWndParent: HWND, lpDialogFunc: TFNDlgProc,
                                 dwInitParam: LPARAM): HWND{.stdcall,
     dynlib: "user32", importc: "CreateDialogIndirectParamA".}
-  #function CreateDialogIndirectParamA(hInstance: HINST; const lpTemplate: TDlgTemplate; hWndParent: HWND; lpDialogFunc: TFNDlgProc; dwInitParam: LPARAM): HWND; stdcall; external 'user32' name 'CreateDialogIndirectParamA';
-  #function CreateDialogIndirectParamW(hInstance: HINST; const lpTemplate: TDlgTemplate; hWndParent: HWND; lpDialogFunc: TFNDlgProc; dwInitParam: LPARAM): HWND; stdcall; external 'user32' name 'CreateDialogIndirectParamW';
-  #function CreateDIBitmap(DC: HDC; var InfoHeader: TBitmapInfoHeader; dwUsage: DWORD; InitBits: PChar; var InitInfo: TBitmapInfo; wUsage: WINUINT): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBitmap';
+  #function CreateDialogIndirectParamA(hInstance: HINST; const lpTemplate: DlgTemplate; hWndParent: HWND; lpDialogFunc: TFNDlgProc; dwInitParam: LPARAM): HWND; stdcall; external 'user32' name 'CreateDialogIndirectParamA';
+  #function CreateDialogIndirectParamW(hInstance: HINST; const lpTemplate: DlgTemplate; hWndParent: HWND; lpDialogFunc: TFNDlgProc; dwInitParam: LPARAM): HWND; stdcall; external 'user32' name 'CreateDialogIndirectParamW';
+  #function CreateDIBitmap(DC: HDC; var InfoHeader: BitmapInfoHeader; dwUsage: DWORD; InitBits: PChar; var InitInfo: BitmapInfo; wUsage: WINUINT): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBitmap';
   #function CreateDIBPatternBrushPt(const p1: pointer; p2: WINUINT): HBRUSH; stdcall; external 'gdi32' name 'CreateDIBPatternBrushPt';
-  #function CreateDIBSection(DC: HDC; const p2: TBitmapInfo; p3: WINUINT; var p4: pointer; p5: THandle; p6: DWORD): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBSection';
-  #function CreateEllipticRgnIndirect(const p1: TRect): HRGN; stdcall; external 'gdi32' name 'CreateEllipticRgnIndirect';
-  #function CreateFontIndirect(const p1: TLogFont): HFONT;stdcall; external 'gdi32' name 'CreateFontIndirectA';
-  #function CreateFontIndirectA(const p1: TLogFontA): HFONT; stdcall; external 'gdi32' name 'CreateFontIndirectA';
+  #function CreateDIBSection(DC: HDC; const p2: BitmapInfo; p3: WINUINT; var p4: pointer; p5: Handle; p6: DWORD): HBITMAP; stdcall; external 'gdi32' name 'CreateDIBSection';
+  #function CreateEllipticRgnIndirect(const p1: Rect): HRGN; stdcall; external 'gdi32' name 'CreateEllipticRgnIndirect';
+  #function CreateFontIndirect(const p1: LogFont): HFONT;stdcall; external 'gdi32' name 'CreateFontIndirectA';
+  #function CreateFontIndirectA(const p1: LogFont): HFONT; stdcall; external 'gdi32' name 'CreateFontIndirectA';
   #function CreateFontIndirectEx(const p1: PEnumLogFontExDV): HFONT;stdcall; external 'gdi32' name 'CreateFontIndirectExA';
   #function CreateFontIndirectExA(const p1: PEnumLogFontExDVA): HFONT;stdcall; external 'gdi32' name 'CreateFontIndirectExA';
   #function CreateFontIndirectExW(const p1: PEnumLogFontExDVW): HFONT;stdcall; external 'gdi32' name 'CreateFontIndirectExW';
-  #function CreateFontIndirectW(const p1: TLogFontW): HFONT; stdcall; external 'gdi32' name 'CreateFontIndirectW';
-proc CreateIconIndirect*(piconinfo: var TIconInfo): HICON{.stdcall,
+  #function CreateFontIndirectW(const p1: LogFontW): HFONT; stdcall; external 'gdi32' name 'CreateFontIndirectW';
+proc CreateIconIndirect*(piconinfo: var IconInfo): HICON{.stdcall,
     dynlib: "user32", importc: "CreateIconIndirect".}
-  #function CreatePalette(const LogPalette: TLogPalette): HPalette; stdcall; external 'gdi32' name 'CreatePalette';
-  #function CreatePenIndirect(const LogPen: TLogPen): HPEN; stdcall; external 'gdi32' name 'CreatePenIndirect';
-proc CreatePipe*(hReadPipe, hWritePipe: var THandle,
+  #function CreatePalette(const LogPalette: LogPalette): HPalette; stdcall; external 'gdi32' name 'CreatePalette';
+  #function CreatePenIndirect(const LogPen: LogPen): HPEN; stdcall; external 'gdi32' name 'CreatePenIndirect';
+proc CreatePipe*(hReadPipe, hWritePipe: var Handle,
                  lpPipeAttributes: PSecurityAttributes, nSize: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CreatePipe".}
 proc CreatePolygonRgn*(Points: pointer, Count, FillMode: int): HRGN{.stdcall,
     dynlib: "gdi32", importc: "CreatePolygonRgn".}
 proc CreatePolyPolygonRgn*(pPtStructs: pointer, pIntArray: pointer, p3, p4: int): HRGN{.
     stdcall, dynlib: "gdi32", importc: "CreatePolyPolygonRgn".}
-  #function CreatePrivateObjectSecurity(ParentDescriptor, CreatorDescriptor: PSecurityDescriptor; var NewDescriptor: PSecurityDescriptor; IsDirectoryObject: WINBOOL; Token: THandle; const GenericMapping: TGenericMapping): WINBOOL;
+  #function CreatePrivateObjectSecurity(ParentDescriptor, CreatorDescriptor: PSecurityDescriptor; var NewDescriptor: PSecurityDescriptor; IsDirectoryObject: WINBOOL; Token: Handle; const GenericMapping: GenericMapping): WINBOOL;
   #  stdcall; external 'advapi32' name 'CreatePrivateObjectSecurity';
-  #function CreatePrivateObjectSecurityEx(ParentDescriptor, CreatorDescriptor: PSecurityDescriptor; var NewDescriptor: PSecurityDescriptor; ObjectType: PGUID; IsContainerObject: WINBOOL; AutoInheritFlags: ULONG; Token: THandle;
-  #  const GenericMapping: TGenericMapping): WINBOOL;stdcall; external 'advapi32' name 'CreatePrivateObjectSecurityEx';
+  #function CreatePrivateObjectSecurityEx(ParentDescriptor, CreatorDescriptor: PSecurityDescriptor; var NewDescriptor: PSecurityDescriptor; ObjectType: PGUID; IsContainerObject: WINBOOL; AutoInheritFlags: ULONG; Token: Handle;
+  #  const GenericMapping: GenericMapping): WINBOOL;stdcall; external 'advapi32' name 'CreatePrivateObjectSecurityEx';
 proc CreateProcess*(lpApplicationName: cstring, lpCommandLine: cstring,
     lpProcessAttributes, lpThreadAttributes: PSecurityAttributes,
                     bInheritHandles: WINBOOL, dwCreationFlags: DWORD,
                     lpEnvironment: pointer, lpCurrentDirectory: cstring,
-                    lpStartupInfo: TStartupInfo,
-                    lpProcessInformation: var TProcessInformation): WINBOOL{.
+                    lpStartupInfo: StartupInfo,
+                    lpProcessInformation: var ProcessInformation): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CreateProcessA".}
 proc CreateProcessA*(lpApplicationName: LPCSTR, lpCommandLine: LPCSTR,
     lpProcessAttributes, lpThreadAttributes: PSecurityAttributes,
                      bInheritHandles: WINBOOL, dwCreationFlags: DWORD,
                      lpEnvironment: pointer, lpCurrentDirectory: LPCSTR,
-                     lpStartupInfo: TStartupInfo,
-                     lpProcessInformation: var TProcessInformation): WINBOOL{.
+                     lpStartupInfo: StartupInfo,
+                     lpProcessInformation: var ProcessInformation): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CreateProcessA".}
-  #function CreateProcessAsUser(hToken: THandle; lpApplicationName: PChar; lpCommandLine: PChar; lpProcessAttributes: PSecurityAttributes; lpThreadAttributes: PSecurityAttributes; bInheritHandles: WINBOOL; dwCreationFlags: DWORD;
-  # lpEnvironment: pointer; lpCurrentDirectory: PChar; const lpStartupInfo: TStartupInfo; var lpProcessInformation: TProcessInformation): WINBOOL;stdcall; external 'advapi32' name 'CreateProcessAsUserA';
-  #function CreateProcessAsUserA(hToken: THandle; lpApplicationName: LPCSTR; lpCommandLine: LPCSTR; lpProcessAttributes: PSecurityAttributes; lpThreadAttributes: PSecurityAttributes; bInheritHandles: WINBOOL; dwCreationFlags: DWORD;
-  #  lpEnvironment: pointer; lpCurrentDirectory: LPCSTR; const lpStartupInfo: TStartupInfo; var lpProcessInformation: TProcessInformation): WINBOOL; stdcall; external 'advapi32' name 'CreateProcessAsUserA';
-  #function CreateProcessAsUserW(hToken: THandle; lpApplicationName: LPWSTR; lpCommandLine: LPWSTR; lpProcessAttributes: PSecurityAttributes; lpThreadAttributes: PSecurityAttributes; bInheritHandles: WINBOOL; dwCreationFlags: DWORD;
-  #  lpEnvironment: pointer; lpCurrentDirectory: LPWSTR; const lpStartupInfo: TStartupInfo; var lpProcessInformation: TProcessInformation): WINBOOL; stdcall; external 'advapi32' name 'CreateProcessAsUserW';
+  #function CreateProcessAsUser(hToken: Handle; lpApplicationName: PChar; lpCommandLine: PChar; lpProcessAttributes: PSecurityAttributes; lpThreadAttributes: PSecurityAttributes; bInheritHandles: WINBOOL; dwCreationFlags: DWORD;
+  # lpEnvironment: pointer; lpCurrentDirectory: PChar; const lpStartupInfo: StartupInfo; var lpProcessInformation: ProcessInformation): WINBOOL;stdcall; external 'advapi32' name 'CreateProcessAsUserA';
+  #function CreateProcessAsUserA(hToken: Handle; lpApplicationName: LPCSTR; lpCommandLine: LPCSTR; lpProcessAttributes: PSecurityAttributes; lpThreadAttributes: PSecurityAttributes; bInheritHandles: WINBOOL; dwCreationFlags: DWORD;
+  #  lpEnvironment: pointer; lpCurrentDirectory: LPCSTR; const lpStartupInfo: StartupInfo; var lpProcessInformation: ProcessInformation): WINBOOL; stdcall; external 'advapi32' name 'CreateProcessAsUserA';
+  #function CreateProcessAsUserW(hToken: Handle; lpApplicationName: LPWSTR; lpCommandLine: LPWSTR; lpProcessAttributes: PSecurityAttributes; lpThreadAttributes: PSecurityAttributes; bInheritHandles: WINBOOL; dwCreationFlags: DWORD;
+  #  lpEnvironment: pointer; lpCurrentDirectory: LPWSTR; const lpStartupInfo: StartupInfo; var lpProcessInformation: ProcessInformation): WINBOOL; stdcall; external 'advapi32' name 'CreateProcessAsUserW';
 proc CreateProcessW*(lpApplicationName: LPWSTR, lpCommandLine: LPWSTR,
     lpProcessAttributes, lpThreadAttributes: PSecurityAttributes,
                      bInheritHandles: WINBOOL, dwCreationFlags: DWORD,
                      lpEnvironment: pointer, lpCurrentDirectory: LPWSTR,
-                     lpStartupInfo: TStartupInfo,
-                     lpProcessInformation: var TProcessInformation): WINBOOL{.
+                     lpStartupInfo: StartupInfo,
+                     lpProcessInformation: var ProcessInformation): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CreateProcessW".}
-  #function CreateRectRgnIndirect(const p1: TRect): HRGN; stdcall; external 'gdi32' name 'CreateRectRgnIndirect';
-proc CreateRemoteThread*(hProcess: THandle, lpThreadAttributes: pointer,
+  #function CreateRectRgnIndirect(const p1: Rect): HRGN; stdcall; external 'gdi32' name 'CreateRectRgnIndirect';
+proc CreateRemoteThread*(hProcess: Handle, lpThreadAttributes: pointer,
                          dwStackSize: DWORD,
                          lpStartAddress: TFNThreadStartRoutine,
                          lpParameter: pointer, dwCreationFlags: DWORD,
-                         lpThreadId: var DWORD): THandle{.stdcall,
+                         lpThreadId: var DWORD): Handle{.stdcall,
     dynlib: "kernel32", importc: "CreateRemoteThread".}
 proc CreateThread*(lpThreadAttributes: pointer, dwStackSize: DWORD,
                    lpStartAddress: TFNThreadStartRoutine, lpParameter: pointer,
-                   dwCreationFlags: DWORD, lpThreadId: var DWORD): THandle{.
+                   dwCreationFlags: DWORD, lpThreadId: var DWORD): Handle{.
     stdcall, dynlib: "kernel32", importc: "CreateThread".}
 proc DdeSetQualityOfService*(hWndClient: HWnd,
-                             pqosNew: TSecurityQualityOfService,
+                             pqosNew: SecurityQualityOfService,
                              pqosPrev: PSecurityQualityOfService): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DdeSetQualityOfService".}
-  #function DeleteAce(var pAcl: TACL; dwAceIndex: DWORD): WINBOOL; stdcall; external 'advapi32' name 'DeleteAce';
+  #function DeleteAce(var pAcl: ACL; dwAceIndex: DWORD): WINBOOL; stdcall; external 'advapi32' name 'DeleteAce';
 proc DescribePixelFormat*(DC: HDC, p2: int, p3: WINUINT,
-                          p4: var TPixelFormatDescriptor): WINBOOL{.stdcall,
+                          p4: var PixelFormatDescriptor): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "DescribePixelFormat".}
   #function DestroyPrivateObjectSecurity(var ObjectDescriptor: PSecurityDescriptor): WINBOOL; stdcall; external 'advapi32' name 'DestroyPrivateObjectSecurity';
-proc DeviceIoControl*(hDevice: THandle, dwIoControlCode: DWORD,
+proc DeviceIoControl*(hDevice: Handle, dwIoControlCode: DWORD,
                       lpInBuffer: pointer, nInBufferSize: DWORD,
                       lpOutBuffer: pointer, nOutBufferSize: DWORD,
                       lpBytesReturned: var DWORD, lpOverlapped: POverlapped): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "DeviceIoControl".}
-proc DialogBoxIndirectParam*(hInstance: HINST, lpDialogTemplate: TDlgTemplate,
+proc DialogBoxIndirectParam*(hInstance: HINST, lpDialogTemplate: DlgTemplate,
                              hWndParent: HWND, lpDialogFunc: TFNDlgProc,
                              dwInitParam: LPARAM): int{.stdcall,
     dynlib: "user32", importc: "DialogBoxIndirectParamA".}
-proc DialogBoxIndirectParamA*(hInstance: HINST, lpDialogTemplate: TDlgTemplate,
+proc DialogBoxIndirectParamA*(hInstance: HINST, lpDialogTemplate: DlgTemplate,
                               hWndParent: HWND, lpDialogFunc: TFNDlgProc,
                               dwInitParam: LPARAM): int{.stdcall,
     dynlib: "user32", importc: "DialogBoxIndirectParamA".}
-proc DialogBoxIndirectParamW*(hInstance: HINST, lpDialogTemplate: TDlgTemplate,
+proc DialogBoxIndirectParamW*(hInstance: HINST, lpDialogTemplate: DlgTemplate,
                               hWndParent: HWND, lpDialogFunc: TFNDlgProc,
                               dwInitParam: LPARAM): int{.stdcall,
     dynlib: "user32", importc: "DialogBoxIndirectParamW".}
@@ -21323,109 +20863,109 @@ proc DispatchMessageA*(lpMsg: TMsg): int32{.stdcall, dynlib: "user32",
     importc: "DispatchMessageA".}
 proc DispatchMessageW*(lpMsg: TMsg): int32{.stdcall, dynlib: "user32",
     importc: "DispatchMessageW".}
-proc DosDateTimeToFileTime*(wFatDate, wFatTime: int16, lpFileTime: var TFileTime): WINBOOL{.
+proc DosDateTimeToFileTime*(wFatDate, wFatTime: int16, lpFileTime: var FileTime): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "DosDateTimeToFileTime".}
 proc DPtoLP*(DC: HDC, Points: pointer, Count: int): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "DPtoLP".}
-  # function DrawAnimatedRects(wnd: HWND; idAni: Integer; const lprcFrom, lprcTo: TRect): WINBOOL; stdcall; external 'user32' name 'DrawAnimatedRects';
-  #function DrawCaption(p1: HWND; p2: HDC; const p3: TRect; p4: WINUINT): WINBOOL; stdcall; external 'user32' name 'DrawCaption';
-proc DrawEdge*(hdc: HDC, qrc: var TRect, edge: WINUINT, grfFlags: WINUINT): WINBOOL{.
+  # function DrawAnimatedRects(wnd: HWND; idAni: Integer; const lprcFrom, lprcTo: Rect): WINBOOL; stdcall; external 'user32' name 'DrawAnimatedRects';
+  #function DrawCaption(p1: HWND; p2: HDC; const p3: Rect; p4: WINUINT): WINBOOL; stdcall; external 'user32' name 'DrawCaption';
+proc DrawEdge*(hdc: HDC, qrc: var Rect, edge: WINUINT, grfFlags: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DrawEdge".}
-  #function DrawFocusRect(hDC: HDC; const lprc: TRect): WINBOOL; stdcall; external 'user32' name 'DrawFocusRect';
-proc DrawFrameControl*(DC: HDC, Rect: TRect, uType, uState: WINUINT): WINBOOL{.
+  #function DrawFocusRect(hDC: HDC; const lprc: Rect): WINBOOL; stdcall; external 'user32' name 'DrawFocusRect';
+proc DrawFrameControl*(DC: HDC, Rect: Rect, uType, uState: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "DrawFrameControl".}
-proc DrawText*(hDC: HDC, lpString: cstring, nCount: int, lpRect: var TRect,
+proc DrawText*(hDC: HDC, lpString: cstring, nCount: int, lpRect: var Rect,
                uFormat: WINUINT): int{.stdcall, dynlib: "user32",
                                     importc: "DrawTextA".}
-proc DrawTextA*(hDC: HDC, lpString: LPCSTR, nCount: int, lpRect: var TRect,
+proc DrawTextA*(hDC: HDC, lpString: LPCSTR, nCount: int, lpRect: var Rect,
                 uFormat: WINUINT): int{.stdcall, dynlib: "user32",
                                      importc: "DrawTextA".}
-proc DrawTextEx*(DC: HDC, lpchText: cstring, cchText: int, p4: var TRect,
+proc DrawTextEx*(DC: HDC, lpchText: cstring, cchText: int, p4: var Rect,
                  dwDTFormat: WINUINT, DTParams: PDrawTextParams): int{.stdcall,
     dynlib: "user32", importc: "DrawTextExA".}
-proc DrawTextExA*(DC: HDC, lpchText: LPCSTR, cchText: int, p4: var TRect,
+proc DrawTextExA*(DC: HDC, lpchText: LPCSTR, cchText: int, p4: var Rect,
                   dwDTFormat: WINUINT, DTParams: PDrawTextParams): int{.stdcall,
     dynlib: "user32", importc: "DrawTextExA".}
-proc DrawTextExW*(DC: HDC, lpchText: LPWSTR, cchText: int, p4: var TRect,
+proc DrawTextExW*(DC: HDC, lpchText: LPWSTR, cchText: int, p4: var Rect,
                   dwDTFormat: WINUINT, DTParams: PDrawTextParams): int{.stdcall,
     dynlib: "user32", importc: "DrawTextExW".}
-proc DrawTextW*(hDC: HDC, lpString: LPWSTR, nCount: int, lpRect: var TRect,
+proc DrawTextW*(hDC: HDC, lpString: LPWSTR, nCount: int, lpRect: var Rect,
                 uFormat: WINUINT): int{.stdcall, dynlib: "user32",
                                      importc: "DrawTextW".}
-  #function DuplicateTokenEx(hExistingToken: THandle; dwDesiredAccess: DWORD; lpTokenAttributes: PSecurityAttributes; ImpersonationLevel: TSecurityImpersonationLevel; TokenType: TTokenType; var phNewToken: THandle): WINBOOL;
+  #function DuplicateTokenEx(hExistingToken: Handle; dwDesiredAccess: DWORD; lpTokenAttributes: PSecurityAttributes; ImpersonationLevel: TSecurityImpersonationLevel; TokenType: TTokenType; var phNewToken: Handle): WINBOOL;
   #  stdcall; external 'advapi32' name 'DuplicateTokenEx';
-proc EndPaint*(wnd: HWND, lpPaint: TPaintStruct): WINBOOL{.stdcall,
+proc EndPaint*(wnd: HWND, lpPaint: PaintStruct): WINBOOL{.stdcall,
     dynlib: "user32", importc: "EndPaint".}
   #function EnumDisplayDevices(Unused: pointer; iDevNum: DWORD; var lpDisplayDevice: TDisplayDevice; dwFlags: DWORD): WINBOOL;stdcall; external 'user32' name 'EnumDisplayDevicesA';
   #function EnumDisplayDevicesA(Unused: pointer; iDevNum: DWORD; var lpDisplayDevice: TDisplayDeviceA; dwFlags: DWORD): WINBOOL;stdcall; external 'user32' name 'EnumDisplayDevicesA';
   #function EnumDisplayDevicesW(Unused: pointer; iDevNum: DWORD; var lpDisplayDevice: TDisplayDeviceW; dwFlags: DWORD): WINBOOL;stdcall; external 'user32' name 'EnumDisplayDevicesW';
 proc EnumDisplaySettings*(lpszDeviceName: cstring, iModeNum: DWORD,
-                          lpDevMode: var TDeviceMode): WINBOOL{.stdcall,
+                          lpDevMode: var DevMode): WINBOOL{.stdcall,
     dynlib: "user32", importc: "EnumDisplaySettingsA".}
 proc EnumDisplaySettingsA*(lpszDeviceName: LPCSTR, iModeNum: DWORD,
-                           lpDevMode: var TDeviceModeA): WINBOOL{.stdcall,
+                           lpDevMode: var DevMode): WINBOOL{.stdcall,
     dynlib: "user32", importc: "EnumDisplaySettingsA".}
 proc EnumDisplaySettingsW*(lpszDeviceName: LPWSTR, iModeNum: DWORD,
-                           lpDevMode: var TDeviceModeW): WINBOOL{.stdcall,
+                           lpDevMode: var DevModeW): WINBOOL{.stdcall,
     dynlib: "user32", importc: "EnumDisplaySettingsW".}
-  #function EnumEnhMetaFile(DC: HDC; p2: HENHMETAFILE; p3: TFNEnhMFEnumProc; p4: pointer; const p5: TRect): WINBOOL; stdcall; external 'gdi32' name 'EnumEnhMetaFile';
-  #function EnumFontFamiliesEx(DC: HDC; var p2: TLogFont; p3: TFNFontEnumProc; p4: LPARAM; p5: DWORD): WINBOOL;stdcall; external 'gdi32' name 'EnumFontFamiliesExA';
-  #function EnumFontFamiliesExA(DC: HDC; var p2: TLogFontA; p3: TFNFontEnumProcA; p4: LPARAM; p5: DWORD): WINBOOL; stdcall; external 'gdi32' name 'EnumFontFamiliesExA';
-  #function EnumFontFamiliesExW(DC: HDC; var p2: TLogFontW; p3: TFNFontEnumProcW; p4: LPARAM; p5: DWORD): WINBOOL; stdcall; external 'gdi32' name 'EnumFontFamiliesExW';
-  #function EqualRect(const lprc1, lprc2: TRect): WINBOOL; stdcall; external 'user32' name 'EqualRect';
-proc ExtCreatePen*(PenStyle, Width: DWORD, Brush: TLogBrush, StyleCount: DWORD,
+  #function EnumEnhMetaFile(DC: HDC; p2: HENHMETAFILE; p3: TFNEnhMFEnumProc; p4: pointer; const p5: Rect): WINBOOL; stdcall; external 'gdi32' name 'EnumEnhMetaFile';
+  #function EnumFontFamiliesEx(DC: HDC; var p2: LogFont; p3: TFNFontEnumProc; p4: LPARAM; p5: DWORD): WINBOOL;stdcall; external 'gdi32' name 'EnumFontFamiliesExA';
+  #function EnumFontFamiliesExA(DC: HDC; var p2: LogFont; p3: TFNFontEnumProcA; p4: LPARAM; p5: DWORD): WINBOOL; stdcall; external 'gdi32' name 'EnumFontFamiliesExA';
+  #function EnumFontFamiliesExW(DC: HDC; var p2: LogFontW; p3: TFNFontEnumProcW; p4: LPARAM; p5: DWORD): WINBOOL; stdcall; external 'gdi32' name 'EnumFontFamiliesExW';
+  #function EqualRect(const lprc1, lprc2: Rect): WINBOOL; stdcall; external 'user32' name 'EqualRect';
+proc ExtCreatePen*(PenStyle, Width: DWORD, Brush: LogBrush, StyleCount: DWORD,
                    Style: pointer): HPEN{.stdcall, dynlib: "gdi32",
     importc: "ExtCreatePen".}
-proc ExtCreateRegion*(p1: PXForm, p2: DWORD, p3: TRgnData): HRGN{.stdcall,
+proc ExtCreateRegion*(p1: PXForm, p2: DWORD, p3: RgnData): HRGN{.stdcall,
     dynlib: "gdi32", importc: "ExtCreateRegion".}
   # function ExtEscape(DC: HDC; p2, p3: Integer; const p4: LPCSTR; p5: Integer; p6: LPSTR): Integer; stdcall; external 'gdi32' name 'ExtEscape';
-proc FileTimeToDosDateTime*(lpFileTime: TFileTime,
+proc FileTimeToDosDateTime*(lpFileTime: FileTime,
                             lpFatDate, lpFatTime: var int16): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "FileTimeToDosDateTime".}
-proc FileTimeToLocalFileTime*(lpFileTime: TFileTime,
-                              lpLocalFileTime: var TFileTime): WINBOOL{.stdcall,
+proc FileTimeToLocalFileTime*(lpFileTime: FileTime,
+                              lpLocalFileTime: var FileTime): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "FileTimeToLocalFileTime".}
-proc FileTimeToSystemTime*(lpFileTime: TFileTime, lpSystemTime: var TSystemTime): WINBOOL{.
+proc FileTimeToSystemTime*(lpFileTime: FileTime, lpSystemTime: var SystemTime): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FileTimeToSystemTime".}
-proc FillConsoleOutputAttribute*(hConsoleOutput: THandle, wAttribute: int16,
-                                 nLength: DWORD, dwWriteCoord: TCoord,
+proc FillConsoleOutputAttribute*(hConsoleOutput: Handle, wAttribute: int16,
+                                 nLength: DWORD, dwWriteCoord: Coord,
                                  lpNumberOfAttrsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FillConsoleOutputAttribute".}
-proc FillConsoleOutputCharacter*(hConsoleOutput: THandle, cCharacter: char,
-                                 nLength: DWORD, dwWriteCoord: TCoord,
+proc FillConsoleOutputCharacter*(hConsoleOutput: Handle, cCharacter: char,
+                                 nLength: DWORD, dwWriteCoord: Coord,
                                  lpNumberOfCharsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterA".}
-proc FillConsoleOutputCharacterA*(hConsoleOutput: THandle, cCharacter: char,
-                                  nLength: DWORD, dwWriteCoord: TCoord,
+proc FillConsoleOutputCharacterA*(hConsoleOutput: Handle, cCharacter: char,
+                                  nLength: DWORD, dwWriteCoord: Coord,
                                   lpNumberOfCharsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterA".}
-proc FillConsoleOutputCharacterW*(hConsoleOutput: THandle, cCharacter: WideChar,
-                                  nLength: DWORD, dwWriteCoord: TCoord,
+proc FillConsoleOutputCharacterW*(hConsoleOutput: Handle, cCharacter: WideChar,
+                                  nLength: DWORD, dwWriteCoord: Coord,
                                   lpNumberOfCharsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterW".}
-  #function FillRect(hDC: HDC; const lprc: TRect; hbr: HBRUSH): Integer; stdcall; external 'user32' name 'FillRect';
-proc FindFirstFile*(lpFileName: cstring, lpFindFileData: var TWIN32FindData): THandle{.
+  #function FillRect(hDC: HDC; const lprc: Rect; hbr: HBRUSH): Integer; stdcall; external 'user32' name 'FillRect';
+proc FindFirstFile*(lpFileName: cstring, lpFindFileData: var WIN32FindData): Handle{.
     stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}
-proc FindFirstFileA*(lpFileName: LPCSTR, lpFindFileData: var TWIN32FindDataA): THandle{.
+proc FindFirstFileA*(lpFileName: LPCSTR, lpFindFileData: var WIN32FindData): Handle{.
     stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}
-proc FindFirstFileW*(lpFileName: LPWSTR, lpFindFileData: var TWIN32FindDataW): THandle{.
+proc FindFirstFileW*(lpFileName: LPWSTR, lpFindFileData: var WIN32FindDataW): Handle{.
     stdcall, dynlib: "kernel32", importc: "FindFirstFileW".}
-  #function FindFirstFreeAce(var pAcl: TACL; var pAce: pointer): WINBOOL; stdcall; external 'advapi32' name 'FindFirstFreeAce';
-proc FindNextFile*(hFindFile: THandle, lpFindFileData: var TWIN32FindData): WINBOOL{.
+  #function FindFirstFreeAce(var pAcl: ACL; var pAce: pointer): WINBOOL; stdcall; external 'advapi32' name 'FindFirstFreeAce';
+proc FindNextFile*(hFindFile: Handle, lpFindFileData: var WIN32FindData): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FindNextFileA".}
-proc FindNextFileA*(hFindFile: THandle, lpFindFileData: var TWIN32FindDataA): WINBOOL{.
+proc FindNextFileA*(hFindFile: Handle, lpFindFileData: var WIN32FindData): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FindNextFileA".}
-proc FindNextFileW*(hFindFile: THandle, lpFindFileData: var TWIN32FindDataW): WINBOOL{.
+proc FindNextFileW*(hFindFile: Handle, lpFindFileData: var WIN32FindDataW): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "FindNextFileW".}
-  #function FlushInstructionCache(hProcess: THandle; const lpBaseAddress: pointer; dwSize: DWORD): WINBOOL; stdcall; external 'kernel32' name 'FlushInstructionCache';
+  #function FlushInstructionCache(hProcess: Handle; const lpBaseAddress: pointer; dwSize: DWORD): WINBOOL; stdcall; external 'kernel32' name 'FlushInstructionCache';
   #function FlushViewOfFile(const lpBaseAddress: pointer; dwNumberOfBytesToFlush: DWORD): WINBOOL; stdcall; external 'kernel32' name 'FlushViewOfFile';
-  #function FrameRect(hDC: HDC; const lprc: TRect; hbr: HBRUSH): Integer; stdcall; external 'user32' name 'FrameRect';
-  #function GetAce(const pAcl: TACL; dwAceIndex: DWORD; var pAce: pointer): WINBOOL; stdcall; external 'advapi32' name 'GetAce';
-  #function GetAclInformation(const pAcl: TACL; pAclInformation: pointer; nAclInformationLength: DWORD; dwAclInformationClass: TAclInformationClass): WINBOOL; stdcall; external 'advapi32' name 'GetAclInformation';
+  #function FrameRect(hDC: HDC; const lprc: Rect; hbr: HBRUSH): Integer; stdcall; external 'user32' name 'FrameRect';
+  #function GetAce(const pAcl: ACL; dwAceIndex: DWORD; var pAce: pointer): WINBOOL; stdcall; external 'advapi32' name 'GetAce';
+  #function GetAclInformation(const pAcl: ACL; pAclInformation: pointer; nAclInformationLength: DWORD; dwAclInformationClass: AclInformationClass): WINBOOL; stdcall; external 'advapi32' name 'GetAclInformation';
   #function GetAltTabInfo(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: PChar; cchItemText: WINUINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoA';
   #function GetAltTabInfoA(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: LPCSTR; cchItemText: WINUINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoA';
   #function GetAltTabInfoW(wnd: HWND; iItem: Integer; var pati: TAltTabInfo; pszItemText: LPWSTR; cchItemText: WINUINT): WINBOOL;stdcall; external 'user32' name 'GetAltTabInfoW';
-proc GetAspectRatioFilterEx*(DC: HDC, p2: var TSize): WINBOOL{.stdcall,
+proc GetAspectRatioFilterEx*(DC: HDC, p2: var Size): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetAspectRatioFilterEx".}
 proc GetBinaryType*(lpApplicationName: cstring, lpBinaryType: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetBinaryTypeA".}
@@ -21433,13 +20973,13 @@ proc GetBinaryTypeA*(lpApplicationName: LPCSTR, lpBinaryType: var DWORD): WINBOO
     stdcall, dynlib: "kernel32", importc: "GetBinaryTypeA".}
 proc GetBinaryTypeW*(lpApplicationName: LPWSTR, lpBinaryType: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetBinaryTypeW".}
-proc GetBitmapDimensionEx*(p1: HBITMAP, p2: var TSize): WINBOOL{.stdcall,
+proc GetBitmapDimensionEx*(p1: HBITMAP, p2: var Size): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetBitmapDimensionEx".}
-proc GetBoundsRect*(DC: HDC, p2: var TRect, p3: WINUINT): WINUINT{.stdcall,
+proc GetBoundsRect*(DC: HDC, p2: var Rect, p3: WINUINT): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetBoundsRect".}
-proc GetBrushOrgEx*(DC: HDC, p2: var TPoint): WINBOOL{.stdcall, dynlib: "gdi32",
+proc GetBrushOrgEx*(DC: HDC, p2: var Point): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "GetBrushOrgEx".}
-proc GetCaretPos*(lpPoint: var TPoint): WINBOOL{.stdcall, dynlib: "user32",
+proc GetCaretPos*(lpPoint: var Point): WINBOOL{.stdcall, dynlib: "user32",
     importc: "GetCaretPos".}
 proc GetCharABCWidths*(DC: HDC, p2, p3: WINUINT, ABCStructs: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsA".}
@@ -21455,13 +20995,13 @@ proc GetCharABCWidthsFloatW*(DC: HDC, p2, p3: WINUINT, ABCFloatSturcts: pointer)
 proc GetCharABCWidthsW*(DC: HDC, p2, p3: WINUINT, ABCStructs: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetCharABCWidthsW".}
 proc GetCharacterPlacement*(DC: HDC, p2: cstring, p3, p4: WINBOOL,
-                            p5: var TGCPResults, p6: DWORD): DWORD{.stdcall,
+                            p5: var GCPResults, p6: DWORD): DWORD{.stdcall,
     dynlib: "gdi32", importc: "GetCharacterPlacementA".}
 proc GetCharacterPlacementA*(DC: HDC, p2: LPCSTR, p3, p4: WINBOOL,
-                             p5: var TGCPResults, p6: DWORD): DWORD{.stdcall,
+                             p5: var GCPResults, p6: DWORD): DWORD{.stdcall,
     dynlib: "gdi32", importc: "GetCharacterPlacementA".}
 proc GetCharacterPlacementW*(DC: HDC, p2: LPWSTR, p3, p4: WINBOOL,
-                             p5: var TGCPResults, p6: DWORD): DWORD{.stdcall,
+                             p5: var GCPResults, p6: DWORD): DWORD{.stdcall,
     dynlib: "gdi32", importc: "GetCharacterPlacementW".}
 proc GetCharWidth*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidthA".}
@@ -21483,37 +21023,37 @@ proc GetCharWidthFloatW*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.
 proc GetCharWidthW*(DC: HDC, p2, p3: WINUINT, Widths: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetCharWidthW".}
 proc GetClassInfo*(hInstance: HINST, lpClassName: cstring,
-                   lpWndClass: var TWndClass): WINBOOL{.stdcall,
+                   lpWndClass: var WndClass): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetClassInfoA".}
 proc GetClassInfoA*(hInstance: HINST, lpClassName: LPCSTR,
-                    lpWndClass: var TWndClassA): WINBOOL{.stdcall,
+                    lpWndClass: var WndClass): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetClassInfoA".}
 proc GetClassInfoEx*(Instance: HINST, Classname: cstring,
-                     WndClass: var TWndClassEx): WINBOOL{.stdcall,
+                     WndClass: var WndClassEx): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetClassInfoExA".}
-  #function GetClassInfoExA(Instance: HINST; Classname: LPCSTR; var WndClass: TWndClassExA): WINBOOL; stdcall; external 'user32' name 'GetClassInfoExA';
-  #function GetClassInfoExW(Instance: HINST; Classname: LPWSTR; var WndClass: TWndClassExW): WINBOOL; stdcall; external 'user32' name 'GetClassInfoExW';
-  #function GetClassInfoW(hInstance: HINST; lpClassName: LPWSTR; var lpWndClass: TWndClassW): WINBOOL; stdcall; external 'user32' name 'GetClassInfoW';
-proc GetClientRect*(wnd: HWND, lpRect: var TRect): WINBOOL{.stdcall,
+  #function GetClassInfoExA(Instance: HINST; Classname: LPCSTR; var WndClass: WndClassEx): WINBOOL; stdcall; external 'user32' name 'GetClassInfoExA';
+  #function GetClassInfoExW(Instance: HINST; Classname: LPWSTR; var WndClass: WndClassExW): WINBOOL; stdcall; external 'user32' name 'GetClassInfoExW';
+  #function GetClassInfoW(hInstance: HINST; lpClassName: LPWSTR; var lpWndClass: WndClassW): WINBOOL; stdcall; external 'user32' name 'GetClassInfoW';
+proc GetClientRect*(wnd: HWND, lpRect: var Rect): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetClientRect".}
-proc GetClipBox*(DC: HDC, Rect: var TRect): int{.stdcall, dynlib: "gdi32",
+proc GetClipBox*(DC: HDC, Rect: var Rect): int{.stdcall, dynlib: "gdi32",
     importc: "GetClipBox".}
-proc GetClipCursor*(lpRect: var TRect): WINBOOL{.stdcall, dynlib: "user32",
+proc GetClipCursor*(lpRect: var Rect): WINBOOL{.stdcall, dynlib: "user32",
     importc: "GetClipCursor".}
-proc GetColorAdjustment*(DC: HDC, p2: var TColorAdjustment): WINBOOL{.stdcall,
+proc GetColorAdjustment*(DC: HDC, p2: var ColorAdjustment): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetColorAdjustment".}
-proc GetCommConfig*(hCommDev: THandle, lpCC: var TCommConfig,
+proc GetCommConfig*(hCommDev: Handle, lpCC: var CommConfig,
                     lpdwSize: var DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "GetCommConfig".}
-proc GetCommMask*(hFile: THandle, lpEvtMask: var DWORD): WINBOOL{.stdcall,
+proc GetCommMask*(hFile: Handle, lpEvtMask: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetCommMask".}
-proc GetCommModemStatus*(hFile: THandle, lpModemStat: var DWORD): WINBOOL{.
+proc GetCommModemStatus*(hFile: Handle, lpModemStat: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetCommModemStatus".}
-proc GetCommProperties*(hFile: THandle, lpCommProp: var TCommProp): WINBOOL{.
+proc GetCommProperties*(hFile: Handle, lpCommProp: var CommProp): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetCommProperties".}
-proc GetCommState*(hFile: THandle, lpDCB: var TDCB): WINBOOL{.stdcall,
+proc GetCommState*(hFile: Handle, lpDCB: var DCB): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetCommState".}
-proc GetCommTimeouts*(hFile: THandle, lpCommTimeouts: var TCommTimeouts): WINBOOL{.
+proc GetCommTimeouts*(hFile: Handle, lpCommTimeouts: var CommTimeouts): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetCommTimeouts".}
 proc GetComputerName*(lpBuffer: cstring, nSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetComputerNameA".}
@@ -21521,38 +21061,38 @@ proc GetComputerNameA*(lpBuffer: LPCSTR, nSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetComputerNameA".}
 proc GetComputerNameW*(lpBuffer: LPWSTR, nSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetComputerNameW".}
-proc GetConsoleCursorInfo*(hConsoleOutput: THandle,
-                           lpConsoleCursorInfo: var TConsoleCursorInfo): WINBOOL{.
+proc GetConsoleCursorInfo*(hConsoleOutput: Handle,
+                           lpConsoleCursorInfo: var ConsoleCursorInfo): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetConsoleCursorInfo".}
-proc GetConsoleMode*(hConsoleHandle: THandle, lpMode: var DWORD): WINBOOL{.
+proc GetConsoleMode*(hConsoleHandle: Handle, lpMode: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetConsoleMode".}
-proc GetConsoleScreenBufferInfo*(hConsoleOutput: THandle,
-    lpConsoleScreenBufferInfo: var TConsoleScreenBufferInfo): WINBOOL{.stdcall,
+proc GetConsoleScreenBufferInfo*(hConsoleOutput: Handle,
+    lpConsoleScreenBufferInfo: var ConsoleScreenBufferInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
-proc GetCPInfo*(CodePage: WINUINT, lpCPInfo: var TCPInfo): WINBOOL{.stdcall,
+proc GetCPInfo*(CodePage: WINUINT, lpCPInfo: var CPInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetCPInfo".}
   #function GetCurrentHwProfile(var lpHwProfileInfo: THWProfileInfo): WINBOOL;stdcall; external 'advapi32' name 'GetCurrentHwProfileA';
   #function GetCurrentHwProfileA(var lpHwProfileInfo: THWProfileInfoA): WINBOOL;stdcall; external 'advapi32' name 'GetCurrentHwProfileA';
   #function GetCurrentHwProfileW(var lpHwProfileInfo: THWProfileInfoW): WINBOOL;stdcall; external 'advapi32' name 'GetCurrentHwProfileW';
-proc GetCursorInfo*(pci: var TCursorInfo): WINBOOL{.stdcall, dynlib: "user32",
+proc GetCursorInfo*(pci: var ConsoleCursorInfo): WINBOOL{.stdcall, dynlib: "user32",
     importc: "GetCursorInfo".}
-proc GetCursorPos*(lpPoint: var TPoint): WINBOOL{.stdcall, dynlib: "user32",
+proc GetCursorPos*(lpPoint: var Point): WINBOOL{.stdcall, dynlib: "user32",
     importc: "GetCursorPos".}
-proc GetDCOrgEx*(DC: HDC, Origin: var TPoint): WINBOOL{.stdcall,
+proc GetDCOrgEx*(DC: HDC, Origin: var Point): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetDCOrgEx".}
-proc GetDefaultCommConfig*(lpszName: cstring, lpCC: var TCommConfig,
+proc GetDefaultCommConfig*(lpszName: cstring, lpCC: var CommConfig,
                            lpdwSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetDefaultCommConfigA".}
-proc GetDefaultCommConfigA*(lpszName: LPCSTR, lpCC: var TCommConfig,
+proc GetDefaultCommConfigA*(lpszName: LPCSTR, lpCC: var CommConfig,
                             lpdwSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetDefaultCommConfigA".}
-proc GetDefaultCommConfigW*(lpszName: LPWSTR, lpCC: var TCommConfig,
+proc GetDefaultCommConfigW*(lpszName: LPWSTR, lpCC: var CommConfig,
                             lpdwSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetDefaultCommConfigW".}
 proc GetDIBColorTable*(DC: HDC, p2, p3: WINUINT, RGBQuadStructs: pointer): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "GetDIBColorTable".}
 proc GetDIBits*(DC: HDC, Bitmap: HBitmap, StartScan, NumScans: WINUINT,
-                Bits: pointer, BitInfo: var TBitmapInfo, Usage: WINUINT): int{.
+                Bits: pointer, BitInfo: var BitmapInfo, Usage: WINUINT): int{.
     stdcall, dynlib: "gdi32", importc: "GetDIBits".}
 proc GetDiskFreeSpace*(lpRootPathName: cstring, lpSectorsPerCluster,
     lpBytesPerSector, lpNumberOfFreeClusters, lpTotalNumberOfClusters: var DWORD): WINBOOL{.
@@ -21561,15 +21101,15 @@ proc GetDiskFreeSpaceA*(lpRootPathName: LPCSTR, lpSectorsPerCluster,
     lpBytesPerSector, lpNumberOfFreeClusters, lpTotalNumberOfClusters: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceA".}
 proc GetDiskFreeSpaceEx*(lpDirectoryName: cstring, lpFreeBytesAvailableToCaller,
-    lpTotalNumberOfBytes: var TLargeInteger,
+    lpTotalNumberOfBytes: var LargeInteger,
                          lpTotalNumberOfFreeBytes: PLargeInteger): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceExA".}
 proc GetDiskFreeSpaceExA*(lpDirectoryName: LPCSTR, lpFreeBytesAvailableToCaller,
-    lpTotalNumberOfBytes: var TLargeInteger,
+    lpTotalNumberOfBytes: var LargeInteger,
                           lpTotalNumberOfFreeBytes: PLargeInteger): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceExA".}
 proc GetDiskFreeSpaceExW*(lpDirectoryName: LPWSTR, lpFreeBytesAvailableToCaller,
-    lpTotalNumberOfBytes: var TLargeInteger,
+    lpTotalNumberOfBytes: var LargeInteger,
                           lpTotalNumberOfFreeBytes: PLargeInteger): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceExW".}
 proc GetDiskFreeSpaceW*(lpRootPathName: LPWSTR, lpSectorsPerCluster,
@@ -21584,12 +21124,12 @@ proc GetDiskFreeSpaceExA*(lpDirectoryName: LPCSTR, lpFreeBytesAvailableToCaller,
 proc GetDiskFreeSpaceExW*(lpDirectoryName: LPWSTR, lpFreeBytesAvailableToCaller,
     lpTotalNumberOfBytes: PLargeInteger, lpTotalNumberOfFreeBytes: PLargeInteger): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetDiskFreeSpaceExW".}
-  #function GetEnhMetaFilePixelFormat(p1: HENHMETAFILE; p2: Cardinal; var p3: TPixelFormatDescriptor): WINUINT;stdcall; external 'gdi32' name 'GetEnhMetaFilePixelFormat';
-proc GetExitCodeProcess*(hProcess: THandle, lpExitCode: var DWORD): WINBOOL{.
+  #function GetEnhMetaFilePixelFormat(p1: HENHMETAFILE; p2: Cardinal; var p3: PixelFormatDescriptor): WINUINT;stdcall; external 'gdi32' name 'GetEnhMetaFilePixelFormat';
+proc GetExitCodeProcess*(hProcess: Handle, lpExitCode: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetExitCodeProcess".}
-proc GetExitCodeThread*(hThread: THandle, lpExitCode: var DWORD): WINBOOL{.
+proc GetExitCodeThread*(hThread: Handle, lpExitCode: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetExitCodeThread".}
-proc GetFileInformationByHandle*(hFile: THandle, lpFileInformation: var TByHandleFileInformation): WINBOOL{.
+proc GetFileInformationByHandle*(hFile: Handle, lpFileInformation: var ByHandleFileInformation): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetFileInformationByHandle".}
   #function GetFileSecurity(lpFileName: PChar; RequestedInformation: SECURITY_INFORMATION; pSecurityDescriptor: PSecurityDescriptor; nLength: DWORD; var lpnLengthNeeded: DWORD): WINBOOL;stdcall; external 'advapi32' name 'GetFileSecurityA';
   #function GetFileSecurityA(lpFileName: LPCSTR; RequestedInformation: SECURITY_INFORMATION; pSecurityDescriptor: PSecurityDescriptor; nLength: DWORD; var lpnLengthNeeded: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetFileSecurityA';
@@ -21604,24 +21144,24 @@ proc GetFileVersionInfoSizeW*(lptstrFilename: LPWSTR, lpdwHandle: var DWORD): DW
   # function GetFullPathName(lpFileName: PChar; nBufferLength: DWORD; lpBuffer: PChar; var lpFilePart: PChar): DWORD;stdcall; external 'kernel32' name 'GetFullPathNameA';
   # function GetFullPathNameA(lpFileName: LPCSTR; nBufferLength: DWORD; lpBuffer: LPCSTR; var lpFilePart: LPCSTR): DWORD; stdcall; external 'kernel32' name 'GetFullPathNameA';
   # function GetFullPathNameW(lpFileName: LPWSTR; nBufferLength: DWORD; lpBuffer: LPWSTR; var lpFilePart: LPWSTR): DWORD; stdcall; external 'kernel32' name 'GetFullPathNameW';
-proc GetGlyphOutline*(DC: HDC, p2, p3: WINUINT, p4: TGlyphMetrics, p5: DWORD,
-                      p6: pointer, p7: TMat2): DWORD{.stdcall, dynlib: "gdi32",
+proc GetGlyphOutline*(DC: HDC, p2, p3: WINUINT, p4: GlyphMetrics, p5: DWORD,
+                      p6: pointer, p7: Mat2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineA".}
-proc GetGlyphOutlineA*(DC: HDC, p2, p3: WINUINT, p4: TGlyphMetrics, p5: DWORD,
-                       p6: pointer, p7: TMat2): DWORD{.stdcall, dynlib: "gdi32",
+proc GetGlyphOutlineA*(DC: HDC, p2, p3: WINUINT, p4: GlyphMetrics, p5: DWORD,
+                       p6: pointer, p7: Mat2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineA".}
-proc GetGlyphOutlineW*(DC: HDC, p2, p3: WINUINT, p4: TGlyphMetrics, p5: DWORD,
-                       p6: pointer, p7: TMat2): DWORD{.stdcall, dynlib: "gdi32",
+proc GetGlyphOutlineW*(DC: HDC, p2, p3: WINUINT, p4: GlyphMetrics, p5: DWORD,
+                       p6: pointer, p7: Mat2): DWORD{.stdcall, dynlib: "gdi32",
     importc: "GetGlyphOutlineW".}
   #function GetGUIThreadInfo(idThread: DWORD; var pgui: TGUIThreadinfo): WINBOOL;stdcall; external 'user32' name 'GetGUIThreadInfo';
-proc GetHandleInformation*(hObject: THandle, lpdwFlags: var DWORD): WINBOOL{.
+proc GetHandleInformation*(hObject: Handle, lpdwFlags: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetHandleInformation".}
   #function GetICMProfile(DC: HDC; var Size: DWORD; Name: PChar): WINBOOL;stdcall; external 'gdi32' name 'GetICMProfileA';
   #function GetICMProfileA(DC: HDC; var Size: DWORD; Name: LPCSTR): WINBOOL; stdcall; external 'gdi32' name 'GetICMProfileA';
   #function GetICMProfileW(DC: HDC; var Size: DWORD; Name: LPWSTR): WINBOOL; stdcall; external 'gdi32' name 'GetICMProfileW';
-proc GetIconInfo*(icon: HICON, piconinfo: var TIconInfo): WINBOOL{.stdcall,
+proc GetIconInfo*(icon: HICON, piconinfo: var IconInfo): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetIconInfo".}
-  #function GetKernelObjectSecurity(Handle: THandle; RequestedInformation: SECURITY_INFORMATION; pSecurityDescriptor: PSecurityDescriptor; nLength: DWORD; var lpnLengthNeeded: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetKernelObjectSecurity';
+  #function GetKernelObjectSecurity(Handle: Handle; RequestedInformation: SECURITY_INFORMATION; pSecurityDescriptor: PSecurityDescriptor; nLength: DWORD; var lpnLengthNeeded: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetKernelObjectSecurity';
 proc GetKerningPairs*(DC: HDC, Count: DWORD, KerningPairs: pointer): DWORD{.
     stdcall, dynlib: "gdi32", importc: "GetKerningPairs".}
 proc GetKeyboardLayoutList*(nBuff: int, List: pointer): WINUINT{.stdcall,
@@ -21638,25 +21178,25 @@ proc SetSystemTime*(lpSystemTime: var SYSTEMTIME): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetSystemTime".}
 proc SetLocalTime*(lpSystemTime: var SYSTEMTIME): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetLocalTime".}
-proc GetLogColorSpace*(p1: HCOLORSPACE, ColorSpace: var TLogColorSpace,
+proc GetLogColorSpace*(p1: HCOLORSPACE, ColorSpace: var LogColorSpace,
                        Size: DWORD): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "GetLogColorSpaceA".}
-proc GetLogColorSpaceA*(p1: HCOLORSPACE, ColorSpace: var TLogColorSpaceA,
+proc GetLogColorSpaceA*(p1: HCOLORSPACE, ColorSpace: var LogColorSpace,
                         Size: DWORD): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "GetLogColorSpaceA".}
-  #function GetLogColorSpaceW(p1: HCOLORSPACE; var ColorSpace: TLogColorSpaceW; Size: DWORD): WINBOOL; stdcall; external 'gdi32' name 'GetLogColorSpaceW';
-proc GetMailslotInfo*(hMailslot: THandle, lpMaxMessageSize: pointer,
+  #function GetLogColorSpaceW(p1: HCOLORSPACE; var ColorSpace: LogColorSpaceW; Size: DWORD): WINBOOL; stdcall; external 'gdi32' name 'GetLogColorSpaceW';
+proc GetMailslotInfo*(hMailslot: Handle, lpMaxMessageSize: pointer,
                       lpNextSize: var DWORD,
                       lpMessageCount, lpReadTimeout: pointer): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetMailslotInfo".}
   #function GetMenuBarInfo(hend: HWND; idObject, idItem: Longint; var pmbi: TMenuBarInfo): WINBOOL;stdcall; external 'user32' name 'GetMenuBarInfo';
   #function GetMenuInfo(menu: HMENU; var lpmi: TMenuInfo): WINBOOL;stdcall; external 'user32' name 'GetMenuInfo';
-proc GetMenuItemInfo*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: var TMenuItemInfo): WINBOOL{.
+proc GetMenuItemInfo*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: var MenuItemInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMenuItemInfoA".}
-proc GetMenuItemInfoA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: var TMenuItemInfoA): WINBOOL{.
+proc GetMenuItemInfoA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: var MenuItemInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMenuItemInfoA".}
-  #function GetMenuItemInfoW(p1: HMENU; p2: WINUINT; p3: WINBOOL; var p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'GetMenuItemInfoW';
-proc GetMenuItemRect*(wnd: HWND, menu: HMENU, uItem: WINUINT, lprcItem: var TRect): WINBOOL{.
+  #function GetMenuItemInfoW(p1: HMENU; p2: WINUINT; p3: WINBOOL; var p4: MenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'GetMenuItemInfoW';
+proc GetMenuItemRect*(wnd: HWND, menu: HMENU, uItem: WINUINT, lprcItem: var Rect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMenuItemRect".}
 proc GetMessage*(lpMsg: var TMsg, wnd: HWND, wMsgFilterMin, wMsgFilterMax: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetMessageA".}
@@ -21669,17 +21209,17 @@ proc GetMessageW*(lpMsg: var TMsg, wnd: HWND,
 proc GetMiterLimit*(DC: HDC, Limit: var float32): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetMiterLimit".}
   #function GetMouseMovePoints(cbSize: WINUINT; var lppt, lpptBuf: TMouseMovePoint; nBufPoints: Integer; resolution: DWORD): Integer;stdcall; external 'user32' name 'GetMouseMovePoints';
-proc GetNamedPipeInfo*(hNamedPipe: THandle, lpFlags: var DWORD,
+proc GetNamedPipeInfo*(hNamedPipe: Handle, lpFlags: var DWORD,
                        lpOutBufferSize, lpInBufferSize, lpMaxInstances: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetNamedPipeInfo".}
-proc GetNumberOfConsoleInputEvents*(hConsoleInput: THandle,
+proc GetNumberOfConsoleInputEvents*(hConsoleInput: Handle,
                                     lpNumberOfEvents: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetNumberOfConsoleInputEvents".}
 proc GetNumberOfConsoleMouseButtons*(lpNumberOfMouseButtons: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetNumberOfConsoleMouseButtons".}
-  #function GetNumberOfEventLogRecords(hEventLog: THandle; var NumberOfRecords: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetNumberOfEventLogRecords';
-  #function GetOldestEventLogRecord(hEventLog: THandle; var OldestRecord: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetOldestEventLogRecord';
-proc GetOverlappedResult*(hFile: THandle, lpOverlapped: TOverlapped,
+  #function GetNumberOfEventLogRecords(hEventLog: Handle; var NumberOfRecords: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetNumberOfEventLogRecords';
+  #function GetOldestEventLogRecord(hEventLog: Handle; var OldestRecord: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetOldestEventLogRecord';
+proc GetOverlappedResult*(hFile: Handle, lpOverlapped: Overlapped,
                           lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
 proc GetPaletteEntries*(Palette: HPALETTE, StartIndex, NumEntries: WINUINT,
@@ -21709,32 +21249,32 @@ proc GetPrivateProfileStructW*(lpszSection, lpszKey: LPCWSTR, lpStruct: LPVOID,
 proc GetPrivateProfileStruct*(lpszSection, lpszKey: LPCTSTR, lpStruct: LPVOID,
                               uSizeStruct: WINUINT, szFile: LPCTSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetPrivateProfileStructA".}
-proc GetProcessAffinityMask*(hProcess: THandle, lpProcessAffinityMask,
+proc GetProcessAffinityMask*(hProcess: Handle, lpProcessAffinityMask,
     lpSystemAffinityMask: var DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "GetProcessAffinityMask".}
-proc GetProcessHeaps*(NumberOfHeaps: DWORD, ProcessHeaps: var THandle): DWORD{.
+proc GetProcessHeaps*(NumberOfHeaps: DWORD, ProcessHeaps: var Handle): DWORD{.
     stdcall, dynlib: "kernel32", importc: "GetProcessHeaps".}
-proc GetProcessPriorityBoost*(hThread: THandle,
+proc GetProcessPriorityBoost*(hThread: Handle,
                               DisablePriorityBoost: var WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetProcessPriorityBoost".}
 proc GetProcessShutdownParameters*(lpdwLevel, lpdwFlags: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetProcessShutdownParameters".}
-proc GetProcessTimes*(hProcess: THandle, lpCreationTime, lpExitTime,
-    lpKernelTime, lpUserTime: var TFileTime): WINBOOL{.stdcall,
+proc GetProcessTimes*(hProcess: Handle, lpCreationTime, lpExitTime,
+    lpKernelTime, lpUserTime: var FileTime): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetProcessTimes".}
-proc GetProcessWorkingSetSize*(hProcess: THandle, lpMinimumWorkingSetSize,
+proc GetProcessWorkingSetSize*(hProcess: Handle, lpMinimumWorkingSetSize,
     lpMaximumWorkingSetSize: var DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "GetProcessWorkingSetSize".}
-proc GetQueuedCompletionStatus*(CompletionPort: THandle,
+proc GetQueuedCompletionStatus*(CompletionPort: Handle,
     lpNumberOfBytesTransferred, lpCompletionKey: var DWORD,
                                 lpOverlapped: var POverlapped,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
-proc GetRasterizerCaps*(p1: var TRasterizerStatus, p2: WINUINT): WINBOOL{.stdcall,
+proc GetRasterizerCaps*(p1: var RasterizerStatus, p2: WINUINT): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetRasterizerCaps".}
-proc GetRgnBox*(RGN: HRGN, p2: var TRect): int{.stdcall, dynlib: "gdi32",
+proc GetRgnBox*(RGN: HRGN, p2: var Rect): int{.stdcall, dynlib: "gdi32",
     importc: "GetRgnBox".}
-proc GetScrollInfo*(wnd: HWND, BarFlag: int, ScrollInfo: var TScrollInfo): WINBOOL{.
+proc GetScrollInfo*(wnd: HWND, BarFlag: int, ScrollInfo: var ScrollInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetScrollInfo".}
 proc GetScrollRange*(wnd: HWND, nBar: int, lpMinPos, lpMaxPos: var int): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetScrollRange".}
@@ -21743,7 +21283,7 @@ proc GetScrollRange*(wnd: HWND, nBar: int, lpMinPos, lpMaxPos: var int): WINBOOL
   #function GetSecurityDescriptorGroup(pSecurityDescriptor: PSecurityDescriptor; var pGroup: PSID; var lpbGroupDefaulted: WINBOOL): WINBOOL; stdcall; external 'advapi32' name 'GetSecurityDescriptorGroup';
   #function GetSecurityDescriptorOwner(pSecurityDescriptor: PSecurityDescriptor; var pOwner: PSID; var lpbOwnerDefaulted: WINBOOL): WINBOOL; stdcall; external 'advapi32' name 'GetSecurityDescriptorOwner';
   #function GetSecurityDescriptorSacl(pSecurityDescriptor: PSecurityDescriptor; var lpbSaclPresent: WINBOOL; var pSacl: PACL; var lpbSaclDefaulted: WINBOOL): WINBOOL; stdcall; external 'advapi32' name 'GetSecurityDescriptorSacl';
-proc GetStartupInfo*(lpStartupInfo: var TSTARTUPINFO){.stdcall,
+proc GetStartupInfo*(lpStartupInfo: var STARTUPINFO){.stdcall,
     dynlib: "kernel32", importc: "GetStartupInfoA".}
 proc GetStringTypeA*(Locale: LCID, dwInfoType: DWORD, lpSrcStr: LPCSTR,
                      cchSrc: WINBOOL, lpCharType: var int16): WINBOOL{.stdcall,
@@ -21763,12 +21303,12 @@ proc GetStringTypeW*(dwInfoType: DWORD, lpSrcStr: WCHAR, cchSrc: WINBOOL,
 proc GetSystemPaletteEntries*(DC: HDC, StartIndex, NumEntries: WINUINT,
                               PaletteEntries: pointer): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "GetSystemPaletteEntries".}
-proc GetSystemPowerStatus*(lpSystemPowerStatus: var TSystemPowerStatus): WINBOOL{.
+proc GetSystemPowerStatus*(lpSystemPowerStatus: var SystemPowerStatus): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetSystemPowerStatus".}
 proc GetSystemTimeAdjustment*(lpTimeAdjustment, lpTimeIncrement: var DWORD,
                               lpTimeAdjustmentDisabled: var WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetSystemTimeAdjustment".}
-proc GetSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var TFILETIME){.stdcall,
+proc GetSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FILETIME){.stdcall,
     dynlib: "kernel32", importc: "GetSystemTimeAsFileTime".}
 proc GetTabbedTextExtent*(hDC: HDC, lpString: cstring,
                           nCount, nTabPositions: int,
@@ -21782,55 +21322,55 @@ proc GetTabbedTextExtentW*(hDC: HDC, lpString: LPWSTR,
                            nCount, nTabPositions: int,
                            lpnTabStopPositions: pointer): DWORD{.stdcall,
     dynlib: "user32", importc: "GetTabbedTextExtentW".}
-proc GetTapeParameters*(hDevice: THandle, dwOperation: DWORD,
+proc GetTapeParameters*(hDevice: Handle, dwOperation: DWORD,
                         lpdwSize: var DWORD, lpTapeInformation: pointer): DWORD{.
     stdcall, dynlib: "kernel32", importc: "GetTapeParameters".}
-proc GetTapePosition*(hDevice: THandle, dwPositionType: DWORD,
+proc GetTapePosition*(hDevice: Handle, dwPositionType: DWORD,
                       lpdwPartition, lpdwOffsetLow: var DWORD,
                       lpdwOffsetHigh: pointer): DWORD{.stdcall,
     dynlib: "kernel32", importc: "GetTapePosition".}
 proc GetTextExtentExPoint*(DC: HDC, p2: cstring, p3, p4: int, p5, p6: PInteger,
-                           p7: var TSize): WINBOOL{.stdcall, dynlib: "gdi32",
+                           p7: var Size): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "GetTextExtentExPointA".}
 proc GetTextExtentExPointA*(DC: HDC, p2: LPCSTR, p3, p4: int, p5, p6: PInteger,
-                            p7: var TSize): WINBOOL{.stdcall, dynlib: "gdi32",
+                            p7: var Size): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "GetTextExtentExPointA".}
-  #function GetTextExtentExPointI(DC: HDC; p2: PWORD; p3, p4: Integer; p5, p6: PINT; var p7: TSize): WINBOOL;stdcall; external 'gdi32' name 'GetTextExtentExPointI';
+  #function GetTextExtentExPointI(DC: HDC; p2: PWORD; p3, p4: Integer; p5, p6: PINT; var p7: Size): WINBOOL;stdcall; external 'gdi32' name 'GetTextExtentExPointI';
 proc GetTextExtentExPointW*(DC: HDC, p2: LPWSTR, p3, p4: int, p5, p6: PInteger,
-                            p7: var TSize): WINBOOL{.stdcall, dynlib: "gdi32",
+                            p7: var Size): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "GetTextExtentExPointW".}
-proc GetTextExtentPoint*(DC: HDC, Str: cstring, Count: int, Size: var TSize): WINBOOL{.
+proc GetTextExtentPoint*(DC: HDC, Str: cstring, Count: int, Size: var Size): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetTextExtentPointA".}
-proc GetTextExtentPoint32*(DC: HDC, Str: cstring, Count: int, Size: var TSize): WINBOOL{.
+proc GetTextExtentPoint32*(DC: HDC, Str: cstring, Count: int, Size: var Size): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetTextExtentPoint32A".}
-proc GetTextExtentPoint32A*(DC: HDC, Str: LPCSTR, Count: int, Size: var TSize): WINBOOL{.
+proc GetTextExtentPoint32A*(DC: HDC, Str: LPCSTR, Count: int, Size: var Size): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetTextExtentPoint32A".}
-proc GetTextExtentPoint32W*(DC: HDC, Str: LPWSTR, Count: int, Size: var TSize): WINBOOL{.
+proc GetTextExtentPoint32W*(DC: HDC, Str: LPWSTR, Count: int, Size: var Size): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetTextExtentPoint32W".}
-proc GetTextExtentPointA*(DC: HDC, Str: LPCSTR, Count: int, Size: var TSize): WINBOOL{.
+proc GetTextExtentPointA*(DC: HDC, Str: LPCSTR, Count: int, Size: var Size): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetTextExtentPointA".}
-  #function GetTextExtentPointI(DC: HDC; p2: PWORD; p3: Integer; var p4: TSize): WINBOOL;stdcall; external 'gdi32' name 'GetTextExtentPointI';
-proc GetTextExtentPointW*(DC: HDC, Str: LPWSTR, Count: int, Size: var TSize): WINBOOL{.
+  #function GetTextExtentPointI(DC: HDC; p2: PWORD; p3: Integer; var p4: Size): WINBOOL;stdcall; external 'gdi32' name 'GetTextExtentPointI';
+proc GetTextExtentPointW*(DC: HDC, Str: LPWSTR, Count: int, Size: var Size): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "GetTextExtentPointW".}
-proc GetTextMetrics*(DC: HDC, TM: var TTextMetric): WINBOOL{.stdcall,
+proc GetTextMetrics*(DC: HDC, TM: var TextMetric): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetTextMetricsA".}
-  #function GetTextMetricsA(DC: HDC; var TM: TTextMetricA): WINBOOL; stdcall; external 'gdi32' name 'GetTextMetricsA';
-  #function GetTextMetricsW(DC: HDC; var TM: TTextMetricW): WINBOOL; stdcall; external 'gdi32' name 'GetTextMetricsW';
-proc GetThreadContext*(hThread: THandle, lpContext: var TContext): WINBOOL{.
+  #function GetTextMetricsA(DC: HDC; var TM: TextMetricA): WINBOOL; stdcall; external 'gdi32' name 'GetTextMetricsA';
+  #function GetTextMetricsW(DC: HDC; var TM: TextMetricW): WINBOOL; stdcall; external 'gdi32' name 'GetTextMetricsW';
+proc GetThreadContext*(hThread: Handle, lpContext: var Context): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetThreadContext".}
-proc GetThreadPriorityBoost*(hThread: THandle, DisablePriorityBoost: var WINBOOL): WINBOOL{.
+proc GetThreadPriorityBoost*(hThread: Handle, DisablePriorityBoost: var WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetThreadPriorityBoost".}
-proc GetThreadSelectorEntry*(hThread: THandle, dwSelector: DWORD,
-                             lpSelectorEntry: var TLDTEntry): WINBOOL{.stdcall,
+proc GetThreadSelectorEntry*(hThread: Handle, dwSelector: DWORD,
+                             lpSelectorEntry: var LDTEntry): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetThreadSelectorEntry".}
-proc GetThreadTimes*(hThread: THandle, lpCreationTime, lpExitTime, lpKernelTime,
-                                       lpUserTime: var TFileTime): WINBOOL{.
+proc GetThreadTimes*(hThread: Handle, lpCreationTime, lpExitTime, lpKernelTime,
+                                       lpUserTime: var FileTime): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetThreadTimes".}
-proc GetTimeZoneInformation*(lpTimeZoneInformation: var TTimeZoneInformation): DWORD{.
+proc GetTimeZoneInformation*(lpTimeZoneInformation: var TimeZoneInformation): DWORD{.
     stdcall, dynlib: "kernel32", importc: "GetTimeZoneInformation".}
   #function GetTitleBarInfo(wnd: HWND; var pti: TTitleBarInfo): WINBOOL;stdcall; external 'user32' name 'GetTitleBarInfo';
-  #function GetTokenInformation(TokenHandle: THandle; TokenInformationClass: TTokenInformationClass; TokenInformation: pointer; TokenInformationLength: DWORD; var ReturnLength: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetTokenInformation';
-proc GetUpdateRect*(wnd: HWND, lpRect: var TRect, bErase: WINBOOL): WINBOOL{.
+  #function GetTokenInformation(TokenHandle: Handle; TokenInformationClass: TokenInformationClass; TokenInformation: pointer; TokenInformationLength: DWORD; var ReturnLength: DWORD): WINBOOL; stdcall; external 'advapi32' name 'GetTokenInformation';
+proc GetUpdateRect*(wnd: HWND, lpRect: var Rect, bErase: WINBOOL): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetUpdateRect".}
 proc GetUserName*(lpBuffer: cstring, nSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "GetUserNameA".}
@@ -21838,28 +21378,28 @@ proc GetUserNameA*(lpBuffer: LPCSTR, nSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "GetUserNameA".}
 proc GetUserNameW*(lpBuffer: LPWSTR, nSize: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "GetUserNameW".}
-proc GetUserObjectInformation*(hObj: THandle, nIndex: int, pvInfo: pointer,
+proc GetUserObjectInformation*(hObj: Handle, nIndex: int, pvInfo: pointer,
                                nLength: DWORD, lpnLengthNeeded: var DWORD): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetUserObjectInformationA".}
-proc GetUserObjectInformationA*(hObj: THandle, nIndex: int, pvInfo: pointer,
+proc GetUserObjectInformationA*(hObj: Handle, nIndex: int, pvInfo: pointer,
                                 nLength: DWORD, lpnLengthNeeded: var DWORD): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetUserObjectInformationA".}
-proc GetUserObjectInformationW*(hObj: THandle, nIndex: int, pvInfo: pointer,
+proc GetUserObjectInformationW*(hObj: Handle, nIndex: int, pvInfo: pointer,
                                 nLength: DWORD, lpnLengthNeeded: var DWORD): WINBOOL{.
     stdcall, dynlib: "user32", importc: "GetUserObjectInformationW".}
-proc GetUserObjectSecurity*(hObj: THandle, pSIRequested: var DWORD,
+proc GetUserObjectSecurity*(hObj: Handle, pSIRequested: var DWORD,
                             pSID: PSecurityDescriptor, nLength: DWORD,
                             lpnLengthNeeded: var DWORD): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetUserObjectSecurity".}
-proc GetVersionEx*(lpVersionInformation: var TOSVersionInfo): WINBOOL{.stdcall,
+proc GetVersionEx*(lpVersionInformation: var OSVersionInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetVersionExA".}
-proc GetVersionExA*(lpVersionInformation: var TOSVersionInfo): WINBOOL{.stdcall,
+proc GetVersionExA*(lpVersionInformation: var OSVersionInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetVersionExA".}
-proc GetVersionExW*(lpVersionInformation: var TOSVersionInfoW): WINBOOL{.
+proc GetVersionExW*(lpVersionInformation: var OSVersionInfoW): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW".}
-proc GetViewportExtEx*(DC: HDC, Size: var TSize): WINBOOL{.stdcall,
+proc GetViewportExtEx*(DC: HDC, Size: var Size): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetViewportExtEx".}
-proc GetViewportOrgEx*(DC: HDC, Point: var TPoint): WINBOOL{.stdcall,
+proc GetViewportOrgEx*(DC: HDC, Point: var Point): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetViewportOrgEx".}
 proc GetVolumeInformation*(lpRootPathName: cstring, lpVolumeNameBuffer: cstring,
                            nVolumeNameSize: DWORD, lpVolumeSerialNumber: PDWORD,
@@ -21881,59 +21421,59 @@ proc GetVolumeInformationW*(lpRootPathName: LPWSTR, lpVolumeNameBuffer: LPWSTR,
                             lpFileSystemNameBuffer: LPWSTR,
                             nFileSystemNameSize: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetVolumeInformationW".}
-proc GetWindowExtEx*(DC: HDC, Size: var TSize): WINBOOL{.stdcall,
+proc GetWindowExtEx*(DC: HDC, Size: var Size): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetWindowExtEx".}
   #function GetWindowInfo(wnd: HWND; var pwi: TWindowInfo): WINBOOL;stdcall; external 'user32' name 'GetWindowInfo';
-proc GetWindowOrgEx*(DC: HDC, Point: var TPoint): WINBOOL{.stdcall,
+proc GetWindowOrgEx*(DC: HDC, Point: var Point): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetWindowOrgEx".}
-proc GetWindowRect*(wnd: HWND, lpRect: var TRect): WINBOOL{.stdcall,
+proc GetWindowRect*(wnd: HWND, lpRect: var Rect): WINBOOL{.stdcall,
     dynlib: "user32", importc: "GetWindowRect".}
-proc GetWorldTransform*(DC: HDC, p2: var TXForm): WINBOOL{.stdcall,
+proc GetWorldTransform*(DC: HDC, p2: var XForm): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "GetWorldTransform".}
   #function GradientFill(DC: HDC; var p2: TTriVertex; p3: ULONG; p4: pointer; p5, p6: ULONG): WINBOOL;stdcall; external 'gdi32' name 'GradientFill';
 proc GlobalMemoryStatus*(Buffer: var MEMORYSTATUS){.stdcall, dynlib: "kernel32",
     importc: "GlobalMemoryStatus".}
-proc HeapWalk*(hHeap: THandle, lpEntry: var TProcessHeapEntry): WINBOOL{.
+proc HeapWalk*(hHeap: Handle, lpEntry: var ProcessHeapEntry): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "HeapWalk".}
 proc ImageList_GetDragImage*(ppt: var POINT, pptHotspot: var POINT): HIMAGELIST{.
     stdcall, dynlib: "comctl32", importc: "ImageList_GetDragImage".}
-proc InflateRect*(lprc: var TRect, dx, dy: int): WINBOOL{.stdcall,
+proc InflateRect*(lprc: var Rect, dx, dy: int): WINBOOL{.stdcall,
     dynlib: "user32", importc: "InflateRect".}
-proc InitializeAcl*(pAcl: var TACL, nAclLength, dwAclRevision: DWORD): WINBOOL{.
+proc InitializeAcl*(pAcl: var ACL, nAclLength, dwAclRevision: DWORD): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "InitializeAcl".}
-proc InitializeSid*(Sid: pointer, pIdentifierAuthority: TSIDIdentifierAuthority,
+proc InitializeSid*(Sid: pointer, pIdentifierAuthority: SIDIdentifierAuthority,
                     nSubAuthorityCount: int8): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "InitializeSid".}
-proc InsertMenuItemA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: TMenuItemInfoA): WINBOOL{.
+proc InsertMenuItemA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: MenuItemInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "InsertMenuItemA".}
-  #function InsertMenuItemW(p1: HMENU; p2: WINUINT; p3: WINBOOL; const p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'InsertMenuItemW';
-proc IntersectRect*(lprcDst: var TRect, lprcSrc1, lprcSrc2: TRect): WINBOOL{.
+  #function InsertMenuItemW(p1: HMENU; p2: WINUINT; p3: WINBOOL; const p4: MenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'InsertMenuItemW';
+proc IntersectRect*(lprcDst: var Rect, lprcSrc1, lprcSrc2: Rect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "IntersectRect".}
-  #function InvertRect(hDC: HDC; const lprc: TRect): WINBOOL; stdcall; external 'user32' name 'InvertRect';
+  #function InvertRect(hDC: HDC; const lprc: Rect): WINBOOL; stdcall; external 'user32' name 'InvertRect';
 proc IsDialogMessage*(hDlg: HWND, lpMsg: var TMsg): WINBOOL{.stdcall,
     dynlib: "user32", importc: "IsDialogMessageA".}
 proc IsDialogMessageA*(hDlg: HWND, lpMsg: var TMsg): WINBOOL{.stdcall,
     dynlib: "user32", importc: "IsDialogMessageA".}
 proc IsDialogMessageW*(hDlg: HWND, lpMsg: var TMsg): WINBOOL{.stdcall,
     dynlib: "user32", importc: "IsDialogMessageW".}
-  #function IsRectEmpty(const lprc: TRect): WINBOOL; stdcall; external 'user32' name 'IsRectEmpty';
-proc IsValidAcl*(pAcl: TACL): WINBOOL{.stdcall, dynlib: "advapi32",
+  #function IsRectEmpty(const lprc: Rect): WINBOOL; stdcall; external 'user32' name 'IsRectEmpty';
+proc IsValidAcl*(pAcl: ACL): WINBOOL{.stdcall, dynlib: "advapi32",
                                        importc: "IsValidAcl".}
-proc LocalFileTimeToFileTime*(lpLocalFileTime: TFileTime,
-                              lpFileTime: var TFileTime): WINBOOL{.stdcall,
+proc LocalFileTimeToFileTime*(lpLocalFileTime: FileTime,
+                              lpFileTime: var FileTime): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "LocalFileTimeToFileTime".}
-proc LockFileEx*(hFile: THandle, dwFlags, dwReserved: DWORD,
+proc LockFileEx*(hFile: Handle, dwFlags, dwReserved: DWORD,
                  nNumberOfBytesToLockLow, nNumberOfBytesToLockHigh: DWORD,
-                 lpOverlapped: TOverlapped): WINBOOL{.stdcall,
+                 lpOverlapped: Overlapped): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "LockFileEx".}
 proc LogonUser*(lpszUsername, lpszDomain, lpszPassword: cstring,
-                dwLogonType, dwLogonProvider: DWORD, phToken: var THandle): WINBOOL{.
+                dwLogonType, dwLogonProvider: DWORD, phToken: var Handle): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "LogonUserA".}
 proc LogonUserA*(lpszUsername, lpszDomain, lpszPassword: LPCSTR,
-                 dwLogonType, dwLogonProvider: DWORD, phToken: var THandle): WINBOOL{.
+                 dwLogonType, dwLogonProvider: DWORD, phToken: var Handle): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "LogonUserA".}
 proc LogonUserW*(lpszUsername, lpszDomain, lpszPassword: LPWSTR,
-                 dwLogonType, dwLogonProvider: DWORD, phToken: var THandle): WINBOOL{.
+                 dwLogonType, dwLogonProvider: DWORD, phToken: var Handle): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "LogonUserW".}
 proc LookupAccountName*(lpSystemName, lpAccountName: cstring, Sid: PSID,
                         cbSid: var DWORD, ReferencedDomainName: cstring,
@@ -21977,30 +21517,30 @@ proc LookupPrivilegeDisplayNameW*(lpSystemName, lpName: LPCSTR,
                                   lpDisplayName: LPWSTR,
                                   cbDisplayName, lpLanguageId: var DWORD): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "LookupPrivilegeDisplayNameW".}
-proc LookupPrivilegeName*(lpSystemName: cstring, lpLuid: var TLargeInteger,
+proc LookupPrivilegeName*(lpSystemName: cstring, lpLuid: var LargeInteger,
                           lpName: cstring, cbName: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "LookupPrivilegeNameA".}
-proc LookupPrivilegeNameA*(lpSystemName: LPCSTR, lpLuid: var TLargeInteger,
+proc LookupPrivilegeNameA*(lpSystemName: LPCSTR, lpLuid: var LargeInteger,
                            lpName: LPCSTR, cbName: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "LookupPrivilegeNameA".}
-proc LookupPrivilegeNameW*(lpSystemName: LPWSTR, lpLuid: var TLargeInteger,
+proc LookupPrivilegeNameW*(lpSystemName: LPWSTR, lpLuid: var LargeInteger,
                            lpName: LPWSTR, cbName: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "LookupPrivilegeNameW".}
 proc LookupPrivilegeValue*(lpSystemName, lpName: cstring,
-                           lpLuid: var TLargeInteger): WINBOOL{.stdcall,
+                           lpLuid: var LargeInteger): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "LookupPrivilegeValueA".}
 proc LookupPrivilegeValueA*(lpSystemName, lpName: LPCSTR,
-                            lpLuid: var TLargeInteger): WINBOOL{.stdcall,
+                            lpLuid: var LargeInteger): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "LookupPrivilegeValueA".}
 proc LookupPrivilegeValueW*(lpSystemName, lpName: LPWSTR,
-                            lpLuid: var TLargeInteger): WINBOOL{.stdcall,
+                            lpLuid: var LargeInteger): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "LookupPrivilegeValueW".}
 proc LPtoDP*(DC: HDC, Points: pointer, Count: int): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "LPtoDP".}
 proc MakeAbsoluteSD*(pSelfRelativeSecurityDescriptor: PSecurityDescriptor,
                      pAbsoluteSecurityDescriptor: PSecurityDescriptor,
                      lpdwAbsoluteSecurityDescriptorSi: var DWORD,
-                     pDacl: var TACL, lpdwDaclSize: var DWORD, pSacl: var TACL,
+                     pDacl: var ACL, lpdwDaclSize: var DWORD, pSacl: var ACL,
 
                      lpdwSaclSize: var DWORD, pOwner: PSID,
                      lpdwOwnerSize: var DWORD, pPrimaryGroup: pointer,
@@ -22010,16 +21550,16 @@ proc MakeSelfRelativeSD*(pAbsoluteSecurityDescriptor: PSecurityDescriptor,
                          pSelfRelativeSecurityDescriptor: PSecurityDescriptor,
                          lpdwBufferLength: var DWORD): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "MakeSelfRelativeSD".}
-proc MapDialogRect*(hDlg: HWND, lpRect: var TRect): WINBOOL{.stdcall,
+proc MapDialogRect*(hDlg: HWND, lpRect: var Rect): WINBOOL{.stdcall,
     dynlib: "user32", importc: "MapDialogRect".}
 proc MapWindowPoints*(hWndFrom, hWndTo: HWND, lpPoints: pointer, cPoints: WINUINT): int{.
     stdcall, dynlib: "user32", importc: "MapWindowPoints".}
-proc MessageBoxIndirect*(MsgBoxParams: TMsgBoxParams): WINBOOL{.stdcall,
+proc MessageBoxIndirect*(MsgBoxParams: MsgBoxParams): WINBOOL{.stdcall,
     dynlib: "user32", importc: "MessageBoxIndirectA".}
-proc MessageBoxIndirectA*(MsgBoxParams: TMsgBoxParamsA): WINBOOL{.stdcall,
+proc MessageBoxIndirectA*(MsgBoxParams: MsgBoxParams): WINBOOL{.stdcall,
     dynlib: "user32", importc: "MessageBoxIndirectA".}
-  #function MessageBoxIndirectW(const MsgBoxParams: TMsgBoxParamsW): WINBOOL; stdcall; external 'user32' name 'MessageBoxIndirectW';
-  #function ModifyWorldTransform(DC: HDC; const p2: TXForm; p3: DWORD): WINBOOL; stdcall; external 'gdi32' name 'ModifyWorldTransform';
+  #function MessageBoxIndirectW(const MsgBoxParams: MsgBoxParamsW): WINBOOL; stdcall; external 'user32' name 'MessageBoxIndirectW';
+  #function ModifyWorldTransform(DC: HDC; const p2: XForm; p3: DWORD): WINBOOL; stdcall; external 'gdi32' name 'ModifyWorldTransform';
 proc MsgWaitForMultipleObjects*(nCount: DWORD, pHandles: pointer,
                                 fWaitAll: WINBOOL,
                                 dwMilliseconds, dwWakeMask: DWORD): DWORD{.
@@ -22031,66 +21571,66 @@ proc MsgWaitForMultipleObjectsEx*(nCount: DWORD, pHandles: pointer,
 proc ObjectOpenAuditAlarm*(SubsystemName: cstring, HandleId: pointer,
                            ObjectTypeName: cstring, ObjectName: cstring,
                            pSecurityDescriptor: PSecurityDescriptor,
-                           ClientToken: THandle,
+                           ClientToken: Handle,
                            DesiredAccess, GrantedAccess: DWORD,
-                           Privileges: var TPrivilegeSet,
+                           Privileges: var PrivilegeSet,
                            ObjectCreation, AccessGranted: WINBOOL,
                            GenerateOnClose: var WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "ObjectOpenAuditAlarmA".}
 proc ObjectOpenAuditAlarmA*(SubsystemName: LPCSTR, HandleId: pointer,
                             ObjectTypeName: LPCSTR, ObjectName: LPCSTR,
                             pSecurityDescriptor: PSecurityDescriptor,
-                            ClientToken: THandle,
+                            ClientToken: Handle,
                             DesiredAccess, GrantedAccess: DWORD,
-                            Privileges: var TPrivilegeSet,
+                            Privileges: var PrivilegeSet,
                             ObjectCreation, AccessGranted: WINBOOL,
                             GenerateOnClose: var WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "ObjectOpenAuditAlarmA".}
 proc ObjectOpenAuditAlarmW*(SubsystemName: LPWSTR, HandleId: pointer,
                             ObjectTypeName: LPWSTR, ObjectName: LPWSTR,
                             pSecurityDescriptor: PSecurityDescriptor,
-                            ClientToken: THandle,
+                            ClientToken: Handle,
                             DesiredAccess, GrantedAccess: DWORD,
-                            Privileges: var TPrivilegeSet,
+                            Privileges: var PrivilegeSet,
                             ObjectCreation, AccessGranted: WINBOOL,
                             GenerateOnClose: var WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "ObjectOpenAuditAlarmW".}
 proc ObjectPrivilegeAuditAlarm*(SubsystemName: cstring, HandleId: pointer,
-                                ClientToken: THandle, DesiredAccess: DWORD,
-                                Privileges: var TPrivilegeSet,
+                                ClientToken: Handle, DesiredAccess: DWORD,
+                                Privileges: var PrivilegeSet,
                                 AccessGranted: WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "ObjectPrivilegeAuditAlarmA".}
 proc ObjectPrivilegeAuditAlarmA*(SubsystemName: LPCSTR, HandleId: pointer,
-                                 ClientToken: THandle, DesiredAccess: DWORD,
-                                 Privileges: var TPrivilegeSet,
+                                 ClientToken: Handle, DesiredAccess: DWORD,
+                                 Privileges: var PrivilegeSet,
                                  AccessGranted: WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "ObjectPrivilegeAuditAlarmA".}
 proc ObjectPrivilegeAuditAlarmW*(SubsystemName: LPWSTR, HandleId: pointer,
-                                 ClientToken: THandle, DesiredAccess: DWORD,
-                                 Privileges: var TPrivilegeSet,
+                                 ClientToken: Handle, DesiredAccess: DWORD,
+                                 Privileges: var PrivilegeSet,
                                  AccessGranted: WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "ObjectPrivilegeAuditAlarmW".}
-proc OffsetRect*(lprc: var TRect, dx, dy: int): WINBOOL{.stdcall,
+proc OffsetRect*(lprc: var Rect, dx, dy: int): WINBOOL{.stdcall,
     dynlib: "user32", importc: "OffsetRect".}
 proc OffsetViewportOrgEx*(DC: HDC, X, Y: int, Points: pointer): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "OffsetViewportOrgEx".}
 proc OffsetWindowOrgEx*(DC: HDC, X, Y: int, Points: pointer): WINBOOL{.stdcall,
     dynlib: "gdi32", importc: "OffsetWindowOrgEx".}
-proc OpenFile*(lpFileName: LPCSTR, lpReOpenBuff: var TOFStruct, uStyle: WINUINT): HFILE{.
+proc OpenFile*(lpFileName: LPCSTR, lpReOpenBuff: var OFStruct, uStyle: WINUINT): HFILE{.
     stdcall, dynlib: "kernel32", importc: "OpenFile".}
-proc OpenProcessToken*(ProcessHandle: THandle, DesiredAccess: DWORD,
-                       TokenHandle: var THandle): WINBOOL{.stdcall,
+proc OpenProcessToken*(ProcessHandle: Handle, DesiredAccess: DWORD,
+                       TokenHandle: var Handle): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "OpenProcessToken".}
-proc OpenThreadToken*(ThreadHandle: THandle, DesiredAccess: DWORD,
-                      OpenAsSelf: WINBOOL, TokenHandle: var THandle): WINBOOL{.
+proc OpenThreadToken*(ThreadHandle: Handle, DesiredAccess: DWORD,
+                      OpenAsSelf: WINBOOL, TokenHandle: var Handle): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "OpenThreadToken".}
-proc PeekConsoleInput*(hConsoleInput: THandle, lpBuffer: var TInputRecord,
+proc PeekConsoleInput*(hConsoleInput: Handle, lpBuffer: var InputRecord,
                        nLength: DWORD, lpNumberOfEventsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "PeekConsoleInputA".}
-proc PeekConsoleInputA*(hConsoleInput: THandle, lpBuffer: var TInputRecord,
+proc PeekConsoleInputA*(hConsoleInput: Handle, lpBuffer: var InputRecord,
                         nLength: DWORD, lpNumberOfEventsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "PeekConsoleInputA".}
-proc PeekConsoleInputW*(hConsoleInput: THandle, lpBuffer: var TInputRecord,
+proc PeekConsoleInputW*(hConsoleInput: Handle, lpBuffer: var InputRecord,
                         nLength: DWORD, lpNumberOfEventsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "PeekConsoleInputW".}
 proc PeekMessage*(lpMsg: var TMsg, wnd: HWND,
@@ -22102,11 +21642,11 @@ proc PeekMessageA*(lpMsg: var TMsg, wnd: HWND,
 proc PeekMessageW*(lpMsg: var TMsg, wnd: HWND,
                    wMsgFilterMin, wMsgFilterMax, wRemoveMsg: WINUINT): WINBOOL{.
     stdcall, dynlib: "user32", importc: "PeekMessageW".}
-  #function PlayEnhMetaFile(DC: HDC; p2: HENHMETAFILE; const p3: TRect): WINBOOL; stdcall; external 'gdi32' name 'PlayEnhMetaFile';
-proc PlayEnhMetaFileRecord*(DC: HDC, p2: var THandleTable, p3: TEnhMetaRecord,
+  #function PlayEnhMetaFile(DC: HDC; p2: HENHMETAFILE; const p3: Rect): WINBOOL; stdcall; external 'gdi32' name 'PlayEnhMetaFile';
+proc PlayEnhMetaFileRecord*(DC: HDC, p2: var HandleTable, p3: EnhMetaRecord,
                             p4: WINUINT): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "PlayEnhMetaFileRecord".}
-proc PlayMetaFileRecord*(DC: HDC, p2: THandleTable, p3: TMetaRecord, p4: WINUINT): WINBOOL{.
+proc PlayMetaFileRecord*(DC: HDC, p2: HandleTable, p3: MetaRecord, p4: WINUINT): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PlayMetaFileRecord".}
 proc PlgBlt*(DC: HDC, PointsArray: pointer, p3: HDC, p4, p5, p6, p7: int,
              p8: HBITMAP, p9, p10: int): WINBOOL{.stdcall, dynlib: "gdi32",
@@ -22133,28 +21673,28 @@ proc PolyTextOutA*(DC: HDC, PolyTextArray: pointer, Strings: int): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PolyTextOutA".}
 proc PolyTextOutW*(DC: HDC, PolyTextArray: pointer, Strings: int): WINBOOL{.
     stdcall, dynlib: "gdi32", importc: "PolyTextOutW".}
-proc PrivilegeCheck*(ClientToken: THandle, RequiredPrivileges: TPrivilegeSet,
+proc PrivilegeCheck*(ClientToken: Handle, RequiredPrivileges: PrivilegeSet,
                      pfResult: var WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "PrivilegeCheck".}
 proc PrivilegedServiceAuditAlarm*(SubsystemName, ServiceName: cstring,
-                                  ClientToken: THandle,
-                                  Privileges: var TPrivilegeSet,
+                                  ClientToken: Handle,
+                                  Privileges: var PrivilegeSet,
                                   AccessGranted: WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "PrivilegedServiceAuditAlarmA".}
 proc PrivilegedServiceAuditAlarmA*(SubsystemName, ServiceName: LPCSTR,
-                                   ClientToken: THandle,
-                                   Privileges: var TPrivilegeSet,
+                                   ClientToken: Handle,
+                                   Privileges: var PrivilegeSet,
                                    AccessGranted: WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "PrivilegedServiceAuditAlarmA".}
 proc PrivilegedServiceAuditAlarmW*(SubsystemName, ServiceName: LPWSTR,
-                                   ClientToken: THandle,
-                                   Privileges: var TPrivilegeSet,
+                                   ClientToken: Handle,
+                                   Privileges: var PrivilegeSet,
                                    AccessGranted: WINBOOL): WINBOOL{.stdcall,
     dynlib: "advapi32", importc: "PrivilegedServiceAuditAlarmW".}
-  #function PtInRect(const lprc: TRect; pt: TPoint): WINBOOL; stdcall; external 'user32' name 'PtInRect';
-proc QueryPerformanceCounter*(lpPerformanceCount: var TLargeInteger): WINBOOL{.
+  #function PtInRect(const lprc: Rect; pt: Point): WINBOOL; stdcall; external 'user32' name 'PtInRect';
+proc QueryPerformanceCounter*(lpPerformanceCount: var LargeInteger): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "QueryPerformanceCounter".}
-proc QueryPerformanceFrequency*(lpFrequency: var TLargeInteger): WINBOOL{.
+proc QueryPerformanceFrequency*(lpFrequency: var LargeInteger): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "QueryPerformanceFrequency".}
   #function QueryRecoveryAgents(p1: PChar; var p2: pointer; var p3: TRecoveryAgentInformation): DWORD;stdcall; external 'kernel32' name 'QueryRecoveryAgentsA';
   #function QueryRecoveryAgentsA(p1: LPCSTR; var p2: pointer; var p3: TRecoveryAgentInformationA): DWORD;stdcall; external 'kernel32' name 'QueryRecoveryAgentsA';
@@ -22164,76 +21704,76 @@ proc RaiseException*(dwExceptionCode: DWORD, dwExceptionFlags: DWORD,
     stdcall, dynlib: "kernel32", importc: "RaiseException".}
 proc UnhandledExceptionFilter*(ExceptionInfo: var emptyrecord): LONG{.stdcall,
     dynlib: "kernel32", importc: "UnhandledExceptionFilter".}
-proc ReadConsole*(hConsoleInput: THandle, lpBuffer: pointer,
+proc ReadConsole*(hConsoleInput: Handle, lpBuffer: pointer,
                   nNumberOfCharsToRead: DWORD, lpNumberOfCharsRead: var DWORD,
                   lpReserved: pointer): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "ReadConsoleA".}
-proc ReadConsoleA*(hConsoleInput: THandle, lpBuffer: pointer,
+proc ReadConsoleA*(hConsoleInput: Handle, lpBuffer: pointer,
                    nNumberOfCharsToRead: DWORD, lpNumberOfCharsRead: var DWORD,
                    lpReserved: pointer): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "ReadConsoleA".}
-proc ReadConsoleInput*(hConsoleInput: THandle, lpBuffer: var TInputRecord,
+proc ReadConsoleInput*(hConsoleInput: Handle, lpBuffer: var InputRecord,
                        nLength: DWORD, lpNumberOfEventsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadConsoleInputA".}
-proc ReadConsoleInputA*(hConsoleInput: THandle, lpBuffer: var TInputRecord,
+proc ReadConsoleInputA*(hConsoleInput: Handle, lpBuffer: var InputRecord,
                         nLength: DWORD, lpNumberOfEventsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadConsoleInputA".}
-proc ReadConsoleInputW*(hConsoleInput: THandle, lpBuffer: var TInputRecord,
+proc ReadConsoleInputW*(hConsoleInput: Handle, lpBuffer: var InputRecord,
                         nLength: DWORD, lpNumberOfEventsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
-proc ReadConsoleOutput*(hConsoleOutput: THandle, lpBuffer: pointer,
-                        dwBufferSize, dwBufferCoord: TCoord,
-                        lpReadRegion: var TSmallRect): WINBOOL{.stdcall,
+proc ReadConsoleOutput*(hConsoleOutput: Handle, lpBuffer: pointer,
+                        dwBufferSize, dwBufferCoord: Coord,
+                        lpReadRegion: var SmallRect): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "ReadConsoleOutputA".}
-proc ReadConsoleOutputA*(hConsoleOutput: THandle, lpBuffer: pointer,
-                         dwBufferSize, dwBufferCoord: TCoord,
-                         lpReadRegion: var TSmallRect): WINBOOL{.stdcall,
+proc ReadConsoleOutputA*(hConsoleOutput: Handle, lpBuffer: pointer,
+                         dwBufferSize, dwBufferCoord: Coord,
+                         lpReadRegion: var SmallRect): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "ReadConsoleOutputA".}
-proc ReadConsoleOutputAttribute*(hConsoleOutput: THandle, lpAttribute: pointer,
-                                 nLength: DWORD, dwReadCoord: TCoord,
+proc ReadConsoleOutputAttribute*(hConsoleOutput: Handle, lpAttribute: pointer,
+                                 nLength: DWORD, dwReadCoord: Coord,
                                  lpNumberOfAttrsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadConsoleOutputAttribute".}
-proc ReadConsoleOutputCharacter*(hConsoleOutput: THandle, lpCharacter: LPCSTR,
-                                 nLength: DWORD, dwReadCoord: TCoord,
+proc ReadConsoleOutputCharacter*(hConsoleOutput: Handle, lpCharacter: LPCSTR,
+                                 nLength: DWORD, dwReadCoord: Coord,
                                  lpNumberOfCharsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadConsoleOutputCharacterA".}
-proc ReadConsoleOutputCharacterA*(hConsoleOutput: THandle, lpCharacter: LPCSTR,
-                                  nLength: DWORD, dwReadCoord: TCoord,
+proc ReadConsoleOutputCharacterA*(hConsoleOutput: Handle, lpCharacter: LPCSTR,
+                                  nLength: DWORD, dwReadCoord: Coord,
                                   lpNumberOfCharsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadConsoleOutputCharacterA".}
-proc ReadConsoleOutputCharacterW*(hConsoleOutput: THandle, lpCharacter: LPCSTR,
-                                  nLength: DWORD, dwReadCoord: TCoord,
+proc ReadConsoleOutputCharacterW*(hConsoleOutput: Handle, lpCharacter: LPCSTR,
+                                  nLength: DWORD, dwReadCoord: Coord,
                                   lpNumberOfCharsRead: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadConsoleOutputCharacterW".}
-proc ReadConsoleOutputW*(hConsoleOutput: THandle, lpBuffer: pointer,
-                         dwBufferSize, dwBufferCoord: TCoord,
-                         lpReadRegion: var TSmallRect): WINBOOL{.stdcall,
+proc ReadConsoleOutputW*(hConsoleOutput: Handle, lpBuffer: pointer,
+                         dwBufferSize, dwBufferCoord: Coord,
+                         lpReadRegion: var SmallRect): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "ReadConsoleOutputW".}
-proc ReadConsoleW*(hConsoleInput: THandle, lpBuffer: pointer,
+proc ReadConsoleW*(hConsoleInput: Handle, lpBuffer: pointer,
                    nNumberOfCharsToRead: DWORD, lpNumberOfCharsRead: var DWORD,
                    lpReserved: pointer): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "ReadConsoleW".}
-proc ReadEventLog*(hEventLog: THandle, dwReadFlags, dwRecordOffset: DWORD,
+proc ReadEventLog*(hEventLog: Handle, dwReadFlags, dwRecordOffset: DWORD,
                    lpBuffer: pointer, nNumberOfBytesToRead: DWORD,
                    pnBytesRead, pnMinNumberOfBytesNeeded: var DWORD): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "ReadEventLogA".}
-proc ReadEventLogA*(hEventLog: THandle, dwReadFlags, dwRecordOffset: DWORD,
+proc ReadEventLogA*(hEventLog: Handle, dwReadFlags, dwRecordOffset: DWORD,
                     lpBuffer: pointer, nNumberOfBytesToRead: DWORD,
                     pnBytesRead, pnMinNumberOfBytesNeeded: var DWORD): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "ReadEventLogA".}
-proc ReadEventLogW*(hEventLog: THandle, dwReadFlags, dwRecordOffset: DWORD,
+proc ReadEventLogW*(hEventLog: Handle, dwReadFlags, dwRecordOffset: DWORD,
                     lpBuffer: pointer, nNumberOfBytesToRead: DWORD,
                     pnBytesRead, pnMinNumberOfBytesNeeded: var DWORD): WINBOOL{.
     stdcall, dynlib: "advapi32", importc: "ReadEventLogW".}
-proc ReadFile*(hFile: THandle, Buffer: pointer, nNumberOfBytesToRead: DWORD,
+proc ReadFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToRead: DWORD,
                lpNumberOfBytesRead: var DWORD, lpOverlapped: POverlapped): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "ReadFile".}
-proc ReadProcessMemory*(hProcess: THandle, lpBaseAddress: pointer,
+proc ReadProcessMemory*(hProcess: Handle, lpBaseAddress: pointer,
                         lpBuffer: pointer, nSize: DWORD,
                         lpNumberOfBytesRead: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "ReadProcessMemory".}
-  #function RectInRegion(RGN: HRGN; const p2: TRect): WINBOOL; stdcall; external 'gdi32' name 'RectInRegion';
-  #function RectVisible(DC: HDC; const Rect: TRect): WINBOOL; stdcall; external 'gdi32' name 'RectVisible';
+  #function RectInRegion(RGN: HRGN; const p2: Rect): WINBOOL; stdcall; external 'gdi32' name 'RectInRegion';
+  #function RectVisible(DC: HDC; const Rect: Rect): WINBOOL; stdcall; external 'gdi32' name 'RectVisible';
 proc RegConnectRegistry*(lpMachineName: cstring, key: HKEY, phkResult: var HKEY): int32{.
     stdcall, dynlib: "advapi32", importc: "RegConnectRegistryA".}
 proc RegConnectRegistryA*(lpMachineName: LPCSTR, key: HKEY, phkResult: var HKEY): int32{.
@@ -22298,17 +21838,17 @@ proc RegSetValueExA*(key: HKEY, lpValueName: LPCSTR, Reserved: DWORD,
 proc RegSetValueExW*(key: HKEY, lpValueName: LPCWSTR, Reserved: DWORD,
                      dwType: DWORD, lpData: pointer, cbData: DWORD): LONG{.
     stdcall, dynlib: "advapi32", importc: "RegSetValueExW".}
-proc RegisterClass*(lpWndClass: TWndClass): ATOM{.stdcall, dynlib: "user32",
+proc RegisterClass*(lpWndClass: WndClass): ATOM{.stdcall, dynlib: "user32",
     importc: "RegisterClassA".}
-proc RegisterClassA*(lpWndClass: TWndClassA): ATOM{.stdcall, dynlib: "user32",
+proc RegisterClassA*(lpWndClass: WndClass): ATOM{.stdcall, dynlib: "user32",
     importc: "RegisterClassA".}
-proc RegisterClassEx*(WndClass: TWndClassEx): ATOM{.stdcall, dynlib: "user32",
+proc RegisterClassEx*(WndClass: WndClassEx): ATOM{.stdcall, dynlib: "user32",
     importc: "RegisterClassExA".}
-proc RegisterClassExA*(WndClass: TWndClassExA): ATOM{.stdcall, dynlib: "user32",
+proc RegisterClassExA*(WndClass: WndClassEx): ATOM{.stdcall, dynlib: "user32",
     importc: "RegisterClassExA".}
-proc RegisterClassExW*(WndClass: TWndClassExW): ATOM{.stdcall, dynlib: "user32",
+proc RegisterClassExW*(WndClass: WndClassExW): ATOM{.stdcall, dynlib: "user32",
     importc: "RegisterClassExW".}
-proc RegisterClassW*(lpWndClass: TWndClassW): ATOM{.stdcall, dynlib: "user32",
+proc RegisterClassW*(lpWndClass: WndClassW): ATOM{.stdcall, dynlib: "user32",
     importc: "RegisterClassW".}
 proc RegOpenKey*(key: HKEY, lpSubKey: cstring, phkResult: var HKEY): int32{.
     stdcall, dynlib: "advapi32", importc: "RegOpenKeyA".}
@@ -22343,30 +21883,30 @@ proc RegQueryValueA*(key: HKEY, lpSubKey: LPCSTR, lpValue: LPCSTR,
 proc RegQueryValueW*(key: HKEY, lpSubKey: LPWSTR, lpValue: LPWSTR,
                      lpcbValue: var int32): int32{.stdcall, dynlib: "advapi32",
     importc: "RegQueryValueW".}
-proc ResetDC*(DC: HDC, p2: TDeviceMode): HDC{.stdcall, dynlib: "gdi32",
+proc ResetDC*(DC: HDC, p2: DevMode): HDC{.stdcall, dynlib: "gdi32",
     importc: "ResetDCA".}
-proc ResetDCA*(DC: HDC, p2: TDeviceModeA): HDC{.stdcall, dynlib: "gdi32",
+proc ResetDCA*(DC: HDC, p2: DevMode): HDC{.stdcall, dynlib: "gdi32",
     importc: "ResetDCA".}
-  #function ResetDCW(DC: HDC; const p2: TDeviceModeW): HDC; stdcall; external 'gdi32' name 'ResetDCW';
-proc ScreenToClient*(wnd: HWND, lpPoint: var TPoint): WINBOOL{.stdcall,
+  #function ResetDCW(DC: HDC; const p2: DevModeW): HDC; stdcall; external 'gdi32' name 'ResetDCW';
+proc ScreenToClient*(wnd: HWND, lpPoint: var Point): WINBOOL{.stdcall,
     dynlib: "user32", importc: "ScreenToClient".}
-proc ScrollConsoleScreenBuffer*(hConsoleOutput: THandle,
-                                lpScrollRectangle: TSmallRect,
-                                lpClipRectangle: TSmallRect,
-                                dwDestinationOrigin: TCoord,
-                                lpFill: var TCharInfo): WINBOOL{.stdcall,
+proc ScrollConsoleScreenBuffer*(hConsoleOutput: Handle,
+                                lpScrollRectangle: SmallRect,
+                                lpClipRectangle: SmallRect,
+                                dwDestinationOrigin: Coord,
+                                lpFill: var CharInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "ScrollConsoleScreenBufferA".}
-proc ScrollConsoleScreenBufferA*(hConsoleOutput: THandle,
-                                 lpScrollRectangle: TSmallRect,
-                                 lpClipRectangle: TSmallRect,
-                                 dwDestinationOrigin: TCoord,
-                                 lpFill: var TCharInfo): WINBOOL{.stdcall,
+proc ScrollConsoleScreenBufferA*(hConsoleOutput: Handle,
+                                 lpScrollRectangle: SmallRect,
+                                 lpClipRectangle: SmallRect,
+                                 dwDestinationOrigin: Coord,
+                                 lpFill: var CharInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "ScrollConsoleScreenBufferA".}
-proc ScrollConsoleScreenBufferW*(hConsoleOutput: THandle,
-                                 lpScrollRectangle: TSmallRect,
-                                 lpClipRectangle: TSmallRect,
-                                 dwDestinationOrigin: TCoord,
-                                 lpFill: var TCharInfo): WINBOOL{.stdcall,
+proc ScrollConsoleScreenBufferW*(hConsoleOutput: Handle,
+                                 lpScrollRectangle: SmallRect,
+                                 lpClipRectangle: SmallRect,
+                                 dwDestinationOrigin: Coord,
+                                 lpFill: var CharInfo): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "ScrollConsoleScreenBufferW".}
 proc ScrollWindow*(wnd: HWND, XAmount: int32, YAmount: int32, rect: LPRECT,
                    lpClipRect: LPRECT): WINBOOL{.stdcall, dynlib: "user32",
@@ -22375,7 +21915,7 @@ proc ScrollWindowEx*(wnd: HWND, dx: int32, dy: int32, prcScroll: LPRECT,
                      prcClip: LPRECT, hrgnUpdate: HRGN, prcUpdate: LPRECT,
                      flags: WINUINT): int32{.stdcall, dynlib: "user32",
     importc: "ScrollWindowEx".}
-  #function ScrollDC(DC: HDC; DX, DY: Integer; var Scroll, Clip: TRect; Rgn: HRGN; Update: PRect): WINBOOL; stdcall; external 'user32' name 'ScrollDC';
+  #function ScrollDC(DC: HDC; DX, DY: Integer; var Scroll, Clip: Rect; Rgn: HRGN; Update: PRect): WINBOOL; stdcall; external 'user32' name 'ScrollDC';
   #function SearchPath(lpPath, lpFileName, lpExtension: PChar; nBufferLength: DWORD; lpBuffer: PChar; var lpFilePart: PChar): DWORD;stdcall; external 'kernel32' name 'SearchPathA';
   #function SearchPathA(lpPath, lpFileName, lpExtension: LPCSTR; nBufferLength: DWORD; lpBuffer: LPCSTR; var lpFilePart: LPCSTR): DWORD; stdcall; external 'kernel32' name 'SearchPathA';
   #function SearchPathW(lpPath, lpFileName, lpExtension: LPWSTR; nBufferLength: DWORD; lpBuffer: LPWSTR; var lpFilePart: LPWSTR): DWORD; stdcall; external 'kernel32' name 'SearchPathW';
@@ -22389,84 +21929,84 @@ proc SendMessageTimeoutA*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM,
 proc SendMessageTimeoutW*(wnd: HWND, Msg: WINUINT, wp: WPARAM, lp: LPARAM,
                           fuFlags, uTimeout: WINUINT, lpdwResult: var DWORD): LRESULT{.
     stdcall, dynlib: "user32", importc: "SendMessageTimeoutW".}
-  #function SetAclInformation(var pAcl: TACL; pAclInformation: pointer; nAclInformationLength: DWORD; dwAclInformationClass: TAclInformationClass): WINBOOL; stdcall; external 'advapi32' name 'SetAclInformation';
-  #function SetColorAdjustment(DC: HDC; const p2: TColorAdjustment): WINBOOL; stdcall; external 'gdi32' name 'SetColorAdjustment';
-proc SetCommConfig*(hCommDev: THandle, lpCC: TCommConfig, dwSize: DWORD): WINBOOL{.
+  #function SetAclInformation(var pAcl: ACL; pAclInformation: pointer; nAclInformationLength: DWORD; dwAclInformationClass: AclInformationClass): WINBOOL; stdcall; external 'advapi32' name 'SetAclInformation';
+  #function SetColorAdjustment(DC: HDC; const p2: ColorAdjustment): WINBOOL; stdcall; external 'gdi32' name 'SetColorAdjustment';
+proc SetCommConfig*(hCommDev: Handle, lpCC: CommConfig, dwSize: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetCommConfig".}
-proc SetCommState*(hFile: THandle, lpDCB: TDCB): WINBOOL{.stdcall,
+proc SetCommState*(hFile: Handle, lpDCB: DCB): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetCommState".}
-proc SetCommTimeouts*(hFile: THandle, lpCommTimeouts: TCommTimeouts): WINBOOL{.
+proc SetCommTimeouts*(hFile: Handle, lpCommTimeouts: CommTimeouts): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetCommTimeouts".}
-proc SetConsoleCursorInfo*(hConsoleOutput: THandle,
-                           lpConsoleCursorInfo: TConsoleCursorInfo): WINBOOL{.
+proc SetConsoleCursorInfo*(hConsoleOutput: Handle,
+                           lpConsoleCursorInfo: ConsoleCursorInfo): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetConsoleCursorInfo".}
-  #function SetConsoleWindowInfo(hConsoleOutput: THandle; bAbsolute: WINBOOL; const lpConsoleWindow: TSmallRect): WINBOOL; stdcall; external 'kernel32' name 'SetConsoleWindowInfo';
+  #function SetConsoleWindowInfo(hConsoleOutput: Handle; bAbsolute: WINBOOL; const lpConsoleWindow: SmallRect): WINBOOL; stdcall; external 'kernel32' name 'SetConsoleWindowInfo';
 proc SetDIBColorTable*(DC: HDC, p2, p3: WINUINT, RGBQuadSTructs: pointer): WINUINT{.
     stdcall, dynlib: "gdi32", importc: "SetDIBColorTable".}
 proc SetDIBits*(DC: HDC, Bitmap: HBITMAP, StartScan, NumScans: WINUINT,
-                Bits: pointer, BitsInfo: var TBitmapInfo, Usage: WINUINT): int{.
+                Bits: pointer, BitsInfo: var BitmapInfo, Usage: WINUINT): int{.
     stdcall, dynlib: "gdi32", importc: "SetDIBits".}
-  #function SetDIBitsToDevice(DC: HDC; DestX, DestY: Integer; Width, Height: DWORD; SrcX, SrcY: Integer; nStartScan, NumScans: WINUINT; Bits: pointer; var BitsInfo: TBitmapInfo; Usage: WINUINT): Integer; stdcall; external 'gdi32' name 'SetDIBitsToDevice';
+  #function SetDIBitsToDevice(DC: HDC; DestX, DestY: Integer; Width, Height: DWORD; SrcX, SrcY: Integer; nStartScan, NumScans: WINUINT; Bits: pointer; var BitsInfo: BitmapInfo; Usage: WINUINT): Integer; stdcall; external 'gdi32' name 'SetDIBitsToDevice';
 proc SetEnhMetaFileBits*(para1: WINUINT, para2: pointer): HENHMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetEnhMetaFileBits".}
 proc SetFileTime*(hFile: HANDLE, lpCreationTime: var FILETIME,
                   lpLastAccessTime: var FILETIME, lpLastWriteTime: var FILETIME): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetFileTime".}
   #function SetKeyboardState(var KeyState: TKeyboardState): WINBOOL; stdcall; external 'user32' name 'SetKeyboardState';
-  #function SetLocalTime(const lpSystemTime: TSystemTime): WINBOOL; stdcall; external 'kernel32' name 'SetLocalTime';
+  #function SetLocalTime(const lpSystemTime: SystemTime): WINBOOL; stdcall; external 'kernel32' name 'SetLocalTime';
   #function SetMenuInfo(menu: HMENU; const lpcmi: TMenuInfo): WINBOOL;stdcall; external 'user32' name 'SetMenuInfo';
-proc SetMenuItemInfo*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: TMenuItemInfo): WINBOOL{.
+proc SetMenuItemInfo*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: MenuItemInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetMenuItemInfoA".}
-proc SetMenuItemInfoA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: TMenuItemInfoA): WINBOOL{.
+proc SetMenuItemInfoA*(p1: HMENU, p2: WINUINT, p3: WINBOOL, p4: MenuItemInfo): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetMenuItemInfoA".}
-  #function SetMenuItemInfoW(p1: HMENU; p2: WINUINT; p3: WINBOOL; const p4: TMenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'SetMenuItemInfoW';
+  #function SetMenuItemInfoW(p1: HMENU; p2: WINUINT; p3: WINBOOL; const p4: MenuItemInfoW): WINBOOL; stdcall; external 'user32' name 'SetMenuItemInfoW';
 proc SetMetaFileBitsEx*(p1: WINUINT, p2: cstring): HMETAFILE{.stdcall,
     dynlib: "gdi32", importc: "SetMetaFileBitsEx".}
-proc SetNamedPipeHandleState*(hNamedPipe: THandle, lpMode: var DWORD,
+proc SetNamedPipeHandleState*(hNamedPipe: Handle, lpMode: var DWORD,
     lpMaxCollectionCount, lpCollectDataTimeout: pointer): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetNamedPipeHandleState".}
 proc SetPaletteEntries*(Palette: HPALETTE, StartIndex, NumEntries: WINUINT,
                         PaletteEntries: pointer): WINUINT{.stdcall,
     dynlib: "gdi32", importc: "SetPaletteEntries".}
-  #function SetPrivateObjectSecurity(SecurityInformation: SECURITY_INFORMATION; ModificationDescriptor: PSecurityDescriptor; var ObjectsSecurityDescriptor: PSecurityDescriptor; const GenericMapping: TGenericMapping; Token: THandle): WINBOOL;
+  #function SetPrivateObjectSecurity(SecurityInformation: SECURITY_INFORMATION; ModificationDescriptor: PSecurityDescriptor; var ObjectsSecurityDescriptor: PSecurityDescriptor; const GenericMapping: GenericMapping; Token: Handle): WINBOOL;
   #  stdcall; external 'advapi32' name 'SetPrivateObjectSecurity';
   #function SetPrivateObjectSecurityEx(SecurityInformation: SECURITY_INFORMATION; ModificationDescriptor: PSecurityDescriptor; var ObjectsSecurityDescriptor: PSecurityDescriptor; AutoInheritFlags: ULONG;
-  #  const GenericMapping: TGenericMapping; Token: THandle): WINBOOL;stdcall; external 'advapi32' name 'SetPrivateObjectSecurityEx';
-proc SetRect*(lprc: var TRect, xLeft, yTop, xRight, yBottom: int): WINBOOL{.
+  #  const GenericMapping: GenericMapping; Token: Handle): WINBOOL;stdcall; external 'advapi32' name 'SetPrivateObjectSecurityEx';
+proc SetRect*(lprc: var Rect, xLeft, yTop, xRight, yBottom: int): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetRect".}
-proc SetRectEmpty*(lprc: var TRect): WINBOOL{.stdcall, dynlib: "user32",
+proc SetRectEmpty*(lprc: var Rect): WINBOOL{.stdcall, dynlib: "user32",
     importc: "SetRectEmpty".}
-proc SetScrollInfo*(wnd: HWND, BarFlag: int, ScrollInfo: TScrollInfo,
+proc SetScrollInfo*(wnd: HWND, BarFlag: int, ScrollInfo: ScrollInfo,
                     Redraw: WINBOOL): int{.stdcall, dynlib: "user32",
     importc: "SetScrollInfo".}
 proc SetSysColors*(cElements: int, lpaElements: pointer, lpaRgbValues: pointer): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SetSysColors".}
-  #function SetSystemTime(const lpSystemTime: TSystemTime): WINBOOL; stdcall; external 'kernel32' name 'SetSystemTime';
-proc SetThreadContext*(hThread: THandle, lpContext: TContext): WINBOOL{.stdcall,
+  #function SetSystemTime(const lpSystemTime: SystemTime): WINBOOL; stdcall; external 'kernel32' name 'SetSystemTime';
+proc SetThreadContext*(hThread: Handle, lpContext: Context): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SetThreadContext".}
-  #function SetTimeZoneInformation(const lpTimeZoneInformation: TTimeZoneInformation): WINBOOL; stdcall; external 'kernel32' name 'SetTimeZoneInformation';
-proc SetUserObjectSecurity*(hObj: THandle, pSIRequested: var DWORD,
+  #function SetTimeZoneInformation(const lpTimeZoneInformation: TimeZoneInformation): WINBOOL; stdcall; external 'kernel32' name 'SetTimeZoneInformation';
+proc SetUserObjectSecurity*(hObj: Handle, pSIRequested: var DWORD,
                             pSID: PSecurityDescriptor): WINBOOL{.stdcall,
     dynlib: "user32", importc: "SetUserObjectSecurity".}
-proc SetWaitableTimer*(hTimer: THandle, lpDueTime: var TLargeInteger,
+proc SetWaitableTimer*(hTimer: Handle, lpDueTime: var LargeInteger,
                        lPeriod: int32, pfnCompletionRoutine: TFNTimerAPCRoutine,
                        lpArgToCompletionRoutine: pointer, fResume: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SetWaitableTimer".}
-proc SetWinMetaFileBits*(p1: WINUINT, p2: cstring, p3: HDC, p4: TMetaFilePict): HENHMETAFILE{.
+proc SetWinMetaFileBits*(p1: WINUINT, p2: cstring, p3: HDC, p4: MetaFilePict): HENHMETAFILE{.
     stdcall, dynlib: "gdi32", importc: "SetWinMetaFileBits".}
-  #function SetWorldTransform(DC: HDC; const p2: TXForm): WINBOOL; stdcall; external 'gdi32' name 'SetWorldTransform';
-proc StartDoc*(DC: HDC, p2: TDocInfo): int{.stdcall, dynlib: "gdi32",
+  #function SetWorldTransform(DC: HDC; const p2: XForm): WINBOOL; stdcall; external 'gdi32' name 'SetWorldTransform';
+proc StartDoc*(DC: HDC, p2: DocInfo): int{.stdcall, dynlib: "gdi32",
     importc: "StartDocA".}
-proc StartDocA*(DC: HDC, p2: TDocInfoA): int{.stdcall, dynlib: "gdi32",
+proc StartDocA*(DC: HDC, p2: DocInfo): int{.stdcall, dynlib: "gdi32",
     importc: "StartDocA".}
-  #function StartDocW(DC: HDC; const p2: TDocInfoW): Integer; stdcall; external 'gdi32' name 'StartDocW';
-  #function StretchDIBits(DC: HDC; DestX, DestY, DestWidth, DestHegiht, SrcX, SrcY, SrcWidth, SrcHeight: Integer; Bits: pointer; var BitsInfo: TBitmapInfo; Usage: WINUINT; Rop: DWORD): Integer; stdcall; external 'gdi32' name 'StretchDIBits';
-proc SubtractRect*(lprcDst: var TRect, lprcSrc1, lprcSrc2: TRect): WINBOOL{.
+  #function StartDocW(DC: HDC; const p2: DocInfoW): Integer; stdcall; external 'gdi32' name 'StartDocW';
+  #function StretchDIBits(DC: HDC; DestX, DestY, DestWidth, DestHegiht, SrcX, SrcY, SrcWidth, SrcHeight: Integer; Bits: pointer; var BitsInfo: BitmapInfo; Usage: WINUINT; Rop: DWORD): Integer; stdcall; external 'gdi32' name 'StretchDIBits';
+proc SubtractRect*(lprcDst: var Rect, lprcSrc1, lprcSrc2: Rect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "SubtractRect".}
-proc SystemTimeToFileTime*(lpSystemTime: TSystemTime, lpFileTime: var TFileTime): WINBOOL{.
+proc SystemTimeToFileTime*(lpSystemTime: SystemTime, lpFileTime: var FileTime): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "SystemTimeToFileTime".}
 proc SystemTimeToTzSpecificLocalTime*(lpTimeZoneInformation: PTimeZoneInformation,
-    lpUniversalTime, lpLocalTime: var TSystemTime): WINBOOL{.stdcall,
+    lpUniversalTime, lpLocalTime: var SystemTime): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "SystemTimeToTzSpecificLocalTime".}
 proc TabbedTextOut*(hDC: HDC, X, Y: int, lpString: cstring,
                     nCount, nTabPositions: int, lpnTabStopPositions: pointer,
@@ -22491,7 +22031,7 @@ proc TrackMouseEvent*(lpEventTrack: PTrackMouseEvent): WINBOOL{.stdcall,
 proc TrackPopupMenu*(menu: HMENU, uFlags: WINUINT, x: int32, y: int32,
                      nReserved: int32, wnd: HWND, prcRect: PRect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "TrackPopupMenu".}
-proc TransactNamedPipe*(hNamedPipe: THandle, lpInBuffer: pointer,
+proc TransactNamedPipe*(hNamedPipe: Handle, lpInBuffer: pointer,
                         nInBufferSize: DWORD, lpOutBuffer: pointer,
                         nOutBufferSize: DWORD, lpBytesRead: var DWORD,
                         lpOverlapped: POverlapped): WINBOOL{.stdcall,
@@ -22502,7 +22042,7 @@ proc TranslateAcceleratorA*(wnd: HWND, hAccTable: HACCEL, lpMsg: var TMsg): int{
     stdcall, dynlib: "user32", importc: "TranslateAcceleratorA".}
 proc TranslateAcceleratorW*(wnd: HWND, hAccTable: HACCEL, lpMsg: var TMsg): int{.
     stdcall, dynlib: "user32", importc: "TranslateAcceleratorW".}
-proc TranslateCharsetInfo*(lpSrc: var DWORD, lpCs: var TCharsetInfo,
+proc TranslateCharsetInfo*(lpSrc: var DWORD, lpCs: var CharsetInfo,
                            dwFlags: DWORD): WINBOOL{.stdcall, dynlib: "gdi32",
     importc: "TranslateCharsetInfo".}
 proc TranslateMDISysAccel*(hWndClient: HWND, lpMsg: TMsg): WINBOOL{.stdcall,
@@ -22510,12 +22050,12 @@ proc TranslateMDISysAccel*(hWndClient: HWND, lpMsg: TMsg): WINBOOL{.stdcall,
 proc TranslateMessage*(lpMsg: TMsg): WINBOOL{.stdcall, dynlib: "user32",
     importc: "TranslateMessage".}
   #function TransparentDIBits(DC: HDC; p2, p3, p4, p5: Integer; const p6: pointer; const p7: PBitmapInfo; p8: WINUINT; p9, p10, p11, p12: Integer; p13: WINUINT): WINBOOL;stdcall; external 'gdi32' name 'TransparentDIBits';
-proc UnhandledExceptionFilter*(ExceptionInfo: TExceptionpointers): int32{.
+proc UnhandledExceptionFilter*(ExceptionInfo: Exceptionpointers): int32{.
     stdcall, dynlib: "kernel32", importc: "UnhandledExceptionFilter".}
-proc UnionRect*(lprcDst: var TRect, lprcSrc1, lprcSrc2: TRect): WINBOOL{.
+proc UnionRect*(lprcDst: var Rect, lprcSrc1, lprcSrc2: Rect): WINBOOL{.
     stdcall, dynlib: "user32", importc: "UnionRect".}
-proc UnlockFileEx*(hFile: THandle, dwReserved, nNumberOfBytesToUnlockLow: DWORD,
-                   nNumberOfBytesToUnlockHigh: DWORD, lpOverlapped: TOverlapped): WINBOOL{.
+proc UnlockFileEx*(hFile: Handle, dwReserved, nNumberOfBytesToUnlockLow: DWORD,
+                   nNumberOfBytesToUnlockHigh: DWORD, lpOverlapped: Overlapped): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "UnlockFileEx".}
 proc VerFindFile*(uFlags: DWORD,
                   szFileName, szWinDir, szAppDir, szCurDir: cstring,
@@ -22553,19 +22093,19 @@ proc VerQueryValueA*(pBlock: pointer, lpSubBlock: LPCSTR,
 proc VerQueryValueW*(pBlock: pointer, lpSubBlock: LPWSTR,
                      lplpBuffer: var pointer, puLen: var WINUINT): WINBOOL{.
     stdcall, dynlib: "version", importc: "VerQueryValueW".}
-proc VirtualQuery*(lpAddress: pointer, lpBuffer: var TMemoryBasicInformation,
+proc VirtualQuery*(lpAddress: pointer, lpBuffer: var MemoryBasicInformation,
                    dwLength: DWORD): DWORD{.stdcall, dynlib: "kernel32",
     importc: "VirtualQuery".}
-proc VirtualQueryEx*(hProcess: THandle, lpAddress: pointer,
-                     lpBuffer: var TMemoryBasicInformation, dwLength: DWORD): DWORD{.
+proc VirtualQueryEx*(hProcess: Handle, lpAddress: pointer,
+                     lpBuffer: var MemoryBasicInformation, dwLength: DWORD): DWORD{.
     stdcall, dynlib: "kernel32", importc: "VirtualQueryEx".}
-proc WaitCommEvent*(hFile: THandle, lpEvtMask: var DWORD,
+proc WaitCommEvent*(hFile: Handle, lpEvtMask: var DWORD,
                     lpOverlapped: POverlapped): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WaitCommEvent".}
-proc WaitForDebugEvent*(lpDebugEvent: var TDebugEvent, dwMilliseconds: DWORD): WINBOOL{.
+proc WaitForDebugEvent*(lpDebugEvent: var DebugEvent, dwMilliseconds: DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WaitForDebugEvent".}
 proc wglDescribeLayerPlane*(p1: HDC, p2, p3: int, p4: int,
-                            p5: var TLayerPlaneDescriptor): WINBOOL{.stdcall,
+                            p5: var LayerPlaneDescriptor): WINBOOL{.stdcall,
     dynlib: "opengl32", importc: "wglDescribeLayerPlane".}
 proc wglGetLayerPaletteEntries*(p1: HDC, p2, p3, p4: int, pcr: pointer): int{.
     stdcall, dynlib: "opengl32", importc: "wglGetLayerPaletteEntries".}
@@ -22573,38 +22113,38 @@ proc wglSetLayerPaletteEntries*(p1: HDC, p2, p3, p4: int, pcr: pointer): int{.
     stdcall, dynlib: "opengl32", importc: "wglSetLayerPaletteEntries".}
   #function wglSwapMultipleBuffers(p1: WINUINT; const p2: PWGLSwap): DWORD;stdcall; external 'opengl32' name 'wglSwapMultipleBuffers';
   #function WinSubmitCertificate(var lpCertificate: TWinCertificate): WINBOOL;stdcall; external 'imaghlp' name 'WinSubmitCertificate';
-  #function WinVerifyTrust(wnd: HWND; const ActionID: TGUID; ActionData: pointer): Longint;stdcall; external 'imaghlp' name 'WinVerifyTrust';
-proc WNetAddConnection2*(lpNetResource: var TNetResource,
+  #function WinVerifyTrust(wnd: HWND; const ActionID: GUID; ActionData: pointer): Longint;stdcall; external 'imaghlp' name 'WinVerifyTrust';
+proc WNetAddConnection2*(lpNetResource: var NetResource,
                          lpPassword, lpUserName: cstring, dwFlags: DWORD): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetAddConnection2A".}
-proc WNetAddConnection2A*(lpNetResource: var TNetResourceA,
+proc WNetAddConnection2A*(lpNetResource: var NetResource,
                           lpPassword, lpUserName: LPCSTR, dwFlags: DWORD): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetAddConnection2A".}
-  #function WNetAddConnection2W(var lpNetResource: TNetResourceW; lpPassword, lpUserName: LPWSTR; dwFlags: DWORD): DWORD; stdcall; external 'mpr' name 'WNetAddConnection2W';
-proc WNetAddConnection3*(hwndOwner: HWND, lpNetResource: var TNetResource,
+  #function WNetAddConnection2W(var lpNetResource: NetResourceW; lpPassword, lpUserName: LPWSTR; dwFlags: DWORD): DWORD; stdcall; external 'mpr' name 'WNetAddConnection2W';
+proc WNetAddConnection3*(hwndOwner: HWND, lpNetResource: var NetResource,
                          lpPassword, lpUserName: cstring, dwFlags: DWORD): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetAddConnection3A".}
-proc WNetAddConnection3A*(hwndOwner: HWND, lpNetResource: var TNetResourceA,
+proc WNetAddConnection3A*(hwndOwner: HWND, lpNetResource: var NetResource,
                           lpPassword, lpUserName: LPCSTR, dwFlags: DWORD): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetAddConnection3A".}
-  #function WNetAddConnection3W(hwndOwner: HWND; var lpNetResource: TNetResourceW; lpPassword, lpUserName: LPWSTR; dwFlags: DWORD): DWORD; stdcall; external 'mpr' name 'WNetAddConnection3W';
-proc WNetConnectionDialog1*(lpConnDlgStruct: var TConnectDlgStruct): DWORD{.
+  #function WNetAddConnection3W(hwndOwner: HWND; var lpNetResource: NetResourceW; lpPassword, lpUserName: LPWSTR; dwFlags: DWORD): DWORD; stdcall; external 'mpr' name 'WNetAddConnection3W';
+proc WNetConnectionDialog1*(lpConnDlgStruct: var ConnectDlgStruct): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetConnectionDialog1A".}
-proc WNetConnectionDialog1A*(lpConnDlgStruct: var TConnectDlgStruct): DWORD{.
+proc WNetConnectionDialog1A*(lpConnDlgStruct: var ConnectDlgStruct): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetConnectionDialog1A".}
-  #function WNetConnectionDialog1W(var lpConnDlgStruct: TConnectDlgStruct): DWORD; stdcall; external 'mpr' name 'WNetConnectionDialog1W';
-proc WNetDisconnectDialog1*(lpConnDlgStruct: var TDiscDlgStruct): DWORD{.
+  #function WNetConnectionDialog1W(var lpConnDlgStruct: ConnectDlgStruct): DWORD; stdcall; external 'mpr' name 'WNetConnectionDialog1W';
+proc WNetDisconnectDialog1*(lpConnDlgStruct: var DiscDlgStruct): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetDisconnectDialog1A".}
-proc WNetDisconnectDialog1A*(lpConnDlgStruct: var TDiscDlgStructA): DWORD{.
+proc WNetDisconnectDialog1A*(lpConnDlgStruct: var DiscDlgStruct): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetDisconnectDialog1A".}
-  #function WNetDisconnectDialog1W(var lpConnDlgStruct: TDiscDlgStructW): DWORD; stdcall; external 'mpr' name 'WNetDisconnectDialog1W';
-proc WNetEnumResource*(hEnum: THandle, lpcCount: var DWORD, lpBuffer: pointer,
+  #function WNetDisconnectDialog1W(var lpConnDlgStruct: DiscDlgStructW): DWORD; stdcall; external 'mpr' name 'WNetDisconnectDialog1W';
+proc WNetEnumResource*(hEnum: Handle, lpcCount: var DWORD, lpBuffer: pointer,
                        lpBufferSize: var DWORD): DWORD{.stdcall, dynlib: "mpr",
     importc: "WNetEnumResourceA".}
-proc WNetEnumResourceA*(hEnum: THandle, lpcCount: var DWORD, lpBuffer: pointer,
+proc WNetEnumResourceA*(hEnum: Handle, lpcCount: var DWORD, lpBuffer: pointer,
                         lpBufferSize: var DWORD): DWORD{.stdcall, dynlib: "mpr",
     importc: "WNetEnumResourceA".}
-proc WNetEnumResourceW*(hEnum: THandle, lpcCount: var DWORD, lpBuffer: pointer,
+proc WNetEnumResourceW*(hEnum: Handle, lpcCount: var DWORD, lpBuffer: pointer,
                         lpBufferSize: var DWORD): DWORD{.stdcall, dynlib: "mpr",
     importc: "WNetEnumResourceW".}
 proc WNetGetConnection*(lpLocalName: cstring, lpRemoteName: cstring,
@@ -22629,13 +22169,13 @@ proc WNetGetLastErrorW*(lpError: var DWORD, lpErrorBuf: LPWSTR,
                         nNameBufSize: DWORD): DWORD{.stdcall, dynlib: "mpr",
     importc: "WNetGetLastErrorW".}
 proc WNetGetNetworkInformation*(lpProvider: cstring,
-                                lpNetInfoStruct: var TNetInfoStruct): DWORD{.
+                                lpNetInfoStruct: var NetInfoStruct): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetGetNetworkInformationA".}
 proc WNetGetNetworkInformationA*(lpProvider: LPCSTR,
-                                 lpNetInfoStruct: var TNetInfoStruct): DWORD{.
+                                 lpNetInfoStruct: var NetInfoStruct): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetGetNetworkInformationA".}
 proc WNetGetNetworkInformationW*(lpProvider: LPWSTR,
-                                 lpNetInfoStruct: var TNetInfoStruct): DWORD{.
+                                 lpNetInfoStruct: var NetInfoStruct): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetGetNetworkInformationW".}
 proc WNetGetProviderName*(dwNetType: DWORD, lpProviderName: cstring,
                           lpBufferSize: var DWORD): DWORD{.stdcall,
@@ -22669,77 +22209,77 @@ proc WNetGetUserA*(lpName: LPCSTR, lpUserName: LPCSTR, lpnLength: var DWORD): DW
 proc WNetGetUserW*(lpName: LPWSTR, lpUserName: LPWSTR, lpnLength: var DWORD): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetGetUserW".}
 proc WNetOpenEnum*(dwScope, dwType, dwUsage: DWORD, lpNetResource: PNetResource,
-                   lphEnum: var THandle): DWORD{.stdcall, dynlib: "mpr",
+                   lphEnum: var Handle): DWORD{.stdcall, dynlib: "mpr",
     importc: "WNetOpenEnumA".}
 proc WNetOpenEnumA*(dwScope, dwType, dwUsage: DWORD,
-                    lpNetResource: PNetResourceA, lphEnum: var THandle): DWORD{.
+                    lpNetResource: PNetResourceA, lphEnum: var Handle): DWORD{.
     stdcall, dynlib: "mpr", importc: "WNetOpenEnumA".}
-  #function WNetOpenEnumW(dwScope, dwType, dwUsage: DWORD; lpNetResource: PNetResourceW; var lphEnum: THandle): DWORD; stdcall; external 'mpr' name 'WNetOpenEnumW';
-proc WNetUseConnection*(hwndOwner: HWND, lpNetResource: var TNetResource,
+  #function WNetOpenEnumW(dwScope, dwType, dwUsage: DWORD; lpNetResource: PNetResourceW; var lphEnum: Handle): DWORD; stdcall; external 'mpr' name 'WNetOpenEnumW';
+proc WNetUseConnection*(hwndOwner: HWND, lpNetResource: var NetResource,
                         lpUserID: cstring, lpPassword: cstring, dwFlags: DWORD,
                         lpAccessName: cstring, lpBufferSize: var DWORD,
                         lpResult: var DWORD): DWORD{.stdcall, dynlib: "mpr",
     importc: "WNetUseConnectionA".}
-proc WNetUseConnectionA*(hwndOwner: HWND, lpNetResource: var TNetResourceA,
+proc WNetUseConnectionA*(hwndOwner: HWND, lpNetResource: var NetResource,
                          lpUserID: LPCSTR, lpPassword: LPCSTR, dwFlags: DWORD,
                          lpAccessName: LPCSTR, lpBufferSize: var DWORD,
                          lpResult: var DWORD): DWORD{.stdcall, dynlib: "mpr",
     importc: "WNetUseConnectionA".}
-  #function WNetUseConnectionW(hwndOwner: HWND; var lpNetResource: TNetResourceW; lpUserID: LPWSTR; lpPassword: LPWSTR; dwFlags: DWORD; lpAccessName: LPWSTR; var lpBufferSize: DWORD; var lpResult: DWORD): DWORD; stdcall; external 'mpr' name 'WNetUseConnectionW';
-proc WriteConsole*(hConsoleOutput: THandle, lpBuffer: pointer,
+  #function WNetUseConnectionW(hwndOwner: HWND; var lpNetResource: NetResourceW; lpUserID: LPWSTR; lpPassword: LPWSTR; dwFlags: DWORD; lpAccessName: LPWSTR; var lpBufferSize: DWORD; var lpResult: DWORD): DWORD; stdcall; external 'mpr' name 'WNetUseConnectionW';
+proc WriteConsole*(hConsoleOutput: Handle, lpBuffer: pointer,
                    nNumberOfCharsToWrite: DWORD,
                    lpNumberOfCharsWritten: var DWORD, lpReserved: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleA".}
-proc WriteConsoleA*(hConsoleOutput: THandle, lpBuffer: pointer,
+proc WriteConsoleA*(hConsoleOutput: Handle, lpBuffer: pointer,
                     nNumberOfCharsToWrite: DWORD,
                     lpNumberOfCharsWritten: var DWORD, lpReserved: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleA".}
-proc WriteConsoleInput*(hConsoleInput: THandle, lpBuffer: TInputRecord,
+proc WriteConsoleInput*(hConsoleInput: Handle, lpBuffer: InputRecord,
                         nLength: DWORD, lpNumberOfEventsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleInputA".}
-proc WriteConsoleInputA*(hConsoleInput: THandle, lpBuffer: TInputRecord,
+proc WriteConsoleInputA*(hConsoleInput: Handle, lpBuffer: InputRecord,
                          nLength: DWORD, lpNumberOfEventsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleInputA".}
-proc WriteConsoleInputW*(hConsoleInput: THandle, lpBuffer: TInputRecord,
+proc WriteConsoleInputW*(hConsoleInput: Handle, lpBuffer: InputRecord,
                          nLength: DWORD, lpNumberOfEventsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleInputW".}
-proc WriteConsoleOutput*(hConsoleOutput: THandle, lpBuffer: pointer,
-                         dwBufferSize, dwBufferCoord: TCoord,
-                         lpWriteRegion: var TSmallRect): WINBOOL{.stdcall,
+proc WriteConsoleOutput*(hConsoleOutput: Handle, lpBuffer: pointer,
+                         dwBufferSize, dwBufferCoord: Coord,
+                         lpWriteRegion: var SmallRect): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WriteConsoleOutputA".}
-proc WriteConsoleOutputA*(hConsoleOutput: THandle, lpBuffer: pointer,
-                          dwBufferSize, dwBufferCoord: TCoord,
-                          lpWriteRegion: var TSmallRect): WINBOOL{.stdcall,
+proc WriteConsoleOutputA*(hConsoleOutput: Handle, lpBuffer: pointer,
+                          dwBufferSize, dwBufferCoord: Coord,
+                          lpWriteRegion: var SmallRect): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WriteConsoleOutputA".}
-proc WriteConsoleOutputAttribute*(hConsoleOutput: THandle, lpAttribute: pointer,
-                                  nLength: DWORD, dwWriteCoord: TCoord,
+proc WriteConsoleOutputAttribute*(hConsoleOutput: Handle, lpAttribute: pointer,
+                                  nLength: DWORD, dwWriteCoord: Coord,
                                   lpNumberOfAttrsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleOutputAttribute".}
-proc WriteConsoleOutputCharacter*(hConsoleOutput: THandle, lpCharacter: cstring,
-                                  nLength: DWORD, dwWriteCoord: TCoord,
+proc WriteConsoleOutputCharacter*(hConsoleOutput: Handle, lpCharacter: cstring,
+                                  nLength: DWORD, dwWriteCoord: Coord,
                                   lpNumberOfCharsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleOutputCharacterA".}
-proc WriteConsoleOutputCharacterA*(hConsoleOutput: THandle, lpCharacter: LPCSTR,
-                                   nLength: DWORD, dwWriteCoord: TCoord,
+proc WriteConsoleOutputCharacterA*(hConsoleOutput: Handle, lpCharacter: LPCSTR,
+                                   nLength: DWORD, dwWriteCoord: Coord,
                                    lpNumberOfCharsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleOutputCharacterA".}
-proc WriteConsoleOutputCharacterW*(hConsoleOutput: THandle, lpCharacter: LPWSTR,
-                                   nLength: DWORD, dwWriteCoord: TCoord,
+proc WriteConsoleOutputCharacterW*(hConsoleOutput: Handle, lpCharacter: LPWSTR,
+                                   nLength: DWORD, dwWriteCoord: Coord,
                                    lpNumberOfCharsWritten: var DWORD): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleOutputCharacterW".}
-proc WriteConsoleOutputW*(hConsoleOutput: THandle, lpBuffer: pointer,
-                          dwBufferSize, dwBufferCoord: TCoord,
-                          lpWriteRegion: var TSmallRect): WINBOOL{.stdcall,
+proc WriteConsoleOutputW*(hConsoleOutput: Handle, lpBuffer: pointer,
+                          dwBufferSize, dwBufferCoord: Coord,
+                          lpWriteRegion: var SmallRect): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WriteConsoleOutputW".}
-proc WriteConsoleW*(hConsoleOutput: THandle, lpBuffer: pointer,
+proc WriteConsoleW*(hConsoleOutput: Handle, lpBuffer: pointer,
                     nNumberOfCharsToWrite: DWORD,
                     lpNumberOfCharsWritten: var DWORD, lpReserved: pointer): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteConsoleW".}
-proc WriteFile*(hFile: THandle, Buffer: pointer, nNumberOfBytesToWrite: DWORD,
+proc WriteFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToWrite: DWORD,
                 lpNumberOfBytesWritten: var DWORD, lpOverlapped: POverlapped): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WriteFile".}
-proc WriteFileEx*(hFile: THandle, lpBuffer: pointer,
-                  nNumberOfBytesToWrite: DWORD, lpOverlapped: TOverlapped,
+proc WriteFileEx*(hFile: Handle, lpBuffer: pointer,
+                  nNumberOfBytesToWrite: DWORD, lpOverlapped: Overlapped,
                   lpCompletionRoutine: FARPROC): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WriteFileEx".}
 proc WritePrivateProfileStructA*(lpszSection, lpszKey: LPCSTR, lpStruct: LPVOID,
@@ -22752,7 +22292,7 @@ proc WritePrivateProfileStructW*(lpszSection, lpszKey: LPCWSTR,
 proc WritePrivateProfileStruct*(lpszSection, lpszKey: LPCTSTR, lpStruct: LPVOID,
                                 uSizeStruct: WINUINT, szFile: LPCTSTR): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "WritePrivateProfileStructA".}
-proc WriteProcessMemory*(hProcess: THandle, lpBaseAddress: pointer,
+proc WriteProcessMemory*(hProcess: Handle, lpBaseAddress: pointer,
                          lpBuffer: pointer, nSize: DWORD,
                          lpNumberOfBytesWritten: var DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "WriteProcessMemory".}
