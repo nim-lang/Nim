@@ -449,7 +449,7 @@ else:
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)
 
-when defined(testing):
+when isMainModule and defined(testing):
   var ss = newStringStream("The quick brown fox jumped over the lazy dog.\nThe lazy dog ran")
   assert(ss.getPosition == 0)
   assert(ss.peekStr(5) == "The q")
