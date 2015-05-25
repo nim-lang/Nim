@@ -1,9 +1,8 @@
 About this document
 ===================
 
-**Note**: This document is a draft! Several of Nim's features need more
-precise wording. This manual will evolve into a proper specification some
-day.
+**Note**: This document is a draft! Several of Nim's features may need more
+precise wording. This manual is constantly evolving until the 1.0 release and is not to be considered as the final proper specification.
 
 This document describes the lexis, the syntax, and the semantics of Nim.
 
@@ -33,5 +32,5 @@ and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
   arrayConstructor = '[' expr ^* ',' ']'
 
 Other parts of Nim - like scoping rules or runtime semantics are only
-described in an informal manner for now.
+described in the, more easily comprehensible, informal manner for now.
 

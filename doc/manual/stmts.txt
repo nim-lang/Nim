@@ -10,7 +10,7 @@ Statements are separated into `simple statements`:idx: and
 Simple statements are statements that cannot contain other statements like
 assignments, calls or the ``return`` statement; complex statements can
 contain other statements. To avoid the `dangling else problem`:idx:, complex
-statements always have to be intended. The details can be found in the grammar.
+statements always have to be indented. The details can be found in the grammar.
 
 
 Statement list expression
@@ -229,22 +229,18 @@ the expression after the ``elif`` is evaluated (if there is an
 ``elif`` branch), if it is true the corresponding statements after
 the ``:`` are executed. This goes on until the last ``elif``. If all
 conditions fail, the ``else`` part is executed. If there is no ``else``
-part, execution continues with the statement after the ``if`` statement.
+part, execution continues with the next statement.
 
-The scoping for an ``if`` statement is slightly subtle to support an important
-use case. A new scope starts for the ``if``/``elif`` condition and ends after
-the corresponding *then* block:
+In ``if`` statements new scopes begin immediately after the ``if``/``elif``/``else`` keywords and ends after the corresponding *then* block.
+For visualization purposes the scopes have been enclosed in ``{|  |}`` in the following example:
 
 .. code-block:: nim
   if {| (let m = input =~ re"(\w+)=\w+"; m.isMatch):
     echo "key ", m[0], " value ", m[1]  |}
   elif {| (let m = input =~ re""; m.isMatch):
-    echo "new m in this scope" |}
-  else:
-    # 'm' not declared here
-
-In the example the scopes have been enclosed in ``{|  |}``.
-
+    echo "new m in this scope"  |}
+  else: {|
+    echo "m not declared here"  |}
 
 Case statement
 --------------
@@ -601,7 +597,7 @@ A table constructor is syntactic sugar for an array constructor:
 
 The empty table can be written ``{:}`` (in contrast to the empty set
 which is ``{}``) which is thus another way to write as the empty array
-constructor ``[]``. This slightly unusal way of supporting tables
+constructor ``[]``. This slightly unusual way of supporting tables
 has lots of advantages:
 
 * The order of the (key,value)-pairs is preserved, thus it is easy to

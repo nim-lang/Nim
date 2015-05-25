@@ -3,16 +3,36 @@ Procedures
 
 What most programming languages call `methods`:idx: or `functions`:idx: are
 called `procedures`:idx: in Nim (which is the correct terminology). A
-procedure declaration defines an identifier and associates it with a block
-of code. 
-A procedure may call itself recursively. A parameter may be given a default
-value that is used if the caller does not provide a value for this parameter.
+procedure declaration consists of an identifier, zero or more formal parameters, a return value type and a block of code.
+Formal parameters are declared as a list of identifiers separated by either comma or semicolon. A parameter is given a type by ``: typename``. The type applies to all parameters immediately before it, until either the beginning of the parameter list, a semicolon separator or an already typed parameter, is reached. The semicolon can be used to make separation of types and subsequent identifiers more distinct.
+
+.. code-block:: nim
+  # Using only commas
+  proc foo(a, b: int, c, d: bool): int
+
+  # Using semicolon for visual distinction
+  proc foo(a, b: int; c, d: bool): int
+
+  # Will fail: a is untyped since ';' stops type propagation.
+  proc foo(a; b: int; c, d: bool): int
+
+A parameter may be declared with a default value which is used if the caller does not provide a value for the argument.
+
+.. code-block:: nim
+  # b is optional, 47 is its default value
+  proc foo(a, b: int = 47): int
+
+Parameters can be declared mutable and so allow the proc to modify those arguments, by using the type modifier `var`.
+
+.. code-block:: nim
+  # "returning" a value to the caller through the 2nd argument
+  proc foo(inp: int, outp: var int): void =
+    outp = inp + 47
 
 If the proc declaration has no body, it is a `forward`:idx: declaration. If
 the proc returns a value, the procedure body can access an implicitly declared
 variable named `result`:idx: that represents the return value. Procs can be
-overloaded. The overloading resolution algorithm tries to find the proc that is
-the best match for the arguments. Example:
+overloaded. The overloading resolution algorithm determines which proc is the best match for the arguments. Example:
 
 .. code-block:: nim
 
@@ -41,9 +61,8 @@ Calling a procedure can be done in many different ways:
   # call as a command statement: no () needed:
   callme 0, 1, "abc", '\t'
 
+A procedure may call itself recursively.
 
-A procedure cannot modify its parameters (unless the parameters have the type
-`var`).
 
 `Operators`:idx: are procedures with a special operator symbol as identifier:
 
@@ -475,7 +494,7 @@ If the for loop has exactly 2 variables, a ``pairs`` iterator is implicitly
 invoked.
 
 Symbol lookup of the identifiers ``items``/``pairs`` is performed after 
-the rewriting step, so that all overloadings of ``items``/``pairs`` are taken
+the rewriting step, so that all overloads of ``items``/``pairs`` are taken
 into account.
 
 
@@ -511,11 +530,11 @@ Closure iterators have other restrictions than inline iterators:
 
 1. ``yield`` in a closure iterator can not occur in a ``try`` statement.
 2. For now, a closure iterator cannot be evaluated at compile time.
-3. ``return`` is allowed in a closure iterator (but rarely useful).
-4. Both inline and closure iterators cannot be recursive.
+3. ``return`` is allowed in a closure iterator (but rarely useful) and ends iteration..
+4. Neither inline nor closure iterators can be recursive.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
-default to being inline, but that this may change in future versions of the
+default to being inline, but this may change in future versions of the
 implementation.
 
 The ``iterator`` type is always of the calling convention ``closure`` 
@@ -612,8 +631,8 @@ parameters of an outer factory proc:
   Implicit return type
   --------------------
 
-  Since inline interators must always produce values that will be consumed in
-  a for loop, the compiler will implicity use the ``auto`` return type if no
+  Since inline iterators must always produce values that will be consumed in
+  a for loop, the compiler will implicitly use the ``auto`` return type if no
   type is given by the user. In contrast, since closure iterators can be used
   as a collaborative tasking system, ``void`` is a valid return type for them.
 

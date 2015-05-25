@@ -43,6 +43,8 @@ Fortunately Nim supports side effect analysis:
   
   echo f() * 2 # not optimized ;-)
 
+You can make one overload for constrained match and without, and the constrained will be prioritized, and so you can handle both cases differently.
+
 So what about ``2 * a``? We should tell the compiler ``*`` is commutative. We
 cannot really do that however as the following code only swaps arguments
 blindly:
@@ -50,7 +52,7 @@ blindly:
 .. code-block:: nim
   template mulIsCommutative{`*`(a, b)}(a, b: int): int = b*a
   
-What optimizers really need to do is a *canonicalization*:
+What optimizers really need to do is a *canonization*:
 
 .. code-block:: nim
   template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b*a
@@ -106,8 +108,9 @@ Predicate                Meaning
 ===================      =====================================================
 
 The ``alias`` and ``noalias`` predicates refer not only to the matching AST,
-but also to every other bound parameter; syntactially they need to occur after
+but also to every other bound parameter; syntactically they need to occur after
 the ordinary AST predicates:
+Predicates that share their name with a keyword have to be escaped with backticks: `` `const` ``.
 
 .. code-block:: nim
   template ex{a = b + c}(a: int{noalias}, b, c: int) =
@@ -144,7 +147,7 @@ constant folding, so the following does not work:
 
 The reason is that the compiler already transformed the 1 into "1" for
 the ``echo`` statement. However, a term rewriting macro should not change the
-semantics anyway. In fact they can be deactived with the ``--patterns:off``
+semantics anyway. In fact they can be deactivated with the ``--patterns:off``
 command line option or temporarily with the ``patterns`` pragma. 
 
 
@@ -345,15 +348,15 @@ optimization for types that have copying semantics:
     ## puts a (key, value)-pair into `t`. The semantics of string require
     ## a copy here:
     let idx = findInsertionPosition(key)
-    t[idx] = key
-    t[idx] = val
+    t[idx].key = key
+    t[idx].val = val
 
   proc `[]=`*(t: var Table, key: string{call}, val: string{call}) =
     ## puts a (key, value)-pair into `t`. Optimized version that knows that
     ## the strings are unique and thus don't need to be copied:
     let idx = findInsertionPosition(key)
-    shallowCopy t[idx], key
-    shallowCopy t[idx], val
+    shallowCopy t[idx].key, key
+    shallowCopy t[idx].val, val
 
   var t: Table
   # overloading resolution ensures that the optimized []= is called here:
