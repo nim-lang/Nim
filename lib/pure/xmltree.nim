@@ -337,8 +337,7 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
       continue
     if child.tag == tag:
       result.add(child)
-    elif child.k == xnElement:
-      child.findAll(tag, result)
+    child.findAll(tag, result)
 
 proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   ## Shortcut version to assign in let blocks. Example:
