@@ -121,38 +121,39 @@ proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
   reprSetAux(result, p, typ)
 
 type
-  TReprClosure {.final.} = object # we cannot use a global variable here
+  ReprClosure {.final.} = object # we cannot use a global variable here
                                   # as this wouldn't be thread-safe
-    when declared(TCellSet):
-      marked: TCellSet
+    when declared(CellSet):
+      marked: CellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
+{.deprecated: [TReprClosure: ReprClosure].}
 
 when not defined(useNimRtl):
-  proc initReprClosure(cl: var TReprClosure) =
+  proc initReprClosure(cl: var ReprClosure) =
     # Important: cellsets does not lock the heap when doing allocations! We
     # have to do it here ...
     when hasThreadSupport and hasSharedHeap and declared(heapLock):
       AcquireSys(HeapLock)
-    when declared(TCellSet):
+    when declared(CellSet):
       init(cl.marked)
     cl.recdepth = -1      # default is to display everything!
     cl.indent = 0
 
-  proc deinitReprClosure(cl: var TReprClosure) =
-    when declared(TCellSet): deinit(cl.marked)
+  proc deinitReprClosure(cl: var ReprClosure) =
+    when declared(CellSet): deinit(cl.marked)
     when hasThreadSupport and hasSharedHeap and declared(heapLock): 
       ReleaseSys(HeapLock)
 
-  proc reprBreak(result: var string, cl: TReprClosure) =
+  proc reprBreak(result: var string, cl: ReprClosure) =
     add result, "\n"
     for i in 0..cl.indent-1: add result, ' '
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure) {.benign.}
+               cl: var ReprClosure) {.benign.}
 
   proc reprArray(result: var string, p: pointer, typ: PNimType,
-                 cl: var TReprClosure) =
+                 cl: var ReprClosure) =
     add result, "["
     var bs = typ.base.size
     for i in 0..typ.size div bs - 1:
@@ -161,7 +162,7 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
-                    cl: var TReprClosure) =
+                    cl: var ReprClosure) =
     if p == nil:
       add result, "nil"
       return
@@ -174,7 +175,7 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
-                     cl: var TReprClosure) {.benign.} =
+                     cl: var ReprClosure) {.benign.} =
     case n.kind
     of nkNone: sysAssert(false, "reprRecordAux")
     of nkSlot:
@@ -191,7 +192,7 @@ when not defined(useNimRtl):
       if m != nil: reprRecordAux(result, p, m, cl)
 
   proc reprRecord(result: var string, p: pointer, typ: PNimType,
-                  cl: var TReprClosure) =
+                  cl: var ReprClosure) =
     add result, "["
     let oldLen = result.len
     reprRecordAux(result, p, typ.node, cl)
@@ -201,9 +202,9 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprRef(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure) =
+               cl: var ReprClosure) =
     # we know that p is not nil here:
-    when declared(TCellSet):
+    when declared(CellSet):
       when defined(boehmGC) or defined(nogc):
         var cell = cast[PCell](p)
       else:
@@ -216,7 +217,7 @@ when not defined(useNimRtl):
         reprAux(result, p, typ.base, cl)
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure) =
+               cl: var ReprClosure) =
     if cl.recdepth == 0:
       add result, "..."
       return
@@ -261,7 +262,7 @@ when not defined(useNimRtl):
 proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
                    compilerRtl.} =
   var
-    cl: TReprClosure
+    cl: ReprClosure
   initReprClosure(cl)
   result = "["
   var bs = elemtyp.size
@@ -274,7 +275,7 @@ proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string =
     var
-      cl: TReprClosure
+      cl: ReprClosure
     initReprClosure(cl)
     result = ""
     if typ.kind in {tyObject, tyTuple, tyArray, tyArrayConstr, tySet}:

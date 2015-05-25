@@ -14,8 +14,9 @@ when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 type
-  TUtf16Char* = distinct int16
-  WideCString* = ref array[0.. 1_000_000, TUtf16Char]
+  Utf16Char* = distinct int16
+  WideCString* = ref array[0.. 1_000_000, Utf16Char]
+{.deprecated: [TUtf16Char: Utf16Char].}
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
@@ -23,7 +24,7 @@ proc len*(w: WideCString): int =
   while int16(w[result]) != 0'i16: inc result
 
 const
-  UNI_REPLACEMENT_CHAR = TUtf16Char(0xFFFD'i16)
+  UNI_REPLACEMENT_CHAR = Utf16Char(0xFFFD'i16)
   UNI_MAX_BMP = 0x0000FFFF
   UNI_MAX_UTF16 = 0x0010FFFF
   UNI_MAX_UTF32 = 0x7FFFFFFF
@@ -89,16 +90,16 @@ proc newWideCString*(source: cstring, L: int): WideCString =
       if ch >=% UNI_SUR_HIGH_START and ch <=% UNI_SUR_LOW_END:
         result[d] = UNI_REPLACEMENT_CHAR
       else:
-        result[d] = TUtf16Char(toU16(ch))
+        result[d] = Utf16Char(toU16(ch))
     elif ch >% UNI_MAX_UTF16:
       result[d] = UNI_REPLACEMENT_CHAR
     else:
       let ch = ch -% halfBase
-      result[d] = TUtf16Char(toU16((ch shr halfShift) +% UNI_SUR_HIGH_START))
+      result[d] = Utf16Char(toU16((ch shr halfShift) +% UNI_SUR_HIGH_START))
       inc d
-      result[d] = TUtf16Char(toU16((ch and halfMask) +% UNI_SUR_LOW_START))
+      result[d] = Utf16Char(toU16((ch and halfMask) +% UNI_SUR_LOW_START))
     inc d
-  result[d] = TUtf16Char(0'i16)
+  result[d] = Utf16Char(0'i16)
 
 proc newWideCString*(s: cstring): WideCString =
   if s.isNil: return nil
