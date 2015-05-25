@@ -31,7 +31,7 @@ import
   windows
 
 type
-  HDROP* = THandle
+  HDROP* = Handle
   UINT_PTR* = ptr uint32
   DWORD_PTR* = ptr DWORD
   PHICON* = ptr HICON
@@ -57,8 +57,8 @@ type
     hStdError*: HANDLE
 
   LPSTARTUPINFOW* = ptr STARTUPINFOW
-  TSTARTUPINFOW* = STARTUPINFOW
   PSTARTUPINFOW* = ptr STARTUPINFOW #unicode
+{.deprecated: [TSTARTUPINFOW: STARTUPINFOW].}
 
 proc DragQueryFileA*(arg1: HDROP, arg2: uint32, arg3: LPSTR, arg4: uint32): uint32{.
     stdcall, dynlib: "shell32.dll", importc: "DragQueryFileA".}
@@ -132,7 +132,6 @@ type                          # init with sizeof(DRAGINFO)
     lpFileList*: LPSTR
     grfKeyState*: DWORD
 
-  TDRAGINFOA* = DRAGINFOA
   LPDRAGINFOA* = ptr DRAGINFOA # init with sizeof(DRAGINFO)
   DRAGINFOW* {.final.} = object
     uSize*: uint32
@@ -141,19 +140,19 @@ type                          # init with sizeof(DRAGINFO)
     lpFileList*: LPWSTR
     grfKeyState*: DWORD
 
-  TDRAGINFOW* = DRAGINFOW
   LPDRAGINFOW* = ptr DRAGINFOW
+{.deprecated: [TDRAGINFOA: DRAGINFOA, TDRAGINFOW: DRAGINFOW].}
 
 when defined(UNICODE):
   type
     DRAGINFO* = DRAGINFOW
-    TDRAGINFO* = DRAGINFOW
     LPDRAGINFO* = LPDRAGINFOW
+  {.deprecated: [TDRAGINFO: DRAGINFOW].}
 else:
   type
     DRAGINFO* = DRAGINFOA
-    TDRAGINFO* = DRAGINFOW
     LPDRAGINFO* = LPDRAGINFOA
+  {.deprecated: [TDRAGINFO: DRAGINFOW].}
 const
   ABM_NEW* = 0x00000000
   ABM_REMOVE* = 0x00000001
@@ -189,8 +188,8 @@ type
     rc*: RECT
     lParam*: LPARAM           # message specific
 
-  TAPPBARDATA* = AppBarData
   PAPPBARDATA* = ptr AppBarData
+{.deprecated: [TAPPBARDATA: AppBarData].}
 
 proc SHAppBarMessage*(dwMessage: DWORD, pData: APPBARDATA): UINT_PTR{.stdcall,
     dynlib: "shell32.dll", importc: "SHAppBarMessage".}
@@ -299,7 +298,6 @@ type
     hNameMappings*: LPVOID
     lpszProgressTitle*: LPCSTR # only used if FOF_SIMPLEPROGRESS
 
-  TSHFILEOPSTRUCTA* = SHFILEOPSTRUCTA
   LPSHFILEOPSTRUCTA* = ptr SHFILEOPSTRUCTA
   SHFILEOPSTRUCTW* {.final.} = object
     hwnd*: HWND
@@ -311,19 +309,21 @@ type
     hNameMappings*: LPVOID
     lpszProgressTitle*: LPCWSTR
 
-  TSHFILEOPSTRUCTW* = SHFILEOPSTRUCTW
   LPSHFILEOPSTRUCTW* = ptr SHFILEOPSTRUCTW
+{.deprecated: [TSHFILEOPSTRUCTA: SHFILEOPSTRUCTA,
+              TSHFILEOPSTRUCTW: SHFILEOPSTRUCTW].}
 
 when defined(UNICODE):
   type
     SHFILEOPSTRUCT* = SHFILEOPSTRUCTW
-    TSHFILEOPSTRUCT* = SHFILEOPSTRUCTW
     LPSHFILEOPSTRUCT* = LPSHFILEOPSTRUCTW
+  {.deprecated: [TSHFILEOPSTRUCT: SHFILEOPSTRUCTW].}
 else:
   type
     SHFILEOPSTRUCT* = SHFILEOPSTRUCTA
-    TSHFILEOPSTRUCT* = SHFILEOPSTRUCTA
     LPSHFILEOPSTRUCT* = LPSHFILEOPSTRUCTA
+  {.deprecated: [TSHFILEOPSTRUCT: SHFILEOPSTRUCTA].}
+
 proc SHFileOperationA*(lpFileOp: LPSHFILEOPSTRUCTA): int32{.stdcall,
     dynlib: "shell32.dll", importc: "SHFileOperationA".}
 proc SHFileOperationW*(lpFileOp: LPSHFILEOPSTRUCTW): int32{.stdcall,
@@ -332,7 +332,7 @@ proc SHFileOperation*(lpFileOp: LPSHFILEOPSTRUCTA): int32{.stdcall,
     dynlib: "shell32.dll", importc: "SHFileOperationA".}
 proc SHFileOperation*(lpFileOp: LPSHFILEOPSTRUCTW): int32{.stdcall,
     dynlib: "shell32.dll", importc: "SHFileOperationW".}
-proc SHFreeNameMappings*(hNameMappings: THandle){.stdcall,
+proc SHFreeNameMappings*(hNameMappings: Handle){.stdcall,
     dynlib: "shell32.dll", importc: "SHFreeNameMappings".}
 type
   SHNAMEMAPPINGA* {.final.} = object
@@ -341,7 +341,6 @@ type
     cchOldPath*: int32
     cchNewPath*: int32
 
-  TSHNAMEMAPPINGA* = SHNAMEMAPPINGA
   LPSHNAMEMAPPINGA* = ptr SHNAMEMAPPINGA
   SHNAMEMAPPINGW* {.final.} = object
     pszOldPath*: LPWSTR
@@ -349,19 +348,20 @@ type
     cchOldPath*: int32
     cchNewPath*: int32
 
-  TSHNAMEMAPPINGW* = SHNAMEMAPPINGW
   LPSHNAMEMAPPINGW* = ptr SHNAMEMAPPINGW
+{.deprecated: [TSHNAMEMAPPINGA: SHNAMEMAPPINGA,
+              TSHNAMEMAPPINGW: SHNAMEMAPPINGW].}
 
 when not(defined(UNICODE)):
   type
     SHNAMEMAPPING* = SHNAMEMAPPINGW
-    TSHNAMEMAPPING* = SHNAMEMAPPINGW
     LPSHNAMEMAPPING* = LPSHNAMEMAPPINGW
+  {.deprecated: [TSHNAMEMAPPING: SHNAMEMAPPINGW].}
 else:
   type
     SHNAMEMAPPING* = SHNAMEMAPPINGA
-    TSHNAMEMAPPING* = SHNAMEMAPPINGA
     LPSHNAMEMAPPING* = LPSHNAMEMAPPINGA
+  {.deprecated: [TSHNAMEMAPPING: SHNAMEMAPPINGA].}
 #
 # End Shell File Operations
 #
@@ -424,7 +424,6 @@ type
     hMonitor*: HANDLE         # also: hIcon
     hProcess*: HANDLE
 
-  TSHELLEXECUTEINFOA* = SHELLEXECUTEINFOA
   LPSHELLEXECUTEINFOA* = ptr SHELLEXECUTEINFOA
   SHELLEXECUTEINFOW* {.final.} = object
     cbSize*: DWORD
@@ -443,19 +442,21 @@ type
     hMonitor*: HANDLE         # also: hIcon
     hProcess*: HANDLE
 
-  TSHELLEXECUTEINFOW* = SHELLEXECUTEINFOW
   LPSHELLEXECUTEINFOW* = ptr SHELLEXECUTEINFOW
+{.deprecated: [TSHELLEXECUTEINFOA: SHELLEXECUTEINFOA,
+              TSHELLEXECUTEINFOW: SHELLEXECUTEINFOW].}
 
 when defined(UNICODE):
   type
     SHELLEXECUTEINFO* = SHELLEXECUTEINFOW
-    TSHELLEXECUTEINFO* = SHELLEXECUTEINFOW
     LPSHELLEXECUTEINFO* = LPSHELLEXECUTEINFOW
+  {.deprecated: [TSHELLEXECUTEINFO: SHELLEXECUTEINFOW].}
 else:
   type
     SHELLEXECUTEINFO* = SHELLEXECUTEINFOA
-    TSHELLEXECUTEINFO* = SHELLEXECUTEINFOA
     LPSHELLEXECUTEINFO* = LPSHELLEXECUTEINFOA
+  {.deprecated: [TSHELLEXECUTEINFO: SHELLEXECUTEINFOA].}
+
 proc ShellExecuteExA*(lpExecInfo: LPSHELLEXECUTEINFOA): bool{.stdcall,
     dynlib: "shell32.dll", importc: "ShellExecuteExA".}
 proc ShellExecuteExW*(lpExecInfo: LPSHELLEXECUTEINFOW): bool{.stdcall,
@@ -492,8 +493,8 @@ type
     lpStartupInfo*: LPSTARTUPINFOW
     lpProcessInformation*: LPPROCESS_INFORMATION
 
-  TSHCREATEPROCESSINFOW* = SHCREATEPROCESSINFOW
   PSHCREATEPROCESSINFOW* = ptr SHCREATEPROCESSINFOW
+{.deprecated: [TSHCREATEPROCESSINFOW: SHCREATEPROCESSINFOW].}
 
 proc SHCreateProcessAsUserW*(pscpi: PSHCREATEPROCESSINFOW): bool{.stdcall,
     dynlib: "shell32.dll", importc: "SHCreateProcessAsUserW".}
@@ -510,8 +511,8 @@ type
     i64Size*: int64
     i64NumItems*: int64
 
-  TSHQUERYRBINFO* = SHQUERYRBINFO
   LPSHQUERYRBINFO* = ptr SHQUERYRBINFO # flags for SHEmptyRecycleBin
+{.deprecated: [TSHQUERYRBINFO: SHQUERYRBINFO].}
 
 const
   SHERB_NOCONFIRMATION* = 0x00000001
@@ -555,9 +556,8 @@ type
     uTimeout*: uint32           # also: uVersion
     szInfoTitle*: array[0..63, char]
     dwInfoFlags*: DWORD
-    guidItem*: TGUID
+    guidItem*: GUID
 
-  TNOTIFYICONDATAA* = NOTIFYICONDATAA
   PNOTIFYICONDATAA* = ptr NOTIFYICONDATAA
   NOTIFYICONDATAW* {.final.} = object
     cbSize*: DWORD
@@ -573,21 +573,22 @@ type
     uTimeout*: uint32           # also uVersion : UINT
     szInfoTitle*: array[0..63, char]
     dwInfoFlags*: DWORD
-    guidItem*: TGUID
+    guidItem*: GUID
 
-  TNOTIFYICONDATAW* = NOTIFYICONDATAW
   PNOTIFYICONDATAW* = ptr NOTIFYICONDATAW
+{.deprecated: [TNOTIFYICONDATAA: NOTIFYICONDATAA,
+              TNOTIFYICONDATAW: NOTIFYICONDATAW].}
 
 when defined(UNICODE):
   type
     NOTIFYICONDATA* = NOTIFYICONDATAW
-    TNOTIFYICONDATA* = NOTIFYICONDATAW
     PNOTIFYICONDATA* = PNOTIFYICONDATAW
+  {.deprecated: [TNOTIFYICONDATA: NOTIFYICONDATAW].}
 else:
   type
     NOTIFYICONDATA* = NOTIFYICONDATAA
-    TNOTIFYICONDATA* = NOTIFYICONDATAA
     PNOTIFYICONDATA* = PNOTIFYICONDATAA
+  {.deprecated: [TNOTIFYICONDATA: NOTIFYICONDATAA].}
 const
   NIN_SELECT* = WM_USER + 0
   NINF_KEY* = 0x00000001
@@ -655,7 +656,6 @@ type
     szDisplayName*: array[0..(MAX_PATH) - 1, char] # out: display name (or path)
     szTypeName*: array[0..79, char] # out: type name
 
-  TSHFILEINFOA* = SHFILEINFOA
   PSHFILEINFOA* = ptr SHFILEINFOA
   SHFILEINFOW* {.final.} = object
     hIcon*: HICON             # out: icon
@@ -664,19 +664,19 @@ type
     szDisplayName*: array[0..(MAX_PATH) - 1, Wchar] # out: display name (or path)
     szTypeName*: array[0..79, Wchar] # out: type name
 
-  TSHFILEINFOW* = SHFILEINFOW
   PSHFILEINFOW* = ptr SHFILEINFOW
+{.deprecated: [TSHFILEINFOA: SHFILEINFOA, TSHFILEINFOW: SHFILEINFOW].}
 
 when defined(UNICODE):
   type
     SHFILEINFO* = SHFILEINFOW
-    TSHFILEINFO* = SHFILEINFOW
     pFILEINFO* = SHFILEINFOW
+  {.deprecated: [TSHFILEINFO: SHFILEINFOW].}
 else:
   type
     SHFILEINFO* = SHFILEINFOA
-    TSHFILEINFO* = SHFILEINFOA
     pFILEINFO* = SHFILEINFOA
+  {.deprecated: [TSHFILEINFO: SHFILEINFOA].}
 # NOTE: This is also in shlwapi.h.  Please keep in synch.
 
 const
@@ -710,16 +710,16 @@ proc SHGetFileInfo*(pszPath: LPCSTR, dwFileAttributes: DWORD,
                     psfi: PSHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoA".}
 proc SHGetFileInfoA*(pszPath: LPCSTR, dwFileAttributes: DWORD,
-                     psfi: var TSHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
+                     psfi: var SHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoA".}
 proc SHGetFileInfoW*(pszPath: LPCWSTR, dwFileAttributes: DWORD,
-                     psfi: var TSHFILEINFOW, cbFileInfo, UFlags: uint32): DWORD{.
+                     psfi: var SHFILEINFOW, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoW".}
 proc SHGetFileInfo*(pszPath: LPCSTR, dwFileAttributes: DWORD,
-                    psfi: var TSHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
+                    psfi: var SHFILEINFOA, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoA".}
 proc SHGetFileInfo*(pszPath: LPCWSTR, dwFileAttributes: DWORD,
-                    psfi: var TSHFILEINFOW, cbFileInfo, UFlags: uint32): DWORD{.
+                    psfi: var SHFILEINFOW, cbFileInfo, UFlags: uint32): DWORD{.
     stdcall, dynlib: "shell32.dll", importc: "SHGetFileInfoW".}
 proc SHGetDiskFreeSpaceExA*(pszDirectoryName: LPCSTR,
                             pulFreeBytesAvailableToCaller: PULARGE_INTEGER,
