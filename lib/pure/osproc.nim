@@ -26,13 +26,13 @@ when defined(linux):
 type
   ProcessObj = object of RootObj
     when defined(windows):
-      fProcessHandle: THandle
+      fProcessHandle: Handle
       inHandle, outHandle, errHandle: FileHandle
-      id: THandle
+      id: Handle
     else:
       inHandle, outHandle, errHandle: FileHandle
       inStream, outStream, errStream: Stream
-      id: TPid
+      id: Pid
     exitCode: cint
 
   Process* = ref ProcessObj ## represents an operating system process
@@ -334,10 +334,11 @@ when not defined(useNimRtl):
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
-    PFileHandleStream = ref TFileHandleStream
-    TFileHandleStream = object of StreamObj
-      handle: THandle
+    PFileHandleStream = ref FileHandleStream
+    FileHandleStream = object of StreamObj
+      handle: Handle
       atTheEnd: bool
+  {.deprecated: [TFileHandleStream: FileHandleStream].}
 
   proc hsClose(s: Stream) = discard # nothing to do here
   proc hsAtEnd(s: Stream): bool = return PFileHandleStream(s).atTheEnd
@@ -361,7 +362,7 @@ when defined(Windows) and not defined(useNimRtl):
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: THandle): PFileHandleStream =
+  proc newFileHandleStream(handle: Handle): PFileHandleStream =
     new(result)
     result.handle = handle
     result.closeImpl = hsClose
@@ -387,14 +388,14 @@ when defined(Windows) and not defined(useNimRtl):
       copyMem(addr(result[L]), cstring(x), x.len+1) # copy \0
       inc(L, x.len+1)
 
-  #proc open_osfhandle(osh: THandle, mode: int): int {.
+  #proc open_osfhandle(osh: Handle, mode: int): int {.
   #  importc: "_open_osfhandle", header: "<fcntl.h>".}
 
   #var
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
 
-  proc createPipeHandles(rdHandle, wrHandle: var THandle) =
+  proc createPipeHandles(rdHandle, wrHandle: var Handle) =
     var piInheritablePipe: TSECURITY_ATTRIBUTES
     piInheritablePipe.nLength = sizeof(TSECURITY_ATTRIBUTES).cint
     piInheritablePipe.lpSecurityDescriptor = nil
@@ -402,7 +403,7 @@ when defined(Windows) and not defined(useNimRtl):
     if createPipe(rdHandle, wrHandle, piInheritablePipe, 1024) == 0'i32:
       raiseOSError(osLastError())
 
-  proc fileClose(h: THandle) {.inline.} =
+  proc fileClose(h: Handle) {.inline.} =
     if h > 4: discard closeHandle(h)
 
   proc startProcess(command: string,
@@ -414,7 +415,7 @@ when defined(Windows) and not defined(useNimRtl):
       si: TSTARTUPINFO
       procInfo: TPROCESS_INFORMATION
       success: int
-      hi, ho, he: THandle
+      hi, ho, he: Handle
     new(result)
     si.cb = sizeof(si).cint
     if poParentStreams notin options:
@@ -527,7 +528,7 @@ when defined(Windows) and not defined(useNimRtl):
     var
       si: TSTARTUPINFO
       procInfo: TPROCESS_INFORMATION
-      process: THandle
+      process: Handle
       L: int32
     si.cb = sizeof(si).cint
     si.hStdError = getStdHandle(STD_ERROR_HANDLE)
@@ -595,7 +596,7 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
-  type TStartProcessData = object
+  type StartProcessData = object
     sysCommand: cstring
     sysArgs: cstringArray
     sysEnv: cstringArray
@@ -604,14 +605,15 @@ elif not defined(useNimRtl):
     optionPoUsePath: bool
     optionPoParentStreams: bool
     optionPoStdErrToStdOut: bool
+  {.deprecated: [TStartProcessData: StartProcessData].}
 
   when not defined(useFork):
-    proc startProcessAuxSpawn(data: TStartProcessData): TPid {.
+    proc startProcessAuxSpawn(data: StartProcessData): Pid {.
       tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
-  proc startProcessAuxFork(data: TStartProcessData): TPid {.
+  proc startProcessAuxFork(data: StartProcessData): Pid {.
     tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
   {.push stacktrace: off, profiler: off.}
-  proc startProcessAfterFork(data: ptr TStartProcessData) {.
+  proc startProcessAfterFork(data: ptr StartProcessData) {.
     tags: [ExecIOEffect, ReadEnvEffect], cdecl, gcsafe.}
   {.pop.}
 
@@ -641,7 +643,7 @@ elif not defined(useNimRtl):
       for arg in args.items:
         sysArgsRaw.add arg
 
-    var pid: TPid
+    var pid: Pid
 
     var sysArgs = allocCStringArray(sysArgsRaw)
     defer: deallocCStringArray(sysArgs)
@@ -653,7 +655,7 @@ elif not defined(useNimRtl):
 
     defer: deallocCStringArray(sysEnv)
 
-    var data: TStartProcessData
+    var data: StartProcessData
     data.sysCommand = sysCommand
     data.sysArgs = sysArgs
     data.sysEnv = sysEnv
@@ -698,7 +700,7 @@ elif not defined(useNimRtl):
       discard close(pStdout[writeIdx])
 
   when not defined(useFork):
-    proc startProcessAuxSpawn(data: TStartProcessData): TPid =
+    proc startProcessAuxSpawn(data: StartProcessData): Pid =
       var attr: Tposix_spawnattr
       var fops: Tposix_spawn_file_actions
 
@@ -708,7 +710,7 @@ elif not defined(useNimRtl):
       chck posix_spawn_file_actions_init(fops)
       chck posix_spawnattr_init(attr)
 
-      var mask: Tsigset
+      var mask: Sigset
       chck sigemptyset(mask)
       chck posix_spawnattr_setsigmask(attr, mask)
       chck posix_spawnattr_setpgroup(attr, 0'i32)
@@ -732,7 +734,7 @@ elif not defined(useNimRtl):
       # FIXME: chdir is global to process
       if data.workingDir.len > 0:
         setCurrentDir($data.workingDir)
-      var pid: TPid
+      var pid: Pid
 
       if data.optionPoUsePath:
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
@@ -744,14 +746,14 @@ elif not defined(useNimRtl):
       chck res
       return pid
 
-  proc startProcessAuxFork(data: TStartProcessData): TPid =
+  proc startProcessAuxFork(data: StartProcessData): Pid =
     if pipe(data.pErrorPipe) != 0:
       raiseOSError(osLastError())
 
     defer:
       discard close(data.pErrorPipe[readIdx])
 
-    var pid: TPid
+    var pid: Pid
     var dataCopy = data
 
     when defined(useClone):
@@ -781,7 +783,7 @@ elif not defined(useNimRtl):
     return pid
 
   {.push stacktrace: off, profiler: off.}
-  proc startProcessFail(data: ptr TStartProcessData) =
+  proc startProcessFail(data: ptr StartProcessData) =
     var error: cint = errno
     discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
     exitnow(1)
@@ -789,7 +791,7 @@ elif not defined(useNimRtl):
   when defined(macosx) or defined(freebsd):
     var environ {.importc.}: cstringArray
 
-  proc startProcessAfterFork(data: ptr TStartProcessData) =
+  proc startProcessAfterFork(data: ptr StartProcessData) =
     # Warning: no GC here!
     # Or anything that touches global structures - all called nim procs
     # must be marked with stackTrace:off. Inspect C code after making changes.
