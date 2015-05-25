@@ -1,6 +1,6 @@
 discard """
   file: "tnestedreturn.nim"
-  output: "A\nB\nC\n"
+  output: "A\NB\NC\N"
 """
 
 # Various tests of return nested in double try/except statements

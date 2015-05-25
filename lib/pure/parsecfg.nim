@@ -125,7 +125,7 @@ proc getEscapedChar(c: var CfgParser, tok: var Token) =
   inc(c.bufpos)               # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N': 
-    add(tok.literal, "\n")
+    add(tok.literal, "\N")
     inc(c.bufpos)
   of 'r', 'R', 'c', 'C': 
     add(tok.literal, '\c')
@@ -195,7 +195,7 @@ proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
       of '\c', '\L': 
         pos = handleCRLF(c, pos)
         buf = c.buf
-        add(tok.literal, "\n")
+        add(tok.literal, "\N")
       of lexbase.EndOfFile: 
         tok.kind = tkInvalid
         break 

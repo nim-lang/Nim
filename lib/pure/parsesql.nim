@@ -1196,12 +1196,12 @@ proc ra(n: SqlNode, s: var string, indent: int) =
   of nkIdentity:
     s.add(" identity")
   of nkColumnDef:
-    s.add("\n  ")
+    s.add("\N  ")
     rs(n, s, indent, "", "", " ")
   of nkStmtList:
     for i in 0..n.len-1:
       ra(n.sons[i], s, indent)
-      s.add("\n")
+      s.add("\N")
   of nkInsert:
     assert n.len == 3
     s.add("insert into ")
@@ -1210,7 +1210,7 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     if n.sons[2].kind == nkDefault: 
       s.add("default values")
     else:
-      s.add("\nvalues ")
+      s.add("\Nvalues ")
       ra(n.sons[2], s, indent)
     s.add(';')
   of nkUpdate: 
@@ -1244,16 +1244,16 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     s.add(" = ")
     ra(n.sons[1], s, indent)  
   of nkFrom:
-    s.add("\nfrom ")
+    s.add("\Nfrom ")
     rs(n, s, indent, "", "", ", ")
   of nkGroup:
-    s.add("\ngroup by")
+    s.add("\Ngroup by")
     rs(n, s, indent, "", "", ", ")
   of nkHaving:
-    s.add("\nhaving")
+    s.add("\Nhaving")
     rs(n, s, indent, "", "", ", ")
   of nkOrder:
-    s.add("\norder by ")
+    s.add("\Norder by ")
     rs(n, s, indent, "", "", ", ")
   of nkDesc:
     ra(n.sons[0], s, indent)
@@ -1270,7 +1270,7 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     s.add("values ")
     rs(n, s, indent)
   of nkWhere:
-    s.add("\nwhere ")
+    s.add("\Nwhere ")
     ra(n.sons[0], s, indent)
   of nkCreateTable, nkCreateTableIfNotExists:
     s.add("create table ")

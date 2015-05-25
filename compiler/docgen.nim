@@ -200,7 +200,7 @@ proc extractDocComment*(s: PSym, d: PDoc = nil): string =
                                    dummyHasToc, d.options + {roSkipPounds}),
                      result)
     else:
-      result = n.comment.substr(2).replace("\n##", "\n").strip
+      result = n.comment.substr(2).replace("\N##", "\N").strip
 
 proc isVisible(n: PNode): bool =
   result = false

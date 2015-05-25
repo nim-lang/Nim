@@ -1,6 +1,6 @@
 discard """
-  msg:    "int\nstring\nTBar[int]"
-  output: "int\nstring\nTBar[int]\nint\nrange 0..2(int)\nstring"
+  msg:    "int\Nstring\NTBar[int]"
+  output: "int\Nstring\NTBar[int]\Nint\Nrange 0..2(int)\Nstring"
   disabled: true
 """
 

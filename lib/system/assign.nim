@@ -124,7 +124,7 @@ when false:
     of tyInt: k = "int"
     of tyInt32: k = "int32"
     else: k = "other"
-    cprintf("%s %ld\n", k, t.size)
+    cprintf("%s %ld\N", k, t.size)
     debugNimType(t.base)
 
 proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =

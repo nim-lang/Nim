@@ -1,6 +1,6 @@
 discard """
   file: "tgenericshardcases.nim"
-  output: "2\n5\n126\n3"
+  output: "2\N5\N126\N3"
 """
 
 import typetraits

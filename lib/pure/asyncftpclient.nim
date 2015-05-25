@@ -110,7 +110,7 @@ proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
     if r.string == "":
       ftp.dsockConnected = false
     else:
-      result.add(r.string & "\n")
+      result.add(r.string & "\N")
 
   assertReply(await(ftp.expectReply()), "226")
 

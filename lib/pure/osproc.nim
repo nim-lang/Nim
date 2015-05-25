@@ -269,7 +269,7 @@ proc execProcesses*(cmds: openArray[string],
           var outp = outputStream(q[r])
           while running(q[r]) or not atEnd(outp):
             err.add(outp.readLine())
-            err.add("\n")
+            err.add("\N")
           echo(err)
         result = max(waitForExit(q[r]), result)
         if q[r] != nil: close(q[r])
@@ -326,7 +326,7 @@ when not defined(useNimRtl):
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
         result.string.add(line.string)
-        result.string.add("\n")
+        result.string.add("\N")
       elif not running(p): break
     close(p)
 
@@ -963,7 +963,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   while true:
     if outp.readLine(line):
       result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result[0].string.add("\N")
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break

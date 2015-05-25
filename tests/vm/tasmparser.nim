@@ -18,14 +18,14 @@ proc asmx64 () {.compileTime} =
   #log "code = $1" % code
 
   const asmx64pre = "{.emit: \"\"\"{x64asm& x= *x64asm_ptr(`asm0`); try {"
-  const asmx64post = "} catch (Xbyak::Error e) { printf (\"asmx64 error: %s\\n\", e.what ()); }}\"\"\".} "
+  const asmx64post = "} catch (Xbyak::Error e) { printf (\"asmx64 error: %s\\N\", e.what ()); }}\"\"\".} "
 
   const xp = "x."
 
   const symbolStart = { '_', 'a'..'z', 'A' .. 'Z' }
   const symbol = { '0'..'9' } + symbolStart
   const eolComment = { ';' }
-  const endOfLine = { '\l', '\r' }
+  const endOfLine = { '\n', '\r' }
   const leadingWhiteSpace = { ' ' }
 
   const end_or_comment = endOfLine + eolComment + { '\0' }
@@ -43,7 +43,7 @@ proc asmx64 () {.compileTime} =
   #let codeEnd = codeLen-1
   cpp.add asmx64pre
 
-  #log "{$1}\n" % [code]
+  #log "{$1}\N" % [code]
 
   type asmParseState = enum leading, mnemonic, betweenArguments, arguments, endCmd, skipToEndOfLine
 
@@ -59,7 +59,7 @@ proc asmx64 () {.compileTime} =
     let prev_start = start
     let prev_token = token
     start += code.parseUntil (token, passthrough_end, start)
-    checkEnd ("Failed to find passthrough end delimiter from offset $1 for:$2\n$3" % [$prev_start, $(code [prev_start-prev_token.len..prev_start]), token[1..token.len-1]])
+    checkEnd ("Failed to find passthrough end delimiter from offset $1 for:$2\N$3" % [$prev_start, $(code [prev_start-prev_token.len..prev_start]), token[1..token.len-1]])
     inc start
     cpp.add "`"
     cpp.add token
@@ -146,7 +146,7 @@ proc asmx64 () {.compileTime} =
       state = betweenArguments
 
     of endCmd:
-      cpp.add ");\n"
+      cpp.add ");\N"
       state = skipToEndOfLine
     
     of skipToEndOfLine:

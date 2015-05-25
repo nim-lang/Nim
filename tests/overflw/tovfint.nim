@@ -9,14 +9,14 @@ var
 i = int(0xffffffff'i32)
 when defined(cpu64):
   if i == -1:
-    write(stdout, "works!\n")
+    write(stdout, "works!\N")
   else:
-    write(stdout, "broken!\n")
+    write(stdout, "broken!\N")
 else:
   if i == -1:
-    write(stdout, "works!\n")
+    write(stdout, "works!\N")
   else:
-    write(stdout, "broken!\n")
+    write(stdout, "broken!\N")
 
 #OUT works!
 

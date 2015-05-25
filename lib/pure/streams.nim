@@ -121,7 +121,7 @@ proc writeln*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
   ## by a new line. No length field or terminating zero is written.
   for str in args: write(s, str)
-  write(s, "\n")
+  write(s, "\N")
 
 proc read[T](s: Stream, result: var T) =
   ## generic read procedure. Reads `result` from the stream `s`.
@@ -450,7 +450,7 @@ else:
     result = newFileHandleStream(handle)
 
 when defined(testing):
-  var ss = newStringStream("The quick brown fox jumped over the lazy dog.\nThe lazy dog ran")
+  var ss = newStringStream("The quick brown fox jumped over the lazy dog.\NThe lazy dog ran")
   assert(ss.getPosition == 0)
   assert(ss.peekStr(5) == "The q")
   assert(ss.getPosition == 0) # haven't moved

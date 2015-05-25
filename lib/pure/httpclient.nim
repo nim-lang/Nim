@@ -827,7 +827,7 @@ when not defined(testing) and isMainModule:
       var resp = await client.request("http://picheta.me")
 
       echo("Got response: ", resp.status)
-      echo("Body:\n")
+      echo("Body:\N")
       echo(resp.body)
 
       resp = await client.request("http://picheta.me/asfas.html")

@@ -24,7 +24,7 @@ type
 
 template addN(r: string) =
   result.add(r)
-  result.add("\n")
+  result.add("\N")
 
 proc createControl(pkgName, maintainer, shortDesc, desc: string,
                    buildDepends, pkgDepends: string = ""): string =
@@ -49,7 +49,7 @@ proc createControl(pkgName, maintainer, shortDesc, desc: string,
   addN("Standards-Version: 3.9.2")
   addN("Build-Depends: debhelper (>= 8)" & 
         (if buildDepends != "": ", " & buildDepends else: ""))
-  addN("\n")
+  addN("\N")
   addN("Package: " & pkgName)
   addN("Architecture: any")
   addN("Depends: ${shlibs:Depends}, ${misc:Depends}" &
@@ -58,11 +58,11 @@ proc createControl(pkgName, maintainer, shortDesc, desc: string,
   var formattedDesc = ""
   for line in splitLines(desc):
     if line == "":
-      formattedDesc.add(" .\n")
+      formattedDesc.add(" .\N")
     else:
-      formattedDesc.add(" " & line & "\n")
+      formattedDesc.add(" " & line & "\N")
   
-  addN("Description: " & shortDesc & "\n" & formattedDesc)
+  addN("Description: " & shortDesc & "\N" & formattedDesc)
 
 proc createCopyright(pkgName, mtnName, mtnEmail, version: string, 
                      licenses: seq[tuple[files, license: string]]): string =
@@ -110,7 +110,7 @@ proc createRules(): string =
   result = ""
   addN("#!/usr/bin/make -f")
   addN("%:")
-  addN("\tdh $@\n")
+  addN("\tdh $@\N")
   addN("dh_install:")
   addN("\tdh_install --sourcedir=debian/tmp")
   addN("override_dh_auto_clean:")
@@ -121,7 +121,7 @@ proc createRules(): string =
   addN("\t./install.sh debian/tmp")
 
 proc createIncludeBinaries(binaries: seq[string]): string =
-  return join(binaries, "\n")
+  return join(binaries, "\N")
 
 proc createDotInstall(pkgName: string, binaries, config, docs,
     lib: seq[string]): string =

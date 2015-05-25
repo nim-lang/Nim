@@ -2005,12 +2005,12 @@ iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   ##     result = "Custom:"
   ##     for name, value in x.fieldPairs:
   ##       when value is bool:
-  ##         result.add("\n\t" & name & " is " & $value)
+  ##         result.add("\N\t" & name & " is " & $value)
   ##       else:
   ##         if value.isNil:
-  ##           result.add("\n\t" & name & " (nil)")
+  ##           result.add("\N\t" & name & " (nil)")
   ##         else:
-  ##           result.add("\n\t" & name & " '" & value & "'")
+  ##           result.add("\N\t" & name & " '" & value & "'")
   ##
   ## Another way to do the same without ``when`` is to leave the task of
   ## picking the appropriate code to a secondary proc which you overload for
@@ -2494,7 +2494,7 @@ when not defined(JS): #and not defined(NimrodVM):
 
     proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                              tags: [WriteIOEffect], benign.}
-      ## writes the values `x` to `f` and then writes "\n".
+      ## writes the values `x` to `f` and then writes "\N".
       ## May throw an IO exception.
 
     proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
@@ -2972,7 +2972,7 @@ proc staticExec*(command: string, input = ""): string {.
   ##
   ## .. code-block:: nim
   ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") &
-  ##                       "\nCompiled on " & staticExec("uname -v")
+  ##                       "\NCompiled on " & staticExec("uname -v")
   ##
   ## `gorge <#gorge>`_ is an alias for ``staticExec``. Note that you can use
   ## this proc inside a pragma like `passC <nimc.html#passc-pragma>`_ or `passL

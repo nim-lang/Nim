@@ -45,7 +45,7 @@ write(stdout, getPA().x)
 s = readLine(stdin)
 i = 0
 while i < s.len:
-  if s[i] == 'c': write(stdout, "'c' in deinem Namen gefunden\n")
+  if s[i] == 'c': write(stdout, "'c' in deinem Namen gefunden\N")
   i = i + 1
 
 write(stdout, "Du heißt " & s)

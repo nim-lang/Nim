@@ -1,5 +1,5 @@
 discard """
-  output: "A\nB\nC"
+  output: "A\NB\NC"
 """
 
 type TAlphabet = enum

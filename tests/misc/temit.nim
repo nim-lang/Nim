@@ -11,7 +11,7 @@ static int cvariable = 420;
 
 proc embedsC() = 
   var nimVar = 89
-  {.emit: """printf("%d\n", cvariable + (int)`nimVar`);""".}
+  {.emit: """printf("%d\N", cvariable + (int)`nimVar`);""".}
 
 embedsC()
 

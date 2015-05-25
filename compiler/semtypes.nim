@@ -1052,8 +1052,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     matches(c, n, copyTree(n), m)
 
     if m.state != csMatch and not m.typedescMatched:
-      let err = "cannot instantiate " & typeToString(t) & "\n" &
-                "got: (" & describeArgs(c, n) & ")\n" &
+      let err = "cannot instantiate " & typeToString(t) & "\N" &
+                "got: (" & describeArgs(c, n) & ")\N" &
                 "but expected: (" & describeArgs(c, t.n, 0) & ")"
       localError(n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)

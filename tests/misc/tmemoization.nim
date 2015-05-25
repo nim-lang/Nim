@@ -1,6 +1,6 @@
 discard """
-  msg:    "test 1\ntest 2\ntest 3"
-  output: "TEST 1\nTEST 2\nTEST 3"
+  msg:    "test 1\Ntest 2\Ntest 3"
+  output: "TEST 1\NTEST 2\NTEST 3"
 """
 
 import strutils

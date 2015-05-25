@@ -136,7 +136,7 @@ proc buildBTree(father: var TBNode) =
   father.other = nil
   father.sons = @[]
   for i in 1..10:
-    write(stdout, "next iteration!\n")
+    write(stdout, "next iteration!\N")
     var n: TBNode
     n.other = returnTree()
     n.data = "B node: " & $i
@@ -177,7 +177,7 @@ proc main() =
   for i in 1..100:
     add s, "hohoho" # test reallocation
   writeln(stdout, s[89])
-  write(stdout, "done!\n")
+  write(stdout, "done!\N")
 
 var
     father: TBNode
@@ -192,7 +192,7 @@ write(stdout, repr(t[]))
 buildBTree(father)
 write(stdout, repr(father))
 
-write(stdout, "starting main...\n")
+write(stdout, "starting main...\N")
 main()
 
 GC_fullCollect()
@@ -200,4 +200,4 @@ GC_fullCollect()
 # we need to fix!
 GC_fullCollect()
 writeln(stdout, GC_getStatistics())
-write(stdout, "finished\n")
+write(stdout, "finished\N")

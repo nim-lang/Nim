@@ -381,12 +381,12 @@ when isMainModule:
   doAssert "${$1}" % "1" == "1"
   doAssert "${$$-1} $$1" % "1" == "1 $1"
            
-  doAssert "$#($', '10c'\n    '{#..})" % ["doAssert", "longishA", "longish"] ==
+  doAssert "$#($', '10c'\N    '{#..})" % ["doAssert", "longishA", "longish"] ==
            """doAssert(
     longishA, 
     longish)"""
   
-  assert "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
+  assert "type TMyEnum* = enum\N  $', '2i'\N  '{..}" % ["fieldA",
     "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"] ==
     strutils.unindent """
       type TMyEnum* = enum
@@ -400,7 +400,7 @@ when isMainModule:
   
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
   
-  assert subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
+  assert subex("type\N  TEnum = enum\N    $', '40c'\N    '{..}") % [
     "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"] ==
     strutils.unindent """
       type

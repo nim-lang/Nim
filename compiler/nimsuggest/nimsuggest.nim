@@ -48,9 +48,9 @@ var
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use file.nim[;dirtyfile.nim]:line:col\n"&
-         "type 'quit' to quit\n" &
-         "type 'debug' to toggle debug mode on/off\n" &
+  Help = "usage: sug|con|def|use file.nim[;dirtyfile.nim]:line:col\N"&
+         "type 'quit' to quit\N" &
+         "type 'debug' to toggle debug mode on/off\N" &
          "type 'terse' to toggle terse mode on/off"
 
 type

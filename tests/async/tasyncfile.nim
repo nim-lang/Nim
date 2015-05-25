@@ -22,7 +22,7 @@ proc main() {.async.} =
   # Append test
   block:
     var file = openAsync(fn, fmAppend)
-    await file.write("\ntest2")
+    await file.write("\Ntest2")
     let errorTest = file.readAll()
     await errorTest
     doAssert errorTest.failed
@@ -30,7 +30,7 @@ proc main() {.async.} =
     file = openAsync(fn, fmRead)
     let data = await file.readAll()
     
-    doAssert data == "foot\ntest2"
+    doAssert data == "foot\Ntest2"
     file.close()
   
 waitFor main()

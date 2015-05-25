@@ -14,8 +14,8 @@ proc readOutput(p: Process): string =
   var output = p.outputStream
   while not output.atEnd:
     result.add(output.readLine)
-    result.add("\n")
-  result.setLen(result.len - "\n".len)
+    result.add("\N")
+  result.setLen(result.len - "\N".len)
   discard p.waitForExit
 
 proc opGorge*(cmd, input: string): string =

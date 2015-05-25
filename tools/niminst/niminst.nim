@@ -187,7 +187,7 @@ proc parseCmdLine(c: var ConfigData) =
         stdout.write(Usage)
         quit(0)
       of "version", "v":
-        stdout.write(Version & "\n")
+        stdout.write(Version & "\N")
         quit(0)
       of "o", "output": c.outdir = val
       of "m", "main": c.mainfile = changeFileExt(val, "nim")

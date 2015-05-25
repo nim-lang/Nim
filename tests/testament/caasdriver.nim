@@ -56,7 +56,7 @@ proc startNimSession(project, script: string, mode: TRunMode):
 
 proc doCaasCommand(session: var NimSession, command: string): string =
   assert session.mode == CaasRun
-  session.nim.inputStream.write(session.replaceVars(command) & "\n")
+  session.nim.inputStream.write(session.replaceVars(command) & "\N")
   session.nim.inputStream.flush
 
   result = ""
@@ -65,16 +65,16 @@ proc doCaasCommand(session: var NimSession, command: string): string =
     var line = TaintedString("")
     if session.nim.outputStream.readLine(line):
       if line.string == "": break
-      result.add(line.string & "\n")
+      result.add(line.string & "\N")
     else:
-      result = "FAILED TO EXECUTE: " & command & "\n" & result
+      result = "FAILED TO EXECUTE: " & command & "\N" & result
       break
 
 proc doProcCommand(session: var NimSession, command: string): string =
   try:
     assert session.mode == ProcRun or session.mode == SymbolProcRun
   except:
-    result = "FAILED TO EXECUTE: " & command & "\n" & result
+    result = "FAILED TO EXECUTE: " & command & "\N" & result
   var
     process = startProcess(NimBin, args = session.replaceVars(command).split)
     stream = outputStream(process)
@@ -82,7 +82,7 @@ proc doProcCommand(session: var NimSession, command: string): string =
 
   result = ""
   while stream.readLine(line):
-    if result.len > 0: result &= "\n"
+    if result.len > 0: result &= "\N"
     result &= line.string
 
   process.close()
@@ -90,7 +90,7 @@ proc doProcCommand(session: var NimSession, command: string): string =
 proc doCommand(session: var NimSession, command: string) =
   if session.mode == CaasRun:
     if not session.nim.running:
-      session.lastOutput = "FAILED TO EXECUTE: " & command & "\n" &
+      session.lastOutput = "FAILED TO EXECUTE: " & command & "\N" &
           "Exit code " & $session.nim.peekExitCode
       return
     session.lastOutput = doCaasCommand(session,
@@ -141,7 +141,7 @@ proc doScenario(script: string, output: Stream, mode: TRunMode, verbose: bool): 
         continue
       elif line.startsWith(">"):
         s.doCommand(line.substr(1).strip)
-        output.writeln line, "\n", if verbose: s.lastOutput else: ""
+        output.writeln line, "\N", if verbose: s.lastOutput else: ""
       else:
         var expectMatch = true
         var pattern = s.replaceVars(line)
@@ -188,7 +188,7 @@ when isMainModule:
       echo "Mode ", $mode, " (", if result: "succeeded)" else: "failed)"
       echo test
       echo output
-      echo "---------\n"
+      echo "---------\N"
     if not result:
       failures += 1
 

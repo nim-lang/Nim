@@ -13,7 +13,7 @@ type
 
 proc finalizer(n: PNode) =
   write(stdout, n.data)
-  write(stdout, " is now freed\n")
+  write(stdout, " is now freed\N")
 
 proc newNode(data: int, le, ri: PNode): PNode =
   new(result, finalizer)
@@ -33,7 +33,7 @@ proc main() =
     inc(i)
   new(p)
 
-  write(stdout, "Simple tree node allocation worked!\n")
+  write(stdout, "Simple tree node allocation worked!\N")
   i = 0
   while i < 1000:
     var m = newNode(i + 20000, nil, nil)
@@ -44,6 +44,6 @@ proc main() =
     k.ri = k
     inc(i)
 
-  write(stdout, "Simple cycle allocation worked!\n")
+  write(stdout, "Simple cycle allocation worked!\N")
 
 main()

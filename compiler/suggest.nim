@@ -30,7 +30,7 @@ type
 var
   suggestionResultHook*: proc (result: Suggest) {.closure.}
 
-#template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
+#template sectionSuggest(): expr = "##begin\N" & getStackTrace() & "##end\N"
 
 template origModuleName(m: PSym): string = m.name.s
 

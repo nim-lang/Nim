@@ -197,13 +197,13 @@ when debugGC:
     var kind = -1
     if c.typ != nil: kind = ord(c.typ.kind)
     when trackAllocationSource:
-      c_fprintf(c_stdout, "[GC %d] %s: %p %d rc=%ld %s %s %s from %s(%ld)\n",
+      c_fprintf(c_stdout, "[GC %d] %s: %p %d rc=%ld %s %s %s from %s(%ld)\N",
                 gcCollectionIdx,
                 msg, c, kind, c.refcount shr rcShift,
                 c.colorStr, c.inCycleRootsStr, c.inZctStr,
                 c.filename, c.line)
     else:
-      c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld\n",
+      c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld\N",
                 msg, c, kind, c.refcount shr rcShift)
 
 proc addZCT(zct: var TCellSeq, c: PCell) {.noinline.} =
@@ -328,7 +328,7 @@ when traceGC:
         c.forAllChildren waPush
     if c.isBitUp(rcMarkBit) and not isMarked:
       writecell("cyclic cell", cell)
-      cprintf "Weight %d\n", cell.computeCellWeight
+      cprintf "Weight %d\N", cell.computeCellWeight
       
   proc writeLeakage(onlyRoots: bool) =
     if onlyRoots:
@@ -342,8 +342,8 @@ when traceGC:
       if c in states[csFreed]: inc f
       elif c.isBitDown(rcMarkBit):
         writeCell("leak", c)
-        cprintf "Weight %d\n", c.computeCellWeight
-    cfprintf(cstdout, "Allocations: %ld; freed: %ld\n", a, f)
+        cprintf "Weight %d\N", c.computeCellWeight
+    cfprintf(cstdout, "Allocations: %ld; freed: %ld\N", a, f)
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =
   when logGC: writeCell($state, cell)
@@ -885,7 +885,7 @@ proc collectCycles(gch: var TGcHeap) =
   
   when CollectCyclesStats:
     let tAfterMark = getTicks()
-    c_printf "COLLECT CYCLES %d: %d/%d\n", gcCollectionIdx, gch.cycleRoots.len, l0
+    c_printf "COLLECT CYCLES %d: %d/%d\N", gcCollectionIdx, gch.cycleRoots.len, l0
   
   template recursiveMarkAlive(cell) =
     let startLen = gch.tempStack.len
@@ -963,7 +963,7 @@ proc collectCycles(gch: var TGcHeap) =
   
   when CollectCyclesStats:
     let tFinal = getTicks()
-    cprintf "times:\n  early mark alive: %d ms\n  mark: %d ms\n  scan: %d ms\n  collect: %d ms\n  decrefs: %d\n  increfs: %d\n  marked dead: %d\n  collected: %d\n",
+    cprintf "times:\N  early mark alive: %d ms\N  mark: %d ms\N  scan: %d ms\N  collect: %d ms\N  decrefs: %d\N  increfs: %d\N  marked dead: %d\N  collected: %d\N",
       (tAfterEarlyMarkAlive - tStart)  div 1_000_000,
       (tAfterMark - tAfterEarlyMarkAlive) div 1_000_000,
       (tAfterScan - tAfterMark) div 1_000_000,
@@ -1055,13 +1055,13 @@ else:
 when not defined(useNimRtl):
   {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
+    #c_fprintf(c_stdout, "stack bottom: %p;\N", theStackBottom)
     # the first init must be the one that defines the stack bottom:
     if gch.stackBottom == nil: gch.stackBottom = theStackBottom
     else:
       var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
       var b = cast[ByteAddress](gch.stackBottom)
-      #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
+      #c_fprintf(c_stdout, "old: %p new: %p;\N",gch.stackBottom,theStackBottom)
       when stackIncreases:
         gch.stackBottom = cast[pointer](min(a, b))
       else:
@@ -1088,9 +1088,9 @@ when defined(sparc): # For SPARC architecture.
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
     when defined(sparcv9):
-      asm  """"flushw \n" """
+      asm  """"flushw \N" """
     else:
-      asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\n" """
+      asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\N" """
 
     var
       max = gch.stackBottom
@@ -1313,7 +1313,7 @@ proc collectCTBody(gch: var TGcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
+        c_fprintf(c_stdout, "[GC] missed deadline: %ld\N", duration)
 
 proc collectCT(gch: var TGcHeap) =
   if (gch.zct.len >= ZctThreshold or (cycleGC and
@@ -1377,15 +1377,15 @@ when not defined(useNimRtl):
 
   proc GC_getStatistics(): string =
     GC_disable()
-    result = "[GC] total memory: " & $(getTotalMem()) & "\n" &
-             "[GC] occupied memory: " & $(getOccupiedMem()) & "\n" &
-             "[GC] stack scans: " & $gch.stat.stackScans & "\n" &
-             "[GC] stack cells: " & $gch.stat.maxStackCells & "\n" &
-             "[GC] cycle collections: " & $gch.stat.cycleCollections & "\n" &
-             "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
-             "[GC] zct capacity: " & $gch.zct.cap & "\n" &
-             "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
-             "[GC] max stack size: " & $gch.stat.maxStackSize & "\n" &
+    result = "[GC] total memory: " & $(getTotalMem()) & "\N" &
+             "[GC] occupied memory: " & $(getOccupiedMem()) & "\N" &
+             "[GC] stack scans: " & $gch.stat.stackScans & "\N" &
+             "[GC] stack cells: " & $gch.stat.maxStackCells & "\N" &
+             "[GC] cycle collections: " & $gch.stat.cycleCollections & "\N" &
+             "[GC] max threshold: " & $gch.stat.maxThreshold & "\N" &
+             "[GC] zct capacity: " & $gch.zct.cap & "\N" &
+             "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\N" &
+             "[GC] max stack size: " & $gch.stat.maxStackSize & "\N" &
              "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000)
     when traceGC: writeLeakage(true)
     GC_enable()

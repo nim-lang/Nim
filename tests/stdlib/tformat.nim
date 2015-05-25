@@ -6,7 +6,7 @@ discard """
 
 import strutils
 
-echo("Hi $1! How do you feel, $2?\n" % ["Andreas", "Rumpf"])
+echo("Hi $1! How do you feel, $2?\N" % ["Andreas", "Rumpf"])
 #OUT Hi Andreas! How do you feel, Rumpf?
 
 

@@ -6,4 +6,4 @@ proc printf(frmt: cstring) {.varargs, header: "<stdio.h>", cdecl.}
 
 var x = 0
 inc x
-printf("hi %ld\n", x+4777)
+printf("hi %ld\N", x+4777)

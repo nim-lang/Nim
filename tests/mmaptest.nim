@@ -26,11 +26,11 @@ proc osAllocPages(size: int): pointer {.inline.} =
                          MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
   if result == nil or result == cast[pointer](-1):
     quit 1
-  cfprintf(c_stdout, "allocated pages %p..%p\n", result, 
+  cfprintf(c_stdout, "allocated pages %p..%p\N", result, 
                      cast[int](result) + size)
     
 proc osDeallocPages(p: pointer, size: int) {.inline} =
-  cfprintf(c_stdout, "freed pages %p..%p\n", p, cast[int](p) + size)
+  cfprintf(c_stdout, "freed pages %p..%p\N", p, cast[int](p) + size)
   munmap(p, size-1)
 
 proc `+!!`(p: pointer, size: int): pointer {.inline.} =

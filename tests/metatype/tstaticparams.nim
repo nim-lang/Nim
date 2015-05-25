@@ -1,6 +1,6 @@
 discard """
   file: "tstaticparams.nim"
-  output: "abracadabra\ntest\n3\n15\n4\n2\nfloat\n3\nfloat\nyin\nyang"
+  output: "abracadabra\Ntest\N3\N15\N4\N2\Nfloat\N3\Nfloat\Nyin\Nyang"
 """
 
 type 

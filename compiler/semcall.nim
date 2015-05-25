@@ -130,9 +130,9 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   var candidates = ""
   for err in errors:
     add(candidates, err.getProcHeader(prefer))
-    add(candidates, "\n")
+    add(candidates, "\N")
   if candidates != "":
-    add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
+    add(result, "\N" & msgKindToString(errButExpected) & "\N" & candidates)
   localError(n.info, errGenerated, result)
 
 proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =

@@ -106,11 +106,11 @@ proc parseField(my: var CsvParser, a: var string) =
         of '\c': 
           pos = handleCR(my, pos)
           buf = my.buf
-          add(a, "\n")
-        of '\l': 
+          add(a, "\N")
+        of '\n': 
           pos = handleLF(my, pos)
           buf = my.buf
-          add(a, "\n")
+          add(a, "\N")
         else:
           add(a, c)
           inc(pos)
@@ -118,7 +118,7 @@ proc parseField(my: var CsvParser, a: var string) =
     while true:
       var c = buf[pos]
       if c == my.sep: break
-      if c in {'\c', '\l', '\0'}: break
+      if c in {'\c', '\n', '\0'}: break
       add(a, c)
       inc(pos)
   my.bufpos = pos
@@ -144,12 +144,12 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
       inc(my.bufpos)
     else:
       case my.buf[my.bufpos]
-      of '\c', '\l': 
+      of '\c', '\n': 
         # skip empty lines:
         while true: 
           case my.buf[my.bufpos]
           of '\c': my.bufpos = handleCR(my, my.bufpos)
-          of '\l': my.bufpos = handleLF(my, my.bufpos)
+          of '\n': my.bufpos = handleLF(my, my.bufpos)
           else: break
       of '\0': discard
       else: error(my, my.bufpos, my.sep & " expected")

@@ -450,7 +450,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkNone: assert false
     else:
       for j in 0..n.len-1:
-        res.add "\n"
+        res.add "\N"
         traverse(res, level + 1, n[j])
 
   result = ""
@@ -754,14 +754,14 @@ proc basename*(a: NimNode): NimNode =
   of nnkIdent: return a
   of nnkPostfix, nnkPrefix: return a[1]
   else:
-    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
+    quit "Do not know how to get basename of (" & treeRepr(a) & ")\N" & repr(a)
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
   of nnkIdent: macros.`ident=`(a,  !val)
   of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
-    quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
+    quit "Do not know how to get basename of (" & treeRepr(a) & ")\N" & repr(a)
 
 proc postfix*(node: NimNode; op: string): NimNode {.compileTime.} =
   newNimNode(nnkPostfix).add(ident(op), node)

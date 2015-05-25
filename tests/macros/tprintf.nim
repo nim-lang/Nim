@@ -10,7 +10,7 @@ proc printf(file: TFile, args: openarray[string]) =
     write(file, args[i])
     inc(i)
 
-printf(stdout, ["Andreas ", "Rumpf\n"])
+printf(stdout, ["Andreas ", "Rumpf\N"])
 #OUT Andreas Rumpf
 
 

@@ -20,7 +20,7 @@ const
 
 # Buffer handling:
 #  buf:
-#  "Example Text\n ha!"   bufLen = 17
+#  "Example Text\N ha!"   bufLen = 17
 #   ^pos = 0     ^ sentinel = 12
 #
 
@@ -163,7 +163,7 @@ proc getCurrentLine(L: BaseLexer, marker: bool = true): string =
   while not (L.buf[i] in {'\c', '\L', EndOfFile}):
     add(result, L.buf[i])
     inc(i)
-  add(result, "\n")
+  add(result, "\N")
   if marker:
-    add(result, spaces(getColNumber(L, L.bufpos)) & "^\n")
+    add(result, spaces(getColNumber(L, L.bufpos)) & "^\N")
 

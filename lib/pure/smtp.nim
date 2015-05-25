@@ -18,7 +18,7 @@
 ## 
 ## .. code-block:: Nim
 ##   var msg = createMessage("Hello from Nim's SMTP", 
-##                           "Hello!.\n Is this awesome or what?", 
+##                           "Hello!.\N Is this awesome or what?", 
 ##                           @["foo@gmail.com"])
 ##   var smtp = connect("smtp.gmail.com", 465, true, true)
 ##   smtp.auth("username", "password")
@@ -255,7 +255,7 @@ proc close*(smtp: AsyncSmtp) {.async.} =
 
 when not defined(testing) and isMainModule:
   #var msg = createMessage("Test subject!", 
-  #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
+  #     "Hello, my name is dom96.\N What\'s yours?", @["dominik@localhost"])
   #echo(msg)
 
   #var smtp = connect("localhost", 25, False, True)
@@ -267,7 +267,7 @@ when not defined(testing) and isMainModule:
     await client.connect()
     await client.auth("johndoe", "foo")
     var msg = createMessage("Hello from Nim's SMTP!", 
-                            "Hello!!!!.\n Is this awesome or what?", 
+                            "Hello!!!!.\N Is this awesome or what?", 
                             @["blah@gmail.com"])
     echo(msg)
     await client.sendMail("blah@gmail.com", @["blah@gmail.com"], $msg)

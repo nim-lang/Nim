@@ -23,8 +23,8 @@
 ##    # start generating content:
 ##    writeContentType()
 ##    # generate content:
-##    write(stdout, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\">\n")
-##    write(stdout, "<html><head><title>Test</title></head><body>\n")
+##    write(stdout, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\">\N")
+##    write(stdout, "<html><head><title>Test</title></head><body>\N")
 ##    writeln(stdout, "your name: " & myData["name"])
 ##    writeln(stdout, "your password: " & myData["password"])
 ##    writeln(stdout, "</body></html>")
@@ -346,8 +346,8 @@ proc writeContentType*() =
   ## implements this part of the CGI protocol:
   ##
   ## .. code-block:: Nim
-  ##     write(stdout, "Content-type: text/html\n\n")
-  write(stdout, "Content-type: text/html\n\n")
+  ##     write(stdout, "Content-type: text/html\N\N")
+  write(stdout, "Content-type: text/html\N\N")
 
 proc resetForStacktrace() =
   stdout.write """<!--: spam
@@ -365,7 +365,7 @@ proc writeErrorMessage*(data: string) =
   resetForStacktrace()
   # We use <plaintext> here, instead of escaping, so stacktrace can
   # be understood by human looking at source.
-  stdout.write("<plaintext>\n")
+  stdout.write("<plaintext>\N")
   stdout.write(data)
 
 proc setStackTraceStdout*() =
@@ -379,7 +379,7 @@ proc setStackTraceNewLine*() {.deprecated.} =
 
 proc setCookie*(name, value: string) =
   ## Sets a cookie.
-  write(stdout, "Set-Cookie: ", name, "=", value, "\n")
+  write(stdout, "Set-Cookie: ", name, "=", value, "\N")
 
 var
   gcookies {.threadvar.}: StringTableRef

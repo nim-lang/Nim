@@ -25,6 +25,6 @@ else:
 var
   s: string
 write(stdout, "compiled at " & system.CompileDate &
-              " " & CompileTime & "\n")
+              " " & CompileTime & "\N")
 echo getDateStr()
 echo getClockStr()

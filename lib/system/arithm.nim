@@ -183,10 +183,10 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
   proc addInt(a, b: int): int {.compilerProc, inline.} =
     # don't use a pure proc here!
     asm """
-      "addl %%ecx, %%eax\n"
-      "jno 1\n"
-      "call _raiseOverflow\n"
-      "1: \n"
+      "addl %%ecx, %%eax\N"
+      "jno 1\N"
+      "call _raiseOverflow\N"
+      "1: \N"
       :"=a"(`result`)
       :"a"(`a`), "c"(`b`)
     """
@@ -195,51 +195,51 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
     #".att_syntax"
 
   proc subInt(a, b: int): int {.compilerProc, inline.} =
-    asm """ "subl %%ecx,%%eax\n"
-            "jno 1\n"
-            "call _raiseOverflow\n"
-            "1: \n"
+    asm """ "subl %%ecx,%%eax\N"
+            "jno 1\N"
+            "call _raiseOverflow\N"
+            "1: \N"
            :"=a"(`result`)
            :"a"(`a`), "c"(`b`)
     """
 
   proc mulInt(a, b: int): int {.compilerProc, inline.} =
-    asm """  "xorl %%edx, %%edx\n"
-             "imull %%ecx\n"
-             "jno 1\n"
-             "call _raiseOverflow\n"
-             "1: \n"
+    asm """  "xorl %%edx, %%edx\N"
+             "imull %%ecx\N"
+             "jno 1\N"
+             "call _raiseOverflow\N"
+             "1: \N"
             :"=a"(`result`)
             :"a"(`a`), "c"(`b`)
             :"%edx"
     """
 
   proc negInt(a: int): int {.compilerProc, inline.} =
-    asm """ "negl %%eax\n"
-            "jno 1\n"
-            "call _raiseOverflow\n"
-            "1: \n"
+    asm """ "negl %%eax\N"
+            "jno 1\N"
+            "call _raiseOverflow\N"
+            "1: \N"
            :"=a"(`result`)
            :"a"(`a`)
     """
 
   proc divInt(a, b: int): int {.compilerProc, inline.} =
-    asm """  "xorl %%edx, %%edx\n"
-             "idivl %%ecx\n"
-             "jno 1\n"
-             "call _raiseOverflow\n"
-             "1: \n"
+    asm """  "xorl %%edx, %%edx\N"
+             "idivl %%ecx\N"
+             "jno 1\N"
+             "call _raiseOverflow\N"
+             "1: \N"
             :"=a"(`result`)
             :"a"(`a`), "c"(`b`)
             :"%edx"
     """
 
   proc modInt(a, b: int): int {.compilerProc, inline.} =
-    asm """  "xorl %%edx, %%edx\n"
-             "idivl %%ecx\n"
-             "jno 1\n"
-             "call _raiseOverflow\n"
-             "1: \n"
+    asm """  "xorl %%edx, %%edx\N"
+             "idivl %%ecx\N"
+             "jno 1\N"
+             "call _raiseOverflow\N"
+             "1: \N"
              "movl %%edx, %%eax"
             :"=a"(`result`)
             :"a"(`a`), "c"(`b`)

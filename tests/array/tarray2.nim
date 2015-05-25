@@ -1,6 +1,6 @@
 discard """
   file: "tarray2.nim"
-  output: "[4, 5, 6]\n\n[16, 25, 36]\n\n[16, 25, 36]"
+  output: "[4, 5, 6]\N\N[16, 25, 36]\N\N[16, 25, 36]"
 """
 # simple check for one dimensional arrays
 

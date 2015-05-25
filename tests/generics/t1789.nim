@@ -1,5 +1,5 @@
 discard """
-  output: "3\n0"
+  output: "3\N0"
 """
 
 # https://github.com/Araq/Nim/issues/1789

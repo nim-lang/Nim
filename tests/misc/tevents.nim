@@ -12,7 +12,7 @@ type
     user*: string
 
 proc handleprintevent*(e: TEventArgs) =
-    write(stdout, "HandlePrintEvent: Output -> Handled print event\n")
+    write(stdout, "HandlePrintEvent: Output -> Handled print event\N")
         
 proc handleprintevent2*(e: TEventArgs) =
     var args: TPrintEventArgs = TPrintEventArgs(e)
@@ -21,7 +21,7 @@ proc handleprintevent2*(e: TEventArgs) =
 var ee = initEventEmitter()
 
 var eventargs: TPrintEventArgs
-eventargs.user = "ME\n"
+eventargs.user = "ME\N"
 
 ##method one test
 

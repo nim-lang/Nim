@@ -1,6 +1,6 @@
 discard """
-  msg: "static 10\ndynamic\nstatic 20\n"
-  output: "s\nd\nd\ns"
+  msg: "static 10\Ndynamic\Nstatic 20\N"
+  output: "s\Nd\Nd\Ns"
 """
 
 type

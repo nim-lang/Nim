@@ -112,7 +112,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
             add(s, tempDlInfo.dli_sname)
         else:
           add(s, '?')
-        add(s, "\n")
+        add(s, "\N")
       else:
         if dlresult != 0 and tempDlInfo.dli_sname != nil and
             c_strcmp(tempDlInfo.dli_sname, "signalHandler") == 0'i32:
@@ -173,7 +173,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
         add(s, ')')
       for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
       add(s, tempFrames[j].procname)
-    add(s, "\n")
+    add(s, "\N")
 
 proc stackTraceAvailable*(): bool
 
@@ -181,15 +181,15 @@ when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
     when NimStackTrace:
       if framePtr == nil:
-        add(s, "No stack traceback available\n")
+        add(s, "No stack traceback available\N")
       else:
-        add(s, "Traceback (most recent call last)\n")
+        add(s, "Traceback (most recent call last)\N")
         auxWriteStackTrace(framePtr, s)
     elif defined(nativeStackTrace) and nativeStackTraceSupported:
-      add(s, "Traceback from system (most recent call last)\n")
+      add(s, "Traceback from system (most recent call last)\N")
       auxWriteStackTraceWithBacktrace(s)
     else:
-      add(s, "No stack traceback available\n")
+      add(s, "No stack traceback available\N")
   proc stackTraceAvailable(): bool =
     when NimStackTrace:
       if framePtr == nil:
@@ -238,7 +238,7 @@ proc raiseExceptionAux(e: ref Exception) =
         if not isNil(e.msg): add(buf, e.msg)
         add(buf, " [")
         add(buf, $e.name)
-        add(buf, "]\n")
+        add(buf, "]\N")
         showErrorMessage(buf)
       else:
         # ugly, but avoids heap allocations :-)
@@ -254,7 +254,7 @@ proc raiseExceptionAux(e: ref Exception) =
         if not isNil(e.msg): add(buf, e.msg)
         add(buf, " [")
         xadd(buf, e.name, c_strlen(e.name))
-        add(buf, "]\n")
+        add(buf, "]\N")
         showErrorMessage(buf)
       quitOrDebug()
 
@@ -277,14 +277,14 @@ proc writeStackTrace() =
     rawWriteStackTrace(s)
     showErrorMessage(s)
   else:
-    showErrorMessage("No stack traceback available\n")
+    showErrorMessage("No stack traceback available\N")
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
     result = ""
     rawWriteStackTrace(result)
   else:
-    result = "No stack traceback available\n"
+    result = "No stack traceback available\N"
 
 proc getStackTrace(e: ref Exception): string =
   if not isNil(e) and not isNil(e.trace):
@@ -295,7 +295,7 @@ proc getStackTrace(e: ref Exception): string =
 when defined(nimRequiresNimFrame):
   proc stackOverflow() {.noinline.} =
     writeStackTrace()
-    showErrorMessage("Stack overflow\n")
+    showErrorMessage("Stack overflow\N")
     quitOrDebug()
 
   proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
@@ -316,24 +316,24 @@ when defined(endb):
 when not defined(noSignalHandler):
   proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: expr) {.immediate,  dirty.} =
-      if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
+      if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\N")
       elif s == SIGSEGV:
-        action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
+        action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\N")
       elif s == SIGABRT:
         when defined(endb):
           if dbgAborting: return # the debugger wants to abort
-        action("SIGABRT: Abnormal termination.\n")
-      elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
-      elif s == SIGILL: action("SIGILL: Illegal operation.\n")
+        action("SIGABRT: Abnormal termination.\N")
+      elif s == SIGFPE: action("SIGFPE: Arithmetic error.\N")
+      elif s == SIGILL: action("SIGILL: Illegal operation.\N")
       elif s == SIGBUS:
-        action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
+        action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\N")
       else:
         block platformSpecificSignal:
           when declared(SIGPIPE):
             if s == SIGPIPE:
-              action("SIGPIPE: Pipe closed.\n")
+              action("SIGPIPE: Pipe closed.\N")
               break platformSpecificSignal
-          action("unknown signal\n")
+          action("unknown signal\N")
 
     # print stack trace and quit
     when hasSomeStackTrace:

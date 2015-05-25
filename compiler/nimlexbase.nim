@@ -31,7 +31,7 @@ const
   EndOfFile* = '\0'           # end of file marker
                               # A little picture makes everything clear :-)
                               #  buf:
-                              #  "Example Text\n ha!"   bufLen = 17
+                              #  "Example Text\N ha!"   bufLen = 17
                               #   ^pos = 0     ^ sentinel = 12
                               #
   NewLines* = {CR, LF}
@@ -164,6 +164,6 @@ proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   while not (L.buf[i] in {CR, LF, EndOfFile}): 
     add(result, L.buf[i])
     inc(i)
-  result.add("\n")
+  result.add("\N")
   if marker: 
-    result.add(spaces(getColNumber(L, L.bufpos)) & '^' & "\n")
+    result.add(spaces(getColNumber(L, L.bufpos)) & '^' & "\N")

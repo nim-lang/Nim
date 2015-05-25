@@ -20,7 +20,7 @@ void foo(int n, ...) {
   va_start(argp, n);
   for (i = 1; i <= n; i++) {
     k = va_arg(argp, NI64);
-    printf("%lld\n", (long long)k);
+    printf("%lld\N", (long long)k);
   }
   va_end(argp);
 }

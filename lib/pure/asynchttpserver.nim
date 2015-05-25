@@ -154,7 +154,7 @@ proc processClient(client: AsyncSocket, address: string,
   while not client.isClosed:
     # GET /path HTTP/1.1
     # Header: val
-    # \n
+    # \N
     request.headers.clear(modeCaseInsensitive)
     request.hostname.shallowCopy(address)
     assert client != nil

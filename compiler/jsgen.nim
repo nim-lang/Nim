@@ -1529,7 +1529,7 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
     add(result, p.body)
   if prc.typ.callConv == ccSysCall and p.target == targetJS:
     result = ("try {$n$1} catch (e) {$n" &
-      " alert(\"Unhandled exception:\\n\" + e.message + \"\\n\"$n}") % [result]
+      " alert(\"Unhandled exception:\\N\" + e.message + \"\\N\"$n}") % [result]
   if optStackTrace in prc.options:
     add(result, "framePtr = framePtr.prev;" & tnl)
 

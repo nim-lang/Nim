@@ -4,7 +4,7 @@ discard """
 instantiation 1 with typedesc and typedesc
 counter: 1
 '''
-  output: "int\nfloat\nint\nstring"
+  output: "int\Nfloat\Nint\Nstring"
 """
 
 import typetraits, macros

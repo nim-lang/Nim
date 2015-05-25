@@ -1526,7 +1526,7 @@ proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
       return ""
     if c == "\r":
       c = await recv(socket, 1)
-      assert c == "\l"
+      assert c == "\n"
       addNLIfEmpty()
       return
     elif c == "\L":

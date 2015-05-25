@@ -11,8 +11,8 @@ proc main() =
   writeln(stdout, $a)
   writeln(stdout, $b)
   if a < b:
-    write(stdout, "$2 is newer than $1\n" % [paramStr(1), paramStr(2)])
+    write(stdout, "$2 is newer than $1\N" % [paramStr(1), paramStr(2)])
   else:
-    write(stdout, "$1 is newer than $2\n" % [paramStr(1), paramStr(2)])
+    write(stdout, "$1 is newer than $2\N" % [paramStr(1), paramStr(2)])
 
 main()

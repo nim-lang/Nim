@@ -47,13 +47,13 @@ var
   a: TAZset
 s = {'0'..'9'}
 testSets(s)
-if 'F' in s: write(stdout, "Ha ein F ist in s!\n")
-else: write(stdout, "BUG: F ist nicht in s!\n")
+if 'F' in s: write(stdout, "Ha ein F ist in s!\N")
+else: write(stdout, "BUG: F ist nicht in s!\N")
 a = {} #{'a'..'z'}
 for x in low(TAZ) .. high(TAZ):
   incl(a, x)
   if x in a: discard
-  else: write(stdout, "BUG: something not in a!\n")
+  else: write(stdout, "BUG: something not in a!\N")
 
 for x in low(TTokTypeRange) .. high(TTokTypeRange):
   if x in tokTypes:

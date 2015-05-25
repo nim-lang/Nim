@@ -236,15 +236,15 @@ proc anyRune*: Peg {.inline.} =
   result.kind = pkAnyRune
 
 proc newLine*: Peg {.inline.} =
-  ## constructs the PEG `newline`:idx: (``\n``)
+  ## constructs the PEG `newline`:idx: (``\N``)
   result.kind = pkNewLine
 
 proc unicodeLetter*: Peg {.inline.} =
-  ## constructs the PEG ``\letter`` which matches any Unicode letter.
+  ## constructs the PEG ``\netter`` which matches any Unicode letter.
   result.kind = pkLetter
 
 proc unicodeLower*: Peg {.inline.} =
-  ## constructs the PEG ``\lower`` which matches any Unicode lowercase letter.
+  ## constructs the PEG ``\nower`` which matches any Unicode lowercase letter.
   result.kind = pkLower
 
 proc unicodeUpper*: Peg {.inline.} =
@@ -364,7 +364,7 @@ proc esc(c: char, reserved = {'\0'..'\255'}): string =
   of '\b': result = "\\b"
   of '\t': result = "\\t"
   of '\c': result = "\\c"
-  of '\L': result = "\\l"
+  of '\L': result = "\\n"
   of '\v': result = "\\v"
   of '\f': result = "\\f"
   of '\e': result = "\\e"
@@ -410,13 +410,13 @@ proc toStrAux(r: Peg, res: var string) =
   of pkEmpty: add(res, "()")
   of pkAny: add(res, '.')
   of pkAnyRune: add(res, '_')
-  of pkLetter: add(res, "\\letter")
-  of pkLower: add(res, "\\lower")
+  of pkLetter: add(res, "\\netter")
+  of pkLower: add(res, "\\nower")
   of pkUpper: add(res, "\\upper")
   of pkTitle: add(res, "\\title")
   of pkWhitespace: add(res, "\\white")
 
-  of pkNewLine: add(res, "\\n")
+  of pkNewLine: add(res, "\\N")
   of pkTerminal: add(res, singleQuoteEsc(r.term))
   of pkTerminalIgnoreCase:
     add(res, 'i')
@@ -487,7 +487,7 @@ proc toStrAux(r: Peg, res: var string) =
   of pkList:
     for i in 0 .. high(r.sons):
       toStrAux(r.sons[i], res)
-      add(res, "\n")
+      add(res, "\N")
   of pkStartAnchor:
     add(res, '^')
 
@@ -590,7 +590,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     result = len(s) - start
   of pkNewLine:
     if s[start] == '\L': result = 1
-    elif s[start] == '\C':
+    elif s[start] == '\r':
       if s[start+1] == '\L': result = 2
       else: result = 1
     else: result = -1
@@ -1240,7 +1240,7 @@ proc getCharSet(c: var PegLexer, tok: var TToken) =
       getEscapedChar(c, tok)
       pos = c.bufpos
       ch = tok.literal[tok.literal.len-1]
-    of '\C', '\L', '\0':
+    of '\r', '\L', '\0':
       tok.kind = tkInvalid
       break
     else:
@@ -1260,7 +1260,7 @@ proc getCharSet(c: var PegLexer, tok: var TToken) =
           getEscapedChar(c, tok)
           pos = c.bufpos
           ch2 = tok.literal[tok.literal.len-1]
-        of '\C', '\L', '\0':
+        of '\r', '\L', '\0':
           tok.kind = tkInvalid
           break
         else:
@@ -1760,11 +1760,11 @@ when isMainModule:
   else:
     assert false
 
-  assert match("eine übersicht und außerdem", peg"(\letter \white*)+")
+  assert match("eine übersicht und außerdem", peg"(\netter \white*)+")
   # ß is not a lower cased letter?!
-  assert match("eine übersicht und auerdem", peg"(\lower \white*)+")
+  assert match("eine übersicht und auerdem", peg"(\nower \white*)+")
   assert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
-  assert(not match("456678", peg"(\letter)+"))
+  assert(not match("456678", peg"(\netter)+"))
 
   assert("var1 = key; var2 = key2".replacef(
     peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==

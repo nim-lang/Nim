@@ -186,7 +186,7 @@ proc escape*(s: string): string =
   addEscaped(result, s)
 
 proc addIndent(result: var string, indent: int) =
-  result.add("\n")
+  result.add("\N")
   for i in 1..indent: result.add(' ')
 
 proc noWhitespace(n: XmlNode): bool =
@@ -245,7 +245,7 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
     result.add(';')
 
 const
-  xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
+  xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\N"
     ## header to use for complete XML output
 
 proc `$`*(n: XmlNode): string =

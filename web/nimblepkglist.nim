@@ -44,10 +44,10 @@ proc processContent(content: string) =
        pkg["url"].str.startsWith("git://github.com/nim-lang") or
        "official" in pkg["tags"].elems:
       officialCount.inc
-      officialList.add listItem & "\n"
+      officialList.add listItem & "\N"
     else:
       unofficialCount.inc
-      unofficialList.add listItem & "\n"
+      unofficialList.add listItem & "\N"
 
   var officialPkgListDiv = document.getElementById("officialPkgList")
 

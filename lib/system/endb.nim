@@ -17,7 +17,7 @@
 
 const
   EndbBeg = "*** endb"
-  EndbEnd = "***\n"
+  EndbEnd = "***\N"
 
 type
   TStaticStr = object
@@ -81,7 +81,7 @@ proc write(f: TFile, s: TStaticStr) =
 
 proc listBreakPoints() =
   write(stdout, EndbBeg)
-  write(stdout, "| Breakpoints:\n")
+  write(stdout, "| Breakpoints:\N")
   for b in listBreakpoints():
     write(stdout, abs(b.low))
     if b.high != b.low:
@@ -90,16 +90,16 @@ proc listBreakPoints() =
     write(stdout, " ")
     write(stdout, b.filename)
     if b.isActive:
-      write(stdout, " [disabled]\n")
+      write(stdout, " [disabled]\N")
     else:
-      write(stdout, "\n")
+      write(stdout, "\N")
   write(stdout, EndbEnd)
 
 proc openAppend(filename: cstring): TFile =
   var p: pointer = fopen(filename, "ab")
   if p != nil:
     result = cast[TFile](p)
-    write(result, "----------------------------------------\n")
+    write(result, "----------------------------------------\N")
 
 proc dbgRepr(p: pointer, typ: PNimType): string =
   var cl: TReprClosure
@@ -121,7 +121,7 @@ proc listFrame(stream: TFile, f: PFrame) =
   write(stream, EndbBeg)
   write(stream, "| Frame (")
   write(stream, f.len)
-  write(stream, " slots):\n")
+  write(stream, " slots):\N")
   for i in 0 .. f.len-1:
     writeln(stream, getLocal(f, i).name)
   write(stream, EndbEnd)
@@ -130,14 +130,14 @@ proc listLocals(stream: TFile, f: PFrame) =
   write(stream, EndbBeg)
   write(stream, "| Frame (")
   write(stream, f.len)
-  write(stream, " slots):\n")
+  write(stream, " slots):\N")
   for i in 0 .. f.len-1:
     writeVariable(stream, getLocal(f, i))
   write(stream, EndbEnd)
 
 proc listGlobals(stream: TFile) =
   write(stream, EndbBeg)
-  write(stream, "| Globals:\n")
+  write(stream, "| Globals:\N")
   for i in 0 .. getGlobalLen()-1:
     writeln(stream, getGlobal(i).name)
   write(stream, EndbEnd)
@@ -159,9 +159,9 @@ proc dbgShowCurrentProc(dbgFramePointer: PFrame) =
   if dbgFramePointer != nil:
     write(stdout, "*** endb| now in proc: ")
     write(stdout, dbgFramePointer.procname)
-    write(stdout, " ***\n")
+    write(stdout, " ***\N")
   else:
-    write(stdout, "*** endb| (proc name not available) ***\n")
+    write(stdout, "*** endb| (proc name not available) ***\N")
 
 proc dbgShowExecutionPoint() =
   write(stdout, "*** endb| ")
@@ -170,7 +170,7 @@ proc dbgShowExecutionPoint() =
   write(stdout, framePtr.line)
   write(stdout, ") ")
   write(stdout, framePtr.procname)
-  write(stdout, " ***\n")
+  write(stdout, " ***\N")
 
 proc scanAndAppendWord(src: cstring, a: var TStaticStr, start: int): int =
   result = start
@@ -341,13 +341,13 @@ proc readLine(f: TFile, line: var TStaticStr): bool =
 
 proc listFilenames() =
   write(stdout, EndbBeg)
-  write(stdout, "| Files:\n")
+  write(stdout, "| Files:\N")
   var i = 0
   while true:
     let x = dbgFilenames[i]
     if x.isNil: break
     write(stdout, x)
-    write(stdout, "\n")
+    write(stdout, "\N")
     inc i
   write(stdout, EndbEnd)
 
@@ -494,7 +494,7 @@ proc dbgWriteStackTrace(f: PFrame) =
         write(stdout, ')')
       write(stdout, ' ')
       write(stdout, tempFrames[j].procname)
-    write(stdout, "\n")
+    write(stdout, "\N")
 
 proc checkForBreakpoint =
   let b = checkBreakpoints(framePtr.filename, framePtr.line)
@@ -505,7 +505,7 @@ proc checkForBreakpoint =
     write(stdout, framePtr.line)
     write(stdout, ") ")
     write(stdout, framePtr.procname)
-    write(stdout, " ***\n")
+    write(stdout, " ***\N")
     commandPrompt()
 
 proc lineHookImpl() {.nimcall.} =

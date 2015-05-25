@@ -39,10 +39,10 @@ proc parse_thru_eol(value: string, index: int): int {.compiletime.} =
 
 
 proc trim_after_eol(value: var string) {.compiletime.} =
-    ## Trims any whitespace at end after \n
+    ## Trims any whitespace at end after \N
     var toTrim = 0
     for i in countdown(value.len-1, 0):
-        # If \n, return
+        # If \N, return
         if value[i] in [' ', '\t']: inc(toTrim)
         else: break
 
@@ -53,7 +53,7 @@ proc trim_after_eol(value: var string) {.compiletime.} =
 proc trim_eol(value: var string) {.compiletime.} =
     ## Removes everything after the last line if it contains nothing but whitespace
     for i in countdown(value.len - 1, 0):
-        # If \n, trim and return
+        # If \N, trim and return
         if value[i] == 0x0A.char:
             value = value.substr(0, i)
             break
@@ -73,7 +73,7 @@ proc detect_indent(value: string, index: int): int {.compiletime.} =
     var lastChar = index
     for i in countdown(index, 0):
         if value[i] == 0x0A.char:
-            # if \n, return the indentation level
+            # if \N, return the indentation level
             return lastChar - i
         elif not (value[i] in [' ', '\t']):
             # if non-whitespace char, decrement lastChar
@@ -137,7 +137,7 @@ iterator parse_compound_statements(value, identifier: string, index: int): strin
             # We have to handle case a bit differently
             read = value.parseUntil(next, '$', i)
             inc(i, read)
-            yield next.strip(leading=false) & "\n"
+            yield next.strip(leading=false) & "\N"
 
         else:
             read = value.parseUntil(next, '{', i)
@@ -148,7 +148,7 @@ iterator parse_compound_statements(value, identifier: string, index: int): strin
                 read = value.parse_to_close(i, open='{', close='}')
                 inc(i, read + 1)
                 inc(i, value.skipWhitespace(i))
-                yield next & ": nil\n"
+                yield next & ": nil\N"
 
             else: break
 

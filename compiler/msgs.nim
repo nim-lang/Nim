@@ -393,7 +393,7 @@ const
     warnLockLevel: "$1 [LockLevel]",
     warnResultShadowed: "Special variable 'result' is shadowed. [ResultShadowed]",
     warnUser: "$1 [User]",
-    warnCLDeprecated: "Use of '\\c' is deprecated in favor of '\\r', '\\l' in favor of '\\n'",
+    warnCLDeprecated: "Use of '\\c' is deprecated in favor of '\\r', '\\n' in favor of '\\N'",
     hintSuccess: "operation successful [Success]",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#) [SuccessX]",
     hintLineTooLong: "line too long [LineTooLong]",
@@ -714,7 +714,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
-        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
+        msgWriteln("No stack traceback available\NTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:

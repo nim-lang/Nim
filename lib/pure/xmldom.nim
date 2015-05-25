@@ -1087,10 +1087,10 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
       result.add(" " & i.name & "=\"" & addEscaped(i.value) & "\"")
 
   if isNil(n.childNodes) or n.childNodes.len() == 0:
-    result.add("/>") # No idea why this doesn't need a \n :O
+    result.add("/>") # No idea why this doesn't need a \N :O
   else:
     # End the beginning of this tag
-    result.add(">\n")
+    result.add(">\N")
     for i in items(n.childNodes):
       case i.nodeType
       of ElementNode:
@@ -1110,11 +1110,11 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
         result.add("<!-- " & i.nodeValue & " -->")
       else:
         continue
-      result.add("\n")
+      result.add("\N")
     # Add the ending tag - </tag>
     result.add(spaces(indent) & "</" & n.nodeName & ">")
 
 proc `$`*(doc: PDocument): string =
   ## Converts a PDocument object into a string representation of it's XML
-  result = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
+  result = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\N"
   result.add(nodeToXml(doc.documentElement))

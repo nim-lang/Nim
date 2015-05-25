@@ -1,6 +1,6 @@
 discard """
   file: "tfinally.nim"
-  output: "came\nhere\n3"
+  output: "came\Nhere\N3"
 """
 # Test return in try statement:
 

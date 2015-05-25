@@ -28,7 +28,7 @@ for word, isSep in tokenize2("ta da", WhiteSpace):
 proc wordWrap2(s: string, maxLineWidth = 80, 
                splitLongWords = true,
                seps: set[char] = Whitespace,
-               newLine = "\n"): string  = 
+               newLine = "\N"): string  = 
   result = ""
   for word, isSep in tokenize2(s, seps):
     var w = 0 

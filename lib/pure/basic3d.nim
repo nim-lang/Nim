@@ -513,9 +513,9 @@ proc getZAxis*(m:TMatrix3d):TVector3d {.noInit.}=
 proc `$`*(m:TMatrix3d):string=
   ## String representation of `m`
   return rtos(m.ax) & "," & rtos(m.ay) & "," & rtos(m.az) & "," & rtos(m.aw) &
-    "\n" & rtos(m.bx) & "," & rtos(m.by) & "," & rtos(m.bz) & "," & rtos(m.bw) &
-    "\n" & rtos(m.cx) & "," & rtos(m.cy) & "," & rtos(m.cz) & "," & rtos(m.cw) &
-    "\n" & rtos(m.tx) & "," & rtos(m.ty) & "," & rtos(m.tz) & "," & rtos(m.tw)
+    "\N" & rtos(m.bx) & "," & rtos(m.by) & "," & rtos(m.bz) & "," & rtos(m.bw) &
+    "\N" & rtos(m.cx) & "," & rtos(m.cy) & "," & rtos(m.cz) & "," & rtos(m.cw) &
+    "\N" & rtos(m.tx) & "," & rtos(m.ty) & "," & rtos(m.tz) & "," & rtos(m.tw)
 
 proc apply*(m:TMatrix3d, x,y,z:var float, translate=false)=
   ## Applies transformation `m` onto `x` , `y` , `z` , optionally

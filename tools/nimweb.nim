@@ -130,7 +130,7 @@ proc parseCmdLine(c: var TConfigData) =
         stdout.write(usage)
         quit(0)
       of "version", "v": 
-        stdout.write(version & "\n")
+        stdout.write(version & "\N")
         quit(0)
       of "o", "output": c.outdir = val
       of "parallelbuild":

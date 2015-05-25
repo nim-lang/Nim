@@ -11,7 +11,7 @@ import json, tables, algorithm
 proc outp(a: openarray[int]) =
   stdout.write "["
   for i in a: stdout.write($i & " ")
-  stdout.write "]\n"
+  stdout.write "]\N"
 
 proc works() =
   var f = @[3, 2, 1]

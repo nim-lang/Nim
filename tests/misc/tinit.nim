@@ -6,7 +6,7 @@ discard """
 
 import minit
 
-write(stdout, "Hello from main module!\n")
+write(stdout, "Hello from main module!\N")
 #OUT Hello from module! Hello from main module!
 
 

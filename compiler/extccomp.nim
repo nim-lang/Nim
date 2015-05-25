@@ -723,18 +723,18 @@ proc genMappingFiles(list: TLinkedList): Rope =
 
 proc writeMapping*(gSymbolMapping: Rope) =
   if optGenMapping notin gGlobalOptions: return
-  var code = rope("[C_Files]\n")
+  var code = rope("[C_Files]\N")
   add(code, genMappingFiles(toCompile))
   add(code, genMappingFiles(externalToCompile))
-  add(code, "\n[C_Compiler]\nFlags=")
+  add(code, "\N[C_Compiler]\NFlags=")
   add(code, strutils.escape(getCompileOptions()))
 
-  add(code, "\n[Linker]\nFlags=")
+  add(code, "\N[Linker]\NFlags=")
   add(code, strutils.escape(getLinkOptions() & " " &
                             getConfigVar(cCompiler, ".options.linker")))
 
-  add(code, "\n[Environment]\nlibpath=")
+  add(code, "\N[Environment]\Nlibpath=")
   add(code, strutils.escape(libpath))
 
-  addf(code, "\n[Symbols]$n$1", [gSymbolMapping])
+  addf(code, "\N[Symbols]$n$1", [gSymbolMapping])
   writeRope(code, joinPath(gProjectPath, "mapping.txt"))

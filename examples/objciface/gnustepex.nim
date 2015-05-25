@@ -19,7 +19,7 @@
 
 - (void)greet:(long)x y:(long)dummy
 {
-	printf("Hello, World!\n");
+	printf("Hello, World!\N");
 }
 
 @end

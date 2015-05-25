@@ -1,5 +1,5 @@
 discard """
-  output: "direct\ngeneric\ngeneric"
+  output: "direct\Ngeneric\Ngeneric"
 """
 
 proc withDirectType(args: string) =

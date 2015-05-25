@@ -189,7 +189,7 @@ proc getIndent(L: var TLexer, tok: var TToken) =
   tok.line = L.line
   L.col = tok.ival
   tok.ival = max(tok.ival - L.baseIndent, 0)
-  tok.symbol = "\n" & spaces(tok.ival)
+  tok.symbol = "\N" & spaces(tok.ival)
 
 proc rawGetTok(L: var TLexer, tok: var TToken) =
   tok.symbol = ""
@@ -202,7 +202,7 @@ proc rawGetTok(L: var TLexer, tok: var TToken) =
     getThing(L, tok, {' ', '\x09'})
     tok.kind = tkWhite
     if L.buf[L.bufpos] in {'\x0D', '\x0A'}:
-      rawGetTok(L, tok)       # ignore spaces before \n
+      rawGetTok(L, tok)       # ignore spaces before \N
   of '\x0D', '\x0A':
     getIndent(L, tok)
   of '!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.',
@@ -962,7 +962,7 @@ proc parseLiteralBlock(p: var TRstParser): PRstNode =
         if (p.tok[p.idx].ival < indent):
           break
         else:
-          add(n.text, "\n")
+          add(n.text, "\N")
           add(n.text, spaces(p.tok[p.idx].ival - indent))
           inc(p.idx)
       else:

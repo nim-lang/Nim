@@ -97,7 +97,7 @@ when defined(Windows):
         password.setLen(password.len - x)
       else:
         password.add(toUTF8(c.Rune))
-    stdout.write "\n"
+    stdout.write "\N"
 
 else:
   import readline, history, termios, unsigned
@@ -139,7 +139,7 @@ else:
     discard fd.tcsetattr(TCSADRAIN, cur.addr)
     stdout.write prompt
     result = stdin.readLine(password)
-    stdout.write "\n"
+    stdout.write "\N"
     discard fd.tcsetattr(TCSADRAIN, old.addr)
 
 proc readPasswordFromStdin*(prompt: string): TaintedString =

@@ -68,7 +68,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   var x = newStringOfCap(120)
   result.nimout = ""
   while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
+    result.nimout.add(x & "\N")
     if x =~ pegOfInterest:
       # `err` should contain the last error/warning message
       err = x
@@ -104,7 +104,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   result.outp = ""
   result.line = -1
   while outp.readLine(x.TaintedString) or running(p):
-    result.nimout.add(x & "\n")
+    result.nimout.add(x & "\N")
   close(p)
   if p.peekExitCode == 0:
     result.err = reSuccess
@@ -122,8 +122,8 @@ proc writeResults(filename: string, r: TResults) =
   writeFile(filename, $$r)
 
 proc `$`(x: TResults): string =
-  result = ("Tests passed: $1 / $3 <br />\n" &
-            "Tests skipped: $2 / $3 <br />\n") %
+  result = ("Tests passed: $1 / $3 <br />\N" &
+            "Tests skipped: $2 / $3 <br />\N") %
             [$x.passed, $x.skipped, $x.total]
 
 proc addResult(r: var TResults, test: TTest,
@@ -185,15 +185,15 @@ proc codegenCheck(test: TTest, check: string, given: var TSpec) =
     given.err = reCodeNotFound
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  let exp = expectedNimout.strip.replace("\C\L", "\L")
-  let giv = given.nimout.strip.replace("\C\L", "\L")
+  let exp = expectedNimout.strip.replace("\r\L", "\L")
+  let giv = given.nimout.strip.replace("\r\L", "\L")
   if exp notin giv:
     given.err = reMsgsDiffer
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
   sort(x, system.cmp)
-  result = join(x, "\n")
+  result = join(x, "\N")
 
 proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
                          r: var TResults) =

@@ -258,15 +258,15 @@ proc anyRune*: TPeg {.inline.} =
   result.kind = pkAnyRune
 
 proc newLine*: TPeg {.inline.} =
-  ## constructs the PEG `newline`:idx: (``\n``)
+  ## constructs the PEG `newline`:idx: (``\N``)
   result.kind = pkNewline
 
 proc UnicodeLetter*: TPeg {.inline.} = 
-  ## constructs the PEG ``\letter`` which matches any Unicode letter.
+  ## constructs the PEG ``\netter`` which matches any Unicode letter.
   result.kind = pkLetter
   
 proc UnicodeLower*: TPeg {.inline.} = 
-  ## constructs the PEG ``\lower`` which matches any Unicode lowercase letter.
+  ## constructs the PEG ``\nower`` which matches any Unicode lowercase letter.
   result.kind = pkLower 
 
 proc UnicodeUpper*: TPeg {.inline.} = 
@@ -386,7 +386,7 @@ proc esc(c: char, reserved = {'\0'..'\255'}): string =
   of '\b': result = "\\b"
   of '\t': result = "\\t"
   of '\c': result = "\\c"
-  of '\L': result = "\\l"
+  of '\L': result = "\\n"
   of '\v': result = "\\v"
   of '\f': result = "\\f"
   of '\e': result = "\\e"
@@ -432,13 +432,13 @@ proc toStrAux(r: TPeg, res: var string) =
   of pkEmpty: add(res, "()")
   of pkAny: add(res, '.')
   of pkAnyRune: add(res, '_')
-  of pkLetter: add(res, "\\letter")
-  of pkLower: add(res, "\\lower")
+  of pkLetter: add(res, "\\netter")
+  of pkLower: add(res, "\\nower")
   of pkUpper: add(res, "\\upper")
   of pkTitle: add(res, "\\title")
   of pkWhitespace: add(res, "\\white")
 
-  of pkNewline: add(res, "\\n")
+  of pkNewline: add(res, "\\N")
   of pkTerminal: add(res, singleQuoteEsc(r.term))
   of pkTerminalIgnoreCase:
     add(res, 'i')
@@ -509,7 +509,7 @@ proc toStrAux(r: TPeg, res: var string) =
   of pkList:
     for i in 0 .. high(r.sons):
       toStrAux(r.sons[i], res)
-      add(res, "\n")  
+      add(res, "\N")  
   of pkStartAnchor:
     add(res, '^')
 
@@ -610,7 +610,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
     result = len(s) - start
   of pkNewLine:
     if s[start] == '\L': result = 1
-    elif s[start] == '\C':
+    elif s[start] == '\r':
       if s[start+1] == '\L': result = 2
       else: result = 1
     else: result = -1
@@ -1239,7 +1239,7 @@ proc getCharSet(c: var TPegLexer, tok: var TToken) =
       getEscapedChar(c, tok)
       pos = c.bufpos
       ch = tok.literal[tok.literal.len-1]
-    of '\C', '\L', '\0':
+    of '\r', '\L', '\0':
       tok.kind = tkInvalid
       break
     else: 
@@ -1259,7 +1259,7 @@ proc getCharSet(c: var TPegLexer, tok: var TToken) =
           getEscapedChar(c, tok)
           pos = c.bufpos
           ch2 = tok.literal[tok.literal.len-1]
-        of '\C', '\L', '\0':
+        of '\r', '\L', '\0':
           tok.kind = tkInvalid
           break
         else: 
@@ -1751,11 +1751,11 @@ when isMainModule:
   else:
     doAssert false
   
-  doAssert match("eine übersicht und außerdem", peg"(\letter \white*)+")
+  doAssert match("eine übersicht und außerdem", peg"(\netter \white*)+")
   # ß is not a lower cased letter?!
-  doAssert match("eine übersicht und auerdem", peg"(\lower \white*)+")
+  doAssert match("eine übersicht und auerdem", peg"(\nower \white*)+")
   doAssert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
-  doAssert(not match("456678", peg"(\letter)+"))
+  doAssert(not match("456678", peg"(\netter)+"))
 
   doAssert("var1 = key; var2 = key2".replacef(
     peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==

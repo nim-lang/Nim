@@ -1,6 +1,6 @@
 discard """
   file: "tcaseofwhen.nim"
-  outputsub: "compiles for 1\ni am always two\ndefault for 3\nset is 4 not 5\narray is 6 not 7\ndefault for 8"
+  outputsub: "compiles for 1\Ni am always two\Ndefault for 3\Nset is 4 not 5\Narray is 6 not 7\Ndefault for 8"
   exitcode: "0"
 """
 

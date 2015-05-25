@@ -10,9 +10,9 @@
 # This scanner is handwritten for efficiency. I used an elegant buffering
 # scheme which I have not seen anywhere else:
 # We guarantee that a whole line is in the buffer. Thus only when scanning
-# the \n or \r character we have to check wether we need to read in the next
-# chunk. (\n or \r already need special handling for incrementing the line
-# counter; choosing both \n and \r allows the scanner to properly read Unix,
+# the \N or \r character we have to check wether we need to read in the next
+# chunk. (\N or \r already need special handling for incrementing the line
+# counter; choosing both \N and \r allows the scanner to properly read Unix,
 # DOS or Macintosh text files, even when it is not the native format.
 
 import
@@ -698,7 +698,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
         lexMessagePos(L, warnDeprecated, pos, "use '## [' instead; '##['")
 
   tok.tokType = tkComment
-  # iNumber contains the number of '\n' in the token
+  # iNumber contains the number of '\N' in the token
   tok.iNumber = 0
   when defined(nimfix):
     var col = getColNumber(L, pos)
@@ -731,7 +731,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       template doContinue(): expr =
         buf[pos] == '#' and buf[pos+1] == '#'
     if doContinue():
-      tok.literal.add "\n"
+      tok.literal.add "\N"
       when defined(nimfix): col = indent
       inc tok.iNumber
     else:
