@@ -26,7 +26,8 @@ It can also be used as a statement, in that case it takes a list of *renamings*.
     Stream = ref object
   {.deprecated: [TFile: File, PStream: Stream].}
 
-The ``nimfix`` tool can be used to, without effort, automatically update your code and refactor it by performing these renamings.
+The ``nimfix`` tool can be used to, without effort, automatically update your
+code and refactor it by performing these renamings.
 
 
 noSideEffect pragma
@@ -430,7 +431,10 @@ Example:
   of the symbols may include other call expressions, whose types will be resolved
   at this point too.
 
-  3. Finally, after the best overload is picked, the compiler will start compiling the body of the respective symbol. This in turn will lead the compiler to discover more call expressions that need to be resolved and steps 2 and 3 will be repeated as necessary.
+  3. Finally, after the best overload is picked, the compiler will start
+  compiling the body of the respective symbol. This in turn will lead the
+  compiler to discover more call expressions that need to be resolved and steps
+  2 and 3 will be repeated as necessary.
 
   Please note that if a callable symbol is never used in this scenario, its body
   will never be compiled. This is the default behavior leading to best compilation

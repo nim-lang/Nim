@@ -43,7 +43,8 @@ Fortunately Nim supports side effect analysis:
   
   echo f() * 2 # not optimized ;-)
 
-You can make one overload for constrained match and without, and the constrained will be prioritized, and so you can handle both cases differently.
+You can make one overload for constrained match and without, and the constrained
+will be prioritized, and so you can handle both cases differently.
 
 So what about ``2 * a``? We should tell the compiler ``*`` is commutative. We
 cannot really do that however as the following code only swaps arguments
@@ -107,10 +108,11 @@ Predicate                Meaning
                          with the marked parameter.
 ===================      =====================================================
 
+Predicates that share their name with a keyword have to be escaped with 
+backticks: `` `const` ``.
 The ``alias`` and ``noalias`` predicates refer not only to the matching AST,
 but also to every other bound parameter; syntactically they need to occur after
 the ordinary AST predicates:
-Predicates that share their name with a keyword have to be escaped with backticks: `` `const` ``.
 
 .. code-block:: nim
   template ex{a = b + c}(a: int{noalias}, b, c: int) =

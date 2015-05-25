@@ -2,13 +2,14 @@ About this document
 ===================
 
 **Note**: This document is a draft! Several of Nim's features may need more
-precise wording. This manual is constantly evolving until the 1.0 release and is not to be considered as the final proper specification.
+precise wording. This manual is constantly evolving until the 1.0 release and is
+not to be considered as the final proper specification.
 
 This document describes the lexis, the syntax, and the semantics of Nim.
 
-The language constructs are explained using an extended BNF, in
-which ``(a)*`` means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and
-``(a)?`` means an optional *a*. Parentheses may be used to group elements.
+The language constructs are explained using an extended BNF, in which ``(a)*``
+means 0 or more ``a``'s, ``a+`` means 1 or more ``a``'s, and ``(a)?`` means an
+optional *a*. Parentheses may be used to group elements.
 
 ``&`` is the lookahead operator; ``&a`` means that an ``a`` is expected but
 not consumed. It will be consumed in the following rule.

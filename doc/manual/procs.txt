@@ -2,9 +2,14 @@ Procedures
 ==========
 
 What most programming languages call `methods`:idx: or `functions`:idx: are
-called `procedures`:idx: in Nim (which is the correct terminology). A
-procedure declaration consists of an identifier, zero or more formal parameters, a return value type and a block of code.
-Formal parameters are declared as a list of identifiers separated by either comma or semicolon. A parameter is given a type by ``: typename``. The type applies to all parameters immediately before it, until either the beginning of the parameter list, a semicolon separator or an already typed parameter, is reached. The semicolon can be used to make separation of types and subsequent identifiers more distinct.
+called `procedures`:idx: in Nim (which is the correct terminology). A procedure
+declaration consists of an identifier, zero or more formal parameters, a return
+value type and a block of code. Formal parameters are declared as a list of
+identifiers separated by either comma or semicolon. A parameter is given a type
+by ``: typename``. The type applies to all parameters immediately before it,
+until either the beginning of the parameter list, a semicolon separator or an
+already typed parameter, is reached. The semicolon can be used to make
+separation of types and subsequent identifiers more distinct.
 
 .. code-block:: nim
   # Using only commas
@@ -16,23 +21,26 @@ Formal parameters are declared as a list of identifiers separated by either comm
   # Will fail: a is untyped since ';' stops type propagation.
   proc foo(a; b: int; c, d: bool): int
 
-A parameter may be declared with a default value which is used if the caller does not provide a value for the argument.
+A parameter may be declared with a default value which is used if the caller
+does not provide a value for the argument.
 
 .. code-block:: nim
   # b is optional, 47 is its default value
   proc foo(a, b: int = 47): int
 
-Parameters can be declared mutable and so allow the proc to modify those arguments, by using the type modifier `var`.
+Parameters can be declared mutable and so allow the proc to modify those
+arguments, by using the type modifier `var`.
 
 .. code-block:: nim
   # "returning" a value to the caller through the 2nd argument
   proc foo(inp: int, outp: var int): void =
     outp = inp + 47
 
-If the proc declaration has no body, it is a `forward`:idx: declaration. If
-the proc returns a value, the procedure body can access an implicitly declared
+If the proc declaration has no body, it is a `forward`:idx: declaration. If the
+proc returns a value, the procedure body can access an implicitly declared
 variable named `result`:idx: that represents the return value. Procs can be
-overloaded. The overloading resolution algorithm determines which proc is the best match for the arguments. Example:
+overloaded. The overloading resolution algorithm determines which proc is the
+best match for the arguments. Example:
 
 .. code-block:: nim
 
@@ -530,7 +538,8 @@ Closure iterators have other restrictions than inline iterators:
 
 1. ``yield`` in a closure iterator can not occur in a ``try`` statement.
 2. For now, a closure iterator cannot be evaluated at compile time.
-3. ``return`` is allowed in a closure iterator (but rarely useful) and ends iteration..
+3. ``return`` is allowed in a closure iterator (but rarely useful) and ends 
+   iteration..
 4. Neither inline nor closure iterators can be recursive.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
