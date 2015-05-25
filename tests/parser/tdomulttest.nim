@@ -1,6 +1,6 @@
 discard """
   file: "tdomulttest.nim"
-  output: "555\ntest\nmulti lines\n99999999\nend"
+  output: "555\Ntest\Nmulti lines\N99999999\Nend"
   disabled: true
 """
 proc foo(bar, baz: proc (x: int): int) =

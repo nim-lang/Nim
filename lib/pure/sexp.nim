@@ -147,7 +147,7 @@ proc parseString(my: var SexpParser): TTokKind =
         add(my.a, '\L')
         inc(pos, 2)
       of 'r':
-        add(my.a, '\C')
+        add(my.a, '\r')
         inc(pos, 2)
       of 't':
         add(my.a, '\t')
@@ -514,7 +514,7 @@ proc newIndent(curr, indent: int, ml: bool): int =
   else: return indent
 
 proc nl(s: var string, ml: bool) =
-  if ml: s.add("\n")
+  if ml: s.add("\N")
 
 proc escapeJson*(s: string): string =
   ## Converts a string `s` to its JSON representation.

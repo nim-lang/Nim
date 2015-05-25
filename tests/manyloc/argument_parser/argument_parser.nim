@@ -232,12 +232,12 @@ template run_custom_proc(parsed_parameter: Tparsed_parameter,
   if not custom_validator.isNil:
     except:
       raise_or_quit(ValueError, ("Couldn't run custom proc for " &
-        "parameter $1:\n$2" % [escape(parameter),
+        "parameter $1:\N$2" % [escape(parameter),
         getCurrentExceptionMsg()]))
     let message = custom_validator(parameter, parsed_parameter)
     if not message.isNil and message.len > 0:
       raise_or_quit(ValueError, ("Failed to validate value for " &
-        "parameter $1:\n$2" % [escape(parameter), message]))
+        "parameter $1:\N$2" % [escape(parameter), message]))
 
 
 proc parse_parameter(quit_on_failure: bool, param, value: string,

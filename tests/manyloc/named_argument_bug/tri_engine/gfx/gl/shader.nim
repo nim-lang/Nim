@@ -45,7 +45,7 @@ proc compile*(shader: TShader, path="") =
     raise newException(E_GL, if path.len == 0:
         shaderInfoLog(shader)
       else:
-        path & ":\n" & shaderInfoLog(shader)
+        path & ":\N" & shaderInfoLog(shader)
     )
 
 proc newShaderFromSrc*(src: string, `type`: TShaderType): TShader =

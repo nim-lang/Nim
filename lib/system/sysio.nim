@@ -210,10 +210,10 @@ proc endOfFile(f: File): bool =
 
 proc writeln[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x): write(f, i)
-  write(f, "\n")
+  write(f, "\N")
 
 proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
-proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
+proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\N")
 
 # interface to the C procs:
 

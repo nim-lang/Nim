@@ -4,9 +4,9 @@ proc fakeCppDep(x: ptr float) {.importcpp: "fakeCppDep", header: "<vector>".}
 proc fakeTimeDep() = echo(times.getDateStr())
 proc fakedeps() =
   var x = 0.4
-  {.emit: "#if 0\n".}
+  {.emit: "#if 0\N".}
   fakeCppDep(addr x)
-  {.emit: "#endif\n".}
+  {.emit: "#endif\N".}
 
   # this is not true:
   if math.sin(x) > 0.6:

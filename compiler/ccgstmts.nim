@@ -869,7 +869,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   #    popSafePoint();
   #    /* except DivisionByZero: */
   #    if (sp.status == DivisionByZero) {
-  #      printf('Division by Zero\n');
+  #      printf('Division by Zero\N');
   #      clearException();
   #    } else {
   #      clearException();
@@ -877,7 +877,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   #  }
   #  {
   #    /* finally: */
-  #    printf('fin!\n');
+  #    printf('fin!\N');
   #  }
   #  if (exception not cleared)
   #    propagateCurrentException();
@@ -981,7 +981,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         # ignore empty lines
         add(result, "\"")
         add(result, x)
-        add(result, "\\n\"\n")
+        add(result, "\\N\"\N")
   else:
     res.add(tnl)
     result = res.rope

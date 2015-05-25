@@ -1,6 +1,6 @@
 discard """
   file: "tnestedbreak.nim"
-  output: "1\n2\n3\n4"
+  output: "1\N2\N3\N4"
 """
 
 # First variety

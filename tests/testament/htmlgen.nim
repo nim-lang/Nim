@@ -23,7 +23,7 @@ const
     <head>
       <title>Test results</title>
       <style type="text/css">
-      <!--""" & slurp("css/boilerplate.css") & "\n" &
+      <!--""" & slurp("css/boilerplate.css") & "\N" &
                 slurp("css/style.css") &
       """
 ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }

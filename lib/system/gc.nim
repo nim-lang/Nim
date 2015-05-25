@@ -142,10 +142,10 @@ proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
   if c.typ != nil: kind = ord(c.typ.kind)
   when leakDetector:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
+    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\N",
               msg, c, kind, c.refcount shr rcShift, c.filename, c.line)
   else:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
+    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld; color=%ld\N",
               msg, c, kind, c.refcount shr rcShift, c.color)
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =
@@ -686,7 +686,7 @@ when logGC:
     else:
       writeCell("cell {", s)
       forAllChildren(s, waDebug)
-      c_fprintf(c_stdout, "}\n")
+      c_fprintf(c_stdout, "}\N")
 
 proc doOperation(p: pointer, op: TWalkOp) =
   if p == nil: return
@@ -776,7 +776,7 @@ proc collectCycles(gch: var TGcHeap) =
         incl(gch.cycleRoots, c)
       gcAssert c.typ != nil, "addBackStackRoots 2"
     if cycleRootsLen != 0:
-      cfprintf(cstdout, "cycle roots: %ld\n", cycleRootsLen)
+      cfprintf(cstdout, "cycle roots: %ld\N", cycleRootsLen)
 
 proc gcMark(gch: var TGcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
@@ -828,13 +828,13 @@ else:
 when not defined(useNimRtl):
   {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
+    #c_fprintf(c_stdout, "stack bottom: %p;\N", theStackBottom)
     # the first init must be the one that defines the stack bottom:
     if gch.stackBottom == nil: gch.stackBottom = theStackBottom
     else:
       var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
       var b = cast[ByteAddress](gch.stackBottom)
-      #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
+      #c_fprintf(c_stdout, "old: %p new: %p;\N",gch.stackBottom,theStackBottom)
       when stackIncreases:
         gch.stackBottom = cast[pointer](min(a, b))
       else:
@@ -856,9 +856,9 @@ when defined(sparc): # For SPARC architecture.
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
     when defined(sparcv9):
-      asm  """"flushw \n" """
+      asm  """"flushw \N" """
     else:
-      asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\n" """
+      asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\N" """
 
     var
       max = gch.stackBottom
@@ -1055,7 +1055,7 @@ proc collectCTBody(gch: var TGcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
+        c_fprintf(c_stdout, "[GC] missed deadline: %ld\N", duration)
 
 when useMarkForDebug or useBackupGc:
   proc markForDebug(gch: var TGcHeap) =
@@ -1127,15 +1127,15 @@ when not defined(useNimRtl):
 
   proc GC_getStatistics(): string =
     GC_disable()
-    result = "[GC] total memory: " & $(getTotalMem()) & "\n" &
-             "[GC] occupied memory: " & $(getOccupiedMem()) & "\n" &
-             "[GC] stack scans: " & $gch.stat.stackScans & "\n" &
-             "[GC] stack cells: " & $gch.stat.maxStackCells & "\n" &
-             "[GC] cycle collections: " & $gch.stat.cycleCollections & "\n" &
-             "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
-             "[GC] zct capacity: " & $gch.zct.cap & "\n" &
-             "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
-             "[GC] max stack size: " & $gch.stat.maxStackSize & "\n" &
+    result = "[GC] total memory: " & $(getTotalMem()) & "\N" &
+             "[GC] occupied memory: " & $(getOccupiedMem()) & "\N" &
+             "[GC] stack scans: " & $gch.stat.stackScans & "\N" &
+             "[GC] stack cells: " & $gch.stat.maxStackCells & "\N" &
+             "[GC] cycle collections: " & $gch.stat.cycleCollections & "\N" &
+             "[GC] max threshold: " & $gch.stat.maxThreshold & "\N" &
+             "[GC] zct capacity: " & $gch.zct.cap & "\N" &
+             "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\N" &
+             "[GC] max stack size: " & $gch.stat.maxStackSize & "\N" &
              "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000)
     GC_enable()
 

@@ -1,5 +1,5 @@
 discard """
-  output: "10\n10\n1\n2\n3\n15"
+  output: "10\N10\N1\N2\N3\N15"
 """
 
 proc test(x: proc (a, b: int): int) =

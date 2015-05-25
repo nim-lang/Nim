@@ -1,6 +1,6 @@
 discard """
-  msg:    "instantiated for string\ninstantiated for int\ninstantiated for bool"
-  output: "int\nseq[string]\nA\nB\n100\ntrue"
+  msg:    "instantiated for string\Ninstantiated for int\Ninstantiated for bool"
+  output: "int\Nseq[string]\NA\NB\N100\Ntrue"
 """
 
 import typetraits

@@ -55,7 +55,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
   # for debugging purposes
   var i = start
   while i <= last:
-    if i in jumpTargets: result.addf("L$1:\n", i)
+    if i in jumpTargets: result.addf("L$1:\N", i)
     let x = c.code[i]
 
     result.add($i)
@@ -85,7 +85,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
       result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
     result.add("\t#")
     result.add(debugInfo(c.debug[i]))
-    result.add("\n")
+    result.add("\N")
     inc i
 
 proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =

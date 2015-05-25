@@ -25,14 +25,14 @@ proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
   stdout.rawWrite("could not load: ")
   stdout.rawWrite(path)
-  stdout.rawWrite("\n")
+  stdout.rawWrite("\N")
   quit(1)
 
 proc procAddrError(name: cstring) {.noinline.} =
   # carefully written to avoid memory allocation:
   stdout.rawWrite("could not import: ")
   stdout.write(name)
-  stdout.rawWrite("\n")
+  stdout.rawWrite("\N")
   quit(1)
 
 # this code was inspired from Lua's source code:
@@ -68,7 +68,7 @@ when defined(posix):
 
   proc nimLoadLibrary(path: string): TLibHandle =
     result = dlopen(path, RTLD_NOW)
-    #c_fprintf(c_stdout, "%s\n", dlerror())
+    #c_fprintf(c_stdout, "%s\N", dlerror())
 
   proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
     result = dlsym(lib, name)

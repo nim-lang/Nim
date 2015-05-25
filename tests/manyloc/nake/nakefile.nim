@@ -86,7 +86,7 @@ task "download", "download game assets":
   path.add DirSep
   path.add(extractFilename(GameAssets))
   if existsFile(path):
-    echo "The file already exists\n",
+    echo "The file already exists\N",
       "[R]emove  [M]ove  [Q]uit  [S]kip    Source: ", GameAssets
     case stdin.readLine.toLower
     of "r":
@@ -118,7 +118,7 @@ task "download", "download game assets":
       echo "I do not know how to unpack the data on this system. Perhaps you could ",
         "fill this part in?"
   
-  echo "Download binary libs? Only libs for linux are available currently, enjoy the irony.\n",
+  echo "Download binary libs? Only libs for linux are available currently, enjoy the irony.\N",
     "[Y]es [N]o   Source: ", BinLibs
   case stdin.readline.toLower
   of "y", "yes":

@@ -17,7 +17,7 @@ type
     errIntLiteralExpected, errInvalidCharacterConstant,
     errClosingTripleQuoteExpected, errClosingQuoteExpected,
     errTabulatorsAreNotAllowed, errInvalidToken, errLineTooLong,
-    errInvalidNumber, errNumberOutOfRange, errNnotAllowedInCharacter,
+    errInvalidNumber, errNumberOutOfRange,
     errClosingBracketExpected, errMissingFinalQuote, errIdentifierExpected,
     errNewlineExpected,
     errInvalidModuleName,
@@ -118,7 +118,7 @@ type
     warnEachIdentIsTuple, warnShadowIdent,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnUser,
+    warnUser, warnCLDeprecated,
     hintSuccess, hintSuccessX,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
@@ -144,7 +144,6 @@ const
     errLineTooLong: "line too long",
     errInvalidNumber: "$1 is not a valid number",
     errNumberOutOfRange: "number $1 out of valid range",
-    errNnotAllowedInCharacter: "\\n not allowed in character literal",
     errClosingBracketExpected: "closing ']' expected, but end of file reached",
     errMissingFinalQuote: "missing final \' for character literal",
     errIdentifierExpected: "identifier expected, but found \'$1\'",
@@ -394,6 +393,7 @@ const
     warnLockLevel: "$1 [LockLevel]",
     warnResultShadowed: "Special variable 'result' is shadowed. [ResultShadowed]",
     warnUser: "$1 [User]",
+    warnCLDeprecated: "Use of '\\c' is deprecated in favor of '\\r', '\\n' in favor of '\\N'",
     hintSuccess: "operation successful [Success]",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#) [SuccessX]",
     hintLineTooLong: "line too long [LineTooLong]",
@@ -413,7 +413,7 @@ const
     hintUser: "$1 [User]"]
 
 const
-  WarningsToStr*: array[0..30, string] = ["CannotOpenFile", "OctalEscape",
+  WarningsToStr*: array[0..31, string] = ["CannotOpenFile", "OctalEscape",
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic",
@@ -423,7 +423,7 @@ const
     "TypelessParam", "DifferentHeaps", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
-    "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
+    "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User", "CLDeprecated"]
 
   HintsToStr*: array[0..16, string] = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
@@ -714,7 +714,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
-        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
+        msgWriteln("No stack traceback available\NTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:

@@ -77,9 +77,9 @@ proc main() =
   s = readLine(stdin)
   # test the case statement
   case s
-  of "Andreas": write(stdout, "Du bist mein Meister!\n")
-  of "Rumpf": write(stdout, "Du bist in der Familie meines Meisters!\n")
-  else: write(stdout, "ich kenne dich nicht!\n")
-  write(stdout, "Du heisst " & s & "\n")
+  of "Andreas": write(stdout, "Du bist mein Meister!\N")
+  of "Rumpf": write(stdout, "Du bist in der Familie meines Meisters!\N")
+  else: write(stdout, "ich kenne dich nicht!\N")
+  write(stdout, "Du heisst " & s & "\N")
 
 main()

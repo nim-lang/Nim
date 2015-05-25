@@ -223,7 +223,7 @@ proc makeYamlString*(s: string): Rope =
   for i in countup(0, if s.isNil: -1 else: (len(s)-1)):
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
-      add(res, "\n")
+      add(res, "\N")
       add(result, rope(res))
       res = "\""              # reset
     add(res, toYamlChar(s[i]))

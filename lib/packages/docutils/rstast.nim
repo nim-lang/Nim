@@ -116,18 +116,18 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
   of rnInner:
     renderRstSons(d, n, result)
   of rnHeadline:
-    result.add("\n")
+    result.add("\N")
     result.add(ind)
 
     let oldLen = result.len
     renderRstSons(d, n, result)
     let headlineLen = result.len - oldLen
 
-    result.add("\n")
+    result.add("\N")
     result.add(ind)
     result.add repeat(lvlToChar[n.level], headlineLen)
   of rnOverline:
-    result.add("\n")
+    result.add("\N")
     result.add(ind)
 
     var headline = ""
@@ -135,19 +135,19 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
 
     let lvl = repeat(lvlToChar[n.level], headline.len - d.indent)
     result.add(lvl)
-    result.add("\n")
+    result.add("\N")
     result.add(headline)
 
-    result.add("\n")
+    result.add("\N")
     result.add(ind)
     result.add(lvl)
   of rnTransition:
-    result.add("\n\n")
+    result.add("\N\N")
     result.add(ind)
     result.add repeat('-', 78-d.indent)
-    result.add("\n\n")
+    result.add("\N\N")
   of rnParagraph:
-    result.add("\n\n")
+    result.add("\N\N")
     result.add(ind)
     renderRstSons(d, n, result)
   of rnBulletItem:
@@ -155,7 +155,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     var tmp = ""
     renderRstSons(d, n, tmp)
     if tmp.len > 0:
-      result.add("\n")
+      result.add("\N")
       result.add(ind)
       result.add("* ")
       result.add(tmp)
@@ -165,7 +165,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     var tmp = ""
     renderRstSons(d, n, tmp)
     if tmp.len > 0:
-      result.add("\n")
+      result.add("\N")
       result.add(ind)
       result.add("(#) ")
       result.add(tmp)
@@ -174,13 +174,13 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
      rnFieldBody, rnStandaloneHyperlink, rnBulletList, rnEnumList:
     renderRstSons(d, n, result)
   of rnDefName:
-    result.add("\n\n")
+    result.add("\N\N")
     result.add(ind)
     renderRstSons(d, n, result)
   of rnDefBody:
     inc(d.indent, 2)
     if n.sons[0].kind != rnBulletList:
-      result.add("\n")
+      result.add("\N")
       result.add(ind)
       result.add("  ")
     renderRstSons(d, n, result)
@@ -192,7 +192,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     var L = max(tmp.len + 3, 30)
     inc(d.indent, L)
 
-    result.add "\n"
+    result.add "\N"
     result.add ind
     result.add ':'
     result.add tmp
@@ -202,7 +202,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
 
     dec(d.indent, L)
   of rnLineBlockItem:
-    result.add("\n")
+    result.add("\N")
     result.add(ind)
     result.add("| ")
     renderRstSons(d, n, result)
@@ -268,15 +268,15 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
     else:
       result.add(n.text)
   of rnIndex:
-    result.add("\n\n")
+    result.add("\N\N")
     result.add(ind)
-    result.add(".. index::\n")
+    result.add(".. index::\N")
 
     inc(d.indent, 3)
     if n.sons[2] != nil: renderRstSons(d, n.sons[2], result)
     dec(d.indent, 3)
   of rnContents:
-    result.add("\n\n")
+    result.add("\N\N")
     result.add(ind)
     result.add(".. contents::")
   else:

@@ -361,7 +361,7 @@ macro styledEcho*(m: varargs[expr]): stmt =
   for i in countup(1, m.len - 1):
     result.add(newCall(bindSym"styledEchoProcessArg", m[i]))
 
-  result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\n")))
+  result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\N")))
   result.add(newCall(bindSym"resetAttributes"))
 
 when not defined(windows):

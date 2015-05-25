@@ -107,13 +107,13 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
   for i in x .. t.first-1: stdout.write(s[i])
   writeColored(match)
   for i in t.last+1 .. y: stdout.write(s[i])
-  stdout.write("\n")
+  stdout.write("\N")
   if showRepl:
     stdout.write(spaces(alignment-1), "-> ")
     for i in x .. t.first-1: stdout.write(s[i])
     writeColored(repl)
     for i in t.last+1 .. y: stdout.write(s[i])
-    stdout.write("\n")
+    stdout.write("\N")
 
 proc processFile(filename: string) =
   var filenameShown = false
@@ -257,7 +257,7 @@ proc writeHelp() =
   quit(0)
 
 proc writeVersion() = 
-  stdout.write(Version & "\n")
+  stdout.write(Version & "\N")
   quit(0)
 
 proc checkOptions(subset: TOptions, a, b: string) =
@@ -319,7 +319,7 @@ else:
     filenames.add(os.getCurrentDir())
   if optRegex notin options: 
     if optWord in options:
-      pattern = r"(^ / !\letter)(" & pattern & r") !\letter"
+      pattern = r"(^ / !\netter)(" & pattern & r") !\netter"
     if optIgnoreStyle in options: 
       pattern = "\\y " & pattern
     elif optIgnoreCase in options:

@@ -102,7 +102,7 @@ proc recordText*(i: PTextInput; c: cint) =
       let rem = i.text.substr(i.cursor + 1)
       i.text.setLen(i.cursor)
       i.text.add(rem)
-  elif c == 10 or c == 13:## \n, \r  enter
+  elif c == 10 or c == 13:## \N, \r  enter
     if not i.onEnter.isNil: i.onEnter()
 proc recordText*(i: PTextInput; e: TTextEvent) {.inline.} = 
   recordText(i, e.unicode)

@@ -35,7 +35,7 @@ proc reprStrAux(result: var string, s: string) =
     case c
     of '"': add result, "\\\""
     of '\\': add result, "\\\\" # BUGFIX: forgotten
-    of '\10': add result, "\\10\"\n\"" # " \n " # better readability
+    of '\10': add result, "\\10\"\N\"" # " \N " # better readability
     of '\128' .. '\255', '\0'..'\9', '\11'..'\31':
       add result, "\\" & reprInt(ord(c))
     else:
@@ -145,7 +145,7 @@ when not defined(useNimRtl):
       ReleaseSys(HeapLock)
 
   proc reprBreak(result: var string, cl: TReprClosure) =
-    add result, "\n"
+    add result, "\N"
     for i in 0..cl.indent-1: add result, ' '
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
@@ -183,7 +183,7 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + n.offset), n.typ, cl)
     of nkList:
       for i in 0..n.len-1:
-        if i > 0: add result, ",\n"
+        if i > 0: add result, ",\N"
         reprRecordAux(result, p, n.sons[i], cl)
     of nkCase:
       var m = selectBranch(p, n)
@@ -196,7 +196,7 @@ when not defined(useNimRtl):
     let oldLen = result.len
     reprRecordAux(result, p, typ.node, cl)
     if typ.base != nil: 
-      if oldLen != result.len: add result, ",\n"
+      if oldLen != result.len: add result, ",\N"
       reprRecordAux(result, p, typ.base.node, cl)
     add result, "]"
 
@@ -282,6 +282,6 @@ when not defined(useNimRtl):
     else:
       var p = p
       reprAux(result, addr(p), typ, cl)
-    add result, "\n"
+    add result, "\N"
     deinitReprClosure(cl)
 

@@ -26,7 +26,7 @@ type
   TCharSet* {.deprecated.} = set[char] # for compatibility with Nim
 
 const
-  Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
+  Whitespace* = {' ', '\t', '\v', '\r', '\n', '\f'}
     ## All the characters that count as whitespace.
 
   Letters* = {'A'..'Z', 'a'..'z'}
@@ -302,12 +302,12 @@ iterator splitLines*(s: string): string =
   ##
   ## Every `character literal <manual.html#character-literals>`_ newline
   ## combination (CR, LF, CR-LF) is supported. The result strings contain no
-  ## trailing ``\n``.
+  ## trailing ``\N``.
   ##
   ## Example:
   ##
   ## .. code-block:: nim
-  ##   for line in splitLines("\nthis\nis\nan\n\nexample\n"):
+  ##   for line in splitLines("\Nthis\Nis\Nan\N\Nexample\N"):
   ##     writeln(stdout, line)
   ##
   ## Results in:
@@ -323,13 +323,13 @@ iterator splitLines*(s: string): string =
   var first = 0
   var last = 0
   while true:
-    while s[last] notin {'\0', '\c', '\l'}: inc(last)
+    while s[last] notin {'\0', '\c', '\n'}: inc(last)
     yield substr(s, first, last-1)
     # skip newlines:
-    if s[last] == '\l': inc(last)
+    if s[last] == '\n': inc(last)
     elif s[last] == '\c':
       inc(last)
-      if s[last] == '\l': inc(last)
+      if s[last] == '\n': inc(last)
     else: break # was '\0'
     first = last
 
@@ -358,9 +358,9 @@ proc countLines*(s: string): int {.noSideEffect,
   while i < s.len:
     case s[i]
     of '\c':
-      if s[i+1] == '\l': inc i
+      if s[i+1] == '\n': inc i
       inc result
-    of '\l': inc result
+    of '\n': inc result
     else: discard
     inc i
 
@@ -598,7 +598,7 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
 proc wordWrap*(s: string, maxLineWidth = 80,
                splitLongWords = true,
                seps: set[char] = Whitespace,
-               newLine = "\n"): string {.
+               newLine = "\N"): string {.
                noSideEffect, rtl, extern: "nsuWordWrap".} =
   ## Word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
@@ -641,7 +641,7 @@ proc unindent*(s: string, eatAllIndent = false): string {.
   var level = if i == 0: -1 else: i
   while i < s.len:
     if s[i] == ' ':
-      if i > 0 and s[i-1] in {'\l', '\c'}:
+      if i > 0 and s[i-1] in {'\n', '\c'}:
         pattern = true
         indent = 0
       if pattern:
@@ -1404,7 +1404,7 @@ when isMainModule:
   let
     inp = """ this is a long text --  muchlongerthan10chars and here
                it goes"""
-    outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
+    outp = " this is a\Nlong text\N--\Nmuchlongerthan10chars\Nand here\Nit goes"
   doAssert wordWrap(inp, 10, false) == outp
 
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"

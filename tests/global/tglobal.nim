@@ -1,5 +1,5 @@
 discard """
-  output: "in globalaux2: 10\ntotal globals: 2\nint value: 100\nstring value: second"
+  output: "in globalaux2: 10\Ntotal globals: 2\Nint value: 100\Nstring value: second"
   disabled: "true"
 """
 

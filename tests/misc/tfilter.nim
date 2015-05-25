@@ -1,5 +1,5 @@
 discard """
-  output: "02468101214161820\n15"
+  output: "02468101214161820\N15"
 """
 
 proc filter[T](list: seq[T], f: proc (item: T): bool {.closure.}): seq[T] =
@@ -24,7 +24,7 @@ proc outer =
                )
 
   for n in nums2: stdout.write(n)
-  stdout.write("\n")
+  stdout.write("\N")
 
 outer()
 

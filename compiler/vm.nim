@@ -57,7 +57,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       while x != nil:
         inc calls
         x = x.next
-      msgWriteln($calls & " calls omitted\n")
+      msgWriteln($calls & " calls omitted\N")
       return
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]

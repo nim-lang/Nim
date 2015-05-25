@@ -82,7 +82,7 @@ proc decodeByte(b: char): int {.inline.} =
 proc decode*(s: string): string = 
   ## decodes a string in base64 representation back into its original form.
   ## Whitespace is skipped.
-  const Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
+  const Whitespace = {' ', '\t', '\v', '\r', '\n', '\f'}
   var total = ((len(s) + 3) div 4) * 3
   # total is an upper bound, as we will skip arbitrary whitespace:
   result = newString(total)

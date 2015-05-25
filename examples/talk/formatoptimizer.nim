@@ -44,7 +44,7 @@ template optAdd1{x = y; add(x, z)}(x, y, z: string) =
 proc `/&` [T: object](x: T): string =
   result = "("
   for name, value in fieldPairs(x):
-    result.add("$1: $2\n" % [name, $value])
+    result.add("$1: $2\N" % [name, $value])
   result.add(")")
 
 type

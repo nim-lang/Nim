@@ -17,7 +17,7 @@
 include "system/inclrtl"
 
 const
-  Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
+  Whitespace = {' ', '\t', '\v', '\r', '\n', '\f'}
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
   IdentStartChars = {'a'..'z', 'A'..'Z', '_'}
     ## copied from strutils

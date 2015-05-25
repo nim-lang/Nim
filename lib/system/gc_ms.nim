@@ -420,13 +420,13 @@ else:
 when not defined(useNimRtl):
   {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
+    #c_fprintf(c_stdout, "stack bottom: %p;\N", theStackBottom)
     # the first init must be the one that defines the stack bottom:
     if gch.stackBottom == nil: gch.stackBottom = theStackBottom
     else:
       var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
       var b = cast[ByteAddress](gch.stackBottom)
-      #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
+      #c_fprintf(c_stdout, "old: %p new: %p;\N",gch.stackBottom,theStackBottom)
       when stackIncreases:
         gch.stackBottom = cast[pointer](min(a, b))
       else:
@@ -448,9 +448,9 @@ when defined(sparc): # For SPARC architecture.
 
   proc markStackAndRegisters(gch: var TGcHeap) {.noinline, cdecl.} =
     when defined(sparcv9):
-      asm  """"flushw \n" """
+      asm  """"flushw \N" """
     else:
-      asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\n" """
+      asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\N" """
 
     var
       max = gch.stackBottom
@@ -594,12 +594,12 @@ when not defined(useNimRtl):
 
   proc GC_getStatistics(): string =
     GC_disable()
-    result = "[GC] total memory: " & $getTotalMem() & "\n" &
-             "[GC] occupied memory: " & $getOccupiedMem() & "\n" &
-             "[GC] collections: " & $gch.stat.collections & "\n" &
-             "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
-             "[GC] freed objects: " & $gch.stat.freedObjects & "\n" &
-             "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
+    result = "[GC] total memory: " & $getTotalMem() & "\N" &
+             "[GC] occupied memory: " & $getOccupiedMem() & "\N" &
+             "[GC] collections: " & $gch.stat.collections & "\N" &
+             "[GC] max threshold: " & $gch.stat.maxThreshold & "\N" &
+             "[GC] freed objects: " & $gch.stat.freedObjects & "\N" &
+             "[GC] max stack size: " & $gch.stat.maxStackSize & "\N"
     GC_enable()
 
 {.pop.}

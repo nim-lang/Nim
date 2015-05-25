@@ -69,7 +69,7 @@ proc rawCompile(pattern: string, flags: cint): ptr Pcre =
     offset: cint
   result = pcre.compile(pattern, flags, addr(msg), addr(offset), nil)
   if result == nil:
-    raiseInvalidRegex($msg & "\n" & pattern & "\n" & spaces(offset) & "^\n")
+    raiseInvalidRegex($msg & "\N" & pattern & "\N" & spaces(offset) & "^\N")
 
 proc finalizeRegEx(x: Regex) =
   # XXX This is a hack, but PCRE does not export its "free" function properly.

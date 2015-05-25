@@ -94,13 +94,13 @@ proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
-    addTok(g, tkSpaces, "\n" & spaces(g.pendingNL))
+    addTok(g, tkSpaces, "\N" & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
     g.pendingNL = - 1
 
 proc putNL(g: var TSrcGen, indent: int) =
   if g.pendingNL >= 0: addPendingNL(g)
-  else: addTok(g, tkSpaces, "\n")
+  else: addTok(g, tkSpaces, "\N")
   g.pendingNL = indent
   g.lineLen = indent
 

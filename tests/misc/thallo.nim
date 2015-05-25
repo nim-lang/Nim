@@ -45,7 +45,7 @@ for x in items(["What's", "your", "name", "?", ]):
   echo(x)
 var `name` = readLine(stdin)
 {.breakpoint.}
-echo("Hi " & thallo.name & "!\n")
+echo("Hi " & thallo.name & "!\N")
 debug(name)
 
 var testseq: seq[string] = @[

@@ -31,22 +31,22 @@ var
   i: int = 500 + 400
 
 case i
-of 500..999: write(stdout, "ha!\n")
-of 1000..3000, 12: write(stdout, "ganz schön groß\n")
-of 1, 2, 3: write(stdout, "1 2 oder 3\n")
-else: write(stdout, "sollte nicht passieren\n")
+of 500..999: write(stdout, "ha!\N")
+of 1000..3000, 12: write(stdout, "ganz schön groß\N")
+of 1, 2, 3: write(stdout, "1 2 oder 3\N")
+else: write(stdout, "sollte nicht passieren\N")
 
 case readLine(stdin)
-of "Rumpf": write(stdout, "Hallo Meister!\n")
-of "Andreas": write(stdout, "Hallo Meister!\n")
-else: write(stdout, "Nicht mein Meister!\n")
+of "Rumpf": write(stdout, "Hallo Meister!\N")
+of "Andreas": write(stdout, "Hallo Meister!\N")
+else: write(stdout, "Nicht mein Meister!\N")
 
 global = global + 1
-write(stdout, "Hallo wie heißt du? \n")
+write(stdout, "Hallo wie heißt du? \N")
 s = readLine(stdin)
 i = 0
 while i < len(s):
-  if s[i] == 'c': write(stdout, "'c' in deinem Namen gefunden\n")
+  if s[i] == 'c': write(stdout, "'c' in deinem Namen gefunden\N")
   i = i + 1
 
 write(stdout, "Du heißt " & s)

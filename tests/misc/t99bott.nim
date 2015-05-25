@@ -26,7 +26,7 @@ for bn in countdown(99, 1):
   const cur = GetBottleNumber(bn)
   echo(cur, " on the wall, ", cur, ".")
   echo("Take one down and pass it around, ", GetBottleNumber(bn-1), 
-       " on the wall.\n")
+       " on the wall.\N")
 
 echo "No more bottles of beer on the wall, no more bottles of beer."
 echo "Go to the store and buy some more, 99 bottles of beer on the wall."

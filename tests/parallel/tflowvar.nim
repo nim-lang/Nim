@@ -8,7 +8,7 @@ bazbearbazbear
 
 import threadpool
 
-proc computeSomething(a, b: string): string = a & b & a & b & "\n"
+proc computeSomething(a, b: string): string = a & b & a & b & "\N"
 
 proc main =
   let fvA = spawn computeSomething("foo", "bar")

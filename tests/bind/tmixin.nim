@@ -1,5 +1,5 @@
 discard """
-  output: "1\n2"
+  output: "1\N2"
 """
 
 type

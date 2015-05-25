@@ -574,7 +574,7 @@ proc rawGetTok(my: var XmlParser) =
       parsePI(my)
     else: 
       parseTag(my)
-  of ' ', '\t', '\c', '\l': 
+  of ' ', '\t', '\c', '\n': 
     parseWhitespace(my)
     my.kind = xmlWhitespace
   of '\0': 

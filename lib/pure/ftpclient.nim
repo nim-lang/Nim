@@ -297,14 +297,14 @@ proc getLines[T](ftp: FtpBase[T], async: bool = false): bool =
         if r.string == "":
           ftp.dsockConnected = false
         else:
-          ftp.job.lines.add(r.string & "\n")
+          ftp.job.lines.add(r.string & "\N")
     elif T is Socket:
       assert(not async)
       ftp.dsock.readLine(r)
       if r.string == "":
         ftp.dsockConnected = false
       else:
-        ftp.job.lines.add(r.string & "\n")
+        ftp.job.lines.add(r.string & "\N")
     else:
       {.fatal: "Incorrect socket instantiation".}
 

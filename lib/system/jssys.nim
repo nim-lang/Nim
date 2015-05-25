@@ -80,22 +80,22 @@ proc auxWriteStackTrace(f: PCallFrame): string =
   if total != i:
     add(result, "(")
     add(result, $(total-i))
-    add(result, " calls omitted) ...\n")
+    add(result, " calls omitted) ...\N")
   for j in countdown(i-1, 0):
     add(result, tempFrames[j].procname)
     if tempFrames[j].line > 0:
       add(result, ", line: ")
       add(result, $tempFrames[j].line)
-    add(result, "\n")
+    add(result, "\N")
 
 proc rawWriteStackTrace(): string =
   if framePtr != nil:
-    result = "Traceback (most recent call last)\n" & auxWriteStackTrace(framePtr)
+    result = "Traceback (most recent call last)\N" & auxWriteStackTrace(framePtr)
     framePtr = nil
   elif lastJSError != nil:
     result = $lastJSError.stack
   else:
-    result = "No stack traceback available\n"
+    result = "No stack traceback available\N"
 
 proc raiseException(e: ref Exception, ename: cstring) {.
     compilerproc, asmNoStackFrame.} =
@@ -114,7 +114,7 @@ proc raiseException(e: ref Exception, ename: cstring) {.
       add(buf, "Error: unhandled exception")
     add(buf, " [")
     add(buf, ename)
-    add(buf, "]\n")
+    add(buf, "]\N")
     alert(buf)
   asm """throw `e`;"""
 

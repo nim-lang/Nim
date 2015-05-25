@@ -39,7 +39,7 @@ const
 proc newLine(p: var TTmplParser) = 
   llStreamWrite(p.outp, repeat(')', p.emitPar))
   p.emitPar = 0
-  if p.info.line > int16(1): llStreamWrite(p.outp, "\n")
+  if p.info.line > int16(1): llStreamWrite(p.outp, "\N")
   if p.pendingExprLine:
     llStreamWrite(p.outp, spaces(2))
     p.pendingExprLine = false
@@ -119,7 +119,7 @@ proc parseLine(p: var TTmplParser) =
     of psTempl: 
       # next line of string literal:
       llStreamWrite(p.outp, p.conc)
-      llStreamWrite(p.outp, "\n")
+      llStreamWrite(p.outp, "\N")
       llStreamWrite(p.outp, spaces(p.indent + 2))
       llStreamWrite(p.outp, "\"")
     of psDirective: 
@@ -200,7 +200,7 @@ proc parseLine(p: var TTmplParser) =
         else: 
           llStreamWrite(p.outp, p.x[j])
           inc(j)
-    llStreamWrite(p.outp, "\\n\"")
+    llStreamWrite(p.outp, "\\N\"")
 
 proc filterTmpl(stdin: PLLStream, filename: string, call: PNode): PLLStream = 
   var p: TTmplParser

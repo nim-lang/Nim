@@ -28,6 +28,6 @@ block:
   stdout.write(toverl2(5))
   stdout.write(true)
 
-stdout.write("\n")
+stdout.write("\N")
 #OUT true012innertrue
 

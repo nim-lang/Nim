@@ -13,8 +13,8 @@
 #  ME as well.  It works on all these systems.
 #
 #  The info found here is also in the registry:
-#  HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders\
-#  HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders\
+#  HKCU\Software\Microsoft\Windows\rurrentVersion\Explorer\Shell Folders\
+#  HKCU\Software\Microsoft\Windows\rurrentVersion\Explorer\User Shell Folders\
 #
 #  Note that not all CSIDL_* constants are supported by shlfolder.dll,
 #  they should be supported by the shell32.dll, though again not on all
@@ -51,7 +51,7 @@ const
   CSIDL_LOCAL_APPDATA* = 0x0000001C # %USERPROFILE%\Local Settings\Application Data (non roaming)      
   CSIDL_COMMON_FAVORITES* = 0x0000001F # %PROFILEPATH%\All users\Favorites                                
   CSIDL_INTERNET_CACHE* = 0x00000020 # %USERPROFILE%\Local Settings\Temporary Internet Files            
-  CSIDL_COOKIES* = 0x00000021 # %USERPROFILE%\Cookies                                            
+  CSIDL_COOKIES* = 0x00000021 # %USERPROFILE%\rookies                                            
   CSIDL_HISTORY* = 0x00000022 # %USERPROFILE%\Local settings\History                             
   CSIDL_COMMON_APPDATA* = 0x00000023 # %PROFILESPATH%\All Users\Application Data                        
   CSIDL_WINDOWS* = 0x00000024 # %SYSTEMROOT%                                                     
@@ -59,7 +59,7 @@ const
   CSIDL_PROGRAM_FILES* = 0x00000026 # %SYSTEMDRIVE%\Program Files                                      
   CSIDL_MYPICTURES* = 0x00000027 # %USERPROFILE%\My Documents\My Pictures                           
   CSIDL_PROFILE* = 0x00000028 # %USERPROFILE%                                                    
-  CSIDL_PROGRAM_FILES_COMMON* = 0x0000002B # %SYSTEMDRIVE%\Program Files\Common                               
+  CSIDL_PROGRAM_FILES_COMMON* = 0x0000002B # %SYSTEMDRIVE%\Program Files\rommon                               
   CSIDL_COMMON_TEMPLATES* = 0x0000002D # %PROFILEPATH%\All Users\Templates                                
   CSIDL_COMMON_DOCUMENTS* = 0x0000002E # %PROFILEPATH%\All Users\Documents                                
   CSIDL_COMMON_ADMINTOOLS* = 0x0000002F # %PROFILEPATH%\All Users\Start Menu\Programs\Administrative Tools 
@@ -67,7 +67,7 @@ const
   CSIDL_COMMON_MUSIC* = 0x00000035 # %PROFILEPATH%\All Users\Documents\my music                       
   CSIDL_COMMON_PICTURES* = 0x00000036 # %PROFILEPATH%\All Users\Documents\my pictures                    
   CSIDL_COMMON_VIDEO* = 0x00000037 # %PROFILEPATH%\All Users\Documents\my videos                      
-  CSIDL_CDBURN_AREA* = 0x0000003B # %USERPROFILE%\Local Settings\Application Data\Microsoft\CD Burning 
+  CSIDL_CDBURN_AREA* = 0x0000003B # %USERPROFILE%\Local Settings\Application Data\Microsoft\rD Burning 
   CSIDL_PROFILES* = 0x0000003E # %PROFILEPATH%                                                    
   CSIDL_FLAG_CREATE* = 0x00008000 # (force creation of requested folder if it doesn't exist yet)     
                                   # Original entry points 

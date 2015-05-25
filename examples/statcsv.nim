@@ -36,25 +36,25 @@ x.close()
 for i in 0..header.len-1:
   stdout.write("\t")
   stdout.write(header[i])
-stdout.write("\nSum")
+stdout.write("\NSum")
 for i in 0..header.len-1:
   stdout.write("\t")
   stdout.write(res[i].sum)
-stdout.write("\nMean")
+stdout.write("\NMean")
 for i in 0..header.len-1:
   stdout.write("\t")
   stdout.write(res[i].mean)
-stdout.write("\nMin")
+stdout.write("\NMin")
 for i in 0..header.len-1:
   stdout.write("\t")
   stdout.write(res[i].min)
-stdout.write("\nMax")
+stdout.write("\NMax")
 for i in 0..header.len-1:
   stdout.write("\t")
   stdout.write(res[i].max)
-stdout.write("\nStdDev")
+stdout.write("\NStdDev")
 for i in 0..header.len-1:
   stdout.write("\t")
   stdout.write(res[i].standardDeviation)
-stdout.write("\n")
+stdout.write("\N")
 

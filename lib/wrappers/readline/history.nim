@@ -247,7 +247,7 @@ proc history_arg_extract*(a2: cint, a3: cint, a4: cstring): cstring{.cdecl,
 #   history_expansion_char that begins this specification.
 #   DELIMITING_QUOTE is a character that is allowed to end the string
 #   specification for what to search for in addition to the normal
-#   characters `:', ` ', `\t', `\n', and sometimes `?'. 
+#   characters `:', ` ', `\t', `\N', and sometimes `?'. 
 
 proc get_history_event*(a2: cstring, a3: ptr cint, a4: cint): cstring{.cdecl, 
     importc: "get_history_event", dynlib: historyDll.}

@@ -68,7 +68,7 @@ when not declared(readLineFromStdin):
     stdout.write(prompt)
     result = readLine(stdin, line)
     if not result:
-      stdout.write("\n")
+      stdout.write("\N")
       quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
@@ -106,7 +106,7 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   var triples = 0
   while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line): 
     add(s.s, line)
-    add(s.s, "\n")
+    add(s.s, "\N")
     inc triples, countTriples(line)
     if not continueLine(line, (triples and 1) == 1): break
   inc(s.lineOffset)
@@ -165,7 +165,7 @@ proc llStreamWrite*(s: PLLStream, data: string) =
   
 proc llStreamWriteln*(s: PLLStream, data: string) = 
   llStreamWrite(s, data)
-  llStreamWrite(s, "\n")
+  llStreamWrite(s, "\N")
 
 proc llStreamWrite*(s: PLLStream, data: char) = 
   var c: char

@@ -45,10 +45,10 @@ const
   b : Tb = (@[55,66], @[77, 88])
 
 macro mA(data: static[Ta]): stmt =
-  echo "AST a \n", repr(data)
+  echo "AST a \N", repr(data)
 
 macro mB(data: static[Tb]): stmt =
-  echo "AST b \n", repr(data)
+  echo "AST b \N", repr(data)
   echo data.e[0]
 
 mA(a)

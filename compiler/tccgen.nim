@@ -53,10 +53,10 @@ proc setupEnvironment =
 
     #addFile(nimrodDir / r"tinyc\win32\dllcrt1.o")
     #addFile(nimrodDir / r"tinyc\win32\dllmain.o")
-    addFile(nimrodDir / r"tinyc\win32\libtcc1.o")
+    addFile(nimrodDir / r"tinyc\win32\nibtcc1.o")
     
-    #addFile(nimrodDir / r"tinyc\win32\lib\crt1.c")
-    #addFile(nimrodDir / r"tinyc\lib\libtcc1.c")
+    #addFile(nimrodDir / r"tinyc\win32\nib\crt1.c")
+    #addFile(nimrodDir / r"tinyc\nib\nibtcc1.c")
   else:
     addSysincludePath(gTinyC, "/usr/include")
     when defined(amd64):

@@ -16,40 +16,40 @@
 # A ROD file consists of:
 #
 #  - a header:
-#    NIM:$fileversion\n
+#    NIM:$fileversion\N
 #  - the module's id (even if the module changed, its ID will not!):
-#    ID:Ax3\n
+#    ID:Ax3\N
 #  - CRC value of this module:
-#    CRC:CRC-val\n
+#    CRC:CRC-val\N
 #  - a section containing the compiler options and defines this
 #    module has been compiled with:
-#    OPTIONS:options\n
-#    GOPTIONS:options\n # global options
-#    CMD:command\n
-#    DEFINES:defines\n
+#    OPTIONS:options\N
+#    GOPTIONS:options\N # global options
+#    CMD:command\N
+#    DEFINES:defines\N
 #  - FILES(
 #    myfile.inc
 #    lib/mymodA
 #    )
 #  - an include file dependency section:
 #    INCLUDES(
-#    <fileidx> <CRC of myfile.inc>\n # fileidx is the LINE in the file section!
+#    <fileidx> <CRC of myfile.inc>\N # fileidx is the LINE in the file section!
 #    )
 #  - a module dependency section:
-#    DEPS: <fileidx> <fileidx>\n
+#    DEPS: <fileidx> <fileidx>\N
 #  - an interface section:
 #    INTERF(
-#    identifier1 id\n # id is the symbol's id
-#    identifier2 id\n
+#    identifier1 id\N # id is the symbol's id
+#    identifier2 id\N
 #    )
 #  - a compiler proc section:
 #    COMPILERPROCS(
-#    identifier1 id\n # id is the symbol's id    
+#    identifier1 id\N # id is the symbol's id    
 #    )
 #  - an index consisting of (ID, linenumber)-pairs:
 #    INDEX(
-#    id-diff idx-diff\n
-#    id-diff idx-diff\n
+#    id-diff idx-diff\N
+#    id-diff idx-diff\N
 #    )
 #
 #    Since the whole index has to be read in advance, we compress it by 
@@ -58,23 +58,23 @@
 #
 #  - an import index consisting of (ID, moduleID)-pairs:
 #    IMPORTS(
-#    id-diff moduleID-diff\n
-#    id-diff moduleID-diff\n
+#    id-diff moduleID-diff\N
+#    id-diff moduleID-diff\N
 #    )
 #  - a list of all exported type converters because they are needed for correct
 #    semantic checking:
-#    CONVERTERS:id id\n   # symbol ID
+#    CONVERTERS:id id\N   # symbol ID
 #
 #    This is a misnomer now; it's really a "load unconditionally" section as
 #    it is also used for pattern templates.
 #
 #  - a list of all (private or exported) methods because they are needed for
 #    correct dispatcher generation:
-#    METHODS: id id\n   # symbol ID
+#    METHODS: id id\N   # symbol ID
 #  - an AST section that contains the module's AST:
 #    INIT(
-#    idx\n  # position of the node in the DATA section
-#    idx\n
+#    idx\N  # position of the node in the DATA section
+#    idx\N
 #    )
 #  - a data section, where each type, symbol or AST is stored.
 #    DATA(
@@ -512,7 +512,7 @@ proc processIndex(r: PRodReader; idx: var TIndex; outf: File = nil) =
       key = idx.lastIdxKey + 1
       val = tmp + idx.lastIdxVal
     iiTablePut(idx.tab, key, val)
-    if not outf.isNil: outf.write(key, " ", val, "\n")
+    if not outf.isNil: outf.write(key, " ", val, "\N")
     idx.lastIdxKey = key
     idx.lastIdxVal = val
     setId(key)                # ensure that this id will not be used
@@ -874,7 +874,7 @@ proc rawLoadStub(s: PSym) =
   var rs = decodeSymSafePos(rd, d, unknownLineInfo())
   if rs != s:
     #echo "rs: ", toHex(cast[int](rs.position), int.sizeof * 2),
-    #     "\ns:  ", toHex(cast[int](s.position), int.sizeof * 2)
+    #     "\Ns:  ", toHex(cast[int](s.position), int.sizeof * 2)
     internalError(rs.info, "loadStub: wrong symbol")
   elif rs.id != theId: 
     internalError(rs.info, "loadStub: wrong ID") 
@@ -944,7 +944,7 @@ proc writeNode(f: File; n: PNode) =
 
 proc writeSym(f: File; s: PSym) =
   if s == nil:
-    f.write("{}\n")
+    f.write("{}\N")
     return
   f.write("{")
   f.write($s.kind)
@@ -978,11 +978,11 @@ proc writeSym(f: File; s: PSym) =
     f.writeNode(s.constraint)
   if s.ast != nil:
     f.writeNode(s.ast)
-  f.write("}\n")
+  f.write("}\N")
 
 proc writeType(f: File; t: PType) =
   if t == nil:
-    f.write("[]\n")
+    f.write("[]\N")
     return
   f.write('[')
   f.write($t.kind)
@@ -1014,7 +1014,7 @@ proc writeType(f: File; t: PType) =
     else:
       f.write('^') 
       f.write($t.sons[i].id)
-  f.write("]\n")
+  f.write("]\N")
 
 proc viewFile(rodfile: string) =
   var r = newRodReader(rodfile, 0, 0)
@@ -1060,11 +1060,11 @@ proc viewFile(rodfile: string) =
         inc(d)
         outf.write(" ", w)
         if r.s[r.pos] == ' ': inc(r.pos)
-      outf.write("\n")
+      outf.write("\N")
     of "FILES":
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
-      outf.write("FILES(\n")
+      outf.write("FILES(\N")
       while r.s[r.pos] != ')':
         let relativePath = decodeStr(r.s, r.pos)
         let resolvedPath = relativePath.findModule(r.origFile)
@@ -1074,11 +1074,11 @@ proc viewFile(rodfile: string) =
         inc(r.line)
         outf.writeln finalPath
       if r.s[r.pos] == ')': inc(r.pos)
-      outf.write(")\n")
+      outf.write(")\N")
     of "INCLUDES": 
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
-      outf.write("INCLUDES(\n")
+      outf.write("INCLUDES(\N")
       while r.s[r.pos] != ')': 
         let w = r.files[decodeVInt(r.s, r.pos)]
         inc(r.pos)            # skip ' '
@@ -1086,9 +1086,9 @@ proc viewFile(rodfile: string) =
         if r.s[r.pos] == '\x0A': 
           inc(r.pos)
           inc(r.line)
-        outf.write(w, " ", inclCrc, "\n")
+        outf.write(w, " ", inclCrc, "\N")
       if r.s[r.pos] == ')': inc(r.pos)
-      outf.write(")\n")
+      outf.write(")\N")
     of "DEPS":
       inc(r.pos)              # skip ':'
       outf.write("DEPS:")
@@ -1097,28 +1097,28 @@ proc viewFile(rodfile: string) =
         r.modDeps.add(r.files[v])
         if r.s[r.pos] == ' ': inc(r.pos)
         outf.write(" ", r.files[v])
-      outf.write("\n")
+      outf.write("\N")
     of "INTERF",  "COMPILERPROCS":
       inc r.pos, 2
       if section == "INTERF": r.interfIdx = r.pos
       else: r.compilerProcsIdx = r.pos
-      outf.write(section, "(\n")
+      outf.write(section, "(\N")
       while (r.s[r.pos] > '\x0A') and (r.s[r.pos] != ')'):
         let w = decodeStr(r.s, r.pos)
         inc(r.pos)
         let key = decodeVInt(r.s, r.pos)
         inc(r.pos)                # #10
-        outf.write(w, " ", key, "\n")
+        outf.write(w, " ", key, "\N")
       if r.s[r.pos] == ')': inc r.pos
-      outf.write(")\n")
+      outf.write(")\N")
     of "INDEX":
-      outf.write(section, "(\n")
+      outf.write(section, "(\N")
       processIndex(r, r.index, outf)
-      outf.write(")\n")
+      outf.write(")\N")
     of "IMPORTS":
-      outf.write(section, "(\n")
+      outf.write(section, "(\N")
       processIndex(r, r.imports, outf)
-      outf.write(")\n")
+      outf.write(")\N")
     of "CONVERTERS",  "METHODS":
       inc r.pos
       if section == "METHODS": r.methodsIdx = r.pos
@@ -1128,15 +1128,15 @@ proc viewFile(rodfile: string) =
         let d = decodeVInt(r.s, r.pos)
         outf.write(" ", $d)
         if r.s[r.pos] == ' ': inc(r.pos)
-      outf.write("\n")
+      outf.write("\N")
     of "DATA":
       inc(r.pos, 2)
       r.dataIdx = r.pos
-      outf.write("DATA(\n")
+      outf.write("DATA(\N")
       while r.s[r.pos] != ')':
         if r.s[r.pos] == '(':
           outf.writeNode decodeNode(r, unknownLineInfo())
-          outf.write("\n")
+          outf.write("\N")
         elif r.s[r.pos] == '[':
           outf.writeType decodeType(r, unknownLineInfo())
         else:
@@ -1145,9 +1145,9 @@ proc viewFile(rodfile: string) =
           inc(r.pos)
           inc(r.line)
       if r.s[r.pos] == ')': inc r.pos
-      outf.write(")\n")
+      outf.write(")\N")
     of "INIT":
-      outf.write("INIT(\n")
+      outf.write("INIT(\N")
       inc r.pos, 2
       r.initIdx = r.pos
       while r.s[r.pos] > '\x0A' and r.s[r.pos] != ')': 
@@ -1156,10 +1156,10 @@ proc viewFile(rodfile: string) =
         #let p = r.pos
         #r.pos = d + r.dataIdx
         #outf.writeNode decodeNode(r, UnknownLineInfo())
-        #outf.write("\n")
+        #outf.write("\N")
         #r.pos = p
       if r.s[r.pos] == ')': inc r.pos
-      outf.write("<not supported by viewer>)\n")
+      outf.write("<not supported by viewer>)\N")
     else:
       internalError("invalid section: '" & section &
                     "' at " & $r.line & " in " & r.filename)

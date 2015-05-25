@@ -15,7 +15,7 @@ msg: '''StmtList
 
 import macros
 
-#emit("type\n  TFoo = object\n    bar: int")
+#emit("type\N  TFoo = object\N    bar: int")
 
 #var f: TFoo
 #f.bar = 5

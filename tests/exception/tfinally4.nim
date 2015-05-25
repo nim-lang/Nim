@@ -1,6 +1,6 @@
 discard """
   file: "tfinally4.nim"
-  output: "B1\nA1\n1\nB1\nB2\ncatch\nA1\n1\nB1\nA1\nA2\n2\nB1\nB2\ncatch\nA1\nA2\n0\nB1\nA1\n1\nB1\nB2\nA1\n1\nB1\nA1\nA2\n2\nB1\nB2\nA1\nA2\n3"
+  output: "B1\NA1\N1\NB1\NB2\Ncatch\NA1\N1\NB1\NA1\NA2\N2\NB1\NB2\Ncatch\NA1\NA2\N0\NB1\NA1\N1\NB1\NB2\NA1\N1\NB1\NA1\NA2\N2\NB1\NB2\NA1\NA2\N3"
 """
 
 # More thorough test of return-in-finaly
