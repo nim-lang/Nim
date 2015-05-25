@@ -39,7 +39,7 @@ type
 {.deprecated: [TBaseLexer: BaseLexer].}
 
 proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192)
-  ## inits the TBaseLexer with a stream to read from
+  ## inits the BaseLexer with a stream to read from
 
 proc close*(L: var BaseLexer)
   ## closes the base lexer. This closes `L`'s associated stream too.

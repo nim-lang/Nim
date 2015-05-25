@@ -86,7 +86,7 @@ type
     IPv6, ## IPv6 address
     IPv4  ## IPv4 address
 
-  TIpAddress* = object ## stores an arbitrary IP address    
+  IpAddress* = object ## stores an arbitrary IP address    
     case family*: IpAddressFamily ## the type of the IP address (IPv4 or IPv6)
     of IpAddressFamily.IPv6:
       address_v6*: array[0..15, uint8] ## Contains the IP address in bytes in
@@ -94,9 +94,10 @@ type
     of IpAddressFamily.IPv4:
       address_v4*: array[0..3, uint8] ## Contains the IP address in bytes in
                                       ## case of IPv4
+{.deprecated: [TIpAddress: IpAddress].}
 
 proc isIpAddress*(address_str: string): bool {.tags: [].}
-proc parseIpAddress*(address_str: string): TIpAddress
+proc parseIpAddress*(address_str: string): IpAddress
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -395,7 +396,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
 
 when false: #defined(ssl):
   proc acceptAddrSSL*(server: Socket, client: var Socket,
-                      address: var string): TSSLAcceptResult {.
+                      address: var string): SSLAcceptResult {.
                       tags: [ReadIOEffect].} =
     ## This procedure should only be used for non-blocking **SSL** sockets. 
     ## It will immediately return with one of the following values:
@@ -992,39 +993,39 @@ proc isSsl*(socket: Socket): bool =
 proc getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
 
-proc IPv4_any*(): TIpAddress =
+proc IPv4_any*(): IpAddress =
   ## Returns the IPv4 any address, which can be used to listen on all available
   ## network adapters
-  result = TIpAddress(
+  result = IpAddress(
     family: IpAddressFamily.IPv4,
     address_v4: [0'u8, 0, 0, 0])
 
-proc IPv4_loopback*(): TIpAddress =
+proc IPv4_loopback*(): IpAddress =
   ## Returns the IPv4 loopback address (127.0.0.1)
-  result = TIpAddress(
+  result = IpAddress(
     family: IpAddressFamily.IPv4,
     address_v4: [127'u8, 0, 0, 1])
 
-proc IPv4_broadcast*(): TIpAddress =
+proc IPv4_broadcast*(): IpAddress =
   ## Returns the IPv4 broadcast address (255.255.255.255)
-  result = TIpAddress(
+  result = IpAddress(
     family: IpAddressFamily.IPv4,
     address_v4: [255'u8, 255, 255, 255])
 
-proc IPv6_any*(): TIpAddress =
+proc IPv6_any*(): IpAddress =
   ## Returns the IPv6 any address (::0), which can be used
   ## to listen on all available network adapters 
-  result = TIpAddress(
+  result = IpAddress(
     family: IpAddressFamily.IPv6,
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
-proc IPv6_loopback*(): TIpAddress =
+proc IPv6_loopback*(): IpAddress =
   ## Returns the IPv6 loopback address (::1)
-  result = TIpAddress(
+  result = IpAddress(
     family: IpAddressFamily.IPv6,
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
 
-proc `==`*(lhs, rhs: TIpAddress): bool =
+proc `==`*(lhs, rhs: IpAddress): bool =
   ## Compares two IpAddresses for Equality. Returns two if the addresses are equal
   if lhs.family != rhs.family: return false
   if lhs.family == IpAddressFamily.IPv4:
@@ -1035,8 +1036,8 @@ proc `==`*(lhs, rhs: TIpAddress): bool =
       if lhs.address_v6[i] != rhs.address_v6[i]: return false
   return true
 
-proc `$`*(address: TIpAddress): string =
-  ## Converts an TIpAddress into the textual representation
+proc `$`*(address: IpAddress): string =
+  ## Converts an IpAddress into the textual representation
   result = ""
   case address.family
   of IpAddressFamily.IPv4:
@@ -1095,7 +1096,7 @@ proc `$`*(address: TIpAddress): string =
             mask = mask shr 4
           printedLastGroup = true
 
-proc parseIPv4Address(address_str: string): TIpAddress =
+proc parseIPv4Address(address_str: string): IpAddress =
   ## Parses IPv4 adresses
   ## Raises EInvalidValue on errors
   var
@@ -1129,7 +1130,7 @@ proc parseIPv4Address(address_str: string): TIpAddress =
     raise newException(ValueError, "Invalid IP Address")
   result.address_v4[byteCount] = cast[uint8](currentByte)
 
-proc parseIPv6Address(address_str: string): TIpAddress =
+proc parseIPv6Address(address_str: string): IpAddress =
   ## Parses IPv6 adresses
   ## Raises EInvalidValue on errors
   result.family = IpAddressFamily.IPv6
@@ -1250,7 +1251,7 @@ proc parseIPv6Address(address_str: string): TIpAddress =
     raise newException(ValueError,
       "Invalid IP Address. The address consists of too many groups")
 
-proc parseIpAddress(address_str: string): TIpAddress =
+proc parseIpAddress(address_str: string): IpAddress =
   ## Parses an IP address
   ## Raises EInvalidValue on error
   if address_str == nil:
