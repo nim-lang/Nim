@@ -13,18 +13,18 @@ import
   streams, libzip, times, os, strutils
 
 type
-  TZipArchive* = object of RootObj ## represents a zip archive
+  ZipArchive* = object of RootObj ## represents a zip archive
     mode: FileMode
     w: PZip
+{.deprecated: [TZipArchive: ZipArchive].}
 
-
-proc zipError(z: var TZipArchive) =
+proc zipError(z: var ZipArchive) =
   var e: ref IOError
   new(e)
   e.msg = $zip_strerror(z.w)
   raise e
 
-proc open*(z: var TZipArchive, filename: string, mode: FileMode = fmRead): bool =
+proc open*(z: var ZipArchive, filename: string, mode: FileMode = fmRead): bool =
   ## Opens a zip file for reading, writing or appending. All file modes are
   ## supported. Returns true iff successful, false otherwise.
   var err, flags: int32
@@ -38,11 +38,11 @@ proc open*(z: var TZipArchive, filename: string, mode: FileMode = fmRead): bool 
   z.mode = mode
   result = z.w != nil
 
-proc close*(z: var TZipArchive) =
+proc close*(z: var ZipArchive) =
   ## Closes a zip file.
   zip_close(z.w)
 
-proc createDir*(z: var TZipArchive, dir: string) =
+proc createDir*(z: var ZipArchive, dir: string) =
   ## Creates a directory within the `z` archive. This does not fail if the
   ## directory already exists. Note that for adding a file like
   ## ``"path1/path2/filename"`` it is not necessary
@@ -52,7 +52,7 @@ proc createDir*(z: var TZipArchive, dir: string) =
   discard zip_add_dir(z.w, dir)
   zip_error_clear(z.w)
 
-proc addFile*(z: var TZipArchive, dest, src: string) =
+proc addFile*(z: var ZipArchive, dest, src: string) =
   ## Adds the file `src` to the archive `z` with the name `dest`. `dest`
   ## may contain a path that will be created.
   assert(z.mode != fmRead)
@@ -67,13 +67,13 @@ proc addFile*(z: var TZipArchive, dest, src: string) =
     zip_source_free(zipsrc)
     zipError(z)
 
-proc addFile*(z: var TZipArchive, file: string) =
+proc addFile*(z: var ZipArchive, file: string) =
   ## A shortcut for ``addFile(z, file, file)``, i.e. the name of the source is
   ## the name of the destination.
   addFile(z, file, file)
 
 proc mySourceCallback(state, data: pointer, len: int,
-                      cmd: TZipSourceCmd): int {.cdecl.} =
+                      cmd: ZipSourceCmd): int {.cdecl.} =
   var src = cast[Stream](state)
   case cmd
   of ZIP_SOURCE_OPEN:
@@ -86,7 +86,7 @@ proc mySourceCallback(state, data: pointer, len: int,
     zip_stat_init(stat)
     stat.size = high(int32)-1 # we don't know the size
     stat.mtime = getTime()
-    result = sizeof(TZipStat)
+    result = sizeof(ZipStat)
   of ZIP_SOURCE_ERROR:
     var err = cast[ptr array[0..1, cint]](data)
     err[0] = ZIP_ER_INTERNAL
@@ -95,7 +95,7 @@ proc mySourceCallback(state, data: pointer, len: int,
   of constZIP_SOURCE_FREE: GC_unref(src)
   else: assert(false)
 
-proc addFile*(z: var TZipArchive, dest: string, src: Stream) =
+proc addFile*(z: var ZipArchive, dest: string, src: Stream) =
   ## Adds a file named with `dest` to the archive `z`. `dest`
   ## may contain a path. The file's content is read from the `src` stream.
   assert(z.mode != fmRead)
@@ -109,12 +109,13 @@ proc addFile*(z: var TZipArchive, dest: string, src: Stream) =
 # -------------- zip file stream ---------------------------------------------
 
 type
-  TZipFileStream = object of StreamObj
+  ZipFileStream = object of StreamObj
     f: PZipFile
     atEnd: bool
 
   PZipFileStream* =
-    ref TZipFileStream ## a reader stream of a file within a zip archive
+    ref ZipFileStream ## a reader stream of a file within a zip archive
+{.deprecated: [TZipFileStream: ZipFileStream].}
 
 proc fsClose(s: Stream) = zip_fclose(PZipFileStream(s).f)
 proc fsAtEnd(s: Stream): bool = PZipFileStream(s).atEnd
@@ -134,7 +135,7 @@ proc newZipFileStream(f: PZipFile): PZipFileStream =
 
 # ----------------------------------------------------------------------------
 
-proc getStream*(z: var TZipArchive, filename: string): PZipFileStream =
+proc getStream*(z: var ZipArchive, filename: string): PZipFileStream =
   ## returns a stream that can be used to read the file named `filename`
   ## from the archive `z`. Returns nil in case of an error.
   ## The returned stream does not support the `setPosition`, `getPosition`,
@@ -142,7 +143,7 @@ proc getStream*(z: var TZipArchive, filename: string): PZipFileStream =
   var x = zip_fopen(z.w, filename, 0'i32)
   if x != nil: result = newZipFileStream(x)
 
-iterator walkFiles*(z: var TZipArchive): string =
+iterator walkFiles*(z: var ZipArchive): string =
   ## walks over all files in the archive `z` and returns the filename
   ## (including the path).
   var i = 0'i32
@@ -152,7 +153,7 @@ iterator walkFiles*(z: var TZipArchive): string =
     inc(i)
 
 
-proc extractFile*(z: var TZipArchive, srcFile: string, dest: Stream) =
+proc extractFile*(z: var ZipArchive, srcFile: string, dest: Stream) =
   ## extracts a file from the zip archive `z` to the destination stream.
   var strm = getStream(z, srcFile)
   while true:
@@ -162,13 +163,13 @@ proc extractFile*(z: var TZipArchive, srcFile: string, dest: Stream) =
   dest.flush()
   strm.close()
 
-proc extractFile*(z: var TZipArchive, srcFile: string, dest: string) =
+proc extractFile*(z: var ZipArchive, srcFile: string, dest: string) =
   ## extracts a file from the zip archive `z` to the destination filename.
   var file = newFileStream(dest, fmWrite)
   extractFile(z, srcFile, file)
   file.close()
 
-proc extractAll*(z: var TZipArchive, dest: string) =
+proc extractAll*(z: var ZipArchive, dest: string) =
   ## extracts all files from archive `z` to the destination directory.
   for file in walkFiles(z):
     if file.endsWith("/"):
@@ -177,7 +178,7 @@ proc extractAll*(z: var TZipArchive, dest: string) =
       extractFile(z, file, dest / file)
 
 when not defined(testing) and isMainModule:
-  var zip: TZipArchive
+  var zip: ZipArchive
   if not zip.open("nim-0.11.0.zip"):
     raise newException(IOError, "opening zip failed")
   zip.extractAll("test")
