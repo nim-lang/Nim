@@ -963,7 +963,7 @@ Most calling conventions exist only for the Windows 32-bit platform.
 Assigning/passing a procedure to a procedural variable is only allowed if one
 of the following conditions hold:
 1) The procedure that is accessed resides in the current module.
-2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma`_).
+2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma <#pragmas-procvar-pragma>`_).
 3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
 

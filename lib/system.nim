@@ -2248,14 +2248,14 @@ proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
   ## Unlike other IO operations this is guaranteed to be thread-safe as
   ## ``echo`` is very often used for debugging convenience. If you want to use
   ## ``echo`` inside a `proc without side effects
-  ## <manual.html#nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
+  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
   ## instead.
 
 proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
                                            tags: [], raises: [].}
   ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
   ## pretends to be free of side effects, so that it can be used for debugging
-  ## routines marked as `noSideEffect <manual.html#nosideeffect-pragma>`_.
+  ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
 
 template newException*(exceptn: typedesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
