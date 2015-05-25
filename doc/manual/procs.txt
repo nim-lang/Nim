@@ -539,7 +539,7 @@ Closure iterators have other restrictions than inline iterators:
 1. ``yield`` in a closure iterator can not occur in a ``try`` statement.
 2. For now, a closure iterator cannot be evaluated at compile time.
 3. ``return`` is allowed in a closure iterator (but rarely useful) and ends 
-   iteration..
+   iteration.
 4. Neither inline nor closure iterators can be recursive.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly

@@ -43,8 +43,9 @@ Fortunately Nim supports side effect analysis:
   
   echo f() * 2 # not optimized ;-)
 
-You can make one overload for constrained match and without, and the constrained
-will be prioritized, and so you can handle both cases differently.
+You can make one overload matching with a constraint and one without, and the
+one with a constraint will have precedence, and so you can handle both cases
+differently.
 
 So what about ``2 * a``? We should tell the compiler ``*`` is commutative. We
 cannot really do that however as the following code only swaps arguments
