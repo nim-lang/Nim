@@ -671,7 +671,7 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '
 
 proc getSymbol(L: var TLexer, tok: var TToken) =
-  var h: THash = 0
+  var h: Hash = 0
   var pos = L.bufpos
   var buf = L.buf
   while true:
@@ -709,7 +709,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
 
 proc endOperator(L: var TLexer, tok: var TToken, pos: int,
-                 hash: THash) {.inline.} =
+                 hash: Hash) {.inline.} =
   var h = !$hash
   tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
@@ -719,7 +719,7 @@ proc endOperator(L: var TLexer, tok: var TToken, pos: int,
 proc getOperator(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
-  var h: THash = 0
+  var h: Hash = 0
   while true:
     var c = buf[pos]
     if c notin OpChars: break

@@ -842,7 +842,7 @@ type
     data*: TIdNodePairSeq
 
   TNodePair* = object
-    h*: THash                 # because it is expensive to compute!
+    h*: Hash                 # because it is expensive to compute!
     key*: PNode
     val*: int
 
