@@ -26,25 +26,25 @@ const
   CMDSTATUS_LEN* = 40
 
 type 
-  TSockAddr* = array[1..112, int8]
-  TPGresAttDesc*{.pure, final.} = object 
+  SockAddr* = array[1..112, int8]
+  PGresAttDesc*{.pure, final.} = object 
     name*: cstring
     adtid*: Oid
     adtsize*: int
 
-  PPGresAttDesc* = ptr TPGresAttDesc
+  PPGresAttDesc* = ptr PGresAttDesc
   PPPGresAttDesc* = ptr PPGresAttDesc
-  TPGresAttValue*{.pure, final.} = object 
+  PGresAttValue*{.pure, final.} = object 
     length*: int32
     value*: cstring
 
-  PPGresAttValue* = ptr TPGresAttValue
+  PPGresAttValue* = ptr PGresAttValue
   PPPGresAttValue* = ptr PPGresAttValue
-  PExecStatusType* = ptr TExecStatusType
-  TExecStatusType* = enum 
+  PExecStatusType* = ptr ExecStatusType
+  ExecStatusType* = enum 
     PGRES_EMPTY_QUERY = 0, PGRES_COMMAND_OK, PGRES_TUPLES_OK, PGRES_COPY_OUT, 
     PGRES_COPY_IN, PGRES_BAD_RESPONSE, PGRES_NONFATAL_ERROR, PGRES_FATAL_ERROR
-  TPGlobjfuncs*{.pure, final.} = object 
+  PGlobjfuncs*{.pure, final.} = object 
     fn_lo_open*: Oid
     fn_lo_close*: Oid
     fn_lo_creat*: Oid
@@ -54,26 +54,26 @@ type
     fn_lo_read*: Oid
     fn_lo_write*: Oid
 
-  PPGlobjfuncs* = ptr TPGlobjfuncs
-  PConnStatusType* = ptr TConnStatusType
-  TConnStatusType* = enum 
+  PPGlobjfuncs* = ptr PGlobjfuncs
+  PConnStatusType* = ptr ConnStatusType
+  ConnStatusType* = enum 
     CONNECTION_OK, CONNECTION_BAD, CONNECTION_STARTED, CONNECTION_MADE, 
     CONNECTION_AWAITING_RESPONSE, CONNECTION_AUTH_OK, CONNECTION_SETENV, 
     CONNECTION_SSL_STARTUP, CONNECTION_NEEDED
-  TPGconn*{.pure, final.} = object 
+  PGconn*{.pure, final.} = object 
     pghost*: cstring
     pgtty*: cstring
     pgport*: cstring
     pgoptions*: cstring
     dbName*: cstring
-    status*: TConnStatusType
+    status*: ConnStatusType
     errorMessage*: array[0..(ERROR_MSG_LENGTH) - 1, char]
     Pfin*: File
     Pfout*: File
     Pfdebug*: File
     sock*: int32
-    laddr*: TSockAddr
-    raddr*: TSockAddr
+    laddr*: SockAddr
+    raddr*: SockAddr
     salt*: array[0..(2) - 1, char]
     asyncNotifyWaiting*: int32
     notifyList*: pointer
@@ -81,19 +81,19 @@ type
     pgpass*: cstring
     lobjfuncs*: PPGlobjfuncs
 
-  PPGconn* = ptr TPGconn
-  TPGresult*{.pure, final.} = object 
+  PPGconn* = ptr PGconn
+  PGresult*{.pure, final.} = object 
     ntups*: int32
     numAttributes*: int32
     attDescs*: PPGresAttDesc
     tuples*: PPPGresAttValue
     tupArrSize*: int32
-    resultStatus*: TExecStatusType
+    resultStatus*: ExecStatusType
     cmdStatus*: array[0..(CMDSTATUS_LEN) - 1, char]
     binary*: int32
     conn*: PPGconn
 
-  PPGresult* = ptr TPGresult
+  PPGresult* = ptr PGresult
   PPostgresPollingStatusType* = ptr PostgresPollingStatusType
   PostgresPollingStatusType* = enum 
     PGRES_POLLING_FAILED = 0, PGRES_POLLING_READING, PGRES_POLLING_WRITING, 
@@ -143,7 +143,10 @@ type
     length*: int32
     isint*: int32
     p*: pointer
-
+{.deprecated: [TSockAddr: SockAddr, TPGresAttDesc: PgresAttDesc,
+      TPGresAttValue: PgresAttValue, TExecStatusType: ExecStatusType,
+      TPGlobjfuncs: Pglobjfuncs, TConnStatusType: ConnStatusType, TPGconn: Pgconn,
+      TPGresult: PGresult].}
 
 proc pqconnectStart*(conninfo: cstring): PPGconn{.cdecl, dynlib: dllName, 
     importc: "PQconnectStart".}
@@ -175,7 +178,7 @@ proc pqport*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQport".
 proc pqtty*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, importc: "PQtty".}
 proc pqoptions*(conn: PPGconn): cstring{.cdecl, dynlib: dllName, 
     importc: "PQoptions".}
-proc pqstatus*(conn: PPGconn): TConnStatusType{.cdecl, dynlib: dllName, 
+proc pqstatus*(conn: PPGconn): ConnStatusType{.cdecl, dynlib: dllName, 
     importc: "PQstatus".}
 proc pqtransactionStatus*(conn: PPGconn): PGTransactionStatusType{.cdecl, 
     dynlib: dllName, importc: "PQtransactionStatus".}
@@ -263,9 +266,9 @@ proc pqflush*(conn: PPGconn): int32{.cdecl, dynlib: dllName, importc: "PQflush".
 proc pqfn*(conn: PPGconn, fnid: int32, result_buf, result_len: ptr int32, 
            result_is_int: int32, args: PPQArgBlock, nargs: int32): PPGresult{.
     cdecl, dynlib: dllName, importc: "PQfn".}
-proc pqresultStatus*(res: PPGresult): TExecStatusType{.cdecl, dynlib: dllName, 
+proc pqresultStatus*(res: PPGresult): ExecStatusType{.cdecl, dynlib: dllName, 
     importc: "PQresultStatus".}
-proc pqresStatus*(status: TExecStatusType): cstring{.cdecl, dynlib: dllName, 
+proc pqresStatus*(status: ExecStatusType): cstring{.cdecl, dynlib: dllName, 
     importc: "PQresStatus".}
 proc pqresultErrorMessage*(res: PPGresult): cstring{.cdecl, dynlib: dllName, 
     importc: "PQresultErrorMessage".}
@@ -309,7 +312,7 @@ proc pqgetisnull*(res: PPGresult, tup_num: int32, field_num: int32): int32{.
     cdecl, dynlib: dllName, importc: "PQgetisnull".}
 proc pqclear*(res: PPGresult){.cdecl, dynlib: dllName, importc: "PQclear".}
 proc pqfreemem*(p: pointer){.cdecl, dynlib: dllName, importc: "PQfreemem".}
-proc pqmakeEmptyPGresult*(conn: PPGconn, status: TExecStatusType): PPGresult{.
+proc pqmakeEmptyPGresult*(conn: PPGconn, status: ExecStatusType): PPGresult{.
     cdecl, dynlib: dllName, importc: "PQmakeEmptyPGresult".}
 proc pqescapeString*(till, `from`: cstring, len: int): int{.cdecl, 
     dynlib: dllName, importc: "PQescapeString".}
