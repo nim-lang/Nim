@@ -250,7 +250,7 @@ proc newStringStream*(s: string = ""): StringStream =
 when not defined(js):
 
   type
-    FileStream* = ref FileStreamObj ## a stream that encapsulates a `TFile`
+    FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
     FileStreamObj* = object of Stream
       f: File
   {.deprecated: [PFileStream: FileStream, TFileStream: FileStreamObj].}

@@ -37,13 +37,14 @@ proc raiseInvalidFormat(msg: string) {.noinline.} =
   raise newException(SubexError, "invalid format string: " & msg)
 
 type
-  TFormatParser = object {.pure, final.}
+  FormatParser = object {.pure, final.}
     when defined(js):
       f: string # we rely on the '\0' terminator
                 # which JS's native string doesn't have
     else:
       f: cstring
     num, i, lineLen: int
+{.deprecated: [TFormatParser: FormatParser].}
 
 template call(x: stmt) {.immediate.} =
   p.i = i
@@ -57,7 +58,7 @@ template callNoLineLenTracking(x: stmt) {.immediate.} =
   i = p.i
   p.lineLen = oldLineLen
 
-proc getFormatArg(p: var TFormatParser, a: openArray[string]): int =
+proc getFormatArg(p: var FormatParser, a: openArray[string]): int =
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = p.i
   var f = p.f
@@ -90,22 +91,22 @@ proc getFormatArg(p: var TFormatParser, a: openArray[string]): int =
   if result >=% a.len: raiseInvalidFormat("index out of bounds: " & $result)
   p.i = i
 
-proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) {.
+proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) {.
   noSideEffect.}
 
-proc emitChar(p: var TFormatParser, x: var string, ch: char) {.inline.} =
+proc emitChar(p: var FormatParser, x: var string, ch: char) {.inline.} =
   x.add(ch)
   if ch == '\L': p.lineLen = 0
   else: inc p.lineLen
 
-proc emitStrLinear(p: var TFormatParser, x: var string, y: string) {.inline.} =
+proc emitStrLinear(p: var FormatParser, x: var string, y: string) {.inline.} =
   for ch in items(y): emitChar(p, x, ch)
 
-proc emitStr(p: var TFormatParser, x: var string, y: string) {.inline.} =
+proc emitStr(p: var FormatParser, x: var string, y: string) {.inline.} =
   x.add(y)
   inc p.lineLen, y.len
 
-proc scanQuote(p: var TFormatParser, x: var string, toAdd: bool) =
+proc scanQuote(p: var FormatParser, x: var string, toAdd: bool) =
   var i = p.i+1
   var f = p.f
   while true:
@@ -120,7 +121,7 @@ proc scanQuote(p: var TFormatParser, x: var string, toAdd: bool) =
       inc i
   p.i = i
 
-proc scanBranch(p: var TFormatParser, a: openArray[string],
+proc scanBranch(p: var FormatParser, a: openArray[string],
                 x: var string, choice: int) =
   var i = p.i
   var f = p.f
@@ -167,7 +168,7 @@ proc scanBranch(p: var TFormatParser, a: openArray[string],
     i = last
   p.i = i+1
 
-proc scanSlice(p: var TFormatParser, a: openarray[string]): tuple[x, y: int] =
+proc scanSlice(p: var FormatParser, a: openarray[string]): tuple[x, y: int] =
   var slice = false
   var i = p.i
   var f = p.f
@@ -193,7 +194,7 @@ proc scanSlice(p: var TFormatParser, a: openarray[string]): tuple[x, y: int] =
   inc i
   p.i = i
   
-proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
+proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) =
   var i = p.i
   var f = p.f
   case f[i]
@@ -312,7 +313,7 @@ proc subex*(s: string): Subex =
 proc addf*(s: var string, formatstr: Subex, a: varargs[string, `$`]) {.
            noSideEffect, rtl, extern: "nfrmtAddf".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
-  var p: TFormatParser
+  var p: FormatParser
   p.f = formatstr.string
   var i = 0
   while i < len(formatstr.string):
@@ -386,10 +387,10 @@ when isMainModule:
     longishA, 
     longish)"""
   
-  assert "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
+  assert "type MyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
     "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"] ==
     strutils.unindent """
-      type TMyEnum* = enum
+      type MyEnum* = enum
         fieldA, fieldB, 
         FiledClkad, fieldD, 
         fieldE, longishFieldName"""
@@ -400,11 +401,11 @@ when isMainModule:
   
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
   
-  assert subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
+  assert subex("type\n  Enum = enum\n    $', '40c'\n    '{..}") % [
     "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"] ==
     strutils.unindent """
       type
-        TEnum = enum
+        Enum = enum
           fieldNameA, fieldNameB, fieldNameC, 
           fieldNameD"""
   

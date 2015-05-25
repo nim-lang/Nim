@@ -18,7 +18,7 @@ elif defined(windows):
 else: 
   import posix
 
-proc hash*(x: SocketHandle): THash {.borrow.}
+proc hash*(x: SocketHandle): Hash {.borrow.}
 proc `$`*(x: SocketHandle): string {.borrow.}
 
 type
@@ -41,7 +41,7 @@ when defined(nimdoc):
 
   proc register*(s: Selector, fd: SocketHandle, events: set[Event],
                  data: RootRef): SelectorKey {.discardable.} =
-    ## Registers file descriptor ``fd`` to selector ``s`` with a set of TEvent
+    ## Registers file descriptor ``fd`` to selector ``s`` with a set of Event
     ## ``events``.
 
   proc update*(s: Selector, fd: SocketHandle,

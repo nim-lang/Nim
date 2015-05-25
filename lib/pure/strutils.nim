@@ -23,7 +23,8 @@ import parseutils
 include "system/inclrtl"
 
 type
-  TCharSet* {.deprecated.} = set[char] # for compatibility with Nim
+  CharSet* {.deprecated.} = set[char] # for compatibility with Nim
+{.deprecated: [TCharSet: CharSet].}
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}

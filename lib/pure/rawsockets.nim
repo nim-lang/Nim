@@ -106,13 +106,13 @@ proc `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
 proc toInt*(domain: Domain): cint
-  ## Converts the TDomain enum to a platform-dependent ``cint``.
+  ## Converts the Domain enum to a platform-dependent ``cint``.
 
 proc toInt*(typ: SockType): cint
-  ## Converts the TType enum to a platform-dependent ``cint``.
+  ## Converts the SockType enum to a platform-dependent ``cint``.
 
 proc toInt*(p: Protocol): cint
-  ## Converts the TProtocol enum to a platform-dependent ``cint``.
+  ## Converts the Protocol enum to a platform-dependent ``cint``.
 
 when not useWinVersion:
   proc toInt(domain: Domain): cint =
