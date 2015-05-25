@@ -243,7 +243,7 @@ template sortedByIt*(seq1, op: expr): expr =
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
-  result = @[]
+  result = newSeq[seq[T]]()
   if x.len == 0:
     return
   if x.len == 1:
@@ -253,8 +253,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     indexes = newSeq[int](x.len)
     initial = newSeq[int](x.len)
     index = 0
-  # replace with newSeq as soon as #853 is fixed
-  var next: seq[T] = @[]
+  var next = newSeq[T]()
   next.setLen(x.len)
   for i in 0..(x.len-1):
     if len(x[i]) == 0: return

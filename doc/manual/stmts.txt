@@ -176,9 +176,9 @@ The rules for compile-time computability are:
 1. Literals are compile-time computable.
 2. Type conversions are compile-time computable.
 3. Procedure calls of the form ``p(X)`` are compile-time computable if
-   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_
-   for details) and if ``X`` is a (possibly empty) list of compile-time
-   computable arguments.
+   ``p`` is a proc without side-effects (see the `noSideEffect pragma 
+   <#pragmas-nosideeffect-pragma>`_ for details) and if ``X`` is a 
+   (possibly empty) list of compile-time computable arguments.
 
 
 Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can
