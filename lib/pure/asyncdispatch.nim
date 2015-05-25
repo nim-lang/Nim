@@ -323,32 +323,34 @@ proc processTimers(p: PDispatcherBase) =
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
   type
-    TCompletionKey = Dword
+    CompletionKey = Dword
 
-    TCompletionData* = object
-      fd*: TAsyncFD # TODO: Rename this.
-      cb*: proc (fd: TAsyncFD, bytesTransferred: Dword,
+    CompletionData* = object
+      fd*: AsyncFD # TODO: Rename this.
+      cb*: proc (fd: AsyncFD, bytesTransferred: Dword,
                 errcode: OSErrorCode) {.closure,gcsafe.}
 
     PDispatcher* = ref object of PDispatcherBase
-      ioPort: THandle
-      handles: HashSet[TAsyncFD]
+      ioPort: Handle
+      handles: HashSet[AsyncFD]
 
-    TCustomOverlapped = object of TOVERLAPPED
-      data*: TCompletionData
+    CustomOverlapped = object of TOVERLAPPED
+      data*: CompletionData
 
-    PCustomOverlapped* = ref TCustomOverlapped
+    PCustomOverlapped* = ref CustomOverlapped
 
-    TAsyncFD* = distinct int
+    AsyncFD* = distinct int
+  {.deprecated: [TCompletionKey: CompletionKey, TAsyncFD: AsyncFD,
+                TCustomOverlapped: CustomOverlapped, TCompletionData: CompletionData].}
 
-  proc hash(x: TAsyncFD): THash {.borrow.}
-  proc `==`*(x: TAsyncFD, y: TAsyncFD): bool {.borrow.}
+  proc hash(x: AsyncFD): Hash {.borrow.}
+  proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
 
   proc newDispatcher*(): PDispatcher =
     ## Creates a new Dispatcher instance.
     new result
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
-    result.handles = initSet[TAsyncFD]()
+    result.handles = initSet[AsyncFD]()
     result.timers = @[]
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
@@ -357,15 +359,15 @@ when defined(windows) or defined(nimdoc):
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
 
-  proc register*(fd: TAsyncFD) =
+  proc register*(fd: AsyncFD) =
     ## Registers ``fd`` with the dispatcher.
     let p = getGlobalDispatcher()
-    if createIoCompletionPort(fd.THandle, p.ioPort,
-                              cast[TCompletionKey](fd), 1) == 0:
+    if createIoCompletionPort(fd.Handle, p.ioPort,
+                              cast[CompletionKey](fd), 1) == 0:
       raiseOSError(osLastError())
     p.handles.incl(fd)
 
-  proc verifyPresence(fd: TAsyncFD) =
+  proc verifyPresence(fd: AsyncFD) =
     ## Ensures that file descriptor has been registered with the dispatcher.
     let p = getGlobalDispatcher()
     if fd notin p.handles:
@@ -394,7 +396,7 @@ when defined(windows) or defined(nimdoc):
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
     if res:
       # This is useful for ensuring the reliability of the overlapped struct.
-      assert customOverlapped.data.fd == lpCompletionKey.TAsyncFD
+      assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
 
       customOverlapped.data.cb(customOverlapped.data.fd,
           lpNumberOfBytesTransferred, OSErrorCode(-1))
@@ -402,7 +404,7 @@ when defined(windows) or defined(nimdoc):
     else:
       let errCode = osLastError()
       if customOverlapped != nil:
-        assert customOverlapped.data.fd == lpCompletionKey.TAsyncFD
+        assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
         customOverlapped.data.cb(customOverlapped.data.fd,
             lpNumberOfBytesTransferred, errCode)
         GC_unref(customOverlapped)
@@ -480,7 +482,7 @@ when defined(windows) or defined(nimdoc):
                   dwRemoteAddressLength, LocalSockaddr, LocalSockaddrLength,
                   RemoteSockaddr, RemoteSockaddrLength)
 
-  proc connect*(socket: TAsyncFD, address: string, port: Port,
+  proc connect*(socket: AsyncFD, address: string, port: Port,
     af = AF_INET): Future[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
@@ -506,8 +508,8 @@ when defined(windows) or defined(nimdoc):
       # http://blogs.msdn.com/b/oldnewthing/archive/2011/02/02/10123392.aspx
       var ol = PCustomOverlapped()
       GC_ref(ol)
-      ol.data = TCompletionData(fd: socket, cb:
-        proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      ol.data = CompletionData(fd: socket, cb:
+        proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
           if not retFuture.finished:
             if errcode == OSErrorCode(-1):
               retFuture.complete()
@@ -542,7 +544,7 @@ when defined(windows) or defined(nimdoc):
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
 
-  proc recv*(socket: TAsyncFD, size: int,
+  proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
     ## complete once all the data requested is read, a part of the data has been
@@ -570,8 +572,8 @@ when defined(windows) or defined(nimdoc):
     var flagsio = flags.toOSFlags().Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(fd: socket, cb:
-      proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    ol.data = CompletionData(fd: socket, cb:
+      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
@@ -634,7 +636,7 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc recvInto*(socket: TAsyncFD, buf: cstring, size: int,
+  proc recvInto*(socket: AsyncFD, buf: cstring, size: int,
                 flags = {SocketFlag.SafeDisconn}): Future[int] =
     ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``, which must
     ## at least be of that size. Returned future will complete once all the
@@ -665,8 +667,8 @@ when defined(windows) or defined(nimdoc):
     var flagsio = flags.toOSFlags().Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(fd: socket, cb:
-      proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    ol.data = CompletionData(fd: socket, cb:
+      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
@@ -721,7 +723,7 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc send*(socket: TAsyncFD, data: string,
+  proc send*(socket: AsyncFD, data: string,
              flags = {SocketFlag.SafeDisconn}): Future[void] =
     ## Sends ``data`` to ``socket``. The returned future will complete once all
     ## data has been sent.
@@ -735,8 +737,8 @@ when defined(windows) or defined(nimdoc):
     var bytesReceived, lowFlags: Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(fd: socket, cb:
-      proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    ol.data = CompletionData(fd: socket, cb:
+      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -764,8 +766,8 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc acceptAddr*(socket: TAsyncFD, flags = {SocketFlag.SafeDisconn}):
-      Future[tuple[address: string, client: TAsyncFD]] =
+  proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn}):
+      Future[tuple[address: string, client: AsyncFD]] =
     ## Accepts a new connection. Returns a future containing the client socket
     ## corresponding to that connection and the remote address of the client.
     ## The future will complete when the connection is successfully accepted.
@@ -778,7 +780,7 @@ when defined(windows) or defined(nimdoc):
     ## flag is specified then this error will not be raised and instead
     ## accept will be called again.
     verifyPresence(socket)
-    var retFuture = newFuture[tuple[address: string, client: TAsyncFD]]("acceptAddr")
+    var retFuture = newFuture[tuple[address: string, client: AsyncFD]]("acceptAddr")
 
     var clientSock = newRawSocket()
     if clientSock == osInvalidSocket: raiseOSError(osLastError())
@@ -803,11 +805,11 @@ when defined(windows) or defined(nimdoc):
                            dwLocalAddressLength, dwRemoteAddressLength,
                            addr localSockaddr, addr localLen,
                            addr remoteSockaddr, addr remoteLen)
-      register(clientSock.TAsyncFD)
+      register(clientSock.AsyncFD)
       # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
       retFuture.complete(
         (address: $inet_ntoa(cast[ptr Sockaddr_in](remoteSockAddr).sin_addr),
-         client: clientSock.TAsyncFD)
+         client: clientSock.AsyncFD)
       )
 
     template failAccept(errcode): stmt =
@@ -824,8 +826,8 @@ when defined(windows) or defined(nimdoc):
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = TCompletionData(fd: socket, cb:
-      proc (fd: TAsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+    ol.data = CompletionData(fd: socket, cb:
+      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
@@ -853,26 +855,26 @@ when defined(windows) or defined(nimdoc):
 
     return retFuture
 
-  proc newAsyncRawSocket*(domain, typ, protocol: cint): TAsyncFD =
+  proc newAsyncRawSocket*(domain, typ, protocol: cint): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, typ, protocol).TAsyncFD
+    result = newRawSocket(domain, typ, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
   proc newAsyncRawSocket*(domain: Domain = AF_INET,
                typ: SockType = SOCK_STREAM,
-               protocol: Protocol = IPPROTO_TCP): TAsyncFD =
+               protocol: Protocol = IPPROTO_TCP): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, typ, protocol).TAsyncFD
+    result = newRawSocket(domain, typ, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
-  proc closeSocket*(socket: TAsyncFD) =
+  proc closeSocket*(socket: AsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
     socket.SocketHandle.close()
     getGlobalDispatcher().handles.excl(socket)
 
-  proc unregister*(fd: TAsyncFD) =
+  proc unregister*(fd: AsyncFD) =
     ## Unregisters ``fd``.
     getGlobalDispatcher().handles.excl(fd)
 
@@ -892,18 +894,19 @@ else:
                       MSG_NOSIGNAL
 
   type
-    TAsyncFD* = distinct cint
-    TCallback = proc (fd: TAsyncFD): bool {.closure,gcsafe.}
+    AsyncFD* = distinct cint
+    Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
 
     PData* = ref object of RootRef
-      fd: TAsyncFD
-      readCBs: seq[TCallback]
-      writeCBs: seq[TCallback]
+      fd: AsyncFD
+      readCBs: seq[Callback]
+      writeCBs: seq[Callback]
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector
+  {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
-  proc `==`*(x, y: TAsyncFD): bool {.borrow.}
+  proc `==`*(x, y: AsyncFD): bool {.borrow.}
 
   proc newDispatcher*(): PDispatcher =
     new result
@@ -915,18 +918,18 @@ else:
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
 
-  proc update(fd: TAsyncFD, events: set[Event]) =
+  proc update(fd: AsyncFD, events: set[Event]) =
     let p = getGlobalDispatcher()
     assert fd.SocketHandle in p.selector
     discard p.selector.update(fd.SocketHandle, events)
 
-  proc register*(fd: TAsyncFD) =
+  proc register*(fd: AsyncFD) =
     let p = getGlobalDispatcher()
     var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
     p.selector.register(fd.SocketHandle, {}, data.RootRef)
 
-  proc newAsyncRawSocket*(domain: cint, typ: cint, protocol: cint): TAsyncFD =
-    result = newRawSocket(domain, typ, protocol).TAsyncFD
+  proc newAsyncRawSocket*(domain: cint, typ: cint, protocol: cint): AsyncFD =
+    result = newRawSocket(domain, typ, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
         result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
@@ -934,29 +937,29 @@ else:
 
   proc newAsyncRawSocket*(domain: Domain = AF_INET,
                typ: SockType = SOCK_STREAM,
-               protocol: Protocol = IPPROTO_TCP): TAsyncFD =
-    result = newRawSocket(domain, typ, protocol).TAsyncFD
+               protocol: Protocol = IPPROTO_TCP): AsyncFD =
+    result = newRawSocket(domain, typ, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
         result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
-  proc closeSocket*(sock: TAsyncFD) =
+  proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()
     sock.SocketHandle.close()
     disp.selector.unregister(sock.SocketHandle)
 
-  proc unregister*(fd: TAsyncFD) =
+  proc unregister*(fd: AsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)
 
-  proc addRead*(fd: TAsyncFD, cb: TCallback) =
+  proc addRead*(fd: AsyncFD, cb: Callback) =
     let p = getGlobalDispatcher()
     if fd.SocketHandle notin p.selector:
       raise newException(ValueError, "File descriptor not registered.")
     p.selector[fd.SocketHandle].data.PData.readCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvRead})
 
-  proc addWrite*(fd: TAsyncFD, cb: TCallback) =
+  proc addWrite*(fd: AsyncFD, cb: Callback) =
     let p = getGlobalDispatcher()
     if fd.SocketHandle notin p.selector:
       raise newException(ValueError, "File descriptor not registered.")
@@ -967,7 +970,7 @@ else:
     let p = getGlobalDispatcher()
     for info in p.selector.select(timeout):
       let data = PData(info.key.data)
-      assert data.fd == info.key.fd.TAsyncFD
+      assert data.fd == info.key.fd.AsyncFD
       #echo("In poll ", data.fd.cint)
       if EvError in info.events:
         closeSocket(data.fd)
@@ -1005,11 +1008,11 @@ else:
 
     processTimers(p)
 
-  proc connect*(socket: TAsyncFD, address: string, port: Port,
+  proc connect*(socket: AsyncFD, address: string, port: Port,
     af = AF_INET): Future[void] =
     var retFuture = newFuture[void]("connect")
 
-    proc cb(fd: TAsyncFD): bool =
+    proc cb(fd: AsyncFD): bool =
       # We have connected.
       retFuture.complete()
       return true
@@ -1040,13 +1043,13 @@ else:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
 
-  proc recv*(socket: TAsyncFD, size: int,
+  proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
     var retFuture = newFuture[string]("recv")
 
     var readBuffer = newString(size)
 
-    proc cb(sock: TAsyncFD): bool =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let res = recv(sock.SocketHandle, addr readBuffer[0], size.cint,
                      flags.toOSFlags())
@@ -1070,11 +1073,11 @@ else:
     addRead(socket, cb)
     return retFuture
 
-  proc recvInto*(socket: TAsyncFD, buf: cstring, size: int,
+  proc recvInto*(socket: AsyncFD, buf: cstring, size: int,
                   flags = {SocketFlag.SafeDisconn}): Future[int] =
     var retFuture = newFuture[int]("recvInto")
 
-    proc cb(sock: TAsyncFD): bool =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let res = recv(sock.SocketHandle, buf, size.cint,
                      flags.toOSFlags())
@@ -1094,13 +1097,13 @@ else:
     addRead(socket, cb)
     return retFuture
 
-  proc send*(socket: TAsyncFD, data: string,
+  proc send*(socket: AsyncFD, data: string,
              flags = {SocketFlag.SafeDisconn}): Future[void] =
     var retFuture = newFuture[void]("send")
 
     var written = 0
 
-    proc cb(sock: TAsyncFD): bool =
+    proc cb(sock: AsyncFD): bool =
       result = true
       let netSize = data.len-written
       var d = data.cstring
@@ -1126,11 +1129,11 @@ else:
     addWrite(socket, cb)
     return retFuture
 
-  proc acceptAddr*(socket: TAsyncFD, flags = {SocketFlag.SafeDisconn}):
-      Future[tuple[address: string, client: TAsyncFD]] =
+  proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn}):
+      Future[tuple[address: string, client: AsyncFD]] =
     var retFuture = newFuture[tuple[address: string,
-        client: TAsyncFD]]("acceptAddr")
-    proc cb(sock: TAsyncFD): bool =
+        client: AsyncFD]]("acceptAddr")
+    proc cb(sock: AsyncFD): bool =
       result = true
       var sockAddress: SockAddr_in
       var addrLen = sizeof(sockAddress).Socklen
@@ -1147,8 +1150,8 @@ else:
           else:
             retFuture.fail(newException(OSError, osErrorMsg(lastError)))
       else:
-        register(client.TAsyncFD)
-        retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client.TAsyncFD))
+        register(client.AsyncFD)
+        retFuture.complete(($inet_ntoa(sockAddress.sin_addr), client.AsyncFD))
     addRead(socket, cb)
     return retFuture
 
@@ -1160,15 +1163,15 @@ proc sleepAsync*(ms: int): Future[void] =
   p.timers.add((epochTime() + (ms / 1000), retFuture))
   return retFuture
 
-proc accept*(socket: TAsyncFD,
-    flags = {SocketFlag.SafeDisconn}): Future[TAsyncFD] =
+proc accept*(socket: AsyncFD,
+    flags = {SocketFlag.SafeDisconn}): Future[AsyncFD] =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
   ## The future will complete when the connection is successfully accepted.
-  var retFut = newFuture[TAsyncFD]("accept")
+  var retFut = newFuture[AsyncFD]("accept")
   var fut = acceptAddr(socket, flags)
   fut.callback =
-    proc (future: Future[tuple[address: string, client: TAsyncFD]]) =
+    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
       assert future.finished
       if future.failed:
         retFut.fail(future.error)
@@ -1495,7 +1498,7 @@ macro async*(prc: stmt): stmt {.immediate.} =
   #if prc[0].getName == "test":
   #  echo(toStrLit(result))
 
-proc recvLine*(socket: TAsyncFD): Future[string] {.async.} =
+proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##

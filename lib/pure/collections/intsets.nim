@@ -30,25 +30,25 @@ const
   IntMask = 1 shl IntShift - 1
 
 type
-  PTrunk = ref TTrunk
-  TTrunk {.final.} = object
+  PTrunk = ref Trunk
+  Trunk {.final.} = object
     next: PTrunk             # all nodes are connected with this pointer
     key: int                 # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
-  TTrunkSeq = seq[PTrunk]
+  TrunkSeq = seq[PTrunk]
   IntSet* = object ## an efficient set of 'int' implemented as a sparse bit set
     counter, max: int
     head: PTrunk
-    data: TTrunkSeq
+    data: TrunkSeq
 
-{.deprecated: [TIntSet: IntSet].}
+{.deprecated: [TIntSet: IntSet, TTrunk: Trunk, TTrunkSeq: TrunkSeq].}
 
 proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 proc intSetGet(t: IntSet, key: int): PTrunk =
@@ -59,7 +59,7 @@ proc intSetGet(t: IntSet, key: int): PTrunk =
     h = nextTry(h, t.max)
   result = nil
 
-proc intSetRawInsert(t: IntSet, data: var TTrunkSeq, desc: PTrunk) =
+proc intSetRawInsert(t: IntSet, data: var TrunkSeq, desc: PTrunk) =
   var h = desc.key and t.max
   while data[h] != nil:
     assert(data[h] != desc)
@@ -68,7 +68,7 @@ proc intSetRawInsert(t: IntSet, data: var TTrunkSeq, desc: PTrunk) =
   data[h] = desc
 
 proc intSetEnlarge(t: var IntSet) =
-  var n: TTrunkSeq
+  var n: TrunkSeq
   var oldMax = t.max
   t.max = ((t.max + 1) * 2) - 1
   newSeq(n, t.max + 1)

@@ -18,8 +18,8 @@ import cpuinfo, cpuload, locks
 
 type
   Semaphore = object
-    c: TCond
-    L: TLock
+    c: Cond
+    L: Lock
     counter: int
 
 proc createSemaphore(): Semaphore =
@@ -113,7 +113,7 @@ type
 
   ToFreeQueue = object
     len: int
-    lock: TLock
+    lock: Lock
     empty: Semaphore
     data: array[128, pointer]
 
@@ -355,7 +355,7 @@ proc parallel*(body: stmt) {.magic: "Parallel".}
 
 var
   state: ThreadPoolState
-  stateLock: TLock
+  stateLock: Lock
 
 initLock stateLock
 
