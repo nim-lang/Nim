@@ -345,15 +345,15 @@ optimization for types that have copying semantics:
     ## puts a (key, value)-pair into `t`. The semantics of string require
     ## a copy here:
     let idx = findInsertionPosition(key)
-    t[idx].key = key
-    t[idx].val = val
+    t[idx] = key
+    t[idx] = val
 
   proc `[]=`*(t: var Table, key: string{call}, val: string{call}) =
     ## puts a (key, value)-pair into `t`. Optimized version that knows that
     ## the strings are unique and thus don't need to be copied:
     let idx = findInsertionPosition(key)
-    shallowCopy t[idx].key, key
-    shallowCopy t[idx].val, val
+    shallowCopy t[idx], key
+    shallowCopy t[idx], val
 
   var t: Table
   # overloading resolution ensures that the optimized []= is called here:
