@@ -406,15 +406,15 @@ type
     button*: array[0..3 - 1, cshort] # state of each button 
     changes*: cint            # flags indicating what has changed with the mouse 
   
-  TMEVENT*{.pure, final.} = object 
+  MEVENT*{.pure, final.} = object 
     id*: cshort               # unused, always 0 
     x*: cint
     y*: cint
-    z*: cint                  # x, y same as MOUSE_STATUS; z unused 
+    z*: cint                  # x, y same as TMOUSE_STATUS; z unused 
     bstate*: cunsignedlong    # equivalent to changes + button[], but
-                              #                           in the same format as used for mousemask() 
+                              # in the same format as used for mousemask() 
   
-  TWINDOW*{.pure, final.} = object 
+  WINDOW*{.pure, final.} = object 
     cury*: cint              # current pseudo-cursor 
     curx*: cint
     maxy*: cint              # max window coordinates 
@@ -439,26 +439,30 @@ type
     delayms*: cint           # milliseconds of delay for getch() 
     parx*: cint
     pary*: cint              # coords relative to parent (0,0) 
-    parent*: ptr TWINDOW        # subwin's pointer to parent win 
+    parent*: ptr WINDOW        # subwin's pointer to parent win 
   
-  TPANELOBS*{.pure, final.} = object 
-    above*: ptr TPANELOBS
-    pan*: ptr TPANEL
+  PANELOBS*{.pure, final.} = object 
+    above*: ptr PANELOBS
+    pan*: ptr PANEL
 
-  TPANEL*{.pure, final.} = object 
-    win*: ptr TWINDOW
+  PANEL*{.pure, final.} = object 
+    win*: ptr WINDOW
     wstarty*: cint
     wendy*: cint
     wstartx*: cint
     wendx*: cint
-    below*: ptr TPANEL
-    above*: ptr TPANEL
+    below*: ptr PANEL
+    above*: ptr PANEL
     user*: pointer
-    obscure*: ptr TPANELOBS
+    obscure*: ptr PANELOBS
+{.deprecated: [
+              #TMOUSE_STATUS: MOUSE_STATUS, # Name conflict when we drop the `T`
+              TMEVENT: MEVENT, TWINDOW: WINDOW,
+              TPANELOBS: PANELOBS, TPANEL:PANEL].}
 
 when unixOS:
   type
-    TSCREEN*{.pure, final.} = object 
+    SCREEN*{.pure, final.} = object 
       alive*: cunsignedchar     # if initscr() called, and not endwin() 
       autocr*: cunsignedchar    # if cr -> lf 
       cbreak*: cunsignedchar    # if terminal unbuffered 
@@ -481,7 +485,7 @@ when unixOS:
       map_mbe_to_key*: cunsignedlong # map mouse buttons to slk 
       mouse_wait*: cint # time to wait (in ms) for a button release after a press
       slklines*: cint           # lines in use by slk_init() 
-      slk_winptr*: ptr TWINDOW   # window for slk 
+      slk_winptr*: ptr WINDOW   # window for slk 
       linesrippedoff*: cint     # lines ripped off via ripoffline() 
       linesrippedoffontop*: cint # lines ripped off on top via ripoffline() 
       delaytenths*: cint        # 1/10ths second to wait block getch() for 
@@ -499,9 +503,10 @@ when unixOS:
       sb_cur_y*: cint
       sb_cur_x*: cint
       line_color*: cshort       # color of line attributes - default -1 
+  {.deprecated: [TSCREEN: SCREEN].}
 else:
   type
-    TSCREEN*{.pure, final.} = object 
+    SCREEN*{.pure, final.} = object 
       alive*: cunsignedchar     # if initscr() called, and not endwin() 
       autocr*: cunsignedchar    # if cr -> lf 
       cbreak*: cunsignedchar    # if terminal unbuffered 
@@ -524,7 +529,7 @@ else:
       map_mbe_to_key*: cunsignedlong # map mouse buttons to slk 
       mouse_wait*: cint # time to wait (in ms) for a button release after a press
       slklines*: cint           # lines in use by slk_init() 
-      slk_winptr*: ptr TWINDOW   # window for slk 
+      slk_winptr*: ptr WINDOW   # window for slk 
       linesrippedoff*: cint     # lines ripped off via ripoffline() 
       linesrippedoffontop*: cint # lines ripped off on top via ripoffline() 
       delaytenths*: cint        # 1/10ths second to wait block getch() for 
@@ -534,14 +539,15 @@ else:
       return_key_modifiers*: cunsignedchar # TRUE if modifier keys are returned as "real" keys 
       key_code*: cunsignedchar # TRUE if last key is a special key;
       line_color*: cshort       # color of line attributes - default -1 
+  {.deprecated: [TSCREEN: SCREEN].}
 
 var
   LINES*{.importc: "LINES", dynlib: pdcursesdll.}: cint
   COLS*{.importc: "COLS", dynlib: pdcursesdll.}: cint
-  stdscr*{.importc: "stdscr", dynlib: pdcursesdll.}: ptr TWINDOW
-  curscr*{.importc: "curscr", dynlib: pdcursesdll.}: ptr TWINDOW
-  SP*{.importc: "SP", dynlib: pdcursesdll.}: ptr TSCREEN
-  Mouse_status*{.importc: "Mouse_status", dynlib: pdcursesdll.}: TMOUSE_STATUS
+  stdscr*{.importc: "stdscr", dynlib: pdcursesdll.}: ptr WINDOW
+  curscr*{.importc: "curscr", dynlib: pdcursesdll.}: ptr WINDOW
+  SP*{.importc: "SP", dynlib: pdcursesdll.}: ptr SCREEN
+  Mouse_status*{.importc: "Mouse_status", dynlib: pdcursesdll.}: MOUSE_STATUS
   COLORS*{.importc: "COLORS", dynlib: pdcursesdll.}: cint
   COLOR_PAIRS*{.importc: "COLOR_PAIRS", dynlib: pdcursesdll.}: cint
   TABSIZE*{.importc: "TABSIZE", dynlib: pdcursesdll.}: cint
@@ -690,14 +696,14 @@ proc border*(a2: cunsignedlong; a3: cunsignedlong; a4: cunsignedlong;
              a5: cunsignedlong; a6: cunsignedlong; a7: cunsignedlong; 
              a8: cunsignedlong; a9: cunsignedlong): cint{.extdecl, 
     importc: "border", dynlib: pdcursesdll.}
-proc box*(a2: ptr TWINDOW; a3: cunsignedlong; a4: cunsignedlong): cint{.extdecl, 
+proc box*(a2: ptr WINDOW; a3: cunsignedlong; a4: cunsignedlong): cint{.extdecl, 
     importc: "box", dynlib: pdcursesdll.}
 proc can_change_color*(): cunsignedchar{.extdecl, importc: "can_change_color", 
     dynlib: pdcursesdll.}
 proc cbreak*(): cint{.extdecl, importc: "cbreak", dynlib: pdcursesdll.}
 proc chgat*(a2: cint; a3: cunsignedlong; a4: cshort; a5: pointer): cint{.extdecl, 
     importc: "chgat", dynlib: pdcursesdll.}
-proc clearok*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, 
+proc clearok*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, 
     importc: "clearok", dynlib: pdcursesdll.}
 proc clear*(): cint{.extdecl, importc: "clear", dynlib: pdcursesdll.}
 proc clrtobot*(): cint{.extdecl, importc: "clrtobot", dynlib: pdcursesdll.}
@@ -706,7 +712,7 @@ proc color_content*(a2: cshort; a3: ptr cshort; a4: ptr cshort; a5: ptr cshort):
     extdecl, importc: "color_content", dynlib: pdcursesdll.}
 proc color_set*(a2: cshort; a3: pointer): cint{.extdecl, importc: "color_set", 
     dynlib: pdcursesdll.}
-proc copywin*(a2: ptr TWINDOW; a3: ptr TWINDOW; a4: cint; a5: cint; a6: cint; 
+proc copywin*(a2: ptr WINDOW; a3: ptr WINDOW; a4: cint; a5: cint; a6: cint; 
               a7: cint; a8: cint; a9: cint; a10: cint): cint{.extdecl, 
     importc: "copywin", dynlib: pdcursesdll.}
 proc curs_set*(a2: cint): cint{.extdecl, importc: "curs_set", dynlib: pdcursesdll.}
@@ -718,14 +724,14 @@ proc delay_output*(a2: cint): cint{.extdecl, importc: "delay_output",
                                     dynlib: pdcursesdll.}
 proc delch*(): cint{.extdecl, importc: "delch", dynlib: pdcursesdll.}
 proc deleteln*(): cint{.extdecl, importc: "deleteln", dynlib: pdcursesdll.}
-proc delscreen*(a2: ptr TSCREEN){.extdecl, importc: "delscreen", 
+proc delscreen*(a2: ptr SCREEN){.extdecl, importc: "delscreen", 
                                  dynlib: pdcursesdll.}
-proc delwin*(a2: ptr TWINDOW): cint{.extdecl, importc: "delwin", 
+proc delwin*(a2: ptr WINDOW): cint{.extdecl, importc: "delwin", 
                                     dynlib: pdcursesdll.}
-proc derwin*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cint; a6: cint): ptr TWINDOW{.
+proc derwin*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cint; a6: cint): ptr WINDOW{.
     extdecl, importc: "derwin", dynlib: pdcursesdll.}
 proc doupdate*(): cint{.extdecl, importc: "doupdate", dynlib: pdcursesdll.}
-proc dupwin*(a2: ptr TWINDOW): ptr TWINDOW{.extdecl, importc: "dupwin", 
+proc dupwin*(a2: ptr WINDOW): ptr WINDOW{.extdecl, importc: "dupwin", 
     dynlib: pdcursesdll.}
 proc echochar*(a2: cunsignedlong): cint{.extdecl, importc: "echochar", 
     dynlib: pdcursesdll.}
@@ -736,12 +742,12 @@ proc erase*(): cint{.extdecl, importc: "erase", dynlib: pdcursesdll.}
 proc filter*(){.extdecl, importc: "filter", dynlib: pdcursesdll.}
 proc flash*(): cint{.extdecl, importc: "flash", dynlib: pdcursesdll.}
 proc flushinp*(): cint{.extdecl, importc: "flushinp", dynlib: pdcursesdll.}
-proc getbkgd*(a2: ptr TWINDOW): cunsignedlong{.extdecl, importc: "getbkgd", 
+proc getbkgd*(a2: ptr WINDOW): cunsignedlong{.extdecl, importc: "getbkgd", 
     dynlib: pdcursesdll.}
 proc getnstr*(a2: cstring; a3: cint): cint{.extdecl, importc: "getnstr", 
     dynlib: pdcursesdll.}
 proc getstr*(a2: cstring): cint{.extdecl, importc: "getstr", dynlib: pdcursesdll.}
-proc getwin*(a2: File): ptr TWINDOW{.extdecl, importc: "getwin", 
+proc getwin*(a2: File): ptr WINDOW{.extdecl, importc: "getwin", 
                                         dynlib: pdcursesdll.}
 proc halfdelay*(a2: cint): cint{.extdecl, importc: "halfdelay", 
                                  dynlib: pdcursesdll.}
@@ -751,11 +757,11 @@ proc has_ic*(): cunsignedchar{.extdecl, importc: "has_ic", dynlib: pdcursesdll.}
 proc has_il*(): cunsignedchar{.extdecl, importc: "has_il", dynlib: pdcursesdll.}
 proc hline*(a2: cunsignedlong; a3: cint): cint{.extdecl, importc: "hline", 
     dynlib: pdcursesdll.}
-proc idcok*(a2: ptr TWINDOW; a3: cunsignedchar){.extdecl, importc: "idcok", 
+proc idcok*(a2: ptr WINDOW; a3: cunsignedchar){.extdecl, importc: "idcok", 
     dynlib: pdcursesdll.}
-proc idlok*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, importc: "idlok", 
+proc idlok*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, importc: "idlok", 
     dynlib: pdcursesdll.}
-proc immedok*(a2: ptr TWINDOW; a3: cunsignedchar){.extdecl, importc: "immedok", 
+proc immedok*(a2: ptr WINDOW; a3: cunsignedchar){.extdecl, importc: "immedok", 
     dynlib: pdcursesdll.}
 proc inchnstr*(a2: ptr cunsignedlong; a3: cint): cint{.extdecl, 
     importc: "inchnstr", dynlib: pdcursesdll.}
@@ -766,7 +772,7 @@ proc init_color*(a2: cshort; a3: cshort; a4: cshort; a5: cshort): cint{.extdecl,
     importc: "init_color", dynlib: pdcursesdll.}
 proc init_pair*(a2: cshort; a3: cshort; a4: cshort): cint{.extdecl, 
     importc: "init_pair", dynlib: pdcursesdll.}
-proc initscr*(): ptr TWINDOW{.extdecl, importc: "initscr", dynlib: pdcursesdll.}
+proc initscr*(): ptr WINDOW{.extdecl, importc: "initscr", dynlib: pdcursesdll.}
 proc innstr*(a2: cstring; a3: cint): cint{.extdecl, importc: "innstr", 
     dynlib: pdcursesdll.}
 proc insch*(a2: cunsignedlong): cint{.extdecl, importc: "insch", 
@@ -777,21 +783,21 @@ proc insnstr*(a2: cstring; a3: cint): cint{.extdecl, importc: "insnstr",
     dynlib: pdcursesdll.}
 proc insstr*(a2: cstring): cint{.extdecl, importc: "insstr", dynlib: pdcursesdll.}
 proc instr*(a2: cstring): cint{.extdecl, importc: "instr", dynlib: pdcursesdll.}
-proc intrflush*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, 
+proc intrflush*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, 
     importc: "intrflush", dynlib: pdcursesdll.}
 proc isendwin*(): cunsignedchar{.extdecl, importc: "isendwin", dynlib: pdcursesdll.}
-proc is_linetouched*(a2: ptr TWINDOW; a3: cint): cunsignedchar{.extdecl, 
+proc is_linetouched*(a2: ptr WINDOW; a3: cint): cunsignedchar{.extdecl, 
     importc: "is_linetouched", dynlib: pdcursesdll.}
-proc is_wintouched*(a2: ptr TWINDOW): cunsignedchar{.extdecl, 
+proc is_wintouched*(a2: ptr WINDOW): cunsignedchar{.extdecl, 
     importc: "is_wintouched", dynlib: pdcursesdll.}
 proc keyname*(a2: cint): cstring{.extdecl, importc: "keyname", dynlib: pdcursesdll.}
-proc keypad*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, importc: "keypad", 
+proc keypad*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, importc: "keypad", 
     dynlib: pdcursesdll.}
 proc killchar*(): char{.extdecl, importc: "killchar", dynlib: pdcursesdll.}
-proc leaveok*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, 
+proc leaveok*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, 
     importc: "leaveok", dynlib: pdcursesdll.}
 proc longname*(): cstring{.extdecl, importc: "longname", dynlib: pdcursesdll.}
-proc meta*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, importc: "meta", 
+proc meta*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, importc: "meta", 
     dynlib: pdcursesdll.}
 proc move*(a2: cint; a3: cint): cint{.extdecl, importc: "move", 
                                       dynlib: pdcursesdll.}
@@ -811,7 +817,7 @@ proc mvcur*(a2: cint; a3: cint; a4: cint; a5: cint): cint{.extdecl,
     importc: "mvcur", dynlib: pdcursesdll.}
 proc mvdelch*(a2: cint; a3: cint): cint{.extdecl, importc: "mvdelch", 
     dynlib: pdcursesdll.}
-proc mvderwin*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc mvderwin*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "mvderwin", dynlib: pdcursesdll.}
 proc mvgetch*(a2: cint; a3: cint): cint{.extdecl, importc: "mvgetch", 
     dynlib: pdcursesdll.}
@@ -843,92 +849,92 @@ proc mvscanw*(a2: cint; a3: cint; a4: cstring): cint{.varargs, extdecl,
     importc: "mvscanw", dynlib: pdcursesdll.}
 proc mvvline*(a2: cint; a3: cint; a4: cunsignedlong; a5: cint): cint{.extdecl, 
     importc: "mvvline", dynlib: pdcursesdll.}
-proc mvwaddchnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
+proc mvwaddchnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
                    a6: cint): cint{.extdecl, importc: "mvwaddchnstr", 
                                     dynlib: pdcursesdll.}
-proc mvwaddchstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
+proc mvwaddchstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
     extdecl, importc: "mvwaddchstr", dynlib: pdcursesdll.}
-proc mvwaddch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
+proc mvwaddch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
     extdecl, importc: "mvwaddch", dynlib: pdcursesdll.}
-proc mvwaddnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
+proc mvwaddnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
     extdecl, importc: "mvwaddnstr", dynlib: pdcursesdll.}
-proc mvwaddstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
+proc mvwaddstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
     importc: "mvwaddstr", dynlib: pdcursesdll.}
-proc mvwchgat*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cint; a6: cunsignedlong; 
+proc mvwchgat*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cint; a6: cunsignedlong; 
                a7: cshort; a8: pointer): cint{.extdecl, importc: "mvwchgat", 
     dynlib: pdcursesdll.}
-proc mvwdelch*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc mvwdelch*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "mvwdelch", dynlib: pdcursesdll.}
-proc mvwgetch*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc mvwgetch*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "mvwgetch", dynlib: pdcursesdll.}
-proc mvwgetnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
+proc mvwgetnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
     extdecl, importc: "mvwgetnstr", dynlib: pdcursesdll.}
-proc mvwgetstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
+proc mvwgetstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
     importc: "mvwgetstr", dynlib: pdcursesdll.}
-proc mvwhline*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cunsignedlong; a6: cint): cint{.
+proc mvwhline*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cunsignedlong; a6: cint): cint{.
     extdecl, importc: "mvwhline", dynlib: pdcursesdll.}
-proc mvwinchnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
+proc mvwinchnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
                   a6: cint): cint{.extdecl, importc: "mvwinchnstr", 
                                    dynlib: pdcursesdll.}
-proc mvwinchstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
+proc mvwinchstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
     extdecl, importc: "mvwinchstr", dynlib: pdcursesdll.}
-proc mvwinch*(a2: ptr TWINDOW; a3: cint; a4: cint): cunsignedlong{.extdecl, 
+proc mvwinch*(a2: ptr WINDOW; a3: cint; a4: cint): cunsignedlong{.extdecl, 
     importc: "mvwinch", dynlib: pdcursesdll.}
-proc mvwinnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
+proc mvwinnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
     extdecl, importc: "mvwinnstr", dynlib: pdcursesdll.}
-proc mvwinsch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
+proc mvwinsch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
     extdecl, importc: "mvwinsch", dynlib: pdcursesdll.}
-proc mvwinsnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
+proc mvwinsnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
     extdecl, importc: "mvwinsnstr", dynlib: pdcursesdll.}
-proc mvwinsstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
+proc mvwinsstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
     importc: "mvwinsstr", dynlib: pdcursesdll.}
-proc mvwinstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
+proc mvwinstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.extdecl, 
     importc: "mvwinstr", dynlib: pdcursesdll.}
-proc mvwin*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, importc: "mvwin", 
+proc mvwin*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, importc: "mvwin", 
     dynlib: pdcursesdll.}
-proc mvwprintw*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.varargs, 
+proc mvwprintw*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.varargs, 
     extdecl, importc: "mvwprintw", dynlib: pdcursesdll.}
-proc mvwscanw*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.varargs, 
+proc mvwscanw*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.varargs, 
     extdecl, importc: "mvwscanw", dynlib: pdcursesdll.}
-proc mvwvline*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cunsignedlong; a6: cint): cint{.
+proc mvwvline*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cunsignedlong; a6: cint): cint{.
     extdecl, importc: "mvwvline", dynlib: pdcursesdll.}
 proc napms*(a2: cint): cint{.extdecl, importc: "napms", dynlib: pdcursesdll.}
-proc newpad*(a2: cint; a3: cint): ptr TWINDOW{.extdecl, importc: "newpad", 
+proc newpad*(a2: cint; a3: cint): ptr WINDOW{.extdecl, importc: "newpad", 
     dynlib: pdcursesdll.}
-proc newterm*(a2: cstring; a3: File; a4: File): ptr TSCREEN{.extdecl, 
+proc newterm*(a2: cstring; a3: File; a4: File): ptr SCREEN{.extdecl, 
     importc: "newterm", dynlib: pdcursesdll.}
-proc newwin*(a2: cint; a3: cint; a4: cint; a5: cint): ptr TWINDOW{.extdecl, 
+proc newwin*(a2: cint; a3: cint; a4: cint; a5: cint): ptr WINDOW{.extdecl, 
     importc: "newwin", dynlib: pdcursesdll.}
 proc nl*(): cint{.extdecl, importc: "nl", dynlib: pdcursesdll.}
 proc nocbreak*(): cint{.extdecl, importc: "nocbreak", dynlib: pdcursesdll.}
-proc nodelay*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, 
+proc nodelay*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, 
     importc: "nodelay", dynlib: pdcursesdll.}
 proc noecho*(): cint{.extdecl, importc: "noecho", dynlib: pdcursesdll.}
 proc nonl*(): cint{.extdecl, importc: "nonl", dynlib: pdcursesdll.}
 proc noqiflush*(){.extdecl, importc: "noqiflush", dynlib: pdcursesdll.}
 proc noraw*(): cint{.extdecl, importc: "noraw", dynlib: pdcursesdll.}
-proc notimeout*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, 
+proc notimeout*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, 
     importc: "notimeout", dynlib: pdcursesdll.}
-proc overlay*(a2: ptr TWINDOW; a3: ptr TWINDOW): cint{.extdecl, importc: "overlay", 
+proc overlay*(a2: ptr WINDOW; a3: ptr WINDOW): cint{.extdecl, importc: "overlay", 
     dynlib: pdcursesdll.}
-proc overwrite*(a2: ptr TWINDOW; a3: ptr TWINDOW): cint{.extdecl, 
+proc overwrite*(a2: ptr WINDOW; a3: ptr WINDOW): cint{.extdecl, 
     importc: "overwrite", dynlib: pdcursesdll.}
 proc pair_content*(a2: cshort; a3: ptr cshort; a4: ptr cshort): cint{.extdecl, 
     importc: "pair_content", dynlib: pdcursesdll.}
-proc pechochar*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, 
+proc pechochar*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, 
     importc: "pechochar", dynlib: pdcursesdll.}
-proc pnoutrefresh*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cint; a6: cint; 
+proc pnoutrefresh*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cint; a6: cint; 
                    a7: cint; a8: cint): cint{.extdecl, importc: "pnoutrefresh", 
     dynlib: pdcursesdll.}
-proc prefresh*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cint; a6: cint; a7: cint; 
+proc prefresh*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cint; a6: cint; a7: cint; 
                a8: cint): cint{.extdecl, importc: "prefresh", dynlib: pdcursesdll.}
 proc printw*(a2: cstring): cint{.varargs, extdecl, importc: "printw", 
                                  dynlib: pdcursesdll.}
-proc putwin*(a2: ptr TWINDOW; a3: File): cint{.extdecl, importc: "putwin", 
+proc putwin*(a2: ptr WINDOW; a3: File): cint{.extdecl, importc: "putwin", 
     dynlib: pdcursesdll.}
 proc qiflush*(){.extdecl, importc: "qiflush", dynlib: pdcursesdll.}
 proc raw*(): cint{.extdecl, importc: "raw", dynlib: pdcursesdll.}
-proc redrawwin*(a2: ptr TWINDOW): cint{.extdecl, importc: "redrawwin", 
+proc redrawwin*(a2: ptr WINDOW): cint{.extdecl, importc: "redrawwin", 
                                        dynlib: pdcursesdll.}
 proc refresh*(): cint{.extdecl, importc: "refresh", dynlib: pdcursesdll.}
 proc reset_prog_mode*(): cint{.extdecl, importc: "reset_prog_mode", 
@@ -936,7 +942,7 @@ proc reset_prog_mode*(): cint{.extdecl, importc: "reset_prog_mode",
 proc reset_shell_mode*(): cint{.extdecl, importc: "reset_shell_mode", 
                                 dynlib: pdcursesdll.}
 proc resetty*(): cint{.extdecl, importc: "resetty", dynlib: pdcursesdll.}
-#int     ripoffline(int, int (*)(TWINDOW *, int));
+#int     ripoffline(int, int (*)(WINDOW *, int));
 proc savetty*(): cint{.extdecl, importc: "savetty", dynlib: pdcursesdll.}
 proc scanw*(a2: cstring): cint{.varargs, extdecl, importc: "scanw", 
                                 dynlib: pdcursesdll.}
@@ -948,11 +954,11 @@ proc scr_restore*(a2: cstring): cint{.extdecl, importc: "scr_restore",
                                       dynlib: pdcursesdll.}
 proc scr_set*(a2: cstring): cint{.extdecl, importc: "scr_set", dynlib: pdcursesdll.}
 proc scrl*(a2: cint): cint{.extdecl, importc: "scrl", dynlib: pdcursesdll.}
-proc scroll*(a2: ptr TWINDOW): cint{.extdecl, importc: "scroll", 
+proc scroll*(a2: ptr WINDOW): cint{.extdecl, importc: "scroll", 
                                     dynlib: pdcursesdll.}
-proc scrollok*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, 
+proc scrollok*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, 
     importc: "scrollok", dynlib: pdcursesdll.}
-proc set_term*(a2: ptr TSCREEN): ptr TSCREEN{.extdecl, importc: "set_term", 
+proc set_term*(a2: ptr SCREEN): ptr SCREEN{.extdecl, importc: "set_term", 
     dynlib: pdcursesdll.}
 proc setscrreg*(a2: cint; a3: cint): cint{.extdecl, importc: "setscrreg", 
     dynlib: pdcursesdll.}
@@ -984,11 +990,11 @@ proc slk_touch*(): cint{.extdecl, importc: "slk_touch", dynlib: pdcursesdll.}
 proc standend*(): cint{.extdecl, importc: "standend", dynlib: pdcursesdll.}
 proc standout*(): cint{.extdecl, importc: "standout", dynlib: pdcursesdll.}
 proc start_color*(): cint{.extdecl, importc: "start_color", dynlib: pdcursesdll.}
-proc subpad*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cint; a6: cint): ptr TWINDOW{.
+proc subpad*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cint; a6: cint): ptr WINDOW{.
     extdecl, importc: "subpad", dynlib: pdcursesdll.}
-proc subwin*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cint; a6: cint): ptr TWINDOW{.
+proc subwin*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cint; a6: cint): ptr WINDOW{.
     extdecl, importc: "subwin", dynlib: pdcursesdll.}
-proc syncok*(a2: ptr TWINDOW; a3: cunsignedchar): cint{.extdecl, importc: "syncok", 
+proc syncok*(a2: ptr WINDOW; a3: cunsignedchar): cint{.extdecl, importc: "syncok", 
     dynlib: pdcursesdll.}
 proc termattrs*(): cunsignedlong{.extdecl, importc: "termattrs", 
                                   dynlib: pdcursesdll.}
@@ -996,13 +1002,13 @@ proc termattrs2*(): cunsignedlong{.extdecl, importc: "term_attrs",
                                    dynlib: pdcursesdll.}
 proc termname*(): cstring{.extdecl, importc: "termname", dynlib: pdcursesdll.}
 proc timeout*(a2: cint){.extdecl, importc: "timeout", dynlib: pdcursesdll.}
-proc touchline*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc touchline*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "touchline", dynlib: pdcursesdll.}
-proc touchwin*(a2: ptr TWINDOW): cint{.extdecl, importc: "touchwin", 
+proc touchwin*(a2: ptr WINDOW): cint{.extdecl, importc: "touchwin", 
                                       dynlib: pdcursesdll.}
 proc typeahead*(a2: cint): cint{.extdecl, importc: "typeahead", 
                                  dynlib: pdcursesdll.}
-proc untouchwin*(a2: ptr TWINDOW): cint{.extdecl, importc: "untouchwin", 
+proc untouchwin*(a2: ptr WINDOW): cint{.extdecl, importc: "untouchwin", 
                                         dynlib: pdcursesdll.}
 proc use_env*(a2: cunsignedchar){.extdecl, importc: "use_env", dynlib: pdcursesdll.}
 proc vidattr*(a2: cunsignedlong): cint{.extdecl, importc: "vidattr", 
@@ -1013,123 +1019,123 @@ proc vid_attr*(a2: cunsignedlong; a3: cshort; a4: pointer): cint{.extdecl,
 #int     vid_puts(attr_t, short, void *, int (*)(int));
 proc vline*(a2: cunsignedlong; a3: cint): cint{.extdecl, importc: "vline", 
     dynlib: pdcursesdll.}
-proc vwprintw*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, varargs,
+proc vwprintw*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, varargs,
     importc: "vw_printw", dynlib: pdcursesdll.}
-proc vwprintw2*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, varargs,
+proc vwprintw2*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, varargs,
     importc: "vwprintw", dynlib: pdcursesdll.}
-proc vwscanw*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, varargs,
+proc vwscanw*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, varargs,
     importc: "vw_scanw", dynlib: pdcursesdll.}
-proc vwscanw2*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, varargs,
+proc vwscanw2*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, varargs,
     importc: "vwscanw", dynlib: pdcursesdll.}
-proc waddchnstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
+proc waddchnstr*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
     importc: "waddchnstr", dynlib: pdcursesdll.}
-proc waddchstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc waddchstr*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "waddchstr", dynlib: pdcursesdll.}
-proc waddch*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, importc: "waddch", 
+proc waddch*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, importc: "waddch", 
     dynlib: pdcursesdll.}
-proc waddnstr*(a2: ptr TWINDOW; a3: cstring; a4: cint): cint{.extdecl, 
+proc waddnstr*(a2: ptr WINDOW; a3: cstring; a4: cint): cint{.extdecl, 
     importc: "waddnstr", dynlib: pdcursesdll.}
-proc waddstr*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, importc: "waddstr", 
+proc waddstr*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, importc: "waddstr", 
     dynlib: pdcursesdll.}
-proc wattroff*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, 
+proc wattroff*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, 
     importc: "wattroff", dynlib: pdcursesdll.}
-proc wattron*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, 
+proc wattron*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, 
     importc: "wattron", dynlib: pdcursesdll.}
-proc wattrset*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, 
+proc wattrset*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, 
     importc: "wattrset", dynlib: pdcursesdll.}
-proc wattr_get*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: ptr cshort; 
+proc wattr_get*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: ptr cshort; 
                 a5: pointer): cint{.extdecl, importc: "wattr_get", 
                                     dynlib: pdcursesdll.}
-proc wattr_off*(a2: ptr TWINDOW; a3: cunsignedlong; a4: pointer): cint{.extdecl, 
+proc wattr_off*(a2: ptr WINDOW; a3: cunsignedlong; a4: pointer): cint{.extdecl, 
     importc: "wattr_off", dynlib: pdcursesdll.}
-proc wattr_on*(a2: ptr TWINDOW; a3: cunsignedlong; a4: pointer): cint{.extdecl, 
+proc wattr_on*(a2: ptr WINDOW; a3: cunsignedlong; a4: pointer): cint{.extdecl, 
     importc: "wattr_on", dynlib: pdcursesdll.}
-proc wattr_set*(a2: ptr TWINDOW; a3: cunsignedlong; a4: cshort; a5: pointer): cint{.
+proc wattr_set*(a2: ptr WINDOW; a3: cunsignedlong; a4: cshort; a5: pointer): cint{.
     extdecl, importc: "wattr_set", dynlib: pdcursesdll.}
-proc wbkgdset*(a2: ptr TWINDOW; a3: cunsignedlong){.extdecl, importc: "wbkgdset", 
+proc wbkgdset*(a2: ptr WINDOW; a3: cunsignedlong){.extdecl, importc: "wbkgdset", 
     dynlib: pdcursesdll.}
-proc wbkgd*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, importc: "wbkgd", 
+proc wbkgd*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, importc: "wbkgd", 
     dynlib: pdcursesdll.}
-proc wborder*(a2: ptr TWINDOW; a3: cunsignedlong; a4: cunsignedlong; 
+proc wborder*(a2: ptr WINDOW; a3: cunsignedlong; a4: cunsignedlong; 
               a5: cunsignedlong; a6: cunsignedlong; a7: cunsignedlong; 
               a8: cunsignedlong; a9: cunsignedlong; a10: cunsignedlong): cint{.
     extdecl, importc: "wborder", dynlib: pdcursesdll.}
-proc wchgat*(a2: ptr TWINDOW; a3: cint; a4: cunsignedlong; a5: cshort; 
+proc wchgat*(a2: ptr WINDOW; a3: cint; a4: cunsignedlong; a5: cshort; 
              a6: pointer): cint{.extdecl, importc: "wchgat", dynlib: pdcursesdll.}
-proc wclear*(a2: ptr TWINDOW): cint{.extdecl, importc: "wclear", 
+proc wclear*(a2: ptr WINDOW): cint{.extdecl, importc: "wclear", 
                                     dynlib: pdcursesdll.}
-proc wclrtobot*(a2: ptr TWINDOW): cint{.extdecl, importc: "wclrtobot", 
+proc wclrtobot*(a2: ptr WINDOW): cint{.extdecl, importc: "wclrtobot", 
                                        dynlib: pdcursesdll.}
-proc wclrtoeol*(a2: ptr TWINDOW): cint{.extdecl, importc: "wclrtoeol", 
+proc wclrtoeol*(a2: ptr WINDOW): cint{.extdecl, importc: "wclrtoeol", 
                                        dynlib: pdcursesdll.}
-proc wcolor_set*(a2: ptr TWINDOW; a3: cshort; a4: pointer): cint{.extdecl, 
+proc wcolor_set*(a2: ptr WINDOW; a3: cshort; a4: pointer): cint{.extdecl, 
     importc: "wcolor_set", dynlib: pdcursesdll.}
-proc wcursyncup*(a2: ptr TWINDOW){.extdecl, importc: "wcursyncup", 
+proc wcursyncup*(a2: ptr WINDOW){.extdecl, importc: "wcursyncup", 
                                   dynlib: pdcursesdll.}
-proc wdelch*(a2: ptr TWINDOW): cint{.extdecl, importc: "wdelch", 
+proc wdelch*(a2: ptr WINDOW): cint{.extdecl, importc: "wdelch", 
                                     dynlib: pdcursesdll.}
-proc wdeleteln*(a2: ptr TWINDOW): cint{.extdecl, importc: "wdeleteln", 
+proc wdeleteln*(a2: ptr WINDOW): cint{.extdecl, importc: "wdeleteln", 
                                        dynlib: pdcursesdll.}
-proc wechochar*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, 
+proc wechochar*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, 
     importc: "wechochar", dynlib: pdcursesdll.}
-proc werase*(a2: ptr TWINDOW): cint{.extdecl, importc: "werase", 
+proc werase*(a2: ptr WINDOW): cint{.extdecl, importc: "werase", 
                                     dynlib: pdcursesdll.}
-proc wgetch*(a2: ptr TWINDOW): cint{.extdecl, importc: "wgetch", 
+proc wgetch*(a2: ptr WINDOW): cint{.extdecl, importc: "wgetch", 
                                     dynlib: pdcursesdll.}
-proc wgetnstr*(a2: ptr TWINDOW; a3: cstring; a4: cint): cint{.extdecl, 
+proc wgetnstr*(a2: ptr WINDOW; a3: cstring; a4: cint): cint{.extdecl, 
     importc: "wgetnstr", dynlib: pdcursesdll.}
-proc wgetstr*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, importc: "wgetstr", 
+proc wgetstr*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, importc: "wgetstr", 
     dynlib: pdcursesdll.}
-proc whline*(a2: ptr TWINDOW; a3: cunsignedlong; a4: cint): cint{.extdecl, 
+proc whline*(a2: ptr WINDOW; a3: cunsignedlong; a4: cint): cint{.extdecl, 
     importc: "whline", dynlib: pdcursesdll.}
-proc winchnstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
+proc winchnstr*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
     importc: "winchnstr", dynlib: pdcursesdll.}
-proc winchstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc winchstr*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "winchstr", dynlib: pdcursesdll.}
-proc winch*(a2: ptr TWINDOW): cunsignedlong{.extdecl, importc: "winch", 
+proc winch*(a2: ptr WINDOW): cunsignedlong{.extdecl, importc: "winch", 
     dynlib: pdcursesdll.}
-proc winnstr*(a2: ptr TWINDOW; a3: cstring; a4: cint): cint{.extdecl, 
+proc winnstr*(a2: ptr WINDOW; a3: cstring; a4: cint): cint{.extdecl, 
     importc: "winnstr", dynlib: pdcursesdll.}
-proc winsch*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, importc: "winsch", 
+proc winsch*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, importc: "winsch", 
     dynlib: pdcursesdll.}
-proc winsdelln*(a2: ptr TWINDOW; a3: cint): cint{.extdecl, importc: "winsdelln", 
+proc winsdelln*(a2: ptr WINDOW; a3: cint): cint{.extdecl, importc: "winsdelln", 
     dynlib: pdcursesdll.}
-proc winsertln*(a2: ptr TWINDOW): cint{.extdecl, importc: "winsertln", 
+proc winsertln*(a2: ptr WINDOW): cint{.extdecl, importc: "winsertln", 
                                        dynlib: pdcursesdll.}
-proc winsnstr*(a2: ptr TWINDOW; a3: cstring; a4: cint): cint{.extdecl, 
+proc winsnstr*(a2: ptr WINDOW; a3: cstring; a4: cint): cint{.extdecl, 
     importc: "winsnstr", dynlib: pdcursesdll.}
-proc winsstr*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, importc: "winsstr", 
+proc winsstr*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, importc: "winsstr", 
     dynlib: pdcursesdll.}
-proc winstr*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, importc: "winstr", 
+proc winstr*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, importc: "winstr", 
     dynlib: pdcursesdll.}
-proc wmove*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, importc: "wmove", 
+proc wmove*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, importc: "wmove", 
     dynlib: pdcursesdll.}
-proc wnoutrefresh*(a2: ptr TWINDOW): cint{.extdecl, importc: "wnoutrefresh", 
+proc wnoutrefresh*(a2: ptr WINDOW): cint{.extdecl, importc: "wnoutrefresh", 
     dynlib: pdcursesdll.}
-proc wprintw*(a2: ptr TWINDOW; a3: cstring): cint{.varargs, extdecl, 
+proc wprintw*(a2: ptr WINDOW; a3: cstring): cint{.varargs, extdecl, 
     importc: "wprintw", dynlib: pdcursesdll.}
-proc wredrawln*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc wredrawln*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "wredrawln", dynlib: pdcursesdll.}
-proc wrefresh*(a2: ptr TWINDOW): cint{.extdecl, importc: "wrefresh", 
+proc wrefresh*(a2: ptr WINDOW): cint{.extdecl, importc: "wrefresh", 
                                       dynlib: pdcursesdll.}
-proc wscanw*(a2: ptr TWINDOW; a3: cstring): cint{.varargs, extdecl, 
+proc wscanw*(a2: ptr WINDOW; a3: cstring): cint{.varargs, extdecl, 
     importc: "wscanw", dynlib: pdcursesdll.}
-proc wscrl*(a2: ptr TWINDOW; a3: cint): cint{.extdecl, importc: "wscrl", 
+proc wscrl*(a2: ptr WINDOW; a3: cint): cint{.extdecl, importc: "wscrl", 
     dynlib: pdcursesdll.}
-proc wsetscrreg*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc wsetscrreg*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "wsetscrreg", dynlib: pdcursesdll.}
-proc wstandend*(a2: ptr TWINDOW): cint{.extdecl, importc: "wstandend", 
+proc wstandend*(a2: ptr WINDOW): cint{.extdecl, importc: "wstandend", 
                                        dynlib: pdcursesdll.}
-proc wstandout*(a2: ptr TWINDOW): cint{.extdecl, importc: "wstandout", 
+proc wstandout*(a2: ptr WINDOW): cint{.extdecl, importc: "wstandout", 
                                        dynlib: pdcursesdll.}
-proc wsyncdown*(a2: ptr TWINDOW){.extdecl, importc: "wsyncdown", 
+proc wsyncdown*(a2: ptr WINDOW){.extdecl, importc: "wsyncdown", 
                                  dynlib: pdcursesdll.}
-proc wsyncup*(a2: ptr TWINDOW){.extdecl, importc: "wsyncup", dynlib: pdcursesdll.}
-proc wtimeout*(a2: ptr TWINDOW; a3: cint){.extdecl, importc: "wtimeout", 
+proc wsyncup*(a2: ptr WINDOW){.extdecl, importc: "wsyncup", dynlib: pdcursesdll.}
+proc wtimeout*(a2: ptr WINDOW; a3: cint){.extdecl, importc: "wtimeout", 
     dynlib: pdcursesdll.}
-proc wtouchln*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cint): cint{.extdecl, 
+proc wtouchln*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cint): cint{.extdecl, 
     importc: "wtouchln", dynlib: pdcursesdll.}
-proc wvline*(a2: ptr TWINDOW; a3: cunsignedlong; a4: cint): cint{.extdecl, 
+proc wvline*(a2: ptr WINDOW; a3: cunsignedlong; a4: cint): cint{.extdecl, 
     importc: "wvline", dynlib: pdcursesdll.}
 proc addnwstr*(a2: cstring; a3: cint): cint{.extdecl, importc: "addnwstr", 
     dynlib: pdcursesdll.}
@@ -1146,7 +1152,7 @@ proc border_set*(a2: ptr cunsignedlong; a3: ptr cunsignedlong;
                  a6: ptr cunsignedlong; a7: ptr cunsignedlong; 
                  a8: ptr cunsignedlong; a9: ptr cunsignedlong): cint{.extdecl, 
     importc: "border_set", dynlib: pdcursesdll.}
-proc box_set*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: ptr cunsignedlong): cint{.
+proc box_set*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: ptr cunsignedlong): cint{.
     extdecl, importc: "box_set", dynlib: pdcursesdll.}
 proc echo_wchar*(a2: ptr cunsignedlong): cint{.extdecl, importc: "echo_wchar", 
     dynlib: pdcursesdll.}
@@ -1221,47 +1227,47 @@ proc mvin_wchstr*(a2: cint; a3: cint; a4: ptr cunsignedlong): cint{.extdecl,
     importc: "mvin_wchstr", dynlib: pdcursesdll.}
 proc mvvline_set*(a2: cint; a3: cint; a4: ptr cunsignedlong; a5: cint): cint{.
     extdecl, importc: "mvvline_set", dynlib: pdcursesdll.}
-proc mvwaddnwstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
+proc mvwaddnwstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
     extdecl, importc: "mvwaddnwstr", dynlib: pdcursesdll.}
-proc mvwaddwstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.
+proc mvwaddwstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.
     extdecl, importc: "mvwaddwstr", dynlib: pdcursesdll.}
-proc mvwadd_wch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
+proc mvwadd_wch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
     extdecl, importc: "mvwadd_wch", dynlib: pdcursesdll.}
-proc mvwadd_wchnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
+proc mvwadd_wchnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
                      a6: cint): cint{.extdecl, importc: "mvwadd_wchnstr", 
                                       dynlib: pdcursesdll.}
-proc mvwadd_wchstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
+proc mvwadd_wchstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
     extdecl, importc: "mvwadd_wchstr", dynlib: pdcursesdll.}
-proc mvwgetn_wstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cint; a6: cint): cint{.
+proc mvwgetn_wstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cint; a6: cint): cint{.
     extdecl, importc: "mvwgetn_wstr", dynlib: pdcursesdll.}
-proc mvwget_wch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cint): cint{.
+proc mvwget_wch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cint): cint{.
     extdecl, importc: "mvwget_wch", dynlib: pdcursesdll.}
-proc mvwget_wstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cint): cint{.
+proc mvwget_wstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cint): cint{.
     extdecl, importc: "mvwget_wstr", dynlib: pdcursesdll.}
-proc mvwhline_set*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
+proc mvwhline_set*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
                    a6: cint): cint{.extdecl, importc: "mvwhline_set", 
                                     dynlib: pdcursesdll.}
-proc mvwinnwstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
+proc mvwinnwstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
     extdecl, importc: "mvwinnwstr", dynlib: pdcursesdll.}
-proc mvwins_nwstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
+proc mvwins_nwstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring; a6: cint): cint{.
     extdecl, importc: "mvwins_nwstr", dynlib: pdcursesdll.}
-proc mvwins_wch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
+proc mvwins_wch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
     extdecl, importc: "mvwins_wch", dynlib: pdcursesdll.}
-proc mvwins_wstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.
+proc mvwins_wstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.
     extdecl, importc: "mvwins_wstr", dynlib: pdcursesdll.}
-proc mvwin_wch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
+proc mvwin_wch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
     extdecl, importc: "mvwin_wch", dynlib: pdcursesdll.}
-proc mvwin_wchnstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
+proc mvwin_wchnstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
                     a6: cint): cint{.extdecl, importc: "mvwin_wchnstr", 
                                      dynlib: pdcursesdll.}
-proc mvwin_wchstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
+proc mvwin_wchstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong): cint{.
     extdecl, importc: "mvwin_wchstr", dynlib: pdcursesdll.}
-proc mvwinwstr*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cstring): cint{.
+proc mvwinwstr*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cstring): cint{.
     extdecl, importc: "mvwinwstr", dynlib: pdcursesdll.}
-proc mvwvline_set*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
+proc mvwvline_set*(a2: ptr WINDOW; a3: cint; a4: cint; a5: ptr cunsignedlong; 
                    a6: cint): cint{.extdecl, importc: "mvwvline_set", 
                                     dynlib: pdcursesdll.}
-proc pecho_wchar*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc pecho_wchar*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "pecho_wchar", dynlib: pdcursesdll.}
 proc setcchar*(a2: ptr cunsignedlong; a3: cstring; a4: cunsignedlong; 
                a5: cshort; a6: pointer): cint{.extdecl, importc: "setcchar", 
@@ -1272,74 +1278,74 @@ proc unget_wch*(a2: char): cint{.extdecl, importc: "unget_wch",
                                     dynlib: pdcursesdll.}
 proc vline_set*(a2: ptr cunsignedlong; a3: cint): cint{.extdecl, 
     importc: "vline_set", dynlib: pdcursesdll.}
-proc waddnwstr*(a2: ptr TWINDOW; a3: cstring; a4: cint): cint{.extdecl, 
+proc waddnwstr*(a2: ptr WINDOW; a3: cstring; a4: cint): cint{.extdecl, 
     importc: "waddnwstr", dynlib: pdcursesdll.}
-proc waddwstr*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, 
+proc waddwstr*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, 
     importc: "waddwstr", dynlib: pdcursesdll.}
-proc wadd_wch*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc wadd_wch*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "wadd_wch", dynlib: pdcursesdll.}
-proc wadd_wchnstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: cint): cint{.
+proc wadd_wchnstr*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: cint): cint{.
     extdecl, importc: "wadd_wchnstr", dynlib: pdcursesdll.}
-proc wadd_wchstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc wadd_wchstr*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "wadd_wchstr", dynlib: pdcursesdll.}
-proc wbkgrnd*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc wbkgrnd*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "wbkgrnd", dynlib: pdcursesdll.}
-proc wbkgrndset*(a2: ptr TWINDOW; a3: ptr cunsignedlong){.extdecl, 
+proc wbkgrndset*(a2: ptr WINDOW; a3: ptr cunsignedlong){.extdecl, 
     importc: "wbkgrndset", dynlib: pdcursesdll.}
-proc wborder_set*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: ptr cunsignedlong; 
+proc wborder_set*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: ptr cunsignedlong; 
                   a5: ptr cunsignedlong; a6: ptr cunsignedlong; 
                   a7: ptr cunsignedlong; a8: ptr cunsignedlong; 
                   a9: ptr cunsignedlong; a10: ptr cunsignedlong): cint{.extdecl, 
     importc: "wborder_set", dynlib: pdcursesdll.}
-proc wecho_wchar*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc wecho_wchar*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "wecho_wchar", dynlib: pdcursesdll.}
-proc wgetbkgrnd*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc wgetbkgrnd*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "wgetbkgrnd", dynlib: pdcursesdll.}
-proc wgetn_wstr*(a2: ptr TWINDOW; a3: ptr cint; a4: cint): cint{.extdecl, 
+proc wgetn_wstr*(a2: ptr WINDOW; a3: ptr cint; a4: cint): cint{.extdecl, 
     importc: "wgetn_wstr", dynlib: pdcursesdll.}
-proc wget_wch*(a2: ptr TWINDOW; a3: ptr cint): cint{.extdecl, 
+proc wget_wch*(a2: ptr WINDOW; a3: ptr cint): cint{.extdecl, 
     importc: "wget_wch", dynlib: pdcursesdll.}
-proc wget_wstr*(a2: ptr TWINDOW; a3: ptr cint): cint{.extdecl, 
+proc wget_wstr*(a2: ptr WINDOW; a3: ptr cint): cint{.extdecl, 
     importc: "wget_wstr", dynlib: pdcursesdll.}
-proc whline_set*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
+proc whline_set*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
     importc: "whline_set", dynlib: pdcursesdll.}
-proc winnwstr*(a2: ptr TWINDOW; a3: cstring; a4: cint): cint{.extdecl, 
+proc winnwstr*(a2: ptr WINDOW; a3: cstring; a4: cint): cint{.extdecl, 
     importc: "winnwstr", dynlib: pdcursesdll.}
-proc wins_nwstr*(a2: ptr TWINDOW; a3: cstring; a4: cint): cint{.extdecl, 
+proc wins_nwstr*(a2: ptr WINDOW; a3: cstring; a4: cint): cint{.extdecl, 
     importc: "wins_nwstr", dynlib: pdcursesdll.}
-proc wins_wch*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc wins_wch*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "wins_wch", dynlib: pdcursesdll.}
-proc wins_wstr*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, 
+proc wins_wstr*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, 
     importc: "wins_wstr", dynlib: pdcursesdll.}
-proc winwstr*(a2: ptr TWINDOW; a3: cstring): cint{.extdecl, importc: "winwstr", 
+proc winwstr*(a2: ptr WINDOW; a3: cstring): cint{.extdecl, importc: "winwstr", 
     dynlib: pdcursesdll.}
-proc win_wch*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc win_wch*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "win_wch", dynlib: pdcursesdll.}
-proc win_wchnstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
+proc win_wchnstr*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
     importc: "win_wchnstr", dynlib: pdcursesdll.}
-proc win_wchstr*(a2: ptr TWINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
+proc win_wchstr*(a2: ptr WINDOW; a3: ptr cunsignedlong): cint{.extdecl, 
     importc: "win_wchstr", dynlib: pdcursesdll.}
 proc wunctrl*(a2: ptr cunsignedlong): cstring{.extdecl, importc: "wunctrl", 
     dynlib: pdcursesdll.}
-proc wvline_set*(a2: ptr TWINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
+proc wvline_set*(a2: ptr WINDOW; a3: ptr cunsignedlong; a4: cint): cint{.extdecl, 
     importc: "wvline_set", dynlib: pdcursesdll.}
-proc getattrs*(a2: ptr TWINDOW): cunsignedlong{.extdecl, importc: "getattrs", 
+proc getattrs*(a2: ptr WINDOW): cunsignedlong{.extdecl, importc: "getattrs", 
     dynlib: pdcursesdll.}
-proc getbegx*(a2: ptr TWINDOW): cint{.extdecl, importc: "getbegx", 
+proc getbegx*(a2: ptr WINDOW): cint{.extdecl, importc: "getbegx", 
                                      dynlib: pdcursesdll.}
-proc getbegy*(a2: ptr TWINDOW): cint{.extdecl, importc: "getbegy", 
+proc getbegy*(a2: ptr WINDOW): cint{.extdecl, importc: "getbegy", 
                                      dynlib: pdcursesdll.}
-proc getmaxx*(a2: ptr TWINDOW): cint{.extdecl, importc: "getmaxx", 
+proc getmaxx*(a2: ptr WINDOW): cint{.extdecl, importc: "getmaxx", 
                                      dynlib: pdcursesdll.}
-proc getmaxy*(a2: ptr TWINDOW): cint{.extdecl, importc: "getmaxy", 
+proc getmaxy*(a2: ptr WINDOW): cint{.extdecl, importc: "getmaxy", 
                                      dynlib: pdcursesdll.}
-proc getparx*(a2: ptr TWINDOW): cint{.extdecl, importc: "getparx", 
+proc getparx*(a2: ptr WINDOW): cint{.extdecl, importc: "getparx", 
                                      dynlib: pdcursesdll.}
-proc getpary*(a2: ptr TWINDOW): cint{.extdecl, importc: "getpary", 
+proc getpary*(a2: ptr WINDOW): cint{.extdecl, importc: "getpary", 
                                      dynlib: pdcursesdll.}
-proc getcurx*(a2: ptr TWINDOW): cint{.extdecl, importc: "getcurx", 
+proc getcurx*(a2: ptr WINDOW): cint{.extdecl, importc: "getcurx", 
                                      dynlib: pdcursesdll.}
-proc getcury*(a2: ptr TWINDOW): cint{.extdecl, importc: "getcury", 
+proc getcury*(a2: ptr WINDOW): cint{.extdecl, importc: "getcury", 
                                      dynlib: pdcursesdll.}
 proc traceoff*(){.extdecl, importc: "traceoff", dynlib: pdcursesdll.}
 proc traceon*(){.extdecl, importc: "traceon", dynlib: pdcursesdll.}
@@ -1363,7 +1369,7 @@ proc request_mouse_pos*(): cint{.extdecl, importc: "request_mouse_pos",
                                  dynlib: pdcursesdll.}
 proc map_button*(a2: cunsignedlong): cint{.extdecl, importc: "map_button", 
     dynlib: pdcursesdll.}
-proc wmouse_position*(a2: ptr TWINDOW; a3: ptr cint; a4: ptr cint){.extdecl, 
+proc wmouse_position*(a2: ptr WINDOW; a3: ptr cint; a4: ptr cint){.extdecl, 
     importc: "wmouse_position", dynlib: pdcursesdll.}
 proc getmouse*(): cunsignedlong{.extdecl, importc: "getmouse", dynlib: pdcursesdll.}
 proc getbmap*(): cunsignedlong{.extdecl, importc: "getbmap", dynlib: pdcursesdll.}
@@ -1375,7 +1381,7 @@ proc has_key*(a2: cint): cunsignedchar{.extdecl, importc: "has_key",
                                         dynlib: pdcursesdll.}
 proc use_default_colors*(): cint{.extdecl, importc: "use_default_colors", 
                                   dynlib: pdcursesdll.}
-proc wresize*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc wresize*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "wresize", dynlib: pdcursesdll.}
 proc mouseinterval*(a2: cint): cint{.extdecl, importc: "mouseinterval", 
                                      dynlib: pdcursesdll.}
@@ -1383,13 +1389,13 @@ proc mousemask*(a2: cunsignedlong; a3: ptr cunsignedlong): cunsignedlong{.extdec
     importc: "mousemask", dynlib: pdcursesdll.}
 proc mouse_trafo*(a2: ptr cint; a3: ptr cint; a4: cunsignedchar): cunsignedchar{.
     extdecl, importc: "mouse_trafo", dynlib: pdcursesdll.}
-proc nc_getmouse*(a2: ptr TMEVENT): cint{.extdecl, importc: "nc_getmouse", 
+proc nc_getmouse*(a2: ptr MEVENT): cint{.extdecl, importc: "nc_getmouse", 
     dynlib: pdcursesdll.}
-proc ungetmouse*(a2: ptr TMEVENT): cint{.extdecl, importc: "ungetmouse", 
+proc ungetmouse*(a2: ptr MEVENT): cint{.extdecl, importc: "ungetmouse", 
                                         dynlib: pdcursesdll.}
-proc wenclose*(a2: ptr TWINDOW; a3: cint; a4: cint): cunsignedchar{.extdecl, 
+proc wenclose*(a2: ptr WINDOW; a3: cint; a4: cint): cunsignedchar{.extdecl, 
     importc: "wenclose", dynlib: pdcursesdll.}
-proc wmouse_trafo*(a2: ptr TWINDOW; a3: ptr cint; a4: ptr cint; a5: cunsignedchar): cunsignedchar{.
+proc wmouse_trafo*(a2: ptr WINDOW; a3: ptr cint; a4: ptr cint; a5: cunsignedchar): cunsignedchar{.
     extdecl, importc: "wmouse_trafo", dynlib: pdcursesdll.}
 proc addrawch*(a2: cunsignedlong): cint{.extdecl, importc: "addrawch", 
     dynlib: pdcursesdll.}
@@ -1405,23 +1411,23 @@ proc mvinsertln*(a2: cint; a3: cint): cint{.extdecl, importc: "mvinsertln",
     dynlib: pdcursesdll.}
 proc mvinsrawch*(a2: cint; a3: cint; a4: cunsignedlong): cint{.extdecl, 
     importc: "mvinsrawch", dynlib: pdcursesdll.}
-proc mvwaddrawch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
+proc mvwaddrawch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
     extdecl, importc: "mvwaddrawch", dynlib: pdcursesdll.}
-proc mvwdeleteln*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc mvwdeleteln*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "mvwdeleteln", dynlib: pdcursesdll.}
-proc mvwinsertln*(a2: ptr TWINDOW; a3: cint; a4: cint): cint{.extdecl, 
+proc mvwinsertln*(a2: ptr WINDOW; a3: cint; a4: cint): cint{.extdecl, 
     importc: "mvwinsertln", dynlib: pdcursesdll.}
-proc mvwinsrawch*(a2: ptr TWINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
+proc mvwinsrawch*(a2: ptr WINDOW; a3: cint; a4: cint; a5: cunsignedlong): cint{.
     extdecl, importc: "mvwinsrawch", dynlib: pdcursesdll.}
 proc raw_output*(a2: cunsignedchar): cint{.extdecl, importc: "raw_output", 
     dynlib: pdcursesdll.}
 proc resize_term*(a2: cint; a3: cint): cint{.extdecl, importc: "resize_term", 
     dynlib: pdcursesdll.}
-proc resize_window*(a2: ptr TWINDOW; a3: cint; a4: cint): ptr TWINDOW{.extdecl, 
+proc resize_window*(a2: ptr WINDOW; a3: cint; a4: cint): ptr WINDOW{.extdecl, 
     importc: "resize_window", dynlib: pdcursesdll.}
-proc waddrawch*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, 
+proc waddrawch*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, 
     importc: "waddrawch", dynlib: pdcursesdll.}
-proc winsrawch*(a2: ptr TWINDOW; a3: cunsignedlong): cint{.extdecl, 
+proc winsrawch*(a2: ptr WINDOW; a3: cunsignedlong): cint{.extdecl, 
     importc: "winsrawch", dynlib: pdcursesdll.}
 proc wordchar*(): char{.extdecl, importc: "wordchar", dynlib: pdcursesdll.}
 proc slk_wlabel*(a2: cint): cstring{.extdecl, importc: "slk_wlabel", 
@@ -1452,38 +1458,38 @@ proc return_key_modifiers*(a2: cunsignedchar): cint{.extdecl,
     importc: "PDC_return_key_modifiers", dynlib: pdcursesdll.}
 proc save_key_modifiers*(a2: cunsignedchar): cint{.extdecl, 
     importc: "PDC_save_key_modifiers", dynlib: pdcursesdll.}
-proc bottom_panel*(pan: ptr TPANEL): cint{.extdecl, importc: "bottom_panel", 
+proc bottom_panel*(pan: ptr PANEL): cint{.extdecl, importc: "bottom_panel", 
     dynlib: pdcursesdll.}
-proc del_panel*(pan: ptr TPANEL): cint{.extdecl, importc: "del_panel", 
+proc del_panel*(pan: ptr PANEL): cint{.extdecl, importc: "del_panel", 
                                        dynlib: pdcursesdll.}
-proc hide_panel*(pan: ptr TPANEL): cint{.extdecl, importc: "hide_panel", 
+proc hide_panel*(pan: ptr PANEL): cint{.extdecl, importc: "hide_panel", 
                                         dynlib: pdcursesdll.}
-proc move_panel*(pan: ptr TPANEL; starty: cint; startx: cint): cint{.extdecl, 
+proc move_panel*(pan: ptr PANEL; starty: cint; startx: cint): cint{.extdecl, 
     importc: "move_panel", dynlib: pdcursesdll.}
-proc new_panel*(win: ptr TWINDOW): ptr TPANEL{.extdecl, importc: "new_panel", 
+proc new_panel*(win: ptr WINDOW): ptr PANEL{.extdecl, importc: "new_panel", 
     dynlib: pdcursesdll.}
-proc panel_above*(pan: ptr TPANEL): ptr TPANEL{.extdecl, importc: "panel_above", 
+proc panel_above*(pan: ptr PANEL): ptr PANEL{.extdecl, importc: "panel_above", 
     dynlib: pdcursesdll.}
-proc panel_below*(pan: ptr TPANEL): ptr TPANEL{.extdecl, importc: "panel_below", 
+proc panel_below*(pan: ptr PANEL): ptr PANEL{.extdecl, importc: "panel_below", 
     dynlib: pdcursesdll.}
-proc panel_hidden*(pan: ptr TPANEL): cint{.extdecl, importc: "panel_hidden", 
+proc panel_hidden*(pan: ptr PANEL): cint{.extdecl, importc: "panel_hidden", 
     dynlib: pdcursesdll.}
-proc panel_userptr*(pan: ptr TPANEL): pointer{.extdecl, importc: "panel_userptr", 
+proc panel_userptr*(pan: ptr PANEL): pointer{.extdecl, importc: "panel_userptr", 
     dynlib: pdcursesdll.}
-proc panel_window*(pan: ptr TPANEL): ptr TWINDOW{.extdecl, importc: "panel_window", 
+proc panel_window*(pan: ptr PANEL): ptr WINDOW{.extdecl, importc: "panel_window", 
     dynlib: pdcursesdll.}
-proc replace_panel*(pan: ptr TPANEL; win: ptr TWINDOW): cint{.extdecl, 
+proc replace_panel*(pan: ptr PANEL; win: ptr WINDOW): cint{.extdecl, 
     importc: "replace_panel", dynlib: pdcursesdll.}
-proc set_panel_userptr*(pan: ptr TPANEL; uptr: pointer): cint{.extdecl, 
+proc set_panel_userptr*(pan: ptr PANEL; uptr: pointer): cint{.extdecl, 
     importc: "set_panel_userptr", dynlib: pdcursesdll.}
-proc show_panel*(pan: ptr TPANEL): cint{.extdecl, importc: "show_panel", 
+proc show_panel*(pan: ptr PANEL): cint{.extdecl, importc: "show_panel", 
                                         dynlib: pdcursesdll.}
-proc top_panel*(pan: ptr TPANEL): cint{.extdecl, importc: "top_panel", 
+proc top_panel*(pan: ptr PANEL): cint{.extdecl, importc: "top_panel", 
                                        dynlib: pdcursesdll.}
 proc update_panels*(){.extdecl, importc: "update_panels", dynlib: pdcursesdll.}
 
 when unixOS:
-  proc Xinitscr*(a2: cint; a3: cstringArray): ptr TWINDOW{.extdecl, 
+  proc Xinitscr*(a2: cint; a3: cstringArray): ptr WINDOW{.extdecl, 
     importc: "Xinitscr", dynlib: pdcursesdll.}
   proc XCursesExit*(){.extdecl, importc: "XCursesExit", dynlib: pdcursesdll.}
   proc sb_init*(): cint{.extdecl, importc: "sb_init", dynlib: pdcursesdll.}
