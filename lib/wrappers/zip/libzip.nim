@@ -59,12 +59,12 @@ else:
   {.pragma: mydll.}
 
 type 
-  TZipSourceCmd* = int32
+  ZipSourceCmd* = int32
 
-  TZipSourceCallback* = proc (state: pointer, data: pointer, length: int, 
-                              cmd: TZipSourceCmd): int {.cdecl.}
-  PZipStat* = ptr TZipStat
-  TZipStat* = object          ## the 'zip_stat' struct
+  ZipSourceCallback* = proc (state: pointer, data: pointer, length: int, 
+                              cmd: ZipSourceCmd): int {.cdecl.}
+  PZipStat* = ptr ZipStat
+  ZipStat* = object           ## the 'zip_stat' struct
     name*: cstring            ## name of the file  
     index*: int32             ## index within archive  
     crc*: int32               ## crc of file data  
@@ -74,14 +74,16 @@ type
     compMethod*: int16        ## compression method used  
     encryptionMethod*: int16  ## encryption method used  
   
-  TZip = object
-  TZipSource = object 
-  TZipFile = object
+  Zip = object
+  ZipSource = object 
+  ZipFile = object
 
-  PZip* = ptr TZip ## represents a zip archive
-  PZipFile* = ptr TZipFile ## represents a file within an archive
-  PZipSource* = ptr TZipSource ## represents a source for an archive
-
+  PZip* = ptr Zip ## represents a zip archive
+  PZipFile* = ptr ZipFile ## represents a file within an archive
+  PZipSource* = ptr ZipSource ## represents a source for an archive
+{.deprecated: [TZipSourceCmd: ZipSourceCmd, TZipStat: ZipStat, TZip: Zip,
+              TZipSourceCallback: ZipSourceCallback, TZipSource: ZipSource,
+              TZipFile: ZipFile].}
 
 # flags for zip_name_locate, zip_fopen, zip_stat, ...  
 const 
@@ -229,7 +231,7 @@ proc zip_source_filep*(para1: PZip, para2: File, para3: int, para4: int): PZipSo
     cdecl, mydll, importc: "zip_source_filep".}
 proc zip_source_free*(para1: PZipSource) {.cdecl, mydll,
     importc: "zip_source_free".}
-proc zip_source_function*(para1: PZip, para2: TZipSourceCallback, 
+proc zip_source_function*(para1: PZip, para2: ZipSourceCallback, 
                           para3: pointer): PZipSource {.cdecl, mydll,
     importc: "zip_source_function".}
 proc zip_source_zip*(para1: PZip, para2: PZip, para3: int32, para4: int32, 

@@ -142,22 +142,23 @@ const
   FILTER_INFO_PIXEL_ERROR* = 2 # Filter info from SMPEG 
 
 type 
-  TFilterInfo*{.final.} = object 
+  FilterInfo*{.final.} = object 
     yuvMbSquareError*: PUInt16
     yuvPixelSquareError*: PUInt16
 
-  PFilterInfo* = ptr TFilterInfo # MPEG filter definition 
-  PFilter* = ptr TFilter # Callback functions for the filter 
-  TFilterCallback* = proc (dest, source: POverlay, region: PRect, 
+  PFilterInfo* = ptr FilterInfo # MPEG filter definition 
+  PFilter* = ptr Filter # Callback functions for the filter 
+  FilterCallback* = proc (dest, source: POverlay, region: PRect, 
                                  filterInfo: PFilterInfo, data: pointer): pointer{.
       cdecl.}
-  TFilterDestroy* = proc (filter: PFilter): pointer{.cdecl.} # The filter definition itself 
-  TFilter*{.final.} = object  # The null filter (default). It simply copies the source rectangle to the video overlay. 
+  FilterDestroy* = proc (filter: PFilter): pointer{.cdecl.} # The filter definition itself 
+  Filter*{.final.} = object  # The null filter (default). It simply copies the source rectangle to the video overlay. 
     flags*: uint32
     data*: pointer
-    callback*: TFilterCallback
-    destroy*: TFilterDestroy
-
+    callback*: FilterCallback
+    destroy*: FilterDestroy
+{.deprecated: [TFilterInfo: FilterInfo, TFilterCallback: FilterCallback,
+              TFilterDestroy: FilterDestroy, TFilter: Filter].}
 
 proc filterNull*(): PFilter{.cdecl, importc: "SMPEGfilter_null", 
     dynlib: SmpegLibName.}
@@ -184,7 +185,7 @@ type
   Pversion* = ptr TVersion # This is the actual SMPEG object
   TSMPEG* = object 
   PSMPEG* = ptr TSMPEG        # Used to get information about the SMPEG object 
-  TInfo* = object 
+  Info* = object 
     hasAudio*: int32
     hasVideo*: int32
     width*: int32
@@ -198,7 +199,8 @@ type
     currentTime*: float64
     totalTime*: float64
 
-  PInfo* = ptr TInfo # Possible MPEG status codes 
+  PInfo* = ptr Info # Possible MPEG status codes 
+{.deprecated: [TInfo: Info].}
 
 const 
   STATUS_ERROR* = - 1
@@ -206,7 +208,7 @@ const
   STATUS_PLAYING* = 1
 
 type 
-  Tstatus* = int32
+  Status* = int32
   Pstatus* = ptr int32     # Matches the declaration of SDL_UpdateRect() 
   TDisplayCallback* = proc (dst: PSurface, x, y: int, w, h: int): pointer{.
       cdecl.} # Create a new SMPEG object from an MPEG file.
@@ -217,6 +219,7 @@ type
               #  The sdl_audio parameter indicates if SMPEG should initialize the SDL audio
               #  subsystem. If not, you will have to use the playaudio() function below
               #  to extract the decoded data. 
+{.deprecated: [Tstatus: Status].}
 
 proc new*(theFile: cstring, info: PInfo, audio: int): PSMPEG{.cdecl, 
     importc: "SMPEG_new", dynlib: SmpegLibName.}
@@ -243,7 +246,7 @@ proc enablevideo*(mpeg: PSMPEG, enable: int){.cdecl,
 proc delete*(mpeg: PSMPEG){.cdecl, importc: "SMPEG_delete", 
                                   dynlib: SmpegLibName.}
   # Get the current status of an SMPEG object 
-proc status*(mpeg: PSMPEG): Tstatus{.cdecl, importc: "SMPEG_status", 
+proc status*(mpeg: PSMPEG): Status{.cdecl, importc: "SMPEG_status", 
     dynlib: SmpegLibName.}
   # status
   # Set the audio volume of an MPEG stream, in the range 0-100 
