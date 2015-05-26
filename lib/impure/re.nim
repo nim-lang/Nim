@@ -29,7 +29,7 @@
 import strutils
 import nre, options
 
-type Regex = nre.Regex
+type Regex* = nre.Regex
 
 const
   MaxSubpatterns* {.deprecated.} = 1000
@@ -48,7 +48,7 @@ type
     ## is raised if the pattern is no valid regular expression.
 
 
-proc re*(s: string, flags = {reExtended, reStudy}): Regex =
+proc re*(s: string, flags = {reExtended, reStudy}): Regex {.deprecated.} =
   ## Constructor of regular expressions. Note that Nim's
   ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
