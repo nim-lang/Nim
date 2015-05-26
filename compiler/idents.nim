@@ -12,7 +12,7 @@
 # id. This module is essential for the compiler's performance.
 
 import 
-  hashes, strutils
+  hashes, strutils, unicode
 
 type 
   TIdObj* = object of RootObj
@@ -37,6 +37,20 @@ proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
   while j < blen:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j)
+
+    #while (a[i] > chr(127) and runeAt($(a), i) == 8943.Rune):
+    while runeAt($(a), i) == 8943.Rune:
+      echo "Batman shit in a!!!"
+      inc(i)
+    #while (b[j] > chr(127) and runeAt($(b), j) == 8943.Rune): 
+    while runeAt($(b), j) == 8943.Rune: 
+      echo "Batman shit in b!!!"
+      inc(j)
+
+    #echo runeAt($b, i), " ", runeAt($b, i).ord, " ", ord(b[i])
+    if ord(b[i]) > 127:
+      echo "Got a unicode suspect: " & b[i] & " --> " & $runeAt($(b), i) 
+
     # tolower inlined:
     var aa = a[i]
     var bb = b[j]
@@ -96,10 +110,12 @@ proc getIdent*(identifier: cstring, length: int, h: THash): PIdent =
     result.id = id
 
 proc getIdent*(identifier: string): PIdent = 
+  echo "getIdent1: ", identifier
   result = getIdent(cstring(identifier), len(identifier), 
                     hashIgnoreStyle(identifier))
 
 proc getIdent*(identifier: string, h: THash): PIdent = 
+  echo "getIdent2: ", identifier
   result = getIdent(cstring(identifier), len(identifier), h)
 
 proc identEq*(id: PIdent, name: string): bool = 

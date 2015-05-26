@@ -5,7 +5,9 @@ discard """
 """
 
 echo "Idents test with Unicode magic chars"
-var foo⋯bar = 1, bar⋯scumm = 47
+var
+  foo⋯bar = 1
+  bar⋯scumm = 47
 
 echo "Idents test Compare"
 var bazma = foo⋯bar == foobar

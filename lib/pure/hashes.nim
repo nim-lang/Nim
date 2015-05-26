@@ -38,7 +38,7 @@
 ##    result = !$h
 
 import
-  strutils
+  strutils, unicode
 
 type
   THash* = int ## a hash value; hash tables using these values should
@@ -124,10 +124,20 @@ proc hash*(x: string): THash =
 proc hashIgnoreStyle*(x: string): THash =
   ## efficient hashing of strings; style is ignored
   var h: THash = 0
+
   for i in 0..x.len-1:
     var c = x[i]
     if c == '_':
       continue                # skip _
+
+    echo "hashIgnoreStyle: ", x
+
+    if runeAt(x, i).ord > 127: # == 8943.Rune):
+    #if x[i] > chr(127) and runeAt(x, i) == 8943.Rune):
+      echo "Got RUNE!"
+      continue
+
+
     if c in {'A'..'Z'}:
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
     h = h !& ord(c)
