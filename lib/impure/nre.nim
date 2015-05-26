@@ -1,5 +1,5 @@
-import private.pcre as pcre
-import private.util
+import nre.private.pcre as pcre
+import nre.private.util
 import tables
 import unsigned
 from future import lc, `[]`

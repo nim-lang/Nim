@@ -1,4 +1,4 @@
-when defined(pcreDynlib):
+when not defined(pcreStaticlib):
   const pcreHeader = "<pcre.h>"
   when not defined(pcreDll):
     when hostOS == "windows":
