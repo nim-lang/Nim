@@ -880,7 +880,7 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n.sons[0].typ, abstractVarRange).kind == tyTuple:
     r.res = "$1.Field$2" % [r.res, getFieldPosition(n.sons[1]).rope]
   else:
-    if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAddr")
+    if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAccess")
     var f = n.sons[1].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
     r.res = "$1.$2" % [r.res, f.loc.r]
@@ -970,7 +970,10 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkCheckedFieldExpr:
     genCheckedFieldAddr(p, n, r)
   of nkDotExpr:
-    genFieldAddr(p, n.sons[0], r)
+    if mapType(n.typ) == etyBaseIndex:
+      genFieldAddr(p, n.sons[0], r)
+    else:
+      genFieldAccess(p, n.sons[0], r)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
     if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
