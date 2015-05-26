@@ -97,7 +97,7 @@ template returnBounds(): stmt {.immediate, dirty.} =
   return (m.matchBounds.a, <m.matchBounds.b)
 
 template returnLength(): stmt {.immediate, dirty.} =
-  return m.matchBounds.b - m.matchBounds.a
+  return m.matchBounds.b - m.matchBounds.a + 1
 
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
                  start = 0): tuple[first, last: int] =
