@@ -1,3 +1,4 @@
+## INTERNAL FILE FOR USE ONLY BY nre.nim.
 import tables
 
 proc fget*[K, V](self: Table[K, V], key: K): V =
