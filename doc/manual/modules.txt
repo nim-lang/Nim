@@ -178,8 +178,7 @@ Module scope
 ~~~~~~~~~~~~
 All identifiers of a module are valid from the point of declaration until
 the end of the module. Identifiers from indirectly dependent modules are *not* 
-available. The `system`:idx: module is automatically imported in every other 
-module.
+available. The `system`:idx: module is automatically imported in every module.
 
 If a module imports an identifier by two different modules, each occurrence of
 the identifier has to be qualified, unless it is an overloaded procedure or

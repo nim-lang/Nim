@@ -9,11 +9,11 @@ Type equality
 -------------
 Nim uses structural type equivalence for most types. Only for objects,
 enumerations and distinct types name equivalence is used. The following
-algorithm (in pseudo-code) determines type equality:
+algorithm, *in pseudo-code*, determines type equality:
 
 .. code-block:: nim
   proc typeEqualsAux(a, b: PType,
-                     s: var set[PType * PType]): bool =
+                     s: var HashSet[(PType, PType)]): bool =
     if (a,b) in s: return true
     incl(s, (a,b))
     if a.kind == b.kind:
@@ -43,7 +43,7 @@ algorithm (in pseudo-code) determines type equality:
                  a.callingConvention == b.callingConvention
 
   proc typeEquals(a, b: PType): bool =
-    var s: set[PType * PType] = {}
+    var s: HashSet[(PType, PType)] = {}
     result = typeEqualsAux(a, b, s)
 
 Since types are graphs which can have cycles, the above algorithm needs an

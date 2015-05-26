@@ -30,7 +30,7 @@ exceptions* or *dying with a fatal error*. However, the implementation
 provides a means to disable these runtime checks. See the section pragmas_
 for details. 
 
-Wether a checked runtime error results in an exception or in a fatal error at
+Whether a checked runtime error results in an exception or in a fatal error at
 runtime is implementation specific. Thus the following program is always
 invalid:
 

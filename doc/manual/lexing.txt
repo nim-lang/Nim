@@ -25,7 +25,7 @@ a separate token. This trick allows parsing of Nim with only 1 token of
 lookahead.
 
 The parser uses a stack of indentation levels: the stack consists of integers
-counting the spaces. The indentation information is queried at strategic 
+counting the spaces. The indentation information is queried at strategic
 places in the parser but ignored otherwise: The pseudo terminal ``IND{>}``
 denotes an indentation that consists of more spaces than the entry at the top
 of the stack; IND{=} an indentation that has the same number of spaces. ``DED``
@@ -80,7 +80,7 @@ underscores ``__`` are not allowed::
   digit ::= '0'..'9'
   IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
 
-Currently any unicode character with an ordinal value > 127 (non ASCII) is
+Currently any Unicode character with an ordinal value > 127 (non ASCII) is
 classified as a ``letter`` and may thus be part of an identifier but later
 versions of the language may assign some Unicode characters to belong to the
 operator characters instead.
