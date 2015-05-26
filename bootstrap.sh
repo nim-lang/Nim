@@ -3,7 +3,7 @@ set -e
 set -x
 
 if [ ! -e csources/.git ]; then
-	git submodule update --init --depth 1
+	git clone --depth 1 git://github.com/nim-lang/csources.git csources
 fi
 
 cd "csources"
