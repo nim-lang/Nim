@@ -571,7 +571,7 @@ proc xzDist(c: var ConfigData) =
     echo "Copying ", s, " to ", tmpDir / d
     let destdir = tmpdir / d.splitFile.dir
     if not dirExists(destdir): createDir(destdir)
-    copyFile(s, tmpDir / d)
+    copyFileWithPermissions(s, tmpDir / d)
 
   processFile(z, proj / buildBatFile32, "build" / buildBatFile32)
   processFile(z, proj / buildBatFile64, "build" / buildBatFile64)
