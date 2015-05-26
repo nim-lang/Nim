@@ -8,10 +8,11 @@
 #
 
 type
-  TccState {.pure, final.} = object
-  PccState* = ptr TccState
+  CcState {.pure, final.} = object
+  PccState* = ptr CcState
   
-  TErrorFunc* = proc (opaque: pointer, msg: cstring) {.cdecl.}
+  ErrorFunc* = proc (opaque: pointer, msg: cstring) {.cdecl.}
+{.deprecated: [TccState: CcState, TErrorFunc: ErrorFunc].}
 
 proc openCCState*(): PccState {.importc: "tcc_new", cdecl.}
   ## create a new TCC compilation context
@@ -22,7 +23,7 @@ proc closeCCState*(s: PccState) {.importc: "tcc_delete", cdecl.}
 proc enableDebug*(s: PccState) {.importc: "tcc_enable_debug", cdecl.}
   ## add debug information in the generated code
 
-proc setErrorFunc*(s: PccState, errorOpaque: pointer, errorFun: TErrorFunc) {.
+proc setErrorFunc*(s: PccState, errorOpaque: pointer, errorFun: ErrorFunc) {.
   cdecl, importc: "tcc_set_error_func".}
   ## set error/warning display callback
 

@@ -64,6 +64,7 @@ proc setBaseFlags*(n: PNode, base: TNumericalBase)
 proc parseSymbol*(p: var TParser, allowNil = false): PNode
 proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
+proc parseStmtPragma(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -499,10 +500,13 @@ proc parsePar(p: var TParser): PNode =
   #| parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
   #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
   #|         | 'when' | 'var' | 'mixin'
-  #| par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';'
-  #|                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
-  #|                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
-  #|         optPar ')'
+  #| par = '(' optInd
+  #|           ( &parKeyw complexOrSimpleStmt ^+ ';'
+  #|           | ';' complexOrSimpleStmt ^+ ';'
+  #|           | pragmaStmt
+  #|           | simpleExpr ( ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )
+  #|                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
+  #|           optPar ')'
   #
   # unfortunately it's ambiguous: (expr: expr) vs (exprStmt); however a
   # leading ';' could be used to enforce a 'stmt' context ...
@@ -521,6 +525,8 @@ proc parsePar(p: var TParser): PNode =
     getTok(p)
     optInd(p, result)
     semiStmtList(p, result)
+  elif p.tok.tokType == tkCurlyDotLe:
+    result.add(parseStmtPragma(p))
   elif p.tok.tokType != tkParRi:
     var a = simpleExpr(p)
     if p.tok.tokType == tkEquals:

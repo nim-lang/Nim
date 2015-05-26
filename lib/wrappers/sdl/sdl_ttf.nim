@@ -177,8 +177,9 @@ const
   UNICODE_BOM_SWAPPED* = 0x0000FFFE
 
 type 
-  PFont* = ptr TFont
-  TFont = object  
+  PFont* = ptr Font
+  Font = object  
+{.deprecated: [TFont: Font].}
   
   
 # This macro can be used to fill a version structure with the compile-time
@@ -256,9 +257,9 @@ proc sizeUNICODE*(font: PFont, text: PUInt16, w: var cint, y: var cint): cint{.
   #   to the text color.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc renderUTF8Solid*(font: PFont, text: cstring, fg: TColor): PSurface{.
+proc renderUTF8Solid*(font: PFont, text: cstring, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderUTF8_Solid", dynlib: ttfLibName.}
-proc renderUNICODE_Solid*(font: PFont, text: PUInt16, fg: TColor): PSurface{.
+proc renderUNICODE_Solid*(font: PFont, text: PUInt16, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderUNICODE_Solid", dynlib: ttfLibName.}
   #
   #Create an 8-bit palettized surface and render the given glyph at
@@ -268,21 +269,21 @@ proc renderUNICODE_Solid*(font: PFont, text: PUInt16, fg: TColor): PSurface{.
   #   centering in the X direction, and aligned normally in the Y direction.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc renderGlyphSolid*(font: PFont, ch: uint16, fg: TColor): PSurface{.
+proc renderGlyphSolid*(font: PFont, ch: uint16, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderGlyph_Solid", dynlib: ttfLibName.}
   # Create an 8-bit palettized surface and render the given text at
   #   high quality with the given font and colors.  The 0 pixel is background,
   #   while other pixels have varying degrees of the foreground color.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc renderTextShaded*(font: PFont, text: cstring, fg: TColor, 
-                            bg: TColor): PSurface{.cdecl, 
+proc renderTextShaded*(font: PFont, text: cstring, fg: Color, 
+                            bg: Color): PSurface{.cdecl, 
     importc: "TTF_RenderText_Shaded", dynlib: ttfLibName.}
-proc renderUTF8Shaded*(font: PFont, text: cstring, fg: TColor, 
-                            bg: TColor): PSurface{.cdecl, 
+proc renderUTF8Shaded*(font: PFont, text: cstring, fg: Color, 
+                            bg: Color): PSurface{.cdecl, 
     importc: "TTF_RenderUTF8_Shaded", dynlib: ttfLibName.}
-proc renderUNICODE_Shaded*(font: PFont, text: PUInt16, fg: TColor, 
-                               bg: TColor): PSurface{.cdecl, 
+proc renderUNICODE_Shaded*(font: PFont, text: PUInt16, fg: Color, 
+                               bg: Color): PSurface{.cdecl, 
     importc: "TTF_RenderUNICODE_Shaded", dynlib: ttfLibName.}
   # Create an 8-bit palettized surface and render the given glyph at
   #   high quality with the given font and colors.  The 0 pixel is background,
@@ -291,17 +292,17 @@ proc renderUNICODE_Shaded*(font: PFont, text: PUInt16, fg: TColor,
   #   direction, and aligned normally in the Y direction.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc renderGlyphShaded*(font: PFont, ch: uint16, fg: TColor, bg: TColor): PSurface{.
+proc renderGlyphShaded*(font: PFont, ch: uint16, fg: Color, bg: Color): PSurface{.
     cdecl, importc: "TTF_RenderGlyph_Shaded", dynlib: ttfLibName.}
   # Create a 32-bit ARGB surface and render the given text at high quality,
   #   using alpha blending to dither the font with the given color.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc renderTextBlended*(font: PFont, text: cstring, fg: TColor): PSurface{.
+proc renderTextBlended*(font: PFont, text: cstring, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderText_Blended", dynlib: ttfLibName.}
-proc renderUTF8Blended*(font: PFont, text: cstring, fg: TColor): PSurface{.
+proc renderUTF8Blended*(font: PFont, text: cstring, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderUTF8_Blended", dynlib: ttfLibName.}
-proc RenderUNICODE_Blended*(font: PFont, text: PUInt16, fg: TColor): PSurface{.
+proc RenderUNICODE_Blended*(font: PFont, text: PUInt16, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderUNICODE_Blended", dynlib: ttfLibName.}
   # Create a 32-bit ARGB surface and render the given glyph at high quality,
   #   using alpha blending to dither the font with the given color.
@@ -309,7 +310,7 @@ proc RenderUNICODE_Blended*(font: PFont, text: PUInt16, fg: TColor): PSurface{.
   #   direction, and aligned normally in the Y direction.
   #   This function returns the new surface, or NULL if there was an error.
   #
-proc renderGlyphBlended*(font: PFont, ch: uint16, fg: TColor): PSurface{.
+proc renderGlyphBlended*(font: PFont, ch: uint16, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderGlyph_Blended", dynlib: ttfLibName.}
   # For compatibility with previous versions, here are the old functions 
   # #define TTF_RenderText(font, text, fg, bg)
@@ -327,11 +328,11 @@ proc quit*(){.cdecl, importc: "TTF_Quit", dynlib: ttfLibName.}
 proc wasInit*(): cint{.cdecl, importc: "TTF_WasInit", dynlib: ttfLibName.}
 
 
-proc version*(x: var sdl.Tversion) = 
+proc version*(x: var sdl.Version) = 
   x.major = MAJOR_VERSION
   x.minor = MINOR_VERSION
   x.patch = PATCHLEVEL
 
 
-proc renderTextSolid*(font: PFont, text: cstring, fg: TColor): PSurface{.
+proc renderTextSolid*(font: PFont, text: cstring, fg: Color): PSurface{.
     cdecl, importc: "TTF_RenderText_Solid", dynlib: ttfLibName.}

@@ -29,7 +29,7 @@ elif defined(macosx):
 else: 
   const 
     readlineDll* = "libreadline.so.6(|.0)"
-#  mangle "'TCommandFunc'" TCommandFunc
+#  mangle "'CommandFunc'" CommandFunc
 #  mangle TvcpFunc TvcpFunc
 
 import rltypedefs
@@ -78,9 +78,10 @@ const
 #   TYPE says which kind of thing FUNCTION is. 
 
 type 
-  TKEYMAP_ENTRY*{.pure, final.} = object 
+  KEYMAP_ENTRY*{.pure, final.} = object 
     typ*: char
-    function*: TCommandFunc
+    function*: CommandFunc
+{.deprecated: [TKEYMAP_ENTRY: KEYMAP_ENTRY].}
 
 
 # This must be large enough to hold bindings for all of the characters
@@ -97,8 +98,9 @@ const
 #   Maybe I need C lessons. 
 
 type 
-  TKEYMAP_ENTRY_ARRAY* = array[0..KEYMAP_SIZE - 1, TKEYMAP_ENTRY]
-  PKeymap* = ptr TKEYMAP_ENTRY
+  KEYMAP_ENTRY_ARRAY* = array[0..KEYMAP_SIZE - 1, KEYMAP_ENTRY]
+  PKeymap* = ptr KEYMAP_ENTRY
+{.deprecated: [TKEYMAP_ENTRY_ARRAY: KEYMAP_ENTRY_ARRAY].}
 
 # The values that TYPE can have in a keymap entry. 
 
@@ -110,12 +112,12 @@ const
 when false: 
   var 
     emacs_standard_keymap*{.importc: "emacs_standard_keymap", 
-                            dynlib: readlineDll.}: TKEYMAP_ENTRY_ARRAY
-    emacs_meta_keymap*{.importc: "emacs_meta_keymap", dynlib: readlineDll.}: TKEYMAP_ENTRY_ARRAY
-    emacs_ctlx_keymap*{.importc: "emacs_ctlx_keymap", dynlib: readlineDll.}: TKEYMAP_ENTRY_ARRAY
+                            dynlib: readlineDll.}: KEYMAP_ENTRY_ARRAY
+    emacs_meta_keymap*{.importc: "emacs_meta_keymap", dynlib: readlineDll.}: KEYMAP_ENTRY_ARRAY
+    emacs_ctlx_keymap*{.importc: "emacs_ctlx_keymap", dynlib: readlineDll.}: KEYMAP_ENTRY_ARRAY
   var 
-    vi_insertion_keymap*{.importc: "vi_insertion_keymap", dynlib: readlineDll.}: TKEYMAP_ENTRY_ARRAY
-    vi_movement_keymap*{.importc: "vi_movement_keymap", dynlib: readlineDll.}: TKEYMAP_ENTRY_ARRAY
+    vi_insertion_keymap*{.importc: "vi_insertion_keymap", dynlib: readlineDll.}: KEYMAP_ENTRY_ARRAY
+    vi_movement_keymap*{.importc: "vi_movement_keymap", dynlib: readlineDll.}: KEYMAP_ENTRY_ARRAY
 # Return a new, empty keymap.
 #   Free it with free() when you are done. 
 
@@ -154,7 +156,8 @@ const
   tildeDll = readlineDll
 
 type 
-  Thook_func* = proc (a2: cstring): cstring{.cdecl.}
+  Hook_func* = proc (a2: cstring): cstring{.cdecl.}
+{.deprecated: [Thook_func: Hook_func].}
 
 when not defined(macosx):
   # If non-null, this contains the address of a function that the application
@@ -163,7 +166,7 @@ when not defined(macosx):
   #   which is the expansion, or a NULL pointer if the expansion fails. 
 
   var expansion_preexpansion_hook*{.importc: "tilde_expansion_preexpansion_hook", 
-                                    dynlib: tildeDll.}: Thook_func
+                                    dynlib: tildeDll.}: Hook_func
 
   # If non-null, this contains the address of a function to call if the
   #   standard meaning for expanding a tilde fails.  The function is called
@@ -171,7 +174,7 @@ when not defined(macosx):
   #   which is the expansion, or a NULL pointer if there is no expansion. 
 
   var expansion_failure_hook*{.importc: "tilde_expansion_failure_hook", 
-                               dynlib: tildeDll.}: Thook_func
+                               dynlib: tildeDll.}: Hook_func
 
   # When non-null, this is a NULL terminated array of strings which
   #   are duplicates for a tilde prefix.  Bash uses this to expand
@@ -214,35 +217,38 @@ const
 #   the code tells undo what to undo, not how to undo it. 
 
 type 
-  Tundo_code* = enum 
+  Undo_code* = enum 
     UNDO_DELETE, UNDO_INSERT, UNDO_BEGIN, UNDO_END
+{.deprecated: [Tundo_code: Undo_code].}
 
 # What an element of THE_UNDO_LIST looks like. 
 
 type 
-  TUNDO_LIST*{.pure, final.} = object 
-    next*: ptr Tundo_list
+  UNDO_LIST*{.pure, final.} = object 
+    next*: ptr UNDO_LIST
     start*: cint
     theEnd*: cint             # Where the change took place. 
     text*: cstring            # The text to insert, if undoing a delete. 
-    what*: Tundo_code         # Delete, Insert, Begin, End. 
+    what*: Undo_code          # Delete, Insert, Begin, End. 
+{.deprecated: [TUNDO_LIST: UNDO_LIST].}
   
 
 # The current undo list for RL_LINE_BUFFER. 
 
 when not defined(macosx):
-  var undo_list*{.importc: "rl_undo_list", dynlib: readlineDll.}: ptr TUNDO_LIST
+  var undo_list*{.importc: "rl_undo_list", dynlib: readlineDll.}: ptr UNDO_LIST
 
 # The data structure for mapping textual names to code addresses. 
 
 type 
-  TFUNMAP*{.pure, final.} = object 
+  FUNMAP*{.pure, final.} = object 
     name*: cstring
-    function*: TCommandFunc
+    function*: CommandFunc
+{.deprecated: [TFUNMAP: FUNMAP].}
 
 
 when not defined(macosx):
-  var funmap*{.importc: "funmap", dynlib: readlineDll.}: ptr ptr TFUNMAP
+  var funmap*{.importc: "funmap", dynlib: readlineDll.}: ptr ptr FUNMAP
 
 # **************************************************************** 
 #								    
@@ -604,31 +610,31 @@ proc discard_argument*(): cint{.cdecl, importc: "rl_discard_argument",
                                 dynlib: readlineDll.}
 # Utility functions to bind keys to readline commands. 
 
-proc add_defun*(a2: cstring, a3: TCommandFunc, a4: cint): cint{.cdecl, 
+proc add_defun*(a2: cstring, a3: CommandFunc, a4: cint): cint{.cdecl, 
     importc: "rl_add_defun", dynlib: readlineDll.}
-proc bind_key*(a2: cint, a3: TCommandFunc): cint{.cdecl, 
+proc bind_key*(a2: cint, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_key", dynlib: readlineDll.}
-proc bind_key_in_map*(a2: cint, a3: TCommandFunc, a4: PKeymap): cint{.cdecl, 
+proc bind_key_in_map*(a2: cint, a3: CommandFunc, a4: PKeymap): cint{.cdecl, 
     importc: "rl_bind_key_in_map", dynlib: readlineDll.}
 proc unbind_key*(a2: cint): cint{.cdecl, importc: "rl_unbind_key", 
                                   dynlib: readlineDll.}
 proc unbind_key_in_map*(a2: cint, a3: PKeymap): cint{.cdecl, 
     importc: "rl_unbind_key_in_map", dynlib: readlineDll.}
-proc bind_key_if_unbound*(a2: cint, a3: TCommandFunc): cint{.cdecl, 
+proc bind_key_if_unbound*(a2: cint, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_key_if_unbound", dynlib: readlineDll.}
-proc bind_key_if_unbound_in_map*(a2: cint, a3: TCommandFunc, a4: PKeymap): cint{.
+proc bind_key_if_unbound_in_map*(a2: cint, a3: CommandFunc, a4: PKeymap): cint{.
     cdecl, importc: "rl_bind_key_if_unbound_in_map", dynlib: readlineDll.}
-proc unbind_function_in_map*(a2: TCommandFunc, a3: PKeymap): cint{.cdecl, 
+proc unbind_function_in_map*(a2: CommandFunc, a3: PKeymap): cint{.cdecl, 
     importc: "rl_unbind_function_in_map", dynlib: readlineDll.}
 proc unbind_command_in_map*(a2: cstring, a3: PKeymap): cint{.cdecl, 
     importc: "rl_unbind_command_in_map", dynlib: readlineDll.}
-proc bind_keyseq*(a2: cstring, a3: TCommandFunc): cint{.cdecl, 
+proc bind_keyseq*(a2: cstring, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_keyseq", dynlib: readlineDll.}
-proc bind_keyseq_in_map*(a2: cstring, a3: TCommandFunc, a4: PKeymap): cint{.
+proc bind_keyseq_in_map*(a2: cstring, a3: CommandFunc, a4: PKeymap): cint{.
     cdecl, importc: "rl_bind_keyseq_in_map", dynlib: readlineDll.}
-proc bind_keyseq_if_unbound*(a2: cstring, a3: TCommandFunc): cint{.cdecl, 
+proc bind_keyseq_if_unbound*(a2: cstring, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_keyseq_if_unbound", dynlib: readlineDll.}
-proc bind_keyseq_if_unbound_in_map*(a2: cstring, a3: TCommandFunc, 
+proc bind_keyseq_if_unbound_in_map*(a2: cstring, a3: CommandFunc, 
                                     a4: PKeymap): cint{.cdecl, 
     importc: "rl_bind_keyseq_if_unbound_in_map", dynlib: readlineDll.}
 proc generic_bind*(a2: cint, a3: cstring, a4: cstring, a5: PKeymap): cint{.
@@ -639,7 +645,7 @@ proc variable_bind*(a2: cstring, a3: cstring): cint{.cdecl,
     importc: "rl_variable_bind", dynlib: readlineDll.}
 # Backwards compatibility, use rl_bind_keyseq_in_map instead. 
 
-proc set_key*(a2: cstring, a3: TCommandFunc, a4: PKeymap): cint{.cdecl, 
+proc set_key*(a2: cstring, a3: CommandFunc, a4: PKeymap): cint{.cdecl, 
     importc: "rl_set_key", dynlib: readlineDll.}
 # Backwards compatibility, use rl_generic_bind instead. 
 
@@ -651,15 +657,15 @@ proc translate_keyseq*(a2: cstring, a3: cstring, a4: ptr cint): cint{.cdecl,
     importc: "rl_translate_keyseq", dynlib: readlineDll.}
 proc untranslate_keyseq*(a2: cint): cstring{.cdecl, 
     importc: "rl_untranslate_keyseq", dynlib: readlineDll.}
-proc named_function*(a2: cstring): TCommandFunc{.cdecl, 
+proc named_function*(a2: cstring): CommandFunc{.cdecl, 
     importc: "rl_named_function", dynlib: readlineDll.}
-proc function_of_keyseq*(a2: cstring, a3: PKeymap, a4: ptr cint): TCommandFunc{.
+proc function_of_keyseq*(a2: cstring, a3: PKeymap, a4: ptr cint): CommandFunc{.
     cdecl, importc: "rl_function_of_keyseq", dynlib: readlineDll.}
 proc list_funmap_names*(){.cdecl, importc: "rl_list_funmap_names", 
                            dynlib: readlineDll.}
-proc invoking_keyseqs_in_map*(a2: TCommandFunc, a3: PKeymap): cstringArray{.
+proc invoking_keyseqs_in_map*(a2: CommandFunc, a3: PKeymap): cstringArray{.
     cdecl, importc: "rl_invoking_keyseqs_in_map", dynlib: readlineDll.}
-proc invoking_keyseqs*(a2: TCommandFunc): cstringArray{.cdecl, 
+proc invoking_keyseqs*(a2: CommandFunc): cstringArray{.cdecl, 
     importc: "rl_invoking_keyseqs", dynlib: readlineDll.}
 proc function_dumper*(a2: cint){.cdecl, importc: "rl_function_dumper", 
                                  dynlib: readlineDll.}
@@ -682,7 +688,7 @@ proc get_keymap_name_from_edit_mode*(): cstring{.cdecl,
     importc: "rl_get_keymap_name_from_edit_mode", dynlib: readlineDll.}
 # Functions for manipulating the funmap, which maps command names to functions. 
 
-proc add_funmap_entry*(a2: cstring, a3: TCommandFunc): cint{.cdecl, 
+proc add_funmap_entry*(a2: cstring, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_add_funmap_entry", dynlib: readlineDll.}
 proc funmap_names*(): cstringArray{.cdecl, importc: "rl_funmap_names", 
                                     dynlib: readlineDll.}
@@ -697,7 +703,7 @@ proc push_macro_input*(a2: cstring){.cdecl, importc: "rl_push_macro_input",
                                      dynlib: readlineDll.}
 # Functions for undoing, from undo.c 
 
-proc add_undo*(a2: Tundo_code, a3: cint, a4: cint, a5: cstring){.cdecl, 
+proc add_undo*(a2: Undo_code, a3: cint, a4: cint, a5: cstring){.cdecl, 
     importc: "rl_add_undo", dynlib: readlineDll.}
 proc free_undo_list*(){.cdecl, importc: "rl_free_undo_list", dynlib: readlineDll.}
 proc do_undo*(): cint{.cdecl, importc: "rl_do_undo", dynlib: readlineDll.}
@@ -816,13 +822,13 @@ proc complete_internal*(a2: cint): cint{.cdecl, importc: "rl_complete_internal",
     dynlib: readlineDll.}
 proc display_match_list*(a2: cstringArray, a3: cint, a4: cint){.cdecl, 
     importc: "rl_display_match_list", dynlib: readlineDll.}
-proc completion_matches*(a2: cstring, a3: Tcompentry_func): cstringArray{.
+proc completion_matches*(a2: cstring, a3: Compentry_func): cstringArray{.
     cdecl, importc: "rl_completion_matches", dynlib: readlineDll.}
 proc username_completion_function*(a2: cstring, a3: cint): cstring{.cdecl, 
     importc: "rl_username_completion_function", dynlib: readlineDll.}
 proc filename_completion_function*(a2: cstring, a3: cint): cstring{.cdecl, 
     importc: "rl_filename_completion_function", dynlib: readlineDll.}
-proc completion_mode*(a2: TCommandFunc): cint{.cdecl, 
+proc completion_mode*(a2: CommandFunc): cint{.cdecl, 
     importc: "rl_completion_mode", dynlib: readlineDll.}
 # **************************************************************** 
 #								    
@@ -877,7 +883,7 @@ when false:
   # The current value of the numeric argument specified by the user. 
   var numeric_arg*{.importc: "rl_numeric_arg", dynlib: readlineDll.}: cint
   # The address of the last command function Readline executed. 
-  var last_func*{.importc: "rl_last_func", dynlib: readlineDll.}: TCommandFunc
+  var last_func*{.importc: "rl_last_func", dynlib: readlineDll.}: CommandFunc
   # The name of the terminal to use. 
   var terminal_name*{.importc: "rl_terminal_name", dynlib: readlineDll.}: cstring
   # The input and output streams. 
@@ -1169,18 +1175,18 @@ template ISSTATE*(x: expr): expr =
   (readline_state and x) != 0
 
 type 
-  Treadline_state*{.pure, final.} = object 
+  Readline_state*{.pure, final.} = object 
     point*: cint              # line state 
     theEnd*: cint
     mark*: cint
     buffer*: cstring
     buflen*: cint
-    ul*: ptr TUNDO_LIST
+    ul*: ptr UNDO_LIST
     prompt*: cstring          # global state 
     rlstate*: cint
     done*: cint
     kmap*: PKeymap            # input state 
-    lastfunc*: TCommandFunc
+    lastfunc*: CommandFunc
     insmode*: cint
     edmode*: cint
     kseqlen*: cint
@@ -1194,9 +1200,10 @@ type
                               # options state 
                               # reserved for future expansion, so the struct size doesn't change 
     reserved*: array[0..64 - 1, char]
+{.deprecated: [Treadline_state: Readline_state].}
 
 
-proc save_state*(a2: ptr Treadline_state): cint{.cdecl, 
+proc save_state*(a2: ptr Readline_state): cint{.cdecl, 
     importc: "rl_save_state", dynlib: readlineDll.}
-proc restore_state*(a2: ptr Treadline_state): cint{.cdecl, 
+proc restore_state*(a2: ptr Readline_state): cint{.cdecl, 
     importc: "rl_restore_state", dynlib: readlineDll.}

@@ -18,20 +18,22 @@ import
   os, hashes, strutils
 
 type
-  TGenTableMode* = enum    ## describes the table's key matching mode
+  GenTableMode* = enum     ## describes the table's key matching mode
     modeCaseSensitive,     ## case sensitive matching of keys
     modeCaseInsensitive,   ## case insensitive matching of keys
     modeStyleInsensitive   ## style sensitive matching of keys
 
-  TGenKeyValuePair[T] = tuple[key: string, val: T]
-  TGenKeyValuePairSeq[T] = seq[TGenKeyValuePair[T]]
-  TGenTable*[T] = object of RootObj
+  GenKeyValuePair[T] = tuple[key: string, val: T]
+  GenKeyValuePairSeq[T] = seq[GenKeyValuePair[T]]
+  GenTable*[T] = object of RootObj
     counter: int
-    data: TGenKeyValuePairSeq[T]
-    mode: TGenTableMode
+    data: GenKeyValuePairSeq[T]
+    mode: GenTableMode
 
-  PGenTable*[T] = ref TGenTable[T]     ## use this type to declare hash tables
+  PGenTable*[T] = ref GenTable[T]     ## use this type to declare hash tables
 
+{.deprecated: [TGenTableMode: GenTableMode, TGenKeyValuePair: GenKeyValuePair,
+              TGenKeyValuePairSeq: GenKeyValuePairSeq, TGenTable: GenTable].}
 
 const
   growthFactor = 2
@@ -48,7 +50,7 @@ iterator pairs*[T](tbl: PGenTable[T]): tuple[key: string, value: T] =
     if not isNil(tbl.data[h].key):
       yield (tbl.data[h].key, tbl.data[h].val)
 
-proc myhash[T](tbl: PGenTable[T], key: string): THash =
+proc myhash[T](tbl: PGenTable[T], key: string): Hash =
   case tbl.mode
   of modeCaseSensitive: result = hashes.hash(key)
   of modeCaseInsensitive: result = hashes.hashIgnoreCase(key)
@@ -64,18 +66,18 @@ proc mustRehash(length, counter: int): bool =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc newGenTable*[T](mode: TGenTableMode): PGenTable[T] =
+proc newGenTable*[T](mode: GenTableMode): PGenTable[T] =
   ## creates a new generic hash table that is empty.
   new(result)
   result.mode = mode
   result.counter = 0
   newSeq(result.data, startSize)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 proc rawGet[T](tbl: PGenTable[T], key: string): int =
-  var h: THash
+  var h: Hash
   h = myhash(tbl, key) and high(tbl.data) # start with real hash value
   while not isNil(tbl.data[h].key):
     if myCmp(tbl, tbl.data[h].key, key):
@@ -83,9 +85,9 @@ proc rawGet[T](tbl: PGenTable[T], key: string): int =
     h = nextTry(h, high(tbl.data))
   result = - 1
 
-proc rawInsert[T](tbl: PGenTable[T], data: var TGenKeyValuePairSeq[T],
+proc rawInsert[T](tbl: PGenTable[T], data: var GenKeyValuePairSeq[T],
                   key: string, val: T) =
-  var h: THash
+  var h: Hash
   h = myhash(tbl, key) and high(data)
   while not isNil(data[h].key):
     h = nextTry(h, high(data))
@@ -93,7 +95,7 @@ proc rawInsert[T](tbl: PGenTable[T], data: var TGenKeyValuePairSeq[T],
   data[h].val = val
 
 proc enlarge[T](tbl: PGenTable[T]) =
-  var n: TGenKeyValuePairSeq[T]
+  var n: GenKeyValuePairSeq[T]
   newSeq(n, len(tbl.data) * growthFactor)
   for i in countup(0, high(tbl.data)):
     if not isNil(tbl.data[i].key):
@@ -146,19 +148,20 @@ when isMainModule:
   # Verify a table of user-defined types
   #
   type
-    TMyType = tuple[first, second: string] # a pair of strings
+    MyType = tuple[first, second: string] # a pair of strings
+  {.deprecated: [TMyType: MyType].}
 
-  var y = newGenTable[TMyType](modeCaseInsensitive) # hash table where each
-                                                    # value is TMyType tuple
+  var y = newGenTable[MyType](modeCaseInsensitive) # hash table where each
+                                                    # value is MyType tuple
 
-  #var junk: TMyType = ("OK", "Here")
+  #var junk: MyType = ("OK", "Here")
 
   #echo junk.first, " ", junk.second
 
   y["Hello"] = ("Hello", "World")
   y["Goodbye"] = ("Goodbye", "Everyone")
-  #y["Hello"] = TMyType( ("Hello", "World") )
-  #y["Goodbye"] = TMyType( ("Goodbye", "Everyone") )
+  #y["Hello"] = MyType( ("Hello", "World") )
+  #y["Goodbye"] = MyType( ("Goodbye", "Everyone") )
 
   assert( not isNil(y["Hello"].first) )
   assert( y["Hello"].first == "Hello" )

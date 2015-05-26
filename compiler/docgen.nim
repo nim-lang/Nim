@@ -18,7 +18,7 @@ import
 
 type
   TSections = array[TSymKind, Rope]
-  TDocumentor = object of rstgen.TRstGenerator
+  TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope           # module description
     id: int                  # for generating IDs
     toc, section: TSections
@@ -29,7 +29,7 @@ type
   PDoc* = ref TDocumentor ## Alias to type less.
 
 proc compilerMsgHandler(filename: string, line, col: int,
-                        msgKind: rst.TMsgKind, arg: string) {.procvar.} =
+                        msgKind: rst.MsgKind, arg: string) {.procvar.} =
   # translate msg kind:
   var k: msgs.TMsgKind
   case msgKind
@@ -53,7 +53,7 @@ proc docgenFindFile(s: string): string {.procvar.} =
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
-              rstOptions: TRstParseOptions): PRstNode =
+              rstOptions: RstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     docgenFindFile, compilerMsgHandler)
 

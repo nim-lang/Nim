@@ -99,8 +99,9 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
       body
 
     except:
-      checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
-      echo getCurrentException().getStackTrace()
+      when not defined(js):
+        checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
+        echo getCurrentException().getStackTrace()
       fail()
 
     finally:
@@ -114,9 +115,7 @@ proc checkpoint*(msg: string) =
 template fail* =
   bind checkpoints
   for msg in items(checkpoints):
-    # this used to be 'echo' which now breaks due to a bug. XXX will revisit
-    # this issue later.
-    stdout.writeln msg
+    echo msg
 
   when not defined(ECMAScript):
     if abortOnError: quit(1)
@@ -157,12 +156,13 @@ macro check*(conditions: stmt): stmt {.immediate.} =
           #   Ident !"v"
           #   IntLit 2
           paramAst = exp[i][1]
-        argsAsgns.add getAst(asgn(arg, paramAst))
-        argsPrintOuts.add getAst(print(argStr, arg))
-        if exp[i].kind != nnkExprEqExpr:
-          exp[i] = arg
-        else:
-          exp[i][1] = arg
+        if exp[i].typekind notin {ntyTypeDesc}:
+          argsAsgns.add getAst(asgn(arg, paramAst))
+          argsPrintOuts.add getAst(print(argStr, arg))
+          if exp[i].kind != nnkExprEqExpr:
+            exp[i] = arg
+          else:
+            exp[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:

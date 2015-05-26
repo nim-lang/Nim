@@ -470,7 +470,7 @@ when not defined(JS):
         posix_gettimeofday(a)
         result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
-        var f: winlean.TFILETIME
+        var f: winlean.FILETIME
         getSystemTimeAsFileTime(f)
         var i64 = rdFileTime(f) - epochDiff
         var secs = i64 div rateDiff

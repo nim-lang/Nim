@@ -211,12 +211,13 @@ when defined(windows):
   when false:
     # not needed yet:
     type
-      TCpInfo = object
+      CpInfo = object
         maxCharSize: int32
         defaultChar: array[0..1, char]
         leadByte: array[0..12-1, char]
+    {.deprecated: [TCpInfo: CpInfo].}
 
-    proc getCPInfo(codePage: CodePage, lpCPInfo: var TCpInfo): int32 {.
+    proc getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
   
   proc nameToCodePage(name: string): CodePage =
@@ -262,7 +263,7 @@ else:
   else:
     const iconvDll = "(libc.so.6|libiconv.so)"
 
-  when defined(macosx) and defined(powerpc):
+  when defined(macosx):
     const prefix = "lib"
   else:
     const prefix = ""

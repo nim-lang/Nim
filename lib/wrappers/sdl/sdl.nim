@@ -346,7 +346,7 @@ const
   HAT_LEFTDOWN* = HAT_LEFT or HAT_DOWN # SDL_events.h constants
 
 type 
-  TEventKind* = enum          # kind of an SDL event
+  EventKind* = enum          # kind of an SDL event
     NOEVENT = 0,              # Unused (do not remove)
     ACTIVEEVENT = 1,          # Application loses/gains visibility
     KEYDOWN = 2,              # Keys pressed
@@ -374,6 +374,7 @@ type
                               # Events SDL_USEREVENT through SDL_MAXEVENTS-1 are for your use
     USEREVENT = 24 # This last event is only for bounding internal arrays
                    # It is the number of bits in the event mask datatype -- int32
+{.deprecated: [TEventKind: EventKind].}
 
 const 
   NUMEVENTS* = 32
@@ -750,12 +751,12 @@ const                         # Enumeration of valid key mods (possibly OR'd tog
   GRAB_ON* = 1                #SDL_GRAB_FULLSCREEN // Used internally
 
 type 
-  THandle* = int              #SDL_types.h types
+  Handle* = int               #SDL_types.h types
                               # Basic data types
-  TBool* = enum
+  Bool* = enum
     sdlFALSE, sdlTRUE
-  PUInt8Array* = ptr TUInt8Array
-  TUInt8Array* = array[0..high(int) shr 1, byte]
+  PUInt8Array* = ptr UInt8Array
+  UInt8Array* = array[0..high(int) shr 1, byte]
   PUInt16* = ptr uint16
   PUInt32* = ptr uint32
   PUInt64* = ptr UInt64
@@ -768,15 +769,14 @@ type
     hi*: int32
     lo*: int32
 
-  TGrabMode* = int32         # SDL_error.h types
-  Terrorcode* = enum 
+  GrabMode* = int32         # SDL_error.h types
+  ErrorCode* = enum 
     ENOMEM, EFREAD, EFWRITE, EFSEEK, LASTERROR
-  Errorcode* = Terrorcode
-  TArg*{.final.} = object 
+  Arg*{.final.} = object 
     buf*: array[0..ERR_MAX_STRLEN - 1, int8]
 
-  Perror* = ptr Terror
-  TError*{.final.} = object  # This is a numeric value corresponding to the current error
+  Perror* = ptr Error
+  Error*{.final.} = object   # This is a numeric value corresponding to the current error
                              # SDL_rwops.h types
                              # This is the read/write operation structure -- very basic
                              # some helper types to handle the unions
@@ -787,51 +787,51 @@ type
                 #       used directly as an error message format string.
     key*: array[0..ERR_MAX_STRLEN - 1, int8] # These are the arguments for the error functions
     argc*: int
-    args*: array[0..ERR_MAX_ARGS - 1, TArg]
+    args*: array[0..ERR_MAX_ARGS - 1, Arg]
 
-  TStdio*{.final.} = object 
+  Stdio*{.final.} = object 
     autoclose*: int           # FILE * is only defined in Kylix so we use a simple pointer
     fp*: pointer
 
-  TMem*{.final.} = object 
+  Mem*{.final.} = object 
     base*: ptr byte
     here*: ptr byte
     stop*: ptr byte
 
-  PRWops* = ptr TRWops        # now the pointer to function types
-  TSeek* = proc (context: PRWops, offset: int, whence: int): int{.cdecl.}
-  TRead* = proc (context: PRWops, thePtr: pointer, size: int, maxnum: int): int{.
+  PRWops* = ptr RWops        # now the pointer to function types
+  Seek* = proc (context: PRWops, offset: int, whence: int): int{.cdecl.}
+  Read* = proc (context: PRWops, thePtr: pointer, size: int, maxnum: int): int{.
       cdecl.}
-  TWrite* = proc (context: PRWops, thePtr: pointer, size: int, num: int): int{.
+  Write* = proc (context: PRWops, thePtr: pointer, size: int, num: int): int{.
       cdecl.}
-  TClose* = proc (context: PRWops): int{.cdecl.} # the variant record itself
-  TRWops*{.final.} = object 
-    seek*: TSeek
-    read*: TRead
-    write*: TWrite
-    closeFile*: TClose        # a keyword as name is not allowed
+  Close* = proc (context: PRWops): int{.cdecl.} # the variant record itself
+  RWops*{.final.} = object 
+    seek*: Seek
+    read*: Read
+    write*: Write
+    closeFile*: Close         # a keyword as name is not allowed
                               # be warned! structure alignment may arise at this point
     theType*: cint
-    mem*: TMem
+    mem*: Mem
   
-  RWops* = TRWops             # SDL_timer.h types
+                              # SDL_timer.h types
                               # Function prototype for the timer callback function
-  TTimerCallback* = proc (interval: int32): int32{.cdecl.}
-  TNewTimerCallback* = proc (interval: int32, param: pointer): int32{.cdecl.}
+  TimerCallback* = proc (interval: int32): int32{.cdecl.}
+  NewTimerCallback* = proc (interval: int32, param: pointer): int32{.cdecl.}
 
-  PTimerID* = ptr TTimerID
-  TTimerID*{.final.} = object 
+  PTimerID* = ptr TimerID
+  TimerID*{.final.} = object 
     interval*: int32
-    callback*: TNewTimerCallback
+    callback*: NewTimerCallback
     param*: pointer
     lastAlarm*: int32
     next*: PTimerID
 
-  TAudioSpecCallback* = proc (userdata: pointer, stream: ptr byte, length: int){.
+  AudioSpecCallback* = proc (userdata: pointer, stream: ptr byte, length: int){.
       cdecl.}                 # SDL_audio.h types
                               # The calculated values in this structure are calculated by SDL_OpenAudio()
-  PAudioSpec* = ptr TAudioSpec
-  TAudioSpec*{.final.} = object  # A structure to hold a set of audio conversion filters and buffers
+  PAudioSpec* = ptr AudioSpec
+  AudioSpec*{.final.} = object  # A structure to hold a set of audio conversion filters and buffers
     freq*: int                # DSP frequency -- samples per second
     format*: uint16           # Audio data format
     channels*: byte          # Number of channels: 1 mono, 2 stereo
@@ -844,18 +844,18 @@ type
                  # 'len' is the length of that buffer in bytes.
                  # Once the callback returns, the buffer will no longer be valid.
                  # Stereo samples are stored in a LRLRLR ordering.
-    callback*: TAudioSpecCallback
+    callback*: AudioSpecCallback
     userdata*: pointer
 
-  PAudioCVT* = ptr TAudioCVT
-  PAudioCVTFilter* = ptr TAudioCVTFilter
-  TAudioCVTFilter*{.final.} = object 
+  PAudioCVT* = ptr AudioCVT
+  PAudioCVTFilter* = ptr AudioCVTFilter
+  AudioCVTFilter*{.final.} = object 
     cvt*: PAudioCVT
     format*: uint16
 
-  PAudioCVTFilterArray* = ptr TAudioCVTFilterArray
-  TAudioCVTFilterArray* = array[0..9, PAudioCVTFilter]
-  TAudioCVT*{.final.} = object 
+  PAudioCVTFilterArray* = ptr AudioCVTFilterArray
+  AudioCVTFilterArray* = array[0..9, PAudioCVTFilter]
+  AudioCVT*{.final.} = object 
     needed*: int              # Set to 1 if conversion possible
     srcFormat*: uint16       # Source audio format
     dstFormat*: uint16       # Target audio format
@@ -865,49 +865,49 @@ type
     lenCvt*: int             # Length of converted audio buffer
     lenMult*: int            # buffer must be len*len_mult big
     lenRatio*: float64       # Given len, final size is len*len_ratio
-    filters*: TAudioCVTFilterArray
+    filters*: AudioCVTFilterArray
     filterIndex*: int        # Current audio conversion function
   
-  TAudiostatus* = enum        # SDL_cdrom.h types
+  AudioStatus* = enum        # SDL_cdrom.h types
     AUDIO_STOPPED, AUDIO_PLAYING, AUDIO_PAUSED
-  TCDStatus* = enum 
+  CDStatus* = enum 
     CD_ERROR, CD_TRAYEMPTY, CD_STOPPED, CD_PLAYING, CD_PAUSED
-  PCDTrack* = ptr TCDTrack
-  TCDTrack*{.final.} = object  # This structure is only current as of the last call to SDL_CDStatus()
+  PCDTrack* = ptr CDTrack
+  CDTrack*{.final.} = object  # This structure is only current as of the last call to SDL_CDStatus()
     id*: byte                # Track number
     theType*: byte           # Data or audio track
     unused*: uint16
     len*: int32              # Length, in frames, of this track
     offset*: int32           # Offset, in frames, from start of disk
   
-  PCD* = ptr TCD
-  TCD*{.final.} = object      #SDL_joystick.h types
+  PCD* = ptr CD
+  CD*{.final.} = object      #SDL_joystick.h types
     id*: int                  # Private drive identifier
-    status*: TCDStatus        # Current drive status
+    status*: CDStatus         # Current drive status
                               # The rest of this structure is only valid if there's a CD in drive
     numtracks*: int           # Number of tracks on disk
-    curTrack*: int           # Current track position
+    curTrack*: int            # Current track position
     curFrame*: int           # Current frame offset within current track
-    track*: array[0..MAX_TRACKS, TCDTrack]
+    track*: array[0..MAX_TRACKS, CDTrack]
 
-  PTransAxis* = ptr TTransAxis
-  TTransAxis*{.final.} = object  # The private structure used to keep track of a joystick
+  PTransAxis* = ptr TransAxis
+  TransAxis*{.final.} = object  # The private structure used to keep track of a joystick
     offset*: int
     scale*: float32
 
-  PJoystickHwdata* = ptr TJoystickHwdata
-  TJoystick_hwdata*{.final.} = object  # joystick ID
+  PJoystickHwdata* = ptr JoystickHwdata
+  Joystick_hwdata*{.final.} = object  # joystick ID
     id*: int                  # values used to translate device-specific coordinates into  SDL-standard ranges
-    transaxis*: array[0..5, TTransAxis]
+    transaxis*: array[0..5, TransAxis]
 
-  PBallDelta* = ptr TBallDelta
-  TBallDelta*{.final.} = object  # Current ball motion deltas
+  PBallDelta* = ptr BallDelta
+  BallDelta*{.final.} = object  # Current ball motion deltas
                                  # The SDL joystick structure
     dx*: int
     dy*: int
 
-  PJoystick* = ptr TJoystick
-  TJoystick*{.final.} = object  # SDL_verion.h types
+  PJoystick* = ptr Joystick
+  Joystick*{.final.} = object  # SDL_verion.h types
     index*: byte             # Device index
     name*: cstring            # Joystick name - system dependent
     naxes*: int               # Number of axis controls on the joystick
@@ -921,16 +921,16 @@ type
     hwdata*: PJoystickHwdata # Driver dependent information
     refCount*: int           # Reference count for multiple opens
   
-  Pversion* = ptr Tversion
-  Tversion*{.final.} = object  # SDL_keyboard.h types
+  Pversion* = ptr Version
+  Version*{.final.} = object  # SDL_keyboard.h types
     major*: byte
     minor*: byte
     patch*: byte
 
-  TKey* = int32
-  TMod* = int32
-  PKeySym* = ptr TKeySym
-  TKeySym*{.final.} = object  # SDL_events.h types
+  Key* = int32
+  Mod* = int32
+  PKeySym* = ptr KeySym
+  KeySym*{.final.} = object  # SDL_events.h types
                               #Checks the event queue for messages and optionally returns them.
                               #   If 'action' is SDL_ADDEVENT, up to 'numevents' events will be added to
                               #   the back of the event queue.
@@ -943,69 +943,69 @@ type
                               #   This function returns the number of events actually stored, or -1
                               #   if there was an error.  This function is thread-safe.
     scancode*: byte           # hardware specific scancode
-    sym*: TKey                # SDL virtual keysym
-    modifier*: TMod           # current key modifiers
+    sym*: Key                 # SDL virtual keysym
+    modifier*: Mod            # current key modifiers
     unicode*: uint16          # translated character
   
-  TEventAction* = enum        # Application visibility event structure
+  EventAction* = enum        # Application visibility event structure
     ADDEVENT, PEEKEVENT, GETEVENT
 
   PActiveEvent* = ptr TActiveEvent
   TActiveEvent*{.final.} = object  # SDL_ACTIVEEVENT
                                    # Keyboard event structure
-    kind*: TEventKind
+    kind*: EventKind
     gain*: byte              # Whether given states were gained or lost (1/0)
     state*: byte             # A mask of the focus states
   
-  PKeyboardEvent* = ptr TKeyboardEvent
-  TKeyboardEvent*{.final.} = object  # SDL_KEYDOWN or SDL_KEYUP
+  PKeyboardEvent* = ptr KeyboardEvent
+  KeyboardEvent*{.final.} = object  # SDL_KEYDOWN or SDL_KEYUP
                                      # Mouse motion event structure
-    kind*: TEventKind
+    kind*: EventKind
     which*: byte             # The keyboard device index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
-    keysym*: TKeySym
+    keysym*: KeySym
 
-  PMouseMotionEvent* = ptr TMouseMotionEvent
-  TMouseMotionEvent*{.final.} = object  # SDL_MOUSEMOTION
+  PMouseMotionEvent* = ptr MouseMotionEvent
+  MouseMotionEvent*{.final.} = object  # SDL_MOUSEMOTION
                                         # Mouse button event structure
-    kind*: TEventKind
+    kind*: EventKind
     which*: byte             # The mouse device index
     state*: byte             # The current button state
     x*, y*: uint16            # The X/Y coordinates of the mouse
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
   
-  PMouseButtonEvent* = ptr TMouseButtonEvent
-  TMouseButtonEvent*{.final.} = object  # SDL_MOUSEBUTTONDOWN or SDL_MOUSEBUTTONUP
+  PMouseButtonEvent* = ptr MouseButtonEvent
+  MouseButtonEvent*{.final.} = object  # SDL_MOUSEBUTTONDOWN or SDL_MOUSEBUTTONUP
                                         # Joystick axis motion event structure
-    kind*: TEventKind
+    kind*: EventKind
     which*: byte             # The mouse device index
     button*: byte            # The mouse button index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
     x*: uint16                # The X coordinates of the mouse at press time
     y*: uint16                # The Y coordinates of the mouse at press time
   
-  PJoyAxisEvent* = ptr TJoyAxisEvent
-  TJoyAxisEvent*{.final.} = object  # SDL_JOYAXISMOTION
+  PJoyAxisEvent* = ptr JoyAxisEvent
+  JoyAxisEvent*{.final.} = object  # SDL_JOYAXISMOTION
                                     # Joystick trackball motion event structure
-    kind*: TEventKind
+    kind*: EventKind
     which*: byte             # The joystick device index
     axis*: byte              # The joystick axis index
     value*: int16            # The axis value (range: -32768 to 32767)
   
-  PJoyBallEvent* = ptr TJoyBallEvent
-  TJoyBallEvent*{.final.} = object  # SDL_JOYAVBALLMOTION
+  PJoyBallEvent* = ptr JoyBallEvent
+  JoyBallEvent*{.final.} = object  # SDL_JOYAVBALLMOTION
                                     # Joystick hat position change event structure
-    kind*: TEventKind
+    kind*: EventKind
     which*: byte             # The joystick device index
     ball*: byte              # The joystick trackball index
     xrel*: int16             # The relative motion in the X direction
     yrel*: int16             # The relative motion in the Y direction
   
-  PJoyHatEvent* = ptr TJoyHatEvent
-  TJoyHatEvent*{.final.} = object  # SDL_JOYHATMOTION */
+  PJoyHatEvent* = ptr JoyHatEvent
+  JoyHatEvent*{.final.} = object  # SDL_JOYHATMOTION */
                                    # Joystick button event structure
-    kind*: TEventKind
+    kind*: EventKind
     which*: byte             # The joystick device index */
     hat*: byte               # The joystick hat index */
     value*: byte             # The hat position value:
@@ -1014,146 +1014,174 @@ type
                              # 6   5   4
                              # Note that zero means the POV is centered.
   
-  PJoyButtonEvent* = ptr TJoyButtonEvent
-  TJoyButtonEvent*{.final.} = object  # SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP
+  PJoyButtonEvent* = ptr JoyButtonEvent
+  JoyButtonEvent*{.final.} = object  # SDL_JOYBUTTONDOWN or SDL_JOYBUTTONUP
                                       # The "window resized" event
                                       # When you get this event, you are
                                       # responsible for setting a new video
                                       # mode with the new width and height.
-    kind*: TEventKind
+    kind*: EventKind
     which*: byte             # The joystick device index
     button*: byte            # The joystick button index
     state*: byte             # SDL_PRESSED or SDL_RELEASED
   
-  PResizeEvent* = ptr TResizeEvent
-  TResizeEvent*{.final.} = object  # SDL_VIDEORESIZE
+  PResizeEvent* = ptr ResizeEvent
+  ResizeEvent*{.final.} = object   # SDL_VIDEORESIZE
                                    # A user-defined event type
-    kind*: TEventKind
+    kind*: EventKind
     w*: cint                   # New width
     h*: cint                   # New height
   
   PUserEvent* = ptr TUserEvent
   TUserEvent*{.final.} = object  # SDL_USEREVENT through SDL_NUMEVENTS-1
-    kind*: TEventKind
-    code*: cint                # User defined event code
+    kind*: EventKind
+    code*: cint               # User defined event code
     data1*: pointer           # User defined data pointer
     data2*: pointer           # User defined data pointer 
   
+{.deprecated: [THandle: Handle, TEventAction: EventAction, TKey: Key, TArg: Arg,
+              TKeySym: KeySym, TKeyboardEvent: KeyboardEvent, TError: Error,
+              TWrite: Write, TBool: Bool, TUInt8Array: UInt8Array,
+              TGrabMode: GrabMode, Terrorcode: Errorcode, TStdio: Stdio,
+              TMem: Mem, TSeek: Seek, TRead: Read, TClose: Close,
+              TTimerCallback: TimerCallback, TNewTimerCallback: NewTimerCallback,
+              TTimerID: TimerID, TAudioSpecCallback: AudioSpecCallback,
+              TAudioSpec: AudioSpec, TAudioCVTFilter: AudioCVTFilter,
+              TAudioCVTFilterArray: AudioCVTFilterArray, TAudioCVT: AudioCVT,
+              TAudioStatus: AudioStatus, TCDStatus: CDStatus, TCDTrack: CDTrack,
+              TCD: CD, TTransAxis: TransAxis, TJoystick_hwdata: Joystick_hwdata,
+              TJoystick: Joystick, TJoyAxisEvent: JoyAxisEvent, TRWops: RWops,
+              TJoyBallEvent: JoyBallEvent, TJoyHatEvent: JoyHatEvent,
+              TJoyButtonEvent: JoyButtonEvent, TBallDelta: BallDelta,
+              Tversion: Version, TMod: Mod,
+              # TActiveEvent: ActiveEvent, # Naming conflict when we drop the `T`
+              TMouseMotionEvent: MouseMotionEvent, TMouseButtonEvent: MouseButtonEvent,
+              TResizeEvent: ResizeEvent,
+              # TUserEvent: UserEvent # Naming conflict when we drop the `T`
+              ].}
 
-when defined(Unix): 
+when defined(Unix):
   type                        #These are the various supported subsystems under UNIX
-    TSysWm* = enum 
+    SysWm* = enum 
       SYSWM_X11
-when defined(WINDOWS): 
+  {.deprecated: [TSysWm: SysWm].}
+when defined(WINDOWS):
   type 
-    PSysWMmsg* = ptr TSysWMmsg
-    TSysWMmsg*{.final.} = object 
-      version*: Tversion
-      hwnd*: THandle          # The window for the message
+    PSysWMmsg* = ptr SysWMmsg
+    SysWMmsg*{.final.} = object 
+      version*: Version
+      hwnd*: Handle          # The window for the message
       msg*: int               # The type of message
       wParam*: int32         # WORD message parameter
       lParam*: int32          # LONG message parameter
+  {.deprecated: [TSysWMmsg: SysWMmsg].}
     
 elif defined(Unix): 
   type                        # The Linux custom event structure
-    PSysWMmsg* = ptr TSysWMmsg
-    TSysWMmsg*{.final.} = object 
-      version*: Tversion
-      subsystem*: TSysWm
+    PSysWMmsg* = ptr SysWMmsg
+    SysWMmsg*{.final.} = object 
+      version*: Version
+      subsystem*: SysWm
       when false: 
           event*: TXEvent
+  {.deprecated: [TSysWMmsg: SysWMmsg].}
 
     
 else: 
   type                        # The generic custom event structure
-    PSysWMmsg* = ptr TSysWMmsg
-    TSysWMmsg*{.final.} = object 
-      version*: Tversion
+    PSysWMmsg* = ptr SysWMmsg
+    SysWMmsg*{.final.} = object 
+      version*: Version
       data*: int
+  {.deprecated: [TSysWMmsg: SysWMmsg].}
 
 # The Windows custom window manager information structure
 
 when defined(WINDOWS): 
   type 
-    PSysWMinfo* = ptr TSysWMinfo
-    TSysWMinfo*{.final.} = object 
-      version*: Tversion
-      window*: THandle        # The display window
+    PSysWMinfo* = ptr SysWMinfo
+    SysWMinfo*{.final.} = object 
+      version*: Version
+      window*: Handle        # The display window
+  {.deprecated: [TSysWMinfo: SysWMinfo].}
     
 elif defined(Unix): 
   type 
-    TX11*{.final.} = object 
+    X11*{.final.} = object 
       when false: 
           display*: PDisplay  # The X11 display
-          window*: TWindow    # The X11 display window
+          window*: Window     # The X11 display window
                               # These locking functions should be called around
                               # any X11 functions using the display variable.
                               # They lock the event thread, so should not be
                               # called around event functions or from event filters.
           lock_func*: pointer
           unlock_func*: pointer # Introduced in SDL 1.0.2
-          fswindow*: TWindow  # The X11 fullscreen window
-          wmwindow*: TWindow  # The X11 managed input window
+          fswindow*: Window   # The X11 fullscreen window
+          wmwindow*: Window   # The X11 managed input window
+  {.deprecated: [TX11: X11].}
         
     
   type 
-    PSysWMinfo* = ptr TSysWMinfo
-    TSysWMinfo*{.final.} = object 
-      version*: Tversion
-      subsystem*: TSysWm
-      X11*: TX11
+    PSysWMinfo* = ptr SysWMinfo
+    SysWMinfo*{.final.} = object 
+      version*: Version
+      subsystem*: SysWm
+      X11*: X11
+  {.deprecated: [TSysWMinfo: SysWMinfo].}
 
 else: 
   type # The generic custom window manager information structure
-    PSysWMinfo* = ptr TSysWMinfo
-    TSysWMinfo*{.final.} = object 
-      version*: Tversion
+    PSysWMinfo* = ptr SysWMinfo
+    SysWMinfo*{.final.} = object 
+      version*: Version
       data*: int
+  {.deprecated: [TSysWMinfo: SysWMinfo].}
 
 type 
   PSysWMEvent* = ptr TSysWMEvent
   TSysWMEvent*{.final.} = object 
-    kind*: TEventKind
+    kind*: EventKind
     msg*: PSysWMmsg
 
-  PExposeEvent* = ptr TExposeEvent
-  TExposeEvent*{.final.} = object
-    kind*: TEventKind
+  PExposeEvent* = ptr ExposeEvent
+  ExposeEvent*{.final.} = object
+    kind*: EventKind
 
-  PQuitEvent* = ptr TQuitEvent
-  TQuitEvent*{.final.} = object
-    kind*: TEventKind
+  PQuitEvent* = ptr QuitEvent
+  QuitEvent*{.final.} = object
+    kind*: EventKind
 
-  PEvent* = ptr TEvent
-  TEvent*{.final.} = object  
-    kind*: TEventKind
+  PEvent* = ptr Event
+  Event*{.final.} = object  
+    kind*: EventKind
     pad: array[0..19, byte]
   
-  TEventFilter* = proc (event: PEvent): int{.cdecl.} # SDL_video.h types
+  EventFilter* = proc (event: PEvent): int{.cdecl.} # SDL_video.h types
                                                      # Useful data types
   PPSDL_Rect* = ptr PRect
-  PRect* = ptr TRect
-  TRect*{.final.} = object 
+  PRect* = ptr Rect
+  Rect*{.final.} = object 
     x*, y*: int16
     w*, h*: uint16
 
-  Rect* = TRect
-  PColor* = ptr TColor
-  TColor*{.final.} = object 
+#  Rect* = TRect
+  PColor* = ptr Color
+  Color*{.final.} = object 
     r*: byte
     g*: byte
     b*: byte
     unused*: byte
 
-  PColorArray* = ptr TColorArray
-  TColorArray* = array[0..65000, TColor]
-  PPalette* = ptr TPalette
-  TPalette*{.final.} = object  # Everything in the pixel format structure is read-only
+  PColorArray* = ptr ColorArray
+  ColorArray* = array[0..65000, Color]
+  PPalette* = ptr Palette
+  Palette*{.final.} = object  # Everything in the pixel format structure is read-only
     ncolors*: int
     colors*: PColorArray
 
-  PPixelFormat* = ptr TPixelFormat
-  TPixelFormat*{.final.} = object  # The structure passed to the low level blit functions
+  PPixelFormat* = ptr PixelFormat
+  PixelFormat*{.final.} = object  # The structure passed to the low level blit functions
     palette*: PPalette
     bitsPerPixel*: byte
     bytesPerPixel*: byte
@@ -1172,8 +1200,8 @@ type
     colorkey*: int32         # RGB color key information
     alpha*: byte             # Alpha value information (per-surface alpha)
   
-  PBlitInfo* = ptr TBlitInfo
-  TBlitInfo*{.final.} = object  # typedef for private surface blitting functions
+  PBlitInfo* = ptr BlitInfo
+  BlitInfo*{.final.} = object  # typedef for private surface blitting functions
     sPixels*: ptr byte
     sWidth*: int
     sHeight*: int
@@ -1187,10 +1215,10 @@ type
     table*: ptr byte
     dst*: PPixelFormat
 
-  PSurface* = ptr TSurface
-  TBlit* = proc (src: PSurface, srcrect: PRect, 
+  PSurface* = ptr Surface
+  Blit* = proc (src: PSurface, srcrect: PRect, 
                  dst: PSurface, dstrect: PRect): int{.cdecl.}
-  TSurface*{.final.} = object  # Useful for determining the video hardware capabilities
+  Surface*{.final.} = object  # Useful for determining the video hardware capabilities
     flags*: int32            # Read-only
     format*: PPixelFormat     # Read-only
     w*, h*: cint              # Read-only
@@ -1199,7 +1227,7 @@ type
     offset*: cint             # Private
     hwdata*: pointer          #TPrivate_hwdata;  Hardware-specific surface info
                               # clipping information:
-    clipRect*: TRect         # Read-only
+    clipRect*: Rect           # Read-only
     unused1*: int32           # for binary compatibility
                               # Allow recursive locks
     locked*: int32            # Private
@@ -1209,8 +1237,8 @@ type
     formatVersion*: cint      # Private
     refcount*: cint
 
-  PVideoInfo* = ptr TVideoInfo
-  TVideoInfo*{.final.} = object  # The YUV hardware video overlay
+  PVideoInfo* = ptr VideoInfo
+  VideoInfo*{.final.} = object  # The YUV hardware video overlay
     hwAvailable*: byte 
     blitHw*: byte 
     unusedBits3*: byte       # Unused at this point
@@ -1219,8 +1247,8 @@ type
     currentW*: int32        # Value: The current video mode width
     currentH*: int32        # Value: The current video mode height
   
-  POverlay* = ptr TOverlay
-  TOverlay*{.final.} = object  # Public enumeration for setting the OpenGL window attributes.
+  POverlay* = ptr Overlay
+  Overlay*{.final.} = object  # Public enumeration for setting the OpenGL window attributes.
     format*: int32           # Overlay format
     w*, h*: int               # Width and height of overlay
     planes*: int              # Number of planes in the overlay. Usually either 1 or 3
@@ -1228,61 +1256,74 @@ type
     pixels*: ptr ptr byte # An array of pointers to the data of each plane. The overlay should be locked before these pointers are used.
     hwOverlay*: int32    # This will be set to 1 if the overlay is hardware accelerated.
   
-  TGLAttr* = enum 
-    GL_RED_SIZE, GL_GREEN_SIZE, GL_BLUE_SIZE, GL_ALPHA_SIZE, GL_BUFFER_SIZE, 
-    GL_DOUBLEBUFFER, GL_DEPTH_SIZE, GL_STENCIL_SIZE, GL_ACCUM_RED_SIZE, 
-    GL_ACCUM_GREEN_SIZE, GL_ACCUM_BLUE_SIZE, GL_ACCUM_ALPHA_SIZE, GL_STEREO, 
-    GL_MULTISAMPLEBUFFERS, GL_MULTISAMPLESAMPLES, GL_ACCELERATED_VISUAL, 
+  GLAttr* = enum 
+    GL_RED_SIZE, GL_GREEN_SIZE, GL_BLUE_SIZE, GL_ALPHA_SIZE, GL_BUFFER_SIZE,
+    GL_DOUBLEBUFFER, GL_DEPTH_SIZE, GL_STENCIL_SIZE, GL_ACCUM_RED_SIZE,
+    GL_ACCUM_GREEN_SIZE, GL_ACCUM_BLUE_SIZE, GL_ACCUM_ALPHA_SIZE, GL_STEREO,
+    GL_MULTISAMPLEBUFFERS, GL_MULTISAMPLESAMPLES, GL_ACCELERATED_VISUAL,
     GL_SWAP_CONTROL
-  PCursor* = ptr TCursor
-  TCursor*{.final.} = object  # SDL_mutex.h types
-    area*: TRect              # The area of the mouse cursor
+  PCursor* = ptr Cursor
+  Cursor*{.final.} = object  # SDL_mutex.h types
+    area*: Rect               # The area of the mouse cursor
     hotX*, hot_y*: int16    # The "tip" of the cursor
     data*: ptr byte             # B/W cursor data
     mask*: ptr byte             # B/W cursor mask
     save*: array[1..2, ptr byte] # Place to save cursor area
     wmCursor*: pointer       # Window-manager cursor
-  
+{.deprecated: [TRect: Rect, TSurface: Surface, TEvent: Event, TColor: Color,
+              TEventFilter: EventFilter, TColorArray: ColorArray,
+              # TSysWMEvent: SysWMEvent, # Naming conflict when we drop the `T`
+              TExposeEvent: ExposeEvent,
+              TQuitEvent: QuitEvent, TPalette: Palette, TPixelFormat: PixelFormat,
+              TBlitInfo: BlitInfo, TBlit: Blit, TVideoInfo: VideoInfo,
+              TOverlay: Overlay, TGLAttr: GLAttr, TCursor: Cursor].}
 
 type 
-  PMutex* = ptr TMutex
-  TMutex*{.final.} = object 
-  Psemaphore* = ptr Tsemaphore
-  Tsemaphore*{.final.} = object 
-  PSem* = ptr TSem
-  TSem* = Tsemaphore
-  PCond* = ptr TCond
-  TCond*{.final.} = object    # SDL_thread.h types
+  PMutex* = ptr Mutex
+  Mutex*{.final.} = object 
+  Psemaphore* = ptr Semaphore
+  Semaphore*{.final.} = object 
+  PSem* = ptr Sem
+  Sem* = Semaphore
+  PCond* = ptr Cond
+  Cond*{.final.} = object    # SDL_thread.h types
+{.deprecated: [TCond: Cond, TSem: Sem, TMutex: Mutex, Tsemaphore: Semaphore].}
 
-when defined(WINDOWS): 
+when defined(WINDOWS):
   type 
-    TSYS_ThreadHandle* = THandle
-when defined(Unix): 
+    SYS_ThreadHandle* = Handle
+  {.deprecated: [TSYS_ThreadHandle: SYS_ThreadHandle].}
+when defined(Unix):
   type 
-    TSYS_ThreadHandle* = pointer
+    SYS_ThreadHandle* = pointer
+  {.deprecated: [TSYS_ThreadHandle: SYS_ThreadHandle].}
 type                          # This is the system-independent thread info structure
-  PThread* = ptr TThread
-  TThread*{.final.} = object  # Helper Types
+  PThread* = ptr Thread
+  Thread*{.final.} = object   # Helper Types
                               # Keyboard  State Array ( See demos for how to use )
     threadid*: int32
-    handle*: TSYS_ThreadHandle
+    handle*: SYS_ThreadHandle
     status*: int
-    errbuf*: Terror
+    errbuf*: Error
     data*: pointer
 
-  PKeyStateArr* = ptr TKeyStateArr
-  TKeyStateArr* = array[0..65000, byte] # Types required so we don't need to use Windows.pas
+  PKeyStateArr* = ptr KeyStateArr
+  KeyStateArr* = array[0..65000, byte] # Types required so we don't need to use Windows.pas
   PInteger* = ptr int
   PByte* = ptr int8
   PWord* = ptr int16
   PLongWord* = ptr int32      # General arrays
-  PByteArray* = ptr TByteArray
-  TByteArray* = array[0..32767, int8]
-  PWordArray* = ptr TWordArray
-  TWordArray* = array[0..16383, int16] # Generic procedure pointer
+  PByteArray* = ptr ByteArray
+  ByteArray* = array[0..32767, int8]
+  PWordArray* = ptr WordArray
+  WordArray* = array[0..16383, int16] # Generic procedure pointer
+{.deprecated: [TKeyStateArr: KeyStateArr, TByteArray: ByteArray, TThread: Thread,
+              TWordArray: WordArray].}
 
-type TEventSeq = set[TEventKind]
-template evconv(procName: expr, ptrName: typedesc, assertions: TEventSeq): stmt {.immediate.} =
+type EventSeq = set[EventKind]
+{.deprecated: [TEventSeq: EventSeq].}
+
+template evconv(procName: expr, ptrName: typedesc, assertions: EventSeq): stmt {.immediate.} =
   proc `procName`*(event: PEvent): ptrName =
     assert(contains(assertions, event.kind))
     result = cast[ptrName](event)
@@ -1337,7 +1378,7 @@ proc getError*(): cstring{.cdecl, importc: "SDL_GetError", dynlib: LibName.}
 proc setError*(fmt: cstring){.cdecl, importc: "SDL_SetError", dynlib: LibName.}
 proc clearError*(){.cdecl, importc: "SDL_ClearError", dynlib: LibName.}
 when not (defined(WINDOWS)):
-  proc error*(Code: Terrorcode){.cdecl, importc: "SDL_Error", dynlib: LibName.}
+  proc error*(Code: ErrorCode){.cdecl, importc: "SDL_Error", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # io handling
   #------------------------------------------------------------------------------
@@ -1368,13 +1409,13 @@ proc getTicks*(): int32{.cdecl, importc: "SDL_GetTicks", dynlib: LibName.}
 proc delay*(msec: int32){.cdecl, importc: "SDL_Delay", dynlib: LibName.}
   # Add a new timer to the pool of timers already running.
   # Returns a timer ID, or NULL when an error occurs.
-proc addTimer*(interval: int32, callback: TNewTimerCallback, param: pointer): PTimerID{.
+proc addTimer*(interval: int32, callback: NewTimerCallback, param: pointer): PTimerID{.
     cdecl, importc: "SDL_AddTimer", dynlib: LibName.}
   # Remove one of the multiple timers knowing its ID.
   # Returns a boolean value indicating success.
-proc removeTimer*(t: PTimerID): TBool{.cdecl, importc: "SDL_RemoveTimer", 
+proc removeTimer*(t: PTimerID): Bool{.cdecl, importc: "SDL_RemoveTimer", 
                                        dynlib: LibName.}
-proc setTimer*(interval: int32, callback: TTimerCallback): int{.cdecl, 
+proc setTimer*(interval: int32, callback: TimerCallback): int{.cdecl, 
     importc: "SDL_SetTimer", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # audio-routines
@@ -1432,7 +1473,7 @@ proc audioDriverName*(namebuf: cstring, maxlen: int): cstring{.cdecl,
 proc openAudio*(desired, obtained: PAudioSpec): int{.cdecl, 
     importc: "SDL_OpenAudio", dynlib: LibName.}
   # Get the current audio state:
-proc getAudioStatus*(): TAudiostatus{.cdecl, importc: "SDL_GetAudioStatus", 
+proc getAudioStatus*(): Audiostatus{.cdecl, importc: "SDL_GetAudioStatus", 
                                       dynlib: LibName.}
   # This function pauses and unpauses the audio callback processing.
   #  It should be called with a parameter of 0 after opening the audio
@@ -1518,7 +1559,7 @@ proc cdOpen*(drive: int): PCD{.cdecl, importc: "SDL_CDOpen", dynlib: LibName.}
   # This function returns the current status of the given drive.
   #  If the drive has a CD in it, the table of contents of the CD and current
   #  play position of the CD will be stored in the SDL_CD structure.
-proc cdStatus*(cdrom: PCD): TCDStatus{.cdecl, importc: "SDL_CDStatus", 
+proc cdStatus*(cdrom: PCD): CDStatus{.cdecl, importc: "SDL_CDStatus", 
                                        dynlib: LibName.}
   #  Play the given CD starting at 'start_track' and 'start_frame' for 'ntracks'
   #   tracks and 'nframes' frames.  If both 'ntrack' and 'nframe' are 0, play
@@ -1559,7 +1600,7 @@ proc cdEject*(cdrom: PCD): int{.cdecl, importc: "SDL_CDEject", dynlib: LibName.}
   # Closes the handle for the CD-ROM drive
 proc cdClose*(cdrom: PCD){.cdecl, importc: "SDL_CDClose", dynlib: LibName.}
   # Given a status, returns true if there's a disk in the drive
-proc cdInDrive*(status: TCDStatus): bool
+proc cdInDrive*(status: CDStatus): bool
 
 proc numJoysticks*(): int{.cdecl, importc: "SDL_NumJoysticks", dynlib: LibName.}
   # Get the implementation dependent name of a joystick.
@@ -1643,7 +1684,7 @@ proc pumpEvents*(){.cdecl, importc: "SDL_PumpEvents", dynlib: LibName.}
   #  removed from the queue.
   #  This function returns the number of events actually stored, or -1
   #  if there was an error.  This function is thread-safe.
-proc peepEvents*(events: PEvent, numevents: int, action: TEventAction, 
+proc peepEvents*(events: PEvent, numevents: int, action: EventAction, 
                  mask: int32): int{.cdecl, importc: "SDL_PeepEvents", 
                                      dynlib: LibName.}
   # Polls for currently pending events, and returns 1 if there are any pending
@@ -1672,11 +1713,11 @@ proc pushEvent*(event: PEvent): int{.cdecl, importc: "SDL_PushEvent",
   #  be closed, otherwise the window will remain open if possible.
   #  If the quit event is generated by an interrupt signal, it will bypass the
   #  internal queue and be delivered to the application at the next event poll.
-proc setEventFilter*(filter: TEventFilter){.cdecl, 
+proc setEventFilter*(filter: EventFilter){.cdecl, 
     importc: "SDL_SetEventFilter", dynlib: LibName.}
   # Return the current event filter - can be used to "chain" filters.
   #  If there is no event filter set, this function returns NULL.
-proc getEventFilter*(): TEventFilter{.cdecl, importc: "SDL_GetEventFilter", 
+proc getEventFilter*(): EventFilter{.cdecl, importc: "SDL_GetEventFilter", 
                                       dynlib: LibName.}
   # This function allows you to set the state of processing certain events.
   #  If 'state' is set to SDL_IGNORE, that event will be automatically dropped
@@ -1691,7 +1732,7 @@ proc eventState*(theType: byte, state: int): byte{.cdecl,
   #------------------------------------------------------------------------------
   # This macro can be used to fill a version structure with the compile-time
   #  version of the SDL library.
-proc version*(x: var Tversion)
+proc version*(x: var Version)
   # This macro turns the version numbers into a numeric value:
   #   (1,2,3) -> (1203)
   #   This assumes that there will never be more than 100 patchlevels
@@ -2174,7 +2215,7 @@ proc glLoadLibrary*(filename: cstring): int{.cdecl,
 proc glGetProcAddress*(procname: cstring): pointer{.cdecl, 
     importc: "SDL_GL_GetProcAddress", dynlib: LibName.}
   # Set an attribute of the OpenGL subsystem before intialization.
-proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl, 
+proc glSetAttribute*(attr: GLAttr, value: int): int{.cdecl, 
     importc: "SDL_GL_SetAttribute", dynlib: LibName.}
   # Get an attribute of the OpenGL subsystem from the windowing
   #  interface, such as glX. This is of course different from getting
@@ -2183,7 +2224,7 @@ proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl,
   #
   #  Developers should track the values they pass into SDL_GL_SetAttribute
   #  themselves if they want to retrieve these values.
-proc glGetAttribute*(attr: TGLAttr, value: var int): int{.cdecl, 
+proc glGetAttribute*(attr: GLAttr, value: var int): int{.cdecl, 
     importc: "SDL_GL_GetAttribute", dynlib: LibName.}
   # Swap the OpenGL buffers, if double-buffering is supported.
 proc glSwapBuffers*(){.cdecl, importc: "SDL_GL_SwapBuffers", dynlib: LibName.}
@@ -2230,7 +2271,7 @@ proc wmToggleFullScreen*(surface: PSurface): int{.cdecl,
   # Grabbing means that the mouse is confined to the application window,
   #  and nearly all keyboard input is passed directly to the application,
   #  and not interpreted by a window manager, if any.
-proc wmGrabInput*(mode: TGrabMode): TGrabMode{.cdecl, 
+proc wmGrabInput*(mode: GrabMode): GrabMode{.cdecl, 
     importc: "SDL_WM_GrabInput", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # mouse-routines
@@ -2305,13 +2346,13 @@ proc getKeyRepeat*(delay: PInteger, interval: PInteger){.cdecl,
 proc getKeyState*(numkeys: pointer): ptr byte{.cdecl, importc: "SDL_GetKeyState", 
     dynlib: LibName.}
   # Get the current key modifier state
-proc getModState*(): TMod{.cdecl, importc: "SDL_GetModState", dynlib: LibName.}
+proc getModState*(): Mod{.cdecl, importc: "SDL_GetModState", dynlib: LibName.}
   # Set the current key modifier state
   #  This does not change the keyboard state, only the key modifier flags.
-proc setModState*(modstate: TMod){.cdecl, importc: "SDL_SetModState", 
+proc setModState*(modstate: Mod){.cdecl, importc: "SDL_SetModState", 
                                    dynlib: LibName.}
   # Get the name of an SDL virtual keysym
-proc getKeyName*(key: TKey): cstring{.cdecl, importc: "SDL_GetKeyName", 
+proc getKeyName*(key: Key): cstring{.cdecl, importc: "SDL_GetKeyName", 
                                       dynlib: LibName.}
   #------------------------------------------------------------------------------
   # Active Routines
@@ -2469,7 +2510,7 @@ proc loadWAV(filename: cstring, spec: PAudioSpec, audioBuf: ptr byte,
              audiolen: PUInt32): PAudioSpec = 
   result = loadWAV_RW(rWFromFile(filename, "rb"), 1, spec, audioBuf, audiolen)
 
-proc cdInDrive(status: TCDStatus): bool = 
+proc cdInDrive(status: CDStatus): bool = 
   result = ord(status) > ord(CD_ERROR)
 
 proc framesToMsf*(frames: int; m, s, f: var int) =
@@ -2483,7 +2524,7 @@ proc framesToMsf*(frames: int; m, s, f: var int) =
 proc msfToFrames*(m, s, f: int): int = 
   result = m * 60 * CD_FPS + s * CD_FPS + f
 
-proc version(x: var Tversion) = 
+proc version(x: var Version) = 
   x.major = MAJOR_VERSION
   x.minor = MINOR_VERSION
   x.patch = PATCHLEVEL

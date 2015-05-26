@@ -75,7 +75,7 @@ const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
 
 type
-  TSocketImpl = object ## socket type
+  SocketImpl = object ## socket type
     fd: SocketHandle
     case isBuffered: bool # determines whether this socket is buffered.
     of true:
@@ -94,7 +94,7 @@ type
       of false: nil
     nonblocking: bool
   
-  Socket* = ref TSocketImpl
+  Socket* = ref SocketImpl
   
   Port* = distinct uint16  ## port type
   
@@ -146,8 +146,9 @@ type
 
 {.deprecated: [TSocket: Socket, TType: SockType, TPort: Port, TDomain: Domain,
     TProtocol: Protocol, TServent: Servent, THostent: Hostent,
-    TSOBool: SOBool, TRecvLineResult: RecvLineResult, 
-    TReadLineResult: ReadLineResult, ETimeout: TimeoutError].}
+    TSOBool: SOBool, TRecvLineResult: RecvLineResult,
+    TReadLineResult: ReadLineResult, ETimeout: TimeoutError,
+    TSocketImpl: SocketImpl].}
 
 when defined(booting):
   let invalidSocket*: Socket = nil ## invalid socket

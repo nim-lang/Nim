@@ -538,7 +538,7 @@ when haveZipLib:
     var n = "$#.zip" % proj
     if c.outdir.len == 0: n = "build" / n
     else: n = c.outdir / n
-    var z: TZipArchive
+    var z: ZipArchive
     if open(z, n, fmWrite):
       addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
       addFile(z, proj / buildBatFile64, "build" / buildBatFile64)

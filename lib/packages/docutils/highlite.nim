@@ -15,7 +15,7 @@ import
   strutils
 
 type
-  TTokenClass* = enum
+  TokenClass* = enum
     gtEof, gtNone, gtWhitespace, gtDecNumber, gtBinNumber, gtHexNumber,
     gtOctNumber, gtFloatNumber, gtIdentifier, gtKeyword, gtStringLit,
     gtLongStringLit, gtCharLit, gtEscapeSequence, # escape sequence like \xff
@@ -23,20 +23,22 @@ type
     gtTagStart, gtTagEnd, gtKey, gtValue, gtRawData, gtAssembler,
     gtPreprocessor, gtDirective, gtCommand, gtRule, gtHyperlink, gtLabel,
     gtReference, gtOther
-  TGeneralTokenizer* = object of RootObj
-    kind*: TTokenClass
+  GeneralTokenizer* = object of RootObj
+    kind*: TokenClass
     start*, length*: int
     buf: cstring
     pos: int
-    state: TTokenClass
+    state: TokenClass
 
-  TSourceLanguage* = enum
+  SourceLanguage* = enum
     langNone, langNim, langNimrod, langCpp, langCsharp, langC, langJava
+{.deprecated: [TSourceLanguage: SourceLanguage, TTokenClass: TokenClass,
+              TGeneralTokenizer: GeneralTokenizer].}
 
 const
-  sourceLanguageToStr*: array[TSourceLanguage, string] = ["none",
+  sourceLanguageToStr*: array[SourceLanguage, string] = ["none",
     "Nim", "Nimrod", "C++", "C#", "C", "Java"]
-  tokenClassToStr*: array[TTokenClass, string] = ["Eof", "None", "Whitespace",
+  tokenClassToStr*: array[TokenClass, string] = ["Eof", "None", "Whitespace",
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber",
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit",
     "EscapeSequence", "Operator", "Punctuation", "Comment", "LongComment",
@@ -58,29 +60,29 @@ const
     "template", "try", "tuple", "type", "using", "var", "when", "while", "with",
     "without", "xor", "yield"]
 
-proc getSourceLanguage*(name: string): TSourceLanguage =
-  for i in countup(succ(low(TSourceLanguage)), high(TSourceLanguage)):
+proc getSourceLanguage*(name: string): SourceLanguage =
+  for i in countup(succ(low(SourceLanguage)), high(SourceLanguage)):
     if cmpIgnoreStyle(name, sourceLanguageToStr[i]) == 0:
       return i
   result = langNone
 
-proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: cstring) =
+proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: cstring) =
   g.buf = buf
-  g.kind = low(TTokenClass)
+  g.kind = low(TokenClass)
   g.start = 0
   g.length = 0
-  g.state = low(TTokenClass)
+  g.state = low(TokenClass)
   var pos = 0                     # skip initial whitespace:
   while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
   g.pos = pos
 
-proc initGeneralTokenizer*(g: var TGeneralTokenizer, buf: string) =
+proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: string) =
   initGeneralTokenizer(g, cstring(buf))
 
-proc deinitGeneralTokenizer*(g: var TGeneralTokenizer) =
+proc deinitGeneralTokenizer*(g: var GeneralTokenizer) =
   discard
 
-proc nimGetKeyword(id: string): TTokenClass =
+proc nimGetKeyword(id: string): TokenClass =
   for k in nimKeywords:
     if cmpIgnoreStyle(id, k) == 0: return gtKeyword
   result = gtIdentifier
@@ -92,7 +94,7 @@ proc nimGetKeyword(id: string): TTokenClass =
     else:
       result = gtIdentifier
 
-proc nimNumberPostfix(g: var TGeneralTokenizer, position: int): int =
+proc nimNumberPostfix(g: var GeneralTokenizer, position: int): int =
   var pos = position
   if g.buf[pos] == '\'':
     inc(pos)
@@ -110,7 +112,7 @@ proc nimNumberPostfix(g: var TGeneralTokenizer, position: int): int =
       discard
   result = pos
 
-proc nimNumber(g: var TGeneralTokenizer, position: int): int =
+proc nimNumber(g: var GeneralTokenizer, position: int): int =
   const decChars = {'0'..'9', '_'}
   var pos = position
   g.kind = gtDecNumber
@@ -130,7 +132,7 @@ const
   OpChars  = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
               '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
 
-proc nimNextToken(g: var TGeneralTokenizer) =
+proc nimNextToken(g: var GeneralTokenizer) =
   const
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
     octChars = {'0'..'7', '_'}
@@ -278,7 +280,7 @@ proc nimNextToken(g: var TGeneralTokenizer) =
     assert false, "nimNextToken: produced an empty token"
   g.pos = pos
 
-proc generalNumber(g: var TGeneralTokenizer, position: int): int =
+proc generalNumber(g: var GeneralTokenizer, position: int): int =
   const decChars = {'0'..'9'}
   var pos = position
   g.kind = gtDecNumber
@@ -294,7 +296,7 @@ proc generalNumber(g: var TGeneralTokenizer, position: int): int =
     while g.buf[pos] in decChars: inc(pos)
   result = pos
 
-proc generalStrLit(g: var TGeneralTokenizer, position: int): int =
+proc generalStrLit(g: var GeneralTokenizer, position: int): int =
   const
     decChars = {'0'..'9'}
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f'}
@@ -355,12 +357,13 @@ proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
   result = - 1
 
 type
-  TTokenizerFlag = enum
+  TokenizerFlag = enum
     hasPreprocessor, hasNestedComments
-  TTokenizerFlags = set[TTokenizerFlag]
+  TokenizerFlags = set[TokenizerFlag]
+{.deprecated: [TTokenizerFlag: TokenizerFlag, TTokenizerFlags: TokenizerFlags].}
 
-proc clikeNextToken(g: var TGeneralTokenizer, keywords: openArray[string],
-                    flags: TTokenizerFlags) =
+proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
+                    flags: TokenizerFlags) =
   const
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f'}
     octChars = {'0'..'7'}
@@ -493,7 +496,7 @@ proc clikeNextToken(g: var TGeneralTokenizer, keywords: openArray[string],
     assert false, "clikeNextToken: produced an empty token"
   g.pos = pos
 
-proc cNextToken(g: var TGeneralTokenizer) =
+proc cNextToken(g: var GeneralTokenizer) =
   const
     keywords: array[0..36, string] = ["_Bool", "_Complex", "_Imaginary", "auto",
       "break", "case", "char", "const", "continue", "default", "do", "double",
@@ -503,7 +506,7 @@ proc cNextToken(g: var TGeneralTokenizer) =
       "volatile", "while"]
   clikeNextToken(g, keywords, {hasPreprocessor})
 
-proc cppNextToken(g: var TGeneralTokenizer) =
+proc cppNextToken(g: var GeneralTokenizer) =
   const
     keywords: array[0..47, string] = ["asm", "auto", "break", "case", "catch",
       "char", "class", "const", "continue", "default", "delete", "do", "double",
@@ -514,7 +517,7 @@ proc cppNextToken(g: var TGeneralTokenizer) =
       "union", "unsigned", "virtual", "void", "volatile", "while"]
   clikeNextToken(g, keywords, {hasPreprocessor})
 
-proc csharpNextToken(g: var TGeneralTokenizer) =
+proc csharpNextToken(g: var GeneralTokenizer) =
   const
     keywords: array[0..76, string] = ["abstract", "as", "base", "bool", "break",
       "byte", "case", "catch", "char", "checked", "class", "const", "continue",
@@ -529,7 +532,7 @@ proc csharpNextToken(g: var TGeneralTokenizer) =
       "virtual", "void", "volatile", "while"]
   clikeNextToken(g, keywords, {hasPreprocessor})
 
-proc javaNextToken(g: var TGeneralTokenizer) =
+proc javaNextToken(g: var GeneralTokenizer) =
   const
     keywords: array[0..52, string] = ["abstract", "assert", "boolean", "break",
       "byte", "case", "catch", "char", "class", "const", "continue", "default",
@@ -541,7 +544,7 @@ proc javaNextToken(g: var TGeneralTokenizer) =
       "try", "void", "volatile", "while"]
   clikeNextToken(g, keywords, {})
 
-proc getNextToken*(g: var TGeneralTokenizer, lang: TSourceLanguage) =
+proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
   case lang
   of langNone: assert false
   of langNim, langNimrod: nimNextToken(g)

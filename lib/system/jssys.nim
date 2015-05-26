@@ -15,13 +15,13 @@ else:
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
-  PSafePoint = ptr TSafePoint
-  TSafePoint {.compilerproc, final.} = object
+  PSafePoint = ptr SafePoint
+  SafePoint {.compilerproc, final.} = object
     prev: PSafePoint # points to next safe point
     exc: ref Exception
 
-  PCallFrame = ptr TCallFrame
-  TCallFrame {.importc, nodecl, final.} = object
+  PCallFrame = ptr CallFrame
+  CallFrame {.importc, nodecl, final.} = object
     prev: PCallFrame
     procname: cstring
     line: int # current line number
@@ -33,6 +33,7 @@ type
     lineNumber {.importc.}: int
     message {.importc.}: cstring
     stack {.importc.}: cstring
+{.deprecated: [TSafePoint: SafePoint, TCallFrame: CallFrame].}
 
 var
   framePtr {.importc, nodecl, volatile.}: PCallFrame
@@ -60,12 +61,13 @@ proc getCurrentExceptionMsg*(): string =
 
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
-    TTempFrame = tuple[procname: cstring, line: int]
+    TempFrame = tuple[procname: cstring, line: int]
+  {.deprecated: [TTempFrame: TempFrame].}
   var
     it = f
     i = 0
     total = 0
-    tempFrames: array [0..63, TTempFrame]
+    tempFrames: array [0..63, TempFrame]
   while it != nil and i <= high(tempFrames):
     tempFrames[i].procname = it.procname
     tempFrames[i].line = it.line
@@ -260,17 +262,17 @@ proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   """
 
 type
-  TDocument {.importc.} = object of RootObj
+  Document {.importc.} = object of RootObj
     write: proc (text: cstring) {.nimcall.}
     writeln: proc (text: cstring) {.nimcall.}
-    createAttribute: proc (identifier: cstring): ref TNode {.nimcall.}
-    createElement: proc (identifier: cstring): ref TNode {.nimcall.}
-    createTextNode: proc (identifier: cstring): ref TNode {.nimcall.}
-    getElementById: proc (id: cstring): ref TNode {.nimcall.}
-    getElementsByName: proc (name: cstring): seq[ref TNode] {.nimcall.}
-    getElementsByTagName: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    createAttribute: proc (identifier: cstring): ref Node {.nimcall.}
+    createElement: proc (identifier: cstring): ref Node {.nimcall.}
+    createTextNode: proc (identifier: cstring): ref Node {.nimcall.}
+    getElementById: proc (id: cstring): ref Node {.nimcall.}
+    getElementsByName: proc (name: cstring): seq[ref Node] {.nimcall.}
+    getElementsByTagName: proc (name: cstring): seq[ref Node] {.nimcall.}
 
-  TNodeType* = enum
+  NodeType* = enum
     ElementNode = 1,
     AttributeNode,
     TextNode,
@@ -283,35 +285,36 @@ type
     DocumentTypeNode,
     DocumentFragmentNode,
     NotationNode
-  TNode* {.importc.} = object of RootObj
-    attributes*: seq[ref TNode]
-    childNodes*: seq[ref TNode]
+  Node* {.importc.} = object of RootObj
+    attributes*: seq[ref Node]
+    childNodes*: seq[ref Node]
     data*: cstring
-    firstChild*: ref TNode
-    lastChild*: ref TNode
-    nextSibling*: ref TNode
+    firstChild*: ref Node
+    lastChild*: ref Node
+    nextSibling*: ref Node
     nodeName*: cstring
-    nodeType*: TNodeType
+    nodeType*: NodeType
     nodeValue*: cstring
-    parentNode*: ref TNode
-    previousSibling*: ref TNode
-    appendChild*: proc (child: ref TNode) {.nimcall.}
+    parentNode*: ref Node
+    previousSibling*: ref Node
+    appendChild*: proc (child: ref Node) {.nimcall.}
     appendData*: proc (data: cstring) {.nimcall.}
     cloneNode*: proc (copyContent: bool) {.nimcall.}
     deleteData*: proc (start, len: int) {.nimcall.}
     getAttribute*: proc (attr: cstring): cstring {.nimcall.}
-    getAttributeNode*: proc (attr: cstring): ref TNode {.nimcall.}
-    getElementsByTagName*: proc (): seq[ref TNode] {.nimcall.}
+    getAttributeNode*: proc (attr: cstring): ref Node {.nimcall.}
+    getElementsByTagName*: proc (): seq[ref Node] {.nimcall.}
     hasChildNodes*: proc (): bool {.nimcall.}
-    insertBefore*: proc (newNode, before: ref TNode) {.nimcall.}
+    insertBefore*: proc (newNode, before: ref Node) {.nimcall.}
     insertData*: proc (position: int, data: cstring) {.nimcall.}
     removeAttribute*: proc (attr: cstring) {.nimcall.}
-    removeAttributeNode*: proc (attr: ref TNode) {.nimcall.}
-    removeChild*: proc (child: ref TNode) {.nimcall.}
-    replaceChild*: proc (newNode, oldNode: ref TNode) {.nimcall.}
+    removeAttributeNode*: proc (attr: ref Node) {.nimcall.}
+    removeChild*: proc (child: ref Node) {.nimcall.}
+    replaceChild*: proc (newNode, oldNode: ref Node) {.nimcall.}
     replaceData*: proc (start, len: int, text: cstring) {.nimcall.}
     setAttribute*: proc (name, value: cstring) {.nimcall.}
-    setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
+    setAttributeNode*: proc (attr: ref Node) {.nimcall.}
+{.deprecated: [TNode: Node, TNodeType: NodeType, TDocument: Document].}
 
 when defined(kwin):
   proc rawEcho {.compilerproc, asmNoStackFrame.} =
@@ -337,7 +340,7 @@ elif defined(nodejs):
 
 else:
   var
-    document {.importc, nodecl.}: ref TDocument
+    document {.importc, nodecl.}: ref Document
 
   proc ewriteln(x: cstring) =
     var node = document.getElementsByTagName("body")[0]
