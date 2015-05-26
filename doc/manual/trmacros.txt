@@ -54,7 +54,7 @@ blindly:
 .. code-block:: nim
   template mulIsCommutative{`*`(a, b)}(a, b: int): int = b*a
   
-What optimizers really need to do is a *canonization*:
+What optimizers really need to do is a *canonicalization*:
 
 .. code-block:: nim
   template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b*a

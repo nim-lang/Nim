@@ -25,15 +25,16 @@ A parameter may be declared with a default value which is used if the caller
 does not provide a value for the argument.
 
 .. code-block:: nim
-  # b is optional, 47 is its default value
-  proc foo(a, b: int = 47): int
+  # b is optional with 47 as its default value
+  proc foo(a: int, b: int = 47): int
 
 Parameters can be declared mutable and so allow the proc to modify those
 arguments, by using the type modifier `var`.
 
 .. code-block:: nim
   # "returning" a value to the caller through the 2nd argument
-  proc foo(inp: int, outp: var int): void =
+  # Notice that the function uses no actual return value at all (ie void)
+  proc foo(inp: int, outp: var int) =
     outp = inp + 47
 
 If the proc declaration has no body, it is a `forward`:idx: declaration. If the
