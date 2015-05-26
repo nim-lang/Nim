@@ -35,7 +35,6 @@ type
     actionNsis,   # action: create NSIS installer
     actionScripts # action: create install and deinstall scripts
     actionZip,    # action: create zip file
-    actionTargz,  # action: create targz file
     actionXz,     # action: create xz file
     actionDeb     # action: prepare deb package
 
@@ -173,7 +172,6 @@ proc parseCmdLine(c: var ConfigData) =
           of "csource": incl(c.actions, actionCSource)
           of "scripts": incl(c.actions, actionScripts)
           of "zip": incl(c.actions, actionZip)
-          of "targz": incl(c.actions, actionTargz)
           of "xz": incl(c.actions, actionXz)
           of "inno": incl(c.actions, actionInno)
           of "nsis": incl(c.actions, actionNsis)
@@ -562,46 +560,6 @@ when haveZipLib:
     else:
       quit("Cannot open for writing: " & n)
 
-proc targzDist(c: var ConfigData) =
-  let proj = toLower(c.name) & "-" & c.version
-  var n = "$#.tar.gz" % proj
-  let tmpDir = if c.outdir.len == 0: "build" else: c.outdir
-
-  template processFile(z, dest, src) =
-    let s = src
-    let d = dest
-    echo "Copying ", s, " to ", tmpDir / d
-    let destdir = tmpdir / d.splitFile.dir
-    if not dirExists(destdir): createDir(destdir)
-    copyFile(s, tmpDir / d)
-
-  processFile(z, proj / buildBatFile32, "build" / buildBatFile32)
-  processFile(z, proj / buildBatFile64, "build" / buildBatFile64)
-  processFile(z, proj / buildShFile, "build" / buildShFile)
-  processFile(z, proj / makeFile, "build" / makeFile)
-  processFile(z, proj / installShFile, installShFile)
-  processFile(z, proj / deinstallShFile, deinstallShFile)
-  for f in walkFiles(c.libpath / "lib/*.h"):
-    processFile(z, proj / "c_code" / extractFilename(f), f)
-  for osA in 1..c.oses.len:
-    for cpuA in 1..c.cpus.len:
-      var dir = buildDir(osA, cpuA)
-      for k, f in walkDir("build" / dir):
-        if k == pcFile: processFile(z, proj / dir / extractFilename(f), f)
-
-  for cat in items({fcConfig..fcOther, fcUnix}):
-    for f in items(c.cat[cat]): processFile(z, proj / f, f)
-
-  let oldDir = getCurrentDir()
-  setCurrentDir(tmpDir)
-  try:
-    #if execShellCmd("7z a -ttar $1.tar $1" % proj) != 0 or
-    #   execShellCmd("7z a -tgzip $1.tar.gz $1.tar" % proj) != 0 or
-    if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
-      echo("External program failed")
-  finally:
-    setCurrentDir(oldDir)
-
 proc xzDist(c: var ConfigData) =
   let proj = toLower(c.name) & "-" & c.version
   var n = "$#.tar.xz" % proj
@@ -706,8 +664,6 @@ if actionZip in c.actions:
     zipDist(c)
   else:
     quit("libzip is not installed")
-if actionTargz in c.actions:
-  targzDist(c)
 if actionXz in c.actions:
   xzDist(c)
 if actionDeb in c.actions:

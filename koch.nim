@@ -107,12 +107,6 @@ proc zip(args: string) =
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
-proc targz(args: string) =
-  exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
-       [VersionAsString, compileNimInst, findNim()])
-  exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim targz compiler/installer.ini" %
-       ["tools" / "niminst" / "niminst".exe, VersionAsString])
-
 proc xz(args: string) =
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
@@ -374,7 +368,6 @@ of cmdArgument:
   of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
-  of "targz": targz(op.cmdLineRest)
   of "xz": xz(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
