@@ -70,7 +70,7 @@ when defined(boehmgc):
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
   else:
-    const boehmLib = "/usr/lib/libgc.so.1"
+    const boehmLib = "libgc.so.1"
 
   proc boehmGCinit {.importc: "GC_init", dynlib: boehmLib.}
   proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.}
@@ -335,4 +335,3 @@ else:
     include "system/gc"
 
 {.pop.}
-
