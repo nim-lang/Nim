@@ -593,7 +593,7 @@ proc xzDist(c: var ConfigData) =
   let oldDir = getCurrentDir()
   setCurrentDir(tmpDir)
   try:
-    if execShellCmd("tar Jcf $1.tar.xz $1" % proj) != 0:
+    if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
       echo("External program failed")
   finally:
     setCurrentDir(oldDir)
