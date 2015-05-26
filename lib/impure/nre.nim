@@ -1,3 +1,12 @@
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Nim Contributers
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+
 import nre.private.pcre as pcre
 import nre.private.util
 import tables
@@ -32,6 +41,50 @@ from unicode import runeLenAt
 ##    `Javascript <http://jsfiddle.net/xtcbxurg/>`__, and
 ##    `Java <https://ideone.com/hYJuJ5>`__'s precedent of returning a list
 ##    of each character (``"123".split(re"") == @["1", "2", "3"]``).
+##
+## Licencing
+## ---------
+##
+## PCRE has some additional terms that you must comply with if you use this module.::
+##
+## > Copyright (c) 1997-2001 University of Cambridge
+## >
+## > Permission is granted to anyone to use this software for any purpose on any
+## > computer system, and to redistribute it freely, subject to the following
+## > restrictions:
+## >
+## > 1. This software is distributed in the hope that it will be useful,
+## >    but WITHOUT ANY WARRANTY; without even the implied warranty of
+## >    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+## >
+## > 2. The origin of this software must not be misrepresented, either by
+## >    explicit claim or by omission. In practice, this means that if you use
+## >    PCRE in software that you distribute to others, commercially or
+## >    otherwise, you must put a sentence like this
+## >
+## >      Regular expression support is provided by the PCRE library package,
+## >      which is open source software, written by Philip Hazel, and copyright
+## >      by the University of Cambridge, England.
+## >
+## >    somewhere reasonably visible in your documentation and in any relevant
+## >    files or online help data or similar. A reference to the ftp site for
+## >    the source, that is, to
+## >
+## >      ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/
+## >
+## >    should also be given in the documentation. However, this condition is not
+## >    intended to apply to whole chains of software. If package A includes PCRE,
+## >    it must acknowledge it, but if package B is software that includes package
+## >    A, the condition is not imposed on package B (unless it uses PCRE
+## >    independently).
+## >
+## > 3. Altered versions must be plainly marked as such, and must not be
+## >    misrepresented as being the original software.
+## >
+## > 4. If PCRE is embedded in any software that is released under the GNU
+## >    General Purpose Licence (GPL), or Lesser General Purpose Licence (LGPL),
+## >    then the terms of that licence shall supersede any condition above with
+## >    which it is incompatible.
 ##
 ##
 ## Other Notes
