@@ -1198,23 +1198,11 @@ proc newSons*(father: PType, length: int) =
   else:
     setLen(father.sons, length)
 
-proc sonsLen*(n: PType): int =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
-
-proc len*(n: PType): int =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
-
-proc sonsLen*(n: PNode): int =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
-
-proc lastSon*(n: PNode): PNode =
-  result = n.sons[sonsLen(n) - 1]
-
-proc lastSon*(n: PType): PType =
-  result = n.sons[sonsLen(n) - 1]
+proc sonsLen*(n: PType): int = n.sons.len
+proc len*(n: PType): int = n.sons.len
+proc sonsLen*(n: PNode): int = n.sons.len
+proc lastSon*(n: PNode): PNode = n.sons[^1]
+proc lastSon*(n: PType): PType = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
