@@ -97,7 +97,7 @@ proc isNone*[T](self: Option[T]): bool =
 
 
 proc unsafeGet*[T](self: Option[T]): T =
-  ## Returns the value of a `just`. Behavior is undefined for `none`.
+  ## Returns the value of a ``some``. Behavior is undefined for ``none``.
   assert self.isSome
   self.val
 
@@ -110,7 +110,7 @@ proc get*[T](self: Option[T]): T =
 
 
 proc `==`*(a, b: Option): bool =
-  ## Returns ``true`` if both ``Option``s are `none`,
+  ## Returns ``true`` if both ``Option``s are ``none``,
   ## or if they have equal values
   (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
 
