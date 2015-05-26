@@ -85,15 +85,6 @@ from unicode import runeLenAt
 ## >    General Purpose Licence (GPL), or Lesser General Purpose Licence (LGPL),
 ## >    then the terms of that licence shall supersede any condition above with
 ## >    which it is incompatible.
-##
-##
-## Other Notes
-## -----------
-##
-## By default, NRE compiles it’s own PCRE. If this is undesirable, pass
-## ``-d:pcreDynlib`` to use whatever dynamic library is available on the
-## system. This may have unexpected consequences if the dynamic library
-## doesn’t have certain features enabled.
 
 
 # Type definitions {{{
