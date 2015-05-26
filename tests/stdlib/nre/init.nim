@@ -1,4 +1,4 @@
-import unittest, private/pcre
+import unittest
 include nre
 
 suite "Test NRE initialization":
