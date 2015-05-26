@@ -1187,24 +1187,13 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
-  #var node = parse("{ \"test\": null }")
-  #echo(node.existsKey("test56"))
-
   var parsed = parseFile("tests/testdata/jsontest.json")
   var parsed2 = parseFile("tests/testdata/jsontest2.json")
 
-  when not defined(testing):
-    echo(parsed)
-    echo()
-    echo(pretty(parsed, 2))
-    echo()
-    echo(parsed["keyÄÖöoßß"])
-    echo()
-    echo(pretty(parsed2))
-    try:
-      echo(parsed["key2"][12123])
-      raise newException(ValueError, "That line was expected to fail")
-    except IndexError: echo()
+  try:
+    discard parsed["key2"][12123]
+    assert(false)
+  except IndexError: assert(true)
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
   # nil passthrough
@@ -1271,13 +1260,3 @@ when isMainModule:
       }
     ]
   assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-
-  when not defined(testing):
-    discard """
-    while true:
-      var json = stdin.readLine()
-      var node = parse(json)
-      echo(node)
-      echo()
-      echo()
-    """
