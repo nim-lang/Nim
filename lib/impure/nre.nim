@@ -7,7 +7,7 @@
 #
 
 
-import nre.private.pcre as pcre
+import pcre as pcre
 import nre.private.util
 import tables
 import unsigned
