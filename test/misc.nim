@@ -1,4 +1,4 @@
-import unittest, nre, strutils, optional_t.nonstrict
+import unittest, nre, strutils, optional_nonstrict
 
 suite "Misc tests":
   test "unicode":

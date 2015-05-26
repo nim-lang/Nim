@@ -5,7 +5,7 @@ import unsigned
 from future import lc, `[]`
 from strutils import toLower, `%`
 from math import ceil
-import optional_t
+import options
 from unicode import runeLenAt
 
 
@@ -115,9 +115,7 @@ type
 
   RegexMatch* = object
     ## Usually seen as Option[RegexMatch], it represents the result of an
-    ## execution. On failure, it is ``None[RegexMatch]``, but if you want
-    ## automated derefrence, import ``optional_t.nonstrict``. The available
-    ## fields are as follows:
+    ## execution. On failure, it is none, on success, it is some.
     ##
     ## ``pattern: Regex``
     ##     the pattern that is being matched
@@ -235,15 +233,15 @@ proc `[]`*(pattern: CaptureBounds, i: int): Option[Slice[int]] =
   let pattern = RegexMatch(pattern)
   if pattern.pcreMatchBounds[i + 1].a != -1:
     let bounds = pattern.pcreMatchBounds[i + 1]
-    return Some(int(bounds.a) .. int(bounds.b-1))
+    return some(int(bounds.a) .. int(bounds.b-1))
   else:
-    return None[Slice[int]]()
+    return none(Slice[int])
 
 proc `[]`*(pattern: Captures, i: int): string =
   let pattern = RegexMatch(pattern)
   let bounds = pattern.captureBounds[i]
 
-  if bounds:
+  if bounds.isSome:
     let bounds = bounds.get
     return pattern.str.substr(bounds.a, bounds.b)
   else:
@@ -275,7 +273,7 @@ proc toTable*(pattern: Captures, default: string = nil): Table[string, string] =
   result = initTable[string, string]()
   toTableImpl(nextVal == nil)
 
-proc toTable*(pattern: CaptureBounds, default = None[Slice[int]]()):
+proc toTable*(pattern: CaptureBounds, default = none(Slice[int])):
     Table[string, Option[Slice[int]]] =
   result = initTable[string, Option[Slice[int]]]()
   toTableImpl(nextVal.isNone)
@@ -288,13 +286,13 @@ template itemsImpl(cond: bool): stmt {.immediate, dirty.} =
     else:
       yield nextVal
 
-iterator items*(pattern: CaptureBounds, default = None[Slice[int]]()): Option[Slice[int]] =
+iterator items*(pattern: CaptureBounds, default = none(Slice[int])): Option[Slice[int]] =
   itemsImpl(nextVal.isNone)
 
 iterator items*(pattern: Captures, default: string = nil): string =
   itemsImpl(nextVal == nil)
 
-proc toSeq*(pattern: CaptureBounds, default = None[Slice[int]]()): seq[Option[Slice[int]]] =
+proc toSeq*(pattern: CaptureBounds, default = none(Slice[int])): seq[Option[Slice[int]]] =
   accumulateResult(pattern.items(default))
 
 proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
@@ -454,11 +452,11 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
                           cast[ptr cint](addr myResult.pcreMatchBounds[0]),
                           cint(vecsize))
   if execRet >= 0:
-    return Some(myResult)
+    return some(myResult)
 
   case execRet:
     of pcre.ERROR_NOMATCH:
-      return None[RegexMatch]()
+      return none(RegexMatch)
     of pcre.ERROR_NULL:
       raise newException(AccessViolationError, "Expected non-null parameters")
     of pcre.ERROR_BADOPTION:
@@ -497,7 +495,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   while true:
     var flags = 0
 
-    if match and
+    if match.isSome and
        match.get.matchBounds.a > match.get.matchBounds.b:
       # 0-len match
       flags = pcre.NOTEMPTY_ATSTART

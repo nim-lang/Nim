@@ -1,4 +1,4 @@
-import unittest, sequtils, nre, optional_t.nonstrict
+import unittest, sequtils, nre, optional_nonstrict
 
 suite "find":
   test "find text":

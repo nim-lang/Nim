@@ -1,4 +1,4 @@
-import unittest, optional_t.nonstrict
+import unittest, optional_nonstrict
 include nre
 
 suite "captures":
@@ -31,8 +31,8 @@ suite "captures":
 
   test "named capture bounds":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captureBounds["foo"] == Some(0..2))
-    check(ex1.captureBounds["bar"] == None[Slice[int]]())
+    check(ex1.captureBounds["foo"] == some(0..2))
+    check(ex1.captureBounds["bar"] == none(Slice[int]))
 
   test "capture count":
     let ex1 = re("(?<foo>foo)(?<bar>bar)?")
@@ -42,7 +42,7 @@ suite "captures":
   test "named capture table":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
     check(ex1.captures.toTable == {"foo" : "foo", "bar" : nil}.toTable())
-    check(ex1.captureBounds.toTable == {"foo" : Some(0..2), "bar" : None[Slice[int]]()}.toTable())
+    check(ex1.captureBounds.toTable == {"foo" : some(0..2), "bar" : none(Slice[int])}.toTable())
     check(ex1.captures.toTable("") == {"foo" : "foo", "bar" : ""}.toTable())
 
     let ex2 = "foobar".find(re("(?<foo>foo)(?<bar>bar)?"))
@@ -51,7 +51,7 @@ suite "captures":
   test "capture sequence":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
     check(ex1.captures.toSeq == @["foo", nil])
-    check(ex1.captureBounds.toSeq == @[Some(0..2), None[Slice[int]]()])
+    check(ex1.captureBounds.toSeq == @[some(0..2), none(Slice[int])])
     check(ex1.captures.toSeq("") == @["foo", ""])
 
     let ex2 = "foobar".find(re("(?<foo>foo)(?<bar>bar)?"))
