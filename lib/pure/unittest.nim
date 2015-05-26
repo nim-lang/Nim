@@ -157,12 +157,13 @@ macro check*(conditions: stmt): stmt {.immediate.} =
           #   Ident !"v"
           #   IntLit 2
           paramAst = exp[i][1]
-        argsAsgns.add getAst(asgn(arg, paramAst))
-        argsPrintOuts.add getAst(print(argStr, arg))
-        if exp[i].kind != nnkExprEqExpr:
-          exp[i] = arg
-        else:
-          exp[i][1] = arg
+        if exp[i].typekind notin {ntyTypeDesc}:
+          argsAsgns.add getAst(asgn(arg, paramAst))
+          argsPrintOuts.add getAst(print(argStr, arg))
+          if exp[i].kind != nnkExprEqExpr:
+            exp[i] = arg
+          else:
+            exp[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:
