@@ -22,25 +22,6 @@ from unicode import runeLenAt
 ##
 ## A regular expression library for Nim using PCRE to do the hard work.
 ##
-## Why?
-## ----
-##
-## The `re.nim <http://nim-lang.org/re.html>`__ module that
-## `Nim <http://nim-lang.org/>`__ provides in its standard library is
-## inadequate:
-##
-## -  It provides only a limited number of captures, while the underling
-##    library (PCRE) allows an unlimited number.
-##
-## -  Instead of having one proc that returns both the bounds and
-##    substring, it has one for the bounds and another for the substring.
-##
-## -  If the splitting regex is empty (``""``), then it returns the input
-##    string instead of following `Perl <https://ideone.com/dDMjmz>`__,
-##    `Javascript <http://jsfiddle.net/xtcbxurg/>`__, and
-##    `Java <https://ideone.com/hYJuJ5>`__'s precedent of returning a list
-##    of each character (``"123".split(re"") == @["1", "2", "3"]``).
-##
 ## Licencing
 ## ---------
 ##

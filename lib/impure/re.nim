@@ -8,7 +8,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim.
+## Regular expression support for Nim. Deprecated in favor of nre.
 ##
 ## **Note:** The 're' proc defaults to the **extended regular expression
 ## syntax** which lets you use whitespace freely to make your regexes readable.
