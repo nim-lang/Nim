@@ -534,7 +534,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
         break
 
       if matchesCrLf and offset < (str.len - 1) and
-         str[offset] == '\r' and str[offset + 1] == '\l':
+         str[offset] == '\r' and str[offset + 1] == '\L':
         # if PCRE treats CrLf as newline, skip both at the same time
         offset += 2
       elif unicode:
