@@ -12,7 +12,7 @@
 # id. This module is essential for the compiler's performance.
 
 import 
-  hashes, strutils
+  hashes, strutils, unicode
 
 type 
   TIdObj* = object of RootObj
@@ -37,6 +37,8 @@ proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
   while j < blen:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j)
+    while isMiddotRune(a, i): inc(i, 2)
+    while isMiddotRune(b, j): inc(j, 2)
     # tolower inlined:
     var aa = a[i]
     var bb = b[j]
