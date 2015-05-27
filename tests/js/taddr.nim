@@ -1,3 +1,7 @@
+discard """
+  action: run
+"""
+
 type T = object
   x: int
   s: string
@@ -29,8 +33,10 @@ doAssert objDeref.x == 42
 obj.s = "lorem ipsum dolor sit amet"
 var indexAddr = addr(obj.s[2])
 
-doAssert indexAddr[] == '4'
+doAssert indexAddr[] == 'r'
 
 indexAddr[] = 'd'
 
 doAssert indexAddr[] == 'd'
+
+doAssert obj.s == "lodem ipsum dolor sit amet"
