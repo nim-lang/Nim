@@ -305,10 +305,11 @@ proc toTable*(pattern: CaptureBounds, default = none(Slice[int])):
 template itemsImpl(cond: bool): stmt {.immediate, dirty.} =
   for i in 0 .. <RegexMatch(pattern).pattern.captureCount:
     let nextVal = pattern[i]
-    if cond:
-      yield default
-    else:
-      yield nextVal
+    # done in this roundabout way to avoid multiple yields (potential code
+    # bloat)
+    let nextYieldVal = if cond: default else: nextVal
+    yield nextYieldVal
+
 
 iterator items*(pattern: CaptureBounds, default = none(Slice[int])): Option[Slice[int]] =
   itemsImpl(nextVal.isNone)
