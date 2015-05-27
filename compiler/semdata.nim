@@ -56,6 +56,7 @@ type
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
     module*: PSym              # the module sym belonging to the context
+    currentStmt*: PNode        # pointer to current statement
     currentScope*: PScope      # current scope
     importTable*: PScope       # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols

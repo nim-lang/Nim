@@ -1351,7 +1351,10 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = n.sons[i].typ
       return
     else:
+      let parentStmt = c.currentStmt
+      c.currentStmt = n.sons[i]
       n.sons[i] = semExpr(c, n.sons[i])
+      c.currentStmt = parentStmt
       if c.inTypeClass > 0 and n[i].typ != nil:
         case n[i].typ.kind
         of tyBool:
@@ -1404,8 +1407,11 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         #  "is discardable or discarded")
 
 proc semStmt(c: PContext, n: PNode): PNode =
+  let parentStmt = c.currentStmt
+  c.currentStmt = n
   # now: simply an alias:
   result = semExprNoType(c, n)
+  c.currentStmt = parentStmt
 
 proc semStmtScope(c: PContext, n: PNode): PNode =
   openScope(c)
