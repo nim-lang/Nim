@@ -34,7 +34,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
       sysIdle, sysKernel, sysUser,
         procCreation, procExit, procKernel, procUser: TFILETIME
     if getSystemTimes(sysIdle, sysKernel, sysUser) == 0 or
-        getProcessTimes(THandle(-1), procCreation, procExit, 
+        getProcessTimes(Handle(-1), procCreation, procExit, 
                         procKernel, procUser) == 0:
       return doNothing
     if s.calls > 0:

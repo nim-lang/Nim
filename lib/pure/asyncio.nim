@@ -188,8 +188,8 @@ proc asyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
   result.socket.setBlocking(false)
 
 proc toAsyncSocket*(sock: Socket, state: SocketStatus = SockConnected): AsyncSocket =
-  ## Wraps an already initialized ``TSocket`` into a AsyncSocket.
-  ## This is useful if you want to use an already connected TSocket as an
+  ## Wraps an already initialized ``Socket`` into a AsyncSocket.
+  ## This is useful if you want to use an already connected Socket as an
   ## asynchronous AsyncSocket in asyncio's event loop.
   ##
   ## ``state`` may be overriden, i.e. if ``sock`` is not connected it should be

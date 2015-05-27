@@ -58,8 +58,9 @@ else:
   {.pragma: mylib, dynlib: "libffi.so".}
 
 type
-  TArg* = int
-  TSArg* = int
+  Arg* = int
+  SArg* = int
+{deprecated: [TArg: Arg, TSArg: SArg].}
 
 when defined(windows) and defined(x86):
   type
@@ -105,67 +106,71 @@ const
   tkSMALL_STRUCT_4B* = (tkLAST + 3)
 
 type
-  TType* = object
+  Type* = object
     size*: int
     alignment*: uint16
     typ*: uint16
-    elements*: ptr ptr TType
+    elements*: ptr ptr Type
+{.deprecated: [TType: Type].}
 
 var
-  type_void* {.importc: "ffi_type_void", mylib.}: TType
-  type_uint8* {.importc: "ffi_type_uint8", mylib.}: TType
-  type_sint8* {.importc: "ffi_type_sint8", mylib.}: TType
-  type_uint16* {.importc: "ffi_type_uint16", mylib.}: TType
-  type_sint16* {.importc: "ffi_type_sint16", mylib.}: TType
-  type_uint32* {.importc: "ffi_type_uint32", mylib.}: TType
-  type_sint32* {.importc: "ffi_type_sint32", mylib.}: TType
-  type_uint64* {.importc: "ffi_type_uint64", mylib.}: TType
-  type_sint64* {.importc: "ffi_type_sint64", mylib.}: TType
-  type_float* {.importc: "ffi_type_float", mylib.}: TType
-  type_double* {.importc: "ffi_type_double", mylib.}: TType
-  type_pointer* {.importc: "ffi_type_pointer", mylib.}: TType
-  type_longdouble* {.importc: "ffi_type_longdouble", mylib.}: TType
+  type_void* {.importc: "ffi_type_void", mylib.}: Type
+  type_uint8* {.importc: "ffi_type_uint8", mylib.}: Type
+  type_sint8* {.importc: "ffi_type_sint8", mylib.}: Type
+  type_uint16* {.importc: "ffi_type_uint16", mylib.}: Type
+  type_sint16* {.importc: "ffi_type_sint16", mylib.}: Type
+  type_uint32* {.importc: "ffi_type_uint32", mylib.}: Type
+  type_sint32* {.importc: "ffi_type_sint32", mylib.}: Type
+  type_uint64* {.importc: "ffi_type_uint64", mylib.}: Type
+  type_sint64* {.importc: "ffi_type_sint64", mylib.}: Type
+  type_float* {.importc: "ffi_type_float", mylib.}: Type
+  type_double* {.importc: "ffi_type_double", mylib.}: Type
+  type_pointer* {.importc: "ffi_type_pointer", mylib.}: Type
+  type_longdouble* {.importc: "ffi_type_longdouble", mylib.}: Type
 
 type 
-  Tstatus* {.size: sizeof(cint).} = enum 
+  Status* {.size: sizeof(cint).} = enum 
     OK, BAD_TYPEDEF, BAD_ABI
-  TTypeKind* = cuint
+  TypeKind* = cuint
   TCif* {.pure, final.} = object 
     abi*: TABI
     nargs*: cuint
-    arg_types*: ptr ptr TType
-    rtype*: ptr TType
+    arg_types*: ptr ptr Type
+    rtype*: ptr Type
     bytes*: cuint
     flags*: cuint
+{.deprecated: [Tstatus: Status].}
 
 type
-  TRaw* = object 
-    sint*: TSArg
+  Raw* = object 
+    sint*: SArg
+{.deprecated: [TRaw: Raw].}
 
 proc raw_call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer; 
-               avalue: ptr TRaw) {.cdecl, importc: "ffi_raw_call", mylib.}
-proc ptrarray_to_raw*(cif: var Tcif; args: ptr pointer; raw: ptr TRaw) {.cdecl, 
+               avalue: ptr Raw) {.cdecl, importc: "ffi_raw_call", mylib.}
+proc ptrarray_to_raw*(cif: var Tcif; args: ptr pointer; raw: ptr Raw) {.cdecl, 
     importc: "ffi_ptrarray_to_raw", mylib.}
-proc raw_to_ptrarray*(cif: var Tcif; raw: ptr TRaw; args: ptr pointer) {.cdecl, 
+proc raw_to_ptrarray*(cif: var Tcif; raw: ptr Raw; args: ptr pointer) {.cdecl, 
     importc: "ffi_raw_to_ptrarray", mylib.}
 proc raw_size*(cif: var Tcif): int {.cdecl, importc: "ffi_raw_size", mylib.}
 
-proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType; 
-               atypes: ptr ptr TType): TStatus {.cdecl, importc: "ffi_prep_cif", 
+proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr Type; 
+               atypes: ptr ptr Type): Status {.cdecl, importc: "ffi_prep_cif", 
     mylib.}
 proc call*(cif: var Tcif; fn: proc () {.cdecl.}; rvalue: pointer; 
            avalue: ptr pointer) {.cdecl, importc: "ffi_call", mylib.}
 
 # the same with an easier interface:
 type
-  TParamList* = array[0..100, ptr TType]
-  TArgList* = array[0..100, pointer]
+  ParamList* = array[0..100, ptr Type]
+  ArgList* = array[0..100, pointer]
+{.deprecated: [TParamList: ParamList, TArgList: ArgList].}
 
-proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr TType; 
-               atypes: TParamList): TStatus {.cdecl, importc: "ffi_prep_cif",
+proc prep_cif*(cif: var Tcif; abi: TABI; nargs: cuint; rtype: ptr Type; 
+               atypes: ParamList): Status {.cdecl, importc: "ffi_prep_cif",
     mylib.}
 proc call*(cif: var Tcif; fn, rvalue: pointer;
-           avalue: TArgList) {.cdecl, importc: "ffi_call", mylib.}
+           avalue: ArgList) {.cdecl, importc: "ffi_call", mylib.}
 
 # Useful for eliminating compiler warnings 
 ##define FFI_FN(f) ((void (*)(void))f)

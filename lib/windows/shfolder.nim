@@ -72,22 +72,22 @@ const
   CSIDL_FLAG_CREATE* = 0x00008000 # (force creation of requested folder if it doesn't exist yet)     
                                   # Original entry points 
 
-proc SHGetFolderPathA*(Ahwnd: HWND, Csidl: int, Token: THandle, Flags: DWord, 
+proc SHGetFolderPathA*(Ahwnd: HWND, Csidl: int, Token: Handle, Flags: DWord, 
                        Path: cstring): HRESULT{.stdcall, dynlib: LibName, 
     importc: "SHGetFolderPathA".}
-proc SHGetFolderPathW*(Ahwnd: HWND, Csidl: int, Token: THandle, Flags: DWord, 
+proc SHGetFolderPathW*(Ahwnd: HWND, Csidl: int, Token: Handle, Flags: DWord, 
                        Path: cstring): HRESULT{.stdcall, dynlib: LibName, 
     importc: "SHGetFolderPathW".}
-proc SHGetFolderPath*(Ahwnd: HWND, Csidl: int, Token: THandle, Flags: DWord, 
+proc SHGetFolderPath*(Ahwnd: HWND, Csidl: int, Token: Handle, Flags: DWord, 
                       Path: cstring): HRESULT{.stdcall, dynlib: LibName, 
     importc: "SHGetFolderPathA".}
 type 
-  PFNSHGetFolderPathA* = proc (Ahwnd: HWND, Csidl: int, Token: THandle, 
+  PFNSHGetFolderPathA* = proc (Ahwnd: HWND, Csidl: int, Token: Handle, 
                                Flags: DWord, Path: cstring): HRESULT{.stdcall.}
-  PFNSHGetFolderPathW* = proc (Ahwnd: HWND, Csidl: int, Token: THandle, 
+  PFNSHGetFolderPathW* = proc (Ahwnd: HWND, Csidl: int, Token: Handle, 
                                Flags: DWord, Path: cstring): HRESULT{.stdcall.}
   PFNSHGetFolderPath* = PFNSHGetFolderPathA
-  TSHGetFolderPathA* = PFNSHGetFolderPathA
-  TSHGetFolderPathW* = PFNSHGetFolderPathW
-  TSHGetFolderPath* = TSHGetFolderPathA
-
+  
+{.deprecated: [TSHGetFolderPathA: PFNSHGetFolderPathA,
+              TSHGetFolderPathW: PFNSHGetFolderPathW,
+              TSHGetFolderPath: SHGetFolderPathA].}

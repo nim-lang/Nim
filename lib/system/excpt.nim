@@ -365,5 +365,6 @@ when not defined(noSignalHandler):
 
 proc setControlCHook(hook: proc () {.noconv.} not nil) =
   # ugly cast, but should work on all architectures:
-  type TSignalHandler = proc (sig: cint) {.noconv, benign.}
-  c_signal(SIGINT, cast[TSignalHandler](hook))
+  type SignalHandler = proc (sig: cint) {.noconv, benign.}
+  {.deprecated: [TSignalHandler: SignalHandler].}
+  c_signal(SIGINT, cast[SignalHandler](hook))

@@ -12,7 +12,7 @@
 import strutils, json
 
 type
-  TRstNodeKind* = enum        ## the possible node kinds of an PRstNode
+  RstNodeKind* = enum        ## the possible node kinds of an PRstNode
     rnInner,                  # an inner node or a root
     rnHeadline,               # a headline
     rnOverline,               # an over- and underlined headline
@@ -62,24 +62,26 @@ type
                               # leaf val
 
 
-  PRstNode* = ref TRstNode    ## an RST node
-  TRstNodeSeq* = seq[PRstNode]
-  TRstNode* {.acyclic, final.} = object ## an RST node's description
-    kind*: TRstNodeKind       ## the node's kind
+  PRstNode* = ref RstNode    ## an RST node
+  RstNodeSeq* = seq[PRstNode]
+  RstNode* {.acyclic, final.} = object ## an RST node's description
+    kind*: RstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
                               ## the document or the section
     level*: int               ## valid for some node kinds
-    sons*: TRstNodeSeq        ## the node's sons
+    sons*: RstNodeSeq        ## the node's sons
+{.deprecated: [TRstNodeKind: RstNodeKind, TRstNodeSeq: RstNodeSeq,
+              TRstNode: RstNode].}
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)
 
-proc newRstNode*(kind: TRstNodeKind): PRstNode =
+proc newRstNode*(kind: RstNodeKind): PRstNode =
   new(result)
   result.sons = @[]
   result.kind = kind
 
-proc newRstNode*(kind: TRstNodeKind, s: string): PRstNode =
+proc newRstNode*(kind: RstNodeKind, s: string): PRstNode =
   result = newRstNode(kind)
   result.text = s
 
@@ -94,18 +96,19 @@ proc addIfNotNil*(father, son: PRstNode) =
 
 
 type
-  TRenderContext {.pure.} = object
+  RenderContext {.pure.} = object
     indent: int
     verbatim: int
+{.deprecated: [TRenderContext: RenderContext].}
 
-proc renderRstToRst(d: var TRenderContext, n: PRstNode,
+proc renderRstToRst(d: var RenderContext, n: PRstNode,
                     result: var string) {.gcsafe.}
 
-proc renderRstSons(d: var TRenderContext, n: PRstNode, result: var string) =
+proc renderRstSons(d: var RenderContext, n: PRstNode, result: var string) =
   for i in countup(0, len(n) - 1):
     renderRstToRst(d, n.sons[i], result)
 
-proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
+proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
   # this is needed for the index generation; it may also be useful for
   # debugging, but most code is already debugged...
   const
@@ -284,7 +287,7 @@ proc renderRstToRst(d: var TRenderContext, n: PRstNode, result: var string) =
 
 proc renderRstToRst*(n: PRstNode, result: var string) =
   ## renders `n` into its string representation and appends to `result`.
-  var d: TRenderContext
+  var d: RenderContext
   renderRstToRst(d, n, result)
 
 proc renderRstToJsonNode(node: PRstNode): JsonNode =
