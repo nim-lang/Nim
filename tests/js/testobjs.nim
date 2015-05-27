@@ -1,3 +1,7 @@
+discard """
+  action: run
+"""
+
 ## Tests javascript object generation
 
 type
@@ -28,7 +32,7 @@ var
   recurse1 = Recurse[int](data: 1, next: recurse2)
 
 
-assert(test.name == "Jorden")
-assert(knight.age == 19)
-assert(knight.item.price == 50)
-assert(recurse1.next.next.data == 3)
+doAssert test.name == "Jorden"
+doAssert knight.age == 19
+doAssert knight.item.price == 50
+doAssert recurse1.next.next.data == 3
