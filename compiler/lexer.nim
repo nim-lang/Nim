@@ -143,7 +143,8 @@ proc isNimIdentifier*(s: string): bool =
     while i < s.len:
       if s[i] == '_':
         inc(i)
-        if s[i] notin SymChars: return
+      elif isMiddotRune(cstring s, i):
+        inc(i, 2)
       if s[i] notin SymChars: return
       inc(i)
     result = true
@@ -632,16 +633,25 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     var c = buf[pos]
     case c
     of 'a'..'z', '0'..'9', '\x80'..'\xFF':
-      h = h !& ord(c)
+      if ord(c) == 194 and ord(buf[pos+1]) == 183:  # It's a "middot" Unicode rune
+        if buf[pos+2] notin SymChars:
+          lexMessage(L, errInvalidToken, "·")
+          break
+        inc(pos, 2)
+      else:
+        h = h !& ord(c)
+        inc(pos)
     of 'A'..'Z':
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
       h = h !& ord(c)
+      inc(pos)
     of '_':
       if buf[pos+1] notin SymChars:
         lexMessage(L, errInvalidToken, "_")
         break
+      inc(pos)
+
     else: break
-    inc(pos)
   h = !$h
   tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   L.bufpos = pos
