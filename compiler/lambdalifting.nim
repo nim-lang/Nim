@@ -946,7 +946,11 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
 proc liftLambdas*(fn: PSym, body: PNode): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
-  if body.kind == nkEmpty or gCmd == cmdCompileToJS or
+
+  # However we can do lifting for the stuff which is *only* compiletime.
+  let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
+
+  if body.kind == nkEmpty or (gCmd == cmdCompileToJS and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body
