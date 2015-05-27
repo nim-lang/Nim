@@ -191,22 +191,22 @@ type
   Captures* = distinct RegexMatch
   CaptureBounds* = distinct RegexMatch
 
-  RegexException* = ref object of Exception
+  RegexError* = ref object of Exception
 
-  RegexInternalError* = ref object of RegexException
+  RegexInternalError* = ref object of RegexError
     ## Internal error in the module, this probably means that there is a bug
 
-  InvalidUnicodeError* = ref object of RegexException
+  InvalidUnicodeError* = ref object of RegexError
     ## Thrown when matching fails due to invalid unicode in strings
     pos*: int  ## the location of the invalid unicode in bytes
 
-  SyntaxError* = ref object of RegexException
+  SyntaxError* = ref object of RegexError
     ## Thrown when there is a syntax error in the
     ## regular expression string passed in
     pos*: int  ## the location of the syntax error in bytes
     pattern*: string  ## the pattern that caused the problem
 
-  StudyError* = ref object of RegexException
+  StudyError* = ref object of RegexError
     ## Thrown when studying the regular expression failes
     ## for whatever reason. The message contains the error
     ## code.
