@@ -112,27 +112,22 @@ proc substituteLog(frmt: string): string =
       of "appname": result.add(app.splitFile.name)
       else: discard
 
-method log*(logger: Logger, level: Level,
-            frmt: string, args: varargs[string, `$`]) {.
+method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception],
             tags: [TimeEffect, WriteIOEffect, ReadIOEffect].} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
   discard
 
-method log*(logger: ConsoleLogger, level: Level,
-            frmt: string, args: varargs[string, `$`]) =
+method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(stdout, LevelNames[level], " ", substituteLog(logger.fmtStr),
-            frmt % args)
+    writeln(stdout, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
 
-method log*(logger: FileLogger, level: Level,
-            frmt: string, args: varargs[string, `$`]) =
+method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(logger.f, LevelNames[level], " ",
-            substituteLog(logger.fmtStr), frmt % args)
+    writeln(logger.f, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
 
 proc defaultFilename*(): string =
   ## Returns the default filename for a logger.
@@ -206,8 +201,7 @@ proc rotate(logger: RollingFileLogger) =
     moveFile(dir / (name & ext & srcSuff),
              dir / (name & ext & ExtSep & $(i+1)))
 
-method log*(logger: RollingFileLogger, level: Level,
-            frmt: string, args: varargs[string, `$`]) =
+method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using rolling ``logger`` only.
   if level >= logger.levelThreshold:
     if logger.curLine >= logger.maxLines:
@@ -217,7 +211,7 @@ method log*(logger: RollingFileLogger, level: Level,
       logger.curLine = 0
       logger.f = open(logger.baseName, logger.baseMode)
 
-    writeln(logger.f, LevelNames[level], " ",substituteLog(logger.fmtStr), frmt % args)
+    writeln(logger.f, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
     logger.curLine.inc
 
 # --------
@@ -225,39 +219,39 @@ method log*(logger: RollingFileLogger, level: Level,
 var level {.threadvar.}: Level   ## global log filter
 var handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
-proc logLoop(level: Level, frmt: string, args: varargs[string, `$`]) =
+proc logLoop(level: Level, args: varargs[string, `$`]) =
   for logger in items(handlers):
     if level >= logger.levelThreshold:
-      log(logger, level, frmt, args)
+      log(logger, level, args)
 
-template log*(level: Level, frmt: string, args: varargs[string, `$`]) =
+template log*(level: Level, args: varargs[string, `$`]) =
   ## Logs a message to all registered handlers at the given level.
   bind logLoop
   bind `%`
   bind logging.level
 
   if level >= logging.level:
-    logLoop(level, frmt, args)
+    logLoop(level, args)
 
-template debug*(frmt: string, args: varargs[string, `$`]) =
+template debug*(args: varargs[string, `$`]) =
   ## Logs a debug message to all registered handlers.
-  log(lvlDebug, frmt, args)
+  log(lvlDebug, args)
 
-template info*(frmt: string, args: varargs[string, `$`]) =
+template info*(args: varargs[string, `$`]) =
   ## Logs an info message to all registered handlers.
-  log(lvlInfo, frmt, args)
+  log(lvlInfo, args)
 
-template warn*(frmt: string, args: varargs[string, `$`]) =
+template warn*(args: varargs[string, `$`]) =
   ## Logs a warning message to all registered handlers.
-  log(lvlWarn, frmt, args)
+  log(lvlWarn, args)
 
-template error*(frmt: string, args: varargs[string, `$`]) =
+template error*(args: varargs[string, `$`]) =
   ## Logs an error message to all registered handlers.
-  log(lvlError, frmt, args)
+  log(lvlError, args)
 
-template fatal*(frmt: string, args: varargs[string, `$`]) =
+template fatal*(args: varargs[string, `$`]) =
   ## Logs a fatal error message to all registered handlers.
-  log(lvlFatal, frmt, args)
+  log(lvlFatal, args)
 
 proc addHandler*(handler: Logger) =
   ## Adds ``handler`` to the list of handlers.
@@ -286,6 +280,4 @@ when not defined(testing) and isMainModule:
   addHandler(fL)
   addHandler(rL)
   for i in 0 .. 25:
-    info("hello" & $i, [])
-
-
+    info("hello", i)
