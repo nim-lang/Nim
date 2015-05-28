@@ -1216,6 +1216,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound, "callsite")
+    of opcCurrentStmt:
+      ensureKind(rkNode)
+      if c.currentStmt != nil: regs[ra].node = c.currentStmt
+      else: stackTrace(c, tos, pc, errFieldXNotFound, "currentStmt")
     of opcNLineInfo:
       decodeB(rkNode)
       let n = regs[rb].node
@@ -1474,7 +1478,8 @@ proc setupMacroParam(x: PNode): PNode =
 
 var evalMacroCounter: int
 
-proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
+proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym,
+                    currentStmt: PNode): PNode =
   # XXX GlobalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
   if evalMacroCounter > 100:
@@ -1491,6 +1496,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   var c = globalCtx
 
   c.callsite = nOrig
+  c.currentStmt = currentStmt
   let start = genProc(c, sym)
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)

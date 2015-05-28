@@ -355,7 +355,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
 
-  result = evalMacroCall(c.module, n, nOrig, sym)
+  result = evalMacroCall(c.module, n, nOrig, sym, c.currentStmt)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
   popInfoContext()

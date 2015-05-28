@@ -273,6 +273,10 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
 proc callsite*(): NimNode {.magic: "NCallSite", benign.}
   ## returns the AST of the invocation expression that invoked this macro.
 
+proc currentStmt*(): NimNode {.magic: "NCurrentStmt", benign.}
+  ## returns the AST of the statement that invoked this macro.
+  ## The returned node should not be modified by any means.
+
 proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nim code and wraps that
   ## in a string literal node

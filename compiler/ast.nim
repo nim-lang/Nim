@@ -583,7 +583,7 @@ type
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
-    mNBindSym, mLocals, mNCallSite,
+    mNBindSym, mLocals, mNCallSite, mNCurrentStmt,
     mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym
 

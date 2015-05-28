@@ -110,6 +110,7 @@ type
     opcNChild,
     opcNSetChild,
     opcCallSite,
+    opcCurrentStmt,
     opcNewStr,
 
     opcTJmp,  # jump Bx if A != 0
@@ -194,6 +195,7 @@ type
     prc*: PProc
     module*: PSym
     callsite*: PNode
+    currentStmt*: PNode
     mode*: TEvalMode
     features*: TSandboxFlags
     traceActive*: bool
