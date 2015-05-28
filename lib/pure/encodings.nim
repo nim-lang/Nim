@@ -262,7 +262,7 @@ else:
   else:
     const iconvDll = "(libc.so.6|libiconv.so)"
 
-  when defined(macosx) and defined(powerpc):
+  when defined(macosx):
     const prefix = "lib"
   else:
     const prefix = ""
