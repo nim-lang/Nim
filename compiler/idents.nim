@@ -37,8 +37,8 @@ proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
   while j < blen:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j)
-    while isMiddotRune(a, i): inc(i, 2)
-    while isMiddotRune(b, j): inc(j, 2)
+    while isMagicIdentSeparatorRune(a, i): inc(i, magicIdentSeparatorRuneByteWidth)
+    while isMagicIdentSeparatorRune(b, j): inc(j, magicIdentSeparatorRuneByteWidth)
     # tolower inlined:
     var aa = a[i]
     var bb = b[j]

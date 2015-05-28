@@ -143,8 +143,8 @@ proc isNimIdentifier*(s: string): bool =
     while i < s.len:
       if s[i] == '_':
         inc(i)
-      elif isMiddotRune(cstring s, i):
-        inc(i, 2)
+      elif isMagicIdentSeparatorRune(cstring s, i):
+        inc(i, magicIdentSeparatorRuneByteWidth)
       if s[i] notin SymChars: return
       inc(i)
     result = true
@@ -633,11 +633,13 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     var c = buf[pos]
     case c
     of 'a'..'z', '0'..'9', '\x80'..'\xFF':
-      if ord(c) == 194 and ord(buf[pos+1]) == 183:  # It's a "middot" Unicode rune
-        if buf[pos+2] notin SymChars:
+      if  ord(c) == 226 and 
+          ord(buf[pos+1]) == 128 and
+          ord(buf[pos+2]) == 147:  # It's a 'magic separator' en-dash Unicode
+        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars:
           lexMessage(L, errInvalidToken, "·")
           break
-        inc(pos, 2)
+        inc(pos, magicIdentSeparatorRuneByteWidth)
       else:
         h = h !& ord(c)
         inc(pos)

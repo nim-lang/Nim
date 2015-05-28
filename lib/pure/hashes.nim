@@ -121,8 +121,13 @@ proc hash*(x: string): THash =
     h = h !& ord(x[i])
   result = !$h
 
-proc isMiddotRune*(cs: cstring, i: int): bool  {. inline } =
-  result = ord(cs[i]) == 194 and ord(cs[i + 1]) == 183
+# The following need a better home than "hashes":
+const magicIdentSeparatorRuneByteWidth* = 3
+
+proc isMagicIdentSeparatorRune*(cs: cstring, i: int): bool  {. inline } =
+  result =  ord(cs[i]) == 226 and 
+            ord(cs[i + 1]) == 128 and
+            ord(cs[i + 2]) == 147     # en-dash  # 145 = nb-hyphen
 
 proc hashIgnoreStyle*(x: string): THash =
   ## efficient hashing of strings; style is ignored
@@ -134,8 +139,8 @@ proc hashIgnoreStyle*(x: string): THash =
     if c == '_':
       inc(i)
       continue                # skip _
-    if isMiddotRune(cstring(x), i):
-      inc(i, 2)
+    if isMagicIdentSeparatorRune(cstring(x), i):
+      inc(i, magicIdentSeparatorRuneByteWidth)
       continue                # skip '·' (unicode middle dot)
     if c in {'A'..'Z'}:
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
