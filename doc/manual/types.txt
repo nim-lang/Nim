@@ -564,7 +564,7 @@ the ``of`` operator can be used to determine the object's type.
 
 .. code-block:: nim
   type
-    Person {.inheritable.} = object
+    Person = object of RootObj
       name*: string   # the * means that `name` is accessible from other modules
       age: int        # no * means that the field is hidden
 
