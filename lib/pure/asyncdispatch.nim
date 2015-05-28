@@ -122,7 +122,6 @@ export Port, SocketFlag
 ## Limitations/Bugs
 ## ----------------
 ##
-## * ``except`` statement (without `try`) does not work inside async procedures.
 ## * The effect system (``raises: []``) does not work with async procedures.
 ## * Can't await in a ``except`` body
 
@@ -929,7 +928,7 @@ else:
     result = newRawSocket(domain, typ, protocol).TAsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
-        result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+      result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
   proc newAsyncRawSocket*(domain: Domain = AF_INET,
@@ -938,7 +937,7 @@ else:
     result = newRawSocket(domain, typ, protocol).TAsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
-        result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+      result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
   proc closeSocket*(sock: TAsyncFD) =
