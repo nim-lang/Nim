@@ -3266,6 +3266,11 @@ template `..<`*(a, b: expr): expr =
   ## '..' and '<' is required.
   a .. <b
 
+template `||<`*(a, b: expr): expr =
+  ## a shortcut for '|| <' to avoid the common gotcha that a space between
+  ## '||' and '<' is required
+  a || <b
+
 proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
 proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
   ## returns the length of a sequence or a string without testing for 'nil'.
