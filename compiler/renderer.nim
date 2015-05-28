@@ -767,7 +767,8 @@ proc gasm(g: var TSrcGen, n: PNode) =
   putWithSpace(g, tkAsm, "asm")
   gsub(g, n.sons[0])
   gcoms(g)
-  gsub(g, n.sons[1])
+  if n.sons.len > 1:
+    gsub(g, n.sons[1])
 
 proc gident(g: var TSrcGen, n: PNode) =
   if g.checkAnon and n.kind == nkSym and sfAnon in n.sym.flags: return
