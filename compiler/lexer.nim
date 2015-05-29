@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg
+  wordrecg, etcpriv
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -633,9 +633,9 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     var c = buf[pos]
     case c
     of 'a'..'z', '0'..'9', '\x80'..'\xFF':
-      if  ord(c) == 226 and 
-          ord(buf[pos+1]) == 128 and
-          ord(buf[pos+2]) == 147:  # It's a 'magic separator' en-dash Unicode
+      if  c == '\226' and
+          buf[pos+1] == '\128' and
+          buf[pos+2] == '\147':  # It's a 'magic separator' en-dash Unicode
         if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars:
           lexMessage(L, errInvalidToken, "·")
           break

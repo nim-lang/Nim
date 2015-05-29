@@ -38,7 +38,7 @@
 ##    result = !$h
 
 import
-  strutils, unicode
+  strutils, etcpriv
 
 type
   THash* = int ## a hash value; hash tables using these values should
@@ -120,14 +120,6 @@ proc hash*(x: string): THash =
   for i in 0..x.len-1:
     h = h !& ord(x[i])
   result = !$h
-
-# The following need a better home than "hashes":
-const magicIdentSeparatorRuneByteWidth* = 3
-
-proc isMagicIdentSeparatorRune*(cs: cstring, i: int): bool  {. inline } =
-  result =  ord(cs[i]) == 226 and 
-            ord(cs[i + 1]) == 128 and
-            ord(cs[i + 2]) == 147     # en-dash  # 145 = nb-hyphen
 
 proc hashIgnoreStyle*(x: string): THash =
   ## efficient hashing of strings; style is ignored
