@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg
+  wordrecg, etcpriv
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -143,7 +143,8 @@ proc isNimIdentifier*(s: string): bool =
     while i < s.len:
       if s[i] == '_':
         inc(i)
-        if s[i] notin SymChars: return
+      elif isMagicIdentSeparatorRune(cstring s, i):
+        inc(i, magicIdentSeparatorRuneByteWidth)
       if s[i] notin SymChars: return
       inc(i)
     result = true
@@ -632,16 +633,27 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     var c = buf[pos]
     case c
     of 'a'..'z', '0'..'9', '\x80'..'\xFF':
-      h = h !& ord(c)
+      if  c == '\226' and
+          buf[pos+1] == '\128' and
+          buf[pos+2] == '\147':  # It's a 'magic separator' en-dash Unicode
+        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars:
+          lexMessage(L, errInvalidToken, "·")
+          break
+        inc(pos, magicIdentSeparatorRuneByteWidth)
+      else:
+        h = h !& ord(c)
+        inc(pos)
     of 'A'..'Z':
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
       h = h !& ord(c)
+      inc(pos)
     of '_':
       if buf[pos+1] notin SymChars:
         lexMessage(L, errInvalidToken, "_")
         break
+      inc(pos)
+
     else: break
-    inc(pos)
   h = !$h
   tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   L.bufpos = pos
