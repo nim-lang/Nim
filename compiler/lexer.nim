@@ -240,11 +240,42 @@ proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) =
       break
     if buf[pos] == '_':
       if buf[pos+1] notin chars:
-        lexMessage(L, errInvalidToken, "_")
+        lexMessage(L, errInvalidToken, "_")   # TODO/ozra - lift out for better msg
         break
       add(tok.literal, '_')
       inc(pos)
   L.bufpos = pos
+
+# Used for getting human friendlier err messages. Also only used in getNumber
+proc matchAllLiteralishForMessage(L: var TLexer, tok: var TToken, startpos: int) =
+  # Note: <the erroneous 'O' in the set is intentional
+  const literalishChars = {   'A'..'F', 'a'..'f', '0'..'9',
+                              'X', 'x', 'o', 'O', 'c', 'C', 'b', 'B',
+                              '_', '.', '\'', 'd', 'i', 'u'
+                            }
+
+  tok.literal = ""  # Start over fresh for the "message literal"
+  var msgPos = L.bufpos
+  L.bufpos = startpos # Use L.bufpos as positioner because of matchUnderscore...
+
+  # We use matchUnderscoreChars - but abuse it a little, passing '_'
+  matchUnderscoreChars(L, tok, literalishChars)
+
+  # We must verify +/- specifically so that we're not past the literal
+  if  L.buf[L.bufpos] in {'+', '-'} and
+      L.buf[L.bufpos - 1] in {'e', 'E'}:
+    add(tok.literal, L.buf[L.bufpos])
+    inc(L.bufpos)
+    matchUnderscoreChars(L, tok, literalishChars)
+
+  if L.buf[L.bufpos] in {
+      '\'', 'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U' 
+  }:
+    inc(L.bufpos)
+    add(tok.literal, L.buf[L.bufpos])
+    matchUnderscoreChars(L, tok, {'0'..'9'})
+
+  L.bufpos = msgPos
 
 proc matchTwoChars(L: TLexer, first: char, second: set[char]): bool =
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in second)
@@ -268,136 +299,203 @@ proc unsafeParseUInt(s: string, b: var BiggestInt, start = 0): int =
     result = i - start
 {.pop.} # overflowChecks
 
+
+template eatChar(L: var TLexer, t: var TToken, replacementChar: char) =
+  add(t.literal, replacementChar)
+  inc(L.bufpos)
+
+template eatChar(L: var TLexer, t: var TToken) =
+  add(t.literal, L.buf[L.bufpos])
+  inc(L.bufpos)
+
+#  ######   ######## ######## ##    ## ##     ## ##     ##
+# ##    ##  ##          ##    ###   ## ##     ## ###   ###
+# ##        ##          ##    ####  ## ##     ## #### ####
+# ##   #### ######      ##    ## ## ## ##     ## ## ### ##
+# ##    ##  ##          ##    ##  #### ##     ## ##     ##
+# ##    ##  ##          ##    ##   ### ##     ## ##     ##
+#  ######   ########    ##    ##    ##  #######  ##     ##
+
 proc getNumber(L: var TLexer): TToken =
   var
-    pos, endpos: int
+    startpos, endpos: int
     xi: BiggestInt
+
+  const literalishChars = {   'A'..'F', 'a'..'f', '0'..'9',
+                'X', 'x', 'o', 'c', 'C', 'b', 'B',
+                '_', '.', '\''
+              }
+  const literalishCharsNoDot = {   'A'..'F', 'a'..'f', '0'..'9',
+                'X', 'x', 'o', 'c', 'C', 'b', 'B',
+                '_', '\''
+              }
+
+  proc lexLiteralNumberMessage(L: var TLexer, msg: TMsgKind, startpos: int) =
+    var t: TToken
+    matchAllLiteralishForMessage(L, t, startpos)
+    lexMessage(L, msg, t.literal)
+
   # get the base:
   result.tokType = tkIntLit   # int literal until we know better
   result.literal = ""
   result.base = base10        # BUGFIX
-  pos = L.bufpos     # make sure the literal is correct for error messages:
-  var eallowed = false
-  if L.buf[pos] == '0' and L.buf[pos+1] in {'X', 'x'}:
-    matchUnderscoreChars(L, result, {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x'})
+
+  startpos = L.bufpos     # make sure the literal is correct for error messages:
+
+  var isAFloatLiteral = false
+
+
+  # This first pass makes verifications and builds the literal string for
+  # the token, to keep the value extraction phase less error prone..
+
+  if  L.buf[L.bufpos] == '0' and 
+      L.buf[L.bufpos + 1] in {'X', 'x', 'o', 'O', 'c', 'C', 'b', 'B'}:
+    eatChar(L, result, '0')
+
+    case L.buf[L.bufpos]
+    of 'O':
+      # TODO/ozra - add nicer message: " (did you mean octal? Then use one of '0o', '0c' or '0C'.)"
+      lexLiteralNumberMessage(L, errInvalidNumber, startpos)
+
+    of 'x', 'X':
+      eatChar(L, result, 'x')
+      #echo "is hex: ", result.literal
+      matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
+      #echo "got hex: ", result.literal
+    of 'o', 'c', 'C':
+      eatChar(L, result, 'c')
+      #echo "is octal: ", result.literal
+      matchUnderscoreChars(L, result, {'0'..'7'})
+    of 'b', 'B':
+      eatChar(L, result, 'b')
+      #echo "is binary: ", result.literal
+      matchUnderscoreChars(L, result, {'0'..'1'})
+    else:
+      internalError(getLineInfo(L), "getNumber")
+
   else:
-    matchUnderscoreChars(L, result, {'0'..'9', 'b', 'B', 'o', 'c', 'C'})
-    eallowed = true
-  if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
-    add(result.literal, '.')
-    inc(L.bufpos)
+    #echo "is decimal"
     matchUnderscoreChars(L, result, {'0'..'9'})
-    eallowed = true
-  if eallowed and L.buf[L.bufpos] in {'e', 'E'}:
-    add(result.literal, 'e')
-    inc(L.bufpos)
-    if L.buf[L.bufpos] in {'+', '-'}:
-      add(result.literal, L.buf[L.bufpos])
-      inc(L.bufpos)
-    matchUnderscoreChars(L, result, {'0'..'9'})
+
+    if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
+      isAFloatLiteral = true
+      eatChar(L, result, '.')
+      matchUnderscoreChars(L, result, {'0'..'9'})
+
+    if L.buf[L.bufpos] in {'e', 'E'}:
+      isAFloatLiteral = true
+      eatChar(L, result, 'e')
+
+      if L.buf[L.bufpos] in {'+', '-'}:
+        eatChar(L, result)
+      matchUnderscoreChars(L, result, {'0'..'9'})
+
   endpos = L.bufpos
-  if L.buf[endpos] in {'\'', 'f', 'F', 'i', 'I', 'u', 'U'}:
-    if L.buf[endpos] == '\'': inc(endpos)
-    L.bufpos = pos            # restore position
-    case L.buf[endpos]
+  var postPos = endpos
+
+  #echo "At endpos is: ", L.buf[postPos]
+
+  if L.buf[postPos] in {'\'', 'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U'}:
+    if L.buf[postPos] == '\'': 
+      inc(postPos)
+
+    #echo "is postfix: ", L.buf[postPos]
+
+    case L.buf[postPos]
     of 'f', 'F':
-      inc(endpos)
-      if (L.buf[endpos] == '3') and (L.buf[endpos + 1] == '2'):
+      inc(postPos)
+      if (L.buf[postPos] == '3') and (L.buf[postPos + 1] == '2'):
         result.tokType = tkFloat32Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '6') and (L.buf[endpos + 1] == '4'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
         result.tokType = tkFloat64Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '1') and
-           (L.buf[endpos + 1] == '2') and
-           (L.buf[endpos + 2] == '8'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '1') and
+           (L.buf[postPos + 1] == '2') and
+           (L.buf[postPos + 2] == '8'):
         result.tokType = tkFloat128Lit
-        inc(endpos, 3)
-      else:
-        lexMessage(L, errInvalidNumber, result.literal & "'f" & L.buf[endpos])
+        inc(postPos, 3)
+      else:   # "f" alone defaults to float32
+        result.tokType = tkFloat32Lit
+        #lexMessage(L, errInvalidNumber, result.literal & "'f" & L.buf[postPos])
+
+    # 'd' is an ad hoc convenience shortcut for f64
+    of 'd', 'D':
+      inc(postPos)
+      result.tokType = tkFloat64Lit
+
     of 'i', 'I':
-      inc(endpos)
-      if (L.buf[endpos] == '6') and (L.buf[endpos + 1] == '4'):
+      inc(postPos)
+      if (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
         result.tokType = tkInt64Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '3') and (L.buf[endpos + 1] == '2'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '3') and (L.buf[postPos + 1] == '2'):
         result.tokType = tkInt32Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '1') and (L.buf[endpos + 1] == '6'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '1') and (L.buf[postPos + 1] == '6'):
         result.tokType = tkInt16Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '8'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '8'):
         result.tokType = tkInt8Lit
-        inc(endpos)
+        inc(postPos)
       else:
-        lexMessage(L, errInvalidNumber, result.literal & "'i" & L.buf[endpos])
+        lexLiteralNumberMessage(L, errInvalidNumber, startpos)
+        #lexMessage(L, errInvalidNumber, result.literal & "'i" & L.buf[postPos])
+
+      #echo "is intish: ", result.literal, ":", $ result.tokType
+
     of 'u', 'U':
-      inc(endpos)
-      if (L.buf[endpos] == '6') and (L.buf[endpos + 1] == '4'):
+      inc(postPos)
+      if (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
         result.tokType = tkUInt64Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '3') and (L.buf[endpos + 1] == '2'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '3') and (L.buf[postPos + 1] == '2'):
         result.tokType = tkUInt32Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '1') and (L.buf[endpos + 1] == '6'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '1') and (L.buf[postPos + 1] == '6'):
         result.tokType = tkUInt16Lit
-        inc(endpos, 2)
-      elif (L.buf[endpos] == '8'):
+        inc(postPos, 2)
+      elif (L.buf[postPos] == '8'):
         result.tokType = tkUInt8Lit
-        inc(endpos)
+        inc(postPos)
       else:
         result.tokType = tkUIntLit
-    else: lexMessage(L, errInvalidNumber, result.literal & "'" & L.buf[endpos])
-  else:
-    L.bufpos = pos            # restore position
+    else: 
+      lexLiteralNumberMessage(L, errInvalidNumber, startpos)
+      #lexMessage(L, errInvalidNumber, result.literal & "'" & L.buf[postPos])
+
+  # Still a literalish char? Error!
+  if  L.buf[postPos] in literalishCharsNoDot or 
+     (L.buf[postPos] == '.' and L.buf[postPos + 1] in {'0'..'9'}):
+    echo "likely literal error, additionally: '", L.buf[postPos], L.buf[postPos+1], L.buf[postPos+2], L.buf[postPos+3], "', ", postPos
+    lexLiteralNumberMessage(L, errInvalidNumber, startpos)
+
+  L.bufpos = startpos            # restore position
+  var pos: int = startpos
+
   try:
     if (L.buf[pos] == '0') and
         (L.buf[pos + 1] in {'x', 'X', 'b', 'B', 'o', 'O', 'c', 'C'}):
       inc(pos, 2)
-      xi = 0                  # it may be a base prefix
+      xi = 0                  # it is a base prefix
       case L.buf[pos - 1]     # now look at the optional type suffix:
       of 'b', 'B':
         result.base = base2
-        while true:
-          case L.buf[pos]
-          of '2'..'9', '.':
-            lexMessage(L, errInvalidNumber, result.literal)
-            inc(pos)
-          of '_':
-            if L.buf[pos+1] notin {'0'..'1'}:
-              lexMessage(L, errInvalidToken, "_")
-              break
-            inc(pos)
-          of '0', '1':
+        while pos < endpos:
+          if L.buf[pos] != '_':
             xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
-            inc(pos)
-          else: break
+          inc(pos)
       of 'o', 'c', 'C':
         result.base = base8
-        while true:
-          case L.buf[pos]
-          of '8'..'9', '.':
-            lexMessage(L, errInvalidNumber, result.literal)
-            inc(pos)
-          of '_':
-            if L.buf[pos+1] notin {'0'..'7'}:
-              lexMessage(L, errInvalidToken, "_")
-              break
-            inc(pos)
-          of '0'..'7':
+        while pos < endpos:
+          if L.buf[pos] != '_':
             xi = `shl`(xi, 3) or (ord(L.buf[pos]) - ord('0'))
-            inc(pos)
-          else: break
-      of 'O':
-        lexMessage(L, errInvalidNumber, result.literal)
+          inc(pos)
       of 'x', 'X':
         result.base = base16
-        while true:
+        while pos < endpos:
           case L.buf[pos]
           of '_':
-            if L.buf[pos+1] notin {'0'..'9', 'a'..'f', 'A'..'F'}:
-              lexMessage(L, errInvalidToken, "_")
-              break
             inc(pos)
           of '0'..'9':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('0'))
@@ -408,8 +506,11 @@ proc getNumber(L: var TLexer): TToken =
           of 'A'..'F':
             xi = `shl`(xi, 4) or (ord(L.buf[pos]) - ord('A') + 10)
             inc(pos)
-          else: break
-      else: internalError(getLineInfo(L), "getNumber")
+          else: 
+            break
+      else: 
+        internalError(getLineInfo(L), "getNumber")
+
       case result.tokType
       of tkIntLit, tkInt64Lit: result.iNumber = xi
       of tkInt8Lit: result.iNumber = BiggestInt(int8(toU8(int(xi))))
@@ -425,34 +526,39 @@ proc getNumber(L: var TLexer): TToken =
         # XXX: Test this on big endian machine!
       of tkFloat64Lit: result.fNumber = (cast[PFloat64](addr(xi)))[]
       else: internalError(getLineInfo(L), "getNumber")
-    elif isFloatLiteral(result.literal) or (result.tokType == tkFloat32Lit) or
+
+    elif isAFloatLiteral or (result.tokType == tkFloat32Lit) or
         (result.tokType == tkFloat64Lit):
       result.fNumber = parseFloat(result.literal)
       if result.tokType == tkIntLit: result.tokType = tkFloatLit
+
     elif result.tokType == tkUint64Lit:
       xi = 0
       let len = unsafeParseUInt(result.literal, xi)
       if len != result.literal.len or len == 0:
         raise newException(ValueError, "invalid integer: " & $xi)
       result.iNumber = xi
+
     else:
       result.iNumber = parseBiggestInt(result.literal)
       if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
         if result.tokType == tkIntLit:
           result.tokType = tkInt64Lit
         elif result.tokType in {tkInt8Lit, tkInt16Lit, tkInt32Lit}:
-          lexMessage(L, errNumberOutOfRange, result.literal)
+          lexLiteralNumberMessage(L, errNumberOutOfRange, startpos)
       elif result.tokType == tkInt8Lit and
           (result.iNumber < int8.low or result.iNumber > int8.high):
-        lexMessage(L, errNumberOutOfRange, result.literal)
+        lexLiteralNumberMessage(L, errNumberOutOfRange, startpos)
       elif result.tokType == tkInt16Lit and
           (result.iNumber < int16.low or result.iNumber > int16.high):
-        lexMessage(L, errNumberOutOfRange, result.literal)
+        lexLiteralNumberMessage(L, errNumberOutOfRange, startpos)
+
   except ValueError:
-    lexMessage(L, errInvalidNumber, result.literal)
+    lexLiteralNumberMessage(L, errInvalidNumber, startpos)
   except OverflowError, RangeError:
-    lexMessage(L, errNumberOutOfRange, result.literal)
-  L.bufpos = endpos
+    lexLiteralNumberMessage(L, errNumberOutOfRange, startpos)
+
+  L.bufpos = postPos
 
 proc handleHexChar(L: var TLexer, xi: var int) =
   case L.buf[L.bufpos]
