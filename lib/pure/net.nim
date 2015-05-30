@@ -118,13 +118,13 @@ proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
       result = result or MSG_PEEK
     of SocketFlag.SafeDisconn: continue
 
-proc newSocket(fd: SocketHandle, isBuff: bool): Socket =
+proc newSocket*(fd: SocketHandle, buffered = true): Socket =
   ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
   new(result)
   result.fd = fd
-  result.isBuffered = isBuff
-  if isBuff:
+  result.isBuffered = buffered
+  if buffered:
     result.currPos = 0
 
 proc newSocket*(domain, typ, protocol: cint, buffered = true): Socket =

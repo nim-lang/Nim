@@ -91,13 +91,13 @@ type
 
 # TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
 
-proc newAsyncSocket*(fd: TAsyncFD, isBuff: bool): AsyncSocket =
+proc newAsyncSocket*(fd: TAsyncFD, buffered = true): AsyncSocket =
   ## Creates a new ``AsyncSocket`` based on the supplied params.
   assert fd != osInvalidSocket.TAsyncFD
   new(result)
   result.fd = fd.SocketHandle
-  result.isBuffered = isBuff
-  if isBuff:
+  result.isBuffered = buffered
+  if buffered:
     result.currPos = 0
 
 proc newAsyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
