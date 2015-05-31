@@ -13,7 +13,7 @@
 # nim files.
 
 import
-  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs, crc
+  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs, crc, terminal
 
 type
   TSystemCC* = enum

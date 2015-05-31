@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables, ropes, platform
+  options, strutils, os, tables, ropes, platform, terminal
 
 type
   TMsgKind* = enum
@@ -601,13 +601,13 @@ proc suggestQuit*() =
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
 const
-  PosErrorFormat* = "$1($2, $3) Error: $4"
-  PosWarningFormat* = "$1($2, $3) Warning: $4"
-  PosHintFormat* = "$1($2, $3) Hint: $4"
-  PosContextFormat = "$1($2, $3) Info: $4"
-  RawErrorFormat* = "Error: $1"
-  RawWarningFormat* = "Warning: $1"
-  RawHintFormat* = "Hint: $1"
+  PosErrorFormat* = "$1($2, $3) Error: "
+  PosWarningFormat* = "$1($2, $3) Warning: "
+  PosHintFormat* = "$1($2, $3) Hint: "
+  PosContextFormat = "$1($2, $3) Info: "
+  RawError* = "Error: "
+  RawWarning* = "Warning: "
+  RawHint* = "Hint: "
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)
@@ -682,17 +682,27 @@ proc outWriteln*(s: string) =
   ## Writes to stdout. Always.
   if eStdOut in errorOutputs: writeln(stdout, s)
 
-proc msgWriteln*(s: string) =
-  ## Writes to stdout. If --stdout option is given, writes to stderr instead.
+proc msgWriteln*(s: string, color: ForegroundColor = fgWhite, coloredText: string = "") =
+  ## Writes to stdout. If --stderr option is given, writes to stderr instead.
 
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
+  var hasColor = optUseColors in gGlobalOptions
   if not isNil(writelnHook):
-    writelnHook(s)
-  elif optStdout in gGlobalOptions:
-    if eStdErr in errorOutputs: writeln(stderr, s)
+    writelnHook(coloredText & s)
   else:
-    if eStdOut in errorOutputs: writeln(stdout, s)
+    if optStdout in gGlobalOptions:
+      if eStdErr in errorOutputs:
+        if hasColor: setForegroundColor(color)
+        write(stderr, coloredText)
+        if hasColor: resetAttributes()
+        writeln(stderr, s)
+    else:
+      if eStdOut in errorOutputs:
+        if hasColor: setForegroundColor(color)
+        write(stdout, coloredText)
+        if hasColor: resetAttributes()
+        writeln(stdout, s)
 
 proc coordToStr(coord: int): string =
   if coord == -1: result = "???"
@@ -714,7 +724,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
-        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
+        msgWriteln("", fgRed, "No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:
@@ -737,34 +747,39 @@ proc writeContext(lastinfo: TLineInfo) =
   for i in countup(0, len(msgContext) - 1):
     if msgContext[i] != lastinfo and msgContext[i] != info:
       msgWriteln(PosContextFormat % [toMsgFilename(msgContext[i]),
-                                     coordToStr(msgContext[i].line),
-                                     coordToStr(msgContext[i].col+1),
-                                     getMessageStr(errInstantiationFrom, "")])
+                                   coordToStr(msgContext[i].line),
+                                   coordToStr(msgContext[i].col+1),
+                                   getMessageStr(errInstantiationFrom, "")])
     info = msgContext[i]
 
 proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
   msg >= errGenerated and gCmd == cmdIdeTools and optIdeDebug notin gGlobalOptions
 
 proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
-  var frmt: string
+  var
+    frmt: string
+    color: ForegroundColor
   case msg
   of errMin..errMax:
     writeContext(unknownLineInfo())
-    frmt = RawErrorFormat
+    frmt = RawError
+    color = fgRed
   of warnMin..warnMax:
     if optWarns notin gOptions: return
     if msg notin gNotes: return
     writeContext(unknownLineInfo())
-    frmt = RawWarningFormat
+    frmt = RawWarning
     inc(gWarnCounter)
+    color = fgYellow
   of hintMin..hintMax:
     if optHints notin gOptions: return
     if msg notin gNotes: return
-    frmt = RawHintFormat
+    frmt = RawHint
     inc(gHintCounter)
-  let s = `%`(frmt, `%`(msgKindToString(msg), args))
+    color = fgGreen
+  let s = `%`(msgKindToString(msg), args)
   if not ignoreMsgBecauseOfIdeTools(msg):
-    msgWriteln(s)
+    msgWriteln(s, color, frmt)
   handleError(msg, doAbort, s)
 
 proc rawMessage*(msg: TMsgKind, arg: string) =
@@ -785,8 +800,10 @@ proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
-  var frmt: string
-  var ignoreMsg = false
+  var
+    frmt: string
+    ignoreMsg = false
+    color: ForegroundColor
   case msg
   of errMin..errMax:
     writeContext(info)
@@ -795,22 +812,26 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     # in the same file and line are produced:
     #ignoreMsg = lastError == info and eh != doAbort
     lastError = info
+    color = fgRed
   of warnMin..warnMax:
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
     if not ignoreMsg: writeContext(info)
     frmt = PosWarningFormat
     inc(gWarnCounter)
+    color = fgYellow
   of hintMin..hintMax:
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     frmt = PosHintFormat
     inc(gHintCounter)
+    color = fgGreen
   # NOTE: currently line info line numbers start with 1,
   # but column numbers start with 0, however most editors expect
   # first column to be 1, so we need to +1 here
-  let s = frmt % [toMsgFilename(info), coordToStr(info.line),
-                  coordToStr(info.col+1), getMessageStr(msg, arg)]
+  let x = frmt % [toMsgFilename(info), coordToStr(info.line),
+                  coordToStr(info.col+1)]
+  let s = getMessageStr(msg, arg)
   if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
-    msgWriteln(s)
+    msgWriteln(s, color, x)
     if optPrintSurroundingSrc and msg in errMin..errMax:
       info.writeSurroundingSrc
   handleError(msg, eh, s)
