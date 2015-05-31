@@ -67,11 +67,11 @@ type
   pbyteArray = ptr array[0.. 0xffff, int8]
 
   TGenericSeq {.importc.} = object
-    len, space: int
+    len, space, elemSize: int
   PGenSeq = ptr TGenericSeq
 
 const
-  GenericSeqSize = (2 * sizeof(int))
+  GenericSeqSize = (3 * sizeof(int))
 
 proc genericAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
 proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.

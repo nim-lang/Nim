@@ -304,7 +304,7 @@ const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
 when not defined(JS):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
-      len, reserved: int
+      len, reserved, elemSize: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     UncheckedCharArray {.unchecked.} = array[0..ArrayDummySize, char]
     # len and space without counting the terminating zero:
@@ -1068,7 +1068,7 @@ proc compileOption*(option, arg: string): bool {.
 
 const
   hasThreadSupport = compileOption("threads")
-  hasSharedHeap = defined(boehmgc) # don't share heaps; every thread has its own
+  hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
 
 when taintMode:
@@ -2315,7 +2315,7 @@ when not defined(JS): #and not defined(NimrodVM):
 
   when not defined(NimrodVM) and hostOS != "standalone":
     proc initGC()
-    when not defined(boehmgc) and not defined(useMalloc):
+    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc):
       proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
@@ -2649,7 +2649,7 @@ when not defined(JS): #and not defined(NimrodVM):
     include "system/sets"
 
     const
-      GenericSeqSize = (2 * sizeof(int))
+      GenericSeqSize = (3 * sizeof(int))
 
     proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
       sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")

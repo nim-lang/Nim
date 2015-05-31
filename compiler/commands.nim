@@ -22,6 +22,7 @@ bootSwitch(usedNoCaas, defined(noCaas), "-d:noCaas")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
+bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
@@ -86,7 +87,7 @@ proc writeVersionInfo(pass: TCmdLinePass) =
 
     msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
       usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
-      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedNoGC)
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC)
     msgQuit(0)
 
 var
@@ -181,6 +182,7 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "v2":           result = gSelectedGC == gcV2
     of "markandsweep": result = gSelectedGC == gcMarkAndSweep
     of "generational": result = gSelectedGC == gcGenerational
+    of "go":           result = gSelectedGC == gcGo
     of "none":         result = gSelectedGC == gcNone
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "opt":
@@ -365,6 +367,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     of "generational":
       gSelectedGC = gcGenerational
       defineSymbol("gcgenerational")
+    of "go":
+      gSelectedGC = gcGo
+      defineSymbol("gogc")
     of "none":
       gSelectedGC = gcNone
       defineSymbol("nogc")

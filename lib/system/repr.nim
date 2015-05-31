@@ -204,7 +204,7 @@ when not defined(useNimRtl):
                cl: var TReprClosure) =
     # we know that p is not nil here:
     when declared(TCellSet):
-      when defined(boehmGC) or defined(nogc):
+      when defined(boehmGC) or defined(gogc) or defined(nogc):
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)

@@ -232,7 +232,7 @@ when not defined(useNimRtl):
       echo "too large thread local storage size requested"
       quit 1
   
-  when hasSharedHeap and not defined(boehmgc) and not defined(nogc):
+  when hasSharedHeap and not defined(boehmgc) and not defined(gogc) and not defined(nogc):
     var
       threadList: PGcThread
       
@@ -281,7 +281,7 @@ type
   TThreadId*[TArg] = ptr TThread[TArg] ## the current implementation uses
                                        ## a pointer as a thread ID.
 
-when not defined(boehmgc) and not hasSharedHeap:
+when not defined(boehmgc) and not hasSharedHeap and not defined(gogc):
   proc deallocOsPages()
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
@@ -289,7 +289,7 @@ template threadProcWrapperBody(closure: expr) {.immediate.} =
   var t = cast[ptr TThread[TArg]](closure)
   when useStackMaskHack:
     var tls: TThreadLocalStorage
-  when not defined(boehmgc) and not defined(nogc) and not hasSharedHeap:
+  when not defined(boehmgc) and not defined(gogc) and not defined(nogc) and not hasSharedHeap:
     # init the GC for this thread:
     setStackBottom(addr(t))
     initGC()
