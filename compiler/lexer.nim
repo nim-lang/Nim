@@ -414,7 +414,6 @@ proc getNumber(L: var TLexer): TToken =
   # Is there still a literalish char awaiting? Then it's an error!
   if  L.buf[postPos] in literalishCharsNoDot or 
      (L.buf[postPos] == '.' and L.buf[postPos + 1] in {'0'..'9'}):
-    echo "likely literal error, additionally: '", L.buf[postPos], L.buf[postPos+1], L.buf[postPos+2], L.buf[postPos+3], "', ", postPos
     lexMessageLitNum(L, errInvalidNumber, startpos)
   # Third stage, extract actual number
   L.bufpos = startpos            # restore position
