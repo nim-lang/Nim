@@ -749,10 +749,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       elif typeRel(c, base(f), a.sons[0]) >= isGeneric:
         result = isConvertible
     of tyString:
-      if f.sons[0].kind == tyChar:
-        result = isConvertible
-      elif f.sons[0].kind == tyGenericParam and typeRel(c, base(f), base(a)) >= isGeneric:
-        result = isConvertible
+      if f.kind == tyOpenArray:
+        if f.sons[0].kind == tyChar:
+          result = isConvertible
+        elif f.sons[0].kind == tyGenericParam and typeRel(c, base(f), base(a)) >= isGeneric:
+          result = isConvertible
     else: discard
   of tySequence:
     case a.kind
