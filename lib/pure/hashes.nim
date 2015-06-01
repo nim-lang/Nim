@@ -130,14 +130,13 @@ proc hashIgnoreStyle*(x: string): THash =
     var c = x[i]
     if c == '_':
       inc(i)
-      continue                # skip _
-    if isMagicIdentSeparatorRune(cstring(x), i):
+    elif isMagicIdentSeparatorRune(cstring(x), i):
       inc(i, magicIdentSeparatorRuneByteWidth)
-      continue                # skip '·' (unicode middle dot)
-    if c in {'A'..'Z'}:
-      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-    h = h !& ord(c)
-    inc(i)
+    else:
+      if c in {'A'..'Z'}:
+        c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+      h = h !& ord(c)
+      inc(i)
 
   result = !$h
 

@@ -140,7 +140,8 @@ proc isKeyword*(kind: TTokType): bool =
 proc isNimIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
     var i = 1
-    while i < s.len:
+    var sLen = s.len
+    while i < sLen:
       if s[i] == '_':
         inc(i)
       elif isMagicIdentSeparatorRune(cstring s, i):
@@ -637,7 +638,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
           buf[pos+1] == '\128' and
           buf[pos+2] == '\147':  # It's a 'magic separator' en-dash Unicode
         if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars:
-          lexMessage(L, errInvalidToken, "·")
+          lexMessage(L, errInvalidToken, "–")
           break
         inc(pos, magicIdentSeparatorRuneByteWidth)
       else:
