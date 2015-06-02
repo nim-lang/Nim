@@ -64,6 +64,7 @@ proc setBaseFlags*(n: PNode, base: TNumericalBase)
 proc parseSymbol*(p: var TParser, allowNil = false): PNode
 proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
+proc parseStmtPragma(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -502,6 +503,7 @@ proc parsePar(p: var TParser): PNode =
   #| par = '(' optInd
   #|           ( &parKeyw complexOrSimpleStmt ^+ ';'
   #|           | ';' complexOrSimpleStmt ^+ ';'
+  #|           | pragmaStmt
   #|           | simpleExpr ( ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )
   #|                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
   #|           optPar ')'
@@ -523,6 +525,8 @@ proc parsePar(p: var TParser): PNode =
     getTok(p)
     optInd(p, result)
     semiStmtList(p, result)
+  elif p.tok.tokType == tkCurlyDotLe:
+    result.add(parseStmtPragma(p))
   elif p.tok.tokType != tkParRi:
     var a = simpleExpr(p)
     if p.tok.tokType == tkEquals:
