@@ -266,8 +266,7 @@ proc getNumber(L: var TLexer): TToken =
     xi: BiggestInt
   const literalishChars = {   'A'..'F', 'a'..'f', '0'..'9', 'X', 'x', 'o', 'c',
     'C', 'b', 'B', '_', '.', '\''}
-  const literalishCharsNoDot = {   'A'..'F', 'a'..'f', '0'..'9', 'X', 'x', 'o',
-    'c', 'C', 'b', 'B', '_', '\''}
+  const literalishCharsNoDot = literalishChars - {'.'}
 
   proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) =
     var pos = L.bufpos              # use registers for pos, buf
