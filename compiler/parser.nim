@@ -499,10 +499,12 @@ proc parsePar(p: var TParser): PNode =
   #| parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
   #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
   #|         | 'when' | 'var' | 'mixin'
-  #| par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';'
-  #|                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
-  #|                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
-  #|         optPar ')'
+  #| par = '(' optInd
+  #|           ( &parKeyw complexOrSimpleStmt ^+ ';'
+  #|           | ';' complexOrSimpleStmt ^+ ';'
+  #|           | simpleExpr ( ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )
+  #|                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
+  #|           optPar ')'
   #
   # unfortunately it's ambiguous: (expr: expr) vs (exprStmt); however a
   # leading ';' could be used to enforce a 'stmt' context ...
