@@ -221,10 +221,16 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     action(fv.blob)
   finished(fv)
 
-proc `^`*[T](fv: FlowVar[ref T]): foreign ptr T =
+proc unsafeRead*[T](fv: FlowVar[ref T]): foreign ptr T =
   ## blocks until the value is available and then returns this value.
   await(fv)
   result = cast[foreign ptr T](fv.data)
+
+proc `^`*[T](fv: FlowVar[ref T]): ref T =
+  ## blocks until the value is available and then returns this value.
+  await(fv)
+  let src = cast[ref T](fv.data)
+  deepCopy result, src
 
 proc `^`*[T](fv: FlowVar[T]): T =
   ## blocks until the value is available and then returns this value.
