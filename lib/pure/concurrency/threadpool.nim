@@ -128,6 +128,7 @@ type
     initialized: bool # whether it has even been initialized
     shutdown: bool # the pool requests to shut down this worker thread
     q: ToFreeQueue
+    readyForTask: Semaphore
 
 proc await*(fv: FlowVarBase) =
   ## waits until the value for the flowVar arrives. Usually it is not necessary
@@ -301,6 +302,7 @@ proc distinguishedSlave(w: ptr Worker) {.thread.} =
       atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
     else:
       w.ready = true
+    signal(w.readyForTask)
     await(w.taskArrived)
     assert(not w.ready)
     w.f(w, w.data)
@@ -340,6 +342,7 @@ proc activateDistinguishedThread(i: int) {.noinline.} =
   distinguishedData[i].initialized = true
   distinguishedData[i].q.empty = createSemaphore()
   initLock(distinguishedData[i].q.lock)
+  distinguishedData[i].readyForTask = createSemaphore()
   createThread(distinguished[i], distinguishedSlave, addr(distinguishedData[i]))
 
 proc setup() =
@@ -429,11 +432,11 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
   acquire(distinguishedLock)
   if not distinguishedData[id].initialized:
     activateDistinguishedThread(id)
+  release(distinguishedLock)
   while true:
     if selectWorker(addr(distinguishedData[id]), fn, data): break
-    cpuRelax()
-    # XXX exponential backoff?
-  release(distinguishedLock)
+    await(distinguishedData[id].readyForTask)
+
 
 proc sync*() =
   ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
