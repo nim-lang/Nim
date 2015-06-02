@@ -82,7 +82,7 @@ type
     baseName: string # initial filename
     baseMode: FileMode # initial file mode
     logFiles: int # how many log files already created, e.g. basename.1, basename.2...
-    bufSize: int # size of output buffer (-1: automatic, 0: unbuffered, >0: fixed buffer size)
+    bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
 
 {.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger,
     PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
@@ -152,6 +152,8 @@ proc newFileLogger*(filename = defaultFilename(),
                     fmtStr = defaultFmtStr,
                     bufSize: int = -1): FileLogger =
   ## Creates a new file logger. This logger logs to a file.
+  ## Use ``bufSize`` as size of the output buffer when writing the file
+  ## (-1: use system defaults, 0: unbuffered, >0: fixed buffer size).
   new(result)
   result.levelThreshold = levelThreshold
   result.f = open(filename, mode, bufSize = bufSize)
@@ -187,6 +189,8 @@ proc newRollingFileLogger*(filename = defaultFilename(),
                            bufSize: int = -1): RollingFileLogger =
   ## Creates a new rolling file logger. Once a file reaches ``maxLines`` lines
   ## a new log file will be started and the old will be renamed.
+  ## Use ``bufSize`` as size of the output buffer when writing the file
+  ## (-1: use system defaults, 0: unbuffered, >0: fixed buffer size).
   new(result)
   result.levelThreshold = levelThreshold
   result.fmtStr = fmtStr
