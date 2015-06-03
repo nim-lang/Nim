@@ -332,7 +332,7 @@ template `|`(a, b): expr = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # Since tests take a long time (on my machine) - lets make sure a stupid 
   # mistake - like forgetting to compile the compiler - isn't made...
-  exec "nim c --lib:./lib -d:release compiler/nim.nim"
+  exec "nim c --lib:lib -d:release compiler/nim.nim"
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
   exec "nim cc --taintMode:on tests/testament/tester"
