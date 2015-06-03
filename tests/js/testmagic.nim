@@ -1,5 +1,7 @@
 discard """
-  output: '''true'''
+  output: '''true
+123
+'''
 """
 
 # This file tests some magic
@@ -7,3 +9,4 @@ discard """
 var foo = cstring("foo")
 var bar = cstring("foo")
 echo(foo == bar)
+echo "01234"[1 .. ^2]
