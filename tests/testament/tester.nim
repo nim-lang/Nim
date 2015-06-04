@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs
+  algorithm, compiler/nodejs, re
 
 const
   resultsFile = "testresults.html"
@@ -126,6 +126,9 @@ proc `$`(x: TResults): string =
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
 
+proc leftAlign(s: string, count: Natural, padding = ' '): string =
+  s & repeat(padding, max(0, count - s.len))
+
 proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & test.options
@@ -137,14 +140,19 @@ proc addResult(r: var TResults, test: TTest,
                           expected = expected,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
-  if success == reIgnored:
-    styledEcho styleBright, name, fgYellow, " [", $success, "]"
-  elif success != reSuccess:
-    styledEcho styleBright, name, fgRed, " [", $success, "]"
-    echo"Expected:"
-    styledEcho styleBright, expected
-    echo"Given:"
-    styledEcho styleBright, given
+  let alignedName = leftAlign(name, 72) # Make the total line length 78 chars
+  if success == reSuccess:
+    styledEcho fgCyan, alignedName, fgGreen, " [PASS]"
+  elif success == reIgnored:
+    styledEcho styleBright, fgCyan, alignedName, styleDim, fgYellow, " [SKIP]"
+  else:
+    styledEcho styleBright, fgCyan, alignedName, fgRed, " [FAIL]"
+    styledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
+    styledEcho styleBright, fgRed, "Failure: ", $success
+    styledEcho fgYellow, "Expected:"
+    styledEcho styleBright, expected, "\n"
+    styledEcho fgYellow, "Gotten:"
+    styledEcho styleBright, given, "\n"
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -211,68 +219,100 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, expectedmsg, givenmsg, given.err)
 
+proc analyzeAndConsolidateOutput(s: string): string =
+  result = ""
+  let rows = s.splitLines
+  for i in 0 ..< rows.len:
+    if (let pos = find(rows[i], "Traceback (most recent call last)"); pos != -1):
+      result = substr(rows[i], pos) & "\n"
+      for i in i+1 ..< rows.len:
+        result.add rows[i] & "\n"
+        if not (rows[i] =~ re"^[^(]+\(\d+\)\s+"):
+          return
+    elif (let pos = find(rows[i], "SIGSEGV: Illegal storage access."); pos != -1):
+      result = substr(rows[i], pos)
+      return
+
 proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  styledEcho "Processing ", fgCyan, extractFilename(tname)
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
   else:
     specDefaults expected
     expected.action = actionRunNoSpec
+
   if expected.err == reIgnored:
     r.addResult(test, "", "", reIgnored)
     inc(r.skipped)
-  else:
-    case expected.action
-    of actionCompile:
-      var given = callCompiler(expected.cmd, test.name,
-        test.options & " --hint[Path]:off --hint[Processing]:off", test.target)
-      compilerOutputTests(test, given, expected, r)
-    of actionRun, actionRunNoSpec:
-      var given = callCompiler(expected.cmd, test.name, test.options,
-                               test.target)
-      if given.err != reSuccess:
-        r.addResult(test, "", given.msg, given.err)
-      else:
-        var exeFile: string
-        if test.target == targetJS:
-          let (dir, file, ext) = splitFile(tname)
-          exeFile = dir / "nimcache" / file & ".js"
-        else:
-          exeFile = changeFileExt(tname, ExeExt)
-        if existsFile(exeFile):
-          let nodejs = findNodeJs()
-          if test.target == targetJS and nodejs == "":
-            r.addResult(test, expected.outp, "nodejs binary not in PATH",
-                        reExeNotFound)
-            return
-          var (buf, exitCode) = execCmdEx(
-            (if test.target == targetJS: nodejs & " " else: "") & exeFile)
-          if exitCode != expected.exitCode:
-            r.addResult(test, "exitcode: " & $expected.exitCode,
-                              "exitcode: " & $exitCode, reExitCodesDiffer)
-          else:
-            var bufB = strip(buf.string)
-            if expected.sortoutput: bufB = makeDeterministic(bufB)
-            if bufB != strip(expected.outp):
-              if not (expected.substr and expected.outp in bufB):
-                given.err = reOutputsDiffer
-            compilerOutputTests(test, given, expected, r)
-        else:
-          r.addResult(test, expected.outp, "executable not found", reExeNotFound)
-    of actionReject:
-      var given = callCompiler(expected.cmd, test.name, test.options,
-                               test.target)
-      cmpMsgs(r, expected, given, test)
+    return
+
+  case expected.action
+  of actionCompile:
+    var given = callCompiler(expected.cmd, test.name,
+      test.options & " --hint[Path]:off --hint[Processing]:off", test.target)
+    compilerOutputTests(test, given, expected, r)
+  of actionRun, actionRunNoSpec:
+    # In this branch of code "early return" pattern is clearer than deep
+    # nested conditionals - the empty rows in between to clarify the "danger"
+    var given = callCompiler(expected.cmd, test.name, test.options,
+                             test.target)
+
+    if given.err != reSuccess:
+      r.addResult(test, "", given.msg, given.err)
+      return
+
+    let isJsTarget = test.target == targetJS
+    var exeFile: string
+    if isJsTarget:
+      let (dir, file, ext) = splitFile(tname)
+      exeFile = dir / "nimcache" / file & ".js" # *TODO* hardcoded "nimcache"
+    else:
+      exeFile = changeFileExt(tname, ExeExt)
+
+    if not existsFile(exeFile):
+      r.addResult(test, expected.outp, "executable not found", reExeNotFound)
+      return
+
+    let nodejs = if isJsTarget: findNodeJs() else: ""
+    if isJsTarget and nodejs == "":
+      r.addResult(test, expected.outp, "nodejs binary not in PATH",
+                  reExeNotFound)
+      return
+
+    let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
+    let (buf, exitCode) = execCmdEx(exeCmd)
+    let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
+               else: strip(buf.string)
+
+    if exitCode != expected.exitCode:
+      r.addResult(test, "exitcode: " & $expected.exitCode,
+                        "exitcode: " & $exitCode & "\n\nOutput:\n" & 
+                        analyzeAndConsolidateOutput(bufB), 
+                        reExitCodesDiffer)
+      return
+
+    if bufB != strip(expected.outp):
+      if not (expected.substr and expected.outp in bufB):
+        given.err = reOutputsDiffer
+        r.addResult(test, expected.outp, bufB, reOutputsDiffer)
+        return
+
+    compilerOutputTests(test, given, expected, r)
+    return
+
+  of actionReject:
+    var given = callCompiler(expected.cmd, test.name, test.options,
+                             test.target)
+    cmpMsgs(r, expected, given, test)
+    return
 
 proc testNoSpec(r: var TResults, test: TTest) =
   # does not extract the spec because the file is not supposed to have any
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  styledEcho "Processing ", fgCyan, extractFilename(tname)
   let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
