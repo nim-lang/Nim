@@ -38,7 +38,7 @@
 ##    result = !$h
 
 import
-  strutils
+  strutils, etcpriv
 
 type
   THash* = int ## a hash value; hash tables using these values should
@@ -124,13 +124,20 @@ proc hash*(x: string): THash =
 proc hashIgnoreStyle*(x: string): THash =
   ## efficient hashing of strings; style is ignored
   var h: THash = 0
-  for i in 0..x.len-1:
+  var i = 0
+  let xLen = x.len
+  while i < xLen:
     var c = x[i]
     if c == '_':
-      continue                # skip _
-    if c in {'A'..'Z'}:
-      c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
-    h = h !& ord(c)
+      inc(i)
+    elif isMagicIdentSeparatorRune(cstring(x), i):
+      inc(i, magicIdentSeparatorRuneByteWidth)
+    else:
+      if c in {'A'..'Z'}:
+        c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
+      h = h !& ord(c)
+      inc(i)
+
   result = !$h
 
 proc hashIgnoreCase*(x: string): THash =
