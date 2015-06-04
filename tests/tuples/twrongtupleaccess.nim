@@ -1,7 +1,7 @@
 discard """
   file: "twrongtupleaccess.nim"
   line: 9
-  errormsg: "attempting to call undeclared procedure field: \'setBLAH\'"
+  errormsg: "attempting to call undeclared procedure: \'setBLAH\'"
 """
 # Bugfix
 

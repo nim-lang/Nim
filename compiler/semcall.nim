@@ -209,12 +209,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      if nfDotField in n.flags:
-        if nfExplicitCall in n.flags:
-          localError(n.info, errUndeclaredProcedureField,
-              considerQuotedIdent(f).s)
-        else:
-          localError(n.info, errUndeclaredField, considerQuotedIdent(f).s)
+      if nfDotField in n.flags and nfExplicitCall notin n.flags:
+        localError(n.info, errUndeclaredField, considerQuotedIdent(f).s)
       else:
         localError(n.info, errUndeclaredProcedure, considerQuotedIdent(f).s)
       return
