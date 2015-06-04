@@ -11,8 +11,8 @@
     * `FloatInvalidOpError <system.html#FloatInvalidOpError>`_
     * `FloatOverflowError <system.html#FloatOverflowError>`_
     * `FloatUnderflowError <system.html#FloatUnderflowError>`_
-  * `FieldError <system.html#InvalidFieldError>`_
-  * `IndexError <system.html#InvalidIndexError>`_
+  * `FieldError <system.html#FieldError>`_
+  * `IndexError <system.html#IndexError>`_
   * `ObjectAssignmentError <system.html#ObjectAssignmentError>`_
   * `ObjectConversionError <system.html#ObjectConversionError>`_
   * `ValueError <system.html#ValueError>`_
