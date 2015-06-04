@@ -58,7 +58,7 @@ type
     stat: GcStat
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
 {.deprecated: [TWalkOp: WalkOp, TFinalizer: Finalizer, TGcStat: GcStat,
-              TGlobalMarkerProc: GlobalMarkerProc, TGcHeap, GcHeap].}
+              TGlobalMarkerProc: GlobalMarkerProc, TGcHeap: GcHeap].}
 var
   gch {.rtlThreadVar.}: GcHeap
 
