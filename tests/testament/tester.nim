@@ -286,6 +286,7 @@ proc testSpec(r: var TResults, test: TTest) =
     let (buf, exitCode) = execCmdEx(exeCmd)
     let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
                else: strip(buf.string)
+    let expectedOut = strip(expected.outp)
 
     if exitCode != expected.exitCode:
       r.addResult(test, "exitcode: " & $expected.exitCode,
@@ -294,11 +295,13 @@ proc testSpec(r: var TResults, test: TTest) =
                         reExitCodesDiffer)
       return
 
-    if bufB != strip(expected.outp):
-      if not (expected.substr and expected.outp in bufB):
-        given.err = reOutputsDiffer
-        r.addResult(test, expected.outp, bufB, reOutputsDiffer)
-        return
+    # This is a bit ugly atm.
+    if bufB != expectedOut:
+      if not (expected.substr and expectedOut in bufB):
+        if not (expectedOut == "" and bufB == "\27[0m"):
+          given.err = reOutputsDiffer
+          r.addResult(test, expected.outp, bufB, reOutputsDiffer)
+          return
 
     compilerOutputTests(test, given, expected, r)
     return
