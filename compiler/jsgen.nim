@@ -986,6 +986,15 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $ty.kind & ')')
   else: internalError(n.sons[0].info, "genAddr")
 
+proc genProcForSymIfNeeded(p: PProc, s: PSym) =
+  if not p.g.generatedSyms.containsOrIncl(s.id):
+    let newp = genProc(p, s)
+    var owner = p
+    while owner != nil and owner.prc != s.owner:
+      owner = owner.up
+    if owner != nil: add(owner.locals, newp)
+    else: add(p.g.code, newp)
+
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
   case s.kind
@@ -1021,13 +1030,8 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       discard
     elif sfForward in s.flags:
       p.g.forwarded.add(s)
-    elif not p.g.generatedSyms.containsOrIncl(s.id):
-      let newp = genProc(p, s)
-      var owner = p
-      while owner != nil and owner.prc != s.owner:
-        owner = owner.up
-      if owner != nil: add(owner.locals, newp)
-      else: add(p.g.code, newp)
+    else:
+      genProcForSymIfNeeded(p, s)
   else:
     if s.loc.r == nil:
       internalError(n.info, "symbol has no generated name: " & s.name.s)
@@ -1394,6 +1398,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mCopyStrLast: ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap: unaryExpr(p, n, r, "mnewString", "mnewString(0)")
+  of mDotDot:
+    genProcForSymIfNeeded(p, n.sons[0].sym)
+    genCall(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(e.info, 'genMagic: ' + magicToStr[op]);

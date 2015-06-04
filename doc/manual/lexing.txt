@@ -276,7 +276,7 @@ Numerical constants are of a single type and have the form::
   bindigit = '0'..'1'
   HEX_LIT = '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
   DEC_LIT = digit ( ['_'] digit )*
-  OCT_LIT = '0o' octdigit ( ['_'] octdigit )*
+  OCT_LIT = '0' ('o' | 'c' | 'C') octdigit ( ['_'] octdigit )*
   BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
   
   INT_LIT = HEX_LIT
@@ -297,15 +297,17 @@ Numerical constants are of a single type and have the form::
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
   FLOAT_LIT = digit (['_'] digit)* (('.' (['_'] digit)* [exponent]) |exponent)
-  FLOAT32_LIT = HEX_LIT '\'' ('f'|'F') '32'
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '32'
-  FLOAT64_LIT = HEX_LIT '\'' ('f'|'F') '64'
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '64'
+  FLOAT32_SUFFIX = ('f' | 'F') ['32']
+  FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
+              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
+  FLOAT64_SUFFIX = ( ('f' | 'F') '64' ) | 'd' | 'D'
+  FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
+              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
 
 As can be seen in the productions, numerical constants can contain underscores
 for readability. Integer and floating point literals may be given in decimal (no
-prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal
+prefix), binary (prefix ``0b``), octal (prefix ``0o`` or ``0c``) and hexadecimal
 (prefix ``0x``) notation.
 
 There exists a literal for each numerical type that is
@@ -331,8 +333,11 @@ The type suffixes are:
   ``'u16``           uint16
   ``'u32``           uint32
   ``'u64``           uint64
+  ``'f``             float32
+  ``'d``             float64
   ``'f32``           float32
   ``'f64``           float64
+  ``'f128``          float128
 =================    =========================
 
 Floating point literals may also be in binary, octal or hexadecimal
@@ -344,8 +349,8 @@ is approximately 1.72826e35 according to the IEEE floating point standard.
 Operators
 ---------
 
-In Nim one can define his own operators. An operator is any
-combination of the following characters::
+Nim allows user defined operators. An operator is any combination of the
+following characters::
 
        =     +     -     *     /     <     >
        @     $     ~     &     %     |
@@ -355,7 +360,7 @@ These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
 `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
-are used for other notational purposes. 
+are used for other notational purposes.
 
 ``*:`` is as a special case the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).

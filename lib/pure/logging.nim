@@ -82,6 +82,7 @@ type
     baseName: string # initial filename
     baseMode: FileMode # initial file mode
     logFiles: int # how many log files already created, e.g. basename.1, basename.2...
+    bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
 
 {.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger,
     PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
@@ -112,27 +113,22 @@ proc substituteLog(frmt: string): string =
       of "appname": result.add(app.splitFile.name)
       else: discard
 
-method log*(logger: Logger, level: Level,
-            frmt: string, args: varargs[string, `$`]) {.
+method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception],
             tags: [TimeEffect, WriteIOEffect, ReadIOEffect].} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
   discard
 
-method log*(logger: ConsoleLogger, level: Level,
-            frmt: string, args: varargs[string, `$`]) =
+method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(stdout, LevelNames[level], " ", substituteLog(logger.fmtStr),
-            frmt % args)
+    writeln(stdout, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
 
-method log*(logger: FileLogger, level: Level,
-            frmt: string, args: varargs[string, `$`]) =
+method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(logger.f, LevelNames[level], " ",
-            substituteLog(logger.fmtStr), frmt % args)
+    writeln(logger.f, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
 
 proc defaultFilename*(): string =
   ## Returns the default filename for a logger.
@@ -148,11 +144,14 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): Console
 proc newFileLogger*(filename = defaultFilename(),
                     mode: FileMode = fmAppend,
                     levelThreshold = lvlAll,
-                    fmtStr = defaultFmtStr): FileLogger =
+                    fmtStr = defaultFmtStr,
+                    bufSize: int = -1): FileLogger =
   ## Creates a new file logger. This logger logs to a file.
+  ## Use ``bufSize`` as size of the output buffer when writing the file
+  ## (-1: use system defaults, 0: unbuffered, >0: fixed buffer size).
   new(result)
   result.levelThreshold = levelThreshold
-  result.f = open(filename, mode)
+  result.f = open(filename, mode, bufSize = bufSize)
   result.fmtStr = fmtStr
 
 # ------
@@ -181,14 +180,18 @@ proc newRollingFileLogger*(filename = defaultFilename(),
                            mode: FileMode = fmReadWrite,
                            levelThreshold = lvlAll,
                            fmtStr = defaultFmtStr,
-                           maxLines = 1000): RollingFileLogger =
+                           maxLines = 1000,
+                           bufSize: int = -1): RollingFileLogger =
   ## Creates a new rolling file logger. Once a file reaches ``maxLines`` lines
   ## a new log file will be started and the old will be renamed.
+  ## Use ``bufSize`` as size of the output buffer when writing the file
+  ## (-1: use system defaults, 0: unbuffered, >0: fixed buffer size).
   new(result)
   result.levelThreshold = levelThreshold
   result.fmtStr = fmtStr
   result.maxLines = maxLines
-  result.f = open(filename, mode)
+  result.bufSize = bufSize
+  result.f = open(filename, mode, bufSize=result.bufSize)
   result.curLine = 0
   result.baseName = filename
   result.baseMode = mode
@@ -206,8 +209,7 @@ proc rotate(logger: RollingFileLogger) =
     moveFile(dir / (name & ext & srcSuff),
              dir / (name & ext & ExtSep & $(i+1)))
 
-method log*(logger: RollingFileLogger, level: Level,
-            frmt: string, args: varargs[string, `$`]) =
+method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using rolling ``logger`` only.
   if level >= logger.levelThreshold:
     if logger.curLine >= logger.maxLines:
@@ -215,9 +217,9 @@ method log*(logger: RollingFileLogger, level: Level,
       rotate(logger)
       logger.logFiles.inc
       logger.curLine = 0
-      logger.f = open(logger.baseName, logger.baseMode)
+      logger.f = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
 
-    writeln(logger.f, LevelNames[level], " ",substituteLog(logger.fmtStr), frmt % args)
+    writeln(logger.f, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
     logger.curLine.inc
 
 # --------
@@ -225,39 +227,39 @@ method log*(logger: RollingFileLogger, level: Level,
 var level {.threadvar.}: Level   ## global log filter
 var handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
-proc logLoop(level: Level, frmt: string, args: varargs[string, `$`]) =
+proc logLoop(level: Level, args: varargs[string, `$`]) =
   for logger in items(handlers):
     if level >= logger.levelThreshold:
-      log(logger, level, frmt, args)
+      log(logger, level, args)
 
-template log*(level: Level, frmt: string, args: varargs[string, `$`]) =
+template log*(level: Level, args: varargs[string, `$`]) =
   ## Logs a message to all registered handlers at the given level.
   bind logLoop
   bind `%`
   bind logging.level
 
   if level >= logging.level:
-    logLoop(level, frmt, args)
+    logLoop(level, args)
 
-template debug*(frmt: string, args: varargs[string, `$`]) =
+template debug*(args: varargs[string, `$`]) =
   ## Logs a debug message to all registered handlers.
-  log(lvlDebug, frmt, args)
+  log(lvlDebug, args)
 
-template info*(frmt: string, args: varargs[string, `$`]) =
+template info*(args: varargs[string, `$`]) =
   ## Logs an info message to all registered handlers.
-  log(lvlInfo, frmt, args)
+  log(lvlInfo, args)
 
-template warn*(frmt: string, args: varargs[string, `$`]) =
+template warn*(args: varargs[string, `$`]) =
   ## Logs a warning message to all registered handlers.
-  log(lvlWarn, frmt, args)
+  log(lvlWarn, args)
 
-template error*(frmt: string, args: varargs[string, `$`]) =
+template error*(args: varargs[string, `$`]) =
   ## Logs an error message to all registered handlers.
-  log(lvlError, frmt, args)
+  log(lvlError, args)
 
-template fatal*(frmt: string, args: varargs[string, `$`]) =
+template fatal*(args: varargs[string, `$`]) =
   ## Logs a fatal error message to all registered handlers.
-  log(lvlFatal, frmt, args)
+  log(lvlFatal, args)
 
 proc addHandler*(handler: Logger) =
   ## Adds ``handler`` to the list of handlers.
@@ -286,6 +288,4 @@ when not defined(testing) and isMainModule:
   addHandler(fL)
   addHandler(rL)
   for i in 0 .. 25:
-    info("hello" & $i, [])
-
-
+    info("hello", i)

@@ -74,7 +74,7 @@ const
   growthFactor = 2
   startSize = 64
 
-proc myhash(t: StringTableRef, key: string): THash =
+proc myhash(t: StringTableRef, key: string): Hash =
   case t.mode
   of modeCaseSensitive: result = hashes.hash(key)
   of modeCaseInsensitive: result = hashes.hashIgnoreCase(key)
@@ -90,11 +90,11 @@ proc mustRehash(length, counter: int): bool =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 proc rawGet(t: StringTableRef, key: string): int =
-  var h: THash = myhash(t, key) and high(t.data) # start with real hash value
+  var h: Hash = myhash(t, key) and high(t.data) # start with real hash value
   while not isNil(t.data[h].key):
     if myCmp(t, t.data[h].key, key):
       return h
@@ -122,7 +122,7 @@ proc hasKey*(t: StringTableRef, key: string): bool {.rtl, extern: "nst$1".} =
   result = rawGet(t, key) >= 0
 
 proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
-  var h: THash = myhash(t, key) and high(data)
+  var h: Hash = myhash(t, key) and high(data)
   while not isNil(data[h].key):
     h = nextTry(h, high(data))
   data[h].key = key

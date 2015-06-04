@@ -133,7 +133,7 @@ proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
 when declared(initOptParser):
   iterator getopt*(): tuple[kind: CmdLineKind, key, val: TaintedString] =
     ## This is an convenience iterator for iterating over the command line.
-    ## This uses the TOptParser object. Example:
+    ## This uses the OptParser object. Example:
     ##
     ## .. code-block:: nim
     ##   var

@@ -14,6 +14,11 @@ News
     during object initialization or as a named parameter of ``initInterval()``
     will need to be updated.
 
+  - ``std.logging`` functions no longer do formatting and semantically treat
+    their arguments just like ``echo`` does. Affected functions: ``log``,
+    ``debug``, ``info``, ``warn``, ``error``, ``fatal``. Custom subtypes of
+    ``Logger`` also need to be adjusted accordingly.
+
   Language Additions
   ------------------
 

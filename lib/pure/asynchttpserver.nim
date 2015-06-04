@@ -210,6 +210,7 @@ proc processClient(client: AsyncSocket, address: string,
         var contentLength = 0
         if parseInt(request.headers["Content-Length"], contentLength) == 0:
           await request.respond(Http400, "Bad Request. Invalid Content-Length.")
+          continue
         else:
           request.body = await client.recv(contentLength)
           assert request.body.len == contentLength

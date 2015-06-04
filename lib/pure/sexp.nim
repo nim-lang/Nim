@@ -23,7 +23,7 @@ type
     sexpListStart,       ## start of a list: the ``(`` token
     sexpListEnd,         ## end of a list: the ``)`` token
 
-  TTokKind = enum        # must be synchronized with SexpEventKind!
+  TokKind = enum        # must be synchronized with SexpEventKind!
     tkError,
     tkEof,
     tkString,
@@ -45,9 +45,10 @@ type
 
   SexpParser* = object of BaseLexer ## the parser object.
     a: string
-    tok: TTokKind
+    tok: TokKind
     kind: SexpEventKind
     err: SexpError
+{.deprecated: [TTokKind: TokKind].}
 
 const
   errorMessages: array [SexpError, string] = [
@@ -57,7 +58,7 @@ const
     "'\"' or \"'\" expected",
     "EOF expected",
   ]
-  tokToStr: array [TTokKind, string] = [
+  tokToStr: array [TokKind, string] = [
     "invalid token",
     "EOF",
     "string literal",
@@ -119,7 +120,7 @@ proc handleHexChar(c: char, x: var int): bool =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: result = false # error
 
-proc parseString(my: var SexpParser): TTokKind =
+proc parseString(my: var SexpParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
   var buf = my.buf
@@ -217,7 +218,7 @@ proc parseSymbol(my: var SexpParser) =
       inc(pos)
   my.bufpos = pos
 
-proc getTok(my: var SexpParser): TTokKind =
+proc getTok(my: var SexpParser): TokKind =
   setLen(my.a, 0)
   case my.buf[my.bufpos]
   of '-', '0'..'9': # numbers that start with a . are not parsed
@@ -466,7 +467,7 @@ proc `==`* (a,b: SexpNode): bool =
     of SCons:
       a.car == b.car and a.cdr == b.cdr
 
-proc hash* (n:SexpNode): THash =
+proc hash* (n:SexpNode): Hash =
   ## Compute the hash for a SEXP node
   case n.kind
   of SList:
@@ -620,7 +621,7 @@ iterator mitems*(node: var SexpNode): var SexpNode =
   for i in mitems(node.elems):
     yield i
 
-proc eat(p: var SexpParser, tok: TTokKind) =
+proc eat(p: var SexpParser, tok: TokKind) =
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])
 

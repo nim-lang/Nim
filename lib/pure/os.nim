@@ -41,7 +41,7 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect, 
+{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect,
     FReadDir: ReadDirEffect,
     FWriteDir: WriteDirEffect,
     TOSErrorCode: OSErrorCode
@@ -359,7 +359,7 @@ when defined(windows):
 
     template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
       var varname = winApiProc(newWideCString(arg), arg2)
-    proc findFirstFile(a: string, b: var TWIN32_FIND_DATA): THandle =
+    proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
       result = findFirstFileW(newWideCString(a), b)
     template findNextFile(a, b: expr): expr = findNextFileW(a, b)
     template getCommandLine(): expr = getCommandLineW()
@@ -373,7 +373,7 @@ when defined(windows):
 
     template getFilename(f: expr): expr = $f.cFilename
 
-  proc skipFindData(f: TWIN32_FIND_DATA): bool {.inline.} =
+  proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
     const dot = ord('.')
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
@@ -390,7 +390,7 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
   else:
-    var res: TStat
+    var res: Stat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect].} =
@@ -404,7 +404,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   else:
-    var res: TStat
+    var res: Stat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
@@ -419,7 +419,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
     if a != -1'i32:
       result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
   else:
-    var res: TStat
+    var res: Stat
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
 proc fileExists*(filename: string): bool {.inline.} =
@@ -433,11 +433,11 @@ proc dirExists*(dir: string): bool {.inline.} =
 proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
-    var res: TStat
+    var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     return res.st_mtime
   else:
-    var f: TWIN32_FIND_DATA
+    var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
@@ -446,11 +446,11 @@ proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
 proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
-    var res: TStat
+    var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     return res.st_atime
   else:
-    var f: TWIN32_FIND_DATA
+    var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
@@ -461,11 +461,11 @@ proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   ## Note that under posix OS's, the returned time may actually be the time at
   ## which the file's attribute's were last modified.
   when defined(posix):
-    var res: TStat
+    var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     return res.st_ctime
   else:
-    var f: TWIN32_FIND_DATA
+    var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
     result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
@@ -794,20 +794,20 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     result = path[0] == '/'
 
 when defined(Windows):
-  proc openHandle(path: string, followSymlink=true): THandle =
+  proc openHandle(path: string, followSymlink=true): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
       flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
 
     when useWinUnicode:
       result = createFileW(
-        newWideCString(path), 0'i32, 
+        newWideCString(path), 0'i32,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
     else:
       result = createFileA(
-        path, 0'i32, 
+        path, 0'i32,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
@@ -827,7 +827,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
     var lastErr: OSErrorCode
     if f1 != INVALID_HANDLE_VALUE and f2 != INVALID_HANDLE_VALUE:
-      var fi1, fi2: TBY_HANDLE_FILE_INFORMATION
+      var fi1, fi2: BY_HANDLE_FILE_INFORMATION
 
       if getFileInformationByHandle(f1, addr(fi1)) != 0 and
          getFileInformationByHandle(f2, addr(fi2)) != 0:
@@ -846,7 +846,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
     if not success: raiseOSError(lastErr)
   else:
-    var a, b: TStat
+    var a, b: Stat
     if stat(path1, a) < 0'i32 or stat(path2, b) < 0'i32:
       raiseOSError(osLastError())
     else:
@@ -903,7 +903,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
   ## an error. On Windows, only the ``readonly`` flag is checked, every other
   ## permission is available in any case.
   when defined(posix):
-    var a: TStat
+    var a: Stat
     if stat(filename, a) < 0'i32: raiseOSError(osLastError())
     result = {}
     if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
@@ -924,11 +924,11 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
       var res = getFileAttributesA(filename)
     if res == -1'i32: raiseOSError(osLastError())
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
-      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead, 
+      result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
                 fpOthersExec, fpOthersRead}
     else:
       result = {fpUserExec..fpOthersRead}
-  
+
 proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## sets the file permissions for `filename`. `OSError` is raised in case of
@@ -939,15 +939,15 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if fpUserRead in permissions: p = p or S_IRUSR
     if fpUserWrite in permissions: p = p or S_IWUSR
     if fpUserExec in permissions: p = p or S_IXUSR
-    
+
     if fpGroupRead in permissions: p = p or S_IRGRP
     if fpGroupWrite in permissions: p = p or S_IWGRP
     if fpGroupExec in permissions: p = p or S_IXGRP
-    
+
     if fpOthersRead in permissions: p = p or S_IROTH
     if fpOthersWrite in permissions: p = p or S_IWOTH
     if fpOthersExec in permissions: p = p or S_IXOTH
-    
+
     if chmod(filename, p) != 0: raiseOSError(osLastError())
   else:
     when useWinUnicode:
@@ -955,7 +955,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     else:
       var res = getFileAttributesA(filename)
     if res == -1'i32: raiseOSError(osLastError())
-    if fpUserWrite in permissions: 
+    if fpUserWrite in permissions:
       res = res and not FILE_ATTRIBUTE_READONLY
     else:
       res = res or FILE_ATTRIBUTE_READONLY
@@ -1030,11 +1030,11 @@ when not declared(ENOENT) and not defined(Windows):
 when defined(Windows):
   when useWinUnicode:
     template deleteFile(file: expr): expr {.immediate.} = deleteFileW(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} = 
+    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
       setFileAttributesW(file, attrs)
   else:
     template deleteFile(file: expr): expr {.immediate.} = deleteFileA(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} = 
+    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
       setFileAttributesA(file, attrs)
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
@@ -1047,7 +1047,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} 
     else:
       let f = file
     if deleteFile(f) == 0:
-      if getLastError() == ERROR_ACCESS_DENIED: 
+      if getLastError() == ERROR_ACCESS_DENIED:
         if setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) == 0:
           raiseOSError(osLastError())
         if deleteFile(f) == 0:
@@ -1220,7 +1220,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
   ## notation is supported.
   when defined(windows):
     var
-      f: TWIN32_FIND_DATA
+      f: WIN32_FIND_DATA
       res: int
     res = findFirstFile(pattern, f)
     if res != -1:
@@ -1232,7 +1232,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
       findClose(res)
   else: # here we use glob
     var
-      f: TGlob
+      f: Glob
       res: int
     f.gl_offs = 0
     f.gl_pathc = 0
@@ -1276,7 +1276,7 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
   ##   dirA/fileA1.txt
   ##   dirA/fileA2.txt
   when defined(windows):
-    var f: TWIN32_FIND_DATA
+    var f: WIN32_FIND_DATA
     var h = findFirstFile(dir / "*", f)
     if h != -1:
       while true:
@@ -1297,7 +1297,7 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
         if x == nil: break
         var y = $x.d_name
         if y != "." and y != "..":
-          var s: TStat
+          var s: Stat
           y = dir / y
           var k = pcFile
 
@@ -1319,9 +1319,9 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   ## walks over the directory `dir` and yields for each file in `dir`. The
   ## full path for each file is returned.
   ## **Warning**:
-  ## Modifying the directory structure while the iterator 
-  ## is traversing may result in undefined behavior! 
-  ## 
+  ## Modifying the directory structure while the iterator
+  ## is traversing may result in undefined behavior!
+  ##
   ## Walking is recursive. `filter` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
@@ -1424,7 +1424,7 @@ proc createSymlink*(src, dest: string) =
   ## by `src`. On most operating systems, will fail if a lonk
   ##
   ## **Warning**:
-  ## Some OS's (such as Microsoft Windows) restrict the creation 
+  ## Some OS's (such as Microsoft Windows) restrict the creation
   ## of symlinks to root users (administrators).
   when defined(Windows):
     let flag = dirExists(src).int32
@@ -1444,7 +1444,7 @@ proc createHardlink*(src, dest: string) =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Most OS's restrict the creation of hard links to 
+  ## **Warning**: Most OS's restrict the creation of hard links to
   ## root users (administrators) .
   when defined(Windows):
     when useWinUnicode:
@@ -1548,7 +1548,7 @@ proc parseCmdLine*(c: string): seq[string] {.
           add(a, c[i])
           inc(i)
     add(result, a)
-  
+
 proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true) =
   ## Copies a file from `source` to `dest` preserving file permissions.
@@ -1842,7 +1842,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
   when defined(windows):
     winlean.sleep(int32(milsecs))
   else:
-    var a, b: Ttimespec
+    var a, b: Timespec
     a.tv_sec = Time(milsecs div 1000)
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
@@ -1851,7 +1851,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [ReadIOEffect].} =
   ## returns the file size of `file`. Can raise ``OSError``.
   when defined(windows):
-    var a: TWIN32_FIND_DATA
+    var a: WIN32_FIND_DATA
     var resA = findFirstFile(file, a)
     if resA == -1: raiseOSError(osLastError())
     result = rdFileSize(a)
@@ -1907,8 +1907,8 @@ when defined(Windows):
     FileId* = int64
 else:
   type
-    DeviceId* = TDev
-    FileId* = Tino
+    DeviceId* = Dev
+    FileId* = Ino
 
 type
   FileInfo* = object
@@ -1925,7 +1925,7 @@ type
 template rawToFormalFileInfo(rawInfo, formalInfo): expr =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
-  ## or a 'TStat' structure on posix
+  ## or a 'Stat' structure on posix
   when defined(Windows):
     template toTime(e): expr = winTimeToUnixTime(rdFileTime(e))
     template merge(a, b): expr = a or (b shl 32)
@@ -1936,10 +1936,10 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
     formalInfo.lastAccessTime = toTime(rawInfo.ftLastAccessTime)
     formalInfo.lastWriteTime = toTime(rawInfo.ftLastWriteTime)
     formalInfo.creationTime = toTime(rawInfo.ftCreationTime)
-    
+
     # Retrieve basic permissions
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
-      formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec, 
+      formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec,
                                 fpGroupRead, fpOthersExec, fpOthersRead}
     else:
       result.permissions = {fpUserExec..fpOthersRead}
@@ -1953,7 +1953,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
 
 
   else:
-    template checkAndIncludeMode(rawMode, formalMode: expr) = 
+    template checkAndIncludeMode(rawMode, formalMode: expr) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
@@ -1988,7 +1988,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
   ## is invalid, an error will be thrown.
   # Done: ID, Kind, Size, Permissions, Link Count
   when defined(Windows):
-    var rawInfo: TBY_HANDLE_FILE_INFORMATION
+    var rawInfo: BY_HANDLE_FILE_INFORMATION
     # We have to use the super special '_get_osfhandle' call (wrapped above)
     # To transform the C file descripter to a native file handle.
     var realHandle = get_osfhandle(handle)
@@ -1996,7 +1996,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
       raiseOSError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
   else:
-    var rawInfo: TStat
+    var rawInfo: Stat
     if fstat(handle, rawInfo) < 0'i32:
       raiseOSError(osLastError())
     rawToFormalFileInfo(rawInfo, result)
@@ -2008,22 +2008,22 @@ proc getFileInfo*(file: File): FileInfo =
 
 proc getFileInfo*(path: string, followSymlink = true): FileInfo =
   ## Retrieves file information for the file object pointed to by `path`.
-  ## 
+  ##
   ## Due to intrinsic differences between operating systems, the information
   ## contained by the returned `FileInfo` structure will be slightly different
   ## across platforms, and in some cases, incomplete or inaccurate.
-  ## 
+  ##
   ## When `followSymlink` is true, symlinks are followed and the information
   ## retrieved is information related to the symlink's target. Otherwise,
   ## information on the symlink itself is retrieved.
-  ## 
+  ##
   ## If the information cannot be retrieved, such as when the path doesn't
   ## exist, or when permission restrictions prevent the program from retrieving
   ## file information, an error will be thrown.
   when defined(Windows):
-    var 
+    var
       handle = openHandle(path, followSymlink)
-      rawInfo: TBY_HANDLE_FILE_INFORMATION
+      rawInfo: BY_HANDLE_FILE_INFORMATION
     if handle == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
     if getFileInformationByHandle(handle, addr rawInfo) == 0:
@@ -2031,7 +2031,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
     rawToFormalFileInfo(rawInfo, result)
     discard closeHandle(handle)
   else:
-    var rawInfo: TStat
+    var rawInfo: Stat
     if followSymlink:
       if stat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError())
@@ -2044,7 +2044,7 @@ proc isHidden*(path: string): bool =
   ## Determines whether a given path is hidden or not. Returns false if the
   ## file doesn't exist. The given path must be accessible from the current
   ## working directory of the program.
-  ## 
+  ##
   ## On Windows, a file is hidden if the file's 'hidden' attribute is set.
   ## On Unix-like systems, a file is hidden if it starts with a '.' (period)
   ## and is not *just* '.' or '..' ' ."

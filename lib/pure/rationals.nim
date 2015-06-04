@@ -206,13 +206,13 @@ proc abs*[T](x: Rational[T]): Rational[T] =
   result.num = abs x.num
   result.den = abs x.den
 
-proc hash*[T](x: Rational[T]): THash =
+proc hash*[T](x: Rational[T]): Hash =
   ## Computes hash for rational `x`
   # reduce first so that hash(x) == hash(y) for x == y
   var copy = x
   reduce(copy)
 
-  var h: THash = 0
+  var h: Hash = 0
   h = h !& hash(copy.num)
   h = h !& hash(copy.den)
   result = !$h

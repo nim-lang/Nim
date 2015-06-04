@@ -17,23 +17,24 @@ from sdl import PSurface # Bug
 from sdl_ttf import openFont, closeFont
 
 type
-  TRect* = tuple[x, y, width, height: int]
-  TPoint* = tuple[x, y: int]
+  Rect* = tuple[x, y, width, height: int]
+  Point* = tuple[x, y: int]
 
-  PSurface* = ref TSurface ## a surface to draw onto
-  TSurface* {.pure, final.} = object
+  PSurface* = ref Surface ## a surface to draw onto
+  Surface* {.pure, final.} = object
     w*, h*: Natural
     s*: sdl.PSurface
   
   EGraphics* = object of IOError
 
-  TFont {.pure, final.} = object
+  Font {.pure, final.} = object
     f: sdl_ttf.PFont
-    color: sdl.TColor
-  PFont* = ref TFont ## represents a font
+    color: sdl.Color
+  PFont* = ref Font ## represents a font
+{.deprecated: [TSurface: Surface, TFont: Font, TRect: Rect, TPoint: Point].}
 
-proc toSdlColor*(c: Color): sdl.TColor =
-  ## Convert colors.TColor to sdl.TColor
+proc toSdlColor*(c: Color): sdl.Color =
+  ## Convert colors.Color to sdl.Color
   var x = c.extractRGB  
   result.r = x.r and 0xff
   result.g = x.g and 0xff
@@ -45,8 +46,8 @@ proc createSdlColor*(sur: PSurface, c: Color, alpha: int = 0): int32 =
   return sdl.mapRGBA(sur.s.format, x.r and 0xff, x.g and 0xff, 
                      x.b and 0xff, alpha and 0xff)
 
-proc toSdlRect*(r: TRect): sdl.TRect =
-  ## Convert ``graphics.TRect`` to ``sdl.TRect``.
+proc toSdlRect*(r: Rect): sdl.Rect =
+  ## Convert ``graphics.Rect`` to ``sdl.Rect``.
   result.x = int16(r.x)
   result.y = int16(r.y)
   result.w = uint16(r.width)
@@ -103,8 +104,9 @@ proc writeToBMP*(sur: PSurface, filename: string) =
     raise newException(IOError, "cannot write: " & filename)
 
 type
-  TPixels = array[0..1000_000-1, int32]
-  PPixels = ptr TPixels
+  Pixels = array[0..1000_000-1, int32]
+  PPixels = ptr Pixels
+{.deprecated: [TPixels: Pixels].}
 
 template setPix(video, pitch, x, y, col: expr): stmt =
   video[y * pitch + x] = int32(col)
@@ -128,7 +130,7 @@ proc setPixel(sur: PSurface, x, y: Natural, col: colors.Color) {.inline.} =
   #pixs[y * (sur.s.pitch div colSize) + x] = int(col)
   setPix(pixs, sur.s.pitch.int div ColSize, x, y, col)
 
-proc `[]`*(sur: PSurface, p: TPoint): Color =
+proc `[]`*(sur: PSurface, p: Point): Color =
   ## get pixel at position `p`. No range checking is done!
   result = getPixel(sur, p.x, p.y)
 
@@ -136,7 +138,7 @@ proc `[]`*(sur: PSurface, x, y: int): Color =
   ## get pixel at position ``(x, y)``. No range checking is done!
   result = getPixel(sur, x, y)
 
-proc `[]=`*(sur: PSurface, p: TPoint, col: Color) =
+proc `[]=`*(sur: PSurface, p: Point, col: Color) =
   ## set the pixel at position `p`. No range checking is done!
   setPixel(sur, p.x, p.y, col)
 
@@ -144,10 +146,10 @@ proc `[]=`*(sur: PSurface, x, y: int, col: Color) =
   ## set the pixel at position ``(x, y)``. No range checking is done!
   setPixel(sur, x, y, col)
 
-proc blit*(destSurf: PSurface, destRect: TRect, srcSurf: PSurface, 
-           srcRect: TRect) =
+proc blit*(destSurf: PSurface, destRect: Rect, srcSurf: PSurface, 
+           srcRect: Rect) =
   ## Copies ``srcSurf`` into ``destSurf``
-  var destTRect, srcTRect: sdl.TRect
+  var destTRect, srcTRect: sdl.Rect
 
   destTRect.x = int16(destRect.x)
   destTRect.y = int16(destRect.y)
@@ -168,7 +170,7 @@ proc textBounds*(text: string, font = defaultFont): tuple[width, height: int] =
   result.width = int(w)
   result.height = int(h)
 
-proc drawText*(sur: PSurface, p: TPoint, text: string, font = defaultFont) =
+proc drawText*(sur: PSurface, p: Point, text: string, font = defaultFont) =
   ## Draws text with a transparent background, at location ``p`` with the given
   ## font.
   var textSur: PSurface # This surface will have the text drawn on it
@@ -179,7 +181,7 @@ proc drawText*(sur: PSurface, p: TPoint, text: string, font = defaultFont) =
   # Merge the text surface with sur
   sur.blit((p.x, p.y, sur.w, sur.h), textSur, (0, 0, sur.w, sur.h))
 
-proc drawText*(sur: PSurface, p: TPoint, text: string,
+proc drawText*(sur: PSurface, p: Point, text: string,
                bg: Color, font = defaultFont) =
   ## Draws text, at location ``p`` with font ``font``. ``bg`` 
   ## is the background color.
@@ -189,7 +191,7 @@ proc drawText*(sur: PSurface, p: TPoint, text: string,
   # Merge the text surface with sur
   sur.blit((p.x, p.y, sur.w, sur.h), textSur, (0, 0, sur.w, sur.h))
   
-proc drawCircle*(sur: PSurface, p: TPoint, r: Natural, color: Color) =
+proc drawCircle*(sur: PSurface, p: Point, r: Natural, color: Color) =
   ## draws a circle with center `p` and radius `r` with the given color
   ## onto the surface `sur`.
   var video = cast[PPixels](sur.s.pixels)
@@ -229,7 +231,7 @@ proc `>-<`(val: int, s: PSurface): int {.inline.} =
 proc `>|<`(val: int, s: PSurface): int {.inline.} = 
   return if val < 0: 0 elif val >= s.h: s.h-1 else: val
 
-proc drawLine*(sur: PSurface, p1, p2: TPoint, color: Color) =
+proc drawLine*(sur: PSurface, p1, p2: Point, color: Color) =
   ## draws a line between the two points `p1` and `p2` with the given color
   ## onto the surface `sur`.
   var stepx, stepy: int = 0
@@ -291,7 +293,7 @@ proc drawVerLine*(sur: PSurface, x, y, h: Natural, color: Color) =
     for i in 0 .. min(sur.s.h-y, h)-1:
       setPix(video, pitch, x, y + i, color)
 
-proc fillCircle*(s: PSurface, p: TPoint, r: Natural, color: Color) =
+proc fillCircle*(s: PSurface, p: Point, r: Natural, color: Color) =
   ## draws a circle with center `p` and radius `r` with the given color
   ## onto the surface `sur` and fills it.
   var a = 1 - r
@@ -319,7 +321,7 @@ proc fillCircle*(s: PSurface, p: TPoint, r: Natural, color: Color) =
         drawVerLine(s, x - py - 1, y - px,  px, color)
     px = px + 1
 
-proc drawRect*(sur: PSurface, r: TRect, color: Color) =
+proc drawRect*(sur: PSurface, r: Rect, color: Color) =
   ## draws a rectangle.
   var video = cast[PPixels](sur.s.pixels)
   var pitch = sur.s.pitch.int div ColSize
@@ -337,7 +339,7 @@ proc drawRect*(sur: PSurface, r: TRect, color: Color) =
       setPix(video, pitch, r.x, r.y + i, color)
       setPix(video, pitch, r.x + minW - 1, r.y + i, color) # Draw right side
     
-proc fillRect*(sur: PSurface, r: TRect, col: Color) =
+proc fillRect*(sur: PSurface, r: Rect, col: Color) =
   ## Fills a rectangle using sdl's ``FillRect`` function.
   var rect = toSdlRect(r)
   if sdl.fillRect(sur.s, addr(rect), sur.createSdlColor(col)) == -1:
@@ -424,7 +426,7 @@ template cround(x: expr): expr = ipart(x + 0.5)
 template fpart(x: expr): expr = x - ipart(x)
 template rfpart(x: expr): expr = 1.0 - fpart(x)
 
-proc drawLineAA*(sur: PSurface, p1, p2: TPoint, color: Color) =
+proc drawLineAA*(sur: PSurface, p1, p2: Point, color: Color) =
   ## Draws a anti-aliased line from ``p1`` to ``p2``, using Xiaolin Wu's 
   ## line algorithm
   var (x1, x2, y1, y2) = (p1.x.toFloat(), p2.x.toFloat(), 
@@ -490,9 +492,9 @@ proc fillSurface*(sur: PSurface, color: Color) =
 template withEvents*(surf: PSurface, event: expr, actions: stmt): stmt {.
   immediate.} =
   ## Simple template which creates an event loop. ``Event`` is the name of the
-  ## variable containing the TEvent object.
+  ## variable containing the Event object.
   while true:
-    var event: sdl.TEvent
+    var event: sdl.Event
     if sdl.waitEvent(addr(event)) == 1:
       actions
 

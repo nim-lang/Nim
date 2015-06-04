@@ -37,22 +37,22 @@ const                         # Some rates in Hz
   SMOOTHING_ON* = 1
 
 type 
-  PFPSmanager* = ptr TFPSmanager
-  TFPSmanager*{.final.} = object  # ---- Structures
+  PFPSmanager* = ptr FPSmanager
+  FPSmanager*{.final.} = object  # ---- Structures
     framecount*: uint32
     rateticks*: float32
     lastticks*: uint32
     rate*: uint32
 
-  PColorRGBA* = ptr TColorRGBA
-  TColorRGBA*{.final.} = object 
+  PColorRGBA* = ptr ColorRGBA
+  ColorRGBA*{.final.} = object 
     r*: byte
     g*: byte
     b*: byte
     a*: byte
 
-  PColorY* = ptr TColorY
-  TColorY*{.final.} = object  #
+  PColorY* = ptr ColorY
+  ColorY*{.final.} = object   #
                               #
                               # SDL_framerate: framerate manager
                               #
@@ -60,7 +60,7 @@ type
                               #
                               #
     y*: byte
-
+{.deprecated: [TFPSmanager: FPSmanager, TColorRGBA: ColorRGBA, TColorY: ColorY].}
 
 proc initFramerate*(manager: PFPSmanager){.cdecl, importc: "SDL_initFramerate", 
     dynlib: gfxLibName.}

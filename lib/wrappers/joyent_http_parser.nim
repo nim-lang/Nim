@@ -1,20 +1,20 @@
 type
   csize = int
   
-  HttpDataProc* = proc (a2: ptr THttpParser, at: cstring, length: csize): cint {.cdecl.}
-  HttpProc* = proc (a2: ptr THttpParser): cint {.cdecl.}
+  HttpDataProc* = proc (a2: ptr HttpParser, at: cstring, length: csize): cint {.cdecl.}
+  HttpProc* = proc (a2: ptr HttpParser): cint {.cdecl.}
 
-  THttpMethod* = enum
+  HttpMethod* = enum
     HTTP_DELETE = 0, HTTP_GET, HTTP_HEAD, HTTP_POST, HTTP_PUT, HTTP_CONNECT,
     HTTP_OPTIONS, HTTP_TRACE, HTTP_COPY, HTTP_LOCK, HTTP_MKCOL, HTTP_MOVE,
     HTTP_PROPFIND, HTTP_PROPPATCH, HTTP_UNLOCK, HTTP_REPORT, HTTP_MKACTIVITY,
     HTTP_CHECKOUT, HTTP_MERGE, HTTP_MSEARCH, HTTP_NOTIFY, HTTP_SUBSCRIBE,
     HTTP_UNSUBSCRIBE, HTTP_PATCH
 
-  THttpParserType* = enum
+  HttpParserType* = enum
     HTTP_REQUEST, HTTP_RESPONSE, HTTP_BOTH
 
-  TParserFlag* = enum
+  ParserFlag* = enum
     F_CHUNKED = 1 shl 0,
     F_CONNECTION_KEEP_ALIVE = 1 shl 1,
     F_CONNECTION_CLOSE = 1 shl 2,
@@ -22,7 +22,7 @@ type
     F_UPGRADE = 1 shl 4,
     F_SKIPBODY = 1 shl 5
 
-  THttpErrNo* = enum
+  HttpErrNo* = enum
     HPE_OK, HPE_CB_message_begin, HPE_CB_path, HPE_CB_query_string, HPE_CB_url,
     HPE_CB_fragment, HPE_CB_header_field, HPE_CB_header_value,
     HPE_CB_headers_complete, HPE_CB_body, HPE_CB_message_complete,
@@ -34,7 +34,7 @@ type
     HPE_INVALID_CHUNK_SIZE, HPE_INVALID_CONSTANT, HPE_INVALID_INTERNAL_STATE,
     HPE_STRICT, HPE_UNKNOWN
 
-  THttpParser*{.pure, final, importc: "http_parser", header: "http_parser.h".} = object
+  HttpParser*{.pure, final, importc: "http_parser", header: "http_parser.h".} = object
     typ {.importc: "type".}: char
     flags {.importc: "flags".}: char
     state*{.importc: "state".}: char
@@ -50,7 +50,7 @@ type
     upgrade {.importc: "upgrade".}: bool
     data*{.importc: "data".}: pointer
 
-  THttpParserSettings*{.pure, final, importc: "http_parser_settings", header: "http_parser.h".} = object
+  HttpParserSettings*{.pure, final, importc: "http_parser_settings", header: "http_parser.h".} = object
     on_message_begin*{.importc: "on_message_begin".}: HttpProc
     on_url*{.importc: "on_url".}: HttpDataProc
     on_header_field*{.importc: "on_header_field".}: HttpDataProc
@@ -58,24 +58,27 @@ type
     on_headers_complete*{.importc: "on_headers_complete".}: HttpProc
     on_body*{.importc: "on_body".}: HttpDataProc
     on_message_complete*{.importc: "on_message_complete".}: HttpProc
+{.deprecated: [THttpMethod: HttpMethod, THttpParserType: HttpParserType,
+              TParserFlag: ParserFlag, THttpErrNo: HttpErrNo,
+              THttpParser: HttpParser, THttpParserSettings: HttpParserSettings].}
 
-proc http_parser_init*(parser: var THttpParser, typ: THttpParserType){.
+proc http_parser_init*(parser: var HttpParser, typ: HttpParserType){.
     importc: "http_parser_init", header: "http_parser.h".}
 
-proc http_parser_execute*(parser: var THttpParser,
-                          settings: var THttpParserSettings, data: cstring,
+proc http_parser_execute*(parser: var HttpParser,
+                          settings: var HttpParserSettings, data: cstring,
                           len: csize): csize {.
     importc: "http_parser_execute", header: "http_parser.h".}
 
-proc http_should_keep_alive*(parser: var THttpParser): cint{.
+proc http_should_keep_alive*(parser: var HttpParser): cint{.
     importc: "http_should_keep_alive", header: "http_parser.h".}
 
-proc http_method_str*(m: THttpMethod): cstring{.
+proc http_method_str*(m: HttpMethod): cstring{.
     importc: "http_method_str", header: "http_parser.h".}
 
-proc http_errno_name*(err: THttpErrNo): cstring{.
+proc http_errno_name*(err: HttpErrNo): cstring{.
     importc: "http_errno_name", header: "http_parser.h".}
 
-proc http_errno_description*(err: THttpErrNo): cstring{.
+proc http_errno_description*(err: HttpErrNo): cstring{.
     importc: "http_errno_description", header: "http_parser.h".}
 

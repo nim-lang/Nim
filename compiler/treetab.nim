@@ -12,7 +12,7 @@
 import 
   hashes, ast, astalgo, types
 
-proc hashTree(n: PNode): THash = 
+proc hashTree(n: PNode): Hash = 
   if n == nil: return 
   result = ord(n.kind)
   case n.kind
@@ -53,8 +53,8 @@ proc treesEquivalent(a, b: PNode): bool =
         result = true
     if result: result = sameTypeOrNil(a.typ, b.typ)
   
-proc nodeTableRawGet(t: TNodeTable, k: THash, key: PNode): int = 
-  var h: THash = k and high(t.data)
+proc nodeTableRawGet(t: TNodeTable, k: Hash, key: PNode): int = 
+  var h: Hash = k and high(t.data)
   while t.data[h].key != nil: 
     if (t.data[h].h == k) and treesEquivalent(t.data[h].key, key): 
       return h
@@ -66,9 +66,9 @@ proc nodeTableGet*(t: TNodeTable, key: PNode): int =
   if index >= 0: result = t.data[index].val
   else: result = low(int)
   
-proc nodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode, 
+proc nodeTableRawInsert(data: var TNodePairSeq, k: Hash, key: PNode, 
                         val: int) = 
-  var h: THash = k and high(data)
+  var h: Hash = k and high(data)
   while data[h].key != nil: h = nextTry(h, high(data))
   assert(data[h].key == nil)
   data[h].h = k
@@ -77,7 +77,7 @@ proc nodeTableRawInsert(data: var TNodePairSeq, k: THash, key: PNode,
 
 proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) = 
   var n: TNodePairSeq
-  var k: THash = hashTree(key)
+  var k: Hash = hashTree(key)
   var index = nodeTableRawGet(t, k, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
@@ -94,7 +94,7 @@ proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
 
 proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int = 
   var n: TNodePairSeq
-  var k: THash = hashTree(key)
+  var k: Hash = hashTree(key)
   var index = nodeTableRawGet(t, k, key)
   if index >= 0: 
     assert(t.data[index].key != nil)
