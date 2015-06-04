@@ -404,7 +404,7 @@ dispatch.
     result.a = a
     result.b = b
 
-echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
+  echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
   
 In the example the constructors ``newLit`` and ``newPlus`` are procs
 because they should use static binding, but ``eval`` is a method because it
