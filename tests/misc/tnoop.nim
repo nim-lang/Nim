@@ -1,7 +1,7 @@
 discard """
   file: "tnoop.nim"
   line: 11
-  errormsg: "undeclared identifier: 'a'"
+  errormsg: "attempting to call undeclared procedure: 'a'"
 """
 
 

@@ -1,6 +1,6 @@
 discard """
   line: 7
-  errormsg: "undeclared identifier: 'items'"
+  errormsg: "attempting to call undeclared procedure: 'items'"
 """
 
 type a = enum b,c,d
