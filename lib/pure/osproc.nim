@@ -396,8 +396,8 @@ when defined(Windows) and not defined(useNimRtl):
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
 
   proc createPipeHandles(rdHandle, wrHandle: var Handle) =
-    var piInheritablePipe: TSECURITY_ATTRIBUTES
-    piInheritablePipe.nLength = sizeof(TSECURITY_ATTRIBUTES).cint
+    var piInheritablePipe: SECURITY_ATTRIBUTES
+    piInheritablePipe.nLength = sizeof(SECURITY_ATTRIBUTES).cint
     piInheritablePipe.lpSecurityDescriptor = nil
     piInheritablePipe.bInheritHandle = 1
     if createPipe(rdHandle, wrHandle, piInheritablePipe, 1024) == 0'i32:
@@ -412,8 +412,8 @@ when defined(Windows) and not defined(useNimRtl):
                  env: StringTableRef = nil,
                  options: set[ProcessOption] = {poStdErrToStdOut}): Process =
     var
-      si: TSTARTUPINFO
-      procInfo: TPROCESS_INFORMATION
+      si: STARTUPINFO
+      procInfo: PROCESS_INFORMATION
       success: int
       hi, ho, he: Handle
     new(result)
@@ -526,8 +526,8 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc execCmd(command: string): int =
     var
-      si: TSTARTUPINFO
-      procInfo: TPROCESS_INFORMATION
+      si: STARTUPINFO
+      procInfo: PROCESS_INFORMATION
       process: Handle
       L: int32
     si.cb = sizeof(si).cint
@@ -555,7 +555,7 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc select(readfds: var seq[Process], timeout = 500): int =
     assert readfds.len <= MAXIMUM_WAIT_OBJECTS
-    var rfds: TWOHandleArray
+    var rfds: WOHandleArray
     for i in 0..readfds.len()-1:
       rfds[i] = readfds[i].fProcessHandle
 
