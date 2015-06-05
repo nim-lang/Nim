@@ -130,7 +130,9 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
   # hidden conversions (?)
-  if isPatternParam(c, p):
+  if nfNoRewrite in n.flags:
+    result = false
+  elif isPatternParam(c, p):
     result = bindOrCheck(c, p.sym, n)
   elif n.kind == nkSym and p.kind == nkIdent:
     result = p.ident.id == n.sym.name.id

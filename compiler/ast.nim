@@ -423,6 +423,7 @@ type
                 # but unfortunately it has measurable impact for compilation
                 # efficiency
     nfTransf,   # node has been transformed
+    nfNoRewrite # node should not be transformed anymore
     nfSem       # node has been checked for semantics
     nfLL        # node has gone through lambda lifting
     nfDotField  # the call can use a dot operator
