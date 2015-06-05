@@ -114,7 +114,7 @@ type
     atEnd: bool
 
   PZipFileStream* =
-    ref ZipFileStream ## a reader stream of a file within a zip archive
+    ref TZipFileStream ## a reader stream of a file within a zip archive
 
 proc fsClose(s: Stream) = zip_fclose(PZipFileStream(s).f)
 proc fsAtEnd(s: Stream): bool = PZipFileStream(s).atEnd
