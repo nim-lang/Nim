@@ -127,7 +127,7 @@ type
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
-    hintSource,
+    hintSource, hintStackTrace,
     hintUser
 
 const
@@ -422,6 +422,7 @@ const
     hintLinking: "",
     hintDependency: "$1",
     hintSource: "$1",
+    hintStackTrace: "$1",
     hintUser: "$1"]
 
 const
@@ -437,11 +438,11 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
-  HintsToStr*: array[0..20, string] = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr*: array[0..21, string] = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source",
+    "Source", "StackTrace",
     "User"]
 
 const
@@ -502,15 +503,15 @@ const
                                          hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,
-                                         hintSource},
+                                         hintSource, hintStackTrace},
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
                                          hintDependency,
                                          hintExecuting,
                                          hintCodeBegin, hintCodeEnd,
-                                         hintSource},
-    {low(TNoteKind)..high(TNoteKind)},
+                                         hintSource, hintStackTrace},
+    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace},
     {low(TNoteKind)..high(TNoteKind)}]
 
 const
@@ -787,7 +788,7 @@ type
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template quit =
-    if defined(debug) or gVerbosity >= 3 or msg == errInternal:
+    if defined(debug) or msg == errInternal or hintStackTrace in gNotes:
       if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
