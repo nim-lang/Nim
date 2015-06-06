@@ -128,6 +128,18 @@ proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdLinePass,
   of wOff: gOptions = gOptions - op
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
+proc processOnOffSwitchOrList(op: TOptions, arg: string, pass: TCmdLinePass,
+                              info: TLineInfo): bool =
+  result = false
+  case whichKeyword(arg)
+  of wOn: gOptions = gOptions + op
+  of wOff: gOptions = gOptions - op
+  else:
+    if arg == "list":
+      result = true
+    else:
+      localError(info, errOnOffOrListExpectedButXFound, arg)
+
 proc processOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdLinePass,
                          info: TLineInfo) =
   case whichKeyword(arg)
@@ -382,10 +394,12 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       gSelectedGC = gcNone
       defineSymbol("nogc")
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
-  of "warnings", "w": processOnOffSwitch({optWarns}, arg, pass, info)
+  of "warnings", "w":
+    if processOnOffSwitchOrList({optWarns}, arg, pass, info): listWarnings()
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch)
-  of "hints": processOnOffSwitch({optHints}, arg, pass, info)
+  of "hints":
+    if processOnOffSwitchOrList({optHints}, arg, pass, info): listHints()
   of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)

@@ -30,7 +30,8 @@ type
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
     errInvalidVarSubstitution, errUnknownVar, errUnknownCcompiler,
-    errOnOrOffExpectedButXFound, errNoneBoehmRefcExpectedButXFound,
+    errOnOrOffExpectedButXFound, errOnOffOrListExpectedButXFound,
+    errNoneBoehmRefcExpectedButXFound,
     errNoneSpeedOrSizeExpectedButXFound, errGuiConsoleOrLibExpectedButXFound,
     errUnknownOS, errUnknownCPU, errGenOutExpectedButXFound,
     errArgsNeedRunOption, errInvalidMultipleAsgn, errColonOrEqualsExpected,
@@ -181,6 +182,7 @@ const
     errUnknownVar: "unknown variable: \'$1\'",
     errUnknownCcompiler: "unknown C compiler: \'$1\'",
     errOnOrOffExpectedButXFound: "\'on\' or \'off\' expected, but \'$1\' found",
+    errOnOffOrListExpectedButXFound: "\'on\', \'off\' or \'list\' expected, but \'$1\' found",
     errNoneBoehmRefcExpectedButXFound: "'none', 'boehm' or 'refc' expected, but '$1' found",
     errNoneSpeedOrSizeExpectedButXFound: "'none', 'speed' or 'size' expected, but '$1' found",
     errGuiConsoleOrLibExpectedButXFound: "'gui', 'console' or 'lib' expected, but '$1' found",
@@ -972,6 +974,22 @@ ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
     internalError("ropes: invalid format string: " & msg)
   of rCannotOpenFile:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
+
+proc listWarnings*() =
+  msgWriteln("Warnings:")
+  for warn in warnMin..warnMax:
+    msgWriteln("  [$1] $2" % [
+      if warn in gNotes: "x" else: " ",
+      msgs.WarningsToStr[ord(warn) - ord(warnMin)]
+    ])
+
+proc listHints*() =
+  msgWriteln("Hints:")
+  for hint in hintMin..hintMax:
+    msgWriteln("  [$1] $2" % [
+      if hint in gNotes: "x" else: " ",
+      msgs.HintsToStr[ord(hint) - ord(hintMin)]
+    ])
 
 # enable colors by default on terminals
 if terminal.isatty(stdout):
