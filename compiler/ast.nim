@@ -1346,7 +1346,7 @@ proc propagateToOwner*(owner, elem: PType) =
       owner.flags.incl tfHasAsgn
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
-                       tyGenericInvocation}:
+                       tyGenericInvocation, tyPtr}:
     let elemB = elem.skipTypes({tyGenericInst})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
