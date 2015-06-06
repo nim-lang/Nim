@@ -109,13 +109,12 @@ proc addFile*(z: var ZipArchive, dest: string, src: Stream) =
 # -------------- zip file stream ---------------------------------------------
 
 type
-  ZipFileStream = object of StreamObj
+  TZipFileStream = object of StreamObj
     f: PZipFile
     atEnd: bool
 
   PZipFileStream* =
-    ref ZipFileStream ## a reader stream of a file within a zip archive
-{.deprecated: [TZipFileStream: ZipFileStream].}
+    ref TZipFileStream ## a reader stream of a file within a zip archive
 
 proc fsClose(s: Stream) = zip_fclose(PZipFileStream(s).f)
 proc fsAtEnd(s: Stream): bool = PZipFileStream(s).atEnd
