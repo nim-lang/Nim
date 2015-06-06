@@ -127,9 +127,6 @@ template compilationCachePresent*: expr =
 template optPreserveOrigSource*: expr =
   optEmbedOrigSrc in gGlobalOptions
 
-template optPrintSurroundingSrc*: expr =
-  gVerbosity >= 2
-
 const
   genSubDir* = "nimcache"
   NimExt* = "nim"

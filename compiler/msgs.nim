@@ -127,6 +127,7 @@ type
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
+    hintSource,
     hintUser
 
 const
@@ -420,6 +421,7 @@ const
     hintExecuting: "$1",
     hintLinking: "",
     hintDependency: "$1",
+    hintSource: "$1",
     hintUser: "$1"]
 
 const
@@ -435,10 +437,11 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
-  HintsToStr*: array[0..19, string] = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr*: array[0..20, string] = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
+    "Source",
     "User"]
 
 const
@@ -498,13 +501,15 @@ const
                                          hintProcessing,
                                          hintDependency,
                                          hintExecuting, hintLinking,
-                                         hintCodeBegin, hintCodeEnd},
+                                         hintCodeBegin, hintCodeEnd,
+                                         hintSource},
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
                                          hintDependency,
                                          hintExecuting,
-                                         hintCodeBegin, hintCodeEnd},
+                                         hintCodeBegin, hintCodeEnd,
+                                         hintSource},
     {low(TNoteKind)..high(TNoteKind)},
     {low(TNoteKind)..high(TNoteKind)}]
 
@@ -912,7 +917,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                        KindColor, `%`(KindFormat, kind))
     else:
       styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-    if optPrintSurroundingSrc and msg in errMin..errMax:
+    if msg in errMin..errMax and hintSource in gNotes:
       info.writeSurroundingSrc
   handleError(msg, eh, s)
 
