@@ -438,16 +438,12 @@ proc addFileToLink*(filename: string) =
   prependStr(toLink, filename)
   # BUGFIX: was ``appendStr``
 
-proc execWithEcho(cmd: string, prettyCmd = ""): int =
-  if optListCmd in gGlobalOptions or gVerbosity > 0:
-    if prettyCmd != "":
-      msgWriteln(prettyCmd)
-    else:
-      msgWriteln(cmd)
+proc execWithEcho(cmd: string, msg = hintExecuting): int =
+  rawMessage(msg, cmd)
   result = execCmd(cmd)
 
-proc execExternalProgram*(cmd: string, prettyCmd = "") =
-  if execWithEcho(cmd, prettyCmd) != 0:
+proc execExternalProgram*(cmd: string, msg = hintExecuting) =
+  if execWithEcho(cmd, msg) != 0:
     rawMessage(errExecutionOfProgramFailed, "")
 
 proc generateScript(projectFile: string, script: Rope) =
@@ -703,10 +699,8 @@ proc callCCompiler*(projectfile: string) =
           "nim", quoteShell(getPrefixDir()),
           "lib", quoteShell(libpath)])
     if optCompileOnly notin gGlobalOptions:
-      if gVerbosity == 1:
-        execExternalProgram(linkCmd, "[Linking]")
-      else:
-        execExternalProgram(linkCmd)
+      execExternalProgram(linkCmd,
+                          if gVerbosity > 1: hintExecuting else: hintLinking)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
