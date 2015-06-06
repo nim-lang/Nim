@@ -126,7 +126,7 @@ type
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
-    hintExecuting, hintLinking,
+    hintExecuting, hintLinking, hintDependency,
     hintUser
 
 const
@@ -419,6 +419,7 @@ const
     hintPattern: "$1",
     hintExecuting: "$1",
     hintLinking: "",
+    hintDependency: "$1",
     hintUser: "$1"]
 
 const
@@ -434,10 +435,10 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
-  HintsToStr*: array[0..18, string] = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr*: array[0..19, string] = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "Name", "Pattern", "Exec", "Link",
+    "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
     "User"]
 
 const
@@ -495,11 +496,13 @@ const
                                          warnGcUnsafe,
                                          hintSuccessX, hintPath, hintConf,
                                          hintProcessing,
+                                         hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd},
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
+                                         hintDependency,
                                          hintExecuting,
                                          hintCodeBegin, hintCodeEnd},
     {low(TNoteKind)..high(TNoteKind)},
