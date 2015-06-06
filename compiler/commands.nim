@@ -141,6 +141,10 @@ proc expectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
 proc expectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if arg != "": localError(info, errCmdLineNoArgExpected, addPrefix(switch))
 
+var
+  enableNotes: TNoteKinds
+  disableNotes: TNoteKinds
+
 proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string) =
   var id = ""  # arg = "X]:on|off"
@@ -162,8 +166,12 @@ proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(info, "unknown warning: " & id)
   case whichKeyword(substr(arg, i))
-  of wOn: incl(gNotes, n)
-  of wOff: excl(gNotes, n)
+  of wOn:
+    incl(gNotes, n)
+    incl(enableNotes, n)
+  of wOff:
+    excl(gNotes, n)
+    incl(disableNotes, n)
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processCompile(filename: string) =
@@ -508,6 +516,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "verbosity":
     expectArg(switch, arg, pass, info)
     gVerbosity = parseInt(arg)
+    gNotes = NotesVerbosity[gVerbosity]
+    incl(gNotes, enableNotes)
+    excl(gNotes, disableNotes)
   of "parallelbuild":
     expectArg(switch, arg, pass, info)
     gNumberOfProcessors = parseInt(arg)

@@ -484,6 +484,21 @@ type
   ESuggestDone* = object of Exception
 
 const
+  NotesVerbosity*: array[0..3, TNoteKinds] = [
+    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
+                                         warnProveField, warnProveIndex,
+                                         warnGcUnsafe,
+                                         hintSuccessX, hintPath, hintConf,
+                                         hintProcessing,
+                                         hintCodeBegin, hintCodeEnd},
+    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
+                                         warnProveField, warnProveIndex,
+                                         warnGcUnsafe,
+                                         hintCodeBegin, hintCodeEnd},
+    {low(TNoteKind)..high(TNoteKind)},
+    {low(TNoteKind)..high(TNoteKind)}]
+
+const
   InvalidFileIDX* = int32(-1)
 
 var
@@ -571,9 +586,7 @@ proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
 proc sourceLine*(i: TLineInfo): Rope
 
 var
-  gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} -
-                        {warnShadowIdent, warnUninit,
-                         warnProveField, warnProveIndex, warnGcUnsafe}
+  gNotes*: TNoteKinds = NotesVerbosity[1] # defaults to verbosity of 1
   gErrorCounter*: int = 0     # counts the number of errors
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
