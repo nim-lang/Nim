@@ -721,6 +721,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
   elif not containsOrIncl(m.declaredProtos, sym.id):
     var header = genProcHeader(m, sym)
+    if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[cCompiler].props:
+      header = "__declspec(noreturn) " & header
     if sym.typ.callConv != ccInline and crossesCppBoundary(m, sym):
       header = "extern \"C\" " & header
     if sfPure in sym.flags and hasAttribute in CC[cCompiler].props:
