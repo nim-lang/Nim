@@ -2215,7 +2215,7 @@ proc glLoadLibrary*(filename: cstring): int{.cdecl,
 proc glGetProcAddress*(procname: cstring): pointer{.cdecl, 
     importc: "SDL_GL_GetProcAddress", dynlib: LibName.}
   # Set an attribute of the OpenGL subsystem before intialization.
-proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl, 
+proc glSetAttribute*(attr: GLAttr, value: int): int{.cdecl, 
     importc: "SDL_GL_SetAttribute", dynlib: LibName.}
   # Get an attribute of the OpenGL subsystem from the windowing
   #  interface, such as glX. This is of course different from getting
@@ -2224,7 +2224,7 @@ proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl,
   #
   #  Developers should track the values they pass into SDL_GL_SetAttribute
   #  themselves if they want to retrieve these values.
-proc glGetAttribute*(attr: TGLAttr, value: var int): int{.cdecl, 
+proc glGetAttribute*(attr: GLAttr, value: var int): int{.cdecl, 
     importc: "SDL_GL_GetAttribute", dynlib: LibName.}
   # Swap the OpenGL buffers, if double-buffering is supported.
 proc glSwapBuffers*(){.cdecl, importc: "SDL_GL_SwapBuffers", dynlib: LibName.}
@@ -2271,7 +2271,7 @@ proc wmToggleFullScreen*(surface: PSurface): int{.cdecl,
   # Grabbing means that the mouse is confined to the application window,
   #  and nearly all keyboard input is passed directly to the application,
   #  and not interpreted by a window manager, if any.
-proc wmGrabInput*(mode: TGrabMode): GrabMode{.cdecl, 
+proc wmGrabInput*(mode: GrabMode): GrabMode{.cdecl, 
     importc: "SDL_WM_GrabInput", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # mouse-routines
