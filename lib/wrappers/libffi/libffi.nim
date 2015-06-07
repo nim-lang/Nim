@@ -60,7 +60,7 @@ else:
 type
   Arg* = int
   SArg* = int
-{deprecated: [TArg: Arg, TSArg: SArg].}
+{.deprecated: [TArg: Arg, TSArg: SArg].}
 
 when defined(windows) and defined(x86):
   type
