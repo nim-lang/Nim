@@ -1,7 +1,7 @@
 discard """
   file: "tissue710.nim"
   line: 8
-  errorMsg: "undeclared identifier: '||'"
+  errorMsg: "attempting to call undeclared routine: '||'"
 """
 var sum = 0
 for x in 3..1000:

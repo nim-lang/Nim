@@ -423,6 +423,7 @@ type
                 # but unfortunately it has measurable impact for compilation
                 # efficiency
     nfTransf,   # node has been transformed
+    nfNoRewrite # node should not be transformed anymore
     nfSem       # node has been checked for semantics
     nfLL        # node has gone through lambda lifting
     nfDotField  # the call can use a dot operator
@@ -1345,7 +1346,7 @@ proc propagateToOwner*(owner, elem: PType) =
       owner.flags.incl tfHasAsgn
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
-                       tyGenericInvocation}:
+                       tyGenericInvocation, tyPtr}:
     let elemB = elem.skipTypes({tyGenericInst})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then

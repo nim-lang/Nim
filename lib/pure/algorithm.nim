@@ -99,16 +99,13 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
   ##   arr.insert(4, arr.lowerBound(4))
   ## `after running the above arr is `[1,2,3,4,5,6,7,8,9]`
   result = a.low
-  var pos = result
-  var count, step: int
-  count = a.high - a.low + 1
+  var count = a.high - a.low + 1
+  var step, pos: int
   while count != 0:
-    pos = result
     step = count div 2
-    pos += step
+    pos = result + step
     if cmp(a[pos], key) < 0:
-      pos.inc
-      result = pos
+      result = pos + 1
       count -= step + 1
     else:
       count = step
@@ -331,3 +328,16 @@ proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   swap x[i-1], x[j]
 
   result = true
+
+when isMainModule:
+  # Tests for lowerBound
+  var arr = @[1,2,3,5,6,7,8,9]
+  assert arr.lowerBound(0) == 0
+  assert arr.lowerBound(4) == 3
+  assert arr.lowerBound(5) == 3
+  assert arr.lowerBound(10) == 8
+  arr = @[1,5,10]
+  assert arr.lowerBound(4) == 1
+  assert arr.lowerBound(5) == 1
+  assert arr.lowerBound(6) == 2
+

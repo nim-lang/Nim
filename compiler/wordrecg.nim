@@ -55,7 +55,7 @@ type
     wFloatchecks, wNanChecks, wInfChecks,
     wAssertions, wPatterns, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
-    wDeadCodeElim, wSafecode, wNoForward,
+    wDeadCodeElim, wSafecode, wNoForward, wNoRewrite,
     wPragma,
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
@@ -139,7 +139,7 @@ const
 
     "assertions", "patterns", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
-    "deadcodeelim", "safecode", "noforward",
+    "deadcodeelim", "safecode", "noforward", "norewrite",
     "pragma",
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",

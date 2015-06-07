@@ -29,7 +29,7 @@ elif defined(macosx):
 else: 
   const 
     readlineDll* = "libreadline.so.6(|.0)"
-#  mangle "'TCommandFunc'" TCommandFunc
+#  mangle "'CommandFunc'" CommandFunc
 #  mangle TvcpFunc TvcpFunc
 
 import rltypedefs
@@ -80,7 +80,7 @@ const
 type 
   KEYMAP_ENTRY*{.pure, final.} = object 
     typ*: char
-    function*: TCommandFunc
+    function*: CommandFunc
 {.deprecated: [TKEYMAP_ENTRY: KEYMAP_ENTRY].}
 
 
@@ -243,7 +243,7 @@ when not defined(macosx):
 type 
   FUNMAP*{.pure, final.} = object 
     name*: cstring
-    function*: TCommandFunc
+    function*: CommandFunc
 {.deprecated: [TFUNMAP: FUNMAP].}
 
 
@@ -610,31 +610,31 @@ proc discard_argument*(): cint{.cdecl, importc: "rl_discard_argument",
                                 dynlib: readlineDll.}
 # Utility functions to bind keys to readline commands. 
 
-proc add_defun*(a2: cstring, a3: TCommandFunc, a4: cint): cint{.cdecl, 
+proc add_defun*(a2: cstring, a3: CommandFunc, a4: cint): cint{.cdecl, 
     importc: "rl_add_defun", dynlib: readlineDll.}
-proc bind_key*(a2: cint, a3: TCommandFunc): cint{.cdecl, 
+proc bind_key*(a2: cint, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_key", dynlib: readlineDll.}
-proc bind_key_in_map*(a2: cint, a3: TCommandFunc, a4: PKeymap): cint{.cdecl, 
+proc bind_key_in_map*(a2: cint, a3: CommandFunc, a4: PKeymap): cint{.cdecl, 
     importc: "rl_bind_key_in_map", dynlib: readlineDll.}
 proc unbind_key*(a2: cint): cint{.cdecl, importc: "rl_unbind_key", 
                                   dynlib: readlineDll.}
 proc unbind_key_in_map*(a2: cint, a3: PKeymap): cint{.cdecl, 
     importc: "rl_unbind_key_in_map", dynlib: readlineDll.}
-proc bind_key_if_unbound*(a2: cint, a3: TCommandFunc): cint{.cdecl, 
+proc bind_key_if_unbound*(a2: cint, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_key_if_unbound", dynlib: readlineDll.}
-proc bind_key_if_unbound_in_map*(a2: cint, a3: TCommandFunc, a4: PKeymap): cint{.
+proc bind_key_if_unbound_in_map*(a2: cint, a3: CommandFunc, a4: PKeymap): cint{.
     cdecl, importc: "rl_bind_key_if_unbound_in_map", dynlib: readlineDll.}
-proc unbind_function_in_map*(a2: TCommandFunc, a3: PKeymap): cint{.cdecl, 
+proc unbind_function_in_map*(a2: CommandFunc, a3: PKeymap): cint{.cdecl, 
     importc: "rl_unbind_function_in_map", dynlib: readlineDll.}
 proc unbind_command_in_map*(a2: cstring, a3: PKeymap): cint{.cdecl, 
     importc: "rl_unbind_command_in_map", dynlib: readlineDll.}
-proc bind_keyseq*(a2: cstring, a3: TCommandFunc): cint{.cdecl, 
+proc bind_keyseq*(a2: cstring, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_keyseq", dynlib: readlineDll.}
-proc bind_keyseq_in_map*(a2: cstring, a3: TCommandFunc, a4: PKeymap): cint{.
+proc bind_keyseq_in_map*(a2: cstring, a3: CommandFunc, a4: PKeymap): cint{.
     cdecl, importc: "rl_bind_keyseq_in_map", dynlib: readlineDll.}
-proc bind_keyseq_if_unbound*(a2: cstring, a3: TCommandFunc): cint{.cdecl, 
+proc bind_keyseq_if_unbound*(a2: cstring, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_bind_keyseq_if_unbound", dynlib: readlineDll.}
-proc bind_keyseq_if_unbound_in_map*(a2: cstring, a3: TCommandFunc, 
+proc bind_keyseq_if_unbound_in_map*(a2: cstring, a3: CommandFunc, 
                                     a4: PKeymap): cint{.cdecl, 
     importc: "rl_bind_keyseq_if_unbound_in_map", dynlib: readlineDll.}
 proc generic_bind*(a2: cint, a3: cstring, a4: cstring, a5: PKeymap): cint{.
@@ -645,7 +645,7 @@ proc variable_bind*(a2: cstring, a3: cstring): cint{.cdecl,
     importc: "rl_variable_bind", dynlib: readlineDll.}
 # Backwards compatibility, use rl_bind_keyseq_in_map instead. 
 
-proc set_key*(a2: cstring, a3: TCommandFunc, a4: PKeymap): cint{.cdecl, 
+proc set_key*(a2: cstring, a3: CommandFunc, a4: PKeymap): cint{.cdecl, 
     importc: "rl_set_key", dynlib: readlineDll.}
 # Backwards compatibility, use rl_generic_bind instead. 
 
@@ -657,15 +657,15 @@ proc translate_keyseq*(a2: cstring, a3: cstring, a4: ptr cint): cint{.cdecl,
     importc: "rl_translate_keyseq", dynlib: readlineDll.}
 proc untranslate_keyseq*(a2: cint): cstring{.cdecl, 
     importc: "rl_untranslate_keyseq", dynlib: readlineDll.}
-proc named_function*(a2: cstring): TCommandFunc{.cdecl, 
+proc named_function*(a2: cstring): CommandFunc{.cdecl, 
     importc: "rl_named_function", dynlib: readlineDll.}
-proc function_of_keyseq*(a2: cstring, a3: PKeymap, a4: ptr cint): TCommandFunc{.
+proc function_of_keyseq*(a2: cstring, a3: PKeymap, a4: ptr cint): CommandFunc{.
     cdecl, importc: "rl_function_of_keyseq", dynlib: readlineDll.}
 proc list_funmap_names*(){.cdecl, importc: "rl_list_funmap_names", 
                            dynlib: readlineDll.}
-proc invoking_keyseqs_in_map*(a2: TCommandFunc, a3: PKeymap): cstringArray{.
+proc invoking_keyseqs_in_map*(a2: CommandFunc, a3: PKeymap): cstringArray{.
     cdecl, importc: "rl_invoking_keyseqs_in_map", dynlib: readlineDll.}
-proc invoking_keyseqs*(a2: TCommandFunc): cstringArray{.cdecl, 
+proc invoking_keyseqs*(a2: CommandFunc): cstringArray{.cdecl, 
     importc: "rl_invoking_keyseqs", dynlib: readlineDll.}
 proc function_dumper*(a2: cint){.cdecl, importc: "rl_function_dumper", 
                                  dynlib: readlineDll.}
@@ -688,7 +688,7 @@ proc get_keymap_name_from_edit_mode*(): cstring{.cdecl,
     importc: "rl_get_keymap_name_from_edit_mode", dynlib: readlineDll.}
 # Functions for manipulating the funmap, which maps command names to functions. 
 
-proc add_funmap_entry*(a2: cstring, a3: TCommandFunc): cint{.cdecl, 
+proc add_funmap_entry*(a2: cstring, a3: CommandFunc): cint{.cdecl, 
     importc: "rl_add_funmap_entry", dynlib: readlineDll.}
 proc funmap_names*(): cstringArray{.cdecl, importc: "rl_funmap_names", 
                                     dynlib: readlineDll.}
@@ -828,7 +828,7 @@ proc username_completion_function*(a2: cstring, a3: cint): cstring{.cdecl,
     importc: "rl_username_completion_function", dynlib: readlineDll.}
 proc filename_completion_function*(a2: cstring, a3: cint): cstring{.cdecl, 
     importc: "rl_filename_completion_function", dynlib: readlineDll.}
-proc completion_mode*(a2: TCommandFunc): cint{.cdecl, 
+proc completion_mode*(a2: CommandFunc): cint{.cdecl, 
     importc: "rl_completion_mode", dynlib: readlineDll.}
 # **************************************************************** 
 #								    
@@ -883,7 +883,7 @@ when false:
   # The current value of the numeric argument specified by the user. 
   var numeric_arg*{.importc: "rl_numeric_arg", dynlib: readlineDll.}: cint
   # The address of the last command function Readline executed. 
-  var last_func*{.importc: "rl_last_func", dynlib: readlineDll.}: TCommandFunc
+  var last_func*{.importc: "rl_last_func", dynlib: readlineDll.}: CommandFunc
   # The name of the terminal to use. 
   var terminal_name*{.importc: "rl_terminal_name", dynlib: readlineDll.}: cstring
   # The input and output streams. 
@@ -1186,7 +1186,7 @@ type
     rlstate*: cint
     done*: cint
     kmap*: PKeymap            # input state 
-    lastfunc*: TCommandFunc
+    lastfunc*: CommandFunc
     insmode*: cint
     edmode*: cint
     kseqlen*: cint

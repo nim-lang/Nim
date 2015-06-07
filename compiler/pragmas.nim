@@ -37,7 +37,7 @@ const
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wLocks, wGcSafe}
-  exprPragmas* = {wLine, wLocks}
+  exprPragmas* = {wLine, wLocks, wNoRewrite}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
@@ -859,6 +859,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
             c.module.flags.incl sfExperimental
           else:
             localError(it.info, "'experimental' pragma only valid as toplevel statement")
+        of wNoRewrite:
+          noVal(it)
         else: invalidPragma(it)
       else: invalidPragma(it)
   else: processNote(c, it)
