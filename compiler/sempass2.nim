@@ -207,9 +207,9 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
       a.owner.gcUnsafetyReason = newSym(skUnknown, getIdent("<unknown>"),
                                         a.owner, reason.info)
 
-proc listGcUnsafety(s: PSym; onlyWarning: bool) =
+proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet) =
   let u = s.gcUnsafetyReason
-  if u != nil:
+  if u != nil and not cycleCheck.containsOrIncl(u.id):
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
     if u.kind in {skLet, skVar}:
       message(s.info, msgKind,
@@ -218,7 +218,7 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool) =
     elif u.kind in routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
-      listGcUnsafety(u, true)
+      listGcUnsafety(u, true, cycleCheck)
       message(s.info, msgKind,
         "'$#' is not GC-safe as it calls '$#'" %
         [s.name.s, u.name.s])
@@ -226,6 +226,10 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool) =
       internalAssert u.kind == skUnknown
       message(u.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call here" % s.name.s)
+
+proc listGcUnsafety(s: PSym; onlyWarning: bool) =
+  var cycleCheck = initIntSet()
+  listGcUnsafety(s, onlyWarning, cycleCheck)
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym

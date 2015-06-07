@@ -13,7 +13,7 @@
 when defined(windows):
   import winlean, os, strutils, math
 
-  proc `-`(a, b: TFILETIME): int64 = a.rdFileTime - b.rdFileTime
+  proc `-`(a, b: FILETIME): int64 = a.rdFileTime - b.rdFileTime
 elif defined(linux):
   from cpuinfo import countProcessors
 
@@ -25,16 +25,16 @@ type
 
   ThreadPoolState* = object
     when defined(windows):
-      prevSysKernel, prevSysUser, prevProcKernel, prevProcUser: TFILETIME
+      prevSysKernel, prevSysUser, prevProcKernel, prevProcUser: FILETIME
     calls*: int
 
 proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
   when defined(windows):
     var
       sysIdle, sysKernel, sysUser,
-        procCreation, procExit, procKernel, procUser: TFILETIME
+        procCreation, procExit, procKernel, procUser: FILETIME
     if getSystemTimes(sysIdle, sysKernel, sysUser) == 0 or
-        getProcessTimes(Handle(-1), procCreation, procExit, 
+        getProcessTimes(Handle(-1), procCreation, procExit,
                         procKernel, procUser) == 0:
       return doNothing
     if s.calls > 0:
@@ -57,7 +57,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     s.prevProcKernel = procKernel
     s.prevProcUser = procUser
   elif defined(linux):
-    proc fscanf(c: File, frmt: cstring) {.varargs, importc, 
+    proc fscanf(c: File, frmt: cstring) {.varargs, importc,
       header: "<stdio.h>".}
 
     var f = open("/proc/loadavg")

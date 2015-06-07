@@ -775,7 +775,7 @@ type
   Arg*{.final.} = object 
     buf*: array[0..ERR_MAX_STRLEN - 1, int8]
 
-  Perror* = ptr Terror
+  Perror* = ptr Error
   Error*{.final.} = object   # This is a numeric value corresponding to the current error
                              # SDL_rwops.h types
                              # This is the read/write operation structure -- very basic
@@ -814,7 +814,7 @@ type
     theType*: cint
     mem*: Mem
   
-  RWops* = RWops              # SDL_timer.h types
+                              # SDL_timer.h types
                               # Function prototype for the timer callback function
   TimerCallback* = proc (interval: int32): int32{.cdecl.}
   NewTimerCallback* = proc (interval: int32, param: pointer): int32{.cdecl.}
@@ -950,8 +950,8 @@ type
   EventAction* = enum        # Application visibility event structure
     ADDEVENT, PEEKEVENT, GETEVENT
 
-  PActiveEvent* = ptr ActiveEvent
-  ActiveEvent*{.final.} = object  # SDL_ACTIVEEVENT
+  PActiveEvent* = ptr TActiveEvent
+  TActiveEvent*{.final.} = object  # SDL_ACTIVEEVENT
                                    # Keyboard event structure
     kind*: EventKind
     gain*: byte              # Whether given states were gained or lost (1/0)
@@ -1032,8 +1032,8 @@ type
     w*: cint                   # New width
     h*: cint                   # New height
   
-  PUserEvent* = ptr UserEvent
-  UserEvent*{.final.} = object  # SDL_USEREVENT through SDL_NUMEVENTS-1
+  PUserEvent* = ptr TUserEvent
+  TUserEvent*{.final.} = object  # SDL_USEREVENT through SDL_NUMEVENTS-1
     kind*: EventKind
     code*: cint               # User defined event code
     data1*: pointer           # User defined data pointer
@@ -1044,7 +1044,7 @@ type
               TWrite: Write, TBool: Bool, TUInt8Array: UInt8Array,
               TGrabMode: GrabMode, Terrorcode: Errorcode, TStdio: Stdio,
               TMem: Mem, TSeek: Seek, TRead: Read, TClose: Close,
-              TTimerCallback: TimerCallback, TNewTimerCallback: NewTimerCallabck,
+              TTimerCallback: TimerCallback, TNewTimerCallback: NewTimerCallback,
               TTimerID: TimerID, TAudioSpecCallback: AudioSpecCallback,
               TAudioSpec: AudioSpec, TAudioCVTFilter: AudioCVTFilter,
               TAudioCVTFilterArray: AudioCVTFilterArray, TAudioCVT: AudioCVT,
@@ -1053,16 +1053,19 @@ type
               TJoystick: Joystick, TJoyAxisEvent: JoyAxisEvent, TRWops: RWops,
               TJoyBallEvent: JoyBallEvent, TJoyHatEvent: JoyHatEvent,
               TJoyButtonEvent: JoyButtonEvent, TBallDelta: BallDelta,
-              Tversion: Version, TMod: Mod, TActiveEvent: ActiveEvent,
+              Tversion: Version, TMod: Mod,
+              # TActiveEvent: ActiveEvent, # Naming conflict when we drop the `T`
               TMouseMotionEvent: MouseMotionEvent, TMouseButtonEvent: MouseButtonEvent,
-              TResizeEvent: ResizeEvent, TUserEvent: UserEvent].}
+              TResizeEvent: ResizeEvent,
+              # TUserEvent: UserEvent # Naming conflict when we drop the `T`
+              ].}
 
-when defined(Unix): 
+when defined(Unix):
   type                        #These are the various supported subsystems under UNIX
     SysWm* = enum 
       SYSWM_X11
   {.deprecated: [TSysWm: SysWm].}
-when defined(WINDOWS): 
+when defined(WINDOWS):
   type 
     PSysWMmsg* = ptr SysWMmsg
     SysWMmsg*{.final.} = object 
@@ -1136,8 +1139,8 @@ else:
   {.deprecated: [TSysWMinfo: SysWMinfo].}
 
 type 
-  PSysWMEvent* = ptr SysWMEvent
-  SysWMEvent*{.final.} = object 
+  PSysWMEvent* = ptr TSysWMEvent
+  TSysWMEvent*{.final.} = object 
     kind*: EventKind
     msg*: PSysWMmsg
 
@@ -1172,12 +1175,12 @@ type
 
   PColorArray* = ptr ColorArray
   ColorArray* = array[0..65000, Color]
-  PPalette* = ptr TPalette
+  PPalette* = ptr Palette
   Palette*{.final.} = object  # Everything in the pixel format structure is read-only
     ncolors*: int
     colors*: PColorArray
 
-  PPixelFormat* = ptr TPixelFormat
+  PPixelFormat* = ptr PixelFormat
   PixelFormat*{.final.} = object  # The structure passed to the low level blit functions
     palette*: PPalette
     bitsPerPixel*: byte
@@ -1254,10 +1257,10 @@ type
     hwOverlay*: int32    # This will be set to 1 if the overlay is hardware accelerated.
   
   GLAttr* = enum 
-    GL_RED_SIZE, GL_GREEN_SIZE, GL_BLUE_SIZE, GL_ALPHA_SIZE, GL_BUFFER_SIZE, 
-    GL_DOUBLEBUFFER, GL_DEPTH_SIZE, GL_STENCIL_SIZE, GL_ACCUM_RED_SIZE, 
-    GL_ACCUM_GREEN_SIZE, GL_ACCUM_BLUE_SIZE, GL_ACCUM_ALPHA_SIZE, GL_STEREO, 
-    GL_MULTISAMPLEBUFFERS, GL_MULTISAMPLESAMPLES, GL_ACCELERATED_VISUAL, 
+    GL_RED_SIZE, GL_GREEN_SIZE, GL_BLUE_SIZE, GL_ALPHA_SIZE, GL_BUFFER_SIZE,
+    GL_DOUBLEBUFFER, GL_DEPTH_SIZE, GL_STENCIL_SIZE, GL_ACCUM_RED_SIZE,
+    GL_ACCUM_GREEN_SIZE, GL_ACCUM_BLUE_SIZE, GL_ACCUM_ALPHA_SIZE, GL_STEREO,
+    GL_MULTISAMPLEBUFFERS, GL_MULTISAMPLESAMPLES, GL_ACCELERATED_VISUAL,
     GL_SWAP_CONTROL
   PCursor* = ptr Cursor
   Cursor*{.final.} = object  # SDL_mutex.h types
@@ -1269,7 +1272,8 @@ type
     wmCursor*: pointer       # Window-manager cursor
 {.deprecated: [TRect: Rect, TSurface: Surface, TEvent: Event, TColor: Color,
               TEventFilter: EventFilter, TColorArray: ColorArray,
-              TSysWMEvent: SysWMEvent, TExposeEvent: ExposeEvent,
+              # TSysWMEvent: SysWMEvent, # Naming conflict when we drop the `T`
+              TExposeEvent: ExposeEvent,
               TQuitEvent: QuitEvent, TPalette: Palette, TPixelFormat: PixelFormat,
               TBlitInfo: BlitInfo, TBlit: Blit, TVideoInfo: VideoInfo,
               TOverlay: Overlay, TGLAttr: GLAttr, TCursor: Cursor].}
@@ -1285,11 +1289,11 @@ type
   Cond*{.final.} = object    # SDL_thread.h types
 {.deprecated: [TCond: Cond, TSem: Sem, TMutex: Mutex, Tsemaphore: Semaphore].}
 
-when defined(WINDOWS): 
+when defined(WINDOWS):
   type 
     SYS_ThreadHandle* = Handle
   {.deprecated: [TSYS_ThreadHandle: SYS_ThreadHandle].}
-when defined(Unix): 
+when defined(Unix):
   type 
     SYS_ThreadHandle* = pointer
   {.deprecated: [TSYS_ThreadHandle: SYS_ThreadHandle].}
@@ -1300,7 +1304,7 @@ type                          # This is the system-independent thread info struc
     threadid*: int32
     handle*: SYS_ThreadHandle
     status*: int
-    errbuf*: Terror
+    errbuf*: Error
     data*: pointer
 
   PKeyStateArr* = ptr KeyStateArr
@@ -2211,7 +2215,7 @@ proc glLoadLibrary*(filename: cstring): int{.cdecl,
 proc glGetProcAddress*(procname: cstring): pointer{.cdecl, 
     importc: "SDL_GL_GetProcAddress", dynlib: LibName.}
   # Set an attribute of the OpenGL subsystem before intialization.
-proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl, 
+proc glSetAttribute*(attr: GLAttr, value: int): int{.cdecl, 
     importc: "SDL_GL_SetAttribute", dynlib: LibName.}
   # Get an attribute of the OpenGL subsystem from the windowing
   #  interface, such as glX. This is of course different from getting
@@ -2220,7 +2224,7 @@ proc glSetAttribute*(attr: TGLAttr, value: int): int{.cdecl,
   #
   #  Developers should track the values they pass into SDL_GL_SetAttribute
   #  themselves if they want to retrieve these values.
-proc glGetAttribute*(attr: TGLAttr, value: var int): int{.cdecl, 
+proc glGetAttribute*(attr: GLAttr, value: var int): int{.cdecl, 
     importc: "SDL_GL_GetAttribute", dynlib: LibName.}
   # Swap the OpenGL buffers, if double-buffering is supported.
 proc glSwapBuffers*(){.cdecl, importc: "SDL_GL_SwapBuffers", dynlib: LibName.}
@@ -2267,7 +2271,7 @@ proc wmToggleFullScreen*(surface: PSurface): int{.cdecl,
   # Grabbing means that the mouse is confined to the application window,
   #  and nearly all keyboard input is passed directly to the application,
   #  and not interpreted by a window manager, if any.
-proc wmGrabInput*(mode: TGrabMode): GrabMode{.cdecl, 
+proc wmGrabInput*(mode: GrabMode): GrabMode{.cdecl, 
     importc: "SDL_WM_GrabInput", dynlib: LibName.}
   #------------------------------------------------------------------------------
   # mouse-routines
