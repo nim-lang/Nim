@@ -566,9 +566,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 == $2)",           # EqI
       "($1 <= $2)",           # LeI
       "($1 < $2)",            # LtI
-      "($1 == $2)",           # EqI64
-      "($1 <= $2)",           # LeI64
-      "($1 < $2)",            # LtI64
       "($1 == $2)",           # EqF64
       "($1 <= $2)",           # LeF64
       "($1 < $2)",            # LtF64

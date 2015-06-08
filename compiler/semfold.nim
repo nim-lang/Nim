@@ -359,11 +359,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     if getFloat(a) > getFloat(b): result = newFloatNodeT(getFloat(b), n)
     else: result = newFloatNodeT(getFloat(a), n)
   of mIsNil: result = newIntNodeT(ord(a.kind == nkNilLit), n)
-  of mLtI, mLtI64, mLtB, mLtEnum, mLtCh:
+  of mLtI, mLtB, mLtEnum, mLtCh:
     result = newIntNodeT(ord(getOrdValue(a) < getOrdValue(b)), n)
-  of mLeI, mLeI64, mLeB, mLeEnum, mLeCh:
+  of mLeI, mLeB, mLeEnum, mLeCh:
     result = newIntNodeT(ord(getOrdValue(a) <= getOrdValue(b)), n)
-  of mEqI, mEqI64, mEqB, mEqEnum, mEqCh:
+  of mEqI, mEqB, mEqEnum, mEqCh:
     result = newIntNodeT(ord(getOrdValue(a) == getOrdValue(b)), n)
   of mLtF64: result = newIntNodeT(ord(getFloat(a) < getFloat(b)), n)
   of mLeF64: result = newIntNodeT(ord(getFloat(a) <= getFloat(b)), n)

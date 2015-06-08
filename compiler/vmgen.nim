@@ -776,11 +776,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mMulU: genBinaryABCnarrowU(c, n, dest, opcMulu)
   of mDivU: genBinaryABCnarrowU(c, n, dest, opcDivu)
   of mModU: genBinaryABCnarrowU(c, n, dest, opcModu)
-  of mEqI, mEqI64, mEqB, mEqEnum, mEqCh:
+  of mEqI, mEqB, mEqEnum, mEqCh:
     genBinaryABC(c, n, dest, opcEqInt)
-  of mLeI, mLeI64, mLeEnum, mLeCh, mLeB:
+  of mLeI, mLeEnum, mLeCh, mLeB:
     genBinaryABC(c, n, dest, opcLeInt)
-  of mLtI, mLtI64, mLtEnum, mLtCh, mLtB:
+  of mLtI, mLtEnum, mLtCh, mLtB:
     genBinaryABC(c, n, dest, opcLtInt)
   of mEqF64: genBinaryABC(c, n, dest, opcEqFloat)
   of mLeF64: genBinaryABC(c, n, dest, opcLeFloat)

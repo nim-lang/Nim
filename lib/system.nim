@@ -766,21 +766,21 @@ proc `==` *(x, y: int): bool {.magic: "EqI", noSideEffect.}
 proc `==` *(x, y: int8): bool {.magic: "EqI", noSideEffect.}
 proc `==` *(x, y: int16): bool {.magic: "EqI", noSideEffect.}
 proc `==` *(x, y: int32): bool {.magic: "EqI", noSideEffect.}
-proc `==` *(x, y: int64): bool {.magic: "EqI64", noSideEffect.}
+proc `==` *(x, y: int64): bool {.magic: "EqI", noSideEffect.}
   ## Compares two integers for equality.
 
 proc `<=` *(x, y: int): bool {.magic: "LeI", noSideEffect.}
 proc `<=` *(x, y: int8): bool {.magic: "LeI", noSideEffect.}
 proc `<=` *(x, y: int16): bool {.magic: "LeI", noSideEffect.}
 proc `<=` *(x, y: int32): bool {.magic: "LeI", noSideEffect.}
-proc `<=` *(x, y: int64): bool {.magic: "LeI64", noSideEffect.}
+proc `<=` *(x, y: int64): bool {.magic: "LeI", noSideEffect.}
   ## Returns true iff `x` is less than or equal to `y`.
 
 proc `<` *(x, y: int): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int8): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int16): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int32): bool {.magic: "LtI", noSideEffect.}
-proc `<` *(x, y: int64): bool {.magic: "LtI64", noSideEffect.}
+proc `<` *(x, y: int64): bool {.magic: "LtI", noSideEffect.}
   ## Returns true iff `x` is less than `y`.
 
 type

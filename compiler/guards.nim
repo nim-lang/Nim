@@ -13,13 +13,13 @@ import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
   saturate
 
 const
-  someEq = {mEqI, mEqI64, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
+  someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqUntracedRef, mEqStr, mEqSet, mEqCString}
 
   # set excluded here as the semantics are vastly different:
-  someLe = {mLeI, mLeI64, mLeF64, mLeU, mLeU64, mLeEnum,
+  someLe = {mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
             mLeCh, mLeB, mLePtr, mLeStr}
-  someLt = {mLtI, mLtI64, mLtF64, mLtU, mLtU64, mLtEnum,
+  someLt = {mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
             mLtCh, mLtB, mLtPtr, mLtStr}
 
   someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
