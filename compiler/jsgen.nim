@@ -307,7 +307,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
     ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
     ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
-    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "!($1)", "!($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
@@ -392,7 +391,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
     ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
     ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
-    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "not ($1)", "not ($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI

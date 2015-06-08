@@ -525,11 +525,10 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
-    opr: array[mUnaryMinusI..mAbsI64, string] = [
+    opr: array[mUnaryMinusI..mAbsI, string] = [
       mUnaryMinusI: "((NI$2)-($1))",
       mUnaryMinusI64: "-($1)",
-      mAbsI: "($1 > 0? ($1) : -($1))",
-      mAbsI64: "($1 > 0? ($1) : -($1))"]
+      mAbsI: "($1 > 0? ($1) : -($1))"]
   var
     a: TLoc
     t: PType
@@ -1647,7 +1646,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
   of mNot..mToBiggestInt: unaryArith(p, e, d, op)
-  of mUnaryMinusI..mAbsI64: unaryArithOverflow(p, e, d, op)
+  of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
   of mEqProc: genEqProc(p, e, d)

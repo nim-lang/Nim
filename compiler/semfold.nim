@@ -179,7 +179,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
       else:
         result = makeRangeF(a, abs(getFloat(a.n.sons[1])),
                                abs(getFloat(a.n.sons[0])))
-  of mAbsI, mAbsI64:
+  of mAbsI:
     let a = n.sons[1].typ
     if isIntRange(a):
       if a.n[0].intVal <= 0:
@@ -298,7 +298,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = newFloatNodeT(toFloat(int(getInt(a))), n)
   of mToInt, mToBiggestInt: result = newIntNodeT(system.toInt(getFloat(a)), n)
   of mAbsF64: result = newFloatNodeT(abs(getFloat(a)), n)
-  of mAbsI, mAbsI64:
+  of mAbsI:
     if getInt(a) >= 0: result = a
     else: result = newIntNodeT(- getInt(a), n)
   of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64:
