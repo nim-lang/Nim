@@ -11,7 +11,7 @@
 
 import
   times, commands, options, msgs, nimconf,
-  extccomp, strutils, os, platform, parseopt
+  extccomp, strutils, os, platform, parseopt2
 
 when useCaas:
   import net
@@ -26,11 +26,11 @@ var
     # in caas mode, the list of defines and options will be given at start-up?
     # it's enough to check that the previous compilation command is the same?
 
-proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
-  var p = parseopt.initOptParser(cmd)
+proc processCmdLine*(pass: TCmdLinePass, cmd: seq[string]) =
+  var p = parseopt2.initOptParser(if cmd.len == 0: commandLineParams() else: cmd)
   var argsCount = 0
   while true:
-    parseopt.next(p)
+    parseopt2.next(p)
     case p.kind
     of cmdEnd: break
     of cmdLongoption, cmdShortOption:
@@ -48,7 +48,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
 proc serve*(action: proc (){.nimcall.}) =
   template execute(cmd) =
     curCaasCmd = cmd
-    processCmdLine(passCmd2, cmd)
+    processCmdLine(passCmd2, parseCmdLine(cmd))
     action()
     gErrorCounter = 0
 
