@@ -625,7 +625,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     unArithTab: array[mNot..mToBiggestInt, string] = ["!($1)", # Not
       "$1",                   # UnaryPlusI
       "($3)((NU$2) ~($1))",   # BitnotI
-      "($3)((NU$2) ~($1))",   # BitnotI64
       "$1",                   # UnaryPlusF64
       "-($1)",                # UnaryMinusF64
       "($1 > 0? ($1) : -($1))", # AbsF64; BUGFIX: fabs() makes problems

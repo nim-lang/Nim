@@ -677,7 +677,7 @@ proc `not` *(x: int): int {.magic: "BitnotI", noSideEffect.}
 proc `not` *(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
 proc `not` *(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
 proc `not` *(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
-proc `not` *(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
+proc `not` *(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
   ## computes the `bitwise complement` of the integer `x`.
 
 proc `+` *(x, y: int): int {.magic: "AddI", noSideEffect.}

@@ -311,7 +311,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "!($1)", "!($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
     ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64
@@ -397,7 +396,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "not ($1)", "not ($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
     ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64

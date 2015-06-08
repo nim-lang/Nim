@@ -285,7 +285,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mUnaryMinusF64: result = newFloatNodeT(- getFloat(a), n)
   of mNot: result = newIntNodeT(1 - getInt(a), n)
   of mCard: result = newIntNodeT(nimsets.cardSet(a), n)
-  of mBitnotI, mBitnotI64: result = newIntNodeT(not getInt(a), n)
+  of mBitnotI: result = newIntNodeT(not getInt(a), n)
   of mLengthStr, mXLenStr:
     if a.kind == nkNilLit: result = newIntNodeT(0, n)
     else: result = newIntNodeT(len(getStr(a)), n)

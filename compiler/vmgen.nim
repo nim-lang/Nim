@@ -796,7 +796,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     genNarrow(c, n, dest)
   of mUnaryMinusF64: genUnaryABC(c, n, dest, opcUnaryMinusFloat)
   of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
-  of mBitnotI, mBitnotI64:
+  of mBitnotI:
     genUnaryABC(c, n, dest, opcBitnotInt)
     genNarrowU(c, n, dest)
   of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64,
