@@ -569,7 +569,7 @@ proc downloadFile*(url: string, outputFilename: string,
     fileError("Unable to open file")
 
 proc generateHeaders(r: Uri, httpMethod: string,
-                     headers: StringTableRef): string =
+                     headers: StringTableRef, body: string): string =
   # TODO: Use this in the blocking HttpClient once it supports proxies.
   result = substr(httpMethod, len("http"))
   # TODO: Proxies
@@ -582,6 +582,8 @@ proc generateHeaders(r: Uri, httpMethod: string,
 
   add(result, "Host: " & r.hostname & "\c\L")
   add(result, "Connection: Keep-Alive\c\L")
+  if body.len > 0 and not headers.hasKey("Content-Length"):
+    add(result, "Content-Length: " & $body.len & "\c\L")
   for key, val in headers:
     add(result, key & ": " & val & "\c\L")
 
@@ -786,7 +788,7 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
     client.headers["User-Agent"] = client.userAgent
 
-  var headers = generateHeaders(r, $httpMethod, client.headers)
+  var headers = generateHeaders(r, $httpMethod, client.headers, body)
 
   await client.socket.send(headers)
   if body != "":
