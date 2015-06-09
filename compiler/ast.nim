@@ -948,6 +948,9 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
+template `-|`*(b, s: expr): expr =
+  (if b >= 0: b else: s.len + b)
+
 # son access operators with support for negative indices
 template `{}`*(n: PNode, i: int): expr = n[i -| n]
 template `{}=`*(n: PNode, i: int, s: PNode): stmt =
