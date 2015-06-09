@@ -13,7 +13,7 @@
 # nim files.
 
 import
-  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs, crc
+  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs, secure_hash
 
 type
   TSystemCC* = enum
@@ -572,26 +572,24 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     "nim", quoteShell(getPrefixDir()),
     "lib", quoteShell(libpath)])
 
-proc footprint(filename: string): TCrc32 =
-  # note, '><' further modifies a crc value with a string.
-  result = crcFromFile(filename) ><
-      platform.OS[targetOS].name ><
-      platform.CPU[targetCPU].name ><
-      extccomp.CC[extccomp.cCompiler].name ><
-      getCompileCFileCmd(filename, true)
+proc footprint(filename: string): SecureHash =
+  result = secureHash(
+    $secureHashFile(filename) &
+    platform.OS[targetOS].name &
+    platform.CPU[targetCPU].name &
+    extccomp.CC[extccomp.cCompiler].name &
+    getCompileCFileCmd(filename, true))
 
 proc externalFileChanged(filename: string): bool =
   if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
     return false
 
   var crcFile = toGeneratedFile(filename.withPackageName, "crc")
-  var currentCrc = int(footprint(filename))
+  var currentCrc = footprint(filename)
   var f: File
   if open(f, crcFile, fmRead):
-    var line = newStringOfCap(40)
-    if not f.readLine(line): line = "0"
+    let oldCrc = parseSecureHash(f.readLine())
     close(f)
-    var oldCrc = parseInt(line)
     result = oldCrc != currentCrc
   else:
     result = true

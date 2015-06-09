@@ -13,14 +13,14 @@
 
 import 
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
-  condsyms, ropes, idents, crc, rodread, passes, importer, idgen, rodutils
+  condsyms, ropes, idents, secure_hash, rodread, passes, importer, idgen, rodutils
 
 # implementation
 
 type 
   TRodWriter = object of TPassContext
     module: PSym
-    crc: TCrc32
+    crc: SecureHash
     options: TOptions
     defines: string
     inclDeps: string
@@ -38,7 +38,7 @@ type
 
   PRodWriter = ref TRodWriter
 
-proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter
+proc newRodWriter(crc: SecureHash, module: PSym): PRodWriter
 proc addModDep(w: PRodWriter, dep: string)
 proc addInclDep(w: PRodWriter, dep: string)
 proc addInterfaceSym(w: PRodWriter, s: PSym)
@@ -62,7 +62,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
 template filename*(w: PRodWriter): string =
   w.module.filename
 
-proc newRodWriter(crc: TCrc32, module: PSym): PRodWriter = 
+proc newRodWriter(crc: SecureHash, module: PSym): PRodWriter = 
   new(result)
   result.sstack = @[]
   result.tstack = @[]
@@ -96,7 +96,7 @@ proc addInclDep(w: PRodWriter, dep: string) =
   var resolved = dep.findModule(w.module.info.toFullPath)
   encodeVInt(fileIdx(w, dep), w.inclDeps)
   add(w.inclDeps, " ")
-  encodeVInt(crcFromFile(resolved), w.inclDeps)
+  encodeStr($secureHashFile(resolved), w.inclDeps)
   add(w.inclDeps, rodNL)
 
 proc pushType(w: PRodWriter, t: PType) =
@@ -440,7 +440,7 @@ proc writeRod(w: PRodWriter) =
   f.write(rodNL)
   
   var crc = "CRC:"
-  encodeVInt(w.crc, crc)
+  encodeStr($w.crc, crc)
   f.write(crc)
   f.write(rodNL)
   
