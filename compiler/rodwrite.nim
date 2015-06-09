@@ -13,7 +13,8 @@
 
 import 
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
-  condsyms, ropes, idents, secure_hash, rodread, passes, importer, idgen, rodutils
+  condsyms, ropes, idents, securehash, rodread, passes, importer, idgen,
+  rodutils
 
 # implementation
 

@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, secure_hash, ropes, idents, lists,
+  msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
   intsets, idgen
 
 type
