@@ -191,11 +191,11 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
     result = memLoc
 
 when defined(windows) and not someGcc:
-  proc interlockedCompareExchange(p: pointer; exchange, comparand: int32): int32
+  proc interlockedCompareExchange(p: pointer; exchange, comparand: int): int
     {.importc: "InterlockedCompareExchange", header: "<windows.h>", cdecl.}
 
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
-    interlockedCompareExchange(p, newValue.int32, oldValue.int32) != 0
+    interlockedCompareExchange(p, cast[int](newValue), cast[int](oldValue)) != 0
   # XXX fix for 64 bit build
 else:
   # this is valid for GCC and Intel C++

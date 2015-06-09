@@ -290,7 +290,7 @@ proc slave(w: ptr Worker) {.thread.} =
     readyWorker = w
     signal(gSomeReady)
     await(w.taskArrived)
-    assert(not w.ready)
+    #assert(not w.ready)  # doesn't work with Visual Studio
     w.f(w, w.data)
     if w.q.len != 0: w.cleanFlowVars
     if w.shutdown:
