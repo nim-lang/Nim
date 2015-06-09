@@ -10,10 +10,10 @@
 import
   strutils, unsigned
 
-const sha_digest_size = 20
+const SHA1DigestSize = 20
 
 type
-  SHA1Digest = array[0 .. sha_digest_size-1, uint8]
+  SHA1Digest = array[0 .. SHA1DigestSize-1, uint8]
   SecureHash* = distinct SHA1Digest
 
 proc sha1(src: string) : SHA1Digest
@@ -26,7 +26,7 @@ proc `$`*(self: SecureHash): string =
     result.add(toHex(int(v), 2))
 
 proc parseSecureHash*(hash: string): SecureHash =
-  for i in 0.. <sha_digest_size:
+  for i in 0.. <SHA1DigestSize:
     SHA1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc `==`*(a, b: SecureHash): bool =
@@ -191,7 +191,7 @@ template computeInternal(src: expr): stmt {.immediate.} =
 
   # Store hash in result pointer, and make sure we get in in the correct order
   # on both endian models.
-  for i in 0 .. sha_digest_size-1:
+  for i in 0 .. SHA1DigestSize-1:
     result[i] = uint8((int(state[i shr 2]) shr ((3-(i and 3)) * 8)) and 255)
 
 proc sha1(src: string) : SHA1Digest =
