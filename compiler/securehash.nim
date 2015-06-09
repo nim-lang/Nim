@@ -16,14 +16,6 @@ type
   SHA1Digest = array[0 .. sha_digest_size-1, uint8]
   SecureHash* = distinct SHA1Digest
 
-const emptySecureHash = SecureHash([
-  0u8, 0, 0, 0,
-  0, 0, 0, 0,
-  0, 0, 0, 0,
-  0, 0, 0, 0,
-  0, 0, 0, 0,
-])
-
 proc sha1(src: string) : SHA1Digest
 
 proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
