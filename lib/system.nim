@@ -2859,9 +2859,6 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
   result = toFloat(x) / toFloat(y)
 
-template `-|`*(b, s: expr): expr =
-  (if b >= 0: b else: s.len + b)
-
 template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # make room for additional elements or cut:
   var slen = s.len
