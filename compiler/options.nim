@@ -54,6 +54,7 @@ type                          # please make sure we have under 32 options
     optSkipUserConfigFile,    # skip the users's config file
     optSkipParentConfigFiles, # skip parent dir's config files
     optNoMain,                # do not generate a "main" proc
+    optUseColors,             # use colors for hints, warnings, and errors
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
     optThreadAnalysis,        # thread analysis pass
