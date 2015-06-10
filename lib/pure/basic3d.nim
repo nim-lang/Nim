@@ -53,7 +53,7 @@ type
     ## [ tx ty tz tw ]
     ax*,ay*,az*,aw*,  bx*,by*,bz*,bw*,  cx*,cy*,cz*,cw*,  tx*,ty*,tz*,tw*:float
   Point3d* = object
-    ## Implements a non-homegeneous 2d point stored as
+    ## Implements a non-homogeneous 3d point stored as
     ## an `x` , `y` and `z` coordinate.
     x*,y*,z*:float
   Vector3d* = object
