@@ -907,3 +907,6 @@ ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   of rCannotOpenFile:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
 
+# enable colors by default on terminals
+if terminal.isatty(stdout):
+  incl(gGlobalOptions, optUseColors)
