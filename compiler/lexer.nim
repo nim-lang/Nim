@@ -482,9 +482,21 @@ proc getNumber(L: var TLexer): TToken =
       of tkFloat64Lit: result.fNumber = (cast[PFloat64](addr(xi)))[]
       else: internalError(getLineInfo(L), "getNumber")
 
-      # Simple bounds check
-      if result.tokType notin floatTypes and xi != result.iNumber:
-        lexMessageLitNum(L, errNumberOutOfRange, startpos)
+      # Bounds checks. Non decimal literals are allowed to overflow the range of
+      # the datatype as long as their pattern don't overflow _bitwise_, hence 
+      # below checks of signed sizes against uint*.high is deliberate:
+      # (0x80'u8 = 128, 0x80'i8 = -128, etc == OK)
+      if result.tokType notin floatTypes:
+        let outOfRange = case result.tokType:
+        of tkUInt8Lit, tkUInt16Lit, tkUInt32Lit: result.iNumber != xi
+        of tkInt8Lit: (xi > BiggestInt(uint8.high))
+        of tkInt16Lit: (xi > BiggestInt(uint16.high))
+        of tkInt32Lit: (xi > BiggestInt(uint32.high))
+        else: false
+
+        if outOfRange:
+          echo "out of range num: ", result.iNumber, " vs ", xi
+          lexMessageLitNum(L, errNumberOutOfRange, startpos)
 
     else:
       case result.tokType
