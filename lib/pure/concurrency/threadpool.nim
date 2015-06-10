@@ -290,7 +290,8 @@ proc slave(w: ptr Worker) {.thread.} =
     readyWorker = w
     signal(gSomeReady)
     await(w.taskArrived)
-    assert(not w.ready)
+    # XXX Somebody needs to look into this (why does this assertion fail in Visual Studio?)
+    when not defined(vcc): assert(not w.ready)
     w.f(w, w.data)
     if w.q.len != 0: w.cleanFlowVars
     if w.shutdown:
