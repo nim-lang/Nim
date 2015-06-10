@@ -30,8 +30,8 @@ implements the required case distinction.
 
 
 import
-  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
-  options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
+  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
+  nversion, nimsets, msgs, securehash, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
   intsets, cgmeth, lowerings
 

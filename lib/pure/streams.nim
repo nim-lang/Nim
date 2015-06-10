@@ -279,7 +279,7 @@ proc ssAtEnd(s: Stream): bool =
 
 proc ssSetPosition(s: Stream, pos: int) =
   var s = StringStream(s)
-  s.pos = clamp(pos, 0, s.data.high)
+  s.pos = clamp(pos, 0, s.data.len)
 
 proc ssGetPosition(s: Stream): int =
   var s = StringStream(s)

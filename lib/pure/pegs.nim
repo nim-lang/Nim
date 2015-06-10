@@ -1060,7 +1060,6 @@ type
     lineStart: int            ## index of last line start in buffer
     colOffset: int            ## column to add
     filename: string
-{.deprecated: [TTokKind: TokKind, TToken: Token, TModifier: Modifier].}
 
 const
   tokKindToStr: array[TokKind, string] = [
