@@ -16,6 +16,8 @@ type
   DbConn* = PSqlite3  ## encapsulates a database connection
   Row* = seq[string]  ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
+  InstantRow* = Pstmt  ## a handle that can be used to get a row's column
+                       ## text on demand
   EDb* = object of IOError ## exception that is raised if a database error occurs
   
   SqlQuery* = distinct string ## an SQL query string
@@ -108,6 +110,24 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
     setRow(stmt, result, L)
     yield result
   if finalize(stmt) != SQLITE_OK: dbError(db)
+
+iterator instantRows*(db: DbConn, query: SqlQuery,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [FReadDb].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within interator body.
+  var stmt = setupQuery(db, query, args)
+  while step(stmt) == SQLITE_ROW:
+    yield stmt
+  if finalize(stmt) != SQLITE_OK: dbError(db)
+
+proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
+  ## returns text for given column of the row
+  $column_text(row, col)
+
+proc len*(row: InstantRow): int32 {.inline.} =
+  ## returns number of columns in the row
+  column_count(row)
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [FReadDb].} =
@@ -216,5 +236,7 @@ when not defined(testing) and isMainModule:
   #db.query("insert into tbl1 values('goodbye', 20)")
   for r in db.rows(sql"select * from tbl1", []):
     echo(r[0], r[1])
-  
+  for r in db.instantRows(sql"select * from tbl1", []):
+    echo(r[0], r[1])
+
   db_sqlite.close(db)
