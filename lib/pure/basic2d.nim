@@ -64,7 +64,7 @@ type
       ## not used for geometric transformations in 2d.
       ax*,ay*,bx*,by*,tx*,ty*:float
     Point2d* = object
-      ## Implements a non-homegeneous 2d point stored as 
+      ## Implements a non-homogeneous 2d point stored as 
       ## an `x` coordinate and an `y` coordinate.
       x*,y*:float
     Vector2d* = object 
