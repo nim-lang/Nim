@@ -333,6 +333,9 @@ proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
   exec "nim cc --taintMode:on tests/testament/tester"
+  # Since tests take a long time (on my machine), and we want to defy Murhpys 
+  # law - lets make sure the compiler really is freshly compiled!
+  exec "nim c --lib:lib -d:release --opt:speed compiler/nim.nim"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
   let success = tryExec tester & " " & (args|"all")
   exec tester & " html"
