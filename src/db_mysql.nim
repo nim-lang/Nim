@@ -16,6 +16,9 @@ type
   DbConn* = PMySQL    ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
+  InstantRow* = tuple[row: cstringArray, len: int]  ## a handle that can be
+                                                    ## used to get a row's
+                                                    ## column text on demand
   EDb* = object of IOError ## exception that is raised if a database error occurs
 
   SqlQuery* = distinct string ## an SQL query string
@@ -126,6 +129,30 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
           add(result[i], row[i])
       yield result
     properFreeResult(sqlres, row)
+
+iterator instantRows*(db: DbConn, query: SqlQuery,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [FReadDb].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within interator body.
+  rawExec(db, query, args)
+  var sqlres = mysql.useResult(db)
+  if sqlres != nil:
+    let L = int(mysql.numFields(sqlres))
+    var row: cstringArray
+    while true:
+      row = mysql.fetchRow(sqlres)
+      if row == nil: break
+      yield (row: row, len: L)
+    properFreeResult(sqlres, row)
+
+proc `[]`*(row: InstantRow, col: int): string {.inline.} =
+  ## returns text for given column of the row
+  $row.row[col]
+
+proc len*(row: InstantRow): int {.inline.} =
+  ## returns number of columns in the row
+  row.len
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
