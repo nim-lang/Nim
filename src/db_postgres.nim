@@ -16,6 +16,9 @@ type
   DbConn* = PPGconn   ## encapsulates a database connection
   Row* = seq[string]  ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
+  InstantRow* = tuple[res: PPGresult, line: int32]  ## a handle that can be
+                                                    ## used to get a row's
+                                                    ## column text on demand
   EDb* = object of IOError ## exception that is raised if a database error occurs
   
   SqlQuery* = distinct string ## an SQL query string
@@ -158,6 +161,24 @@ iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
     setRow(res, result, i, L)
     yield result
   pqClear(res)
+
+iterator instantRows*(db: DbConn, query: SqlQuery,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [FReadDb].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within interator body.
+  var res = setupQuery(db, query, args)
+  for i in 0..pqNtuples(res)-1:
+    yield (res: res, line: i)
+  pqClear(res)
+
+proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
+  ## returns text for given column of the row
+  $pqgetvalue(row.res, row.line, col)
+
+proc len*(row: InstantRow): int32 {.inline.} =
+  ## returns number of columns in the row
+  pqNfields(row.res)
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
