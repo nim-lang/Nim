@@ -10,36 +10,28 @@
 import
   strutils, unsigned
 
-const sha_digest_size = 20
+const Sha1DigestSize = 20
 
 type
-  SHA1Digest = array[0 .. sha_digest_size-1, uint8]
-  SecureHash* = distinct SHA1Digest
+  Sha1Digest = array[0 .. Sha1DigestSize-1, uint8]
+  SecureHash* = distinct Sha1Digest
 
-const emptySecureHash = SecureHash([
-  0u8, 0, 0, 0,
-  0, 0, 0, 0,
-  0, 0, 0, 0,
-  0, 0, 0, 0,
-  0, 0, 0, 0,
-])
-
-proc sha1(src: string) : SHA1Digest
+proc sha1(src: string) : Sha1Digest
 
 proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
 proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
 proc `$`*(self: SecureHash): string =
   result = ""
-  for v in SHA1Digest(self):
+  for v in Sha1Digest(self):
     result.add(toHex(int(v), 2))
 
 proc parseSecureHash*(hash: string): SecureHash =
-  for i in 0.. <sha_digest_size:
-    SHA1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
+  for i in 0.. <Sha1DigestSize:
+    Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc `==`*(a, b: SecureHash): bool =
   # Not a constant-time comparison, but that's acceptable in this context
-  SHA1Digest(a) == SHA1Digest(b)
+  Sha1Digest(a) == Sha1Digest(b)
 
 
 when isMainModule:
@@ -76,20 +68,20 @@ when isMainModule:
 # Ported to Nim by Erik O'Leary
 
 type
-  SHA1State = array[0 .. 5-1, uint32]
-  SHA1Buffer = array[0 .. 80-1, uint32]
+  Sha1State = array[0 .. 5-1, uint32]
+  Sha1Buffer = array[0 .. 80-1, uint32]
 
-template clearBuffer(w: SHA1Buffer, len = 16) =
+template clearBuffer(w: Sha1Buffer, len = 16) =
   zeroMem(addr(w), len * sizeof(uint32))
 
-proc init(result: var SHA1State) =
+proc init(result: var Sha1State) =
   result[0] = 0x67452301'u32
   result[1] = 0xefcdab89'u32
   result[2] = 0x98badcfe'u32
   result[3] = 0x10325476'u32
   result[4] = 0xc3d2e1f0'u32
 
-proc innerHash(state: var SHA1State, w: var SHA1Buffer) =
+proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
   var
     a = state[0]
     b = state[1]
@@ -147,11 +139,11 @@ proc innerHash(state: var SHA1State, w: var SHA1Buffer) =
 
 template computeInternal(src: expr): stmt {.immediate.} =
   #Initialize state
-  var state: SHA1State
+  var state: Sha1State
   init(state)
 
   #Create w buffer
-  var w: SHA1Buffer
+  var w: Sha1Buffer
 
   #Loop through all complete 64byte blocks.
   let byteLen         = src.len
@@ -199,9 +191,9 @@ template computeInternal(src: expr): stmt {.immediate.} =
 
   # Store hash in result pointer, and make sure we get in in the correct order
   # on both endian models.
-  for i in 0 .. sha_digest_size-1:
+  for i in 0 .. Sha1DigestSize-1:
     result[i] = uint8((int(state[i shr 2]) shr ((3-(i and 3)) * 8)) and 255)
 
-proc sha1(src: string) : SHA1Digest =
+proc sha1(src: string) : Sha1Digest =
   ## Calculate SHA1 from input string
   computeInternal(src)

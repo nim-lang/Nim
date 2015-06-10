@@ -10,7 +10,7 @@
 ## implements the module handling
 
 import
-  ast, astalgo, magicsys, secure_hash, rodread, msgs, cgendata, sigmatch, options,
+  ast, astalgo, magicsys, securehash, rodread, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes, llstream
 
 type
