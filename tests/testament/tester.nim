@@ -126,9 +126,6 @@ proc `$`(x: TResults): string =
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
 
-proc leftAlign(s: string, count: Natural, padding = ' '): string =
-  s & repeat(padding, max(0, count - s.len))
-
 proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & test.options
@@ -140,13 +137,12 @@ proc addResult(r: var TResults, test: TTest,
                           expected = expected,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
-  let alignedName = leftAlign(name, 72) # Make the total line length 78 chars
   if success == reSuccess:
-    styledEcho fgCyan, alignedName, fgGreen, " [PASS]"
+    styledEcho fgGreen, "PASS: ", fgCyan, name
   elif success == reIgnored:
-    styledEcho styleBright, fgCyan, alignedName, styleDim, fgYellow, " [SKIP]"
+    styledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   else:
-    styledEcho styleBright, fgCyan, alignedName, fgRed, " [FAIL]"
+    styledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
     styledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     styledEcho styleBright, fgRed, "Failure: ", $success
     styledEcho fgYellow, "Expected:"
@@ -295,13 +291,11 @@ proc testSpec(r: var TResults, test: TTest) =
                         reExitCodesDiffer)
       return
 
-    # This is a bit ugly atm.
     if bufB != expectedOut:
       if not (expected.substr and expectedOut in bufB):
-        if not (expectedOut == "" and bufB == "\27[0m"):
-          given.err = reOutputsDiffer
-          r.addResult(test, expected.outp, bufB, reOutputsDiffer)
-          return
+        given.err = reOutputsDiffer
+        r.addResult(test, expected.outp, bufB, reOutputsDiffer)
+        return
 
     compilerOutputTests(test, given, expected, r)
     return
