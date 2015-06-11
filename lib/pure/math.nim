@@ -217,6 +217,12 @@ when not defined(JS):
     proc drand48(): float {.importc: "drand48", header: "<stdlib.h>".}
     proc random(max: float): float =
       result = drand48() * max
+    proc randomize() =
+      randomize(cast[int](epochTime()))
+
+    proc randomize(seed: int) =
+      srand(cint(seed)) # rand_s doesn't use srand
+      srand48(seed)
   when defined(windows):
     proc random(max: float): float =
       # we are hardcodeing this because
@@ -226,12 +232,9 @@ when not defined(JS):
       # See https://msdn.microsoft.com/en-us/library/296az74e.aspx
       const rand_max = 4294967295
       result = (float(rand()) / float(rand_max)) * max
-  proc randomize() =
-    randomize(cast[int](epochTime()))
-
-  proc randomize(seed: int) =
-    when declared(srand): srand(cint(seed)) # rand_s doesn't use srand
-    when declared(srand48): srand48(seed)
+    proc randomize() = discard
+    proc randomize(seed: int) = discard
+    
   proc random(max: int): int =
     result = int(rand()) mod max
 
