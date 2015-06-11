@@ -406,22 +406,43 @@ proc isatty*(f: File): bool =
 
   result = isatty(getFileHandle(f)) != 0'i32
 
-proc styledEchoProcessArg(s: string) = write stdout, s
-proc styledEchoProcessArg(style: Style) = setStyle({style})
-proc styledEchoProcessArg(style: set[Style]) = setStyle style
-proc styledEchoProcessArg(color: ForegroundColor) = setForegroundColor color
-proc styledEchoProcessArg(color: BackgroundColor) = setBackgroundColor color
+type
+  TerminalCmd* = enum  ## commands that can be expressed as arguments
+    resetStyle         ## reset attributes
+
+template styledEchoProcessArg(s: string) = write stdout, s
+template styledEchoProcessArg(style: Style) = setStyle({style})
+template styledEchoProcessArg(style: set[Style]) = setStyle style
+template styledEchoProcessArg(color: ForegroundColor) = setForegroundColor color
+template styledEchoProcessArg(color: BackgroundColor) = setBackgroundColor color
+template styledEchoProcessArg(cmd: TerminalCmd) =
+  when cmd == resetStyle:
+    resetAttributes()
 
 macro styledEcho*(m: varargs[expr]): stmt =
   ## to be documented.
   let m = callsite()
+  var reset = false
   result = newNimNode(nnkStmtList)
 
   for i in countup(1, m.len - 1):
-    result.add(newCall(bindSym"styledEchoProcessArg", m[i]))
+    let item = m[i]
+    case item.kind
+    of nnkStrLit..nnkTripleStrLit:
+      if i == m.len - 1:
+        # optimize if string literal is last, just call writeln
+        result.add(newCall(bindSym"writeln", bindSym"stdout", item))
+        if reset: result.add(newCall(bindSym"resetAttributes"))
+        return
+      else:
+        # if it is string literal just call write, do not enable reset
+        result.add(newCall(bindSym"write", bindSym"stdout", item))
+    else:
+      result.add(newCall(bindSym"styledEchoProcessArg", item))
+      reset = true
 
   result.add(newCall(bindSym"write", bindSym"stdout", newStrLitNode("\n")))
-  result.add(newCall(bindSym"resetAttributes"))
+  if reset: result.add(newCall(bindSym"resetAttributes"))
 
 when defined(nimdoc):
   proc getch*(): char =
