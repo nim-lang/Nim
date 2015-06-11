@@ -7,11 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. Consider using the pegs module instead.
-##
-## There is an alternative regular expressions library with a more unified API:
-## `nre <https://github.com/flaviut/nre>`_. It may be added to the standard
-## library in the future, instead of `re`.
+## Regular expression support for Nim. Deprecated. Consider using the ``nre``
+## or ``pegs`` modules instead.
 ##
 ## **Note:** The 're' proc defaults to the **extended regular expression
 ## syntax** which lets you use whitespace freely to make your regexes readable.
@@ -49,7 +46,7 @@ type
     h: ptr Pcre
     e: ptr ExtraData
   
-  Regex* = ref RegexDesc ## a compiled regular expression
+  Regex* {.deprecated.} = ref RegexDesc ## a compiled regular expression
 
   RegexError* = object of ValueError
     ## is raised if the pattern is no valid regular expression.
@@ -79,7 +76,7 @@ proc finalizeRegEx(x: Regex) =
   if not isNil(x.e):
     pcre.free_substring(cast[cstring](x.e))
 
-proc re*(s: string, flags = {reExtended, reStudy}): Regex =
+proc re*(s: string, flags = {reExtended, reStudy}): Regex {.deprecated.} =
   ## Constructor of regular expressions. Note that Nim's
   ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
