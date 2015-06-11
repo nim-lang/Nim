@@ -202,8 +202,15 @@ when not defined(JS):
     ## computes x to power raised of y.
     
   # C procs:
-  proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>".}
-  proc rand(): cint {.importc: "rand", header: "<stdlib.h>".}
+  when defined(windows):
+    # The "secure" random, available from Windows XP
+    # https://msdn.microsoft.com/en-us/library/sxtz2fa8.aspx
+    proc rand_s(val: var cuint) {.importc: "rand_s", header: "<stdlib.h>".}
+    # To behave like the normal version
+    proc rand(): cuint = rand_s(result)
+  else:
+    proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>".}
+    proc rand(): cint {.importc: "rand", header: "<stdlib.h>".}
   
   when not defined(windows):
     proc srand48(seed: clong) {.importc: "srand48", header: "<stdlib.h>".}
@@ -216,13 +223,14 @@ when not defined(JS):
       # importcing macros is extremely problematic
       # and because the value is publicly documented
       # on MSDN and very unlikely to change
-      const rand_max = 32767
+      # See https://msdn.microsoft.com/en-us/library/296az74e.aspx
+      const rand_max = 4294967295
       result = (float(rand()) / float(rand_max)) * max
   proc randomize() =
     randomize(cast[int](epochTime()))
 
   proc randomize(seed: int) =
-    srand(cint(seed))
+    when declared(srand): srand(cint(seed)) # rand_s doesn't use srand
     when declared(srand48): srand48(seed)
   proc random(max: int): int =
     result = int(rand()) mod max
