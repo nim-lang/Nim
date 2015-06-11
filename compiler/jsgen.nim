@@ -258,11 +258,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
     ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
     ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
-    ["addInt64", "", "addInt64($1, $2)", "($1 + $2)"], # AddI64
-    ["subInt64", "", "subInt64($1, $2)", "($1 - $2)"], # SubI64
-    ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
-    ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
-    ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
@@ -276,11 +271,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI
-    ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI64
-    ["", "", "($1 << $2)", "($1 << $2)"], # ShlI64
-    ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
-    ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
-    ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -291,9 +281,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqI
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
     ["", "", "($1 < $2)", "($1 < $2)"], # LtI
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqI64
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI64
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtI64
     ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
     ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
@@ -320,11 +307,9 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
     ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
     ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
-    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "!($1)", "!($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
     ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64
@@ -357,11 +342,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
     ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
     ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
-    ["addInt64", "", "addInt64($1, $2)", "($1 + $2)"], # AddI64
-    ["subInt64", "", "subInt64($1, $2)", "($1 - $2)"], # SubI64
-    ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
-    ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
-    ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
@@ -375,11 +355,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI
-    ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI64
-    ["", "", "($1 << $2)", "($1 << $2)"], # ShlI64
-    ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
-    ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
-    ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -390,9 +365,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqI
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
     ["", "", "($1 < $2)", "($1 < $2)"], # LtI
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqI64
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI64
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtI64
     ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
     ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
@@ -419,11 +391,9 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
     ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
     ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
-    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "not ($1)", "not ($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
     ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64

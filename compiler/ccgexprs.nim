@@ -503,13 +503,8 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       "$# = #addInt($#, $#);$n", "$# = #subInt($#, $#);$n",
       "$# = #mulInt($#, $#);$n", "$# = #divInt($#, $#);$n",
       "$# = #modInt($#, $#);$n",
-      "$# = #addInt64($#, $#);$n", "$# = #subInt64($#, $#);$n",
-      "$# = #mulInt64($#, $#);$n", "$# = #divInt64($#, $#);$n",
-      "$# = #modInt64($#, $#);$n",
       "$# = #addInt($#, $#);$n", "$# = #subInt($#, $#);$n"]
     opr: array[mAddI..mPred, string] = [
-      "($#)($# + $#)", "($#)($# - $#)", "($#)($# * $#)",
-      "($#)($# / $#)", "($#)($# % $#)",
       "($#)($# + $#)", "($#)($# - $#)", "($#)($# * $#)",
       "($#)($# / $#)", "($#)($# % $#)",
       "($#)($# + $#)", "($#)($# - $#)"]
@@ -530,11 +525,10 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
-    opr: array[mUnaryMinusI..mAbsI64, string] = [
+    opr: array[mUnaryMinusI..mAbsI, string] = [
       mUnaryMinusI: "((NI$2)-($1))",
       mUnaryMinusI64: "-($1)",
-      mAbsI: "($1 > 0? ($1) : -($1))",
-      mAbsI64: "($1 > 0? ($1) : -($1))"]
+      mAbsI: "($1 > 0? ($1) : -($1))"]
   var
     a: TLoc
     t: PType
@@ -561,11 +555,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($4)($1 ^ $2)",      # BitxorI
       "(($1 <= $2) ? $1 : $2)", # MinI
       "(($1 >= $2) ? $1 : $2)", # MaxI
-      "($4)((NU64)($1) >> (NU64)($2))", # ShrI64
-      "($4)((NU64)($1) << (NU64)($2))", # ShlI64
-      "($4)($1 & $2)",            # BitandI64
-      "($4)($1 | $2)",            # BitorI64
-      "($4)($1 ^ $2)",            # BitxorI64
       "(($1 <= $2) ? $1 : $2)", # MinF64
       "(($1 >= $2) ? $1 : $2)", # MaxF64
       "($4)((NU$3)($1) + (NU$3)($2))", # AddU
@@ -576,9 +565,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 == $2)",           # EqI
       "($1 <= $2)",           # LeI
       "($1 < $2)",            # LtI
-      "($1 == $2)",           # EqI64
-      "($1 <= $2)",           # LeI64
-      "($1 < $2)",            # LtI64
       "($1 == $2)",           # EqF64
       "($1 <= $2)",           # LeF64
       "($1 < $2)",            # LtF64
@@ -638,7 +624,6 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     unArithTab: array[mNot..mToBiggestInt, string] = ["!($1)", # Not
       "$1",                   # UnaryPlusI
       "($3)((NU$2) ~($1))",   # BitnotI
-      "($3)((NU$2) ~($1))",   # BitnotI64
       "$1",                   # UnaryPlusF64
       "-($1)",                # UnaryMinusF64
       "($1 > 0? ($1) : -($1))", # AbsF64; BUGFIX: fabs() makes problems
@@ -1661,7 +1646,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
   of mNot..mToBiggestInt: unaryArith(p, e, d, op)
-  of mUnaryMinusI..mAbsI64: unaryArithOverflow(p, e, d, op)
+  of mUnaryMinusI..mAbsI: unaryArithOverflow(p, e, d, op)
   of mAddF64..mDivF64: binaryFloatArith(p, e, d, op)
   of mShrI..mXor: binaryArith(p, e, d, op)
   of mEqProc: genEqProc(p, e, d)
