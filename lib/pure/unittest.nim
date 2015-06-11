@@ -39,7 +39,6 @@ when declared(stdout):
 
 when not defined(ECMAScript):
   import terminal
-  system.addQuitProc(resetAttributes)
 
 type
   TestStatus* = enum OK, FAILED
