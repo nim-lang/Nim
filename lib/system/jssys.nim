@@ -517,62 +517,70 @@ proc isFatPointer(ti: PNimType): bool =
     tyArray, tyArrayConstr, tyTuple,
     tyOpenArray, tySet, tyVar, tyRef, tyPtr}
 
-proc nimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
+proc nimCopy(dest, src: pointer, ti: PNimType): pointer {.compilerproc.}
 
 proc nimCopyAux(dest, src: pointer, n: ptr TNimNode) {.compilerproc.} =
   case n.kind
   of nkNone: sysAssert(false, "nimCopyAux")
   of nkSlot:
-    asm "`dest`[`n`.offset] = nimCopy(`src`[`n`.offset], `n`.typ);"
+    asm """
+      var ddest = `dest`[`n`.offset];
+      if (ddest === undefined) ddest = null;
+      `dest`[`n`.offset] = nimCopy(ddest, `src`[`n`.offset], `n`.typ);
+    """
   of nkList:
     for i in 0..n.len-1:
       nimCopyAux(dest, src, n.sons[i])
   of nkCase:
     asm """
-      `dest`[`n`.offset] = nimCopy(`src`[`n`.offset], `n`.typ);
+      var ddest = `dest`[`n`.offset];
+      if (ddest === undefined) ddest = null;
+      `dest`[`n`.offset] = nimCopy(ddest, `src`[`n`.offset], `n`.typ);
       for (var i = 0; i < `n`.sons.length; ++i) {
         nimCopyAux(`dest`, `src`, `n`.sons[i][1]);
       }
     """
 
-proc nimCopy(x: pointer, ti: PNimType): pointer =
+proc nimCopy(dest, src: pointer, ti: PNimType): pointer =
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
     if not isFatPointer(ti):
-      result = x
+      result = src
     else:
-      asm """
-        `result` = [null, 0];
-        `result`[0] = `x`[0];
-        `result`[1] = `x`[1];
-      """
+      asm "`result` = [`src`[0], `src`[1]];"
   of tySet:
     asm """
       `result` = {};
-      for (var key in `x`) { `result`[key] = `x`[key]; }
+      for (var key in `src`) { `result`[key] = `src`[key]; }
     """
   of tyTuple, tyObject:
-    if ti.base != nil: result = nimCopy(x, ti.base)
+    if ti.base != nil: result = nimCopy(dest, src, ti.base)
     elif ti.kind == tyObject:
-      asm "`result` = {m_type: `ti`};"
+      asm "`result` = (`dest` === null) ? {m_type: `ti`} : `dest`;"
     else:
-      asm "`result` = {};"
-    nimCopyAux(result, x, ti.node)
+      asm "`result` = (`dest` === null) ? {} : `dest`;"
+    nimCopyAux(result, src, ti.node)
   of tySequence, tyArrayConstr, tyOpenArray, tyArray:
     asm """
-      `result` = new Array(`x`.length);
-      for (var i = 0; i < `x`.length; ++i) {
-        `result`[i] = nimCopy(`x`[i], `ti`.base);
+      if (`dest` === null) {
+        `dest` = new Array(`src`.length);
+      }
+      else {
+        `dest`.length = `src`.length;
+      }
+      `result` = `dest`;
+      for (var i = 0; i < `src`.length; ++i) {
+        `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
       }
     """
   of tyString:
     asm """
-      if (`x` !== null) {
-        `result` = `x`.slice(0);
+      if (`src` !== null) {
+        `result` = `src`.slice(0);
       }
     """
   else:
-    result = x
+    result = src
 
 proc genericReset(x: pointer, ti: PNimType): pointer {.compilerproc.} =
   case ti.kind
@@ -611,7 +619,7 @@ proc arrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
   # types are fake
   asm """
     var result = new Array(`len`);
-    for (var i = 0; i < `len`; ++i) result[i] = nimCopy(`value`, `typ`);
+    for (var i = 0; i < `len`; ++i) result[i] = nimCopy(null, `value`, `typ`);
     return result;
   """
 

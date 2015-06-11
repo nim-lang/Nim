@@ -787,7 +787,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      addf(p.body, "$1 = nimCopy($2, $3);$n",
+      addf(p.body, "$1 = nimCopy($1, $2, $3);$n",
            [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
@@ -1176,7 +1176,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
         s = a.res
       else:
         useMagic(p, "nimCopy")
-        s = "nimCopy($1, $2)" % [a.res, genTypeInfo(p, n.typ)]
+        s = "nimCopy(null, $1, $2)" % [a.res, genTypeInfo(p, n.typ)]
     of etyBaseIndex:
       if (a.typ != etyBaseIndex): internalError(n.info, "genVarInit")
       if {sfAddrTaken, sfGlobal} * v.flags != {}:
