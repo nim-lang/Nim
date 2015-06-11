@@ -976,14 +976,17 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       genFieldAccess(p, n.sons[0], r)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-    if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
-    case ty.kind
-    of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
-       tyVarargs, tyChar:
-      genArrayAddr(p, n.sons[0], r)
-    of tyTuple:
-      genFieldAddr(p, n.sons[0], r)
-    else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $ty.kind & ')')
+    if ty.kind in MappedToObject:
+      gen(p, n.sons[0], r)
+    else:
+      let kindOfIndexedExpr = n.sons[0].sons[0].typ.kind
+      case kindOfIndexedExpr
+      of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
+          tyVarargs:
+        genArrayAddr(p, n.sons[0], r)
+      of tyTuple:
+        genFieldAddr(p, n.sons[0], r)
+      else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $kindOfIndexedExpr & ')')
   else: internalError(n.sons[0].info, "genAddr")
 
 proc genProcForSymIfNeeded(p: PProc, s: PSym) =

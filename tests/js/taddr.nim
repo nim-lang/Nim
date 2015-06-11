@@ -40,3 +40,25 @@ indexAddr[] = 'd'
 doAssert indexAddr[] == 'd'
 
 doAssert obj.s == "lodem ipsum dolor sit amet"
+
+# Bug #2148
+var x: array[2, int]
+var y = addr x[1]
+
+y[] = 12
+doAssert(x[1] == 12)
+
+type
+  Foo = object
+    bar: int
+
+var foo: array[2, Foo]
+var z = addr foo[1]
+
+z[].bar = 12345
+doAssert(foo[1].bar == 12345)
+
+var t : tuple[a, b: int]
+var pt = addr t[1]
+pt[] = 123
+doAssert(t.b == 123)
