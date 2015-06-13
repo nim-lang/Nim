@@ -169,13 +169,12 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
-    var len = `s`.length - 1;
-    var result = Array(len);
+    var len = `s`.length-1;
+    var result = new Array(len);
     for (var i = 0; i < len; ++i) {
       result[i] = `s`[i].toString(16);
     }
-    result = decodeURIComponent('%' + result.join('%'));
-    return result;
+    return decodeURIComponent('%' + result.join('%'));
   """
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
