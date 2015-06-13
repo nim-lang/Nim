@@ -160,25 +160,8 @@ proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
 proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = [];
-    var code, chr, bytes;
-    var i = 0;
-    while (i < `c`.length) {
-      chr = '';
-			bytes = 1;
-      code = `c`.charCodeAt(i);
-      while ((code & 128) == 128) {
-        ++bytes;
-        code = code << 1;
-      }
-      if (bytes > 1) {
-        --bytes;
-      }
-      for (var k = 0; k < bytes; ++k) {
-        code = `c`.charCodeAt(i+k);
-        chr += '%' + code.toString(16);
-      }
-      result.push(decodeURIComponent(chr).charCodeAt(0))
-			i += bytes;
+    for (var i = 0; i < `c`.length; ++i) {
+      result[i] = `c`.charCodeAt(i);
     }
     result[result.length] = 0; // terminating zero
     return result;
@@ -186,13 +169,13 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
-    var len = `s`.length-1;
-    var result = new Array(len);
-    var fcc = String.fromCharCode;
+		var len = `s`.length - 1;
+    var result = Array(len);
     for (var i = 0; i < len; ++i) {
-      result[i] = fcc(`s`[i]);
+      result[i] = `s`[i].toString(16);
     }
-    return result.join("");
+    result = decodeURIComponent('%' + result.join('%'));
+    return result;
   """
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
