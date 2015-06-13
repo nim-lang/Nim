@@ -509,8 +509,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   #  excHandler = sp;
   #  try {
   #    stmts;
-  #    TMP = e
-  #  } catch (e) {
+  #  } catch (EXC) {
+  #    var prevJSError = lastJSError; lastJSError = EXC;
   #    if (e.typ && e.typ == NTI433 || e.typ == NTI2321) {
   #      stmts;
   #    } else if (e.typ && e.typ == NTI32342) {
@@ -518,9 +518,9 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   #    } else {
   #      stmts;
   #    }
+  #    lastJSError = prevJSError;
   #  } finally {
   #    stmts;
-  #    excHandler = excHandler.prev;
   #  }
   genLineDir(p, n)
   if not isEmptyType(n.typ):
@@ -529,7 +529,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   inc(p.unique)
   var safePoint = "Tmp$1" % [rope(p.unique)]
   addf(p.body,
-       "var $1 = {prev: excHandler, exc: null};$nexcHandler = $1;$n" |
+       "" |
        "local $1 = pcall(",
        [safePoint])
   if optStackTrace in p.options: add(p.body, "framePtr = F;" & tnl)
@@ -539,14 +539,17 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   gen(p, n.sons[0], a)
   moveInto(p, a, r)
   var i = 1
-  if p.target == targetJS and length > 1 and n.sons[i].kind == nkExceptBranch:
-    addf(p.body, "} catch (EXC) {$n  lastJSError = EXC;$n", [])
+  var generalCatchBranchExists = false
+  var catchBranchesExist = length > 1 and n.sons[i].kind == nkExceptBranch
+  if p.target == targetJS and catchBranchesExist:
+    addf(p.body, "} catch (EXC) {$n var prevJSError = lastJSError; lastJSError = EXC;$n", [])
   elif p.target == targetLua:
     addf(p.body, "end)$n", [])
   while i < length and n.sons[i].kind == nkExceptBranch:
     let blen = sonsLen(n.sons[i])
     if blen == 1:
       # general except section:
+      generalCatchBranchExists = true
       if i > 1: addf(p.body, "else {$n" | "else$n", [])
       gen(p, n.sons[i].sons[0], a)
       moveInto(p, a, r)
@@ -558,17 +561,22 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
         if n.sons[i].sons[j].kind != nkType:
           internalError(n.info, "genTryStmt")
         if orExpr != nil: add(orExpr, "||" | " or ")
-        addf(orExpr, "isObj($1.exc.m_type, $2)",
-             [safePoint, genTypeInfo(p, n.sons[i].sons[j].typ)])
+        addf(orExpr, "isObj(lastJSError.m_type, $1)",
+             [genTypeInfo(p, n.sons[i].sons[j].typ)])
       if i > 1: add(p.body, "else ")
-      addf(p.body, "if ($1.exc && ($2)) {$n" | "if $1.exc and ($2) then$n",
+      addf(p.body, "if (lastJSError && ($2)) {$n" | "if $1.exc and ($2) then$n",
         [safePoint, orExpr])
       gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
       addf(p.body, "}$n" | "end$n", [])
     inc(i)
   if p.target == targetJS:
-    add(p.body, "} finally {" & tnl & "excHandler = excHandler.prev;" & tnl)
+    if catchBranchesExist:
+      if not generalCatchBranchExists:
+        useMagic(p, "reraiseException")
+        add(p.body, "else { reraiseException(); }")
+      add(p.body, "lastJSError = prevJSError;" & tnl)
+    add(p.body, "} finally {" & tnl)
   if i < length and n.sons[i].kind == nkFinally:
     genStmt(p, n.sons[i].sons[0])
   if p.target == targetJS:
@@ -1067,6 +1075,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resExpr
 
 proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
+  useMagic(p, "toJSStr") # Used in rawEcho
   useMagic(p, "rawEcho")
   add(r.res, "rawEcho(")
   let n = n[1].skipConv
