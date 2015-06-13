@@ -169,7 +169,7 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
-		var len = `s`.length - 1;
+    var len = `s`.length - 1;
     var result = Array(len);
     for (var i = 0; i < len; ++i) {
       result[i] = `s`[i].toString(16);
