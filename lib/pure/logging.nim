@@ -19,7 +19,12 @@
 ## ============  =======================
 ## $date         Current date
 ## $time         Current time
+## $datetime     $dateT$time
 ## $app          ``os.getAppFilename()``
+## $appname      base name of $app
+## $appdir       directory name of $app
+## $levelid      first letter of log level
+## $levelname    log level name
 ## ============  =======================
 ##
 ##
@@ -59,8 +64,8 @@ const
     "DEBUG", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "NONE"
   ]
 
-  defaultFmtStr* = "" ## default string between log level and message per logger
-  verboseFmtStr* = "$date $time "
+  defaultFmtStr* = "$levelname " ## default format string
+  verboseFmtStr* = "$levelid, [$datetime] -- $appname: "
 
 type
   Logger* = ref object of RootObj ## abstract logger; the base type of all loggers
@@ -87,12 +92,11 @@ type
 {.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger,
     PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
 
-proc substituteLog(frmt: string): string =
-  ## converts $date to the current date
-  ## converts $time to the current time
-  ## converts $app to getAppFilename()
-  ## converts
-  result = newStringOfCap(frmt.len + 20)
+proc substituteLog(frmt: string, level: Level, args: varargs[string, `$`]): string =
+  var msgLen = 0
+  for arg in args:
+    msgLen += arg.len
+  result = newStringOfCap(frmt.len + msgLen + 20)
   var i = 0
   while i < frmt.len:
     if frmt[i] != '$':
@@ -108,10 +112,15 @@ proc substituteLog(frmt: string): string =
       case v
       of "date": result.add(getDateStr())
       of "time": result.add(getClockStr())
+      of "datetime": result.add(getDateStr() & "T" & getClockStr())
       of "app":  result.add(app)
       of "appdir": result.add(app.splitFile.dir)
       of "appname": result.add(app.splitFile.name)
+      of "levelid": result.add(LevelNames[level][0])
+      of "levelname": result.add(LevelNames[level])
       else: discard
+  for arg in args:
+    result.add(arg)
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception],
@@ -123,12 +132,12 @@ method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
 method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(stdout, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
+    writeln(stdout, substituteLog(logger.fmtStr, level, args))
 
 method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(logger.f, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
+    writeln(logger.f, substituteLog(logger.fmtStr, level, args))
 
 proc defaultFilename*(): string =
   ## Returns the default filename for a logger.
@@ -219,7 +228,7 @@ method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`])
       logger.curLine = 0
       logger.f = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
 
-    writeln(logger.f, LevelNames[level], " ", substituteLog(logger.fmtStr), args)
+    writeln(logger.f, substituteLog(logger.fmtStr, level, args))
     logger.curLine.inc
 
 # --------
