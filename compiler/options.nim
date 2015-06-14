@@ -146,6 +146,7 @@ const
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
   gDllOverrides = newStringTable(modeCaseInsensitive)
+  gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
   libpath* = ""
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
@@ -184,8 +185,13 @@ proc getOutFile*(filename, ext: string): string =
   else: result = changeFileExt(filename, ext)
 
 proc getPrefixDir*(): string =
-  ## gets the application directory
-  result = splitPath(getAppDir()).head
+  ## Gets the prefix dir, usually the parent directory where the binary resides.
+  ##
+  ## This is overrided by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## global.
+  if gPrefixDir != "": result = gPrefixDir
+  else:
+    result = splitPath(getAppDir()).head
 
 proc canonicalizePath*(path: string): string =
   when not FileSystemCaseSensitive: result = path.expandFilename.toLower
