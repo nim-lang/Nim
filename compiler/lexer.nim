@@ -262,10 +262,6 @@ template eatChar(L: var TLexer, t: var TToken) =
   add(t.literal, L.buf[L.bufpos])
   inc(L.bufpos)
 
-
-
-
-
 proc getNumber(L: var TLexer): TToken =
   proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) =
     var pos = L.bufpos              # use registers for pos, buf
@@ -483,7 +479,7 @@ proc getNumber(L: var TLexer): TToken =
       else: internalError(getLineInfo(L), "getNumber")
 
       # Bounds checks. Non decimal literals are allowed to overflow the range of
-      # the datatype as long as their pattern don't overflow _bitwise_, hence 
+      # the datatype as long as their pattern don't overflow _bitwise_, hence
       # below checks of signed sizes against uint*.high is deliberate:
       # (0x80'u8 = 128, 0x80'i8 = -128, etc == OK)
       if result.tokType notin floatTypes:
@@ -495,7 +491,7 @@ proc getNumber(L: var TLexer): TToken =
         else: false
 
         if outOfRange:
-          echo "out of range num: ", result.iNumber, " vs ", xi
+          #echo "out of range num: ", result.iNumber, " vs ", xi
           lexMessageLitNum(L, errNumberOutOfRange, startpos)
 
     else:
@@ -528,8 +524,8 @@ proc getNumber(L: var TLexer): TToken =
 
     # Promote int literal to int64? Not always necessary, but more consistent
     if result.tokType == tkIntLit:
-        if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
-          result.tokType = tkInt64Lit
+      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
+        result.tokType = tkInt64Lit
 
   except ValueError:
     lexMessageLitNum(L, errInvalidNumber, startpos)

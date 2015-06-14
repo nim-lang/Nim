@@ -504,6 +504,11 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
       "$# = #mulInt($#, $#);$n", "$# = #divInt($#, $#);$n",
       "$# = #modInt($#, $#);$n",
       "$# = #addInt($#, $#);$n", "$# = #subInt($#, $#);$n"]
+    prc64: array[mAddI..mPred, string] = [
+      "$# = #addInt64($#, $#);$n", "$# = #subInt64($#, $#);$n",
+      "$# = #mulInt64($#, $#);$n", "$# = #divInt64($#, $#);$n",
+      "$# = #modInt64($#, $#);$n",
+      "$# = #addInt64($#, $#);$n", "$# = #subInt64($#, $#);$n"]
     opr: array[mAddI..mPred, string] = [
       "($#)($# + $#)", "($#)($# - $#)", "($#)($# * $#)",
       "($#)($# / $#)", "($#)($# % $#)",
@@ -520,7 +525,8 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     let res = opr[m] % [getTypeDesc(p.module, t), rdLoc(a), rdLoc(b)]
     putIntoDest(p, d, e.typ, res)
   else:
-    let res = binaryArithOverflowRaw(p, t, a, b, prc[m])
+    let res = binaryArithOverflowRaw(p, t, a, b,
+                                   if t.kind == tyInt64: prc64[m] else: prc[m])
     putIntoDest(p, d, e.typ, "($#)($#)" % [getTypeDesc(p.module, t), res])
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =

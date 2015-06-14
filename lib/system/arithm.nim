@@ -18,7 +18,7 @@ proc raiseDivByZero {.compilerproc, noinline.} =
   sysFatal(DivByZeroError, "division by zero")
 
 when defined(builtinOverflow):
-# Builtin compiler functions for improved performance
+  # Builtin compiler functions for improved performance
   when sizeof(clong) == 8:
     proc addInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
       importc: "__builtin_saddl_overflow", nodecl, nosideeffect.}
