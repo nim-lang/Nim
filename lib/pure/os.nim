@@ -1304,7 +1304,9 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
           when defined(linux) or defined(macosx) or defined(bsd):
             if x.d_type != DT_UNKNOWN:
               if x.d_type == DT_DIR: k = pcDir
-              if x.d_type == DT_LNK: k = succ(k)
+              if x.d_type == DT_LNK:
+                if dirExists(y): k = pcLinkToDir
+                else: k = succ(k)
               yield (k, y)
               continue
 
