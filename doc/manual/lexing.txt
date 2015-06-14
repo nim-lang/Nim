@@ -101,25 +101,28 @@ Two identifiers are considered equal if the following algorithm returns true:
 
 .. code-block:: nim
   proc sameIdentifier(a, b: string): bool =
-    a[0] == b[0] and a.replace("_", "").toLower == b.replace("_", "").toLower
+    a[0] == b[0] and
+      a.replace(re"_|–", "").toLower == b.replace(re"_|–", "").toLower
 
 That means only the first letters are compared in a case sensitive manner. Other
-letters are compared case insensitively and underscores are ignored.
+letters are compared case insensitively and underscores and en-dash (Unicode
+point U+2013) are ignored.
 
-This rather strange way to do identifier comparisons is called
+This rather unorthodox way to do identifier comparisons is called
 `partial case insensitivity`:idx: and has some advantages over the conventional
 case sensitivity:
 
 It allows programmers to mostly use their own preferred
-spelling style and libraries written by different programmers cannot use
-incompatible conventions. A Nim-aware editor or IDE can show the identifiers as
-preferred. Another advantage is that it frees the programmer from remembering
+spelling style, be it humpStyle, snake_style or dash–style and libraries written
+by different programmers cannot use incompatible conventions.
+A Nim-aware editor or IDE can show the identifiers as preferred.
+Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
 
-Historically, Nim was a `style-insensitive`:idx: language. This means that it
-was not case-sensitive and underscores were ignored and there was no distinction
-between ``foo`` and ``Foo``.
+Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
+it was not case-sensitive and underscores were ignored and there was no even a
+distinction between ``foo`` and ``Foo``.
 
 
 String literals
@@ -345,6 +348,12 @@ notation:
 ``0B0_10001110100_0000101001000111101011101111111011000101001101001001'f64``
 is approximately 1.72826e35 according to the IEEE floating point standard.
 
+Literals are bounds checked so that they fit the datatype. Non base-10
+literals are used mainly for flags and bit pattern representations, therefore
+bounds checking is done on bit width, not value range. If the literal fits in
+the bit width of the datatype, it is accepted.
+Hence: 0b10000000'u8 == 0x80'u8 == 128, but, 0b10000000'i8 == 0x80'i8 == -1
+instead of causing an overflow error.
 
 Operators
 ---------
