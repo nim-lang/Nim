@@ -379,14 +379,15 @@ elif defined(gogc):
     dest[] = src
 
   type
-    TMemRegion = object {.final, pure.}
+    MemRegion = object {.final, pure.}
+  {.deprecated: [TMemRegion: MemRegion].}
 
-  proc alloc(r: var TMemRegion, size: int): pointer =
+  proc alloc(r: var MemRegion, size: int): pointer =
     result = alloc(size)
-  proc alloc0(r: var TMemRegion, size: int): pointer =
+  proc alloc0(r: var MemRegion, size: int): pointer =
     result = alloc0(size)
-  proc dealloc(r: var TMemRegion, p: pointer) = dealloc(p)
-  proc deallocOsPages(r: var TMemRegion) {.inline.} = discard
+  proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
+  proc deallocOsPages(r: var MemRegion) {.inline.} = discard
   proc deallocOsPages() {.inline.} = discard
 
 elif defined(nogc) and defined(useMalloc):
