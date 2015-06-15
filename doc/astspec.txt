@@ -739,6 +739,102 @@ AST:
     nnkTripleStrLit("some asm"),
   )
 
+Import section
+--------------
+
+Nim's ``import`` statement actually takes different variations depending
+on what keywords are present. Let's start with the simplest form.
+
+Concrete syntax:
+
+.. code-block:: nim
+  import math
+
+AST:
+
+.. code-block:: nim
+  nnkImportStmt(nnkIdent(!"math"))
+
+With ``except``, we get ``nnkImportExceptStmt``.
+
+Concrete syntax:
+
+.. code-block:: nim
+  import math except pow
+
+AST:
+
+.. code-block:: nim
+  nnkImportExceptStmt(nnkIdent(!"math"),nnkIdent(!"pow"))
+
+Note that ``import math as m`` does not use a different node; rather,
+we use ``nnkImportStmt`` with ``as`` as an infix operator.
+
+Concrete syntax:
+
+.. code-block:: nim
+  import strutils as su
+
+AST:
+
+.. code-block:: nim
+  nnkImportStmt(
+    nnkInfix(
+      nnkIdent(!"as"),
+      nnkIdent(!"strutils"),
+      nnkIdent(!"su")
+    )
+  )
+
+From statement
+--------------
+
+If we use ``from ... import``, the result is different, too.
+
+Concrete syntax:
+
+.. code-block:: nim
+  from math import pow
+
+AST:
+
+.. code-block:: nim
+  nnkFromStmt(nnkIdent(!"math"), nnkIdent(!"pow"))
+
+Using ``from math as m import pow`` works identically to the ``as`` modifier
+with the ``import`` statement, but wrapped in ``nnkFromStmt``.
+
+Export statement
+----------------
+
+When you are making an imported module accessible by modules that import yours,
+the ``export`` syntax is pretty straightforward.
+
+Concrete syntax:
+
+.. code-block:: nim
+  export unsigned
+
+AST:
+
+.. code-block:: nim
+  nnkExportStmt(nnkIdent(!"unsigned"))
+
+Include statement
+-----------------
+
+Like a plain ``import`` statement.
+
+Concrete syntax:
+
+.. code-block:: nim
+  include blocks
+
+AST:
+
+.. code-block:: nim
+  nnkIncludeStmt(nnkIdent(!"blocks"))
+
 Var section
 -----------
 
