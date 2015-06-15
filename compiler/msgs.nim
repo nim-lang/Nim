@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables, ropes, platform, terminal
+  options, strutils, os, tables, ropes, platform, terminal, macros
 
 type
   TMsgKind* = enum
@@ -367,54 +367,54 @@ const
                                 "of the generic paramers can be inferred from the expected signature.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1",
-    warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
-    warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]",
-    warnXIsNeverRead: "\'$1\' is never read [XIsNeverRead]",
-    warnXmightNotBeenInit: "\'$1\' might not have been initialized [XmightNotBeenInit]",
-    warnDeprecated: "$1 is deprecated [Deprecated]",
-    warnConfigDeprecated: "config file '$1' is deprecated [ConfigDeprecated]",
-    warnSmallLshouldNotBeUsed: "\'l\' should not be used as an identifier; may look like \'1\' (one) [SmallLshouldNotBeUsed]",
-    warnUnknownMagic: "unknown magic \'$1\' might crash the compiler [UnknownMagic]",
-    warnRedefinitionOfLabel: "redefinition of label \'$1\' [RedefinitionOfLabel]",
-    warnUnknownSubstitutionX: "unknown substitution \'$1\' [UnknownSubstitutionX]",
-    warnLanguageXNotSupported: "language \'$1\' not supported [LanguageXNotSupported]",
-    warnFieldXNotSupported: "field \'$1\' not supported [FieldXNotSupported]",
-    warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]",
-    warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead [NilStmt]",
-    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template' [TypelessParam]",
-    warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
-    warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
-    warnUnsafeCode: "unsafe code: '$1' [UnsafeCode]",
-    warnEachIdentIsTuple: "each identifier is a tuple [EachIdentIsTuple]",
-    warnShadowIdent: "shadowed identifier: '$1' [ShadowIdent]",
-    warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future. [ProveInit]",
-    warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
-    warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
-    warnGcUnsafe: "not GC-safe: '$1' [GcUnsafe]",
+    warnCannotOpenFile: "cannot open \'$1\'",
+    warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
+    warnXIsNeverRead: "\'$1\' is never read",
+    warnXmightNotBeenInit: "\'$1\' might not have been initialized",
+    warnDeprecated: "$1 is deprecated",
+    warnConfigDeprecated: "config file '$1' is deprecated",
+    warnSmallLshouldNotBeUsed: "\'l\' should not be used as an identifier; may look like \'1\' (one)",
+    warnUnknownMagic: "unknown magic \'$1\' might crash the compiler",
+    warnRedefinitionOfLabel: "redefinition of label \'$1\'",
+    warnUnknownSubstitutionX: "unknown substitution \'$1\'",
+    warnLanguageXNotSupported: "language \'$1\' not supported",
+    warnFieldXNotSupported: "field \'$1\' not supported",
+    warnCommentXIgnored: "comment \'$1\' ignored",
+    warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead",
+    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
+    warnDifferentHeaps: "possible inconsistency of thread local heaps",
+    warnWriteToForeignHeap: "write to foreign heap",
+    warnUnsafeCode: "unsafe code: '$1'",
+    warnEachIdentIsTuple: "each identifier is a tuple",
+    warnShadowIdent: "shadowed identifier: '$1'",
+    warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
+    warnProveField: "cannot prove that field '$1' is accessible",
+    warnProveIndex: "cannot prove index '$1' is valid",
+    warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
-    warnUninit: "'$1' might not have been initialized [Uninit]",
-    warnGcMem: "'$1' uses GC'ed memory [GcMem]",
-    warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future. [Destructor]",
-    warnLockLevel: "$1 [LockLevel]",
-    warnResultShadowed: "Special variable 'result' is shadowed. [ResultShadowed]",
-    warnUser: "$1 [User]",
-    hintSuccess: "operation successful [Success]",
-    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#) [SuccessX]",
-    hintLineTooLong: "line too long [LineTooLong]",
-    hintXDeclaredButNotUsed: "\'$1\' is declared but not used [XDeclaredButNotUsed]",
-    hintConvToBaseNotNeeded: "conversion to base object is not needed [ConvToBaseNotNeeded]",
-    hintConvFromXtoItselfNotNeeded: "conversion from $1 to itself is pointless [ConvFromXtoItselfNotNeeded]",
-    hintExprAlwaysX: "expression evaluates always to \'$1\' [ExprAlwaysX]",
-    hintQuitCalled: "quit() called [QuitCalled]",
-    hintProcessing: "$1 [Processing]",
-    hintCodeBegin: "generated code listing: [CodeBegin]",
-    hintCodeEnd: "end of listing [CodeEnd]",
-    hintConf: "used config file \'$1\' [Conf]",
-    hintPath: "added path: '$1' [Path]",
-    hintConditionAlwaysTrue: "condition is always true: '$1' [CondTrue]",
-    hintName: "name should be: '$1' [Name]",
-    hintPattern: "$1 [Pattern]",
-    hintUser: "$1 [User]"]
+    warnUninit: "'$1' might not have been initialized",
+    warnGcMem: "'$1' uses GC'ed memory",
+    warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
+    warnLockLevel: "$1",
+    warnResultShadowed: "Special variable 'result' is shadowed.",
+    warnUser: "$1",
+    hintSuccess: "operation successful",
+    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    hintLineTooLong: "line too long",
+    hintXDeclaredButNotUsed: "\'$1\' is declared but not used",
+    hintConvToBaseNotNeeded: "conversion to base object is not needed",
+    hintConvFromXtoItselfNotNeeded: "conversion from $1 to itself is pointless",
+    hintExprAlwaysX: "expression evaluates always to \'$1\'",
+    hintQuitCalled: "quit() called",
+    hintProcessing: "$1",
+    hintCodeBegin: "generated code listing:",
+    hintCodeEnd: "end of listing",
+    hintConf: "used config file \'$1\'",
+    hintPath: "added path: '$1'",
+    hintConditionAlwaysTrue: "condition is always true: '$1'",
+    hintName: "name should be: '$1'",
+    hintPattern: "$1",
+    hintUser: "$1"]
 
 const
   WarningsToStr*: array[0..30, string] = ["CannotOpenFile", "OctalEscape",
@@ -605,13 +605,17 @@ proc suggestQuit*() =
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
 const
-  PosErrorFormat* = "$1($2, $3) Error: "
-  PosWarningFormat* = "$1($2, $3) Warning: "
-  PosHintFormat* = "$1($2, $3) Hint: "
-  PosContextFormat = "$1($2, $3) Info: "
-  RawError* = "Error: "
-  RawWarning* = "Warning: "
-  RawHint* = "Hint: "
+  PosFormat    = "$1($2, $3) "
+  KindFormat   = " [$1]"
+  KindColor    = fgCyan
+  ErrorTitle   = "Error: "
+  ErrorColor   = fgRed
+  WarningTitle = "Warning: "
+  WarningColor = fgYellow
+  HintTitle    = "Hint: "
+  HintColor    = fgGreen
+  InfoTitle    = "Info: "
+  InfoColor    = fgCyan
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)
@@ -686,27 +690,58 @@ proc outWriteln*(s: string) =
   ## Writes to stdout. Always.
   if eStdOut in errorOutputs: writeln(stdout, s)
 
-proc msgWriteln*(s: string, color: ForegroundColor = fgWhite, coloredText: string = "") =
-  ## Writes to stdout. If --stderr option is given, writes to stderr instead.
+proc msgWriteln*(s: string) =
+  ## Writes to stdout. If --stdout option is given, writes to stderr instead.
 
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
-  var hasColor = optUseColors in gGlobalOptions
   if not isNil(writelnHook):
-    writelnHook(coloredText & s)
+    writelnHook(s)
+  elif optStdout in gGlobalOptions:
+    if eStdErr in errorOutputs: writeln(stderr, s)
   else:
-    if optStdout in gGlobalOptions:
-      if eStdErr in errorOutputs:
-        if hasColor: setForegroundColor(color)
-        write(stderr, coloredText)
-        if hasColor: resetAttributes()
-        writeln(stderr, s)
-    else:
-      if eStdOut in errorOutputs:
-        if hasColor: setForegroundColor(color)
-        write(stdout, coloredText)
-        if hasColor: resetAttributes()
-        writeln(stdout, s)
+    if eStdOut in errorOutputs: writeln(stdout, s)
+
+macro callIgnoringStyle(theProc: typed, first: typed,
+                        args: varargs[expr]): stmt =
+  let typForegroundColor = bindSym"ForegroundColor".getType
+  let typBackgroundColor = bindSym"BackgroundColor".getType
+  let typStyle = bindSym"Style".getType
+  let typTerminalCmd = bindSym"TerminalCmd".getType
+  result = newCall(theProc)
+  if first.kind != nnkNilLit: result.add(first)
+  for arg in children(args[0][1]):
+    if arg.kind == nnkNilLit: continue
+    let typ = arg.getType
+    if typ.kind != nnkEnumTy or
+       typ != typForegroundColor and
+       typ != typBackgroundColor and
+       typ != typStyle and
+       typ != typTerminalCmd:
+      result.add(arg)
+
+macro callStyledEcho(args: varargs[expr]): stmt =
+  result = newCall(bindSym"styledEcho")
+  for arg in children(args[0][1]):
+    result.add(arg)
+
+template callWritelnHook(args: varargs[string, `$`]) =
+  var s = ""
+  for arg in args:
+    s.add arg
+  writelnHook s
+
+template styledMsgWriteln*(args: varargs[expr]) =
+  if not isNil(writelnHook):
+    callIgnoringStyle(callWritelnHook, nil, args)
+  elif optStdout in gGlobalOptions:
+    if eStdErr in errorOutputs: callIgnoringStyle(writeln, stderr, args)
+  else:
+    if eStdOut in errorOutputs:
+      if optUseColors in gGlobalOptions:
+        callStyledEcho(args)
+      else:
+        callIgnoringStyle(writeln, stdout, args)
 
 proc coordToStr(coord: int): string =
   if coord == -1: result = "???"
@@ -728,7 +763,7 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
       if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
-        msgWriteln("", fgRed, "No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
+        styledMsgWriteln(fgRed, "No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:
@@ -750,10 +785,12 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastinfo
   for i in countup(0, len(msgContext) - 1):
     if msgContext[i] != lastinfo and msgContext[i] != info:
-      msgWriteln(PosContextFormat % [toMsgFilename(msgContext[i]),
-                                   coordToStr(msgContext[i].line),
-                                   coordToStr(msgContext[i].col+1),
-                                   getMessageStr(errInstantiationFrom, "")])
+      styledMsgWriteln(styleBright,
+                       PosFormat % [toMsgFilename(msgContext[i]),
+                                    coordToStr(msgContext[i].line),
+                                    coordToStr(msgContext[i].col+1)],
+                       styleDim,
+                       getMessageStr(errInstantiationFrom, ""))
     info = msgContext[i]
 
 proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
@@ -761,29 +798,36 @@ proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
 
 proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
   var
-    frmt: string
+    title: string
     color: ForegroundColor
+    kind:  string
   case msg
   of errMin..errMax:
     writeContext(unknownLineInfo())
-    frmt = RawError
-    color = fgRed
+    title = ErrorTitle
+    color = ErrorColor
   of warnMin..warnMax:
     if optWarns notin gOptions: return
     if msg notin gNotes: return
     writeContext(unknownLineInfo())
-    frmt = RawWarning
+    title = WarningTitle
+    color = WarningColor
+    kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
-    color = fgYellow
   of hintMin..hintMax:
     if optHints notin gOptions: return
     if msg notin gNotes: return
-    frmt = RawHint
+    title = HintTitle
+    color = HintColor
+    kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
-    color = fgGreen
   let s = `%`(msgKindToString(msg), args)
   if not ignoreMsgBecauseOfIdeTools(msg):
-    msgWriteln(s, color, frmt)
+    if kind != nil:
+      styledMsgWriteln(color, title, resetStyle, s,
+                       KindColor, `%`(KindFormat, kind))
+    else:
+      styledMsgWriteln(color, title, resetStyle, s)
   handleError(msg, doAbort, s)
 
 proc rawMessage*(msg: TMsgKind, arg: string) =
@@ -795,47 +839,56 @@ proc writeSurroundingSrc(info: TLineInfo) =
   msgWriteln(indent & spaces(info.col) & '^')
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
-  let frmt = case msg
-             of warnMin..warnMax: PosWarningFormat
-             of hintMin..hintMax: PosHintFormat
-             else: PosErrorFormat
-  result = frmt % [toMsgFilename(info), coordToStr(info.line),
-                   coordToStr(info.col+1), getMessageStr(msg, arg)]
+  let title = case msg
+              of warnMin..warnMax: WarningTitle
+              of hintMin..hintMax: HintTitle
+              else: ErrorTitle
+  result = PosFormat % [toMsgFilename(info), coordToStr(info.line),
+                        coordToStr(info.col+1)] &
+           title &
+           getMessageStr(msg, arg)
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
   var
-    frmt: string
-    ignoreMsg = false
+    title: string
     color: ForegroundColor
+    kind:  string
+    ignoreMsg = false
   case msg
   of errMin..errMax:
     writeContext(info)
-    frmt = PosErrorFormat
+    title = ErrorTitle
+    color = ErrorColor
     # we try to filter error messages so that not two error message
     # in the same file and line are produced:
     #ignoreMsg = lastError == info and eh != doAbort
     lastError = info
-    color = fgRed
   of warnMin..warnMax:
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
     if not ignoreMsg: writeContext(info)
-    frmt = PosWarningFormat
+    title = WarningTitle
+    color = WarningColor
+    kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
-    color = fgYellow
   of hintMin..hintMax:
     ignoreMsg = optHints notin gOptions or msg notin gNotes
-    frmt = PosHintFormat
+    title = HintTitle
+    color = HintColor
+    kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
-    color = fgGreen
   # NOTE: currently line info line numbers start with 1,
   # but column numbers start with 0, however most editors expect
   # first column to be 1, so we need to +1 here
-  let x = frmt % [toMsgFilename(info), coordToStr(info.line),
-                  coordToStr(info.col+1)]
+  let x = PosFormat % [toMsgFilename(info), coordToStr(info.line),
+                       coordToStr(info.col+1)]
   let s = getMessageStr(msg, arg)
   if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
-    msgWriteln(s, color, x)
+    if kind != nil:
+      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
+                       KindColor, `%`(KindFormat, kind))
+    else:
+      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
     if optPrintSurroundingSrc and msg in errMin..errMax:
       info.writeSurroundingSrc
   handleError(msg, eh, s)
@@ -907,3 +960,6 @@ ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   of rCannotOpenFile:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
 
+# enable colors by default on terminals
+if terminal.isatty(stdout):
+  incl(gGlobalOptions, optUseColors)
