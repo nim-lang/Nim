@@ -341,11 +341,17 @@ elif defined(gogc):
   proc goRuntimeMallocGC(size: uint, typ: uint, flag: uint32): pointer {.importc: "runtime_mallocgc", dynlib: goLib.}
   proc goFree(v: pointer) {.importc: "__go_free", dynlib: goLib.}
 
+  proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
+
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = goRuntimeMallocGC(roundup(size, sizeof(pointer)).uint, 0.uint, 0.uint32)
+    if typ.finalizer != nil:
+      goSetFinalizer(result, typ.finalizer)
 
   proc newObjNoInit(typ: PNimType, size: int): pointer =
     result = goRuntimeMallocGC(roundup(size, sizeof(pointer)).uint, 0.uint, goFlagNoZero)
+    if typ.finalizer != nil:
+      goSetFinalizer(result, typ.finalizer)
 
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, len * typ.base.size + GenericSeqSize)
