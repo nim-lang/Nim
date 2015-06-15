@@ -149,7 +149,6 @@ when defined(boehmgc):
     proc GC_enableMarkAndSweep() = discard
     proc GC_disableMarkAndSweep() = discard
     proc GC_getStatistics(): string = return ""
-    proc setupForeignThreadGc*() = discard
 
     proc getOccupiedMem(): int = return boehmGetHeapSize()-boehmGetFreeBytes()
     proc getFreeMem(): int = return boehmGetFreeBytes()
@@ -287,7 +286,6 @@ elif defined(gogc):
              "[GC] enablegc: " & $(mstats.enablegc) & "\n" &
              "[GC] debuggc: " & $(mstats.debuggc) & "\n" &
              "[GC] total pause time [ms]: " & $(mstats.pause_total_ns div 1000_000)
-  proc setupForeignThreadGc*() = discard
 
   proc getOccupiedMem(): int =
     var mstats: goMStats
@@ -423,7 +421,6 @@ elif defined(nogc) and defined(useMalloc):
     proc GC_enableMarkAndSweep() = discard
     proc GC_disableMarkAndSweep() = discard
     proc GC_getStatistics(): string = return ""
-    proc setupForeignThreadGc*() = discard
 
     proc getOccupiedMem(): int = discard
     proc getFreeMem(): int = discard
@@ -487,8 +484,6 @@ elif defined(nogc):
   proc GC_enableMarkAndSweep() = discard
   proc GC_disableMarkAndSweep() = discard
   proc GC_getStatistics(): string = return ""
-  proc setupForeignThreadGc*() = discard
-
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc0(size)
