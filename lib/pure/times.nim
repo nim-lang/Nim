@@ -1071,9 +1071,6 @@ when isMainModule:
   var t5 = getGMTime(fromSeconds(1434377488)) # Mon, 15 Jun 2015 14:11:28 GMT
   assert t5.format("yyyy-MM-ddTHH:mm:ss") == "2015-06-15T14:11:28"
 
-
-
-
   # Interval tests
   assert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
   assert((t4 - initInterval(years = 7, minutes = 34, seconds = 24)).format("yyyy mm ss") == "1990 24 10")
