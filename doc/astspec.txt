@@ -53,7 +53,7 @@ A leaf of the AST often corresponds to a terminal symbol in the concrete
 syntax.
 
 -----------------                ---------------------------------------------
-Nim expression                   corresponding AST
+Nim expression                   Corresponding AST
 -----------------                ---------------------------------------------
 ``42``                           ``nnkIntLit(intVal = 42)``
 ``42'i8``                        ``nnkInt8Lit(intVal = 42)``
@@ -909,6 +909,26 @@ AST:
     )
   )
 
+Declaring ``distinct`` types is similar, with the last ``nnkIdent`` wrapped
+in ``nnkDistinctTy``.
+
+Concrete syntax:
+
+.. code-block:: nim
+  type MyInt = distinct int
+
+AST:
+
+.. code-block:: nim
+  # ...
+  nnkTypeDef(
+    nnkIdent(!"MyInt"),
+    nnkEmpty(),
+    nnkDistinctTy(
+      nnkIdent(!"int")
+    )
+  )
+
 If a type section uses generic parameters, they are treated here:
 
 Concrete syntax:
@@ -959,7 +979,24 @@ AST:
     )
   )
 
-The usage of ``concept`` (experimental) is similar.
+Using an ``enum`` is similar to using an ``object``.
+
+Concrete syntax:
+
+.. code-block:: nim
+  type X = enum
+    First
+
+AST:
+
+.. code-block:: nim
+  # ...
+  nnkEnumTy(
+    nnkEmpty(),
+    nnkIdent(!"First") # you need at least one nnkIdent or the compiler complains
+  )
+
+The usage of ``concept`` (experimental) is similar to objects.
 
 Concrete syntax:
 
@@ -998,6 +1035,53 @@ AST:
     nnkEmpty()
   )
   # ...
+
+In general, declaring types mirrors this syntax (i.e., ``nnkStaticTy`` for
+``static``, etc.). Examples follow (exceptions marked by ``*``:
+
+-------------                ---------------------------------------------
+Nim type                     Corresponding AST
+-------------                ---------------------------------------------
+``static``                   ``nnkStaticTy``
+``tuple``                    ``nnkTupleTy``
+``var``                      ``nnkVarTy``
+``ptr``                      ``nnkPtrTy``
+``ref``                      ``nnkRefTy``
+``distinct``                 ``nnkDistinctTy``
+``enum``                     ``nnkEnumTy``
+``concept``                  ``nnkTypeClassTy``\*
+``array``                    ``nnkBracketExpr(nnkIdent(!"array"),...``\*
+``proc``                     ``nnkProcTy``
+``iterator``                 ``nnkIteratorTy``
+``object``                   ``nnkObjectTy``
+
+Take special care when declaring types as ``proc``s. The behavior is similar
+to ``Procedure declaration``, below, but does not treat ``nnkGenericParams``.
+Generic parameters are treated in the type, not the ``proc`` itself.
+
+Concrete syntax:
+
+.. code-block:: nim
+  type MyProc[T] = proc(x: T)
+
+AST:
+
+.. code-block:: nim
+  # ...
+  nnkTypeDef(
+    nnkIdent(!"MyProc"),
+    nnkGenericParams( # here, not with the proc
+      # ...
+    )
+    nnkProcTy( # behaves like a procedure declaration from here on
+      nnkFormalParams(
+        # ...
+      )
+    )
+  )
+
+The same syntax applies to ``iterator``s (with ``nnkIteratorTy``), but
+*does not* apply to ``converter``s or ``template``s. 
 
 Mixin statement
 ---------------
@@ -1127,6 +1211,23 @@ AST:
     ...
   )
 
+Converter declaration
+---------------------
+
+A converter is similar to a proc.
+
+Concrete syntax:
+
+.. code-block:: nim
+  converter toBool(x: float): bool
+
+AST:
+
+.. code-block:: nim
+  nnkConverterDef(
+    nnkIdent(!"toBool"),
+    # ...
+  )
 
 Template declaration
 --------------------
