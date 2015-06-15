@@ -33,28 +33,19 @@ If you change the stdlib (anything under `lib/`), put a test in the
 file you changed. Add the tests under an `when isMainModule:`
 condition so they only get executed when the tester is building the
 file. Each test should be in a separate `block:` statement, such that
-each has its own scope. Use boolean conditions and `assert` for the
+each has its own scope. Use boolean conditions and `doAssert` for the
 testing by itself, don't rely on echo statements or similar.
 
 Sample test:
 
 ```nim
 when isMainModule:
-  block lenTest:
-    var values: HashSet[int]
-    assert(not values.isValid)
-    assert values.len == 0
-    assert values.card == 0
-  block setIterator:
-    type pair = tuple[a, b: int]
-    var a, b = initSet[pair]()
-    a.incl((2, 3))
-    a.incl((3, 2))
-    a.incl((2, 3))
-    for x, y in a.items:
-      b.incl((x - 2, y + 1))
-    assert a.len == b.card
-    assert a.len == 2
+  block: # newSeqWith tests
+    var seq2D = newSeqWith(4, newSeq[bool](2))
+    seq2D[0][0] = true
+    seq2D[1][0] = true
+    seq2D[0][1] = true
+    doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 ```
 
 ## Compiler
