@@ -133,7 +133,7 @@ AST:
   )
 
 Note that with multiple infix operators, the command is parsed by operator 
-precedence, with the end result mirroring Reverse Polish Notation.
+precedence.
 
 Concrete syntax:
 
@@ -408,8 +408,8 @@ Documentation Comments
 ----------------------
 
 Double-hash (``##``) comments in the code actually have their own format, 
-but *it doesn't matter what is there*. The AST will only show that a comment 
-exists, not what it contains. Single-hash (``#``) comments are ignored.
+but the comments do not yet show up in the AST, which will only show that 
+a comment exists, not what it contains. Single-hash (``#``) comments are ignored.
 
 Concrete syntax:
 
@@ -785,7 +785,7 @@ AST:
   nnkTypeSection(
     nnkTypeDef(
       nnkIdent(!"A"),
-      nnkEmpty(), # for pragmas
+      nnkEmpty(),
       nnkIdent(!"int")
     )
   )
