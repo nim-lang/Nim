@@ -231,6 +231,25 @@ AST:
     nnkStrLit("hallo")
   )
 
+Call with raw string literal
+----------------------------
+
+This is used, for example, in the ``bindSym`` examples
+[here](http://nim-lang.org/docs/manual.html#macros-bindsym) and with
+``re"some regexp"`` in the regular expression module.
+
+Concrete syntax:
+
+.. code-block:: nim
+  echo"abc"
+
+AST:
+
+.. code-block:: nim
+  nnkCallStrLit(
+    nnkIdent(!"echo"),
+    nnkRStrLit("hello")
+  )
 
 Dereference operator ``[]``
 ---------------------------
