@@ -815,6 +815,50 @@ AST:
     )
   )
 
+Note that not all ``nnkTypeDef`` utilize ``nnkIdent`` as their
+their parameter. One of the most common uses of type declarations
+is to work with objects.
+
+Concrete syntax:
+
+.. code-block:: nim
+  type IO = object of RootObj
+
+AST:
+
+.. code-block:: nim
+  # ...
+  nnkTypeDef(
+    nnkIdent(!"IO"),
+    nnkEmpty(),
+    nnkObjectTy(
+      nnkEmpty(), # no pragmas here
+      nnkOfInherit(
+        nnkIdent(!"RootObj") # inherits from RootObj
+      )
+      nnkEmpty()
+    )
+  )
+
+The usage of ``concept`` (experimental) is similar.
+
+Concrete syntax:
+
+.. code-block:: nim
+  type Con = concept x,y,z
+    (x & y & z) is string
+
+AST:
+
+.. code-block:: nim
+  # ...
+  nnkTypeClassTy( # note this isn't nnkConceptTy!
+    nnkArglist(
+      # ... idents for x, y, z
+    )
+    # ...
+  )
+
 
 Procedure declaration
 ---------------------
