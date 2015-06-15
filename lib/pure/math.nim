@@ -202,9 +202,11 @@ when not defined(JS):
     ## computes x to power raised of y.
     
   # C procs:
-  when defined(windows):
+  when defined(vcc):
     # The "secure" random, available from Windows XP
     # https://msdn.microsoft.com/en-us/library/sxtz2fa8.aspx
+    # Present in some variants of MinGW but not enough to justify
+    # `when defined(windows)` yet
     proc rand_s(val: var cuint) {.importc: "rand_s", header: "<stdlib.h>".}
     # To behave like the normal version
     proc rand(): cuint = rand_s(result)
@@ -217,23 +219,34 @@ when not defined(JS):
     proc drand48(): float {.importc: "drand48", header: "<stdlib.h>".}
     proc random(max: float): float =
       result = drand48() * max
+  else:
+    when defined(vcc): # Windows with Visual C
+      proc random(max: float): float =
+        # we are hardcoding this because
+        # importc-ing macros is extremely problematic
+        # and because the value is publicly documented
+        # on MSDN and very unlikely to change
+        # See https://msdn.microsoft.com/en-us/library/296az74e.aspx
+        const rand_max = 4294967295 # UINT_MAX
+        result = (float(rand()) / float(rand_max)) * max
+      proc randomize() = discard
+      proc randomize(seed: int) = discard
+    else: # Windows with another compiler
+      proc random(max: float): float =
+        # we are hardcoding this because
+        # importc-ing macros is extremely problematic
+        # and because the value is publicly documented
+        # on MSDN and very unlikely to change
+        const rand_max = 32767
+        result = (float(rand()) / float(rand_max)) * max
+  
+  when not defined(vcc): # the above code for vcc uses `discard` instead
+    # this is either not Windows or is Windows without vcc
     proc randomize() =
       randomize(cast[int](epochTime()))
-
     proc randomize(seed: int) =
       srand(cint(seed)) # rand_s doesn't use srand
-      srand48(seed)
-  when defined(windows):
-    proc random(max: float): float =
-      # we are hardcodeing this because
-      # importcing macros is extremely problematic
-      # and because the value is publicly documented
-      # on MSDN and very unlikely to change
-      # See https://msdn.microsoft.com/en-us/library/296az74e.aspx
-      const rand_max = 4294967295
-      result = (float(rand()) / float(rand_max)) * max
-    proc randomize() = discard
-    proc randomize(seed: int) = discard
+      when declared(srand48): srand48(seed)
     
   proc random(max: int): int =
     result = int(rand()) mod max
