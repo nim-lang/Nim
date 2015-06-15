@@ -762,6 +762,10 @@ Note that either the second or third (or both) parameters above must exist,
 as the compiler needs to know the type somehow (which it can infer from
 the given assignment).
 
+This is not the same AST for all uses of ``var``. See 
+[Procedure declaration](http://nim-lang.org/docs/macros.html#statements-procedure-declaration) 
+for details.
+
 Let section
 -----------
 
@@ -899,6 +903,32 @@ AST:
   )
   # ...
 
+Mixin statement
+---------------
+
+Concrete syntax:
+
+.. code-block:: nim
+  mixin x
+
+AST:
+
+.. code-block:: nim
+  nnkMixinStmt(nnkIdent(!"x"))
+
+Bind statement
+--------------
+
+Concrete syntax:
+
+.. code-block:: nim
+  bind x
+
+AST:
+
+.. code-block:: nim
+  nnkBindStmt(nnkIdent(!"x"))
+
 Procedure declaration
 ---------------------
 
@@ -962,6 +992,24 @@ AST:
     )
   ),
   # ...
+
+When a procedure uses the special ``var`` type return variable, the result 
+is different from that of a var section.
+
+Concrete syntax:
+
+.. code-block:: nim
+  proc hello(): var int
+
+AST:
+
+.. code-block:: nim
+  # ...
+  nnkFormalParams(
+    nnkVarTy(
+      nnkIdent(!"int")
+    )
+  )
 
 Iterator declaration
 --------------------
