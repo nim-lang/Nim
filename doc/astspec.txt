@@ -878,6 +878,26 @@ AST:
     # ...
   )
 
+Static types, like ``static[int]``, use ``nnkIdent`` wrapped in 
+``nnkStaticTy``.
+
+Concrete syntax:
+
+.. code-block:: nim
+  type A[T: static[int]] = object
+
+AST:
+
+.. code-block:: nim
+  # ... within nnkGenericParams
+  nnkIdentDefs(
+    nnkIdent(!"T"),
+    nnkStaticTy(
+      nnkIdent(!"int")
+    ),
+    nnkEmpty()
+  )
+  # ...
 
 Procedure declaration
 ---------------------
