@@ -970,7 +970,7 @@ AST:
     # follows like a proc or iterator
   )
 
-If the template does not have types for its parameters, the type Identifiers
+If the template does not have types for its parameters, the type identifiers
 inside ``nnkFormalParams`` just becomes ``nnkEmpty``.
 
 Macro declaration
