@@ -114,19 +114,21 @@ proc unhandledException(e: ref Exception) {.
 proc raiseException(e: ref Exception, ename: cstring) {.
     compilerproc, asmNoStackFrame.} =
   e.name = ename
-  if excHandler == 0:
-    unhandledException(e)
+  when not defined(noUnhandledHandler):
+    if excHandler == 0:
+      unhandledException(e)
   asm "throw `e`;"
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if lastJSError == nil:
     raise newException(ReraiseError, "no exception to reraise")
   else:
-    if excHandler == 0:
-      var isNimException : bool
-      asm "`isNimException` = lastJSError.m_type;"
-      if isNimException:
-        unhandledException(cast[ref Exception](lastJSError))
+    when not defined(noUnhandledHandler):
+      if excHandler == 0:
+        var isNimException : bool
+        asm "`isNimException` = lastJSError.m_type;"
+        if isNimException:
+          unhandledException(cast[ref Exception](lastJSError))
     asm "throw lastJSError;"
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
