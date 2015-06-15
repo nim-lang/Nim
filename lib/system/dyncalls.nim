@@ -15,7 +15,7 @@
 {.push stack_trace: off.}
 
 const
-  NilLibHandle: TLibHandle = nil
+  NilLibHandle: LibHandle = nil
 
 proc rawWrite(f: File, s: string) = 
   # we cannot throw an exception here!
@@ -55,22 +55,22 @@ when defined(posix):
   var
     RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
 
-  proc dlclose(lib: TLibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: cstring, mode: int): TLibHandle {.
+  proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
+  proc dlopen(path: cstring, mode: int): LibHandle {.
       importc, header: "<dlfcn.h>".}
-  proc dlsym(lib: TLibHandle, name: cstring): TProcAddr {.
+  proc dlsym(lib: LibHandle, name: cstring): ProcAddr {.
       importc, header: "<dlfcn.h>".}
 
   proc dlerror(): cstring {.importc, header: "<dlfcn.h>".}
 
-  proc nimUnloadLibrary(lib: TLibHandle) =
+  proc nimUnloadLibrary(lib: LibHandle) =
     dlclose(lib)
 
-  proc nimLoadLibrary(path: string): TLibHandle =
+  proc nimLoadLibrary(path: string): LibHandle =
     result = dlopen(path, RTLD_NOW)
     #c_fprintf(c_stdout, "%s\n", dlerror())
 
-  proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
     if result == nil: procAddrError(name)
 
@@ -84,12 +84,12 @@ elif defined(windows) or defined(dos):
     type
       THINSTANCE {.importc: "HINSTANCE".} = object
         x: pointer
-    proc getProcAddress(lib: THINSTANCE, name: cstring): TProcAddr {.
+    proc getProcAddress(lib: THINSTANCE, name: cstring): ProcAddr {.
         importcpp: "(void*)GetProcAddress(@)", header: "<windows.h>", stdcall.}
   else:
     type
       THINSTANCE {.importc: "HINSTANCE".} = pointer
-    proc getProcAddress(lib: THINSTANCE, name: cstring): TProcAddr {.
+    proc getProcAddress(lib: THINSTANCE, name: cstring): ProcAddr {.
         importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
   proc freeLibrary(lib: THINSTANCE) {.
@@ -97,13 +97,13 @@ elif defined(windows) or defined(dos):
   proc winLoadLibrary(path: cstring): THINSTANCE {.
       importc: "LoadLibraryA", header: "<windows.h>", stdcall.}
 
-  proc nimUnloadLibrary(lib: TLibHandle) =
+  proc nimUnloadLibrary(lib: LibHandle) =
     freeLibrary(cast[THINSTANCE](lib))
 
-  proc nimLoadLibrary(path: string): TLibHandle =
-    result = cast[TLibHandle](winLoadLibrary(path))
+  proc nimLoadLibrary(path: string): LibHandle =
+    result = cast[LibHandle](winLoadLibrary(path))
 
-  proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result == nil: procAddrError(name)
 
@@ -115,13 +115,13 @@ elif defined(mac):
   #
   {.error: "no implementation for dyncalls yet".}
 
-  proc nimUnloadLibrary(lib: TLibHandle) =
+  proc nimUnloadLibrary(lib: LibHandle) =
     NSUnLinkModule(NSModule(lib), NSUNLINKMODULE_OPTION_RESET_LAZY_REFERENCES)
 
   var
     dyld_present {.importc: "_dyld_present", header: "<dyld.h>".}: int
 
-  proc nimLoadLibrary(path: string): TLibHandle =
+  proc nimLoadLibrary(path: string): LibHandle =
     var
       img: NSObjectFileImage
       ret: NSObjectFileImageReturnCode
@@ -134,13 +134,13 @@ elif defined(mac):
         modul = NSLinkModule(img, path, NSLINKMODULE_OPTION_PRIVATE or
                                         NSLINKMODULE_OPTION_RETURN_ON_ERROR)
         NSDestroyObjectFileImage(img)
-        result = TLibHandle(modul)
+        result = LibHandle(modul)
 
-  proc nimGetProcAddr(lib: TLibHandle, name: cstring): TProcAddr =
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     var
       nss: NSSymbol
     nss = NSLookupSymbolInModule(NSModule(lib), name)
-    result = TProcAddr(NSAddressOfSymbol(nss))
+    result = ProcAddr(NSAddressOfSymbol(nss))
     if result == nil: ProcAddrError(name)
 
 else:

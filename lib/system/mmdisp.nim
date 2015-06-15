@@ -34,9 +34,10 @@ const
 
 type
   PPointer = ptr pointer
-  TByteArray = array[0..1000_0000, byte]
-  PByte = ptr TByteArray
+  ByteArray = array[0..1000_0000, byte]
+  PByte = ptr ByteArray
   PString = ptr string
+{.deprecated: [TByteArray: ByteArray].}
 
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
@@ -181,16 +182,17 @@ when defined(boehmgc):
     dest[] = src
 
   type
-    TMemRegion = object {.final, pure.}
+    MemRegion = object {.final, pure.}
+  {.deprecated: [TMemRegion: MemRegion].}
 
-  proc alloc(r: var TMemRegion, size: int): pointer =
+  proc alloc(r: var MemRegion, size: int): pointer =
     result = boehmAlloc(size)
     if result == nil: raiseOutOfMem()
-  proc alloc0(r: var TMemRegion, size: int): pointer =
+  proc alloc0(r: var MemRegion, size: int): pointer =
     result = alloc(size)
     zeroMem(result, size)
-  proc dealloc(r: var TMemRegion, p: pointer) = boehmDealloc(p)
-  proc deallocOsPages(r: var TMemRegion) {.inline.} = discard
+  proc dealloc(r: var MemRegion, p: pointer) = boehmDealloc(p)
+  proc deallocOsPages(r: var MemRegion) {.inline.} = discard
   proc deallocOsPages() {.inline.} = discard
 
   include "system/cellsets"
@@ -454,14 +456,15 @@ elif defined(nogc) and defined(useMalloc):
     dest[] = src
 
   type
-    TMemRegion = object {.final, pure.}
+    MemRegion = object {.final, pure.}
+  {.deprecated: [TMemRegion: MemRegion].}
 
-  proc alloc(r: var TMemRegion, size: int): pointer =
+  proc alloc(r: var MemRegion, size: int): pointer =
     result = alloc(size)
-  proc alloc0(r: var TMemRegion, size: int): pointer =
+  proc alloc0(r: var MemRegion, size: int): pointer =
     result = alloc0(size)
-  proc dealloc(r: var TMemRegion, p: pointer) = dealloc(p)
-  proc deallocOsPages(r: var TMemRegion) {.inline.} = discard
+  proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
+  proc deallocOsPages(r: var MemRegion) {.inline.} = discard
   proc deallocOsPages() {.inline.} = discard
 
 elif defined(nogc):
@@ -511,7 +514,7 @@ elif defined(nogc):
   proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
 
-  var allocator {.rtlThreadVar.}: TMemRegion
+  var allocator {.rtlThreadVar.}: MemRegion
   instantiateForRegion(allocator)
 
   include "system/cellsets"
@@ -521,7 +524,7 @@ else:
 
   include "system/cellsets"
   when not leakDetector:
-    sysAssert(sizeof(TCell) == sizeof(TFreeCell), "sizeof TFreeCell")
+    sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
   elif defined(gcMarkAndSweep):

@@ -3,7 +3,7 @@ News
 ====
 
 ..
-  2015-05-05 Version 0.11.2 released
+  2015-05-05 Version 0.11.4 released
   ==================================
 
   Changes affecting backwards compatibility
@@ -13,6 +13,21 @@ News
     Code accessing that property is deprecated and code using ``miliseconds``
     during object initialization or as a named parameter of ``initInterval()``
     will need to be updated.
+  - ``std.logging`` functions no longer do formatting and semantically treat
+    their arguments just like ``echo`` does. Affected functions: ``log``,
+    ``debug``, ``info``, ``warn``, ``error``, ``fatal``. Custom subtypes of
+    ``Logger`` also need to be adjusted accordingly.
+  - Floating point numbers can now look like ``2d`` (float64)
+    and ``2f`` (float32) which means imports like ``import scene/2d/sprite``
+    do not work anymore. Instead quotes have to be
+    used: ``import "scene/2d/sprite"``. The former code never was valid Nim.
+
+
+  Library additions
+  -----------------
+
+  - The nre module has been added, providing a better interface to PCRE than
+    re.
 
   Language Additions
   ------------------

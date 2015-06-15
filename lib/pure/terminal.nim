@@ -17,28 +17,87 @@
 import macros
 
 when defined(windows):
-  import windows, os
+  import winlean, os
+
+  const
+    DUPLICATE_SAME_ACCESS = 2
+    FOREGROUND_BLUE = 1
+    FOREGROUND_GREEN = 2
+    FOREGROUND_RED = 4
+    FOREGROUND_INTENSITY = 8
+    BACKGROUND_BLUE = 16
+    BACKGROUND_GREEN = 32
+    BACKGROUND_RED = 64
+    BACKGROUND_INTENSITY = 128
+
+  type
+    SHORT = int16
+    COORD = object
+      X: SHORT
+      Y: SHORT
+
+    SMALL_RECT = object
+      Left: SHORT
+      Top: SHORT
+      Right: SHORT
+      Bottom: SHORT
+
+    CONSOLE_SCREEN_BUFFER_INFO = object
+      dwSize: COORD
+      dwCursorPosition: COORD
+      wAttributes: int16
+      srWindow: SMALL_RECT
+      dwMaximumWindowSize: COORD
+
+  proc duplicateHandle(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
+                       hTargetProcessHandle: HANDLE, lpTargetHandle: ptr HANDLE,
+                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
+                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
+      importc: "DuplicateHandle".}
+  proc getCurrentProcess(): HANDLE{.stdcall, dynlib: "kernel32",
+                                     importc: "GetCurrentProcess".}
+  proc getConsoleScreenBufferInfo(hConsoleOutput: HANDLE,
+    lpConsoleScreenBufferInfo: ptr CONSOLE_SCREEN_BUFFER_INFO): WINBOOL{.stdcall,
+    dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
+
+  proc setConsoleCursorPosition(hConsoleOutput: HANDLE,
+                                dwCursorPosition: COORD): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "SetConsoleCursorPosition".}
+
+  proc fillConsoleOutputCharacter(hConsoleOutput: Handle, cCharacter: char,
+                                  nLength: DWORD, dwWriteCoord: Coord,
+                                  lpNumberOfCharsWritten: ptr DWORD): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "FillConsoleOutputCharacterA".}
+
+  proc fillConsoleOutputAttribute(hConsoleOutput: HANDLE, wAttribute: int16,
+                                  nLength: DWORD, dwWriteCoord: COORD,
+                                  lpNumberOfAttrsWritten: ptr DWORD): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "FillConsoleOutputAttribute".}
+
+  proc setConsoleTextAttribute(hConsoleOutput: HANDLE,
+                               wAttributes: int16): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
 
   var
-    conHandle: THandle
+    conHandle: Handle
   # = createFile("CONOUT$", GENERIC_WRITE, 0, nil, OPEN_ALWAYS, 0, 0)
 
   block:
-    var hTemp = GetStdHandle(STD_OUTPUT_HANDLE)
-    if DuplicateHandle(GetCurrentProcess(), hTemp, GetCurrentProcess(),
+    var hTemp = getStdHandle(STD_OUTPUT_HANDLE)
+    if duplicateHandle(getCurrentProcess(), hTemp, getCurrentProcess(),
                        addr(conHandle), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
       raiseOSError(osLastError())
 
   proc getCursorPos(): tuple [x,y: int] =
-    var c: TCONSOLESCREENBUFFERINFO
-    if GetConsoleScreenBufferInfo(conHandle, addr(c)) == 0:
+    var c: CONSOLESCREENBUFFERINFO
+    if getConsoleScreenBufferInfo(conHandle, addr(c)) == 0:
       raiseOSError(osLastError())
     return (int(c.dwCursorPosition.X), int(c.dwCursorPosition.Y))
 
   proc getAttributes(): int16 =
-    var c: TCONSOLESCREENBUFFERINFO
+    var c: CONSOLESCREENBUFFERINFO
     # workaround Windows bugs: try several times
-    if GetConsoleScreenBufferInfo(conHandle, addr(c)) != 0:
+    if getConsoleScreenBufferInfo(conHandle, addr(c)) != 0:
       return c.wAttributes
     return 0x70'i16 # ERROR: return white background, black text
 
@@ -51,11 +110,11 @@ else:
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
     discard fd.tcgetattr(addr mode)
-    mode.c_iflag = mode.c_iflag and not Tcflag(BRKINT or ICRNL or INPCK or
+    mode.c_iflag = mode.c_iflag and not Cflag(BRKINT or ICRNL or INPCK or
       ISTRIP or IXON)
-    mode.c_oflag = mode.c_oflag and not Tcflag(OPOST)
-    mode.c_cflag = (mode.c_cflag and not Tcflag(CSIZE or PARENB)) or CS8
-    mode.c_lflag = mode.c_lflag and not Tcflag(ECHO or ICANON or IEXTEN or ISIG)
+    mode.c_oflag = mode.c_oflag and not Cflag(OPOST)
+    mode.c_cflag = (mode.c_cflag and not Cflag(CSIZE or PARENB)) or CS8
+    mode.c_lflag = mode.c_lflag and not Cflag(ECHO or ICANON or IEXTEN or ISIG)
     mode.c_cc[VMIN] = 1.cuchar
     mode.c_cc[VTIME] = 0.cuchar
     discard fd.tcsetattr(time, addr mode)
@@ -64,10 +123,10 @@ proc setCursorPos*(x, y: int) =
   ## sets the terminal's cursor to the (x,y) position. (0,0) is the
   ## upper left of the screen.
   when defined(windows):
-    var c: TCOORD
+    var c: COORD
     c.X = int16(x)
     c.Y = int16(y)
-    if SetConsoleCursorPosition(conHandle, c) == 0: raiseOSError(osLastError())
+    if setConsoleCursorPosition(conHandle, c) == 0: raiseOSError(osLastError())
   else:
     stdout.write("\e[" & $y & ';' & $x & 'f')
 
@@ -75,13 +134,13 @@ proc setCursorXPos*(x: int) =
   ## sets the terminal's cursor to the x position. The y position is
   ## not changed.
   when defined(windows):
-    var scrbuf: TCONSOLESCREENBUFFERINFO
+    var scrbuf: CONSOLESCREENBUFFERINFO
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+    if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.X = int16(x)
-    if SetConsoleCursorPosition(conHandle, origin) == 0:
+    if setConsoleCursorPosition(conHandle, origin) == 0:
       raiseOSError(osLastError())
   else:
     stdout.write("\e[" & $x & 'G')
@@ -91,13 +150,13 @@ when defined(windows):
     ## sets the terminal's cursor to the y position. The x position is
     ## not changed. **Warning**: This is not supported on UNIX!
     when defined(windows):
-      var scrbuf: TCONSOLESCREENBUFFERINFO
+      var scrbuf: CONSOLESCREENBUFFERINFO
       var hStdout = conHandle
-      if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+      if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
         raiseOSError(osLastError())
       var origin = scrbuf.dwCursorPosition
       origin.Y = int16(y)
-      if SetConsoleCursorPosition(conHandle, origin) == 0:
+      if setConsoleCursorPosition(conHandle, origin) == 0:
         raiseOSError(osLastError())
     else:
       discard
@@ -172,21 +231,21 @@ else:
 proc eraseLine* =
   ## Erases the entire current line.
   when defined(windows):
-    var scrbuf: TCONSOLESCREENBUFFERINFO
+    var scrbuf: CONSOLESCREENBUFFERINFO
     var numwrote: DWORD
     var hStdout = conHandle
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+    if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.X = 0'i16
-    if SetConsoleCursorPosition(conHandle, origin) == 0:
+    if setConsoleCursorPosition(conHandle, origin) == 0:
       raiseOSError(osLastError())
     var ht = scrbuf.dwSize.Y - origin.Y
     var wt = scrbuf.dwSize.X - origin.X
-    if FillConsoleOutputCharacter(hStdout,' ', ht*wt,
+    if fillConsoleOutputCharacter(hStdout,' ', ht*wt,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
-    if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, ht * wt,
+    if fillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, ht * wt,
                                   scrbuf.dwCursorPosition, addr(numwrote)) == 0:
       raiseOSError(osLastError())
   else:
@@ -196,19 +255,19 @@ proc eraseLine* =
 proc eraseScreen* =
   ## Erases the screen with the background colour and moves the cursor to home.
   when defined(windows):
-    var scrbuf: TCONSOLESCREENBUFFERINFO
+    var scrbuf: CONSOLESCREENBUFFERINFO
     var numwrote: DWORD
-    var origin: TCOORD # is inititalized to 0, 0
+    var origin: COORD # is inititalized to 0, 0
     var hStdout = conHandle
 
-    if GetConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
+    if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     let numChars = int32(scrbuf.dwSize.X)*int32(scrbuf.dwSize.Y)
 
-    if FillConsoleOutputCharacter(hStdout, ' ', numChars,
+    if fillConsoleOutputCharacter(hStdout, ' ', numChars,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
-    if FillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, numChars,
+    if fillConsoleOutputAttribute(hStdout, scrbuf.wAttributes, numChars,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
     setCursorXPos(0)
@@ -219,7 +278,7 @@ proc resetAttributes* {.noconv.} =
   ## resets all attributes; it is advisable to register this as a quit proc
   ## with ``system.addQuitProc(resetAttributes)``.
   when defined(windows):
-    discard SetConsoleTextAttribute(conHandle, oldAttr)
+    discard setConsoleTextAttribute(conHandle, oldAttr)
   else:
     stdout.write("\e[0m")
 
@@ -249,7 +308,7 @@ proc setStyle*(style: set[Style]) =
     if styleBlink in style: a = a or int16(BACKGROUND_INTENSITY)
     if styleReverse in style: a = a or 0x4000'i16 # COMMON_LVB_REVERSE_VIDEO
     if styleUnderscore in style: a = a or 0x8000'i16 # COMMON_LVB_UNDERSCORE
-    discard SetConsoleTextAttribute(conHandle, a)
+    discard setConsoleTextAttribute(conHandle, a)
   else:
     for s in items(style):
       stdout.write("\e[" & $ord(s) & 'm')
@@ -260,7 +319,7 @@ proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
     var old = getAttributes()
     setStyle(style)
     stdout.write(txt)
-    discard SetConsoleTextAttribute(conHandle, old)
+    discard setConsoleTextAttribute(conHandle, old)
   else:
     setStyle(style)
     stdout.write(txt)
@@ -309,7 +368,7 @@ proc setForegroundColor*(fg: ForegroundColor, bright=false) =
       (FOREGROUND_RED or FOREGROUND_BLUE),
       (FOREGROUND_BLUE or FOREGROUND_GREEN),
       (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED)]
-    discard SetConsoleTextAttribute(conHandle, toU16(old or lookup[fg]))
+    discard setConsoleTextAttribute(conHandle, toU16(old or lookup[fg]))
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
@@ -330,7 +389,7 @@ proc setBackgroundColor*(bg: BackgroundColor, bright=false) =
       (BACKGROUND_RED or BACKGROUND_BLUE),
       (BACKGROUND_BLUE or BACKGROUND_GREEN),
       (BACKGROUND_BLUE or BACKGROUND_GREEN or BACKGROUND_RED)]
-    discard SetConsoleTextAttribute(conHandle, toU16(old or lookup[bg]))
+    discard setConsoleTextAttribute(conHandle, toU16(old or lookup[bg]))
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)

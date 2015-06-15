@@ -30,8 +30,8 @@ implements the required case distinction.
 
 
 import
-  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp,
-  options, nversion, nimsets, msgs, crc, bitsets, idents, lists, types, os,
+  ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
+  nversion, nimsets, msgs, securehash, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
   intsets, cgmeth, lowerings
 
@@ -258,11 +258,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
     ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
     ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
-    ["addInt64", "", "addInt64($1, $2)", "($1 + $2)"], # AddI64
-    ["subInt64", "", "subInt64($1, $2)", "($1 - $2)"], # SubI64
-    ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
-    ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
-    ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
@@ -276,11 +271,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI
-    ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI64
-    ["", "", "($1 << $2)", "($1 << $2)"], # ShlI64
-    ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
-    ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
-    ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -291,9 +281,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqI
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
     ["", "", "($1 < $2)", "($1 < $2)"], # LtI
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqI64
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI64
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtI64
     ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
     ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
@@ -320,11 +307,9 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
     ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
     ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
-    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "!($1)", "!($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
     ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64
@@ -357,11 +342,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
     ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
     ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
-    ["addInt64", "", "addInt64($1, $2)", "($1 + $2)"], # AddI64
-    ["subInt64", "", "subInt64($1, $2)", "($1 - $2)"], # SubI64
-    ["mulInt64", "", "mulInt64($1, $2)", "($1 * $2)"], # MulI64
-    ["divInt64", "", "divInt64($1, $2)", "Math.floor($1 / $2)"], # DivI64
-    ["modInt64", "", "modInt64($1, $2)", "Math.floor($1 % $2)"], # ModI64
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
@@ -375,11 +355,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinI
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxI
-    ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI64
-    ["", "", "($1 << $2)", "($1 << $2)"], # ShlI64
-    ["", "", "($1 & $2)", "($1 & $2)"], # BitandI64
-    ["", "", "($1 | $2)", "($1 | $2)"], # BitorI64
-    ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI64
     ["nimMin", "nimMin", "nimMin($1, $2)", "nimMin($1, $2)"], # MinF64
     ["nimMax", "nimMax", "nimMax($1, $2)", "nimMax($1, $2)"], # MaxF64
     ["addU", "addU", "addU($1, $2)", "addU($1, $2)"], # addU
@@ -390,9 +365,6 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqI
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI
     ["", "", "($1 < $2)", "($1 < $2)"], # LtI
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqI64
-    ["", "", "($1 <= $2)", "($1 <= $2)"], # LeI64
-    ["", "", "($1 < $2)", "($1 < $2)"], # LtI64
     ["", "", "($1 == $2)", "($1 == $2)"], # EqF64
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LeF64
     ["", "", "($1 < $2)", "($1 < $2)"], # LtF64
@@ -419,11 +391,9 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
     ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64
     ["absInt", "", "absInt($1)", "Math.abs($1)"], # AbsI
-    ["absInt64", "", "absInt64($1)", "Math.abs($1)"], # AbsI64
     ["", "", "not ($1)", "not ($1)"], # Not
     ["", "", "+($1)", "+($1)"], # UnaryPlusI
     ["", "", "~($1)", "~($1)"], # BitnotI
-    ["", "", "~($1)", "~($1)"], # BitnotI64
     ["", "", "+($1)", "+($1)"], # UnaryPlusF64
     ["", "", "-($1)", "-($1)"], # UnaryMinusF64
     ["", "", "Math.abs($1)", "Math.abs($1)"], # AbsF64
@@ -817,7 +787,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      addf(p.body, "$1 = nimCopy($2, $3);$n",
+      addf(p.body, "$1 = nimCopy($1, $2, $3);$n",
            [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
@@ -976,15 +946,27 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       genFieldAccess(p, n.sons[0], r)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-    if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
-    case ty.kind
-    of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
-       tyVarargs, tyChar:
-      genArrayAddr(p, n.sons[0], r)
-    of tyTuple:
-      genFieldAddr(p, n.sons[0], r)
-    else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $ty.kind & ')')
+    if ty.kind in MappedToObject:
+      gen(p, n.sons[0], r)
+    else:
+      let kindOfIndexedExpr = skipTypes(n.sons[0].sons[0].typ, abstractVarRange).kind
+      case kindOfIndexedExpr
+      of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
+          tyVarargs:
+        genArrayAddr(p, n.sons[0], r)
+      of tyTuple:
+        genFieldAddr(p, n.sons[0], r)
+      else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $kindOfIndexedExpr & ')')
   else: internalError(n.sons[0].info, "genAddr")
+
+proc genProcForSymIfNeeded(p: PProc, s: PSym) =
+  if not p.g.generatedSyms.containsOrIncl(s.id):
+    let newp = genProc(p, s)
+    var owner = p
+    while owner != nil and owner.prc != s.owner:
+      owner = owner.up
+    if owner != nil: add(owner.locals, newp)
+    else: add(p.g.code, newp)
 
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
@@ -1021,13 +1003,8 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       discard
     elif sfForward in s.flags:
       p.g.forwarded.add(s)
-    elif not p.g.generatedSyms.containsOrIncl(s.id):
-      let newp = genProc(p, s)
-      var owner = p
-      while owner != nil and owner.prc != s.owner:
-        owner = owner.up
-      if owner != nil: add(owner.locals, newp)
-      else: add(p.g.code, newp)
+    else:
+      genProcForSymIfNeeded(p, s)
   else:
     if s.loc.r == nil:
       internalError(n.info, "symbol has no generated name: " & s.name.s)
@@ -1202,7 +1179,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
         s = a.res
       else:
         useMagic(p, "nimCopy")
-        s = "nimCopy($1, $2)" % [a.res, genTypeInfo(p, n.typ)]
+        s = "nimCopy(null, $1, $2)" % [a.res, genTypeInfo(p, n.typ)]
     of etyBaseIndex:
       if (a.typ != etyBaseIndex): internalError(n.info, "genVarInit")
       if {sfAddrTaken, sfGlobal} * v.flags != {}:
@@ -1394,6 +1371,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mCopyStrLast: ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap: unaryExpr(p, n, r, "mnewString", "mnewString(0)")
+  of mDotDot:
+    genProcForSymIfNeeded(p, n.sons[0].sym)
+    genCall(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(e.info, 'genMagic: ' + magicToStr[op]);

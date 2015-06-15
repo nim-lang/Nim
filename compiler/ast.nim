@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists,
+  msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
   intsets, idgen
 
 type
@@ -423,6 +423,7 @@ type
                 # but unfortunately it has measurable impact for compilation
                 # efficiency
     nfTransf,   # node has been transformed
+    nfNoRewrite # node should not be transformed anymore
     nfSem       # node has been checked for semantics
     nfLL        # node has gone through lambda lifting
     nfDotField  # the call can use a dot operator
@@ -538,22 +539,21 @@ type
     mIncl, mExcl, mCard, mChr,
     mGCref, mGCunref,
 
-    mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
-    mDivI64, mModI64, mSucc, mPred,
+    mAddI, mSubI, mMulI, mDivI, mModI,
+    mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
 
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
-    mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64,
+    mEqF64, mLeF64, mLtF64,
     mLeU, mLtU, mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
     mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mEqProc, mUnaryMinusI,
-    mUnaryMinusI64, mAbsI, mAbsI64, mNot,
+    mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
-    mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
+    mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
     mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
@@ -593,20 +593,19 @@ const
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
-    mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
-    mDivI64, mModI64, mAddF64, mSubF64, mMulF64, mDivF64,
+    mAddI, mSubI, mMulI, mDivI, mModI,
+    mAddF64, mSubF64, mMulF64, mDivF64,
     mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
     mMinF64, mMaxF64, mAddU, mSubU, mMulU,
     mDivU, mModU, mEqI, mLeI,
     mLtI,
-    mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64,
+    mEqF64, mLeF64, mLtF64,
     mLeU, mLtU, mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
     mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI,
-    mUnaryMinusI64, mAbsI, mAbsI64, mNot,
+    mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
-    mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
+    mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
     mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
     mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
     mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
@@ -842,7 +841,7 @@ type
     data*: TIdNodePairSeq
 
   TNodePair* = object
-    h*: THash                 # because it is expensive to compute!
+    h*: Hash                 # because it is expensive to compute!
     key*: PNode
     val*: int
 
@@ -946,6 +945,9 @@ proc add*(father, son: PNode) =
 
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
+
+template `-|`*(b, s: expr): expr =
+  (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
 template `{}`*(n: PNode, i: int): expr = n[i -| n]
@@ -1345,7 +1347,7 @@ proc propagateToOwner*(owner, elem: PType) =
       owner.flags.incl tfHasAsgn
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
-                       tyGenericInvocation}:
+                       tyGenericInvocation, tyPtr}:
     let elemB = elem.skipTypes({tyGenericInst})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then

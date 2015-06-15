@@ -18,8 +18,8 @@ import cpuinfo, cpuload, locks
 
 type
   Semaphore = object
-    c: TCond
-    L: TLock
+    c: Cond
+    L: Lock
     counter: int
 
 proc createSemaphore(): Semaphore =
@@ -113,7 +113,7 @@ type
 
   ToFreeQueue = object
     len: int
-    lock: TLock
+    lock: Lock
     empty: Semaphore
     data: array[128, pointer]
 
@@ -221,10 +221,16 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     action(fv.blob)
   finished(fv)
 
-proc `^`*[T](fv: FlowVar[ref T]): foreign ptr T =
+proc unsafeRead*[T](fv: FlowVar[ref T]): foreign ptr T =
   ## blocks until the value is available and then returns this value.
   await(fv)
   result = cast[foreign ptr T](fv.data)
+
+proc `^`*[T](fv: FlowVar[ref T]): ref T =
+  ## blocks until the value is available and then returns this value.
+  await(fv)
+  let src = cast[ref T](fv.data)
+  deepCopy result, src
 
 proc `^`*[T](fv: FlowVar[T]): T =
   ## blocks until the value is available and then returns this value.
@@ -284,7 +290,8 @@ proc slave(w: ptr Worker) {.thread.} =
     readyWorker = w
     signal(gSomeReady)
     await(w.taskArrived)
-    assert(not w.ready)
+    # XXX Somebody needs to look into this (why does this assertion fail in Visual Studio?)
+    when not defined(vcc): assert(not w.ready)
     w.f(w, w.data)
     if w.q.len != 0: w.cleanFlowVars
     if w.shutdown:
@@ -349,7 +356,7 @@ proc parallel*(body: stmt) {.magic: "Parallel".}
 
 var
   state: ThreadPoolState
-  stateLock: TLock
+  stateLock: Lock
 
 initLock stateLock
 

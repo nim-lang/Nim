@@ -13,13 +13,13 @@ import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
   saturate
 
 const
-  someEq = {mEqI, mEqI64, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
+  someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqUntracedRef, mEqStr, mEqSet, mEqCString}
 
   # set excluded here as the semantics are vastly different:
-  someLe = {mLeI, mLeI64, mLeF64, mLeU, mLeU64, mLeEnum,
+  someLe = {mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
             mLeCh, mLeB, mLePtr, mLeStr}
-  someLt = {mLtI, mLtI64, mLtF64, mLtU, mLtU64, mLtEnum,
+  someLt = {mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
             mLtCh, mLtB, mLtPtr, mLtStr}
 
   someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
@@ -30,11 +30,11 @@ const
   someHigh = {mHigh}
   # we don't list unsigned here because wrap around semantics suck for
   # proving anything:
-  someAdd = {mAddI, mAddI64, mAddF64, mSucc}
-  someSub = {mSubI, mSubI64, mSubF64, mPred}
-  someMul = {mMulI, mMulI64, mMulF64}
-  someDiv = {mDivI, mDivI64, mDivF64}
-  someMod = {mModI, mModI64}
+  someAdd = {mAddI, mAddF64, mSucc}
+  someSub = {mSubI, mSubF64, mPred}
+  someMul = {mMulI, mMulF64}
+  someDiv = {mDivI, mDivF64}
+  someMod = {mModI}
   someMax = {mMaxI, mMaxF64}
   someMin = {mMinI, mMinF64}
 

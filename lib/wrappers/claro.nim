@@ -35,61 +35,62 @@ else:
 import cairo
 
 type 
-  TNode* {.pure.} = object 
-    next*: ptr TNode
-    prev*: ptr TNode        # pointer to real structure 
+  Node* {.pure.} = object 
+    next*: ptr Node
+    prev*: ptr Node        # pointer to real structure 
     data*: pointer
 
-  TList* {.pure.} = object 
-    head*: ptr TNode
-    tail*: ptr TNode        
+  List* {.pure.} = object 
+    head*: ptr Node
+    tail*: ptr Node
     count*: int32
-
+{.deprecated: [TNode: Node, TList: List].}
 
 proc list_init*(){.cdecl, importc: "list_init", dynlib: clarodll.}
-proc list_create*(list: ptr TList){.cdecl, importc: "list_create", 
+proc list_create*(list: ptr List){.cdecl, importc: "list_create", 
                                       dynlib: clarodll.}
-proc node_create*(): ptr TNode{.cdecl, importc: "node_create", 
+proc node_create*(): ptr Node{.cdecl, importc: "node_create", 
                                   dynlib: clarodll.}
-proc node_free*(n: ptr TNode){.cdecl, importc: "node_free", dynlib: clarodll.}
-proc node_add*(data: pointer, n: ptr TNode, L: ptr TList){.cdecl, 
+proc node_free*(n: ptr Node){.cdecl, importc: "node_free", dynlib: clarodll.}
+proc node_add*(data: pointer, n: ptr Node, L: ptr List){.cdecl, 
     importc: "node_add", dynlib: clarodll.}
-proc node_prepend*(data: pointer, n: ptr TNode, L: ptr TList){.cdecl, 
+proc node_prepend*(data: pointer, n: ptr Node, L: ptr List){.cdecl, 
     importc: "node_prepend", dynlib: clarodll.}
-proc node_del*(n: ptr TNode, L: ptr TList){.cdecl, importc: "node_del", 
+proc node_del*(n: ptr Node, L: ptr List){.cdecl, importc: "node_del", 
     dynlib: clarodll.}
-proc node_find*(data: pointer, L: ptr TList): ptr TNode{.cdecl, 
+proc node_find*(data: pointer, L: ptr List): ptr Node{.cdecl, 
     importc: "node_find", dynlib: clarodll.}
-proc node_move*(n: ptr TNode, oldlist: ptr TList, newlist: ptr TList){.
+proc node_move*(n: ptr Node, oldlist: ptr List, newlist: ptr List){.
     cdecl, importc: "node_move", dynlib: clarodll.}
 
 type 
-  TClaroObj*{.pure, inheritable.} = object 
+  ClaroObj*{.pure, inheritable.} = object 
     typ*: array[0..64 - 1, char]
     destroy_pending*: cint
-    event_handlers*: TList
-    children*: TList
-    parent*: ptr TClaroObj
+    event_handlers*: List
+    children*: List
+    parent*: ptr ClaroObj
     appdata*: pointer         # !! this is for APPLICATION USE ONLY !! 
   
-  TEvent*{.pure.} = object 
-    obj*: ptr TClaroObj    # the object which this event was sent to 
+  Event*{.pure.} = object 
+    obj*: ptr ClaroObj    # the object which this event was sent to 
     name*: array[0..64 - 1, char]
     handled*: cint
     arg_num*: cint            # number of arguments 
     format*: array[0..16 - 1, char] # format of the arguments sent 
     arglist*: ptr pointer     # list of args, as per format. 
   
-  TEventFunc* = proc (obj: ptr TClaroObj, event: ptr TEvent){.cdecl.}
-  TEventIfaceFunc* = proc (obj: ptr TClaroObj, event: ptr TEvent, 
+  EventFunc* = proc (obj: ptr ClaroObj, event: ptr Event){.cdecl.}
+  EventIfaceFunc* = proc (obj: ptr ClaroObj, event: ptr Event, 
                            data: pointer){.cdecl.}
-  TEventHandler*{.pure.} = object 
+  EventHandler*{.pure.} = object 
     typ*: array[0..32 - 1, char]
     data*: pointer
-    fun*: TEventFunc   # the function that handles this event 
-  
+    fun*: EventFunc   # the function that handles this event 
+{.deprecated: [TEvent: Event, TEventFunc: EventFunc, TClaroObj: ClaroObj,
+              TEventIfaceFunc: EventIfaceFunc, TEventHandler: EventHandler].}
 
-# #define event_handler(n) void n ( TClaroObj *object, event_t *event )
+# #define event_handler(n) void n ( ClaroObj *object, event_t *event )
 #CLVEXP list_t object_list;
 
 proc object_init*(){.cdecl, importc: "object_init", dynlib: clarodll.}
@@ -99,36 +100,36 @@ proc object_override_next_size*(size: cint){.cdecl,
   ## Overrides the size of next object to be created, providing the 
   ## size is more than is requested by default.
   ## 
-  ## `size` specifies the full size, which is greater than both TClaroObj
+  ## `size` specifies the full size, which is greater than both ClaroObj
   ## and the size that will be requested automatically.
     
-proc event_get_arg_ptr*(e: ptr TEvent, arg: cint): pointer{.cdecl, 
+proc event_get_arg_ptr*(e: ptr Event, arg: cint): pointer{.cdecl, 
     importc: "event_get_arg_ptr", dynlib: clarodll.}
-proc event_get_arg_double*(e: ptr TEvent, arg: cint): cdouble{.cdecl, 
+proc event_get_arg_double*(e: ptr Event, arg: cint): cdouble{.cdecl, 
     importc: "event_get_arg_double", dynlib: clarodll.}
-proc event_get_arg_int*(e: ptr TEvent, arg: cint): cint{.cdecl, 
+proc event_get_arg_int*(e: ptr Event, arg: cint): cint{.cdecl, 
     importc: "event_get_arg_int", dynlib: clarodll.}
-proc object_create*(parent: ptr TClaroObj, size: int32, 
-                    typ: cstring): ptr TClaroObj{.
+proc object_create*(parent: ptr ClaroObj, size: int32, 
+                    typ: cstring): ptr ClaroObj{.
     cdecl, importc: "object_create", dynlib: clarodll.}
-proc object_destroy*(obj: ptr TClaroObj){.cdecl, importc: "object_destroy", 
+proc object_destroy*(obj: ptr ClaroObj){.cdecl, importc: "object_destroy", 
     dynlib: clarodll.}
-proc object_set_parent*(obj: ptr TClaroObj, parent: ptr TClaroObj){.cdecl, 
+proc object_set_parent*(obj: ptr ClaroObj, parent: ptr ClaroObj){.cdecl, 
     importc: "object_set_parent", dynlib: clarodll.}
 
-##define object_cmptype(o,t) (!strcmp(((TClaroObj *)o)->type,t))
+##define object_cmptype(o,t) (!strcmp(((ClaroObj *)o)->type,t))
 
 # event functions 
 
-proc object_addhandler*(obj: ptr TClaroObj, event: cstring, 
-                        fun: TEventFunc){.cdecl, 
+proc object_addhandler*(obj: ptr ClaroObj, event: cstring, 
+                        fun: EventFunc){.cdecl, 
     importc: "object_addhandler", dynlib: clarodll.}
-proc object_addhandler_interface*(obj: ptr TClaroObj, event: cstring, 
-                                  fun: TEventFunc, data: pointer){.cdecl, 
+proc object_addhandler_interface*(obj: ptr ClaroObj, event: cstring, 
+                                  fun: EventFunc, data: pointer){.cdecl, 
     importc: "object_addhandler_interface", dynlib: clarodll.}
-proc event_send*(obj: ptr TClaroObj, event: cstring, fmt: cstring): cint{.
+proc event_send*(obj: ptr ClaroObj, event: cstring, fmt: cstring): cint{.
     varargs, cdecl, importc: "event_send", dynlib: clarodll.}
-proc event_get_name*(event: ptr TEvent): cstring{.cdecl, 
+proc event_get_name*(event: ptr Event): cstring{.cdecl, 
     importc: "event_get_name", dynlib: clarodll.}
 proc claro_base_init(){.cdecl, importc: "claro_base_init", dynlib: clarodll.}
 proc claro_loop*(){.cdecl, importc: "claro_loop", dynlib: clarodll.}
@@ -143,19 +144,19 @@ const
   cWidgetCustomDraw* = (1 shl 25)
 
 type 
-  TBounds*{.pure.} = object 
+  Bounds*{.pure.} = object 
     x*: cint
     y*: cint
     w*: cint
     h*: cint
-    owner*: ptr TClaroObj
-
+    owner*: ptr ClaroObj
+{.deprecated: [TBounds: Bounds].}
 
 const 
   cSizeRequestChanged* = 1
 
 type 
-  TFont*{.pure.} = object 
+  Font*{.pure.} = object 
     used*: cint
     face*: cstring
     size*: cint
@@ -164,30 +165,31 @@ type
     decoration*: cint
     native*: pointer
 
-  TColor*{.pure.} = object 
+  Color*{.pure.} = object 
     used*: cint
     r*: cfloat
     g*: cfloat
     b*: cfloat
     a*: cfloat
 
-  TWidget* {.pure.} = object of TClaroObj
-    size_req*: ptr TBounds
-    size*: TBounds
-    size_ct*: TBounds
+  Widget* {.pure.} = object of ClaroObj
+    size_req*: ptr Bounds
+    size*: Bounds
+    size_ct*: Bounds
     supports_alpha*: cint
     size_flags*: cint
     flags*: cint
     visible*: cint
     notify_flags*: cint
-    font*: TFont
+    font*: Font
     native*: pointer          # native widget 
     ndata*: pointer           # additional native data 
     container*: pointer       # native widget container (if not ->native) 
     naddress*: array[0..3, pointer] # addressed for something 
                                     # we override or need to remember 
-  
-proc clipboard_set_text*(w: ptr TWidget, text: cstring): cint{.cdecl, 
+{.deprecated: [TFont: Font, TColor: Color, TWidget: Widget].}
+
+proc clipboard_set_text*(w: ptr Widget, text: cstring): cint{.cdecl, 
     importc: "clipboard_set_text", dynlib: clarodll.}
   ## Sets the (text) clipboard to the specified text value.
   ##
@@ -207,7 +209,7 @@ const
   cFontDecorationUnderline* = 1
 
 
-proc widget_set_font*(widget: ptr TClaroObj, face: cstring, size: cint, 
+proc widget_set_font*(widget: ptr ClaroObj, face: cstring, size: cint, 
                       weight: cint, slant: cint, decoration: cint){.cdecl, 
     importc: "widget_set_font", dynlib: clarodll.}
   ## Sets the font details of the specified widget.
@@ -219,7 +221,7 @@ proc widget_set_font*(widget: ptr TClaroObj, face: cstring, size: cint,
   ##  `slant` The sland of the font
   ##  `decoration` The decoration of the font
     
-proc widget_font_string_width*(widget: ptr TClaroObj, text: cstring, 
+proc widget_font_string_width*(widget: ptr ClaroObj, text: cstring, 
                                chars: cint): cint {.
     cdecl, importc: "widget_font_string_width", dynlib: clarodll.}
   ## Calculates the pixel width of the text in the widget's font.
@@ -230,16 +232,16 @@ const
   CLARO_APPLICATION* = "claro.graphics"
 
 type 
-  TImage* {.pure.} = object of TClaroObj
+  Image* {.pure.} = object of ClaroObj
     width*: cint
     height*: cint
     native*: pointer
     native2*: pointer
     native3*: pointer
     icon*: pointer
+{.deprecated: [TImage: Image].}
 
-
-proc image_load*(parent: ptr TClaroObj, file: cstring): ptr TImage{.cdecl, 
+proc image_load*(parent: ptr ClaroObj, file: cstring): ptr Image{.cdecl, 
     importc: "image_load", dynlib: clarodll.}
   ## Loads an image from a file and returns a new image object.
   ## 
@@ -249,8 +251,8 @@ proc image_load*(parent: ptr TClaroObj, file: cstring): ptr TImage{.cdecl,
   ##
   ## `Parent` object (usually the application's main window), can be nil.
     
-proc image_load_inline_png*(parent: ptr TClaroObj, data: cstring, 
-                            len: cint): ptr TImage{.cdecl, 
+proc image_load_inline_png*(parent: ptr ClaroObj, data: cstring, 
+                            len: cint): ptr Image{.cdecl, 
     importc: "image_load_inline_png", dynlib: clarodll.}
   ## Loads an image from inline data and returns a new image object.
   ## `Parent` object (usually the application's main window), can be nil.
@@ -262,10 +264,11 @@ when true:
 else:
   # status icons are not supported on all platforms yet:
   type 
-    TStatusIcon* {.pure.} = object of TClaroObj
-      icon*: ptr TImage
+    StatusIcon* {.pure.} = object of ClaroObj
+      icon*: ptr Image
       native*: pointer
       native2*: pointer
+  {.deprecated: [TStatusIcon: StatusIcon].}
 
   #*
   #  \brief Creates a status icon
@@ -277,8 +280,8 @@ else:
   #  \return New status_icon_t object
   # 
 
-  proc status_icon_create*(parent: ptr TClaroObj, icon: ptr TImage, 
-                           flags: cint): ptr TStatusIcon {.
+  proc status_icon_create*(parent: ptr ClaroObj, icon: ptr Image, 
+                           flags: cint): ptr StatusIcon {.
       cdecl, importc: "status_icon_create", dynlib: clarodll.}
 
   #*
@@ -288,7 +291,7 @@ else:
   #  \param image The image object for the icon
   # 
 
-  proc status_icon_set_icon*(status: ptr TStatusIcon, icon: ptr TImage){.cdecl, 
+  proc status_icon_set_icon*(status: ptr StatusIcon, icon: ptr Image){.cdecl, 
       importc: "status_icon_set_icon", dynlib: clarodll.}
 
   #*
@@ -298,7 +301,7 @@ else:
   #  \param menu The menu object for the popup menu
   # 
 
-  proc status_icon_set_menu*(status: ptr TStatusIcon, menu: ptr TClaroObj){.cdecl, 
+  proc status_icon_set_menu*(status: ptr StatusIcon, menu: ptr ClaroObj){.cdecl, 
       importc: "status_icon_set_menu", dynlib: clarodll.}
   #*
   #  \brief sets the status icon's visibility
@@ -307,7 +310,7 @@ else:
   #  \param visible whether the status icon is visible or not
   # 
 
-  proc status_icon_set_visible*(status: ptr TStatusIcon, visible: cint){.cdecl, 
+  proc status_icon_set_visible*(status: ptr StatusIcon, visible: cint){.cdecl, 
       importc: "status_icon_set_visible", dynlib: clarodll.}
   #*
   #  \brief sets the status icon's tooltip
@@ -316,7 +319,7 @@ else:
   #  \param tooltip Tooltip string
   # 
 
-  proc status_icon_set_tooltip*(status: ptr TStatusIcon, tooltip: cstring){.cdecl, 
+  proc status_icon_set_tooltip*(status: ptr StatusIcon, tooltip: cstring){.cdecl, 
       importc: "status_icon_set_tooltip", dynlib: clarodll.}
     
 #*
@@ -325,7 +328,7 @@ else:
 #  \param widget A widget
 # 
 
-proc widget_show*(widget: ptr TWidget){.cdecl, importc: "widget_show", 
+proc widget_show*(widget: ptr Widget){.cdecl, importc: "widget_show", 
     dynlib: clarodll.}
 #*
 #  \brief Makes the specified widget invisible.
@@ -333,7 +336,7 @@ proc widget_show*(widget: ptr TWidget){.cdecl, importc: "widget_show",
 #  \param widget A widget
 # 
 
-proc widget_hide*(widget: ptr TWidget){.cdecl, importc: "widget_hide", 
+proc widget_hide*(widget: ptr Widget){.cdecl, importc: "widget_hide", 
     dynlib: clarodll.}
 #*
 #  \brief Enables the widget, allowing focus
@@ -341,7 +344,7 @@ proc widget_hide*(widget: ptr TWidget){.cdecl, importc: "widget_hide",
 #  \param widget A widget
 # 
 
-proc widget_enable*(widget: ptr TWidget){.cdecl, importc: "widget_enable", 
+proc widget_enable*(widget: ptr Widget){.cdecl, importc: "widget_enable", 
     dynlib: clarodll.}
 #*
 #  \brief Disables the widget
@@ -351,7 +354,7 @@ proc widget_enable*(widget: ptr TWidget){.cdecl, importc: "widget_enable",
 #  \param widget A widget
 # 
 
-proc widget_disable*(widget: ptr TWidget){.cdecl, importc: "widget_disable", 
+proc widget_disable*(widget: ptr Widget){.cdecl, importc: "widget_disable", 
     dynlib: clarodll.}
 #*
 #  \brief Give focus to the specified widget
@@ -359,7 +362,7 @@ proc widget_disable*(widget: ptr TWidget){.cdecl, importc: "widget_disable",
 #  \param widget A widget
 # 
 
-proc widget_focus*(widget: ptr TWidget){.cdecl, importc: "widget_focus", 
+proc widget_focus*(widget: ptr Widget){.cdecl, importc: "widget_focus", 
     dynlib: clarodll.}
 #*
 #  \brief Closes a widget
@@ -372,7 +375,7 @@ proc widget_focus*(widget: ptr TWidget){.cdecl, importc: "widget_focus",
 #  \param widget A widget
 # 
 
-proc widget_close*(widget: ptr TWidget){.cdecl, importc: "widget_close", 
+proc widget_close*(widget: ptr Widget){.cdecl, importc: "widget_close", 
     dynlib: clarodll.}
 #*
 #  \brief Retrieve the screen offset of the specified widget.
@@ -384,7 +387,7 @@ proc widget_close*(widget: ptr TWidget){.cdecl, importc: "widget_close",
 #  \param dy Pointer to the location to place the Y position.
 # 
 
-proc widget_screen_offset*(widget: ptr TWidget, dx: ptr cint, dy: ptr cint){.
+proc widget_screen_offset*(widget: ptr Widget, dx: ptr cint, dy: ptr cint){.
     cdecl, importc: "widget_screen_offset", dynlib: clarodll.}
 #*
 #  \brief Sets the additional notify events that should be sent.
@@ -397,16 +400,17 @@ proc widget_screen_offset*(widget: ptr TWidget, dx: ptr cint, dy: ptr cint){.
 #  \param flags Any number of cWidgetNotify flags ORed together.
 # 
 
-proc widget_set_notify*(widget: ptr TWidget, flags: cint){.cdecl, 
+proc widget_set_notify*(widget: ptr Widget, flags: cint){.cdecl, 
     importc: "widget_set_notify", dynlib: clarodll.}
 
 
 type
-  TCursorType* {.size: sizeof(cint).} = enum
+  CursorType* {.size: sizeof(cint).} = enum
     cCursorNormal = 0,
     cCursorTextEdit = 1,
     cCursorWait = 2,
     cCursorPoint = 3
+{.deprecated: [TCursorType: CursorType].}
 
 #*
 #  \brief Sets the mouse cursor for the widget
@@ -415,7 +419,7 @@ type
 #  \param cursor A valid cCursor* value
 # 
 
-proc widget_set_cursor*(widget: ptr TWidget, cursor: TCursorType){.cdecl, 
+proc widget_set_cursor*(widget: ptr Widget, cursor: CursorType){.cdecl, 
     importc: "widget_set_cursor", dynlib: clarodll.}
 
 #*
@@ -426,7 +430,7 @@ proc widget_set_cursor*(widget: ptr TWidget, cursor: TCursorType){.cdecl,
 #  \return The keycode of the key pressed.
 # 
 
-proc widget_get_notify_key*(widget: ptr TWidget, event: ptr TEvent): cint{.
+proc widget_get_notify_key*(widget: ptr Widget, event: ptr Event): cint{.
     cdecl, importc: "widget_get_notify_key", dynlib: clarodll.}
 
 #*
@@ -443,7 +447,7 @@ proc widget_get_notify_key*(widget: ptr TWidget, event: ptr TEvent): cint{.
 #  \param h The new height
 # 
 
-proc bounds_set*(bounds: ptr TBounds, x: cint, y: cint, w: cint, h: cint){.
+proc bounds_set*(bounds: ptr Bounds, x: cint, y: cint, w: cint, h: cint){.
     cdecl, importc: "bounds_set", dynlib: clarodll.}
 #*
 #  \brief Create a new bounds object
@@ -457,13 +461,13 @@ proc bounds_set*(bounds: ptr TBounds, x: cint, y: cint, w: cint, h: cint){.
 #  \return A new bounds_t structure
 # 
 
-proc new_bounds*(x: cint, y: cint, w: cint, h: cint): ptr TBounds{.cdecl, 
+proc new_bounds*(x: cint, y: cint, w: cint, h: cint): ptr Bounds{.cdecl, 
     importc: "new_bounds", dynlib: clarodll.}
-proc get_req_bounds*(widget: ptr TWidget): ptr TBounds{.cdecl, 
+proc get_req_bounds*(widget: ptr Widget): ptr Bounds{.cdecl, 
     importc: "get_req_bounds", dynlib: clarodll.}
     
 var
-  noBoundsVar: TBounds # set to all zero which is correct
+  noBoundsVar: Bounds # set to all zero which is correct
     
 template noBounds*: expr = (addr(bind noBoundsVar))
 
@@ -473,7 +477,7 @@ template noBounds*: expr = (addr(bind noBoundsVar))
 #  \param widget A widget
 # 
 
-proc widget_pre_init*(widget: ptr TWidget){.cdecl, importc: "widget_pre_init", 
+proc widget_pre_init*(widget: ptr Widget){.cdecl, importc: "widget_pre_init", 
     dynlib: clarodll.}
 #* \internal
 #  \brief Internal post-inititalisation hook
@@ -481,7 +485,7 @@ proc widget_pre_init*(widget: ptr TWidget){.cdecl, importc: "widget_pre_init",
 #  \param widget A widget
 # 
 
-proc widget_post_init*(widget: ptr TWidget){.cdecl, 
+proc widget_post_init*(widget: ptr Widget){.cdecl, 
     importc: "widget_post_init", dynlib: clarodll.}
 #* \internal
 #  \brief Internal resize event handler
@@ -490,7 +494,7 @@ proc widget_post_init*(widget: ptr TWidget){.cdecl,
 #  \param event An event resource
 # 
 
-proc widget_resized_handle*(obj: ptr TWidget, event: ptr TEvent){.cdecl, 
+proc widget_resized_handle*(obj: ptr Widget, event: ptr Event){.cdecl, 
     importc: "widget_resized_handle", dynlib: clarodll.}
 # CLVEXP bounds_t no_bounds;
 #* \internal
@@ -507,11 +511,12 @@ proc widget_resized_handle*(obj: ptr TWidget, event: ptr TEvent){.cdecl,
 # 
 
 type
-  TcgraphicsCreateFunction* = proc (widget: ptr TWidget) {.cdecl.}
+  CgraphicsCreateFunction* = proc (widget: ptr Widget) {.cdecl.}
+{.deprecated: [TcgraphicsCreateFunction: CgraphicsCreateFunction].}
 
-proc newdefault*(parent: ptr TWidget, widget_size: int, 
-                 widget_name: cstring, size_req: ptr TBounds, flags: cint, 
-                 creator: TcgraphicsCreateFunction): ptr TWidget{.cdecl, 
+proc newdefault*(parent: ptr Widget, widget_size: int, 
+                 widget_name: cstring, size_req: ptr Bounds, flags: cint, 
+                 creator: CgraphicsCreateFunction): ptr Widget{.cdecl, 
     importc: "default_widget_create", dynlib: clarodll.}
 #* \internal
 #  \brief Retrieves the native container of the widget's children
@@ -520,7 +525,7 @@ proc newdefault*(parent: ptr TWidget, widget_size: int,
 #  \return A pointer to the native widget that will hold w's children
 # 
 
-proc widget_get_container*(widget: ptr TWidget): pointer{.cdecl, 
+proc widget_get_container*(widget: ptr Widget): pointer{.cdecl, 
     importc: "widget_get_container", dynlib: clarodll.}
 #* \internal
 #  \brief Sets the content size of the widget.
@@ -531,7 +536,7 @@ proc widget_get_container*(widget: ptr TWidget): pointer{.cdecl,
 #  \param event Whether to send a content_size event
 # 
 
-proc widget_set_content_size*(widget: ptr TWidget, w: cint, h: cint, 
+proc widget_set_content_size*(widget: ptr Widget, w: cint, h: cint, 
                               event: cint){.cdecl, 
     importc: "widget_set_content_size", dynlib: clarodll.}
 #* \internal
@@ -543,7 +548,7 @@ proc widget_set_content_size*(widget: ptr TWidget, w: cint, h: cint,
 #  \param event Whether to send a resize event
 # 
 
-proc widget_set_size*(widget: ptr TWidget, w: cint, h: cint, event: cint){.
+proc widget_set_size*(widget: ptr Widget, w: cint, h: cint, event: cint){.
     cdecl, importc: "widget_set_size", dynlib: clarodll.}
 #* \internal
 #  \brief Sets the position of the widget's content area.
@@ -554,7 +559,7 @@ proc widget_set_size*(widget: ptr TWidget, w: cint, h: cint, event: cint){.
 #  \param event Whether to send a content_move event
 # 
 
-proc widget_set_content_position*(widget: ptr TWidget, x: cint, y: cint, 
+proc widget_set_content_position*(widget: ptr Widget, x: cint, y: cint, 
                                   event: cint){.cdecl, 
     importc: "widget_set_content_position", dynlib: clarodll.}
 #* \internal
@@ -566,7 +571,7 @@ proc widget_set_content_position*(widget: ptr TWidget, x: cint, y: cint,
 #  \param event Whether to send a moved event
 # 
 
-proc widget_set_position*(widget: ptr TWidget, x: cint, y: cint, event: cint){.
+proc widget_set_position*(widget: ptr Widget, x: cint, y: cint, event: cint){.
     cdecl, importc: "widget_set_position", dynlib: clarodll.}
 #* \internal
 #  \brief Sends a destroy event to the specified widget.
@@ -576,13 +581,13 @@ proc widget_set_position*(widget: ptr TWidget, x: cint, y: cint, event: cint){.
 #  \param widget A widget
 # 
 
-proc widget_destroy*(widget: ptr TWidget){.cdecl, importc: "widget_destroy", 
+proc widget_destroy*(widget: ptr Widget){.cdecl, importc: "widget_destroy", 
     dynlib: clarodll.}
 
 type 
-  TOpenglWidget* {.pure.} = object of TWidget
+  OpenglWidget* {.pure.} = object of Widget
     gldata*: pointer
-
+{.deprecated: [TOpenglWidget: OpenglWidget].}
 
 # functions 
 #*
@@ -594,8 +599,8 @@ type
 #  \return A new OpenGL widget object.
 # 
 
-proc newopengl*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                flags: cint): ptr TOpenglWidget {.
+proc newopengl*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                flags: cint): ptr OpenglWidget {.
     cdecl, importc: "opengl_widget_create", dynlib: clarodll.}
 #*
 #  \brief Flips the front and back buffers
@@ -603,7 +608,7 @@ proc newopengl*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param widget A valid OpenGL widget object
 # 
 
-proc opengl_flip*(widget: ptr TOpenglWidget) {.cdecl, importc: "opengl_flip", 
+proc opengl_flip*(widget: ptr OpenglWidget) {.cdecl, importc: "opengl_flip", 
     dynlib: clarodll.}
 #*
 #  \brief Activates this OpenGL widget's context
@@ -611,13 +616,13 @@ proc opengl_flip*(widget: ptr TOpenglWidget) {.cdecl, importc: "opengl_flip",
 #  \param widget A valid OpenGL widget object
 # 
 
-proc opengl_activate*(widget: ptr TOpenglWidget) {.
+proc opengl_activate*(widget: ptr OpenglWidget) {.
     cdecl, importc: "opengl_activate", dynlib: clarodll.}
 
 type 
-  TButton* {.pure.} = object of TWidget
+  Button* {.pure.} = object of Widget
     text*: array[0..256-1, char]
-
+{.deprecated: [TButton: Button].}
 
 # functions 
 #*
@@ -629,8 +634,8 @@ type
 #  \return A new Button widget object.
 # 
 
-proc newbutton*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                flags: cint): ptr TButton {.
+proc newbutton*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                flags: cint): ptr Button {.
     cdecl, importc: "button_widget_create", dynlib: clarodll.}
 #*
 #  \brief Creates a Button widget with a label
@@ -642,9 +647,9 @@ proc newbutton*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new Button widget object.
 # 
 
-proc newbutton*(parent: ptr TClaroObj, 
-                bounds: ptr TBounds, flags: cint, 
-                label: cstring): ptr TButton{.cdecl, 
+proc newbutton*(parent: ptr ClaroObj, 
+                bounds: ptr Bounds, flags: cint, 
+                label: cstring): ptr Button{.cdecl, 
     importc: "button_widget_create_with_label", dynlib: clarodll.}
 #*
 #  \brief Changes the label of the button
@@ -653,7 +658,7 @@ proc newbutton*(parent: ptr TClaroObj,
 #  \param label The new label for the button
 # 
 
-proc button_set_text*(obj: ptr TButton, label: cstring){.cdecl, 
+proc button_set_text*(obj: ptr Button, label: cstring){.cdecl, 
     importc: "button_set_label", dynlib: clarodll.}
 
 #*
@@ -666,7 +671,7 @@ proc button_set_text*(obj: ptr TButton, label: cstring){.cdecl,
 #  \param image The new image for the button
 # 
 
-proc button_set_image*(obj: ptr TButton, image: ptr TImage){.cdecl, 
+proc button_set_image*(obj: ptr Button, image: ptr Image){.cdecl, 
     importc: "button_set_image", dynlib: clarodll.}
 
 const 
@@ -680,7 +685,7 @@ const
 # END OLD 
 
 type 
-  TCanvas*{.pure.} = object of TWidget
+  Canvas*{.pure.} = object of Widget
     surface*: cairo.PSurface
     cr*: cairo.PContext
     surfdata*: pointer
@@ -697,6 +702,7 @@ type
     charsize*: array[0..256 - 1, cairo.TTextExtents]
     csz_loaded*: cint
     fontsize*: cint
+{.deprecated: [TCanvas: Canvas].}
 
 # functions 
 #*
@@ -708,8 +714,8 @@ type
 #  \return A new Canvas widget object.
 # 
 
-proc newcanvas*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                flags: cint): ptr TCanvas{.
+proc newcanvas*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                flags: cint): ptr Canvas{.
     cdecl, importc: "canvas_widget_create", dynlib: clarodll.}
 #*
 #  \brief Invalidates and redraws a canvas widget
@@ -717,7 +723,7 @@ proc newcanvas*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param widget A valid Canvas widget object.
 # 
 
-proc canvas_redraw*(widget: ptr TCanvas){.cdecl, importc: "canvas_redraw", 
+proc canvas_redraw*(widget: ptr Canvas){.cdecl, importc: "canvas_redraw", 
     dynlib: clarodll.}
 # claro text functions 
 #*
@@ -730,7 +736,7 @@ proc canvas_redraw*(widget: ptr TCanvas){.cdecl, importc: "canvas_redraw",
 #  \param a Alpha component (0.0 - 1.0)
 # 
 
-proc canvas_set_text_color*(widget: ptr TCanvas, r: cdouble, g: cdouble, 
+proc canvas_set_text_color*(widget: ptr Canvas, r: cdouble, g: cdouble, 
                             b: cdouble, a: cdouble){.cdecl, 
     importc: "canvas_set_text_color", dynlib: clarodll.}
 #*
@@ -743,7 +749,7 @@ proc canvas_set_text_color*(widget: ptr TCanvas, r: cdouble, g: cdouble,
 #  \param a Alpha component (0.0 - 1.0)
 # 
 
-proc canvas_set_text_bgcolor*(widget: ptr TCanvas, r: cdouble, g: cdouble, 
+proc canvas_set_text_bgcolor*(widget: ptr Canvas, r: cdouble, g: cdouble, 
                               b: cdouble, a: cdouble){.cdecl, 
     importc: "canvas_set_text_bgcolor", dynlib: clarodll.}
 #*
@@ -757,7 +763,7 @@ proc canvas_set_text_bgcolor*(widget: ptr TCanvas, r: cdouble, g: cdouble,
 #  \param decoration Font decorations
 # 
 
-proc canvas_set_text_font*(widget: ptr TCanvas, face: cstring, size: cint, 
+proc canvas_set_text_font*(widget: ptr Canvas, face: cstring, size: cint, 
                            weight: cint, slant: cint, decoration: cint){.cdecl, 
     importc: "canvas_set_text_font", dynlib: clarodll.}
 #*
@@ -769,7 +775,7 @@ proc canvas_set_text_font*(widget: ptr TCanvas, face: cstring, size: cint,
 #  \return Width of the text in pixels
 # 
 
-proc canvas_text_width*(widget: ptr TCanvas, text: cstring, len: cint): cint{.
+proc canvas_text_width*(widget: ptr Canvas, text: cstring, len: cint): cint{.
     cdecl, importc: "canvas_text_width", dynlib: clarodll.}
 #*
 #  \brief Calculates the width of the specified text's bounding box
@@ -780,7 +786,7 @@ proc canvas_text_width*(widget: ptr TCanvas, text: cstring, len: cint): cint{.
 #  \return Width of the text's bounding box in pixels
 # 
 
-proc canvas_text_box_width*(widget: ptr TCanvas, text: cstring, 
+proc canvas_text_box_width*(widget: ptr Canvas, text: cstring, 
                             len: cint): cint{.
     cdecl, importc: "canvas_text_box_width", dynlib: clarodll.}
 #*
@@ -793,7 +799,7 @@ proc canvas_text_box_width*(widget: ptr TCanvas, text: cstring,
 #  \return The number of characters of text that will fit in width pixels.
 # 
 
-proc canvas_text_display_count*(widget: ptr TCanvas, text: cstring, 
+proc canvas_text_display_count*(widget: ptr Canvas, text: cstring, 
                                 width: cint): cint{.cdecl, 
     importc: "canvas_text_display_count", dynlib: clarodll.}
 #*
@@ -806,7 +812,7 @@ proc canvas_text_display_count*(widget: ptr TCanvas, text: cstring,
 #  \param len The number of characters of text to calulcate
 # 
 
-proc canvas_show_text*(widget: ptr TCanvas, x: cint, y: cint, text: cstring, 
+proc canvas_show_text*(widget: ptr Canvas, x: cint, y: cint, text: cstring, 
                        len: cint){.cdecl, importc: "canvas_show_text", 
                                    dynlib: clarodll.}
 #*
@@ -823,7 +829,7 @@ proc canvas_show_text*(widget: ptr TCanvas, x: cint, y: cint, text: cstring,
 #  \param a Alpha component (0.0 - 1.0)
 # 
 
-proc canvas_fill_rect*(widget: ptr TCanvas, x: cint, y: cint, w: cint, 
+proc canvas_fill_rect*(widget: ptr Canvas, x: cint, y: cint, w: cint, 
                        h: cint, r, g, b, a: cdouble){.
     cdecl, importc: "canvas_fill_rect", dynlib: clarodll.}
 #*
@@ -835,7 +841,7 @@ proc canvas_fill_rect*(widget: ptr TCanvas, x: cint, y: cint, w: cint,
 #  \param y The Y position at which the image will be drawn
 # 
 
-proc canvas_draw_image*(widget: ptr TCanvas, image: ptr TImage, x: cint, 
+proc canvas_draw_image*(widget: ptr Canvas, image: ptr Image, x: cint, 
                         y: cint){.cdecl, importc: "canvas_draw_image", 
                                   dynlib: clarodll.}
 # claro "extensions" of cairo 
@@ -843,25 +849,25 @@ proc canvas_draw_image*(widget: ptr TCanvas, image: ptr TImage, x: cint,
 #  \brief Internal claro extension of cairo text functions
 # 
 
-proc canvas_cairo_buffered_text_width*(widget: ptr TCanvas, 
+proc canvas_cairo_buffered_text_width*(widget: ptr Canvas, 
                                        text: cstring, len: cint): cint{.cdecl, 
     importc: "canvas_cairo_buffered_text_width", dynlib: clarodll.}
 #* \internal
 #  \brief Internal claro extension of cairo text functions
 # 
 
-proc canvas_cairo_buffered_text_display_count*(widget: ptr TCanvas, 
+proc canvas_cairo_buffered_text_display_count*(widget: ptr Canvas, 
     text: cstring, width: cint): cint{.cdecl, 
     importc: "canvas_cairo_buffered_text_display_count", 
     dynlib: clarodll.}
-proc canvas_get_cairo_context*(widget: ptr TCanvas): cairo.PContext {.cdecl, 
+proc canvas_get_cairo_context*(widget: ptr Canvas): cairo.PContext {.cdecl, 
     importc: "canvas_get_cairo_context", dynlib: clarodll.}
 
 type 
-  TCheckBox*{.pure.} = object of TWidget
+  CheckBox*{.pure.} = object of Widget
     text*: array[0..256-1, char]
     checked*: cint
-
+{.deprecated: [TCheckBox: CheckBox].}
 #*
 #  \brief Creates a Checkbox widget
 #  
@@ -871,8 +877,8 @@ type
 #  \return A new Checkbox widget object.
 # 
 
-proc newcheckbox*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                  flags: cint): ptr TCheckBox{.
+proc newcheckbox*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                  flags: cint): ptr CheckBox{.
     cdecl, importc: "checkbox_widget_create", dynlib: clarodll.}
 #*
 #  \brief Creates a Checkbox widget with a label
@@ -884,9 +890,9 @@ proc newcheckbox*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new Checkbox widget object.
 # 
 
-proc newcheckbox*(parent: ptr TClaroObj, 
-                  bounds: ptr TBounds, flags: cint, 
-                  label: cstring): ptr TCheckBox {.cdecl, 
+proc newcheckbox*(parent: ptr ClaroObj, 
+                  bounds: ptr Bounds, flags: cint, 
+                  label: cstring): ptr CheckBox {.cdecl, 
     importc: "checkbox_widget_create_with_label", dynlib: clarodll.}
 #*
 #  \brief Sets a new label for the Checkbox widget
@@ -895,7 +901,7 @@ proc newcheckbox*(parent: ptr TClaroObj,
 #  \param label The new label for the checkbox
 # 
 
-proc checkbox_set_text*(obj: ptr TCheckBox, label: cstring){.cdecl, 
+proc checkbox_set_text*(obj: ptr CheckBox, label: cstring){.cdecl, 
     importc: "checkbox_set_label", dynlib: clarodll.}
 #*
 #  \brief Retrieves the checkbox's check state
@@ -904,7 +910,7 @@ proc checkbox_set_text*(obj: ptr TCheckBox, label: cstring){.cdecl,
 #  \return 1 if the checkbox is checked, otherwise 0
 # 
 
-proc checkbox_checked*(obj: ptr TCheckBox): cint{.cdecl, 
+proc checkbox_checked*(obj: ptr CheckBox): cint{.cdecl, 
     importc: "checkbox_get_checked", dynlib: clarodll.}
 #*
 #  \brief Sets the checkbox's checked state
@@ -913,7 +919,7 @@ proc checkbox_checked*(obj: ptr TCheckBox): cint{.cdecl,
 #  \param checked 1 if the checkbox should become checked, otherwise 0
 # 
 
-proc checkbox_set_checked*(obj: ptr TCheckBox, checked: cint){.cdecl, 
+proc checkbox_set_checked*(obj: ptr CheckBox, checked: cint){.cdecl, 
     importc: "checkbox_set_checked", dynlib: clarodll.}
 
 
@@ -922,31 +928,31 @@ proc checkbox_set_checked*(obj: ptr TCheckBox, checked: cint){.cdecl,
 # 
 
 type 
-  TListItem*{.pure.} = object of TClaroObj
+  ListItem*{.pure.} = object of ClaroObj
     row*: cint
     native*: pointer
     nativeid*: int
-    menu*: ptr TClaroObj
+    menu*: ptr ClaroObj
     enabled*: cint
     data*: ptr pointer
-    ListItemChildren*: TList
-    ListItemParent*: ptr TList
-    parent_item*: ptr TListItem # drawing related info, not always required
-    text_color*: TColor
-    sel_text_color*: TColor
-    back_color*: TColor
-    sel_back_color*: TColor
-    font*: TFont
+    ListItemChildren*: List
+    ListItemParent*: ptr List
+    parent_item*: ptr ListItem # drawing related info, not always required
+    text_color*: Color
+    sel_text_color*: Color
+    back_color*: Color
+    sel_back_color*: Color
+    font*: Font
 
-  TListWidget* {.pure.} = object of TWidget ## List widget, base for 
+  ListWidget* {.pure.} = object of Widget ## List widget, base for 
                                             ## widgets containing items
     columns*: cint
     coltypes*: ptr cint
-    items*: TList
+    items*: List
 
-  TCombo*{.pure.} = object of TListWidget
-    selected*: ptr TListItem
-
+  Combo*{.pure.} = object of ListWidget
+    selected*: ptr ListItem
+{.deprecated: [TListItem: ListItem, TListWidget: ListWidget, TCombo: Combo].}
 
 # functions 
 #*
@@ -958,8 +964,8 @@ type
 #  \return A new Combo widget object.
 # 
 
-proc newcombo*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-               flags: cint): ptr TCombo{.
+proc newcombo*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+               flags: cint): ptr Combo{.
     cdecl, importc: "combo_widget_create", dynlib: clarodll.}
 #*
 #  \brief Append a row to a Combo widget
@@ -969,7 +975,7 @@ proc newcombo*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new list item.
 # 
 
-proc combo_append_row*(combo: ptr TCombo, text: cstring): ptr TListItem {.
+proc combo_append_row*(combo: ptr Combo, text: cstring): ptr ListItem {.
     cdecl, importc: "combo_append_row", dynlib: clarodll.}
 #*
 #  \brief Insert a row at the specified position into a Combo widget
@@ -980,8 +986,8 @@ proc combo_append_row*(combo: ptr TCombo, text: cstring): ptr TListItem {.
 #  \return A new list item.
 # 
 
-proc combo_insert_row*(combo: ptr TCombo, pos: cint, 
-                       text: cstring): ptr TListItem {.
+proc combo_insert_row*(combo: ptr Combo, pos: cint, 
+                       text: cstring): ptr ListItem {.
     cdecl, importc: "combo_insert_row", dynlib: clarodll.}
 #*
 #  \brief Move a row in a Combo widget
@@ -991,7 +997,7 @@ proc combo_insert_row*(combo: ptr TCombo, pos: cint,
 #  \param row New position to place this item
 # 
 
-proc combo_move_row*(combo: ptr TCombo, item: ptr TListItem, row: cint){.
+proc combo_move_row*(combo: ptr Combo, item: ptr ListItem, row: cint){.
     cdecl, importc: "combo_move_row", dynlib: clarodll.}
 #*
 #  \brief Remove a row from a Combo widget
@@ -1000,7 +1006,7 @@ proc combo_move_row*(combo: ptr TCombo, item: ptr TListItem, row: cint){.
 #  \param item A valid list item
 # 
 
-proc combo_remove_row*(combo: ptr TCombo, item: ptr TListItem){.cdecl, 
+proc combo_remove_row*(combo: ptr Combo, item: ptr ListItem){.cdecl, 
     importc: "combo_remove_row", dynlib: clarodll.}
 #*
 #  \brief Returns the currently selected Combo item
@@ -1009,7 +1015,7 @@ proc combo_remove_row*(combo: ptr TCombo, item: ptr TListItem){.cdecl,
 #  \return The currently selected Combo item, or NULL if no item is selected.
 # 
 
-proc combo_get_selected*(obj: ptr TCombo): ptr TListItem{.cdecl, 
+proc combo_get_selected*(obj: ptr Combo): ptr ListItem{.cdecl, 
     importc: "combo_get_selected", dynlib: clarodll.}
 #*
 #  \brief Returns the number of rows in a Combo widget
@@ -1018,7 +1024,7 @@ proc combo_get_selected*(obj: ptr TCombo): ptr TListItem{.cdecl,
 #  \return Number of rows
 # 
 
-proc combo_get_rows*(obj: ptr TCombo): cint{.cdecl, 
+proc combo_get_rows*(obj: ptr Combo): cint{.cdecl, 
     importc: "combo_get_rows", dynlib: clarodll.}
 #*
 #  \brief Selects a row in a Combo widget
@@ -1027,7 +1033,7 @@ proc combo_get_rows*(obj: ptr TCombo): cint{.cdecl,
 #  \param item A valid list item
 # 
 
-proc combo_select_item*(obj: ptr TCombo, item: ptr TListItem){.cdecl, 
+proc combo_select_item*(obj: ptr Combo, item: ptr ListItem){.cdecl, 
     importc: "combo_select_item", dynlib: clarodll.}
 #*
 #  \brief Removes all entries from a Combo widget
@@ -1035,11 +1041,12 @@ proc combo_select_item*(obj: ptr TCombo, item: ptr TListItem){.cdecl,
 #  \param obj A valid Combo widget object.
 # 
 
-proc combo_clear*(obj: ptr TCombo){.cdecl, importc: "combo_clear", 
+proc combo_clear*(obj: ptr Combo){.cdecl, importc: "combo_clear", 
                                     dynlib: clarodll.}
 
 type 
-  TContainerWidget* {.pure.} = object of TWidget
+  ContainerWidget* {.pure.} = object of Widget
+{.deprecated: [TContainerWidget: ContainerWidget].}
 
 
 # functions 
@@ -1052,14 +1059,14 @@ type
 #  \return A new Container widget object.
 # 
 
-proc newcontainer*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                   flags: cint): ptr TContainerWidget{.
+proc newcontainer*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                   flags: cint): ptr ContainerWidget{.
     cdecl, importc: "container_widget_create", dynlib: clarodll.}
 
-proc newdialog*(parent: ptr TClaroObj, bounds: ptr TBounds, format: cstring, 
-                flags: cint): ptr TClaroObj{.cdecl, 
+proc newdialog*(parent: ptr ClaroObj, bounds: ptr Bounds, format: cstring, 
+                flags: cint): ptr ClaroObj{.cdecl, 
     importc: "dialog_widget_create", dynlib: clarodll.}
-proc dialog_set_text*(obj: ptr TClaroObj, text: cstring){.cdecl, 
+proc dialog_set_text*(obj: ptr ClaroObj, text: cstring){.cdecl, 
     importc: "dialog_set_text", dynlib: clarodll.}
 proc dialog_set_default_icon*(typ: cstring, file: cstring){.cdecl, 
     importc: "dialog_set_default_icon", dynlib: clarodll.}
@@ -1075,8 +1082,9 @@ proc dialog_other*(format: cstring, text: cstring, default_icon: cstring): cint{
     cdecl, importc: "dialog_other", dynlib: clarodll.}
 
 type 
-  TFontDialog* {.pure.} = object of TWidget
-    selected*: TFont
+  FontDialog* {.pure.} = object of Widget
+    selected*: Font
+{.deprecated: [TFontDialog: FontDialog].}
 
 # functions 
 #*
@@ -1087,7 +1095,7 @@ type
 #  \return A new Font Selection widget object.
 # 
 
-proc newFontDialog*(parent: ptr TClaroObj, flags: cint): ptr TFontDialog {.
+proc newFontDialog*(parent: ptr ClaroObj, flags: cint): ptr FontDialog {.
     cdecl, importc: "font_dialog_widget_create", dynlib: clarodll.}
 #*
 #  \brief Changes the selected font
@@ -1096,7 +1104,7 @@ proc newFontDialog*(parent: ptr TClaroObj, flags: cint): ptr TFontDialog {.
 #  \param font The name of the font
 # 
 
-proc font_dialog_set_font*(obj: ptr TFontDialog, face: cstring, size: cint, 
+proc font_dialog_set_font*(obj: ptr FontDialog, face: cstring, size: cint, 
                            weight: cint, slant: cint, decoration: cint){.cdecl, 
     importc: "font_dialog_set_font", dynlib: clarodll.}
 #*
@@ -1106,13 +1114,13 @@ proc font_dialog_set_font*(obj: ptr TFontDialog, face: cstring, size: cint,
 #  \return A font_t structure containing information about the selected font.
 # 
 
-proc font_dialog_get_font*(obj: ptr TFontDialog): ptr TFont{.cdecl, 
+proc font_dialog_get_font*(obj: ptr FontDialog): ptr Font{.cdecl, 
     importc: "font_dialog_get_font", dynlib: clarodll.}
 
 type 
-  TFrame* {.pure.} = object of TWidget
+  Frame* {.pure.} = object of Widget
     text*: array[0..256-1, char]
-
+{.deprecated: [TFrame: Frame].}
 
 #*
 #  \brief Creates a Frame widget
@@ -1123,8 +1131,8 @@ type
 #  \return A new Frame widget object.
 # 
 
-proc newframe*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-               flags: cint): ptr TFrame{.
+proc newframe*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+               flags: cint): ptr Frame{.
     cdecl, importc: "frame_widget_create", dynlib: clarodll.}
 #*
 #  \brief Creates a Frame widget with a label
@@ -1136,8 +1144,8 @@ proc newframe*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new Frame widget object.
 # 
 
-proc newframe*(parent: ptr TClaroObj, bounds: ptr TBounds, flags: cint, 
-                                     label: cstring): ptr TFrame {.cdecl, 
+proc newframe*(parent: ptr ClaroObj, bounds: ptr Bounds, flags: cint, 
+                                     label: cstring): ptr Frame {.cdecl, 
     importc: "frame_widget_create_with_label", dynlib: clarodll.}
 #*
 #  \brief Creates a Container widget
@@ -1148,13 +1156,13 @@ proc newframe*(parent: ptr TClaroObj, bounds: ptr TBounds, flags: cint,
 #  \return A new Container widget object.
 # 
 
-proc frame_set_text*(frame: ptr TFrame, label: cstring){.cdecl, 
+proc frame_set_text*(frame: ptr Frame, label: cstring){.cdecl, 
     importc: "frame_set_label", dynlib: clarodll.}
 
 type 
-  TImageWidget* {.pure.} = object of TWidget
-    src*: ptr TImage
-
+  ImageWidget* {.pure.} = object of Widget
+    src*: ptr Image
+{.deprecated: [TImageWidget: ImageWidget].}
 
 #*
 #  \brief Creates an Image widget
@@ -1165,8 +1173,8 @@ type
 #  \return A new Image widget object.
 # 
 
-proc newimageWidget*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                     flags: cint): ptr TImageWidget{.
+proc newimageWidget*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                     flags: cint): ptr ImageWidget{.
     cdecl, importc: "image_widget_create", dynlib: clarodll.}
 #*
 #  \brief Creates an Image widget with an image
@@ -1178,9 +1186,9 @@ proc newimageWidget*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new Image widget object.
 # 
 
-proc newimageWidget*(parent: ptr TClaroObj, 
-                     bounds: ptr TBounds, flags: cint, 
-                     image: ptr TImage): ptr TImageWidget{.cdecl, 
+proc newimageWidget*(parent: ptr ClaroObj, 
+                     bounds: ptr Bounds, flags: cint, 
+                     image: ptr Image): ptr ImageWidget{.cdecl, 
     importc: "image_widget_create_with_image", dynlib: clarodll.}
 #*
 #  \brief Sets the image object of the image widget
@@ -1189,16 +1197,17 @@ proc newimageWidget*(parent: ptr TClaroObj,
 #  \param src The source image object
 # 
 
-proc image_set_image*(image: ptr TImageWidget, src: ptr TImage){.cdecl, 
+proc image_set_image*(image: ptr ImageWidget, src: ptr Image){.cdecl, 
     importc: "image_set_image", dynlib: clarodll.}
     
 type 
-  TLabel*{.pure.} = object of TWidget
+  Label*{.pure.} = object of Widget
     text*: array[0..256-1, char]
 
-  TcLabelJustify* = enum 
+  CLabelJustify* = enum 
     cLabelLeft = 0x00000001, cLabelRight = 0x00000002, 
     cLabelCenter = 0x00000004, cLabelFill = 0x00000008
+{.deprecated: [TLabel: Label, TcLabelJustify: CLabelJustify].}
 
 #*
 #  \brief Creates a Label widget
@@ -1209,8 +1218,8 @@ type
 #  \return A new Label widget object.
 # 
 
-proc newlabel*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-               flags: cint): ptr TLabel{.
+proc newlabel*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+               flags: cint): ptr Label{.
     cdecl, importc: "label_widget_create", dynlib: clarodll.}
 #*
 #  \brief Creates a Label widget
@@ -1221,9 +1230,9 @@ proc newlabel*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new Label widget object.
 # 
 
-proc newLabel*(parent: ptr TClaroObj, 
-               bounds: ptr TBounds, flags: cint, 
-               text: cstring): ptr TLabel{.cdecl, 
+proc newLabel*(parent: ptr ClaroObj, 
+               bounds: ptr Bounds, flags: cint, 
+               text: cstring): ptr Label{.cdecl, 
     importc: "label_widget_create_with_text", dynlib: clarodll.}
 #*
 #  \brief Sets the text of a label widget
@@ -1232,7 +1241,7 @@ proc newLabel*(parent: ptr TClaroObj,
 #  \param text The text this label widget will show
 # 
 
-proc label_set_text*(obj: ptr TLabel, text: cstring){.cdecl, 
+proc label_set_text*(obj: ptr Label, text: cstring){.cdecl, 
     importc: "label_set_text", dynlib: clarodll.}
     
 #*
@@ -1242,7 +1251,7 @@ proc label_set_text*(obj: ptr TLabel, text: cstring){.cdecl,
 #  \param text The justification (see cLabelJustify enum)
 # 
 
-proc label_set_justify*(obj: ptr TLabel, flags: cint){.cdecl, 
+proc label_set_justify*(obj: ptr Label, flags: cint){.cdecl, 
     importc: "label_set_justify", dynlib: clarodll.}
     
 const 
@@ -1262,7 +1271,7 @@ const
 #              types of the columns.
 # 
 
-proc list_widget_init_ptr*(obj: ptr TListWidget, col_num: cint, 
+proc list_widget_init_ptr*(obj: ptr ListWidget, col_num: cint, 
                            cols: ptr cint) {.cdecl, 
     importc: "list_widget_init_ptr", dynlib: clarodll.}
 #*
@@ -1273,7 +1282,7 @@ proc list_widget_init_ptr*(obj: ptr TListWidget, col_num: cint,
 #  \param argpi A pointer to a va_list to parse
 # 
 
-#proc list_widget_init_vaptr*(obj: ptr TClaroObj, col_num: cunsignedint, 
+#proc list_widget_init_vaptr*(obj: ptr ClaroObj, col_num: cunsignedint, 
 #                             argpi: va_list){.cdecl, 
 #    importc: "list_widget_init_vaptr", dynlib: clarodll.}
 
@@ -1282,7 +1291,7 @@ proc list_widget_init_ptr*(obj: ptr TListWidget, col_num: cint,
 #  it's own arguments, and a pointer to the first variable argument.
 # 
 
-proc list_widget_init*(obj: ptr TListWidget, col_num: cint){.varargs, 
+proc list_widget_init*(obj: ptr ListWidget, col_num: cint){.varargs, 
     cdecl, importc: "list_widget_init", dynlib: clarodll.}
 #*
 #  \brief Inserts a row to a list under parent at the position specified.
@@ -1302,16 +1311,16 @@ proc list_widget_init*(obj: ptr TListWidget, col_num: cint){.varargs,
 #  a pointer to the first variable argument.
 # 
 
-proc list_widget_row_append*(list: ptr TListWidget, 
-                             parent: ptr TListItem): ptr TListItem{.
+proc list_widget_row_append*(list: ptr ListWidget, 
+                             parent: ptr ListItem): ptr ListItem{.
     varargs, cdecl, importc: "list_widget_row_append", dynlib: clarodll.}
 #*
 #  Shortcut function, calls list_widget_row_insert_ptr with
 #  it's own arguments, and a pointer to the first variable argument.
 # 
 
-proc list_widget_row_insert*(list: ptr TListWidget, parent: ptr TListItem, 
-                             pos: cint): ptr TListItem {.varargs, cdecl, 
+proc list_widget_row_insert*(list: ptr ListWidget, parent: ptr ListItem, 
+                             pos: cint): ptr ListItem {.varargs, cdecl, 
     importc: "list_widget_row_insert", dynlib: clarodll.}
 #*
 #  \brief Removes a row from a list
@@ -1320,7 +1329,7 @@ proc list_widget_row_insert*(list: ptr TListWidget, parent: ptr TListItem,
 #  \param item The item to remove
 # 
 
-proc list_widget_row_remove*(list: ptr TListWidget, item: ptr TListItem){.
+proc list_widget_row_remove*(list: ptr ListWidget, item: ptr ListItem){.
     cdecl, importc: "list_widget_row_remove", dynlib: clarodll.}
 #*
 #  \brief Moves a row to a new position in the list
@@ -1331,7 +1340,7 @@ proc list_widget_row_remove*(list: ptr TListWidget, item: ptr TListItem){.
 #             position will result in no change.
 # 
 
-proc list_widget_row_move*(list: ptr TListWidget, item: ptr TListItem, 
+proc list_widget_row_move*(list: ptr ListWidget, item: ptr ListItem, 
                            row: cint){.cdecl, importc: "list_widget_row_move", 
                                        dynlib: clarodll.}
 #*
@@ -1342,8 +1351,8 @@ proc list_widget_row_move*(list: ptr TListWidget, item: ptr TListItem,
 #  \param row Row index of item to return
 # 
 
-proc list_widget_get_row*(list: ptr TListWidget, parent: ptr TListItem, 
-                          row: cint): ptr TListItem{.cdecl, 
+proc list_widget_get_row*(list: ptr ListWidget, parent: ptr ListItem, 
+                          row: cint): ptr ListItem{.cdecl, 
     importc: "list_widget_get_row", dynlib: clarodll.}
 #*
 #  \brief Edit items of a row in the list.
@@ -1365,7 +1374,7 @@ proc list_widget_get_row*(list: ptr TListWidget, parent: ptr TListItem,
 #              Don't forget the -1.
 # 
 
-proc list_widget_edit_row*(list: ptr TListWidget, item: ptr TListItem){.
+proc list_widget_edit_row*(list: ptr ListWidget, item: ptr ListItem){.
     varargs, cdecl, importc: "list_widget_edit_row", dynlib: clarodll.}
 #*
 #  \brief Set the text color of an item.
@@ -1379,7 +1388,7 @@ proc list_widget_edit_row*(list: ptr TListWidget, item: ptr TListItem){.
 #          should be 1.0)
 # 
 
-proc list_item_set_text_color*(item: ptr TListItem, r: cfloat, g: cfloat, 
+proc list_item_set_text_color*(item: ptr ListItem, r: cfloat, g: cfloat, 
                                b: cfloat, a: cfloat){.cdecl, 
     importc: "list_item_set_text_color", dynlib: clarodll.}
 #*
@@ -1394,7 +1403,7 @@ proc list_item_set_text_color*(item: ptr TListItem, r: cfloat, g: cfloat,
 #           should be 1.0)
 # 
 
-proc list_item_set_text_bgcolor*(item: ptr TListItem, r: cfloat, g: cfloat, 
+proc list_item_set_text_bgcolor*(item: ptr ListItem, r: cfloat, g: cfloat, 
                                  b: cfloat, a: cfloat){.cdecl, 
     importc: "list_item_set_text_bgcolor", dynlib: clarodll.}
 #*
@@ -1409,7 +1418,7 @@ proc list_item_set_text_bgcolor*(item: ptr TListItem, r: cfloat, g: cfloat,
 #         should be 1.0)
 # 
 
-proc list_item_set_sel_text_color*(item: ptr TListItem, r: cfloat, g: cfloat, 
+proc list_item_set_sel_text_color*(item: ptr ListItem, r: cfloat, g: cfloat, 
                                    b: cfloat, a: cfloat){.cdecl, 
     importc: "list_item_set_sel_text_color", dynlib: clarodll.}
 #*
@@ -1424,7 +1433,7 @@ proc list_item_set_sel_text_color*(item: ptr TListItem, r: cfloat, g: cfloat,
 #          should be 1.0)
 # 
 
-proc list_item_set_sel_text_bgcolor*(item: ptr TListItem, r: cfloat, 
+proc list_item_set_sel_text_bgcolor*(item: ptr ListItem, r: cfloat, 
                                      g: cfloat, b: cfloat, a: cfloat){.cdecl, 
     importc: "list_item_set_sel_text_bgcolor", dynlib: clarodll.}
 #*
@@ -1436,13 +1445,14 @@ proc list_item_set_sel_text_bgcolor*(item: ptr TListItem, r: cfloat,
 #  \param decoration Font decorations
 # 
 
-proc list_item_set_font_extra*(item: ptr TListItem, weight: cint, 
+proc list_item_set_font_extra*(item: ptr ListItem, weight: cint, 
                                slant: cint, decoration: cint){.cdecl, 
     importc: "list_item_set_font_extra", dynlib: clarodll.}
 
 type 
-  TListbox* {.pure.} = object of TListWidget
-    selected*: ptr TListItem
+  Listbox* {.pure.} = object of ListWidget
+    selected*: ptr ListItem
+{.deprecated: [TListbox: Listbox].}
 
 # functions 
 #*
@@ -1454,8 +1464,8 @@ type
 #  \return A new ListBox widget object.
 # 
 
-proc newlistbox*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                 flags: cint): ptr TListbox{.
+proc newlistbox*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                 flags: cint): ptr Listbox{.
     cdecl, importc: "listbox_widget_create", dynlib: clarodll.}
 #*
 #  \brief Insert a row at the specified position into a ListBox widget
@@ -1466,8 +1476,8 @@ proc newlistbox*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new list item.
 # 
 
-proc listbox_insert_row*(listbox: ptr TListbox, pos: cint, 
-                         text: cstring): ptr TListItem{.
+proc listbox_insert_row*(listbox: ptr Listbox, pos: cint, 
+                         text: cstring): ptr ListItem{.
     cdecl, importc: "listbox_insert_row", dynlib: clarodll.}
 #*
 #  \brief Append a row to a ListBox widget
@@ -1477,7 +1487,7 @@ proc listbox_insert_row*(listbox: ptr TListbox, pos: cint,
 #  \return A new list item.
 # 
 
-proc listbox_append_row*(listbox: ptr TListbox, text: cstring): ptr TListItem{.
+proc listbox_append_row*(listbox: ptr Listbox, text: cstring): ptr ListItem{.
     cdecl, importc: "listbox_append_row", dynlib: clarodll.}
 #*
 #  \brief Move a row in a ListBox widget
@@ -1487,7 +1497,7 @@ proc listbox_append_row*(listbox: ptr TListbox, text: cstring): ptr TListItem{.
 #  \param row New position to place this item
 # 
 
-proc listbox_move_row*(listbox: ptr TListbox, item: ptr TListItem, row: cint){.
+proc listbox_move_row*(listbox: ptr Listbox, item: ptr ListItem, row: cint){.
     cdecl, importc: "listbox_move_row", dynlib: clarodll.}
 #*
 #  \brief Remove a row from a ListBox widget
@@ -1496,7 +1506,7 @@ proc listbox_move_row*(listbox: ptr TListbox, item: ptr TListItem, row: cint){.
 #  \param item A valid list item
 # 
 
-proc listbox_remove_row*(listbox: ptr TListbox, item: ptr TListItem){.cdecl, 
+proc listbox_remove_row*(listbox: ptr Listbox, item: ptr ListItem){.cdecl, 
     importc: "listbox_remove_row", dynlib: clarodll.}
 #*
 #  \brief Returns the currently selected ListBox item
@@ -1505,7 +1515,7 @@ proc listbox_remove_row*(listbox: ptr TListbox, item: ptr TListItem){.cdecl,
 #  \return The currently selected ListBox item, or NULL if no item is selected.
 # 
 
-proc listbox_get_selected*(obj: ptr TListbox): ptr TListItem{.cdecl, 
+proc listbox_get_selected*(obj: ptr Listbox): ptr ListItem{.cdecl, 
     importc: "listbox_get_selected", dynlib: clarodll.}
 #*
 #  \brief Returns the number of rows in a ListBox widget
@@ -1514,7 +1524,7 @@ proc listbox_get_selected*(obj: ptr TListbox): ptr TListItem{.cdecl,
 #  \return Number of rows
 # 
 
-proc listbox_get_rows*(obj: ptr TListbox): cint{.cdecl, 
+proc listbox_get_rows*(obj: ptr Listbox): cint{.cdecl, 
     importc: "listbox_get_rows", dynlib: clarodll.}
 #*
 #  \brief Selects a row in a ListBox widget
@@ -1523,7 +1533,7 @@ proc listbox_get_rows*(obj: ptr TListbox): cint{.cdecl,
 #  \param item A valid list item
 # 
 
-proc listbox_select_item*(obj: ptr TListbox, item: ptr TListItem){.cdecl, 
+proc listbox_select_item*(obj: ptr Listbox, item: ptr ListItem){.cdecl, 
     importc: "listbox_select_item", dynlib: clarodll.}
 
 const 
@@ -1538,11 +1548,11 @@ const
   cListViewRowCheckBoxes* = 1
 
 type 
-  TListview* {.pure.} = object of TListWidget
+  Listview* {.pure.} = object of ListWidget
     titles*: cstringArray
     nativep*: pointer
-    selected*: ptr TListItem
-
+    selected*: ptr ListItem
+{.deprecated: [TListview: Listview].}
 
 # functions 
 #*
@@ -1557,8 +1567,8 @@ type
 #  \return A new ListView widget object.
 # 
 
-proc newlistview*(parent: ptr TClaroObj, bounds: ptr TBounds, columns: cint, 
-                  flags: cint): ptr TListview {.varargs, cdecl, 
+proc newlistview*(parent: ptr ClaroObj, bounds: ptr Bounds, columns: cint, 
+                  flags: cint): ptr Listview {.varargs, cdecl, 
     importc: "listview_widget_create", dynlib: clarodll.}
 #*
 #  \brief Append a row to a ListView widget
@@ -1568,7 +1578,7 @@ proc newlistview*(parent: ptr TClaroObj, bounds: ptr TBounds, columns: cint,
 #  \return A new list item.
 # 
 
-proc listview_append_row*(listview: ptr TListview): ptr TListItem{.varargs, 
+proc listview_append_row*(listview: ptr Listview): ptr ListItem{.varargs, 
     cdecl, importc: "listview_append_row", dynlib: clarodll.}
 #*
 #  \brief Insert a row at the specified position into a ListView widget
@@ -1579,7 +1589,7 @@ proc listview_append_row*(listview: ptr TListview): ptr TListItem{.varargs,
 #  \return A new list item.
 # 
 
-proc listview_insert_row*(listview: ptr TListview, pos: cint): ptr TListItem{.
+proc listview_insert_row*(listview: ptr Listview, pos: cint): ptr ListItem{.
     varargs, cdecl, importc: "listview_insert_row", dynlib: clarodll.}
 #*
 #  \brief Move a row in a ListView widget
@@ -1589,7 +1599,7 @@ proc listview_insert_row*(listview: ptr TListview, pos: cint): ptr TListItem{.
 #  \param row New position to place this item
 # 
 
-proc listview_move_row*(listview: ptr TListview, item: ptr TListItem, 
+proc listview_move_row*(listview: ptr Listview, item: ptr ListItem, 
                         row: cint){.cdecl, importc: "listview_move_row", 
                                     dynlib: clarodll.}
 #*
@@ -1599,7 +1609,7 @@ proc listview_move_row*(listview: ptr TListview, item: ptr TListItem,
 #  \param item A valid list item
 # 
 
-proc listview_remove_row*(listview: ptr TListview, item: ptr TListItem){.
+proc listview_remove_row*(listview: ptr Listview, item: ptr ListItem){.
     cdecl, importc: "listview_remove_row", dynlib: clarodll.}
 #*
 #  \brief Returns the currently selected ListView item
@@ -1608,7 +1618,7 @@ proc listview_remove_row*(listview: ptr TListview, item: ptr TListItem){.
 #  \return The currently selected ListView item, or NULL if no item is selected.
 # 
 
-proc listview_get_selected*(obj: ptr TListview): ptr TListItem{.cdecl, 
+proc listview_get_selected*(obj: ptr Listview): ptr ListItem{.cdecl, 
     importc: "listview_get_selected", dynlib: clarodll.}
 #*
 #  \brief Returns the number of rows in a ListView widget
@@ -1617,7 +1627,7 @@ proc listview_get_selected*(obj: ptr TListview): ptr TListItem{.cdecl,
 #  \return Number of rows
 # 
 
-proc listview_get_rows*(obj: ptr TListview): cint{.cdecl, 
+proc listview_get_rows*(obj: ptr Listview): cint{.cdecl, 
     importc: "listview_get_rows", dynlib: clarodll.}
 #*
 #  \brief Selects a row in a ListView widget
@@ -1626,15 +1636,15 @@ proc listview_get_rows*(obj: ptr TListview): cint{.cdecl,
 #  \param item A valid list item
 # 
 
-proc listview_select_item*(obj: ptr TListview, item: ptr TListItem){.cdecl, 
+proc listview_select_item*(obj: ptr Listview, item: ptr ListItem){.cdecl, 
     importc: "listview_select_item", dynlib: clarodll.}
 
 const 
   cMenuPopupAtCursor* = 1
 
 type 
-  TMenu* {.pure.} = object of TListWidget
-
+  Menu* {.pure.} = object of ListWidget
+{.deprecated: [TMenu: Menu].}
 
 #*
 #  \brief Creates a Menu widget
@@ -1644,7 +1654,7 @@ type
 #  \return A new Menu widget object.
 # 
 
-proc newmenu*(parent: ptr TClaroObj, flags: cint): ptr TMenu {.cdecl, 
+proc newmenu*(parent: ptr ClaroObj, flags: cint): ptr Menu {.cdecl, 
     importc: "menu_widget_create", dynlib: clarodll.}
 #*
 #  \brief Append a row to a Menu widget
@@ -1656,8 +1666,8 @@ proc newmenu*(parent: ptr TClaroObj, flags: cint): ptr TMenu {.cdecl,
 #  \return A new list item.
 # 
 
-proc menu_append_item*(menu: ptr TMenu, parent: ptr TListItem, 
-                       image: ptr TImage, title: cstring): ptr TListItem{.
+proc menu_append_item*(menu: ptr Menu, parent: ptr ListItem, 
+                       image: ptr Image, title: cstring): ptr ListItem{.
     cdecl, importc: "menu_append_item", dynlib: clarodll.}
 #*
 #  \brief Insert a row into a Menu widget
@@ -1670,8 +1680,8 @@ proc menu_append_item*(menu: ptr TMenu, parent: ptr TListItem,
 #  \return A new list item.
 # 
 
-proc menu_insert_item*(menu: ptr TMenu, parent: ptr TListItem, pos: cint, 
-                       image: ptr TImage, title: cstring): ptr TListItem{.
+proc menu_insert_item*(menu: ptr Menu, parent: ptr ListItem, pos: cint, 
+                       image: ptr Image, title: cstring): ptr ListItem{.
     cdecl, importc: "menu_insert_item", dynlib: clarodll.}
 #*
 #  \brief Append a separator to a Menu widget
@@ -1681,8 +1691,8 @@ proc menu_insert_item*(menu: ptr TMenu, parent: ptr TListItem, pos: cint,
 #  \return A new list item.
 # 
 
-proc menu_append_separator*(menu: ptr TMenu, 
-                            parent: ptr TListItem): ptr TListItem{.
+proc menu_append_separator*(menu: ptr Menu, 
+                            parent: ptr ListItem): ptr ListItem{.
     cdecl, importc: "menu_append_separator", dynlib: clarodll.}
 #*
 #  \brief Insert a separator into a Menu widget
@@ -1693,8 +1703,8 @@ proc menu_append_separator*(menu: ptr TMenu,
 #  \return A new list item.
 # 
 
-proc menu_insert_separator*(menu: ptr TMenu, parent: ptr TListItem, 
-                            pos: cint): ptr TListItem{.cdecl, 
+proc menu_insert_separator*(menu: ptr Menu, parent: ptr ListItem, 
+                            pos: cint): ptr ListItem{.cdecl, 
     importc: "menu_insert_separator", dynlib: clarodll.}
 #*
 #  \brief Move a row in a Menu widget
@@ -1704,7 +1714,7 @@ proc menu_insert_separator*(menu: ptr TMenu, parent: ptr TListItem,
 #  \param row New position to place this item
 # 
 
-proc menu_move_item*(menu: ptr TMenu, item: ptr TListItem, row: cint){.
+proc menu_move_item*(menu: ptr Menu, item: ptr ListItem, row: cint){.
     cdecl, importc: "menu_move_item", dynlib: clarodll.}
 #*
 #  \brief Remove a row from a Menu widget
@@ -1713,7 +1723,7 @@ proc menu_move_item*(menu: ptr TMenu, item: ptr TListItem, row: cint){.
 #  \param item A valid list item
 # 
 
-proc menu_remove_item*(menu: ptr TMenu, item: ptr TListItem){.cdecl, 
+proc menu_remove_item*(menu: ptr Menu, item: ptr ListItem){.cdecl, 
     importc: "menu_remove_item", dynlib: clarodll.}
 #*
 #  \brief Returns the number of rows in a Menu widget
@@ -1724,7 +1734,7 @@ proc menu_remove_item*(menu: ptr TMenu, item: ptr TListItem){.cdecl,
 #  \return Number of rows
 # 
 
-proc menu_item_count*(obj: ptr TMenu, parent: ptr TListItem): cint{.
+proc menu_item_count*(obj: ptr Menu, parent: ptr ListItem): cint{.
     cdecl, importc: "menu_item_count", dynlib: clarodll.}
 #*
 #  \brief Disables a menu item (no focus and greyed out)
@@ -1733,7 +1743,7 @@ proc menu_item_count*(obj: ptr TMenu, parent: ptr TListItem): cint{.
 #  \param item A valid list item
 # 
 
-proc menu_disable_item*(menu: ptr TMenu, item: ptr TListItem){.cdecl, 
+proc menu_disable_item*(menu: ptr Menu, item: ptr ListItem){.cdecl, 
     importc: "menu_disable_item", dynlib: clarodll.}
 #*
 #  \brief Enables a menu item (allows focus and not greyed out)
@@ -1742,7 +1752,7 @@ proc menu_disable_item*(menu: ptr TMenu, item: ptr TListItem){.cdecl,
 #  \param item A valid list item
 # 
 
-proc menu_enable_item*(menu: ptr TMenu, item: ptr TListItem){.cdecl, 
+proc menu_enable_item*(menu: ptr Menu, item: ptr ListItem){.cdecl, 
     importc: "menu_enable_item", dynlib: clarodll.}
 #*
 #  \brief Pops up the menu at the position specified
@@ -1753,7 +1763,7 @@ proc menu_enable_item*(menu: ptr TMenu, item: ptr TListItem){.cdecl,
 #  \param flags Flags
 # 
 
-proc menu_popup*(menu: ptr TMenu, x: cint, y: cint, flags: cint){.cdecl, 
+proc menu_popup*(menu: ptr Menu, x: cint, y: cint, flags: cint){.cdecl, 
     importc: "menu_popup", dynlib: clarodll.}
 #
 #   Menu modifiers
@@ -1764,8 +1774,8 @@ const
   cModifierCommand* = 1 shl 1
 
 type 
-  TMenubar* {.pure.} = object of TListWidget
-
+  Menubar* {.pure.} = object of ListWidget
+{.deprecated: [TMenubar: Menubar].}
 #*
 #  \brief Creates a MenuBar widget
 #  
@@ -1774,7 +1784,7 @@ type
 #  \return A new MenuBar widget object.
 # 
 
-proc newmenubar*(parent: ptr TClaroObj, flags: cint): ptr TMenubar {.cdecl, 
+proc newmenubar*(parent: ptr ClaroObj, flags: cint): ptr Menubar {.cdecl, 
     importc: "menubar_widget_create", dynlib: clarodll.}
 #*
 #  \brief Add a key binding to a menu items
@@ -1785,7 +1795,7 @@ proc newmenubar*(parent: ptr TClaroObj, flags: cint): ptr TMenubar {.cdecl,
 #  \param modifier The modifier key, or 0.
 # 
 
-proc menubar_add_key_binding*(menubar: ptr TMenubar, item: ptr TListItem, 
+proc menubar_add_key_binding*(menubar: ptr Menubar, item: ptr ListItem, 
                               utf8_key: cstring, modifier: cint){.cdecl, 
     importc: "menubar_add_key_binding", dynlib: clarodll.}
 #*
@@ -1798,8 +1808,8 @@ proc menubar_add_key_binding*(menubar: ptr TMenubar, item: ptr TListItem,
 #  \return A new list item.
 # 
 
-proc menubar_append_item*(menubar: ptr TMenubar, parent: ptr TListItem, 
-                          image: ptr TImage, title: cstring): ptr TListItem{.
+proc menubar_append_item*(menubar: ptr Menubar, parent: ptr ListItem, 
+                          image: ptr Image, title: cstring): ptr ListItem{.
     cdecl, importc: "menubar_append_item", dynlib: clarodll.}
 #*
 #  \brief Insert a row into a MenuBar widget
@@ -1812,9 +1822,9 @@ proc menubar_append_item*(menubar: ptr TMenubar, parent: ptr TListItem,
 #  \return A new list item.
 # 
 
-proc menubar_insert_item*(menubar: ptr TMenubar, parent: ptr TListItem, 
-                          pos: cint, image: ptr TImage, 
-                          title: cstring): ptr TListItem{.
+proc menubar_insert_item*(menubar: ptr Menubar, parent: ptr ListItem, 
+                          pos: cint, image: ptr Image, 
+                          title: cstring): ptr ListItem{.
     cdecl, importc: "menubar_insert_item", dynlib: clarodll.}
 #*
 #  \brief Append a separator to a MenuBar widget
@@ -1824,8 +1834,8 @@ proc menubar_insert_item*(menubar: ptr TMenubar, parent: ptr TListItem,
 #  \return A new list item.
 # 
 
-proc menubar_append_separator*(menubar: ptr TMenubar, 
-                               parent: ptr TListItem): ptr TListItem{.
+proc menubar_append_separator*(menubar: ptr Menubar, 
+                               parent: ptr ListItem): ptr ListItem{.
     cdecl, importc: "menubar_append_separator", dynlib: clarodll.}
 #*
 #  \brief Insert a separator into a MenuBar widget
@@ -1836,8 +1846,8 @@ proc menubar_append_separator*(menubar: ptr TMenubar,
 #  \return A new list item.
 # 
 
-proc menubar_insert_separator*(menubar: ptr TMenubar, parent: ptr TListItem, 
-                               pos: cint): ptr TListItem{.cdecl, 
+proc menubar_insert_separator*(menubar: ptr Menubar, parent: ptr ListItem, 
+                               pos: cint): ptr ListItem{.cdecl, 
     importc: "menubar_insert_separator", dynlib: clarodll.}
 #*
 #  \brief Move a row in a MenuBar widget
@@ -1847,7 +1857,7 @@ proc menubar_insert_separator*(menubar: ptr TMenubar, parent: ptr TListItem,
 #  \param row New position to place this item
 # 
 
-proc menubar_move_item*(menubar: ptr TMenubar, item: ptr TListItem, 
+proc menubar_move_item*(menubar: ptr Menubar, item: ptr ListItem, 
                         row: cint){.cdecl, importc: "menubar_move_item", 
                                     dynlib: clarodll.}
 #*
@@ -1857,7 +1867,7 @@ proc menubar_move_item*(menubar: ptr TMenubar, item: ptr TListItem,
 #  \param item A valid list item
 # 
 
-proc menubar_remove_item*(menubar: ptr TMenubar, item: ptr TListItem) {.
+proc menubar_remove_item*(menubar: ptr Menubar, item: ptr ListItem) {.
     cdecl, importc: "menubar_remove_item", dynlib: clarodll.}
 #*
 #  \brief Returns the number of rows in a MenuBar widget
@@ -1868,7 +1878,7 @@ proc menubar_remove_item*(menubar: ptr TMenubar, item: ptr TListItem) {.
 #  \return Number of rows
 # 
 
-proc menubar_item_count*(obj: ptr TMenubar, parent: ptr TListItem): cint{.
+proc menubar_item_count*(obj: ptr Menubar, parent: ptr ListItem): cint{.
     cdecl, importc: "menubar_item_count", dynlib: clarodll.}
 #*
 #  \brief Disables a menu item (no focus and greyed out)
@@ -1877,7 +1887,7 @@ proc menubar_item_count*(obj: ptr TMenubar, parent: ptr TListItem): cint{.
 #  \param item A valid list item
 # 
 
-proc menubar_disable_item*(menubar: ptr TMenubar, item: ptr TListItem){.
+proc menubar_disable_item*(menubar: ptr Menubar, item: ptr ListItem){.
     cdecl, importc: "menubar_disable_item", dynlib: clarodll.}
 #*
 #  \brief Enables a menu item (allows focus and not greyed out)
@@ -1886,15 +1896,16 @@ proc menubar_disable_item*(menubar: ptr TMenubar, item: ptr TListItem){.
 #  \param item A valid list item
 # 
 
-proc menubar_enable_item*(menubar: ptr TMenubar, item: ptr TListItem){.
+proc menubar_enable_item*(menubar: ptr Menubar, item: ptr ListItem){.
     cdecl, importc: "menubar_enable_item", dynlib: clarodll.}
 
 type 
-  TProgress* {.pure.} = object of TWidget
+  Progress* {.pure.} = object of Widget
 
-  TcProgressStyle* = enum 
+  CProgressStyle* = enum 
     cProgressLeftRight = 0x00000000, cProgressRightLeft = 0x00000001, 
     cProgressTopBottom = 0x00000002, cProgressBottomTop = 0x00000004
+{.deprecated: [TProgress: Progress, TcProgressStyle: CProgressStyle].}
 
 #*
 #  \brief Creates a Progress widget
@@ -1905,8 +1916,8 @@ type
 #  \return A new Progress widget object.
 # 
 
-proc newprogress*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                  flags: cint): ptr TProgress {.
+proc newprogress*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                  flags: cint): ptr Progress {.
     cdecl, importc: "progress_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets the value of a progress widget
@@ -1915,7 +1926,7 @@ proc newprogress*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param percentage Progress value
 # 
 
-proc progress_set_level*(progress: ptr TProgress, percentage: cdouble){.cdecl, 
+proc progress_set_level*(progress: ptr Progress, percentage: cdouble){.cdecl, 
     importc: "progress_set_level", dynlib: clarodll.}
 #*
 #  \brief Sets the orientation of a progress widget
@@ -1924,19 +1935,19 @@ proc progress_set_level*(progress: ptr TProgress, percentage: cdouble){.cdecl,
 #  \param flags One of the cProgressStyle values
 # 
 
-proc progress_set_orientation*(progress: ptr TProgress, flags: cint){.cdecl, 
+proc progress_set_orientation*(progress: ptr Progress, flags: cint){.cdecl, 
     importc: "progress_set_orientation", dynlib: clarodll.}
 
 type 
-  TRadioGroup* {.pure.} = object of TClaroObj
-    buttons*: TList
-    selected*: ptr TClaroObj
+  RadioGroup* {.pure.} = object of ClaroObj
+    buttons*: List
+    selected*: ptr ClaroObj
     ndata*: pointer
 
-  TRadioButton* {.pure.} = object of TWidget
+  RadioButton* {.pure.} = object of Widget
     text*: array[0..256-1, char]
-    group*: ptr TRadioGroup
-
+    group*: ptr RadioGroup
+{.deprecated: [TRadioGroup: RadioGroup, TRadioButton: RadioButton].}
 
 #*
 #  \brief Creates a Radio Group widget
@@ -1946,7 +1957,7 @@ type
 #  \return A new Radio Group widget object.
 # 
 
-proc newRadiogroup*(parent: ptr TClaroObj, flags: cint): ptr TRadioGroup {.
+proc newRadiogroup*(parent: ptr ClaroObj, flags: cint): ptr RadioGroup {.
     cdecl, importc: "radiogroup_create", dynlib: clarodll.}
 #*
 #  \brief Creates a Radio Button widget
@@ -1959,9 +1970,9 @@ proc newRadiogroup*(parent: ptr TClaroObj, flags: cint): ptr TRadioGroup {.
 #  \return A new Radio Button widget object.
 # 
 
-proc newradiobutton*(parent: ptr TClaroObj, group: ptr TRadioGroup, 
-                     bounds: ptr TBounds, label: cstring, 
-                     flags: cint): ptr TRadioButton{.
+proc newradiobutton*(parent: ptr ClaroObj, group: ptr RadioGroup, 
+                     bounds: ptr Bounds, label: cstring, 
+                     flags: cint): ptr RadioButton{.
     cdecl, importc: "radiobutton_widget_create", dynlib: clarodll.}
 #*
 #  \brief Set the label of a Radio Button
@@ -1970,7 +1981,7 @@ proc newradiobutton*(parent: ptr TClaroObj, group: ptr TRadioGroup,
 #  \param label The new label for the Radio Button
 # 
 
-proc radiobutton_set_text*(obj: ptr TRadioButton, label: cstring){.cdecl, 
+proc radiobutton_set_text*(obj: ptr RadioButton, label: cstring){.cdecl, 
     importc: "radiobutton_set_label", dynlib: clarodll.}
 #*
 #  \brief Set the group of a Radio Button
@@ -1979,18 +1990,18 @@ proc radiobutton_set_text*(obj: ptr TRadioButton, label: cstring){.cdecl,
 #  \param group A valid Radio Group widget object
 # 
 
-proc radiobutton_set_group*(rbutton: ptr TRadioButton, group: ptr TRadioGroup){.
+proc radiobutton_set_group*(rbutton: ptr RadioButton, group: ptr RadioGroup){.
     cdecl, importc: "radiobutton_set_group", dynlib: clarodll.}
 
 const 
   CLARO_SCROLLBAR_MAXIMUM* = 256
 
 type 
-  TScrollbar* {.pure.} = object of TWidget
+  Scrollbar* {.pure.} = object of Widget
     min*: cint
     max*: cint
     pagesize*: cint
-
+{.deprecated: [TScrollbar: Scrollbar].}
 
 const 
   cScrollbarHorizontal* = 0
@@ -2006,8 +2017,8 @@ const
 #  \return A new ScrollBar widget object.
 # 
 
-proc newscrollbar*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                   flags: cint): ptr TScrollbar{.
+proc newscrollbar*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                   flags: cint): ptr Scrollbar{.
     cdecl, importc: "scrollbar_widget_create", dynlib: clarodll.}
 #*
 #  \brief Returns the width that scrollbars should be on this platform
@@ -2026,7 +2037,7 @@ proc scrollbar_get_sys_width*(): cint{.cdecl,
 #  \param max The maximum value
 # 
 
-proc scrollbar_set_range*(w: ptr TScrollbar, min: cint, max: cint){.cdecl, 
+proc scrollbar_set_range*(w: ptr Scrollbar, min: cint, max: cint){.cdecl, 
     importc: "scrollbar_set_range", dynlib: clarodll.}
 #*
 #  \brief Sets the position of a ScrollBar widget
@@ -2035,7 +2046,7 @@ proc scrollbar_set_range*(w: ptr TScrollbar, min: cint, max: cint){.cdecl,
 #  \param pos The new position
 # 
 
-proc scrollbar_set_pos*(w: ptr TScrollbar, pos: cint){.cdecl, 
+proc scrollbar_set_pos*(w: ptr Scrollbar, pos: cint){.cdecl, 
     importc: "scrollbar_set_pos", dynlib: clarodll.}
 #*
 #  \brief Gets the position of a ScrollBar widget
@@ -2044,7 +2055,7 @@ proc scrollbar_set_pos*(w: ptr TScrollbar, pos: cint){.cdecl,
 #  \return The current position
 # 
 
-proc scrollbar_get_pos*(w: ptr TScrollbar): cint{.cdecl, 
+proc scrollbar_get_pos*(w: ptr Scrollbar): cint{.cdecl, 
     importc: "scrollbar_get_pos", dynlib: clarodll.}
 #*
 #  \brief Sets the page size of a ScrollBar widget
@@ -2053,20 +2064,21 @@ proc scrollbar_get_pos*(w: ptr TScrollbar): cint{.cdecl,
 #  \param pagesize The size of a page (the number of units visible at one time)
 # 
 
-proc scrollbar_set_pagesize*(w: ptr TScrollbar, pagesize: cint){.cdecl, 
+proc scrollbar_set_pagesize*(w: ptr Scrollbar, pagesize: cint){.cdecl, 
     importc: "scrollbar_set_pagesize", dynlib: clarodll.}
     
 type 
-  TcSplitterChildren* = enum 
+  CSplitterChildren* = enum 
     cSplitterFirst = 0, cSplitterSecond = 1
-  TSplitterChild* {.pure.} = object 
+  SplitterChild* {.pure.} = object 
     flex*: cint
     size*: cint
-    w*: ptr TWidget
+    w*: ptr Widget
 
-  TSplitter* {.pure.} = object of TWidget
-    pair*: array[0..1, TSplitterChild]
-
+  Splitter* {.pure.} = object of Widget
+    pair*: array[0..1, SplitterChild]
+{.deprecated: [TcSplitterChildren: CSplitterChildren, TSplitter: Splitter,
+              TSplitterChild: SplitterChild].}
 
 const 
   cSplitterHorizontal* = 0
@@ -2082,8 +2094,8 @@ const
 #  \return A new Splitter widget object.
 # 
 
-proc newsplitter*(parent: ptr TClaroObj, bounds: ptr TBounds,
-                  flags: cint): ptr TSplitter{.
+proc newsplitter*(parent: ptr ClaroObj, bounds: ptr Bounds,
+                  flags: cint): ptr Splitter{.
     cdecl, importc: "splitter_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets the sizing information of a child
@@ -2095,13 +2107,14 @@ proc newsplitter*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param size The size of this child
 # 
 
-proc splitter_set_info*(splitter: ptr TSplitter, child: cint, flex: cint, 
+proc splitter_set_info*(splitter: ptr Splitter, child: cint, flex: cint, 
                         size: cint){.cdecl, importc: "splitter_set_info", 
                                      dynlib: clarodll.}
                                      
 type 
-  TStatusbar* {.pure.} = object of TWidget
+  Statusbar* {.pure.} = object of Widget
     text*: array[0..256 - 1, char]
+{.deprecated: [TStatusbar: Statusbar].}
 
 
 #*
@@ -2112,7 +2125,7 @@ type
 #  \return A new StatusBar widget object.
 # 
 
-proc newstatusbar*(parent: ptr TClaroObj, flags: cint): ptr TStatusbar {.cdecl, 
+proc newstatusbar*(parent: ptr ClaroObj, flags: cint): ptr Statusbar {.cdecl, 
     importc: "statusbar_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets the text of a statusbar
@@ -2121,7 +2134,7 @@ proc newstatusbar*(parent: ptr TClaroObj, flags: cint): ptr TStatusbar {.cdecl,
 #  \param text The new text
 # 
 
-proc statusbar_set_text*(obj: ptr TStatusbar, text: cstring){.cdecl, 
+proc statusbar_set_text*(obj: ptr Statusbar, text: cstring){.cdecl, 
     importc: "statusbar_set_text", dynlib: clarodll.}
 #*
 #  \brief obtains a stock image
@@ -2130,7 +2143,7 @@ proc statusbar_set_text*(obj: ptr TStatusbar, text: cstring){.cdecl,
 #  \return The Image object.
 # 
 
-proc stock_get_image*(stock_id: cstring): ptr TImage{.cdecl, 
+proc stock_get_image*(stock_id: cstring): ptr Image{.cdecl, 
     importc: "stock_get_image", dynlib: clarodll.}
 #*
 #  \brief adds a stock id image
@@ -2140,15 +2153,16 @@ proc stock_get_image*(stock_id: cstring): ptr TImage{.cdecl,
 #  \return The Image object.
 # 
 
-proc stock_add_image*(stock_id: cstring, img: ptr TImage){.cdecl, 
+proc stock_add_image*(stock_id: cstring, img: ptr Image){.cdecl, 
     importc: "stock_add_image", dynlib: clarodll.}
 
 const 
   CLARO_TEXTAREA_MAXIMUM = (1024 * 1024)
 
 type 
-  TTextArea* {.pure.} = object of TWidget
+  TextArea* {.pure.} = object of Widget
     text*: array[0..CLARO_TEXTAREA_MAXIMUM - 1, char]
+{.deprecated: [TTextArea: TextArea].}
 
 
 #*
@@ -2160,8 +2174,8 @@ type
 #  \return A new TextArea widget object.
 # 
 
-proc newtextarea*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                  flags: cint): ptr TTextArea{.
+proc newtextarea*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                  flags: cint): ptr TextArea{.
     cdecl, importc: "textarea_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets the text of a textarea
@@ -2170,7 +2184,7 @@ proc newtextarea*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param text The new text
 # 
 
-proc textarea_set_text*(obj: ptr TTextArea, text: cstring){.cdecl, 
+proc textarea_set_text*(obj: ptr TextArea, text: cstring){.cdecl, 
     importc: "textarea_set_text", dynlib: clarodll.}
 #*
 #  \brief Retrieve the text of a textarea
@@ -2179,16 +2193,16 @@ proc textarea_set_text*(obj: ptr TTextArea, text: cstring){.cdecl,
 #  \return Pointer to an internal reference of the text. Should not be changed.
 # 
 
-proc textarea_get_text*(obj: ptr TTextArea): cstring{.cdecl, 
+proc textarea_get_text*(obj: ptr TextArea): cstring{.cdecl, 
     importc: "textarea_get_text", dynlib: clarodll.}
 
 const 
   CLARO_TEXTBOX_MAXIMUM = 8192
 
 type 
-  TTextBox* {.pure.} = object of TWidget
+  TextBox* {.pure.} = object of Widget
     text*: array[0..CLARO_TEXTBOX_MAXIMUM-1, char]
-
+{.deprecated: [TTextBox: TextBox].}
 
 const 
   cTextBoxTypePassword* = 1
@@ -2203,8 +2217,8 @@ const
 #  \return A new TextBox widget object.
 # 
 
-proc newtextbox*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                 flags: cint): ptr TTextBox{.
+proc newtextbox*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                 flags: cint): ptr TextBox{.
     cdecl, importc: "textbox_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets the text of a textbox
@@ -2213,7 +2227,7 @@ proc newtextbox*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param text The new text
 # 
 
-proc textbox_set_text*(obj: ptr TTextBox, text: cstring){.cdecl, 
+proc textbox_set_text*(obj: ptr TextBox, text: cstring){.cdecl, 
     importc: "textbox_set_text", dynlib: clarodll.}
 #*
 #  \brief Retrieve the text of a textbox
@@ -2222,7 +2236,7 @@ proc textbox_set_text*(obj: ptr TTextBox, text: cstring){.cdecl,
 #  \return Pointer to an internal reference of the text. Should not be changed.
 # 
 
-proc textbox_get_text*(obj: ptr TTextBox): cstring{.cdecl, 
+proc textbox_get_text*(obj: ptr TextBox): cstring{.cdecl, 
     importc: "textbox_get_text", dynlib: clarodll.}
 #*
 #  \brief Retrieve the cursor position inside a textbox
@@ -2231,7 +2245,7 @@ proc textbox_get_text*(obj: ptr TTextBox): cstring{.cdecl,
 #  \return Cursor position inside TextBox
 # 
 
-proc textbox_get_pos*(obj: ptr TTextBox): cint{.cdecl, 
+proc textbox_get_pos*(obj: ptr TextBox): cint{.cdecl, 
     importc: "textbox_get_pos", dynlib: clarodll.}
 #*
 #  \brief Sets the cursor position inside a textbox
@@ -2240,7 +2254,7 @@ proc textbox_get_pos*(obj: ptr TTextBox): cint{.cdecl,
 #  \param pos New cursor position inside TextBox
 # 
 
-proc textbox_set_pos*(obj: ptr TTextBox, pos: cint){.cdecl, 
+proc textbox_set_pos*(obj: ptr TextBox, pos: cint){.cdecl, 
     importc: "textbox_set_pos", dynlib: clarodll.}
 
 const 
@@ -2250,8 +2264,8 @@ const
   cToolbarAutoSizeButtons* = 4
 
 type 
-  TToolbar* {.pure.} = object of TListWidget
-
+  Toolbar* {.pure.} = object of ListWidget
+{.deprecated: [TToolbar: Toolbar].}
 #*
 #  \brief Creates a ToolBar widget
 #  
@@ -2260,7 +2274,7 @@ type
 #  \return A new ToolBar widget object.
 # 
 
-proc newtoolbar*(parent: ptr TClaroObj, flags: cint): ptr TToolbar{.cdecl, 
+proc newtoolbar*(parent: ptr ClaroObj, flags: cint): ptr Toolbar{.cdecl, 
     importc: "toolbar_widget_create", dynlib: clarodll.}
 #*
 #  \brief Append a row to a ToolBar widget
@@ -2272,8 +2286,8 @@ proc newtoolbar*(parent: ptr TClaroObj, flags: cint): ptr TToolbar{.cdecl,
 #  \return A new list item.
 # 
 
-proc toolbar_append_icon*(toolbar: ptr TToolbar, image: ptr TImage, 
-                          title: cstring, tooltip: cstring): ptr TListItem{.
+proc toolbar_append_icon*(toolbar: ptr Toolbar, image: ptr Image, 
+                          title: cstring, tooltip: cstring): ptr ListItem{.
     cdecl, importc: "toolbar_append_icon", dynlib: clarodll.}
 #*
 #  \brief Insert a row into a ToolBar widget
@@ -2286,9 +2300,9 @@ proc toolbar_append_icon*(toolbar: ptr TToolbar, image: ptr TImage,
 #  \return A new list item.
 # 
 
-proc toolbar_insert_icon*(toolbar: ptr TToolbar, pos: cint, 
-                          image: ptr TImage, title: cstring, 
-                          tooltip: cstring): ptr TListItem{.
+proc toolbar_insert_icon*(toolbar: ptr Toolbar, pos: cint, 
+                          image: ptr Image, title: cstring, 
+                          tooltip: cstring): ptr ListItem{.
     cdecl, importc: "toolbar_insert_icon", dynlib: clarodll.}
 #*
 #  \brief Append a separator to a ToolBar widget
@@ -2297,7 +2311,7 @@ proc toolbar_insert_icon*(toolbar: ptr TToolbar, pos: cint,
 #  \return A new list item.
 # 
 
-proc toolbar_append_separator*(toolbar: ptr TToolbar): ptr TListItem{.cdecl, 
+proc toolbar_append_separator*(toolbar: ptr Toolbar): ptr ListItem{.cdecl, 
     importc: "toolbar_append_separator", dynlib: clarodll.}
 #*
 #  \brief Insert a separator into a ToolBar widget
@@ -2307,8 +2321,8 @@ proc toolbar_append_separator*(toolbar: ptr TToolbar): ptr TListItem{.cdecl,
 #  \return A new list item.
 # 
 
-proc toolbar_insert_separator*(toolbar: ptr TToolbar, 
-                               pos: cint): ptr TListItem {.
+proc toolbar_insert_separator*(toolbar: ptr Toolbar, 
+                               pos: cint): ptr ListItem {.
     cdecl, importc: "toolbar_insert_separator", dynlib: clarodll.}
 #*
 #  \brief Assign a menu widget to an item.
@@ -2321,8 +2335,8 @@ proc toolbar_insert_separator*(toolbar: ptr TToolbar,
 #  \param menu Menu widget object, or NULL to remove a menu.
 # 
 
-proc toolbar_set_item_menu*(toolbar: ptr TToolbar, item: ptr TListItem, 
-                            menu: ptr TMenu){.cdecl, 
+proc toolbar_set_item_menu*(toolbar: ptr Toolbar, item: ptr ListItem, 
+                            menu: ptr Menu){.cdecl, 
     importc: "toolbar_set_item_menu", dynlib: clarodll.}
 #*
 #  \brief Move a row in a ToolBar widget
@@ -2332,7 +2346,7 @@ proc toolbar_set_item_menu*(toolbar: ptr TToolbar, item: ptr TListItem,
 #  \param row New position to place this item
 # 
 
-proc toolbar_move_icon*(toolbar: ptr TToolbar, item: ptr TListItem, 
+proc toolbar_move_icon*(toolbar: ptr Toolbar, item: ptr ListItem, 
                         row: cint){.cdecl, importc: "toolbar_move_icon", 
                                     dynlib: clarodll.}
 #*
@@ -2342,7 +2356,7 @@ proc toolbar_move_icon*(toolbar: ptr TToolbar, item: ptr TListItem,
 #  \param item A valid list item
 # 
 
-proc toolbar_remove_icon*(toolbar: ptr TToolbar, item: ptr TListItem){.
+proc toolbar_remove_icon*(toolbar: ptr Toolbar, item: ptr ListItem){.
     cdecl, importc: "toolbar_remove_icon", dynlib: clarodll.}
 #*
 #  \brief Returns the number of rows in a ToolBar widget
@@ -2351,16 +2365,16 @@ proc toolbar_remove_icon*(toolbar: ptr TToolbar, item: ptr TListItem){.
 #  \return Number of rows
 # 
 
-proc toolbar_item_count*(obj: ptr TToolbar): cint{.cdecl, 
+proc toolbar_item_count*(obj: ptr Toolbar): cint{.cdecl, 
     importc: "toolbar_item_count", dynlib: clarodll.}
 #*
 #  \brief TreeView widget
 # 
 
 type 
-  TTreeview* {.pure.} = object of TListWidget
-    selected*: ptr TListItem
-
+  Treeview* {.pure.} = object of ListWidget
+    selected*: ptr ListItem
+{.deprecated: [TTreeview: Treeview].}
 
 # functions 
 #*
@@ -2372,8 +2386,8 @@ type
 #  \return A new TreeView widget object.
 # 
 
-proc newtreeview*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                  flags: cint): ptr TTreeview{.
+proc newtreeview*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                  flags: cint): ptr Treeview{.
     cdecl, importc: "treeview_widget_create", dynlib: clarodll.}
 #*
 #  \brief Append a row to a TreeView
@@ -2385,8 +2399,8 @@ proc newtreeview*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \return A new list item.
 # 
 
-proc treeview_append_row*(treeview: ptr TTreeview, parent: ptr TListItem, 
-                          image: ptr TImage, title: cstring): ptr TListItem{.
+proc treeview_append_row*(treeview: ptr Treeview, parent: ptr ListItem, 
+                          image: ptr Image, title: cstring): ptr ListItem{.
     cdecl, importc: "treeview_append_row", dynlib: clarodll.}
 #*
 #  \brief Insert a row at the specified position into a TreeView
@@ -2399,9 +2413,9 @@ proc treeview_append_row*(treeview: ptr TTreeview, parent: ptr TListItem,
 #  \return A new list item.
 # 
 
-proc treeview_insert_row*(treeview: ptr TTreeview, parent: ptr TListItem, 
-                          pos: cint, image: ptr TImage, 
-                          title: cstring): ptr TListItem{.
+proc treeview_insert_row*(treeview: ptr Treeview, parent: ptr ListItem, 
+                          pos: cint, image: ptr Image, 
+                          title: cstring): ptr ListItem{.
     cdecl, importc: "treeview_insert_row", dynlib: clarodll.}
 #*
 #  \brief Move a row in a TreeView
@@ -2411,7 +2425,7 @@ proc treeview_insert_row*(treeview: ptr TTreeview, parent: ptr TListItem,
 #  \param row New position to place this item
 # 
 
-proc treeview_move_row*(treeview: ptr TTreeview, item: ptr TListItem, 
+proc treeview_move_row*(treeview: ptr Treeview, item: ptr ListItem, 
                         row: cint){.cdecl, importc: "treeview_move_row", 
                                     dynlib: clarodll.}
 #*
@@ -2421,7 +2435,7 @@ proc treeview_move_row*(treeview: ptr TTreeview, item: ptr TListItem,
 #  \param item A valid list item
 # 
 
-proc treeview_remove_row*(treeview: ptr TTreeview, item: ptr TListItem){.
+proc treeview_remove_row*(treeview: ptr Treeview, item: ptr ListItem){.
     cdecl, importc: "treeview_remove_row", dynlib: clarodll.}
 #*
 #  \brief Expand a row in a TreeView
@@ -2430,7 +2444,7 @@ proc treeview_remove_row*(treeview: ptr TTreeview, item: ptr TListItem){.
 #  \param item A valid list item
 # 
 
-proc treeview_expand*(treeview: ptr TTreeview, item: ptr TListItem){.cdecl, 
+proc treeview_expand*(treeview: ptr Treeview, item: ptr ListItem){.cdecl, 
     importc: "treeview_expand", dynlib: clarodll.}
 #*
 #  \brief Collapse a row in a TreeView
@@ -2439,7 +2453,7 @@ proc treeview_expand*(treeview: ptr TTreeview, item: ptr TListItem){.cdecl,
 #  \param item A valid list item
 # 
 
-proc treeview_collapse*(treeview: ptr TTreeview, item: ptr TListItem){.cdecl, 
+proc treeview_collapse*(treeview: ptr Treeview, item: ptr ListItem){.cdecl, 
     importc: "treeview_collapse", dynlib: clarodll.}
 #*
 #  \brief Returns the currently selected TreeView item
@@ -2448,7 +2462,7 @@ proc treeview_collapse*(treeview: ptr TTreeview, item: ptr TListItem){.cdecl,
 #  \return The currently selected TreeView item, or NULL if no item is selected.
 # 
 
-proc treeview_get_selected*(obj: ptr TTreeview): ptr TListItem{.cdecl, 
+proc treeview_get_selected*(obj: ptr Treeview): ptr ListItem{.cdecl, 
     importc: "treeview_get_selected", dynlib: clarodll.}
 #*
 #  \brief Returns the number of rows in a TreeView
@@ -2459,7 +2473,7 @@ proc treeview_get_selected*(obj: ptr TTreeview): ptr TListItem{.cdecl,
 #  \return Number of rows
 # 
 
-proc treeview_get_rows*(obj: ptr TTreeview, parent: ptr TListItem): cint{.
+proc treeview_get_rows*(obj: ptr Treeview, parent: ptr ListItem): cint{.
     cdecl, importc: "treeview_get_rows", dynlib: clarodll.}
 #*
 #  \brief Selects a row in a TreeView
@@ -2468,7 +2482,7 @@ proc treeview_get_rows*(obj: ptr TTreeview, parent: ptr TListItem): cint{.
 #  \param item A valid list item
 # 
 
-proc treeview_select_item*(obj: ptr TTreeview, item: ptr TListItem){.cdecl, 
+proc treeview_select_item*(obj: ptr Treeview, item: ptr ListItem){.cdecl, 
     importc: "treeview_select_item", dynlib: clarodll.}
 
 const 
@@ -2477,15 +2491,15 @@ const
   cWindowNoResizing* = 4
 
 type 
-  TWindow* {.pure.} = object of TWidget
+  Window* {.pure.} = object of Widget
     title*: array[0..512 - 1, char]
-    icon*: ptr TImage
-    menubar*: ptr TWidget
-    workspace*: ptr TWidget
+    icon*: ptr Image
+    menubar*: ptr Widget
+    workspace*: ptr Widget
     exsp_tools*: cint
     exsp_status*: cint
     exsp_init*: cint
-
+{.deprecated: [TWindow: Window].}
 
 const 
   cWindowFixedSize* = 1
@@ -2500,8 +2514,8 @@ const
 #  \return A new Window widget object.
 # 
 
-proc newwindow*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                flags: cint): ptr TWindow {.
+proc newwindow*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                flags: cint): ptr Window {.
     cdecl, importc: "window_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets a Window's title
@@ -2510,7 +2524,7 @@ proc newwindow*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param title The new title for the window
 # 
 
-proc window_set_title*(w: ptr TWindow, title: cstring){.cdecl, 
+proc window_set_title*(w: ptr Window, title: cstring){.cdecl, 
     importc: "window_set_title", dynlib: clarodll.}
 #*
 #  \brief Makes a window visible
@@ -2518,7 +2532,7 @@ proc window_set_title*(w: ptr TWindow, title: cstring){.cdecl,
 #  \param w A valid Window widget object
 # 
 
-proc window_show*(w: ptr TWindow){.cdecl, importc: "window_show", 
+proc window_show*(w: ptr Window){.cdecl, importc: "window_show", 
                                      dynlib: clarodll.}
 #*
 #  \brief Makes a window invisible
@@ -2526,7 +2540,7 @@ proc window_show*(w: ptr TWindow){.cdecl, importc: "window_show",
 #  \param w A valid Window widget object
 # 
 
-proc window_hide*(w: ptr TWindow){.cdecl, importc: "window_hide", 
+proc window_hide*(w: ptr Window){.cdecl, importc: "window_hide", 
                                      dynlib: clarodll.}
 #*
 #  \brief Gives focus to a window
@@ -2534,7 +2548,7 @@ proc window_hide*(w: ptr TWindow){.cdecl, importc: "window_hide",
 #  \param w A valid Window widget object
 # 
 
-proc window_focus*(w: ptr TWindow){.cdecl, importc: "window_focus", 
+proc window_focus*(w: ptr Window){.cdecl, importc: "window_focus", 
                                       dynlib: clarodll.}
 #*
 #  \brief Maximises a window
@@ -2542,7 +2556,7 @@ proc window_focus*(w: ptr TWindow){.cdecl, importc: "window_focus",
 #  \param w A valid Window widget object
 # 
 
-proc window_maximize*(w: ptr TWindow){.cdecl, importc: "window_maximise", 
+proc window_maximize*(w: ptr Window){.cdecl, importc: "window_maximise", 
     dynlib: clarodll.}
 #*
 #  \brief Minimises a window
@@ -2550,7 +2564,7 @@ proc window_maximize*(w: ptr TWindow){.cdecl, importc: "window_maximise",
 #  \param w A valid Window widget object
 # 
 
-proc window_minimize*(w: ptr TWindow){.cdecl, importc: "window_minimise", 
+proc window_minimize*(w: ptr Window){.cdecl, importc: "window_minimise", 
     dynlib: clarodll.}
 #*
 #  \brief Restores a window
@@ -2558,7 +2572,7 @@ proc window_minimize*(w: ptr TWindow){.cdecl, importc: "window_minimise",
 #  \param w A valid Window widget object
 # 
 
-proc window_restore*(w: ptr TWindow){.cdecl, importc: "window_restore", 
+proc window_restore*(w: ptr Window){.cdecl, importc: "window_restore", 
                                         dynlib: clarodll.}
 #*
 #  \brief Sets a window's icon
@@ -2567,7 +2581,7 @@ proc window_restore*(w: ptr TWindow){.cdecl, importc: "window_restore",
 #  \param icon A valid Image object
 # 
 
-proc window_set_icon*(w: ptr TWindow, icon: ptr TImage){.cdecl, 
+proc window_set_icon*(w: ptr Window, icon: ptr Image){.cdecl, 
     importc: "window_set_icon", dynlib: clarodll.}
 
 const 
@@ -2575,13 +2589,13 @@ const
   cWorkspaceTileVertically* = 1
 
 type 
-  TWorkspace*{.pure.} = object of TWidget
+  Workspace*{.pure.} = object of Widget
 
-  TWorkspaceWindow*{.pure.} = object of TWidget
-    icon*: ptr TImage
+  WorkspaceWindow*{.pure.} = object of Widget
+    icon*: ptr Image
     title*: array[0..512 - 1, char]
-    workspace*: ptr TWorkspace
-
+    workspace*: ptr Workspace
+{.deprecated: [TWorkspace: Workspace, TWorkspaceWindow: WorkspaceWindow].}
 
 # functions (workspace) 
 #*
@@ -2593,8 +2607,8 @@ type
 #  \return A new Workspace widget object.
 # 
 
-proc newworkspace*(parent: ptr TClaroObj, bounds: ptr TBounds, 
-                   flags: cint): ptr TWorkspace{.
+proc newworkspace*(parent: ptr ClaroObj, bounds: ptr Bounds, 
+                   flags: cint): ptr Workspace{.
     cdecl, importc: "workspace_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets the active (visible) workspace child
@@ -2603,7 +2617,7 @@ proc newworkspace*(parent: ptr TClaroObj, bounds: ptr TBounds,
 #  \param child A valid workspace window widget
 # 
 
-proc workspace_set_active*(workspace: ptr TWorkspace, child: ptr TClaroObj){.
+proc workspace_set_active*(workspace: ptr Workspace, child: ptr ClaroObj){.
     cdecl, importc: "workspace_set_active", dynlib: clarodll.}
 #*
 #  \brief Returns the active (visible) workspace child
@@ -2612,7 +2626,7 @@ proc workspace_set_active*(workspace: ptr TWorkspace, child: ptr TClaroObj){.
 #  \return The active workspace window widget
 # 
 
-proc workspace_get_active*(workspace: ptr TWorkspace): ptr TWorkspace{.cdecl, 
+proc workspace_get_active*(workspace: ptr Workspace): ptr Workspace{.cdecl, 
     importc: "workspace_get_active", dynlib: clarodll.}
 #*
 #  \brief Cascades all workspace windows
@@ -2620,7 +2634,7 @@ proc workspace_get_active*(workspace: ptr TWorkspace): ptr TWorkspace{.cdecl,
 #  \param workspace A valid workspace widget
 # 
 
-proc workspace_cascade*(workspace: ptr TWorkspace){.cdecl, 
+proc workspace_cascade*(workspace: ptr Workspace){.cdecl, 
     importc: "workspace_cascade", dynlib: clarodll.}
 #*
 #  \brief Tiles all workspace windows
@@ -2629,7 +2643,7 @@ proc workspace_cascade*(workspace: ptr TWorkspace){.cdecl,
 #  \param dir The direction to tile child widgets
 # 
 
-proc workspace_tile*(workspace: ptr TWorkspace, dir: cint){.cdecl, 
+proc workspace_tile*(workspace: ptr Workspace, dir: cint){.cdecl, 
     importc: "workspace_tile", dynlib: clarodll.}
 # functions (workspace_window) 
 #*
@@ -2641,9 +2655,9 @@ proc workspace_tile*(workspace: ptr TWorkspace, dir: cint){.cdecl,
 #  \return A new Workspace widget object.
 # 
 
-proc newWorkspaceWindow*(parent: ptr TClaroObj, 
-                         bounds: ptr TBounds, 
-                         flags: cint): ptr TWorkspaceWindow{.
+proc newWorkspaceWindow*(parent: ptr ClaroObj, 
+                         bounds: ptr Bounds, 
+                         flags: cint): ptr WorkspaceWindow{.
     cdecl, importc: "workspace_window_widget_create", dynlib: clarodll.}
 #*
 #  \brief Sets the title of a Workspace Window widget
@@ -2652,7 +2666,7 @@ proc newWorkspaceWindow*(parent: ptr TClaroObj,
 #  \param title The new title for the widget
 # 
 
-proc workspace_window_set_title*(window: ptr TWorkspaceWindow, 
+proc workspace_window_set_title*(window: ptr WorkspaceWindow, 
                                  title: cstring){.cdecl, 
     importc: "workspace_window_set_title", dynlib: clarodll.}
 #*
@@ -2661,7 +2675,7 @@ proc workspace_window_set_title*(window: ptr TWorkspaceWindow,
 #  \param window A valid Workspace Window widget
 # 
 
-proc workspace_window_show*(window: ptr TWorkspaceWindow){.cdecl, 
+proc workspace_window_show*(window: ptr WorkspaceWindow){.cdecl, 
     importc: "workspace_window_show", dynlib: clarodll.}
 #*
 #  \brief Makes a Workspace Window widget invisible
@@ -2669,7 +2683,7 @@ proc workspace_window_show*(window: ptr TWorkspaceWindow){.cdecl,
 #  \param window A valid Workspace Window widget
 # 
 
-proc workspace_window_hide*(window: ptr TWorkspaceWindow){.cdecl, 
+proc workspace_window_hide*(window: ptr WorkspaceWindow){.cdecl, 
     importc: "workspace_window_hide", dynlib: clarodll.}
 #*
 #  \brief Restores a Workspace Window widget
@@ -2677,7 +2691,7 @@ proc workspace_window_hide*(window: ptr TWorkspaceWindow){.cdecl,
 #  \param window A valid Workspace Window widget
 # 
 
-proc workspace_window_restore*(window: ptr TWorkspaceWindow){.cdecl, 
+proc workspace_window_restore*(window: ptr WorkspaceWindow){.cdecl, 
     importc: "workspace_window_restore", dynlib: clarodll.}
 # American spelling 
 
@@ -2687,7 +2701,7 @@ proc workspace_window_restore*(window: ptr TWorkspaceWindow){.cdecl,
 #  \param window A valid Workspace Window widget
 # 
 
-proc workspace_window_minimize*(window: ptr TWorkspaceWindow){.cdecl, 
+proc workspace_window_minimize*(window: ptr WorkspaceWindow){.cdecl, 
     importc: "workspace_window_minimise", dynlib: clarodll.}
 #*
 #  \brief Maxmimises a Workspace Window widget
@@ -2695,7 +2709,7 @@ proc workspace_window_minimize*(window: ptr TWorkspaceWindow){.cdecl,
 #  \param window A valid Workspace Window widget
 # 
 
-proc workspace_window_maximize*(window: ptr TWorkspaceWindow){.cdecl, 
+proc workspace_window_maximize*(window: ptr WorkspaceWindow){.cdecl, 
     importc: "workspace_window_maximise", dynlib: clarodll.}
 #*
 #  \brief Sets the icon of a Workspace Window widget
@@ -2704,7 +2718,7 @@ proc workspace_window_maximize*(window: ptr TWorkspaceWindow){.cdecl,
 #  \param icon A valid Image object.
 # 
 
-proc workspace_window_set_icon*(w: ptr TWorkspaceWindow, icon: ptr TImage){.
+proc workspace_window_set_icon*(w: ptr WorkspaceWindow, icon: ptr Image){.
     cdecl, importc: "workspace_window_set_icon", dynlib: clarodll.}
     
 claro_base_init()
@@ -2720,9 +2734,9 @@ when not defined(testing) and isMainModule:
 
   var b = newButton(w, new_bounds(40, 45, 150, -1), 0, "Push my button!")
 
-  proc push_my_button(obj: ptr TClaroObj, event: ptr TEvent) {.cdecl.} =
+  proc push_my_button(obj: ptr ClaroObj, event: ptr Event) {.cdecl.} =
     textbox_set_text(t, "You pushed my button!")
-    var button = cast[ptr TButton](obj)
+    var button = cast[ptr Button](obj)
     button_set_text(button, "Ouch!")
 
   object_addhandler(b, "pushed", push_my_button)

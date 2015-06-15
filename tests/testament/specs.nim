@@ -10,7 +10,7 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 const
-  cmdTemplate* = r"nim $target --hints:on -d:testing $options $file"
+  cmdTemplate* = r"compiler" / "nim $target --lib:lib --hints:on -d:testing $options $file"
 
 type
   TTestAction* = enum

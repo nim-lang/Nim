@@ -146,6 +146,14 @@ modules don't need to import a module's dependencies:
   var x: MyObject
   echo($x)
 
+Note on paths
+-----------
+In module related statements, if any part of the module name /
+path begins with a number, you may have to quote it in double quotes.
+In the following example, it would be seen as a literal number '3.0' of type
+'float64' if not quoted, if uncertain - quote it:
+.. code-block:: nim
+  import "gfx/3d/somemodule"
 
 Scope rules
 -----------

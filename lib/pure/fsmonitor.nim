@@ -108,7 +108,7 @@ proc del*(monitor: FSMonitor, wd: cint) =
 
 proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
   result = @[]
-  let size = (sizeof(TINotifyEvent)+2000)*MaxEvents
+  let size = (sizeof(INotifyEvent)+2000)*MaxEvents
   var buffer = newString(size)
 
   let le = read(fd, addr(buffer[0]), size)
@@ -117,7 +117,7 @@ proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
 
   var i = 0
   while i < le:
-    var event = cast[ptr TINotifyEvent](addr(buffer[i]))
+    var event = cast[ptr INotifyEvent](addr(buffer[i]))
     var mev: MonitorEvent
     mev.wd = event.wd
     if event.len.int != 0:
@@ -129,7 +129,7 @@ proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
     if (event.mask.int and IN_MOVED_FROM) != 0: 
       # Moved from event, add to m's collection
       movedFrom.add(event.cookie.cint, (mev.wd, mev.name))
-      inc(i, sizeof(TINotifyEvent) + event.len.int)
+      inc(i, sizeof(INotifyEvent) + event.len.int)
       continue
     elif (event.mask.int and IN_MOVED_TO) != 0: 
       mev.kind = MonitorMoved
@@ -159,7 +159,7 @@ proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
       mev.fullname = ""
     
     result.add(mev)
-    inc(i, sizeof(TINotifyEvent) + event.len.int)
+    inc(i, sizeof(INotifyEvent) + event.len.int)
 
   # If movedFrom events have not been matched with a moveTo. File has
   # been moved to an unwatched location, emit a MonitorDelete.

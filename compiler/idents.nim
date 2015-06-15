@@ -12,7 +12,7 @@
 # id. This module is essential for the compiler's performance.
 
 import 
-  hashes, strutils
+  hashes, strutils, etcpriv
 
 type 
   TIdObj* = object of RootObj
@@ -23,7 +23,7 @@ type
   TIdent*{.acyclic.} = object of TIdObj
     s*: string
     next*: PIdent             # for hash-table chaining
-    h*: THash                 # hash value of s
+    h*: Hash                 # hash value of s
 
 var firstCharIsCS*: bool = true
 var buckets*: array[0..4096 * 2 - 1, PIdent]
@@ -37,6 +37,8 @@ proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
   while j < blen:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j)
+    while isMagicIdentSeparatorRune(a, i): inc(i, magicIdentSeparatorRuneByteWidth)
+    while isMagicIdentSeparatorRune(b, j): inc(j, magicIdentSeparatorRuneByteWidth)
     # tolower inlined:
     var aa = a[i]
     var bb = b[j]
@@ -65,7 +67,7 @@ proc cmpExact(a, b: cstring, blen: int): int =
 
 var wordCounter = 1
 
-proc getIdent*(identifier: cstring, length: int, h: THash): PIdent =
+proc getIdent*(identifier: cstring, length: int, h: Hash): PIdent =
   var idx = h and high(buckets)
   result = buckets[idx]
   var last: PIdent = nil
@@ -99,7 +101,7 @@ proc getIdent*(identifier: string): PIdent =
   result = getIdent(cstring(identifier), len(identifier), 
                     hashIgnoreStyle(identifier))
 
-proc getIdent*(identifier: string, h: THash): PIdent = 
+proc getIdent*(identifier: string, h: Hash): PIdent = 
   result = getIdent(cstring(identifier), len(identifier), h)
 
 proc identEq*(id: PIdent, name: string): bool = 

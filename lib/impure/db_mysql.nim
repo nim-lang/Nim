@@ -13,27 +13,31 @@
 import strutils, mysql
 
 type
-  TDbConn* = PMySQL    ## encapsulates a database connection
-  TRow* = seq[string]  ## a row of a dataset. NULL database values will be
+  DbConn* = PMySQL    ## encapsulates a database connection
+  Row* = seq[string]   ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
+  InstantRow* = tuple[row: cstringArray, len: int]  ## a handle that can be
+                                                    ## used to get a row's
+                                                    ## column text on demand
   EDb* = object of IOError ## exception that is raised if a database error occurs
 
-  TSqlQuery* = distinct string ## an SQL query string
+  SqlQuery* = distinct string ## an SQL query string
 
   FDb* = object of IOEffect ## effect that denotes a database operation
   FReadDb* = object of FDb   ## effect that denotes a read operation
   FWriteDb* = object of FDb  ## effect that denotes a write operation
+{.deprecated: [TRow: Row, TSqlQuery: SqlQuery, TDbConn: DbConn].}
 
-proc sql*(query: string): TSqlQuery {.noSideEffect, inline.} =
-  ## constructs a TSqlQuery from the string `query`. This is supposed to be 
+proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =
+  ## constructs a SqlQuery from the string `query`. This is supposed to be 
   ## used as a raw-string-literal modifier:
   ## ``sql"update user set counter = counter + 1"``
   ##
   ## If assertions are turned off, it does nothing. If assertions are turned 
   ## on, later versions will check the string for valid syntax.
-  result = TSqlQuery(query)
+  result = SqlQuery(query)
 
-proc dbError(db: TDbConn) {.noreturn.} = 
+proc dbError(db: DbConn) {.noreturn.} = 
   ## raises an EDb exception.
   var e: ref EDb
   new(e)
@@ -48,7 +52,7 @@ proc dbError*(msg: string) {.noreturn.} =
   raise e
 
 when false:
-  proc dbQueryOpt*(db: TDbConn, query: string, args: varargs[string, `$`]) =
+  proc dbQueryOpt*(db: DbConn, query: string, args: varargs[string, `$`]) =
     var stmt = mysql_stmt_init(db)
     if stmt == nil: dbError(db)
     if mysql_stmt_prepare(stmt, query, len(query)) != 0: 
@@ -65,7 +69,7 @@ proc dbQuote*(s: string): string =
     else: add(result, c)
   add(result, '\'')
 
-proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
+proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   result = ""
   var a = 0
   for c in items(string(formatstr)):
@@ -78,23 +82,23 @@ proc dbFormat(formatstr: TSqlQuery, args: varargs[string]): string =
     else: 
       add(result, c)
   
-proc tryExec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]): bool {.
+proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   return mysql.realQuery(db, q, q.len) == 0'i32
 
-proc rawExec(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) =
+proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
 
-proc exec*(db: TDbConn, query: TSqlQuery, args: varargs[string, `$`]) {.
+proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
     
-proc newRow(L: int): TRow = 
+proc newRow(L: int): Row = 
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
   
@@ -103,8 +107,8 @@ proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
     while mysql.fetchRow(sqlres) != nil: discard
   mysql.freeResult(sqlres)
   
-iterator fastRows*(db: TDbConn, query: TSqlQuery,
-                   args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
+iterator fastRows*(db: DbConn, query: SqlQuery,
+                   args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
   ## executes the query and iterates over the result dataset. This is very 
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For MySQL this is the case!.
@@ -126,10 +130,34 @@ iterator fastRows*(db: TDbConn, query: TSqlQuery,
       yield result
     properFreeResult(sqlres, row)
 
-proc getRow*(db: TDbConn, query: TSqlQuery,
-             args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
+iterator instantRows*(db: DbConn, query: SqlQuery,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [FReadDb].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within interator body.
+  rawExec(db, query, args)
+  var sqlres = mysql.useResult(db)
+  if sqlres != nil:
+    let L = int(mysql.numFields(sqlres))
+    var row: cstringArray
+    while true:
+      row = mysql.fetchRow(sqlres)
+      if row == nil: break
+      yield (row: row, len: L)
+    properFreeResult(sqlres, row)
+
+proc `[]`*(row: InstantRow, col: int): string {.inline.} =
+  ## returns text for given column of the row
+  $row.row[col]
+
+proc len*(row: InstantRow): int {.inline.} =
+  ## returns number of columns in the row
+  row.len
+
+proc getRow*(db: DbConn, query: SqlQuery,
+             args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
   ## retrieves a single row. If the query doesn't return any rows, this proc
-  ## will return a TRow with empty strings for each column.
+  ## will return a Row with empty strings for each column.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(db)
   if sqlres != nil:
@@ -145,8 +173,8 @@ proc getRow*(db: TDbConn, query: TSqlQuery,
           add(result[i], row[i])
     properFreeResult(sqlres, row)
 
-proc getAllRows*(db: TDbConn, query: TSqlQuery, 
-                 args: varargs[string, `$`]): seq[TRow] {.tags: [FReadDB].} =
+proc getAllRows*(db: DbConn, query: SqlQuery, 
+                 args: varargs[string, `$`]): seq[Row] {.tags: [FReadDB].} =
   ## executes the query and returns the whole result dataset.
   result = @[]
   rawExec(db, query, args)
@@ -168,12 +196,12 @@ proc getAllRows*(db: TDbConn, query: TSqlQuery,
       inc(j)
     mysql.freeResult(sqlres)
 
-iterator rows*(db: TDbConn, query: TSqlQuery, 
-               args: varargs[string, `$`]): TRow {.tags: [FReadDB].} =
+iterator rows*(db: DbConn, query: SqlQuery, 
+               args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
   ## same as `fastRows`, but slower and safe.
   for r in items(getAllRows(db, query, args)): yield r
 
-proc getValue*(db: TDbConn, query: TSqlQuery, 
+proc getValue*(db: DbConn, query: SqlQuery, 
                args: varargs[string, `$`]): string {.tags: [FReadDB].} = 
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
@@ -183,7 +211,7 @@ proc getValue*(db: TDbConn, query: TSqlQuery,
     result = row[0]
     break
 
-proc tryInsertId*(db: TDbConn, query: TSqlQuery, 
+proc tryInsertId*(db: DbConn, query: SqlQuery, 
                   args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row or -1 in case of an error.
@@ -193,14 +221,14 @@ proc tryInsertId*(db: TDbConn, query: TSqlQuery,
   else:
     result = mysql.insertId(db)
   
-proc insertId*(db: TDbConn, query: TSqlQuery, 
+proc insertId*(db: DbConn, query: SqlQuery, 
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} = 
   ## executes the query (typically "INSERT") and returns the 
   ## generated ID for the row.
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
-proc execAffectedRows*(db: TDbConn, query: TSqlQuery, 
+proc execAffectedRows*(db: DbConn, query: SqlQuery, 
                        args: varargs[string, `$`]): int64 {.
                        tags: [FReadDB, FWriteDb].} = 
   ## runs the query (typically "UPDATE") and returns the
@@ -208,11 +236,11 @@ proc execAffectedRows*(db: TDbConn, query: TSqlQuery,
   rawExec(db, query, args)
   result = mysql.affectedRows(db)
 
-proc close*(db: TDbConn) {.tags: [FDb].} = 
+proc close*(db: DbConn) {.tags: [FDb].} = 
   ## closes the database connection.
   if db != nil: mysql.close(db)
 
-proc open*(connection, user, password, database: string): TDbConn {.
+proc open*(connection, user, password, database: string): DbConn {.
   tags: [FDb].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
@@ -230,7 +258,7 @@ proc open*(connection, user, password, database: string): TDbConn {.
     db_mysql.close(result)
     dbError(errmsg)
 
-proc setEncoding*(connection: TDbConn, encoding: string): bool {.
+proc setEncoding*(connection: DbConn, encoding: string): bool {.
   tags: [FDb].} =
   ## sets the encoding of a database connection, returns true for 
   ## success, false for failure.

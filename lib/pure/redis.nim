@@ -10,8 +10,8 @@
 ## This module implements a redis client. It allows you to connect to a
 ## redis-server instance, send commands and receive replies.
 ##
-## **Beware**: Most (if not all) functions that return a ``TRedisString`` may
-## return ``redisNil``, and functions which return a ``TRedisList`` 
+## **Beware**: Most (if not all) functions that return a ``RedisString`` may
+## return ``redisNil``, and functions which return a ``RedisList`` 
 ## may return ``nil``.
 
 import sockets, os, strutils, parseutils
@@ -843,27 +843,27 @@ proc pfmerge*(r: Redis, destination: string, sources: varargs[string]) =
 
 # TODO: pub/sub -- I don't think this will work synchronously.
 discard """
-proc psubscribe*(r: TRedis, pattern: openarray[string]): ???? =
+proc psubscribe*(r: Redis, pattern: openarray[string]): ???? =
   ## Listen for messages published to channels matching the given patterns
   r.socket.send("PSUBSCRIBE $#\c\L" % pattern)
   return ???
 
-proc publish*(r: TRedis, channel: string, message: string): TRedisInteger =
+proc publish*(r: Redis, channel: string, message: string): RedisInteger =
   ## Post a message to a channel
   r.socket.send("PUBLISH $# $#\c\L" % [channel, message])
   return r.readInteger()
 
-proc punsubscribe*(r: TRedis, [pattern: openarray[string], : string): ???? =
+proc punsubscribe*(r: Redis, [pattern: openarray[string], : string): ???? =
   ## Stop listening for messages posted to channels matching the given patterns
   r.socket.send("PUNSUBSCRIBE $# $#\c\L" % [[pattern.join(), ])
   return ???
 
-proc subscribe*(r: TRedis, channel: openarray[string]): ???? =
+proc subscribe*(r: Redis, channel: openarray[string]): ???? =
   ## Listen for messages published to the given channels
   r.socket.send("SUBSCRIBE $#\c\L" % channel.join)
   return ???
 
-proc unsubscribe*(r: TRedis, [channel: openarray[string], : string): ???? =
+proc unsubscribe*(r: Redis, [channel: openarray[string], : string): ???? =
   ## Stop listening for messages posted to the given channels 
   r.socket.send("UNSUBSCRIBE $# $#\c\L" % [[channel.join(), ])
   return ???
@@ -991,7 +991,7 @@ proc lastsave*(r: Redis): RedisInteger =
   return r.readInteger()
 
 discard """
-proc monitor*(r: TRedis) =
+proc monitor*(r: Redis) =
   ## Listen for all requests received by the server in real time
   r.socket.send("MONITOR\c\L")
   raiseNoOK(r.readStatus(), r.pipeline.enabled)

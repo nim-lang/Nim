@@ -279,7 +279,7 @@ proc ssAtEnd(s: Stream): bool =
 
 proc ssSetPosition(s: Stream, pos: int) =
   var s = StringStream(s)
-  s.pos = clamp(pos, 0, s.data.high)
+  s.pos = clamp(pos, 0, s.data.len)
 
 proc ssGetPosition(s: Stream): int =
   var s = StringStream(s)
@@ -327,7 +327,7 @@ proc newStringStream*(s: string = ""): StringStream =
 when not defined(js):
 
   type
-    FileStream* = ref FileStreamObj ## a stream that encapsulates a `TFile`
+    FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
     FileStreamObj* = object of Stream
       f: File
   {.deprecated: [PFileStream: FileStream, TFileStream: FileStreamObj].}

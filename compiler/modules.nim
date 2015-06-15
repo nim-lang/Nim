@@ -10,7 +10,7 @@
 ## implements the module handling
 
 import
-  ast, astalgo, magicsys, crc, rodread, msgs, cgendata, sigmatch, options,
+  ast, astalgo, magicsys, securehash, rodread, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes, llstream
 
 type
@@ -19,7 +19,7 @@ type
 
   TModuleInMemory* = object
     compiledAt*: float
-    crc*: TCrc32
+    crc*: SecureHash
     deps*: seq[int32] ## XXX: slurped files are currently not tracked
     needsRecompile*: TNeedRecompile
     crcStatus*: TCrcStatus
@@ -51,19 +51,19 @@ proc crcChanged(fileIdx: int32): bool =
   of crcNotChanged:
     result = false
   of crcCached:
-    let newCrc = crcFromFile(fileIdx.toFilename)
+    let newCrc = secureHashFile(fileIdx.toFullPath)
     result = newCrc != gMemCacheData[fileIdx].crc
     gMemCacheData[fileIdx].crc = newCrc
     updateStatus()
   of crcNotTaken:
-    gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
+    gMemCacheData[fileIdx].crc = secureHashFile(fileIdx.toFullPath)
     result = true
     updateStatus()
 
 proc doCRC(fileIdx: int32) =
   if gMemCacheData[fileIdx].crcStatus == crcNotTaken:
     # echo "FIRST CRC: ", fileIdx.ToFilename
-    gMemCacheData[fileIdx].crc = crcFromFile(fileIdx.toFilename)
+    gMemCacheData[fileIdx].crc = secureHashFile(fileIdx.toFullPath)
 
 proc addDep(x: PSym, dep: int32) =
   growCache gMemCacheData, dep

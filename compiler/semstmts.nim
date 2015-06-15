@@ -1268,6 +1268,8 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
     of wLocks:
       result = n
       result.typ = n.sons[1].typ
+    of wNoRewrite:
+      incl(result.flags, nfNoRewrite)
     else: discard
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =

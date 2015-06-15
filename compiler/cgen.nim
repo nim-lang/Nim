@@ -10,12 +10,11 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp,
-  options, intsets,
-  nversion, nimsets, msgs, crc, bitsets, idents, lists, types, ccgutils, os,
-  ropes, math, passes, rodread, wordrecg, treetab, cgmeth, condsyms,
-  rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases, lowerings,
-  semparallel
+  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
+  nversion, nimsets, msgs, securehash, bitsets, idents, lists, types,
+  ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
+  condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
+  lowerings, semparallel
 
 import strutils except `%` # collides with ropes.`%`
 
@@ -721,6 +720,8 @@ proc genProcPrototype(m: BModule, sym: PSym) =
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
   elif not containsOrIncl(m.declaredProtos, sym.id):
     var header = genProcHeader(m, sym)
+    if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[cCompiler].props:
+      header = "__declspec(noreturn) " & header
     if sym.typ.callConv != ccInline and crossesCppBoundary(m, sym):
       header = "extern \"C\" " & header
     if sfPure in sym.flags and hasAttribute in CC[cCompiler].props:

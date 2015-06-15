@@ -39,7 +39,6 @@ when declared(stdout):
 
 when not defined(ECMAScript):
   import terminal
-  system.addQuitProc(resetAttributes)
 
 type
   TestStatus* = enum OK, FAILED
@@ -99,8 +98,9 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
       body
 
     except:
-      checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
-      echo getCurrentException().getStackTrace()
+      when not defined(js):
+        checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
+        echo getCurrentException().getStackTrace()
       fail()
 
     finally:
@@ -114,9 +114,7 @@ proc checkpoint*(msg: string) =
 template fail* =
   bind checkpoints
   for msg in items(checkpoints):
-    # this used to be 'echo' which now breaks due to a bug. XXX will revisit
-    # this issue later.
-    stdout.writeln msg
+    echo msg
 
   when not defined(ECMAScript):
     if abortOnError: quit(1)
