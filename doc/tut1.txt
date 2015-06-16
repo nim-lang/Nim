@@ -764,7 +764,7 @@ However, this cannot be done for mutually recursive procedures:
 
   proc even(n: int): bool =
     if n == 1: 
-      true
+      false
     n == 0 or odd(n-1)
 
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
