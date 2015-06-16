@@ -60,6 +60,10 @@ Nim expression                   Corresponding AST
 ``42'i16``                       ``nnkInt16Lit(intVal = 42)``
 ``42'i32``                       ``nnkInt32Lit(intVal = 42)``
 ``42'i64``                       ``nnkInt64Lit(intVal = 42)``
+``42'u8``                        ``nnkUInt8Lit(intVal = 42)``
+``42'u16``                       ``nnkUInt16Lit(intVal = 42)``
+``42'u32``                       ``nnkUInt32Lit(intVal = 42)``
+``42'u64``                       ``nnkUInt64Lit(intVal = 42)``
 ``42.0``                         ``nnkFloatLit(floatVal = 42.0)``
 ``42.0'f32``                     ``nnkFloat32Lit(floatVal = 42.0)``
 ``42.0'f64``                     ``nnkFloat64Lit(floatVal = 42.0)``
