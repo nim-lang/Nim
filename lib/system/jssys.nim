@@ -176,11 +176,10 @@ proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
     var len = `s`.length-1;
     var result = new Array(len);
-    var fcc = String.fromCharCode;
     for (var i = 0; i < len; ++i) {
-      result[i] = fcc(`s`[i]);
+      result[i] = `s`[i].toString(16);
     }
-    return result.join("");
+    return decodeURIComponent('%' + result.join('%'));
   """
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
