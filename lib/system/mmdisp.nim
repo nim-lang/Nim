@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# Nim high-level memory manager: It supports Boehm's GC, no GC and the
+# Nim high-level memory manager: It supports Boehm's GC, Go's GC, no GC and the
 # native Nim GC. The native Nim GC is the default.
 
 #{.push checks:on, assertions:on.}
@@ -195,6 +195,201 @@ when defined(boehmgc):
   proc deallocOsPages() {.inline.} = discard
 
   include "system/cellsets"
+
+elif defined(gogc):
+  when defined(windows):
+    const goLib = "libgo.dll"
+  elif defined(macosx):
+    const goLib = "libgo.dylib"
+  else:
+    const goLib = "libgo.so"
+
+  proc `div`[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
+  proc `-`[T: SomeUnsignedInt](x, y: T): T {.magic: "SubU", noSideEffect.}
+
+  proc roundup(x, v: int): int {.inline.} =
+    result = (x + (v-1)) and not (v-1)
+
+  proc initGC() = discard
+  # runtime_setgcpercent is only available in GCC 5
+  proc GC_disable() = discard
+  proc GC_enable() = discard
+  proc goRuntimeGC(force: int32) {.importc: "runtime_gc", dynlib: goLib.}
+  proc GC_fullCollect() = goRuntimeGC(2)
+  proc GC_setStrategy(strategy: GC_Strategy) = discard
+  proc GC_enableMarkAndSweep() = discard
+  proc GC_disableMarkAndSweep() = discard
+
+  const
+    goNumSizeClasses = 67
+
+  type
+    cbool {.importc: "_Bool", nodecl.} = bool
+
+    goMStats_inner_struct = object
+        size: uint32
+        nmalloc: uint64
+        nfree: uint64
+
+    goMStats = object
+        # General statistics.
+        alloc: uint64            # bytes allocated and still in use
+        total_alloc: uint64      # bytes allocated (even if freed)
+        sys: uint64              # bytes obtained from system (should be sum of xxx_sys below, no locking, approximate)
+        nlookup: uint64          # number of pointer lookups
+        nmalloc: uint64          # number of mallocs
+        nfree: uint64            # number of frees
+        # Statistics about malloc heap.
+        # protected by mheap.Lock
+        heap_alloc: uint64       # bytes allocated and still in use
+        heap_sys: uint64         # bytes obtained from system
+        heap_idle: uint64        # bytes in idle spans
+        heap_inuse: uint64       # bytes in non-idle spans
+        heap_released: uint64    # bytes released to the OS
+        heap_objects: uint64 # total number of allocated objects
+        # Statistics about allocation of low-level fixed-size structures.
+        # Protected by FixAlloc locks.
+        stacks_inuse: uint64     # bootstrap stacks
+        stacks_sys: uint64
+        mspan_inuse: uint64      # MSpan structures
+        mspan_sys: uint64
+        mcache_inuse: uint64     # MCache structures
+        mcache_sys: uint64
+        buckhash_sys: uint64     # profiling bucket hash table
+        gc_sys: uint64
+        other_sys: uint64
+        # Statistics about garbage collector.
+        # Protected by mheap or stopping the world during GC.
+        next_gc: uint64          # next GC (in heap_alloc time)
+        last_gc: uint64          # last GC (in absolute time)
+        pause_total_ns: uint64
+        pause_ns: array[256, uint64]
+        numgc: uint32
+        enablegc: cbool
+        debuggc: cbool
+        # Statistics about allocation size classes.
+        by_size: array[goNumSizeClasses, goMStats_inner_struct]
+
+  proc goRuntime_ReadMemStats(a2: ptr goMStats) {.cdecl, importc: "runtime_ReadMemStats", codegenDecl: "$1 $2$3 __asm__ (\"runtime.ReadMemStats\");\n$1 $2$3", dynlib: goLib.}
+
+  proc GC_getStatistics(): string =
+    var mstats: goMStats
+    goRuntime_ReadMemStats(addr mstats)
+    result = "[GC] total allocated memory: " & $(mstats.total_alloc) & "\n" &
+             "[GC] total memory obtained from system: " & $(mstats.sys) & "\n" &
+             "[GC] occupied memory: " & $(mstats.alloc) & "\n" &
+             "[GC] number of pointer lookups: " & $(mstats.nlookup) & "\n" &
+             "[GC] number of mallocs: " & $(mstats.nmalloc) & "\n" &
+             "[GC] number of frees: " & $(mstats.nfree) & "\n" &
+             "[GC] heap objects: " & $(mstats.heap_objects) & "\n" &
+             "[GC] numgc: " & $(mstats.numgc) & "\n" &
+             "[GC] enablegc: " & $(mstats.enablegc) & "\n" &
+             "[GC] debuggc: " & $(mstats.debuggc) & "\n" &
+             "[GC] total pause time [ms]: " & $(mstats.pause_total_ns div 1000_000)
+
+  proc getOccupiedMem(): int =
+    var mstats: goMStats
+    goRuntime_ReadMemStats(addr mstats)
+    result = int(mstats.alloc)
+
+  proc getFreeMem(): int =
+    var mstats: goMStats
+    goRuntime_ReadMemStats(addr mstats)
+    result = int(mstats.sys - mstats.alloc)
+
+  proc getTotalMem(): int =
+    var mstats: goMStats
+    goRuntime_ReadMemStats(addr mstats)
+    result = int(mstats.sys)
+
+  proc setStackBottom(theStackBottom: pointer) = discard
+
+  proc alloc(size: Natural): pointer =
+    result = cmalloc(size)
+    if result == nil: raiseOutOfMem()
+
+  proc alloc0(size: Natural): pointer =
+    result = alloc(size)
+    zeroMem(result, size)
+
+  proc realloc(p: pointer, newsize: Natural): pointer =
+    result = crealloc(p, newsize)
+    if result == nil: raiseOutOfMem()
+
+  proc dealloc(p: pointer) = cfree(p)
+
+  proc allocShared(size: Natural): pointer =
+    result = cmalloc(size)
+    if result == nil: raiseOutOfMem()
+
+  proc allocShared0(size: Natural): pointer =
+    result = alloc(size)
+    zeroMem(result, size)
+
+  proc reallocShared(p: pointer, newsize: Natural): pointer =
+    result = crealloc(p, newsize)
+    if result == nil: raiseOutOfMem()
+
+  proc deallocShared(p: pointer) = cfree(p)
+
+  when hasThreadSupport:
+    proc getFreeSharedMem(): int = discard
+    proc getTotalSharedMem(): int = discard
+    proc getOccupiedSharedMem(): int = discard
+
+  const goFlagNoZero: uint32 = 1 shl 3
+  proc goRuntimeMallocGC(size: uint, typ: uint, flag: uint32): pointer {.importc: "runtime_mallocgc", dynlib: goLib.}
+  proc goFree(v: pointer) {.importc: "__go_free", dynlib: goLib.}
+
+  proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
+
+  proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
+    result = goRuntimeMallocGC(roundup(size, sizeof(pointer)).uint, 0.uint, 0.uint32)
+    if typ.finalizer != nil:
+      goSetFinalizer(result, typ.finalizer)
+
+  proc newObjNoInit(typ: PNimType, size: int): pointer =
+    result = goRuntimeMallocGC(roundup(size, sizeof(pointer)).uint, 0.uint, goFlagNoZero)
+    if typ.finalizer != nil:
+      goSetFinalizer(result, typ.finalizer)
+
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
+    result = newObj(typ, len * typ.base.size + GenericSeqSize)
+    cast[PGenericSeq](result).len = len
+    cast[PGenericSeq](result).reserved = len
+    cast[PGenericSeq](result).elemSize = typ.base.size
+
+  proc growObj(old: pointer, newsize: int): pointer =
+    # the Go GC doesn't have a realloc
+    var
+      oldsize = cast[PGenericSeq](old).len * cast[PGenericSeq](old).elemSize + GenericSeqSize
+    result = goRuntimeMallocGC(roundup(newsize, sizeof(pointer)).uint, 0.uint, goFlagNoZero)
+    copyMem(result, old, oldsize)
+    zeroMem(cast[pointer](cast[ByteAddress](result) +% oldsize), newsize - oldsize)
+    goFree(old)
+
+  proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
+  proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
+
+  proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
+    dest[] = src
+  proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
+    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
+    dest[] = src
+
+  type
+    MemRegion = object {.final, pure.}
+  {.deprecated: [TMemRegion: MemRegion].}
+
+  proc alloc(r: var MemRegion, size: int): pointer =
+    result = alloc(size)
+  proc alloc0(r: var MemRegion, size: int): pointer =
+    result = alloc0(size)
+  proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
+  proc deallocOsPages(r: var MemRegion) {.inline.} = discard
+  proc deallocOsPages() {.inline.} = discard
+
 elif defined(nogc) and defined(useMalloc):
 
   when not defined(useNimRtl):
@@ -290,7 +485,6 @@ elif defined(nogc):
   proc GC_enableMarkAndSweep() = discard
   proc GC_disableMarkAndSweep() = discard
   proc GC_getStatistics(): string = return ""
-
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = alloc0(size)

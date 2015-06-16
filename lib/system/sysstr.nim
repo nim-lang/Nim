@@ -50,12 +50,16 @@ proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
   if s < 7: s = 7
   result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
+  when defined(gogc):
+    result.elemSize = 1
 
 proc rawNewString(space: int): NimString {.compilerProc.} =
   var s = space
   if s < 7: s = 7
   result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
+  when defined(gogc):
+    result.elemSize = 1
 
 proc mnewString(len: int): NimString {.compilerProc.} =
   result = rawNewString(len)
@@ -216,7 +220,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and
-         not defined(gcMarkAndSweep):
+         not defined(gcMarkAndSweep) and not defined(gogc):
       when compileOption("gc", "v2"):
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
