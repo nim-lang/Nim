@@ -304,7 +304,9 @@ const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
 when not defined(JS):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
-      len, reserved, elemSize: int
+      len, reserved: int
+      when defined(gogc):
+        elemSize: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     UncheckedCharArray {.unchecked.} = array[0..ArrayDummySize, char]
     # len and space without counting the terminating zero:
@@ -2682,8 +2684,10 @@ when not defined(JS): #and not defined(NimrodVM):
   when not defined(NimrodVM):
     include "system/sets"
 
-    const
-      GenericSeqSize = (3 * sizeof(int))
+    when defined(gogc):
+      const GenericSeqSize = (3 * sizeof(int))
+    else:
+      const GenericSeqSize = (2 * sizeof(int))
 
     proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
       sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
