@@ -37,9 +37,7 @@ type
 
 var
   framePtr {.importc, nodecl, volatile.}: PCallFrame
-  excHandler {.importc, nodecl, volatile.}: PSafePoint = nil
-    # list of exception handlers
-    # a global variable for the root of all try blocks
+  excHandler {.importc, nodecl, volatile.}: int = 0
   lastJSError {.importc, nodecl, volatile.}: PJSError = nil
 
 {.push stacktrace: off, profiler:off.}
@@ -52,9 +50,7 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result[0] = x
 
 proc getCurrentExceptionMsg*(): string =
-  if excHandler != nil and excHandler.exc != nil:
-    return $excHandler.exc.msg
-  elif lastJSError != nil:
+  if lastJSError != nil:
     return $lastJSError.message
   else:
     return ""
@@ -99,32 +95,41 @@ proc rawWriteStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
-proc raiseException(e: ref Exception, ename: cstring) {.
+proc unhandledException(e: ref Exception) {.
     compilerproc, asmNoStackFrame.} =
-  e.name = ename
-  if excHandler != nil:
-    excHandler.exc = e
+  when NimStackTrace:
+    var buf = rawWriteStackTrace()
   else:
-    when NimStackTrace:
-      var buf = rawWriteStackTrace()
-    else:
-      var buf = ""
+    var buf = ""
     if e.msg != nil and e.msg[0] != '\0':
       add(buf, "Error: unhandled exception: ")
       add(buf, e.msg)
     else:
       add(buf, "Error: unhandled exception")
     add(buf, " [")
-    add(buf, ename)
+    add(buf, e.name)
     add(buf, "]\n")
     alert(buf)
-  asm """throw `e`;"""
+
+proc raiseException(e: ref Exception, ename: cstring) {.
+    compilerproc, asmNoStackFrame.} =
+  e.name = ename
+  when not defined(noUnhandledHandler):
+    if excHandler == 0:
+      unhandledException(e)
+  asm "throw `e`;"
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
-  if excHandler == nil:
+  if lastJSError == nil:
     raise newException(ReraiseError, "no exception to reraise")
   else:
-    asm """throw excHandler.exc;"""
+    when not defined(noUnhandledHandler):
+      if excHandler == 0:
+        var isNimException : bool
+        asm "`isNimException` = lastJSError.m_type;"
+        if isNimException:
+          unhandledException(cast[ref Exception](lastJSError))
+    asm "throw lastJSError;"
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
   raise newException(OverflowError, "over- or underflow")
