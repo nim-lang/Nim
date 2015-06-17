@@ -237,6 +237,19 @@ template sortedByIt*(seq1, op: expr): expr =
     result = cmp(a, b))
   result
 
+proc isSorted*[T](a: openarray[T],
+                 cmp: proc(x, y: T): int {.closure.},
+                 order = SortOrder.Ascending): bool =
+  ## Tests whether `a` is sorted
+  if len(a) <= 1: return true # empty or one-element lists are already sorted
+
+  result = true
+  for i in 0..<len(a)-1:
+    if cmp(a[i],a[i+1]) * order <= 0: # same test as `sort`
+      continue
+    else:
+      return false
+
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
@@ -340,4 +353,14 @@ when isMainModule:
   assert arr.lowerBound(4) == 1
   assert arr.lowerBound(5) == 1
   assert arr.lowerBound(6) == 2
+  # Tests for isSorted
+  var srt1 = [1,2,3,4,4,4,4,5]
+  var srt2 = ["iello","hello"]
+  var srt3 = [1.0,1.0,1.0]
+  var srt4 = []
+  assert srt1.isSorted(cmp) == true
+  assert srt2.isSorted(cmp) == false
+  assert srt3.isSorted(cmp) == true
+  var srtseq = newSeq[int]()
+  assert srtseq.isSorted(cmp) == true
 
