@@ -586,9 +586,12 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   result = @[]
   var lastIdx = start
   var splits = 0
-  var bounds = 0 .. 0
+  var bounds = 0 .. -1
+  var never_ran = true
 
   for match in str.findIter(pattern, start = start):
+    never_ran = false
+
     # bounds are inclusive:
     #
     # 0123456
@@ -615,7 +618,8 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   # "12".split("\b") would be @["1", "2", ""], but
   # if we skip an empty last match, it's the correct
   # @["1", "2"]
-  if bounds.a <= bounds.b or bounds.b < str.high:
+  # If matches were never found, then the input string is the result
+  if bounds.a <= bounds.b or bounds.b < str.high or never_ran:
     # last match: Each match takes the previous substring,
     # but "1 2".split(/ /) needs to return @["1", "2"].
     # This handles "2"
