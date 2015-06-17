@@ -680,6 +680,9 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
       buf.insert("0", atIndex)
   of "ZZZ":
     buf.add(info.tzname)
+  #add parse 'T' in
+  of "T":
+    buf.add("T")
   of "":
     discard
   else:
@@ -1064,6 +1067,9 @@ when isMainModule:
 
   var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
   assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
+
+  var t5 = getGMTime(fromSeconds(1434377488)) # Mon, 15 Jun 2015 14:11:28 GMT
+  assert t5.format("yyyy-MM-ddTHH:mm:ss") == "2015-06-15T14:11:28"
 
   # Interval tests
   assert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
