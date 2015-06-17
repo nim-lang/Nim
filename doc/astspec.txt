@@ -824,10 +824,23 @@ AST:
 .. code-block:: nim
   nnkExportStmt(nnkIdent(!"unsigned"))
 
+Similar to the ``import`` statement, the AST is different for 
+``export ... except``.
+
+Concrete syntax:
+
+.. code-block:: nim
+  export math except pow # we're going to implement our own exponentiation
+
+AST:
+
+.. code-block:: nim
+  nnkExportExceptStmt(nnkIdent(!"math"),nnkIdent(!"pow"))
+
 Include statement
 -----------------
 
-Like a plain ``import`` statement.
+Like a plain ``import`` statement but with ``nnkIncludeStmt``.
 
 Concrete syntax:
 
@@ -871,6 +884,20 @@ Let section
 
 This is equivalent to ``var``, but with ``nnkLetSection`` rather than
 ``nnkVarSection``.
+
+Concrete syntax:
+
+.. code-block:: nim
+  let v = 3
+
+AST:
+
+.. code-block:: nim
+  nnkLetSection(
+    nnkIdentDefs(!"v"),
+    nnkEmpty(), # for the type
+    nnkIntLit(3)
+  )
 
 Const section
 -------------
@@ -982,6 +1009,73 @@ AST:
       nnkEmpty()
     )
   )
+
+Nim's object syntax is rich. Let's take a look at an involved example in
+its entirety to see some of the complexities.
+
+Concrete syntax:
+
+.. code-block:: nim
+  type Obj[T] = object {.inheritable.}
+    name: string
+    case isFat: bool
+    of true:
+      m: array[100_000, T]
+    of false:
+      m: array[10, T]
+
+AST:
+
+.. code-block:: nim
+  # ...
+  nnkObjectTy(
+    nnkPragma(
+      nnkIdent(!"inheritable")
+    ),
+    nnkEmpty(),
+    nnkRecList( # list of object parameters
+      nnkIdentDefs(
+            nnkIdent(!"name"),
+            nnkIdent(!"string"),
+            nnkEmpty()
+      ),
+      nnkRecCase( # case statement within object (not nnkCaseStmt)
+        nnkIdentDefs(
+              nnkIdent(!"isFat"),
+              nnkIdent(!"bool"),
+              nnkEmpty()
+        ),
+        nnkOfBranch(
+              nnkIdent(!"true"),
+              nnkRecList( # again, a list of object parameters
+                nnkIdentDefs(
+                  nnkIdent(!"m"),
+                  nnkBracketExpr(
+                    nnkIdent(!"array"),
+                    nnkIntLit(100000),
+                    nnkIdent(!"T")
+                  ),
+                  nnkEmpty()
+              )
+        ),
+        nnkOfBranch(
+              nnkIdent(!"false"),
+              nnkRecList(
+                nnkIdentDefs(
+                  nnkIdent(!"m"),
+                  nnkBracketExpr(
+                    nnkIdent(!"array"),
+                    nnkIntLit(10),
+                    nnkIdent(!"T")
+                  ),
+                  nnkEmpty()
+                )
+              )
+        )
+      )
+    )
+  )
+
 
 Using an ``enum`` is similar to using an ``object``.
 
