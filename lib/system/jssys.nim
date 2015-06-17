@@ -175,12 +175,25 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
     var len = `s`.length-1;
-    var result = new Array(len);
+    var asciiPart = new Array(len);
     var fcc = String.fromCharCode;
+    var nonAsciiPart = null;
     for (var i = 0; i < len; ++i) {
-      result[i] = fcc(`s`[i]);
+      if (nonAsciiPart !== null) {
+        nonAsciiPart[i * 2] = "%";
+        nonAsciiPart[i * 2 + 1] = `s`[i].toString(16);
+      }
+      else if (`s`[i] < 128)
+        asciiPart[i] = fcc(`s`[i]);
+      else {
+        asciiPart.length = i;
+        nonAsciiPart = new Array((len - i) * 2);
+        --i;
+      }
     }
-    return result.join("");
+    asciiPart = asciiPart.join("");
+    return (nonAsciiPart === null) ?
+        asciiPart : asciiPart + decodeURIComponent(nonAsciiPart.join(""));
   """
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
