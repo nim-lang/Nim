@@ -1,5 +1,6 @@
 The AST in Nim
-=================
+==============
+
 This section describes how the AST is modelled with Nim's type system.
 The AST consists of nodes (``NimNode``) with a variable number of
 children. Each node has a field named ``kind`` which describes what the node
@@ -24,9 +25,9 @@ contains:
       of nnkNone, nnkEmpty, nnkNilLit:
         discard                        ## node contains no additional fields
       of nnkCharLit..nnkUInt64Lit:
-        intVal: biggestInt             ## the int literal
+        intVal: BiggestInt             ## the int literal
       of nnkFloatLit..nnkFloat64Lit:
-        floatVal: biggestFloat         ## the float literal
+        floatVal: BiggestFloat         ## the float literal
       of nnkStrLit..nnkTripleStrLit:
         strVal: string                 ## the string literal
       of nnkIdent:
@@ -360,7 +361,7 @@ AST:
 .. code-block:: nim
   nnkCurly(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
 
-When used as a table constructor, the syntax (and result) is different.
+When used as a table constructor, the syntax is different.
 
 Concrete syntax:
 
@@ -411,7 +412,7 @@ AST:
 If expression
 -------------
 
-The representation of the if expression is subtle, but easy to traverse.
+The representation of the ``if`` expression is subtle, but easy to traverse.
 
 Concrete syntax:
 
@@ -472,7 +473,7 @@ AST:
     )
   )
 
-As many ``nnkIdent``s appear as there are pragmas between ``{..}``. Note that
+As many ``nnkIdent`` appear as there are pragmas between ``{..}``. Note that
 the declaration of new pragmas is essentially the same:
 
 Concrete syntax:
@@ -824,7 +825,7 @@ AST:
 .. code-block:: nim
   nnkExportStmt(nnkIdent(!"unsigned"))
 
-Similar to the ``import`` statement, the AST is different for 
+Similar to the ``import`` statement, the AST is different for
 ``export ... except``.
 
 Concrete syntax:
@@ -1035,42 +1036,42 @@ AST:
     nnkEmpty(),
     nnkRecList( # list of object parameters
       nnkIdentDefs(
-            nnkIdent(!"name"),
-            nnkIdent(!"string"),
-            nnkEmpty()
+        nnkIdent(!"name"),
+        nnkIdent(!"string"),
+        nnkEmpty()
       ),
       nnkRecCase( # case statement within object (not nnkCaseStmt)
         nnkIdentDefs(
-              nnkIdent(!"isFat"),
-              nnkIdent(!"bool"),
+          nnkIdent(!"isFat"),
+          nnkIdent(!"bool"),
+          nnkEmpty()
+        ),
+        nnkOfBranch(
+          nnkIdent(!"true"),
+          nnkRecList( # again, a list of object parameters
+            nnkIdentDefs(
+              nnkIdent(!"m"),
+              nnkBracketExpr(
+                nnkIdent(!"array"),
+                nnkIntLit(100000),
+                nnkIdent(!"T")
+              ),
               nnkEmpty()
+          )
         ),
         nnkOfBranch(
-              nnkIdent(!"true"),
-              nnkRecList( # again, a list of object parameters
-                nnkIdentDefs(
-                  nnkIdent(!"m"),
-                  nnkBracketExpr(
-                    nnkIdent(!"array"),
-                    nnkIntLit(100000),
-                    nnkIdent(!"T")
-                  ),
-                  nnkEmpty()
-              )
-        ),
-        nnkOfBranch(
-              nnkIdent(!"false"),
-              nnkRecList(
-                nnkIdentDefs(
-                  nnkIdent(!"m"),
-                  nnkBracketExpr(
-                    nnkIdent(!"array"),
-                    nnkIntLit(10),
-                    nnkIdent(!"T")
-                  ),
-                  nnkEmpty()
-                )
-              )
+          nnkIdent(!"false"),
+          nnkRecList(
+            nnkIdentDefs(
+              nnkIdent(!"m"),
+              nnkBracketExpr(
+                nnkIdent(!"array"),
+                nnkIntLit(10),
+                nnkIdent(!"T")
+              ),
+              nnkEmpty()
+            )
+          )
         )
       )
     )
@@ -1135,7 +1136,7 @@ AST:
   # ...
 
 In general, declaring types mirrors this syntax (i.e., ``nnkStaticTy`` for
-``static``, etc.). Examples follow (exceptions marked by ``*``:
+``static``, etc.). Examples follow (exceptions marked by ``*``):
 
 -------------                ---------------------------------------------
 Nim type                     Corresponding AST
