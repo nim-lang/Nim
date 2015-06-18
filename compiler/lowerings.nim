@@ -63,6 +63,26 @@ proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
     if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
     result.add newAsgnStmt(n.sons[i], newTupleAccess(tempAsNode, i))
 
+proc lowerSwap*(n: PNode; owner: PSym): PNode =
+  result = newNodeI(nkStmtList, n.info)
+  # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
+  var temp = newSym(skVar, getIdent(genPrefix), owner, n.info)
+  temp.typ = n.sons[1].typ
+  incl(temp.flags, sfFromGeneric)
+
+  var v = newNodeI(nkVarSection, n.info)
+  let tempAsNode = newSymNode(temp)
+
+  var vpart = newNodeI(nkIdentDefs, v.info, 3)
+  vpart.sons[0] = tempAsNode
+  vpart.sons[1] = ast.emptyNode
+  vpart.sons[2] = n[1]
+  addSon(v, vpart)
+
+  result.add(v)
+  result.add newFastAsgnStmt(n[1], n[2])
+  result.add newFastAsgnStmt(n[2], tempAsNode)
+
 proc createObj*(owner: PSym, info: TLineInfo): PType =
   result = newType(tyObject, owner)
   rawAddSon(result, nil)

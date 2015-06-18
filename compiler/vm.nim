@@ -1051,18 +1051,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           # set to default value:
           for i in oldLen .. <newLen:
             regs[ra].node.sons[i] = newNodeI(nkEmpty, c.debug[pc])
-    of opcSwap:
-      let rb = instr.regB
-      if regs[ra].kind == regs[rb].kind:
-        case regs[ra].kind
-        of rkNone: discard
-        of rkInt: swap regs[ra].intVal, regs[rb].intVal
-        of rkFloat: swap regs[ra].floatVal, regs[rb].floatVal
-        of rkNode: swap regs[ra].node, regs[rb].node
-        of rkRegisterAddr: swap regs[ra].regAddr, regs[rb].regAddr
-        of rkNodeAddr: swap regs[ra].nodeAddr, regs[rb].nodeAddr
-      else:
-        internalError(c.debug[pc], "cannot swap operands")
     of opcReset:
       internalError(c.debug[pc], "too implement")
     of opcNarrowS:
