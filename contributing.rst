@@ -91,7 +91,19 @@ You can run the tests with
 
   ./koch tests
 
-which will run a good subset of tests. Some tests may fail.
+which will run a good subset of tests. Some tests may fail. If you
+only want to run failing tests, go for
+
+.. code-block:: bash
+
+  ./koch tests --failing all
+
+You can also run only a single category of tests. For a list of
+categories, see ``tests/testament/categories.nim``, at the bottom.
+
+.. code-block:: bash
+
+  ./koch tests c lib
 
 Comparing tests
 ===============
