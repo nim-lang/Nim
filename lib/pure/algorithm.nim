@@ -240,6 +240,9 @@ template sortedByIt*(seq1, op: expr): expr =
 proc isSorted*[T](a: openarray[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
+  ## Checks to see whether `a` is already sorted in `order`
+  ## using `cmp` for the comparison. Parameters identical
+  ## to `sort`
   result = true
   for i in 0..<len(a)-1:
     if cmp(a[i],a[i+1]) * order > 0:
