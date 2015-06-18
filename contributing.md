@@ -89,4 +89,27 @@ which will run a good subset of tests. Some tests may fail.
 Because some tests fail in the current `devel` branch, not every fail
 after your change is necessarily caused by your changes.
 
-TODO
+The tester can compare two test runs. First, you need to create the
+reference test. You'll also need to the commit id, because that's what
+the tester needs to know in order to compare the two.
+
+```bash
+git checkout devel
+DEVEL_COMMIT=$(git rev-parse HEAD)
+./koch tests
+```
+
+Then switch over to your changes and run the tester again.
+
+```bash
+git checkout your-changes
+./koch tests
+```
+
+Then you can ask the tester to create a `testresults.html` which will
+tell you if any new tests passed/failed.
+
+```bash
+./koch html $DEVEL_COMMIT
+(xdg-)open testresults.html
+```
