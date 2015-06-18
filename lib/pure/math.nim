@@ -161,6 +161,8 @@ proc randomize*(seed: int) {.benign.}
 when not defined(JS):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
+  proc cbrt*(x: float): float {.importc: "cbrt", header: "<math.h>".}
+    ## computes the cubic root of `x`
   
   proc ln*(x: float): float {.importc: "log", header: "<math.h>".}
     ## computes ln(x).
@@ -200,6 +202,16 @@ when not defined(JS):
   proc tanh*(x: float): float {.importc: "tanh", header: "<math.h>".}
   proc pow*(x, y: float): float {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
+  
+  proc erf*(x: float): float {.importc: "erf", header: "<math.h>".}
+    ## The error function
+  proc erfc*(x: float): float {.importc: "erfc", header: "<math.h>".}
+    ## The complementary error function
+  
+  proc lgamma*(x: float): float {.importc: "lgamma", header: "<math.h>".}
+    ## Natural log of the gamma function
+  proc tgamma*(x: float): float {.importc: "tgamma", header: "<math.h>".}
+    ## The gamma function
     
   # C procs:
   when defined(vcc):
@@ -411,3 +423,9 @@ when isMainModule and not defined(JS):
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
     return sqrt(num)
+  
+  # check gamma function
+  assert(tgamma(5.0) == 24.0) # 4!
+  assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
+  assert(erf(6.0) > erf(5.0))
+  assert(erfc(6.0) < erfc(5.0))
