@@ -33,7 +33,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, securehash, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth, lowerings
+  intsets, cgmeth, lowerings, sets
 
 type
   TTarget = enum
@@ -968,7 +968,9 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       of tyTuple:
         genFieldAddr(p, n.sons[0], r)
       else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $kindOfIndexedExpr & ')')
-  else: internalError(n.sons[0].info, "genAddr")
+  of nkObjDownConv:
+    gen(p, n.sons[0], r)
+  else: internalError(n.sons[0].info, "genAddr: " & $n.sons[0].kind)
 
 proc genProcForSymIfNeeded(p: PProc, s: PSym) =
   if not p.g.generatedSyms.containsOrIncl(s.id):
@@ -1096,23 +1098,33 @@ proc putToSeq(s: string, indirect: bool): Rope =
   if indirect: result = "[$1]" % [result]
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope
-proc createRecordVarAux(p: PProc, rec: PNode, c: var int): Rope =
-  result = nil
+proc createRecordVarAux(p: PProc, rec: PNode, excludeMembers: HashSet[string], output: var Rope) =
   case rec.kind
   of nkRecList:
     for i in countup(0, sonsLen(rec) - 1):
-      add(result, createRecordVarAux(p, rec.sons[i], c))
+      createRecordVarAux(p, rec.sons[i], excludeMembers, output)
   of nkRecCase:
-    add(result, createRecordVarAux(p, rec.sons[0], c))
+    createRecordVarAux(p, rec.sons[0], excludeMembers, output)
     for i in countup(1, sonsLen(rec) - 1):
-      add(result, createRecordVarAux(p, lastSon(rec.sons[i]), c))
+      createRecordVarAux(p, lastSon(rec.sons[i]), excludeMembers, output)
   of nkSym:
-    if c > 0: add(result, ", ")
-    add(result, mangleName(rec.sym))
-    add(result, ": ")
-    add(result, createVar(p, rec.sym.typ, false))
-    inc(c)
+    let name = $mangleName(rec.sym)
+    if not (name in excludeMembers):
+      if output.len > 0: output.add(", ")
+      output.add(name)
+      output.add(": ")
+      output.add(createVar(p, rec.sym.typ, false))
   else: internalError(rec.info, "createRecordVarAux")
+
+proc createObjInitList(p: PProc, typ: PType, excludeMembers: HashSet[string], output: var Rope) =
+  var t = typ
+  if tfFinal notin t.flags or t.sons[0] != nil:
+    if not ("m_type" in excludeMembers):
+      if output.len > 0: output.add(", ")
+      addf(output, "m_type: $1" | "m_type = $#", [genTypeInfo(p, t)])
+  while t != nil:
+    createRecordVarAux(p, t.n, excludeMembers, output)
+    t = t.sons[0]
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
@@ -1154,15 +1166,10 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     add(result, "}")
     if indirect: result = "[$1]" % [result]
   of tyObject:
-    result = rope("{")
-    var c = 0
-    if tfFinal notin t.flags or t.sons[0] != nil:
-      inc(c)
-      addf(result, "m_type: $1" | "m_type = $#", [genTypeInfo(p, t)])
-    while t != nil:
-      add(result, createRecordVarAux(p, t.n, c))
-      t = t.sons[0]
-    add(result, "}")
+    var emptySet = initSet[string](2)
+    var initList : Rope
+    createObjInitList(p, t, emptySet, initList)
+    result = "{$1}" % [initList]
     if indirect: result = "[$1]" % [result]
   of tyVar, tyPtr, tyRef:
     if mapType(t) == etyBaseIndex:
@@ -1435,6 +1442,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = rope("{")
   r.kind = resExpr
+  var fieldNames = initSet[string]()
   for i in countup(1, sonsLen(n) - 1):
     if i > 1: add(r.res, ", ")
     var it = n.sons[i]
@@ -1442,7 +1450,10 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
+    fieldNames.incl($f.loc.r)
     addf(r.res, "$#: $#" | "$# = $#" , [f.loc.r, a.res])
+  let t = skipTypes(n.typ, abstractInst + skipPtrs)
+  createObjInitList(p, t, fieldNames, r.res)
   r.res.add("}")
 
 proc genConv(p: PProc, n: PNode, r: var TCompRes) =
