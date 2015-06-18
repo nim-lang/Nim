@@ -78,6 +78,13 @@ Nim's Community
   When asking a question relating to Nim, be sure to use the
   `Nim <http://stackoverflow.com/questions/tagged/nim>`_ tag in your
   question.
+  
+.. container:: standout
+
+  Google+
+  -------
+
+  The `G+ Nim community <https://plus.google.com/u/0/communities/106921341535068810587>`_ is another place where discussions related to the language happen. Read and follow various articles, posts and interesting links about Nim.
 
 .. container:: standout
 
