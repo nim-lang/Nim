@@ -1059,7 +1059,7 @@ Nim type                     Corresponding AST
 ``iterator``                 ``nnkIteratorTy``
 ``object``                   ``nnkObjectTy``
 
-Take special care when declaring types as ``proc``s. The behavior is similar
+Take special care when declaring types as ``proc``. The behavior is similar
 to ``Procedure declaration``, below, but does not treat ``nnkGenericParams``.
 Generic parameters are treated in the type, not the ``proc`` itself.
 
@@ -1084,8 +1084,8 @@ AST:
     )
   )
 
-The same syntax applies to ``iterator``s (with ``nnkIteratorTy``), but
-*does not* apply to ``converter``s or ``template``s.
+The same syntax applies to ``iterator`` (with ``nnkIteratorTy``), but
+*does not* apply to ``converter`` or ``template``.
 
 Mixin statement
 ---------------
