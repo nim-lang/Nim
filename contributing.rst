@@ -1,7 +1,7 @@
 The git stuff
 =============
 
-`Guide by github, scroll down a bit<https://guides.github.com/activities/contributing-to-open-source/>`_
+`Guide by github, scroll down a bit <https://guides.github.com/activities/contributing-to-open-source/>`_
 
 Deprecation
 ===========
@@ -23,7 +23,7 @@ Or you can simply use
 to mark a symbol as deprecated. Works for procs/types/vars/consts,
 etc.
 
-`Deprecated pragma in the manual.<http://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
+`Deprecated pragma in the manual. <http://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
 
 Writing tests
 =============
