@@ -240,14 +240,11 @@ template sortedByIt*(seq1, op: expr): expr =
 proc isSorted*[T](a: openarray[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
-  ## Tests whether `a` is sorted
-  if len(a) <= 1: return true # empty or one-element lists are already sorted
+  if len(a) <= 1: return true
 
   result = true
   for i in 0..<len(a)-1:
-    if cmp(a[i],a[i+1]) * order <= 0: # same test as `sort`
-      continue
-    else:
+    if cmp(a[i],a[i+1]) * order > 0:
       return false
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
