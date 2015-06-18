@@ -40,16 +40,16 @@ For the ``NimNode`` type, the ``[]`` operator has been overloaded:
 ``n[i]`` is ``n``'s ``i``-th child.
 
 To specify the AST for the different Nim constructs, the notation
-``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or 
+``nodekind(son1, son2, ...)`` or ``nodekind(value)`` or
 ``nodekind(field=value)`` is used.
 
-Some child may be missing. A missing child is a node of kind ``nnkEmpty``; 
+Some child may be missing. A missing child is a node of kind ``nnkEmpty``;
 a child can never be nil.
 
 
 Leaf nodes/Atoms
 ================
-A leaf of the AST often corresponds to a terminal symbol in the concrete 
+A leaf of the AST often corresponds to a terminal symbol in the concrete
 syntax.
 
 -----------------                ---------------------------------------------
@@ -95,8 +95,8 @@ AST:
 
 .. code-block:: nim
   nnkCommand(
-    nnkIdent(!"echo"), 
-    nnkStrLit("abc"), 
+    nnkIdent(!"echo"),
+    nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
 
@@ -113,8 +113,8 @@ AST:
 
 .. code-block:: nim
   nnkCall(
-    nnkIdent(!"echo"), 
-    nnkStrLit("abc"), 
+    nnkIdent(!"echo"),
+    nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
 
@@ -131,12 +131,12 @@ AST:
 
 .. code-block:: nim
   nnkInfix(
-    nnkIdent(!"&"), 
-    nnkStrLit("abc"), 
+    nnkIdent(!"&"),
+    nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
 
-Note that with multiple infix operators, the command is parsed by operator 
+Note that with multiple infix operators, the command is parsed by operator
 precedence.
 
 Concrete syntax:
@@ -148,18 +148,18 @@ AST:
 
 .. code-block:: nim
   nnkInfix(
-    nnkIdent(!"+"), 
+    nnkIdent(!"+"),
     nnkIntLit(5),
     nnkInfix(
-      nnkIdent(!"*"), 
-      nnkIntLit(3), 
+      nnkIdent(!"*"),
+      nnkIntLit(3),
       nnkIntLit(4)
     )
   )
 
-As a side note, if you choose to use infix operators in a prefix form, the AST 
-behaves as a 
-[parenthetical function call](./macros.html#calls-expressions-call-with) with 
+As a side note, if you choose to use infix operators in a prefix form, the AST
+behaves as a
+[parenthetical function call](./macros.html#calls-expressions-call-with) with
 ``nnkAccQuoted``, as follows:
 
 Concrete syntax:
@@ -173,8 +173,8 @@ AST:
   nnkCall(
     nnkAccQuoted(
       nnkIdent(!"+")
-    ), 
-    nnkIntLit(3), 
+    ),
+    nnkIntLit(3),
     nnkIntLit(4)
   )
 
@@ -190,7 +190,7 @@ AST:
 
 .. code-block:: nim
   nnkPrefix(
-    nnkIdent(!"?"), 
+    nnkIdent(!"?"),
     nnkStrLit("abc")
   )
 
@@ -198,7 +198,7 @@ AST:
 Postfix operator call
 ---------------------
 
-**Note:** There are no postfix operators in Nim. However, the 
+**Note:** There are no postfix operators in Nim. However, the
 ``nnkPostfix`` node is used for the *asterisk export marker* ``*``:
 
 Concrete syntax:
@@ -210,7 +210,7 @@ AST:
 
 .. code-block:: nim
   nnkPostfix(
-    nnkIdent(!"*"), 
+    nnkIdent(!"*"),
     nnkIdent(!"identifier")
   )
 
@@ -227,11 +227,11 @@ AST:
 
 .. code-block:: nim
   nnkCall(
-    nnkIdent(!"writeln"), 
+    nnkIdent(!"writeln"),
     nnkExprEqExpr(
-      nnkIdent(!"file"), 
+      nnkIdent(!"file"),
       nnkIdent(!"stdout")
-    ), 
+    ),
     nnkStrLit("hallo")
   )
 
@@ -310,7 +310,7 @@ AST:
 .. code-block:: nim
   nnkDotExpr(nnkIdent(!"x"), nnkIdent(!"y"))
 
-If you use Nim's flexible calling syntax (as in ``x.len()``), the result is the 
+If you use Nim's flexible calling syntax (as in ``x.len()``), the result is the
 same as above but wrapped in an ``nnkCall``.
 
 
@@ -331,7 +331,7 @@ AST:
 Parentheses
 -----------
 
-Parentheses for affecting operator precedence or tuple construction 
+Parentheses for affecting operator precedence or tuple construction
 are built with the ``nnkPar`` node.
 
 Concrete syntax:
@@ -343,12 +343,12 @@ AST:
 
 .. code-block:: nim
   nnkPar(nnkIntLit(1), nnkIntLit(2), nnkPar(nnkIntLit(3)))
-  
-  
+
+
 Curly braces
 ------------
 
-Curly braces are used as the set constructor. 
+Curly braces are used as the set constructor.
 
 Concrete syntax:
 
@@ -379,7 +379,7 @@ AST:
 Brackets
 --------
 
-Brackets are used as the array constructor.  
+Brackets are used as the array constructor.
 
 Concrete syntax:
 
@@ -430,8 +430,8 @@ AST:
 Documentation Comments
 ----------------------
 
-Double-hash (``##``) comments in the code actually have their own format, 
-but the comments do not yet show up in the AST, which will only show that 
+Double-hash (``##``) comments in the code actually have their own format,
+but the comments do not yet show up in the AST, which will only show that
 a comment exists, not what it contains. Single-hash (``#``) comments are ignored.
 
 Concrete syntax:
@@ -447,14 +447,14 @@ AST:
 .. code-block:: nim
   nnkCommentStmt() # only appears once for the first two lines!
   stmt1
-  nnkCommentStmt() # another nnkCommentStmt because there is another comment 
+  nnkCommentStmt() # another nnkCommentStmt because there is another comment
                    # (separate from the first)
 
 Pragmas
 -------
 
 One of Nim's cool features is pragmas, which allow fine-tuning of various
-aspects of the language. They come in all types, such as adorning procs and 
+aspects of the language. They come in all types, such as adorning procs and
 objects, but the standalone ``emit`` pragma shows the basics with the AST.
 
 Concrete syntax:
@@ -503,7 +503,7 @@ there is no ``else`` branch, no ``nnkElse`` child exists.
 Concrete syntax:
 
 .. code-block:: nim
-  if cond1: 
+  if cond1:
     stmt1
   elif cond2:
     stmt2
@@ -560,7 +560,7 @@ AST:
 .. code-block:: nim
   nnkStmtList(stmt1, stmt2, stmt3)
 
-  
+
 Case statement
 --------------
 
@@ -568,7 +568,7 @@ Concrete syntax:
 
 .. code-block:: nim
   case expr1
-  of expr2, expr3..expr4: 
+  of expr2, expr3..expr4:
     stmt1
   of expr5:
     stmt2
@@ -629,11 +629,11 @@ Concrete syntax:
 .. code-block:: nim
   try:
     stmt1
-  except e1, e2: 
+  except e1, e2:
     stmt2
   except e3:
     stmt3
-  except: 
+  except:
     stmt4
   finally:
     stmt5
@@ -642,9 +642,9 @@ AST:
 
 .. code-block:: nim
   nnkTryStmt(
-    stmt1, 
-    nnkExceptBranch(e1, e2, stmt2), 
-    nnkExceptBranch(e3, stmt3), 
+    stmt1,
+    nnkExceptBranch(e1, e2, stmt2),
+    nnkExceptBranch(e3, stmt3),
     nnkExceptBranch(stmt4),
     nnkFinally(stmt5)
   )
@@ -862,8 +862,8 @@ Note that either the second or third (or both) parameters above must exist,
 as the compiler needs to know the type somehow (which it can infer from
 the given assignment).
 
-This is not the same AST for all uses of ``var``. See 
-[Procedure declaration](http://nim-lang.org/docs/macros.html#statements-procedure-declaration) 
+This is not the same AST for all uses of ``var``. See
+[Procedure declaration](http://nim-lang.org/docs/macros.html#statements-procedure-declaration)
 for details.
 
 Let section
@@ -894,7 +894,7 @@ AST:
 Type section
 ------------
 
-Starting with the simplest case, a ``type`` section appears much like ``var`` 
+Starting with the simplest case, a ``type`` section appears much like ``var``
 and ``const``.
 
 Concrete syntax:
@@ -949,7 +949,7 @@ AST:
       nnkGenericParams(
         nnkIdentDefs(
           nnkIdent(!"T"),
-          nnkEmpty(), # if the type is declared with options, like 
+          nnkEmpty(), # if the type is declared with options, like
                       # ``[T: SomeInteger]``, they are given here
           nnkEmpty(),
         )
@@ -1019,7 +1019,7 @@ AST:
     # ...
   )
 
-Static types, like ``static[int]``, use ``nnkIdent`` wrapped in 
+Static types, like ``static[int]``, use ``nnkIdent`` wrapped in
 ``nnkStaticTy``.
 
 Concrete syntax:
@@ -1085,7 +1085,7 @@ AST:
   )
 
 The same syntax applies to ``iterator``s (with ``nnkIteratorTy``), but
-*does not* apply to ``converter``s or ``template``s. 
+*does not* apply to ``converter``s or ``template``s.
 
 Mixin statement
 ---------------
@@ -1138,13 +1138,13 @@ AST:
     nnkFormalParams(
       nnkIdent(!"int"), # the first FormalParam is the return type. nnkEmpty() if there is none
       nnkIdentDefs(
-        nnkIdent(!"x"), 
+        nnkIdent(!"x"),
         nnkIdent(!"int"), # type type (required for procs, not for templates)
         nnkIntLit(3) # a default value
       ),
       nnkIdentDefs(
-        nnkIdent(!"y"), 
-        nnkIdent(!"float32"), 
+        nnkIdent(!"y"),
+        nnkIdent(!"float32"),
         nnkEmpty()
       )
       nnkPragma(nnkIdent(!"inline")),
@@ -1177,7 +1177,7 @@ AST:
   ),
   # ...
 
-When a procedure uses the special ``var`` type return variable, the result 
+When a procedure uses the special ``var`` type return variable, the result
 is different from that of a var section.
 
 Concrete syntax:
@@ -1198,7 +1198,7 @@ AST:
 Iterator declaration
 --------------------
 
-The syntax for iterators is similar to procs, but with ``nnkIteratorDef`` 
+The syntax for iterators is similar to procs, but with ``nnkIteratorDef``
 replacing ``nnkProcDef``.
 
 Concrete syntax:
@@ -1239,7 +1239,7 @@ Template declaration
 Templates (as well as macros, as we'll see) have a slightly expanded AST when
 compared to procs and iterators. The reason for this is [term-rewriting
 macros](http://nim-lang.org/docs/manual.html#term-rewriting-macros). Notice
-the ``nnkEmpty()`` as the second argument to ``nnkProcDef`` and 
+the ``nnkEmpty()`` as the second argument to ``nnkProcDef`` and
 ``nnkIteratorDef`` above? That's where the term-rewriting macros go.
 
 Concrete syntax:
@@ -1264,16 +1264,16 @@ inside ``nnkFormalParams`` just becomes ``nnkEmpty``.
 Macro declaration
 -----------------
 
-Macros behave like templates, but ``nnkTemplateDef`` is replaced with 
+Macros behave like templates, but ``nnkTemplateDef`` is replaced with
 ``nnkMacroDef``.
 
 
 Special node kinds
 ==================
 
-There are several node kinds that are used for semantic checking or code 
+There are several node kinds that are used for semantic checking or code
 generation. These are accessible from this module, but should not be used.
 Other node kinds are especially designed to make AST manipulations easier.
-These are explained here. 
+These are explained here.
 
 To be written.
