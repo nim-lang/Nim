@@ -87,7 +87,8 @@ You can run the tests with
 
 which will run a good subset of tests. Some tests may fail.
 
-# Comparing tests
+Comparing tests
+===============
 
 Because some tests fail in the current ``devel`` branch, not every fail
 after your change is necessarily caused by your changes.
