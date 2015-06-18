@@ -11,11 +11,13 @@ a type, you can use
 
 
 .. code-block:: nim
+
   {.deprecated [oldName: new_name].}
 
 Or you can simply use
 
 .. code-block:: nim
+
   proc oldProc() {.deprecated.}
 
 to mark a symbol as deprecated. Works for procs/types/vars/consts,
@@ -42,6 +44,7 @@ testing by itself, don't rely on echo statements or similar.
 Sample test:
 
 .. code-block:: nim
+
   when isMainModule:
     block: # newSeqWith tests
       var seq2D = newSeqWith(4, newSeq[bool](2))
@@ -67,6 +70,7 @@ the test. Possible keys are:
 An example for a test:
 
 .. code-block:: nim
+
   discard """
     errormsg: "type mismatch: got (PTest)"
 
@@ -84,6 +88,7 @@ Running tests
 You can run the tests with
 
 .. code-block:: bash
+
   ./koch tests
 
 which will run a good subset of tests. Some tests may fail.
@@ -99,6 +104,7 @@ reference test. You'll also need to the commit id, because that's what
 the tester needs to know in order to compare the two.
 
 .. code-block:: bash
+
   git checkout devel
   DEVEL_COMMIT=$(git rev-parse HEAD)
   ./koch tests
@@ -106,6 +112,7 @@ the tester needs to know in order to compare the two.
 Then switch over to your changes and run the tester again.
 
 .. code-block:: bash
+
   git checkout your-changes
   ./koch tests
 
@@ -113,4 +120,5 @@ Then you can ask the tester to create a ``testresults.html`` which will
 tell you if any new tests passed/failed.
 
 .. code-block:: bash
+
   ./koch --print html $DEVEL_COMMIT
