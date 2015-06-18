@@ -8,6 +8,7 @@ suite "string splitting":
     check("1 2".split(re(" ")) == @["1", "2"])
     check("foo".split(re("foo")) == @["", ""])
     check("".split(re"foo") == @[""])
+    check("9".split(re"\son\s") == @["9"])
 
   test "captured patterns":
     check("12".split(re"(\d)") == @["", "1", "", "2", ""])
