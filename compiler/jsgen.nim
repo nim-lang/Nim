@@ -33,7 +33,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, securehash, bitsets, idents, lists, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth, lowerings, sets
+  intsets, cgmeth, lowerings
 
 type
   TTarget = enum
@@ -1098,32 +1098,30 @@ proc putToSeq(s: string, indirect: bool): Rope =
   if indirect: result = "[$1]" % [result]
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope
-proc createRecordVarAux(p: PProc, rec: PNode, excludeMembers: HashSet[string], output: var Rope) =
+proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: var Rope) =
   case rec.kind
   of nkRecList:
     for i in countup(0, sonsLen(rec) - 1):
-      createRecordVarAux(p, rec.sons[i], excludeMembers, output)
+      createRecordVarAux(p, rec.sons[i], excludedFieldIDs, output)
   of nkRecCase:
-    createRecordVarAux(p, rec.sons[0], excludeMembers, output)
+    createRecordVarAux(p, rec.sons[0], excludedFieldIDs, output)
     for i in countup(1, sonsLen(rec) - 1):
-      createRecordVarAux(p, lastSon(rec.sons[i]), excludeMembers, output)
+      createRecordVarAux(p, lastSon(rec.sons[i]), excludedFieldIDs, output)
   of nkSym:
-    let name = $mangleName(rec.sym)
-    if not (name in excludeMembers):
+    if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
-      output.add(name)
+      output.add(mangleName(rec.sym))
       output.add(": ")
       output.add(createVar(p, rec.sym.typ, false))
   else: internalError(rec.info, "createRecordVarAux")
 
-proc createObjInitList(p: PProc, typ: PType, excludeMembers: HashSet[string], output: var Rope) =
+proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: var Rope) =
   var t = typ
   if tfFinal notin t.flags or t.sons[0] != nil:
-    if not ("m_type" in excludeMembers):
-      if output.len > 0: output.add(", ")
-      addf(output, "m_type: $1" | "m_type = $#", [genTypeInfo(p, t)])
+    if output.len > 0: output.add(", ")
+    addf(output, "m_type: $1" | "m_type = $#", [genTypeInfo(p, t)])
   while t != nil:
-    createRecordVarAux(p, t.n, excludeMembers, output)
+    createRecordVarAux(p, t.n, excludedFieldIDs, output)
     t = t.sons[0]
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
@@ -1166,9 +1164,8 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     add(result, "}")
     if indirect: result = "[$1]" % [result]
   of tyObject:
-    var emptySet = initSet[string](2)
     var initList : Rope
-    createObjInitList(p, t, emptySet, initList)
+    createObjInitList(p, t, initIntSet(), initList)
     result = "{$1}" % [initList]
     if indirect: result = "[$1]" % [result]
   of tyVar, tyPtr, tyRef:
@@ -1442,7 +1439,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.res = rope("{")
   r.kind = resExpr
-  var fieldNames = initSet[string]()
+  var fieldIDs = initIntSet()
   for i in countup(1, sonsLen(n) - 1):
     if i > 1: add(r.res, ", ")
     var it = n.sons[i]
@@ -1450,10 +1447,10 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
-    fieldNames.incl($f.loc.r)
+    fieldIDs.incl(f.id)
     addf(r.res, "$#: $#" | "$# = $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
-  createObjInitList(p, t, fieldNames, r.res)
+  createObjInitList(p, t, fieldIDs, r.res)
   r.res.add("}")
 
 proc genConv(p: PProc, n: PNode, r: var TCompRes) =
