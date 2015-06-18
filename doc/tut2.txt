@@ -233,17 +233,15 @@ is needed:
 
   type
     Socket* = ref object of RootObj
-      FHost: int # cannot be accessed from the outside of the module
-                 # the `F` prefix is a convention to avoid clashes since
-                 # the accessors are named `host`
+      host: int # cannot be accessed from the outside of the module due to missing star
 
   proc `host=`*(s: var Socket, value: int) {.inline.} =
-    ## setter of hostAddr
-    s.FHost = value
+    ## setter of host address
+    s.host = value
 
   proc host*(s: Socket): int {.inline.} =
-    ## getter of hostAddr
-    s.FHost
+    ## getter of host address
+    s.host
 
   var s: Socket
   new s
