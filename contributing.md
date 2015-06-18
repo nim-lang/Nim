@@ -110,6 +110,5 @@ Then you can ask the tester to create a `testresults.html` which will
 tell you if any new tests passed/failed.
 
 ```bash
-./koch html $DEVEL_COMMIT
-(xdg-)open testresults.html
+./koch --print html $DEVEL_COMMIT
 ```
