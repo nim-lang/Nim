@@ -3,7 +3,8 @@ The git stuff
 
 `Guide by github, scroll down a bit<https://guides.github.com/activities/contributing-to-open-source/>`_
 
-# Deprecation
+Deprecation
+===========
 
 Backward compatibility is important, so if you are renaming a proc or
 a type, you can use
