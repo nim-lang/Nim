@@ -2526,6 +2526,10 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Returns ``false`` if the end of the file has been reached, ``true``
       ## otherwise. If ``false`` is returned `line` contains no new data.
 
+    proc writeLn*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
+                             tags: [WriteIOEffect], benign, deprecated.}
+      ## **Deprecated since version 0.11.4:** Use **writeLine** instead.
+
     proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                              tags: [WriteIOEffect], benign.}
       ## writes the values `x` to `f` and then writes "\n".
