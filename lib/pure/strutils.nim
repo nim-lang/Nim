@@ -206,7 +206,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##
   ## .. code-block:: nim
   ##   for word in split("  this is an  example  "):
-  ##     writeln(stdout, word)
+  ##     writeLine(stdout, word)
   ##
   ## ...generates this output:
   ##
@@ -220,7 +220,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##
   ## .. code-block:: nim
   ##   for word in split(";;this;is;an;;example;;;", {';'}):
-  ##     writeln(stdout, word)
+  ##     writeLine(stdout, word)
   ##
   ## ...produces the same output as the first example. The code:
   ##
@@ -228,7 +228,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   let date = "2012-11-20T22:08:08.398990"
   ##   let separators = {' ', '-', ':', 'T'}
   ##   for number in split(date, separators):
-  ##     writeln(stdout, number)
+  ##     writeLine(stdout, number)
   ##
   ## ...results in:
   ##
@@ -259,7 +259,7 @@ iterator split*(s: string, sep: char): string =
   ##
   ## .. code-block:: nim
   ##   for word in split(";;this;is;an;;example;;;", ';'):
-  ##     writeln(stdout, word)
+  ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##
@@ -309,7 +309,7 @@ iterator splitLines*(s: string): string =
   ##
   ## .. code-block:: nim
   ##   for line in splitLines("\nthis\nis\nan\n\nexample\n"):
-  ##     writeln(stdout, line)
+  ##     writeLine(stdout, line)
   ##
   ## Results in:
   ##
@@ -571,7 +571,7 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
   ##
   ## .. code-block:: nim
   ##   for word in tokenize("  this is an  example  "):
-  ##     writeln(stdout, word)
+  ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##

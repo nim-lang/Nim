@@ -117,7 +117,7 @@ proc dbgRepr(p: pointer, typ: PNimType): string =
 proc writeVariable(stream: File, slot: VarSlot) =
   write(stream, slot.name)
   write(stream, " = ")
-  writeln(stream, dbgRepr(slot.address, slot.typ))
+  writeLine(stream, dbgRepr(slot.address, slot.typ))
 
 proc listFrame(stream: File, f: PFrame) =
   write(stream, EndbBeg)
@@ -125,7 +125,7 @@ proc listFrame(stream: File, f: PFrame) =
   write(stream, f.len)
   write(stream, " slots):\n")
   for i in 0 .. f.len-1:
-    writeln(stream, getLocal(f, i).name)
+    writeLine(stream, getLocal(f, i).name)
   write(stream, EndbEnd)
 
 proc listLocals(stream: File, f: PFrame) =
@@ -141,7 +141,7 @@ proc listGlobals(stream: File) =
   write(stream, EndbBeg)
   write(stream, "| Globals:\n")
   for i in 0 .. getGlobalLen()-1:
-    writeln(stream, getGlobal(i).name)
+    writeLine(stream, getGlobal(i).name)
   write(stream, EndbEnd)
 
 proc debugOut(msg: cstring) =

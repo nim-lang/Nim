@@ -369,7 +369,7 @@ iterator split*(s: string, sep: Regex): string =
   ##
   ## .. code-block:: nim
   ##   for word in split("00232this02939is39an22example111", re"\d+"):
-  ##     writeln(stdout, word)
+  ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##

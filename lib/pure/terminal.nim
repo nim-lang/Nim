@@ -430,8 +430,8 @@ macro styledEcho*(m: varargs[expr]): stmt =
     case item.kind
     of nnkStrLit..nnkTripleStrLit:
       if i == m.len - 1:
-        # optimize if string literal is last, just call writeln
-        result.add(newCall(bindSym"writeln", bindSym"stdout", item))
+        # optimize if string literal is last, just call writeLine
+        result.add(newCall(bindSym"writeLine", bindSym"stdout", item))
         if reset: result.add(newCall(bindSym"resetAttributes"))
         return
       else:
@@ -470,7 +470,7 @@ when not defined(testing) and isMainModule:
   writeStyled("styled text ", {styleBright, styleBlink, styleUnderscore})
   setBackGroundColor(bgCyan, true)
   setForeGroundColor(fgBlue)
-  writeln(stdout, "ordinary text")
+  writeLine(stdout, "ordinary text")
 
   styledEcho("styled text ", {styleBright, styleBlink, styleUnderscore})
 

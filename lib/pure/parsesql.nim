@@ -1323,7 +1323,7 @@ proc ra(n: SqlNode, s: var string, indent: int) =
 #  where: x.name == y.name
 #db.select(fromm = [t1, t2], where = t1.name == t2.name):
 #for x, y, z in db.select(fromm = a, b where = a.name == b.name): 
-#  writeln x, y, z
+#  writeLine x, y, z
 
 proc renderSQL*(n: SqlNode): string =
   ## Converts an SQL abstract syntax tree to its string representation.
