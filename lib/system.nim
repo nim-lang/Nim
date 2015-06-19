@@ -898,7 +898,7 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ##
   ## .. code-block:: Nim
   ##   var s: set[range['a'..'z']] = {'a'..'c'}
-  ##   writeln(stdout, 'b' in s)
+  ##   writeLine(stdout, 'b' in s)
   ##
   ## If ``in`` had been declared as ``[T](elem: T, s: set[T])`` then ``T`` would
   ## have been bound to ``char``. But ``s`` is not compatible to type
@@ -2269,7 +2269,7 @@ proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
   ## Special built-in that takes a variable number of arguments. Each argument
   ## is converted to a string via ``$``, so it works for user-defined
   ## types that have an overloaded ``$`` operator.
-  ## It is roughly equivalent to ``writeln(stdout, x); flushFile(stdout)``, but
+  ## It is roughly equivalent to ``writeLine(stdout, x); flushFile(stdout)``, but
   ## available for the JavaScript target too.
   ##
   ## Unlike other IO operations this is guaranteed to be thread-safe as
@@ -2526,7 +2526,7 @@ when not defined(JS): #and not defined(NimrodVM):
       ## Returns ``false`` if the end of the file has been reached, ``true``
       ## otherwise. If ``false`` is returned `line` contains no new data.
 
-    proc writeln*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
+    proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                              tags: [WriteIOEffect], benign.}
       ## writes the values `x` to `f` and then writes "\n".
       ## May throw an IO exception.

@@ -117,11 +117,13 @@ proc write*(s: Stream, x: string) =
   ## terminating zero is written.
   writeData(s, cstring(x), x.len)
 
-proc writeln*(s: Stream, args: varargs[string, `$`]) =
+proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
   ## by a new line. No length field or terminating zero is written.
   for str in args: write(s, str)
   write(s, "\n")
+
+{.deprecated: [writeln:writeLine].}
 
 proc read[T](s: Stream, result: var T) =
   ## generic read procedure. Reads `result` from the stream `s`.
