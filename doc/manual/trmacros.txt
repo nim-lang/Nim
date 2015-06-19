@@ -272,7 +272,7 @@ parameter is of the type ``varargs`` it is treated specially and it can match
 .. code-block:: nim
   template optWrite{
     write(f, x)
-    ((write|writeln){w})(f, y)
+    ((write|writeLine){w})(f, y)
   }(x, y: varargs[expr], f: File, w: expr) =
     w(f, x, y)
   

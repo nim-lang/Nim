@@ -207,7 +207,7 @@ for any type:
   echo("abc".len) # is the same as echo(len("abc"))
   echo("abc".toUpper())
   echo({'a', 'b', 'c'}.card)
-  stdout.writeln("Hallo") # the same as writeln(stdout, "Hallo")
+  stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
 
 (Another way to look at the method call syntax is that it provides the missing
 postfix notation.)
@@ -217,9 +217,9 @@ So "pure object oriented" code is easy to write:
 .. code-block:: nim
   import strutils
 
-  stdout.writeln("Give a list of numbers (separated by spaces): ")
+  stdout.writeLine("Give a list of numbers (separated by spaces): ")
   stdout.write(stdin.readLine.split.map(parseInt).max.`$`)
-  stdout.writeln(" is the maximum!")
+  stdout.writeLine(" is the maximum!")
 
 
 Properties
@@ -535,7 +535,7 @@ containers:
   add(root, newNode("hello")) # instantiates ``newNode`` and ``add``
   add(root, "world")          # instantiates the second ``add`` proc
   for str in preorder(root):
-    stdout.writeln(str)
+    stdout.writeLine(str)
 
 The example shows a generic binary tree. Depending on context, the brackets are
 used either to introduce type parameters or to instantiate a generic proc,
@@ -580,7 +580,7 @@ simple proc for logging:
     debug = true
 
   proc log(msg: string) {.inline.} =
-    if debug: stdout.writeln(msg)
+    if debug: stdout.writeLine(msg)
 
   var
     x = 4
@@ -597,7 +597,7 @@ Turning the ``log`` proc into a template solves this problem:
     debug = true
 
   template log(msg: string) =
-    if debug: stdout.writeln(msg)
+    if debug: stdout.writeLine(msg)
 
   var
     x = 4
@@ -627,10 +627,10 @@ via a special ``:`` syntax:
       quit("cannot open: " & fn)
 
   withFile(txt, "ttempl3.txt", fmWrite):
-    txt.writeln("line 1")
-    txt.writeln("line 2")
+    txt.writeLine("line 1")
+    txt.writeLine("line 2")
 
-In the example the two ``writeln`` statements are bound to the ``body``
+In the example the two ``writeLine`` statements are bound to the ``body``
 parameter. The ``withFile`` template contains boilerplate code and helps to
 avoid a common bug: to forget to close the file. Note how the
 ``let fn = filename`` statement ensures that ``filename`` is evaluated only
@@ -684,7 +684,7 @@ variable number of arguments:
       # add a call to the statement list that writes ": "
       result.add(newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
       # add a call to the statement list that writes the expressions value:
-      result.add(newCall("writeln", newIdentNode("stdout"), n[i]))
+      result.add(newCall("writeLine", newIdentNode("stdout"), n[i]))
 
   var
     a: array[0..10, int]
@@ -699,15 +699,15 @@ The macro call expands to:
 .. code-block:: nim
   write(stdout, "a[0]")
   write(stdout, ": ")
-  writeln(stdout, a[0])
+  writeLine(stdout, a[0])
 
   write(stdout, "a[1]")
   write(stdout, ": ")
-  writeln(stdout, a[1])
+  writeLine(stdout, a[1])
 
   write(stdout, "x")
   write(stdout, ": ")
-  writeln(stdout, x)
+  writeLine(stdout, x)
 
 
 

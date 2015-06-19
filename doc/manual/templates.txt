@@ -77,10 +77,10 @@ special ``:`` syntax:
       quit("cannot open: " & fn)
       
   withFile(txt, "ttempl3.txt", fmWrite):
-    txt.writeln("line 1")
-    txt.writeln("line 2")
+    txt.writeLine("line 1")
+    txt.writeLine("line 2")
   
-In the example the two ``writeln`` statements are bound to the ``actions``
+In the example the two ``writeLine`` statements are bound to the ``actions``
 parameter.
 
 
@@ -206,8 +206,8 @@ template parameter, it is an inject'ed symbol:
       ...
       
   withFile(txt, "ttempl3.txt", fmWrite):
-    txt.writeln("line 1")
-    txt.writeln("line 2")
+    txt.writeLine("line 1")
+    txt.writeLine("line 2")
 
 
 The ``inject`` and ``gensym`` pragmas are second class annotations; they have
@@ -299,7 +299,7 @@ variable number of arguments:
       # add a call to the statement list that writes ": "
       add(result, newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
       # add a call to the statement list that writes the expressions value:
-      add(result, newCall("writeln", newIdentNode("stdout"), n[i]))
+      add(result, newCall("writeLine", newIdentNode("stdout"), n[i]))
 
   var
     a: array [0..10, int]
@@ -314,15 +314,15 @@ The macro call expands to:
 .. code-block:: nim
   write(stdout, "a[0]")
   write(stdout, ": ")
-  writeln(stdout, a[0])
+  writeLine(stdout, a[0])
 
   write(stdout, "a[1]")
   write(stdout, ": ")
-  writeln(stdout, a[1])
+  writeLine(stdout, a[1])
 
   write(stdout, "x")
   write(stdout, ": ")
-  writeln(stdout, x)
+  writeLine(stdout, x)
 
 
 Arguments that are passed to a ``varargs`` parameter are wrapped in an array
@@ -333,7 +333,7 @@ children.
 BindSym
 -------
 
-The above ``debug`` macro relies on the fact that ``write``, ``writeln`` and
+The above ``debug`` macro relies on the fact that ``write``, ``writeLine`` and
 ``stdout`` are declared in the system module and thus visible in the 
 instantiating context. There is a way to use bound identifiers
 (aka `symbols`:idx:) instead of using unbound identifiers. The ``bindSym`` 
@@ -348,7 +348,7 @@ builtin can be used for that:
       # we can bind symbols in scope via 'bindSym':
       add(result, newCall(bindSym"write", bindSym"stdout", toStrLit(n[i])))
       add(result, newCall(bindSym"write", bindSym"stdout", newStrLitNode(": ")))
-      add(result, newCall(bindSym"writeln", bindSym"stdout", n[i]))
+      add(result, newCall(bindSym"writeLine", bindSym"stdout", n[i]))
 
   var
     a: array [0..10, int]
@@ -363,17 +363,17 @@ The macro call expands to:
 .. code-block:: nim
   write(stdout, "a[0]")
   write(stdout, ": ")
-  writeln(stdout, a[0])
+  writeLine(stdout, a[0])
 
   write(stdout, "a[1]")
   write(stdout, ": ")
-  writeln(stdout, a[1])
+  writeLine(stdout, a[1])
 
   write(stdout, "x")
   write(stdout, ": ")
-  writeln(stdout, x)
+  writeLine(stdout, x)
 
-However, the symbols ``write``, ``writeln`` and ``stdout`` are already bound
+However, the symbols ``write``, ``writeLine`` and ``stdout`` are already bound
 and are not looked up again. As the example shows, ``bindSym`` does work with
 overloaded symbols implicitly.
 
