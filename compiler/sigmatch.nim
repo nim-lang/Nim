@@ -218,12 +218,12 @@ proc cmpCandidates*(a, b: TCandidate): int =
   result = complexDisambiguation(a.callee, b.callee)
 
 proc writeMatches*(c: TCandidate) =
-  writeln(stdout, "exact matches: " & $c.exactMatches)
-  writeln(stdout, "generic matches: " & $c.genericMatches)
-  writeln(stdout, "subtype matches: " & $c.subtypeMatches)
-  writeln(stdout, "intconv matches: " & $c.intConvMatches)
-  writeln(stdout, "conv matches: " & $c.convMatches)
-  writeln(stdout, "inheritance: " & $c.inheritancePenalty)
+  writeLine(stdout, "exact matches: " & $c.exactMatches)
+  writeLine(stdout, "generic matches: " & $c.genericMatches)
+  writeLine(stdout, "subtype matches: " & $c.subtypeMatches)
+  writeLine(stdout, "intconv matches: " & $c.intConvMatches)
+  writeLine(stdout, "conv matches: " & $c.convMatches)
+  writeLine(stdout, "inheritance: " & $c.inheritancePenalty)
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:

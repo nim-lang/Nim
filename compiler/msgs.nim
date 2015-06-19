@@ -593,7 +593,7 @@ var
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
-    if isNil(writelnHook): writeln(stdout, s)
+    if isNil(writelnHook): writeLine(stdout, s)
     else: writelnHook(s)
 
 proc msgQuit*(x: int8) = quit x
@@ -688,7 +688,7 @@ var gTrackPos*: TLineInfo
 
 proc outWriteln*(s: string) =
   ## Writes to stdout. Always.
-  if eStdOut in errorOutputs: writeln(stdout, s)
+  if eStdOut in errorOutputs: writeLine(stdout, s)
 
 proc msgWriteln*(s: string) =
   ## Writes to stdout. If --stdout option is given, writes to stderr instead.
@@ -698,9 +698,9 @@ proc msgWriteln*(s: string) =
   if not isNil(writelnHook):
     writelnHook(s)
   elif optStdout in gGlobalOptions:
-    if eStdErr in errorOutputs: writeln(stderr, s)
+    if eStdErr in errorOutputs: writeLine(stderr, s)
   else:
-    if eStdOut in errorOutputs: writeln(stdout, s)
+    if eStdOut in errorOutputs: writeLine(stdout, s)
 
 macro callIgnoringStyle(theProc: typed, first: typed,
                         args: varargs[expr]): stmt =
@@ -735,13 +735,13 @@ template styledMsgWriteln*(args: varargs[expr]) =
   if not isNil(writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in gGlobalOptions:
-    if eStdErr in errorOutputs: callIgnoringStyle(writeln, stderr, args)
+    if eStdErr in errorOutputs: callIgnoringStyle(writeLine, stderr, args)
   else:
     if eStdOut in errorOutputs:
       if optUseColors in gGlobalOptions:
         callStyledEcho(args)
       else:
-        callIgnoringStyle(writeln, stdout, args)
+        callIgnoringStyle(writeLine, stdout, args)
 
 proc coordToStr(coord: int): string =
   if coord == -1: result = "???"

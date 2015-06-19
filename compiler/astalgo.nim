@@ -452,7 +452,7 @@ proc debug(n: PSym) =
   elif n.kind == skUnknown:
     msgWriteln("skUnknown")
   else:
-    #writeln(stdout, $symToYaml(n, 0, 1))
+    #writeLine(stdout, $symToYaml(n, 0, 1))
     msgWriteln("$1_$2: $3, $4, $5, $6" % [
       n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
       $lineInfoToStr(n.info), $n.kind])

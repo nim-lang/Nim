@@ -596,7 +596,7 @@ proc externalFileChanged(filename: string): bool =
     result = true
   if result:
     if open(f, crcFile, fmWrite):
-      f.writeln($currentCrc)
+      f.writeLine($currentCrc)
       close(f)
 
 proc addExternalFileToCompile*(filename: string) =
