@@ -12,7 +12,7 @@ type
   EIO2 = ref object of EIO
   
 proc raiser(): int {.tags: [TObj, FWriteIO].} =
-  writeln stdout, "arg"
+  writeLine stdout, "arg"
 
 var o: TObjB
 o.fn = raiser

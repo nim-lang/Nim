@@ -1,3 +1,3 @@
 # test the new endian magic
 
-writeln(stdout, repr(system.cpuEndian))
+writeLine(stdout, repr(system.cpuEndian))

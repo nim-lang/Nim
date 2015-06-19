@@ -26,7 +26,7 @@ q[] = p
 
 s = @[q, q, q, q]
 
-writeln(stdout, repr(p))
-writeln(stdout, repr(q))
-writeln(stdout, repr(s))
-writeln(stdout, repr(en4))
+writeLine(stdout, repr(p))
+writeLine(stdout, repr(q))
+writeLine(stdout, repr(s))
+writeLine(stdout, repr(en4))

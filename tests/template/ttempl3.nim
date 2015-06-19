@@ -13,8 +13,8 @@ template withOpenFile(f: expr, filename: string, mode: TFileMode,
       quit("cannot open for writing: " & filename)
     
 withOpenFile(txt, "ttempl3.txt", fmWrite):
-  writeln(txt, "line 1")
-  txt.writeln("line 2")
+  writeLine(txt, "line 1")
+  txt.writeLine("line 2")
   
 var
   myVar: array[0..1, int]

@@ -9,7 +9,7 @@ type
 
 proc getPoint( p: var TPoint2d) =
   {.breakpoint.}
-  writeln(stdout, p.x)
+  writeLine(stdout, p.x)
 
 var
   p: TPoint3d

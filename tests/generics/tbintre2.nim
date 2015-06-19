@@ -15,7 +15,7 @@ if find(root, "world"):
   for str in items(root):
     stdout.write(str)
 else:
-  stdout.writeln("BUG")
+  stdout.writeLine("BUG")
 
 var
   r2: PBinaryTree[int]
