@@ -73,6 +73,7 @@ An example for a test:
 
   discard """
     errormsg: "type mismatch: got (PTest)"
+  """
 
   type
     PTest = ref object
