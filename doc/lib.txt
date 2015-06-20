@@ -394,13 +394,6 @@ Miscellaneous
   This module implements new experimental features. Currently the syntax
   sugar for anonymous procedures.
 
-Database support
-----------------
-
-* `redis <redis.html>`_
-  This module implements a redis client. It allows you to connect to a
-  redis-server instance, send commands and receive replies.
-
 
 Modules for JS backend
 ---------------------------
@@ -439,26 +432,9 @@ Database support
 Other
 -----
 
-* `graphics <graphics.html>`_
-  This module implements graphical output for Nim; the current
-  implementation uses SDL but the interface is meant to support multiple
-  backends some day.
-
-* `dialogs <dialogs.html>`_
-  This module implements portable dialogs for Nim; the implementation
-  builds on the GTK interface. On Windows, native dialogs are shown if
-  appropriate.
-
-* `zipfiles <zipfiles.html>`_
-  This module implements a zip archive creator/reader/modifier.
-
 * `ssl <ssl.html>`_
   This module provides an easy to use sockets-style
   Nim interface to the OpenSSL library.
-
-* `rdstdin <rdstdin.html>`_
-  This module contains code for reading from `stdin`:idx:. On UNIX the GNU
-  readline library is wrapped and set up.
 
 
 Wrappers
@@ -470,20 +446,8 @@ not contained in the distribution. You can then find them on the website.
 Windows specific
 ----------------
 
-* `windows <windows.html>`_
-  Contains a wrapper for the Win32 API.
 * `winlean <winlean.html>`_
   Contains a wrapper for a small subset of the Win32 API.
-* `shellapi <shellapi.html>`_
-  Contains a wrapper for the ``shellapi.h`` header.
-* `shfolder <shfolder.html>`_
-  Contains a wrapper for the ``shfolder.h`` header.
-* `mmsystem <mmsystem.html>`_
-  Contains a wrapper for the ``mmsystem.h`` header.
-* `psapi <psapi.html>`_
-  Contains a wrapper for the ``psapi.h`` header.
-* `nb30 <nb30.html>`_
-  This module contains the definitions for portable NetBIOS 3.0 support.
 
 
 UNIX specific
@@ -491,12 +455,6 @@ UNIX specific
 
 * `posix <posix.html>`_
   Contains a wrapper for the POSIX standard.
-* `readline <readline.html>`_
-  Part of the wrapper for the GNU readline library.
-* `history <history.html>`_
-  Part of the wrapper for the GNU readline library.
-* `rltypedefs <rltypedefs.html>`_
-  Part of the wrapper for the GNU readline library.
 
 
 Regular expressions
@@ -504,8 +462,6 @@ Regular expressions
 
 * `pcre <pcre.html>`_
   Wrapper for the PCRE library.
-* `tre <tre.html>`_
-  Wrapper for the TRE library.
 
 
 GUI libraries
@@ -526,15 +482,6 @@ Database support
   Contains a wrapper for SQLite 3 API.
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
-* `sphinx <sphinx.html>`_
-  Nim wrapper for ``sphinx``.
-
-
-XML Processing
---------------
-
-* `expat <expat.html>`_
-  Wrapper of the expat XML parser.
 
 
 Network Programming and Internet Protocols
@@ -553,16 +500,6 @@ Network Programming and Internet Protocols
   Wrapper for OpenSSL.
 
 
-Data Compression and Archiving
-------------------------------
-
-* `zlib <zlib.html>`_
-  Wrapper for the zlib library.
-
-* `libzip <libzip.html>`_
-  Interface to the `lib zip <http://www.nih.at/libzip/index.html>`_ library by
-  Dieter Baron and Thomas Klausner.
-
 
 Scientific computing
 --------------------
@@ -570,8 +507,9 @@ Scientific computing
 * `libsvm <libsvm.html>`_
   Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
+
 Nimble
-====================
+======
 
 Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see

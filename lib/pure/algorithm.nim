@@ -355,7 +355,7 @@ when isMainModule:
   var srt1 = [1,2,3,4,4,4,4,5]
   var srt2 = ["iello","hello"]
   var srt3 = [1.0,1.0,1.0]
-  var srt4 = []
+  var srt4: seq[int] = @[]
   assert srt1.isSorted(cmp) == true
   assert srt2.isSorted(cmp) == false
   assert srt3.isSorted(cmp) == true

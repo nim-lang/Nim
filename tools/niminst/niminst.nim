@@ -8,7 +8,7 @@
 #
 
 const
-  haveZipLib = defined(unix)
+  haveZipLib = false # zip not in stdlib anymore
 
 when haveZipLib:
   import zipfiles

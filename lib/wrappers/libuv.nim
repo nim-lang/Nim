@@ -1,3 +1,12 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 ## libuv is still fast moving target
 ## This file was last updated against a development HEAD revision of https://github.com/joyent/libuv/
 
@@ -136,7 +145,7 @@ type
     fs_event_init* {.importc: "fs_event_init".}: uint64
 
   Loop* {.pure, final, importc: "uv_loop_t", header: "uv.h".} = object
-    # ares_handles_* {.importc: "uv_ares_handles_".}: pointer # XXX: This seems to be a private field? 
+    # ares_handles_* {.importc: "uv_ares_handles_".}: pointer # XXX: This seems to be a private field?
     eio_want_poll_notifier* {.importc: "uv_eio_want_poll_notifier".}: TAsync
     eio_done_poll_notifier* {.importc: "uv_eio_done_poll_notifier".}: TAsync
     eio_poller* {.importc: "uv_eio_poller".}: TIdle
