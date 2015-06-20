@@ -713,7 +713,7 @@ iterator items*(n: NimNode): NimNode {.inline.} =
     for i in 0 .. high(n):
       yield n[i]
 
-{.deprecated: [children: items].}
+iterator children*(n: NimNode): NimNode {.inline.} = items
 
 template findChild*(n: NimNode; cond: expr): NimNode {.
   immediate, dirty.} =
