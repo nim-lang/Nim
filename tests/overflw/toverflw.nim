@@ -11,9 +11,9 @@ var
 a = high(int)
 b = -2
 try:
-  writeln(stdout, b - a)
+  writeLine(stdout, b - a)
 except OverflowError:
-  writeln(stdout, "the computation overflowed")
+  writeLine(stdout, "the computation overflowed")
 
 {.pop.} # overflow check
 #OUT the computation overflowed

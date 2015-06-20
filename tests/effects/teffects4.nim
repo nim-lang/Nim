@@ -15,7 +15,7 @@ proc q() {.tags: [FIO].} =
   nil
   
 proc raiser(): int =
-  writeln stdout, "arg"
+  writeLine stdout, "arg"
   if true:
     q()
 

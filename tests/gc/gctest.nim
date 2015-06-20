@@ -63,12 +63,12 @@ proc caseTree(lvl: int = 0): PCaseNode =
   if lvl == 3: result = newCaseNode("data item")
   else: result = newCaseNode(caseTree(lvl+1), caseTree(lvl+1))
 
-proc finalizeBNode(n: TBNode) = writeln(stdout, n.data)
+proc finalizeBNode(n: TBNode) = writeLine(stdout, n.data)
 proc finalizeNode(n: PNode) =
   assert(n != nil)
   write(stdout, "finalizing: ")
-  if isNil(n.data): writeln(stdout, "nil!")
-  else: writeln(stdout, n.data)
+  if isNil(n.data): writeLine(stdout, "nil!")
+  else: writeLine(stdout, n.data)
 
 var
   id: int = 1
@@ -82,7 +82,7 @@ proc buildTree(depth = 1): PNode =
   inc(id)
 
 proc returnTree(): PNode =
-  writeln(stdout, "creating id: " & $id)
+  writeLine(stdout, "creating id: " & $id)
   new(result, finalizeNode)
   result.data = $id
   new(result.le, finalizeNode)
@@ -92,26 +92,26 @@ proc returnTree(): PNode =
   inc(id)
 
   # now create a cycle:
-  writeln(stdout, "creating id (cyclic): " & $id)
+  writeLine(stdout, "creating id (cyclic): " & $id)
   var cycle: PNode
   new(cycle, finalizeNode)
   cycle.data = $id
   cycle.le = cycle
   cycle.ri = cycle
   inc(id)
-  #writeln(stdout, "refcount: " & $refcount(cycle))
-  #writeln(stdout, "refcount le: " & $refcount(cycle.le))
-  #writeln(stdout, "refcount ri: " & $refcount(cycle.ri))
+  #writeLine(stdout, "refcount: " & $refcount(cycle))
+  #writeLine(stdout, "refcount le: " & $refcount(cycle.le))
+  #writeLine(stdout, "refcount ri: " & $refcount(cycle.ri))
 
 proc printTree(t: PNode) =
   if t == nil: return
-  writeln(stdout, "printing")
-  writeln(stdout, t.data)
+  writeLine(stdout, "printing")
+  writeLine(stdout, t.data)
   printTree(t.le)
   printTree(t.ri)
 
 proc unsureNew(result: var PNode) =
-  writeln(stdout, "creating unsure id: " & $id)
+  writeLine(stdout, "creating unsure id: " & $id)
   new(result, finalizeNode)
   result.data = $id
   new(result.le, finalizeNode)
@@ -176,7 +176,7 @@ proc main() =
   var s: seq[string] = @[]
   for i in 1..100:
     add s, "hohoho" # test reallocation
-  writeln(stdout, s[89])
+  writeLine(stdout, s[89])
   write(stdout, "done!\n")
 
 var
@@ -184,7 +184,7 @@ var
     s: string
 s = ""
 s = ""
-writeln(stdout, repr(caseTree()))
+writeLine(stdout, repr(caseTree()))
 father.t.data = @["ha", "lets", "stress", "it"]
 father.t.data = @["ha", "lets", "stress", "it"]
 var t = buildTree()
@@ -199,5 +199,5 @@ GC_fullCollect()
 # the M&S GC fails with this call and it's unclear why. Definitely something
 # we need to fix!
 GC_fullCollect()
-writeln(stdout, GC_getStatistics())
+writeLine(stdout, GC_getStatistics())
 write(stdout, "finished\n")

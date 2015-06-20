@@ -16,8 +16,8 @@ proc main() =
   p = find(example, "=")
   a = substr(example, 0, p-1)
   b = substr(example, p+1)
-  writeln(stdout, a & '=' & b)
-  #writeln(stdout, b)
+  writeLine(stdout, a & '=' & b)
+  #writeLine(stdout, b)
 
 main()
 #OUT TEMP=C:\Programs\xyz\bin

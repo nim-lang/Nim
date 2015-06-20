@@ -53,7 +53,7 @@ The following example shows a generic binary tree can be modelled:
   add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and
   add(root, newNode("world")) # ``add``
   for str in inorder(root):
-    writeln(stdout, str)
+    writeLine(stdout, str)
 
 
 Is operator

@@ -155,7 +155,7 @@ proc writeProfile() {.noconv.} =
   var f: File
   if open(f, filename, fmWrite):
     sort(profileData, cmpEntries)
-    writeln(f, "total executions of each stack trace:")
+    writeLine(f, "total executions of each stack trace:")
     var entries = 0
     for i in 0..high(profileData):
       if profileData[i] != nil: inc entries
@@ -175,13 +175,13 @@ proc writeProfile() {.noconv.} =
     for i in 0..min(100, entries-1):
       if profileData[i].total > 1:
         inc sum, profileData[i].total
-        writeln(f, "Entry: ", i+1, "/", entries, " Calls: ",
+        writeLine(f, "Entry: ", i+1, "/", entries, " Calls: ",
           profileData[i].total // totalCalls, " [sum: ", sum, "; ",
           sum // totalCalls, "]")
         for ii in 0..high(StackTrace):
           let procname = profileData[i].st[ii]
           if isNil(procname): break
-          writeln(f, "  ", procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", procname, " ", perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:

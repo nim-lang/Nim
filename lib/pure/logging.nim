@@ -132,12 +132,12 @@ method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
 method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(stdout, substituteLog(logger.fmtStr, level, args))
+    writeLine(stdout, substituteLog(logger.fmtStr, level, args))
 
 method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeln(logger.f, substituteLog(logger.fmtStr, level, args))
+    writeLine(logger.f, substituteLog(logger.fmtStr, level, args))
 
 proc defaultFilename*(): string =
   ## Returns the default filename for a logger.
@@ -228,7 +228,7 @@ method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`])
       logger.curLine = 0
       logger.f = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
 
-    writeln(logger.f, substituteLog(logger.fmtStr, level, args))
+    writeLine(logger.f, substituteLog(logger.fmtStr, level, args))
     logger.curLine.inc
 
 # --------

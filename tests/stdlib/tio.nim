@@ -2,6 +2,6 @@
 
 proc main() =
   for line in lines("thello.nim"):
-    writeln(stdout, line)
+    writeLine(stdout, line)
 
 main()

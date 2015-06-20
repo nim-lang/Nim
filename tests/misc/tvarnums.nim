@@ -91,9 +91,9 @@ proc t64(i: int64) =
   toVarNum64(i, b)
   var x = toNum64(b)
   if x != i:
-    writeln(stdout, $i)
-    writeln(stdout, toBinary(i))
-    writeln(stdout, toBinary(x))
+    writeLine(stdout, $i)
+    writeLine(stdout, toBinary(i))
+    writeLine(stdout, toBinary(x))
 
 proc t32(i: int32) =
   var
@@ -101,8 +101,8 @@ proc t32(i: int32) =
   toVarNum(i, b)
   var x = toNum(b)
   if x != i:
-    writeln(stdout, toBinary(i))
-    writeln(stdout, toBinary(x))
+    writeLine(stdout, toBinary(i))
+    writeLine(stdout, toBinary(x))
 
 proc tm(i: int32) =
   var
@@ -110,8 +110,8 @@ proc tm(i: int32) =
   toVarNum64(i, b)
   var x = toNum(b)
   if x != i:
-    writeln(stdout, toBinary(i))
-    writeln(stdout, toBinary(x))
+    writeLine(stdout, toBinary(i))
+    writeLine(stdout, toBinary(x))
 
 t32(0)
 t32(1)
@@ -137,6 +137,6 @@ tm(100_000)
 tm(low(int32))
 tm(high(int32))
 
-writeln(stdout, "Success!") #OUT Success!
+writeLine(stdout, "Success!") #OUT Success!
 
 

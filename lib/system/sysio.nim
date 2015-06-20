@@ -208,9 +208,14 @@ proc endOfFile(f: File): bool =
   ungetc(c, f)
   return c < 0'i32
 
-proc writeln[Ty](f: File, x: varargs[Ty, `$`]) =
+proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x): write(f, i)
   write(f, "\n")
+
+proc writeLine[Ty](f: File, x: varargs[Ty, `$`]) =
+  for i in items(x): write(f, i)
+  write(f, "\n")
+
 
 proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
 proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")

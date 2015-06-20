@@ -137,11 +137,11 @@ proc doScenario(script: string, output: Stream, mode: TRunMode, verbose: bool): 
       if line.strip.len == 0: continue
 
       if line.startsWith("#"):
-        output.writeln line
+        output.writeLine line
         continue
       elif line.startsWith(">"):
         s.doCommand(line.substr(1).strip)
-        output.writeln line, "\n", if verbose: s.lastOutput else: ""
+        output.writeLine line, "\n", if verbose: s.lastOutput else: ""
       else:
         var expectMatch = true
         var pattern = s.replaceVars(line)
@@ -153,9 +153,9 @@ proc doScenario(script: string, output: Stream, mode: TRunMode, verbose: bool): 
           s.lastOutput.find(re(pattern, flags = {reStudy})) != -1
 
         if expectMatch == actualMatch:
-          output.writeln "SUCCESS ", line
+          output.writeLine "SUCCESS ", line
         else:
-          output.writeln "FAILURE ", line
+          output.writeLine "FAILURE ", line
           result = false
 
 iterator caasTestsRunner*(filter = "", verbose = false): tuple[test,

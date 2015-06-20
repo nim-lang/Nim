@@ -82,7 +82,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
 
 proc handleCmdLine() =
   if paramCount() == 0:
-    stdout.writeln(Usage)
+    stdout.writeLine(Usage)
   else:
     processCmdLine(passCmd1, "")
     if gProjectName != "":

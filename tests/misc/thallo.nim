@@ -22,7 +22,7 @@ macro macrotest(n: expr): stmt {.immediate.} =
   result = newNimNode(nnkStmtList, n)
   for i in 2..n.len-1:
     result.add(newCall("write", n[1], n[i]))
-  result.add(newCall("writeln", n[1], newStrLitNode("")))
+  result.add(newCall("writeLine", n[1], newStrLitNode("")))
 
 macro debug(n: expr): stmt {.immediate.} =
   let n = callsite()
@@ -30,7 +30,7 @@ macro debug(n: expr): stmt {.immediate.} =
   for i in 1..n.len-1:
     result.add(newCall("write", newIdentNode("stdout"), toStrLit(n[i])))
     result.add(newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
-    result.add(newCall("writeln", newIdentNode("stdout"), n[i]))
+    result.add(newCall("writeLine", newIdentNode("stdout"), n[i]))
 
 macrotest(stdout, "finally", 4, 5, "variable", "argument lists")
 macrotest(stdout)
@@ -38,7 +38,7 @@ macrotest(stdout)
 #GC_disable()
 
 echo("This was compiled by Nim version " & system.NimVersion)
-writeln(stdout, "Hello", " World", "!")
+writeLine(stdout, "Hello", " World", "!")
 
 echo(["a", "b", "c", "d"].len)
 for x in items(["What's", "your", "name", "?", ]):

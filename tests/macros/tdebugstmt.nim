@@ -18,7 +18,7 @@ macro debug(n: varargs[expr]): stmt =
     # add a call to the statement list that writes ": "
     add(result, newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
     # add a call to the statement list that writes the expressions value:
-    add(result, newCall("writeln", newIdentNode("stdout"), n[i]))
+    add(result, newCall("writeLine", newIdentNode("stdout"), n[i]))
 
 var
   a: array [0..10, int]

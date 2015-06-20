@@ -979,7 +979,7 @@ iterator split*(s: string, sep: Peg): string =
   ##
   ## .. code-block:: nim
   ##   for word in split("00232this02939is39an22example111", peg"\d+"):
-  ##     writeln(stdout, word)
+  ##     writeLine(stdout, word)
   ##
   ## Results in:
   ##

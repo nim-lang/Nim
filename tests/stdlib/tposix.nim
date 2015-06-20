@@ -9,8 +9,8 @@ when not defined(windows):
 
   discard uname(u)
 
-  writeln(stdout, u.sysname)
-  writeln(stdout, u.nodename)
-  writeln(stdout, u.release)
-  writeln(stdout, u.machine)
+  writeLine(stdout, u.sysname)
+  writeLine(stdout, u.nodename)
+  writeLine(stdout, u.release)
+  writeLine(stdout, u.machine)
 

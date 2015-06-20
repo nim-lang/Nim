@@ -13,7 +13,7 @@ type
 proc forw: int {. .}
   
 proc lier(): int {.raises: [IO2Error].} =
-  writeln stdout, "arg"
+  writeLine stdout, "arg"
 
 proc forw: int =
   raise newException(IOError, "arg")
