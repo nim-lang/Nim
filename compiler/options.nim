@@ -302,7 +302,7 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
     try:
       createDir(subdir)
       when noTimeMachine:
-       excludeDirFromTimeMachine(subdir)
+        excludeDirFromTimeMachine(subdir)
     except OSError:
       writeLine(stdout, "cannot create directory: " & subdir)
       quit(1)
