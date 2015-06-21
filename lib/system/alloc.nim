@@ -210,7 +210,7 @@ proc getMaxMem(a: var MemRegion): int =
 
 proc llAlloc(a: var MemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
-  # is done at he end of the allocator's life time.
+  # is done at the end of the allocator's life time.
   if a.llmem == nil or size > a.llmem.size:
     # the requested size is ``roundup(size+sizeof(LLChunk), PageSize)``, but
     # since we know ``size`` is a (small) constant, we know the requested size
