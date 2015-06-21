@@ -60,8 +60,9 @@ type
     EAINONAME, EAISERVICE, EAISOCKTYPE, ESHUTDOWN, EEXIST
 
   HandleType* {.size: sizeof(cint).} = enum
-    UNKNOWN_HANDLE = 0, TCP, UDP, NAMED_PIPE, TTY, FILE, TIMER, PREPARE, CHECK,
-    IDLE, ASYNC, ARES_TASK, ARES_EVENT, PROCESS, FS_EVENT
+    htUnknownHandle = 0, htTcp, htUdp, htNamedPipe, htTty, htFile, htTimer,
+    htPrepare, htCheck, htIdle, htAsync, htAresTask, htAresEvent, htProcess,
+    htFsEvent
 
   ReqType* {.size: sizeof(cint).} = enum
     rUNKNOWN_REQ = 0,
@@ -85,14 +86,14 @@ type
     evRENAME = 1,
     evCHANGE = 2
 
-  TFsEvent* {.pure, final, importc: "uv_fs_event_t", header: "uv.h".} = object
+  FsEvent* {.pure, final, importc: "uv_fs_event_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
     data* {.importc: "data".}: pointer
     filename {.importc: "filename".}: cstring
 
-  PFsEvent* = ptr TFsEvent
+  PFsEvent* = ptr FsEvent
 
   FsEvents* {.pure, final, importc: "uv_fs_event_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
@@ -106,13 +107,13 @@ type
     len* {.importc: "len".}: csize
 
   AnyHandle* {.pure, final, importc: "uv_any_handle", header: "uv.h".} = object
-    tcp* {.importc: "tcp".}: TTcp
+    tcp* {.importc: "tcp".}: Tcp
     pipe* {.importc: "pipe".}: Pipe
-    prepare* {.importc: "prepare".}: TPrepare
-    check* {.importc: "check".}: TCheck
-    idle* {.importc: "idle".}: TIdle
-    async* {.importc: "async".}: TAsync
-    timer* {.importc: "timer".}: TTimer
+    prepare* {.importc: "prepare".}: Prepare
+    check* {.importc: "check".}: Check
+    idle* {.importc: "idle".}: Idle
+    async* {.importc: "async".}: Async
+    timer* {.importc: "timer".}: Timer
     getaddrinfo* {.importc: "getaddrinfo".}: Getaddrinfo
     fs_event* {.importc: "fs_event".}: FsEvents
 
@@ -146,9 +147,9 @@ type
 
   Loop* {.pure, final, importc: "uv_loop_t", header: "uv.h".} = object
     # ares_handles_* {.importc: "uv_ares_handles_".}: pointer # XXX: This seems to be a private field?
-    eio_want_poll_notifier* {.importc: "uv_eio_want_poll_notifier".}: TAsync
-    eio_done_poll_notifier* {.importc: "uv_eio_done_poll_notifier".}: TAsync
-    eio_poller* {.importc: "uv_eio_poller".}: TIdle
+    eio_want_poll_notifier* {.importc: "uv_eio_want_poll_notifier".}: Async
+    eio_done_poll_notifier* {.importc: "uv_eio_done_poll_notifier".}: Async
+    eio_poller* {.importc: "uv_eio_poller".}: Idle
     counters* {.importc: "counters".}: Counters
     last_err* {.importc: "last_err".}: Err
     data* {.importc: "data".}: pointer
@@ -192,7 +193,7 @@ type
 
   PWrite* = ptr Write
 
-  TTcp* {.pure, final, importc: "uv_tcp_t", header: "uv.h".} = object
+  Tcp* {.pure, final, importc: "uv_tcp_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     alloc_cb* {.importc: "alloc_cb".}: AllocProc
@@ -202,7 +203,7 @@ type
     data* {.importc: "data".}: pointer
     write_queue_size* {.importc: "write_queue_size".}: csize
 
-  PTcp* = ptr TTcp
+  PTcp* = ptr Tcp
 
   Connect* {.pure, final, importc: "uv_connect_t", header: "uv.h".} = object
     typ* {.importc: "type".}: ReqType
@@ -221,13 +222,13 @@ type
   UdpSendProc* = proc (req: PUdpSend, status: cint)
   UdpRecvProc* = proc (handle: PUdp, nread: cssize, buf: Buf, adr: ptr SockAddr, flags: cunsigned)
 
-  TUdp* {.pure, final, importc: "uv_udp_t", header: "uv.h".} = object
+  Udp* {.pure, final, importc: "uv_udp_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
     data* {.importc: "data".}: pointer
 
-  PUdp* = ptr TUdp
+  PUdp* = ptr Udp
 
   UdpSend* {.pure, final, importc: "uv_udp_send_t", header: "uv.h".} = object
     typ* {.importc: "type".}: ReqType
@@ -237,7 +238,7 @@ type
 
   PUdpSend* = ptr UdpSend
 
-  tTTy* {.pure, final, importc: "uv_tty_t", header: "uv.h".} = object
+  TTy* {.pure, final, importc: "uv_tty_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     alloc_cb* {.importc: "alloc_cb".}: AllocProc
@@ -247,7 +248,7 @@ type
     data* {.importc: "data".}: pointer
     write_queue_size* {.importc: "write_queue_size".}: csize
 
-  pTTy* = ptr tTTy
+  pTTy* = ptr TTy
 
   Pipe* {.pure, final, importc: "uv_pipe_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
@@ -262,45 +263,45 @@ type
 
   PPipe* = ptr Pipe
 
-  TPrepare* {.pure, final, importc: "uv_prepare_t", header: "uv.h".} = object
+  Prepare* {.pure, final, importc: "uv_prepare_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
     data* {.importc: "data".}: pointer
 
-  PPrepare* = ptr TPrepare
+  PPrepare* = ptr Prepare
 
-  TCheck* {.pure, final, importc: "uv_check_t", header: "uv.h".} = object
+  Check* {.pure, final, importc: "uv_check_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
     data* {.importc: "data".}: pointer
 
-  PCheck* = ptr TCheck
+  PCheck* = ptr Check
 
-  TIdle* {.pure, final, importc: "uv_idle_t", header: "uv.h".} = object
+  Idle* {.pure, final, importc: "uv_idle_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
     data* {.importc: "data".}: pointer
 
-  PIdle* = ptr TIdle
+  PIdle* = ptr Idle
 
-  TAsync* {.pure, final, importc: "uv_async_t", header: "uv.h".} = object
+  Async* {.pure, final, importc: "uv_async_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
     data* {.importc: "data".}: pointer
 
-  PAsync* = ptr TAsync
+  PAsync* = ptr Async
 
-  TTimer* {.pure, final, importc: "uv_timer_t", header: "uv.h".} = object
+  Timer* {.pure, final, importc: "uv_timer_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
     data* {.importc: "data".}: pointer
 
-  PTimer* = ptr TTimer
+  PTimer* = ptr Timer
 
   GetAddrInfo* {.pure, final, importc: "uv_getaddrinfo_t", header: "uv.h".} = object
     typ* {.importc: "type".}: ReqType
@@ -322,7 +323,7 @@ type
 
   PProcessOptions* = ptr ProcessOptions
 
-  TProcess* {.pure, final, importc: "uv_process_t", header: "uv.h".} = object
+  Process* {.pure, final, importc: "uv_process_t", header: "uv.h".} = object
     loop* {.importc: "loop".}: PLoop
     typ* {.importc: "type".}: HandleType
     close_cb* {.importc: "close_cb".}: CloseProc
@@ -330,7 +331,7 @@ type
     exit_cb* {.importc: "exit_cb".}: ExitProc
     pid* {.importc: "pid".}: cint
 
-  PProcess* = ptr TProcess
+  PProcess* = ptr Process
 
   Work* {.pure, final, importc: "uv_work_t", header: "uv.h".} = object
     typ* {.importc: "type".}: ReqType
@@ -392,23 +393,23 @@ type
 {.deprecated: [THandle: Handle, THandleType: HandleType, TAnyHandle: AnyHandle,
               TAnyReq: AnyReq, TPort: Port, TErrorCode: ErrorCode, TReqType: ReqType,
               TErr: Err, TFsEventType: FsEventType,
-              # TFsEvent: FsEvent, # Name conflict if we drop `T`
+              TFsEvent: FsEvent,
               TFsEvents: FsEvents, TBuf: Buf, TCounters: Counters, TLoop: Loop,
               TShutdown: Shutdown, TStream: Stream, TWrite: Write,
-              # TTcp: Tcp, # Name conflict if we drop `T`
+              TTcp: Tcp,
               TConnect: Connect,
               TUdpFlags: UdpFlags,
-              # TUdp: Udp, # Name conflict if we drop `T`
+              TUdp: Udp,
               TUdpSend: UdpSend,
-              # tTTy: TTy, # Name conflict if we drop `T`
+              tTTy: TTy,
               TPipe: Pipe,
-              # TPrepare: Prepare, # Name conflict if we drop `T`
-              # TCheck: Check, # Name conflict if we drop `T`
-              # TIdle: Idle, # Name conflict if we drop `T`
-              # TAsync: Async, # Name conflict if we drop `T`
-              # TTimer: Timer, # Name conflict if we drop `T`
+              TPrepare: Prepare,
+              TCheck: Check,
+              TIdle: Idle,
+              TAsync: Async,
+              TTimer: Timer,
               TGetAddrInfo: GetAddrInfo, TProcessOptions: ProcessOptions,
-              # TProcess: Process, # Name conflict if we drop `T`
+              TProcess: Process,
               TWork: Work,
               TFsType: FsType, TFS: FS, TReq: Req, TAresOptions: AresOptions].}
 
