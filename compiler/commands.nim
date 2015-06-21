@@ -17,7 +17,7 @@ template bootSwitch(name, expr, userString: expr): expr =
   const name = if expr: " " & userString else: ""
 
 bootSwitch(usedRelease, defined(release), "-d:release")
-bootSwitch(usedGnuReadline, defined(useGnuReadline), "-d:useGnuReadline")
+bootSwitch(usedGnuReadline, defined(useLinenoise), "-d:useLinenoise")
 bootSwitch(usedNoCaas, defined(noCaas), "-d:noCaas")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")

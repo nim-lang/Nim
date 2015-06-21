@@ -57,7 +57,7 @@ Possible Commands:
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
-  -d:useGnuReadline        use the GNU readline library for interactive mode
+  -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
   -d:noCaas                build Nim without CAAS support
@@ -333,7 +333,7 @@ proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
   exec "nim cc --taintMode:on tests/testament/tester"
-  # Since tests take a long time (on my machine), and we want to defy Murhpys 
+  # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
   exec "nim c --lib:lib -d:release --opt:speed compiler/nim.nim"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)

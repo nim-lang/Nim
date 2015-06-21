@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains code for reading from `stdin`:idx:. On UNIX the GNU
-## readline library is wrapped and set up to provide default key bindings
+## This module contains code for reading from `stdin`:idx:. On UNIX the
+## linenoise library is wrapped and set up to provide default key bindings
 ## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
@@ -100,33 +100,27 @@ when defined(Windows):
     stdout.write "\n"
 
 else:
-  import readline, history, termios, unsigned
+  import linenoise, termios, unsigned
 
   proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
-    var buffer = readline.readLine(prompt)
+    var buffer = linenoise.readLine(prompt)
     if isNil(buffer): quit(0)
     result = TaintedString($buffer)
     if result.string.len > 0:
-      add_history(buffer)
-    readline.free(buffer)
+      historyAdd(buffer)
+    linenoise.free(buffer)
 
   proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
-    var buffer = readline.readLine(prompt)
+    var buffer = linenoise.readLine(prompt)
     if isNil(buffer): quit(0)
     line = TaintedString($buffer)
     if line.string.len > 0:
-      add_history(buffer)
-    readline.free(buffer)
+      historyAdd(buffer)
+    linenoise.free(buffer)
     # XXX how to determine CTRL+D?
     result = true
-
-  # initialization:
-  # disable auto-complete:
-  proc doNothing(a, b: cint): cint {.cdecl, procvar.} = discard
-
-  discard readline.bind_key('\t'.ord, doNothing)
 
   proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
