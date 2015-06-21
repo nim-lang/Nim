@@ -333,8 +333,8 @@ The while statement is a simple looping construct:
     name = readLine(stdin)
     # no ``var``, because we do not declare a new variable here
 
-The example uses a while loop to keep asking the user for his name, as long as
-he types in nothing (only presses RETURN).
+The example uses a while loop to keep asking the user for their name, as long
+as the user types in nothing (only presses RETURN).
 
 
 For statement
@@ -545,9 +545,9 @@ procedures are defined with the ``proc`` keyword:
     echo("I think you know what the problem is just as well as I do.")
 
 This example shows a procedure named ``yes`` that asks the user a ``question``
-and returns true if he answered "yes" (or something similar) and returns
-false if he answered "no" (or something similar). A ``return`` statement leaves
-the procedure (and therefore the while loop) immediately. The
+and returns true if they answered "yes" (or something similar) and returns
+false if they answered "no" (or something similar). A ``return`` statement
+leaves the procedure (and therefore the while loop) immediately. The
 ``(question: string): bool`` syntax describes that the procedure expects a
 parameter named ``question`` of type ``string`` and returns a value of type
 ``bool``. ``Bool`` is a built-in type: the only valid values for ``bool`` are

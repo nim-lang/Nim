@@ -107,7 +107,7 @@ Unchecked pragma
 ----------------
 The ``unchecked`` pragma can be used to mark a named array as ``unchecked``
 meaning its bounds are not checked. This is often useful when one wishes to
-implement his own flexibly sized arrays. Additionally an unchecked array is
+implement their own flexibly sized arrays. Additionally an unchecked array is
 translated into a C array of undetermined size:
 
 .. code-block:: nim
