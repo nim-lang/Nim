@@ -333,7 +333,7 @@ The while statement is a simple looping construct:
     name = readLine(stdin)
     # no ``var``, because we do not declare a new variable here
 
-The example uses a while loop to keep asking the user for their name, as long
+The example uses a while loop to keep asking the users for their name, as long
 as the user types in nothing (only presses RETURN).
 
 
@@ -774,7 +774,7 @@ proc even(n: int): bool =
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
 such a forward declaration is simple: just omit the ``=`` and the
-procedure's body. The ``assert`` just adds border conditions, and will be 
+procedure's body. The ``assert`` just adds border conditions, and will be
 covered later in `Modules`_ section.
 
 Later versions of the language will weaken the requirements for forward
