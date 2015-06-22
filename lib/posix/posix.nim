@@ -382,7 +382,7 @@ type
              final, pure.} = object ## struct timeval
     tv_sec*: int       ## Seconds.
     tv_usec*: int ## Microseconds.
-  TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
+  FdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
   Mcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
                final, pure.} = object
@@ -418,7 +418,7 @@ type
               TsigEvent: SigEvent, TsigVal: SigVal, TSigaction: Sigaction,
               TSigStack: SigStack, TsigInfo: SigInfo, Tnl_item: Nl_item,
               Tnl_catd: Nl_catd, Tsched_param: Sched_param,
-              # TFdSet: FdSet, # Naming conflict if we drop the `T`
+              TFdSet: FdSet,
               Tmcontext: Mcontext, Tucontext: Ucontext].}
 when hasAioH:
   type
@@ -2378,16 +2378,16 @@ proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
 
-proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
-proc FD_ISSET*(a1: cint | SocketHandle, a2: var TFdSet): cint {.
+proc FD_CLR*(a1: cint, a2: var FdSet) {.importc, header: "<sys/select.h>".}
+proc FD_ISSET*(a1: cint | SocketHandle, a2: var FdSet): cint {.
   importc, header: "<sys/select.h>".}
-proc FD_SET*(a1: cint | SocketHandle, a2: var TFdSet) {.
+proc fd_set*(a1: cint | SocketHandle, a2: var FdSet) {.
   importc: "FD_SET", header: "<sys/select.h>".}
-proc FD_ZERO*(a1: var TFdSet) {.importc, header: "<sys/select.h>".}
+proc FD_ZERO*(a1: var FdSet) {.importc, header: "<sys/select.h>".}
 
-proc pselect*(a1: cint, a2, a3, a4: ptr TFdSet, a5: ptr Timespec,
+proc pselect*(a1: cint, a2, a3, a4: ptr FdSet, a5: ptr Timespec,
          a6: var Sigset): cint  {.importc, header: "<sys/select.h>".}
-proc select*(a1: cint | SocketHandle, a2, a3, a4: ptr TFdSet, a5: ptr Timeval): cint {.
+proc select*(a1: cint | SocketHandle, a2, a3, a4: ptr FdSet, a5: ptr Timeval): cint {.
              importc, header: "<sys/select.h>".}
 
 when hasSpawnH:
