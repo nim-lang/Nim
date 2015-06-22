@@ -472,6 +472,15 @@ when defined(ssl):
     socket.bioOut = bioNew(bio_s_mem())
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
+  proc wrapSocket*(ctx: SslContext, socket: AsyncSocket, handshake: SslHandshakeType) =
+    wrapSocket(ctx, socket)
+
+    case handshake
+    of handshakeAsClient:
+      sslSetConnectState(socket.sslHandle)
+    of handshakeAsServer:
+      sslSetAcceptState(socket.sslHandle)
+
 proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
   ## Retrieves option ``opt`` as a boolean value.
