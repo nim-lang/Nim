@@ -276,7 +276,7 @@ when defined(Linux) or true:
     TENetBuffer*{.pure, final.} = object 
       data*: pointer
       dataLength*: csize
-    TENetSocketSet* = Tfd_set
+    TENetSocketSet* = FdSet
   ## see if these are different on win32, if not then get rid of these
   template ENET_HOST_TO_NET_16*(value: expr): expr = 
     (htons(value))
@@ -290,7 +290,7 @@ when defined(Linux) or true:
   template ENET_SOCKETSET_EMPTY*(sockset: expr): expr = 
     FD_ZERO(addr((sockset)))
   template ENET_SOCKETSET_ADD*(sockset, socket: expr): expr = 
-    FD_SET(socket, addr((sockset)))
+    fd_set(socket, addr((sockset)))
   template ENET_SOCKETSET_REMOVE*(sockset, socket: expr): expr = 
     FD_CLEAR(socket, addr((sockset)))
   template ENET_SOCKETSET_CHECK*(sockset, socket: expr): expr = 
