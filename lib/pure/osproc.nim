@@ -918,13 +918,13 @@ elif not defined(useNimRtl):
     else:
       result = csystem(command)
 
-  proc createFdSet(fd: var TFdSet, s: seq[Process], m: var int) =
+  proc createFdSet(fd: var FdSet, s: seq[Process], m: var int) =
     FD_ZERO(fd)
     for i in items(s):
       m = max(m, int(i.outHandle))
-      FD_SET(cint(i.outHandle), fd)
+      fd_set(cint(i.outHandle), fd)
 
-  proc pruneProcessSet(s: var seq[Process], fd: var TFdSet) =
+  proc pruneProcessSet(s: var seq[Process], fd: var FdSet) =
     var i = 0
     var L = s.len
     while i < L:
@@ -940,7 +940,7 @@ elif not defined(useNimRtl):
     tv.tv_sec = 0
     tv.tv_usec = timeout * 1000
 
-    var rd: TFdSet
+    var rd: FdSet
     var m = 0
     createFdSet((rd), readfds, m)
 
