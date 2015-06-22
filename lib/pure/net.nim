@@ -102,7 +102,7 @@ type
 proc isIpAddress*(address_str: string): bool {.tags: [].}
 proc parseIpAddress*(address_str: string): IpAddress
 proc socketError*(socket: Socket, err: int = -1, async = false,
-lastError = (-1).OSErrorCode): void
+                  lastError = (-1).OSErrorCode): void
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -259,9 +259,10 @@ when defined(ssl):
     if SSLSetFd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
-  proc wrapSocket*(ctx: SSLContext, socket: Socket, handshake: SslHandshakeType) =
-    ## Wraps a socket in an SSL context. This function effectively turns
-    ## ``socket`` into an SSL socket.
+  proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
+                            handshake: SslHandshakeType) =
+    ## Wraps a connected socket in an SSL context. This function effectively
+    ## turns ``socket`` into an SSL socket.
     ##
     ## This should be called on a connected socket, and will perform
     ## an SSL handshake immediately.

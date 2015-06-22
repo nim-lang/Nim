@@ -472,7 +472,16 @@ when defined(ssl):
     socket.bioOut = bioNew(bio_s_mem())
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
-  proc wrapSocket*(ctx: SslContext, socket: AsyncSocket, handshake: SslHandshakeType) =
+  proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
+                            handshake: SslHandshakeType) =
+    ## Wraps a connected socket in an SSL context. This function effectively
+    ## turns ``socket`` into an SSL socket.
+    ##
+    ## This should be called on a connected socket, and will perform
+    ## an SSL handshake immediately.
+    ##
+    ## **Disclaimer**: This code is not well tested, may be very unsafe and
+    ## prone to security vulnerabilities.
     wrapSocket(ctx, socket)
 
     case handshake
