@@ -315,6 +315,21 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
+proc getSockDomain*(socket: SocketHandle): Domain =
+  ## returns the socket's domain (AF_INET or AF_INET6).
+  var name: SockAddr
+  var namelen = sizeof(name).SockLen
+  if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                 addr(namelen)) == -1'i32:
+    raiseOSError(osLastError())
+  if name.sa_family == posix.AF_INET:
+    result = AF_INET
+  elif name.sa_family == posix.AF_INET6:
+    result = AF_INET6
+  else:
+    raise newException(OSError, "unknown socket family in getSockFamily")
+
+
 proc getSockName*(socket: SocketHandle): Port = 
   ## returns the socket's associated port number.
   var name: Sockaddr_in
