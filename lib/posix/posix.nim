@@ -448,7 +448,7 @@ type
     sa_family*: TSa_Family         ## Address family.
     sa_data*: array [0..255, char] ## Socket address (variable-length data).
 
-  Tsockaddr_storage* {.importc: "struct sockaddr_storage",
+  Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
     ss_family*: TSa_Family ## Address family.
@@ -506,7 +506,7 @@ type
               header: "<netinet/in.h>".} = object ## struct in6_addr
     s6_addr*: array [0..15, char]
 
-  Tsockaddr_in6* {.importc: "struct sockaddr_in6", pure, final,
+  Sockaddr_in6* {.importc: "struct sockaddr_in6", pure, final,
                    header: "<netinet/in.h>".} = object ## struct sockaddr_in6
     sin6_family*: TSa_Family ## AF_INET6.
     sin6_port*: InPort      ## Port number.
@@ -581,6 +581,7 @@ type
 
 {.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
     TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
+    Tsockaddr_storage: Sockaddr_storage, Tsockaddr_in6: Sockaddr_in6,
     Thostent: Hostent, TServent: Servent,
     TInAddr: InAddr, TIOVec: IOVec, TInPort: InPort, TInAddrT: InAddrT,
     TIn6Addr: In6Addr, TInAddrScalar: InAddrScalar, TProtoent: Protoent].}
