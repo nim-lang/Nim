@@ -29,6 +29,7 @@ else:
     EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
+  Sockaddr_in6, Sockaddr_storage,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
 
 export
