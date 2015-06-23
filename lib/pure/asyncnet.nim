@@ -100,7 +100,7 @@ proc newAsyncSocket*(fd: AsyncFD, buffered = true): AsyncSocket =
   if buffered:
     result.currPos = 0
 
-proc newAsyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
+proc newAsyncSocket*(domain: Domain = AF_INET6, typ: SockType = SOCK_STREAM,
     protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
   ##
