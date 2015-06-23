@@ -1663,6 +1663,8 @@ var
 
   INET_ADDRSTRLEN* {.importc, header: "<netinet/in.h>".}: cint
     ## 16. Length of the string form for IP.
+  INET6_ADDRSTRLEN* {.importc, header: "<netinet/in.h>".}: cint
+    ## Length of the string form for IPv6.
 
   IPV6_JOIN_GROUP* {.importc, header: "<netinet/in.h>".}: cint
     ## Join a multicast group.
