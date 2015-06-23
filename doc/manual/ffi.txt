@@ -36,6 +36,19 @@ name is the Nim identifier *exactly as spelled*:
 Note that this pragma is somewhat of a misnomer: Other backends will provide
 the same feature under the same name.
 
+Header pragma
+-------------
+Specifies that a proc or variable name should not be declared and insted
+the generated code should contain an ``#include``:
+
+.. code-block:: NIm
+ type
+  PFile {.importc: "FILE*", header: "<stdio.h>".} = distinct pointer
+    # import C's FILE* type; Nim will treat it as a new pointer type 
+
+Note that the compiler has no knowledge of the contents of this header file
+and it is possible to have name collisions. Because of this the header pragma
+is somewhat unsafe.
 
 Extern pragma
 -------------
