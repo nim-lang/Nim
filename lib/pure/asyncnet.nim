@@ -423,24 +423,21 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
   ## Binds ``address``:``port`` to the socket.
   ##
   ## If ``address`` is "" then ADDR_ANY will be bound.
+  var sockDomain = getSockDomain(socket.fd)
 
-  if address == "":
-    var name: Sockaddr_in
-    when defined(Windows) or defined(nimdoc):
-      name.sin_family = toInt(AF_INET).int16
+  var realaddr = address
+  if realaddr == "":
+    case sockDomain
+    of AF_INET6: realaddr = "::"
+    of AF_INET:  realaddr = "0.0.0.0"
     else:
-      name.sin_family = toInt(AF_INET)
-    name.sin_port = htons(int16(port))
-    name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
-                  sizeof(name).Socklen) < 0'i32:
-      raiseOSError(osLastError())
-  else:
-    var aiList = getAddrInfo(address, port, AF_INET)
-    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
-      raiseOSError(osLastError())
+      raiseOSError("Unknown socket address family and no address specified to bindAddr")
+
+  var aiList = getAddrInfo(realaddr, port, sockDomain)
+  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
     dealloc(aiList)
+    raiseOSError(osLastError())
+  dealloc(aiList)
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.
