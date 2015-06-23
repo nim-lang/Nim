@@ -330,6 +330,18 @@ proc getSockDomain*(socket: SocketHandle): Domain =
     raise newException(OSError, "unknown socket family in getSockFamily")
 
 
+proc getAddrString*(sockAddr: ptr SockAddr): string =
+  ## return the string representation of address within sockAddr
+  if sockAddr.sa_family == posix.AF_INET:
+    result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
+  elif sockAddr.sa_family == posix.AF_INET6:
+    var v6addr = cast[ptr Sockaddr_in6](sockAddr).sin6_addr
+    result = newString(posix.INET6_ADDRSTRLEN)
+    discard posix.inet_ntop(posix.AF_INET6, addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr, result.cstring, result.len.int32)
+  else:
+    raise newException(OSError, "unknown socket family in getAddrString")
+
+
 proc getSockName*(socket: SocketHandle): Port = 
   ## returns the socket's associated port number.
   var name: Sockaddr_in
