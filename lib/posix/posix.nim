@@ -103,7 +103,7 @@ type
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
     d_name*: array [0..255, char] ## Name of entry.
 
-  Tflock* {.importc: "struct flock", final, pure,
+  Flock* {.importc: "struct flock", final, pure,
             header: "<fcntl.h>".} = object ## flock type
     l_type*: cshort   ## Type of lock; F_RDLCK, F_WRLCK, F_UNLCK.
     l_whence*: cshort ## Flag for starting offset.
@@ -400,7 +400,7 @@ type
               TPasswd: Passwd, TClock: Clock, TClockId: ClockId, TKey: Key,
               TSem: Sem, Tpthread_attr: PthreadAttr, Ttimespec: Timespec,
               Tdirent: Dirent, TFTW: FTW, TGlob: Glob,
-              # Tflock: Flock, # Naming conflict if we drop the `T`
+              Tflock: Flock,
               Ticonv: Iconv, Tlconv: Lconv, TMqAttr: MqAttr, Tblkcnt: Blkcnt,
               Tblksize: Blksize, Tfsblkcnt: Fsblkcnt, Tfsfilcnt: Fsfilcnt,
               Tid: Id, Tino: Ino, Tpthread_barrier: Pthread_barrier,
@@ -1124,7 +1124,7 @@ var
     importc: "_CS_POSIX_V6_LPBIG_OFFBIG_LIBS", header: "<unistd.h>".}: cint
   CS_POSIX_V6_WIDTH_RESTRICTED_ENVS* {.
     importc: "_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS", header: "<unistd.h>".}: cint
-  F_LOCK* {.importc: "F_LOCK", header: "<unistd.h>".}: cint
+  f_lock* {.importc: "F_LOCK", header: "<unistd.h>".}: cint
   F_TEST* {.importc: "F_TEST", header: "<unistd.h>".}: cint
   F_TLOCK* {.importc: "F_TLOCK", header: "<unistd.h>".}: cint
   F_ULOCK* {.importc: "F_ULOCK", header: "<unistd.h>".}: cint

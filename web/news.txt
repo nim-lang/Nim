@@ -23,6 +23,8 @@ News
     used: ``import "scene/2d/sprite"``. The former code never was valid Nim.
   - The ``FD_SET`` proc from ``lib/wrappers/libuv.nim`` is now ``fd_set`` in
     order to resolve a naming conflict.
+  - The ``F_LOCK`` variable from ``lib/wrappers/libuv.nim`` is now ``f_lock``
+	in order to resolve a naming conflict.
 
 
   Library additions
