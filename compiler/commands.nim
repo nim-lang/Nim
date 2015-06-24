@@ -537,9 +537,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "genscript":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)
-  of "usecolors":
-    expectNoArg(switch, arg, pass, info)
-    incl(gGlobalOptions, optUseColors)
+  of "colors": processOnOffSwitchG({optUseColors}, arg, pass, info)
   of "lib":
     expectArg(switch, arg, pass, info)
     libpath = processPath(arg, notRelativeToProj=true)
