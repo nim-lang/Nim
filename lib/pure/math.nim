@@ -318,6 +318,12 @@ else:
 {.pop.}
 
 proc `mod`*(x, y: float): float =
+  ## Computes the modulo operation for float operators. Equivalent
+  ## to ``x - y * floor(x/y)``. Note that the remainder will always
+  ## have the same sign as the divisor.
+  ## 
+  ## .. code-block:: nim
+  ##  echo (4.0 mod -3.1) # -2.2
   result = if y == 0.0: x else: x - y * (x/y).floor
 
 proc random*[T](x: Slice[T]): T =
