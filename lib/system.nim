@@ -68,7 +68,7 @@ type
   Ordinal* {.magic: Ordinal.}[T] ## Generic ordinal type. Includes integer,
                                  ## bool, character, and enumeration types
                                  ## as well as their subtypes. Note `uint`
-                                 ## and `uint64` or not ordinal types for
+                                 ## and `uint64` are not ordinal types for
                                  ## implementation reasons
   `ptr`* {.magic: Pointer.}[T] ## built-in generic untraced pointer type
   `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
