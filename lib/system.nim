@@ -65,17 +65,21 @@ const
 {.push hints: off.}
 
 type
-  Ordinal* {.magic: Ordinal.}[T]
+  Ordinal* {.magic: Ordinal.}[T] ## Generic ordinal type. Includes integer,
+                                 ## bool, character, and enumeration types
+                                 ## as well as their subtypes. Note `uint`
+                                 ## and `uint64` or not ordinal types for
+                                 ## implementation reasons
   `ptr`* {.magic: Pointer.}[T] ## built-in generic untraced pointer type
   `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
 
-  `nil` {.magic: "Nil".}
+  `nil` {.magic: "Nil".}  ## special type for pointers and references
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
-  auto* = expr
-  any* = distinct auto
+  auto* = expr ## meta type for automatic type determination
+  any* = distinct auto ## meta type for any supported type
   untyped* {.magic: Expr.} ## meta type to denote an expression that
                            ## is not resolved (for templates)
   typed* {.magic: Stmt.}   ## meta type to denote an expression that
@@ -250,15 +254,45 @@ when defined(nimNewShared):
 
 # comparison operators:
 proc `==` *[TEnum: enum](x, y: TEnum): bool {.magic: "EqEnum", noSideEffect.}
+  ## Checks whether values within the *same enum* have the same underlying value
+  ##
+  ## .. code-block:: nim
+  ##  type
+  ##    Enum1 = enum
+  ##      Field1 = 3, Field2
+  ##    Enum2 = enum
+  ##      Place1, Place2 = 3
+  ##  var
+  ##    e1 = Field1
+  ##    e2 = Enum1(Place2)
+  ##  echo (e1 == e2) # true
+  ##  echo (e1 == Place2) # raises error
 proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
+  ## var # this is a wildly dangerous example
+  ##  a = cast[pointer](0)
+  ##  b = cast[pointer](nil)
+  ## echo (a == b) # true due to the special meaning of `nil`/0 as a pointer
 proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
+  ## Checks for equality between two `string` variables
 proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
+  ## Checks for equality between two `cstring` variables
 proc `==` *(x, y: char): bool {.magic: "EqCh", noSideEffect.}
+  ## Checks for equality between two `char` variables
 proc `==` *(x, y: bool): bool {.magic: "EqB", noSideEffect.}
+  ## Checks for equality between two `bool` variables
 proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
+  ## Checks for equality between two variables of type `set
+  ##
+  ## .. code-block:: nim
+  ##  var a = {1, 2, 2, 3} # duplication in sets is ignored
+  ##  var b = {1, 2, 3}
+  ##  echo (a == b) # true
 proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
+  ## Checks that two `ref` variables refer to the same item
 proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
+  ## Checks that two `ptr` variables refer to the same item
 proc `==` *[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+  ## Checks that two `proc` variables refer to the same procedure
 
 proc `<=` *[TEnum: enum](x, y: TEnum): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}
