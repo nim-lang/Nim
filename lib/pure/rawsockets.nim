@@ -195,6 +195,7 @@ proc getAddrInfo*(address: string, port: Port, af: Domain = AF_INET, typ: SockTy
   hints.ai_family = toInt(af)
   hints.ai_socktype = toInt(typ)
   hints.ai_protocol = toInt(prot)
+  hints.ai_flags = posix.AI_V4MAPPED
   var gaiResult = getaddrinfo(address, $port, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
