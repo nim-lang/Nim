@@ -339,6 +339,8 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
     var v6addr = cast[ptr Sockaddr_in6](sockAddr).sin6_addr
     result = newString(posix.INET6_ADDRSTRLEN)
     discard posix.inet_ntop(posix.AF_INET6, addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr, result.cstring, result.len.int32)
+    if posix.IN6_IS_ADDR_V4MAPPED(addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr) != 0:
+      result = result.substr("::ffff:".len)
   else:
     raise newException(OSError, "unknown socket family in getAddrString")
 
