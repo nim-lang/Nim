@@ -37,6 +37,10 @@ General commit rules
    characters, separated by single blank line from the other parts (including
    the subject).
 
+4. Don't squash commits in your pull request. It makes it harder to
+   follow the discussion if you can't see what changed after a
+   conversation.
+
 More information
 ----------------
 
