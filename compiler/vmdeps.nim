@@ -15,7 +15,8 @@ proc readOutput(p: Process): string =
   while not output.atEnd:
     result.add(output.readLine)
     result.add("\n")
-  result.setLen(result.len - "\n".len)
+  if result.len > 0:
+    result.setLen(result.len - "\n".len)
   discard p.waitForExit
 
 proc opGorge*(cmd, input: string): string =
