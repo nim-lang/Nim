@@ -16,10 +16,6 @@
 ## Note that the trigonometric functions naturally operate on radians.
 ## The helper functions `degToRad` and `radToDeg` provide conversion
 ## between radians and degrees.
-## 
-## Note that the trigonometric functions naturally operate on radians.
-## The helper functions `degToRad` and `radToDeg` provide conversion
-## between radians and degrees.
 
 include "system/inclrtl"
 {.push debugger:off .} # the user does not want to trace a part
@@ -326,13 +322,13 @@ else:
 
 {.pop.}
 
-proc degToRad*[T](d: T): float {.inline.} =
+proc degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from degrees to radians
-  result = float(d) * RadPerDeg
+  result = T(d) * RadPerDeg
 
-proc radToDeg*[T](d: T): float {.inline.} =
+proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from radians to degrees
-  result = float(d) / RadPerDeg
+  result = T(d) / RadPerDeg
 
 proc `mod`*(x, y: float): float =
   result = if y == 0.0: x else: x - y * (x/y).floor
