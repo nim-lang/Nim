@@ -1,7 +1,50 @@
-The git stuff
+The Git stuff
 =============
 
-`Guide by github, scroll down a bit <https://guides.github.com/activities/contributing-to-open-source/>`_
+General commit rules
+--------------------
+
+1. All changes introduced by the commit (diff lines) must be related to the
+   subject of the commit.
+
+   If you change some other unrelated to the subject parts of the file, because
+   your editor reformatted automatically the code or whatever different reason,
+   this should be excluded from the commit.
+
+   *Tip:* Never commit everything as is using ``git commit -a``, but review
+   carefully your changes with ``git add -p``.
+
+2. Changes should not introduce any trailing whitespace.
+
+   Always check your changes for whitespace errors using ``git diff --check``
+   or add following ``pre-commit`` hook:
+
+   .. code-block:: sh
+
+      #!/bin/sh
+      git diff --check --cached || exit $?
+
+   No sane programming or markup language cares about trailing whitespace, so
+   tailing whitespace is just a noise you should not introduce to the
+   repository.
+
+3. Describe your commit well following the 50/72 rule on commit messages:
+
+   Start with the commit subject as single line maximum of 50 characters,
+   without trailing period, briefly describing the change.
+
+   Optionally put the detailed description as a blocks of text wrapped to 72
+   characters, separated by single blank line from the other parts (including
+   the subject).
+
+More information
+----------------
+
+For more information on how to produce great commits and describe them well read:
+
+* `How to Write a Git Commit Message <http://chris.beams.io/posts/git-commit/>`_
+* `A Note About Git Commit Messages <http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html>`_
+* `Guide by github, scroll down a bit <https://guides.github.com/activities/contributing-to-open-source/>`_
 
 Deprecation
 ===========
