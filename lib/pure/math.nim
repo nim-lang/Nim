@@ -348,7 +348,7 @@ else:
   proc cosh*(x: float32): float32 = return (exp(x)+exp(-x))*0.5
   proc cosh*(x: float64): float64 = return (exp(x)+exp(-x))*0.5
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
-  proc sinh*]T: float32|float64](x: T): T = return (exp(x)-exp(-x))*0.5
+  proc sinh*[T: float32|float64](x: T): T = return (exp(x)-exp(-x))*0.5
   proc sin*(x: float32): float32 {.importc: "Math.sin", nodecl.}
   proc sin*(x: float64): float64 {.importc: "Math.sin", nodecl.}
   proc tan*(x: float32): float32 {.importc: "Math.tan", nodecl.}
