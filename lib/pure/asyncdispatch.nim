@@ -1009,7 +1009,7 @@ else:
     processTimers(p)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
-    af = AF_INET): Future[void] =
+    af_unused = AF_INET): Future[void] =
     var retFuture = newFuture[void]("connect")
 
     proc cb(fd: AsyncFD): bool =
@@ -1017,7 +1017,8 @@ else:
       retFuture.complete()
       return true
 
-    var aiList = getAddrInfo(address, port, af)
+    var sockDomain = getSockDomain(socket.SocketHandle)
+    var aiList = getAddrInfo(address, port, sockDomain)
     var success = false
     var lastError: OSErrorCode
     var it = aiList
