@@ -160,20 +160,20 @@ proc randomize*(seed: int) {.benign.}
 {.push noSideEffect.}
 when not defined(JS):
   proc sqrt*(x: float32): float32 {.importc: "sqrt", header: "<math.h>".}
-	proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
+  proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
     ## computes the square root of `x`.
   proc cbrt*(x: float32): float32 {.importc: "cbrt", header: "<math.h>".}
-	proc cbrt*(x: float64): float64 {.importc: "cbrt", header: "<math.h>".}
+  proc cbrt*(x: float64): float64 {.importc: "cbrt", header: "<math.h>".}
     ## computes the cubic root of `x`
 
   proc ln*(x: float32): float32 {.importc: "log", header: "<math.h>".}
-	proc ln*(x: float64): float64 {.importc: "log", header: "<math.h>".}
+  proc ln*(x: float64): float64 {.importc: "log", header: "<math.h>".}
     ## computes ln(x).
   proc log10*(x: float32): float32 {.importc: "log10", header: "<math.h>".}
-	proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
+  proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
   proc log2*[T: float32|float64](x: T): T = return ln(x) / ln(2.0)
   proc exp*(x: float32): float32 {.importc: "exp", header: "<math.h>".}
-	proc exp*(x: float64): float64 {.importc: "exp", header: "<math.h>".}
+  proc exp*(x: float64): float64 {.importc: "exp", header: "<math.h>".}
     ## computes e**x.
 
   proc frexp*(x: float32, exponent: var int): float32 {.
@@ -191,11 +191,11 @@ when not defined(JS):
     ## converts a float to an int by rounding.
 
   proc arccos*(x: float32): float32 {.importc: "acos", header: "<math.h>".}
-	proc arccos*(x: float64): float64 {.importc: "acos", header: "<math.h>".}
+  proc arccos*(x: float64): float64 {.importc: "acos", header: "<math.h>".}
   proc arcsin*(x: float32): float32 {.importc: "asin", header: "<math.h>".}
-	proc arcsin*(x: float64): float64 {.importc: "asin", header: "<math.h>".}
+  proc arcsin*(x: float64): float64 {.importc: "asin", header: "<math.h>".}
   proc arctan*(x: float32): float32 {.importc: "atan", header: "<math.h>".}
-	proc arctan*(x: float64): float64 {.importc: "atan", header: "<math.h>".}
+  proc arctan*(x: float64): float64 {.importc: "atan", header: "<math.h>".}
   proc arctan2*(y, x: float32): float32 {.importc: "atan2", header: "<math.h>".}
   proc arctan2*(y, x: float64): float64 {.importc: "atan2", header: "<math.h>".}
     ## Calculate the arc tangent of `y` / `x`.
@@ -204,37 +204,37 @@ when not defined(JS):
     ## (`x` near 0).
 
   proc cos*(x: float32): float32 {.importc: "cos", header: "<math.h>".}
-	proc cos*(x: float64): float64 {.importc: "cos", header: "<math.h>".}
+  proc cos*(x: float64): float64 {.importc: "cos", header: "<math.h>".}
   proc cosh*(x: float32): float32 {.importc: "cosh", header: "<math.h>".}
-	proc cosh*(x: float64): float64 {.importc: "cosh", header: "<math.h>".}
+  proc cosh*(x: float64): float64 {.importc: "cosh", header: "<math.h>".}
   proc hypot*(x, y: float32): float32 {.importc: "hypot", header: "<math.h>".}
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
     ## same as ``sqrt(x*x + y*y)``.
 
   proc sinh*(x: float32): float32 {.importc: "sinh", header: "<math.h>".}
-	proc sinh*(x: float64): float64 {.importc: "sinh", header: "<math.h>".}
+  proc sinh*(x: float64): float64 {.importc: "sinh", header: "<math.h>".}
   proc sin*(x: float32): float32 {.importc: "sin", header: "<math.h>".}
-	proc sin*(x: float64): float64 {.importc: "sin", header: "<math.h>".}
+  proc sin*(x: float64): float64 {.importc: "sin", header: "<math.h>".}
   proc tan*(x: float32): float32 {.importc: "tan", header: "<math.h>".}
-	proc tan*(x: float64): float64 {.importc: "tan", header: "<math.h>".}
+  proc tan*(x: float64): float64 {.importc: "tan", header: "<math.h>".}
   proc tanh*(x: float32): float32 {.importc: "tanh", header: "<math.h>".}
-	proc tanh*(x: float64): float64 {.importc: "tanh", header: "<math.h>".}
+  proc tanh*(x: float64): float64 {.importc: "tanh", header: "<math.h>".}
   proc pow*(x, y: float32): float32 {.importc: "pow", header: "<math.h>".}
-	proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
+  proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
 
   proc erf*(x: float32): float32 {.importc: "erf", header: "<math.h>".}
-	proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
+  proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
     ## The error function
   proc erfc*(x: float32): float32 {.importc: "erfc", header: "<math.h>".}
-	proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
+  proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
     ## The complementary error function
 
   proc lgamma*(x: float32): float32 {.importc: "lgamma", header: "<math.h>".}
-	proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
+  proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
     ## Natural log of the gamma function
   proc tgamma*(x: float32): float32 {.importc: "tgamma", header: "<math.h>".}
-	proc tgamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
+  proc tgamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
     ## The gamma function
 
   # C procs:
@@ -288,21 +288,21 @@ when not defined(JS):
     result = int(rand()) mod max
 
   proc trunc*(x: float32): float32 {.importc: "trunc", header: "<math.h>".}
-	proc trunc*(x: float64): float64 {.importc: "trunc", header: "<math.h>".}
+  proc trunc*(x: float64): float64 {.importc: "trunc", header: "<math.h>".}
   proc floor*(x: float32): float32 {.importc: "floor", header: "<math.h>".}
-	proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
+  proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
   proc ceil*(x: float32): float32 {.importc: "ceil", header: "<math.h>".}
-	proc ceil*(x: float64): float64 {.importc: "ceil", header: "<math.h>".}
+  proc ceil*(x: float64): float64 {.importc: "ceil", header: "<math.h>".}
 
   proc fmod*(x, y: float32): float32 {.importc: "fmod", header: "<math.h>".}
-	proc fmod*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
 
 else:
   proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
-	proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
+  proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
-	proc ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
+  proc ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
   proc random(max: int): int =
     result = int(floor(mathrandom() * float(max)))
   proc random(max: float): float =
@@ -311,17 +311,17 @@ else:
   proc randomize(seed: int) = discard
 
   proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
-	proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
+  proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
   proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
-	proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
+  proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
   proc log10*[T: float32|float64](x: T): T = return ln(x) / ln(10.0)
-	proc log2*[T: float32|float64](x: T): T = return ln(x) / ln(2.0)
+  proc log2*[T: float32|float64](x: T): T = return ln(x) / ln(2.0)
 
   proc exp*(x: float32): float32 {.importc: "Math.exp", nodecl.}
-	proc exp*(x: float64): float64 {.importc: "Math.exp", nodecl.}
+  proc exp*(x: float64): float64 {.importc: "Math.exp", nodecl.}
   proc round*(x: float): int {.importc: "Math.round", nodecl.}
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
-	proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
+  proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
 
   proc frexp*[T: float32|float64](x: T, exponent: var int): T =
     if x == 0.0:
@@ -335,25 +335,25 @@ else:
       result = x / pow(2.0, ex)
 
   proc arccos*(x: float32): float32 {.importc: "Math.acos", nodecl.}
-	proc arccos*(x: float64): float64 {.importc: "Math.acos", nodecl.}
+  proc arccos*(x: float64): float64 {.importc: "Math.acos", nodecl.}
   proc arcsin*(x: float32): float32 {.importc: "Math.asin", nodecl.}
-	proc arcsin*(x: float64): float64 {.importc: "Math.asin", nodecl.}
+  proc arcsin*(x: float64): float64 {.importc: "Math.asin", nodecl.}
   proc arctan*(x: float32): float32 {.importc: "Math.atan", nodecl.}
-	proc arctan*(x: float64): float64 {.importc: "Math.atan", nodecl.}
+  proc arctan*(x: float64): float64 {.importc: "Math.atan", nodecl.}
   proc arctan2*(y, x: float32): float32 {.importC: "Math.atan2", nodecl.}
-	proc arctan2*(y, x: float64): float64 {.importc: "Math.atan2", nodecl.}
+  proc arctan2*(y, x: float64): float64 {.importc: "Math.atan2", nodecl.}
 
   proc cos*(x: float32): float32 {.importc: "Math.cos", nodecl.}
-	proc cos*(x: float64): float64 {.importc: "Math.cos", nodecl.}
+  proc cos*(x: float64): float64 {.importc: "Math.cos", nodecl.}
   proc cosh*(x: float32): float32 = return (exp(x)+exp(-x))*0.5
-	proc cosh*(x: float64): float64 = return (exp(x)+exp(-x))*0.5
+  proc cosh*(x: float64): float64 = return (exp(x)+exp(-x))*0.5
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
   proc sinh*]T: float32|float64](x: T): T = return (exp(x)-exp(-x))*0.5
   proc sin*(x: float32): float32 {.importc: "Math.sin", nodecl.}
-	proc sin*(x: float64): float64 {.importc: "Math.sin", nodecl.}
+  proc sin*(x: float64): float64 {.importc: "Math.sin", nodecl.}
   proc tan*(x: float32): float32 {.importc: "Math.tan", nodecl.}
-	proc tan*(x: float64): float64 {.importc: "Math.tan", nodecl.}
-	proc tanh*[T: float32|float64](x: T): T =
+  proc tan*(x: float64): float64 {.importc: "Math.tan", nodecl.}
+  proc tanh*[T: float32|float64](x: T): T =
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
 
