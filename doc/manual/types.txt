@@ -575,6 +575,7 @@ the ``of`` operator can be used to determine the object's type.
     student: Student
     person: Person
   assert(student of Student) # is true
+  assert(student of Person) # also true
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
@@ -593,6 +594,7 @@ an ``object`` type or a ``ref object`` type:
 .. code-block:: nim
   var student = Student(name: "Anton", age: 5, id: 3)
 
+Note that, unlike tuples, objects require the field names along with their values.
 For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 
