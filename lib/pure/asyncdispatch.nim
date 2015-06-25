@@ -483,7 +483,7 @@ when defined(windows) or defined(nimdoc):
                   RemoteSockaddr, RemoteSockaddrLength)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
-    af = AF_INET): Future[void] =
+    af = rawsockets.AF_INET): Future[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
     ## Returns a ``Future`` which will complete when the connection succeeds
@@ -861,7 +861,7 @@ when defined(windows) or defined(nimdoc):
     result.SocketHandle.setBlocking(false)
     register(result)
 
-  proc newAsyncRawSocket*(domain: Domain = AF_INET,
+  proc newAsyncRawSocket*(domain: Domain = rawsockets.AF_INET,
                typ: SockType = SOCK_STREAM,
                protocol: Protocol = IPPROTO_TCP): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
