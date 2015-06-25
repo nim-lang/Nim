@@ -437,6 +437,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn,
      mParallel, mPlugin:
     discard
+  of mEqProc:
+    result = newIntNodeT(ord(
+        exprStructuralEquivalent(a, b, strictSymEquality=true)), n)
   else: internalError(a.info, "evalOp(" & $m & ')')
 
 proc getConstIfExpr(c: PSym, n: PNode): PNode =
