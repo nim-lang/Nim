@@ -474,7 +474,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
           addSon(a, m)
           changeType(m, tup.sons[i], check)
   of nkCharLit..nkUInt64Lit:
-    if check:
+    if check and n.kind != nkUInt64Lit:
       let value = n.intVal
       if value < firstOrd(newType) or value > lastOrd(newType):
         localError(n.info, errGenerated, "cannot convert " & $value &
