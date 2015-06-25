@@ -196,27 +196,27 @@ type
       nil
 {.deprecated: [TThreadLocalStorage: ThreadLocalStorage, TGcThread: GcThread].}
 
-# XXX it'd be more efficient to not use a global variable for the
-# thread storage slot, but to rely on the implementation to assign slot X
-# for us... ;-)
-var globalsSlot: ThreadVarSlot
-
 when not defined(useNimRtl):
   when not useStackMaskHack:
     var mainThread: GcThread
-
-proc initThreadVarsEmulation() {.compilerProc, inline.} =
-  when not defined(useNimRtl):
-    globalsSlot = threadVarAlloc()
-    when declared(mainThread):
-      threadVarSetValue(globalsSlot, addr(mainThread))
 
 #const globalsSlot = ThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
 
 when emulatedThreadVars:
+  # XXX it'd be more efficient to not use a global variable for the
+  # thread storage slot, but to rely on the implementation to assign slot X
+  # for us... ;-)
+  var globalsSlot: ThreadVarSlot
+
   proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
     result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
+
+  proc initThreadVarsEmulation() {.compilerProc, inline.} =
+    when not defined(useNimRtl):
+      globalsSlot = threadVarAlloc()
+      when declared(mainThread):
+        threadVarSetValue(globalsSlot, addr(mainThread))
 
 when useStackMaskHack:
   proc maskStackPointer(offset: int): pointer {.compilerRtl, inl.} =
@@ -397,11 +397,6 @@ else:
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.
   result = addr(t)
-
-proc myThreadId*[TArg](): ThreadId[TArg] =
-  ## returns the thread ID of the thread that calls this proc. This is unsafe
-  ## because the type ``TArg`` is not checked for consistency!
-  result = cast[ThreadId[TArg]](threadVarGetValue(globalsSlot))
 
 when false:
   proc mainThreadId*[TArg](): ThreadId[TArg] =
