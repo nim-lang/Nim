@@ -159,8 +159,4 @@ General commit rules
       #!/bin/sh
       git diff --check --cached || exit $?
 
-   No sane programming or markup language cares about trailing whitespace, so
-   tailing whitespace is just a noise you should not introduce to the
-   repository.
-
 3. Describe your commit and use your common sense.
