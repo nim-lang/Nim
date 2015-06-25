@@ -21,6 +21,8 @@ News
     and ``2f`` (float32) which means imports like ``import scene/2d/sprite``
     do not work anymore. Instead quotes have to be
     used: ``import "scene/2d/sprite"``. The former code never was valid Nim.
+  - The Windows API wrapper (``windows.nim``) is now not part of the official
+    distribution anymore. Instead use the ``oldwinapi`` Nimble package.
 
 
   Library additions
