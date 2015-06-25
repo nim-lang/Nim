@@ -29,6 +29,7 @@ else:
     EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
+  Sockaddr_in6, Sockaddr_storage,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
 
 export
@@ -194,6 +195,7 @@ proc getAddrInfo*(address: string, port: Port, af: Domain = AF_INET, typ: SockTy
   hints.ai_family = toInt(af)
   hints.ai_socktype = toInt(typ)
   hints.ai_protocol = toInt(prot)
+  hints.ai_flags = posix.AI_V4MAPPED
   var gaiResult = getaddrinfo(address, $port, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
@@ -314,6 +316,35 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
       raise newException(OSError, "unknown h_addrtype")
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
+
+proc getSockDomain*(socket: SocketHandle): Domain =
+  ## returns the socket's domain (AF_INET or AF_INET6).
+  var name: SockAddr
+  var namelen = sizeof(name).SockLen
+  if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                 addr(namelen)) == -1'i32:
+    raiseOSError(osLastError())
+  if name.sa_family == posix.AF_INET:
+    result = AF_INET
+  elif name.sa_family == posix.AF_INET6:
+    result = AF_INET6
+  else:
+    raise newException(OSError, "unknown socket family in getSockFamily")
+
+
+proc getAddrString*(sockAddr: ptr SockAddr): string =
+  ## return the string representation of address within sockAddr
+  if sockAddr.sa_family == posix.AF_INET:
+    result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
+  elif sockAddr.sa_family == posix.AF_INET6:
+    var v6addr = cast[ptr Sockaddr_in6](sockAddr).sin6_addr
+    result = newString(posix.INET6_ADDRSTRLEN)
+    discard posix.inet_ntop(posix.AF_INET6, addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr, result.cstring, result.len.int32)
+    if posix.IN6_IS_ADDR_V4MAPPED(addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr) != 0:
+      result = result.substr("::ffff:".len)
+  else:
+    raise newException(OSError, "unknown socket family in getAddrString")
+
 
 proc getSockName*(socket: SocketHandle): Port = 
   ## returns the socket's associated port number.
