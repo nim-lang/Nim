@@ -73,7 +73,7 @@ type
   `ptr`* {.magic: Pointer.}[T] ## built-in generic untraced pointer type
   `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
 
-  `nil` {.magic: "Nil".}  ## special type for pointers, references, and other `nil`-able types
+  `nil` {.magic: "Nil".}
   expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
