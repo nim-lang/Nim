@@ -12,6 +12,10 @@
 ## Basic math routines for Nim.
 ## This module is available for the `JavaScript target
 ## <backends.html#the-javascript-target>`_.
+## 
+## Note that the trigonometric functions naturally operate on radians.
+## The helper functions `degToRad` and `radToDeg` provide conversion
+## between radians and degrees.
 
 include "system/inclrtl"
 {.push debugger:off .} # the user does not want to trace a part
@@ -38,6 +42,7 @@ const
                                            ## meaningful digits
                                            ## after the decimal point 
                                            ## for Nim's ``float`` type.
+  RadPerDeg = PI / 180.0 ## number of radians per degree
 
 type
   FloatClass* = enum ## describes the class a floating point value belongs to.
@@ -316,6 +321,14 @@ else:
     return (y-1.0)/(y+1.0)
 
 {.pop.}
+
+proc degToRad*[T: float32|float64](d: T): T {.inline.} =
+  ## Convert from degrees to radians
+  result = T(d) * RadPerDeg
+
+proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
+  ## Convert from radians to degrees
+  result = T(d) / RadPerDeg
 
 proc `mod`*(x, y: float): float =
   ## Computes the modulo operation for float operators. Equivalent
