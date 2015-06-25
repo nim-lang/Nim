@@ -1300,6 +1300,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
   of isInferred, isInferredConvertible:
     if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
+    elif arg.kind != nkSym:
+      return nil
     else:
       let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
       result = newSymNode(inferred, arg.info)
