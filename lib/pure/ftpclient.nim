@@ -271,9 +271,9 @@ proc connect*[T](ftp: FtpBase[T]) =
 
   # Handle 220 messages from the server
   if reply.startsWith("220"):
-    assertReply(reply, "220")
+    assertReply ftp.expectReply(), "220"
     while reply.continuesWith("-", 3): # handle multiline 220 message
-      assertReply(reply, "220")
+      assertReply ftp.expectReply(), "220"
       reply = ftp.expectReply()
 
   if ftp.user != "":
