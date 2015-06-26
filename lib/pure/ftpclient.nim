@@ -274,7 +274,7 @@ proc connect*[T](ftp: FtpBase[T]) =
     assertReply(reply, "220")
     while reply.continuesWith("-", 3): # handle multiline 220 message
       assertReply(reply, "220")
-      reply = await ftp.expectReply()
+      reply = ftp.expectReply()
 
   if ftp.user != "":
     assertReply(ftp.send("USER " & ftp.user), "230", "331")
