@@ -1002,8 +1002,10 @@ proc genAsmStmt(p: BProc, t: PNode) =
 proc determineSection(n: PNode): TCFileSection =
   result = cfsProcHeaders
   if n.len >= 1 and n.sons[0].kind in {nkStrLit..nkTripleStrLit}:
-    if n.sons[0].strVal.startsWith("/*TYPESECTION*/"): result = cfsTypes
-    elif n.sons[0].strVal.startsWith("/*VARSECTION*/"): result = cfsVars
+    let sec = n.sons[0].strVal
+    if sec.startsWith("/*TYPESECTION*/"): result = cfsTypes
+    elif sec.startsWith("/*VARSECTION*/"): result = cfsVars
+    elif sec.startsWith("/*INCLUDESECTION*/"): result = cfsHeaders
 
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t.sons[1])
