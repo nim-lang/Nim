@@ -51,7 +51,8 @@ a child can never be nil.
 Leaf nodes/Atoms
 ================
 A leaf of the AST often corresponds to a terminal symbol in the concrete
-syntax.
+syntax. Note that the default ``float`` in Nim maps to ``float64`` such that
+the default AST for a float is ``nnkFloat64Lit`` as below.
 
 -----------------                ---------------------------------------------
 Nim expression                   Corresponding AST
@@ -65,7 +66,7 @@ Nim expression                   Corresponding AST
 ``42'u16``                       ``nnkUInt16Lit(intVal = 42)``
 ``42'u32``                       ``nnkUInt32Lit(intVal = 42)``
 ``42'u64``                       ``nnkUInt64Lit(intVal = 42)``
-``42.0``                         ``nnkFloatLit(floatVal = 42.0)``
+``42.0``                         ``nnkFloat64Lit(floatVal = 42.0)``
 ``42.0'f32``                     ``nnkFloat32Lit(floatVal = 42.0)``
 ``42.0'f64``                     ``nnkFloat64Lit(floatVal = 42.0)``
 ``"abc"``                        ``nnkStrLit(strVal = "abc")``
