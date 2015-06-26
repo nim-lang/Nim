@@ -8,8 +8,8 @@
 #
 
 ## This module implements the ability to access symbols from shared
-## libraries. On POSIX this uses the ``dlsym`` mechanism, on 
-## Windows ``LoadLibrary``. 
+## libraries. On POSIX this uses the ``dlsym`` mechanism, on
+## Windows ``LoadLibrary``.
 
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
@@ -17,11 +17,11 @@ type
 {.deprecated: [TLibHandle: LibHandle].}
 
 proc loadLib*(path: string, global_symbols=false): LibHandle
-  ## loads a library from `path`. Returns nil if the library could not 
+  ## loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
 proc loadLib*(): LibHandle
-  ## gets the handle from the current executable. Returns nil if the 
+  ## gets the handle from the current executable. Returns nil if the
   ## library could not be loaded.
 
 proc unloadLib*(lib: LibHandle)
@@ -63,13 +63,13 @@ when defined(posix):
   proc dlsym(lib: LibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
 
-  proc loadLib(path: string, global_symbols=false): LibHandle = 
+  proc loadLib(path: string, global_symbols=false): LibHandle =
     var flags = RTLD_NOW
     if global_symbols: flags = flags or RTLD_GLOBAL
     return dlopen(path, flags)
   proc loadLib(): LibHandle = return dlopen(nil, RTLD_NOW)
   proc unloadLib(lib: LibHandle) = dlclose(lib)
-  proc symAddr(lib: LibHandle, name: cstring): pointer = 
+  proc symAddr(lib: LibHandle, name: cstring): pointer =
     return dlsym(lib, name)
 
 elif defined(windows) or defined(dos):
