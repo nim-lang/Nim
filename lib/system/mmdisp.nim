@@ -34,7 +34,7 @@ const
 
 type
   PPointer = ptr pointer
-  ByteArray = array[0..1000_0000, byte]
+  ByteArray = array[0..ArrayDummySize, byte]
   PByte = ptr ByteArray
   PString = ptr string
 {.deprecated: [TByteArray: ByteArray].}
@@ -42,7 +42,7 @@ type
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
 const
-  PageShift = 12
+  PageShift = when defined(cpu16): 8 else: 12
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
@@ -270,7 +270,10 @@ elif defined(gogc):
         # Statistics about allocation size classes.
         by_size: array[goNumSizeClasses, goMStats_inner_struct]
 
-  proc goRuntime_ReadMemStats(a2: ptr goMStats) {.cdecl, importc: "runtime_ReadMemStats", codegenDecl: "$1 $2$3 __asm__ (\"runtime.ReadMemStats\");\n$1 $2$3", dynlib: goLib.}
+  proc goRuntime_ReadMemStats(a2: ptr goMStats) {.cdecl,
+    importc: "runtime_ReadMemStats",
+    codegenDecl: "$1 $2$3 __asm__ (\"runtime.ReadMemStats\");\n$1 $2$3",
+    dynlib: goLib.}
 
   proc GC_getStatistics(): string =
     var mstats: goMStats

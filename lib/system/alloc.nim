@@ -13,6 +13,15 @@
 # - make searching for block O(1)
 {.push profiler:off.}
 
+proc roundup(x, v: int): int {.inline.} =
+  result = (x + (v-1)) and not (v-1)
+  sysAssert(result >= x, "roundup: result < x")
+  #return ((-x) and (v-1)) +% x
+
+sysAssert(roundup(14, PageSize) == PageSize, "invalid PageSize")
+sysAssert(roundup(15, 8) == 16, "roundup broken")
+sysAssert(roundup(65, 8) == 72, "roundup broken 2")
+
 # ------------ platform specific chunk allocation code -----------------------
 
 # some platforms have really weird unmap behaviour: unmap(blockStart, PageSize)
@@ -82,6 +91,21 @@ elif defined(windows):
     when reallyOsDealloc: virtualFree(p, 0, MEM_RELEASE)
     #VirtualFree(p, size, MEM_DECOMMIT)
 
+elif hostOS == "standalone":
+  var
+    theHeap: array[1024*PageSize, float64] # 'float64' for alignment
+    bumpPointer = cast[int](addr theHeap)
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    if size+bumpPointer < cast[int](addr theHeap) + sizeof(theHeap):
+      result = cast[pointer](bumpPointer)
+      inc bumpPointer, size
+    else:
+      raiseOutOfMem()
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    if bumpPointer-size == cast[int](p):
+      dec bumpPointer, size
 else:
   {.error: "Port memory manager to your platform".}
 
@@ -141,15 +165,6 @@ type
 
 template smallChunkOverhead(): expr = sizeof(SmallChunk)-sizeof(AlignType)
 template bigChunkOverhead(): expr = sizeof(BigChunk)-sizeof(AlignType)
-
-proc roundup(x, v: int): int {.inline.} =
-  result = (x + (v-1)) and not (v-1)
-  sysAssert(result >= x, "roundup: result < x")
-  #return ((-x) and (v-1)) +% x
-
-sysAssert(roundup(14, PageSize) == PageSize, "invalid PageSize")
-sysAssert(roundup(15, 8) == 16, "roundup broken")
-sysAssert(roundup(65, 8) == 72, "roundup broken 2")
 
 # ------------- chunk table ---------------------------------------------------
 # We use a PtrSet of chunk starts and a table[Page, chunksize] for chunk

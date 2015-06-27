@@ -1196,8 +1196,13 @@ template sysAssert(cond: bool, msg: string) =
       echo "[SYSASSERT] ", msg
       quit 1
 
+const hasAlloc = hostOS != "standalone" or not defined(nogc)
+
 when not defined(JS) and not defined(nimrodVm) and hostOS != "standalone":
   include "system/cgprocs"
+when not defined(JS) and not defined(nimrodVm) and hasAlloc:
+  proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
+  proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
 proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
@@ -1404,7 +1409,7 @@ when not defined(nimrodVM):
     ## otherwise. Like any procedure dealing with raw memory this is
     ## *unsafe*.
 
-  when hostOS != "standalone":
+  when hasAlloc:
     proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
@@ -1540,7 +1545,7 @@ proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
-  when not defined(JS) and hostOS != "standalone":
+  when not defined(JS) and hasAlloc:
     proc `$` *(x: uint64): string {.noSideEffect.}
       ## The stringify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
@@ -1607,7 +1612,7 @@ const
 
 # GC interface:
 
-when not defined(nimrodVM) and hostOS != "standalone":
+when not defined(nimrodVM) and hasAlloc:
   proc getOccupiedMem*(): int {.rtl.}
     ## returns the number of bytes that are owned by the process and hold data.
 
@@ -2163,7 +2168,7 @@ when false:
 
 # ----------------- GC interface ---------------------------------------------
 
-when not defined(nimrodVM) and hostOS != "standalone":
+when not defined(nimrodVM) and hasAlloc:
   proc GC_disable*() {.rtl, inl, benign.}
     ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
     ## reactivate the GC. Note that in most circumstances one should only disable
@@ -2288,7 +2293,7 @@ when defined(JS):
     """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
-elif hostOS != "standalone":
+elif hasAlloc:
   {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) =
     var i = 0
@@ -2382,7 +2387,7 @@ else:
 when not defined(JS): #and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
 
-  when not defined(NimrodVM) and hostOS != "standalone":
+  when not defined(NimrodVM) and not defined(nogc):
     proc initGC()
     when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc):
       proc initAllocator() {.inline.}
@@ -2402,6 +2407,7 @@ when not defined(JS): #and not defined(NimrodVM):
       when declared(setStackBottom):
         setStackBottom(locals)
 
+  when hasAlloc:
     var
       strDesc: TNimType
 
@@ -2625,6 +2631,7 @@ when not defined(JS): #and not defined(NimrodVM):
     when not defined(nimfix):
       {.deprecated: [fileHandle: getFileHandle].}
 
+  when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
       ## of length ``len``.
@@ -2640,12 +2647,12 @@ when not defined(JS): #and not defined(NimrodVM):
 
   # -------------------------------------------------------------------------
 
-  when not defined(NimrodVM) and hostOS != "standalone":
+  when declared(alloc0) and declared(dealloc):
     proc allocCStringArray*(a: openArray[string]): cstringArray =
       ## creates a NULL terminated cstringArray from `a`. The result has to
       ## be freed with `deallocCStringArray` after it's not needed anymore.
       result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
-      let x = cast[ptr array[0..20_000, string]](a)
+      let x = cast[ptr array[0..ArrayDummySize, string]](a)
       for i in 0 .. a.high:
         result[i] = cast[cstring](alloc0(x[i].len+1))
         copyMem(result[i], addr(x[i][0]), x[i].len)
@@ -2685,9 +2692,9 @@ when not defined(JS): #and not defined(NimrodVM):
   when hasThreadSupport:
     include "system/syslocks"
     when hostOS != "standalone": include "system/threads"
-  elif not defined(nogc) and not defined(NimrodVM) and hostOS != "standalone":
+  elif not defined(nogc) and not defined(NimrodVM):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
-    initGC()
+    when declared(initGC): initGC()
 
   when not defined(NimrodVM):
     proc setControlCHook*(hook: proc () {.noconv.} not nil)
@@ -2748,9 +2755,9 @@ when not defined(JS): #and not defined(NimrodVM):
       else:
         result = n.sons[n.len]
 
-    when hostOS != "standalone": include "system/mmdisp"
+    when hasAlloc: include "system/mmdisp"
     {.push stack_trace: off, profiler:off.}
-    when hostOS != "standalone": include "system/sysstr"
+    when hasAlloc: include "system/sysstr"
     {.pop.}
 
     when hostOS != "standalone": include "system/sysio"
@@ -2759,7 +2766,7 @@ when not defined(JS): #and not defined(NimrodVM):
   else:
     include "system/sysio"
 
-  when hostOS != "standalone":
+  when declared(open) and declared(close) and declared(readline):
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
@@ -2795,10 +2802,11 @@ when not defined(JS): #and not defined(NimrodVM):
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
 
-  when hostOS != "standalone" and not defined(NimrodVM):
+  when not defined(NimrodVM) and hasAlloc:
     include "system/assign"
     include "system/repr"
 
+  when hostOS != "standalone" and not defined(NimrodVM):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
       ## retrieves the current exception; if there is none, nil is returned.
       result = currException
@@ -2949,7 +2957,7 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # fill the hole:
   for i in 0 .. <b.len: s[i+a] = b[i]
 
-when hostOS != "standalone":
+when hasAlloc:
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
     result = s.substr(x.a, x.b)
@@ -3242,7 +3250,7 @@ when false:
     macro payload: stmt {.gensym.} = blk
     payload()
 
-when hostOS != "standalone":
+when hasAlloc:
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## inserts `item` into `x` at position `i`.
     var xl = x.len
@@ -3269,7 +3277,7 @@ proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
 when declared(initDebugger):
   initDebugger()
 
-when hostOS != "standalone":
+when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
     if x == nil: x = @[y]
@@ -3307,7 +3315,7 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
+when hasAlloc and not defined(NimrodVM) and not defined(JS):
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## performs a deep copy of `x`. This is also used by the code generator
     ## for the implementation of ``spawn``.
