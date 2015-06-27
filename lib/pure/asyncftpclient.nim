@@ -81,11 +81,10 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
     reply = await ftp.expectReply()
 
   # Handle 220 messages from the server
-  if reply.startsWith("220"):
+  assertReply(reply, "220")
+  while reply.continuesWith("-", 3): # handle multiline 220 message
     assertReply(reply, "220")
-    while reply.continuesWith("-", 3): # handle multiline 220 message
-      assertReply(reply, "220")
-      reply = await ftp.expectReply()
+    reply = await ftp.expectReply()
 
   if ftp.user != "":
     assertReply(await(ftp.send("USER " & ftp.user)), "230", "331")
