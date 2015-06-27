@@ -261,7 +261,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
     if errorCode != OSErrorCode(0'i32):
       result = $os.strerror(errorCode.int32)
 
-proc raiseOSError*(errorCode: OSErrorCode) =
+proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
   ## message, ``osErrorMsg`` will be used to get this message.
   ##
@@ -271,7 +271,10 @@ proc raiseOSError*(errorCode: OSErrorCode) =
   ## the message ``unknown OS error`` will be used.
   var e: ref OSError; new(e)
   e.errorCode = errorCode.int32
-  e.msg = osErrorMsg(errorCode)
+  if additionalInfo.len == 0:
+    e.msg = osErrorMsg(errorCode)
+  else:
+    e.msg = additionalInfo & " " & osErrorMsg(errorCode)
   if e.msg == "":
     e.msg = "unknown OS error"
   raise e
