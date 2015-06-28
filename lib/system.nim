@@ -282,7 +282,7 @@ proc `==` *(x, y: char): bool {.magic: "EqCh", noSideEffect.}
 proc `==` *(x, y: bool): bool {.magic: "EqB", noSideEffect.}
   ## Checks for equality between two `bool` variables
 proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
-  ## Checks for equality between two variables of type `set1
+  ## Checks for equality between two variables of type `set`
   ##
   ## .. code-block:: nim
   ##  var a = {1, 2, 2, 3} # duplication in sets is ignored
