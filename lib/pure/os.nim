@@ -1642,6 +1642,18 @@ proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
   when defined(windows): return string(getEnv("TEMP")) & "\\"
   else: return "/tmp/"
 
+proc readLink*(procPath: string): string =
+  ## Returns a string representing the path to which the symbolic link points.
+  when defined(windows):
+    result = procPath
+  else:
+    result = newString(256)
+    var len = readlink(procPath, result, 256)
+    if len > 256:
+      result = newString(len+1)
+      len = readlink(procPath, result, len)
+    setLen(result, len)
+
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
@@ -1743,15 +1755,6 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 
-when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
-  proc getApplAux(procPath: string): string =
-    result = newString(256)
-    var len = readlink(procPath, result, 256)
-    if len > 256:
-      result = newString(len+1)
-      len = readlink(procPath, result, len)
-    setLen(result, len)
-
 when not (defined(windows) or defined(macosx)):
   proc getApplHeuristic(): string =
     when declared(paramStr):
@@ -1801,13 +1804,13 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       var len = getModuleFileNameA(0, result, 256)
       setlen(result, int(len))
   elif defined(linux) or defined(aix):
-    result = getApplAux("/proc/self/exe")
+    result = readLink("/proc/self/exe")
     if result.len == 0: result = getApplHeuristic()
   elif defined(solaris):
-    result = getApplAux("/proc/" & $getpid() & "/path/a.out")
+    result = readLink("/proc/" & $getpid() & "/path/a.out")
     if result.len == 0: result = getApplHeuristic()
   elif defined(freebsd):
-    result = getApplAux("/proc/" & $getpid() & "/file")
+    result = readLink("/proc/" & $getpid() & "/file")
     if result.len == 0: result = getApplHeuristic()
   elif defined(macosx):
     var size: cuint32
