@@ -63,7 +63,7 @@ proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
   currException = e
 
 proc popCurrentException {.compilerRtl, inl.} =
-  currException = currException.parent
+  currException = nil # currException.parent
 
 # some platforms have native support for stack traces:
 const
