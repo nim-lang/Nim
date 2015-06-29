@@ -483,7 +483,7 @@ when defined(windows) or defined(nimdoc):
                   RemoteSockaddr, RemoteSockaddrLength)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
-    af = rawsockets.AF_INET): Future[void] =
+    domain = rawsockets.AF_INET): Future[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
     ## Returns a ``Future`` which will complete when the connection succeeds
@@ -492,14 +492,14 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[void]("connect")
     # Apparently ``ConnectEx`` expects the socket to be initially bound:
     var saddr: Sockaddr_in
-    saddr.sin_family = int16(toInt(af))
+    saddr.sin_family = int16(toInt(domain))
     saddr.sin_port = 0
     saddr.sin_addr.s_addr = INADDR_ANY
     if bindAddr(socket.SocketHandle, cast[ptr SockAddr](addr(saddr)),
                   sizeof(saddr).SockLen) < 0'i32:
       raiseOSError(osLastError())
 
-    var aiList = getAddrInfo(address, port, af)
+    var aiList = getAddrInfo(address, port, domain)
     var success = false
     var lastError: OSErrorCode
     var it = aiList
@@ -855,17 +855,17 @@ when defined(windows) or defined(nimdoc):
 
     return retFuture
 
-  proc newAsyncRawSocket*(domain, typ, protocol: cint): AsyncFD =
+  proc newAsyncRawSocket*(domain, sockType, protocol: cint): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, typ, protocol).AsyncFD
+    result = newRawSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
   proc newAsyncRawSocket*(domain: Domain = rawsockets.AF_INET,
-               typ: SockType = SOCK_STREAM,
+               sockType: SockType = SOCK_STREAM,
                protocol: Protocol = IPPROTO_TCP): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, typ, protocol).AsyncFD
+    result = newRawSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
@@ -928,17 +928,18 @@ else:
     var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
     p.selector.register(fd.SocketHandle, {}, data.RootRef)
 
-  proc newAsyncRawSocket*(domain: cint, typ: cint, protocol: cint): AsyncFD =
-    result = newRawSocket(domain, typ, protocol).AsyncFD
+  proc newAsyncRawSocket*(domain: cint, sockType: cint,
+      protocol: cint): AsyncFD =
+    result = newRawSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
         result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
   proc newAsyncRawSocket*(domain: Domain = AF_INET,
-               typ: SockType = SOCK_STREAM,
+               sockType: SockType = SOCK_STREAM,
                protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    result = newRawSocket(domain, typ, protocol).AsyncFD
+    result = newRawSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
         result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
@@ -1009,7 +1010,7 @@ else:
     processTimers(p)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
-    af_unused = AF_INET): Future[void] =
+    domain = AF_INET): Future[void] =
     var retFuture = newFuture[void]("connect")
 
     proc cb(fd: AsyncFD): bool =
@@ -1017,8 +1018,8 @@ else:
       retFuture.complete()
       return true
 
-    var sockDomain = getSockDomain(socket.SocketHandle)
-    var aiList = getAddrInfo(address, port, sockDomain)
+    assert getSockDomain(socket.SocketHandle) == domain
+    var aiList = getAddrInfo(address, port, domain)
     var success = false
     var lastError: OSErrorCode
     var it = aiList
@@ -1496,8 +1497,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "test":
-  #  echo(toStrLit(result))
+  if prc[0].getName == "getAsync":
+    echo(toStrLit(result))
 
 proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once

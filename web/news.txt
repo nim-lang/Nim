@@ -28,7 +28,12 @@ News
     ``--gc:none``. ``--os:standalone`` without ``--gc:none`` is now a version
     that doesn't depend on any OS but includes the GC. However this version
     is currently untested!
-
+  - All procedures which construct a ``Socket``/``AsyncSocket`` now need to
+    specify the socket domain, type and protocol. The param name
+    ``typ: SockType`` (in ``newSocket``/``newAsyncSocket`` procs) was also
+    renamed to ``sockType``. The param ``af`` in the ``connect`` procs was
+    removed. This affects ``asyncnet``, ``asyncdispatch``, ``net``, and
+    ``rawsockets``.
 
   Library additions
   -----------------

@@ -157,17 +157,17 @@ else:
     result = cint(ord(p))
 
 
-proc newRawSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
+proc newRawSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
              protocol: Protocol = IPPROTO_TCP): SocketHandle =
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
-  socket(toInt(domain), toInt(typ), toInt(protocol))
+  socket(toInt(domain), toInt(sockType), toInt(protocol))
 
-proc newRawSocket*(domain: cint, typ: cint, protocol: cint): SocketHandle =
+proc newRawSocket*(domain: cint, sockType: cint, protocol: cint): SocketHandle =
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
-  socket(domain, typ, protocol)
+  socket(domain, sockType, protocol)
 
 proc close*(socket: SocketHandle) =
   ## closes a socket.
@@ -190,16 +190,17 @@ proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [ReadIOEff
   else:
     result = posix.listen(socket, cint(backlog))
 
-proc getAddrInfo*(address: string, port: Port, af: Domain = AF_INET, typ: SockType = SOCK_STREAM,
-                 prot: Protocol = IPPROTO_TCP): ptr AddrInfo =
+proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
+                  sockType: SockType = SOCK_STREAM,
+                  protocol: Protocol = IPPROTO_TCP): ptr AddrInfo =
   ##
   ##
   ## **Warning**: The resulting ``ptr TAddrInfo`` must be freed using ``dealloc``!
   var hints: AddrInfo
   result = nil
-  hints.ai_family = toInt(af)
-  hints.ai_socktype = toInt(typ)
-  hints.ai_protocol = toInt(prot)
+  hints.ai_family = toInt(domain)
+  hints.ai_socktype = toInt(sockType)
+  hints.ai_protocol = toInt(protocol)
   hints.ai_flags = AI_V4MAPPED
   var gaiResult = getaddrinfo(address, $port, addr(hints), result)
   if gaiResult != 0'i32:
