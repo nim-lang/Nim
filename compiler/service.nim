@@ -18,7 +18,7 @@ when useCaas:
 
 # We cache modules and the dependency graph. However, we don't check for
 # file changes but expect the client to tell us about them, otherwise the
-# repeated CRC calculations may turn out to be too slow.
+# repeated hash calculations may turn out to be too slow.
 
 var
   curCaasCmd* = ""
