@@ -42,6 +42,7 @@ export
   MSG_PEEK
 
 when defined(macosx):
+    from posix import SO_NOSIGPIPE
     export SO_NOSIGPIPE
 
 type
