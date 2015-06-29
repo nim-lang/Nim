@@ -1645,6 +1645,22 @@ proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
   when defined(windows): return string(getEnv("TEMP")) & "\\"
   else: return "/tmp/"
 
+proc expandSymlink*(symlinkPath: string): string =
+  ## Returns a string representing the path to which the symbolic link points.
+  ##
+  ## On Windows this is a noop, ``symlinkPath`` is simply returned.
+  when defined(windows):
+    result = symlinkPath
+  else:
+    result = newString(256)
+    var len = readlink(symlinkPath, result, 256)
+    if len < 0:
+      raiseOSError(osLastError())
+    if len > 256:
+      result = newString(len+1)
+      len = readlink(symlinkPath, result, len)
+    setLen(result, len)
+
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
   proc paramCount*(): int {.tags: [ReadIOEffect].} =

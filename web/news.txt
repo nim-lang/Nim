@@ -40,6 +40,7 @@ News
 
   - The nre module has been added, providing a better interface to PCRE than
     re.
+  - The ``expandSymlink`` procedure has been added to the ``os`` module.
 
   Language Additions
   ------------------
