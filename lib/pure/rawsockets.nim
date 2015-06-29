@@ -41,7 +41,7 @@ export
   SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR,
   MSG_PEEK
 
-when defined(macosx):
+when defined(macosx) and not defined(nimdoc):
     export SO_NOSIGPIPE
 
 type
