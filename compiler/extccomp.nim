@@ -585,7 +585,7 @@ proc externalFileChanged(filename: string): bool =
   if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
     return false
 
-  var crcFile = toGeneratedFile(filename.withPackageName, "crc")
+  var crcFile = toGeneratedFile(filename.withPackageName, "sha1")
   var currentCrc = footprint(filename)
   var f: File
   if open(f, crcFile, fmRead):
