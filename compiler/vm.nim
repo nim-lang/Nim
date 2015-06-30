@@ -351,7 +351,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
         myreset(dest); dest.kind = rkFloat
       case skipTypes(srctyp, abstractRange).kind
       of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
-        dest.floatVal = toFloat(src.intVal.int)
+        dest.floatVal = toBiggestFloat(src.intVal)
       else:
         dest.floatVal = src.floatVal
     else:
