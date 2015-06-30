@@ -16,12 +16,12 @@ import
   hashes, math, locks
 
 type
-  KeyValuePair[A, B] = tuple[hcode: THash, key: A, val: B]
+  KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = ptr array[10_000_000, KeyValuePair[A, B]]
   SharedTable* [A, B] = object ## generic hash SharedTable
     data: KeyValuePairSeq[A, B]
     counter, dataLen: int
-    lock: TLock
+    lock: Lock
 
 template maxHash(t): expr = t.dataLen-1
 
@@ -49,7 +49,7 @@ proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   withLock t:
-    var hc: THash
+    var hc: Hash
     var index = rawGet(t, key, hc)
     let hasKey = index >= 0
     if hasKey: result = t.data[index].val
