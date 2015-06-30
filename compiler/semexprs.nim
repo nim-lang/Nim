@@ -1727,13 +1727,17 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     dec c.inParallelStmt
   of mSpawn:
     result = setMs(n, s)
-    result.sons[1] = semExpr(c, n.sons[1])
-    if not result[1].typ.isEmptyType:
-      if spawnResult(result[1].typ, c.inParallelStmt > 0) == srFlowVar:
-        result.typ = createFlowVar(c, result[1].typ, n.info)
+    for i in 1 .. <n.len:
+      result.sons[i] = semExpr(c, n.sons[i])
+    let typ = result[^1].typ
+    if not typ.isEmptyType:
+      if spawnResult(typ, c.inParallelStmt > 0) == srFlowVar:
+        result.typ = createFlowVar(c, typ, n.info)
       else:
-        result.typ = result[1].typ
-      result.add instantiateCreateFlowVarCall(c, result[1].typ, n.info).newSymNode
+        result.typ = typ
+      result.add instantiateCreateFlowVarCall(c, typ, n.info).newSymNode
+    else:
+      result.add emptyNode
   of mProcCall:
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
