@@ -610,10 +610,12 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
   var it = PStrEntry(m.headerFiles.head)
   while it != nil:
-    if it.data[0] notin {'\"', '<'}:
-      addf(m.s[cfsHeaders], "$N#include \"$1\"$N", [rope(it.data)])
+    if it.data[0] == '#':
+      add(m.s[cfsHeaders], rope(it.data.replace('`', '"') & tnl))
+    elif it.data[0] notin {'\"', '<'}:
+      addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it.data)])
     else:
-      addf(m.s[cfsHeaders], "$N#include $1$N", [rope(it.data)])
+      addf(m.s[cfsHeaders], "#include $1$N", [rope(it.data)])
     it = PStrEntry(it.next)
 
 proc retIsNotVoid(s: PSym): bool =
@@ -814,7 +816,7 @@ proc genVarPrototype(m: BModule, sym: PSym) =
   genVarPrototypeAux(m, sym)
 
 proc addIntTypes(result: var Rope) {.inline.} =
-  addf(result, "#define NIM_INTBITS $1", [
+  addf(result, "#define NIM_INTBITS $1" & tnl, [
     platform.CPU[targetCPU].intSize.rope])
 
 proc getCopyright(cfile: string): Rope =
