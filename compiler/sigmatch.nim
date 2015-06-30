@@ -158,11 +158,15 @@ proc sumGeneric(t: PType): int =
       t = t.sons[0]
       inc result
       inc isvar
+    of tyTypeDesc:
+      t = t.lastSon
+      if t.kind == tyEmpty: break
+      inc result
     of tyGenericInvocation, tyTuple:
       result += ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
-    of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
+    of tyGenericParam, tyExpr, tyStatic, tyStmt: break
     of tyBool, tyChar, tyEnum, tyObject, tyProc, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
