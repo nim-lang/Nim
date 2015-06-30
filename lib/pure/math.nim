@@ -206,7 +206,8 @@ when not defined(JS):
   proc cosh*(x: float): float {.importc: "cosh", header: "<math.h>".}
     ## Computes the hyperbolic cosine of `x`
   proc hypot*(x, y: float): float {.importc: "hypot", header: "<math.h>".}
-    ## Computes the distance between `x` and `y`. Equivalent to ``sqrt(x*x + y*y)``.
+    ## Computes the hypotenuse of a right-angle triangle with `x` and
+    ## `y` as its base and height. Equivalent to ``sqrt(x*x + y*y)``.
 
   proc sinh*(x: float): float {.importc: "sinh", header: "<math.h>".}
     ## Computes the hyperbolic sine of `x`
