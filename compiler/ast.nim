@@ -1486,6 +1486,9 @@ proc getFloat*(a: PNode): BiggestFloat =
 proc getStr*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
+  of nkNilLit:
+    # let's hope this fixes more problems than it creates:
+    result = nil
   else:
     internalError(a.info, "getStr")
     result = ""
