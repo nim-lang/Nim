@@ -584,14 +584,17 @@ proc nimCopy(dest, src: pointer, ti: PNimType): pointer =
   of tySequence, tyArrayConstr, tyOpenArray, tyArray:
     asm """
       if (`dest` === null) {
-        `dest` = new Array(`src`.length);
+        `result` = new Array(`src`.length);
+        for (var i = 0; i < `src`.length; ++i) {
+          `result`[i] = nimCopy(null, `src`[i], `ti`.base);
+        }
       }
       else {
         `dest`.length = `src`.length;
-      }
-      `result` = `dest`;
-      for (var i = 0; i < `src`.length; ++i) {
-        `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+        for (var i = 0; i < `src`.length; ++i) {
+          `dest`[i] = nimCopy(`dest`[i], `src`[i], `ti`.base);
+        }
+        result = `dest`;
       }
     """
   of tyString:
