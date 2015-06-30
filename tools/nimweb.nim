@@ -48,7 +48,7 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
-  c.gitRepo = "https://github.com/Araq/Nim/tree"
+  c.gitRepo = "https://github.com/nim-lang/Nim/tree"
   c.gitCommit = "master"
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
