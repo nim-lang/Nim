@@ -1483,11 +1483,11 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of 1, 2, 4, 8:
     case op
     of mIncl:
-      var ts = "NI" & $(size * 8)
+      var ts = "NU" & $(size * 8)
       binaryStmtInExcl(p, e, d,
           "$1 |= ((" & ts & ")1)<<(($2)%(sizeof(" & ts & ")*8));$n")
     of mExcl:
-      var ts = "NI" & $(size * 8)
+      var ts = "NU" & $(size * 8)
       binaryStmtInExcl(p, e, d, "$1 &= ~(((" & ts & ")1) << (($2) % (sizeof(" &
           ts & ")*8)));$n")
     of mCard:
@@ -1799,7 +1799,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
     else:
       # small set
-      var ts = "NI" & $(getSize(e.typ) * 8)
+      var ts = "NU" & $(getSize(e.typ) * 8)
       lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(d)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
@@ -1807,13 +1807,13 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
           initLocExpr(p, e.sons[i].sons[0], a)
           initLocExpr(p, e.sons[i].sons[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
-              "$2 |=(1<<((" & ts & ")($1)%(sizeof(" & ts & ")*8)));$n", [
+              "$2 |=((" & ts & ")(1)<<(($1)%(sizeof(" & ts & ")*8)));$n", [
               rdLoc(idx), rdLoc(d), rdSetElemLoc(a, e.typ),
               rdSetElemLoc(b, e.typ)])
         else:
           initLocExpr(p, e.sons[i], a)
           lineF(p, cpsStmts,
-               "$1 |=(1<<((" & ts & ")($2)%(sizeof(" & ts & ")*8)));$n",
+               "$1 |=((" & ts & ")(1)<<(($2)%(sizeof(" & ts & ")*8)));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
 
 proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
