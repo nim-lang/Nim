@@ -32,8 +32,11 @@ Compiler
 
 The tests for the compiler work differently, they are all located in
 ``tests/``. Each test has its own file, which is different from the
-stdlib tests. At the beginning of every test is the expected side of
-the test. Possible keys are:
+stdlib tests. All test files are prefixed with ``t``. If you want to
+create a file for import into another test only, use the prefix ``m``.
+
+At the beginning of every test is the expected side of the test.
+Possible keys are:
 
 - output: The expected output, most likely via ``echo``
 - exitcode: Exit code of the test (via ``exit(number)``)
