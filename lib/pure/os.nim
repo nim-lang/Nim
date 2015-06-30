@@ -81,7 +81,7 @@ when defined(Nimdoc): # only for proper documentation:
       ## Windows.
 
     FileSystemCaseSensitive* = true
-      ## True if the file system is case sensitive, false otherwise. Used by
+      ## true if the file system is case sensitive, false otherwise. Used by
       ## `cmpPaths` to compare filenames properly.
 
     ExeExt* = ""
@@ -817,7 +817,7 @@ when defined(Windows):
 
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns True if both pathname arguments refer to the same physical
+  ## Returns true if both pathname arguments refer to the same physical
   ## file or directory. Raises an exception if any of the files does not
   ## exist or information about it can not be obtained.
   ##
@@ -857,7 +857,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
 proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [ReadIOEffect].} =
-  ## Returns True if both pathname arguments refer to files with identical
+  ## Returns true if both pathname arguments refer to files with identical
   ## binary content.
   const
     bufSize = 8192 # 8K buffer
