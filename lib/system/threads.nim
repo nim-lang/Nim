@@ -105,11 +105,17 @@ when defined(windows):
     proc threadVarGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
       importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
 
+  proc setThreadAffinityMask(hThread: SysThread, dwThreadAffinityMask: uint) {.
+    importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
+
 else:
   when not defined(macosx):
     {.passL: "-pthread".}
 
   {.passC: "-pthread".}
+  const
+    schedh = "#define _GNU_SOURCE\n#include <sched.h>"
+    pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
   type
     SysThread {.importc: "pthread_t", header: "<sys/types.h>",
@@ -125,19 +131,19 @@ else:
                 Ttimespec: Timespec].}
 
   proc pthread_attr_init(a1: var PthreadAttr) {.
-    importc, header: "<pthread.h>".}
+    importc, header: pthreadh.}
   proc pthread_attr_setstacksize(a1: var PthreadAttr, a2: int) {.
-    importc, header: "<pthread.h>".}
+    importc, header: pthreadh.}
 
   proc pthread_create(a1: var SysThread, a2: var PthreadAttr,
             a3: proc (x: pointer): pointer {.noconv.},
             a4: pointer): cint {.importc: "pthread_create",
-            header: "<pthread.h>".}
+            header: pthreadh.}
   proc pthread_join(a1: SysThread, a2: ptr pointer): cint {.
-    importc, header: "<pthread.h>".}
+    importc, header: pthreadh.}
 
   proc pthread_cancel(a1: SysThread): cint {.
-    importc: "pthread_cancel", header: "<pthread.h>".}
+    importc: "pthread_cancel", header: pthreadh.}
 
   type
     ThreadVarSlot {.importc: "pthread_key_t", pure, final,
@@ -145,15 +151,15 @@ else:
   {.deprecated: [TThreadVarSlot: ThreadVarSlot].}
 
   proc pthread_getspecific(a1: ThreadVarSlot): pointer {.
-    importc: "pthread_getspecific", header: "<pthread.h>".}
+    importc: "pthread_getspecific", header: pthreadh.}
   proc pthread_key_create(a1: ptr ThreadVarSlot,
                           destruct: proc (x: pointer) {.noconv.}): int32 {.
-    importc: "pthread_key_create", header: "<pthread.h>".}
+    importc: "pthread_key_create", header: pthreadh.}
   proc pthread_key_delete(a1: ThreadVarSlot): int32 {.
-    importc: "pthread_key_delete", header: "<pthread.h>".}
+    importc: "pthread_key_delete", header: pthreadh.}
 
   proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): int32 {.
-    importc: "pthread_setspecific", header: "<pthread.h>".}
+    importc: "pthread_setspecific", header: pthreadh.}
 
   proc threadVarAlloc(): ThreadVarSlot {.inline.} =
     discard pthread_key_create(addr(result), nil)
@@ -165,7 +171,15 @@ else:
   when useStackMaskHack:
     proc pthread_attr_setstack(attr: var PthreadAttr, stackaddr: pointer,
                                size: int): cint {.
-      importc: "pthread_attr_setstack", header: "<pthread.h>".}
+      importc: "pthread_attr_setstack", header: pthreadh.}
+
+  type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
+  proc cpusetZero(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
+  proc cpusetIncl(cpu: cint; s: var CpuSet) {.
+    importc: "CPU_SET", header: schedh.}
+
+  proc setAffinity(thread: SysThread; setsize: csize; s: var CpuSet) {.
+    importc: "pthread_setaffinity_np", header: pthreadh.}
 
 const
   emulatedThreadVars = compileOption("tlsEmulation")
@@ -378,6 +392,13 @@ when hostOS == "windows":
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
+
+  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+    ## pins a thread to a `CPU`:idx:. In other words sets a
+    ## thread's `affinity`:idx:. If you don't know what this means, you
+    ## shouldn't use this proc.
+    setThreadAffinityMask(t.sys, uint(1 shl cpu))
+
 else:
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread.},
@@ -393,6 +414,15 @@ else:
     pthread_attr_setstacksize(a, ThreadStackSize)
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
+
+  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+    ## pins a thread to a `CPU`:idx:. In other words sets a
+    ## thread's `affinity`:idx:. If you don't know what this means, you
+    ## shouldn't use this proc.
+    var s {.noinit.}: CpuSet
+    cpusetZero(s)
+    cpusetIncl(cpu.cint, s)
+    setAffinity(t.sys, sizeof(s), s)
 
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.
