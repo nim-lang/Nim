@@ -920,7 +920,7 @@ else:
   proc update(fd: AsyncFD, events: set[Event]) =
     let p = getGlobalDispatcher()
     assert fd.SocketHandle in p.selector
-    discard p.selector.update(fd.SocketHandle, events)
+    p.selector.update(fd.SocketHandle, events)
 
   proc register*(fd: AsyncFD) =
     let p = getGlobalDispatcher()
