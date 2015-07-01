@@ -821,6 +821,24 @@ proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
       result = await client.request(redirectTo, httpGET)
       lastUrl = redirectTo
 
+proc post*(client: AsyncHttpClient, url: string, body = "", multipart: MultipartData = nil): Future[Response] {.async.} =
+  ## Connects to the hostname specified by the URL and performs a POST request.
+  ##
+  ## This procedure will follow redirects up to a maximum number of redirects
+  ## specified in ``newAsyncHttpClient``.
+  let (mpHeader, mpBody) = format(multipart)
+
+  template withNewLine(x): expr =
+    if x.len > 0 and not x.endsWith("\c\L"):
+      x & "\c\L"
+    else:
+      x
+  var xb = mpBody.withNewLine() & body
+  client.headers["Content-Type"] = mpHeader.split(": ")[1]
+  client.headers["Content-Length"] = $len(xb)
+
+  result = await client.request(url, httpPOST, xb)
+      
 when not defined(testing) and isMainModule:
   when true:
     # Async
