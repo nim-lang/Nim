@@ -753,7 +753,7 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 1 .. <len(n):
       let x = n.sons[i]
       track(tracked, x)
-      if sfDiscriminant in x.sons[0].sym.flags:
+      if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards, oldFacts)
   of nkPragmaBlock:
