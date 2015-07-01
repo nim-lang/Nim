@@ -2156,7 +2156,9 @@ proc nice*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc pathconf*(a1: cstring, a2: cint): int {.importc, header: "<unistd.h>".}
 
 proc pause*(): cint {.importc, header: "<unistd.h>".}
+proc pclose*(a: File): cint {.importc, header: "<stdio.h>".}
 proc pipe*(a: array[0..1, cint]): cint {.importc, header: "<unistd.h>".}
+proc popen*(a1, a2: cstring): File {.importc, header: "<stdio.h>".}
 proc pread*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
   importc, header: "<unistd.h>".}
 proc pwrite*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
