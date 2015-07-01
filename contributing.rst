@@ -135,6 +135,45 @@ overloading so for routines the latter variant is better.
 pragma in the manual.
 
 
+Documentation
+=============
+
+When contributing new procedures, be sure to add documentation, especially if
+the procedure is exported from the module. Documentation begins on the line
+following the ``proc`` definition, and is prefixed by ``##`` on each line.
+
+Code examples are also encouraged. The RST syntax Nim uses has a special syntax
+for including examples.
+
+.. code-block:: nim
+
+  proc someproc*(): string =
+    ## returns "something"
+    ##
+    ## .. code-block:: nim
+    ##
+    ##  echo someproc() # "something"
+    result = "something" # single-hash comments do not produce documentation
+
+The ``.. code-block:: nim`` followed by a newline and an indentation instructs the 
+``nim doc`` and ``nim doc2`` commands to produce syntax-highlited example code with 
+the documentation.
+
+When forward declaration is used, the documentation should be included with the
+first appearance of the proc.
+
+.. code-block:: nim
+
+  proc hello*(): string
+    ## Documentation goes here
+  proc nothing() = discard
+  proc hello*(): string =
+    ## This documentation is ignored
+    echo "hello"
+
+Capitalization of the first letter on the first line is optional. As a general
+rule, if the documentation begins with a full sentence, capitalize it;
+otherwise, a lowercase letter is preferred.
 
 The Git stuff
 =============
