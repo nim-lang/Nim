@@ -789,7 +789,7 @@ proc writeContext(lastinfo: TLineInfo) =
                        PosFormat % [toMsgFilename(msgContext[i]),
                                     coordToStr(msgContext[i].line),
                                     coordToStr(msgContext[i].col+1)],
-                       styleDim,
+                       resetStyle,
                        getMessageStr(errInstantiationFrom, ""))
     info = msgContext[i]
 
