@@ -158,15 +158,11 @@ proc sumGeneric(t: PType): int =
       t = t.sons[0]
       inc result
       inc isvar
-    of tyTypeDesc:
-      t = t.lastSon
-      if t.kind == tyEmpty: break
-      inc result
     of tyGenericInvocation, tyTuple:
       result += ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
-    of tyGenericParam, tyExpr, tyStatic, tyStmt: break
+    of tyGenericParam, tyExpr, tyStatic, tyStmt, tyTypeDesc: break
     of tyBool, tyChar, tyEnum, tyObject, tyProc, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
@@ -1522,7 +1518,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
       n.sons[a].typ = n.sons[a].sons[1].typ
       var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
-                                n.sons[a].sons[1], nOrig.sons[a].sons[1])
+                                n.sons[a].sons[1], n.sons[a].sons[1])
       if arg == nil:
         m.state = csNoMatch
         return
