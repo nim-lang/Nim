@@ -263,8 +263,17 @@ proc connect*[T](ftp: FtpBase[T]) =
   else:
     {.fatal: "Incorrect socket instantiation".}
 
-  # TODO: Handle 120? or let user handle it.
+  var reply = ftp.expectReply()
+  if reply.startsWith("120"):
+    # 120 Service ready in nnn minutes.
+    # We wait until we receive 220.
+    reply = ftp.expectReply()
+
+  # Handle 220 messages from the server
   assertReply ftp.expectReply(), "220"
+  while reply[3] == "-": # handle multiline 220 message
+    assertReply ftp.expectReply(), "220"
+    reply = ftp.expectReply()
 
   if ftp.user != "":
     assertReply(ftp.send("USER " & ftp.user), "230", "331")
