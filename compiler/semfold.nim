@@ -543,7 +543,7 @@ proc foldConv*(n, a: PNode; check = false): PNode =
   of tyFloat..tyFloat64:
     case skipTypes(a.typ, abstractRange).kind
     of tyInt..tyInt64, tyEnum, tyBool, tyChar:
-      result = newFloatNodeT(toFloat(int(getOrdValue(a))), n)
+      result = newFloatNodeT(toBiggestFloat(getOrdValue(a)), n)
     else:
       result = a
       result.typ = n.typ
