@@ -991,6 +991,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mIdentToStr: genUnaryABC(c, n, dest, opcIdentToStr)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
   of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
+  of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
   of mNLineInfo: genUnaryABC(c, n, dest, opcNLineInfo)
   of mNHint:
     unused(n, dest)

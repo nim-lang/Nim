@@ -587,7 +587,8 @@ type
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
     mNBindSym, mLocals, mNCallSite,
-    mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError,
+    mEqIdent, mEqNimrodNode, mSameNodeType,
+    mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym
 
 # things that we can evaluate safely at compile time, even if not asked for it:
