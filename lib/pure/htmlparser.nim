@@ -19,7 +19,7 @@
 ##
 ## Every tag in the resulting tree is in lower case.
 ##
-## **Note:** The resulting ``PXmlNode`` already uses the ``clientData`` field,
+## **Note:** The resulting ``XmlNode`` already uses the ``clientData`` field,
 ## so it cannot be used by clients of this library.
 ##
 ## Example: Transforming hyperlinks
@@ -32,8 +32,8 @@
 ## .. code-block:: Nim
 ##
 ##   import htmlparser
-##   import xmltree  # To use '$' for PXmlNode
-##   import strtabs  # To access PXmlAttributes
+##   import xmltree  # To use '$' for XmlNode
+##   import strtabs  # To access XmlAttributes
 ##   import os       # To use splitFile
 ##   import strutils # To use cmpIgnoreCase
 ##
