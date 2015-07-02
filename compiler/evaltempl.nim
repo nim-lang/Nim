@@ -69,7 +69,9 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
     var arg = if i < a: n.sons[i] else: copyTree(s.typ.n.sons[i].sym.ast)
     if arg == nil or arg.kind == nkEmpty:
       localError(n.info, errWrongNumberOfArguments)
-    addSon(result, arg)
+      addSon(result, ast.emptyNode)
+    else:
+      addSon(result, arg)
 
 var evalTemplateCounter* = 0
   # to prevent endless recursion in templates instantiation
