@@ -10,7 +10,7 @@ type
 
 
 when isMainModule:
-  #  doAssert FBar.new() == 3
+  doAssert FBar.new() == 3
 
   proc new(_: typedesc[LFoo]): int = 0
   proc new[T](_: typedesc[T]): int = 1
