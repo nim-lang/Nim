@@ -1512,7 +1512,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
   while a < n.len:
     if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
-      discard
+      if container.isNil:
+        container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
+        setSon(m.call, formal.position + 1, container)
+      else:
+        incrIndexType(container.typ)
+      addSon(container, n.sons[a])
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
