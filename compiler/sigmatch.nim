@@ -1589,7 +1589,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.state = csNoMatch
           return
         m.baseTypeMatch = false
-        n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
+        if formal.typ.kind == tyVarargs and formal.typ.sons[0].kind == tyExpr and
+          m.calleeSym.magic notin SpecialSemMagics: # This is just as incorrect as before
+          n.sons[a].typ = formal.typ.sons[0]
+        else:
+          n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
         var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                   n.sons[a], nOrig.sons[a])
         if arg == nil:
