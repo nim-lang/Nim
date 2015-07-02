@@ -708,6 +708,8 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = node.strVal
   of nnkSym:
     result = $node.symbol
+  of nnkOpenSymChoice, nnkClosedSymChoice:
+    result = $node[0]
   else:
     badNodeKind node.kind, "$"
 
