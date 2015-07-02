@@ -395,7 +395,7 @@ proc rangeToStr(n: PNode): string =
 
 const
   typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty",
-    "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc",
+    "Array Constructor [$1]", "nil", "untyped", "typed", "typeDesc",
     "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
@@ -481,7 +481,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
     internalAssert t.len == 0
-    result = "expr"
+    result = "untyped"
   of tyFromExpr, tyFieldAccessor:
     result = renderTree(t.n)
   of tyArray:

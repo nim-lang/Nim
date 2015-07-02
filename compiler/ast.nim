@@ -522,6 +522,9 @@ const
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
+  tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
+    # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
+    # deprecated and this mess can be cleaned up.
   skError* = skUnknown
 
   # type flags that are essential for type equality:
@@ -618,7 +621,7 @@ const
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf,
-    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
+    mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
 
 type
   PNode* = ref TNode

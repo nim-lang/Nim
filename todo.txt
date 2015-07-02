@@ -1,6 +1,8 @@
 version 0.11.4
 ==============
 
+- document special cased varargs[untyped] and varargs[typed]
+
 - The remaining bugs of the lambda lifting pass that is responsible to enable
   closures and closure iterators need to be fixed.
 - ``concept`` needs to be refined, a nice name for the feature is not enough.
@@ -10,7 +12,6 @@ version 0.11.4
 
 - Finish the implementation of the 'parallel' statement.
 - Deprecate ``immediate`` for templates and macros
-- special case varargs[untyped] and varargs[typed]
 - make 'nil' work for 'add':
   - resizeString
   - incrSeq

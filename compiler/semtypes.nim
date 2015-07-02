@@ -1326,8 +1326,12 @@ proc processMagicType(c: PContext, m: PSym) =
     rawAddSon(m.typ, newTypeS(tyEmpty, c))
   of mIntSetBaseType: setMagicType(m, tyRange, intSize)
   of mNil: setMagicType(m, tyNil, ptrSize)
-  of mExpr: setMagicType(m, tyExpr, 0)
-  of mStmt: setMagicType(m, tyStmt, 0)
+  of mExpr:
+    setMagicType(m, tyExpr, 0)
+    if m.name.s == "expr": m.typ.flags.incl tfOldSchoolExprStmt
+  of mStmt:
+    setMagicType(m, tyStmt, 0)
+    if m.name.s == "stmt": m.typ.flags.incl tfOldSchoolExprStmt
   of mTypeDesc:
     setMagicType(m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))

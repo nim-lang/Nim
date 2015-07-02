@@ -2302,27 +2302,33 @@ elif hasAlloc:
       inc(i)
   {.pop.}
 
-proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-  benign, sideEffect.}
-  ## Writes and flushes the parameters to the standard output.
-  ##
-  ## Special built-in that takes a variable number of arguments. Each argument
-  ## is converted to a string via ``$``, so it works for user-defined
-  ## types that have an overloaded ``$`` operator.
-  ## It is roughly equivalent to ``writeLine(stdout, x); flushFile(stdout)``, but
-  ## available for the JavaScript target too.
-  ##
-  ## Unlike other IO operations this is guaranteed to be thread-safe as
-  ## ``echo`` is very often used for debugging convenience. If you want to use
-  ## ``echo`` inside a `proc without side effects
-  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
-  ## instead.
+when defined(nimvarargstyped):
+  proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+    benign, sideEffect.}
+    ## Writes and flushes the parameters to the standard output.
+    ##
+    ## Special built-in that takes a variable number of arguments. Each argument
+    ## is converted to a string via ``$``, so it works for user-defined
+    ## types that have an overloaded ``$`` operator.
+    ## It is roughly equivalent to ``writeLine(stdout, x); flushFile(stdout)``, but
+    ## available for the JavaScript target too.
+    ##
+    ## Unlike other IO operations this is guaranteed to be thread-safe as
+    ## ``echo`` is very often used for debugging convenience. If you want to use
+    ## ``echo`` inside a `proc without side effects
+    ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
+    ## instead.
 
-proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
-                                           tags: [], raises: [].}
-  ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
-  ## pretends to be free of side effects, so that it can be used for debugging
-  ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
+  proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
+                                            tags: [], raises: [].}
+    ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
+    ## pretends to be free of side effects, so that it can be used for debugging
+    ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
+else:
+  proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+    benign, sideEffect.}
+  proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
+                                             tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field

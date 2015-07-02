@@ -1,7 +1,7 @@
 discard """
   exitcode: 0
 """
-import mgenericprocmatcher
+import moverloading_typedesc
 import tables
 
 type
@@ -10,7 +10,7 @@ type
 
 
 when isMainModule:
-  doAssert FBar.new() == 3
+  #  doAssert FBar.new() == 3
 
   proc new(_: typedesc[LFoo]): int = 0
   proc new[T](_: typedesc[T]): int = 1
