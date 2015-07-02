@@ -148,7 +148,7 @@ syntax for including examples.
 .. code-block:: nim
 
   proc someproc*(): string =
-    ## returns "something"
+    ## Return "something"
     ##
     ## .. code-block:: nim
     ##
@@ -165,15 +165,29 @@ first appearance of the proc.
 .. code-block:: nim
 
   proc hello*(): string
-    ## Documentation goes here
+    ## Put documentation here
   proc nothing() = discard
   proc hello*(): string =
-    ## This documentation is ignored
+    ## Ignore this
     echo "hello"
 
-Capitalization of the first letter on the first line is optional. As a general
-rule, if the documentation begins with a full sentence, capitalize it;
-otherwise, a lowercase letter is preferred.
+The preferred documentation style is to begin with a capital letter and use
+the imperative (command) form. That is, between:
+
+.. code-block:: nim
+
+  proc hello*(): string =
+    # Return "hello"
+    result = "hello"
+or
+
+.. code-block:: nim
+
+  proc hello*(): string =
+    # says hello
+    result = "hello"
+  
+the first is preferred.
 
 The Git stuff
 =============
