@@ -37,12 +37,24 @@ type
     proc (total, progress: BiggestInt, speed: float):
       Future[void] {.closure, gcsafe.}
 
-proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] =
-  result = ftp.csock.recvLine()
+const multiLineLimit = 10000
+
+proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
+  result = await ftp.csock.recvLine()
+  var count = 0
+  while result[3] == '-':
+    ## Multi-line reply.
+    let line = await ftp.csock.recvLine()
+    result.add("\n" & line)
+    count.inc()
+    if count >= multiLineLimit:
+      raise newException(ReplyError, "Reached maximum multi-line reply count.")
 
 proc send*(ftp: AsyncFtpClient, m: string): Future[TaintedString] {.async.} =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
+  ##
+  ## **Note:** The server may return multiple lines of coded replies.
   await ftp.csock.send(m & "\c\L")
   return await ftp.expectReply()
 
@@ -79,6 +91,8 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
     # 120 Service ready in nnn minutes.
     # We wait until we receive 220.
     reply = await ftp.expectReply()
+
+  # Handle 220 messages from the server
   assertReply(reply, "220")
 
   if ftp.user != "":

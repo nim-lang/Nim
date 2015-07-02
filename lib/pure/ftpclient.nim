@@ -107,6 +107,8 @@ type
   EInvalidReply: ReplyError, EFTP: FTPError
 ].}
 
+const multiLineLimit = 10000
+
 proc ftpClient*(address: string, port = Port(21),
                 user, pass = ""): FtpClient =
   ## Create a ``FtpClient`` object.
@@ -135,10 +137,24 @@ proc expectReply[T](ftp: FtpBase[T]): TaintedString =
       ftp.csock.readLine(result)
     else:
       discard ftp.csock.readLine(result)
+    var count = 0
+    while result[3] == '-':
+      ## Multi-line reply.
+      var line = TaintedString""
+      when T is Socket:
+        ftp.csock.readLine(line)
+      else:
+        discard ftp.csock.readLine(line)
+      result.add("\n" & line)
+      count.inc()
+      if count >= multiLineLimit:
+        raise newException(ReplyError, "Reached maximum multi-line reply count.")
 
 proc send*[T](ftp: FtpBase[T], m: string): TaintedString =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
+  ##
+  ## **Note:** The server may return multiple lines of coded replies.
   blockingOperation(ftp.csock):
     ftp.csock.send(m & "\c\L")
   return ftp.expectReply()
@@ -263,7 +279,13 @@ proc connect*[T](ftp: FtpBase[T]) =
   else:
     {.fatal: "Incorrect socket instantiation".}
 
-  # TODO: Handle 120? or let user handle it.
+  var reply = ftp.expectReply()
+  if reply.startsWith("120"):
+    # 120 Service ready in nnn minutes.
+    # We wait until we receive 220.
+    reply = ftp.expectReply()
+
+  # Handle 220 messages from the server
   assertReply ftp.expectReply(), "220"
 
   if ftp.user != "":
