@@ -629,7 +629,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   result = t
   if result.kind == tyGenericInvocation:
     result = result.sons[0]
-  while result.kind in {tyGenericInst, tyGenericBody}:
+  while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr}:
     result = lastSon(result)
 
 proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
@@ -651,7 +651,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
     if base.isNil:
       localError(n.info, errIllegalRecursionInTypeX, "object")
     else:
-      var concreteBase = skipGenericInvocation(base).skipTypes(skipPtrs)
+      var concreteBase = skipGenericInvocation(base)
       if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
         addInheritedFields(c, check, pos, concreteBase)
       else:
