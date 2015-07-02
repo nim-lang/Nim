@@ -1085,6 +1085,7 @@ proc semTypeExpr(c: PContext, n: PNode): PType =
     result = n.typ.base
   else:
     localError(n.info, errTypeExpected, n.renderTree)
+    result = errorType(c)
 
 proc freshType(res, prev: PType): PType {.inline.} =
   if prev.isNil:
