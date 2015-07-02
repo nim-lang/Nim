@@ -1884,25 +1884,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
       close(f)
     else: raiseOSError(osLastError())
 
-proc expandTilde*(path: string): string {.tags: [ReadEnvEffect].}
-
-proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
-  ## Searches for `exe` in the current working directory and then
-  ## in directories listed in the ``PATH`` environment variable.
-  ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
-  ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
-  result = addFileExt(exe, os.ExeExt)
-  if existsFile(result): return
-  var path = string(os.getEnv("PATH"))
-  for candidate in split(path, PathSep):
-    when defined(windows):
-      var x = candidate / result
-    else:
-      var x = expandTilde(candidate) / result
-    if existsFile(x): return x
-  result = ""
-
-proc expandTilde*(path: string): string =
+proc expandTilde*(path: string): string {.tags: [ReadEnvEffect].} =
   ## Expands a path starting with ``~/`` to a full path.
   ##
   ## If `path` starts with the tilde character and is followed by `/` or `\\`
@@ -1921,6 +1903,22 @@ proc expandTilde*(path: string): string =
     result = getHomeDir() / path[2..len(path)-1]
   else:
     result = path
+
+proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
+  ## Searches for `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable.
+  ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
+  ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
+  result = addFileExt(exe, os.ExeExt)
+  if existsFile(result): return
+  var path = string(os.getEnv("PATH"))
+  for candidate in split(path, PathSep):
+    when defined(windows):
+      var x = candidate / result
+    else:
+      var x = expandTilde(candidate) / result
+    if existsFile(x): return x
+  result = ""
 
 when defined(Windows):
   type
