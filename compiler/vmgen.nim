@@ -169,8 +169,11 @@ proc getSlotKind(t: PType): TSlotKind =
 const
   HighRegisterPressure = 40
 
-proc getTemp(c: PCtx; typ: PType): TRegister =
-  let c = c.prc
+proc bestEffort(c: PCtx): TLineInfo =
+  (if c.prc == nil: c.module.info else: c.prc.sym.info)
+
+proc getTemp(cc: PCtx; typ: PType): TRegister =
+  let c = cc.prc
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
   # for e.g. mNAdd[Multiple]:
@@ -187,7 +190,7 @@ proc getTemp(c: PCtx; typ: PType): TRegister =
         c.slots[i] = (inUse: true, kind: k)
         return TRegister(i)
   if c.maxSlots >= high(TRegister):
-    internalError("cannot generate code; too many registers required")
+    globalError(cc.bestEffort, "VM problem: too many registers required")
   result = TRegister(c.maxSlots)
   c.slots[c.maxSlots] = (inUse: true, kind: k)
   inc c.maxSlots
@@ -196,9 +199,9 @@ proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
   if c.slots[r].kind in {slotSomeTemp..slotTempComplex}: c.slots[r].inUse = false
 
-proc getTempRange(c: PCtx; n: int; kind: TSlotKind): TRegister =
+proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
-  let c = c.prc
+  let c = cc.prc
   if c.maxSlots >= HighRegisterPressure or c.maxSlots+n >= high(TRegister):
     for i in 0 .. c.maxSlots-n:
       if not c.slots[i].inUse:
@@ -209,7 +212,7 @@ proc getTempRange(c: PCtx; n: int; kind: TSlotKind): TRegister =
           for k in result .. result+n-1: c.slots[k] = (inUse: true, kind: kind)
           return
   if c.maxSlots+n >= high(TRegister):
-    internalError("cannot generate code; too many registers required")
+    globalError(cc.bestEffort, "VM problem: too many registers required")
   result = TRegister(c.maxSlots)
   inc c.maxSlots, n
   for k in result .. result+n-1: c.slots[k] = (inUse: true, kind: kind)
@@ -305,7 +308,7 @@ proc genBreak(c: PCtx; n: PNode) =
       if c.prc.blocks[i].label == n.sons[0].sym:
         c.prc.blocks[i].fixups.add L1
         return
-    internalError(n.info, "cannot find 'break' target")
+    globalError(n.info, errGenerated, "VM problem: cannot find 'break' target")
   else:
     c.prc.blocks[c.prc.blocks.high].fixups.add L1
 
@@ -393,7 +396,7 @@ proc genLiteral(c: PCtx; n: PNode): int =
 proc unused(n: PNode; x: TDest) {.inline.} =
   if x >= 0:
     #debug(n)
-    internalError(n.info, "not unused")
+    globalError(n.info, "not unused")
 
 proc genCase(c: PCtx; n: PNode; dest: var TDest) =
   #  if (!expr1) goto L1;
@@ -509,10 +512,10 @@ proc needsAsgnPatch(n: PNode): bool =
 
 proc genField(n: PNode): TRegister =
   if n.kind != nkSym or n.sym.kind != skField:
-    internalError(n.info, "no field symbol")
+    globalError(n.info, "no field symbol")
   let s = n.sym
   if s.position > high(result):
-      internalError(n.info,
+    globalError(n.info,
         "too large offset! cannot generate code for: " & s.name.s)
   result = s.position
 
@@ -983,7 +986,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       if dest < 0: dest = c.getTemp(n.typ)
       c.gABx(n, opcNBindSym, dest, idx)
     else:
-      internalError(n.info, "invalid bindSym usage")
+      localError(n.info, "invalid bindSym usage")
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
   of mIdentToStr: genUnaryABC(c, n, dest, opcIdentToStr)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
@@ -1025,7 +1028,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       globalError(n.info, "expandToAst requires a call expression")
   else:
     # mGCref, mGCunref,
-    internalError(n.info, "cannot generate code for: " & $m)
+    globalError(n.info, "cannot generate code for: " & $m)
 
 proc genMarshalLoad(c: PCtx, n: PNode, dest: var TDest) =
   ## Signature: proc to*[T](data: string): T
@@ -1135,7 +1138,7 @@ proc setSlot(c: PCtx; v: PSym) =
   if v.position == 0:
     if c.prc.maxSlots == 0: c.prc.maxSlots = 1
     if c.prc.maxSlots >= high(TRegister):
-      internalError(v.info, "cannot generate code; too many registers required")
+      globalError(v.info, "cannot generate code; too many registers required")
     v.position = c.prc.maxSlots
     c.prc.slots[v.position] = (inUse: true,
         kind: if v.kind == skLet: slotFixedLet else: slotFixedVar)
@@ -1364,7 +1367,7 @@ proc getNullValueAux(obj: PNode, result: PNode) =
       getNullValueAux(lastSon(obj.sons[i]), result)
   of nkSym:
     addSon(result, getNullValue(obj.sym.typ, result.info))
-  else: internalError(result.info, "getNullValueAux")
+  else: globalError(result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo): PNode =
   var t = skipTypes(typ, abstractRange-{tyTypeDesc})
@@ -1406,7 +1409,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  else: internalError(info, "getNullValue: " & $t.kind)
+  else:
+    globalError(info, "cannot create null element for: " & $t.kind)
 
 proc ldNullOpcode(t: PType): TOpcode =
   if fitsRegister(t): opcLdNullReg else: opcLdNull
@@ -1517,7 +1521,7 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
                           dest, idx, tmp)
       c.freeTemp(tmp)
     else:
-      internalError(n.info, "invalid object constructor")
+      globalError(n.info, "invalid object constructor")
 
 proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
@@ -1592,7 +1596,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     of skType:
       genTypeLit(c, s.typ, dest)
     else:
-      internalError(n.info, "cannot generate code for: " & s.name.s)
+      globalError(n.info, errGenerated, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
     if n.sons[0].kind == nkSym:
       let s = n.sons[0].sym
@@ -1696,7 +1700,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       globalError(n.info, errGenerated, "VM is not allowed to 'cast'")
   else:
-    internalError n.info, "cannot generate VM code for " & n.renderTree
+    globalError(n.info, errGenerated, "cannot generate VM code for " & $n)
 
 proc removeLastEof(c: PCtx) =
   let last = c.code.len-1
@@ -1712,7 +1716,8 @@ proc genStmt*(c: PCtx; n: PNode): int =
   var d: TDest = -1
   c.gen(n, d)
   c.gABC(n, opcEof)
-  if d >= 0: internalError(n.info, "some destination set")
+  if d >= 0:
+    globalError(n.info, errGenerated, "VM problem: dest register is set")
 
 proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   c.removeLastEof
@@ -1720,7 +1725,8 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
   var d: TDest = -1
   c.gen(n, d)
   if d < 0:
-    if requiresValue: internalError(n.info, "no destination set")
+    if requiresValue:
+      globalError(n.info, errGenerated, "VM problem: dest register is not set")
     d = 0
   c.gABC(n, opcEof, d)
 
