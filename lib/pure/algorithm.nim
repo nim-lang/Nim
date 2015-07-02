@@ -361,4 +361,10 @@ when isMainModule:
   assert srt3.isSorted(cmp) == true
   var srtseq = newSeq[int]()
   assert srtseq.isSorted(cmp) == true
+  # Tests for reversed
+  var arr1 = @[0,1,2,3,4]
+  assert arr1.reversed() == @[4,3,2,1,0]
+  for i in 0 .. high(arr1):
+    assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
+    assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
 
