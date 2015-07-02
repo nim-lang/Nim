@@ -337,7 +337,7 @@ proc mainCommand* =
     wantMainModule()
     commandScan()
     msgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
-  of "i":
+  of "secret":
     gCmd = cmdInteractive
     commandInteractive()
   of "e":
