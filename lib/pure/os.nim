@@ -1019,10 +1019,10 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
       let d = newWideCString(dest)
       if moveFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError())
     else:
-      if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError())
+      if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError(),$strerror(errno))
   else:
     if c_rename(source, dest) != 0'i32:
-      raise newException(OSError, $strerror(errno))
+      raiseOSError(osLastError(), $strerror(errno))
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -1057,7 +1057,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} 
           raiseOSError(osLastError())
   else:
     if c_remove(file) != 0'i32 and errno != ENOENT:
-      raise newException(OSError, $strerror(errno))
+      raiseOSError(osLastError(), $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect].} =

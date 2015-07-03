@@ -294,7 +294,7 @@ proc getSocketError*(socket: Socket): OSErrorCode =
   if result == 0.OSErrorCode:
     result = socket.lastError
   if result == 0.OSErrorCode:
-    raise newException(OSError, "No valid socket error code available")
+    raiseOSError(result, "No valid socket error code available")
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode) =
@@ -332,10 +332,8 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           else:
             let errStr = $ErrErrorString(sslErr, nil)
             raiseSSLError(errStr & ": " & errStr)
-          let osMsg = osErrorMsg osLastError()
-          if osMsg != "":
-            errStr.add ". The OS reports: " & osMsg
-          raise newException(OSError, errStr)
+          let osErr = osLastError()
+          raiseOSError(osErr, errStr)
         of SSL_ERROR_SSL:
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
@@ -921,7 +919,7 @@ proc send*(socket: Socket, data: string,
     socketError(socket, lastError = lastError)
 
   if sent != data.len:
-    raise newException(OSError, "Could not send all data.")
+    raiseOSError(osLastError(), "Could not send all data.")
 
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
   ## Safe alternative to ``send``. Does not raise an EOS when an error occurs,

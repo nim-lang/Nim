@@ -441,7 +441,7 @@ template gaiNim(a, p, h, list: expr): stmt =
       when defined(windows):
         raiseOSError(osLastError())
       else:
-        raise newException(OSError, $gai_strerror(gaiResult))
+        raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
 proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
@@ -671,7 +671,7 @@ proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
     var s = winlean.getservbyname(name, proto)
   else:
     var s = posix.getservbyname(name, proto)
-  if s == nil: raise newException(OSError, "Service not found.")
+  if s == nil: raiseOSError(osLastError(), "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = Port(s.s_port)
@@ -687,7 +687,7 @@ proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].}
     var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
     var s = posix.getservbyport(ze(int16(port)).cint, proto)
-  if s == nil: raise newException(OSError, "Service not found.")
+  if s == nil: raiseOSError(osLastError(), "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = Port(s.s_port)
@@ -706,7 +706,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen, 
                                 cint(posix.AF_INET))
     if s == nil:
-      raise newException(OSError, $hstrerror(h_errno))
+      raiseOSError(osLastError(), $hstrerror(h_errno))
   
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
@@ -718,7 +718,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     elif s.h_addrtype == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
-      raise newException(OSError, "unknown h_addrtype")
+      raiseOSError(osLastError(), "unknown h_addrtype")
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
@@ -739,7 +739,7 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     elif s.h_addrtype == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
-      raise newException(OSError, "unknown h_addrtype")
+      raiseOSError(osLastError(), "unknown h_addrtype")
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
@@ -1594,7 +1594,7 @@ proc send*(socket: Socket, data: string) {.tags: [WriteIOEffect].} =
     raiseOSError(osLastError())
 
   if sent != data.len:
-    raise newException(OSError, "Could not send all data.")
+    raiseOSError(osLastError(), "Could not send all data.")
 
 proc sendAsync*(socket: Socket, data: string): int {.tags: [WriteIOEffect].} =
   ## sends data to a non-blocking socket.
