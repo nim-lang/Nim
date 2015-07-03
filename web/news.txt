@@ -34,6 +34,12 @@ News
     renamed to ``sockType``. The param ``af`` in the ``connect`` procs was
     removed. This affects ``asyncnet``, ``asyncdispatch``, ``net``, and
     ``rawsockets``.
+  - ``varargs[typed]`` and ``varargs[untyped]`` have been refined and now work
+    as expected. However ``varargs[untyped]`` is not an alias anymore for
+    ``varargs[expr]``. So if your code breaks for ``varargs[untyped]``, use
+    ``varargs[expr]`` instead. The same applies to ``varargs[typed]`` vs
+    ``varargs[stmt]``.
+
 
   Library additions
   -----------------
