@@ -128,6 +128,18 @@ proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdLinePass,
   of wOff: gOptions = gOptions - op
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
+proc processOnOffSwitchOrList(op: TOptions, arg: string, pass: TCmdLinePass,
+                              info: TLineInfo): bool =
+  result = false
+  case whichKeyword(arg)
+  of wOn: gOptions = gOptions + op
+  of wOff: gOptions = gOptions - op
+  else:
+    if arg == "list":
+      result = true
+    else:
+      localError(info, errOnOffOrListExpectedButXFound, arg)
+
 proc processOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdLinePass,
                          info: TLineInfo) =
   case whichKeyword(arg)
@@ -140,6 +152,10 @@ proc expectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
 
 proc expectNoArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if arg != "": localError(info, errCmdLineNoArgExpected, addPrefix(switch))
+
+var
+  enableNotes: TNoteKinds
+  disableNotes: TNoteKinds
 
 proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string) =
@@ -162,8 +178,12 @@ proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(info, "unknown warning: " & id)
   case whichKeyword(substr(arg, i))
-  of wOn: incl(gNotes, n)
-  of wOff: excl(gNotes, n)
+  of wOn:
+    incl(gNotes, n)
+    incl(enableNotes, n)
+  of wOff:
+    excl(gNotes, n)
+    incl(disableNotes, n)
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processCompile(filename: string) =
@@ -374,10 +394,12 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       gSelectedGC = gcNone
       defineSymbol("nogc")
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
-  of "warnings", "w": processOnOffSwitch({optWarns}, arg, pass, info)
+  of "warnings", "w":
+    if processOnOffSwitchOrList({optWarns}, arg, pass, info): listWarnings()
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch)
-  of "hints": processOnOffSwitch({optHints}, arg, pass, info)
+  of "hints":
+    if processOnOffSwitchOrList({optHints}, arg, pass, info): listHints()
   of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)
@@ -508,6 +530,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "verbosity":
     expectArg(switch, arg, pass, info)
     gVerbosity = parseInt(arg)
+    gNotes = NotesVerbosity[gVerbosity]
+    incl(gNotes, enableNotes)
+    excl(gNotes, disableNotes)
   of "parallelbuild":
     expectArg(switch, arg, pass, info)
     gNumberOfProcessors = parseInt(arg)

@@ -59,7 +59,7 @@ proc handleCmdLine() =
     extccomp.initVars()
     processCmdLine(passCmd2, "")
     mainCommand()
-    if gVerbosity >= 2: echo(GC_getStatistics())
+    if optHints in gOptions and hintGCStats in gNotes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
       when hasTinyCBackend:

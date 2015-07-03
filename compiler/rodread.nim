@@ -838,7 +838,7 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
         if res != rrNone:
           result = rrModDeps
           # we cannot break here, because of side-effects of `checkDep`
-  if result != rrNone and gVerbosity > 0:
+  if result != rrNone:
     rawMessage(hintProcessing, reasonToFrmt[result] % filename)
   if result != rrNone or optForceFullMake in gGlobalOptions:
     # recompilation is necessary:

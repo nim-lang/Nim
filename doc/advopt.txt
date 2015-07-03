@@ -18,9 +18,10 @@ Advanced options:
   --stdout                  output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths           list full paths in messages
-  -w, --warnings:on|off     turn all warnings on|off
+  -w:on|off|list, --warnings:on|off|list
+                            turn all warnings on|off or list all available
   --warning[X]:on|off       turn specific warning X on|off
-  --hints:on|off            turn all hints on|off
+  --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
