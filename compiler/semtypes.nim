@@ -251,19 +251,21 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
   var base: PType
-  result = newOrPrevType(tyArray, prev, c)
   if sonsLen(n) == 3:
     # 3 = length(array indx base)
-    var indx = semArrayIndex(c, n[1])
-    addSonSkipIntLit(result, indx)
-    if indx.kind == tyGenericInst: indx = lastSon(indx)
-    if indx.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
-      if not isOrdinalType(indx):
+    let indx = semArrayIndex(c, n[1])
+    var indxB = indx
+    if indxB.kind == tyGenericInst: indxB = lastSon(indxB)
+    if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
+      if not isOrdinalType(indxB):
         localError(n.sons[1].info, errOrdinalTypeExpected)
-      elif enumHasHoles(indx):
+      elif enumHasHoles(indxB):
         localError(n.sons[1].info, errEnumXHasHoles,
-                   typeToString(indx.skipTypes({tyRange})))
+                   typeToString(indxB.skipTypes({tyRange})))
     base = semTypeNode(c, n.sons[2], nil)
+    # ensure we only construct a tyArray when there was no error (bug #3048):
+    result = newOrPrevType(tyArray, prev, c)
+    addSonSkipIntLit(result, indx)
     addSonSkipIntLit(result, base)
   else:
     localError(n.info, errArrayExpectsTwoTypeParams)
