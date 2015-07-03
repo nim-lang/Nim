@@ -115,6 +115,10 @@ proc hash*(x: char): Hash {.inline.} =
   ## efficient hashing of characters
   result = ord(x)
 
+proc hash*[T: Ordinal](x: T): THash {.inline.} =
+  ## efficient hashing of other ordinal types (e.g. enums)
+  result = ord(x)
+
 proc hash*(x: string): Hash =
   ## efficient hashing of strings
   var h: Hash = 0
