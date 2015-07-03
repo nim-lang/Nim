@@ -9,7 +9,10 @@ TTaa
 TTaa
 true
 true
-nil'''
+nil
+42
+false
+true'''
 
 output: '''test
 2'''
@@ -88,3 +91,16 @@ proc calc(): array[1, int] =
 
 const c = calc()
 echo c[0]
+
+
+# bug #3046
+
+macro sampleMacroInt(i: int): stmt =
+  echo i.intVal
+
+macro sampleMacroBool(b: bool): stmt =
+  echo b.boolVal
+
+sampleMacroInt(42)
+sampleMacroBool(false)
+sampleMacroBool(system.true)

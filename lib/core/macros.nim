@@ -164,7 +164,7 @@ proc kind*(n: NimNode): NimNodeKind {.magic: "NKind", noSideEffect.}
   ## returns the `kind` of the node `n`.
 
 proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
-proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} = n.intVal != 0
+
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
@@ -832,6 +832,10 @@ proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compiletime.} =
       if ident.eqIdent($node[0]): return
     else: discard
   dest.add(ident(ident))
+
+proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
+  if n.kind == nnkIntLit: n.intVal != 0
+  else: n == bindSym"true" # hacky solution for now
 
 when not defined(booting):
   template emit*(e: static[string]): stmt =
