@@ -1260,7 +1260,7 @@ iterator runes*(s: string): Rune =
     fastRuneAt(s, i, result, true)
     yield result
 
-proc runesIn*(s: string): seq[Rune] =
+proc toRunes*(s: string): seq[Rune] =
   ## Obtain a sequence containing the Runes in `s`
   result = newSeq[Rune]()
   for r in s.runes:
