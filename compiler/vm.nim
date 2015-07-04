@@ -692,6 +692,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal =
         ord(exprStructuralEquivalent(regs[rb].node, regs[rc].node,
                                      strictSymEquality=true))
+    of opcSameNodeType:
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.typ.sameTypeOrNil regs[rc].node.typ)
     of opcXor:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal != regs[rc].intVal)
