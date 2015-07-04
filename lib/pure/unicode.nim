@@ -1163,7 +1163,7 @@ proc binarySearch(c: RuneImpl, tab: openArray[RuneImpl], len, stride: int): int 
   return -1
 
 proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
-  ## Converts `c` into lower case. This works for any Unicode character.
+  ## Convert `c` into lower case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`.
   var c = RuneImpl(c)
   var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
@@ -1175,7 +1175,7 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
-  ## Converts `c` into upper case. This works for any Unicode character.
+  ## Convert `c` into upper case. This works for any Unicode character.
   ## If possible, prefer `toLower` over `toUpper`.
   var c = RuneImpl(c)
   var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
@@ -1194,7 +1194,7 @@ proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a lower case Unicode character
+  ## Return true iff `c` is a lower case Unicode character.
   ## If possible, prefer `isLower` over `isUpper`.
   var c = RuneImpl(c)
   # Note: toUpperRanges is correct here!
@@ -1206,7 +1206,7 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a upper case Unicode character
+  ## Return true iff `c` is a upper case Unicode character.
   ## If possible, prefer `isLower` over `isUpper`.
   var c = RuneImpl(c)
   # Note: toLowerRanges is correct here!
@@ -1218,7 +1218,7 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is an *alpha* Unicode character (i.e. a letter)
+  ## Return true iff `c` is an *alpha* Unicode character (i.e., a letter)
   if isUpper(c) or isLower(c):
     return true
   var c = RuneImpl(c)
@@ -1230,17 +1230,18 @@ proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## Return true iff `c` is a Unicode titlecase character
   return isUpper(c) and isLower(c)
 
 proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a Unicode whitespace character
+  ## Return true iff `c` is a Unicode whitespace character
   var c = RuneImpl(c)
   var p = binarySearch(c, spaceRanges, len(spaceRanges) div 2, 2)
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
 
 proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a Unicode combining character
+  ## Return true iff `c` is a Unicode combining character
   var c = RuneImpl(c)
 
   # Optimized to return false immediately for ASCII
@@ -1251,7 +1252,7 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     (c >= 0xfe20 and c <= 0xfe2f))
 
 iterator runes*(s: string): Rune =
-  ## iterates over any unicode character of the string `s`.
+  ## Iterate over any unicode character of the string `s`
   var
     i = 0
     result: Rune
@@ -1259,8 +1260,14 @@ iterator runes*(s: string): Rune =
     fastRuneAt(s, i, result, true)
     yield result
 
+proc runesIn*(s: string): seq[Rune] =
+  ## Obtain a sequence containing the Runes in `s`
+  result = newSeq[Rune]()
+  for r in s.runes:
+    result.add(r)
+
 proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
-  ## compares two UTF8 strings and ignores the case. Returns:
+  ## Compare two UTF8 strings and ignore the case. Returns:
   ##
   ## | 0 iff a == b
   ## | < 0 iff a < b
@@ -1277,7 +1284,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
   result = a.len - b.len
 
 proc reversed*(s: string): string =
-  ## returns the reverse of `s`, interpreting it as unicode characters. Unicode
+  ## Return the reverse of `s`, interpreting it as unicode characters. Unicode
   ## combining characters are correctly interpreted as well:
   ##
   ## .. code-block:: nim
@@ -1322,3 +1329,4 @@ when isMainModule:
   assert reversed("先秦兩漢") == "漢兩秦先"
   assert reversed("as⃝df̅") == "f̅ds⃝a"
   assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
+  assert len(runesIn("as⃝df̅")) == runeLen("as⃝df̅")
