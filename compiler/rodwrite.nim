@@ -21,7 +21,7 @@ import
 type 
   TRodWriter = object of TPassContext
     module: PSym
-    crc: SecureHash
+    hash: SecureHash
     options: TOptions
     defines: string
     inclDeps: string
@@ -39,7 +39,7 @@ type
 
   PRodWriter = ref TRodWriter
 
-proc newRodWriter(crc: SecureHash, module: PSym): PRodWriter
+proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter
 proc addModDep(w: PRodWriter, dep: string)
 proc addInclDep(w: PRodWriter, dep: string)
 proc addInterfaceSym(w: PRodWriter, s: PSym)
@@ -63,7 +63,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
 template filename*(w: PRodWriter): string =
   w.module.filename
 
-proc newRodWriter(crc: SecureHash, module: PSym): PRodWriter = 
+proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter = 
   new(result)
   result.sstack = @[]
   result.tstack = @[]
@@ -71,7 +71,7 @@ proc newRodWriter(crc: SecureHash, module: PSym): PRodWriter =
   initIiTable(result.imports.tab)
   result.index.r = ""
   result.imports.r = ""
-  result.crc = crc
+  result.hash = hash
   result.module = module
   result.defines = getDefines()
   result.options = options.gOptions
@@ -440,9 +440,9 @@ proc writeRod(w: PRodWriter) =
   f.write(orig)
   f.write(rodNL)
   
-  var crc = "CRC:"
-  encodeStr($w.crc, crc)
-  f.write(crc)
+  var hash = "HASH:"
+  encodeStr($w.hash, hash)
+  f.write(hash)
   f.write(rodNL)
   
   var options = "OPTIONS:"
@@ -575,7 +575,7 @@ proc process(c: PPassContext, n: PNode): PNode =
 
 proc myOpen(module: PSym): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(module.fileIdx.getCRC, module)
+  var w = newRodWriter(module.fileIdx.getHash, module)
   rawAddInterfaceSym(w, module)
   result = w
 

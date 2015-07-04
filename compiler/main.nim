@@ -70,7 +70,7 @@ proc commandCompileToC =
     lastCaasCmd = curCaasCmd
     resetCgenModules()
     for i in 0 .. <gMemCacheData.len:
-      gMemCacheData[i].crcStatus = crcCached
+      gMemCacheData[i].hashStatus = hashCached
       gMemCacheData[i].needsRecompile = Maybe
 
       # XXX: clean these global vars
