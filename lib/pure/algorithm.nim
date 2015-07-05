@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -97,7 +97,7 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
   ##
   ##   var arr = @[1,2,3,5,6,7,8,9]
   ##   arr.insert(4, arr.lowerBound(4))
-  ## `after running the above arr is `[1,2,3,4,5,6,7,8,9]`
+  ##   # after running the above arr is `[1,2,3,4,5,6,7,8,9]`
   result = a.low
   var count = a.high - a.low + 1
   var step, pos: int
@@ -160,8 +160,9 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
 proc sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
-  ## Default Nim sort. The sorting is guaranteed to be stable and
-  ## the worst case is guaranteed to be O(n log n).
+  ## Default Nim sort (an implementation of merge sort). The sorting
+  ## is guaranteed to be stable and the worst case is guaranteed to
+  ## be O(n log n).
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of
   ## length ``a.len div 2``. Currently Nim does not support a
@@ -290,7 +291,7 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   ##
   ##     var v = @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   ##     v.nextPermutation()
-  ##     echo v
+  ##     echo v # @[0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
   if x.len < 2:
     return false
 
@@ -319,7 +320,7 @@ proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   ##
   ##     var v = @[0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
   ##     v.prevPermutation()
-  ##     echo v
+  ##     echo v # @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   if x.len < 2:
     return false
 
@@ -367,4 +368,3 @@ when isMainModule:
   for i in 0 .. high(arr1):
     assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
-
