@@ -1006,7 +1006,8 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id < 2000:
+  #if result.id == 93289:
+  #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
 
 var emptyNode* = newNode(nkEmpty)
