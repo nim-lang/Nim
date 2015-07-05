@@ -1369,7 +1369,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:
-      c.p.resultSym.typ = nil
+      c.p.resultSym.typ = errorType(c)
       c.p.owner.typ.sons[0] = nil
     else:
       localError(c.p.resultSym.info, errCannotInferReturnType)
