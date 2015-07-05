@@ -130,6 +130,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let isCall = ord(n.kind in nkCallKinds)
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
+    var base = semTypeNode(c, n.lastSon, nil)
     result = newOrPrevType(kind, prev, c)
     # check every except the last is an object:
     for i in isCall .. n.len-2:
@@ -137,7 +138,6 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
         message n[i].info, errGenerated, "region needs to be an object type"
       addSonSkipIntLit(result, region)
-    var base = semTypeNode(c, n.lastSon, nil)
     addSonSkipIntLit(result, base)
 
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
