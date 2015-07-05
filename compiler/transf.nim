@@ -468,7 +468,11 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   c.breakSyms.add(labl)
   result = newTransNode(nkBlockStmt, n.info, 2)
   result[0] = newSymNode(labl).PTransNode
-
+  if call.typ.isNil:
+    # see bug #3051
+    result[1] = newNode(nkEmpty).PTransNode
+    discard c.breakSyms.pop
+    return result
   if call.typ.kind != tyIter and
     (call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind != skIterator):
