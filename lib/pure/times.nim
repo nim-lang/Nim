@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -240,13 +240,17 @@ proc isLeapYear*(year: int): bool =
     return false
 
 proc getDaysInMonth*(month: Month, year: int): int =
-  ## gets the amount of days in a ``month`` of a ``year``
+  ## Get the number of days in a ``month`` of a ``year``
 
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
   case month
   of mFeb: result = if isLeapYear(year): 29 else: 28
   of mApr, mJun, mSep, mNov: result = 30
   else: result = 31
+
+proc getDaysInYear*(year: int): int =
+  ## Get the number of days in a ``year``
+  result = 365 + (if isLeapYear(year): 1 else: 0)
 
 proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
   ## Calculates how many seconds the interval is worth by adding up
