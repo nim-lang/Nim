@@ -491,7 +491,7 @@ macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
-  ## You can use this as a tool to explore the Nimrod's abstract syntax
+  ## You can use this as a tool to explore the Nim's abstract syntax
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 
