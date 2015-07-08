@@ -190,8 +190,17 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
       while true:
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
-        if not processTopLevelStmt(n, a): break
-
+        if sfNoForward in module.flags:
+          # read everything, no streaming possible
+          var sl = newNodeI(nkStmtList, n.info)
+          sl.add n
+          while true:
+            var n = parseTopLevelStmt(p)
+            if n.kind == nkEmpty: break
+            sl.add n
+          discard processTopLevelStmt(sl, a)
+          break
+        elif not processTopLevelStmt(n, a): break
       closeParsers(p)
       if s.kind != llsStdIn: break
     closePasses(a)
