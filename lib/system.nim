@@ -1039,7 +1039,7 @@ proc `&` * (x: string, y: char): string {.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & 'c' == "abc")
-proc `&` * (x: char, y: char): string {.
+proc `&` * (x, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` and `y` into a string
   ##
