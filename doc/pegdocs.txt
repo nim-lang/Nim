@@ -188,7 +188,7 @@ Check if `s` matches Nim's "while" keyword:
 Exchange (key, val)-pairs: 
 
 .. code-block:: nim
-  "key: val; key2: val2".replace(peg"{\ident} \s* ':' \s* {\ident}", "$2: $1")
+  "key: val; key2: val2".replacef(peg"{\ident} \s* ':' \s* {\ident}", "$2: $1")
 
 Determine the ``#include``'ed files of a C file:
 
