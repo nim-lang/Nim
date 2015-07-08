@@ -39,6 +39,7 @@ News
     ``varargs[expr]``. So if your code breaks for ``varargs[untyped]``, use
     ``varargs[expr]`` instead. The same applies to ``varargs[typed]`` vs
     ``varargs[stmt]``.
+  - ``sequtils.delete`` doesn't take confusing default arguments anymore.
 
 
   Library additions

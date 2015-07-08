@@ -217,7 +217,7 @@ proc keepIf*[T](seq1: var seq[T], pred: proc(item: T): bool {.closure.}) =
       inc(pos)
   setLen(seq1, pos)
 
-proc delete*[T](s: var seq[T], first=0, last=0) =
+proc delete*[T](s: var seq[T]; first, last: Natural) =
   ## Deletes in `s` the items at position `first` .. `last`. This modifies
   ## `s` itself, it does not return a copy.
   ##
