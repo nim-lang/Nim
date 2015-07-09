@@ -295,7 +295,8 @@ proc contains*(s: Selector, key: SelectorKey): bool =
   ## ensures that the keys are equal. File descriptors may not always be
   ## unique especially when an fd is closed and then a new one is opened,
   ## the new one may have the same value.
-  return key.fd in s and s.fds[key.fd] == key
+  when not defined(nimdoc):
+    return key.fd in s and s.fds[key.fd] == key
 
 {.deprecated: [TEvent: Event, PSelectorKey: SelectorKey,
    TReadyInfo: ReadyInfo, PSelector: Selector].}
