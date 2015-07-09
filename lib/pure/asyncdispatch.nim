@@ -333,7 +333,7 @@ when defined(windows) or defined(nimdoc):
       ioPort: Handle
       handles: HashSet[AsyncFD]
 
-    CustomOverlapped = object of TOVERLAPPED
+    CustomOverlapped = object of OVERLAPPED
       data*: CompletionData
 
     PCustomOverlapped* = ref CustomOverlapped
@@ -420,12 +420,12 @@ when defined(windows) or defined(nimdoc):
   var acceptExPtr: pointer = nil
   var getAcceptExSockAddrsPtr: pointer = nil
 
-  proc initPointer(s: SocketHandle, fun: var pointer, guid: var TGUID): bool =
+  proc initPointer(s: SocketHandle, fun: var pointer, guid: var GUID): bool =
     # Ref: https://github.com/powdahound/twisted/blob/master/twisted/internet/iocpreactor/iocpsupport/winsock_pointers.c
     var bytesRet: Dword
     fun = nil
     result = WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, addr guid,
-                      sizeof(TGUID).Dword, addr fun, sizeof(pointer).Dword,
+                      sizeof(GUID).Dword, addr fun, sizeof(pointer).Dword,
                       addr bytesRet, nil, nil) == 0
 
   proc initAll() =
