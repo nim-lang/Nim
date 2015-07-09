@@ -865,6 +865,11 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
 proc rawMessage*(msg: TMsgKind, arg: string) =
   rawMessage(msg, [arg])
 
+proc resetAttributes* =
+  if optUseColors in gGlobalOptions:
+    terminal.resetAttributes()
+    stdout.flushFile()
+
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
   msgWriteln(indent & $info.sourceLine)
