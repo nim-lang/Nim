@@ -1330,4 +1330,4 @@ when isMainModule:
   assert reversed("先秦兩漢") == "漢兩秦先"
   assert reversed("as⃝df̅") == "f̅ds⃝a"
   assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
-  assert len(runesIn("as⃝df̅")) == runeLen("as⃝df̅")
+  assert len(toRunes("as⃝df̅")) == runeLen("as⃝df̅")
