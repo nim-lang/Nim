@@ -834,11 +834,12 @@ proc post*(client: AsyncHttpClient, url: string, body = "", multipart: Multipart
     else:
       x
   var xb = mpBody.withNewLine() & body
-  client.headers["Content-Type"] = mpHeader.split(": ")[1]
+  if multipart != nil:
+    client.headers["Content-Type"] = mpHeader.split(": ")[1]
   client.headers["Content-Length"] = $len(xb)
 
   result = await client.request(url, httpPOST, xb)
-      
+
 when not defined(testing) and isMainModule:
   when true:
     # Async
