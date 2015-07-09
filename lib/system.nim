@@ -3286,19 +3286,19 @@ when declared(initDebugger):
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
-    ## Add `y` to `x` unless `x` is not yet initialized; in that case, `x`
-    ## becomes `@[y]`
+    ## Add ``y`` to ``x`` unless ``x`` is not yet initialized; in that case, 
+    ## ``x`` becomes ``@[y]``
     if x == nil: x = @[y]
     else: x.add(y)
 
   proc safeAdd*(x: var string, y: char) =
-    ## Add `y` to `x`. If `x` is `nil` it is initialized to `""`
+    ## Add ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
     if x == nil: x = ""
     x.add(y)
 
   proc safeAdd*(x: var string, y: string) =
-    ## Add `y` to `x` unless `x` is not yet initalized; in that case, `x`
-    ## becomes `y`
+    ## Add ``y`` to ``x`` unless ``x`` is not yet initalized; in that case, ``x``
+    ## becomes ``y``
     if x == nil: x = y
     else: x.add(y)
 
