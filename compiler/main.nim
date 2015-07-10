@@ -378,3 +378,4 @@ proc mainCommand* =
   when SimulateCaasMemReset:
     resetMemory()
 
+  resetAttributes()
