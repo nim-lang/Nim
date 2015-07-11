@@ -207,7 +207,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     when useWinVersion:
       raiseOSError(osLastError())
     else:
-      raise newException(OSError, $gai_strerror(gaiResult))
+      raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
 proc dealloc*(ai: ptr AddrInfo) =
   freeaddrinfo(ai)
@@ -251,7 +251,7 @@ proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
     var s = winlean.getservbyname(name, proto)
   else:
     var s = posix.getservbyname(name, proto)
-  if s == nil: raise newException(OSError, "Service not found.")
+  if s == nil: raiseOSError(osLastError(), "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = Port(s.s_port)
@@ -267,7 +267,7 @@ proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].}
     var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
     var s = posix.getservbyport(ze(int16(port)).cint, proto)
-  if s == nil: raise newException(OSError, "Service not found.")
+  if s == nil: raiseOSError(osLastError(), "Service not found.")
   result.name = $s.s_name
   result.aliases = cstringArrayToSeq(s.s_aliases)
   result.port = Port(s.s_port)
@@ -286,7 +286,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
                                 cint(posix.AF_INET))
     if s == nil:
-      raise newException(OSError, $hstrerror(h_errno))
+      raiseOSError(osLastError(), $hstrerror(h_errno))
 
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
@@ -298,7 +298,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     elif s.h_addrtype == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
-      raise newException(OSError, "unknown h_addrtype")
+      raiseOSError(osLastError(), "unknown h_addrtype")
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
@@ -319,7 +319,7 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     elif s.h_addrtype == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
-      raise newException(OSError, "unknown h_addrtype")
+      raiseOSError(osLastError(), "unknown h_addrtype")
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
@@ -335,7 +335,7 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   elif name.sa_family == rawAfInet6:
     result = AF_INET6
   else:
-    raise newException(OSError, "unknown socket family in getSockFamily")
+    raiseOSError(osLastError(), "unknown socket family in getSockFamily")
 
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
@@ -353,7 +353,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
         result = result.substr("::ffff:".len)
   else:
-    raise newException(OSError, "unknown socket family in getAddrString")
+    raiseOSError(osLastError(), "unknown socket family in getAddrString")
 
 
 proc getSockName*(socket: SocketHandle): Port =
