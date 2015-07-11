@@ -15,7 +15,7 @@ proc doAction(outC: PComm) {.thread.} =
     send(outC[], i)
 
 var
-  thr: TThread[PComm]
+  thr: Thread[PComm]
   chan: TChannel[int]
 
 open(chan)

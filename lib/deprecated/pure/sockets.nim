@@ -39,7 +39,6 @@ when hostOS == "solaris":
 
 import os, parseutils
 from times import epochTime
-import unsigned
 
 when defined(ssl):
   import openssl
@@ -703,7 +702,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
     var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
                                 cint(posix.AF_INET))
     if s == nil:
-      raiseOSError(osLastError(), $hstrerror(h_errno))
+      raise newException(OSError, $hstrerror(h_errno))
 
   result.name = $s.h_name
   result.aliases = cstringArrayToSeq(s.h_aliases)
