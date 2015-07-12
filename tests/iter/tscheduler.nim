@@ -7,6 +7,7 @@ a2 8
 a2 6
 a2 4
 a2 2'''
+  disabled: "true"
 """
 
 import os, strutils, times, algorithm
