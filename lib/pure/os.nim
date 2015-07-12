@@ -621,6 +621,20 @@ proc parentDir*(path: string): string {.
   else:
     result = ""
 
+proc tailDir*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Returns the tail part of `path`..
+  ##
+  ## | Example: ``tailDir("/usr/local/bin") == "local/bin"``.
+  ## | Example: ``tailDir("usr/local/bin/") == "local/bin"``.
+  ## | Example: ``tailDir("bin") == ""``.
+  var q = 1
+  if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
+  for i in 0..len(path)-q:
+    if path[i] in {DirSep, AltSep}:
+      return substr(path, i+1)
+  result = ""
+
 proc isRootDir*(path: string): bool {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Checks whether a given `path` is a root directory
