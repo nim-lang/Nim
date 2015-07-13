@@ -388,7 +388,7 @@ Use two backticks to produce a single verbatim backtick.
 
 For a toplevel emit statement the section where in the generated C/C++ file
 the code should be emitted can be influenced via the
-prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/``:
+prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 
 .. code-block:: Nim
   {.emit: """/*TYPESECTION*/
