@@ -90,6 +90,7 @@ type
     allowMetaTypes*: bool     # allow types such as seq[Number]
                               # i.e. the result contains unresolved generics
     skipTypedesc*: bool       # wether we should skip typeDescs
+    recursionLimit: int
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
@@ -365,6 +366,19 @@ proc propagateFieldFlags(t: PType, n: PNode) =
   else: discard
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
+  template bailout =
+    if cl.recursionLimit > 100:
+      # bail out, see bug #2509. But note this caching is in general wrong,
+      # look at this example where TwoVectors should not share the generic
+      # instantiations (bug #3112):
+
+      # type
+      #   Vector[N: static[int]] = array[N, float64]
+      #   TwoVectors[Na, Nb: static[int]] = (Vector[Na], Vector[Nb])
+      result = PType(idTableGet(cl.localCache, t))
+      if result != nil: return result
+    inc cl.recursionLimit
+
   result = t
   if t == nil: return
 
@@ -420,8 +434,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     result = t
 
   of tyGenericInst:
-    result = PType(idTableGet(cl.localCache, t))
-    if result != nil: return result
+    bailout()
     result = instCopyType(cl, t)
     idTablePut(cl.localCache, t, result)
     for i in 1 .. <result.sonsLen:
@@ -431,8 +444,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   else:
     if containsGenericType(t):
       #if not cl.allowMetaTypes:
-      result = PType(idTableGet(cl.localCache, t))
-      if result != nil: return result
+      bailout()
       result = instCopyType(cl, t)
       result.size = -1 # needs to be recomputed
       #if not cl.allowMetaTypes:
