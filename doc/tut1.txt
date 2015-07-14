@@ -1234,8 +1234,8 @@ Example:
 .. code-block:: nim
 
   var
-    x: seq[int] # a sequence of integers
-  x = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence
+    x: seq[int] # a reference to a sequence of integers
+  x = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence allocated on the heap
 
 Sequence variables are initialized with ``nil``. However, most sequence
 operations cannot deal with ``nil`` (leading to an exception being
@@ -1278,6 +1278,23 @@ The `len <system.html#len,TOpenArray>`_, `low <system.html#low>`_ and `high
 <system.html#high>`_ operations are available for open arrays too.  Any array
 with a compatible base type can be passed to an openarray parameter, the index
 type does not matter.
+
+.. code-block:: nim
+  var 
+    fruits:   seq[string]       # reference to a sequence of strings that is initialized with 'nil'
+    capitals: array[3, string]  # array of strings with a fixed size
+  
+  fruits = @[]                  # creates an empty sequence on the heap that will be referenced by 'fruits'
+  
+  capitals = ["New York", "London", "Berlin"]   # array 'capitals' allows only assignment of three elements
+  fruits.add("Banana")          # sequence 'fruits' is dynamically expandable during runtime
+  fruits.add("Mango")
+  
+  proc openArraySize(oa: openArray[string]): int =
+    oa.len
+  
+  assert openArraySize(fruits) == 2     # procedure accepts a sequence as parameter
+  assert openArraySize(capitals) == 3   # but also an array type
 
 The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
