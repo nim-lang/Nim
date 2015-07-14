@@ -631,8 +631,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of skConst:
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n)
-      of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
-      of mCompileTime: result = newStrNodeT(times.getClockStr(), n)
+      of mCompileDate: result = newStrNodeT(getSrcDateStr(), n)
+      of mCompileTime: result = newStrNodeT(getSrcClockStr(), n)
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLower(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLower, n)
