@@ -5,9 +5,9 @@ General Guidelines
 ------------------
 
 * Authors should document anything that is exported.
-* Within a documentation for a procedure, a period (`.`) should follow each sentence in a comment block if there is more than one sentence in that block; otherwise, no period should be used. In other sections, complete sentences should have periods. Sentence fragments should have none.
-* Documentation is parsed as RST (RestructuredText).
-* Inline code should be surrounded by double tick marks (``` `` ```). With ReStructuredTest (RST), if you would like a character to immediately follow inline code (e.g., "``int8``s are great!"), escape the following character with a backslash (`\`). The preceding is typed as ``` ``int8``\s are great!```.
+* Within documentation for a procedure, a period (`.`) should follow each sentence in a comment block if there is more than one sentence in that block; otherwise, no period should be used. In other sections, complete sentences should have periods. Sentence fragments should have none.
+* Documentation is parsed as ReStructuredText (RST).
+* Inline code should be surrounded by double tick marks (``` `` ```). If you would like a character to immediately follow inline code (e.g., "``int8``s are great!"), escape the following character with a backslash (`\`). The preceding is typed as ``` ``int8``\s are great!```.
 
 Module-level documentation
 --------------------------
@@ -18,7 +18,7 @@ Code samples are encouraged, and should follow the general RST syntax:
 ```nim
 ## The ``universe`` module computes the answer to life, the universe, and everything.
 ##
-## .. code-block:: nim
+## .. code-block:: Nim
 ##  echo computeAnswerString*() # "42"
 ```
 
@@ -32,7 +32,7 @@ Within this top-level comment, you can indicate the authorship and copyright of 
 ##
 ```
 
-Users are encouraged to leave a space between the last line of top-level documentation and the beginning of Nim code (the imports, etc.).
+Leave a space between the last line of top-level documentation and the beginning of Nim code (the imports, etc.).
 
 Procs, Templates, Macros, Converters, and Iterators
 ---------------------------------------------------
@@ -45,7 +45,7 @@ The documentation of a procedure should begin with a capital letter and should b
         echo x
 ```
 
-Whenever an example of usage would be helpful to the user, please include a sample within the documentation in RST format as below.
+Whenever an example of usage would be helpful to the user, you should include one within the documentation in RST format as below.
 
 ```nim
     proc addThree*(x, y, z: int8): int =
@@ -62,7 +62,7 @@ The commands ``nim doc`` and ``nim doc2`` will then correctly syntax highlight t
 Types
 -----
 
-Types should also be documented. This documentation can also contain code samples, but those are likely better placed with the functions to which they refer.
+Exported types should also be documented. This documentation can also contain code samples, but those are better placed with the functions to which they refer.
 
 ```nim
 type
@@ -90,8 +90,8 @@ Make sure to place the documentation beside or within the object.
 
 ```nim
 type
-  ## This documentation disappears. It's basically annotating the
-  ## ``type`` above.
+  ## This documentation disappears because it annotates the ``type`` keyword
+  ## above, not ``NamedQueue``.
   NamedQueue*[T] = object
     name*: string ## This becomes the main documentation for the object, which
                   ## is not what we want.
@@ -115,26 +115,24 @@ const
   ] ## Doc comment for ``SpreadArray``
 ```
 
-Placement of comments in other areas is usually allowed, but will not become part of the documentation output.
+Placement of comments in other areas is usually allowed, but will not become part of the documentation output and should therefore be prefaced by a single hash (``#``).
 
 ```nim
 const
   BadMathVals* = [
-    3.14, ## pi
-    2.72, ## e
-    0.58, ## gamma
+    3.14, # pi
+    2.72, # e
+    0.58, # gamma
   ] ## A bunch of badly rounded values
 ```
 
-In the produced documentation, the comments beside the elements of ``BadMathVals`` do not make it into the final documentation.
-
-As a final note, Nim supports Unicode in comments just fine, so the above can be replaced with the following:
+Nim supports Unicode in comments, so the above can be replaced with the following:
 
 ```nim
 const
   BadMathVals* = [
-    3.14, ## π
-    2.72, ## e
-    0.58, ## γ
+    3.14, # π
+    2.72, # e
+    0.58, # γ
   ] ## A bunch of badly rounded values (including π!)
 ```
