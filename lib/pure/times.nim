@@ -1039,6 +1039,126 @@ proc parse*(value, layout: string): TimeInfo =
   info.weekday = getLocalTime(timeInfoToTime(info)).weekday
   return info
 
+# Leap year calculations are adapted from:
+# from http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
+# The dayOfTheWeek procs are adapated from:
+# from http://stason.org/TULARC/society/calendars/2-5-What-day-of-the-week-was-2-August-1953.html
+
+# Note: for leap years, start date is assumed to be 1 AD.
+# counts the number of leap years up to January 1st of a given year.
+# Keep in mind that if specified year is a leap year, the leap day
+# has not happened before January 1st of that year.
+proc countLeapYears(yearSpan: int): int =
+  (((yearSpan - 1) / 4) - ((yearSpan - 1) / 100) + ((yearSpan - 1)/400)).int
+
+proc countDays(yearSpan: int): int =
+  (yearSpan - 1) * 365 + countLeapYears(yearSpan)
+
+# counts the number of years spanned by a given number of days.
+proc countYears(daySpan: int): int =
+  ((daySpan - countLeapYears(daySpan div 365)) div 365)
+
+proc countYearsAndDays(daySpan: int): tuple[years: int, days: int] =
+  let days = daySpan - countLeapYears(daySpan div 365)
+  result.years = days div 365
+  result.days = days mod 365
+
+type
+  SecondScale = enum ssMinute, ssHour, ssDay, ssMonth, ssYear
+
+# these are very approximate beyond day
+const secondsIn*: array[SecondScale.low..SecondScale.high, int] =[
+  60,             # minute
+  60*60,          # hour
+  60*60*24,       # day
+  60*60*24*30,    # month (estimate)
+  60*60*24*30*12] # year  (estimate)
+
+const
+  epochStartYear = 1970
+  leapYearsSinceEpoch* = countLeapYears(epochStartYear)
+
+proc dayOfWeek*(day, month, year: int): WeekDay =
+  # This is for the Gregorian calendar
+  # Day & month start from one.
+  let
+    a = (14 - month) div 12
+    y = year - a
+    m = month + (12*a) - 2
+    d = (day + y + (y div 4) - (y div 100) + (y div 400) + (31*m) div 12) mod 7
+  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc. so we must correct
+  # for the WeekDay type.
+  if d == 0: return dSun
+  result = (d-1).WeekDay
+
+proc dayOfWeekJulian*(day, month, year: int): WeekDay =
+  # This is for the Julian calendar
+  # Day & month start from one.
+  let
+    a = (14 - month) div 12
+    y = year - a
+    m = month + (12*a) - 2
+    d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
+  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc. so we must correct
+  # for the WeekDay type.
+  if d == 0: return dSun
+  result = (d-1).WeekDay
+
+proc decodeTime*(t: Time): TimeInfo =
+  let
+    daysSinceEpoch = t.int div secondsIn[ssDay]
+    (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
+    daySeconds = t.int mod secondsIn[ssDay]  
+
+    y = yearsSinceEpoch + epochStartYear
+
+  var
+    mon = mJan
+    days = daysRemaining
+    daysInMonth = getDaysInMonth(mon, y)
+
+  # calculate month and day remainder
+  while days > daysInMonth and mon <= mDec:
+    days -= daysInMonth
+    mon.inc
+    daysInMonth = getDaysInMonth(mon, y)
+
+  let
+    yd = daysRemaining
+    m = mon  # month is zero indexed enum
+    md = days
+    # NB: month is zero indexed but dayOfWeek expects 1 indexed.
+    wd = dayOfWeek(days, mon.int + 1, y).Weekday
+    h = daySeconds div secondsIn[ssHour] + 1
+    mi = (daySeconds mod secondsIn[ssHour]) div secondsIn[ssMinute]
+    s = daySeconds mod secondsIn[ssMinute]
+  result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s) 
+
+proc decodeTimeInterval*(t: Time): TimeInterval =
+  var
+    daysSinceEpoch = t.int div secondsIn[ssDay]
+    (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
+    daySeconds = t.int mod secondsIn[ssDay]  
+
+  result.years = yearsSinceEpoch + epochStartYear
+
+  var
+    mon = mJan
+    days = daysRemaining
+    daysInMonth = getDaysInMonth(mon, result.years)
+
+  # calculate month and day remainder
+  while days > daysInMonth and mon <= mDec:
+    days -= daysInMonth
+    mon.inc
+    daysInMonth = getDaysInMonth(mon, result.years)
+
+  result.months = mon.int + 1 # month is 1 indexed int
+  result.days = days
+  result.hours = daySeconds div secondsIn[ssHour] + 1
+  result.minutes = (daySeconds mod secondsIn[ssHour]) div secondsIn[ssMinute]
+  result.seconds = daySeconds mod secondsIn[ssMinute]
+  # Milliseconds not available from Time
 
 when isMainModule:
   # $ date --date='@2147483647'
@@ -1122,3 +1242,13 @@ when isMainModule:
   assert "15:04:00" in $s.parse(f)
   when not defined(testing):
     echo "Kitchen: " & $s.parse(f)
+    var ti = decodeTime(getTime())
+    echo "Todays date after decoding: ", ti
+    var tint = decodeTimeInterval(getTime())
+    echo "Todays date after decoding to interval: ", tint
+  # checking dayOfWeek matches known days
+  assert dayOfWeek(21, 9, 1900) == dFri
+  assert dayOfWeek(1, 1, 1970) == dThu
+  assert dayOfWeek(21, 9, 1970) == dMon
+  assert dayOfWeek(1, 1, 2000) == dSat
+  assert dayOfWeek(1, 1, 2021) == dFri
