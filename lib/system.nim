@@ -3091,11 +3091,11 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ## `slurp <#slurp>`_ is an alias for ``staticRead``.
 
-proc gorge*(command: string, input = ""): string {.
+proc gorge*(command: string, input = "", cache = ""): string {.
   magic: "StaticExec".} = discard
   ## This is an alias for `staticExec <#staticExec>`_.
 
-proc staticExec*(command: string, input = ""): string {.
+proc staticExec*(command: string, input = "", cache = ""): string {.
   magic: "StaticExec".} = discard
   ## Executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
@@ -3108,6 +3108,15 @@ proc staticExec*(command: string, input = ""): string {.
   ## `gorge <#gorge>`_ is an alias for ``staticExec``. Note that you can use
   ## this proc inside a pragma like `passC <nimc.html#passc-pragma>`_ or `passL
   ## <nimc.html#passl-pragma>`_.
+  ##
+  ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
+  ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
+  ## behaviour then. ``command & input & cache`` (the concatenated string) is
+  ## used to determine wether the entry in the cache is still valid. You can
+  ## use versioning information for ``cache``:
+  ##
+  ## .. code-block:: nim
+  ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
 
 proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
@@ -3329,7 +3338,7 @@ when declared(initDebugger):
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
-    ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case, 
+    ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``
     if x == nil: x = @[y]
     else: x.add(y)
