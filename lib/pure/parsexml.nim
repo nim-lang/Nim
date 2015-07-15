@@ -535,6 +535,10 @@ proc parseAttribute(my: var XmlParser) =
         pos = lexbase.handleLF(my, pos)
         buf = my.buf
         pendingSpace = true
+      of '/':
+        pos = lexbase.handleRefillChar(my, pos)
+        buf = my.buf
+        add(my.b, '/')
       else:
         if buf[pos] == quote:
           inc(pos)
