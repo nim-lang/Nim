@@ -1064,7 +1064,7 @@ proc countYearsAndDays(daySpan: int): tuple[years: int, days: int] =
   result.days = days mod 365
 
 type
-  SecondScale = enum ssMinute, ssHour, ssDay, ssMonth, ssYear
+  SecondScale* = enum ssMinute, ssHour, ssDay, ssMonth, ssYear
 
 # these are very approximate beyond day
 const secondsIn*: array[SecondScale.low..SecondScale.high, int] =[
@@ -1099,10 +1099,7 @@ proc dayOfWeekJulian*(day, month, year: int): WeekDay =
     y = year - a
     m = month + (12*a) - 2
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
-  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc. so we must correct
-  # for the WeekDay type.
-  if d == 0: return dSun
-  result = (d-1).WeekDay
+  result = d.WeekDay
 
 proc decodeTime*(t: Time): TimeInfo =
   let
@@ -1252,3 +1249,8 @@ when isMainModule:
   assert dayOfWeek(21, 9, 1970) == dMon
   assert dayOfWeek(1, 1, 2000) == dSat
   assert dayOfWeek(1, 1, 2021) == dFri
+  # Julian tests
+  assert dayOfWeekJulian(21, 9, 1900) == dFri
+  assert dayOfWeekJulian(21, 9, 1970) == dMon
+  assert dayOfWeekJulian(1, 1, 2000) == dSat
+  assert dayOfWeekJulian(1, 1, 2021) == dFri
