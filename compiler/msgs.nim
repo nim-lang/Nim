@@ -866,7 +866,7 @@ proc rawMessage*(msg: TMsgKind, arg: string) =
   rawMessage(msg, [arg])
 
 proc resetAttributes* =
-  if optUseColors in gGlobalOptions:
+  if {optUseColors, optStdout} * gGlobalOptions == {optUseColors}:
     terminal.resetAttributes()
     stdout.flushFile()
 
