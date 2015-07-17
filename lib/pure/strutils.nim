@@ -168,9 +168,54 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
     inc(i)
     inc(j)
 
+proc chomp*(s: string, chars: set[char] = Newlines): string {.noSideEffect, rtl.} =
+  var last = len(s) - 1
+
+  if chars == Newlines:
+    if s[last] == '\10':
+      last -= 1
+
+    if s[last] == '\13':
+      last -= 1
+
+  else:
+    if s[last] in chars:
+      last -= 1
+
+  return s[0..last]
+
+proc chomp*(s: string, c: char): string {.noSideEffect, rtl.} =
+  chomp(s, chars = {c})
+
+proc chomp*(s: string, suffix: string): string {.noSideEffect, rtl.} =
+  var last = len(s) - 1
+
+  if suffix == "":
+    var previous: char
+    while last > 0:
+
+      if s[last] == '\13' and previous == '\13':
+          break
+
+      elif s[last] == '\13':
+        last -= 1
+        previous = '\13'
+
+      elif s[last] == '\10':
+        last -= 1
+        previous = '\10'
+
+      else:
+        break
+
+  if s.endsWith(suffix):
+    last -= len(suffix)
+
+  return s[0..last]
+
 {.pop.}
 
-proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string 
+proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
   ## Strips `chars` from `s` and returns the resulting string.
   ##
