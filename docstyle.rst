@@ -5,7 +5,7 @@ General Guidelines
 ------------------
 
 * Authors should document anything that is exported.
-* Within documentation for a procedure, a period (`.`) should follow each sentence (or sentence fragment) in a comment block. The documentation may be limited to one sentence fragment, but if multiple sentences are within the procedure documentation, each should be complete and in present tense.
+* Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block. The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation, each sentence after the first should be complete and in present tense.
 * Documentation is parsed as ReStructuredText (RST).
 * Inline code should be surrounded by double tick marks ("``` `` ```"). If you would like a character to immediately follow inline code (e.g., "``int8``s are great!"), escape the following character with a backslash (``\``). The preceding is typed as ``` ``int8``\s are great!```.
 
@@ -69,7 +69,7 @@ Exported types should also be documented. This documentation can also contain co
 
   type
     NamedQueue*[T] = object ## Provides a linked data structure with names
-                            ## throughout. Named for convenience. I'm making
+                            ## throughout. It is named for convenience. I'm making
                             ## this comment long to show how you can, too.
       name*: string ## The name of the item
       val*: T ## Its value
@@ -83,7 +83,7 @@ You have some flexibility when placing the documentation:
   type
     NamedQueue*[T] = object
       ## Provides a linked data structure with names
-      ## throughout. Named for convenience. I'm making
+      ## throughout. It is named for convenience. I'm making
       ## this comment long to show how you can, too.
       name*: string ## The name of the item
       val*: T ## Its value
@@ -110,12 +110,12 @@ When declaring module-wide constants and values, documentation is encouraged. Th
 .. code-block:: Nim
 
   const
-    X* = 42 ## An awesome number
+    X* = 42 ## An awesome number.
     SpreadArray* = [
       [1,2,3],
       [2,3,1],
       [3,1,2],
-    ] ## Doc comment for ``SpreadArray``
+    ] ## Doc comment for ``SpreadArray``.
 
 Placement of comments in other areas is usually allowed, but will not become part of the documentation output and should therefore be prefaced by a single hash (``#``).
 
@@ -126,7 +126,7 @@ Placement of comments in other areas is usually allowed, but will not become par
       3.14, # pi
       2.72, # e
       0.58, # gamma
-    ] ## A bunch of badly rounded values
+    ] ## A bunch of badly rounded values.
 
 Nim supports Unicode in comments, so the above can be replaced with the following:
 
@@ -137,4 +137,4 @@ Nim supports Unicode in comments, so the above can be replaced with the followin
       3.14, # π
       2.72, # e
       0.58, # γ
-    ] ## A bunch of badly rounded values (including π!)
+    ] ## A bunch of badly rounded values (including π!).
