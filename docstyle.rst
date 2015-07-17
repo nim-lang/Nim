@@ -20,7 +20,7 @@ Code samples are encouraged, and should follow the general RST syntax:
   ## The ``universe`` module computes the answer to life, the universe, and everything.
   ##
   ## .. code-block:: Nim
-  ##  echo computeAnswerString*() # "42"
+  ##  echo computeAnswerString() # "42"
 
 
 Within this top-level comment, you can indicate the authorship and copyright of the code, which will be featured in the produced documentation.
