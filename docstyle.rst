@@ -5,7 +5,7 @@ General Guidelines
 ------------------
 
 * Authors should document anything that is exported.
-* Within documentation for a procedure, a period (`.`) should follow each sentence in a comment block if there is more than one sentence in that block; otherwise, no period should be used. In other sections, complete sentences should have periods. Sentence fragments should have none.
+* Within documentation for a procedure, a period (`.`) should follow each sentence (or sentence fragment) in a comment block. The documentation may be limited to one sentence fragment, but if multiple sentences are within the procedure documentation, each should be complete and in present tense.
 * Documentation is parsed as ReStructuredText (RST).
 * Inline code should be surrounded by double tick marks ("``` `` ```"). If you would like a character to immediately follow inline code (e.g., "``int8``s are great!"), escape the following character with a backslash (``\``). The preceding is typed as ``` ``int8``\s are great!```.
 
@@ -43,7 +43,7 @@ The documentation of a procedure should begin with a capital letter and should b
 .. code-block:: Nim
 
   proc example1*(x: int) =
-    ## Prints the value of ``x``
+    ## Prints the value of ``x``.
     echo x
 
 Whenever an example of usage would be helpful to the user, you should include one within the documentation in RST format as below.
@@ -52,7 +52,7 @@ Whenever an example of usage would be helpful to the user, you should include on
 
   proc addThree*(x, y, z: int8): int =
     ## Adds three ``int8`` values, treating them as unsigned and
-    ## truncating the result
+    ## truncating the result.
     ##
     ## .. code-block:: nim
     ##  echo addThree(3, 125, 6) # -122
