@@ -10,12 +10,29 @@ import
 proc testStrip() =
   write(stdout, strip("  ha  "))
 
-proc main() = 
+proc testChomp =
+  assert "hello".chomp                == "hello"
+  assert "hello\n".chomp              == "hello"
+  assert "hello\r\n".chomp            == "hello"
+  assert "hello\n\r".chomp            == "hello\n"
+  assert "hello\n\n".chomp            == "hello\n"
+  assert "hello\r".chomp              == "hello"
+  assert "hello \n there".chomp       == "hello \n there"
+  assert "hello".chomp("llo")         == "he"
+  assert "hellos".chomp('s')          == "hello"
+  assert "hellos".chomp({'s','z'})    == "hello"
+  assert "hellos".chomp({'o','s'})    == "hello"
+  assert "hello\r\n\r\n".chomp("")    == "hello"
+  assert "hello\r\n\r\r\n".chomp("")  == "hello\r\n\r"
+  assert "hello\n\n\n\n\n".chomp("")  == "hello"
+
+proc main() =
   testStrip()
+  testChomp()
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
     write(stdout, p)
 
-proc testDelete = 
+proc testDelete =
   var s = "0123456789ABCDEFGH"
   delete(s, 4, 5)
   assert s == "01236789ABCDEFGH"
@@ -24,8 +41,8 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
-testDelete()  
-    
+testDelete()
+
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")
 assert(insertSep($12345, ',') == "12,345")
