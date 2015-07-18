@@ -21,6 +21,10 @@ Nim's Documentation
       | The user guide lists command line arguments, special features of the
         compiler, etc.
 
+    - | `Nim Backend Integration <docs/backends.html>`_
+      | The Backend Integeration guide gives further information of how Nim can
+        interact with C, C++, Objective C and JavaScript.
+
 
 .. container:: standout
 
