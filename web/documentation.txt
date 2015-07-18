@@ -14,7 +14,7 @@ Nim's Documentation
     - | `Language Manual <docs/manual.html>`_
       | The Nim manual is a draft that will evolve into a proper specification.
 
-    - | `Nim Style Guide <nep1.html>`_
+    - | `Nim Style Guide <docs/nep1.html>`_
       | The stylistic conventions that Nim's official projects adhere to.
 
     - | `Compiler User Guide <docs/nimc.html>`_
