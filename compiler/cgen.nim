@@ -853,14 +853,14 @@ proc genMainProc(m: BModule) =
     # functions, which might otherwise merge their stack frames.
     PreMainBody =
       "void PreMainInner() {$N" &
-      "\tsystemInit();$N" &
+      "\tsystemInit000();$N" &
       "$1" &
       "$2" &
       "$3" &
       "}$N$N" &
       "void PreMain() {$N" &
       "\tvoid (*volatile inner)();$N" &
-      "\tsystemDatInit();$N" &
+      "\tsystemDatInit000();$N" &
       "\tinner = PreMainInner;$N" &
       "$4$5" &
       "\t(*inner)();$N" &
@@ -974,8 +974,8 @@ proc getSomeInitName(m: PSym, suffix: string): Rope =
   result.add m.name.s
   result.add suffix
 
-proc getInitName(m: PSym): Rope = getSomeInitName(m, "Init")
-proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit")
+proc getInitName(m: PSym): Rope = getSomeInitName(m, "Init000")
+proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
 proc registerModuleToMain(m: PSym) =
   var
