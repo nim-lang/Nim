@@ -40,6 +40,8 @@ News
     ``varargs[expr]`` instead. The same applies to ``varargs[typed]`` vs
     ``varargs[stmt]``.
   - ``sequtils.delete`` doesn't take confusing default arguments anymore.
+  - ``system.free`` was an error-prone alias to ``system.dealloc`` and has
+    been removed.
 
 
   Library additions

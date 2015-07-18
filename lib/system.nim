@@ -1509,8 +1509,7 @@ when not defined(nimrodVM):
       ## or other memory may be corrupted.
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared` to deallocate from a shared heap.
-    proc free*[T](p: ptr T) {.inline, benign.} =
-      dealloc(p)
+
     proc allocShared*(size: Natural): pointer {.noconv, rtl, benign.}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
