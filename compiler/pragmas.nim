@@ -276,7 +276,8 @@ proc processNote(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (sonsLen(n) == 2) and
       (n.sons[0].kind == nkBracketExpr) and
       (n.sons[0].sons[1].kind == nkIdent) and
-      (n.sons[0].sons[0].kind == nkIdent) and (n.sons[1].kind == nkIdent):
+      (n.sons[0].sons[0].kind == nkIdent):
+      #and (n.sons[1].kind == nkIdent):
     var nk: TNoteKind
     case whichKeyword(n.sons[0].sons[0].ident)
     of wHint:

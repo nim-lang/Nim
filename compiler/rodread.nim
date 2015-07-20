@@ -90,7 +90,7 @@
 
 import
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
-  ropes, idents, securehash, idgen, types, rodutils, memfiles
+  ropes, idents, securehash, idgen, types, rodutils, memfiles, tables
 
 type
   TReasonForRecompile* = enum ## all the reasons that can trigger recompilation
@@ -136,7 +136,7 @@ type
     readerIndex: int
     line: int            # only used for debugging, but is always in the code
     moduleID: int
-    syms: TIdTable       # already processed symbols
+    syms: Table[int, PSym]       # already processed symbols
     memfile: MemFile     # unfortunately there is no point in time where we
                          # can close this! XXX
     methods*: TSymSeq
@@ -372,11 +372,11 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   else:
     internalError(info, "decodeSym: no ident")
   #echo "decoding: {", ident.s
-  result = PSym(idTableGet(r.syms, id))
+  result = r.syms[id]
   if result == nil:
     new(result)
     result.id = id
-    idTablePut(r.syms, result, result)
+    r.syms[result.id] = result
     if debugIds: registerID(result)
   elif result.id != id:
     internalError(info, "decodeSym: wrong id")
@@ -481,7 +481,7 @@ proc processInterf(r: PRodReader, module: PSym) =
     var s = newStub(r, w, key)
     s.owner = module
     strTableAdd(module.tab, s)
-    idTablePut(r.syms, s, s)
+    r.syms[s.id] = s
 
 proc processCompilerProcs(r: PRodReader, module: PSym) =
   if r.compilerProcsIdx == 0: internalError("processCompilerProcs")
@@ -491,11 +491,11 @@ proc processCompilerProcs(r: PRodReader, module: PSym) =
     inc(r.pos)
     var key = decodeVInt(r.s, r.pos)
     inc(r.pos)                # #10
-    var s = PSym(idTableGet(r.syms, key))
+    var s = r.syms[key]
     if s == nil:
       s = newStub(r, w, key)
       s.owner = module
-      idTablePut(r.syms, s, s)
+      r.syms[s.id] = s
     strTableAdd(rodCompilerprocs, s)
 
 proc processIndex(r: PRodReader; idx: var TIndex; outf: File = nil) =
@@ -667,7 +667,7 @@ proc newRodReader(modfilename: string, hash: SecureHash,
   r.line = 1
   r.readerIndex = readerIndex
   r.filename = modfilename
-  initIdTable(r.syms)
+  r.syms = initTable[int, PSym]()
   # we terminate the file explicitly with ``\0``, so the cast to `cstring`
   # is safe:
   r.s = cast[cstring](r.memfile.mem)
@@ -737,7 +737,7 @@ proc getReader(moduleId: int): PRodReader =
   return nil
 
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
-  result = PSym(idTableGet(r.syms, id))
+  result = r.syms[id]
   if result == nil:
     # load the symbol:
     var d = iiTableGet(r.index.tab, id)
@@ -802,7 +802,7 @@ proc getHash*(fileIdx: int32): SecureHash =
   if gMods[fileIdx].hashDone:
     return gMods[fileIdx].hash
 
-  result = secureHashFile(fileIdx.toFilename)
+  result = secureHashFile(fileIdx.toFullPath)
   gMods[fileIdx].hash = result
 
 template growCache*(cache, pos) =
@@ -859,7 +859,7 @@ proc handleSymbolFile(module: PSym): PRodReader =
   result = gMods[fileIdx].rd
   if result != nil:
     module.id = result.moduleID
-    idTablePut(result.syms, module, module)
+    result.syms[module.id] = module
     processInterf(result, module)
     processCompilerProcs(result, module)
     loadConverters(result)
