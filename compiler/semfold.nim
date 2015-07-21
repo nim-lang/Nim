@@ -435,7 +435,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq,
      mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait, mDotDot,
      mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn,
-     mParallel, mPlugin:
+     mParallel, mPlugin, mGetTypeInfo:
     discard
   of mEqProc:
     result = newIntNodeT(ord(
