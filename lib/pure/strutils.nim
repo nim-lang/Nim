@@ -1395,7 +1395,8 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
 
 {.pop.}
 
-proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl.} =
+proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
+  rtl, extern: "nsuRemoveSuffixCharSet".} =
   ## Removes the first matching character from the string (in-place) given a
   ## set of characters. If the set of characters is only equal to `Newlines`
   ## then it will remove both the newline and return feed.
@@ -1425,7 +1426,7 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl.} =
 
   s.setLen(last + 1)
 
-proc removeSuffix*(s: var string, c: char) {.rtl.} =
+proc removeSuffix*(s: var string, c: char) {.rtl, extern: "nsuRemoveSuffixChar".} =
   ## Removes a single character (in-place) from a string.
   ## .. code-block:: nim
   ##   var
@@ -1434,7 +1435,8 @@ proc removeSuffix*(s: var string, c: char) {.rtl.} =
   ##   table == "user"
   removeSuffix(s, chars = {c})
 
-proc removeSuffix*(s: var string, suffix: string) {.rtl.} =
+proc removeSuffix*(s: var string, suffix: string) {.
+  rtl, extern: "nsuRemoveSuffixString".} =
   ## Remove the first matching suffix (in-place) from a string.
   ## .. code-block:: nim
   ##   var
