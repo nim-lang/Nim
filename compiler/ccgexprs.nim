@@ -347,8 +347,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       useStringh(p.module)
       linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1));$n",
-           rdLoc(dest), rdLoc(src))
+           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+           rdLoc(dest), rdLoc(src), getTypeDesc(p.module, ty))
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?

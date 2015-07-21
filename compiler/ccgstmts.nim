@@ -1101,7 +1101,10 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     genGotoVar(p, e.sons[1])
   elif not fieldDiscriminantCheckNeeded(p, e):
     var a: TLoc
-    initLocExpr(p, e.sons[0], a)
+    if e[0].kind in {nkDerefExpr, nkHiddenDeref}:
+      genDeref(p, e[0], a, enforceDeref=true)
+    else:
+      initLocExpr(p, e.sons[0], a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
     loadInto(p, e.sons[0], e.sons[1], a)
