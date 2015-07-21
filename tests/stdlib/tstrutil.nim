@@ -10,25 +10,48 @@ import
 proc testStrip() =
   write(stdout, strip("  ha  "))
 
-proc testChomp =
-  assert "hello".chomp                == "hello"
-  assert "hello\n".chomp              == "hello"
-  assert "hello\r\n".chomp            == "hello"
-  assert "hello\n\r".chomp            == "hello\n"
-  assert "hello\n\n".chomp            == "hello\n"
-  assert "hello\r".chomp              == "hello"
-  assert "hello \n there".chomp       == "hello \n there"
-  assert "hello".chomp("llo")         == "he"
-  assert "hellos".chomp('s')          == "hello"
-  assert "hellos".chomp({'s','z'})    == "hello"
-  assert "hellos".chomp({'o','s'})    == "hello"
-  assert "hello\r\n\r\n".chomp("")    == "hello"
-  assert "hello\r\n\r\r\n".chomp("")  == "hello\r\n\r"
-  assert "hello\n\n\n\n\n".chomp("")  == "hello"
+proc testRemoveSuffix =
+  var s = "hello\n\r"
+  s.removeSuffix
+  assert s == "hello\n"
+  s.removeSuffix
+  assert s == "hello"
+  s.removeSuffix
+  assert s == "hello"
+
+  s = "hello\n\n"
+  s.removeSuffix
+  assert s == "hello\n"
+
+  s = "hello\r"
+  s.removeSuffix
+  assert s == "hello"
+
+  s = "hello \n there"
+  s.removeSuffix
+  assert s == "hello \n there"
+
+  s = "hello"
+  s.removeSuffix("llo")
+  assert s == "he"
+  s.removeSuffix('e')
+  assert s == "h"
+
+  s = "hellos"
+  s.removeSuffix({'s','z'})
+  assert s == "hello"
+  s.removeSuffix({'l','o'})
+  assert s == "hell"
+
+  # Contrary to Chomp in other languages
+  # empty string does not change behaviour
+  s = "hello\r\n\r\n"
+  s.removeSuffix("")
+  assert s == "hello\r\n\r\n"
 
 proc main() =
   testStrip()
-  testChomp()
+  testRemoveSuffix()
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
     write(stdout, p)
 
