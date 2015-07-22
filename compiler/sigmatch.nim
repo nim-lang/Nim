@@ -260,7 +260,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
     if i != sonsLen(n) - 1: add(result, ", ")
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
-proc concreteType(c: TCandidate, t: PType; forAny=false): PType =
+proc concreteType(c: TCandidate, t: PType): PType =
   case t.kind
   of tyArrayConstr:
     # make it an array
@@ -269,9 +269,6 @@ proc concreteType(c: TCandidate, t: PType; forAny=false): PType =
     addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
   of tyNil:
     result = nil              # what should it be?
-  of tyEmpty:
-    if tfVoid in t.flags and not forAny: result = nil
-    else: result = t
   of tyTypeDesc:
     if c.isNoCall: result = t
     else: result = nil
@@ -974,7 +971,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyAnything:
     considerPreviousT:
-      var concrete = concreteType(c, a, forAny=true)
+      var concrete = concreteType(c, a)
       if concrete != nil and doBind:
         put(c.bindings, f, concrete)
       return isGeneric

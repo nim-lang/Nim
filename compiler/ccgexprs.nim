@@ -1319,6 +1319,8 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e.typ,
                 ropecg(p.module, "#reprAny($1, $2)", [
                 rdLoc(a), genTypeInfo(p.module, t)]))
+  of tyEmpty:
+    localError(e.info, "'repr' doesn't support 'void' type")
   else:
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprAny($1, $2)",
                                    [addrLoc(a), genTypeInfo(p.module, t)]))

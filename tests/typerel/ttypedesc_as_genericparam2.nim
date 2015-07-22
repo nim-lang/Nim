@@ -1,6 +1,6 @@
 discard """
   line: 9
-  errormsg: "type mismatch: got (empty)"
+  errormsg: "'repr' doesn't support 'void' type"
 """
 
 # bug #2879
