@@ -399,6 +399,10 @@ typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(
 #  define NIM_EXTERNC
 #endif
 
+/* we have to tinker with TNimType as it's both part of system.nim and
+   typeinfo.nim but system.nim doesn't export it cleanly... */
+typedef struct TNimType TNimType;
+
 /* ---------------- platform specific includes ----------------------- */
 
 /* VxWorks related includes */

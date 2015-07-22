@@ -13,7 +13,7 @@
 ## details from its clients, it remains inherently unsafe!
 ##
 ## See the `marshal <marshal.html>`_ module for what this module allows you
-## to do. 
+## to do.
 
 {.push hints: off.}
 
@@ -54,7 +54,7 @@ type
     akUInt16 = 42,      ## any represents an unsigned in16
     akUInt32 = 43,      ## any represents an unsigned int32
     akUInt64 = 44,      ## any represents an unsigned int64
-    
+
   Any* = object          ## can represent any nim value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
                           ## that ``Any`` keeps a non-traced pointer to its
@@ -114,7 +114,7 @@ proc newAny(value: pointer, rawType: PNimType): Any =
 
 when declared(system.VarSlot):
   proc toAny*(x: VarSlot): Any {.inline.} =
-    ## constructs a ``Any`` object from a variable slot ``x``. 
+    ## constructs a ``Any`` object from a variable slot ``x``.
     ## This captures `x`'s address, so `x` can be modified with its
     ## ``Any`` wrapper! The client needs to ensure that the wrapper
     ## **does not** live longer than `x`!
@@ -128,16 +128,16 @@ proc toAny*[T](x: var T): Any {.inline.} =
   ## that the wrapper **does not** live longer than `x`!
   result.value = addr(x)
   result.rawType = cast[PNimType](getTypeInfo(x))
-  
-proc kind*(x: Any): AnyKind {.inline.} = 
+
+proc kind*(x: Any): AnyKind {.inline.} =
   ## get the type kind
   result = AnyKind(ord(x.rawType.kind))
 
 proc size*(x: Any): int {.inline.} =
   ## returns the size of `x`'s type.
   result = x.rawType.size
-  
-proc baseTypeKind*(x: Any): AnyKind {.inline.} = 
+
+proc baseTypeKind*(x: Any): AnyKind {.inline.} =
   ## get the base type's kind; ``akNone`` is returned if `x` has no base type.
   if x.rawType.base != nil:
     result = AnyKind(ord(x.rawType.base.kind))
@@ -146,7 +146,7 @@ proc baseTypeSize*(x: Any): int {.inline.} =
   ## returns the size of `x`'s basetype.
   if x.rawType.base != nil:
     result = x.rawType.base.size
-  
+
 proc invokeNew*(x: Any) =
   ## performs ``new(x)``. `x` needs to represent a ``ref``.
   assert x.rawType.kind == tyRef
@@ -183,7 +183,7 @@ proc `[]`*(x: Any, i: int): Any =
   case x.rawType.kind
   of tyArray:
     var bs = x.rawType.base.size
-    if i >=% x.rawType.size div bs: 
+    if i >=% x.rawType.size div bs:
       raise newException(IndexError, "index out of bounds")
     return newAny(x.value +!! i*bs, x.rawType.base)
   of tySequence:
@@ -200,7 +200,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
   case x.rawType.kind
   of tyArray:
     var bs = x.rawType.base.size
-    if i >=% x.rawType.size div bs: 
+    if i >=% x.rawType.size div bs:
       raise newException(IndexError, "index out of bounds")
     assert y.rawType == x.rawType.base
     genericAssign(x.value +!! i*bs, y.value, y.rawType)
@@ -231,23 +231,23 @@ proc base*(x: Any): Any =
 proc isNil*(x: Any): bool =
   ## `isNil` for an any `x` that represents a sequence, string, cstring,
   ## proc or some pointer type.
-  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer, 
+  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
                             tySequence, tyProc}
   result = isNil(cast[ppointer](x.value)[])
 
 proc getPointer*(x: Any): pointer =
   ## retrieve the pointer value out of `x`. ``x`` needs to be of kind
-  ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``, 
+  ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
   ## ``akPointer``, ``akSequence``.
-  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer, 
+  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
                             tySequence, tyProc}
   result = cast[ppointer](x.value)[]
 
 proc setPointer*(x: Any, y: pointer) =
   ## sets the pointer value of `x`. ``x`` needs to be of kind
-  ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``, 
+  ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
   ## ``akPointer``, ``akSequence``.
-  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer, 
+  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
                             tySequence, tyProc}
   cast[ppointer](x.value)[] = y
 
@@ -309,7 +309,7 @@ proc getFieldNode(p: pointer, n: ptr TNimNode,
     if cmpIgnoreStyle(n.name, name) == 0:
       result = n
   of nkList:
-    for i in 0..n.len-1: 
+    for i in 0..n.len-1:
       result = getFieldNode(p, n.sons[i], name)
       if result != nil: break
   of nkCase:
@@ -345,7 +345,7 @@ proc `[]`*(x: Any, fieldName: string): Any =
     result.value = x.value +!! n.offset
     result.rawType = n.typ
   elif x.rawType.kind == tyObject and x.rawType.base != nil:
-    return `[]`(TAny(value: x.value, rawType: x.rawType.base), fieldName)
+    return `[]`(Any(value: x.value, rawType: x.rawType.base), fieldName)
   else:
     raise newException(ValueError, "invalid field name: " & fieldName)
 
@@ -366,22 +366,22 @@ proc getInt*(x: Any): int =
   assert skipRange(x.rawType).kind == tyInt
   result = cast[ptr int](x.value)[]
 
-proc getInt8*(x: Any): int8 = 
+proc getInt8*(x: Any): int8 =
   ## retrieve the int8 value out of `x`. `x` needs to represent an int8.
   assert skipRange(x.rawType).kind == tyInt8
   result = cast[ptr int8](x.value)[]
 
-proc getInt16*(x: Any): int16 = 
+proc getInt16*(x: Any): int16 =
   ## retrieve the int16 value out of `x`. `x` needs to represent an int16.
   assert skipRange(x.rawType).kind == tyInt16
   result = cast[ptr int16](x.value)[]
-  
-proc getInt32*(x: Any): int32 = 
+
+proc getInt32*(x: Any): int32 =
   ## retrieve the int32 value out of `x`. `x` needs to represent an int32.
   assert skipRange(x.rawType).kind == tyInt32
   result = cast[ptr int32](x.value)[]
 
-proc getInt64*(x: Any): int64 = 
+proc getInt64*(x: Any): int64 =
   ## retrieve the int64 value out of `x`. `x` needs to represent an int64.
   assert skipRange(x.rawType).kind == tyInt64
   result = cast[ptr int64](x.value)[]
@@ -517,7 +517,7 @@ proc getEnumOrdinal*(x: Any, name: string): int =
   var n = typ.node
   var s = n.sons
   for i in 0 .. n.len-1:
-    if cmpIgnoreStyle($s[i].name, name) == 0: 
+    if cmpIgnoreStyle($s[i].name, name) == 0:
       if ntfEnumHole notin typ.flags:
         return i
       else:
@@ -527,7 +527,7 @@ proc getEnumOrdinal*(x: Any, name: string): int =
 proc getEnumField*(x: Any, ordinalValue: int): string =
   ## gets the enum field name as a string. `x` needs to represent an enum
   ## but is only used to access the type information. The field name of
-  ## `ordinalValue` is returned. 
+  ## `ordinalValue` is returned.
   var typ = skipRange(x.rawType)
   assert typ.kind == tyEnum
   var e = ordinalValue
@@ -546,17 +546,17 @@ proc getEnumField*(x: Any): string =
   ## gets the enum field name as a string. `x` needs to represent an enum.
   result = getEnumField(x, getBiggestInt(x).int)
 
-proc getFloat*(x: Any): float = 
-  ## retrieve the float value out of `x`. `x` needs to represent an float.  
+proc getFloat*(x: Any): float =
+  ## retrieve the float value out of `x`. `x` needs to represent an float.
   assert skipRange(x.rawType).kind == tyFloat
   result = cast[ptr float](x.value)[]
 
-proc getFloat32*(x: Any): float32 = 
+proc getFloat32*(x: Any): float32 =
   ## retrieve the float32 value out of `x`. `x` needs to represent an float32.
   assert skipRange(x.rawType).kind == tyFloat32
   result = cast[ptr float32](x.value)[]
-  
-proc getFloat64*(x: Any): float64 = 
+
+proc getFloat64*(x: Any): float64 =
   ## retrieve the float64 value out of `x`. `x` needs to represent an float64.
   assert skipRange(x.rawType).kind == tyFloat64
   result = cast[ptr float64](x.value)[]
@@ -579,23 +579,23 @@ proc setBiggestFloat*(x: Any, y: BiggestFloat) =
   of tyFloat64: cast[ptr float64](x.value)[] = y
   else: assert false
 
-proc getString*(x: Any): string = 
+proc getString*(x: Any): string =
   ## retrieve the string value out of `x`. `x` needs to represent a string.
   assert x.rawType.kind == tyString
   if not isNil(cast[ptr pointer](x.value)[]):
     result = cast[ptr string](x.value)[]
 
-proc setString*(x: Any, y: string) = 
+proc setString*(x: Any, y: string) =
   ## sets the string value of `x`. `x` needs to represent a string.
   assert x.rawType.kind == tyString
   cast[ptr string](x.value)[] = y
 
-proc getCString*(x: Any): cstring = 
+proc getCString*(x: Any): cstring =
   ## retrieve the cstring value out of `x`. `x` needs to represent a cstring.
   assert x.rawType.kind == tyCString
   result = cast[ptr cstring](x.value)[]
 
-proc assign*(x, y: Any) = 
+proc assign*(x, y: Any) =
   ## copies the value of `y` to `x`. The assignment operator for ``Any``
   ## does NOT do this; it performs a shallow copy instead!
   assert y.rawType == x.rawType
@@ -637,7 +637,7 @@ proc inclSetElement*(x: Any, elem: int) =
   of 2:
     var a = cast[ptr int16](p)
     a[] = a[] or (1'i16 shl int16(e))
-  of 4: 
+  of 4:
     var a = cast[ptr int32](p)
     a[] = a[] or (1'i32 shl int32(e))
   of 8:
@@ -651,7 +651,7 @@ when isMainModule:
   type
     TE = enum
       blah, blah2
-  
+
     TestObj = object
       test, asd: int
       case test2: TE
@@ -665,7 +665,7 @@ when isMainModule:
   var y = 78
   x[4] = toAny(y)
   assert cast[ptr int](x[2].value)[] == 2
-  
+
   var test2: tuple[name: string, s: int] = ("test", 56)
   var x2 = toAny(test2)
   var i = 0
@@ -675,7 +675,7 @@ when isMainModule:
     of 1: assert n == "s" and $a.kind == "akInt"
     else: assert false
     inc i
-    
+
   var test3: TestObj
   test3.test = 42
   test3.test2 = blah2
@@ -683,27 +683,27 @@ when isMainModule:
   i = 0
   for n, a in fields(x3):
     case i
-    of 0: assert n == "test" and $a.kind == "akInt" 
+    of 0: assert n == "test" and $a.kind == "akInt"
     of 1: assert n == "asd" and $a.kind == "akInt"
     of 2: assert n == "test2" and $a.kind == "akEnum"
     else: assert false
     inc i
-  
+
   var test4: ref string
   new(test4)
   test4[] = "test"
   var x4 = toAny(test4)
   assert($x4[].kind() == "akString")
-  
+
   block:
     # gimme a new scope dammit
     var myarr: array[0..4, array[0..4, string]] = [
-      ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
-      ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"], 
+      ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
+      ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
       ["test", "1", "2", "3", "4"]]
     var m = toAny(myArr)
     for i in 0 .. m.len-1:
       for j in 0 .. m[i].len-1:
         echo getString(m[i][j])
-      
+
 
