@@ -475,7 +475,7 @@ proc transformToExpr(n: PNode): PNode =
 
 proc semTemplateDef(c: PContext, n: PNode): PNode =
   var s: PSym
-  if c.p.owner.kind == skModule:
+  if isTopLevel(c):
     s = semIdentVis(c, skTemplate, n.sons[0], {sfExported})
     incl(s.flags, sfGlobal)
   else:
