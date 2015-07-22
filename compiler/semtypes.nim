@@ -1051,6 +1051,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     return newOrPrevType(tyError, prev, c)
   else:
     var m = newCandidate(c, t)
+    m.isNoCall = true
     matches(c, n, copyTree(n), m)
 
     if m.state != csMatch and not m.typedescMatched:
@@ -1338,7 +1339,11 @@ proc processMagicType(c: PContext, m: PSym) =
   of mTypeDesc:
     setMagicType(m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
-  of mVoidType: setMagicType(m, tyEmpty, 0)
+  of mVoidType:
+    setMagicType(m, tyEmpty, 0)
+    # for historical reasons we conflate 'void' with 'empty' so that '@[]'
+    # has the type 'seq[void]'.
+    m.typ.flags.incl tfVoid
   of mArray:
     setMagicType(m, tyArray, 0)
   of mOpenArray:

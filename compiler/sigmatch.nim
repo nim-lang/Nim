@@ -47,6 +47,7 @@ type
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
     typedescMatched*: bool
+    isNoCall*: bool          # misused for generic type instantiations C[T]
     inheritancePenalty: int  # to prefer closest father object type
     errors*: CandidateErrors # additional clarifications to be displayed to the
                              # user if overload resolution fails
@@ -259,7 +260,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
     if i != sonsLen(n) - 1: add(result, ", ")
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
-proc concreteType(c: TCandidate, t: PType): PType =
+proc concreteType(c: TCandidate, t: PType; forAny=false): PType =
   case t.kind
   of tyArrayConstr:
     # make it an array
@@ -268,6 +269,12 @@ proc concreteType(c: TCandidate, t: PType): PType =
     addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
   of tyNil:
     result = nil              # what should it be?
+  of tyEmpty:
+    if tfVoid in t.flags and not forAny: result = nil
+    else: result = t
+  of tyTypeDesc:
+    if c.isNoCall: result = t
+    else: result = nil
   of tySequence, tySet:
     if t.sons[0].kind == tyEmpty: result = nil
     else: result = t
@@ -967,7 +974,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyAnything:
     considerPreviousT:
-      var concrete = concreteType(c, a)
+      var concrete = concreteType(c, a, forAny=true)
       if concrete != nil and doBind:
         put(c.bindings, f, concrete)
       return isGeneric

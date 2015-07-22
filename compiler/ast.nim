@@ -525,6 +525,8 @@ const
   tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
     # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
     # deprecated and this mess can be cleaned up.
+  tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
+                      # 'empty' ('@[]' has the type 'seq[empty]').
   skError* = skUnknown
 
   # type flags that are essential for type equality:
