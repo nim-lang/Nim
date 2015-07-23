@@ -67,11 +67,6 @@ proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
 
 proc readLine(f: File, line: var TaintedString): bool =
-  template returnUntil(p: int) =
-    line.string[p] = '\0'
-    line.string.setLen(p)
-    return true
-
   var pos = 0
   # Use the currently reserved space for a first try
   var space = cast[PGenericSeq](line.string).space
@@ -84,8 +79,10 @@ proc readLine(f: File, line: var TaintedString): bool =
     let last = pos + cstring(addr line.string[pos]).len-1
     if line.string[last] == '\l':
       if last > 0 and line.string[last-1] == '\c':
-        returnUntil(last-1)
-      returnUntil(last)
+        line.string.setLen(last-1)
+        return true
+      line.string.setLen(last)
+      return true
     pos = last+1
     space = 128 # Read in 128 bytes at a time
     line.string.setLen(pos+space)
