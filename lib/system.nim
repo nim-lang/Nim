@@ -2603,17 +2603,17 @@ when not defined(JS): #and not defined(NimrodVM):
 
     proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.}
       ## reads a line of text from the file `f`. May throw an IO exception.
-      ## A line of text may be delimited by ``CR``, ``LF`` or
-      ## ``CRLF``. The newline character(s) are not part of the returned string.
+      ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
+      ## character(s) are not part of the returned string.
 
     proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
                   benign.}
       ## reads a line of text from the file `f` into `line`. `line` must not be
       ## ``nil``! May throw an IO exception.
-      ## A line of text may be delimited by ``CR``, ``LF`` or
-      ## ``CRLF``. The newline character(s) are not part of the returned string.
-      ## Returns ``false`` if the end of the file has been reached, ``true``
-      ## otherwise. If ``false`` is returned `line` contains no new data.
+      ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
+      ## character(s) are not part of the returned string. Returns ``false``
+      ## if the end of the file has been reached, ``true`` otherwise. If
+      ## ``false`` is returned `line` contains no new data.
 
     proc writeLn*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                              tags: [WriteIOEffect], benign, deprecated.}

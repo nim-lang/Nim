@@ -31,26 +31,6 @@ proc fprintf(f: File, frmt: cstring) {.importc: "fprintf",
 proc strlen(c: cstring): int {.
   importc: "strlen", header: "<string.h>", tags: [].}
 
-when defined(posix):
-  proc getc_unlocked(stream: File): cint {.importc: "getc_unlocked",
-    header: "<stdio.h>", tags: [ReadIOEffect].}
-
-  proc flockfile(stream: File) {.importc: "flockfile", header: "<stdio.h>",
-    tags: [ReadIOEffect].}
-
-  proc funlockfile(stream: File) {.importc: "funlockfile", header: "<stdio.h>",
-    tags: [ReadIOEffect].}
-elif false:
-  # doesn't work on Windows yet:
-  proc getc_unlocked(stream: File): cint {.importc: "_fgetc_nolock",
-    header: "<stdio.h>", tags: [ReadIOEffect].}
-
-  proc flockfile(stream: File) {.importc: "_lock_file", header: "<stdio.h>",
-    tags: [ReadIOEffect].}
-
-  proc funlockfile(stream: File) {.importc: "_unlock_file", header: "<stdio.h>",
-    tags: [ReadIOEffect].}
-
 # C routine that is used here:
 proc fread(buf: pointer, size, n: int, f: File): int {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
@@ -86,40 +66,29 @@ const
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
 
-when declared(getc_unlocked):
-  proc readLine(f: File, line: var TaintedString): bool =
-    setLen(line.string, 0) # reuse the buffer!
-    flockfile(f)
-    while true:
-      var c = getc_unlocked(f)
-      if c < 0'i32:
-        if line.len > 0: break
-        else: return false
-      if c == 10'i32: break # LF
-      if c == 13'i32:  # CR
-        c = getc_unlocked(f) # is the next char LF?
-        if c != 10'i32: ungetc(c, f) # no, put the character back
-        break
-      add line.string, chr(int(c))
-    result = true
-    funlockfile(f)
-else:
-  proc readLine(f: File, line: var TaintedString): bool =
-    # of course this could be optimized a bit; but IO is slow anyway...
-    # and it was difficult to get this CORRECT with Ansi C's methods
-    setLen(line.string, 0) # reuse the buffer!
-    while true:
-      var c = fgetc(f)
-      if c < 0'i32:
-        if line.len > 0: break
-        else: return false
-      if c == 10'i32: break # LF
-      if c == 13'i32:  # CR
-        c = fgetc(f) # is the next char LF?
-        if c != 10'i32: ungetc(c, f) # no, put the character back
-        break
-      add line.string, chr(int(c))
-    result = true
+proc readLine(f: File, line: var TaintedString): bool =
+  template returnUntil(p: int) =
+    line.string[p] = '\0'
+    line.string.setLen(p)
+    return true
+
+  var pos = 0
+  # Use the currently reserved space for a first try
+  var space = cast[PGenericSeq](line.string).space
+
+  while true:
+    if fgets(addr line.string[pos], space, f) == nil:
+      line.string.setLen(0)
+      return false
+    # This will cut the string short when it contains \0
+    let last = pos + cstring(addr line.string[pos]).len-1
+    if line.string[last] == '\l':
+      if last > 0 and line.string[last-1] == '\c':
+        returnUntil(last-1)
+      returnUntil(last)
+    pos = last+1
+    space = 128 # Read in 128 bytes at a time
+    line.string.setLen(pos+space)
 
 proc readLine(f: File): TaintedString =
   result = TaintedString(newStringOfCap(80))
