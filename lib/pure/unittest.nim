@@ -63,10 +63,10 @@ proc shouldRun(testName: string): bool =
 
 template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   block:
-    template setup*(setupBody: stmt): stmt {.immediate, dirty.} =
+    template setup(setupBody: stmt): stmt {.immediate, dirty.} =
       template testSetupIMPL: stmt {.immediate, dirty.} = setupBody
 
-    template teardown*(teardownBody: stmt): stmt {.immediate, dirty.} =
+    template teardown(teardownBody: stmt): stmt {.immediate, dirty.} =
       template testTeardownIMPL: stmt {.immediate, dirty.} = teardownBody
 
     body
