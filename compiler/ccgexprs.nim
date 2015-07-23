@@ -1052,9 +1052,9 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
   let seqAppendPattern = if not p.module.compileToCpp:
-                           "$1 = ($2) #incrSeq(&($1)->Sup, sizeof($3));$n"
+                           "$1 = ($2) #incrSeqV2(&($1)->Sup, sizeof($3));$n"
                          else:
-                           "$1 = ($2) #incrSeq($1, sizeof($3));$n"
+                           "$1 = ($2) #incrSeqV2($1, sizeof($3));$n"
   var a, b, dest: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
@@ -1064,8 +1064,9 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
       getTypeDesc(p.module, skipTypes(e.sons[2].typ, abstractVar))])
   keepAlive(p, a)
   initLoc(dest, locExpr, b.t, OnHeap)
-  dest.r = rfmt(nil, "$1->data[$1->$2-1]", rdLoc(a), lenField(p))
+  dest.r = rfmt(nil, "$1->data[$1->$2]", rdLoc(a), lenField(p))
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
+  lineCg(p, cpsStmts, "++$1->$2;$n", rdLoc(a), lenField(p))
   gcUsage(e)
 
 proc genReset(p: BProc, n: PNode) =
