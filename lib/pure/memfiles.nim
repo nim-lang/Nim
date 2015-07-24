@@ -246,8 +246,8 @@ proc close*(f: var MemFile) =
   if error: raiseOSError(lastErr)
 
 type Record* {.unchecked.} = object
-  Beg*: cstring
-  Len*: int
+  data*: cstring
+  size*: int
 
 iterator records*(mfile: MemFile, delim='\l', eat='\r'): Record {.inline.} =
   proc c_memchr(cstr: cstring, c: char, n: csize): cstring {.
@@ -255,24 +255,24 @@ iterator records*(mfile: MemFile, delim='\l', eat='\r'): Record {.inline.} =
   proc `-!`(p, q: cstring): int {.inline.} = return cast[int](p) -% cast[int](q)
   var rec: Record
   var End: cstring
-  rec.Beg = cast[cstring](mfile.mem)
+  rec.data = cast[cstring](mfile.mem)
   var remaining = mfile.size
   while remaining > 0:
-    End = c_memchr(rec.Beg, delim, remaining)
+    End = c_memchr(rec.data, delim, remaining)
     if End == nil:                                  # unterminated final record
-      rec.Len = remaining
+      rec.size = remaining
       yield rec
       break
-    rec.Len = End -! rec.Beg                        # delimiter is not included
-    if eat != '\0' and rec.Len > 0 and rec.Beg[rec.Len - 1] == eat:
-      dec(rec.Len)                                  # exclude extra pre-delim ch
+    rec.size = End -! rec.data                      # delimiter is not included
+    if eat != '\0' and rec.size > 0 and rec.data[rec.size - 1] == eat:
+      dec(rec.size)                                 # exclude extra pre-delim ch
     yield rec
-    rec.Beg = cast[cstring](cast[int](End) +% 1)    # skip delimiter
-    remaining = mfile.size - (rec.Beg -! cast[cstring](mfile.mem))
+    rec.data = cast[cstring](cast[int](End) +% 1)   # skip delimiter
+    remaining = mfile.size - (rec.data -! cast[cstring](mfile.mem))
 
 proc toString*(rec: Record): string {.inline.} =
   proc toNimStr(str: cstring, len: int): string {. importc: "toNimStr" .}
-  result = toNimStr(cast[cstring](rec.Beg), rec.Len)
+  result = toNimStr(cast[cstring](rec.data), rec.size)
   result[result.len] = '\0'
 
 iterator lines*(mfile: MemFile): string {.inline.} =
