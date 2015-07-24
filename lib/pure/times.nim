@@ -1020,10 +1020,10 @@ proc parse*(value, layout: string): TimeInfo =
       # These are literals in both the layout and the value string
       if layout[i] == '\'':
         inc(i)
-        inc(j)
         while layout[i] != '\'' and layout.len-1 > i:
           inc(i)
           inc(j)
+        inc(i)
       else:
         inc(i)
         inc(j)
@@ -1111,6 +1111,8 @@ when isMainModule:
   # RFC3339     = "2006-01-02T15:04:05Z07:00"
   s = "2006-01-12T15:04:05Z-07:00"
   f = "yyyy-MM-ddTHH:mm:ssZzzz"
+  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+  f = "yyyy-MM-dd'T'HH:mm:ss'Z'zzz"
   assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
   # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
   s = "2006-01-12T15:04:05.999999999Z-07:00"
