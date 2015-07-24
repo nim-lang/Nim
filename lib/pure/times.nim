@@ -789,7 +789,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     of "sat":
       info.weekday = dSat
     else:
-      raise newException(ValueError, "invalid day of week ")
+      raise newException(ValueError,
+        "Couldn't parse day of week (ddd), got: " & value[j..j+2])
     j += 3
   of "dddd":
     if value.len >= j+6 and value[j..j+5].cmpIgnoreCase("sunday") == 0:
@@ -814,7 +815,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
       info.weekday = dSat
       j += 8
     else:
-      raise newException(ValueError, "invalid day of week ")
+      raise newException(ValueError,
+        "Couldn't parse day of week (dddd), got: " & value)
   of "h", "H":
     var pd = parseInt(value[j..j+1], sv)
     info.hour = sv
@@ -865,7 +867,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     of "dec":
       info.month =  mDec
     else:
-      raise newException(ValueError, "invalid month")
+      raise newException(ValueError,
+        "Couldn't parse month (MMM), got: " & value)
     j += 3
   of "MMMM":
     if value.len >= j+7 and value[j..j+6].cmpIgnoreCase("january") == 0:
@@ -905,7 +908,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
       info.month =  mDec
       j += 8
     else:
-      raise newException(ValueError, "invalid month")
+      raise newException(ValueError,
+        "Couldn't parse month (MMMM), got: " & value)
   of "s":
     var pd = parseInt(value[j..j+1], sv)
     info.second = sv
@@ -936,7 +940,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     elif value[j] == '-':
       info.timezone = 0-parseInt($value[j+1])
     else:
-      raise newException(ValueError, "Sign for timezone " & value[j])
+      raise newException(ValueError,
+        "Couldn't parse timezone offset (z), got: " & value[j])
     j += 2
   of "zz":
     if value[j] == '+':
@@ -944,7 +949,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     elif value[j] == '-':
       info.timezone = 0-value[j+1..j+2].parseInt()
     else:
-      raise newException(ValueError, "Sign for timezone " & value[j])
+      raise newException(ValueError,
+        "Couldn't parse timezone offset (zz), got: " & value[j])
     j += 3
   of "zzz":
     if value[j] == '+':
@@ -952,7 +958,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     elif value[j] == '-':
       info.timezone = 0-value[j+1..j+2].parseInt()
     else:
-      raise newException(ValueError, "Sign for timezone " & value[j])
+      raise newException(ValueError,
+        "Couldn't parse timezone offset (zzz), got: " & value[j])
     j += 6
   of "ZZZ":
     info.tzname = value[j..j+2].toUpper()
