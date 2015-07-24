@@ -139,7 +139,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
   of filtReplace: 
     result = filterReplace(stdin, filename, n)
   if f != filtNone: 
-    if gVerbosity >= 2: 
+    if hintCodeBegin in gNotes:
       rawMessage(hintCodeBegin, [])
       msgWriteln(result.s)
       rawMessage(hintCodeEnd, [])

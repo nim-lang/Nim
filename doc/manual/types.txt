@@ -342,6 +342,34 @@ builtin ``len`` procedure; the length never counts the terminating zero.
 The assignment operator for strings always copies the string.
 The ``&`` operator concatenates strings.
 
+Most native Nim types support conversion to strings with the special ``$`` proc.
+When calling the ``echo`` proc, for example, the built-in stringify operation
+for the parameter is called:
+
+.. code-block:: nim
+
+  echo 3 # calls `$` for `int`
+
+Whenever a user creates a specialized object, implementation of this procedure
+provides for ``string`` representation.
+
+.. code-block:: nim
+  type
+    Person = object
+      name: string
+      age: int
+
+  proc `$`(p: Person): string = # `$` always returns a string
+    result = p.name & " is " &
+            $p.age & # we *need* the `$` in front of p.age, which
+                     # is natively an integer, to convert it to
+                     # a string
+            " years old."
+
+While ``$p.name`` can also be used, the ``$`` operation on a string does
+nothing. Note that we cannot rely on automatic conversion from an ``int`` to
+a ``string`` like we can for the ``echo`` proc.
+
 Strings are compared by their lexicographical order. All comparison operators
 are available. Strings can be indexed like arrays (lower bound is 0). Unlike
 arrays, they can be used in case statements:
@@ -564,7 +592,7 @@ the ``of`` operator can be used to determine the object's type.
 
 .. code-block:: nim
   type
-    Person {.inheritable.} = object
+    Person = object of RootObj
       name*: string   # the * means that `name` is accessible from other modules
       age: int        # no * means that the field is hidden
 
@@ -575,6 +603,7 @@ the ``of`` operator can be used to determine the object's type.
     student: Student
     person: Person
   assert(student of Student) # is true
+  assert(student of Person) # also true
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
@@ -593,6 +622,7 @@ an ``object`` type or a ``ref object`` type:
 .. code-block:: nim
   var student = Student(name: "Anton", age: 5, id: 3)
 
+Note that, unlike tuples, objects require the field names along with their values.
 For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 

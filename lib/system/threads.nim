@@ -11,7 +11,7 @@
 ## Do not import it directly. To activate thread support you need to compile
 ## with the ``--threads:on`` command line switch.
 ##
-## Nim's memory model for threads is quite different from other common 
+## Nim's memory model for threads is quite different from other common
 ## programming languages (C, Pascal): Each thread has its own
 ## (garbage collected) heap and sharing of memory is restricted. This helps
 ## to prevent race conditions and improves efficiency. See `the manual for
@@ -26,7 +26,7 @@
 ##  var
 ##    thr: array [0..4, Thread[tuple[a,b: int]]]
 ##    L: Lock
-##  
+##
 ##  proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
 ##    for i in interval.a..interval.b:
 ##      acquire(L) # lock stdout
@@ -38,8 +38,8 @@
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
-  
-when not declared(NimString): 
+
+when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 const
@@ -56,15 +56,15 @@ when defined(windows):
   {.deprecated: [TSysThread: SysThread, TWinThreadProc: WinThreadProc].}
 
   proc createThread(lpThreadAttributes: pointer, dwStackSize: int32,
-                     lpStartAddress: WinThreadProc, 
+                     lpStartAddress: WinThreadProc,
                      lpParameter: pointer,
-                     dwCreationFlags: int32, 
+                     dwCreationFlags: int32,
                      lpThreadId: var int32): SysThread {.
     stdcall, dynlib: "kernel32", importc: "CreateThread".}
 
   proc winSuspendThread(hThread: SysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "SuspendThread".}
-      
+
   proc winResumeThread(hThread: SysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "ResumeThread".}
 
@@ -76,7 +76,7 @@ when defined(windows):
 
   proc terminateThread(hThread: SysThread, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
-    
+
   type
     ThreadVarSlot = distinct int32
 
@@ -104,19 +104,25 @@ when defined(windows):
       importc: "TlsSetValue", stdcall, dynlib: "kernel32".}
     proc threadVarGetValue(dwTlsIndex: ThreadVarSlot): pointer {.
       importc: "TlsGetValue", stdcall, dynlib: "kernel32".}
-  
+
+  proc setThreadAffinityMask(hThread: SysThread, dwThreadAffinityMask: uint) {.
+    importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
+
 else:
   when not defined(macosx):
     {.passL: "-pthread".}
 
   {.passC: "-pthread".}
+  const
+    schedh = "#define _GNU_SOURCE\n#include <sched.h>"
+    pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
   type
     SysThread {.importc: "pthread_t", header: "<sys/types.h>",
                  final, pure.} = object
     Pthread_attr {.importc: "pthread_attr_t",
                      header: "<sys/types.h>", final, pure.} = object
-                 
+
     Timespec {.importc: "struct timespec",
                 header: "<time.h>", final, pure.} = object
       tv_sec: int
@@ -125,19 +131,19 @@ else:
                 Ttimespec: Timespec].}
 
   proc pthread_attr_init(a1: var PthreadAttr) {.
-    importc, header: "<pthread.h>".}
+    importc, header: pthreadh.}
   proc pthread_attr_setstacksize(a1: var PthreadAttr, a2: int) {.
-    importc, header: "<pthread.h>".}
+    importc, header: pthreadh.}
 
   proc pthread_create(a1: var SysThread, a2: var PthreadAttr,
-            a3: proc (x: pointer): pointer {.noconv.}, 
-            a4: pointer): cint {.importc: "pthread_create", 
-            header: "<pthread.h>".}
+            a3: proc (x: pointer): pointer {.noconv.},
+            a4: pointer): cint {.importc: "pthread_create",
+            header: pthreadh.}
   proc pthread_join(a1: SysThread, a2: ptr pointer): cint {.
-    importc, header: "<pthread.h>".}
+    importc, header: pthreadh.}
 
   proc pthread_cancel(a1: SysThread): cint {.
-    importc: "pthread_cancel", header: "<pthread.h>".}
+    importc: "pthread_cancel", header: pthreadh.}
 
   type
     ThreadVarSlot {.importc: "pthread_key_t", pure, final,
@@ -145,16 +151,16 @@ else:
   {.deprecated: [TThreadVarSlot: ThreadVarSlot].}
 
   proc pthread_getspecific(a1: ThreadVarSlot): pointer {.
-    importc: "pthread_getspecific", header: "<pthread.h>".}
-  proc pthread_key_create(a1: ptr ThreadVarSlot, 
+    importc: "pthread_getspecific", header: pthreadh.}
+  proc pthread_key_create(a1: ptr ThreadVarSlot,
                           destruct: proc (x: pointer) {.noconv.}): int32 {.
-    importc: "pthread_key_create", header: "<pthread.h>".}
+    importc: "pthread_key_create", header: pthreadh.}
   proc pthread_key_delete(a1: ThreadVarSlot): int32 {.
-    importc: "pthread_key_delete", header: "<pthread.h>".}
+    importc: "pthread_key_delete", header: pthreadh.}
 
   proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): int32 {.
-    importc: "pthread_setspecific", header: "<pthread.h>".}
-  
+    importc: "pthread_setspecific", header: pthreadh.}
+
   proc threadVarAlloc(): ThreadVarSlot {.inline.} =
     discard pthread_key_create(addr(result), nil)
   proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.inline.} =
@@ -165,7 +171,15 @@ else:
   when useStackMaskHack:
     proc pthread_attr_setstack(attr: var PthreadAttr, stackaddr: pointer,
                                size: int): cint {.
-      importc: "pthread_attr_setstack", header: "<pthread.h>".}
+      importc: "pthread_attr_setstack", header: pthreadh.}
+
+  type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
+  proc cpusetZero(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
+  proc cpusetIncl(cpu: cint; s: var CpuSet) {.
+    importc: "CPU_SET", header: schedh.}
+
+  proc setAffinity(thread: SysThread; setsize: csize; s: var CpuSet) {.
+    importc: "pthread_setaffinity_np", header: pthreadh.}
 
 const
   emulatedThreadVars = compileOption("tlsEmulation")
@@ -196,33 +210,33 @@ type
       nil
 {.deprecated: [TThreadLocalStorage: ThreadLocalStorage, TGcThread: GcThread].}
 
-# XXX it'd be more efficient to not use a global variable for the 
-# thread storage slot, but to rely on the implementation to assign slot X
-# for us... ;-)
-var globalsSlot: ThreadVarSlot
-
 when not defined(useNimRtl):
   when not useStackMaskHack:
     var mainThread: GcThread
-
-proc initThreadVarsEmulation() {.compilerProc, inline.} =
-  when not defined(useNimRtl):
-    globalsSlot = threadVarAlloc()
-    when declared(mainThread):
-      threadVarSetValue(globalsSlot, addr(mainThread))
 
 #const globalsSlot = ThreadVarSlot(0)
 #sysAssert checkSlot.int == globalsSlot.int
 
 when emulatedThreadVars:
+  # XXX it'd be more efficient to not use a global variable for the
+  # thread storage slot, but to rely on the implementation to assign slot X
+  # for us... ;-)
+  var globalsSlot: ThreadVarSlot
+
   proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
     result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
+
+  proc initThreadVarsEmulation() {.compilerProc, inline.} =
+    when not defined(useNimRtl):
+      globalsSlot = threadVarAlloc()
+      when declared(mainThread):
+        threadVarSetValue(globalsSlot, addr(mainThread))
 
 when useStackMaskHack:
   proc maskStackPointer(offset: int): pointer {.compilerRtl, inl.} =
     var x {.volatile.}: pointer
     x = addr(x)
-    result = cast[pointer]((cast[int](x) and not ThreadStackMask) +% 
+    result = cast[pointer]((cast[int](x) and not ThreadStackMask) +%
       (0) +% offset)
 
 # create for the main thread. Note: do not insert this data into the list
@@ -231,27 +245,27 @@ when not defined(useNimRtl):
   when not useStackMaskHack:
     #when not defined(createNimRtl): initStackBottom()
     initGC()
-    
+
   when emulatedThreadVars:
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
       echo "too large thread local storage size requested"
       quit 1
-  
+
   when hasSharedHeap and not defined(boehmgc) and not defined(gogc) and not defined(nogc):
     var
       threadList: PGcThread
-      
-    proc registerThread(t: PGcThread) = 
+
+    proc registerThread(t: PGcThread) =
       # we need to use the GC global lock here!
       acquireSys(HeapLock)
       t.prev = nil
       t.next = threadList
-      if threadList != nil: 
+      if threadList != nil:
         sysAssert(threadList.prev == nil, "threadList.prev == nil")
         threadList.prev = t
       threadList = t
       releaseSys(HeapLock)
-    
+
     proc unregisterThread(t: PGcThread) =
       # we need to use the GC global lock here!
       acquireSys(HeapLock)
@@ -263,13 +277,13 @@ when not defined(useNimRtl):
       t.next = nil
       t.prev = nil
       releaseSys(HeapLock)
-      
+
     # on UNIX, the GC uses ``SIGFREEZE`` to tell every thread to stop so that
     # the GC can examine the stacks?
     proc stopTheWord() = discard
-    
+
 # We jump through some hops here to ensure that Nim thread procs can have
-# the Nim calling convention. This is needed because thread procs are 
+# the Nim calling convention. This is needed because thread procs are
 # ``stdcall`` on Windows and ``noconv`` on UNIX. Alternative would be to just
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
@@ -311,30 +325,30 @@ template threadProcWrapperBody(closure: expr) {.immediate.} =
   # exception is tried to be re-raised by the code-gen after the ``finally``!
   # However this is doomed to fail, because we already unmapped every heap
   # page!
-  
+
   # mark as not running anymore:
   t.dataFn = nil
-  
+
 {.push stack_trace:off.}
 when defined(windows):
-  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} = 
+  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
     threadProcWrapperBody(closure)
     # implicitly return 0
 else:
-  proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} = 
+  proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
     threadProcWrapperBody(closure)
 {.pop.}
 
-proc running*[TArg](t: Thread[TArg]): bool {.inline.} = 
+proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
   ## returns true if `t` is running.
   result = t.dataFn != nil
 
 when hostOS == "windows":
-  proc joinThread*[TArg](t: Thread[TArg]) {.inline.} = 
+  proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
     ## waits for the thread `t` to finish.
     discard waitForSingleObject(t.sys, -1'i32)
 
-  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) = 
+  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
     ## waits for every thread in `t` to finish.
     var a: array[0..255, SysThread]
     sysAssert a.len >= t.len, "a.len >= t.len"
@@ -365,7 +379,7 @@ when false:
 
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread.}, 
+                           tp: proc (arg: TArg) {.thread.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -378,9 +392,16 @@ when hostOS == "windows":
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
+
+  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+    ## pins a thread to a `CPU`:idx:. In other words sets a
+    ## thread's `affinity`:idx:. If you don't know what this means, you
+    ## shouldn't use this proc.
+    setThreadAffinityMask(t.sys, uint(1 shl cpu))
+
 else:
-  proc createThread*[TArg](t: var Thread[TArg], 
-                           tp: proc (arg: TArg) {.thread.}, 
+  proc createThread*[TArg](t: var Thread[TArg],
+                           tp: proc (arg: TArg) {.thread.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -394,14 +415,18 @@ else:
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
 
+  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+    ## pins a thread to a `CPU`:idx:. In other words sets a
+    ## thread's `affinity`:idx:. If you don't know what this means, you
+    ## shouldn't use this proc.
+    var s {.noinit.}: CpuSet
+    cpusetZero(s)
+    cpusetIncl(cpu.cint, s)
+    setAffinity(t.sys, sizeof(s), s)
+
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.
   result = addr(t)
-
-proc myThreadId*[TArg](): ThreadId[TArg] =
-  ## returns the thread ID of the thread that calls this proc. This is unsafe
-  ## because the type ``TArg`` is not checked for consistency!
-  result = cast[ThreadId[TArg]](threadVarGetValue(globalsSlot))
 
 when false:
   proc mainThreadId*[TArg](): ThreadId[TArg] =
@@ -413,4 +438,3 @@ when useStackMaskHack:
     var mainThread: Thread[pointer]
     createThread(mainThread, tp)
     joinThread(mainThread)
-

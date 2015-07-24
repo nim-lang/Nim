@@ -1435,23 +1435,22 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   r.res.add("}")
 
 proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
-  # XXX inheritance?
   var a: TCompRes
-  r.res = rope("{")
   r.kind = resExpr
+  var initList : Rope
   var fieldIDs = initIntSet()
   for i in countup(1, sonsLen(n) - 1):
-    if i > 1: add(r.res, ", ")
+    if i > 1: add(initList, ", ")
     var it = n.sons[i]
     internalAssert it.kind == nkExprColonExpr
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f)
     fieldIDs.incl(f.id)
-    addf(r.res, "$#: $#" | "$# = $#" , [f.loc.r, a.res])
+    addf(initList, "$#: $#" | "$# = $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
-  createObjInitList(p, t, fieldIDs, r.res)
-  r.res.add("}")
+  createObjInitList(p, t, fieldIDs, initList)
+  r.res = "{$1}" % [initList]
 
 proc genConv(p: PProc, n: PNode, r: var TCompRes) =
   var dest = skipTypes(n.typ, abstractVarRange)

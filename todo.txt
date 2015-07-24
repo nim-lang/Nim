@@ -1,5 +1,8 @@
-version 0.11.2
+version 0.11.4
 ==============
+
+- ``unsafeAddr``
+- document special cased varargs[untyped] and varargs[typed]
 
 - The remaining bugs of the lambda lifting pass that is responsible to enable
   closures and closure iterators need to be fixed.
@@ -8,9 +11,9 @@ version 0.11.2
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
 
-- Finish the implementation of the 'parallel' statement.
+- Mark the 'parallel' statement as experimental.
+- add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
-- special case varargs[untyped] and varargs[typed]
 - make 'nil' work for 'add':
   - resizeString
   - incrSeq
@@ -20,9 +23,9 @@ version 0.11.2
 version 1.0
 ===========
 
+- map ``string`` and ``seq`` to ``std::string`` and ``std::vector``
 - macro support for '='; bind '=' to a memory region
 - remove   echo $foo  gotcha
-- add "all threads are blocked" detection to 'spawn'
 - figure out why C++ bootstrapping is so much slower
 - nimsuggest: auto-completion needs to work in 'class' macros
 - The bitwise 'not' operator will be renamed to 'bnot' to

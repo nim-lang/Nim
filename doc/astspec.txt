@@ -51,7 +51,8 @@ a child can never be nil.
 Leaf nodes/Atoms
 ================
 A leaf of the AST often corresponds to a terminal symbol in the concrete
-syntax.
+syntax. Note that the default ``float`` in Nim maps to ``float64`` such that
+the default AST for a float is ``nnkFloat64Lit`` as below.
 
 -----------------                ---------------------------------------------
 Nim expression                   Corresponding AST
@@ -65,7 +66,7 @@ Nim expression                   Corresponding AST
 ``42'u16``                       ``nnkUInt16Lit(intVal = 42)``
 ``42'u32``                       ``nnkUInt32Lit(intVal = 42)``
 ``42'u64``                       ``nnkUInt64Lit(intVal = 42)``
-``42.0``                         ``nnkFloatLit(floatVal = 42.0)``
+``42.0``                         ``nnkFloat64Lit(floatVal = 42.0)``
 ``42.0'f32``                     ``nnkFloat32Lit(floatVal = 42.0)``
 ``42.0'f64``                     ``nnkFloat64Lit(floatVal = 42.0)``
 ``"abc"``                        ``nnkStrLit(strVal = "abc")``
@@ -397,6 +398,8 @@ Ranges
 ------
 
 Ranges occur in set constructors, case statement branches, or array slices.
+Internally, the node kind ``nnkRange`` is used, but when constructing the
+AST, construction with ``..`` as an infix operator should be used instead.
 
 Concrete syntax:
 
@@ -406,7 +409,33 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkRange(nnkIntLit(1), nnkIntLit(3))
+  nnkInfix(
+    nnkIdent(!".."),
+    nnkIntLit(1),
+    nnkIntLit(3)
+  )
+
+Example code:
+
+.. code-block:: nim
+  macro genRepeatEcho(): stmt =
+    result = newNimNode(nnkStmtList)
+
+    var forStmt = newNimNode(nnkForStmt) # generate a for statement
+    forStmt.add(ident("i")) # use the variable `i` for iteration
+
+    var rangeDef = newNimNode(nnkInfix).add(
+      ident("..")).add(
+      newIntLitNode(3),newIntLitNode(5)) # iterate over the range 3..5
+
+    forStmt.add(rangeDef)
+    forStmt.add(newCall(ident("echo"), newIntLitNode(3))) # meat of the loop
+    result.add(forStmt)
+
+  genRepeatEcho() # gives:
+                  # 3
+                  # 3
+                  # 3
 
 
 If expression

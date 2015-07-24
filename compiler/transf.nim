@@ -465,10 +465,13 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var call = n.sons[length - 2]
 
   let labl = newLabel(c, n)
-  c.breakSyms.add(labl)
   result = newTransNode(nkBlockStmt, n.info, 2)
   result[0] = newSymNode(labl).PTransNode
-
+  if call.typ.isNil:
+    # see bug #3051
+    result[1] = newNode(nkEmpty).PTransNode
+    return result
+  c.breakSyms.add(labl)
   if call.typ.kind != tyIter and
     (call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind != skIterator):
@@ -479,10 +482,10 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
 
   #echo "transforming: ", renderTree(n)
   var stmtList = newTransNode(nkStmtList, n.info, 0)
+  result[1] = stmtList
 
   var loopBody = transformLoopBody(c, n.sons[length-1])
 
-  result[1] = stmtList
   discard c.breakSyms.pop
 
   var v = newNodeI(nkVarSection, n.info)

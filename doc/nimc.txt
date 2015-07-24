@@ -318,7 +318,7 @@ with the project:
 .. code-block:: Nim
   {.compile: "myfile.cpp".}
 
-**Note**: Nim computes a CRC checksum and only recompiles the file if it
+**Note**: Nim computes a SHA1 checksum and only recompiles the file if it
 has changed. You can use the ``-f`` command line option to force recompilation
 of the file.
 
@@ -388,7 +388,7 @@ Use two backticks to produce a single verbatim backtick.
 
 For a toplevel emit statement the section where in the generated C/C++ file
 the code should be emitted can be influenced via the
-prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/``:
+prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 
 .. code-block:: Nim
   {.emit: """/*TYPESECTION*/

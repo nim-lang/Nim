@@ -260,6 +260,12 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
       addLocalDecl(c, a.sons[j], symKind)
 
 proc semPattern(c: PContext, n: PNode): PNode
+
+proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
+  result = n
+  for i in 0.. < n.len:
+    result.sons[i] = semTemplBody(c, n.sons[i])
+
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
@@ -420,9 +426,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
           return symChoice(c.c, n, s, scForceOpen)
         else:
           return symChoice(c.c, n, s, scOpen)
-    result = n
-    for i in countup(0, sonsLen(n) - 1):
-      result.sons[i] = semTemplBody(c, n.sons[i])
+    result = semTemplBodySons(c, n)
 
 proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -475,7 +479,7 @@ proc transformToExpr(n: PNode): PNode =
 
 proc semTemplateDef(c: PContext, n: PNode): PNode =
   var s: PSym
-  if c.p.owner.kind == skModule:
+  if isTopLevel(c):
     s = semIdentVis(c, skTemplate, n.sons[0], {sfExported})
     incl(s.flags, sfGlobal)
   else:

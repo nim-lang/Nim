@@ -429,7 +429,7 @@ proc resetCompilationLists* =
   initLinkedList(toCompile)
   ## XXX: we must associate these with their originating module
   # when the module is loaded/unloaded it adds/removes its items
-  # That's because we still need to CRC check the external files
+  # That's because we still need to hash check the external files
   # Maybe we can do that in checkDep on the other hand?
   initLinkedList(externalToCompile)
   initLinkedList(toLink)
@@ -438,16 +438,12 @@ proc addFileToLink*(filename: string) =
   prependStr(toLink, filename)
   # BUGFIX: was ``appendStr``
 
-proc execWithEcho(cmd: string, prettyCmd = ""): int =
-  if optListCmd in gGlobalOptions or gVerbosity > 0:
-    if prettyCmd != "":
-      msgWriteln(prettyCmd)
-    else:
-      msgWriteln(cmd)
+proc execWithEcho(cmd: string, msg = hintExecuting): int =
+  rawMessage(msg, cmd)
   result = execCmd(cmd)
 
-proc execExternalProgram*(cmd: string, prettyCmd = "") =
-  if execWithEcho(cmd, prettyCmd) != 0:
+proc execExternalProgram*(cmd: string, msg = hintExecuting) =
+  if execWithEcho(cmd, msg) != 0:
     rawMessage(errExecutionOfProgramFailed, "")
 
 proc generateScript(projectFile: string, script: Rope) =
@@ -585,18 +581,18 @@ proc externalFileChanged(filename: string): bool =
   if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
     return false
 
-  var crcFile = toGeneratedFile(filename.withPackageName, "crc")
-  var currentCrc = footprint(filename)
+  var hashFile = toGeneratedFile(filename.withPackageName, "sha1")
+  var currentHash = footprint(filename)
   var f: File
-  if open(f, crcFile, fmRead):
-    let oldCrc = parseSecureHash(f.readLine())
+  if open(f, hashFile, fmRead):
+    let oldHash = parseSecureHash(f.readLine())
     close(f)
-    result = oldCrc != currentCrc
+    result = oldHash != currentHash
   else:
     result = true
   if result:
-    if open(f, crcFile, fmWrite):
-      f.writeLine($currentCrc)
+    if open(f, hashFile, fmWrite):
+      f.writeLine($currentHash)
       close(f)
 
 proc addExternalFileToCompile*(filename: string) =
@@ -703,10 +699,8 @@ proc callCCompiler*(projectfile: string) =
           "nim", quoteShell(getPrefixDir()),
           "lib", quoteShell(libpath)])
     if optCompileOnly notin gGlobalOptions:
-      if gVerbosity == 1:
-        execExternalProgram(linkCmd, "[Linking]")
-      else:
-        execExternalProgram(linkCmd)
+      execExternalProgram(linkCmd,
+                          if gVerbosity > 1: hintExecuting else: hintLinking)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:

@@ -211,7 +211,7 @@ proc readConfigFile(filename: string) =
     while tok.tokType != tkEof: parseAssignment(L, tok)
     if len(condStack) > 0: lexMessage(L, errTokenExpected, "@end")
     closeLexer(L)
-    if gVerbosity >= 1: rawMessage(hintConf, filename)
+    rawMessage(hintConf, filename)
 
 proc getUserConfigPath(filename: string): string =
   result = joinPath(getConfigDir(), filename)

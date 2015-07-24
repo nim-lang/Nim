@@ -347,8 +347,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       useStringh(p.module)
       linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1));$n",
-           rdLoc(dest), rdLoc(src))
+           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+           rdLoc(dest), rdLoc(src), getTypeDesc(p.module, ty))
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
@@ -1052,9 +1052,9 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
   let seqAppendPattern = if not p.module.compileToCpp:
-                           "$1 = ($2) #incrSeq(&($1)->Sup, sizeof($3));$n"
+                           "$1 = ($2) #incrSeqV2(&($1)->Sup, sizeof($3));$n"
                          else:
-                           "$1 = ($2) #incrSeq($1, sizeof($3));$n"
+                           "$1 = ($2) #incrSeqV2($1, sizeof($3));$n"
   var a, b, dest: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
@@ -1064,8 +1064,9 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
       getTypeDesc(p.module, skipTypes(e.sons[2].typ, abstractVar))])
   keepAlive(p, a)
   initLoc(dest, locExpr, b.t, OnHeap)
-  dest.r = rfmt(nil, "$1->data[$1->$2-1]", rdLoc(a), lenField(p))
+  dest.r = rfmt(nil, "$1->data[$1->$2]", rdLoc(a), lenField(p))
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
+  lineCg(p, cpsStmts, "++$1->$2;$n", rdLoc(a), lenField(p))
   gcUsage(e)
 
 proc genReset(p: BProc, n: PNode) =
@@ -1319,6 +1320,8 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e.typ,
                 ropecg(p.module, "#reprAny($1, $2)", [
                 rdLoc(a), genTypeInfo(p.module, t)]))
+  of tyEmpty:
+    localError(e.info, "'repr' doesn't support 'void' type")
   else:
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprAny($1, $2)",
                                    [addrLoc(a), genTypeInfo(p.module, t)]))
@@ -1483,11 +1486,11 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of 1, 2, 4, 8:
     case op
     of mIncl:
-      var ts = "NI" & $(size * 8)
+      var ts = "NU" & $(size * 8)
       binaryStmtInExcl(p, e, d,
           "$1 |= ((" & ts & ")1)<<(($2)%(sizeof(" & ts & ")*8));$n")
     of mExcl:
-      var ts = "NI" & $(size * 8)
+      var ts = "NU" & $(size * 8)
       binaryStmtInExcl(p, e, d, "$1 &= ~(((" & ts & ")1) << (($2) % (sizeof(" &
           ts & ")*8)));$n")
     of mCard:
@@ -1582,7 +1585,8 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   var a: TLoc
   var dest = skipTypes(n.typ, abstractVar)
   # range checks for unsigned turned out to be buggy and annoying:
-  if optRangeCheck notin p.options or dest.kind in {tyUInt..tyUInt64}:
+  if optRangeCheck notin p.options or dest.skipTypes({tyRange}).kind in
+                                             {tyUInt..tyUInt64}:
     initLocExpr(p, n.sons[0], a)
     putIntoDest(p, d, n.typ, "(($1) ($2))" %
         [getTypeDesc(p.module, dest), rdCharLoc(a)])
@@ -1798,7 +1802,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
     else:
       # small set
-      var ts = "NI" & $(getSize(e.typ) * 8)
+      var ts = "NU" & $(getSize(e.typ) * 8)
       lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(d)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
@@ -1806,13 +1810,13 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
           initLocExpr(p, e.sons[i].sons[0], a)
           initLocExpr(p, e.sons[i].sons[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
-              "$2 |=(1<<((" & ts & ")($1)%(sizeof(" & ts & ")*8)));$n", [
+              "$2 |=((" & ts & ")(1)<<(($1)%(sizeof(" & ts & ")*8)));$n", [
               rdLoc(idx), rdLoc(d), rdSetElemLoc(a, e.typ),
               rdSetElemLoc(b, e.typ)])
         else:
           initLocExpr(p, e.sons[i], a)
           lineF(p, cpsStmts,
-               "$1 |=(1<<((" & ts & ")($2)%(sizeof(" & ts & ")*8)));$n",
+               "$1 |=((" & ts & ")(1)<<(($2)%(sizeof(" & ts & ")*8)));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
 
 proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =

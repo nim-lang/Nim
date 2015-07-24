@@ -17,7 +17,7 @@
 const
   NilLibHandle: LibHandle = nil
 
-proc rawWrite(f: File, s: string) = 
+proc rawWrite(f: File, s: string) =
   # we cannot throw an exception here!
   discard writeBuffer(f, cstring(s), s.len)
 
@@ -145,6 +145,5 @@ elif defined(mac):
 
 else:
   {.error: "no implementation for dyncalls".}
-  
-{.pop.}
 
+{.pop.}

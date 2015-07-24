@@ -81,7 +81,7 @@ when defined(Nimdoc): # only for proper documentation:
       ## Windows.
 
     FileSystemCaseSensitive* = true
-      ## True if the file system is case sensitive, false otherwise. Used by
+      ## true if the file system is case sensitive, false otherwise. Used by
       ## `cmpPaths` to compare filenames properly.
 
     ExeExt* = ""
@@ -261,7 +261,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
     if errorCode != OSErrorCode(0'i32):
       result = $os.strerror(errorCode.int32)
 
-proc raiseOSError*(errorCode: OSErrorCode) =
+proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
   ## message, ``osErrorMsg`` will be used to get this message.
   ##
@@ -271,7 +271,10 @@ proc raiseOSError*(errorCode: OSErrorCode) =
   ## the message ``unknown OS error`` will be used.
   var e: ref OSError; new(e)
   e.errorCode = errorCode.int32
-  e.msg = osErrorMsg(errorCode)
+  if additionalInfo.len == 0:
+    e.msg = osErrorMsg(errorCode)
+  else:
+    e.msg = additionalInfo & " " & osErrorMsg(errorCode)
   if e.msg == "":
     e.msg = "unknown OS error"
   raise e
@@ -618,6 +621,20 @@ proc parentDir*(path: string): string {.
   else:
     result = ""
 
+proc tailDir*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Returns the tail part of `path`..
+  ##
+  ## | Example: ``tailDir("/usr/local/bin") == "local/bin"``.
+  ## | Example: ``tailDir("usr/local/bin/") == "local/bin"``.
+  ## | Example: ``tailDir("bin") == ""``.
+  var q = 1
+  if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
+  for i in 0..len(path)-q:
+    if path[i] in {DirSep, AltSep}:
+      return substr(path, i+1)
+  result = ""
+
 proc isRootDir*(path: string): bool {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Checks whether a given `path` is a root directory
@@ -814,7 +831,7 @@ when defined(Windows):
 
 proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns True if both pathname arguments refer to the same physical
+  ## Returns true if both pathname arguments refer to the same physical
   ## file or directory. Raises an exception if any of the files does not
   ## exist or information about it can not be obtained.
   ##
@@ -854,7 +871,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
 
 proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [ReadIOEffect].} =
-  ## Returns True if both pathname arguments refer to files with identical
+  ## Returns true if both pathname arguments refer to files with identical
   ## binary content.
   const
     bufSize = 8192 # 8K buffer
@@ -1019,7 +1036,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
       if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError())
   else:
     if c_rename(source, dest) != 0'i32:
-      raise newException(OSError, $strerror(errno))
+      raiseOSError(osLastError(), $strerror(errno))
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -1054,7 +1071,7 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} 
           raiseOSError(osLastError())
   else:
     if c_remove(file) != 0'i32 and errno != ENOENT:
-      raise newException(OSError, $strerror(errno))
+      raiseOSError(osLastError(), $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect].} =
@@ -1642,6 +1659,22 @@ proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
   when defined(windows): return string(getEnv("TEMP")) & "\\"
   else: return "/tmp/"
 
+proc expandSymlink*(symlinkPath: string): string =
+  ## Returns a string representing the path to which the symbolic link points.
+  ##
+  ## On Windows this is a noop, ``symlinkPath`` is simply returned.
+  when defined(windows):
+    result = symlinkPath
+  else:
+    result = newString(256)
+    var len = readlink(symlinkPath, result, 256)
+    if len < 0:
+      raiseOSError(osLastError())
+    if len > 256:
+      result = newString(len+1)
+      len = readlink(symlinkPath, result, len)
+    setLen(result, len)
+
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
@@ -1865,25 +1898,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
       close(f)
     else: raiseOSError(osLastError())
 
-proc expandTilde*(path: string): string {.tags: [ReadEnvEffect].}
-
-proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
-  ## Searches for `exe` in the current working directory and then
-  ## in directories listed in the ``PATH`` environment variable.
-  ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
-  ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
-  result = addFileExt(exe, os.ExeExt)
-  if existsFile(result): return
-  var path = string(os.getEnv("PATH"))
-  for candidate in split(path, PathSep):
-    when defined(windows):
-      var x = candidate / result
-    else:
-      var x = expandTilde(candidate) / result
-    if existsFile(x): return x
-  result = ""
-
-proc expandTilde*(path: string): string =
+proc expandTilde*(path: string): string {.tags: [ReadEnvEffect].} =
   ## Expands a path starting with ``~/`` to a full path.
   ##
   ## If `path` starts with the tilde character and is followed by `/` or `\\`
@@ -1902,6 +1917,22 @@ proc expandTilde*(path: string): string =
     result = getHomeDir() / path[2..len(path)-1]
   else:
     result = path
+
+proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
+  ## Searches for `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable.
+  ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
+  ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
+  result = addFileExt(exe, os.ExeExt)
+  if existsFile(result): return
+  var path = string(os.getEnv("PATH"))
+  for candidate in split(path, PathSep):
+    when defined(windows):
+      var x = candidate / result
+    else:
+      var x = expandTilde(candidate) / result
+    if existsFile(x): return x
+  result = ""
 
 when defined(Windows):
   type

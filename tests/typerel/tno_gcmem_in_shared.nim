@@ -1,6 +1,7 @@
 discard """
   errormsg: "shared memory may not refer to GC'ed thread local memory"
   line: 14
+  disabled: true
 """
 
 type

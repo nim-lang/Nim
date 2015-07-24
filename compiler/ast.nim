@@ -522,6 +522,11 @@ const
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
+  tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
+    # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
+    # deprecated and this mess can be cleaned up.
+  tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
+                      # 'empty' ('@[]' has the type 'seq[empty]').
   skError* = skUnknown
 
   # type flags that are essential for type equality:
@@ -534,35 +539,48 @@ type
     mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
-    mUnaryLt, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mUnaryLt, mInc, mDec, mOrd,
+    mNew, mNewFinalize, mNewSeq,
+    mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
+    mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
     mGCref, mGCunref,
-
     mAddI, mSubI, mMulI, mDivI, mModI,
     mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
-
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mMinF64, mMaxF64, mAddU, mSubU, mMulU,
-    mDivU, mModU, mEqI, mLeI,
-    mLtI,
+    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mMinI, mMaxI,
+    mMinF64, mMaxF64,
+    mAddU, mSubU, mMulU, mDivU, mModU,
+    mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
-    mLeU, mLtU, mLeU64, mLtU64,
-    mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
-    mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mEqProc, mUnaryMinusI,
-    mUnaryMinusI64, mAbsI, mNot,
+    mLeU, mLtU,
+    mLeU64, mLtU64,
+    mEqEnum, mLeEnum, mLtEnum,
+    mEqCh, mLeCh, mLtCh,
+    mEqB, mLeB, mLtB,
+    mEqRef, mEqUntracedRef, mLePtr, mLtPtr, mEqCString,
+    mXor, mEqProc,
+    mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
-    mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
-    mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
-    mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
-    mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
-    mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet,
-    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mSlice,
+    mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
+    mZe8ToI, mZe8ToI64,
+    mZe16ToI, mZe16ToI64,
+    mZe32ToI64, mZeIToI64,
+    mToU8, mToU16, mToU32,
+    mToFloat, mToBiggestFloat,
+    mToInt, mToBiggestInt,
+    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mStrToStr, mEnumToStr,
+    mAnd, mOr,
+    mEqStr, mLeStr, mLtStr,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mConStrStr, mSlice,
     mDotDot, # this one is only necessary to give nice compile time warnings
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq,
+    mInRange, mInSet, mRepr, mExit,
+    mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
@@ -584,7 +602,8 @@ type
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
     mNBindSym, mLocals, mNCallSite,
-    mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError,
+    mEqIdent, mEqNimrodNode, mSameNodeType,
+    mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym
 
 # things that we can evaluate safely at compile time, even if not asked for it:
@@ -595,30 +614,39 @@ const
     mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI,
     mAddF64, mSubF64, mMulF64, mDivF64,
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mMinF64, mMaxF64, mAddU, mSubU, mMulU,
-    mDivU, mModU, mEqI, mLeI,
-    mLtI,
+    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mMinI, mMaxI,
+    mMinF64, mMaxF64,
+    mAddU, mSubU, mMulU, mDivU, mModU,
+    mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
-    mLeU, mLtU, mLeU64, mLtU64,
-    mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
-    mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI,
-    mUnaryMinusI64, mAbsI, mNot,
-    mUnaryPlusI, mBitnotI,
-    mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
-    mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
-    mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
-    mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
-    mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet,
-    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr,
-    mAppendStrCh, mAppendStrStr, mAppendSeqElem,
+    mLeU, mLtU,
+    mLeU64, mLtU64,
+    mEqEnum, mLeEnum, mLtEnum,
+    mEqCh, mLeCh, mLtCh,
+    mEqB, mLeB, mLtB,
+    mEqRef, mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor,
+    mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
+    mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
+    mZe8ToI, mZe8ToI64,
+    mZe16ToI, mZe16ToI64,
+    mZe32ToI64, mZeIToI64,
+    mToU8, mToU16, mToU32,
+    mToFloat, mToBiggestFloat,
+    mToInt, mToBiggestInt,
+    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mStrToStr, mEnumToStr,
+    mAnd, mOr,
+    mEqStr, mLeStr, mLtStr,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr,
     mCopyStr, mCopyStrLast}
   # magics that require special semantic checking and
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf,
-    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
+    mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
 
 type
   PNode* = ref TNode
@@ -1002,7 +1030,8 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id < 2000:
+  #if result.id == 93289:
+  #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
 
 var emptyNode* = newNode(nkEmpty)
@@ -1486,6 +1515,9 @@ proc getFloat*(a: PNode): BiggestFloat =
 proc getStr*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
+  of nkNilLit:
+    # let's hope this fixes more problems than it creates:
+    result = nil
   else:
     internalError(a.info, "getStr")
     result = ""

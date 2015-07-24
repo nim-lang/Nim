@@ -21,6 +21,27 @@ News
     and ``2f`` (float32) which means imports like ``import scene/2d/sprite``
     do not work anymore. Instead quotes have to be
     used: ``import "scene/2d/sprite"``. The former code never was valid Nim.
+  - The Windows API wrapper (``windows.nim``) is now not part of the official
+    distribution anymore. Instead use the ``oldwinapi`` Nimble package.
+  - There is now a clear distinction between ``--os:standalone``
+    and ``--gc:none``. So if you use ``--os:standalone`` ensure you also use
+    ``--gc:none``. ``--os:standalone`` without ``--gc:none`` is now a version
+    that doesn't depend on any OS but includes the GC. However this version
+    is currently untested!
+  - All procedures which construct a ``Socket``/``AsyncSocket`` now need to
+    specify the socket domain, type and protocol. The param name
+    ``typ: SockType`` (in ``newSocket``/``newAsyncSocket`` procs) was also
+    renamed to ``sockType``. The param ``af`` in the ``connect`` procs was
+    removed. This affects ``asyncnet``, ``asyncdispatch``, ``net``, and
+    ``rawsockets``.
+  - ``varargs[typed]`` and ``varargs[untyped]`` have been refined and now work
+    as expected. However ``varargs[untyped]`` is not an alias anymore for
+    ``varargs[expr]``. So if your code breaks for ``varargs[untyped]``, use
+    ``varargs[expr]`` instead. The same applies to ``varargs[typed]`` vs
+    ``varargs[stmt]``.
+  - ``sequtils.delete`` doesn't take confusing default arguments anymore.
+  - ``system.free`` was an error-prone alias to ``system.dealloc`` and has
+    been removed.
 
 
   Library additions
@@ -28,6 +49,8 @@ News
 
   - The nre module has been added, providing a better interface to PCRE than
     re.
+  - The ``expandSymlink`` proc has been added to the ``os`` module.
+  - The ``tailDir`` proc has been added to the ``os`` module.
 
   Language Additions
   ------------------

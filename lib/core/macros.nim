@@ -144,6 +144,11 @@ proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
+proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
+  ## compares two Nim nodes' types. Return true if the types are the same,
+  ## eg. true when comparing alias with original type.
+  discard
+
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
 
@@ -164,7 +169,7 @@ proc kind*(n: NimNode): NimNodeKind {.magic: "NKind", noSideEffect.}
   ## returns the `kind` of the node `n`.
 
 proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
-proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} = n.intVal != 0
+
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
@@ -486,7 +491,7 @@ macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
-  ## You can use this as a tool to explore the Nimrod's abstract syntax
+  ## You can use this as a tool to explore the Nim's abstract syntax
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 
@@ -708,6 +713,8 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = node.strVal
   of nnkSym:
     result = $node.symbol
+  of nnkOpenSymChoice, nnkClosedSymChoice:
+    result = $node[0]
   else:
     badNodeKind node.kind, "$"
 
@@ -830,6 +837,10 @@ proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compiletime.} =
       if ident.eqIdent($node[0]): return
     else: discard
   dest.add(ident(ident))
+
+proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
+  if n.kind == nnkIntLit: n.intVal != 0
+  else: n == bindSym"true" # hacky solution for now
 
 when not defined(booting):
   template emit*(e: static[string]): stmt =

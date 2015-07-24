@@ -187,7 +187,7 @@ proc genDeref*(n: PNode): PNode =
   result.add n
 
 proc callCodegenProc*(name: string, arg1: PNode;
-                      arg2, arg3: PNode = nil): PNode =
+                      arg2, arg3, optionalArgs: PNode = nil): PNode =
   result = newNodeI(nkCall, arg1.info)
   let sym = magicsys.getCompilerProc(name)
   if sym == nil:
@@ -197,6 +197,9 @@ proc callCodegenProc*(name: string, arg1: PNode;
     result.add arg1
     if arg2 != nil: result.add arg2
     if arg3 != nil: result.add arg3
+    if optionalArgs != nil:
+      for i in 1..optionalArgs.len-3:
+        result.add optionalArgs[i]
     result.typ = sym.typ.sons[0]
 
 proc callProc(a: PNode): PNode =
@@ -503,7 +506,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
                        barrier, dest: PNode = nil): PNode =
   # if 'barrier' != nil, then it is in a 'parallel' section and we
   # generate quite different code
-  let n = spawnExpr[1]
+  let n = spawnExpr[^2]
   let spawnKind = spawnResult(retType, barrier!=nil)
   case spawnKind
   of srVoid:
@@ -589,7 +592,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     fvField = newDotExpr(scratchObj, field)
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     # create flowVar:
-    result.add newFastAsgnStmt(fvField, callProc(spawnExpr[2]))
+    result.add newFastAsgnStmt(fvField, callProc(spawnExpr[^1]))
     if barrier == nil:
       result.add callCodegenProc("nimFlowVarCreateSemaphore", fvField)
 
@@ -604,7 +607,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   let wrapper = createWrapperProc(fn, threadParam, argsParam,
                                   varSection, varInit, call,
                                   barrierAsExpr, fvAsExpr, spawnKind)
-  result.add callCodegenProc("nimSpawn", wrapper.newSymNode,
-                             genAddrOf(scratchObj.newSymNode))
+  result.add callCodegenProc("nimSpawn" & $spawnExpr.len, wrapper.newSymNode,
+                             genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
 
   if spawnKind == srFlowVar: result.add fvField

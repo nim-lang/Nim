@@ -65,7 +65,11 @@ const
 {.push hints: off.}
 
 type
-  Ordinal* {.magic: Ordinal.}[T]
+  Ordinal* {.magic: Ordinal.}[T] ## Generic ordinal type. Includes integer,
+                                 ## bool, character, and enumeration types
+                                 ## as well as their subtypes. Note `uint`
+                                 ## and `uint64` are not ordinal types for
+                                 ## implementation reasons
   `ptr`* {.magic: Pointer.}[T] ## built-in generic untraced pointer type
   `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
 
@@ -74,8 +78,8 @@ type
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
-  auto* = expr
-  any* = distinct auto
+  auto* = expr ## meta type for automatic type determination
+  any* = distinct auto ## meta type for any supported type
   untyped* {.magic: Expr.} ## meta type to denote an expression that
                            ## is not resolved (for templates)
   typed* {.magic: Stmt.}   ## meta type to denote an expression that
@@ -250,15 +254,46 @@ when defined(nimNewShared):
 
 # comparison operators:
 proc `==` *[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
+  ## Checks whether values within the *same enum* have the same underlying value
+  ##
+  ## .. code-block:: nim
+  ##  type
+  ##    Enum1 = enum
+  ##      Field1 = 3, Field2
+  ##    Enum2 = enum
+  ##      Place1, Place2 = 3
+  ##  var
+  ##    e1 = Field1
+  ##    e2 = Enum1(Place2)
+  ##  echo (e1 == e2) # true
+  ##  echo (e1 == Place2) # raises error
 proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
+  ## .. code-block:: nim
+  ##  var # this is a wildly dangerous example
+  ##    a = cast[pointer](0)
+  ##    b = cast[pointer](nil)
+  ##  echo (a == b) # true due to the special meaning of `nil`/0 as a pointer
 proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
+  ## Checks for equality between two `string` variables
 proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
+  ## Checks for equality between two `cstring` variables
 proc `==` *(x, y: char): bool {.magic: "EqCh", noSideEffect.}
+  ## Checks for equality between two `char` variables
 proc `==` *(x, y: bool): bool {.magic: "EqB", noSideEffect.}
+  ## Checks for equality between two `bool` variables
 proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
+  ## Checks for equality between two variables of type `set`
+  ##
+  ## .. code-block:: nim
+  ##  var a = {1, 2, 2, 3} # duplication in sets is ignored
+  ##  var b = {1, 2, 3}
+  ##  echo (a == b) # true
 proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
+  ## Checks that two `ref` variables refer to the same item
 proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
+  ## Checks that two `ptr` variables refer to the same item
 proc `==` *[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+  ## Checks that two `proc` variables refer to the same procedure
 
 proc `<=` *[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}
 proc `<=` *(x, y: string): bool {.magic: "LeStr", noSideEffect.}
@@ -354,9 +389,9 @@ type
     ## Each exception has to inherit from `Exception`. See the full `exception
     ## hierarchy`_.
     parent*: ref Exception ## parent exception (can be used as a stack)
-    name: cstring ## The exception's name is its Nim identifier.
-                  ## This field is filled automatically in the
-                  ## ``raise`` statement.
+    name*: cstring ## The exception's name is its Nim identifier.
+                   ## This field is filled automatically in the
+                   ## ``raise`` statement.
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message
                                         ## is bad style.
@@ -853,9 +888,52 @@ proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) < unsigned(y)``.
 
+# unsigned integer operations:
+proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
+  ## computes the `bitwise complement` of the integer `x`.
+
+proc `shr`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShrI", noSideEffect.}
+  ## computes the `shift right` operation of `x` and `y`.
+
+proc `shl`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShlI", noSideEffect.}
+  ## computes the `shift left` operation of `x` and `y`.
+
+proc `and`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitandI", noSideEffect.}
+  ## computes the `bitwise and` of numbers `x` and `y`.
+
+proc `or`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitorI", noSideEffect.}
+  ## computes the `bitwise or` of numbers `x` and `y`.
+
+proc `xor`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitxorI", noSideEffect.}
+  ## computes the `bitwise xor` of numbers `x` and `y`.
+
+proc `==`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "EqI", noSideEffect.}
+  ## Compares two unsigned integers for equality.
+
+proc `+`*[T: SomeUnsignedInt](x, y: T): T {.magic: "AddU", noSideEffect.}
+  ## Binary `+` operator for unsigned integers.
+
+proc `-`*[T: SomeUnsignedInt](x, y: T): T {.magic: "SubU", noSideEffect.}
+  ## Binary `-` operator for unsigned integers.
+
+proc `*`*[T: SomeUnsignedInt](x, y: T): T {.magic: "MulU", noSideEffect.}
+  ## Binary `*` operator for unsigned integers.
+
+proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
+  ## computes the integer division. This is roughly the same as
+  ## ``floor(x/y)``.
+
+proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
+  ## computes the integer modulo operation. This is the same as
+  ## ``x - (x div y) * y``.
+
+proc `<=`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
+  ## Returns true iff ``x <= y``.
+
+proc `<`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LtU", noSideEffect.}
+  ## Returns true iff ``unsigned(x) < unsigned(y)``.
 
 # floating point operations:
-
 proc `+` *(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
 proc `-` *(x: float32): float32 {.magic: "UnaryMinusF64", noSideEffect.}
 proc `+` *(x, y: float32): float32 {.magic: "AddF64", noSideEffect.}
@@ -1004,7 +1082,7 @@ proc `&` * (x: string, y: char): string {.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & 'c' == "abc")
-proc `&` * (x: char, y: char): string {.
+proc `&` * (x, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` and `y` into a string
   ##
@@ -1161,8 +1239,13 @@ template sysAssert(cond: bool, msg: string) =
       echo "[SYSASSERT] ", msg
       quit 1
 
+const hasAlloc = hostOS != "standalone" or not defined(nogc)
+
 when not defined(JS) and not defined(nimrodVm) and hostOS != "standalone":
   include "system/cgprocs"
+when not defined(JS) and not defined(nimrodVm) and hasAlloc:
+  proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
+  proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
 proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
@@ -1369,7 +1452,7 @@ when not defined(nimrodVM):
     ## otherwise. Like any procedure dealing with raw memory this is
     ## *unsafe*.
 
-  when hostOS != "standalone":
+  when hasAlloc:
     proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
       ## block has to be freed with ``realloc(block, 0)`` or
@@ -1426,8 +1509,7 @@ when not defined(nimrodVM):
       ## or other memory may be corrupted.
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared` to deallocate from a shared heap.
-    proc free*[T](p: ptr T) {.inline, benign.} =
-      dealloc(p)
+
     proc allocShared*(size: Natural): pointer {.noconv, rtl, benign.}
       ## allocates a new memory block on the shared heap with at
       ## least ``size`` bytes. The block has to be freed with
@@ -1505,7 +1587,7 @@ proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## converted to a decimal string.
 
 when not defined(NimrodVM):
-  when not defined(JS) and hostOS != "standalone":
+  when not defined(JS) and hasAlloc:
     proc `$` *(x: uint64): string {.noSideEffect.}
       ## The stringify operator for an unsigned integer argument. Returns `x`
       ## converted to a decimal string.
@@ -1572,7 +1654,7 @@ const
 
 # GC interface:
 
-when not defined(nimrodVM) and hostOS != "standalone":
+when not defined(nimrodVM) and hasAlloc:
   proc getOccupiedMem*(): int {.rtl.}
     ## returns the number of bytes that are owned by the process and hold data.
 
@@ -2128,7 +2210,7 @@ when false:
 
 # ----------------- GC interface ---------------------------------------------
 
-when not defined(nimrodVM) and hostOS != "standalone":
+when not defined(nimrodVM) and hasAlloc:
   proc GC_disable*() {.rtl, inl, benign.}
     ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
     ## reactivate the GC. Note that in most circumstances one should only disable
@@ -2253,7 +2335,7 @@ when defined(JS):
     """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
-elif hostOS != "standalone":
+elif hasAlloc:
   {.push stack_trace:off, profiler:off.}
   proc add*(x: var string, y: cstring) =
     var i = 0
@@ -2262,27 +2344,33 @@ elif hostOS != "standalone":
       inc(i)
   {.pop.}
 
-proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-  benign, sideEffect.}
-  ## Writes and flushes the parameters to the standard output.
-  ##
-  ## Special built-in that takes a variable number of arguments. Each argument
-  ## is converted to a string via ``$``, so it works for user-defined
-  ## types that have an overloaded ``$`` operator.
-  ## It is roughly equivalent to ``writeLine(stdout, x); flushFile(stdout)``, but
-  ## available for the JavaScript target too.
-  ##
-  ## Unlike other IO operations this is guaranteed to be thread-safe as
-  ## ``echo`` is very often used for debugging convenience. If you want to use
-  ## ``echo`` inside a `proc without side effects
-  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
-  ## instead.
+when defined(nimvarargstyped):
+  proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+    benign, sideEffect.}
+    ## Writes and flushes the parameters to the standard output.
+    ##
+    ## Special built-in that takes a variable number of arguments. Each argument
+    ## is converted to a string via ``$``, so it works for user-defined
+    ## types that have an overloaded ``$`` operator.
+    ## It is roughly equivalent to ``writeLine(stdout, x); flushFile(stdout)``, but
+    ## available for the JavaScript target too.
+    ##
+    ## Unlike other IO operations this is guaranteed to be thread-safe as
+    ## ``echo`` is very often used for debugging convenience. If you want to use
+    ## ``echo`` inside a `proc without side effects
+    ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho <#debugEcho>`_
+    ## instead.
 
-proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
-                                           tags: [], raises: [].}
-  ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
-  ## pretends to be free of side effects, so that it can be used for debugging
-  ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
+  proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
+                                            tags: [], raises: [].}
+    ## Same as `echo <#echo>`_, but as a special semantic rule, ``debugEcho``
+    ## pretends to be free of side effects, so that it can be used for debugging
+    ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
+else:
+  proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+    benign, sideEffect.}
+  proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
+                                             tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
@@ -2347,7 +2435,7 @@ else:
 when not defined(JS): #and not defined(NimrodVM):
   {.push stack_trace: off, profiler:off.}
 
-  when not defined(NimrodVM) and hostOS != "standalone":
+  when not defined(NimrodVM) and not defined(nogc):
     proc initGC()
     when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc):
       proc initAllocator() {.inline.}
@@ -2367,6 +2455,7 @@ when not defined(JS): #and not defined(NimrodVM):
       when declared(setStackBottom):
         setStackBottom(locals)
 
+  when hasAlloc:
     var
       strDesc: TNimType
 
@@ -2590,6 +2679,7 @@ when not defined(JS): #and not defined(NimrodVM):
     when not defined(nimfix):
       {.deprecated: [fileHandle: getFileHandle].}
 
+  when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
       ## of length ``len``.
@@ -2605,12 +2695,12 @@ when not defined(JS): #and not defined(NimrodVM):
 
   # -------------------------------------------------------------------------
 
-  when not defined(NimrodVM) and hostOS != "standalone":
+  when declared(alloc0) and declared(dealloc):
     proc allocCStringArray*(a: openArray[string]): cstringArray =
       ## creates a NULL terminated cstringArray from `a`. The result has to
       ## be freed with `deallocCStringArray` after it's not needed anymore.
       result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
-      let x = cast[ptr array[0..20_000, string]](a)
+      let x = cast[ptr array[0..ArrayDummySize, string]](a)
       for i in 0 .. a.high:
         result[i] = cast[cstring](alloc0(x[i].len+1))
         copyMem(result[i], addr(x[i][0]), x[i].len)
@@ -2650,9 +2740,9 @@ when not defined(JS): #and not defined(NimrodVM):
   when hasThreadSupport:
     include "system/syslocks"
     when hostOS != "standalone": include "system/threads"
-  elif not defined(nogc) and not defined(NimrodVM) and hostOS != "standalone":
+  elif not defined(nogc) and not defined(NimrodVM):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
-    initGC()
+    when declared(initGC): initGC()
 
   when not defined(NimrodVM):
     proc setControlCHook*(hook: proc () {.noconv.} not nil)
@@ -2713,9 +2803,9 @@ when not defined(JS): #and not defined(NimrodVM):
       else:
         result = n.sons[n.len]
 
-    when hostOS != "standalone": include "system/mmdisp"
+    when hasAlloc: include "system/mmdisp"
     {.push stack_trace: off, profiler:off.}
-    when hostOS != "standalone": include "system/sysstr"
+    when hasAlloc: include "system/sysstr"
     {.pop.}
 
     when hostOS != "standalone": include "system/sysio"
@@ -2724,7 +2814,7 @@ when not defined(JS): #and not defined(NimrodVM):
   else:
     include "system/sysio"
 
-  when hostOS != "standalone":
+  when declared(open) and declared(close) and declared(readline):
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
@@ -2760,10 +2850,11 @@ when not defined(JS): #and not defined(NimrodVM):
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
 
-  when hostOS != "standalone" and not defined(NimrodVM):
+  when not defined(NimrodVM) and hasAlloc:
     include "system/assign"
     include "system/repr"
 
+  when hostOS != "standalone" and not defined(NimrodVM):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
       ## retrieves the current exception; if there is none, nil is returned.
       result = currException
@@ -2914,7 +3005,7 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # fill the hole:
   for i in 0 .. <b.len: s[i+a] = b[i]
 
-when hostOS != "standalone":
+when hasAlloc:
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
     result = s.substr(x.a, x.b)
@@ -2999,11 +3090,11 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ## `slurp <#slurp>`_ is an alias for ``staticRead``.
 
-proc gorge*(command: string, input = ""): string {.
+proc gorge*(command: string, input = "", cache = ""): string {.
   magic: "StaticExec".} = discard
   ## This is an alias for `staticExec <#staticExec>`_.
 
-proc staticExec*(command: string, input = ""): string {.
+proc staticExec*(command: string, input = "", cache = ""): string {.
   magic: "StaticExec".} = discard
   ## Executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
@@ -3016,6 +3107,15 @@ proc staticExec*(command: string, input = ""): string {.
   ## `gorge <#gorge>`_ is an alias for ``staticExec``. Note that you can use
   ## this proc inside a pragma like `passC <nimc.html#passc-pragma>`_ or `passL
   ## <nimc.html#passl-pragma>`_.
+  ##
+  ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
+  ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
+  ## behaviour then. ``command & input & cache`` (the concatenated string) is
+  ## used to determine wether the entry in the cache is still valid. You can
+  ## use versioning information for ``cache``:
+  ##
+  ## .. code-block:: nim
+  ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
 
 proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
   ## Increments an ordinal
@@ -3207,7 +3307,7 @@ when false:
     macro payload: stmt {.gensym.} = blk
     payload()
 
-when hostOS != "standalone":
+when hasAlloc:
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## inserts `item` into `x` at position `i`.
     var xl = x.len
@@ -3234,17 +3334,22 @@ proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
 when declared(initDebugger):
   initDebugger()
 
-when hostOS != "standalone":
+when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
+    ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
+    ## ``x`` becomes ``@[y]``
     if x == nil: x = @[y]
     else: x.add(y)
 
   proc safeAdd*(x: var string, y: char) =
+    ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
     if x == nil: x = ""
     x.add(y)
 
   proc safeAdd*(x: var string, y: string) =
+    ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that case, ``x``
+    ## becomes ``y``
     if x == nil: x = y
     else: x.add(y)
 
@@ -3272,7 +3377,7 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-when hostOS != "standalone" and not defined(NimrodVM) and not defined(JS):
+when hasAlloc and not defined(NimrodVM) and not defined(JS):
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## performs a deep copy of `x`. This is also used by the code generator
     ## for the implementation of ``spawn``.

@@ -13,7 +13,7 @@ when defined(windows):
     Lib = "sqlite3.dll"
 elif defined(macosx): 
   const 
-    Lib = "(libsqlite3(|.0).dylib|sqlite-3.6.13.dylib)"
+    Lib = "libsqlite3(|.0).dylib"
 else: 
   const 
     Lib = "libsqlite3.so(|.0)"

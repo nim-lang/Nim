@@ -33,6 +33,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ.kind == tyVar: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyEmpty, c)
+    result.typ.flags.incl tfVoid
   else:
     localError(n.info, errExprXHasNoType,
                renderTree(result, {renderNoComments}))
@@ -474,7 +475,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
           addSon(a, m)
           changeType(m, tup.sons[i], check)
   of nkCharLit..nkUInt64Lit:
-    if check:
+    if check and n.kind != nkUInt64Lit:
       let value = n.intVal
       if value < firstOrd(newType) or value > lastOrd(newType):
         localError(n.info, errGenerated, "cannot convert " & $value &
@@ -1369,7 +1370,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
     if isEmptyType(result.typ):
       # we inferred a 'void' return type:
-      c.p.resultSym.typ = nil
+      c.p.resultSym.typ = errorType(c)
       c.p.owner.typ.sons[0] = nil
     else:
       localError(c.p.resultSym.info, errCannotInferReturnType)
@@ -1727,13 +1728,17 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     dec c.inParallelStmt
   of mSpawn:
     result = setMs(n, s)
-    result.sons[1] = semExpr(c, n.sons[1])
-    if not result[1].typ.isEmptyType:
-      if spawnResult(result[1].typ, c.inParallelStmt > 0) == srFlowVar:
-        result.typ = createFlowVar(c, result[1].typ, n.info)
+    for i in 1 .. <n.len:
+      result.sons[i] = semExpr(c, n.sons[i])
+    let typ = result[^1].typ
+    if not typ.isEmptyType:
+      if spawnResult(typ, c.inParallelStmt > 0) == srFlowVar:
+        result.typ = createFlowVar(c, typ, n.info)
       else:
-        result.typ = result[1].typ
-      result.add instantiateCreateFlowVarCall(c, result[1].typ, n.info).newSymNode
+        result.typ = typ
+      result.add instantiateCreateFlowVarCall(c, typ, n.info).newSymNode
+    else:
+      result.add emptyNode
   of mProcCall:
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])

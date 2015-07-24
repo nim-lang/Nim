@@ -15,14 +15,14 @@ import
 
 type
   TNeedRecompile* = enum Maybe, No, Yes, Probing, Recompiled
-  TCrcStatus* = enum crcNotTaken, crcCached, crcHasChanged, crcNotChanged
+  THashStatus* = enum hashNotTaken, hashCached, hashHasChanged, hashNotChanged
 
   TModuleInMemory* = object
     compiledAt*: float
-    crc*: SecureHash
+    hash*: SecureHash
     deps*: seq[int32] ## XXX: slurped files are currently not tracked
     needsRecompile*: TNeedRecompile
-    crcStatus*: TCrcStatus
+    hashStatus*: THashStatus
 
 var
   gCompiledModules: seq[PSym] = @[]
@@ -34,36 +34,36 @@ proc getModule(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
     result = gCompiledModules[fileIdx]
 
-template crc(x: PSym): expr =
-  gMemCacheData[x.position].crc
+template hash(x: PSym): expr =
+  gMemCacheData[x.position].hash
 
-proc crcChanged(fileIdx: int32): bool =
+proc hashChanged(fileIdx: int32): bool =
   internalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
 
   template updateStatus =
-    gMemCacheData[fileIdx].crcStatus = if result: crcHasChanged
-                                       else: crcNotChanged
-    # echo "TESTING CRC: ", fileIdx.toFilename, " ", result
+    gMemCacheData[fileIdx].hashStatus = if result: hashHasChanged
+                                       else: hashNotChanged
+    # echo "TESTING Hash: ", fileIdx.toFilename, " ", result
 
-  case gMemCacheData[fileIdx].crcStatus:
-  of crcHasChanged:
+  case gMemCacheData[fileIdx].hashStatus:
+  of hashHasChanged:
     result = true
-  of crcNotChanged:
+  of hashNotChanged:
     result = false
-  of crcCached:
-    let newCrc = secureHashFile(fileIdx.toFullPath)
-    result = newCrc != gMemCacheData[fileIdx].crc
-    gMemCacheData[fileIdx].crc = newCrc
+  of hashCached:
+    let newHash = secureHashFile(fileIdx.toFullPath)
+    result = newHash != gMemCacheData[fileIdx].hash
+    gMemCacheData[fileIdx].hash = newHash
     updateStatus()
-  of crcNotTaken:
-    gMemCacheData[fileIdx].crc = secureHashFile(fileIdx.toFullPath)
+  of hashNotTaken:
+    gMemCacheData[fileIdx].hash = secureHashFile(fileIdx.toFullPath)
     result = true
     updateStatus()
 
-proc doCRC(fileIdx: int32) =
-  if gMemCacheData[fileIdx].crcStatus == crcNotTaken:
-    # echo "FIRST CRC: ", fileIdx.ToFilename
-    gMemCacheData[fileIdx].crc = secureHashFile(fileIdx.toFullPath)
+proc doHash(fileIdx: int32) =
+  if gMemCacheData[fileIdx].hashStatus == hashNotTaken:
+    # echo "FIRST Hash: ", fileIdx.ToFilename
+    gMemCacheData[fileIdx].hash = secureHashFile(fileIdx.toFullPath)
 
 proc addDep(x: PSym, dep: int32) =
   growCache gMemCacheData, dep
@@ -94,7 +94,7 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
     return gMemCacheData[fileIdx].needsRecompile
 
   if optForceFullMake in gGlobalOptions or
-     crcChanged(fileIdx):
+     hashChanged(fileIdx):
        markDirty
 
   if gMemCacheData[fileIdx].deps != nil:
@@ -155,7 +155,7 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
     if optCaasEnabled in gGlobalOptions:
       gMemCacheData[fileIdx].compiledAt = gLastCmdTime
       gMemCacheData[fileIdx].needsRecompile = Recompiled
-      doCRC fileIdx
+      doHash fileIdx
   else:
     if checkDepMem(fileIdx) == Yes:
       result = compileModule(fileIdx, flags)
@@ -174,7 +174,7 @@ proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
   if optCaasEnabled in gGlobalOptions:
     growCache gMemCacheData, fileIdx
     addDep(s, fileIdx)
-    doCRC(fileIdx)
+    doHash(fileIdx)
 
 proc `==^`(a, b: string): bool =
   try:

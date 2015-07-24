@@ -15,7 +15,7 @@ import
 proc verboseOpen(s: PSym): PPassContext =
   #MessageOut('compiling ' + s.name.s);
   result = nil                # we don't need a context
-  if gVerbosity > 0: rawMessage(hintProcessing, s.name.s)
+  rawMessage(hintProcessing, s.name.s)
   
 proc verboseProcess(context: PPassContext, n: PNode): PNode = 
   result = n

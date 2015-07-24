@@ -351,7 +351,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
         myreset(dest); dest.kind = rkFloat
       case skipTypes(srctyp, abstractRange).kind
       of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
-        dest.floatVal = toFloat(src.intVal.int)
+        dest.floatVal = toBiggestFloat(src.intVal)
       else:
         dest.floatVal = src.floatVal
     else:
@@ -690,7 +690,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEqNimrodNode:
       decodeBC(rkInt)
       regs[ra].intVal =
-        ord(exprStructuralEquivalent(regs[rb].node, regs[rc].node))
+        ord(exprStructuralEquivalent(regs[rb].node, regs[rc].node,
+                                     strictSymEquality=true))
+    of opcSameNodeType:
+      decodeBC(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.typ.sameTypeOrNil regs[rc].node.typ)
     of opcXor:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal != regs[rc].intVal)
@@ -1164,9 +1168,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                      c.module)
     of opcGorge:
       decodeBC(rkNode)
+      inc pc
+      let rd = c.code[pc].regA
+
       createStr regs[ra]
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                     regs[rc].node.strVal)
+                                     regs[rc].node.strVal, regs[rd].node.strVal)
     of opcNError:
       stackTrace(c, tos, pc, errUser, regs[ra].node.strVal)
     of opcNWarning:

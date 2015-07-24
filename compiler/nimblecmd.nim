@@ -60,7 +60,7 @@ iterator chosen(packages: StringTableRef): string =
 
 proc addNimblePath(p: string, info: TLineInfo) =
   if not contains(options.searchPaths, p):
-    if gVerbosity >= 1: message(info, hintPath, p)
+    message(info, hintPath, p)
     lists.prependStr(options.lazyPaths, p)
 
 proc addPathWithNimFiles(p: string, info: TLineInfo) =

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, osproc, streams, options, idents
+import ast, types, msgs, osproc, streams, options, idents, securehash
 
 proc readOutput(p: Process): string =
   result = ""
@@ -15,18 +15,39 @@ proc readOutput(p: Process): string =
   while not output.atEnd:
     result.add(output.readLine)
     result.add("\n")
-  result.setLen(result.len - "\n".len)
+  if result.len > 0:
+    result.setLen(result.len - "\n".len)
   discard p.waitForExit
 
-proc opGorge*(cmd, input: string): string =
-  try:
-    var p = startProcess(cmd, options={poEvalCommand})
-    if input.len != 0:
-      p.inputStream.write(input)
-      p.inputStream.close()
-    result = p.readOutput
-  except IOError, OSError:
-    result = ""
+proc opGorge*(cmd, input, cache: string): string =
+  if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
+    let h = secureHash(cmd & "\t" & input & "\t" & cache)
+    let filename = options.toGeneratedFile("gorge_" & $h, "txt")
+    var f: File
+    if open(f, filename):
+      result = f.readAll
+      f.close
+      return
+    var readSuccessful = false
+    try:
+      var p = startProcess(cmd, options={poEvalCommand})
+      if input.len != 0:
+        p.inputStream.write(input)
+        p.inputStream.close()
+      result = p.readOutput
+      readSuccessful = true
+      writeFile(filename, result)
+    except IOError, OSError:
+      if not readSuccessful: result = ""
+  else:
+    try:
+      var p = startProcess(cmd, options={poEvalCommand})
+      if input.len != 0:
+        p.inputStream.write(input)
+        p.inputStream.close()
+      result = p.readOutput
+    except IOError, OSError:
+      result = ""
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:

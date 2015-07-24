@@ -64,6 +64,9 @@ type
         sslPeekChar: char
       of false: nil
     lastError: OSErrorCode ## stores the last error on this socket
+    domain: Domain
+    sockType: SockType
+    protocol: Protocol
 
   Socket* = ref SocketImpl
 
@@ -124,33 +127,39 @@ proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
       result = result or MSG_PEEK
     of SocketFlag.SafeDisconn: continue
 
-proc newSocket*(fd: SocketHandle, buffered = true): Socket =
+proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
+    sockType: SockType = SOCK_STREAM,
+    protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
   new(result)
   result.fd = fd
   result.isBuffered = buffered
+  result.domain = domain
+  result.sockType = sockType
+  result.protocol = protocol
   if buffered:
     result.currPos = 0
 
-proc newSocket*(domain, typ, protocol: cint, buffered = true): Socket =
+proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = newRawSocket(domain, typ, protocol)
+  let fd = newRawSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
-  result = newSocket(fd, buffered)
+  result = newSocket(fd, domain.Domain, sockType.SockType, protocol.Protocol,
+                     buffered)
 
-proc newSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
+proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
                 protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = newRawSocket(domain, typ, protocol)
+  let fd = newRawSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
-  result = newSocket(fd, buffered)
+  result = newSocket(fd, domain, sockType, protocol, buffered)
 
 when defined(ssl):
   CRYPTO_malloc_init()
@@ -285,7 +294,7 @@ proc getSocketError*(socket: Socket): OSErrorCode =
   if result == 0.OSErrorCode:
     result = socket.lastError
   if result == 0.OSErrorCode:
-    raise newException(OSError, "No valid socket error code available")
+    raiseOSError(result, "No valid socket error code available")
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode) =
@@ -323,10 +332,8 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           else:
             let errStr = $ErrErrorString(sslErr, nil)
             raiseSSLError(errStr & ": " & errStr)
-          let osMsg = osErrorMsg osLastError()
-          if osMsg != "":
-            errStr.add ". The OS reports: " & osMsg
-          raise newException(OSError, errStr)
+          let osErr = osLastError()
+          raiseOSError(osErr, errStr)
         of SSL_ERROR_SSL:
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
@@ -371,7 +378,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
                   sizeof(name).SockLen) < 0'i32:
       raiseOSError(osLastError())
   else:
-    var aiList = getAddrInfo(address, port, AF_INET)
+    var aiList = getAddrInfo(address, port, socket.domain)
     if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
       dealloc(aiList)
       raiseOSError(osLastError())
@@ -532,15 +539,15 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-proc connect*(socket: Socket, address: string, port = Port(0),
-              af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
+proc connect*(socket: Socket, address: string,
+    port = Port(0)) {.tags: [ReadIOEffect].} =
   ## Connects socket to ``address``:``port``. ``Address`` can be an IP address or a
   ## host name. If ``address`` is a host name, this function will try each IP
   ## of that host name. ``htons`` is already performed on ``port`` so you must
   ## not do it.
   ##
   ## If ``socket`` is an SSL socket a handshake will be automatically performed.
-  var aiList = getAddrInfo(address, port, af)
+  var aiList = getAddrInfo(address, port, socket.domain)
   # try all possibilities:
   var success = false
   var lastError: OSErrorCode
@@ -912,7 +919,7 @@ proc send*(socket: Socket, data: string,
     socketError(socket, lastError = lastError)
 
   if sent != data.len:
-    raise newException(OSError, "Could not send all data.")
+    raiseOSError(osLastError(), "Could not send all data.")
 
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
   ## Safe alternative to ``send``. Does not raise an EOS when an error occurs,
@@ -992,15 +999,15 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
   dealloc(aiList)
   if not success: raiseOSError(lastError)
 
-proc connect*(socket: Socket, address: string, port = Port(0), timeout: int,
-             af: Domain = AF_INET) {.tags: [ReadIOEffect, WriteIOEffect].} =
+proc connect*(socket: Socket, address: string, port = Port(0),
+    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
   ## Connects to server as specified by ``address`` on port specified by ``port``.
   ##
   ## The ``timeout`` paremeter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
   socket.fd.setBlocking(false)
 
-  socket.connectAsync(address, port, af)
+  socket.connectAsync(address, port, socket.domain)
   var s = @[socket.fd]
   if selectWrite(s, timeout) != 1:
     raise newException(TimeoutError, "Call to 'connect' timed out.")

@@ -70,7 +70,7 @@ proc commandCompileToC =
     lastCaasCmd = curCaasCmd
     resetCgenModules()
     for i in 0 .. <gMemCacheData.len:
-      gMemCacheData[i].crcStatus = crcCached
+      gMemCacheData[i].hashStatus = hashCached
       gMemCacheData[i].needsRecompile = Maybe
 
       # XXX: clean these global vars
@@ -337,7 +337,7 @@ proc mainCommand* =
     wantMainModule()
     commandScan()
     msgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
-  of "i":
+  of "secret":
     gCmd = cmdInteractive
     commandInteractive()
   of "e":
@@ -359,9 +359,8 @@ proc mainCommand* =
   else:
     rawMessage(errInvalidCommandX, command)
 
-  if (msgs.gErrorCounter == 0 and
-      gCmd notin {cmdInterpret, cmdRun, cmdDump} and
-      gVerbosity > 0):
+  if msgs.gErrorCounter == 0 and
+     gCmd notin {cmdInterpret, cmdRun, cmdDump}:
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
                formatSize(getTotalMem()),
@@ -379,3 +378,4 @@ proc mainCommand* =
   when SimulateCaasMemReset:
     resetMemory()
 
+  resetAttributes()

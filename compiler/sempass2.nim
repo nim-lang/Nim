@@ -241,9 +241,10 @@ proc useVar(a: PEffects, n: PNode) =
         message(n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
-  if {sfGlobal, sfThread} * s.flags == {sfGlobal} and s.kind in {skVar, skLet}:
+  if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet}:
     if s.guard != nil: guardGlobal(a, n, s.guard)
-    if (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
+    if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
+        (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
       #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
       markGcUnsafe(a, s)
 
@@ -752,7 +753,7 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 1 .. <len(n):
       let x = n.sons[i]
       track(tracked, x)
-      if sfDiscriminant in x.sons[0].sym.flags:
+      if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards, oldFacts)
   of nkPragmaBlock:

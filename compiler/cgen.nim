@@ -505,8 +505,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
     if lib.path.kind in {nkStrLit..nkTripleStrLit}:
       var s: TStringSeq = @[]
       libCandidates(lib.path.strVal, s)
-      if gVerbosity >= 2:
-        msgWriteln("Dependency: " & lib.path.strVal)
+      rawMessage(hintDependency, lib.path.strVal)
       var loadlib: Rope = nil
       for i in countup(0, high(s)):
         inc(m.labels)
@@ -610,10 +609,12 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
   var it = PStrEntry(m.headerFiles.head)
   while it != nil:
-    if it.data[0] notin {'\"', '<'}:
-      addf(m.s[cfsHeaders], "$N#include \"$1\"$N", [rope(it.data)])
+    if it.data[0] == '#':
+      add(m.s[cfsHeaders], rope(it.data.replace('`', '"') & tnl))
+    elif it.data[0] notin {'\"', '<'}:
+      addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it.data)])
     else:
-      addf(m.s[cfsHeaders], "$N#include $1$N", [rope(it.data)])
+      addf(m.s[cfsHeaders], "#include $1$N", [rope(it.data)])
     it = PStrEntry(it.next)
 
 proc retIsNotVoid(s: PSym): bool =
@@ -814,7 +815,7 @@ proc genVarPrototype(m: BModule, sym: PSym) =
   genVarPrototypeAux(m, sym)
 
 proc addIntTypes(result: var Rope) {.inline.} =
-  addf(result, "#define NIM_INTBITS $1", [
+  addf(result, "#define NIM_INTBITS $1" & tnl, [
     platform.CPU[targetCPU].intSize.rope])
 
 proc getCopyright(cfile: string): Rope =
@@ -852,14 +853,14 @@ proc genMainProc(m: BModule) =
     # functions, which might otherwise merge their stack frames.
     PreMainBody =
       "void PreMainInner() {$N" &
-      "\tsystemInit();$N" &
+      "\tsystemInit000();$N" &
       "$1" &
       "$2" &
       "$3" &
       "}$N$N" &
       "void PreMain() {$N" &
       "\tvoid (*volatile inner)();$N" &
-      "\tsystemDatInit();$N" &
+      "\tsystemDatInit000();$N" &
       "\tinner = PreMainInner;$N" &
       "$4$5" &
       "\t(*inner)();$N" &
@@ -973,8 +974,8 @@ proc getSomeInitName(m: PSym, suffix: string): Rope =
   result.add m.name.s
   result.add suffix
 
-proc getInitName(m: PSym): Rope = getSomeInitName(m, "Init")
-proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit")
+proc getInitName(m: PSym): Rope = getSomeInitName(m, "Init000")
+proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
 proc registerModuleToMain(m: PSym) =
   var

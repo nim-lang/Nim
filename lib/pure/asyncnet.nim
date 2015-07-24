@@ -85,35 +85,44 @@ type
         bioIn: BIO
         bioOut: BIO
     of false: nil
+    domain: Domain
+    sockType: SockType
+    protocol: Protocol
   AsyncSocket* = ref AsyncSocketDesc
 
 {.deprecated: [PAsyncSocket: AsyncSocket].}
 
-# TODO: Save AF, domain etc info and reuse it in procs which need it like connect.
-
-proc newAsyncSocket*(fd: AsyncFD, buffered = true): AsyncSocket =
+proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
+    sockType: SockType = SOCK_STREAM,
+    protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
   ## Creates a new ``AsyncSocket`` based on the supplied params.
   assert fd != osInvalidSocket.AsyncFD
   new(result)
   result.fd = fd.SocketHandle
   result.isBuffered = buffered
+  result.domain = domain
+  result.sockType = sockType
+  result.protocol = protocol
   if buffered:
     result.currPos = 0
 
-proc newAsyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
+proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
     protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
+  result = newAsyncSocket(newAsyncRawSocket(domain, sockType, protocol), domain,
+      sockType, protocol, buffered)
 
-proc newAsyncSocket*(domain, typ, protocol: cint, buffered = true): AsyncSocket =
+proc newAsyncSocket*(domain, sockType, protocol: cint,
+    buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncRawSocket(domain, typ, protocol), buffered)
+  result = newAsyncSocket(newAsyncRawSocket(domain, sockType, protocol),
+      Domain(domain), SockType(sockType), Protocol(protocol), buffered)
 
 when defined(ssl):
   proc getSslError(handle: SslPtr, err: cint): cint =
@@ -169,13 +178,12 @@ when defined(ssl):
         let err = getSslError(socket.sslHandle, opResult.cint)
         yield appeaseSsl(socket, flags, err.cint)
 
-proc connect*(socket: AsyncSocket, address: string, port: Port,
-    af = AF_INET) {.async.} =
+proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   ## Connects ``socket`` to server at ``address:port``.
   ##
   ## Returns a ``Future`` which will complete when the connection succeeds
   ## or an error occurs.
-  await connect(socket.fd.AsyncFD, address, port, af)
+  await connect(socket.fd.AsyncFD, address, port, socket.domain)
   if socket.isSsl:
     when defined(ssl):
       let flags = {SocketFlag.SafeDisconn}
@@ -287,7 +295,8 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
         retFuture.fail(future.readError)
       else:
         let resultTup = (future.read.address,
-                         newAsyncSocket(future.read.client, socket.isBuffered))
+                         newAsyncSocket(future.read.client, socket.domain,
+                         socket.sockType, socket.protocol, socket.isBuffered))
         retFuture.complete(resultTup)
   return retFuture
 
@@ -423,24 +432,19 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
   ## Binds ``address``:``port`` to the socket.
   ##
   ## If ``address`` is "" then ADDR_ANY will be bound.
-
-  if address == "":
-    var name: Sockaddr_in
-    when defined(Windows) or defined(nimdoc):
-      name.sin_family = toInt(AF_INET).int16
+  var realaddr = address
+  if realaddr == "":
+    case socket.domain
+    of AF_INET6: realaddr = "::"
+    of AF_INET:  realaddr = "0.0.0.0"
     else:
-      name.sin_family = toInt(AF_INET)
-    name.sin_port = htons(int16(port))
-    name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
-                  sizeof(name).Socklen) < 0'i32:
-      raiseOSError(osLastError())
-  else:
-    var aiList = getAddrInfo(address, port, AF_INET)
-    if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
-      raiseOSError(osLastError())
+      raiseOSError("Unknown socket address family and no address specified to bindAddr")
+
+  var aiList = getAddrInfo(realaddr, port, socket.domain)
+  if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
     dealloc(aiList)
+    raiseOSError(osLastError())
+  dealloc(aiList)
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.

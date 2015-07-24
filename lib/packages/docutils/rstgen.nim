@@ -46,6 +46,7 @@ type
     target*: OutputTarget
     config*: StringTableRef
     splitAfter*: int          # split too long entries in the TOC
+    listingCounter: int
     tocPart*: seq[TocEntry]
     hasToc*: bool
     theIndex: string # Contents of the index file to be dumped at the end.
@@ -832,7 +833,7 @@ proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   if result.langStr != "":
     result.lang = getSourceLanguage(result.langStr)
 
-proc buildLinesHTMLTable(params: CodeBlockParams, code: string):
+proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
     tuple[beginTable, endTable: string] =
   ## Returns the necessary tags to start/end a code block in HTML.
   ##
@@ -840,20 +841,24 @@ proc buildLinesHTMLTable(params: CodeBlockParams, code: string):
   ## <pre> pair. Otherwise it will build a table and insert an initial column
   ## with all the line numbers, which requires you to pass the `code` to detect
   ## how many lines have to be generated (and starting at which point!).
+  inc d.listingCounter
+  let id = $d.listingCounter
   if not params.numberLines:
-    result = ("<pre>", "</pre>")
+    result = (d.config["doc.listing_start"] % id,
+              d.config["doc.listing_end"] % id)
     return
 
   var codeLines = 1 + code.strip.countLines
   assert codeLines > 0
-  result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre>"""
+  result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre class="line-nums">"""
   var line = params.startLine
   while codeLines > 0:
     result.beginTable.add($line & "\n")
     line.inc
     codeLines.dec
-  result.beginTable.add("</pre></td><td><pre>")
-  result.endTable = "</pre></td></tr></tbody></table>"
+  result.beginTable.add("</pre></td><td>" & (d.config["doc.listing_start"] % id))
+  result.endTable = (d.config["doc.listing_end"] % id) &
+      "</td></tr></tbody></table>" & (d.config["doc.listing_button"] % id)
 
 proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   ## Renders a code block, appending it to `result`.
@@ -871,7 +876,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
 
-  let (blockStart, blockEnd) = params.buildLinesHTMLTable(m.text)
+  let (blockStart, blockEnd) = buildLinesHTMLTable(d, params, m.text)
 
   dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
   if params.lang == langNone:
@@ -1209,6 +1214,9 @@ $moduledesc
 $content
 </div>
 """)
+  setConfigVar("doc.listing_start", "<pre class = \"listing\">")
+  setConfigVar("doc.listing_end", "</pre>")
+  setConfigVar("doc.listing_button", "</pre>")
   setConfigVar("doc.body_no_toc", "$moduledesc $content")
   setConfigVar("doc.file", "$content")
   setConfigVar("doc.smiley_format", "/images/smilies/$1.gif")

@@ -19,8 +19,8 @@
 #    NIM:$fileversion\n
 #  - the module's id (even if the module changed, its ID will not!):
 #    ID:Ax3\n
-#  - CRC value of this module:
-#    CRC:CRC-val\n
+#  - HASH value of this module:
+#    HASH:HASH-val\n
 #  - a section containing the compiler options and defines this
 #    module has been compiled with:
 #    OPTIONS:options\n
@@ -33,7 +33,7 @@
 #    )
 #  - an include file dependency section:
 #    INCLUDES(
-#    <fileidx> <CRC of myfile.inc>\n # fileidx is the LINE in the file section!
+#    <fileidx> <Hash of myfile.inc>\n # fileidx is the LINE in the file section!
 #    )
 #  - a module dependency section:
 #    DEPS: <fileidx> <fileidx>\n
@@ -90,7 +90,7 @@
 
 import
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
-  ropes, idents, securehash, idgen, types, rodutils, memfiles
+  ropes, idents, securehash, idgen, types, rodutils, memfiles, tables
 
 type
   TReasonForRecompile* = enum ## all the reasons that can trigger recompilation
@@ -98,7 +98,7 @@ type
     rrNone,                   # no need to recompile
     rrRodDoesNotExist,        # rod file does not exist
     rrRodInvalid,             # rod file is invalid
-    rrCrcChange,              # file has been edited since last recompilation
+    rrHashChange,             # file has been edited since last recompilation
     rrDefines,                # defines have changed
     rrOptions,                # options have changed
     rrInclDeps,               # an include has changed
@@ -136,7 +136,7 @@ type
     readerIndex: int
     line: int            # only used for debugging, but is always in the code
     moduleID: int
-    syms: TIdTable       # already processed symbols
+    syms: Table[int, PSym]       # already processed symbols
     memfile: MemFile     # unfortunately there is no point in time where we
                          # can close this! XXX
     methods*: TSymSeq
@@ -372,11 +372,11 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   else:
     internalError(info, "decodeSym: no ident")
   #echo "decoding: {", ident.s
-  result = PSym(idTableGet(r.syms, id))
+  result = r.syms[id]
   if result == nil:
     new(result)
     result.id = id
-    idTablePut(r.syms, result, result)
+    r.syms[result.id] = result
     if debugIds: registerID(result)
   elif result.id != id:
     internalError(info, "decodeSym: wrong id")
@@ -481,7 +481,7 @@ proc processInterf(r: PRodReader, module: PSym) =
     var s = newStub(r, w, key)
     s.owner = module
     strTableAdd(module.tab, s)
-    idTablePut(r.syms, s, s)
+    r.syms[s.id] = s
 
 proc processCompilerProcs(r: PRodReader, module: PSym) =
   if r.compilerProcsIdx == 0: internalError("processCompilerProcs")
@@ -491,11 +491,11 @@ proc processCompilerProcs(r: PRodReader, module: PSym) =
     inc(r.pos)
     var key = decodeVInt(r.s, r.pos)
     inc(r.pos)                # #10
-    var s = PSym(idTableGet(r.syms, key))
+    var s = r.syms[key]
     if s == nil:
       s = newStub(r, w, key)
       s.owner = module
-      idTablePut(r.syms, s, s)
+      r.syms[s.id] = s
     strTableAdd(rodCompilerprocs, s)
 
 proc processIndex(r: PRodReader; idx: var TIndex; outf: File = nil) =
@@ -538,20 +538,20 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
   # else: trigger recompilation:
   result = true
 
-proc processRodFile(r: PRodReader, crc: SecureHash) =
+proc processRodFile(r: PRodReader, hash: SecureHash) =
   var
     w: string
     d: int
-  var inclCrc: SecureHash
+  var inclHash: SecureHash
   while r.s[r.pos] != '\0':
     var section = rdWord(r)
     if r.reason != rrNone:
       break                   # no need to process this file further
     case section
-    of "CRC":
+    of "HASH":
       inc(r.pos)              # skip ':'
-      if crc != parseSecureHash(decodeStr(r.s, r.pos)):
-        r.reason = rrCrcChange
+      if hash != parseSecureHash(decodeStr(r.s, r.pos)):
+        r.reason = rrHashChange
     of "ID":
       inc(r.pos)              # skip ':'
       r.moduleID = decodeVInt(r.s, r.pos)
@@ -598,9 +598,9 @@ proc processRodFile(r: PRodReader, crc: SecureHash) =
       while r.s[r.pos] != ')':
         w = r.files[decodeVInt(r.s, r.pos)].toFullPath
         inc(r.pos)            # skip ' '
-        inclCrc = parseSecureHash(decodeStr(r.s, r.pos))
+        inclHash = parseSecureHash(decodeStr(r.s, r.pos))
         if r.reason == rrNone:
-          if not existsFile(w) or (inclCrc != secureHashFile(w)):
+          if not existsFile(w) or (inclHash != secureHashFile(w)):
             r.reason = rrInclDeps
         if r.s[r.pos] == '\x0A':
           inc(r.pos)
@@ -651,7 +651,7 @@ proc startsWith(buf: cstring, token: string, pos = 0): bool =
   while s < token.len and buf[pos+s] == token[s]: inc s
   result = s == token.len
 
-proc newRodReader(modfilename: string, crc: SecureHash,
+proc newRodReader(modfilename: string, hash: SecureHash,
                   readerIndex: int): PRodReader =
   new(result)
   try:
@@ -667,7 +667,7 @@ proc newRodReader(modfilename: string, crc: SecureHash,
   r.line = 1
   r.readerIndex = readerIndex
   r.filename = modfilename
-  initIdTable(r.syms)
+  r.syms = initTable[int, PSym]()
   # we terminate the file explicitly with ``\0``, so the cast to `cstring`
   # is safe:
   r.s = cast[cstring](r.memfile.mem)
@@ -703,8 +703,8 @@ type
     filename*: string
     reason*: TReasonForRecompile
     rd*: PRodReader
-    crc*: SecureHash
-    crcDone*: bool
+    hash*: SecureHash
+    hashDone*: bool
 
   TFileModuleMap = seq[TFileModuleRec]
 
@@ -737,7 +737,7 @@ proc getReader(moduleId: int): PRodReader =
   return nil
 
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
-  result = PSym(idTableGet(r.syms, id))
+  result = r.syms[id]
   if result == nil:
     # load the symbol:
     var d = iiTableGet(r.index.tab, id)
@@ -796,14 +796,14 @@ proc loadMethods(r: PRodReader) =
     r.methods.add(rrGetSym(r, d, unknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
 
-proc getCRC*(fileIdx: int32): SecureHash =
+proc getHash*(fileIdx: int32): SecureHash =
   internalAssert fileIdx >= 0 and fileIdx < gMods.len
 
-  if gMods[fileIdx].crcDone:
-    return gMods[fileIdx].crc
+  if gMods[fileIdx].hashDone:
+    return gMods[fileIdx].hash
 
-  result = secureHashFile(fileIdx.toFilename)
-  gMods[fileIdx].crc = result
+  result = secureHashFile(fileIdx.toFullPath)
+  gMods[fileIdx].hash = result
 
 template growCache*(cache, pos) =
   if cache.len <= pos: cache.setLen(pos+1)
@@ -815,16 +815,16 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
     # reason has already been computed for this module:
     return gMods[fileIdx].reason
   let filename = fileIdx.toFilename
-  var crc = getCRC(fileIdx)
+  var hash = getHash(fileIdx)
   gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
   var r: PRodReader = nil
   var rodfile = toGeneratedFile(filename.withPackageName, RodExt)
-  r = newRodReader(rodfile, crc, fileIdx)
+  r = newRodReader(rodfile, hash, fileIdx)
   if r == nil:
     result = (if existsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
   else:
-    processRodFile(r, crc)
+    processRodFile(r, hash)
     result = r.reason
     if result == rrNone:
       # check modules it depends on
@@ -838,7 +838,7 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
         if res != rrNone:
           result = rrModDeps
           # we cannot break here, because of side-effects of `checkDep`
-  if result != rrNone and gVerbosity > 0:
+  if result != rrNone:
     rawMessage(hintProcessing, reasonToFrmt[result] % filename)
   if result != rrNone or optForceFullMake in gGlobalOptions:
     # recompilation is necessary:
@@ -859,7 +859,7 @@ proc handleSymbolFile(module: PSym): PRodReader =
   result = gMods[fileIdx].rd
   if result != nil:
     module.id = result.moduleID
-    idTablePut(result.syms, module, module)
+    result.syms[module.id] = module
     processInterf(result, module)
     processCompilerProcs(result, module)
     loadConverters(result)
@@ -1029,9 +1029,9 @@ proc viewFile(rodfile: string) =
   while r.s[r.pos] != '\0':
     let section = rdWord(r)
     case section
-    of "CRC":
+    of "HASH":
       inc(r.pos)              # skip ':'
-      outf.writeLine("CRC:", $decodeVInt(r.s, r.pos))
+      outf.writeLine("HASH:", $decodeVInt(r.s, r.pos))
     of "ID":
       inc(r.pos)              # skip ':'
       r.moduleID = decodeVInt(r.s, r.pos)
@@ -1084,11 +1084,11 @@ proc viewFile(rodfile: string) =
       while r.s[r.pos] != ')':
         let w = r.files[decodeVInt(r.s, r.pos)]
         inc(r.pos)            # skip ' '
-        let inclCrc = decodeVInt(r.s, r.pos)
+        let inclHash = decodeVInt(r.s, r.pos)
         if r.s[r.pos] == '\x0A':
           inc(r.pos)
           inc(r.line)
-        outf.write(w, " ", inclCrc, "\n")
+        outf.write(w, " ", inclHash, "\n")
       if r.s[r.pos] == ')': inc(r.pos)
       outf.write(")\n")
     of "DEPS":

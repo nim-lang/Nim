@@ -1016,7 +1016,9 @@ proc liftForLoop*(body: PNode): PNode =
         ...
     """
   var L = body.len
-  internalAssert body.kind == nkForStmt and body[L-2].kind in nkCallKinds
+  if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
+    localError(body.info, "ignored invalid for loop")
+    return body
   var call = body[L-2]
 
   result = newNodeI(nkStmtList, body.info)

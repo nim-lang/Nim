@@ -435,8 +435,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
      mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq,
      mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait, mDotDot,
      mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn,
-     mParallel, mPlugin:
+     mParallel, mPlugin, mGetTypeInfo:
     discard
+  of mEqProc:
+    result = newIntNodeT(ord(
+        exprStructuralEquivalent(a, b, strictSymEquality=true)), n)
   else: internalError(a.info, "evalOp(" & $m & ')')
 
 proc getConstIfExpr(c: PSym, n: PNode): PNode =
@@ -540,7 +543,7 @@ proc foldConv*(n, a: PNode; check = false): PNode =
   of tyFloat..tyFloat64:
     case skipTypes(a.typ, abstractRange).kind
     of tyInt..tyInt64, tyEnum, tyBool, tyChar:
-      result = newFloatNodeT(toFloat(int(getOrdValue(a))), n)
+      result = newFloatNodeT(toBiggestFloat(getOrdValue(a)), n)
     else:
       result = a
       result.typ = n.typ

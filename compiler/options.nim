@@ -127,9 +127,6 @@ template compilationCachePresent*: expr =
 template optPreserveOrigSource*: expr =
   optEmbedOrigSrc in gGlobalOptions
 
-template optPrintSurroundingSrc*: expr =
-  gVerbosity >= 2
-
 const
   genSubDir* = "nimcache"
   NimExt* = "nim"
@@ -333,13 +330,16 @@ proc rawFindFile2(f: string): string =
   result = ""
 
 proc findFile*(f: string): string {.procvar.} =
-  result = f.rawFindFile
-  if result.len == 0:
-    result = f.toLower.rawFindFile
+  if f.isAbsolute:
+    result = if f.existsFile: f else: ""
+  else:
+    result = f.rawFindFile
     if result.len == 0:
-      result = f.rawFindFile2
+      result = f.toLower.rawFindFile
       if result.len == 0:
-        result = f.toLower.rawFindFile2
+        result = f.rawFindFile2
+        if result.len == 0:
+          result = f.toLower.rawFindFile2
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module

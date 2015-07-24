@@ -13,8 +13,7 @@ include "system/syslocks"
 
 type
   Lock* = SysLock ## Nim lock; whether this is re-entrant
-                    ## or not is unspecified!
-
+                  ## or not is unspecified!
   Cond* = SysCond ## Nim condition variable
 
 {.deprecated: [TLock: Lock, TCond: Cond].}

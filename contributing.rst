@@ -1,30 +1,3 @@
-The git stuff
-=============
-
-`Guide by github, scroll down a bit <https://guides.github.com/activities/contributing-to-open-source/>`_
-
-Deprecation
-===========
-
-Backward compatibility is important, so if you are renaming a proc or
-a type, you can use
-
-
-.. code-block:: nim
-
-  {.deprecated [oldName: new_name].}
-
-Or you can simply use
-
-.. code-block:: nim
-
-  proc oldProc() {.deprecated.}
-
-to mark a symbol as deprecated. Works for procs/types/vars/consts,
-etc.
-
-`Deprecated pragma in the manual. <http://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
-
 Writing tests
 =============
 
@@ -51,15 +24,19 @@ Sample test:
       seq2D[0][0] = true
       seq2D[1][0] = true
       seq2D[0][1] = true
-      doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
+      doAssert seq2D == @[@[true, true], @[true, false],
+                          @[false, false], @[false, false]]
 
 Compiler
 --------
 
 The tests for the compiler work differently, they are all located in
 ``tests/``. Each test has its own file, which is different from the
-stdlib tests. At the beginning of every test is the expected side of
-the test. Possible keys are:
+stdlib tests. All test files are prefixed with ``t``. If you want to
+create a file for import into another test only, use the prefix ``m``.
+
+At the beginning of every test is the expected side of the test.
+Possible keys are:
 
 - output: The expected output, most likely via ``echo``
 - exitcode: Exit code of the test (via ``exit(number)``)
@@ -88,22 +65,20 @@ Running tests
 
 You can run the tests with
 
-.. code-block:: bash
-
+::
   ./koch tests
 
 which will run a good subset of tests. Some tests may fail. If you
-only want to run failing tests, go for
+only want to see the output of failing tests, go for
 
-.. code-block:: bash
-
+::
   ./koch tests --failing all
 
-You can also run only a single category of tests. For a list of
-categories, see ``tests/testament/categories.nim``, at the bottom.
+You can also run only a single category of tests. A category is a subdirectory
+in the ``tests`` directory. There are a couple of special categories; for a
+list of these, see ``tests/testament/categories.nim``, at the bottom.
 
-.. code-block:: bash
-
+::
   ./koch tests c lib
 
 Comparing tests
@@ -116,22 +91,128 @@ The tester can compare two test runs. First, you need to create the
 reference test. You'll also need to the commit id, because that's what
 the tester needs to know in order to compare the two.
 
-.. code-block:: bash
-
+::
   git checkout devel
   DEVEL_COMMIT=$(git rev-parse HEAD)
   ./koch tests
 
 Then switch over to your changes and run the tester again.
 
-.. code-block:: bash
-
+::
   git checkout your-changes
   ./koch tests
 
 Then you can ask the tester to create a ``testresults.html`` which will
 tell you if any new tests passed/failed.
 
-.. code-block:: bash
-
+::
   ./koch --print html $DEVEL_COMMIT
+
+
+Deprecation
+===========
+
+Backward compatibility is important, so if you are renaming a proc or
+a type, you can use
+
+
+.. code-block:: nim
+
+  {.deprecated: [oldName: new_name].}
+
+Or you can simply use
+
+.. code-block:: nim
+
+  proc oldProc() {.deprecated.}
+
+to mark a symbol as deprecated. Works for procs/types/vars/consts,
+etc. Note that currently the ``deprecated`` statement does not work well with
+overloading so for routines the latter variant is better.
+
+
+`Deprecated <http://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
+pragma in the manual.
+
+
+Documentation
+=============
+
+When contributing new procedures, be sure to add documentation, especially if
+the procedure is exported from the module. Documentation begins on the line
+following the ``proc`` definition, and is prefixed by ``##`` on each line.
+
+Code examples are also encouraged. The RestructuredText Nim uses has a special 
+syntax for including examples.
+
+.. code-block:: nim
+
+  proc someproc*(): string =
+    ## Return "something"
+    ##
+    ## .. code-block:: nim
+    ##
+    ##  echo someproc() # "something"
+    result = "something" # single-hash comments do not produce documentation
+
+The ``.. code-block:: nim`` followed by a newline and an indentation instructs the 
+``nim doc`` and ``nim doc2`` commands to produce syntax-highlighted example code with 
+the documentation.
+
+When forward declaration is used, the documentation should be included with the
+first appearance of the proc.
+
+.. code-block:: nim
+
+  proc hello*(): string
+    ## Put documentation here
+  proc nothing() = discard
+  proc hello*(): string =
+    ## Ignore this
+    echo "hello"
+
+The preferred documentation style is to begin with a capital letter and use
+the imperative (command) form. That is, between:
+
+.. code-block:: nim
+
+  proc hello*(): string =
+    # Return "hello"
+    result = "hello"
+or
+
+.. code-block:: nim
+
+  proc hello*(): string =
+    # says hello
+    result = "hello"
+  
+the first is preferred.
+
+The Git stuff
+=============
+
+General commit rules
+--------------------
+
+1. All changes introduced by the commit (diff lines) must be related to the
+   subject of the commit.
+
+   If you change some other unrelated to the subject parts of the file, because
+   your editor reformatted automatically the code or whatever different reason,
+   this should be excluded from the commit.
+
+   *Tip:* Never commit everything as is using ``git commit -a``, but review
+   carefully your changes with ``git add -p``.
+
+2. Changes should not introduce any trailing whitespace.
+
+   Always check your changes for whitespace errors using ``git diff --check``
+   or add following ``pre-commit`` hook:
+
+   .. code-block:: sh
+
+      #!/bin/sh
+      git diff --check --cached || exit $?
+
+3. Describe your commit and use your common sense.

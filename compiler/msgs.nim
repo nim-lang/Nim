@@ -30,7 +30,8 @@ type
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
     errInvalidVarSubstitution, errUnknownVar, errUnknownCcompiler,
-    errOnOrOffExpectedButXFound, errNoneBoehmRefcExpectedButXFound,
+    errOnOrOffExpectedButXFound, errOnOffOrListExpectedButXFound,
+    errNoneBoehmRefcExpectedButXFound,
     errNoneSpeedOrSizeExpectedButXFound, errGuiConsoleOrLibExpectedButXFound,
     errUnknownOS, errUnknownCPU, errGenOutExpectedButXFound,
     errArgsNeedRunOption, errInvalidMultipleAsgn, errColonOrEqualsExpected,
@@ -125,6 +126,8 @@ type
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
+    hintExecuting, hintLinking, hintDependency,
+    hintSource, hintStackTrace, hintGCStats,
     hintUser
 
 const
@@ -181,6 +184,7 @@ const
     errUnknownVar: "unknown variable: \'$1\'",
     errUnknownCcompiler: "unknown C compiler: \'$1\'",
     errOnOrOffExpectedButXFound: "\'on\' or \'off\' expected, but \'$1\' found",
+    errOnOffOrListExpectedButXFound: "\'on\', \'off\' or \'list\' expected, but \'$1\' found",
     errNoneBoehmRefcExpectedButXFound: "'none', 'boehm' or 'refc' expected, but '$1' found",
     errNoneSpeedOrSizeExpectedButXFound: "'none', 'speed' or 'size' expected, but '$1' found",
     errGuiConsoleOrLibExpectedButXFound: "'gui', 'console' or 'lib' expected, but '$1' found",
@@ -414,6 +418,12 @@ const
     hintConditionAlwaysTrue: "condition is always true: '$1'",
     hintName: "name should be: '$1'",
     hintPattern: "$1",
+    hintExecuting: "$1",
+    hintLinking: "",
+    hintDependency: "$1",
+    hintSource: "$1",
+    hintStackTrace: "$1",
+    hintGCStats: "$1",
     hintUser: "$1"]
 
 const
@@ -429,10 +439,11 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
-  HintsToStr*: array[0..16, string] = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr*: array[0..22, string] = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "Name", "Pattern",
+    "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
+    "Source", "StackTrace", "GCStats",
     "User"]
 
 const
@@ -482,6 +493,29 @@ type
 
   ERecoverableError* = object of ValueError
   ESuggestDone* = object of Exception
+
+const
+  NotesVerbosity*: array[0..3, TNoteKinds] = [
+    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
+                                         warnProveField, warnProveIndex,
+                                         warnGcUnsafe,
+                                         hintSuccessX, hintPath, hintConf,
+                                         hintProcessing,
+                                         hintDependency,
+                                         hintExecuting, hintLinking,
+                                         hintCodeBegin, hintCodeEnd,
+                                         hintSource, hintStackTrace,
+                                         hintGCStats},
+    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
+                                         warnProveField, warnProveIndex,
+                                         warnGcUnsafe,
+                                         hintDependency,
+                                         hintExecuting,
+                                         hintCodeBegin, hintCodeEnd,
+                                         hintSource, hintStackTrace,
+                                         hintGCStats},
+    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace},
+    {low(TNoteKind)..high(TNoteKind)}]
 
 const
   InvalidFileIDX* = int32(-1)
@@ -571,9 +605,7 @@ proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
 proc sourceLine*(i: TLineInfo): Rope
 
 var
-  gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} -
-                        {warnShadowIdent, warnUninit,
-                         warnProveField, warnProveIndex, warnGcUnsafe}
+  gNotes*: TNoteKinds = NotesVerbosity[1] # defaults to verbosity of 1
   gErrorCounter*: int = 0     # counts the number of errors
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
@@ -759,7 +791,7 @@ type
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template quit =
-    if defined(debug) or gVerbosity >= 3 or msg == errInternal:
+    if defined(debug) or msg == errInternal or hintStackTrace in gNotes:
       if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
@@ -789,7 +821,7 @@ proc writeContext(lastinfo: TLineInfo) =
                        PosFormat % [toMsgFilename(msgContext[i]),
                                     coordToStr(msgContext[i].line),
                                     coordToStr(msgContext[i].col+1)],
-                       styleDim,
+                       resetStyle,
                        getMessageStr(errInstantiationFrom, ""))
     info = msgContext[i]
 
@@ -832,6 +864,11 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
 
 proc rawMessage*(msg: TMsgKind, arg: string) =
   rawMessage(msg, [arg])
+
+proc resetAttributes* =
+  if {optUseColors, optStdout} * gGlobalOptions == {optUseColors}:
+    terminal.resetAttributes()
+    stdout.flushFile()
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
@@ -889,7 +926,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                        KindColor, `%`(KindFormat, kind))
     else:
       styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-    if optPrintSurroundingSrc and msg in errMin..errMax:
+    if msg in errMin..errMax and hintSource in gNotes:
       info.writeSurroundingSrc
   handleError(msg, eh, s)
 
@@ -959,6 +996,22 @@ ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
     internalError("ropes: invalid format string: " & msg)
   of rCannotOpenFile:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
+
+proc listWarnings*() =
+  msgWriteln("Warnings:")
+  for warn in warnMin..warnMax:
+    msgWriteln("  [$1] $2" % [
+      if warn in gNotes: "x" else: " ",
+      msgs.WarningsToStr[ord(warn) - ord(warnMin)]
+    ])
+
+proc listHints*() =
+  msgWriteln("Hints:")
+  for hint in hintMin..hintMax:
+    msgWriteln("  [$1] $2" % [
+      if hint in gNotes: "x" else: " ",
+      msgs.HintsToStr[ord(hint) - ord(hintMin)]
+    ])
 
 # enable colors by default on terminals
 if terminal.isatty(stdout):

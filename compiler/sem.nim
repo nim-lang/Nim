@@ -421,7 +421,11 @@ proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
   for m in items(rd.methods): methodDef(m, true)
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
-  result = semStmt(c, n)
+  if sfNoForward in c.module.flags:
+    result = semAllTypeSections(c, n)
+  else:
+    result = n
+  result = semStmt(c, result)
   # BUGFIX: process newly generated generics here, not at the end!
   if c.lastGenericIdx < c.generics.len:
     var a = newNodeI(nkStmtList, n.info)

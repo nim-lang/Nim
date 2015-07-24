@@ -31,6 +31,7 @@ type
     buf*: string
     pendingNL*: int        # negative if not active; else contains the
                            # indentation value
+    pendingWhitespace: int
     comStack*: seq[PNode]  # comment stack
     flags*: TRenderFlags
     checkAnon: bool        # we're in a context that can contain sfAnon
@@ -83,6 +84,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
   g.buf = ""
   g.flags = renderFlags
   g.pendingNL = -1
+  g.pendingWhitespace = -1
   g.checkAnon = false
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
@@ -97,12 +99,21 @@ proc addPendingNL(g: var TSrcGen) =
     addTok(g, tkSpaces, "\n" & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
     g.pendingNL = - 1
+    g.pendingWhitespace = -1
+  elif g.pendingWhitespace >= 0:
+    addTok(g, tkSpaces, spaces(g.pendingWhitespace))
+    g.pendingWhitespace = -1
 
 proc putNL(g: var TSrcGen, indent: int) =
   if g.pendingNL >= 0: addPendingNL(g)
   else: addTok(g, tkSpaces, "\n")
   g.pendingNL = indent
   g.lineLen = indent
+  g.pendingWhitespace = -1
+
+proc previousNL(g: TSrcGen): bool =
+  result = g.pendingNL >= 0 or (g.tokens.len > 0 and
+                                g.tokens[^1].kind == tkSpaces)
 
 proc putNL(g: var TSrcGen) =
   putNL(g, g.indent)
@@ -127,10 +138,13 @@ proc dedent(g: var TSrcGen) =
     dec(g.lineLen, IndentWidth)
 
 proc put(g: var TSrcGen, kind: TTokType, s: string) =
-  addPendingNL(g)
-  if len(s) > 0:
-    addTok(g, kind, s)
-    inc(g.lineLen, len(s))
+  if kind != tkSpaces:
+    addPendingNL(g)
+    if len(s) > 0:
+      addTok(g, kind, s)
+      inc(g.lineLen, len(s))
+  else:
+    g.pendingWhitespace = s.len
 
 proc putLong(g: var TSrcGen, kind: TTokType, s: string, lineLen: int) =
   # use this for tokens over multiple lines.
@@ -1196,6 +1210,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     if renderNoPragmas notin g.flags:
       if g.inPragma <= 0:
         inc g.inPragma
+        #if not previousNL(g):
         put(g, tkSpaces, Space)
         put(g, tkCurlyDotLe, "{.")
         gcomma(g, n, emptyContext)
