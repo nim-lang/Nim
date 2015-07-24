@@ -245,3 +245,35 @@ proc close*(f: var MemFile) =
   
   if error: raiseOSError(lastErr)
 
+type Record* {.unchecked.} = object
+  Beg*: cstring
+  Len*: int
+
+iterator records*(mfile: MemFile, delim='\l', eat='\r'): Record {.inline.} =
+  proc c_memchr(cstr: cstring, c: char, n: csize): cstring {.
+       importc: "memchr", header: "<string.h>" .}
+  proc `-!`(p, q: cstring): int {.inline.} = return cast[int](p) -% cast[int](q)
+  var rec: Record
+  var End: cstring
+  rec.Beg = cast[cstring](mfile.mem)
+  var remaining = mfile.size
+  while remaining > 0:
+    End = c_memchr(rec.Beg, delim, remaining)
+    if End == nil:                                  # unterminated final record
+      rec.Len = remaining
+      yield rec
+      break
+    rec.Len = End -! rec.Beg                        # delimiter is not included
+    if eat != '\0' and rec.Len > 0 and rec.Beg[rec.Len - 1] == eat:
+      dec(rec.Len)                                  # exclude extra pre-delim ch
+    yield rec
+    rec.Beg = cast[cstring](cast[int](End) +% 1)    # skip delimiter
+    remaining = mfile.size - (rec.Beg -! cast[cstring](mfile.mem))
+
+proc toString*(rec: Record): string {.inline.} =
+  proc toNimStr(str: cstring, len: int): string {. importc: "toNimStr" .}
+  result = toNimStr(cast[cstring](rec.Beg), rec.Len)
+  result[result.len] = '\0'
+
+iterator lines*(mfile: MemFile): string {.inline.} =
+  for rec in records(mfile): yield toString(rec)
