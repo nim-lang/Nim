@@ -39,6 +39,10 @@ proc fseek(f: File, offset: clong, whence: int): int {.
 proc ftell(f: File): int {.importc: "ftell", header: "<stdio.h>", tags: [].}
 proc setvbuf(stream: File, buf: pointer, typ, size: cint): cint {.
   importc, header: "<stdio.h>", tags: [].}
+proc memchr(s: pointer, c: cint, n: csize): pointer {.
+  importc: "memchr", header: "<string.h>", tags: [].}
+proc memset(s: pointer, c: cint, n: csize) {.
+  header: "<string.h>", importc: "memset", tags: [].}
 
 {.push stackTrace:off, profiler:off.}
 proc write(f: File, c: cstring) = fputs(c, f)
@@ -70,21 +74,27 @@ proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
   # Use the currently reserved space for a first try
   var space = cast[PGenericSeq](line.string).space
+  line.string.setLen(space)
 
   while true:
+    # memset to \l so that we can tell how far fgets wrote, even on EOF, where
+    # fgets doesn't append an \l
+    memset(addr line.string[pos], '\l'.ord, space)
     if fgets(addr line.string[pos], space, f) == nil:
       line.string.setLen(0)
       return false
-    # This will cut the string short when it contains \0
-    let last = pos + cstring(addr line.string[pos]).len-1
-    if line.string[last] == '\l':
+    let m = memchr(addr line.string[pos], '\l'.ord, space)
+    if m != nil:
+      # \l found: Could be our own or the one by fgets, in any case, we're done
+      let last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
       if last > 0 and line.string[last-1] == '\c':
         line.string.setLen(last-1)
         return true
       line.string.setLen(last)
       return true
-    pos = last+1
-    space = 128 # Read in 128 bytes at a time
+    # No \l found: Increase buffer and read more
+    inc pos, space
+    space = 128 # read in 128 bytes at a time
     line.string.setLen(pos+space)
 
 proc readLine(f: File): TaintedString =
