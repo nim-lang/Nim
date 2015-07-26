@@ -26,6 +26,42 @@
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
+from math import random, randomize
+
+proc reversed*[T](s: seq[T]): seq[T] = 
+  ## Takes a sequences and returns a new reversed one
+  ## 
+  ## Example:
+  ## 
+  ## .. code-block::
+  ## 
+  ##   let s1 = @[1, 2, 3, 4, 5]
+  ##   let s2 = @[5, 4, 3, 2, 1]
+  ##   assert s2 == s1.reversed()
+  ## 
+  result = s
+  let ln = result.len
+  for i in 0..(ln div 2)-1: swap(result[i], result[ln-i-1])
+
+proc shuffled*[T](s: seq[T]): seq[T] = 
+  ## Takes a sequences and returns a new randomly shuffled one
+  ## 
+  ## Example:
+  ## 
+  ## .. code-block::
+  ## 
+  ##   let s = @[1, 2, 3, 4, 5]
+  ##   echo s.shuffled()
+  ## 
+  ## Output:
+  ## 
+  ##   @[2, 1, 5, 4, 3]
+  ## 
+  result = s
+  let ln = result.len
+  randomize()
+  for i in 0..ln-1: swap(result[i], result[random(ln)])
+
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ##
