@@ -729,14 +729,13 @@ proc genBreakStmt(p: PProc, n: PNode) =
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
   addf(p.body, "break L$1;$n" | "goto ::L$1::;$n", [rope(p.blocks[idx].id)])
 
-proc genAsmStmt(p: PProc, n: PNode) =
+proc genAsmOrEmitStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
-  assert(n.kind == nkAsmStmt)
   for i in countup(0, sonsLen(n) - 1):
     case n.sons[i].kind
     of nkStrLit..nkTripleStrLit: add(p.body, n.sons[i].strVal)
     of nkSym: add(p.body, mangleName(n.sons[i].sym))
-    else: internalError(n.sons[i].info, "jsgen: genAsmStmt()")
+    else: internalError(n.sons[i].info, "jsgen: genAsmOrEmitStmt()")
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
   var cond, stmt: TCompRes
@@ -1569,6 +1568,12 @@ proc genStmt(p: PProc, n: PNode) =
   gen(p, n, r)
   if r.res != nil: addf(p.body, "$#;$n", [r.res])
 
+proc genPragma(p: PProc, n: PNode) =
+  for it in n.sons:
+    case whichPragma(it)
+    of wEmit: genAsmOrEmitStmt(p, it.sons[1])
+    else: discard
+
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyNone
   r.kind = resNone
@@ -1668,12 +1673,13 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if n.sons[0].kind != nkEmpty:
       genLineDir(p, n)
       gen(p, n.sons[0], r)
-  of nkAsmStmt: genAsmStmt(p, n)
+  of nkAsmStmt: genAsmOrEmitStmt(p, n)
   of nkTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkPragma: discard
+     nkFromStmt, nkTemplateDef, nkMacroDef: discard
+  of nkPragma: genPragma(p, n)
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
     if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
