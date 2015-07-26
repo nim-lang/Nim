@@ -17,7 +17,7 @@
 ## .. code-block:: nim
 ##
 ##   type
-##     A = object
+##     A = object of RootObj
 ##     B = object of A
 ##       f: int
 ##
