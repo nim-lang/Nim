@@ -245,35 +245,35 @@ proc close*(f: var MemFile) =
   
   if error: raiseOSError(lastErr)
 
-type Record* {.unchecked.} = object
+type MemSlice* {.unchecked.} = object
   data*: cstring
   size*: int
 
-iterator records*(mfile: MemFile, delim='\l', eat='\r'): Record {.inline.} =
+iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   proc c_memchr(cstr: cstring, c: char, n: csize): cstring {.
        importc: "memchr", header: "<string.h>" .}
   proc `-!`(p, q: cstring): int {.inline.} = return cast[int](p) -% cast[int](q)
-  var rec: Record
-  var End: cstring
-  rec.data = cast[cstring](mfile.mem)
+  var ms: MemSlice
+  var ending: cstring
+  ms.data = cast[cstring](mfile.mem)
   var remaining = mfile.size
   while remaining > 0:
-    End = c_memchr(rec.data, delim, remaining)
-    if End == nil:                                  # unterminated final record
-      rec.size = remaining
-      yield rec
+    ending = c_memchr(ms.data, delim, remaining)
+    if ending == nil:                               # unterminated final slice
+      ms.size = remaining                           # Weird case..check eat?
+      yield ms
       break
-    rec.size = End -! rec.data                      # delimiter is not included
-    if eat != '\0' and rec.size > 0 and rec.data[rec.size - 1] == eat:
-      dec(rec.size)                                 # exclude extra pre-delim ch
-    yield rec
-    rec.data = cast[cstring](cast[int](End) +% 1)   # skip delimiter
-    remaining = mfile.size - (rec.data -! cast[cstring](mfile.mem))
+    ms.size = ending -! ms.data                     # delim is NOT included
+    if eat != '\0' and ms.size > 0 and ms.data[ms.size - 1] == eat:
+      dec(ms.size)                                  # trim pre-delim char
+    yield ms
+    ms.data = cast[cstring](cast[int](ending) +% 1)     # skip delim
+    remaining = mfile.size - (ms.data -! cast[cstring](mfile.mem))
 
-proc toString*(rec: Record): string {.inline.} =
+proc toString*(ms: MemSlice): string {.inline.} =
   proc toNimStr(str: cstring, len: int): string {. importc: "toNimStr" .}
-  result = toNimStr(cast[cstring](rec.data), rec.size)
-  result[result.len] = '\0'
+  result = toNimStr(cast[cstring](ms.data), ms.size)
+  result[result.len] = '\0' # toNimStr copies 1 extra byte but does not NUL-term
 
 iterator lines*(mfile: MemFile): string {.inline.} =
-  for rec in records(mfile): yield toString(rec)
+  for ms in memSlices(mfile): yield toString(ms)
