@@ -1046,9 +1046,18 @@ proc genArg(p: PProc, n: PNode, r: var TCompRes) =
 proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
   add(r.res, "(")
   var hasArgs = false
+
+  var typ = skipTypes(n.sons[0].typ, abstractInst)
+  assert(typ.kind == tyProc)
+  assert(sonsLen(typ) == sonsLen(typ.n))
+
   for i in countup(1, sonsLen(n) - 1):
     let it = n.sons[i]
-    if it.typ.isCompileTimeOnly: continue
+    if i < sonsLen(typ):
+      assert(typ.n.sons[i].kind == nkSym)
+      let paramType = typ.n.sons[i]
+      if paramType.typ.isCompileTimeOnly: continue
+
     if hasArgs: add(r.res, ", ")
     genArg(p, it, r)
     hasArgs = true

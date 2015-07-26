@@ -159,6 +159,17 @@ proc genArgNoParam(p: BProc, n: PNode): Rope =
     initLocExprSingleUse(p, n, a)
     result = rdLoc(a)
 
+template genParamLoop(params) {.dirty.} =
+  if i < sonsLen(typ):
+    assert(typ.n.sons[i].kind == nkSym)
+    let paramType = typ.n.sons[i]
+    if not paramType.typ.isCompileTimeOnly:
+      if params != nil: add(params, ~", ")
+      add(params, genArg(p, ri.sons[i], paramType.sym, ri))
+  else:
+    if params != nil: add(params, ~", ")
+    add(params, genArgNoParam(p, ri.sons[i]))
+
 proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   # this is a hotspot in the compiler
@@ -170,13 +181,7 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
-    if ri.sons[i].typ.isCompileTimeOnly: continue
-    if params != nil: add(params, ~", ")
-    if i < sonsLen(typ):
-      assert(typ.n.sons[i].kind == nkSym)
-      add(params, genArg(p, ri.sons[i], typ.n.sons[i].sym, ri))
-    else:
-      add(params, genArgNoParam(p, ri.sons[i]))
+    genParamLoop(params)
   fixupCall(p, le, ri, d, op.r, params)
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
@@ -198,13 +203,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var length = sonsLen(ri)
   for i in countup(1, length - 1):
     assert(sonsLen(typ) == sonsLen(typ.n))
-    if ri.sons[i].typ.isCompileTimeOnly: continue
-    if i < sonsLen(typ):
-      assert(typ.n.sons[i].kind == nkSym)
-      add(pl, genArg(p, ri.sons[i], typ.n.sons[i].sym, ri))
-    else:
-      add(pl, genArgNoParam(p, ri.sons[i]))
-    if i < length - 1: add(pl, ~", ")
+    genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
     lineF(p, cpsStmts, callPattern & ";$n", [op.r, pl, pl.addComma, rawProc])
@@ -241,13 +240,14 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genCallPattern()
 
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
-  if ri.sons[i].typ.isCompileTimeOnly:
-    result = nil
-  elif i < sonsLen(typ):
+  if i < sonsLen(typ):
     # 'var T' is 'T&' in C++. This means we ignore the request of
     # any nkHiddenAddr when it's a 'var T'.
-    assert(typ.n.sons[i].kind == nkSym)
-    if typ.sons[i].kind == tyVar and ri.sons[i].kind == nkHiddenAddr:
+    let paramType = typ.n.sons[i]
+    assert(paramType.kind == nkSym)
+    if paramType.typ.isCompileTimeOnly:
+      result = nil
+    elif typ.sons[i].kind == tyVar and ri.sons[i].kind == nkHiddenAddr:
       result = genArgNoParam(p, ri.sons[i][0])
     else:
       result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
