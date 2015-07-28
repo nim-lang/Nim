@@ -592,10 +592,8 @@ proc newNilLit*(): NimNode {.compileTime.} =
   ## New nil literal shortcut
   result = newNimNode(nnkNilLit)
 
-proc high*(node: NimNode): int {.compileTime.} = len(node) - 1
-  ## Return the highest index available for a node
-proc last*(node: NimNode): NimNode {.compileTime.} = node[node.high]
-  ## Return the last item in nodes children. Same as `node[node.high()]`
+proc last*(node: NimNode): NimNode {.compileTime.} = node[<node.len]
+  ## Return the last item in nodes children. Same as `node[^1]`
 
 
 const
@@ -695,7 +693,7 @@ proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   of nnkBlockStmt, nnkWhileStmt:
     someProc[1] = val
   of nnkForStmt:
-    someProc[high(someProc)] = val
+    someProc[len(someProc)-1] = val
   else:
     badNodeKind someProc.kind, "body="
 
@@ -722,7 +720,7 @@ proc ident*(name: string): NimNode {.compileTime,inline.} = newIdentNode(name)
   ## Create a new ident node from a string
 
 iterator children*(n: NimNode): NimNode {.inline.}=
-  for i in 0 .. high(n):
+  for i in 0 ..< n.len:
     yield n[i]
 
 template findChild*(n: NimNode; cond: expr): NimNode {.
@@ -742,16 +740,16 @@ template findChild*(n: NimNode; cond: expr): NimNode {.
 
 proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
   ## Insert node B into A at pos
-  if high(a) < pos:
+  if len(a)-1 < pos:
     ## add some empty nodes first
-    for i in high(a)..pos-2:
+    for i in len(a)-1..pos-2:
       a.add newEmptyNode()
     a.add b
   else:
     ## push the last item onto the list again
     ## and shift each item down to pos up one
-    a.add(a[a.high])
-    for i in countdown(high(a) - 2, pos):
+    a.add(a[a.len-1])
+    for i in countdown(len(a) - 3, pos):
       a[i + 1] = a[i]
     a[pos] = b
 
