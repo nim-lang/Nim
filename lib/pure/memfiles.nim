@@ -273,7 +273,6 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
 proc toString*(ms: MemSlice): string {.inline.} =
   proc toNimStr(str: cstring, len: int): string {. importc: "toNimStr" .}
   result = toNimStr(cast[cstring](ms.data), ms.size)
-  result[result.len] = '\0' # toNimStr copies 1 extra byte but does not NUL-term
 
 iterator lines*(mfile: MemFile): string {.inline.} =
   for ms in memSlices(mfile): yield toString(ms)
