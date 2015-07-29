@@ -246,16 +246,16 @@ proc close*(f: var MemFile) =
   if error: raiseOSError(lastErr)
 
 type MemSlice* {.unchecked.} = object
-  data*: cstring
+  data*: pointer
   size*: int
 
 iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
-  proc c_memchr(cstr: cstring, c: char, n: csize): cstring {.
+  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
        importc: "memchr", header: "<string.h>" .}
-  proc `-!`(p, q: cstring): int {.inline.} = return cast[int](p) -% cast[int](q)
+  proc `-!`(p, q: pointer): int {.inline.} = return cast[int](p) -% cast[int](q)
   var ms: MemSlice
-  var ending: cstring
-  ms.data = cast[cstring](mfile.mem)
+  var ending: pointer
+  ms.data = mfile.mem
   var remaining = mfile.size
   while remaining > 0:
     ending = c_memchr(ms.data, delim, remaining)
@@ -264,11 +264,11 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
       yield ms
       break
     ms.size = ending -! ms.data                     # delim is NOT included
-    if eat != '\0' and ms.size > 0 and ms.data[ms.size - 1] == eat:
+    if eat != '\0' and ms.size > 0 and cast[cstring](ms.data)[ms.size - 1] == eat:
       dec(ms.size)                                  # trim pre-delim char
     yield ms
-    ms.data = cast[cstring](cast[int](ending) +% 1)     # skip delim
-    remaining = mfile.size - (ms.data -! cast[cstring](mfile.mem))
+    ms.data = cast[pointer](cast[int](ending) +% 1)     # skip delim
+    remaining = mfile.size - (ms.data -! mfile.mem)
 
 proc toString*(ms: MemSlice): string {.inline.} =
   proc toNimStr(str: cstring, len: int): string {. importc: "toNimStr" .}
