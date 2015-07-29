@@ -7,7 +7,7 @@ General Guidelines
 * Authors should document anything that is exported.
 * Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block. The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation, each sentence after the first should be complete and in present tense.
 * Documentation is parsed as ReStructuredText (RST).
-* Inline code should be surrounded by double tick marks ("``` `` ```"). If you would like a character to immediately follow inline code (e.g., "``int8``s are great!"), escape the following character with a backslash (``\``). The preceding is typed as ``` ``int8``\s are great!```.
+* Inline code should be surrounded by double tick marks ("``````"). If you would like a character to immediately follow inline code (e.g., "``int8``s are great!"), escape the following character with a backslash (``\``). The preceding is typed as ``` ``int8``\s are great!```.
 
 Module-level documentation
 --------------------------
@@ -38,7 +38,7 @@ Leave a space between the last line of top-level documentation and the beginning
 Procs, Templates, Macros, Converters, and Iterators
 ---------------------------------------------------
 
-The documentation of a procedure should begin with a capital letter and should be in present tense. Variables referenced in the documentation should be surrounded by double tick marks (``` `` ```).
+The documentation of a procedure should begin with a capital letter and should be in present tense. Variables referenced in the documentation should be surrounded by double tick marks (``````).
 
 .. code-block:: Nim
 
