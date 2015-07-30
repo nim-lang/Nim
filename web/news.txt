@@ -42,6 +42,8 @@ News
   - ``sequtils.delete`` doesn't take confusing default arguments anymore.
   - ``system.free`` was an error-prone alias to ``system.dealloc`` and has
     been removed.
+  - ``macros.high`` never worked and the manual says ``high`` cannot be
+    overloaded, so we removed it with no deprecation cycle.
 
 
   Library additions

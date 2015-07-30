@@ -9,7 +9,7 @@
 
 ## :Author: Zahary Karadjov
 ##
-## This module implements boilerplate to make testing easy.
+## This module implements boilerplate to make unit testing easy.
 ##
 ## Example:
 ##
@@ -41,27 +41,69 @@ when not defined(ECMAScript):
   import terminal
 
 type
-  TestStatus* = enum OK, FAILED
-  OutputLevel* = enum PRINT_ALL, PRINT_FAILURES, PRINT_NONE
+  TestStatus* = enum OK, FAILED ## The status of a test when it is done.
+  OutputLevel* = enum  ## The output verbosity of the tests.
+    PRINT_ALL,         ## Print as much as possible.
+    PRINT_FAILURES,    ## Print only the failed tests.
+    PRINT_NONE         ## Print nothing.
 
 {.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
 
-var
-  abortOnError* {.threadvar.}: bool
-  outputLevel* {.threadvar.}: OutputLevel
-  colorOutput* {.threadvar.}: bool
+var ## Global unittest settings!
+
+  abortOnError* {.threadvar.}: bool ## Set to true in order to quit
+                                    ## immediately on fail. Default is false,
+                                    ## unless the ``NIMTEST_ABORT_ON_ERROR``
+                                    ## environment variable is set for
+                                    ## the non-js target.
+  outputLevel* {.threadvar.}: OutputLevel ## Set the verbosity of test results.
+                                          ## Default is ``PRINT_ALL``, unless
+                                          ## the ``NIMTEST_OUTPUT_LVL`` environment
+                                          ## variable is set for the non-js target.
+
+  colorOutput* {.threadvar.}: bool ## Have test results printed in color.
+                                   ## Default is true for the non-js target
+                                   ## unless, the environment variable
+                                   ## ``NIMTEST_NO_COLOR`` is set.
 
   checkpoints {.threadvar.}: seq[string]
 
 checkpoints = @[]
 
-template testSetupIMPL*: stmt {.immediate, dirty.} = discard
+template testSetupIMPL*: stmt {.immediate, dirty.} = discard      #Should this be public or even exist?
 template testTeardownIMPL*: stmt {.immediate, dirty.} = discard
 
 proc shouldRun(testName: string): bool =
   result = true
 
 template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
+  ## Declare a test suite identified by `name` with optional ``setup``
+  ## and/or ``teardown`` section.
+  ##
+  ## A test suite is a series of one or more related tests sharing a
+  ## common fixture (``setup``, ``teardown``). The fixture is executed
+  ## for EACH test.
+  ##
+  ## .. code-block:: nim
+  ##  suite "test suite for addition":
+  ##    setup:
+  ##      let result = 4
+  ##
+  ##    test "2 + 2 = 4":
+  ##      check(2+2 == result)
+  ##
+  ##    test "2 + -2 != 4":
+  ##      check(2+2 != result)
+  ##
+  ##    # No teardown needed
+  ##
+  ## The suite will run the individual test cases in the order in which
+  ## they were listed. With default global settings the above code prints:
+  ##
+  ## .. code-block::
+  ##
+  ##  [OK] 2 + 2 = 4
+  ##  [OK] (2 + -2) != 4
   block:
     template setup(setupBody: stmt): stmt {.immediate, dirty.} =
       template testSetupIMPL: stmt {.immediate, dirty.} = setupBody
@@ -87,6 +129,19 @@ proc testDone(name: string, s: TestStatus) =
       rawPrint()
 
 template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
+  ## Define a single test case identified by `name`.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  test "roses are red":
+  ##    let roses = "red"
+  ##    check(roses == "red")
+  ##
+  ## The above code outputs:
+  ##
+  ## .. code-block::
+  ##
+  ##  [OK] roses are red
   bind shouldRun, checkpoints, testDone
 
   if shouldRun(name):
@@ -108,10 +163,32 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
       testDone name, testStatusIMPL
 
 proc checkpoint*(msg: string) =
+  ## Set a checkpoint identified by `msg`. Upon test failure all
+  ## checkpoints encountered so far are printed out. Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  checkpoint("Checkpoint A")
+  ##  check((42, "the Answer to life and everything") == (1, "a"))
+  ##  checkpoint("Checkpoint B")
+  ##
+  ## outputs "Checkpoint A" once it fails.
   checkpoints.add(msg)
   # TODO: add support for something like SCOPED_TRACE from Google Test
 
 template fail* =
+  ## Print out the checkpoints encountered so far and quit if ``abortOnError``
+  ## is true. Otherwise, erase the checkpoints and indicate the test has
+  ## failed (change exit code and test status). This template is useful
+  ## for debugging, but is otherwise mostly used internally. Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  checkpoint("Checkpoint A")
+  ##  complicatedProcInThread()
+  ##  fail()
+  ##
+  ## outputs "Checkpoint A" before quitting.
   bind checkpoints
   for msg in items(checkpoints):
     echo msg
@@ -127,8 +204,23 @@ template fail* =
   checkpoints = @[]
 
 macro check*(conditions: stmt): stmt {.immediate.} =
+  ## Verify if a statement or a list of statements is true.
+  ## A helpful error message and set checkpoints are printed out on
+  ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  import strutils
+  ##
+  ##  check("AKB48".toLower() == "akb48")
+  ##
+  ##  let teams = {'A', 'K', 'B', '4', '8'}
+  ##
+  ##  check:
+  ##    "AKB48".toLower() == "akb48"
+  ##    'C' in teams
   let checked = callsite()[1]
-
   var
     argsAsgns = newNimNode(nnkStmtList)
     argsPrintOuts = newNimNode(nnkStmtList)
@@ -143,7 +235,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
       checkpoint(name & " was " & $value)
 
   proc inspectArgs(exp: NimNode) =
-    for i in 1 .. <exp.len:
+    for i in countup(1, exp.len - 1):
       if exp[i].kind notin nnkLiterals:
         inc counter
         var arg = newIdentNode(":p" & $counter)
@@ -194,11 +286,34 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     result = getAst(rewrite(checked, checked.lineinfo, checked.toStrLit))
 
 template require*(conditions: stmt): stmt {.immediate, dirty.} =
+  ## Same as `check` except any failed test causes the program to quit
+  ## immediately. Any teardown statements are not executed and the failed
+  ## test output is not generated.
+  let savedAbortOnError = abortOnError
   block:
-    const AbortOnError {.inject.} = true
+    abortOnError = true
     check conditions
+  abortOnError = savedAbortOnError
 
 macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
+  ## Test if `body` raises an exception found in the passed `exceptions`.
+  ## The test passes if the raised exception is part of the acceptable
+  ## exceptions. Otherwise, it fails.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  import math
+  ##  proc defectiveRobot() =
+  ##    randomize()
+  ##    case random(1..4)
+  ##    of 1: raise newException(OSError, "CANNOT COMPUTE!")
+  ##    of 2: discard parseInt("Hello World!")
+  ##    of 3: raise newException(IOError, "I can't do that Dave.")
+  ##    else: assert 2 + 2 == 5
+  ##
+  ##  expect IOError, OSError, ValueError, AssertionError:
+  ##    defectiveRobot()
   let exp = callsite()
   template expectBody(errorTypes, lineInfoLit: expr,
                       body: stmt): NimNode {.dirty.} =
@@ -208,6 +323,9 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
       fail()
     except errorTypes:
       discard
+    except:
+      checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
+      fail()
 
   var body = exp[exp.len - 1]
 
@@ -219,9 +337,9 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
 
 
 when declared(stdout):
-  ## Reading settings
+  # Reading settings
+  # On a terminal this branch is executed
   var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
-
   abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
   colorOutput  = not existsEnv("NIMTEST_NO_COLOR")
 

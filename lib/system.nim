@@ -2173,7 +2173,11 @@ proc `$`*[T: tuple|object](x: T): string =
     if not firstElement: result.add(", ")
     result.add(name)
     result.add(": ")
-    result.add($value)
+    when compiles(value.isNil):
+      if value.isNil: result.add "nil"
+      else: result.add($value)
+    else:
+      result.add($value)
     firstElement = false
   result.add(")")
 

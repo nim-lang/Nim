@@ -453,6 +453,7 @@ proc close*(socket: AsyncSocket) =
   when defined(ssl):
     if socket.isSSL:
       let res = SslShutdown(socket.sslHandle)
+      SSLFree(socket.sslHandle)
       if res == 0:
         discard
       elif res != 1:
@@ -567,4 +568,3 @@ when not defined(testing) and isMainModule:
     var f = accept(sock)
     f.callback = onAccept
   runForever()
-
