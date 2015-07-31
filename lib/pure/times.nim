@@ -1068,10 +1068,7 @@ const
   secondsInMin = 60
   secondsInHour = 60*60
   secondsInDay = 60*60*24
-
-const
   epochStartYear = 1970
-  leapYearsSinceEpoch = countLeapYears(epochStartYear)
 
 proc getDayOfWeek*(day, month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
