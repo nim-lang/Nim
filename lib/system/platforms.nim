@@ -25,6 +25,7 @@ type
     mips,                      ## Mips based processor
     mipsel,                    ## Little Endian Mips based processor
     arm,                       ## ARM based processor
+    arm64,                     ## ARM64 based processor
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
     avr                        ## AVR based processor
 
@@ -72,6 +73,7 @@ const
                elif defined(mips): CpuPlatform.mips
                elif defined(mipsel): CpuPlatform.mipsel
                elif defined(arm): CpuPlatform.arm
+               elif defined(arm64): CpuPlatform.arm64
                elif defined(vm): CpuPlatform.vm
                elif defined(avr): CpuPlatform.avr
                else: CpuPlatform.none

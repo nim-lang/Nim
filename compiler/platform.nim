@@ -159,7 +159,7 @@ type
                      # alias conditionals to condsyms (end of module).
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuMipsel,
-    cpuArm, cpuJS, cpuNimrodVM, cpuAVR
+    cpuArm, cpuArm64, cpuJS, cpuNimrodVM, cpuAVR
 
 type
   TEndian* = enum
@@ -183,6 +183,7 @@ const
     (name: "mips", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "mipsel", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "arm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    (name: "arm64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
     (name: "js", intSize: 32, endian: bigEndian,floatSize: 64,bit: 32),
     (name: "nimrodvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "avr", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16)]
