@@ -972,9 +972,9 @@ else:
       let data = PData(info.key.data)
       assert data.fd == info.key.fd.AsyncFD
       #echo("In poll ", data.fd.cint)
-      if EvError in info.events:
-        closeSocket(data.fd)
-        continue
+      # There may be EvError here, but we handle them in callbacks,
+      # so that exceptions can be raised from `send(...)` and
+      # `recv(...)` routines.
 
       if EvRead in info.events:
         # Callback may add items to ``data.readCBs`` which causes issues if
@@ -1013,9 +1013,17 @@ else:
     var retFuture = newFuture[void]("connect")
 
     proc cb(fd: AsyncFD): bool =
-      # We have connected.
-      retFuture.complete()
-      return true
+      var ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
+      if ret == 0:
+          # We have connected.
+          retFuture.complete()
+          return true
+      elif ret == EINTR:
+          # interrupted, keep waiting
+          return false
+      else:
+          retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+          return true
 
     assert getSockDomain(socket.SocketHandle) == domain
     var aiList = getAddrInfo(address, port, domain)

@@ -19,3 +19,17 @@ import options
 test "unittest typedescs":
   check(none(int) == none(int))
   check(none(int) != some(1))
+
+
+import math
+from strutils import parseInt
+proc defectiveRobot() =
+  randomize()
+  case random(1..4)
+  of 1: raise newException(OSError, "CANNOT COMPUTE!")
+  of 2: discard parseInt("Hello World!")
+  of 3: raise newException(IOError, "I can't do that Dave.")
+  else: assert 2 + 2 == 5
+test "unittest expect":
+  expect IOError, OSError, ValueError, AssertionError:
+    defectiveRobot()
