@@ -26,11 +26,6 @@ type
   WeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
-when not defined(JS):
-  var
-    timezone {.importc, header: "<time.h>".}: int
-    tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
-
 when defined(posix) and not defined(JS):
   type
     TimeImpl {.importc: "time_t", header: "<time.h>".} = int
@@ -49,6 +44,9 @@ when defined(posix) and not defined(JS):
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
+  var
+    timezone {.importc, header: "<time.h>".}: int
+    tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
   # we also need tzset() to make sure that tzname is initialized
   proc tzset() {.importc, header: "<time.h>".}
   # calling tzset() implicitly to initialize tzname data.
@@ -65,7 +63,10 @@ elif defined(windows):
 
   type
     Time* = distinct TimeImpl
-
+  
+  var
+    timezone {.importc: "_timezone", header: "<time.h>".}: int
+    tzname {.importc: "_tzname", header: "<time.h>"}: array[0..1, cstring]
 elif defined(JS):
   type
     Time* {.importc.} = object
