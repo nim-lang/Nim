@@ -395,6 +395,8 @@ proc processCompile(c: PContext, n: PNode) =
   var found = findFile(s)
   if found == "": found = s
   var trunc = changeFileExt(found, "")
+  if not isAbsolute(found):
+    found = parentDir(n.info.toFullPath) / found
   extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
