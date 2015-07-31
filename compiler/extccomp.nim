@@ -19,7 +19,7 @@ import
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl
+    ccTcc, ccPcc, ccUcc, ccIcl, asmFasm
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -318,6 +318,31 @@ compiler ucc:
     packedPragma: "", # XXX: not supported yet
     props: {})
 
+# fasm assembler
+compiler fasm:
+  result = (
+    name: "fasm",
+    objExt: "o",
+    optSpeed: "",
+    optSize: "",
+    compilerExe: "fasm",
+    cppCompiler: "fasm",
+    compileTmpl: "$file $objfile",
+    buildGui: "",
+    buildDll: "",
+    buildLib: "",
+    linkerExe: "",
+    linkTmpl: "",
+    includeCmd: "",
+    linkDirCmd: "",
+    linkLibCmd: "",
+    debug: "",
+    pic: "",
+    asmStmtFrmt: "",
+    structStmtFmt: "",
+    packedPragma: "",
+    props: {})
+
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
     gcc(),
@@ -331,16 +356,19 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl()]
+    icl(),
+    fasm()]
 
   hExt* = ".h"
 
 var
   cCompiler* = ccGcc # the used compiler
+  cAssembler* = ccNone
   gMixedMode*: bool  # true if some module triggered C++ codegen
   cIncludes*: seq[string] = @[]   # directories to search for included files
   cLibs*: seq[string] = @[]       # directories to search for lib files
   cLinkedLibs*: seq[string] = @[] # libraries to link
+  cValidAssemblers* = @[asmFasm]
 
 # implementation
 
@@ -527,6 +555,19 @@ proc getLinkerExe(compiler: TSystemCC): string =
 
 proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
   var c = cCompiler
+  if cfilename.endswith(".asm"):
+    var customAssembler = getConfigVar("assembler")
+    if customAssembler.len > 0:
+      c = nameToCC(customAssembler)
+    else:
+      if targetCPU == cpuI386 or targetCPU == cpuAmd64:
+        c = asmFasm
+      else:
+        c = ccNone
+
+    if c == ccNone:
+      rawMessage(errExternalAssemblerNotFound, "")
+
   var options = cFileSpecificOptions(cfilename)
   var exe = getConfigVar(c, ".exe")
   if exe.len == 0: exe = c.getCompilerExe

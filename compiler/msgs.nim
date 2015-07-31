@@ -108,6 +108,7 @@ type
     errCannotInferReturnType,
     errGenericLambdaNotAllowed,
     errCompilerDoesntSupportTarget,
+    errExternalAssemblerNotFound,
     errUser,
     warnCannotOpenFile,
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit,
@@ -370,6 +371,7 @@ const
                                 "it is used as an operand to another routine and the types " &
                                 "of the generic paramers can be inferred from the expected signature.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
+    errExternalAssemblerNotFound: "External assembler not found",
     errUser: "$1",
     warnCannotOpenFile: "cannot open \'$1\'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
