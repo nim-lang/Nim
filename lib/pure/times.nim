@@ -1054,32 +1054,27 @@ proc countLeapYears(yearSpan: int): int =
 proc countDays(yearSpan: int): int =
   (yearSpan - 1) * 365 + countLeapYears(yearSpan)
 
-# counts the number of years spanned by a given number of days.
 proc countYears(daySpan: int): int =
+  # counts the number of years spanned by a given number of days.
   ((daySpan - countLeapYears(daySpan div 365)) div 365)
 
 proc countYearsAndDays(daySpan: int): tuple[years: int, days: int] =
+  # counts the number of years spanned by a given number of days and the remainder as days.
   let days = daySpan - countLeapYears(daySpan div 365)
   result.years = days div 365
   result.days = days mod 365
 
-type
-  SecondScale* = enum ssMinute, ssHour, ssDay, ssMonth, ssYear
-
-# these are very approximate beyond day
-const secondsIn*: array[SecondScale.low..SecondScale.high, int] =[
-  60,             # minute
-  60*60,          # hour
-  60*60*24,       # day
-  60*60*24*30,    # month (estimate)
-  60*60*24*30*12] # year  (estimate)
+const
+  secondsInMin = 60
+  secondsInHour = 60*60
+  secondsInDay = 60*60*24
 
 const
   epochStartYear = 1970
-  leapYearsSinceEpoch* = countLeapYears(epochStartYear)
+  leapYearsSinceEpoch = countLeapYears(epochStartYear)
 
-proc dayOfWeek*(day, month, year: int): WeekDay =
-  # This is for the Gregorian calendar
+proc getDayOfWeek*(day, month, year: int): WeekDay =
+  ## Returns the day of the week enum from day, month and year.
   # Day & month start from one.
   let
     a = (14 - month) div 12
@@ -1091,8 +1086,8 @@ proc dayOfWeek*(day, month, year: int): WeekDay =
   if d == 0: return dSun
   result = (d-1).WeekDay
 
-proc dayOfWeekJulian*(day, month, year: int): WeekDay =
-  # This is for the Julian calendar
+proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
+  ## Returns the day of the week enum from day, month and year, according to the Julian calender.
   # Day & month start from one.
   let
     a = (14 - month) div 12
@@ -1101,11 +1096,12 @@ proc dayOfWeekJulian*(day, month, year: int): WeekDay =
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
 
-proc decodeTime*(t: Time): TimeInfo =
+proc timeToTimeInfo*(t: Time): TimeInfo =
+  ## Converts a Time to TimeInfo.
   let
-    daysSinceEpoch = t.int div secondsIn[ssDay]
+    daysSinceEpoch = t.int div secondsInDay
     (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
-    daySeconds = t.int mod secondsIn[ssDay]  
+    daySeconds = t.int mod secondsInDay
 
     y = yearsSinceEpoch + epochStartYear
 
@@ -1125,17 +1121,18 @@ proc decodeTime*(t: Time): TimeInfo =
     m = mon  # month is zero indexed enum
     md = days
     # NB: month is zero indexed but dayOfWeek expects 1 indexed.
-    wd = dayOfWeek(days, mon.int + 1, y).Weekday
-    h = daySeconds div secondsIn[ssHour] + 1
-    mi = (daySeconds mod secondsIn[ssHour]) div secondsIn[ssMinute]
-    s = daySeconds mod secondsIn[ssMinute]
-  result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s) 
+    wd = getDayOfWeek(days, mon.int + 1, y).Weekday
+    h = daySeconds div secondsInHour + 1
+    mi = (daySeconds mod secondsInHour) div secondsInMin
+    s = daySeconds mod secondsInMin
+  result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
 
-proc decodeTimeInterval*(t: Time): TimeInterval =
+proc timetoTimeInterval*(t: Time): TimeInterval =
+  ## Converts a Time to a TimeInterval.
   var
-    daysSinceEpoch = t.int div secondsIn[ssDay]
+    daysSinceEpoch = t.int div secondsInDay
     (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
-    daySeconds = t.int mod secondsIn[ssDay]  
+    daySeconds = t.int mod secondsInDay
 
   result.years = yearsSinceEpoch + epochStartYear
 
@@ -1152,9 +1149,9 @@ proc decodeTimeInterval*(t: Time): TimeInterval =
 
   result.months = mon.int + 1 # month is 1 indexed int
   result.days = days
-  result.hours = daySeconds div secondsIn[ssHour] + 1
-  result.minutes = (daySeconds mod secondsIn[ssHour]) div secondsIn[ssMinute]
-  result.seconds = daySeconds mod secondsIn[ssMinute]
+  result.hours = daySeconds div secondsInHour + 1
+  result.minutes = (daySeconds mod secondsInHour) div secondsInMin
+  result.seconds = daySeconds mod secondsInMin
   # Milliseconds not available from Time
 
 when isMainModule:
@@ -1239,18 +1236,18 @@ when isMainModule:
   assert "15:04:00" in $s.parse(f)
   when not defined(testing):
     echo "Kitchen: " & $s.parse(f)
-    var ti = decodeTime(getTime())
+    var ti = timeToTimeInfo(getTime())
     echo "Todays date after decoding: ", ti
-    var tint = decodeTimeInterval(getTime())
+    var tint = timeToTimeInterval(getTime())
     echo "Todays date after decoding to interval: ", tint
   # checking dayOfWeek matches known days
-  assert dayOfWeek(21, 9, 1900) == dFri
-  assert dayOfWeek(1, 1, 1970) == dThu
-  assert dayOfWeek(21, 9, 1970) == dMon
-  assert dayOfWeek(1, 1, 2000) == dSat
-  assert dayOfWeek(1, 1, 2021) == dFri
+  assert getDayOfWeek(21, 9, 1900) == dFri
+  assert getDayOfWeek(1, 1, 1970) == dThu
+  assert getDayOfWeek(21, 9, 1970) == dMon
+  assert getDayOfWeek(1, 1, 2000) == dSat
+  assert getDayOfWeek(1, 1, 2021) == dFri
   # Julian tests
-  assert dayOfWeekJulian(21, 9, 1900) == dFri
-  assert dayOfWeekJulian(21, 9, 1970) == dMon
-  assert dayOfWeekJulian(1, 1, 2000) == dSat
-  assert dayOfWeekJulian(1, 1, 2021) == dFri
+  assert getDayOfWeekJulian(21, 9, 1900) == dFri
+  assert getDayOfWeekJulian(21, 9, 1970) == dMon
+  assert getDayOfWeekJulian(1, 1, 2000) == dSat
+  assert getDayOfWeekJulian(1, 1, 2021) == dFri
