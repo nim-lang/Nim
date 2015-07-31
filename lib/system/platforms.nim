@@ -22,6 +22,7 @@ type
     ia64,                      ## Intel Itanium
     amd64,                     ## x86_64 (AMD64); 64 bit x86 compatible CPU
     mips,                      ## Mips based processor
+    mipsel,                    ## Little Endian Mips based processor
     arm,                       ## ARM based processor
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
     avr                        ## AVR based processor
@@ -67,6 +68,7 @@ const
                elif defined(ia64): CpuPlatform.ia64
                elif defined(amd64): CpuPlatform.amd64
                elif defined(mips): CpuPlatform.mips
+               elif defined(mipsel): CpuPlatform.mipsel
                elif defined(arm): CpuPlatform.arm
                elif defined(vm): CpuPlatform.vm
                elif defined(avr): CpuPlatform.avr

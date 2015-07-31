@@ -1150,7 +1150,8 @@ const
 
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
-    ## "i386", "alpha", "powerpc", "powerpc64", "sparc", "amd64", "mips", "arm".
+    ## "i386", "alpha", "powerpc", "powerpc64", "sparc", "amd64", "mips",
+    ## "mipsel", "arm".
 
   seqShallowFlag = low(int)
 
