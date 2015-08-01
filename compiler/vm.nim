@@ -510,8 +510,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[rb].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        assert regs[rb].node.kind == nkRefTy
-        regs[ra].node = regs[rb].node.sons[0]
+        if regs[rb].node.kind == nkRefTy:
+          regs[ra].node = regs[rb].node.sons[0]
+        else:
+          stackTrace(c, tos, pc, errGenerated, "limited VM support for 'ref'")
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
