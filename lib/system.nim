@@ -487,6 +487,7 @@ type
     ## See the full `exception hierarchy`_.
   ObjectConversionError* = object of Exception ## \
     ## Raised if an object is converted to an incompatible object type.
+    ## You can use ``of`` operator to check if conversion will succeed.
     ##
     ## See the full `exception hierarchy`_.
   FloatingPointError* = object of Exception ## \
