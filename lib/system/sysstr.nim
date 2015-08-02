@@ -82,8 +82,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewStringNoInit(len)
   result.len = len
-  c_memcpy(result.data, str, len)
-  result.data[len] = '\0'
+  c_memcpy(result.data, str, len + 1)
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   result = toNimStr(str, c_strlen(str))
