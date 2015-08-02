@@ -574,15 +574,15 @@ proc genOutFile(d: PDoc): Rope =
   let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
       "tableofcontents", "moduledesc", "date", "time", "content"],
-      [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code])
+      [title.rope, toc, d.modDesc, rope(getSrcDateStr()),
+      rope(getSrcClockStr()), code])
   if optCompileOnly notin gGlobalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
         "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics"],
-        [title.rope, toc, d.modDesc, rope(getDateStr()),
-                     rope(getClockStr()), content, d.meta[metaAuthor].rope,
+        [title.rope, toc, d.modDesc, rope(getSrcDateStr()),
+                     rope(getSrcClockStr()), content, d.meta[metaAuthor].rope,
                      d.meta[metaVersion].rope, d.analytics.rope])
   else:
     code = content
@@ -649,7 +649,7 @@ proc commandBuildIndex*() =
   let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
       "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
-      ["Index".rope, nil, nil, rope(getDateStr()),
-                   rope(getClockStr()), content, nil, nil, nil])
+      ["Index".rope, nil, nil, rope(getSrcDateStr()),
+                   rope(getSrcClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
   writeRope(code, getOutFile("theindex", HtmlExt))

@@ -29,8 +29,8 @@ done
 
 CC="gcc"
 LINKER="gcc"
-COMP_FLAGS="?{c.ccompiler.flags}$extraBuildArgs"
-LINK_FLAGS="?{c.linker.flags}"
+COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
+LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
 #  add(result, "# platform detection\n")
 ucpu=`uname -m`
 uos=`uname`

@@ -8,7 +8,7 @@
 #
 
 import
-  os, lists, strutils, strtabs, osproc, sets
+  os, lists, strutils, strtabs, osproc, sets, times
 
 const
   hasTinyCBackend* = defined(tinyc)
@@ -383,6 +383,22 @@ proc inclDynlibOverride*(lib: string) =
 
 proc isDynlibOverride*(lib: string): bool =
   result = gDllOverrides.hasKey(lib.canonDynlibName)
+
+proc getSrcTime(): Time =
+  if existsEnv("SOURCE_DATE_EPOCH"):
+    return fromSeconds(parseInt(getEnv("SOURCE_DATE_EPOCH")))
+  else:
+    return getTime()
+
+proc getSrcDateStr*(): string =
+  var ti = getGMTime(getSrcTime())
+  result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
+    '-' & intToStr(ti.monthday, 2)
+
+proc getSrcClockStr*(): string =
+  var ti = getGMTime(getSrcTime())
+  result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
+    ':' & intToStr(ti.second, 2)
 
 proc binaryStrSearch*(x: openArray[string], y: string): int =
   var a = 0

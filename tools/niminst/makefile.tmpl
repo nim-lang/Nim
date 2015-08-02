@@ -6,8 +6,8 @@
 
 CC = gcc
 LINKER = gcc
-COMP_FLAGS = ?{c.ccompiler.flags}
-LINK_FLAGS = ?{c.linker.flags}
+COMP_FLAGS = $(CPPFLAGS) $(CFLAGS) ?{c.ccompiler.flags}
+LINK_FLAGS = $(LDFLAGS) ?{c.linker.flags}
 binDir = ?{firstBinPath(c).toUnix}
 
 koch := $(shell sh -c 'test -s ../koch.nim && echo "yes"')
