@@ -248,7 +248,7 @@ proc close*(f: var MemFile) =
   
   if error: raiseOSError(lastErr)
 
-type MemSlice* = object
+type MemSlice* = object  ## represent slice of a MemFile for iteration over delimited lines/records
   data*: pointer
   size*: int
 
