@@ -1521,10 +1521,11 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   for i in 1.. <sym.typ.len:
     tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
 
-  let gp = sym.ast[genericParamsPos]
-  for i in 0 .. <gp.len:
-    let idx = sym.typ.len + i
-    tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
+  if sfImmediate notin sym.flags:
+    let gp = sym.ast[genericParamsPos]
+    for i in 0 .. <gp.len:
+      let idx = sym.typ.len + i
+      tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
 
   # temporary storage:
   #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)

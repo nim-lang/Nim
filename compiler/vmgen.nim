@@ -1845,9 +1845,13 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = p
     # iterate over the parameters and allocate space for them:
     genParams(c, s.typ.n)
+    
     # allocate additional space for any generically bound parameters
-    if s.kind == skMacro and s.ast[genericParamsPos].kind != nkEmpty:
+    if s.kind == skMacro and
+       sfImmediate notin s.flags and
+       s.ast[genericParamsPos].kind != nkEmpty:
       genGenericParams(c, s.ast[genericParamsPos])
+    
     if tfCapturesEnv in s.typ.flags:
       #let env = s.ast.sons[paramsPos].lastSon.sym
       #assert env.position == 2

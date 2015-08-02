@@ -66,7 +66,16 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
     else: 0
 
   var
-    genericParams = s.ast[genericParamsPos].len
+    # XXX: Since immediate templates are not subjected to the
+    # standard sigmatching algorithm, they will have a number
+    # of deficiencies when it comes to generic params:
+    # Type dependencies between the parameters won't be honoured
+    # and the bound generic symbols won't be resolvable within
+    # their bodies. We could try to fix this, but it may be
+    # wiser to just deprecate immediate templates and macros
+    # now that we have working untyped parameters.
+    genericParams = if sfImmediate in s.flags: 0
+                    else: s.ast[genericParamsPos].len
     expectedRegularParams = <s.typ.len
     givenRegularParams = totalParams - genericParams
 
@@ -81,6 +90,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
   # not supplied by the user
   for i in givenRegularParams+1 .. expectedRegularParams:
     let default = s.typ.n.sons[i].sym.ast
+    internalAssert default != nil
     if default.kind == nkEmpty:
       localError(n.info, errWrongNumberOfArguments)
       addSon(result, ast.emptyNode)
