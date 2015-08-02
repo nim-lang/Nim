@@ -245,7 +245,7 @@ proc close*(f: var MemFile) =
   
   if error: raiseOSError(lastErr)
 
-type MemSlice* {.unchecked.} = object
+type MemSlice* = object
   data*: pointer
   size*: int
 
