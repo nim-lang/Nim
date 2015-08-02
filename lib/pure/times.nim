@@ -58,15 +58,20 @@ elif defined(windows):
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
+    # visual c's c runtime exposes these under a different name
+    var
+      timezone {.importc: "_timezone", header: "<time.h>".}: int
+      tzname {.importc: "_tzname", header: "<time.h>"}: array[0..1, cstring]
   else:
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int32
+    var
+      timezone {.importc, header: "<time.h>".}: int
+      tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
 
   type
     Time* = distinct TimeImpl
   
-  var
-    timezone {.importc: "_timezone", header: "<time.h>".}: int
-    tzname {.importc: "_tzname", header: "<time.h>"}: array[0..1, cstring]
+
 elif defined(JS):
   type
     Time* {.importc.} = object
