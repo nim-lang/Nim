@@ -268,7 +268,12 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   ## This zero copy, memchr-limited method is probably the fastest way to
   ## iterate through lines in a file, however the returned (data,size) objects
   ## are NOT Nim strings or even terminated C strings.  So, be careful how data
-  ## is accessed (e.g., use C mem* functions, not str* functions).
+  ## is accessed (e.g., use C mem* functions, not str* functions).  Example:
+  ## .. code-block:: nim
+  ##   var count = 0
+  ##   for slice in memSlices(memfiles.open("foo")):
+  ##     inc(count)
+  ##   echo count
   proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
        importc: "memchr", header: "<string.h>" .}
   proc `-!`(p, q: pointer): int {.inline.} = return cast[int](p) -% cast[int](q)
@@ -302,7 +307,10 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): T
 iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} =
   ## Return each line in a file as a Nim string, like lines(File).
   ## Default delimiting is [\\r]\\l which parse Unix or Windows text file lines.
-  ## Pass eat='\0' to be strictly delim-delimited.
+  ## Pass eat='\0' to be strictly delim-delimited.  Example:
+  ## .. code-block:: nim
+  ##   for line in lines(memfiles.open("foo")):
+  ##     echo line
   var buf = TaintedString(newStringOfCap(80))
   for line in lines(mfile, buf, delim, eat):
     yield buf
