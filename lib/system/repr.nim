@@ -256,7 +256,10 @@ when not defined(useNimRtl):
     of tyBool: add result, reprBool(cast[ptr bool](p)[])
     of tyChar: add result, reprChar(cast[ptr char](p)[])
     of tyString: reprStrAux(result, cast[ptr string](p)[])
-    of tyCString: reprStrAux(result, $(cast[ptr cstring](p)[]))
+    of tyCString:
+      let cs = cast[ptr cstring](p)[]
+      if cs.isNil: add result, "nil"
+      else: reprStrAux(result, $cs)
     of tyRange: reprAux(result, p, typ.base, cl)
     of tyProc, tyPointer:
       if cast[PPointer](p)[] == nil: add result, "nil"

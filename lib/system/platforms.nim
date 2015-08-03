@@ -18,11 +18,14 @@ type
     alpha,                     ## Alpha processor
     powerpc,                   ## 32 bit PowerPC
     powerpc64,                 ## 64 bit PowerPC
+    powerpc64el,               ## Little Endian 64 bit PowerPC
     sparc,                     ## Sparc based processor
     ia64,                      ## Intel Itanium
     amd64,                     ## x86_64 (AMD64); 64 bit x86 compatible CPU
     mips,                      ## Mips based processor
+    mipsel,                    ## Little Endian Mips based processor
     arm,                       ## ARM based processor
+    arm64,                     ## ARM64 based processor
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
     avr                        ## AVR based processor
 
@@ -63,11 +66,14 @@ const
                elif defined(alpha): CpuPlatform.alpha
                elif defined(powerpc): CpuPlatform.powerpc
                elif defined(powerpc64): CpuPlatform.powerpc64
+               elif defined(powerpc64el): CpuPlatform.powerpc64el
                elif defined(sparc): CpuPlatform.sparc
                elif defined(ia64): CpuPlatform.ia64
                elif defined(amd64): CpuPlatform.amd64
                elif defined(mips): CpuPlatform.mips
+               elif defined(mipsel): CpuPlatform.mipsel
                elif defined(arm): CpuPlatform.arm
+               elif defined(arm64): CpuPlatform.arm64
                elif defined(vm): CpuPlatform.vm
                elif defined(avr): CpuPlatform.avr
                else: CpuPlatform.none

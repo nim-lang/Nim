@@ -176,10 +176,16 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
-proc new*(T: typedesc): ref T =
+proc new*(T: typedesc): auto =
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it as result value
-  new(result)
+  when (T is ref):
+      var r: T
+  else:
+      var r: ref T
+  new(r)
+  return r
+
 
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
@@ -481,6 +487,7 @@ type
     ## See the full `exception hierarchy`_.
   ObjectConversionError* = object of Exception ## \
     ## Raised if an object is converted to an incompatible object type.
+    ## You can use ``of`` operator to check if conversion will succeed.
     ##
     ## See the full `exception hierarchy`_.
   FloatingPointError* = object of Exception ## \
@@ -1150,7 +1157,8 @@ const
 
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
-    ## "i386", "alpha", "powerpc", "powerpc64", "sparc", "amd64", "mips", "arm".
+    ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
+    ## "amd64", "mips", "mipsel", "arm", "arm64".
 
   seqShallowFlag = low(int)
 

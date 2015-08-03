@@ -588,7 +588,8 @@ can also be defined with indentation instead of ``[]``:
 
 Objects provide many features that tuples do not. Object provide inheritance
 and information hiding. Objects have access to their type at runtime, so that
-the ``of`` operator can be used to determine the object's type.
+the ``of`` operator can be used to determine the object's type. The ``of`` operator
+is similar to the ``instanceof`` operator in Java.
 
 .. code-block:: nim
   type

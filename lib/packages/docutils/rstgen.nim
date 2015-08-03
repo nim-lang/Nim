@@ -755,7 +755,7 @@ proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
 
 proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   template valid(s): expr =
-    s.len > 0 and allCharsInSet(s, {'/',':','%','_','\\','\128'..'\xFF'} +
+    s.len > 0 and allCharsInSet(s, {'.','/',':','%','_','\\','\128'..'\xFF'} +
                                    Digits + Letters + WhiteSpace)
 
   var options = ""

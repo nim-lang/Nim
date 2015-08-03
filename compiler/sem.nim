@@ -171,11 +171,15 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
+  proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLower
+
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
     # and sfGenSym in n.sym.flags:
     result = n.sym
-    internalAssert result.kind == kind
+    if result.kind != kind:
+      localError(n.info, "cannot use symbol of kind '" &
+                 $result.kind & "' as a '" & $kind & "'")
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909

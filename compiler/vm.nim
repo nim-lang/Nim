@@ -120,10 +120,10 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
-proc createStrKeepNode(x: var TFullReg) =
+proc createStrKeepNode(x: var TFullReg; keepNode=true) =
   if x.node.isNil:
     x.node = newNode(nkStrLit)
-  elif x.node.kind == nkNilLit:
+  elif x.node.kind == nkNilLit and keepNode:
     when defined(useNodeIds):
       let id = x.node.id
     system.reset(x.node[])
@@ -385,6 +385,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     #if c.traceActive:
     #  echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
     #  message(c.debug[pc], warnUser, "Trace")
+
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
@@ -407,8 +408,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       regs[ra].intVal = regs[rb].intVal
     of opcAsgnStr:
-      decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      decodeBC(rkNode)
+      createStrKeepNode regs[ra], rc != 0
       regs[ra].node.strVal = regs[rb].node.strVal
     of opcAsgnFloat:
       decodeB(rkFloat)
@@ -509,8 +510,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[rb].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        assert regs[rb].node.kind == nkRefTy
-        regs[ra].node = regs[rb].node.sons[0]
+        if regs[rb].node.kind == nkRefTy:
+          regs[ra].node = regs[rb].node.sons[0]
+        else:
+          stackTrace(c, tos, pc, errGenerated, "limited VM support for 'ref'")
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
