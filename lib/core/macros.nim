@@ -719,9 +719,12 @@ proc `$`*(node: NimNode): string {.compileTime.} =
 proc ident*(name: string): NimNode {.compileTime,inline.} = newIdentNode(name)
   ## Create a new ident node from a string
 
-iterator children*(n: NimNode): NimNode {.inline.}=
+iterator items*(n: NimNode): NimNode {.inline.} =
+  ## Iterates over the children of the NimNode ``n``.
   for i in 0 ..< n.len:
     yield n[i]
+
+iterator children*(n: NimNode): NimNode {.inline.} = items
 
 template findChild*(n: NimNode; cond: expr): NimNode {.
   immediate, dirty.} =
