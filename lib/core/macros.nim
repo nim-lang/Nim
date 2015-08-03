@@ -724,7 +724,10 @@ iterator items*(n: NimNode): NimNode {.inline.} =
   for i in 0 ..< n.len:
     yield n[i]
 
-iterator children*(n: NimNode): NimNode {.inline.} = items
+iterator children*(n: NimNode): NimNode {.inline.} =
+  ## Iterates over the children of the NimNode ``n``.
+  for i in 0 ..< n.len:
+    yield n[i]
 
 template findChild*(n: NimNode; cond: expr): NimNode {.
   immediate, dirty.} =
