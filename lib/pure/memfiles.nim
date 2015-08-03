@@ -263,12 +263,12 @@ proc `$`*(ms: MemSlice): string {.inline.} =
 
 iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   ## Iterates over [optional eat]delim-delimited slices in a MemFile.
-  ## Default delimiting is [\\r]\\l which parse Unix or Windows text file lines.
+  ## Default delimiting is [\\r]\\l which parses Unix/Windows text file lines.
   ## Pass eat='\\0' to be strictly delim-delimited.
   ## This zero copy, memchr-limited method is probably the fastest way to
-  ## iterate through lines in a file, however the returned (data,size) objects
-  ## are NOT Nim strings or even terminated C strings.  So, be careful how data
-  ## is accessed (e.g., use C mem* functions, not str* functions). Example:
+  ## iterate through lines in a file.  The returned (data,size) objects are
+  ## NOT Nim strings or even terminated C strings.  So, be careful how data
+  ## is accessed (e.g., think C mem* functions, not str* functions).  Example:
   ##
   ## .. code-block:: nim
   ##   var count = 0
@@ -298,8 +298,13 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
 
 iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): TaintedString {.inline.} =
   ## Replace contents of passed buffer with each new line, like readLine(File).
-  ## Default delimiting is [\\r]\\l which parse Unix or Windows text file lines.
-  ## Pass eat='\\0' to be strictly delim-delimited.
+  ## Default delimiting is [\\r]\\l which parses Unix/Windows text file lines.
+  ## Pass eat='\\0' to be strictly delim-delimited.  Example:
+  ##
+  ## .. code-block:: nim
+  ##   var buffer: TaintedString = ""
+  ##   for line in lines(memfiles.open("foo"), buffer):
+  ##     echo line
   for ms in memSlices(mfile, delim, eat):
     buf.setLen(ms.size)
     c_memcpy(addr(buf[0]), ms.data, ms.size)
@@ -308,7 +313,7 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): T
 
 iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} =
   ## Return each line in a file as a Nim string, like lines(File).
-  ## Default delimiting is [\\r]\\l which parse Unix or Windows text file lines.
+  ## Default delimiting is [\\r]\\l which parses Unix/Windows text file lines.
   ## Pass eat='\0' to be strictly delim-delimited.  Example:
   ##
   ## .. code-block:: nim
