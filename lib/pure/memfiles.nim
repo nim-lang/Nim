@@ -254,7 +254,7 @@ type MemSlice* = object  ## represent slice of a MemFile for iteration over deli
 
 proc c_memcpy(a, b: pointer, n: int) {.importc: "memcpy", header: "<string.h>".}
 
-proc toString*(ms: MemSlice): string {.inline.} =
+proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
   var buf = newString(ms.size)
   c_memcpy(addr(buf[0]), ms.data, ms.size)
