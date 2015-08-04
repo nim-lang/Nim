@@ -217,4 +217,4 @@ General commit rules
 
 3. Describe your commit and use your common sense.
 
-.. include:: styleguide.rst
+.. include:: docstyle.rst
