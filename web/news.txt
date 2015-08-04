@@ -57,6 +57,11 @@ News
   Language Additions
   ------------------
 
+  - ``system.unsafeAddr`` can be used to access the address of a ``let``
+    variable or parameter for C interoperability. Since technically this
+    makes parameters and ``let`` variables mutable, it is considered even more
+    unsafe than the ordinary ``addr`` builtin.
+
 
   Bugfixes
   --------
