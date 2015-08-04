@@ -309,9 +309,10 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
     remaining = mfile.size - (ms.data -! mfile.mem)
 
 iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): TaintedString {.inline.} =
-  ## Replace contents of passed buffer with each new line, like readLine(File).
-  ## `delim`, `eat`, and delimiting logic is exactly as for memSlices, but Nim
-  ## strings are returned.  Example:
+  ## Replace contents of passed buffer with each new line, like
+  ## `readLine(File) <system.html#readLine,File,TaintedString>`_.
+  ## `delim`, `eat`, and delimiting logic is exactly as for
+  ## `memSlices <#memSlices>`_, but Nim strings are returned.  Example:
   ##
   ## .. code-block:: nim
   ##   var buffer: TaintedString = ""
@@ -325,9 +326,10 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): T
     yield buf
 
 iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} =
-  ## Return each line in a file as a Nim string, like lines(File).
-  ## `delim`, `eat`, and delimiting logic is exactly as for memSlices, but Nim
-  ## strings are returned.  Example:
+  ## Return each line in a file as a Nim string, like
+  ## `lines(File) <system.html#lines.i,File>`_.
+  ## `delim`, `eat`, and delimiting logic is exactly as for
+  ## `memSlices <#memSlices>`_, but Nim strings are returned.  Example:
   ##
   ## .. code-block:: nim
   ##   for line in lines(memfiles.open("foo")):
