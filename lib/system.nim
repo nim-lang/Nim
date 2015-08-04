@@ -178,7 +178,10 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
 
 proc new*(T: typedesc): auto =
   ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it as result value
+  ## reference to it as result value.
+  ##
+  ## When ``T`` is a ref type then the resulting type will be ``T``,
+  ## otherwise it will be ``ref T``. 
   when (T is ref):
       var r: T
   else:
