@@ -270,6 +270,9 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   ## are not supported as a third option for each line.  Such archaic MacOS9
   ## files can be handled by passing delim='\\r', eat='\\0', though.
   ##
+  ## Delimiters are not part of the returned slice.  A final, unterminated line
+  ## or record is returned just like any other.
+  ##
   ## Non-default delimiters can be passed to allow iteration over other sorts
   ## of "line-like" variable length records.  Pass eat='\\0' to be strictly
   ## `delim`-delimited. (Eating an optional prefix equal to '\\0' is not
