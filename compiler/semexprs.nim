@@ -2259,7 +2259,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkStaticStmt:
     result = semStaticStmt(c, n)
   of nkDefer:
-    localError(n.info, errGenerated, "'defer' not allowed in this context")
+    n.sons[0] = semExpr(c, n.sons[0])
+    if not n.sons[0].typ.isEmptyType:
+      localError(n.info, errGenerated, "'defer' takes a 'void' expression")
+    #localError(n.info, errGenerated, "'defer' not allowed in this context")
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
