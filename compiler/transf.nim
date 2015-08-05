@@ -840,7 +840,7 @@ proc liftDeferAux(n: PNode) =
           let deferPart = newNodeI(nkFinally, n.sons[i].info)
           deferPart.add n.sons[i].sons[0]
           var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
-          var body = newNodeI(nkStmtList, n.sons[i].info)
+          var body = newNodeI(n.kind, n.sons[i].info)
           if i < last:
             body.sons = n.sons[(i+1)..last]
           tryStmt.addSon(body)
