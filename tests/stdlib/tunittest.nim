@@ -21,6 +21,11 @@ test "unittest typedescs":
   check(none(int) != some(1))
 
 
+test "unittest multiple requires":
+  require(true)
+  require(true)
+
+
 import math
 from strutils import parseInt
 proc defectiveRobot() =
