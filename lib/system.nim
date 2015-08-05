@@ -1500,7 +1500,7 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``createU``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `createShared` to allocate from a shared heap.
-      cast[ptr T](alloc0(T.sizeof * size))
+      cast[ptr T](alloc0(sizeof(T) * size))
     proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
                                                            benign.}
       ## grows or shrinks a given memory block. If p is **nil** then a new
