@@ -2260,7 +2260,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semStaticStmt(c, n)
   of nkDefer:
     n.sons[0] = semExpr(c, n.sons[0])
-    if not n.sons[0].typ.isEmptyType:
+    if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
       localError(n.info, errGenerated, "'defer' takes a 'void' expression")
     #localError(n.info, errGenerated, "'defer' not allowed in this context")
   else:
