@@ -3,6 +3,7 @@ discard """
 hi
 1
 hi
+2
 B
 A'''
 """
