@@ -188,7 +188,7 @@ proc new*(T: typedesc): auto =
   ## reference to it as result value.
   ##
   ## When ``T`` is a ref type then the resulting type will be ``T``,
-  ## otherwise it will be ``ref T``. 
+  ## otherwise it will be ``ref T``.
   when (T is ref):
       var r: T
   else:
@@ -572,6 +572,7 @@ proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## purposes when you know what you're doing!
 
 proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
+proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
   ## returns the size of ``x`` in bytes. Since this is a low-level proc,
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
