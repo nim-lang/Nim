@@ -23,6 +23,9 @@ proc newConstraint(c: PContext, k: TTypeKind): PType =
 
 proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   if n.sonsLen == 0: return newConstraint(c, tyEnum)
+  elif n.sonsLen == 1:
+    # don't create an empty tyEnum; fixes #3052
+    return errorType(c)
   var
     counter, x: BiggestInt
     e: PSym

@@ -142,7 +142,7 @@ When contributing new procedures, be sure to add documentation, especially if
 the procedure is exported from the module. Documentation begins on the line
 following the ``proc`` definition, and is prefixed by ``##`` on each line.
 
-Code examples are also encouraged. The RestructuredText Nim uses has a special 
+Code examples are also encouraged. The RestructuredText Nim uses has a special
 syntax for including examples.
 
 .. code-block:: nim
@@ -155,8 +155,8 @@ syntax for including examples.
     ##  echo someproc() # "something"
     result = "something" # single-hash comments do not produce documentation
 
-The ``.. code-block:: nim`` followed by a newline and an indentation instructs the 
-``nim doc`` and ``nim doc2`` commands to produce syntax-highlighted example code with 
+The ``.. code-block:: nim`` followed by a newline and an indentation instructs the
+``nim doc`` and ``nim doc2`` commands to produce syntax-highlighted example code with
 the documentation.
 
 When forward declaration is used, the documentation should be included with the
@@ -186,7 +186,7 @@ or
   proc hello*(): string =
     # says hello
     result = "hello"
-  
+
 the first is preferred.
 
 The Git stuff
@@ -216,3 +216,5 @@ General commit rules
       git diff --check --cached || exit $?
 
 3. Describe your commit and use your common sense.
+
+.. include:: docstyle.rst

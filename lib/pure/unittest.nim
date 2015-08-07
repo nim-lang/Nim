@@ -285,7 +285,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
 
     result = getAst(rewrite(checked, checked.lineinfo, checked.toStrLit))
 
-template require*(conditions: stmt): stmt {.immediate, dirty.} =
+template require*(conditions: stmt): stmt {.immediate.} =
   ## Same as `check` except any failed test causes the program to quit
   ## immediately. Any teardown statements are not executed and the failed
   ## test output is not generated.

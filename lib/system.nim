@@ -153,6 +153,13 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
+proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+  ## Builtin 'addr' operator for taking the address of a memory location.
+  ## This works even for ``let`` variables or parameters for better interop
+  ## with C and so it is considered even more unsafe than the ordinary ``addr``.
+  ## Cannot be overloaded.
+  discard
+
 proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect.} =
   ## Builtin 'type' operator for accessing the type of an expression.
   ## Cannot be overloaded.
@@ -176,10 +183,19 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
-proc new*(T: typedesc): ref T =
+proc new*(T: typedesc): auto =
   ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it as result value
-  new(result)
+  ## reference to it as result value.
+  ##
+  ## When ``T`` is a ref type then the resulting type will be ``T``,
+  ## otherwise it will be ``ref T``. 
+  when (T is ref):
+      var r: T
+  else:
+      var r: ref T
+  new(r)
+  return r
+
 
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
@@ -481,6 +497,7 @@ type
     ## See the full `exception hierarchy`_.
   ObjectConversionError* = object of Exception ## \
     ## Raised if an object is converted to an incompatible object type.
+    ## You can use ``of`` operator to check if conversion will succeed.
     ##
     ## See the full `exception hierarchy`_.
   FloatingPointError* = object of Exception ## \
@@ -1150,7 +1167,8 @@ const
 
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
-    ## "i386", "alpha", "powerpc", "powerpc64", "sparc", "amd64", "mips", "arm".
+    ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
+    ## "amd64", "mips", "mipsel", "arm", "arm64".
 
   seqShallowFlag = low(int)
 
@@ -1482,7 +1500,7 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``createU``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `createShared` to allocate from a shared heap.
-      cast[ptr T](alloc0(T.sizeof * size))
+      cast[ptr T](alloc0(sizeof(T) * size))
     proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
                                                            benign.}
       ## grows or shrinks a given memory block. If p is **nil** then a new

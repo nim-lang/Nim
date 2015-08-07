@@ -74,8 +74,9 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
       result.addf("\t$#\tr$#, L$#", ($opc).substr(3), x.regA,
                   i+x.regBx-wordExcess)
     elif opc in {opcLdConst, opcAsgnConst}:
-      result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA,
-        c.constants[x.regBx-wordExcess].renderTree)
+      let idx = x.regBx-wordExcess
+      result.addf("\t$#\tr$#, $# ($#)", ($opc).substr(3), x.regA,
+        c.constants[idx].renderTree, $idx)
     elif opc in {opcMarshalLoad, opcMarshalStore}:
       let y = c.code[i+1]
       result.addf("\t$#\tr$#, r$#, $#", ($opc).substr(3), x.regA, x.regB,
@@ -184,7 +185,7 @@ proc getTemp(cc: PCtx; typ: PType): TRegister =
       return TRegister(i)
 
   # if register pressure is high, we re-use more aggressively:
-  if c.maxSlots >= HighRegisterPressure:
+  if c.maxSlots >= HighRegisterPressure and false:
     for i in 0 .. c.maxSlots-1:
       if not c.slots[i].inUse:
         c.slots[i] = (inUse: true, kind: k)
@@ -1073,6 +1074,7 @@ const
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64}
 
 proc fitsRegister*(t: PType): bool =
+  assert t != nil
   t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
@@ -1110,6 +1112,7 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     if dest < 0: dest = c.getTemp(n.typ)
     if not isAddr:
       gABC(c, n, opc, dest, tmp)
+      assert n.typ != nil
       if gfAddrOf notin flags and fitsRegister(n.typ):
         c.gABC(n, opcNodeToReg, dest, dest)
     elif c.prc.slots[tmp].kind >= slotTempUnknown:
@@ -1143,7 +1146,7 @@ proc whichAsgnOpc(n: PNode; opc: TOpcode): TOpcode = opc
 proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   let tmp = c.genx(ri)
   assert dest >= 0
-  gABC(c, ri, whichAsgnOpc(ri), dest, tmp)
+  gABC(c, ri, whichAsgnOpc(ri), dest, tmp, 1-ord(requiresCopy))
   c.freeTemp(tmp)
 
 proc setSlot(c: PCtx; v: PSym) =
@@ -1194,9 +1197,10 @@ proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
   # opcLdObj et al really means "load address". We sometimes have to create a
   # copy in order to not introduce false aliasing:
   # mylocal = a.b  # needs a copy of the data!
+  assert n.typ != nil
   if needsAdditionalCopy(n):
     var cc = c.getTemp(n.typ)
-    c.gABC(n, whichAsgnOpc(n), cc, value)
+    c.gABC(n, whichAsgnOpc(n), cc, value, 0)
     c.gABC(n, opc, dest, idx, cc)
     c.freeTemp(cc)
   else:
@@ -1241,10 +1245,11 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
       internalAssert s.position > 0 or (s.position == 0 and
                                         s.kind in {skParam,skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
+      assert le.typ != nil
       if needsAdditionalCopy(le) and s.kind in {skResult, skVar, skParam}:
         var cc = c.getTemp(le.typ)
         gen(c, ri, cc)
-        c.gABC(le, whichAsgnOpc(le), dest, cc)
+        c.gABC(le, whichAsgnOpc(le), dest, cc, 1)
         c.freeTemp(cc)
       else:
         gen(c, ri, dest)
@@ -1303,6 +1308,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       if sfImportc in s.flags: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
+    assert s.typ != nil
     if gfAddrOf notin flags and fitsRegister(s.typ):
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)
@@ -1426,6 +1432,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     globalError(info, "cannot create null element for: " & $t.kind)
 
 proc ldNullOpcode(t: PType): TOpcode =
+  assert t != nil
   if fitsRegister(t): opcLdNullReg else: opcLdNull
 
 proc genVarSection(c: PCtx; n: PNode) =
@@ -1453,7 +1460,7 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a.sons[2].kind != nkEmpty:
           let tmp = c.genx(a.sons[0], {gfAddrOf})
           let val = c.genx(a.sons[2])
-          c.preventFalseAlias(a, opcWrDeref, tmp, 0, val)
+          c.preventFalseAlias(a.sons[2], opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
       else:
@@ -1461,13 +1468,15 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a.sons[2].kind == nkEmpty:
           c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
         else:
+          assert s.typ != nil
           if not fitsRegister(s.typ):
             c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
           let le = a.sons[0]
+          assert le.typ != nil
           if not fitsRegister(le.typ) and s.kind in {skResult, skVar, skParam}:
             var cc = c.getTemp(le.typ)
             gen(c, a.sons[2], cc)
-            c.gABC(le, whichAsgnOpc(le), s.position.TRegister, cc)
+            c.gABC(le, whichAsgnOpc(le), s.position.TRegister, cc, 1)
             c.freeTemp(cc)
           else:
             gen(c, a.sons[2], s.position.TRegister)
@@ -1694,7 +1703,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     if dest >= 0:
-      gABC(c, n, whichAsgnOpc(n), dest, tmp0)
+      gABC(c, n, whichAsgnOpc(n), dest, tmp0, 1)
       c.freeTemp(tmp0)
     else:
       dest = tmp0
