@@ -66,12 +66,14 @@ Running tests
 You can run the tests with
 
 ::
+
   ./koch tests
 
 which will run a good subset of tests. Some tests may fail. If you
 only want to see the output of failing tests, go for
 
 ::
+
   ./koch tests --failing all
 
 You can also run only a single category of tests. A category is a subdirectory
@@ -79,6 +81,7 @@ in the ``tests`` directory. There are a couple of special categories; for a
 list of these, see ``tests/testament/categories.nim``, at the bottom.
 
 ::
+
   ./koch tests c lib
 
 Comparing tests
@@ -92,6 +95,7 @@ reference test. You'll also need to the commit id, because that's what
 the tester needs to know in order to compare the two.
 
 ::
+
   git checkout devel
   DEVEL_COMMIT=$(git rev-parse HEAD)
   ./koch tests
@@ -99,6 +103,7 @@ the tester needs to know in order to compare the two.
 Then switch over to your changes and run the tester again.
 
 ::
+
   git checkout your-changes
   ./koch tests
 
@@ -106,6 +111,7 @@ Then you can ask the tester to create a ``testresults.html`` which will
 tell you if any new tests passed/failed.
 
 ::
+
   ./koch --print html $DEVEL_COMMIT
 
 
