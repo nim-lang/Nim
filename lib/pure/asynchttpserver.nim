@@ -126,8 +126,11 @@ proc parseHeader(line: string): tuple[key, value: string] =
   var i = 0
   i = line.parseUntil(result.key, ':')
   inc(i) # skip :
-  i += line.skipWhiteSpace(i)
-  i += line.parseUntil(result.value, {'\c', '\L'}, i)
+  if i < len(line):
+    i += line.skipWhiteSpace(i)
+    i += line.parseUntil(result.value, {'\c', '\L'}, i)
+  else:
+    result.value = ""
 
 proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
   var i = protocol.skipIgnoreCase("HTTP/")
