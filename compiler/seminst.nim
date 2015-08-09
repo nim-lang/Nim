@@ -226,13 +226,14 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   c.friendModules.add(getModule(fn))
-  #let oldScope = c.currentScope
-  #c.currentScope = fn.scope
+  let oldScope = c.currentScope
+  while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, false)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
   pushOwner(result)
+
   openScope(c)
   internalAssert n.sons[genericParamsPos].kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
@@ -264,7 +265,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popInfoContext()
   closeScope(c)           # close scope for parameters
   popOwner()
-  #c.currentScope = oldScope
+  c.currentScope = oldScope
   discard c.friendModules.pop()
   dec(c.instCounter)
   if result.kind == skMethod: finishMethod(c, result)
