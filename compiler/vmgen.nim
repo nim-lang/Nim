@@ -1184,6 +1184,9 @@ proc checkCanEval(c: PCtx; n: PNode) =
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
     cannotEval(n)
+  elif s.kind in {skProc, skConverter, skMethod,
+                  skIterator, skClosureIterator} and sfForward in s.flags:
+    cannotEval(n)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
   result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown
