@@ -188,7 +188,7 @@ proc new*(T: typedesc): auto =
   ## reference to it as result value.
   ##
   ## When ``T`` is a ref type then the resulting type will be ``T``,
-  ## otherwise it will be ``ref T``. 
+  ## otherwise it will be ``ref T``.
   when (T is ref):
       var r: T
   else:
@@ -576,6 +576,9 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
+
+when defined(nimtypedescfixed):
+  proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
 proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
   ## unary ``<`` that can be used for nice looking excluding ranges:
@@ -1500,7 +1503,7 @@ when not defined(nimrodVM):
       ## containing zero, so it is somewhat safer than ``createU``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `createShared` to allocate from a shared heap.
-      cast[ptr T](alloc0(T.sizeof * size))
+      cast[ptr T](alloc0(sizeof(T) * size))
     proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
                                                            benign.}
       ## grows or shrinks a given memory block. If p is **nil** then a new

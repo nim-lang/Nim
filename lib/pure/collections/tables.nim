@@ -226,6 +226,10 @@ proc `$`*[A, B](t: Table[A, B]): string =
   ## The `$` operator for hash tables.
   dollarImpl()
 
+proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
+  ## returns true iff `key` is in the table `t`.
+  result = t[].hasKey(key)
+
 template equalsImpl() =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
@@ -292,10 +296,6 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
 proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
   ## returns true iff `key` is in the table, otherwise inserts `value`.
   t[].hasKeyOrPut(key, val)
-
-proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
-  result = t[].hasKey(key)
 
 proc contains*[A, B](t: TableRef[A, B], key: A): bool =
   ## alias of `hasKey` for use with the `in` operator.

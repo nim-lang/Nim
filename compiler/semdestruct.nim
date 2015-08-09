@@ -177,6 +177,15 @@ proc instantiateDestructor(c: PContext, typ: PType): PType =
   else:
     return nil
 
+proc createDestructorCall(c: PContext, s: PSym): PNode =
+  let varTyp = s.typ
+  if varTyp == nil or sfGlobal in s.flags: return
+  let destructableT = instantiateDestructor(c, varTyp)
+  if destructableT != nil:
+    let call = semStmt(c, newNode(nkCall, s.info, @[
+      useSym(destructableT.destructor), useSym(s)]))
+    result = newNode(nkDefer, s.info, @[call])
+
 proc insertDestructors(c: PContext,
                        varSection: PNode): tuple[outer, inner: PNode] =
   # Accepts a var or let section.

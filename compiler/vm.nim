@@ -432,7 +432,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         assert regs[rb].kind == rkNode
         let nb = regs[rb].node
         case nb.kind
-        of nkCharLit..nkInt64Lit:
+        of nkCharLit..nkUInt64Lit:
           ensureKind(rkInt)
           regs[ra].intVal = nb.intVal
         of nkFloatLit..nkFloat64Lit:

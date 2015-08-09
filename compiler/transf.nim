@@ -16,6 +16,7 @@
 # * converts "continue" to "break"; disambiguates "break"
 # * introduces method dispatchers
 # * performs lambda lifting for closure support
+# * transforms 'defer' into a 'try finally' statement
 
 import
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
@@ -44,6 +45,7 @@ type
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
+    deferDetected: bool
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} =
@@ -680,6 +682,14 @@ proc commonOptimizations*(c: PSym, n: PNode): PNode =
       result = n
 
 proc transform(c: PTransf, n: PNode): PTransNode =
+  when false:
+    var oldDeferAnchor: PNode
+    if n.kind in {nkElifBranch, nkOfBranch, nkExceptBranch, nkElifExpr,
+                  nkElseExpr, nkElse, nkForStmt, nkWhileStmt, nkFinally,
+                  nkBlockStmt, nkBlockExpr}:
+      oldDeferAnchor = c.deferAnchor
+      c.deferAnchor = n
+
   case n.kind
   of nkSym:
     result = transformSym(c, n)
@@ -712,13 +722,36 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformFor(c, n)
   of nkParForStmt:
     result = transformSons(c, n)
-  of nkCaseStmt: result = transformCase(c, n)
+  of nkCaseStmt:
+    result = transformCase(c, n)
+  of nkWhileStmt: result = transformWhile(c, n)
+  of nkBlockStmt, nkBlockExpr:
+    result = transformBlock(c, n)
+  of nkDefer:
+    c.deferDetected = true
+    result = transformSons(c, n)
+    when false:
+      let deferPart = newNodeI(nkFinally, n.info)
+      deferPart.add n.sons[0]
+      let tryStmt = newNodeI(nkTryStmt, n.info)
+      if c.deferAnchor.isNil:
+        tryStmt.add c.root
+        c.root = tryStmt
+        result = PTransNode(tryStmt)
+      else:
+        # modify the corresponding *action*, don't rely on nkStmtList:
+        let L = c.deferAnchor.len-1
+        tryStmt.add c.deferAnchor.sons[L]
+        c.deferAnchor.sons[L] = tryStmt
+        result = newTransNode(nkCommentStmt, n.info, 0)
+      tryStmt.addSon(deferPart)
+      # disable the original 'defer' statement:
+      n.kind = nkCommentStmt
   of nkContinueStmt:
     result = PTransNode(newNodeI(nkBreakStmt, n.info))
     var labl = c.contSyms[c.contSyms.high]
     add(result, PTransNode(newSymNode(labl)))
   of nkBreakStmt: result = transformBreak(c, n)
-  of nkWhileStmt: result = transformWhile(c, n)
   of nkCallKinds:
     result = transformCall(c, n)
   of nkAddr, nkHiddenAddr:
@@ -754,8 +787,6 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       result = transformYield(c, n)
     else:
       result = transformSons(c, n)
-  of nkBlockStmt, nkBlockExpr:
-    result = transformBlock(c, n)
   of nkIdentDefs, nkConstDef:
     result = transformSons(c, n)
     # XXX comment handling really sucks:
@@ -764,6 +795,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkClosure: return PTransNode(n)
   else:
     result = transformSons(c, n)
+  when false:
+    if oldDeferAnchor != nil: c.deferAnchor = oldDeferAnchor
   var cnst = getConstExpr(c.module, PNode(result))
   # we inline constants if they are not complex constants:
   if cnst != nil and not dontInlineConstant(n, cnst):
@@ -785,12 +818,52 @@ proc openTransf(module: PSym, filename: string): PTransf =
   result.breakSyms = @[]
   result.module = module
 
+proc flattenStmts(n: PNode) =
+  var goOn = true
+  while goOn:
+    goOn = false
+    for i in 0..<n.len:
+      let it = n[i]
+      if it.kind in {nkStmtList, nkStmtListExpr}:
+        n.sons[i..i] = it.sons[0..<it.len]
+        goOn = true
+
+proc liftDeferAux(n: PNode) =
+  if n.kind in {nkStmtList, nkStmtListExpr}:
+    flattenStmts(n)
+    var goOn = true
+    while goOn:
+      goOn = false
+      let last = n.len-1
+      for i in 0..last:
+        if n.sons[i].kind == nkDefer:
+          let deferPart = newNodeI(nkFinally, n.sons[i].info)
+          deferPart.add n.sons[i].sons[0]
+          var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
+          var body = newNodeI(n.kind, n.sons[i].info)
+          if i < last:
+            body.sons = n.sons[(i+1)..last]
+          tryStmt.addSon(body)
+          tryStmt.addSon(deferPart)
+          n.sons[i] = tryStmt
+          n.sons.setLen(i+1)
+          n.typ = n.sons[i].typ
+          goOn = true
+          break
+  for i in 0..n.safeLen-1:
+    liftDeferAux(n.sons[i])
+
+template liftDefer(c, root) =
+  if c.deferDetected:
+    liftDeferAux(root)
+
 proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate}:
     result = n
   else:
     var c = openTransf(module, "")
     result = processTransf(c, n, prc)
+    liftDefer(c, result)
     result = liftLambdas(prc, result)
     #if prc.kind == skClosureIterator:
     #  result = lambdalifting.liftIterator(prc, result)
@@ -805,6 +878,7 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
   else:
     var c = openTransf(module, "")
     result = processTransf(c, n, module)
+    liftDefer(c, result)
     result = liftLambdasForTopLevel(module, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackTopLevelStmt(module, result)
@@ -815,4 +889,5 @@ proc transformExpr*(module: PSym, n: PNode): PNode =
   else:
     var c = openTransf(module, "")
     result = processTransf(c, n, module)
+    liftDefer(c, result)
     incl(result.flags, nfTransf)
