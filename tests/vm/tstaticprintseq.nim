@@ -18,7 +18,8 @@ bb
 aa
 bb
 24
-2147483647 2147483647'''
+2147483647 2147483647
+5'''
 """
 
 const s = @[1,2,3]
@@ -80,3 +81,12 @@ static:
 static:
   var foo2 = int32.high
   echo foo2, " ", int32.high
+
+# bug #1329
+
+static:
+    var a: ref int
+    new(a)
+    a[] = 5
+
+    echo a[]

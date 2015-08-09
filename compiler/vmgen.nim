@@ -1105,6 +1105,8 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   # nkAddr we must not use 'unneededIndirection', but for deref we use it.
   if not isAddr and unneededIndirection(n.sons[0]):
     gen(c, n.sons[0], dest, newflags)
+    if gfAddrOf notin flags and fitsRegister(n.typ):
+      c.gABC(n, opcNodeToReg, dest, dest)
   elif isAddr and isGlobal(n.sons[0]):
     gen(c, n.sons[0], dest, flags+{gfAddrOf})
   else:
