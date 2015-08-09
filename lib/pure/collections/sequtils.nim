@@ -451,21 +451,6 @@ template newSeqWith*(len: int, init: expr): expr =
     result[i] = init
   result
 
-proc reversed*[T](s: seq[T]): seq[T] =
-  ## Takes a sequences and returns a new reversed one
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##
-  ##   let s1 = @[1, 2, 3, 4, 5]
-  ##   let s2 = @[5, 4, 3, 2, 1]
-  ##   assert s2 == s1.reversed()
-  ##
-  result = s
-  let ln = result.len
-  for i in 0..(ln div 2)-1: swap(result[i], result[ln-i-1])
-
 when isMainModule:
   import strutils
   block: # concat test
@@ -629,14 +614,6 @@ when isMainModule:
     doAssert a.repeat(0) == @[]
     #doAssert a.repeat(-1) == @[] # will not compile!
     doAssert b.repeat(3) == @[]
-
-  block: # reversed tests:
-    let
-      a = @[1, 2, 3]
-      b: seq[int] = @[]
-
-    doAssert a.reversed == @[3, 2, 1]
-    doAssert b.reversed == @[]
 
   when not defined(testing):
     echo "Finished doc tests"
