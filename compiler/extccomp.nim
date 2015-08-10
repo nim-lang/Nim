@@ -368,7 +368,9 @@ var
   cIncludes*: seq[string] = @[]   # directories to search for included files
   cLibs*: seq[string] = @[]       # directories to search for lib files
   cLinkedLibs*: seq[string] = @[] # libraries to link
-  cValidAssemblers* = @[asmFasm]
+
+const
+  cValidAssemblers* = {asmFasm}
 
 # implementation
 
@@ -567,6 +569,8 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
 
     if c == ccNone:
       rawMessage(errExternalAssemblerNotFound, "")
+    elif c notin cValidAssemblers:
+      rawMessage(errExternalAssemblerNotValid, customAssembler)
 
   var options = cFileSpecificOptions(cfilename)
   var exe = getConfigVar(c, ".exe")
