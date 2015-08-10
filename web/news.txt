@@ -44,6 +44,9 @@ News
     been removed.
   - ``macros.high`` never worked and the manual says ``high`` cannot be
     overloaded, so we removed it with no deprecation cycle.
+  - To use the ``parallel`` statement you now have to
+    use the ``--experimental`` mode.
+
 
 
   Library additions

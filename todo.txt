@@ -13,7 +13,6 @@ version 0.11.4
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
 
-- Mark the 'parallel' statement as experimental.
 - add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
 - make 'nil' work for 'add':
