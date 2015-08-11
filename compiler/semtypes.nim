@@ -508,8 +508,9 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
   if not isOrdinalType(typ):
     localError(n.info, errSelectorMustBeOrdinal)
-  elif firstOrd(typ) < 0:
-    localError(n.info, errOrdXMustNotBeNegative, a.sons[0].sym.name.s)
+  elif firstOrd(typ) != 0:
+    localError(n.info, errGenerated, "low(" & $a.sons[0].sym.name.s &
+                                     ") must be 0 for discriminant")
   elif lengthOrd(typ) > 0x00007FFF:
     localError(n.info, errLenXinvalid, a.sons[0].sym.name.s)
   var chckCovered = true
