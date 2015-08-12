@@ -550,7 +550,7 @@ elif defined(JS):
 
   proc valueOf(time: Time): float {.importcpp: "getTime", tags:[]}
 
-  proc fromSeconds(since1970: float): Time = result = newDate(since1970)
+  proc fromSeconds(since1970: float): Time = result = newDate(since1970 * 1000)
 
   proc toSeconds(time: Time): float = result = time.valueOf() / 1000
 
