@@ -38,3 +38,48 @@ proc defectiveRobot() =
 test "unittest expect":
   expect IOError, OSError, ValueError, AssertionError:
     defectiveRobot()
+
+var
+  a = 1
+  b = -1
+  c = 1
+
+#unittests are sequential right now
+suite "suite with only teardown":
+  teardown:
+    b = 2
+
+  test "unittest with only teardown 1":
+    check a == c
+
+  test "unittest with only teardown 2":
+    check b > a
+
+suite "suite with only setup":
+  setup:
+    var testVar = "from setup"
+
+  test "unittest with only setup 1":
+    check testVar == "from setup"
+    check b > a
+    b = -1
+
+  test "unittest with only setup 2":
+    check b < a
+
+suite "suite with none":
+  test "unittest with none":
+    check b < a
+
+suite "suite with both":
+  setup:
+    a = -2
+
+  teardown:
+    c = 2
+
+  test "unittest with both 1":
+    check b > a
+
+  test "unittest with both 2":
+    check c == 2

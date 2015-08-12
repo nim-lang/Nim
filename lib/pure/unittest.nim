@@ -70,9 +70,6 @@ var ## Global unittest settings!
 
 checkpoints = @[]
 
-template testSetupIMPL*: stmt {.immediate, dirty.} = discard      #Should this be public or even exist?
-template testTeardownIMPL*: stmt {.immediate, dirty.} = discard
-
 proc shouldRun(testName: string): bool =
   result = true
 
@@ -106,9 +103,11 @@ template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   ##  [OK] (2 + -2) != 4
   block:
     template setup(setupBody: stmt): stmt {.immediate, dirty.} =
+      var testSetupIMPLFlag = true
       template testSetupIMPL: stmt {.immediate, dirty.} = setupBody
 
     template teardown(teardownBody: stmt): stmt {.immediate, dirty.} =
+      var testTeardownIMPLFlag = true
       template testTeardownIMPL: stmt {.immediate, dirty.} = teardownBody
 
     body
@@ -149,7 +148,7 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
     var testStatusIMPL {.inject.} = OK
 
     try:
-      testSetupIMPL()
+      when declared(testSetupIMPLFlag): testSetupIMPL()
       body
 
     except:
@@ -159,7 +158,7 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
       fail()
 
     finally:
-      testTeardownIMPL()
+      when declared(testTeardownIMPLFlag): testTeardownIMPL()
       testDone name, testStatusIMPL
 
 proc checkpoint*(msg: string) =
