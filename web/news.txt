@@ -46,6 +46,10 @@ News
     overloaded, so we removed it with no deprecation cycle.
   - To use the ``parallel`` statement you now have to
     use the ``--experimental`` mode.
+  - Toplevel procs of calling convention ``closure`` never worked reliably
+    and are now deprecated and will be removed from the language. Instead you
+    have to insert type conversions
+    like ``(proc (a, b: int) {.closure.})(myToplevelProc)`` if necessary.
 
 
 
