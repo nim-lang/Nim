@@ -24,7 +24,6 @@ type
     c_oflag*: Cflag        # output mode flags
     c_cflag*: Cflag        # control mode flags
     c_lflag*: Cflag        # local mode flags
-    c_line*: cuchar         # line discipline
     c_cc*: array[NCCS, cuchar]  # control characters
 
 # cc characters
