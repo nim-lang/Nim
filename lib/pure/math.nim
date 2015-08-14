@@ -427,10 +427,12 @@ proc `^`*[T](x, y: T): T =
   var (x, y) = (x, y)
   result = 1
 
-  while y != 0:
+  while true:
     if (y and 1) != 0:
       result *= x
     y = y shr 1
+    if y == 0:
+      break
     x *= x
 
 proc gcd*[T](x, y: T): T =
