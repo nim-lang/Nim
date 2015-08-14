@@ -48,8 +48,9 @@ proc reverse*[T](a: var openArray[T]) =
   ## reverses the array `a`.
   reverse(a, 0, a.high)
 
-proc reversed*[T](a: openArray[T], first, last: Natural): seq[T] =
+proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
   ## returns the reverse of the array `a[first..last]`.
+  assert last >= first-1
   var i = last - first
   var x = first.int
   result = newSeq[T](i + 1)
