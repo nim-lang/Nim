@@ -1,8 +1,6 @@
 version 0.11.4
 ==============
 
-- deprecate closure iterator construction via ``var cl = foo``
-
 - document special cased varargs[untyped] and varargs[typed]
 
 - The remaining bugs of the lambda lifting pass that is responsible to enable
