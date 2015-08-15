@@ -58,6 +58,8 @@ proc handleCmdLine() =
     # command line can overwite the config file's settings
     extccomp.initVars()
     processCmdLine(passCmd2, "")
+    if options.command == "":
+      rawMessage(errNoCommand, command)
     mainCommand()
     if optHints in gOptions and hintGCStats in gNotes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
