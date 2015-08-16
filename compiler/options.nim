@@ -210,7 +210,7 @@ proc removeTrailingDirSep*(path: string): string =
   else:
     result = path
 
-proc getGeneratedPath: string =
+proc getNimcacheDir*: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
 
@@ -266,7 +266,7 @@ proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
   var (head, tail) = splitPath(path)
   #if len(head) > 0: head = shortenDir(head & dirSep)
-  result = joinPath([getGeneratedPath(), changeFileExt(tail, ext)])
+  result = joinPath([getNimcacheDir(), changeFileExt(tail, ext)])
   #echo "toGeneratedFile(", path, ", ", ext, ") = ", result
 
 when noTimeMachine:
@@ -294,7 +294,7 @@ when noTimeMachine:
 proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   var (head, tail) = splitPath(f)
   #if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
-  var subdir = getGeneratedPath() # / head
+  var subdir = getNimcacheDir() # / head
   if createSubDir:
     try:
       createDir(subdir)

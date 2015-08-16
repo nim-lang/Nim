@@ -85,6 +85,15 @@ proc resetAllModules* =
   resetPackageCache()
   # for m in cgenModules(): echo "CGEN MODULE FOUND"
 
+proc resetAllModulesHard* =
+  resetPackageCache()
+  gCompiledModules.setLen 0
+  gMemCacheData.setLen 0
+  magicsys.resetSysTypes()
+  # XXX
+  #gOwners = @[]
+  #rangeDestructorProc = nil
+
 proc checkDepMem(fileIdx: int32): TNeedRecompile =
   template markDirty =
     resetModule(fileIdx)
@@ -205,9 +214,8 @@ proc compileProject*(projectFileIdx = -1'i32) =
     compileSystemModule()
     discard compileModule(projectFile, {sfMainModule})
 
-var stdinModule: PSym
-proc makeStdinModule*(): PSym =
-  if stdinModule == nil:
-    stdinModule = newModule(fileInfoIdx"stdin")
-    stdinModule.id = getID()
-  result = stdinModule
+proc makeModule*(filename: string): PSym =
+  result = newModule(fileInfoIdx filename)
+  result.id = getID()
+
+proc makeStdinModule*(): PSym = makeModule"stdin"

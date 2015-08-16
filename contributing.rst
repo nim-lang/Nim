@@ -112,7 +112,7 @@ tell you if any new tests passed/failed.
 
 ::
 
-  ./koch --print html $DEVEL_COMMIT
+  ./koch tests --print html $DEVEL_COMMIT
 
 
 Deprecation

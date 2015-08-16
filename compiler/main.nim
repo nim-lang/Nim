@@ -116,7 +116,7 @@ proc interactivePasses =
   #incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
-  defineSymbol("nimrodvm")
+  defineSymbol("nimscript")
   when hasFFI: defineSymbol("nimffi")
   registerPass(verbosePass)
   registerPass(semPass)
@@ -356,6 +356,7 @@ proc mainCommand* =
     gGlobalOptions.incl(optCaasEnabled)
     msgs.gErrorMax = high(int)  # do not stop after first error
     serve(mainCommand)
+  of "nop": discard
   else:
     rawMessage(errInvalidCommandX, command)
 

@@ -17,7 +17,7 @@ template setX(k, field) {.immediate, dirty.} =
 
 proc setResult*(a: VmArgs; v: BiggestInt) = setX(rkInt, intVal)
 proc setResult*(a: VmArgs; v: BiggestFloat) = setX(rkFloat, floatVal)
-proc setResult*(a: VmArgs; v: bool) = 
+proc setResult*(a: VmArgs; v: bool) =
   let v = v.ord
   setX(rkInt, intVal)
 
@@ -29,6 +29,16 @@ proc setResult*(a: VmArgs; v: string) =
     s[a.ra].kind = rkNode
   s[a.ra].node = newNode(nkStrLit)
   s[a.ra].node.strVal = v
+
+proc setResult*(a: VmArgs; v: seq[string]) =
+  var s: seq[TFullReg]
+  move(s, cast[seq[TFullReg]](a.slots))
+  if s[a.ra].kind != rkNode:
+    myreset(s[a.ra])
+    s[a.ra].kind = rkNode
+  var n = newNode(nkBracket)
+  for x in v: n.add newStrNode(nkStrLit, x)
+  s[a.ra].node = n
 
 template getX(k, field) {.immediate, dirty.} =
   doAssert i < a.rc-1

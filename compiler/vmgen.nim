@@ -173,7 +173,8 @@ const
 proc bestEffort(c: PCtx): TLineInfo =
   (if c.prc == nil: c.module.info else: c.prc.sym.info)
 
-proc getTemp(cc: PCtx; typ: PType): TRegister =
+proc getTemp(cc: PCtx; tt: PType): TRegister =
+  let typ = tt.skipTypesOrNil({tyStatic})
   let c = cc.prc
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
@@ -707,7 +708,7 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
   c.gABx(n, opc, 0, genType(c, n.typ))
-  c.gABx(n, opc, 0, genType(c, arg.typ))
+  c.gABx(n, opc, 0, genType(c, arg.typ.skipTypes({tyStatic})))
   c.freeTemp(tmp)
 
 proc genCard(c: PCtx; n: PNode; dest: var TDest) =
@@ -1182,7 +1183,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
-      not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+      not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     cannotEval(n)
   elif s.kind in {skProc, skConverter, skMethod,
                   skIterator, skClosureIterator} and sfForward in s.flags:
@@ -1622,6 +1623,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
         c.gABx(n, opcLdConst, dest, lit)
     of skType:
       genTypeLit(c, s.typ, dest)
+    of skGenericParam:
+      if c.prc.sym.kind == skMacro:
+        genRdVar(c, n, dest, flags)
+      else:
+        internalError(n.info, "cannot generate code for: " & s.name.s)
     else:
       globalError(n.info, errGenerated, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
@@ -1772,6 +1778,14 @@ proc finalJumpTarget(c: PCtx; pc, diff: int) =
   c.code[pc] = ((oldInstr.uint32 and 0xffff'u32).uint32 or
                 uint32(diff+wordExcess) shl 16'u32).TInstr
 
+proc genGenericParams(c: PCtx; gp: PNode) =
+  var base = c.prc.maxSlots
+  for i in 0.. <gp.len:
+    var param = gp.sons[i].sym
+    param.position = base + i # XXX: fix this earlier; make it consistent with templates
+    c.prc.slots[base + i] = (inUse: true, kind: slotFixedLet)
+  c.prc.maxSlots = base + gp.len
+
 proc optimizeJumps(c: PCtx; start: int) =
   const maxIterations = 10
   for i in start .. <c.code.len:
@@ -1836,6 +1850,13 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = p
     # iterate over the parameters and allocate space for them:
     genParams(c, s.typ.n)
+
+    # allocate additional space for any generically bound parameters
+    if s.kind == skMacro and
+       sfImmediate notin s.flags and
+       s.ast[genericParamsPos].kind != nkEmpty:
+      genGenericParams(c, s.ast[genericParamsPos])
+
     if tfCapturesEnv in s.typ.flags:
       #let env = s.ast.sons[paramsPos].lastSon.sym
       #assert env.position == 2

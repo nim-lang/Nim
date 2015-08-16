@@ -511,3 +511,467 @@ Example:
     add "foo"
     add "bar"
 
+
+Implementation Specific Pragmas
+===============================
+
+This section describes additional pragmas that the current Nim implementation
+supports but which should not be seen as part of the language specification.
+
+
+Volatile pragma
+---------------
+The ``volatile`` pragma is for variables only. It declares the variable as
+``volatile``, whatever that means in C/C++ (its semantics are not well defined
+in C/C++).
+
+**Note**: This pragma will not exist for the LLVM backend.
+
+
+NoDecl pragma
+-------------
+The ``noDecl`` pragma can be applied to almost any symbol (variable, proc,
+type, etc.) and is sometimes useful for interoperability with C:
+It tells Nim that it should not generate a declaration for the symbol in
+the C code. For example:
+
+.. code-block:: Nim
+  var
+    EACCES {.importc, noDecl.}: cint # pretend EACCES was a variable, as
+                                     # Nim does not know its value
+
+However, the ``header`` pragma is often the better alternative.
+
+**Note**: This will not work for the LLVM backend.
+
+
+Header pragma
+-------------
+The ``header`` pragma is very similar to the ``noDecl`` pragma: It can be
+applied to almost any symbol and specifies that it should not be declared
+and instead the generated code should contain an ``#include``:
+
+.. code-block:: Nim
+  type
+    PFile {.importc: "FILE*", header: "<stdio.h>".} = distinct pointer
+      # import C's FILE* type; Nim will treat it as a new pointer type
+
+The ``header`` pragma always expects a string constant. The string contant
+contains the header file: As usual for C, a system header file is enclosed
+in angle brackets: ``<>``. If no angle brackets are given, Nim
+encloses the header file in ``""`` in the generated C code.
+
+**Note**: This will not work for the LLVM backend.
+
+
+IncompleteStruct pragma
+-----------------------
+The ``incompleteStruct`` pragma tells the compiler to not use the
+underlying C ``struct`` in a ``sizeof`` expression:
+
+.. code-block:: Nim
+  type
+    DIR* {.importc: "DIR", header: "<dirent.h>",
+           final, pure, incompleteStruct.} = object
+
+
+Compile pragma
+--------------
+The ``compile`` pragma can be used to compile and link a C/C++ source file
+with the project:
+
+.. code-block:: Nim
+  {.compile: "myfile.cpp".}
+
+**Note**: Nim computes a SHA1 checksum and only recompiles the file if it
+has changed. You can use the ``-f`` command line option to force recompilation
+of the file.
+
+
+Link pragma
+-----------
+The ``link`` pragma can be used to link an additional file with the project:
+
+.. code-block:: Nim
+  {.link: "myfile.o".}
+
+
+PassC pragma
+------------
+The ``passC`` pragma can be used to pass additional parameters to the C
+compiler like you would using the commandline switch ``--passC``:
+
+.. code-block:: Nim
+  {.passC: "-Wall -Werror".}
+
+Note that you can use ``gorge`` from the `system module <system.html>`_ to
+embed parameters from an external command at compile time:
+
+.. code-block:: Nim
+  {.passC: gorge("pkg-config --cflags sdl").}
+
+PassL pragma
+------------
+The ``passL`` pragma can be used to pass additional parameters to the linker
+like you would using the commandline switch ``--passL``:
+
+.. code-block:: Nim
+  {.passL: "-lSDLmain -lSDL".}
+
+Note that you can use ``gorge`` from the `system module <system.html>`_ to
+embed parameters from an external command at compile time:
+
+.. code-block:: Nim
+  {.passL: gorge("pkg-config --libs sdl").}
+
+
+Emit pragma
+-----------
+The ``emit`` pragma can be used to directly affect the output of the
+compiler's code generator. So it makes your code unportable to other code
+generators/backends. Its usage is highly discouraged! However, it can be
+extremely useful for interfacing with `C++`:idx: or `Objective C`:idx: code.
+
+Example:
+
+.. code-block:: Nim
+  {.emit: """
+  static int cvariable = 420;
+  """.}
+
+  {.push stackTrace:off.}
+  proc embedsC() =
+    var nimVar = 89
+    # use backticks to access Nim symbols within an emit section:
+    {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimVar`);""".}
+  {.pop.}
+
+  embedsC()
+
+As can be seen from the example, to Nim symbols can be referred via backticks.
+Use two backticks to produce a single verbatim backtick.
+
+For a toplevel emit statement the section where in the generated C/C++ file
+the code should be emitted can be influenced via the
+prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
+
+.. code-block:: Nim
+  {.emit: """/*TYPESECTION*/
+  struct Vector3 {
+  public:
+    Vector3(): x(5) {}
+    Vector3(float x_): x(x_) {}
+    float x;
+  };
+  """.}
+
+  type Vector3 {.importcpp: "Vector3", nodecl} = object
+    x: cfloat
+
+  proc constructVector3(a: cfloat): Vector3 {.importcpp: "Vector3(@)", nodecl}
+
+
+ImportCpp pragma
+----------------
+
+**Note**: `c2nim <c2nim.html>`_ can parse a large subset of C++ and knows
+about the ``importcpp`` pragma pattern language. It is not necessary
+to know all the details described here.
+
+
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importcpp`` pragma can be used to import `C++`:idx: methods or C++ symbols
+in general. The generated code then uses the C++ method calling
+syntax: ``obj->method(arg)``.  In combination with the ``header`` and ``emit``
+pragmas this allows *sloppy* interfacing with libraries written in C++:
+
+.. code-block:: Nim
+  # Horrible example of how to interface with a C++ engine ... ;-)
+
+  {.link: "/usr/lib/libIrrlicht.so".}
+
+  {.emit: """
+  using namespace irr;
+  using namespace core;
+  using namespace scene;
+  using namespace video;
+  using namespace io;
+  using namespace gui;
+  """.}
+
+  const
+    irr = "<irrlicht/irrlicht.h>"
+
+  type
+    IrrlichtDeviceObj {.final, header: irr,
+                        importcpp: "IrrlichtDevice".} = object
+    IrrlichtDevice = ptr IrrlichtDeviceObj
+
+  proc createDevice(): IrrlichtDevice {.
+    header: irr, importcpp: "createDevice(@)".}
+  proc run(device: IrrlichtDevice): bool {.
+    header: irr, importcpp: "#.run(@)".}
+
+The compiler needs to be told to generate C++ (command ``cpp``) for
+this to work. The conditional symbol ``cpp`` is defined when the compiler
+emits C++ code.
+
+
+Namespaces
+~~~~~~~~~~
+
+The *sloppy interfacing* example uses ``.emit`` to produce ``using namespace``
+declarations. It is usually much better to instead refer to the imported name
+via the ``namespace::identifier`` notation:
+
+.. code-block:: nim
+  type
+    IrrlichtDeviceObj {.final, header: irr,
+                        importcpp: "irr::IrrlichtDevice".} = object
+
+
+Importcpp for enums
+~~~~~~~~~~~~~~~~~~~
+
+When ``importcpp`` is applied to an enum type the numerical enum values are
+annotated with the C++ enum type, like in this example: ``((TheCppEnum)(3))``.
+(This turned out to be the simplest way to implement it.)
+
+
+Importcpp for procs
+~~~~~~~~~~~~~~~~~~~
+
+Note that the ``importcpp`` variant for procs uses a somewhat cryptic pattern
+language for maximum flexibility:
+
+- A hash ``#`` symbol is replaced by the first or next argument.
+- A dot following the hash ``#.`` indicates that the call should use C++'s dot
+  or arrow notation.
+- An at symbol ``@`` is replaced by the remaining arguments, separated by
+  commas.
+
+For example:
+
+.. code-block:: nim
+  proc cppMethod(this: CppObj, a, b, c: cint) {.importcpp: "#.CppMethod(@)".}
+  var x: ptr CppObj
+  cppMethod(x[], 1, 2, 3)
+
+Produces:
+
+.. code-block:: C
+  x->CppMethod(1, 2, 3)
+
+As a special rule to keep backwards compatibility with older versions of the
+``importcpp`` pragma, if there is no special pattern
+character (any of ``# ' @``) at all, C++'s
+dot or arrow notation is assumed, so the above example can also be written as:
+
+.. code-block:: nim
+  proc cppMethod(this: CppObj, a, b, c: cint) {.importcpp: "CppMethod".}
+
+Note that the pattern language naturally also covers C++'s operator overloading
+capabilities:
+
+.. code-block:: nim
+  proc vectorAddition(a, b: Vec3): Vec3 {.importcpp: "# + #".}
+  proc dictLookup(a: Dict, k: Key): Value {.importcpp: "#[#]".}
+
+
+- An apostrophe ``'`` followed by an integer ``i`` in the range 0..9
+  is replaced by the i'th parameter *type*. The 0th position is the result
+  type. This can be used to pass types to C++ function templates. Between
+  the ``'`` and the digit an asterisk can be used to get to the base type
+  of the type. (So it "takes away a star" from the type; ``T*`` becomes ``T``.)
+  Two stars can be used to get to the element type of the element type etc.
+
+For example:
+
+.. code-block:: nim
+
+  type Input {.importcpp: "System::Input".} = object
+  proc getSubsystem*[T](): ptr T {.importcpp: "SystemManager::getSubsystem<'*0>()", nodecl.}
+
+  let x: ptr Input = getSubsystem[Input]()
+
+Produces:
+
+.. code-block:: C
+  x = SystemManager::getSubsystem<System::Input>()
+
+
+- ``#@`` is a special case to support a ``cnew`` operation. It is required so
+  that the call expression is inlined directly, without going through a
+  temporary location. This is only required to circumvent a limitation of the
+  current code generator.
+
+For example C++'s ``new`` operator can be "imported" like this:
+
+.. code-block:: nim
+  proc cnew*[T](x: T): ptr T {.importcpp: "(new '*0#@)", nodecl.}
+
+  # constructor of 'Foo':
+  proc constructFoo(a, b: cint): Foo {.importcpp: "Foo(@)".}
+
+  let x = cnew constructFoo(3, 4)
+
+Produces:
+
+.. code-block:: C
+  x = new Foo(3, 4)
+
+However, depending on the use case ``new Foo`` can also be wrapped like this
+instead:
+
+.. code-block:: nim
+  proc newFoo(a, b: cint): ptr Foo {.importcpp: "new Foo(@)".}
+
+  let x = newFoo(3, 4)
+
+
+Wrapping constructors
+~~~~~~~~~~~~~~~~~~~~~
+
+Sometimes a C++ class has a private copy constructor and so code like
+``Class c = Class(1,2);`` must not be generated but instead ``Class c(1,2);``.
+For this purpose the Nim proc that wraps a C++ constructor needs to be
+annotated with the `constructor`:idx: pragma. This pragma also helps to generate
+faster C++ code since construction then doesn't invoke the copy constructor:
+
+.. code-block:: nim
+  # a better constructor of 'Foo':
+  proc constructFoo(a, b: cint): Foo {.importcpp: "Foo(@)", constructor.}
+
+
+Wrapping destructors
+~~~~~~~~~~~~~~~~~~~~
+
+Since Nim generates C++ directly, any destructor is called implicitly by the
+C++ compiler at the scope exits. This means that often one can get away with
+not wrapping the destructor at all! However when it needs to be invoked
+explicitly, it needs to be wrapped. But the pattern language already provides
+everything that is required for that:
+
+.. code-block:: nim
+  proc destroyFoo(this: var Foo) {.importcpp: "#.~Foo()".}
+
+
+Importcpp for objects
+~~~~~~~~~~~~~~~~~~~~~
+
+Generic ``importcpp``'ed objects are mapped to C++ templates. This means that
+you can import C++'s templates rather easily without the need for a pattern
+language for object types:
+
+.. code-block:: nim
+  type
+    StdMap {.importcpp: "std::map", header: "<map>".} [K, V] = object
+  proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
+    importcpp: "#[#] = #", header: "<map>".}
+
+  var x: StdMap[cint, cdouble]
+  x[6] = 91.4
+
+
+Produces:
+
+.. code-block:: C
+  std::map<int, double> x;
+  x[6] = 91.4;
+
+
+- If more precise control is needed, the apostrophe ``'`` can be used in the
+  supplied pattern to denote the concrete type parameters of the generic type.
+  See the usage of the apostrophe operator in proc patterns for more details.
+
+.. code-block:: nim
+
+  type
+    VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+
+  var x: VectorIterator[cint]
+
+
+Produces:
+
+.. code-block:: C
+
+  std::vector<int>::iterator x;
+
+
+ImportObjC pragma
+-----------------
+Similar to the `importc pragma for C <manual.html#importc-pragma>`_, the
+``importobjc`` pragma can be used to import `Objective C`:idx: methods.  The
+generated code then uses the Objective C method calling syntax: ``[obj method
+param1: arg]``.  In addition with the ``header`` and ``emit`` pragmas this
+allows *sloppy* interfacing with libraries written in Objective C:
+
+.. code-block:: Nim
+  # horrible example of how to interface with GNUStep ...
+
+  {.passL: "-lobjc".}
+  {.emit: """
+  #include <objc/Object.h>
+  @interface Greeter:Object
+  {
+  }
+
+  - (void)greet:(long)x y:(long)dummy;
+  @end
+
+  #include <stdio.h>
+  @implementation Greeter
+
+  - (void)greet:(long)x y:(long)dummy
+  {
+    printf("Hello, World!\n");
+  }
+  @end
+
+  #include <stdlib.h>
+  """.}
+
+  type
+    Id {.importc: "id", header: "<objc/Object.h>", final.} = distinct int
+
+  proc newGreeter: Id {.importobjc: "Greeter new", nodecl.}
+  proc greet(self: Id, x, y: int) {.importobjc: "greet", nodecl.}
+  proc free(self: Id) {.importobjc: "free", nodecl.}
+
+  var g = newGreeter()
+  g.greet(12, 34)
+  g.free()
+
+The compiler needs to be told to generate Objective C (command ``objc``) for
+this to work. The conditional symbol ``objc`` is defined when the compiler
+emits Objective C code.
+
+
+CodegenDecl pragma
+------------------
+
+The ``codegenDecl`` pragma can be used to directly influence Nim's code
+generator. It receives a format string that determines how the variable or
+proc is declared in the generated code:
+
+.. code-block:: nim
+  var
+    a {.codegenDecl: "$# progmem $#".}: int
+
+  proc myinterrupt() {.codegenDecl: "__interrupt $# $#$#".} =
+    echo "realistic interrupt handler"
+
+
+InjectStmt pragma
+-----------------
+
+The ``injectStmt`` pragma can be used to inject a statement before every
+other statement in the current module. It is only supposed to be used for
+debugging:
+
+.. code-block:: nim
+  {.injectStmt: gcInvariants().}
+
+  # ... complex code here that produces crashes ...
+

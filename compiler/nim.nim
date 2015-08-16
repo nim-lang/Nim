@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -16,7 +16,7 @@ when defined(gcc) and defined(windows):
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt, service,
-  nodejs
+  nodejs, scriptconfig
 
 when hasTinyCBackend:
   import tccgen
@@ -54,10 +54,17 @@ proc handleCmdLine() =
     else:
       gProjectPath = getCurrentDir()
     loadConfigs(DefaultConfig) # load all config files
+    let scriptFile = gProjectFull.changeFileExt("nims")
+    if fileExists(scriptFile):
+      runNimScript(scriptFile)
+      # 'nim foo.nims' means to just run the NimScript file and do nothing more:
+      if scriptFile == gProjectFull: return
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
     processCmdLine(passCmd2, "")
+    if options.command == "":
+      rawMessage(errNoCommand, command)
     mainCommand()
     if optHints in gOptions and hintGCStats in gNotes: echo(GC_getStatistics())
     #echo(GC_getStatistics())

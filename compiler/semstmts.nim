@@ -1220,6 +1220,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
   if isAnon: result.typ = s.typ
+  if isTopLevel(c) and s.kind != skClosureIterator and
+      s.typ.callConv == ccClosure:
+    message(s.info, warnDeprecated, "top level '.closure' calling convention")
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
