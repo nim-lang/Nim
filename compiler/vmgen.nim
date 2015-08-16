@@ -1183,7 +1183,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
-      not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+      not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     cannotEval(n)
   elif s.kind in {skProc, skConverter, skMethod,
                   skIterator, skClosureIterator} and sfForward in s.flags:
@@ -1850,13 +1850,13 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = p
     # iterate over the parameters and allocate space for them:
     genParams(c, s.typ.n)
-    
+
     # allocate additional space for any generically bound parameters
     if s.kind == skMacro and
        sfImmediate notin s.flags and
        s.ast[genericParamsPos].kind != nkEmpty:
       genGenericParams(c, s.ast[genericParamsPos])
-    
+
     if tfCapturesEnv in s.typ.flags:
       #let env = s.ast.sons[paramsPos].lastSon.sym
       #assert env.position == 2
