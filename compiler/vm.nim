@@ -1407,7 +1407,7 @@ include vmops
 # storing&loading the 'globals' environment to get what a component system
 # requires.
 var
-  globalCtx: PCtx
+  globalCtx*: PCtx
 
 proc setupGlobalCtx(module: PSym) =
   if globalCtx.isNil:
@@ -1516,7 +1516,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # return value:
   tos.slots[0].kind = rkNode
   tos.slots[0].node = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
-  
+
   # setup parameters:
   for i in 1.. <sym.typ.len:
     tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
