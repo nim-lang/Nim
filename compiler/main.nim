@@ -190,7 +190,6 @@ proc resetMemory =
   resetRopeCache()
   resetSysTypes()
   gOwners = @[]
-  rangeDestructorProc = nil
   for i in low(buckets)..high(buckets):
     buckets[i] = nil
   idAnon = nil
@@ -237,7 +236,7 @@ proc mainCommand* =
   when SimulateCaasMemReset:
     gGlobalOptions.incl(optCaasEnabled)
 
-  # In "nimrod serve" scenario, each command must reset the registered passes
+  # In "nim serve" scenario, each command must reset the registered passes
   clearPasses()
   gLastCmdTime = epochTime()
   appendStr(searchPaths, options.libpath)

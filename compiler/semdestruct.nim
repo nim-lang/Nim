@@ -24,7 +24,6 @@ var
   destructorName = getIdent"destroy_"
   destructorParam = getIdent"this_"
   destructorPragma = newIdentNode(getIdent"destructor", unknownLineInfo())
-  rangeDestructorProc*: PSym
 
 proc instantiateDestructor(c: PContext, typ: PType): PType
 
@@ -141,9 +140,7 @@ proc instantiateDestructor(c: PContext, typ: PType): PType =
   case t.kind
   of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
     if instantiateDestructor(c, t.sons[0]) != nil:
-      if rangeDestructorProc == nil:
-        rangeDestructorProc = searchInScopes(c, getIdent"nimDestroyRange")
-      t.destructor = rangeDestructorProc
+      t.destructor = getCompilerProc"nimDestroyRange"
       return t
     else:
       return nil
