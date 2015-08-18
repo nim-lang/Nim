@@ -1401,6 +1401,10 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
 
+proc getGlobalValue*(c: PCtx; s: PSym): PNode =
+  internalAssert s.kind in {skLet, skVar} and sfGlobal in s.flags
+  result = c.globals.sons[s.position-1]
+
 include vmops
 
 # for now we share the 'globals' environment. XXX Coming soon: An API for

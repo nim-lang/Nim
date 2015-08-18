@@ -92,7 +92,6 @@ proc resetAllModulesHard* =
   magicsys.resetSysTypes()
   # XXX
   #gOwners = @[]
-  #rangeDestructorProc = nil
 
 proc checkDepMem(fileIdx: int32): TNeedRecompile =
   template markDirty =

@@ -150,3 +150,30 @@ template task*(name: untyped; description: string; body: untyped): untyped =
   elif cmd ==? astToStr(name):
     setCommand "nop"
     `name Task`()
+
+type
+  VersionReq* = distinct string ## Describes a version requirement.
+
+template v*(name: string{lit}): VersionReq = VersionReq(name)
+template special*(name: string): VersionReq = VersionReq(name)
+template `<`*(v: VersionReq): VersionReq = VersionReq("<" & string(v))
+template `<=`*(v: VersionReq): VersionReq = VersionReq("<=" & string(v))
+template `>`*(v: VersionReq): VersionReq = VersionReq(">" & string(v))
+template `>=`*(v: VersionReq): VersionReq = VersionReq(">=" & string(v))
+template `&`*(a, b: VersionReq): VersionReq =
+  VersionReq(string(a) & " & " & string(b))
+
+const
+  anyVersion* = VersionReq("*")
+
+var
+  packageName* = ""
+  version*, author*, description*, license*, srcdir*,
+    binDir*, backend*: string
+
+  skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
+    installExt*, bin*: seq[string]
+  requiresData*: seq[(string, VersionReq)]
+
+proc requires*(name: string; v: VersionReq) =
+  requiresData.add((name, v))
