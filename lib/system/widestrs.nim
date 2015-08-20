@@ -119,36 +119,28 @@ proc `$`*(w: WideCString, estimate: int): string =
 
   var i = 0
   while w[i].int16 != 0'i16:
-    var ch = w[i].int
+    var ch = uint32(cast[uint16](w[i]))
     inc i
-    if ch >=% UNI_SUR_HIGH_START and ch <=% UNI_SUR_HIGH_END:
+    if ch >= uint32(UNI_SUR_HIGH_START) and ch <= uint32(UNI_SUR_HIGH_END):
       # If the 16 bits following the high surrogate are in the source buffer...
-      let ch2 = w[i].int
-      # If it's a low surrogate, convert to UTF32:
-      if ch2 >=% UNI_SUR_LOW_START and ch2 <=% UNI_SUR_LOW_END:
-        ch = ((ch -% UNI_SUR_HIGH_START) shr halfShift) +%
-              (ch2 -% UNI_SUR_LOW_START) +% halfBase
-        inc i
-        
-    if ch <=% 127:
+      let ch2 = uint32(cast[uint16](w[i]))
+      ch = (ch shl halfShift) + ch2 + halfBase
+      inc i
+    
+    if ch < 0x80'u32:
       result.add chr(ch)
-    elif ch <=% 0x07FF:
-      result.add chr((ch shr 6) or 0b110_00000)
-      result.add chr((ch and ones(6)) or 0b10_000000)
-    elif ch <=% 0xFFFF:
-      result.add chr(ch shr 12 or 0b1110_0000)
-      result.add chr(ch shr 6 and ones(6) or 0b10_0000_00)
-      result.add chr(ch and ones(6) or 0b10_0000_00)
-    elif ch <=% 0x0010FFFF:
-      result.add chr(ch shr 18 or 0b1111_0000)
-      result.add chr(ch shr 12 and ones(6) or 0b10_0000_00)
-      result.add chr(ch shr 6 and ones(6) or 0b10_0000_00)
-      result.add chr(ch and ones(6) or 0b10_0000_00)
+    elif ch < 0x800'u32:
+      result.add chr((ch shr 6) or 0xc0)
+      result.add chr((ch and 0x3f) or 0x80)
+    elif ch < 0x10000'u32:
+      result.add chr((ch shr 12) or 0xe0)
+      result.add chr(((ch shr 6) and 0x3f) or 0x80)
+      result.add chr((ch and 0x3f) or 0x80)
     else:
-      # replacement char:
-      result.add chr(0xFFFD shr 12 or 0b1110_0000)
-      result.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
-      result.add chr(0xFFFD and ones(6) or 0b10_0000_00)
+      result.add chr((ch shr 18) or 0xf0)
+      result.add chr(((ch shr 12) and 0x3f) or 0x80)
+      result.add chr(((ch shr 6) and 0x3f) or 0x80)
+      result.add chr((ch and 0x3f) or 0x80)
 
 proc `$`*(s: WideCString): string =
   result = s $ 80
