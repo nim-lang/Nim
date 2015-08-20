@@ -23,6 +23,9 @@ proc newConstraint(c: PContext, k: TTypeKind): PType =
 
 proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   if n.sonsLen == 0: return newConstraint(c, tyEnum)
+  elif n.sonsLen == 1:
+    # don't create an empty tyEnum; fixes #3052
+    return errorType(c)
   var
     counter, x: BiggestInt
     e: PSym
@@ -505,8 +508,9 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
   if not isOrdinalType(typ):
     localError(n.info, errSelectorMustBeOrdinal)
-  elif firstOrd(typ) < 0:
-    localError(n.info, errOrdXMustNotBeNegative, a.sons[0].sym.name.s)
+  elif firstOrd(typ) != 0:
+    localError(n.info, errGenerated, "low(" & $a.sons[0].sym.name.s &
+                                     ") must be 0 for discriminant")
   elif lengthOrd(typ) > 0x00007FFF:
     localError(n.info, errLenXinvalid, a.sons[0].sym.name.s)
   var chckCovered = true

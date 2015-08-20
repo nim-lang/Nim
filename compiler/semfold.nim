@@ -307,12 +307,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mToU8: result = newIntNodeT(getInt(a) and 0x000000FF, n)
   of mToU16: result = newIntNodeT(getInt(a) and 0x0000FFFF, n)
   of mToU32: result = newIntNodeT(getInt(a) and 0x00000000FFFFFFFF'i64, n)
-  of mUnaryLt: result = newIntNodeT(getOrdValue(a) - 1, n)
-  of mSucc: result = newIntNodeT(getOrdValue(a) + getInt(b), n)
-  of mPred: result = newIntNodeT(getOrdValue(a) - getInt(b), n)
-  of mAddI: result = newIntNodeT(getInt(a) + getInt(b), n)
-  of mSubI: result = newIntNodeT(getInt(a) - getInt(b), n)
-  of mMulI: result = newIntNodeT(getInt(a) * getInt(b), n)
+  of mUnaryLt: result = newIntNodeT(getOrdValue(a) |-| 1, n)
+  of mSucc: result = newIntNodeT(getOrdValue(a) |+| getInt(b), n)
+  of mPred: result = newIntNodeT(getOrdValue(a) |-| getInt(b), n)
+  of mAddI: result = newIntNodeT(getInt(a) |+| getInt(b), n)
+  of mSubI: result = newIntNodeT(getInt(a) |-| getInt(b), n)
+  of mMulI: result = newIntNodeT(getInt(a) |*| getInt(b), n)
   of mMinI:
     if getInt(a) > getInt(b): result = newIntNodeT(getInt(b), n)
     else: result = newIntNodeT(getInt(a), n)
@@ -338,11 +338,11 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mDivI:
     let y = getInt(b)
     if y != 0:
-      result = newIntNodeT(getInt(a) div y, n)
+      result = newIntNodeT(`|div|`(getInt(a), y), n)
   of mModI:
     let y = getInt(b)
     if y != 0:
-      result = newIntNodeT(getInt(a) mod y, n)
+      result = newIntNodeT(`|mod|`(getInt(a), y), n)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n)
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n)
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n)

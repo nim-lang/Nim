@@ -124,7 +124,8 @@ export Port, SocketFlag
 ##
 ## * The effect system (``raises: []``) does not work with async procedures.
 ## * Can't await in a ``except`` body
-
+## * Forward declarations for async procs are broken,
+##   link includes workaround: https://github.com/nim-lang/Nim/issues/3182.
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
@@ -1412,12 +1413,12 @@ proc getName(node: NimNode): string {.compileTime.} =
   else:
     error("Unknown name.")
 
-macro async*(prc: stmt): stmt {.immediate.} =
-  ## Macro which processes async procedures into the appropriate
-  ## iterators and yield statements.
+proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
+  ## This macro transforms a single procedure into a closure iterator.
+  ## The ``async`` macro supports a stmtList holding multiple async procedures.
   if prc.kind notin {nnkProcDef, nnkLambda}:
-    error("Cannot transform this node kind into an async proc." &
-          " Proc definition or lambda node expected.")
+      error("Cannot transform this node kind into an async proc." &
+            " Proc definition or lambda node expected.")
 
   hint("Processing " & prc[0].getName & " as an async proc.")
 
@@ -1504,8 +1505,18 @@ macro async*(prc: stmt): stmt {.immediate.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  if prc[0].getName == "getAsync":
+  if prc[0].getName == "hubConnectionLoop":
     echo(toStrLit(result))
+
+macro async*(prc: stmt): stmt {.immediate.} =
+  ## Macro which processes async procedures into the appropriate
+  ## iterators and yield statements.
+  if prc.kind == nnkStmtList:
+    for oneProc in prc:
+      result = newStmtList()
+      result.add asyncSingleProc(oneProc)
+  else:
+    result = asyncSingleProc(prc)
 
 proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once

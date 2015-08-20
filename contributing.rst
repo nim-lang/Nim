@@ -66,12 +66,14 @@ Running tests
 You can run the tests with
 
 ::
+
   ./koch tests
 
 which will run a good subset of tests. Some tests may fail. If you
 only want to see the output of failing tests, go for
 
 ::
+
   ./koch tests --failing all
 
 You can also run only a single category of tests. A category is a subdirectory
@@ -79,6 +81,7 @@ in the ``tests`` directory. There are a couple of special categories; for a
 list of these, see ``tests/testament/categories.nim``, at the bottom.
 
 ::
+
   ./koch tests c lib
 
 Comparing tests
@@ -92,6 +95,7 @@ reference test. You'll also need to the commit id, because that's what
 the tester needs to know in order to compare the two.
 
 ::
+
   git checkout devel
   DEVEL_COMMIT=$(git rev-parse HEAD)
   ./koch tests
@@ -99,6 +103,7 @@ the tester needs to know in order to compare the two.
 Then switch over to your changes and run the tester again.
 
 ::
+
   git checkout your-changes
   ./koch tests
 
@@ -106,7 +111,8 @@ Then you can ask the tester to create a ``testresults.html`` which will
 tell you if any new tests passed/failed.
 
 ::
-  ./koch --print html $DEVEL_COMMIT
+
+  ./koch tests --print html $DEVEL_COMMIT
 
 
 Deprecation
@@ -142,7 +148,7 @@ When contributing new procedures, be sure to add documentation, especially if
 the procedure is exported from the module. Documentation begins on the line
 following the ``proc`` definition, and is prefixed by ``##`` on each line.
 
-Code examples are also encouraged. The RestructuredText Nim uses has a special 
+Code examples are also encouraged. The RestructuredText Nim uses has a special
 syntax for including examples.
 
 .. code-block:: nim
@@ -155,8 +161,8 @@ syntax for including examples.
     ##  echo someproc() # "something"
     result = "something" # single-hash comments do not produce documentation
 
-The ``.. code-block:: nim`` followed by a newline and an indentation instructs the 
-``nim doc`` and ``nim doc2`` commands to produce syntax-highlighted example code with 
+The ``.. code-block:: nim`` followed by a newline and an indentation instructs the
+``nim doc`` and ``nim doc2`` commands to produce syntax-highlighted example code with
 the documentation.
 
 When forward declaration is used, the documentation should be included with the
@@ -186,7 +192,7 @@ or
   proc hello*(): string =
     # says hello
     result = "hello"
-  
+
 the first is preferred.
 
 The Git stuff
@@ -216,3 +222,5 @@ General commit rules
       git diff --check --cached || exit $?
 
 3. Describe your commit and use your common sense.
+
+.. include:: docstyle.rst

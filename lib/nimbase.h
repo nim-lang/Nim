@@ -360,7 +360,7 @@ struct TFrame {
   FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
 
 #define nimfrs(proc, file, slots, length) \
-  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} FR; \
+  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
   FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
 
 #define nimln(n, file) \

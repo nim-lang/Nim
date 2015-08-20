@@ -120,10 +120,10 @@ template decodeBx(k: expr) {.immediate, dirty.} =
 template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
-proc createStrKeepNode(x: var TFullReg) =
+proc createStrKeepNode(x: var TFullReg; keepNode=true) =
   if x.node.isNil:
     x.node = newNode(nkStrLit)
-  elif x.node.kind == nkNilLit:
+  elif x.node.kind == nkNilLit and keepNode:
     when defined(useNodeIds):
       let id = x.node.id
     system.reset(x.node[])
@@ -385,6 +385,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     #if c.traceActive:
     #  echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
     #  message(c.debug[pc], warnUser, "Trace")
+
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
@@ -407,8 +408,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       regs[ra].intVal = regs[rb].intVal
     of opcAsgnStr:
-      decodeB(rkNode)
-      createStrKeepNode regs[ra]
+      decodeBC(rkNode)
+      createStrKeepNode regs[ra], rc != 0
       regs[ra].node.strVal = regs[rb].node.strVal
     of opcAsgnFloat:
       decodeB(rkFloat)
@@ -431,7 +432,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         assert regs[rb].kind == rkNode
         let nb = regs[rb].node
         case nb.kind
-        of nkCharLit..nkInt64Lit:
+        of nkCharLit..nkUInt64Lit:
           ensureKind(rkInt)
           regs[ra].intVal = nb.intVal
         of nkFloatLit..nkFloat64Lit:
@@ -509,8 +510,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[rb].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        assert regs[rb].node.kind == nkRefTy
-        regs[ra].node = regs[rb].node.sons[0]
+        if regs[rb].node.kind == nkRefTy:
+          regs[ra].node = regs[rb].node.sons[0]
+        else:
+          stackTrace(c, tos, pc, errGenerated, "limited VM support for 'ref'")
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
@@ -1404,7 +1407,7 @@ include vmops
 # storing&loading the 'globals' environment to get what a component system
 # requires.
 var
-  globalCtx: PCtx
+  globalCtx*: PCtx
 
 proc setupGlobalCtx(module: PSym) =
   if globalCtx.isNil:
@@ -1464,12 +1467,20 @@ proc evalStaticStmt*(module: PSym, e: PNode, prc: PSym) =
 proc setupCompileTimeVar*(module: PSym, n: PNode) =
   discard evalConstExprAux(module, nil, n, emStaticStmt)
 
-proc setupMacroParam(x: PNode): PNode =
-  result = x
-  if result.kind in {nkHiddenSubConv, nkHiddenStdConv}: result = result.sons[1]
-  result = canonValue(result)
-  result.flags.incl nfIsRef
-  result.typ = x.typ
+proc setupMacroParam(x: PNode, typ: PType): TFullReg =
+  case typ.kind
+  of tyStatic:
+    putIntoReg(result, x)
+  of tyTypeDesc:
+    putIntoReg(result, x)
+  else:
+    result.kind = rkNode
+    var n = x
+    if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n.sons[1]
+    n = n.canonValue
+    n.flags.incl nfIsRef
+    n.typ = x.typ
+    result.node = n
 
 var evalMacroCounter: int
 
@@ -1505,10 +1516,17 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   # return value:
   tos.slots[0].kind = rkNode
   tos.slots[0].node = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
+
   # setup parameters:
-  for i in 1 .. < min(tos.slots.len, L):
-    tos.slots[i].kind = rkNode
-    tos.slots[i].node = setupMacroParam(n.sons[i])
+  for i in 1.. <sym.typ.len:
+    tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
+
+  if sfImmediate notin sym.flags:
+    let gp = sym.ast[genericParamsPos]
+    for i in 0 .. <gp.len:
+      let idx = sym.typ.len + i
+      tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
+
   # temporary storage:
   #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode

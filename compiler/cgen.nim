@@ -375,7 +375,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
   var a = "&" & s.loc.r
   if s.kind == skParam and ccgIntroducedPtr(s): a = s.loc.r
   lineF(p, cpsInit,
-       "F.s[$1].address = (void*)$3; F.s[$1].typ = $4; F.s[$1].name = $2;$n",
+       "FR.s[$1].address = (void*)$3; FR.s[$1].typ = $4; FR.s[$1].name = $2;$n",
        [p.maxFrameLen.rope, makeCString(normalize(s.name.s)), a,
         genTypeInfo(p.module, s.loc.t)])
   inc(p.maxFrameLen)
@@ -597,7 +597,7 @@ proc cgsym(m: BModule, name: string): Rope =
     of skProc, skMethod, skConverter, skIterators: genProc(m, sym)
     of skVar, skResult, skLet: genVarPrototype(m, sym)
     of skType: discard getTypeDesc(m, sym.typ)
-    else: internalError("cgsym: " & name)
+    else: internalError("cgsym: " & name & ": " & $sym.kind)
   else:
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
@@ -623,7 +623,7 @@ proc retIsNotVoid(s: PSym): bool =
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
   if p.maxFrameLen > 0:
-    discard cgsym(p.module, "TVarSlot")
+    discard cgsym(p.module, "VarSlot")
     result = rfmt(nil, "\tnimfrs($1, $2, $3, $4)$N",
                   procname, filename, p.maxFrameLen.rope,
                   p.blocks[0].frameLen.rope)
@@ -1017,7 +1017,7 @@ proc genInitCode(m: BModule) =
       var procname = makeCString(m.module.name.s)
       add(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
-      add(prc, ~"\tTFrame F; F.len = 0;$N")
+      add(prc, ~"\tTFrame F; FR.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit))
   add(prc, m.preInitProc.s(cpsInit))
@@ -1329,4 +1329,3 @@ proc cgenWriteModules* =
   if generatedHeader != nil: writeHeader(generatedHeader)
 
 const cgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
-

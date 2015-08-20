@@ -168,9 +168,8 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
     inc(i)
     inc(j)
 
-{.pop.}
 
-proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string 
+proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
   ## Strips `chars` from `s` and returns the resulting string.
   ##
@@ -1395,6 +1394,62 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
   addf(result, formatstr, a)
 
 {.pop.}
+
+proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
+  rtl, extern: "nsuRemoveSuffixCharSet".} =
+  ## Removes the first matching character from the string (in-place) given a
+  ## set of characters. If the set of characters is only equal to `Newlines`
+  ## then it will remove both the newline and return feed.
+  ## .. code-block:: nim
+  ##   var
+  ##     userInput = "Hello World!\r\n"
+  ##     otherInput = "Hello!?!"
+  ##   userInput.removeSuffix
+  ##   userInput == "Hello World!"
+  ##   userInput.removeSuffix({'!', '?'})
+  ##   userInput == "Hello World"
+  ##   otherInput.removeSuffix({'!', '?'})
+  ##   otherInput == "Hello!?"
+
+  var last = len(s) - 1
+
+  if chars == Newlines:
+    if s[last] == '\10':
+      last -= 1
+
+    if s[last] == '\13':
+      last -= 1
+
+  else:
+    if s[last] in chars:
+      last -= 1
+
+  s.setLen(last + 1)
+
+proc removeSuffix*(s: var string, c: char) {.rtl, extern: "nsuRemoveSuffixChar".} =
+  ## Removes a single character (in-place) from a string.
+  ## .. code-block:: nim
+  ##   var
+  ##     table = "users"
+  ##   table.removeSuffix('s')
+  ##   table == "user"
+  removeSuffix(s, chars = {c})
+
+proc removeSuffix*(s: var string, suffix: string) {.
+  rtl, extern: "nsuRemoveSuffixString".} =
+  ## Remove the first matching suffix (in-place) from a string.
+  ## .. code-block:: nim
+  ##   var
+  ##     answers = "yeses"
+  ##   answers.removeSuffix("es")
+  ##   answers == "yes"
+
+  var newLen = s.len
+
+  if s.endsWith(suffix):
+    newLen -= len(suffix)
+
+  s.setLen(newLen)
 
 when isMainModule:
   doAssert align("abc", 4) == " abc"

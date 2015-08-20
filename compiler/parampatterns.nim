@@ -178,13 +178,14 @@ type
     arDiscriminant,           # is a discriminant
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
-proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
+proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult =
   ## 'owner' can be nil!
   result = arNone
   case n.kind
   of nkSym:
-    # don't list 'skLet' here:
-    if n.sym.kind in {skVar, skResult, skTemp}:
+    let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet}
+                else: {skVar, skResult, skTemp}
+    if n.sym.kind in kinds:
       if owner != nil and owner.id == n.sym.owner.id and
           sfGlobal notin n.sym.flags:
         result = arLocalLValue
@@ -200,7 +201,7 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
         {tyVar, tyPtr, tyRef}:
       result = arLValue
     else:
-      result = isAssignable(owner, n.sons[0])
+      result = isAssignable(owner, n.sons[0], isUnsafeAddr)
     if result != arNone and sfDiscriminant in n.sons[1].sym.flags:
       result = arDiscriminant
   of nkBracketExpr:
@@ -208,23 +209,24 @@ proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
         {tyVar, tyPtr, tyRef}:
       result = arLValue
     else:
-      result = isAssignable(owner, n.sons[0])
+      result = isAssignable(owner, n.sons[0], isUnsafeAddr)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     # Object and tuple conversions are still addressable, so we skip them
     # XXX why is 'tyOpenArray' allowed here?
     if skipTypes(n.typ, abstractPtrs-{tyTypeDesc}).kind in
         {tyOpenArray, tyTuple, tyObject}:
-      result = isAssignable(owner, n.sons[1])
+      result = isAssignable(owner, n.sons[1], isUnsafeAddr)
     elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:
-      result = isAssignable(owner, n.sons[1])
+      result = isAssignable(owner, n.sons[1], isUnsafeAddr)
   of nkHiddenDeref, nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = isAssignable(owner, n.sons[0])
+    result = isAssignable(owner, n.sons[0], isUnsafeAddr)
   of nkCallKinds:
     # builtin slice keeps lvalue-ness:
-    if getMagic(n) == mSlice: result = isAssignable(owner, n.sons[1])
+    if getMagic(n) == mSlice:
+      result = isAssignable(owner, n.sons[1], isUnsafeAddr)
   else:
     discard
 

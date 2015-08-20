@@ -113,6 +113,7 @@ General FAQ
   - TextMate: Available in bundle installer (`Repository <https://github.com/textmate/nim.tmbundle>`_)
   - Sublime Text: Available via Package Control (`Repository <https://github.com/Varriount/NimLime>`_)
   - LiClipse: http://www.liclipse.com/ (Eclipse based plugin)
+  - Howl: Included
 
 
 .. container:: standout

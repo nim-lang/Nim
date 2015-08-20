@@ -74,8 +74,9 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
       result.addf("\t$#\tr$#, L$#", ($opc).substr(3), x.regA,
                   i+x.regBx-wordExcess)
     elif opc in {opcLdConst, opcAsgnConst}:
-      result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA,
-        c.constants[x.regBx-wordExcess].renderTree)
+      let idx = x.regBx-wordExcess
+      result.addf("\t$#\tr$#, $# ($#)", ($opc).substr(3), x.regA,
+        c.constants[idx].renderTree, $idx)
     elif opc in {opcMarshalLoad, opcMarshalStore}:
       let y = c.code[i+1]
       result.addf("\t$#\tr$#, r$#, $#", ($opc).substr(3), x.regA, x.regB,
@@ -172,7 +173,8 @@ const
 proc bestEffort(c: PCtx): TLineInfo =
   (if c.prc == nil: c.module.info else: c.prc.sym.info)
 
-proc getTemp(cc: PCtx; typ: PType): TRegister =
+proc getTemp(cc: PCtx; tt: PType): TRegister =
+  let typ = tt.skipTypesOrNil({tyStatic})
   let c = cc.prc
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
@@ -184,7 +186,7 @@ proc getTemp(cc: PCtx; typ: PType): TRegister =
       return TRegister(i)
 
   # if register pressure is high, we re-use more aggressively:
-  if c.maxSlots >= HighRegisterPressure:
+  if c.maxSlots >= HighRegisterPressure and false:
     for i in 0 .. c.maxSlots-1:
       if not c.slots[i].inUse:
         c.slots[i] = (inUse: true, kind: k)
@@ -706,7 +708,7 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
   c.gABx(n, opc, 0, genType(c, n.typ))
-  c.gABx(n, opc, 0, genType(c, arg.typ))
+  c.gABx(n, opc, 0, genType(c, arg.typ.skipTypes({tyStatic})))
   c.freeTemp(tmp)
 
 proc genCard(c: PCtx; n: PNode; dest: var TDest) =
@@ -1073,6 +1075,7 @@ const
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64}
 
 proc fitsRegister*(t: PType): bool =
+  assert t != nil
   t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
@@ -1103,6 +1106,8 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   # nkAddr we must not use 'unneededIndirection', but for deref we use it.
   if not isAddr and unneededIndirection(n.sons[0]):
     gen(c, n.sons[0], dest, newflags)
+    if gfAddrOf notin flags and fitsRegister(n.typ):
+      c.gABC(n, opcNodeToReg, dest, dest)
   elif isAddr and isGlobal(n.sons[0]):
     gen(c, n.sons[0], dest, flags+{gfAddrOf})
   else:
@@ -1110,6 +1115,7 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     if dest < 0: dest = c.getTemp(n.typ)
     if not isAddr:
       gABC(c, n, opc, dest, tmp)
+      assert n.typ != nil
       if gfAddrOf notin flags and fitsRegister(n.typ):
         c.gABC(n, opcNodeToReg, dest, dest)
     elif c.prc.slots[tmp].kind >= slotTempUnknown:
@@ -1143,7 +1149,7 @@ proc whichAsgnOpc(n: PNode; opc: TOpcode): TOpcode = opc
 proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
   let tmp = c.genx(ri)
   assert dest >= 0
-  gABC(c, ri, whichAsgnOpc(ri), dest, tmp)
+  gABC(c, ri, whichAsgnOpc(ri), dest, tmp, 1-ord(requiresCopy))
   c.freeTemp(tmp)
 
 proc setSlot(c: PCtx; v: PSym) =
@@ -1177,7 +1183,10 @@ proc checkCanEval(c: PCtx; n: PNode) =
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
-      not s.isOwnedBy(c.prc.sym) and s.owner != c.module:
+      not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
+    cannotEval(n)
+  elif s.kind in {skProc, skConverter, skMethod,
+                  skIterator, skClosureIterator} and sfForward in s.flags:
     cannotEval(n)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
@@ -1194,9 +1203,10 @@ proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
   # opcLdObj et al really means "load address". We sometimes have to create a
   # copy in order to not introduce false aliasing:
   # mylocal = a.b  # needs a copy of the data!
+  assert n.typ != nil
   if needsAdditionalCopy(n):
     var cc = c.getTemp(n.typ)
-    c.gABC(n, whichAsgnOpc(n), cc, value)
+    c.gABC(n, whichAsgnOpc(n), cc, value, 0)
     c.gABC(n, opc, dest, idx, cc)
     c.freeTemp(cc)
   else:
@@ -1241,10 +1251,11 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
       internalAssert s.position > 0 or (s.position == 0 and
                                         s.kind in {skParam,skResult})
       var dest: TRegister = s.position + ord(s.kind == skParam)
+      assert le.typ != nil
       if needsAdditionalCopy(le) and s.kind in {skResult, skVar, skParam}:
         var cc = c.getTemp(le.typ)
         gen(c, ri, cc)
-        c.gABC(le, whichAsgnOpc(le), dest, cc)
+        c.gABC(le, whichAsgnOpc(le), dest, cc, 1)
         c.freeTemp(cc)
       else:
         gen(c, ri, dest)
@@ -1303,6 +1314,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       if sfImportc in s.flags: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
+    assert s.typ != nil
     if gfAddrOf notin flags and fitsRegister(s.typ):
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)
@@ -1426,6 +1438,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     globalError(info, "cannot create null element for: " & $t.kind)
 
 proc ldNullOpcode(t: PType): TOpcode =
+  assert t != nil
   if fitsRegister(t): opcLdNullReg else: opcLdNull
 
 proc genVarSection(c: PCtx; n: PNode) =
@@ -1453,7 +1466,7 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a.sons[2].kind != nkEmpty:
           let tmp = c.genx(a.sons[0], {gfAddrOf})
           let val = c.genx(a.sons[2])
-          c.preventFalseAlias(a, opcWrDeref, tmp, 0, val)
+          c.preventFalseAlias(a.sons[2], opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
       else:
@@ -1461,13 +1474,15 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a.sons[2].kind == nkEmpty:
           c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
         else:
+          assert s.typ != nil
           if not fitsRegister(s.typ):
             c.gABx(a, ldNullOpcode(s.typ), s.position, c.genType(s.typ))
           let le = a.sons[0]
+          assert le.typ != nil
           if not fitsRegister(le.typ) and s.kind in {skResult, skVar, skParam}:
             var cc = c.getTemp(le.typ)
             gen(c, a.sons[2], cc)
-            c.gABC(le, whichAsgnOpc(le), s.position.TRegister, cc)
+            c.gABC(le, whichAsgnOpc(le), s.position.TRegister, cc, 1)
             c.freeTemp(cc)
           else:
             gen(c, a.sons[2], s.position.TRegister)
@@ -1608,6 +1623,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
         c.gABx(n, opcLdConst, dest, lit)
     of skType:
       genTypeLit(c, s.typ, dest)
+    of skGenericParam:
+      if c.prc.sym.kind == skMacro:
+        genRdVar(c, n, dest, flags)
+      else:
+        internalError(n.info, "cannot generate code for: " & s.name.s)
     else:
       globalError(n.info, errGenerated, "cannot generate code for: " & s.name.s)
   of nkCallKinds:
@@ -1694,7 +1714,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     c.freeTemp(tmp1)
     c.freeTemp(tmp2)
     if dest >= 0:
-      gABC(c, n, whichAsgnOpc(n), dest, tmp0)
+      gABC(c, n, whichAsgnOpc(n), dest, tmp0, 1)
       c.freeTemp(tmp0)
     else:
       dest = tmp0
@@ -1757,6 +1777,14 @@ proc finalJumpTarget(c: PCtx; pc, diff: int) =
   # opcode and regA stay the same:
   c.code[pc] = ((oldInstr.uint32 and 0xffff'u32).uint32 or
                 uint32(diff+wordExcess) shl 16'u32).TInstr
+
+proc genGenericParams(c: PCtx; gp: PNode) =
+  var base = c.prc.maxSlots
+  for i in 0.. <gp.len:
+    var param = gp.sons[i].sym
+    param.position = base + i # XXX: fix this earlier; make it consistent with templates
+    c.prc.slots[base + i] = (inUse: true, kind: slotFixedLet)
+  c.prc.maxSlots = base + gp.len
 
 proc optimizeJumps(c: PCtx; start: int) =
   const maxIterations = 10
@@ -1822,6 +1850,13 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = p
     # iterate over the parameters and allocate space for them:
     genParams(c, s.typ.n)
+
+    # allocate additional space for any generically bound parameters
+    if s.kind == skMacro and
+       sfImmediate notin s.flags and
+       s.ast[genericParamsPos].kind != nkEmpty:
+      genGenericParams(c, s.ast[genericParamsPos])
+
     if tfCapturesEnv in s.typ.flags:
       #let env = s.ast.sons[paramsPos].lastSon.sym
       #assert env.position == 2

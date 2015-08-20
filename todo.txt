@@ -1,7 +1,6 @@
 version 0.11.4
 ==============
 
-- ``unsafeAddr``
 - document special cased varargs[untyped] and varargs[typed]
 
 - The remaining bugs of the lambda lifting pass that is responsible to enable
@@ -11,7 +10,6 @@ version 0.11.4
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
 
-- Mark the 'parallel' statement as experimental.
 - add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
 - make 'nil' work for 'add':
@@ -62,10 +60,8 @@ Bugs
 
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
-- scopes are still broken for generic instantiation!
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - ConcreteTypes in a 'case' means we don't check for duplicated case branches
-- typedesc matches a generic type T!
 
 
 version 0.9.x
@@ -80,8 +76,6 @@ version 0.9.x
 - implement 'bits' pragmas
 - we need a magic thisModule symbol
 - optimize 'genericReset'; 'newException' leads to code bloat
-- The 'do' notation might be trimmed so that its only purpose is to pass
-  multiple multi line constructs to a macro.
 
 
 version 0.9.X

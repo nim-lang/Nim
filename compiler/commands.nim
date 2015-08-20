@@ -645,7 +645,7 @@ proc processSwitch*(pass: TCmdLinePass; p: OptParser) =
 proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int): bool =
   if argsCount == 0:
-    options.command = p.key
+    if pass != passCmd2: options.command = p.key
   else:
     if pass == passCmd1: options.commandArgs.add p.key
     if argsCount == 1:

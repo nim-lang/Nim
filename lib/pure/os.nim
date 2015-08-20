@@ -1244,7 +1244,14 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
       while true:
         if not skipFindData(f) and
             (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) == 0'i32:
-          yield splitFile(pattern).dir / extractFilename(getFilename(f))
+          # Windows bug/gotcha: 't*.nim' matches 'tfoo.nims' -.- so we check
+          # that the file extensions have the same length ...
+          let ff = getFilename(f)
+          let dotPos = searchExtPos(pattern)
+          let idx = ff.len - pattern.len + dotPos
+          if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
+              pattern[dotPos+1] == '*':
+            yield splitFile(pattern).dir / extractFilename(ff)
         if findNextFile(res, f) == 0'i32: break
       findClose(res)
   else: # here we use glob

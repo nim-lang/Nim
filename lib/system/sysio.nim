@@ -182,7 +182,10 @@ proc readAllFile(file: File): string =
 proc readAll(file: File): TaintedString =
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the File.
-  let len = if file != stdin: rawFileSize(file) else: -1
+  when declared(stdin):
+    let len = if file != stdin: rawFileSize(file) else: -1
+  else:
+    let len = rawFileSize(file)
   if len > 0:
     result = readAllFile(file, len).TaintedString
   else:
@@ -216,9 +219,9 @@ proc writeLine[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x): write(f, i)
   write(f, "\n")
 
-
-proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
-proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
+when declared(stdout):
+  proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
+  proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
 
 # interface to the C procs:
 

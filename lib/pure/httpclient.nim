@@ -402,7 +402,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
   headers.add(" HTTP/1.1\c\L")
 
-  add(headers, "Host: " & r.hostname & "\c\L")
+  add(headers, "Host: " & parseUri(url).hostname & "\c\L")
   if userAgent != "":
     add(headers, "User-Agent: " & userAgent & "\c\L")
   if proxy != nil and proxy.auth != "":

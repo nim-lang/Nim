@@ -369,6 +369,15 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
   else:
     result.add identDefs
 
+proc addDefer(c: PContext; result: var PNode; s: PSym) =
+  let deferDestructorCall = createDestructorCall(c, s)
+  if deferDestructorCall != nil:
+    if result.kind != nkStmtList:
+      let oldResult = result
+      result = newNodeI(nkStmtList, result.info)
+      result.add oldResult
+    result.add deferDestructorCall
+
 proc isDiscardUnderscore(v: PSym): bool =
   if v.name.s == "_":
     v.flags.incl(sfGenSym)
@@ -469,6 +478,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if def.kind == nkPar: v.ast = def[j]
         v.typ = tup.sons[j]
         b.sons[j] = newSymNode(v)
+      addDefer(c, result, v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
   if hasCompileTime: vm.setupCompileTimeVar(c.module, result)
@@ -1210,6 +1220,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
   if isAnon: result.typ = s.typ
+  if isTopLevel(c) and s.kind != skClosureIterator and
+      s.typ.callConv == ccClosure:
+    message(s.info, warnDeprecated, "top level '.closure' calling convention")
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
@@ -1371,7 +1384,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   for i in countup(0, length - 1):
     let k = n.sons[i].kind
     case k
-    of nkFinally, nkExceptBranch, nkDefer:
+    of nkFinally, nkExceptBranch:
       # stand-alone finally and except blocks are
       # transformed into regular try blocks:
       #
@@ -1424,21 +1437,13 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         n.typ = n.sons[i].typ
         if not isEmptyType(n.typ): n.kind = nkStmtListExpr
       case n.sons[i].kind
-      of nkVarSection, nkLetSection:
-        let (outer, inner) = insertDestructors(c, n.sons[i])
-        if outer != nil:
-          n.sons[i] = outer
-          var rest = newNode(nkStmtList, n.info, n.sons[i+1 .. length-1])
-          inner.addSon(semStmtList(c, rest, flags))
-          n.sons.setLen(i+1)
-          return
       of LastBlockStmts:
         for j in countup(i + 1, length - 1):
           case n.sons[j].kind
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: discard
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: discard
-  if result.len == 1:
+  if result.len == 1 and result.sons[0].kind != nkDefer:
     result = result.sons[0]
   when defined(nimfix):
     if result.kind == nkCommentStmt and not result.comment.isNil and

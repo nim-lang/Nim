@@ -26,11 +26,6 @@ type
   WeekDay* = enum ## represents a weekday
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
-when not defined(JS):
-  var
-    timezone {.importc, header: "<time.h>".}: int
-    tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
-
 when defined(posix) and not defined(JS):
   type
     TimeImpl {.importc: "time_t", header: "<time.h>".} = int
@@ -49,6 +44,9 @@ when defined(posix) and not defined(JS):
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
+  var
+    timezone {.importc, header: "<time.h>".}: int
+    tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
   # we also need tzset() to make sure that tzname is initialized
   proc tzset() {.importc, header: "<time.h>".}
   # calling tzset() implicitly to initialize tzname data.
@@ -60,11 +58,19 @@ elif defined(windows):
   when defined(vcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
+    # visual c's c runtime exposes these under a different name
+    var
+      timezone {.importc: "_timezone", header: "<time.h>".}: int
+      tzname {.importc: "_tzname", header: "<time.h>"}: array[0..1, cstring]
   else:
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int32
+    var
+      timezone {.importc, header: "<time.h>".}: int
+      tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
 
   type
     Time* = distinct TimeImpl
+
 
 elif defined(JS):
   type
@@ -542,11 +548,9 @@ elif defined(JS):
     ## get the milliseconds from the start of the program
     return int(getTime() - startMilsecs)
 
-  proc valueOf(time: Time): float {.importcpp: "getTime", tags:[]}
+  proc fromSeconds(since1970: float): Time = result = newDate(since1970 * 1000)
 
-  proc fromSeconds(since1970: float): Time = result = newDate(since1970)
-
-  proc toSeconds(time: Time): float = result = time.valueOf() / 1000
+  proc toSeconds(time: Time): float = result = time.getTime() / 1000
 
   proc getTimezone(): int = result = newDate().getTimezoneOffset()
 
@@ -1046,6 +1050,120 @@ proc parse*(value, layout: string): TimeInfo =
   info.weekday = getLocalTime(timeInfoToTime(info)).weekday
   return info
 
+# Leap year calculations are adapted from:
+# from http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
+# The dayOfTheWeek procs are adapated from:
+# from http://stason.org/TULARC/society/calendars/2-5-What-day-of-the-week-was-2-August-1953.html
+
+# Note: for leap years, start date is assumed to be 1 AD.
+# counts the number of leap years up to January 1st of a given year.
+# Keep in mind that if specified year is a leap year, the leap day
+# has not happened before January 1st of that year.
+proc countLeapYears(yearSpan: int): int =
+  (((yearSpan - 1) / 4) - ((yearSpan - 1) / 100) + ((yearSpan - 1)/400)).int
+
+proc countDays(yearSpan: int): int =
+  (yearSpan - 1) * 365 + countLeapYears(yearSpan)
+
+proc countYears(daySpan: int): int =
+  # counts the number of years spanned by a given number of days.
+  ((daySpan - countLeapYears(daySpan div 365)) div 365)
+
+proc countYearsAndDays(daySpan: int): tuple[years: int, days: int] =
+  # counts the number of years spanned by a given number of days and the remainder as days.
+  let days = daySpan - countLeapYears(daySpan div 365)
+  result.years = days div 365
+  result.days = days mod 365
+
+const
+  secondsInMin = 60
+  secondsInHour = 60*60
+  secondsInDay = 60*60*24
+  epochStartYear = 1970
+
+proc getDayOfWeek*(day, month, year: int): WeekDay =
+  ## Returns the day of the week enum from day, month and year.
+  # Day & month start from one.
+  let
+    a = (14 - month) div 12
+    y = year - a
+    m = month + (12*a) - 2
+    d = (day + y + (y div 4) - (y div 100) + (y div 400) + (31*m) div 12) mod 7
+  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc. so we must correct
+  # for the WeekDay type.
+  if d == 0: return dSun
+  result = (d-1).WeekDay
+
+proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
+  ## Returns the day of the week enum from day, month and year, according to the Julian calender.
+  # Day & month start from one.
+  let
+    a = (14 - month) div 12
+    y = year - a
+    m = month + (12*a) - 2
+    d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
+  result = d.WeekDay
+
+proc timeToTimeInfo*(t: Time): TimeInfo =
+  ## Converts a Time to TimeInfo.
+  let
+    secs = t.toSeconds().int
+    daysSinceEpoch = secs div secondsInDay
+    (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
+    daySeconds = secs mod secondsInDay
+
+    y = yearsSinceEpoch + epochStartYear
+
+  var
+    mon = mJan
+    days = daysRemaining
+    daysInMonth = getDaysInMonth(mon, y)
+
+  # calculate month and day remainder
+  while days > daysInMonth and mon <= mDec:
+    days -= daysInMonth
+    mon.inc
+    daysInMonth = getDaysInMonth(mon, y)
+
+  let
+    yd = daysRemaining
+    m = mon  # month is zero indexed enum
+    md = days
+    # NB: month is zero indexed but dayOfWeek expects 1 indexed.
+    wd = getDayOfWeek(days, mon.int + 1, y).Weekday
+    h = daySeconds div secondsInHour + 1
+    mi = (daySeconds mod secondsInHour) div secondsInMin
+    s = daySeconds mod secondsInMin
+  result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
+
+proc timeToTimeInterval*(t: Time): TimeInterval =
+  ## Converts a Time to a TimeInterval.
+
+  let
+    secs = t.toSeconds().int
+    daysSinceEpoch = secs div secondsInDay
+    (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
+    daySeconds = secs mod secondsInDay
+
+  result.years = yearsSinceEpoch + epochStartYear
+
+  var
+    mon = mJan
+    days = daysRemaining
+    daysInMonth = getDaysInMonth(mon, result.years)
+
+  # calculate month and day remainder
+  while days > daysInMonth and mon <= mDec:
+    days -= daysInMonth
+    mon.inc
+    daysInMonth = getDaysInMonth(mon, result.years)
+
+  result.months = mon.int + 1 # month is 1 indexed int
+  result.days = days
+  result.hours = daySeconds div secondsInHour + 1
+  result.minutes = (daySeconds mod secondsInHour) div secondsInMin
+  result.seconds = daySeconds mod secondsInMin
+  # Milliseconds not available from Time
 
 when isMainModule:
   # $ date --date='@2147483647'
@@ -1066,12 +1184,13 @@ when isMainModule:
     " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
     "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00 UTC"
 
-  when not defined(JS) and sizeof(Time) == 8:
-    var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
-    assert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-      " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-      "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
-    assert t3.format(":,[]()-/") == ":,[]()-/"
+  when not defined(JS):
+    when sizeof(Time) == 8:
+      var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
+      assert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+        " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
+        "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
+      assert t3.format(":,[]()-/") == ":,[]()-/"
 
   var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
   assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
@@ -1131,3 +1250,18 @@ when isMainModule:
   assert "15:04:00" in $s.parse(f)
   when not defined(testing):
     echo "Kitchen: " & $s.parse(f)
+    var ti = timeToTimeInfo(getTime())
+    echo "Todays date after decoding: ", ti
+    var tint = timeToTimeInterval(getTime())
+    echo "Todays date after decoding to interval: ", tint
+  # checking dayOfWeek matches known days
+  assert getDayOfWeek(21, 9, 1900) == dFri
+  assert getDayOfWeek(1, 1, 1970) == dThu
+  assert getDayOfWeek(21, 9, 1970) == dMon
+  assert getDayOfWeek(1, 1, 2000) == dSat
+  assert getDayOfWeek(1, 1, 2021) == dFri
+  # Julian tests
+  assert getDayOfWeekJulian(21, 9, 1900) == dFri
+  assert getDayOfWeekJulian(21, 9, 1970) == dMon
+  assert getDayOfWeekJulian(1, 1, 2000) == dSat
+  assert getDayOfWeekJulian(1, 1, 2021) == dFri

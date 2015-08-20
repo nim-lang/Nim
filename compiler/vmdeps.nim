@@ -30,7 +30,7 @@ proc opGorge*(cmd, input, cache: string): string =
       return
     var readSuccessful = false
     try:
-      var p = startProcess(cmd, options={poEvalCommand})
+      var p = startProcess(cmd, options={poEvalCommand, poStderrToStdout})
       if input.len != 0:
         p.inputStream.write(input)
         p.inputStream.close()
@@ -41,7 +41,7 @@ proc opGorge*(cmd, input, cache: string): string =
       if not readSuccessful: result = ""
   else:
     try:
-      var p = startProcess(cmd, options={poEvalCommand})
+      var p = startProcess(cmd, options={poEvalCommand, poStderrToStdout})
       if input.len != 0:
         p.inputStream.write(input)
         p.inputStream.close()

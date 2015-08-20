@@ -597,8 +597,8 @@ proc skipObjConv(n: PNode): PNode =
   of nkObjUpConv, nkObjDownConv: result = n.sons[0]
   else: result = n
 
-proc isAssignable(c: PContext, n: PNode): TAssignableResult =
-  result = parampatterns.isAssignable(c.p.owner, n)
+proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult =
+  result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
 proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
   if n.kind == nkHiddenDeref and not (gCmd == cmdCompileToCpp or
@@ -1700,7 +1700,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   case s.magic # magics that need special treatment
   of mAddr:
     checkSonsLen(n, 2)
-    result = semAddr(c, n.sons[1])
+    result = semAddr(c, n.sons[1], s.name.s == "unsafeAddr")
   of mTypeOf:
     checkSonsLen(n, 2)
     result = semTypeOf(c, n.sons[1])
@@ -1720,6 +1720,8 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
     result.typ = getSysType(tyString)
   of mParallel:
+    if not experimentalMode(c):
+      localError(n.info, "use the {.experimental.} pragma to enable 'parallel'")
     result = setMs(n, s)
     var x = n.lastSon
     if x.kind == nkDo: x = x.sons[bodyPos]
@@ -2259,7 +2261,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkStaticStmt:
     result = semStaticStmt(c, n)
   of nkDefer:
-    localError(n.info, errGenerated, "'defer' not allowed in this context")
+    n.sons[0] = semExpr(c, n.sons[0])
+    if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
+      localError(n.info, errGenerated, "'defer' takes a 'void' expression")
+    #localError(n.info, errGenerated, "'defer' not allowed in this context")
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
