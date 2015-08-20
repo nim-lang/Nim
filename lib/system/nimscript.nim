@@ -144,27 +144,12 @@ template task*(name: untyped; description: string; body: untyped): untyped =
   proc `name Task`() = body
 
   let cmd = getCommand()
-  if cmd.len == 0 or cmd ==? "help" or cmd == "nop":
-    setCommand "nop"
+  if cmd.len == 0 or cmd ==? "help":
+    setCommand "help"
     writeTask(astToStr(name), description)
   elif cmd ==? astToStr(name):
     setCommand "nop"
     `name Task`()
-
-type
-  VersionReq* = distinct string ## Describes a version requirement.
-
-template v*(name: string{lit}): VersionReq = VersionReq(name)
-template special*(name: string): VersionReq = VersionReq(name)
-template `<`*(v: VersionReq): VersionReq = VersionReq("<" & string(v))
-template `<=`*(v: VersionReq): VersionReq = VersionReq("<=" & string(v))
-template `>`*(v: VersionReq): VersionReq = VersionReq(">" & string(v))
-template `>=`*(v: VersionReq): VersionReq = VersionReq(">=" & string(v))
-template `&`*(a, b: VersionReq): VersionReq =
-  VersionReq(string(a) & " & " & string(b))
-
-const
-  anyVersion* = VersionReq("*")
 
 var
   packageName* = ""
@@ -173,7 +158,7 @@ var
 
   skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
     installExt*, bin*: seq[string]
-  requiresData*: seq[(string, VersionReq)]
+  requiresData*: seq[string]
 
-proc requires*(name: string; v: VersionReq) =
-  requiresData.add((name, v))
+proc requires*(deps: varargs[string]) =
+  for d in deps: requiresData.add(d)
