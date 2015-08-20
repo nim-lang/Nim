@@ -119,20 +119,20 @@ proc `$`*(w: WideCString, estimate: int): string =
 
   var i = 0
   while w[i].int16 != 0'i16:
-    var ch = uint32(cast[uint16](w[i]))
+    var ch = int(cast[uint16](w[i]))
     inc i
-    if ch >= uint32(UNI_SUR_HIGH_START) and ch <= uint32(UNI_SUR_HIGH_END):
+    if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
       # If the 16 bits following the high surrogate are in the source buffer...
-      let ch2 = uint32(cast[uint16](w[i]))
-      ch = (ch shl halfShift) + ch2 + halfBase
+      let ch2 = int(cast[uint16](w[i]))
+      ch = (((ch and halfMask) shl halfShift) + (ch2 and halfMask)) + halfBase
       inc i
     
-    if ch < 0x80'u32:
+    if ch < 0x80:
       result.add chr(ch)
-    elif ch < 0x800'u32:
+    elif ch < 0x800:
       result.add chr((ch shr 6) or 0xc0)
       result.add chr((ch and 0x3f) or 0x80)
-    elif ch < 0x10000'u32:
+    elif ch < 0x10000:
       result.add chr((ch shr 12) or 0xe0)
       result.add chr(((ch shr 6) and 0x3f) or 0x80)
       result.add chr((ch and 0x3f) or 0x80)
