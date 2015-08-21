@@ -33,9 +33,9 @@ proc testCP(wc: WideCString, lo, hi: int) =
   var x = 0
   let chunk = 1024
   for i in lo..hi:
-    wc[x] = cast[TUtf16Char](i)
+    wc[x] = cast[Utf16Char](i)
     if (x >= chunk) or (i >= hi):
-      wc[x] = TUtf16Char(0)
+      wc[x] = Utf16Char(0)
       var a = convertToUTF8(wc, int32(x))
       var b = wc $ chunk
       assert a == b
@@ -43,26 +43,26 @@ proc testCP(wc: WideCString, lo, hi: int) =
     inc x
 
 proc testCP2(wc: WideCString, lo, hi: int) =
-  assert ((lo >=0x10000) and (hi <= 0x10FFFF))
+  assert((lo >= 0x10000) and (hi <= 0x10FFFF))
   var x = 0
   let chunk = 1024
   for i in lo..hi:
     let ch = i - 0x10000
     let W1 = 0xD800 or (ch shr 10)
     let W2 = 0xDC00 or (0x3FF and ch)
-    wc[x] = cast[TUtf16Char](W1)
-    wc[x+1] = cast[TUtf16Char](W2)
+    wc[x] = cast[Utf16Char](W1)
+    wc[x+1] = cast[Utf16Char](W2)
     inc(x, 2)
     
     if (x >= chunk) or (i >= hi):
-      wc[x] = TUtf16Char(0)
+      wc[x] = Utf16Char(0)
       var a = convertToUTF8(wc, int32(x))
       var b = wc $ chunk
       assert a == b
       x = 0
 
 #RFC-2781 "UTF-16, an encoding of ISO 10646"
-
+    
 var wc: WideCString
 unsafeNew(wc, 1024 * 4 + 2)
 
@@ -75,4 +75,32 @@ wc.testCP(0xE000, 0xFFFF)
 
 #U+10000 to U+10FFFF
 wc.testCP2(0x10000, 0x10FFFF)
+
+#invalid UTF-16
+const 
+  b = "\xEF\xBF\xBD"
+  c = "\xEF\xBF\xBF"
+
+wc[0] = cast[Utf16Char](0xDC00)
+wc[1] = Utf16Char(0)
+var a = $wc
+assert a == b
+
+wc[0] = cast[Utf16Char](0xFFFF)
+wc[1] = cast[Utf16Char](0xDC00)
+wc[2] = Utf16Char(0)
+a = $wc
+assert a == c & b
+
+wc[0] = cast[Utf16Char](0xD800)
+wc[1] = Utf16Char(0)
+a = $wc
+assert a == b
+
+wc[0] = cast[Utf16Char](0xD800)
+wc[1] = cast[Utf16Char](0xFFFF)
+wc[2] = Utf16Char(0)
+a = $wc
+assert a == b & c
+
 echo "OK"
