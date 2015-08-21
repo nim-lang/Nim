@@ -1,6 +1,7 @@
 version 0.11.4
 ==============
 
+- make ``os`` and ``math`` work with NimScript
 - document special cased varargs[untyped] and varargs[typed]
 
 - The remaining bugs of the lambda lifting pass that is responsible to enable
