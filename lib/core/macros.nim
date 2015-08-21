@@ -213,9 +213,10 @@ proc newNimNode*(kind: NimNodeKind,
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
 
-proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.}
+proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
   ## retrieve the implementation of a symbol `s`. `s` can be a routine or a
   ## const.
+  discard
 
 proc error*(msg: string) {.magic: "NError", benign.}
   ## writes an error message at compile time
