@@ -1398,6 +1398,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mDotDot:
     genProcForSymIfNeeded(p, n.sons[0].sym)
     genCall(p, n, r)
+  of mParseBiggestFloat:
+    useMagic(p, "nimParseBiggestFloat")
+    genCall(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(e.info, 'genMagic: ' + magicToStr[op]);
