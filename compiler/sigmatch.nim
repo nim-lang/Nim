@@ -58,6 +58,10 @@ type
     isSubtype,
     isSubrange,              # subrange of the wanted type; no type conversion
                              # but apart from that counts as ``isSubtype``
+    isBothMetaConvertible    # generic proc parameter was matched against
+                             # generic type, e.g., map(mySeq, x=>x+1),
+                             # maybe recoverable by rerun if the parameter is
+                             # the proc's return value
     isInferred,              # generic proc was matched against a concrete type
     isInferredConvertible,   # same as above, but requiring proc CC conversion
     isGeneric,
@@ -389,8 +393,29 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
   result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
-  var f = f
+  ## For example we have:
+  ## .. code-block:: nim
+  ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
+  ##   proc innerProc[Q,W](q: Q): W = ...
+  ## And we want to match: myMap(@[1,2,3], innerProc)
+  ## This proc (procParamTypeRel) will do the following steps in
+  ## three different calls:
+  ## - matches f=T to a=Q. Since f is metatype, we resolve it
+  ##    to int (which is already known at this point). So in this case
+  ##    Q=int mapping will be saved to c.bindings.
+  ## - matches f=S to a=W. Both of these metatypes are unknown, so we
+  ##    return with isBothMetaConvertible to ask for rerun.
+  ## - matches f=S to a=W. At this point the return type of innerProc
+  ##    is known (we get it from c.bindings). We can use that value
+  ##    to match with f, and save back to c.bindings.
+  var
+    f = f
+    a = a
 
+  if a.isMetaType:
+    let aResolved = PType(idTableGet(c.bindings, a))
+    if aResolved != nil:
+      a = aResolved
   if a.isMetaType:
     if f.isMetaType:
       # We are matching a generic proc (as proc param)
@@ -401,12 +426,15 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       f = generateTypeInstance(c.c, c.bindings, c.call.info, f)
       if f == nil or f.isMetaType:
         # no luck resolving the type, so the inference fails
-        return isNone
+        return isBothMetaConvertible
+    # Note that this typeRel call will save a's resolved type into c.bindings
     let reverseRel = typeRel(c, a, f)
     if reverseRel >= isGeneric:
       result = isInferred
       #inc c.genericMatches
   else:
+    # Note that this typeRel call will save f's resolved type into c.bindings
+    # if f is metatype.
     result = typeRel(c, f, a)
 
   if result <= isSubtype or inconsistentVarTypes(f, a):
@@ -450,8 +478,9 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     elif f.callConv != a.callConv:
       # valid to pass a 'nimcall' thingie to 'closure':
       if f.callConv == ccClosure and a.callConv == ccDefault:
-        result = if result != isInferred: isConvertible
-                 else: isInferredConvertible
+        result = if result == isInferred: isInferredConvertible
+                 elif result == isBothMetaConvertible: isBothMetaConvertible
+                 else: isConvertible
       else:
         return isNone
     when useEffectSystem:
@@ -1225,7 +1254,7 @@ proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
   of isConvertible, isIntConv: inc(m.convMatches, convMatch)
   of isSubtype, isSubrange: inc(m.subtypeMatches)
-  of isGeneric, isInferred: inc(m.genericMatches)
+  of isGeneric, isInferred, isBothMetaConvertible: inc(m.genericMatches)
   of isFromIntLit: inc(m.intConvMatches, 256)
   of isInferredConvertible:
     inc(m.convMatches)
@@ -1291,6 +1320,29 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     put(m.bindings, f, inlined)
     return argSemantized
 
+  # If r == isBothMetaConvertible then we rerun typeRel.
+  # bothMetaCounter is for safety to avoid any infinite loop,
+  #  I don't have any example when it is needed.
+  # lastBindingsLenth is used to check whether m.bindings remains the same,
+  #  because in that case there is no point in continuing.
+  var bothMetaCounter = 0
+  var lastBindingsLength = -1
+  while r == isBothMetaConvertible and 
+      lastBindingsLength != m.bindings.counter and
+      bothMetaCounter < 100:
+    lastBindingsLength = m.bindings.counter
+    inc(bothMetaCounter)
+    if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
+      result = c.semInferredLambda(c, m.bindings, arg)
+    elif arg.kind != nkSym:
+      return nil
+    else:
+      let inferred = c.semGenerateInstance(c, arg.sym, m.bindings, arg.info)
+      result = newSymNode(inferred, arg.info)
+    inc(m.convMatches)
+    arg = result
+    r = typeRel(m, f, arg.typ)
+
   case r
   of isConvertible:
     inc(m.convMatches)
@@ -1336,6 +1388,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       result.typ = getInstantiatedType(c, arg, m, f)
     else:
       result = arg
+  of isBothMetaConvertible:
+    # This is the result for the 101th time.
+    result = nil
   of isFromIntLit:
     # too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:
