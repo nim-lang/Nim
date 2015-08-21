@@ -72,6 +72,9 @@ News
   - Added ``macros.getImpl`` that can be used to access the implementation of
     a routine or a constant. This allows for example for user-defined inlining
     of function calls.
+  - Tuple unpacking finally works in a non-var/let context: ``(x, y) == f()``
+    is allowed. Note that this doesn't declare ``x`` and ``y`` variables, for
+    this ``let (x, y) == f()`` still needs to be used.
 
 
   Bugfixes

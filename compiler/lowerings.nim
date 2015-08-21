@@ -63,6 +63,32 @@ proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
     if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
     result.add newAsgnStmt(n.sons[i], newTupleAccess(tempAsNode, i))
 
+proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
+  result = newNodeI(nkBracketExpr, tup.info)
+  addSon(result, copyTree(tup))
+  var lit = newNodeI(nkIntLit, tup.info)
+  lit.intVal = i
+  addSon(result, lit)
+
+proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
+  let value = n.lastSon
+  result = newNodeI(nkStmtList, n.info)
+
+  var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info)
+  var v = newNodeI(nkLetSection, value.info)
+  let tempAsNode = newIdentNode(getIdent(genPrefix & $temp.id), value.info)
+
+  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
+  vpart.sons[0] = tempAsNode
+  vpart.sons[1] = ast.emptyNode
+  vpart.sons[2] = value
+  addSon(v, vpart)
+  result.add(v)
+
+  let lhs = n.sons[0]
+  for i in 0 .. lhs.len-1:
+    result.add newAsgnStmt(lhs.sons[i], newTupleAccessRaw(tempAsNode, i))
+
 proc lowerSwap*(n: PNode; owner: PSym): PNode =
   result = newNodeI(nkStmtList, n.info)
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(

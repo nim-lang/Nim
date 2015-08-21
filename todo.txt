@@ -1,8 +1,6 @@
 version 0.11.4
 ==============
 
-- make tuple unpacking work in a non-var/let context
-
 - document special cased varargs[untyped] and varargs[typed]
 
 - The remaining bugs of the lambda lifting pass that is responsible to enable
