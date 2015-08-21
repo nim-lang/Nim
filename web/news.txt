@@ -61,6 +61,7 @@ News
   - The ``expandSymlink`` proc has been added to the ``os`` module.
   - The ``tailDir`` proc has been added to the ``os`` module.
 
+
   Language Additions
   ------------------
 
@@ -68,6 +69,9 @@ News
     variable or parameter for C interoperability. Since technically this
     makes parameters and ``let`` variables mutable, it is considered even more
     unsafe than the ordinary ``addr`` builtin.
+  - Added ``macros.getImpl`` that can be used to access the implementation of
+    a routine or a constant. This allows for example for user-defined inlining
+    of function calls.
 
 
   Bugfixes

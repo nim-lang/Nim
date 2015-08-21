@@ -2,7 +2,6 @@ version 0.11.4
 ==============
 
 - make tuple unpacking work in a non-var/let context
-- built-in 'getImpl'
 
 - document special cased varargs[untyped] and varargs[typed]
 

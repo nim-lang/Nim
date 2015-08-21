@@ -781,6 +781,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.add(copyTree(regs[rb].regToNode))
       else:
         stackTrace(c, tos, pc, errNilAccess)
+    of opcGetImpl:
+      decodeB(rkNode)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
+                        else: copyTree(a.sym.ast)
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
