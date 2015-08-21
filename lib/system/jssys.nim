@@ -532,15 +532,17 @@ proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 type NimString = string # hack for hti.nim
 include "system/hti"
 
+type JSRef = int # Fake type.
+
 proc isFatPointer(ti: PNimType): bool =
   # This has to be consistent with the code generator!
   return ti.base.kind notin {tyObject,
     tyArray, tyArrayConstr, tyTuple,
     tyOpenArray, tySet, tyVar, tyRef, tyPtr}
 
-proc nimCopy(dest, src: pointer, ti: PNimType): pointer {.compilerproc.}
+proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef {.compilerproc.}
 
-proc nimCopyAux(dest, src: pointer, n: ptr TNimNode) {.compilerproc.} =
+proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
   case n.kind
   of nkNone: sysAssert(false, "nimCopyAux")
   of nkSlot:
@@ -562,7 +564,7 @@ proc nimCopyAux(dest, src: pointer, n: ptr TNimNode) {.compilerproc.} =
       }
     """
 
-proc nimCopy(dest, src: pointer, ti: PNimType): pointer =
+proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
     if not isFatPointer(ti):
@@ -603,12 +605,11 @@ proc nimCopy(dest, src: pointer, ti: PNimType): pointer =
   else:
     result = src
 
-proc genericReset(x: pointer, ti: PNimType): pointer {.compilerproc.} =
+proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
+  asm "`result` = null;"
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
-    if not isFatPointer(ti):
-      result = nil
-    else:
+    if isFatPointer(ti):
       asm """
         `result` = [null, 0];
       """
@@ -633,9 +634,9 @@ proc genericReset(x: pointer, ti: PNimType): pointer {.compilerproc.} =
       }
     """
   else:
-    result = nil
+    discard
 
-proc arrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
+proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
                  asmNoStackFrame, compilerproc.} =
   # types are fake
   asm """
