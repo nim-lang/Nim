@@ -37,6 +37,8 @@ proc fread(buf: pointer, size, n: int, f: File): int {.
 proc fseek(f: File, offset: clong, whence: int): int {.
   importc: "fseek", header: "<stdio.h>", tags: [].}
 proc ftell(f: File): int {.importc: "ftell", header: "<stdio.h>", tags: [].}
+proc ferror(f: File): int {.importc: "ferror", header: "<stdio.h>", tags: [].}
+proc feof(f: File): int {.importc: "feof", header: "<stdio.h>", tags: [].}
 proc setvbuf(stream: File, buf: pointer, typ, size: cint): cint {.
   importc, header: "<stdio.h>", tags: [].}
 proc memchr(s: pointer, c: cint, n: csize): pointer {.
@@ -147,9 +149,17 @@ proc rawFileSize(file: File): int =
 proc readAllFile(file: File, len: int): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
-  result = newString(int(len))
-  if readBuffer(file, addr(result[0]), int(len)) != len:
+  result = newString(len)
+  let bytes = readBuffer(file, addr(result[0]), len)
+  if endOfFile(file):
+    if bytes < len:
+      result = substr(result, 0 , bytes - 1)
+  elif fileError(file):
     raiseEIO("error while reading from file")
+  else:
+    # We red all the bytes but did not reach the EOF
+    # Try to read it as a buffer
+    result = readAllBuffer(file)
 
 proc readAllFile(file: File): string =
   var len = rawFileSize(file)
@@ -182,17 +192,19 @@ proc writeFile(filename, content: string) =
     close(f)
 
 proc endOfFile(f: File): bool =
-  # do not blame me; blame the ANSI C standard this is so brain-damaged
-  var c = fgetc(f)
-  ungetc(c, f)
-  return c < 0'i32
+  result = (feof(f) != 0)
+
+proc fileError(f: File): bool =
+  result = (ferror(f) != 0)
 
 proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
-  for i in items(x): write(f, i)
+  for i in items(x):
+    write(f, i)
   write(f, "\n")
 
 proc writeLine[Ty](f: File, x: varargs[Ty, `$`]) =
-  for i in items(x): write(f, i)
+  for i in items(x):
+    write(f, i)
   write(f, "\n")
 
 when declared(stdout):
