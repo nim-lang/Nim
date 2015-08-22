@@ -2594,7 +2594,10 @@ when not defined(JS): #and not defined(nimscript):
       ## Closes the file.
 
     proc endOfFile*(f: File): bool {.tags: [], benign.}
-      ## Returns true iff `f` is at the end.
+      ## Returns true if `f` is at the end.
+
+    proc fileError*(f: File): bool {.tags: [], benign.}
+      ## Returns true if the error indicator of `f` is set.
 
     proc readChar*(f: File): char {.
       importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
