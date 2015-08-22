@@ -136,7 +136,7 @@ proc mapType(typ: PType): TJSTypeKind =
       result = etyBaseIndex
   of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
-    result = etyInt
+    result = etyBaseIndex
   of tyRange, tyDistinct, tyOrdinal, tyConst, tyMutable, tyIter, tyProxy:
     result = mapType(t.sons[0])
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
@@ -1397,6 +1397,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewStringOfCap: unaryExpr(p, n, r, "mnewString", "mnewString(0)")
   of mDotDot:
     genProcForSymIfNeeded(p, n.sons[0].sym)
+    genCall(p, n, r)
+  of mParseBiggestFloat:
+    useMagic(p, "nimParseBiggestFloat")
     genCall(p, n, r)
   else:
     genCall(p, n, r)

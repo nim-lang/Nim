@@ -25,7 +25,7 @@ include "system/inclrtl"
 
 when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
-when not defined(js):
+when not defined(js) and not defined(nimscript):
   import times
 
 const
@@ -152,10 +152,11 @@ proc random*(max: float): float {.benign.}
   ## number, i.e. a tickcount. This has a 16-bit resolution on windows
   ## and a 48-bit resolution on other platforms.
 
-proc randomize*() {.benign.}
-  ## Initializes the random number generator with a "random"
-  ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
-  ## as JavaScript does not support this.
+when not defined(nimscript):
+  proc randomize*() {.benign.}
+    ## Initializes the random number generator with a "random"
+    ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
+    ## as JavaScript does not support this. Nor does it work for NimScript.
 
 proc randomize*(seed: int) {.benign.}
   ## Initializes the random number generator with a specific seed.
@@ -271,8 +272,9 @@ when not defined(JS):
 
   when not defined(vcc): # the above code for vcc uses `discard` instead
     # this is either not Windows or is Windows without vcc
-    proc randomize() =
-      randomize(cast[int](epochTime()))
+    when not defined(nimscript):
+      proc randomize() =
+        randomize(cast[int](epochTime()))
     proc randomize(seed: int) =
       srand(cint(seed)) # rand_s doesn't use srand
       when declared(srand48): srand48(seed)

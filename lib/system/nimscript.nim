@@ -144,9 +144,21 @@ template task*(name: untyped; description: string; body: untyped): untyped =
   proc `name Task`() = body
 
   let cmd = getCommand()
-  if cmd.len == 0 or cmd ==? "help" or cmd == "nop":
-    setCommand "nop"
+  if cmd.len == 0 or cmd ==? "help":
+    setCommand "help"
     writeTask(astToStr(name), description)
   elif cmd ==? astToStr(name):
     setCommand "nop"
     `name Task`()
+
+var
+  packageName* = ""
+  version*, author*, description*, license*, srcdir*,
+    binDir*, backend*: string
+
+  skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
+    installExt*, bin*: seq[string]
+  requiresData*: seq[string]
+
+proc requires*(deps: varargs[string]) =
+  for d in deps: requiresData.add(d)

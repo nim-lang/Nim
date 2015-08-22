@@ -25,7 +25,8 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
     if kind in filter: result.add path
   setResult(a, result)
 
-proc setupVM(module: PSym; scriptName: string): PEvalContext =
+proc setupVM*(module: PSym; scriptName: string): PEvalContext =
+  # For Nimble we need to export 'setupVM'.
   result = newCtx(module)
   result.mode = emRepl
   registerAdditionalOps(result)

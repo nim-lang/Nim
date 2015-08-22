@@ -62,3 +62,11 @@ var t : tuple[a, b: int]
 var pt = addr t[1]
 pt[] = 123
 doAssert(t.b == 123)
+
+#block: # Test "untyped" pointer.
+proc testPtr(p: pointer, a: int) =
+  doAssert(a == 5)
+  (cast[ptr int](p))[] = 124
+var i = 123
+testPtr(addr i, 5)
+doAssert(i == 124)

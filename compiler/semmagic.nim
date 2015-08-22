@@ -13,6 +13,8 @@
 proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
   result = newNodeI(nkAddr, n.info)
   let x = semExprWithType(c, n)
+  if x.kind == nkSym:
+    x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
     localError(n.info, errExprHasNoAddress)
   result.add x

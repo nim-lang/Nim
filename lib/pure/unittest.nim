@@ -70,9 +70,6 @@ var ## Global unittest settings!
 
 checkpoints = @[]
 
-template testSetupIMPL*: stmt {.immediate, dirty.} = discard      #Should this be public or even exist?
-template testTeardownIMPL*: stmt {.immediate, dirty.} = discard
-
 proc shouldRun(testName: string): bool =
   result = true
 
@@ -92,8 +89,8 @@ template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   ##    test "2 + 2 = 4":
   ##      check(2+2 == result)
   ##
-  ##    test "2 + -2 != 4":
-  ##      check(2+2 != result)
+  ##    test "(2 + -2) != 4":
+  ##      check(2 + -2 != result)
   ##
   ##    # No teardown needed
   ##
@@ -106,9 +103,11 @@ template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   ##  [OK] (2 + -2) != 4
   block:
     template setup(setupBody: stmt): stmt {.immediate, dirty.} =
+      var testSetupIMPLFlag = true
       template testSetupIMPL: stmt {.immediate, dirty.} = setupBody
 
     template teardown(teardownBody: stmt): stmt {.immediate, dirty.} =
+      var testTeardownIMPLFlag = true
       template testTeardownIMPL: stmt {.immediate, dirty.} = teardownBody
 
     body
@@ -149,7 +148,7 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
     var testStatusIMPL {.inject.} = OK
 
     try:
-      testSetupIMPL()
+      when declared(testSetupIMPLFlag): testSetupIMPL()
       body
 
     except:
@@ -159,7 +158,7 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
       fail()
 
     finally:
-      testTeardownIMPL()
+      when declared(testTeardownIMPLFlag): testTeardownIMPL()
       testDone name, testStatusIMPL
 
 proc checkpoint*(msg: string) =
@@ -234,41 +233,48 @@ macro check*(conditions: stmt): stmt {.immediate.} =
     when compiles(string($value)):
       checkpoint(name & " was " & $value)
 
-  proc inspectArgs(exp: NimNode) =
+  proc inspectArgs(exp: NimNode): NimNode =
+    result = copyNimTree(exp)
     for i in countup(1, exp.len - 1):
       if exp[i].kind notin nnkLiterals:
         inc counter
         var arg = newIdentNode(":p" & $counter)
         var argStr = exp[i].toStrLit
         var paramAst = exp[i]
-        if exp[i].kind in nnkCallKinds: inspectArgs(exp[i])
+        if exp[i].kind == nnkIdent:
+          argsPrintOuts.add getAst(print(argStr, paramAst))
+        if exp[i].kind in nnkCallKinds:
+          var callVar = newIdentNode(":c" & $counter)
+          argsAsgns.add getAst(asgn(callVar, paramAst))
+          result[i] = callVar
+          argsPrintOuts.add getAst(print(argStr, callVar))
         if exp[i].kind == nnkExprEqExpr:
           # ExprEqExpr
           #   Ident !"v"
           #   IntLit 2
-          paramAst = exp[i][1]
+          result[i] = exp[i][1]
         if exp[i].typekind notin {ntyTypeDesc}:
           argsAsgns.add getAst(asgn(arg, paramAst))
           argsPrintOuts.add getAst(print(argStr, arg))
           if exp[i].kind != nnkExprEqExpr:
-            exp[i] = arg
+            result[i] = arg
           else:
-            exp[i][1] = arg
+            result[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:
     template rewrite(call, lineInfoLit: expr, callLit: string,
                      argAssgs, argPrintOuts: stmt): stmt =
       block:
-        argAssgs
+        argAssgs #all callables (and assignments) are run here
         if not call:
           checkpoint(lineInfoLit & ": Check failed: " & callLit)
           argPrintOuts
           fail()
 
     var checkedStr = checked.toStrLit
-    inspectArgs(checked)
-    result = getAst(rewrite(checked, checked.lineinfo, checkedStr,
+    let parameterizedCheck = inspectArgs(checked)
+    result = getAst(rewrite(parameterizedCheck, checked.lineinfo, checkedStr,
                             argsAsgns, argsPrintOuts))
 
   of nnkStmtList:

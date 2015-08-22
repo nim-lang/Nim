@@ -1282,6 +1282,14 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")
     add(result, n[1])
     return semExprNoType(c, result)
+  of nkPar:
+    if a.len >= 2:
+      # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
+      # that overloading of the assignment operator still works. Usually we
+      # prefer to do these rewritings in transf.nim:
+      return semStmt(c, lowerTupleUnpackingForAsgn(n, c.p.owner))
+    else:
+      a = semExprWithType(c, a, {efLValue})
   else:
     a = semExprWithType(c, a, {efLValue})
   n.sons[0] = a

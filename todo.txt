@@ -1,6 +1,7 @@
 version 0.11.4
 ==============
 
+- make ``os`` and ``math`` work with NimScript
 - document special cased varargs[untyped] and varargs[typed]
 
 - The remaining bugs of the lambda lifting pass that is responsible to enable
@@ -12,10 +13,6 @@ version 0.11.4
 
 - add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
-- make 'nil' work for 'add':
-  - resizeString
-  - incrSeq
-  - addChar
 
 
 version 1.0
@@ -33,6 +30,10 @@ version 1.0
 - split docgen into separate tool
 - special rule for ``[]=``, items, pairs
 - BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
+- make 'nil' work for 'add':
+  - resizeString
+  - incrSeq
+  - addChar
 
 
 Concurrency
@@ -50,13 +51,49 @@ Low priority:
 Misc
 ----
 
-- make tuple unpacking work in a non-var/let context
-- built-in 'getImpl'
 - prevent 'alloc(TypeWithGCedMemory)'
 
 
 Bugs
 ====
+
+- Can lead to wrong C code:
+
+template cd*(dir: string, body: stmt) =
+  ## Sets the current dir to ``dir``, executes ``body`` and restores the
+  ## previous working dir.
+  let lastDir = getCurrentDir()
+  setCurrentDir(dir)
+  try:
+    body
+  finally:
+    setCurrentDir(lastDir)
+
+proc test =
+  cd dir:
+    var output = execProcess("git tag")
+    case meth
+    of DownloadMethod.git:
+      output = execProcess("git tag")
+    of DownloadMethod.hg:
+      output = execProcess("hg tags")
+  if output.len > 0:
+    case meth
+    of DownloadMethod.git:
+      result = @[]
+      for i in output.splitLines():
+        if i == "": continue
+        result.add(i)
+    of DownloadMethod.hg:
+      result = @[]
+      for i in output.splitLines():
+        if i == "": continue
+        var tag = ""
+        discard parseUntil(i, tag, ' ')
+        if tag != "tip":
+          result.add(tag)
+  else:
+    result = @[]
 
 - VM: Pegs do not work at compile-time
 - VM: ptr/ref T cannot work in general
