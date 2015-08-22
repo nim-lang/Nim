@@ -192,7 +192,10 @@ proc writeFile(filename, content: string) =
     close(f)
 
 proc endOfFile(f: File): bool =
-  result = (feof(f) != 0)
+  # do not blame me; blame the ANSI C standard this is so brain-damaged
+  var c = fgetc(f)
+  ungetc(c, f)
+  return c < 0'i32  
 
 proc fileError(f: File): bool =
   result = (ferror(f) != 0)
