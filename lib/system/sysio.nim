@@ -38,7 +38,6 @@ proc fseek(f: File, offset: clong, whence: int): int {.
   importc: "fseek", header: "<stdio.h>", tags: [].}
 proc ftell(f: File): int {.importc: "ftell", header: "<stdio.h>", tags: [].}
 proc ferror(f: File): int {.importc: "ferror", header: "<stdio.h>", tags: [].}
-proc feof(f: File): int {.importc: "feof", header: "<stdio.h>", tags: [].}
 proc setvbuf(stream: File, buf: pointer, typ, size: cint): cint {.
   importc, header: "<stdio.h>", tags: [].}
 proc memchr(s: pointer, c: cint, n: csize): pointer {.
@@ -153,11 +152,11 @@ proc readAllFile(file: File, len: int): string =
   let bytes = readBuffer(file, addr(result[0]), len)
   if endOfFile(file):
     if bytes < len:
-      result = substr(result, 0 , bytes - 1)
+      result.setLen(bytes)
   elif fileError(file):
     raiseEIO("error while reading from file")
   else:
-    # We red all the bytes but did not reach the EOF
+    # We read all the bytes but did not reach the EOF
     # Try to read it as a buffer
     result = readAllBuffer(file)
 
