@@ -468,7 +468,14 @@ when defined(Windows) and not defined(useNimRtl):
         fileClose(si.hStdError)
 
     if e != nil: dealloc(e)
-    if success == 0: raiseOSError(lastError, command)
+    if success == 0:
+      const errInvalidParameter = 87.int
+      const errFileNotFound = 2.int
+      if lastError.int in {errInvalidParameter, errFileNotFound}:
+        raiseOSError(lastError,
+            "Requested command not found: '$1'. OS error:" % command)
+      else:
+        raiseOSError(lastError, command)
     # Close the handle now so anyone waiting is woken:
     discard closeHandle(procInfo.hThread)
     result.fProcessHandle = procInfo.hProcess
