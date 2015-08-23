@@ -158,7 +158,7 @@ proc readAllFile(file: File, len: int): string =
   else:
     # We read all the bytes but did not reach the EOF
     # Try to read it as a buffer
-    result = readAllBuffer(file)
+    result.add(readAllBuffer(file))
 
 proc readAllFile(file: File): string =
   var len = rawFileSize(file)
