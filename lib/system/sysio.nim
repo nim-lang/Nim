@@ -73,7 +73,10 @@ proc raiseEIO(msg: string) {.noinline, noreturn.} =
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
   # Use the currently reserved space for a first try
-  var space = cast[PGenericSeq](line.string).space
+  when defined(nimscript):
+    var space = 80
+  else:
+    var space = cast[PGenericSeq](line.string).space
   line.string.setLen(space)
 
   while true:
