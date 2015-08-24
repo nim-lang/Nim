@@ -322,6 +322,9 @@ var
   distinguished: array[MaxDistinguishedThread, TThread[ptr Worker]]
   distinguishedData: array[MaxDistinguishedThread, Worker]
 
+when defined(nimPinToCpu):
+  var gCpus: Natural
+
 proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
   ## sets the minimal thread pool size. The default value of this is 4.
   minPoolSize = size
@@ -342,6 +345,8 @@ proc activateWorkerThread(i: int) {.noinline.} =
   workersData[i].q.empty = createSemaphore()
   initLock(workersData[i].q.lock)
   createThread(workers[i], slave, addr(workersData[i]))
+  when defined(nimPinToCpu):
+    if gCpus > 0: pinToCpu(workers[i], i mod gCpus)
 
 proc activateDistinguishedThread(i: int) {.noinline.} =
   distinguishedData[i].taskArrived = createSemaphore()
@@ -353,7 +358,10 @@ proc activateDistinguishedThread(i: int) {.noinline.} =
   createThread(distinguished[i], distinguishedSlave, addr(distinguishedData[i]))
 
 proc setup() =
-  currentPoolSize = min(countProcessors(), MaxThreadPoolSize)
+  let p = countProcessors()
+  when defined(nimPinToCpu):
+    gCpus = p
+  currentPoolSize = min(p, MaxThreadPoolSize)
   readyWorker = addr(workersData[0])
   for i in 0.. <currentPoolSize: activateWorkerThread(i)
 

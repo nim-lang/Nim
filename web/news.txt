@@ -56,10 +56,12 @@ News
   Library additions
   -----------------
 
-  - The nre module has been added, providing a better interface to PCRE than
-    re.
+  - The nre module has been added, providing a better interface to PCRE than re.
   - The ``expandSymlink`` proc has been added to the ``os`` module.
   - The ``tailDir`` proc has been added to the ``os`` module.
+  - Define ``nimPinToCpu`` to make the ``threadpool`` use explicit thread
+    affinities. This can speed up or slow down the thread pool; it's up to you
+    to benchmark it.
 
 
   Language Additions
