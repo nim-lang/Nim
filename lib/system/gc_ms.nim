@@ -9,6 +9,10 @@
 
 # A simple mark&sweep garbage collector for Nim. Define the
 # symbol ``gcUseBitvectors`` to generate a variant of this GC.
+
+when defined(nimCoroutines):
+  import arch
+
 {.push profiler:off.}
 
 const
@@ -44,8 +48,16 @@ type
     maxStackSize: int        # max stack size
     freedObjects: int        # max entries in cycle table
 
+  GcStack {.final.} = object
+    prev: ptr GcStack
+    next: ptr GcStack
+    starts: pointer
+    pos: pointer
+    maxStackSize: int
+
   GcHeap = object            # this contains the zero count and
                              # non-zero count table
+    stack: ptr GcStack
     stackBottom: pointer
     cycleThreshold: int
     when useCellIds:
@@ -118,7 +130,6 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
 
 # forward declarations:
 proc collectCT(gch: var GcHeap) {.benign.}
-proc isOnStack*(p: pointer): bool {.noinline, benign.}
 proc forAllChildren(cell: PCell, op: WalkOp) {.benign.}
 proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
@@ -168,20 +179,6 @@ proc initGC() =
     when withBitvectors:
       init(gch.allocated)
       init(gch.marked)
-
-var
-  localGcInitialized {.rtlThreadVar.}: bool
-
-proc setupForeignThreadGc*() =
-  ## call this if you registered a callback that will be run from a thread not
-  ## under your control. This has a cheap thread-local guard, so the GC for
-  ## this thread will only be initialized once per thread, no matter how often
-  ## it is called.
-  if not localGcInitialized:
-    localGcInitialized = true
-    var stackTop {.volatile.}: pointer
-    setStackBottom(addr(stackTop))
-    initGC()
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
@@ -407,145 +404,14 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
     if objStart != nil:
       mark(gch, objStart)
 
-# ----------------- stack management --------------------------------------
-#  inspired from Smart Eiffel
+include gc_common
 
-when defined(sparc):
-  const stackIncreases = false
-elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
-     defined(hp9000s700) or defined(hp9000s800) or defined(hp9000s820):
-  const stackIncreases = true
-else:
-  const stackIncreases = false
-
-when not defined(useNimRtl):
-  {.push stack_trace: off.}
-  proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
-    # the first init must be the one that defines the stack bottom:
-    if gch.stackBottom == nil: gch.stackBottom = theStackBottom
-    else:
-      var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
-      var b = cast[ByteAddress](gch.stackBottom)
-      #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
-      when stackIncreases:
-        gch.stackBottom = cast[pointer](min(a, b))
-      else:
-        gch.stackBottom = cast[pointer](max(a, b))
-  {.pop.}
-
-proc stackSize(): int {.noinline.} =
-  var stackTop {.volatile.}: pointer
-  result = abs(cast[int](addr(stackTop)) - cast[int](gch.stackBottom))
-
-when defined(sparc): # For SPARC architecture.
-  proc isOnStack(p: pointer): bool =
-    var stackTop {.volatile.}: pointer
-    stackTop = addr(stackTop)
-    var b = cast[ByteAddress](gch.stackBottom)
-    var a = cast[ByteAddress](stackTop)
-    var x = cast[ByteAddress](p)
-    result = a <=% x and x <=% b
-
-  proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
-    when defined(sparcv9):
-      asm  """"flushw \n" """
-    else:
-      asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\n" """
-
-    var
-      max = gch.stackBottom
-      sp: PPointer
-      stackTop: array[0..1, pointer]
-    sp = addr(stackTop[0])
-    # Addresses decrease as the stack grows.
-    while sp <= max:
-      gcMark(gch, sp[])
-      sp = cast[ppointer](cast[ByteAddress](sp) +% sizeof(pointer))
-
-elif defined(ELATE):
-  {.error: "stack marking code is to be written for this architecture".}
-
-elif stackIncreases:
-  # ---------------------------------------------------------------------------
-  # Generic code for architectures where addresses increase as the stack grows.
-  # ---------------------------------------------------------------------------
-  proc isOnStack(p: pointer): bool =
-    var stackTop {.volatile.}: pointer
-    stackTop = addr(stackTop)
-    var a = cast[ByteAddress](gch.stackBottom)
-    var b = cast[ByteAddress](stackTop)
-    var x = cast[ByteAddress](p)
-    result = a <=% x and x <=% b
-
-  var
-    jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
-      # a little hack to get the size of a JmpBuf in the generated C code
-      # in a platform independent way
-
-  proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
-    var registers: C_JmpBuf
-    if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      var max = cast[ByteAddress](gch.stackBottom)
-      var sp = cast[ByteAddress](addr(registers)) +% jmpbufSize -% sizeof(pointer)
-      # sp will traverse the JMP_BUF as well (jmp_buf size is added,
-      # otherwise sp would be below the registers structure).
-      while sp >=% max:
-        gcMark(gch, cast[ppointer](sp)[])
-        sp = sp -% sizeof(pointer)
-
-else:
-  # ---------------------------------------------------------------------------
-  # Generic code for architectures where addresses decrease as the stack grows.
-  # ---------------------------------------------------------------------------
-  proc isOnStack(p: pointer): bool =
-    var stackTop {.volatile.}: pointer
-    stackTop = addr(stackTop)
-    var b = cast[ByteAddress](gch.stackBottom)
-    var a = cast[ByteAddress](stackTop)
-    var x = cast[ByteAddress](p)
-    result = a <=% x and x <=% b
-
-  proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
-    # We use a jmp_buf buffer that is in the C stack.
-    # Used to traverse the stack and registers assuming
-    # that 'setjmp' will save registers in the C stack.
-    type PStackSlice = ptr array [0..7, pointer]
-    var registers {.noinit.}: C_JmpBuf
-    if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      var max = cast[ByteAddress](gch.stackBottom)
-      var sp = cast[ByteAddress](addr(registers))
-      when defined(amd64):
-        # words within the jmp_buf structure may not be properly aligned.
-        let regEnd = sp +% sizeof(registers)
-        while sp <% regEnd:
-          gcMark(gch, cast[PPointer](sp)[])
-          gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
-          sp = sp +% sizeof(pointer)
-      # Make sure sp is word-aligned
-      sp = sp and not (sizeof(pointer) - 1)
-      # loop unrolled:
-      while sp <% max - 8*sizeof(pointer):
-        gcMark(gch, cast[PStackSlice](sp)[0])
-        gcMark(gch, cast[PStackSlice](sp)[1])
-        gcMark(gch, cast[PStackSlice](sp)[2])
-        gcMark(gch, cast[PStackSlice](sp)[3])
-        gcMark(gch, cast[PStackSlice](sp)[4])
-        gcMark(gch, cast[PStackSlice](sp)[5])
-        gcMark(gch, cast[PStackSlice](sp)[6])
-        gcMark(gch, cast[PStackSlice](sp)[7])
-        sp = sp +% sizeof(pointer)*8
-      # last few entries:
-      while sp <=% max:
-        gcMark(gch, cast[PPointer](sp)[])
-        sp = sp +% sizeof(pointer)
-
-# ----------------------------------------------------------------------------
-# end of non-portable code
-# ----------------------------------------------------------------------------
+proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
+  forEachStackSlot(gch, gcMark)
 
 proc collectCTBody(gch: var GcHeap) =
-  gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
+  when not defined(nimCoroutines):
+    gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
   prepareForInteriorPointerChecking(gch.region)
   markStackAndRegisters(gch)
   markGlobals(gch)
@@ -599,8 +465,13 @@ when not defined(useNimRtl):
              "[GC] occupied memory: " & $getOccupiedMem() & "\n" &
              "[GC] collections: " & $gch.stat.collections & "\n" &
              "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
-             "[GC] freed objects: " & $gch.stat.freedObjects & "\n" &
-             "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
+             "[GC] freed objects: " & $gch.stat.freedObjects & "\n"
+    when defined(nimCoroutines):
+      result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
+      for stack in items(gch.stack):
+        result = result & "[GC]   stack " & stack.starts.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
+    else:
+      result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
     GC_enable()
 
 {.pop.}

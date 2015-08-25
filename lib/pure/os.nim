@@ -461,8 +461,10 @@ proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
 
 proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
-  ## Note that under posix OS's, the returned time may actually be the time at
-  ## which the file's attribute's were last modified.
+  ##
+  ## **Note:** Under POSIX OS's, the returned time may actually be the time at
+  ## which the file's attribute's were last modified. See
+  ## `here <https://github.com/nim-lang/Nim/issues/1058>`_ for details.
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
