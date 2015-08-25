@@ -10,7 +10,8 @@
 # A simple mark&sweep garbage collector for Nim. Define the
 # symbol ``gcUseBitvectors`` to generate a variant of this GC.
 
-import arch
+when defined(nimCoroutines):
+  import arch
 
 {.push profiler:off.}
 

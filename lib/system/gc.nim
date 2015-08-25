@@ -17,7 +17,8 @@
 # stack overflows when traversing deep datastructures. It is well-suited
 # for soft real time applications (like games).
 
-import arch
+when defined(nimCoroutines):
+  import arch
 
 {.push profiler:off.}
 
