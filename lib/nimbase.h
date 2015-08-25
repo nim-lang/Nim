@@ -110,18 +110,31 @@ __clang__
 #  endif
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
-#  define N_CDECL(rettype, name) rettype name
-#  define N_STDCALL(rettype, name) rettype name
-#  define N_SYSCALL(rettype, name) rettype name
-#  define N_FASTCALL(rettype, name) rettype name
-#  define N_SAFECALL(rettype, name) rettype name
-/* function pointers with calling convention: */
-#  define N_CDECL_PTR(rettype, name) rettype (*name)
-#  define N_STDCALL_PTR(rettype, name) rettype (*name)
-#  define N_SYSCALL_PTR(rettype, name) rettype (*name)
-#  define N_FASTCALL_PTR(rettype, name) rettype (*name)
-#  define N_SAFECALL_PTR(rettype, name) rettype (*name)
-
+#  if defined(__GNUC__)
+#    define N_CDECL(rettype, name) rettype name
+#    define N_STDCALL(rettype, name) rettype name
+#    define N_SYSCALL(rettype, name) rettype name
+#    define N_FASTCALL(rettype, name) __attribute__((fastcall)) rettype name
+#    define N_SAFECALL(rettype, name) rettype name
+/*   function pointers with calling convention: */
+#    define N_CDECL_PTR(rettype, name) rettype (*name)
+#    define N_STDCALL_PTR(rettype, name) rettype (*name)
+#    define N_SYSCALL_PTR(rettype, name) rettype (*name)
+#    define N_FASTCALL_PTR(rettype, name) __attribute__((fastcall)) rettype (*name)
+#    define N_SAFECALL_PTR(rettype, name) rettype (*name)
+#  else
+#    define N_CDECL(rettype, name) rettype name
+#    define N_STDCALL(rettype, name) rettype name
+#    define N_SYSCALL(rettype, name) rettype name
+#    define N_FASTCALL(rettype, name) rettype name
+#    define N_SAFECALL(rettype, name) rettype name
+/*   function pointers with calling convention: */
+#    define N_CDECL_PTR(rettype, name) rettype (*name)
+#    define N_STDCALL_PTR(rettype, name) rettype (*name)
+#    define N_SYSCALL_PTR(rettype, name) rettype (*name)
+#    define N_FASTCALL_PTR(rettype, name) rettype (*name)
+#    define N_SAFECALL_PTR(rettype, name) rettype (*name)
+#  endif
 #  ifdef __cplusplus
 #    define N_LIB_EXPORT  extern "C"
 #  else
