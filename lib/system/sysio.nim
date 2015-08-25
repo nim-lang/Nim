@@ -37,6 +37,7 @@ proc fread(buf: pointer, size, n: int, f: File): int {.
 proc fseek(f: File, offset: clong, whence: int): int {.
   importc: "fseek", header: "<stdio.h>", tags: [].}
 proc ftell(f: File): int {.importc: "ftell", header: "<stdio.h>", tags: [].}
+proc ferror(f: File): int {.importc: "ferror", header: "<stdio.h>", tags: [].}
 proc setvbuf(stream: File, buf: pointer, typ, size: cint): cint {.
   importc, header: "<stdio.h>", tags: [].}
 proc memchr(s: pointer, c: cint, n: csize): pointer {.
@@ -150,9 +151,17 @@ proc rawFileSize(file: File): int =
 proc readAllFile(file: File, len: int): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
-  result = newString(int(len))
-  if readBuffer(file, addr(result[0]), int(len)) != len:
+  result = newString(len)
+  let bytes = readBuffer(file, addr(result[0]), len)
+  if endOfFile(file):
+    if bytes < len:
+      result.setLen(bytes)
+  elif ferror(file) != 0:
     raiseEIO("error while reading from file")
+  else:
+    # We read all the bytes but did not reach the EOF
+    # Try to read it as a buffer
+    result.add(readAllBuffer(file))
 
 proc readAllFile(file: File): string =
   var len = rawFileSize(file)
@@ -191,11 +200,13 @@ proc endOfFile(f: File): bool =
   return c < 0'i32
 
 proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
-  for i in items(x): write(f, i)
+  for i in items(x):
+    write(f, i)
   write(f, "\n")
 
 proc writeLine[Ty](f: File, x: varargs[Ty, `$`]) =
-  for i in items(x): write(f, i)
+  for i in items(x):
+    write(f, i)
   write(f, "\n")
 
 when declared(stdout):
