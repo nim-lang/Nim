@@ -153,7 +153,7 @@ proc readAllFile(file: File, len: int): string =
   if endOfFile(file):
     if bytes < len:
       result.setLen(bytes)
-  elif fileError(file):
+  elif ferror(file) != 0:
     raiseEIO("error while reading from file")
   else:
     # We read all the bytes but did not reach the EOF
@@ -195,9 +195,6 @@ proc endOfFile(f: File): bool =
   var c = fgetc(f)
   ungetc(c, f)
   return c < 0'i32
-
-proc fileError(f: File): bool =
-  result = (ferror(f) != 0)
 
 proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x):
