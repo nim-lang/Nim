@@ -33,7 +33,7 @@ elif defined(useNimRtl):
   when defined(windows): 
     const nimrtl* = "nimrtl.dll"
   elif defined(macosx):
-    const nimrtl* = "nimrtl.dylib"
+    const nimrtl* = "libnimrtl.dylib"
   else: 
     const nimrtl* = "libnimrtl.so"
   {.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtl, gcsafe.}
