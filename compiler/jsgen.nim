@@ -1032,7 +1032,7 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
     if a.typ != etyBaseIndex: internalError(n.info, "genDeref")
     r.res = "$1[$2]" % [a.address, a.res]
 
-proc genArg(p: PProc, n: PNode, r: var TCompRes) =
+proc genArgNoParam(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   gen(p, n, a)
   if a.typ == etyBaseIndex:
@@ -1041,6 +1041,20 @@ proc genArg(p: PProc, n: PNode, r: var TCompRes) =
     add(r.res, a.res)
   else:
     add(r.res, a.res)
+
+proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes) =
+  var a: TCompRes
+  gen(p, n, a)
+  if skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs} and
+      a.typ == etyBaseIndex:
+    add(r.res, "$1[$2]" % [a.address, a.res])
+  elif a.typ == etyBaseIndex:
+    add(r.res, a.address)
+    add(r.res, ", ")
+    add(r.res, a.res)
+  else:
+    add(r.res, a.res)
+
 
 proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
   add(r.res, "(")
@@ -1052,13 +1066,17 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
 
   for i in countup(1, sonsLen(n) - 1):
     let it = n.sons[i]
+    var paramType : PNode = nil
     if i < sonsLen(typ):
       assert(typ.n.sons[i].kind == nkSym)
-      let paramType = typ.n.sons[i]
+      paramType = typ.n.sons[i]
       if paramType.typ.isCompileTimeOnly: continue
 
     if hasArgs: add(r.res, ", ")
-    genArg(p, it, r)
+    if paramType.isNil:
+      genArgNoParam(p, it, r)
+    else:
+      genArg(p, it, paramType.sym, r)
     hasArgs = true
   add(r.res, ")")
   r.kind = resExpr
@@ -1083,7 +1101,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   add(r.res, "(")
   for i in countup(2, sonsLen(n) - 1):
     if i > 2: add(r.res, ", ")
-    genArg(p, n.sons[i], r)
+    genArgNoParam(p, n.sons[i], r)
   add(r.res, ")")
   r.kind = resExpr
 
@@ -1097,7 +1115,7 @@ proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
     let it = n.sons[i]
     if it.typ.isCompileTimeOnly: continue
     if i > 0: add(r.res, ", ")
-    genArg(p, it, r)
+    genArgNoParam(p, it, r)
   add(r.res, ")")
   r.kind = resExpr
 
