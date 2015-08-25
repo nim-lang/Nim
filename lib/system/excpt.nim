@@ -44,12 +44,10 @@ var
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
 
-proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
-
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev
 
-proc setFrame*(s: PFrame) {.compilerRtl, inl.} =
+proc setFrame(s: PFrame) {.compilerRtl, inl.} =
   framePtr = s
 
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
