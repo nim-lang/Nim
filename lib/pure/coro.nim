@@ -15,7 +15,7 @@ import macros
 import arch
 import lists
 
-const coroDefaultStackSize = 512 * 1024
+const defaultStackSize = 512 * 1024
 
 
 type Coroutine = ref object
@@ -38,8 +38,7 @@ proc GC_addStack(starts: pointer) {.cdecl, importc.}
 proc GC_removeStack(starts: pointer) {.cdecl, importc.}
 proc GC_setCurrentStack(starts, pos: pointer) {.cdecl, importc.}
 
-
-proc coroStart*(c: proc(), stacksize: int=coroDefaultStackSize) =
+proc start*(c: proc(), stacksize: int=defaultStackSize) =
   ## Adds coroutine to event loop. It does not run immediately.
   var coro = Coroutine()
   coro.fn = c
@@ -47,9 +46,10 @@ proc coroStart*(c: proc(), stacksize: int=coroDefaultStackSize) =
     coro.stack = alloc0(stacksize)
   coro.stacksize = stacksize
   coroutines.append(coro)
+{.deprecated: [coroStart: start].}
 
 {.push stackTrace: off.}
-proc coroYield*(sleepTime: float=0) =
+proc sleep*(sleepTime: float=0) =
   ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
   ## Until then other coroutines are executed.
   var oldFrame = getFrame()
@@ -61,8 +61,9 @@ proc coroYield*(sleepTime: float=0) =
     longjmp(mainCtx, 1)
   setFrame(oldFrame)
 {.pop.}
+{.deprecated: [coroYield: sleep].}
 
-proc coroRun*() =
+proc run*() =
   ## Starts main event loop which exits when all coroutines exit. Calling this proc
   ## starts execution of first coroutine.
   var node = coroutines.head
@@ -107,19 +108,20 @@ proc coroRun*() =
       node = coroutines.head
     else:
       node = node.next
+{.deprecated: [coroRun: run].}
 
-
-proc coroAlive*(c: proc()): bool =
+proc alive*(c: proc()): bool =
   ## Returns ``true`` if coroutine has not returned, ``false`` otherwise.
   for coro in items(coroutines):
     if coro.fn == c:
       return true
+{.deprecated: [coroAlive: alive].}
 
-proc coroWait*(c: proc(), interval=0.01) =
+proc wait*(c: proc(), interval=0.01) =
   ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
-  while coroAlive(c):
-    coroYield interval
-
+  while alive(c):
+    sleep interval
+{.deprecated: [coroWait: wait].}
 
 when isMainModule:
   var stackCheckValue = 1100220033
@@ -128,18 +130,18 @@ when isMainModule:
   proc c1() =
     for i in 0 .. 3:
       echo "c1"
-      coroYield 0.05
+      sleep 0.05
     echo "c1 exits"
 
 
   proc c2() =
     for i in 0 .. 3:
       echo "c2"
-      coroYield 0.025
-    coroWait(c1)
+      sleep 0.025
+    wait(c1)
     echo "c2 exits"
 
-  coroStart(c1)
-  coroStart(c2)
-  coroRun()
+  start(c1)
+  start(c2)
+  run()
   echo "done ", stackCheckValue
