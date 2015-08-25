@@ -17,7 +17,6 @@ import lists
 
 const defaultStackSize = 512 * 1024
 
-
 type Coroutine = ref object
   # prev: ptr Coroutine
   # next: ptr Coroutine
@@ -46,7 +45,6 @@ proc start*(c: proc(), stacksize: int=defaultStackSize) =
     coro.stack = alloc0(stacksize)
   coro.stacksize = stacksize
   coroutines.append(coro)
-{.deprecated: [coroStart: start].}
 
 {.push stackTrace: off.}
 proc sleep*(sleepTime: float=0) =
@@ -61,7 +59,6 @@ proc sleep*(sleepTime: float=0) =
     longjmp(mainCtx, 1)
   setFrame(oldFrame)
 {.pop.}
-{.deprecated: [coroYield: sleep].}
 
 proc run*() =
   ## Starts main event loop which exits when all coroutines exit. Calling this proc
@@ -108,20 +105,17 @@ proc run*() =
       node = coroutines.head
     else:
       node = node.next
-{.deprecated: [coroRun: run].}
 
 proc alive*(c: proc()): bool =
   ## Returns ``true`` if coroutine has not returned, ``false`` otherwise.
   for coro in items(coroutines):
     if coro.fn == c:
       return true
-{.deprecated: [coroAlive: alive].}
 
 proc wait*(c: proc(), interval=0.01) =
   ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
   while alive(c):
     sleep interval
-{.deprecated: [coroWait: wait].}
 
 when isMainModule:
   var stackCheckValue = 1100220033
