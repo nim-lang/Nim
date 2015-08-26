@@ -100,6 +100,9 @@ else:
     importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
   proc signalSysCond(cond: var SysCond) {.
     importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
+  proc broadcastSysCond(cond: var SysCond) {.
+    importc: "pthread_cond_broadcast", header: "<pthread.h>", noSideEffect.}
+
   
   proc deinitSysCond(cond: var SysCond) {.noSideEffect,
     importc: "pthread_cond_destroy", header: "<pthread.h>".}
