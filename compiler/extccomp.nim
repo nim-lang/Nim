@@ -123,7 +123,7 @@ compiler vcc:
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
-    debug: " /GZ /Zi ",
+    debug: " /RTC1 /Z7 ",
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
