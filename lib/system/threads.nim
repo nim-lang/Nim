@@ -244,7 +244,7 @@ when useStackMaskHack:
 when not defined(useNimRtl):
   when not useStackMaskHack:
     #when not defined(createNimRtl): initStackBottom()
-    initGC()
+    when declared(initGC): initGC()
 
   when emulatedThreadVars:
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
