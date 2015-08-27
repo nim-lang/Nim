@@ -160,9 +160,15 @@ __clang__
 #if defined(__BORLANDC__) || defined(__WATCOMC__) || \
     defined(__POCC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 /* these compilers have a fastcall so use it: */
-#  define N_NIMCALL(rettype, name) rettype __fastcall name
-#  define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
-#  define N_RAW_NIMCALL __fastcall
+#  ifdef __TINYC__
+#    define N_NIMCALL(rettype, name) rettype __attribute((__fastcall)) name
+#    define N_NIMCALL_PTR(rettype, name) rettype (__attribute((__fastcall)) *name)
+#    define N_RAW_NIMCALL __attribute((__fastcall))
+#  else
+#    define N_NIMCALL(rettype, name) rettype __fastcall name
+#    define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
+#    define N_RAW_NIMCALL __fastcall
+#  endif
 #else
 #  define N_NIMCALL(rettype, name) rettype name /* no modifier */
 #  define N_NIMCALL_PTR(rettype, name) rettype (*name)
