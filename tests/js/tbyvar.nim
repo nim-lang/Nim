@@ -31,3 +31,13 @@ proc main =
   echo y
 
 main()
+
+# Test: pass var seq to var openarray
+var s = @[2, 1]
+proc foo(a: var openarray[int]) = a[0] = 123
+
+proc bar(s: var seq[int], a: int) =
+  doAssert(a == 5)
+  foo(s)
+s.bar(5)
+doAssert(s == @[123, 1])
