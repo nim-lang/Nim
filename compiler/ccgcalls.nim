@@ -123,7 +123,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  result = "$1->data" % [a.rdLoc]
+  result = "($1)?($1->data):0" % [a.rdLoc]
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   var a: TLoc
@@ -539,4 +539,3 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   postStmtActions(p)
   when false:
     if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
-
