@@ -9,6 +9,37 @@
 
 ## A higher level `mySQL`:idx: database wrapper. The same interface is 
 ## implemented for other databases too.
+##
+## Example:
+##
+## .. code-block:: Nim
+##
+##  import db_mysql, math
+##
+##  let theDb = open("localhost", "nim", "nim", "test")
+##
+##  theDb.exec(sql"Drop table if exists myTestTbl")
+##  theDb.exec(sql("create table myTestTbl (" &
+##      " Id    INT(11)     NOT NULL AUTO_INCREMENT PRIMARY KEY, " &
+##      " Name  VARCHAR(50) NOT NULL, " &
+##      " i     INT(11), " &
+##      " f     DECIMAL(18,10))"))
+##
+##  theDb.exec(sql"START TRANSACTION")
+##  for i in 1..1000:
+##    theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##          "Item#" & $i, i, sqrt(i.float))
+##  theDb.exec(sql"COMMIT")
+##
+##  for x in theDb.fastRows(sql"select * from myTestTbl"):
+##    echo x
+##
+##  let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##          "Item#1001", 1001, sqrt(1001.0))
+##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+##
+##  theDb.close()
+
 
 import strutils, mysql
 
