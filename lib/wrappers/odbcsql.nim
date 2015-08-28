@@ -680,7 +680,11 @@ proc SQLBrowseConnect*(hdbc: SqlHDBC, szConnStrIn: PSQLCHAR,
     dynlib: odbclib, importc.}
 proc SQLExecDirect*(StatementHandle: SqlHStmt, StatementText: PSQLCHAR,
                     TextLength: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
+proc SQLExecDirectW*(StatementHandle: SqlHStmt, StatementText: WideCString,
+                    TextLength: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
 proc SQLPrepare*(StatementHandle: SqlHStmt, StatementText: PSQLCHAR,
+                 TextLength: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
+proc SQLPrepareW*(StatementHandle: SqlHStmt, StatementText: WideCString,
                  TextLength: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
 proc SQLCloseCursor*(StatementHandle: SqlHStmt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
