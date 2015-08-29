@@ -154,7 +154,7 @@ proc newFileLogger*(filename = defaultFilename(),
                     mode: FileMode = fmAppend,
                     levelThreshold = lvlAll,
                     fmtStr = defaultFmtStr,
-                    bufSize: int = -1): FileLogger =
+                    bufSize: int = 0): FileLogger =
   ## Creates a new file logger. This logger logs to a file.
   ## Use ``bufSize`` as size of the output buffer when writing the file
   ## (-1: use system defaults, 0: unbuffered, >0: fixed buffer size).
@@ -190,7 +190,7 @@ proc newRollingFileLogger*(filename = defaultFilename(),
                            levelThreshold = lvlAll,
                            fmtStr = defaultFmtStr,
                            maxLines = 1000,
-                           bufSize: int = -1): RollingFileLogger =
+                           bufSize: int = 0): RollingFileLogger =
   ## Creates a new rolling file logger. Once a file reaches ``maxLines`` lines
   ## a new log file will be started and the old will be renamed.
   ## Use ``bufSize`` as size of the output buffer when writing the file
