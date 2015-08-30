@@ -307,6 +307,8 @@ proc menuv*(children: ptr PIhandle): PIhandle {.
 
 proc button*(title, action: cstring): PIhandle {.
   importc: "IupButton", cdecl, dynlib: dllname.}
+proc link*(url, title: cstring): PIhandle {.
+  importc: "IupLink", cdecl, dynlib: dllname.}
 proc canvas*(action: cstring): PIhandle {.
   importc: "IupCanvas", cdecl, dynlib: dllname.}
 proc dialog*(child: PIhandle): PIhandle {.
