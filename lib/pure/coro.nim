@@ -50,6 +50,8 @@ proc start*(c: proc(), stacksize: int=defaultStackSize) =
 proc suspend*(sleepTime: float=0) =
   ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
   ## Until then other coroutines are executed.
+  ##
+  ## This is similar to a `yield`:idx:, or a `yieldFrom`:idx in Python.
   var oldFrame = getFrame()
   var sp {.volatile.}: pointer
   GC_setCurrentStack(current.stack, cast[pointer](addr sp))
