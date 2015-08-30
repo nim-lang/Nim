@@ -47,13 +47,13 @@ proc start*(c: proc(), stacksize: int=defaultStackSize) =
   coroutines.append(coro)
 
 {.push stackTrace: off.}
-proc sleep*(sleepTime: float=0) =
+proc suspend*(sleepTime: float=0) =
   ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
   ## Until then other coroutines are executed.
   var oldFrame = getFrame()
   var sp {.volatile.}: pointer
   GC_setCurrentStack(current.stack, cast[pointer](addr sp))
-  current.sleepTime = sleep_time
+  current.sleepTime = sleepTime
   current.lastRun = epochTime()
   if setjmp(current.ctx) == 0:
     longjmp(mainCtx, 1)
@@ -115,7 +115,7 @@ proc alive*(c: proc()): bool =
 proc wait*(c: proc(), interval=0.01) =
   ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
   while alive(c):
-    sleep interval
+    suspend interval
 
 when isMainModule:
   var stackCheckValue = 1100220033
@@ -124,14 +124,14 @@ when isMainModule:
   proc c1() =
     for i in 0 .. 3:
       echo "c1"
-      sleep 0.05
+      suspend 0.05
     echo "c1 exits"
 
 
   proc c2() =
     for i in 0 .. 3:
       echo "c2"
-      sleep 0.025
+      suspend 0.025
     wait(c1)
     echo "c2 exits"
 
