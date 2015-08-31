@@ -291,12 +291,12 @@ const
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
 
-  sfNoRoot* = sfBorrow # a local variable is provably no root so it doesn't
-                       # require RC ops
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
   sfExperimental* = sfOverriden       # module uses the .experimental switch
   sfGoto* = sfOverriden               # var is used for 'goto' code generation
+  sfWrittenTo* = sfBorrow             # param is assigned to
+  sfEscapes* = sfProcvar              # param escapes
 
 const
   # getting ready for the future expr/stmt merge
@@ -527,6 +527,7 @@ const
     # deprecated and this mess can be cleaned up.
   tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
                       # 'empty' ('@[]' has the type 'seq[empty]').
+  tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
   # type flags that are essential for type equality:

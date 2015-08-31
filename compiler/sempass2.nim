@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards
+  wordrecg, strutils, options, guards, writetracking
 
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
@@ -17,7 +17,7 @@ import
 # * effect+exception tracking
 # * "usage before definition" checking
 # * checks for invalid usages of compiletime magics (not implemented)
-# * checks for invalid usages of PNimNode (not implemented)
+# * checks for invalid usages of NimNode (not implemented)
 # * later: will do an escape analysis for closures at least
 
 # Predefined effects:
@@ -28,21 +28,6 @@ import
 #   endless (has endless loops), --> user effects are defined over *patterns*
 #   --> a TR macro can annotate the proc with user defined annotations
 #   --> the effect system can access these
-
-# Load&Store analysis is performed on *paths*. A path is an access like
-# obj.x.y[i].z; splitting paths up causes some problems:
-#
-# var x = obj.x
-# var z = x.y[i].z
-#
-# Alias analysis is affected by this too! A good solution is *type splitting*:
-# T becomes T1 and T2 if it's known that T1 and T2 can't alias.
-#
-# An aliasing problem and a race condition are effectively the same problem.
-# Type based alias analysis is nice but not sufficient; especially splitting
-# an array and filling it in parallel should be supported but is not easily
-# done: It essentially requires a built-in 'indexSplit' operation and dependent
-# typing.
 
 # ------------------------ exception and tag tracking -------------------------
 
@@ -438,17 +423,41 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
     result = newNode(nkExprColonExpr, n.info, @[
       newIdentNode(getIdent(specialWords[effectType]), n.info), effects])
 
+proc documentWriteEffect(n: PNode; flag: TSymFlag; pragmaName: string): PNode =
+  let s = n.sons[namePos].sym
+  let params = s.typ.n
+
+  var effects = newNodeI(nkBracket, n.info)
+  for i in 1 ..< params.len:
+    if params[i].kind == nkSym and flag in params[i].sym.flags:
+      effects.add params[i]
+
+  if effects.len > 0:
+    result = newNode(nkExprColonExpr, n.info, @[
+      newIdentNode(getIdent(pragmaName), n.info), effects])
+
+proc documentNewEffect(n: PNode): PNode =
+  let s = n.sons[namePos].sym
+  if tfReturnsNew in s.typ.flags:
+    result = newIdentNode(getIdent("new"), n.info)
+
 proc documentRaises*(n: PNode) =
   if n.sons[namePos].kind != nkSym: return
   let pragmas = n.sons[pragmasPos]
   let p1 = documentEffect(n, pragmas, wRaises, exceptionEffects)
   let p2 = documentEffect(n, pragmas, wTags, tagEffects)
+  let p3 = documentWriteEffect(n, sfWrittenTo, "writes")
+  let p4 = documentNewEffect(n)
+  let p5 = documentWriteEffect(n, sfEscapes, "escapes")
 
-  if p1 != nil or p2 != nil:
+  if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
     if pragmas.kind == nkEmpty:
       n.sons[pragmasPos] = newNodeI(nkPragma, n.info)
     if p1 != nil: n.sons[pragmasPos].add p1
     if p2 != nil: n.sons[pragmasPos].add p2
+    if p3 != nil: n.sons[pragmasPos].add p3
+    if p4 != nil: n.sons[pragmasPos].add p4
+    if p5 != nil: n.sons[pragmasPos].add p5
 
 template notGcSafe(t): expr = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
@@ -900,6 +909,7 @@ proc trackProc*(s: PSym, body: PNode) =
     message(s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
+  when useWriteTracking: trackWrites(s, body)
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef,

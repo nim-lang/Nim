@@ -115,7 +115,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   #  return liftIterSym(n)
   var b: PNode
   var tc = c.transCon
-  if sfBorrow in n.sym.flags:
+  if sfBorrow in n.sym.flags and n.sym.kind in routineKinds:
     # simply exchange the symbol:
     b = n.sym.getBody
     if b.kind != nkSym: internalError(n.info, "wrong AST for borrowed symbol")
