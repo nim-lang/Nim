@@ -547,18 +547,14 @@ proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
   of nkNone: sysAssert(false, "nimCopyAux")
   of nkSlot:
     asm """
-      var ddest = `dest`[`n`.offset];
-      if (ddest === undefined) ddest = null;
-      `dest`[`n`.offset] = nimCopy(ddest, `src`[`n`.offset], `n`.typ);
+      `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
     """
   of nkList:
     for i in 0..n.len-1:
       nimCopyAux(dest, src, n.sons[i])
   of nkCase:
     asm """
-      var ddest = `dest`[`n`.offset];
-      if (ddest === undefined) ddest = null;
-      `dest`[`n`.offset] = nimCopy(ddest, `src`[`n`.offset], `n`.typ);
+      `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
       for (var i = 0; i < `n`.sons.length; ++i) {
         nimCopyAux(`dest`, `src`, `n`.sons[i][1]);
       }
@@ -579,13 +575,13 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
   of tyTuple, tyObject:
     if ti.base != nil: result = nimCopy(dest, src, ti.base)
     elif ti.kind == tyObject:
-      asm "`result` = (`dest` === null) ? {m_type: `ti`} : `dest`;"
+      asm "`result` = (`dest` === null || `dest` === undefined) ? {m_type: `ti`} : `dest`;"
     else:
-      asm "`result` = (`dest` === null) ? {} : `dest`;"
+      asm "`result` = (`dest` === null || `dest` === undefined) ? {} : `dest`;"
     nimCopyAux(result, src, ti.node)
   of tySequence, tyArrayConstr, tyOpenArray, tyArray:
     asm """
-      if (`dest` === null) {
+      if (`dest` === null || `dest` === undefined) {
         `dest` = new Array(`src`.length);
       }
       else {
