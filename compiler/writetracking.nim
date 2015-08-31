@@ -42,7 +42,7 @@ proc returnsNewExpr*(n: PNode): NewLocation =
   of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure,
       nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt:
     result = newLit
-    for i in 0 .. <n.len:
+    for i in ord(n.kind == nkObjConstr) .. <n.len:
       let x = returnsNewExpr(n.sons[i])
       case x
       of newNone: return newNone
@@ -53,36 +53,6 @@ proc returnsNewExpr*(n: PNode): NewLocation =
       result = newCall
   else:
     result = newNone
-
-proc root(owner: PSym; n: PNode; heapAccess: var bool): PSym =
-  ## returns 'nil' if the 'root' could not be detected.
-  case n.kind
-  of nkSym:
-    result = n.sym
-  of nkHiddenDeref, nkDerefExpr:
-    result = root(owner, n.sons[0], heapAccess)
-    heapAccess = true
-  of nkHiddenAddr, nkObjUpConv, nkObjDownConv,
-      nkDotExpr, nkBracketExpr, nkCheckedFieldExpr:
-    result = root(owner, n.sons[0], heapAccess)
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkStmtList, nkStmtListExpr,
-      nkBlockStmt, nkBlockExpr, nkCast:
-    result = root(owner, n.lastSon, heapAccess)
-  of nkCallKinds:
-    # builtin slice keeps lvalue-ness:
-    if getMagic(n) == mSlice:
-      result = root(owner, n.sons[1], heapAccess)
-      heapAccess = true
-    else:
-      # 'p().foo = x' --> treat as  'let tmp = p(); tmp.foo = x'
-      result = newSym(skTemp, getIdent(":tmp"), owner, n.sons[0].info)
-      #result.typ = n.sons[0].typ.sons[0]
-      #result.ast = n.sons[0]
-      # XXX
-  of nkPar:
-    localError(n.info, "writeSetAnalysis: too implement")
-  else:
-    discard
 
 proc deps(w: var W; dest, src: PNode) =
   # let x = (localA, localB)
@@ -141,20 +111,32 @@ proc deps(w: var W; n: PNode) =
       else:
         depsArgs(w, n)
 
-proc allRoots(n: PNode; result: var seq[PSym]) =
+type
+  RootInfo = enum
+    rootIsResultOrParam,
+    rootIsHeapAccess
+
+proc allRoots(n: PNode; result: var seq[PSym]; info: var set[RootInfo]) =
   case n.kind
   of nkSym:
-    if n.sym notin result: result.add n.sym
-  of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr, nkCheckedFieldExpr,
+    if n.sym.kind in {skParam, skVar, skTemp, skLet, skResult, skForVar}:
+      if result.isNil: result = @[]
+      if n.sym notin result:
+        if n.sym.kind in {skResult, skParam}: incl(info, rootIsResultOrParam)
+        result.add n.sym
+  of nkHiddenDeref, nkDerefExpr:
+    incl(info, rootIsHeapAccess)
+    allRoots(n.sons[0], result, info)
+  of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr,
       nkHiddenAddr, nkObjUpConv, nkObjDownConv:
-    allRoots(n.sons[0], result)
+    allRoots(n.sons[0], result, info)
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkConv,
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
-    allRoots(n.lastSon, result)
+    allRoots(n.lastSon, result, info)
   of nkCallKinds:
     if getMagic(n) == mSlice:
-      allRoots(n.sons[1], result)
+      allRoots(n.sons[1], result, info)
     else:
       # we do significantly better here by using the available escape
       # information:
@@ -172,12 +154,16 @@ proc allRoots(n: PNode; result: var seq[PSym]) =
           let paramType = typ.n.sons[i]
           if paramType.typ.isCompileTimeOnly: continue
           if sfEscapes in paramType.sym.flags or paramType.typ.kind == tyVar:
-            allRoots(it, result)
+            allRoots(it, result, info)
         else:
-          allRoots(it, result)
+          allRoots(it, result, info)
   else:
     for i in 0..<n.safeLen:
-      allRoots(n.sons[i], result)
+      allRoots(n.sons[i], result, info)
+
+proc allRoots(n: PNode; result: var seq[PSym]) =
+  var dummy: set[RootInfo]
+  allRoots(n, result, dummy)
 
 proc hasSym(n: PNode; x: PSym): bool =
   when false:
@@ -187,9 +173,9 @@ proc hasSym(n: PNode; x: PSym): bool =
       for i in 0..safeLen(n)-1:
         if hasSym(n.sons[i], x): return true
   else:
-    var tmp: seq[PSym] = @[]
+    var tmp: seq[PSym]
     allRoots(n, tmp)
-    result = x in tmp
+    result = not tmp.isNil and x in tmp
 
 when debug:
   proc `$`*(x: PSym): string = x.name.s
@@ -204,15 +190,12 @@ proc possibleAliases(w: W; result: var seq[PSym]) =
     inc todo
     when debug:
       if w.owner.name.s == "m3": echo "select ", x, " ", todo, " ", result.len
-    var dummy = false
     for dest, src in items(w.assignments):
       if src.hasSym(x):
         # dest = f(..., s, ...)
-        let r = root(w.owner, dest, dummy)
-        if r != nil and r notin result:
-          result.add r
-          when debug:
-            if w.owner.name.s == "m3": echo "A ", result
+        allRoots(dest, result)
+        when debug:
+          if w.owner.name.s == "m3": echo "A ", result
       elif dest.kind == nkSym and dest.sym == x:
         # s = f(..., x, ....)
         allRoots(src, result)
@@ -222,54 +205,47 @@ proc possibleAliases(w: W; result: var seq[PSym]) =
         when debug:
           if w.owner.name.s == "m3": echo "C ", x, " ", todo, " ", result.len
 
-proc possibleAliases(w: W; s: PSym): seq[PSym] =
-  result = @[s]
-  possibleAliases(w, result)
-
 proc markDirty(w: W) =
   for dest, src in items(w.assignments):
-    var heapAccess = src == w.markAsWrittenTo
-    let r = root(w.owner, dest, heapAccess)
+    var r: seq[PSym] = nil
+    var info: set[RootInfo]
+    allRoots(dest, r, info)
     when debug:
       if w.owner.info ?? "temp18":
         echo "ASGN ", dest,  " = ", src, " |", heapAccess, " ", r.name.s
-    if heapAccess and r != nil:
-      if r.kind in {skParam, skVar, skTemp, skLet, skResult, skForVar}:
-        # we have an assignment like:
-        # local.foo = bar
-        # --> check which parameter it may alias and mark these parameters
-        # as dirty:
-        let aliases = possibleAliases(w, r)
-        for a in aliases:
-          if a.kind == skParam and a.owner == w.owner:
-            incl(a.flags, sfWrittenTo)
-      else:
-        internalError(dest.info, "dunno what to do " & $r.kind)
+    if rootIsHeapAccess in info or src == w.markAsWrittenTo:
+      # we have an assignment like:
+      # local.foo = bar
+      # --> check which parameter it may alias and mark these parameters
+      # as dirty:
+      possibleAliases(w, r)
+      for a in r:
+        if a.kind == skParam and a.owner == w.owner:
+          incl(a.flags, sfWrittenTo)
 
 proc markEscaping(w: W) =
   # let p1 = p
   # let p2 = q
   # p2.x = call(..., p1, ...)
   for dest, src in items(w.assignments):
-    var heapAccess = src == w.markAsEscaping
-    let r = root(w.owner, dest, heapAccess)
-    if r != nil and (heapAccess or r.kind == skResult):
-      if r.kind in {skParam, skVar, skTemp, skLet, skResult, skForVar}:
-        let aliases = possibleAliases(w, r)
-        var destIsParam = false
-        for a in aliases:
-          if a.kind in {skResult, skParam} and a.owner == w.owner:
-            destIsParam = true
-            break
-        if destIsParam:
-          var victims: seq[PSym] = @[]
-          allRoots(src, victims)
-          possibleAliases(w, victims)
-          for v in victims:
-            if v.kind == skParam and v.owner == w.owner:
-              incl(v.flags, sfEscapes)
-      else:
-        internalError(dest.info, "dunno what to do " & $r.kind)
+    var r: seq[PSym] = nil
+    var info: set[RootInfo]
+    allRoots(dest, r, info)
+
+    if (r.len > 0) and (info != {} or src == w.markAsEscaping):
+      possibleAliases(w, r)
+      var destIsParam = false
+      for a in r:
+        if a.kind in {skResult, skParam} and a.owner == w.owner:
+          destIsParam = true
+          break
+      if destIsParam:
+        var victims: seq[PSym] = @[]
+        allRoots(src, victims)
+        possibleAliases(w, victims)
+        for v in victims:
+          if v.kind == skParam and v.owner == w.owner:
+            incl(v.flags, sfEscapes)
 
 proc trackWrites*(owner: PSym; body: PNode) =
   var w: W
