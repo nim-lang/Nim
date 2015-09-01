@@ -13,6 +13,7 @@ import
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
+  useWriteTracking* = false
   hasFFI* = defined(useFFI)
   newScopeForIf* = true
   useCaas* = not defined(noCaas)
