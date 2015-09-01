@@ -83,7 +83,7 @@ proc depsArgs(w: var W; n: PNode) =
       if sfWrittenTo in paramType.sym.flags or paramType.typ.kind == tyVar:
         # p(f(x, y), X, g(h, z))
         deps(w, it, w.markAsWrittenTo)
-      if sfEscapes in paramType.sym.flags or paramType.typ.kind == tyVar:
+      if sfEscapes in paramType.sym.flags:
         deps(w, it, w.markAsEscaping)
 
 proc deps(w: var W; n: PNode) =
