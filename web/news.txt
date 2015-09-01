@@ -62,6 +62,8 @@ News
   - Define ``nimPinToCpu`` to make the ``threadpool`` use explicit thread
     affinities. This can speed up or slow down the thread pool; it's up to you
     to benchmark it.
+  - ``strutils.formatFloat`` and ``formatBiggestFloat`` do not depend on the C
+    locale anymore and now take an optional ``decimalSep = '.'`` parameter.
 
 
   Language Additions
