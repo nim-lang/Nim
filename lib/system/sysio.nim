@@ -90,12 +90,21 @@ proc readLine(f: File, line: var TaintedString): bool =
     let m = memchr(addr line.string[pos], '\l'.ord, space)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      let last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
+      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
       if last > 0 and line.string[last-1] == '\c':
         line.string.setLen(last-1)
         return true
+        # We have to distinguish between two possible cases:
+        # \0\l\0 => line ending in a null character.
+        # \0\l\l => last line without newline, null was put there by fgets.
+      elif last > 0 and line.string[last-1] == '\0':
+        if last < pos + space - 1 and line.string[last+1] != '\0':
+          dec last
       line.string.setLen(last)
       return true
+    else:
+      # fgets will have inserted a null byte at the end of the string.
+      dec space
     # No \l found: Increase buffer and read more
     inc pos, space
     space = 128 # read in 128 bytes at a time
