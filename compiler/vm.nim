@@ -83,7 +83,7 @@ proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, errUnhandledExceptionX,
-             c.currentExceptionA.sons[2].strVal)
+             c.currentExceptionA.sons[3].skipColon.strVal)
 
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
@@ -383,7 +383,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     let instr = c.code[pc]
     let ra = instr.regA
     #if c.traceActive:
-    #  echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra
+    #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
     #  message(c.debug[pc], warnUser, "Trace")
 
     case instr.opcode
@@ -475,14 +475,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let src = regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit}:
-        let n = src.sons[rc].skipColon
+        let n = src.sons[rc + ord(src.kind == nkObjConstr)].skipColon
         regs[ra].node = n
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)
-      putIntoNode(regs[ra].node.sons[rb], regs[rc])
+      let shiftedRb = rb + ord(regs[ra].node.kind == nkObjConstr)
+      let dest = regs[ra].node
+      if dest.sons[shiftedRb].kind == nkExprColonExpr:
+        putIntoNode(dest.sons[shiftedRb].sons[1], regs[rc])
+      else:
+        putIntoNode(dest.sons[shiftedRb], regs[rc])
     of opcWrStrIdx:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int

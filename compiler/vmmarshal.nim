@@ -36,8 +36,8 @@ proc getField(n: PNode; position: int): PSym =
 proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet)
 
 proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet) =
-  internalAssert x.kind in {nkObjConstr, nkPar}
-  let start = ord(x.kind == nkObjConstr)
+  internalAssert x.kind == nkObjConstr
+  let start = 1
   for i in countup(start, sonsLen(x) - 1):
     if i > start: s.add(", ")
     var it = x.sons[i]
@@ -205,18 +205,23 @@ proc loadAny(p: var JsonParser, t: PType,
   of tyObject:
     if p.kind != jsonObjectStart: raiseParseErr(p, "'{' expected for an object")
     next(p)
-    result = newNode(nkPar)
-    result.sons = @[]
+    result = newNode(nkObjConstr)
+    result.sons = @[newNode(nkEmpty)]
     while p.kind != jsonObjectEnd and p.kind != jsonEof:
       if p.kind != jsonString:
         raiseParseErr(p, "string expected for a field name")
-      let field = lookupInRecord(t.n, getIdent(p.str))
+      let ident = getIdent(p.str)
+      let field = lookupInRecord(t.n, ident)
       if field.isNil:
         raiseParseErr(p, "unknown field for object of type " & typeToString(t))
       next(p)
-      if field.position >= result.sons.len:
-        setLen(result.sons, field.position+1)
-      result.sons[field.position] = loadAny(p, field.typ, tab)
+      let pos = field.position + 1
+      if pos >= result.sons.len:
+        setLen(result.sons, pos + 1)
+      let fieldNode = newNode(nkExprColonExpr)
+      fieldNode.addSon(newSymNode(newSym(skField, ident, nil, unknownLineInfo())))
+      fieldNode.addSon(loadAny(p, field.typ, tab))
+      result.sons[pos] = fieldNode
     if p.kind == jsonObjectEnd: next(p)
     else: raiseParseErr(p, "'}' end of object expected")
   of tySet:
