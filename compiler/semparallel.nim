@@ -363,7 +363,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
             else: internalError(it.info, "slot already has a lower bound")
         if not isSpawned: analyse(c, value)
   of nkCaseStmt: analyseCase(c, n)
-  of nkIfStmt, nkIfExpr: analyseIf(c, n)
+  of nkWhen, nkIfStmt, nkIfExpr: analyseIf(c, n)
   of nkWhileStmt:
     analyse(c, n.sons[0])
     # 'while true' loop?

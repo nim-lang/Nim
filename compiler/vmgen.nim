@@ -1664,7 +1664,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkBracketExpr: genArrAccess(c, n, dest, flags)
   of nkDerefExpr, nkHiddenDeref: genAddrDeref(c, n, dest, opcLdDeref, flags)
   of nkAddr, nkHiddenAddr: genAddrDeref(c, n, dest, opcAddrNode, flags)
-  of nkWhenStmt, nkIfStmt, nkIfExpr: genIf(c, n, dest)
+  of nkIfStmt, nkIfExpr: genIf(c, n, dest)
+  of nkWhenStmt:
+      # This is "when nimvm" node. Chose the first branch.
+      gen(c, n.sons[0].sons[1], dest)
   of nkCaseStmt: genCase(c, n, dest)
   of nkWhileStmt:
     unused(n, dest)
