@@ -1375,7 +1375,8 @@ type # these work for most platforms:
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
 
-  cstringArray* {.importc: "char**", nodecl.} = ptr array [0..ArrayDummySize, cstring]
+  cstringArray* {.importc: "char**", nodecl.} = ptr
+    array [0..ArrayDummySize, cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
@@ -1886,7 +1887,7 @@ iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
     yield (i, a[i])
     inc(i)
 
-iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T] {.inline.} =
+iterator mpairs*[T](a: var openArray[T]): tuple[key:int, val:var T]{.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = 0
@@ -1903,7 +1904,7 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
       if i >= high(IX): break
       inc(i)
 
-iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
+iterator mpairs*[IX, T](a:var array[IX, T]):tuple[key:IX,val:var T] {.inline.} =
   ## iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
   ## ``a[index]`` can be modified.
   var i = low(IX)
@@ -3149,25 +3150,31 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## .. code-block:: nim
   ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
 
-proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.magic: "Inc", noSideEffect.}
+proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+  magic: "Inc", noSideEffect.}
   ## Increments an ordinal
 
-proc `-=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.magic: "Dec", noSideEffect.}
+proc `-=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+  magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.inline, noSideEffect.} =
+proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+  inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
 
-proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
+proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.
+  inline, noSideEffect.} =
   ## Increments in placee a floating point number
   x = x + y
 
-proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
+proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.
+  inline, noSideEffect.} =
   ## Decrements in place a floating point number
   x = x - y
 
-proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.inline, noSideEffect.} =
+proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.
+  inline, noSideEffect.} =
   ## Multiplies in place a floating point number
   x = x * y
 
@@ -3380,8 +3387,8 @@ when hasAlloc:
     x.add(y)
 
   proc safeAdd*(x: var string, y: string) =
-    ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that case, ``x``
-    ## becomes ``y``
+    ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
+    ## case, ``x`` becomes ``y``
     if x == nil: x = y
     else: x.add(y)
 
