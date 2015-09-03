@@ -206,10 +206,7 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
-  result = ""
-  for row in fastRows(db, query, args): 
-    result = row[0]
-    break
+  result = getRow(db, query, args)[0]
 
 proc tryInsertId*(db: DbConn, query: SqlQuery, 
                   args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
