@@ -1051,26 +1051,30 @@ proc parse*(value, layout: string): TimeInfo =
   return info
 
 # Leap year calculations are adapted from:
-# from http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
+# http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
 # The dayOfTheWeek procs are adapated from:
-# from http://stason.org/TULARC/society/calendars/2-5-What-day-of-the-week-was-2-August-1953.html
+# http://stason.org/TULARC/society/calendars/2-5-What-day-of-the-week-was-2-August-1953.html
 
-# Note: for leap years, start date is assumed to be 1 AD.
-# counts the number of leap years up to January 1st of a given year.
-# Keep in mind that if specified year is a leap year, the leap day
-# has not happened before January 1st of that year.
-proc countLeapYears(yearSpan: int): int =
-  (((yearSpan - 1) / 4) - ((yearSpan - 1) / 100) + ((yearSpan - 1)/400)).int
+proc countLeapYears*(yearSpan: int): int =
+  ## Returns the number of leap years spanned by a given number of years.
+  ##
+  ## Note: for leap years, start date is assumed to be 1 AD.
+  ## counts the number of leap years up to January 1st of a given year.
+  ## Keep in mind that if specified year is a leap year, the leap day
+  ## has not happened before January 1st of that year.
+  (((yearSpan - 1) / 4) - ((yearSpan - 1) / 100) + ((yearSpan - 1) / 400)).int
 
-proc countDays(yearSpan: int): int =
+proc countDays*(yearSpan: int): int =
+  ## Returns the number of days spanned by a given number of years.
   (yearSpan - 1) * 365 + countLeapYears(yearSpan)
 
-proc countYears(daySpan: int): int =
-  # counts the number of years spanned by a given number of days.
+proc countYears*(daySpan: int): int =
+  ## Returns the number of years spanned by a given number of days.
   ((daySpan - countLeapYears(daySpan div 365)) div 365)
 
-proc countYearsAndDays(daySpan: int): tuple[years: int, days: int] =
-  # counts the number of years spanned by a given number of days and the remainder as days.
+proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
+  ## Returns the number of years spanned by a given number of days and the
+  ## remainder as days.
   let days = daySpan - countLeapYears(daySpan div 365)
   result.years = days div 365
   result.days = days mod 365
