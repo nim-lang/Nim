@@ -1197,8 +1197,8 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
 # floating point formating:
 
-proc c_sprintf(buf, frmt: cstring) {.header: "<stdio.h>", importc: "sprintf",
-                                     varargs, noSideEffect.}
+proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
+                                     importc: "sprintf", varargs, noSideEffect.}
 
 type
   FloatFormatMode* = enum ## the different modes of floating point formating
@@ -1209,7 +1209,8 @@ type
 {.deprecated: [TFloatFormat: FloatFormatMode].}
 
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
-                         precision: range[0..32] = 16): string {.
+                         precision: range[0..32] = 16;
+                         decimalSep = '.'): string {.
                          noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1225,6 +1226,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   var
     frmtstr {.noinit.}: array[0..5, char]
     buf {.noinit.}: array[0..2500, char]
+    L: cint
   frmtstr[0] = '%'
   if precision > 0:
     frmtstr[1] = '#'
@@ -1232,15 +1234,20 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     frmtstr[3] = '*'
     frmtstr[4] = floatFormatToChar[format]
     frmtstr[5] = '\0'
-    c_sprintf(buf, frmtstr, precision, f)
+    L = c_sprintf(buf, frmtstr, precision, f)
   else:
     frmtstr[1] = floatFormatToChar[format]
     frmtstr[2] = '\0'
-    c_sprintf(buf, frmtstr, f)
-  result = $buf
+    L = c_sprintf(buf, frmtstr, f)
+  result = newString(L)
+  for i in 0 ..< L:
+    # Depending on the locale either dot or comma is produced,
+    # but nothing else is possible:
+    if buf[i] in {'.', ','}: result[i] = decimalsep
+    else: result[i] = buf[i]
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
-                  precision: range[0..32] = 16): string {.
+                  precision: range[0..32] = 16; decimalSep = '.'): string {.
                   noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1250,7 +1257,7 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
-  result = formatBiggestFloat(f, format, precision)
+  result = formatBiggestFloat(f, format, precision, decimalSep)
 
 proc formatSize*(bytes: BiggestInt, decimalSep = '.'): string =
   ## Rounds and formats `bytes`. Examples:
@@ -1464,8 +1471,8 @@ when isMainModule:
   doAssert wordWrap(inp, 10, false) == outp
 
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1) in
-                                                   ["1.0e-11", "1.0e-011"]
+  doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
+                                                   ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   when not defined(testing):
