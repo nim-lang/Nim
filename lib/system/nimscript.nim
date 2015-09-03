@@ -157,8 +157,8 @@ var
     binDir*, backend*: string
 
   skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
-    installExt*, bin*: seq[string]
-  requiresData*: seq[string]
+    installExt*, bin*: seq[string] = @[]
+  requiresData*: seq[string] = @[]
 
 proc requires*(deps: varargs[string]) =
   for d in deps: requiresData.add(d)
