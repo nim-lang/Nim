@@ -5,7 +5,7 @@ import os, sets, pegs
 type
   ProcessResult = enum prSkipIncludeDir, prAddIncludeDir
 
-proc process(dir, infile: string, outfile: File, 
+proc process(dir, infile: string, outfile: File,
              processed: var HashSet[string]): ProcessResult =
   if processed.containsOrIncl(infile): return prSkipIncludeDir
   let toProcess = dir / infile
