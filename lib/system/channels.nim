@@ -33,6 +33,39 @@ type
 {.deprecated: [TRawChannel: RawChannel, TLoadStoreMode: LoadStoreMode,
               TChannel: Channel].}
 
+# We create a MessageCounter. Each time there is a send() or close() call on
+# any channel we increase MessageCounter.counter by 1. This counter and its
+# lock can be used to listen on multiple channels at once, and sleep until
+# there is an event.
+type
+  TMessageCounter {.pure, final.} = object
+    lock:    SysLock
+    cond:    SysCond
+    counter: int
+
+var MessageCounter = TMessageCounter()
+MessageCounter.counter = 0
+initSysLock(MessageCounter.lock)
+initSysCond(MessageCounter.cond)
+
+proc waitForNextMessage*(counter: var int) =
+  ## This function return immediately if the given counter is lower than 
+  ## the internal message counter. If they are the same, then it blocks
+  ## the current thread until one of the channels is used or closed.
+  ## The parameter is needed to avoid race condition.
+  ##
+  ## A possible usecase for this function:
+  ## .. code-block:: Nim
+  ##   var counter = 0
+  ##   while true:
+  ##     waitForNextMessage(counter)
+  ##     # process channels here...
+  acquireSys(MessageCounter.lock)
+  if MessageCounter.counter == counter:
+    waitSysCond(MessageCounter.cond, MessageCounter.lock)
+  counter = MessageCounter.counter
+  releaseSys(MessageCounter.lock)
+
 const ChannelDeadMask = -2
 
 proc initRawChannel(p: pointer) =
@@ -208,6 +241,10 @@ proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) =
   ## sends a message to a thread. `msg` is deeply copied.
   var q = cast[PRawChannel](addr(c))
   sendImpl(q)
+  acquireSys(MessageCounter.lock)
+  inc MessageCounter.counter
+  broadcastSysCond(MessageCounter.cond)
+  releaseSys(MessageCounter.lock)
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   # to save space, the generic is as small as possible
@@ -240,6 +277,11 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
         result.dataAvailable = true
       releaseSys(q.lock)
 
+proc tryRecv*[TMsg](c: var Channel[TMsg], message: var TMsg): bool =
+  let (dataAvailable, msg) = tryRecv(c)
+  message = msg
+  dataAvailable
+
 proc peek*[TMsg](c: var Channel[TMsg]): int =
   ## returns the current number of messages in the channel `c`. Returns -1
   ## if the channel has been closed. **Note**: This is dangerous to use
@@ -258,6 +300,14 @@ proc open*[TMsg](c: var Channel[TMsg]) =
 proc close*[TMsg](c: var Channel[TMsg]) =
   ## closes a channel `c` and frees its associated resources.
   deinitRawChannel(addr(c))
+  acquireSys(MessageCounter.lock)
+  inc MessageCounter.counter
+  broadcastSysCond(MessageCounter.cond)
+  releaseSys(MessageCounter.lock)
+
+proc isClosed*[TMsg](c: var Channel[Tmsg]): bool =
+  ## check whether channel is closed
+  c.mask == ChannelDeadMask
 
 proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## returns true iff some thread is waiting on the channel `c` for

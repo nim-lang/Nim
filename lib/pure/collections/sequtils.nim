@@ -268,7 +268,7 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
     inc(j)
 
 
-template filterIt*(seq1, pred: expr): expr {.immediate.} =
+template filterIt*[T](seq1: openArray[T], pred: expr): seq[T] {.immediate.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -287,7 +287,7 @@ template filterIt*(seq1, pred: expr): expr {.immediate.} =
     if pred: result.add(it)
   result
 
-template keepItIf*(varSeq, pred: expr) =
+template keepItIf*[T](varSeq: var seq[T], pred: expr) =
   ## Convenience template around the ``keepIf`` proc to reduce typing.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -308,7 +308,7 @@ template keepItIf*(varSeq, pred: expr) =
   setLen(varSeq, pos)
 
 
-template toSeq*(iter: expr): expr {.immediate.} =
+template toSeq*[T](iter: expr): seq[T] {.immediate.} =
   ## Transforms any iterator into a sequence.
   ##
   ## Example:
@@ -329,7 +329,7 @@ template toSeq*(iter: expr): expr {.immediate.} =
   for x in iter: add(result, x)
   result
 
-template foldl*(sequence, operation: expr): expr =
+template foldl*[T](sequence: openArray[T], operation: expr): T =
   ## Template to fold a sequence from left to right, returning the accumulation.
   ##
   ## The sequence is required to have at least a single element. Debug versions
@@ -365,7 +365,7 @@ template foldl*(sequence, operation: expr): expr =
     result = operation
   result
 
-template foldr*(sequence, operation: expr): expr =
+template foldr*[T](sequence: openArray[T], operation: expr): T =
   ## Template to fold a sequence from right to left, returning the accumulation.
   ##
   ## The sequence is required to have at least a single element. Debug versions
@@ -401,25 +401,30 @@ template foldr*(sequence, operation: expr): expr =
     result = operation
   result
 
-template mapIt*(seq1, typ, op: expr): expr =
+template mapIt*[T,S](seq1: openArray[T], op: expr): seq[S] =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
-  ## expression. You also need to pass as `typ` the type of the expression,
-  ## since the new returned sequence can have a different type than the
-  ## original.  Example:
+  ## expression. Example:
   ##
   ## .. code-block::
   ##   let
   ##     nums = @[1, 2, 3, 4]
-  ##     strings = nums.mapIt(string, $(4 * it))
+  ##     strings = nums.mapIt($(4 * it))
   ##   assert strings == @["4", "8", "12", "16"]
-  var result {.gensym.}: seq[typ] = @[]
+  type T {.gensym.} = type(seq1[0])
+  type S {.gensym.} = type((
+    block:
+      var it{.inject.}: T
+      op))
+  var result {.gensym.} = newSeq[S](len(seq1))
+  var pos = 0
   for it {.inject.} in items(seq1):
-    result.add(op)
+    result[pos] = op
+    inc pos
   result
 
-template mapIt*(varSeq, op: expr) =
+template replaceIt*[T](varSeq: var seq[T], op: expr) =
   ## Convenience template around the mutable ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -428,7 +433,7 @@ template mapIt*(varSeq, op: expr) =
   ##
   ## .. code-block::
   ##   var nums = @[1, 2, 3, 4]
-  ##   nums.mapIt(it * 3)
+  ##   nums.replaceIt(it * 3)
   ##   assert nums[0] + nums[3] == 15
   for i in 0 .. <len(varSeq):
     let it {.inject.} = varSeq[i]
@@ -565,12 +570,15 @@ when isMainModule:
     Inserting [2,2,2,2,2,2] into [1,1,1,1,1,1,1,1]
     at 3 is [1,1,1,2,2,2,2,2,2,1,1,1,1,1]"""
 
-  block: # mapIt tests
+  block: # mapIt, replaceIt tests
     var
       nums = @[1, 2, 3, 4]
-      strings = nums.mapIt(string, $(4 * it))
-    nums.mapIt(it * 3)
+      strings = nums.mapIt($(4 * it))
+      emptySeq = newSeq[int]()
+    nums.replaceIt(it * 3)
     assert nums[0] + nums[3] == 15
+    assert strings == @["4", "8", "12", "16"]
+    assert emptySeq.mapIt($it) == newSeq[string]()
 
   block: # distribute tests
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
