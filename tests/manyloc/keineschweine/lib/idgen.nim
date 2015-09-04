@@ -5,7 +5,7 @@ type
     freeIDs: seq[T]
   EOutOfIDs* = object of EInvalidKey
 
-#proc free[T](idg: PIDgen[T]) = 
+#proc free[T](idg: PIDgen[T]) =
 #  result.freeIDs = nil
 proc newIDGen*[T: Ordinal](): PIDGen[T] =
   new(result)#, free)

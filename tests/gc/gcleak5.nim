@@ -11,12 +11,12 @@ proc main =
     var t = getTime()
     var g = t.getGMTime()
     #echo isOnStack(addr g)
-    
+
     if i mod 100 == 0:
       let om = getOccupiedMem()
       #echo "memory: ", om
       if om > 100_000: quit "leak"
-     
+
     inc(i)
     sleep(1)
 

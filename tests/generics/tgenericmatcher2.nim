@@ -12,7 +12,7 @@ type
       matcher: ref TMatcher[T]
       min, max: int
 
-var 
+var
   m: ref TMatcher[int]
 
 

@@ -81,34 +81,34 @@ proc getCommit(db: TDbConn): CommitId =
   let hash = "git log -n 1"()[commLen..commLen+10]
   let branch = "git symbolic-ref --short HEAD"()
   if hash.len == 0 or branch.len == 0: quit "cannot determine git HEAD"
-  
+
   let id = db.getValue(sql"select id from [Commit] where hash = ? and branch = ?",
                        hash, branch)
   if id.len > 0:
     result = id.parseInt.CommitId
   else:
-    result = db.insertId(sql"insert into [Commit](hash, branch) values (?, ?)", 
+    result = db.insertId(sql"insert into [Commit](hash, branch) values (?, ?)",
                          hash, branch).CommitId
 
-proc writeTestResult*(name, category, target, 
+proc writeTestResult*(name, category, target,
                       action, result, expected, given: string) =
-  let id = db.getValue(sql"""select id from TestResult 
+  let id = db.getValue(sql"""select id from TestResult
                              where name = ? and category = ? and target = ? and
-                                machine = ? and [commit] = ?""", 
+                                machine = ? and [commit] = ?""",
                                 name, category, target,
                                 thisMachine, thisCommit)
   if id.len > 0:
     db.exec(sql"""update TestResult
-                  set action = ?, result = ?, expected = ?, given = ? 
+                  set action = ?, result = ?, expected = ?, given = ?
                   where id = ?""", action, result, expected, given, id)
   else:
-    db.exec(sql"""insert into TestResult(name, category, target, 
-                                         action, 
+    db.exec(sql"""insert into TestResult(name, category, target,
+                                         action,
                                          result, expected, given,
                                          [commit], machine)
-                  values (?,?,?,?,?,?,?,?,?) """, name, category, target, 
+                  values (?,?,?,?,?,?,?,?,?) """, name, category, target,
                                         action,
-                                        result, expected, given, 
+                                        result, expected, given,
                                         thisCommit, thisMachine)
 
 proc open*() =

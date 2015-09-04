@@ -25,7 +25,7 @@ of "will", "it", "finally", "be", "generated": discard
 var z = case i
   of 1..5, 8, 9: "aa"
   of 6, 7: "bb"
-  elif x == "Ha": 
+  elif x == "Ha":
     "cc"
   elif x == "yyy":
     write(stdout, x)

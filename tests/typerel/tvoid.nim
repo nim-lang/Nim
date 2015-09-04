@@ -16,14 +16,14 @@ proc nothing(x, y: void): void =
   echo "ha"
 
 proc callProc[T](p: proc (x: T) {.nimcall.}, x: T) =
-  when T is void: 
+  when T is void:
     p()
   else:
     p(x)
 
 proc intProc(x: int) =
   echo x
-  
+
 proc emptyProc() =
   echo "empty"
 

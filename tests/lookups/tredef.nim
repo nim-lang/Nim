@@ -12,13 +12,13 @@ block:
   template foo(a: int, b: string) = discard
   foo(1, "test")
   bar(1, "test")
-  
+
 proc baz =
   proc foo(a: int, b: string) = discard
   proc foo(b: string) =
     template bar(a: int, b: string) = discard
     bar(1, "test")
-    
+
   foo("test")
 
   block:

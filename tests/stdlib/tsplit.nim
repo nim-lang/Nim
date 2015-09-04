@@ -13,7 +13,7 @@ if s == "#abc#xy#z":
   echo "true"
 else:
   echo "false"
-  
+
 #OUT true
 
 

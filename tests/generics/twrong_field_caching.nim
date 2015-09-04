@@ -13,10 +13,10 @@ x32: 3x2 (3x2)'''
 
 type
   RectArray*[R, C: static[int], T] = distinct array[R * C, T]
- 
+
 var a23: RectArray[2, 3, int]
 var a32: RectArray[3, 2, int]
- 
+
 echo "a23: ", a23.R, "x", a23.C
 echo "a32: ", a32.R, "x", a32.C
 
@@ -34,8 +34,8 @@ echo "t32: ", t32.R, "x", t32.C
 
 # Output:
 # t32: 3x2
- 
- 
+
+
 # Everything is still OK. Now let's use the rectangular array inside another
 # generic type:
 type
@@ -62,7 +62,7 @@ var x32 = x23.transpose
 
 echo "x23: ", x23.R, "x", x23.C, " (", x23.theArray.R, "x", x23.theArray.C, ")"
 echo "x32: ", x32.R, "x", x32.C, " (", x32.theArray.R, "x", x32.theArray.C, ")"
- 
+
 # Output:
 # x23: 2x3 (2x3)
 # x32: 3x2 (3x2)  <--- this is incorrect. R and C do not match!

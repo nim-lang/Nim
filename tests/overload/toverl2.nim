@@ -9,9 +9,9 @@ import strutils
 proc toverl2(x: int): string = return $x
 proc toverl2(x: bool): string = return $x
 
-iterator toverl2(x: int): int = 
+iterator toverl2(x: int): int =
   var res = 0
-  while res < x: 
+  while res < x:
     yield res
     inc(res)
 
@@ -20,7 +20,7 @@ var
 
 stdout.write(pp(true))
 
-for x in toverl2(3): 
+for x in toverl2(3):
   stdout.write(toverl2(x))
 
 block:

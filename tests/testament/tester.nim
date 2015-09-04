@@ -286,8 +286,8 @@ proc testSpec(r: var TResults, test: TTest) =
 
     if exitCode != expected.exitCode:
       r.addResult(test, "exitcode: " & $expected.exitCode,
-                        "exitcode: " & $exitCode & "\n\nOutput:\n" & 
-                        analyzeAndConsolidateOutput(bufB), 
+                        "exitcode: " & $exitCode & "\n\nOutput:\n" &
+                        analyzeAndConsolidateOutput(bufB),
                         reExitCodesDiffer)
       return
 

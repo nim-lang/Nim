@@ -6,9 +6,9 @@ type
     auth*: bool
     alias*: string
     peer*: PPeer
-  
+
   FileChallengePair* = tuple[challenge: ScFileChallenge; file: TChecksumFile]
-  PFileChallengeSequence* = ref TFileChallengeSequence 
+  PFileChallengeSequence* = ref TFileChallengeSequence
   TFileChallengeSequence = object
     index: int  #which file is active
     transfer: ScFileTransfer
@@ -73,7 +73,7 @@ proc sendChunk*(challenge: PFileChallengeSequence, client: PClient) =
   let size = min(FileChunkSize, challenge.transfer.fileSize - challenge.transfer.pos)
   challenge.transfer.data.setLen size
   copyMem(
-    addr challenge.transfer.data[0], 
+    addr challenge.transfer.data[0],
     addr challenge.file.file.compressed[challenge.transfer.pos],
     size)
   client.send HFileTransfer, challenge.transfer
@@ -90,7 +90,7 @@ proc startSend*(challenge: PFileChallengeSequence, client: PClient) =
 ## HFileTransfer
 proc handleFilePartAck*(client: PClient; buffer: PBuffer) =
   echo "got filepartack"
-  var 
+  var
     ftrans = readCsFilepartAck(buffer)
     fcSeq = fileChallenges[client.id]
   fcSeq.transfer.pos = ftrans.lastPos
@@ -99,7 +99,7 @@ proc handleFilePartAck*(client: PClient; buffer: PBuffer) =
 ## HFileCHallenge
 proc handleFileChallengeResp*(client: PClient; buffer: PBuffer) =
   echo "got file challenge resp"
-  var 
+  var
     fcResp = readCsFileChallenge(buffer)
     fcSeq = fileChallenges[client.id]
   let index = $(fcSeq.index + 1) / $(myAssets.len)

@@ -3,7 +3,7 @@ import unittest
 type Obj = object
   foo: int
 
-proc makeObj(x: int): Obj = 
+proc makeObj(x: int): Obj =
   result.foo = x
 
 suite "object basic methods":

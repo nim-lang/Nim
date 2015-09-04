@@ -3,11 +3,11 @@ discard """
   output: '''TSubRange: 5 from 1 to 10
 true true true'''
 """
-type 
+type
   TSubRange = range[1 .. 10]
   TEnum = enum A, B, C
 var sr: TSubRange = 5
-echo("TSubRange: " & $sr & " from " & $low(TSubRange) & " to " & 
+echo("TSubRange: " & $sr & " from " & $low(TSubRange) & " to " &
      $high(TSubRange))
 
 const cset = {A} + {B}

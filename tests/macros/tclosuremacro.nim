@@ -29,7 +29,7 @@ proc doWithOneAndTwo(f: (int, int) -> int): int =
 echo twoParams(proc (a, b): auto = a + b)
 echo twoParams((x, y) => x + y)
 
-echo oneParam(x => x+5) 
+echo oneParam(x => x+5)
 
 echo noParams(() => 3)
 

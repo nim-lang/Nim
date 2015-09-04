@@ -5,7 +5,7 @@ discard """
 template Additive(typ: typeDesc): stmt =
   proc `+` *(x, y: typ): typ {.borrow.}
   proc `-` *(x, y: typ): typ {.borrow.}
-  
+
   # unary operators:
   proc `+` *(x: typ): typ {.borrow.}
   proc `-` *(x: typ): typ {.borrow.}
@@ -27,7 +27,7 @@ template DefineCurrency(typ, base: expr): stmt {.immediate.} =
   Additive(typ)
   Multiplicative(typ, base)
   Comparable(typ)
-  
+
   proc `$` * (t: typ): string {.borrow.}
 
 DefineCurrency(TDollar, int)

@@ -8,12 +8,12 @@ type
   TMyType = object {.inheritable.}
     len: int
     data: string
-    
+
   TOtherType = object of TMyType
-   
-proc p(x: TMyType): bool = 
+
+proc p(x: TMyType): bool =
   return x of TOtherType
-    
+
 var
   m: TMyType
   n: TOtherType

@@ -7,9 +7,9 @@ discard """
 var
   g = 5
 
-proc p(): var int = 
+proc p(): var int =
   result = 89
-  
+
 p() = 45
 
 echo g

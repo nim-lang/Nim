@@ -55,6 +55,6 @@ proc main*(infile: string, a, b: int, someverylongnamewithtype = 0,
   call(3, # we use 3
        12, # we use 12
        43) # we use 43
-       
+
 
 main(ParamStr(1), 9, 0)

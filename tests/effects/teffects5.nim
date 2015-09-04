@@ -6,7 +6,7 @@ discard """
 proc p(q: proc() ): proc() {.tags: [], raises: [], closure.} =
   return proc () =
     q()
-  
+
 let yay = p(proc () = raise newException(EIO, "IO"))
 
 proc main() {.raises: [], tags: [].} = yay()

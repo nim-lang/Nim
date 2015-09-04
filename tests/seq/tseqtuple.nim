@@ -6,7 +6,7 @@ discard """
 type
   TMsg = tuple[
     file: string,
-    line: int,       
+    line: int,
     msg: string,
     err: bool]
 

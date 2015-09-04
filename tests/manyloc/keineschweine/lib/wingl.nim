@@ -1,9 +1,9 @@
-import 
+import
   gl, windows
 
-proc wglGetExtensionsStringARB*(hdc: HDC): cstring{.dynlib: dllname, 
+proc wglGetExtensionsStringARB*(hdc: HDC): cstring{.dynlib: dllname,
     importc: "wglGetExtensionsStringARB".}
-const 
+const
   WGL_FRONT_COLOR_BUFFER_BIT_ARB* = 0x00000001
   WGL_BACK_COLOR_BUFFER_BIT_ARB* = 0x00000002
   WGL_DEPTH_BUFFER_BIT_ARB* = 0x00000004
@@ -13,21 +13,21 @@ proc WinChoosePixelFormat*(DC: HDC, p2: PPixelFormatDescriptor): int{.
     dynlib: "gdi32", importc: "ChoosePixelFormat".}
 proc wglCreateBufferRegionARB*(hDC: HDC, iLayerPlane: TGLint, uType: TGLuint): THandle{.
     dynlib: dllname, importc: "wglCreateBufferRegionARB".}
-proc wglDeleteBufferRegionARB*(hRegion: THandle){.dynlib: dllname, 
+proc wglDeleteBufferRegionARB*(hRegion: THandle){.dynlib: dllname,
     importc: "wglDeleteBufferRegionARB".}
-proc wglSaveBufferRegionARB*(hRegion: THandle, x: TGLint, y: TGLint, 
+proc wglSaveBufferRegionARB*(hRegion: THandle, x: TGLint, y: TGLint,
                              width: TGLint, height: TGLint): BOOL{.
     dynlib: dllname, importc: "wglSaveBufferRegionARB".}
-proc wglRestoreBufferRegionARB*(hRegion: THandle, x: TGLint, y: TGLint, 
-                                width: TGLint, height: TGLint, xSrc: TGLint, 
-                                ySrc: TGLint): BOOL{.dynlib: dllname, 
+proc wglRestoreBufferRegionARB*(hRegion: THandle, x: TGLint, y: TGLint,
+                                width: TGLint, height: TGLint, xSrc: TGLint,
+                                ySrc: TGLint): BOOL{.dynlib: dllname,
     importc: "wglRestoreBufferRegionARB".}
-proc wglAllocateMemoryNV*(size: TGLsizei, readFrequency: TGLfloat, 
+proc wglAllocateMemoryNV*(size: TGLsizei, readFrequency: TGLfloat,
                           writeFrequency: TGLfloat, priority: TGLfloat): PGLvoid{.
     dynlib: dllname, importc: "wglAllocateMemoryNV".}
-proc wglFreeMemoryNV*(pointer: PGLvoid){.dynlib: dllname, 
+proc wglFreeMemoryNV*(pointer: PGLvoid){.dynlib: dllname,
     importc: "wglFreeMemoryNV".}
-const 
+const
   WGL_IMAGE_BUFFER_MIN_ACCESS_I3D* = 0x00000001
   WGL_IMAGE_BUFFER_LOCK_I3D* = 0x00000002
 
@@ -35,30 +35,30 @@ proc wglCreateImageBufferI3D*(hDC: HDC, dwSize: DWORD, uFlags: UINT): PGLvoid{.
     dynlib: dllname, importc: "wglCreateImageBufferI3D".}
 proc wglDestroyImageBufferI3D*(hDC: HDC, pAddress: PGLvoid): BOOL{.
     dynlib: dllname, importc: "wglDestroyImageBufferI3D".}
-proc wglAssociateImageBufferEventsI3D*(hdc: HDC, pEvent: PHandle, 
-                                       pAddress: PGLvoid, pSize: PDWORD, 
-                                       count: UINT): BOOL{.dynlib: dllname, 
+proc wglAssociateImageBufferEventsI3D*(hdc: HDC, pEvent: PHandle,
+                                       pAddress: PGLvoid, pSize: PDWORD,
+                                       count: UINT): BOOL{.dynlib: dllname,
     importc: "wglAssociateImageBufferEventsI3D".}
 proc wglReleaseImageBufferEventsI3D*(hdc: HDC, pAddress: PGLvoid, count: UINT): BOOL{.
     dynlib: dllname, importc: "wglReleaseImageBufferEventsI3D".}
-proc wglEnableFrameLockI3D*(): BOOL{.dynlib: dllname, 
+proc wglEnableFrameLockI3D*(): BOOL{.dynlib: dllname,
                                      importc: "wglEnableFrameLockI3D".}
-proc wglDisableFrameLockI3D*(): BOOL{.dynlib: dllname, 
+proc wglDisableFrameLockI3D*(): BOOL{.dynlib: dllname,
                                       importc: "wglDisableFrameLockI3D".}
-proc wglIsEnabledFrameLockI3D*(pFlag: PBOOL): BOOL{.dynlib: dllname, 
+proc wglIsEnabledFrameLockI3D*(pFlag: PBOOL): BOOL{.dynlib: dllname,
     importc: "wglIsEnabledFrameLockI3D".}
-proc wglQueryFrameLockMasterI3D*(pFlag: PBOOL): BOOL{.dynlib: dllname, 
+proc wglQueryFrameLockMasterI3D*(pFlag: PBOOL): BOOL{.dynlib: dllname,
     importc: "wglQueryFrameLockMasterI3D".}
-proc wglGetFrameUsageI3D*(pUsage: PGLfloat): BOOL{.dynlib: dllname, 
+proc wglGetFrameUsageI3D*(pUsage: PGLfloat): BOOL{.dynlib: dllname,
     importc: "wglGetFrameUsageI3D".}
-proc wglBeginFrameTrackingI3D*(): BOOL{.dynlib: dllname, 
+proc wglBeginFrameTrackingI3D*(): BOOL{.dynlib: dllname,
                                         importc: "wglBeginFrameTrackingI3D".}
-proc wglEndFrameTrackingI3D*(): BOOL{.dynlib: dllname, 
+proc wglEndFrameTrackingI3D*(): BOOL{.dynlib: dllname,
                                       importc: "wglEndFrameTrackingI3D".}
-proc wglQueryFrameTrackingI3D*(pFrameCount: PDWORD, pMissedFrames: PDWORD, 
+proc wglQueryFrameTrackingI3D*(pFrameCount: PDWORD, pMissedFrames: PDWORD,
                                pLastMissedUsage: PGLfloat): BOOL{.
     dynlib: dllname, importc: "wglQueryFrameTrackingI3D".}
-const 
+const
   WGL_NUMBER_PIXEL_FORMATS_ARB* = 0x00002000
   WGL_DRAW_TO_WINDOW_ARB* = 0x00002001
   WGL_DRAW_TO_BITMAP_ARB* = 0x00002002
@@ -109,27 +109,27 @@ const
   WGL_TYPE_RGBA_ARB* = 0x0000202B
   WGL_TYPE_COLORINDEX_ARB* = 0x0000202C
 
-proc wglGetPixelFormatAttribivARB*(hdc: HDC, iPixelFormat: TGLint, 
-                                   iLayerPlane: TGLint, nAttributes: TGLuint, 
+proc wglGetPixelFormatAttribivARB*(hdc: HDC, iPixelFormat: TGLint,
+                                   iLayerPlane: TGLint, nAttributes: TGLuint,
                                    piAttributes: PGLint, piValues: PGLint): BOOL{.
     dynlib: dllname, importc: "wglGetPixelFormatAttribivARB".}
-proc wglGetPixelFormatAttribfvARB*(hdc: HDC, iPixelFormat: TGLint, 
-                                   iLayerPlane: TGLint, nAttributes: TGLuint, 
+proc wglGetPixelFormatAttribfvARB*(hdc: HDC, iPixelFormat: TGLint,
+                                   iLayerPlane: TGLint, nAttributes: TGLuint,
                                    piAttributes: PGLint, pfValues: PGLfloat): BOOL{.
     dynlib: dllname, importc: "wglGetPixelFormatAttribfvARB".}
-proc wglChoosePixelFormatARB*(hdc: HDC, piAttribIList: PGLint, 
-                              pfAttribFList: PGLfloat, nMaxFormats: TGLuint, 
+proc wglChoosePixelFormatARB*(hdc: HDC, piAttribIList: PGLint,
+                              pfAttribFList: PGLfloat, nMaxFormats: TGLuint,
                               piFormats: PGLint, nNumFormats: PGLuint): BOOL{.
     dynlib: dllname, importc: "wglChoosePixelFormatARB".}
-const 
+const
   WGL_ERROR_INVALID_PIXEL_TYPE_ARB* = 0x00002043
   WGL_ERROR_INCOMPATIBLE_DEVICE_CONTEXTS_ARB* = 0x00002054
 
 proc wglMakeContextCurrentARB*(hDrawDC: HDC, hReadDC: HDC, hglrc: HGLRC): BOOL{.
     dynlib: dllname, importc: "wglMakeContextCurrentARB".}
-proc wglGetCurrentReadDCARB*(): HDC{.dynlib: dllname, 
+proc wglGetCurrentReadDCARB*(): HDC{.dynlib: dllname,
                                      importc: "wglGetCurrentReadDCARB".}
-const 
+const
   WGL_DRAW_TO_PBUFFER_ARB* = 0x0000202D # WGL_DRAW_TO_PBUFFER_ARB  { already defined }
   WGL_MAX_PBUFFER_PIXELS_ARB* = 0x0000202E
   WGL_MAX_PBUFFER_WIDTH_ARB* = 0x0000202F
@@ -139,22 +139,22 @@ const
   WGL_PBUFFER_HEIGHT_ARB* = 0x00002035
   WGL_PBUFFER_LOST_ARB* = 0x00002036
 
-proc wglCreatePbufferARB*(hDC: HDC, iPixelFormat: TGLint, iWidth: TGLint, 
+proc wglCreatePbufferARB*(hDC: HDC, iPixelFormat: TGLint, iWidth: TGLint,
                           iHeight: TGLint, piAttribList: PGLint): THandle{.
     dynlib: dllname, importc: "wglCreatePbufferARB".}
-proc wglGetPbufferDCARB*(hPbuffer: THandle): HDC{.dynlib: dllname, 
+proc wglGetPbufferDCARB*(hPbuffer: THandle): HDC{.dynlib: dllname,
     importc: "wglGetPbufferDCARB".}
 proc wglReleasePbufferDCARB*(hPbuffer: THandle, hDC: HDC): TGLint{.
     dynlib: dllname, importc: "wglReleasePbufferDCARB".}
-proc wglDestroyPbufferARB*(hPbuffer: THandle): BOOL{.dynlib: dllname, 
+proc wglDestroyPbufferARB*(hPbuffer: THandle): BOOL{.dynlib: dllname,
     importc: "wglDestroyPbufferARB".}
 proc wglQueryPbufferARB*(hPbuffer: THandle, iAttribute: TGLint, piValue: PGLint): BOOL{.
     dynlib: dllname, importc: "wglQueryPbufferARB".}
-proc wglSwapIntervalEXT*(interval: TGLint): BOOL{.dynlib: dllname, 
+proc wglSwapIntervalEXT*(interval: TGLint): BOOL{.dynlib: dllname,
     importc: "wglSwapIntervalEXT".}
-proc wglGetSwapIntervalEXT*(): TGLint{.dynlib: dllname, 
+proc wglGetSwapIntervalEXT*(): TGLint{.dynlib: dllname,
                                        importc: "wglGetSwapIntervalEXT".}
-const 
+const
   WGL_BIND_TO_TEXTURE_RGB_ARB* = 0x00002070
   WGL_BIND_TO_TEXTURE_RGBA_ARB* = 0x00002071
   WGL_TEXTURE_FORMAT_ARB* = 0x00002072
@@ -195,13 +195,13 @@ proc wglReleaseTexImageARB*(hPbuffer: THandle, iBuffer: TGLint): BOOL{.
     dynlib: dllname, importc: "wglReleaseTexImageARB".}
 proc wglSetPbufferAttribARB*(hPbuffer: THandle, piAttribList: PGLint): BOOL{.
     dynlib: dllname, importc: "wglSetPbufferAttribARB".}
-proc wglGetExtensionsStringEXT*(): cstring{.dynlib: dllname, 
+proc wglGetExtensionsStringEXT*(): cstring{.dynlib: dllname,
     importc: "wglGetExtensionsStringEXT".}
 proc wglMakeContextCurrentEXT*(hDrawDC: HDC, hReadDC: HDC, hglrc: HGLRC): BOOL{.
     dynlib: dllname, importc: "wglMakeContextCurrentEXT".}
-proc wglGetCurrentReadDCEXT*(): HDC{.dynlib: dllname, 
+proc wglGetCurrentReadDCEXT*(): HDC{.dynlib: dllname,
                                      importc: "wglGetCurrentReadDCEXT".}
-const 
+const
   WGL_DRAW_TO_PBUFFER_EXT* = 0x0000202D
   WGL_MAX_PBUFFER_PIXELS_EXT* = 0x0000202E
   WGL_MAX_PBUFFER_WIDTH_EXT* = 0x0000202F
@@ -212,18 +212,18 @@ const
   WGL_PBUFFER_WIDTH_EXT* = 0x00002034
   WGL_PBUFFER_HEIGHT_EXT* = 0x00002035
 
-proc wglCreatePbufferEXT*(hDC: HDC, iPixelFormat: TGLint, iWidth: TGLint, 
+proc wglCreatePbufferEXT*(hDC: HDC, iPixelFormat: TGLint, iWidth: TGLint,
                           iHeight: TGLint, piAttribList: PGLint): THandle{.
     dynlib: dllname, importc: "wglCreatePbufferEXT".}
-proc wglGetPbufferDCEXT*(hPbuffer: THandle): HDC{.dynlib: dllname, 
+proc wglGetPbufferDCEXT*(hPbuffer: THandle): HDC{.dynlib: dllname,
     importc: "wglGetPbufferDCEXT".}
 proc wglReleasePbufferDCEXT*(hPbuffer: THandle, hDC: HDC): TGLint{.
     dynlib: dllname, importc: "wglReleasePbufferDCEXT".}
-proc wglDestroyPbufferEXT*(hPbuffer: THandle): BOOL{.dynlib: dllname, 
+proc wglDestroyPbufferEXT*(hPbuffer: THandle): BOOL{.dynlib: dllname,
     importc: "wglDestroyPbufferEXT".}
 proc wglQueryPbufferEXT*(hPbuffer: THandle, iAttribute: TGLint, piValue: PGLint): BOOL{.
     dynlib: dllname, importc: "wglQueryPbufferEXT".}
-const 
+const
   WGL_NUMBER_PIXEL_FORMATS_EXT* = 0x00002000
   WGL_DRAW_TO_WINDOW_EXT* = 0x00002001
   WGL_DRAW_TO_BITMAP_EXT* = 0x00002002
@@ -270,47 +270,47 @@ const
   WGL_TYPE_RGBA_EXT* = 0x0000202B
   WGL_TYPE_COLORINDEX_EXT* = 0x0000202C
 
-proc wglGetPixelFormatAttribivEXT*(hdc: HDC, iPixelFormat: TGLint, 
-                                   iLayerPlane: TGLint, nAttributes: TGLuint, 
+proc wglGetPixelFormatAttribivEXT*(hdc: HDC, iPixelFormat: TGLint,
+                                   iLayerPlane: TGLint, nAttributes: TGLuint,
                                    piAttributes: PGLint, piValues: PGLint): BOOL{.
     dynlib: dllname, importc: "wglGetPixelFormatAttribivEXT".}
-proc wglGetPixelFormatAttribfvEXT*(hdc: HDC, iPixelFormat: TGLint, 
-                                   iLayerPlane: TGLint, nAttributes: TGLuint, 
+proc wglGetPixelFormatAttribfvEXT*(hdc: HDC, iPixelFormat: TGLint,
+                                   iLayerPlane: TGLint, nAttributes: TGLuint,
                                    piAttributes: PGLint, pfValues: PGLfloat): BOOL{.
     dynlib: dllname, importc: "wglGetPixelFormatAttribfvEXT".}
-proc wglChoosePixelFormatEXT*(hdc: HDC, piAttribIList: PGLint, 
-                              pfAttribFList: PGLfloat, nMaxFormats: TGLuint, 
+proc wglChoosePixelFormatEXT*(hdc: HDC, piAttribIList: PGLint,
+                              pfAttribFList: PGLfloat, nMaxFormats: TGLuint,
                               piFormats: PGLint, nNumFormats: PGLuint): BOOL{.
     dynlib: dllname, importc: "wglChoosePixelFormatEXT".}
-const 
+const
   WGL_DIGITAL_VIDEO_CURSOR_ALPHA_FRAMEBUFFER_I3D* = 0x00002050
   WGL_DIGITAL_VIDEO_CURSOR_ALPHA_VALUE_I3D* = 0x00002051
   WGL_DIGITAL_VIDEO_CURSOR_INCLUDED_I3D* = 0x00002052
   WGL_DIGITAL_VIDEO_GAMMA_CORRECTED_I3D* = 0x00002053
 
-proc wglGetDigitalVideoParametersI3D*(hDC: HDC, iAttribute: TGLint, 
-                                      piValue: PGLint): BOOL{.dynlib: dllname, 
+proc wglGetDigitalVideoParametersI3D*(hDC: HDC, iAttribute: TGLint,
+                                      piValue: PGLint): BOOL{.dynlib: dllname,
     importc: "wglGetDigitalVideoParametersI3D".}
-proc wglSetDigitalVideoParametersI3D*(hDC: HDC, iAttribute: TGLint, 
-                                      piValue: PGLint): BOOL{.dynlib: dllname, 
+proc wglSetDigitalVideoParametersI3D*(hDC: HDC, iAttribute: TGLint,
+                                      piValue: PGLint): BOOL{.dynlib: dllname,
     importc: "wglSetDigitalVideoParametersI3D".}
-const 
+const
   WGL_GAMMA_TABLE_SIZE_I3D* = 0x0000204E
   WGL_GAMMA_EXCLUDE_DESKTOP_I3D* = 0x0000204F
 
-proc wglGetGammaTableParametersI3D*(hDC: HDC, iAttribute: TGLint, 
-                                    piValue: PGLint): BOOL{.dynlib: dllname, 
+proc wglGetGammaTableParametersI3D*(hDC: HDC, iAttribute: TGLint,
+                                    piValue: PGLint): BOOL{.dynlib: dllname,
     importc: "wglGetGammaTableParametersI3D".}
-proc wglSetGammaTableParametersI3D*(hDC: HDC, iAttribute: TGLint, 
-                                    piValue: PGLint): BOOL{.dynlib: dllname, 
+proc wglSetGammaTableParametersI3D*(hDC: HDC, iAttribute: TGLint,
+                                    piValue: PGLint): BOOL{.dynlib: dllname,
     importc: "wglSetGammaTableParametersI3D".}
-proc wglGetGammaTableI3D*(hDC: HDC, iEntries: TGLint, puRed: PGLUSHORT, 
+proc wglGetGammaTableI3D*(hDC: HDC, iEntries: TGLint, puRed: PGLUSHORT,
                           puGreen: PGLUSHORT, puBlue: PGLUSHORT): BOOL{.
     dynlib: dllname, importc: "wglGetGammaTableI3D".}
-proc wglSetGammaTableI3D*(hDC: HDC, iEntries: TGLint, puRed: PGLUSHORT, 
+proc wglSetGammaTableI3D*(hDC: HDC, iEntries: TGLint, puRed: PGLUSHORT,
                           puGreen: PGLUSHORT, puBlue: PGLUSHORT): BOOL{.
     dynlib: dllname, importc: "wglSetGammaTableI3D".}
-const 
+const
   WGL_GENLOCK_SOURCE_MULTIVIEW_I3D* = 0x00002044
   WGL_GENLOCK_SOURCE_EXTERNAL_SYNC_I3D* = 0x00002045
   WGL_GENLOCK_SOURCE_EXTERNAL_FIELD_I3D* = 0x00002046
@@ -330,21 +330,21 @@ const
   WGL_TEXTURE_FLOAT_RGB_NV* = 0x000020B7
   WGL_TEXTURE_FLOAT_RGBA_NV* = 0x000020B8
 
-proc wglEnableGenlockI3D*(hDC: HDC): BOOL{.dynlib: dllname, 
+proc wglEnableGenlockI3D*(hDC: HDC): BOOL{.dynlib: dllname,
     importc: "wglEnableGenlockI3D".}
-proc wglDisableGenlockI3D*(hDC: HDC): BOOL{.dynlib: dllname, 
+proc wglDisableGenlockI3D*(hDC: HDC): BOOL{.dynlib: dllname,
     importc: "wglDisableGenlockI3D".}
-proc wglIsEnabledGenlockI3D*(hDC: HDC, pFlag: PBOOL): BOOL{.dynlib: dllname, 
+proc wglIsEnabledGenlockI3D*(hDC: HDC, pFlag: PBOOL): BOOL{.dynlib: dllname,
     importc: "wglIsEnabledGenlockI3D".}
-proc wglGenlockSourceI3D*(hDC: HDC, uSource: TGLuint): BOOL{.dynlib: dllname, 
+proc wglGenlockSourceI3D*(hDC: HDC, uSource: TGLuint): BOOL{.dynlib: dllname,
     importc: "wglGenlockSourceI3D".}
-proc wglGetGenlockSourceI3D*(hDC: HDC, uSource: PGLUINT): BOOL{.dynlib: dllname, 
+proc wglGetGenlockSourceI3D*(hDC: HDC, uSource: PGLUINT): BOOL{.dynlib: dllname,
     importc: "wglGetGenlockSourceI3D".}
-proc wglGenlockSourceEdgeI3D*(hDC: HDC, uEdge: TGLuint): BOOL{.dynlib: dllname, 
+proc wglGenlockSourceEdgeI3D*(hDC: HDC, uEdge: TGLuint): BOOL{.dynlib: dllname,
     importc: "wglGenlockSourceEdgeI3D".}
 proc wglGetGenlockSourceEdgeI3D*(hDC: HDC, uEdge: PGLUINT): BOOL{.
     dynlib: dllname, importc: "wglGetGenlockSourceEdgeI3D".}
-proc wglGenlockSampleRateI3D*(hDC: HDC, uRate: TGLuint): BOOL{.dynlib: dllname, 
+proc wglGenlockSampleRateI3D*(hDC: HDC, uRate: TGLuint): BOOL{.dynlib: dllname,
     importc: "wglGenlockSampleRateI3D".}
 proc wglGetGenlockSampleRateI3D*(hDC: HDC, uRate: PGLUINT): BOOL{.
     dynlib: dllname, importc: "wglGetGenlockSampleRateI3D".}
@@ -352,15 +352,15 @@ proc wglGenlockSourceDelayI3D*(hDC: HDC, uDelay: TGLuint): BOOL{.
     dynlib: dllname, importc: "wglGenlockSourceDelayI3D".}
 proc wglGetGenlockSourceDelayI3D*(hDC: HDC, uDelay: PGLUINT): BOOL{.
     dynlib: dllname, importc: "wglGetGenlockSourceDelayI3D".}
-proc wglQueryGenlockMaxSourceDelayI3D*(hDC: HDC, uMaxLineDelay: PGLUINT, 
+proc wglQueryGenlockMaxSourceDelayI3D*(hDC: HDC, uMaxLineDelay: PGLUINT,
                                        uMaxPixelDelay: PGLUINT): BOOL{.
     dynlib: dllname, importc: "wglQueryGenlockMaxSourceDelayI3D".}
-const 
+const
   WGL_BIND_TO_TEXTURE_RECTANGLE_RGB_NV* = 0x000020A0
   WGL_BIND_TO_TEXTURE_RECTANGLE_RGBA_NV* = 0x000020A1
   WGL_TEXTURE_RECTANGLE_NV* = 0x000020A2
 
-const 
+const
   WGL_RGBA_FLOAT_MODE_ATI* = 0x00008820
   WGL_COLOR_CLEAR_UNCLAMPED_VALUE_ATI* = 0x00008835
   WGL_TYPE_RGBA_FLOAT_ATI* = 0x000021A0

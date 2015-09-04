@@ -9,8 +9,8 @@ import strutils
 
 const
   myWords = "Angelika Anne Anna Anka Anja".split()
-  
-for x in items(myWords): 
+
+for x in items(myWords):
   write(stdout, x) #OUT AngelikaAnneAnnaAnkaAnja
 
 

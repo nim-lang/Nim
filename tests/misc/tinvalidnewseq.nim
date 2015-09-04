@@ -14,12 +14,12 @@ proc parseURL(url: string): TURL =
   var m: array[0..6, string] #Array with the matches
   newSeq(m, 7) #ERROR
   discard regexprs.match(url, re(pattern), m)
- 
-  result = (protocol: m[1], subdomain: m[2], domain: m[3] & m[4], 
+
+  result = (protocol: m[1], subdomain: m[2], domain: m[3] & m[4],
             port: m[5], path: m[6].split('/'))
- 
+
 var r: TUrl
- 
+
 r = parseUrl(r"http://google.com/search?var=bleahdhsad")
 echo(r.domain)
 

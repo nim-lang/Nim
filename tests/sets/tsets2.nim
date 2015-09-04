@@ -28,7 +28,7 @@ block tableTest1:
   for x in 0..1:
     for y in 0..1:
       assert((x,y) in t)
-  #assert($t == 
+  #assert($t ==
   #  "{(x: 0, y: 0), (x: 0, y: 1), (x: 1, y: 0), (x: 1, y: 1)}")
 
 block setTest2:
@@ -37,16 +37,16 @@ block setTest2:
   t.incl("111")
   t.incl("123")
   t.excl("111")
-  
+
   t.incl("012")
   t.incl("123") # test duplicates
-  
+
   assert "123" in t
   assert "111" notin t # deleted
-  
+
   for key in items(data): t.incl(key)
   for key in items(data): assert key in t
-  
+
 
 block orderedSetTest1:
   var t = data.toOrderedSet

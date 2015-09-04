@@ -9,7 +9,7 @@ type
 
   TObj = object
     arr: TMyarray
-  
+
 proc mul(a, b: TMyarray): TMyArray =
   result = a
   for i in 0..len(a)-1:

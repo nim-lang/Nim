@@ -14,7 +14,7 @@ proc test4() =
     discard
 
 # Should cause unhandled exception error,
-# but could cause segmentation fault if 
+# but could cause segmentation fault if
 # exceptions are not handled properly.
 test4()
 raise newException(OSError, "Problem")

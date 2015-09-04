@@ -20,5 +20,5 @@ proc OnButtonClick() {.exportc.} =
     var x = parseInt(v)
     echo x*x
 
-proc OnLoad() {.exportc.} = 
+proc OnLoad() {.exportc.} =
   echo "Welcome! Please take your time to fill in this formular!"

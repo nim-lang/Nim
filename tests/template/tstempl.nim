@@ -6,7 +6,7 @@ levB'''
 # tstempl.nim
 import strutils
 
-type 
+type
   TLev = enum
     levA,
     levB
