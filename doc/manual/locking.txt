@@ -63,7 +63,7 @@ model low level lockfree mechanisms:
 .. code-block:: nim
   var dummyLock {.compileTime.}: int
   var atomicCounter {.guard: dummyLock.}: int
-  
+
   template atomicRead(x): expr =
     {.locks: [dummyLock].}:
       memoryReadBarrier()
@@ -135,30 +135,30 @@ Lock levels are used to enforce a global locking order in order to prevent
 deadlocks at compile-time. A lock level is an constant integer in the range
 0..1_000. Lock level 0 means that no lock is acquired at all.
 
-If a section of code holds a lock of level ``M`` than it can also acquire any 
+If a section of code holds a lock of level ``M`` than it can also acquire any
 lock of level ``N < M``. Another lock of level ``M`` cannot be acquired. Locks
-of the same level can only be acquired *at the same time* within a 
+of the same level can only be acquired *at the same time* within a
 single ``locks`` section:
 
 .. code-block:: nim
   var a, b: TLock[2]
   var x: TLock[1]
   # invalid locking order: TLock[1] cannot be acquired before TLock[2]:
-  {.locks: [x].}: 
+  {.locks: [x].}:
     {.locks: [a].}:
       ...
   # valid locking order: TLock[2] acquired before TLock[1]:
-  {.locks: [a].}: 
+  {.locks: [a].}:
     {.locks: [x].}:
       ...
 
   # invalid locking order: TLock[2] acquired before TLock[2]:
-  {.locks: [a].}: 
+  {.locks: [a].}:
     {.locks: [b].}:
       ...
 
   # valid locking order, locks of the same level acquired at the same time:
-  {.locks: [a, b].}: 
+  {.locks: [a, b].}:
     ...
 
 
@@ -187,7 +187,7 @@ level. This then means that the routine may acquire locks of up to this level.
 This is essential so that procs can be called within a ``locks`` section:
 
 .. code-block:: nim
-  proc p() {.locks: 3.} = discard 
+  proc p() {.locks: 3.} = discard
 
   var a: TLock[4]
   {.locks: [a].}:
@@ -195,6 +195,6 @@ This is essential so that procs can be called within a ``locks`` section:
     p()
 
 
-As usual ``locks`` is an inferred effect and there is a subtype 
+As usual ``locks`` is an inferred effect and there is a subtype
 relation: ``proc () {.locks: N.}`` is a subtype of ``proc () {.locks: M.}``
 iff (M <= N).

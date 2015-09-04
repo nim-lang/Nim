@@ -1,4 +1,4 @@
-type  
+type
   TMaybe[T] = object
     case empty: bool
     of false: value: T

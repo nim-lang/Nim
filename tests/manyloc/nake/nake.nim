@@ -3,7 +3,7 @@ DO AS THOU WILST PUBLIC LICENSE
 
 Whoever should stumble upon this document is henceforth and forever
 entitled to DO AS THOU WILST with aforementioned document and the
-contents thereof. 
+contents thereof.
 
 As said in the Olde Country, `Keepe it Gangster'."""
 
@@ -14,7 +14,7 @@ type
     desc*: string
     action*: TTaskFunction
   TTaskFunction* = proc() {.closure.}
-var 
+var
   tasks* = initTable[string, PTask](16)
 
 proc newTask*(desc: string; action: TTaskFunction): PTask
@@ -61,7 +61,7 @@ when isMainModule:
   quit(shell("nim", "c", "-r", "nakefile.nim", args))
 else:
   addQuitProc(proc() {.noconv.} =
-    var 
+    var
       task: string
       printTaskList: bool
     for kind, key, val in getOpt():
@@ -70,7 +70,7 @@ else:
         case key.tolower
         of "tasks", "t":
           printTaskList = true
-        else: 
+        else:
           echo "Unknown option: ", key, ": ", val
       of cmdArgument:
         task = key

@@ -1327,7 +1327,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
   #  because in that case there is no point in continuing.
   var bothMetaCounter = 0
   var lastBindingsLength = -1
-  while r == isBothMetaConvertible and 
+  while r == isBothMetaConvertible and
       lastBindingsLength != m.bindings.counter and
       bothMetaCounter < 100:
     lastBindingsLength = m.bindings.counter

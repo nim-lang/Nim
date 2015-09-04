@@ -17,7 +17,7 @@ proc cbOuter(response: string) {.closure, discardable.} =
         var iterVar = fooIter
         iterVar().data
       yield Future[int](data: foo())
-      
+
   var iterVar2 = cbIter
   proc cb2() {.closure.} =
     try:

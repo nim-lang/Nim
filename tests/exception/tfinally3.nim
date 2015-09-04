@@ -4,7 +4,7 @@ discard """
 """
 # Test break in try statement:
 
-proc main: bool = 
+proc main: bool =
   while true:
     try:
       return true

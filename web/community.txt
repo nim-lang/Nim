@@ -78,7 +78,7 @@ Nim's Community
   When asking a question relating to Nim, be sure to use the
   `Nim <http://stackoverflow.com/questions/tagged/nim>`_ tag in your
   question.
-  
+
 .. container:: standout
 
   Google+

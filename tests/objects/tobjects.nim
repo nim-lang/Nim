@@ -18,7 +18,7 @@ type
       of 0: arg: char
       of 1: s: string
       else: wtf: bool
-      
+
 var
   x: TMyObject
 

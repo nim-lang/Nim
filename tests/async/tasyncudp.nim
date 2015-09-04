@@ -20,12 +20,12 @@ proc serverRead(s: PAsyncSocket) =
   if s.recvFromAsync(data, 9, address, port):
     assert address == "127.0.0.1"
     msgCount.inc()
-  
+
   discard """
-  
+
   var line = ""
   assert s.recvLine(line)
-  
+
   if line == "":
     assert(false)
   else:
@@ -66,11 +66,11 @@ while true:
 
   if not disp.poll():
     break
-  
+
   if (msgCount div messagesToSend) * serverCount == currentClient:
     createClient(disp, TPort(10335), false)
     createClient(disp, TPort(10336), true)
-  
+
   if msgCount == messagesToSend * serverCount * swarmSize:
     break
 

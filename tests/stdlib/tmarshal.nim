@@ -25,7 +25,7 @@ type
       help: string
     else:
       discard
-      
+
   PNode = ref TNode
   TNode = object
     next, prev: PNode

@@ -17,7 +17,7 @@
 
 import
   math
- 
+
 const
   EPS = 1.0e-7 ## Epsilon used for float comparisons.
 
@@ -248,7 +248,7 @@ proc pow*(x, y: Complex): Complex =
     var r     = y.re*theta + y.im*ln(rho)
     result.re = s*cos(r)
     result.im = s*sin(r)
-           
+
 
 proc sin*(z: Complex): Complex =
   ## Returns the sine of `z`.
@@ -387,7 +387,7 @@ when isMainModule:
   var one = (1.0,0.0)
   var tt = (10.0, 20.0)
   var ipi = (0.0, -PI)
- 
+
   assert( a == a )
   assert( (a-a) == z )
   assert( (a+b) == z )
@@ -403,7 +403,7 @@ when isMainModule:
   assert( conjugate(a) == (1.0, -2.0) )
   assert( sqrt(m1) == i )
   assert( exp(ipi) =~ m1 )
- 
+
   assert( pow(a,b) =~ (-3.72999124927876, -1.68815826725068) )
   assert( pow(z,a) =~ (0.0, 0.0) )
   assert( pow(z,z) =~ (1.0, 0.0) )

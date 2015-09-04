@@ -1,6 +1,6 @@
 #! stdtmpl | standard
 #proc generateHTMLPage(title, currentTab, content: string,
-#                      tabs: openArray[string]): string = 
+#                      tabs: openArray[string]): string =
 #  result = ""
 <head><title>$title</title></head>
 <body>
@@ -8,7 +8,7 @@
     <ul>
   #for tab in items(tabs):
     #if currentTab == tab:
-    <li><a id="selected" 
+    <li><a id="selected"
     #else:
     <li><a
     #end if

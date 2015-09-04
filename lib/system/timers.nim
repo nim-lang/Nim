@@ -34,8 +34,8 @@ when defined(windows):
 
 elif defined(macosx):
   type
-    MachTimebaseInfoData {.pure, final, 
-        importc: "mach_timebase_info_data_t", 
+    MachTimebaseInfoData {.pure, final,
+        importc: "mach_timebase_info_data_t",
         header: "<mach/mach_time.h>".} = object
       numer, denom: int32
   {.deprecated: [TMachTimebaseInfoData: MachTimebaseInfoData].}
@@ -46,10 +46,10 @@ elif defined(macosx):
 
   proc getTicks(): Ticks {.inline.} =
     result = Ticks(mach_absolute_time())
-  
+
   var timeBaseInfo: MachTimebaseInfoData
   mach_timebase_info(timeBaseInfo)
-    
+
   proc `-`(a, b: Ticks): Nanos =
     result = (a.int64 - b.int64)  * timeBaseInfo.numer div timeBaseInfo.denom
 
@@ -57,10 +57,10 @@ elif defined(posixRealtime):
   type
     Clockid {.importc: "clockid_t", header: "<time.h>", final.} = object
 
-    TimeSpec {.importc: "struct timespec", header: "<time.h>", 
+    TimeSpec {.importc: "struct timespec", header: "<time.h>",
                final, pure.} = object ## struct timespec
-      tv_sec: int  ## Seconds. 
-      tv_nsec: int ## Nanoseconds. 
+      tv_sec: int  ## Seconds.
+      tv_nsec: int ## Nanoseconds.
   {.deprecated: [TClockid: Clickid, TTimeSpec: TimeSpec].}
 
   var
@@ -77,12 +77,12 @@ elif defined(posixRealtime):
   proc `-`(a, b: Ticks): Nanos {.borrow.}
 
 else:
-  # fallback Posix implementation:  
+  # fallback Posix implementation:
   type
-    Timeval {.importc: "struct timeval", header: "<sys/select.h>", 
+    Timeval {.importc: "struct timeval", header: "<sys/select.h>",
                final, pure.} = object ## struct timeval
-      tv_sec: int  ## Seconds. 
-      tv_usec: int ## Microseconds. 
+      tv_sec: int  ## Seconds.
+      tv_usec: int ## Microseconds.
   {.deprecated: [Ttimeval: Timeval].}
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
@@ -90,7 +90,7 @@ else:
   proc getTicks(): Ticks =
     var t: Timeval
     posix_gettimeofday(t)
-    result = Ticks(int64(t.tv_sec) * 1000_000_000'i64 + 
+    result = Ticks(int64(t.tv_sec) * 1000_000_000'i64 +
                     int64(t.tv_usec) * 1000'i64)
 
   proc `-`(a, b: Ticks): Nanos {.borrow.}

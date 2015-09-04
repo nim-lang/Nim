@@ -33,13 +33,13 @@ when true:
     for xxxx in 0..9:
       var i = 0
       proc bx =
-        if i > 10: 
+        if i > 10:
           echo xxxx
           return
         i += 1
         #for j in 0 .. 0: echo i
         bx()
-      
+
       bx()
       echo i
 
@@ -50,11 +50,11 @@ when true:
     var x = start-1
     #let dummy = proc =
     #  discard start
-    
-    result = proc (): int = 
+
+    result = proc (): int =
       #var x = 9
       for i in 0 .. 0: x = x + 1
-      
+
       return x
 
   var a = accumulator(3)
@@ -69,7 +69,7 @@ when true:
       for i in 0..3: echo "py"
 
     py()
-    
+
   outer()
 
 
@@ -80,7 +80,7 @@ when true:
       if n < 0: result = errorValue
       elif n <= 1: result = 1
       else: result = n * fac(n-1)
-  
+
     proc px() {.closure.} =
       echo "px"
 
@@ -93,7 +93,7 @@ when true:
         "xyz": py
       }
     mapping[0][1]()
-    
+
     echo fac(3)
 
 

@@ -22,8 +22,8 @@ else:
 
 proc newLit(x: int): PNode {.importc: "newLit", dynlib: dllname.}
 proc newOp(k: TNodeKind, a, b: PNode): PNode {.
-  importc: "newOp", dynlib: dllname.}  
-proc buildTree(x: int): PNode {.importc: "buildTree", dynlib: dllname.} 
+  importc: "newOp", dynlib: dllname.}
+proc buildTree(x: int): PNode {.importc: "buildTree", dynlib: dllname.}
 
 proc eval(n: PNode): int =
   case n.k
@@ -36,6 +36,6 @@ proc eval(n: PNode): int =
 # Test the GC:
 for i in 0..100_000:
   discard eval(buildTree(2))
-  
+
 echo "Done"
 

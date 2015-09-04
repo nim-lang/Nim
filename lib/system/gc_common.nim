@@ -197,7 +197,7 @@ else:
         var x = cast[ByteAddress](p)
         if a <=% x and x <=% b:
           return true
-  
+
     template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
@@ -207,7 +207,7 @@ else:
       getRegisters(registers)
       for i in registers.low .. registers.high:
         gcMark(gch, cast[PPointer](registers[i]))
-  
+
       for stack in items(gch.stack):
         stack.maxStackSize = max(stack.maxStackSize, stackSize(stack.starts))
         var max = cast[ByteAddress](stack.starts)

@@ -40,7 +40,7 @@ else:
             s = newAsyncSocket()
 
         await s.connect(testHost, testPort)
-        
+
         var ps = await ls.accept()
         SocketHandle(ls).close()
 

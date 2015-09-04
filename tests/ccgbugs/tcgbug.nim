@@ -14,7 +14,7 @@ proc p(a: PObj) =
 proc q(a: var PObj) =
   a.p()
 
-var 
+var
   a: PObj
 new(a)
 q(a)

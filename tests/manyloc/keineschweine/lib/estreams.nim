@@ -1,6 +1,6 @@
 import endians
 
-proc swapEndian16*(outp, inp: pointer) = 
+proc swapEndian16*(outp, inp: pointer) =
   ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
   ## contain at least 2 bytes.
   var i = cast[cstring](inp)
@@ -113,10 +113,10 @@ when isMainModule:
   echo(repr(b))
   b.pos = 0
   echo(repr(b.readStr()))
-  
+
   b.flush()
   echo "flushed"
   b.writeC([1,2,3])
   echo(repr(b))
-  
-  
+
+

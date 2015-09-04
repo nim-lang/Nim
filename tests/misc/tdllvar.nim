@@ -1,6 +1,6 @@
 import os
 
-proc getDllName: string = 
+proc getDllName: string =
   result = "mylib.dll"
   if fileExists(result): return
   result = "mylib2.dll"

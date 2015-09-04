@@ -31,14 +31,14 @@ proc newProperty*[T](value: T): TProperty[T] =
 
   proc setter(property: var TProperty[T], v: T) =
     property.value = v
-    
+
     # fire event here
     var args: TValueEventArgs[T]
     args.Property = property
     property.EEmitter.emit(property.ValueChanged, args)
-  
+
   prop.setProc = setter
-   
+
   return prop
 
 proc `prop`[T] (p: TProperty[T]): T =
@@ -56,7 +56,7 @@ proc `$`[T] (p: TProperty[T]): string =
 
 proc propertyBind*[T](p1: var TProperty[T], p2: var TProperty[T]) =
   p1.Binders.add(p2)
-  
+
   # make handler -> handler[T] so trigger even more generics bugs ...
   proc handler(e: TEventArgs) =
     type TEA = TValueEventArgs[T]
@@ -77,9 +77,9 @@ proc `->`[T](p1: var TProperty[T], p2: var TProperty[T]) =
 when isMainModule:
   # Initial value testing
   var myProp = newProperty(5)
-  
+
   echo(myProp)
-  
+
   myProp ~= 7 # Temp operator until overloading of '=' is implemented.
   echo(myProp)
 

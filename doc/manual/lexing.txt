@@ -36,7 +36,7 @@ With this notation we can now easily define the core of the grammar: A block of
 statements (simplified example)::
 
   ifStmt = 'if' expr ':' stmt
-           (IND{=} 'elif' expr ':' stmt)* 
+           (IND{=} 'elif' expr ':' stmt)*
            (IND{=} 'else' ':' stmt)?
 
   simpleStmt = ifStmt / ...
@@ -156,7 +156,7 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
 
 
-Strings in Nim may contain any 8-bit value, even embedded zeros. However 
+Strings in Nim may contain any 8-bit value, even embedded zeros. However
 some operations may interpret the first binary zero as a terminator.
 
 
@@ -174,7 +174,7 @@ be whitespace between the opening ``"""`` and the newline),
 the newline (and the preceding whitespace) is not included in the string. The
 ending of the string literal is defined by the pattern ``"""[^"]``, so this:
 
-.. code-block:: nim 
+.. code-block:: nim
   """"long string within quotes""""
 
 Produces::
@@ -187,9 +187,9 @@ Raw string literals
 
 Terminal symbol in the grammar: ``RSTR_LIT``.
 
-There are also raw string literals that are preceded with the 
-letter ``r`` (or ``R``) and are delimited by matching double quotes (just 
-like ordinary string literals) and do not interpret the escape sequences. 
+There are also raw string literals that are preceded with the
+letter ``r`` (or ``R``) and are delimited by matching double quotes (just
+like ordinary string literals) and do not interpret the escape sequences.
 This is especially convenient for regular expressions or Windows paths:
 
 .. code-block:: nim
@@ -201,21 +201,21 @@ To produce a single ``"`` within a raw string literal, it has to be doubled:
 .. code-block:: nim
 
   r"a""b"
-  
+
 Produces::
-  
+
   a"b
 
-``r""""`` is not possible with this notation, because the three leading 
-quotes introduce a triple quoted string literal. ``r"""`` is the same 
-as ``"""`` since triple quoted string literals do not interpret escape 
+``r""""`` is not possible with this notation, because the three leading
+quotes introduce a triple quoted string literal. ``r"""`` is the same
+as ``"""`` since triple quoted string literals do not interpret escape
 sequences either.
 
 
 Generalized raw string literals
 -------------------------------
 
-Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``, 
+Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``,
 ``GENERALIZED_TRIPLESTR_LIT``.
 
 The construct ``identifier"string literal"`` (without whitespace between the
@@ -281,7 +281,7 @@ Numerical constants are of a single type and have the form::
   DEC_LIT = digit ( ['_'] digit )*
   OCT_LIT = '0' ('o' | 'c' | 'C') octdigit ( ['_'] octdigit )*
   BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
-  
+
   INT_LIT = HEX_LIT
           | DEC_LIT
           | OCT_LIT
@@ -383,7 +383,7 @@ The following strings denote other tokens::
     `   (     )     {     }     [     ]     ,  ;   [.    .]  {.   .}  (.  .)
 
 
-The `slice`:idx: operator `..`:tok: takes precedence over other tokens that 
-contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok: 
+The `slice`:idx: operator `..`:tok: takes precedence over other tokens that
+contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
 and not the two tokens `{.`:tok:, `.}`:tok:.
 

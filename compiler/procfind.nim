@@ -87,7 +87,7 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
         discard
 
     result = nextIdentIter(it, scope.symbols)
-  
+
   return nil
 
 proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
@@ -99,17 +99,17 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
       debug fn.typ
       debug if result != nil: result.typ else: nil
       debug if old != nil: old.typ else: nil
- 
+
 when false:
-  proc paramsFitBorrow(child, parent: PNode): bool = 
+  proc paramsFitBorrow(child, parent: PNode): bool =
     var length = sonsLen(child)
     result = false
-    if length == sonsLen(parent): 
-      for i in countup(1, length - 1): 
+    if length == sonsLen(parent):
+      for i in countup(1, length - 1):
         var m = child.sons[i].sym
         var n = parent.sons[i].sym
         assert((m.kind == skParam) and (n.kind == skParam))
-        if not compareTypes(m.typ, n.typ, dcEqOrDistinctOf): return 
+        if not compareTypes(m.typ, n.typ, dcEqOrDistinctOf): return
       if not compareTypes(child.sons[0].typ, parent.sons[0].typ,
                           dcEqOrDistinctOf): return
       result = true
@@ -120,10 +120,10 @@ when false:
     var it: TIdentIter
     for scope in walkScopes(startScope):
       result = initIdentIter(it, scope.symbols, fn.Name)
-      while result != nil: 
+      while result != nil:
         # watchout! result must not be the same as fn!
-        if (result.Kind == fn.kind) and (result.id != fn.id): 
-          if equalGenericParams(result.ast.sons[genericParamsPos], 
-                                fn.ast.sons[genericParamsPos]): 
-            if paramsFitBorrow(fn.typ.n, result.typ.n): return 
+        if (result.Kind == fn.kind) and (result.id != fn.id):
+          if equalGenericParams(result.ast.sons[genericParamsPos],
+                                fn.ast.sons[genericParamsPos]):
+            if paramsFitBorrow(fn.typ.n, result.typ.n): return
         result = NextIdentIter(it, scope.symbols)

@@ -18,13 +18,13 @@ type
   TDimension2d {.final, header: irr, importc: "dimension2d".} = object
   Tvector3df {.final, header: irr, importc: "vector3df".} = object
   TColor {.final, header: irr, importc: "SColor".} = object
-  
+
   TIrrlichtDevice {.final, header: irr, importc: "IrrlichtDevice".} = object
   TIVideoDriver {.final, header: irr, importc: "IVideoDriver".} = object
   TISceneManager {.final, header: irr, importc: "ISceneManager".} = object
   TIGUIEnvironment {.final, header: irr, importc: "IGUIEnvironment".} = object
   TIAnimatedMesh {.final, header: irr, importc: "IAnimatedMesh".} = object
-  TIAnimatedMeshSceneNode {.final, header: irr, 
+  TIAnimatedMeshSceneNode {.final, header: irr,
     importc: "IAnimatedMeshSceneNode".} = object
   TITexture {.final, header: irr, importc: "ITexture".} = object
 
@@ -100,7 +100,7 @@ var node = smgr.addAnimatedMeshSceneNode(mesh)
 if node != nil:
   #node->setMaterialFlag(EMF_LIGHTING, false)
   #node->setMD2Animation(scene::EMAT_STAND)
-  node.setMaterialTexture(0, 
+  node.setMaterialTexture(0,
     driver.getTexture(
       "/home/andreas/download/irrlicht-1.7.2/media/media/sydney.bmp"))
 

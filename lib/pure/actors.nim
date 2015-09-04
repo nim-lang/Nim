@@ -41,7 +41,7 @@ type
   Actor[In, Out] = object{.pure, final.}
     i: Channel[Task[In, Out]]
     t: TThread[ptr Actor[In, Out]]
-    
+
   PActor*[In, Out] = ptr Actor[In, Out] ## an actor
 {.deprecated: [TTask: Task, TActor: Actor].}
 
@@ -83,7 +83,7 @@ proc send*[In, Out, X, Y](receiver: PActor[In, Out], msg: In,
   shallowCopy(t.data, msg)
   send(receiver.i, t)
 
-proc send*[In, Out](receiver: PActor[In, Out], msg: In, 
+proc send*[In, Out](receiver: PActor[In, Out], msg: In,
                       sender: ptr Channel[Out] = nil) =
   ## sends a message to `receiver`'s inbox.
   var t: Task[In, Out]
@@ -138,7 +138,7 @@ proc createActorPool*[In, Out](a: var ActorPool[In, Out], poolSize = 4) =
 
 proc sync*[In, Out](a: var ActorPool[In, Out], polling=50) =
   ## waits for every actor of `a` to finish with its work. Currently this is
-  ## implemented as polling every `polling` ms and has a slight chance 
+  ## implemented as polling every `polling` ms and has a slight chance
   ## of failing since we check for every actor to be in `ready` state and not
   ## for messages still in ether. This will change in a later
   ## version, however.
@@ -146,7 +146,7 @@ proc sync*[In, Out](a: var ActorPool[In, Out], polling=50) =
   while true:
     var wait = false
     for i in 0..high(a.actors):
-      if not a.actors[i].i.ready: 
+      if not a.actors[i].i.ready:
         wait = true
         allReadyCount = 0
         break
@@ -222,7 +222,7 @@ proc spawn*[In](p: var ActorPool[In, void], input: In,
   var t: Task[In, void]
   setupTask()
   schedule()
-  
+
 when not defined(testing) and isMainModule:
   var
     a: ActorPool[int, void]

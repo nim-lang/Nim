@@ -3,7 +3,7 @@ include nre
 
 suite "captures":
   test "map capture names to numbers":
-    check(getNameToNumberTable(re("(?<v1>1(?<v2>2(?<v3>3))(?'v4'4))()")) == 
+    check(getNameToNumberTable(re("(?<v1>1(?<v2>2(?<v3>3))(?'v4'4))()")) ==
       { "v1" : 0, "v2" : 1, "v3" : 2, "v4" : 3 }.toTable())
 
   test "capture bounds are correct":

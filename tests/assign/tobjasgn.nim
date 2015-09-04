@@ -12,7 +12,7 @@ type
     a, b: int
   PSomeObj = ref object
     a, b: int
- 
+
 var a = TSomeObj(a: 8)
 var b = PSomeObj(a: 5)
 echo a.a, " ", b.a, " ", a.b, " ", b.b

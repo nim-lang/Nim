@@ -9,7 +9,7 @@ Whopie
 
 echo len([1_000_000]) #OUT 1
 
-type 
+type
   TArray = array[0..3, int]
   TVector = distinct array[0..3, int]
 proc `[]`(v: TVector; idx: int): int = TArray(v)[idx]
@@ -43,6 +43,6 @@ echo value
 
 # bug #1334
 
-var ys = @[4.1, 5.6, 7.2, 1.7, 9.3, 4.4, 3.2] 
-#var x = int(ys.high / 2) #echo ys[x] # Works 
+var ys = @[4.1, 5.6, 7.2, 1.7, 9.3, 4.4, 3.2]
+#var x = int(ys.high / 2) #echo ys[x] # Works
 echo ys[int(ys.high / 2)] # Doesn't work

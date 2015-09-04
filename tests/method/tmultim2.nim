@@ -13,10 +13,10 @@ type
     x: int
   TParticle = object of TThing
     a, b: int
-    
+
 method collide(a, b: TThing) {.inline.} =
   echo "collide: thing, thing"
-  
+
 method collide(a: TThing, b: TUnit) {.inline.} =
   echo "collide: thing, unit"
 

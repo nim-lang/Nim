@@ -8,7 +8,7 @@
 #
 
 ## Nim OID support. An OID is a global ID that consists of a timestamp,
-## a unique counter and a random value. This combination should suffice to 
+## a unique counter and a random value. This combination should suffice to
 ## produce a globally distributed unique ID. This implementation was extracted
 ## from the Mongodb interface and it thus binary compatible with a Mongo OID.
 ##
@@ -19,13 +19,13 @@ import times, endians
 
 type
   Oid* = object ## an OID
-    time: int32  ## 
-    fuzz: int32  ## 
-    count: int32 ## 
+    time: int32  ##
+    fuzz: int32  ##
+    count: int32 ##
 
 {.deprecated: [Toid: Oid].}
 
-proc hexbyte*(hex: char): int = 
+proc hexbyte*(hex: char): int =
   case hex
   of '0'..'9': result = (ord(hex) - ord('0'))
   of 'a'..'f': result = (ord(hex) - ord('a') + 10)
@@ -40,7 +40,7 @@ proc parseOid*(str: cstring): Oid =
     bytes[i] = chr((hexbyte(str[2 * i]) shl 4) or hexbyte(str[2 * i + 1]))
     inc(i)
 
-proc oidToString*(oid: Oid, str: cstring) = 
+proc oidToString*(oid: Oid, str: cstring) =
   const hex = "0123456789abcdef"
   # work around a compiler bug:
   var str = str
@@ -59,7 +59,7 @@ proc `$`*(oid: Oid): string =
   oidToString(oid, result)
 
 var
-  incr: int 
+  incr: int
   fuzz: int32
 
 proc genOid*(): Oid =
@@ -69,10 +69,10 @@ proc genOid*(): Oid =
   proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
 
   var t = gettime(nil)
-  
+
   var i = int32(incr)
   atomicInc(incr)
-  
+
   if fuzz == 0:
     # racy, but fine semantically:
     srand(t)

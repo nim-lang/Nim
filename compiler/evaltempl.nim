@@ -31,7 +31,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       for y in items(x): result.add(y)
     else:
       result.add copyTree(x)
-  
+
   case templ.kind
   of nkSym:
     var s = templ.sym
@@ -81,7 +81,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
 
   if totalParams > expectedRegularParams + genericParams:
     globalError(n.info, errWrongNumberOfArguments)
-  
+
   result = newNodeI(nkArgList, n.info)
   for i in 1 .. givenRegularParams:
     result.addSon n.sons[i]
@@ -96,7 +96,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
       addSon(result, ast.emptyNode)
     else:
       addSon(result, default.copyTree)
-  
+
   # add any generic paramaters
   for i in 1 .. genericParams:
     result.addSon n.sons[givenRegularParams + i]

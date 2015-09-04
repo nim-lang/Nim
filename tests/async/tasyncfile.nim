@@ -18,7 +18,7 @@ proc main() {.async.} =
     let data = await file.readAll()
     doAssert data == "foot"
     file.close()
-  
+
   # Append test
   block:
     var file = openAsync(fn, fmAppend)
@@ -29,8 +29,8 @@ proc main() {.async.} =
     file.close()
     file = openAsync(fn, fmRead)
     let data = await file.readAll()
-    
+
     doAssert data == "foot\ntest2"
     file.close()
-  
+
 waitFor main()
