@@ -90,7 +90,7 @@ proc serveFile(client: Socket, filename: string) =
 
 # ------------------ CGI execution -------------------------------------------
 
-proc executeCgi(server: var TServer, client: Socket, path, query: string, 
+proc executeCgi(server: var TServer, client: Socket, path, query: string,
                 meth: TRequestMethod) =
   var env = newStringTable(modeCaseInsensitive)
   var contentLength = -1
@@ -123,12 +123,12 @@ proc executeCgi(server: var TServer, client: Socket, path, query: string,
   send(client, "HTTP/1.0 200 OK" & wwwNL)
 
   var process = startProcess(command=path, env=env)
- 
+
   var job: TJob
   job.process = process
   job.client = client
   server.job.add(job)
- 
+
   if meth == reqPost:
     # get from client and post to CGI program:
     var buf = alloc(contentLength)
