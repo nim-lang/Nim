@@ -880,7 +880,7 @@ when defined(windows) or defined(nimdoc):
 
   initAll()
 else:
-  import selectors
+  import selectors, lists, hashes
   when defined(windows):
     import winlean
     const
@@ -897,6 +897,17 @@ else:
     AsyncFD* = distinct cint
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
 
+    # Timeline records the timeout for the descriptors.
+    # `timeouts` is a doubly list ordered by timeout for efficiency.
+    # `nodes` point to the node of `timeouts`.
+    # `timeout` is a timeout value for the descriptors.
+    FdTimeout = tuple[fd: AsyncFD, timeout: float]
+    Timeline = ref TimelineObj
+    TimelineObj = object
+      timeout: float
+      nodes: TableRef[AsyncFD, DoublyLinkedNode[FdTimeout]]
+      timeouts: DoublyLinkedList[FdTimeout] 
+
     PData* = ref object of RootRef
       fd: AsyncFD
       readCBs: seq[Callback]
@@ -904,14 +915,42 @@ else:
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector
+      timeline: Timeline
   {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
+  proc hash(x: AsyncFD): Hash {.borrow.} 
+  
+  proc newTimeline(timeout = 120'f): Timeline  = 
+    # default timeout = 120 seconds
+    new(result)
+    result.timeout = timeout
+    result.nodes = newTable[AsyncFD, DoublyLinkedNode[FdTimeout]]()
+    result.timeouts = initDoublyLinkedList[FdTimeout]()
+
+  proc contains(x: Timeline, fd: AsyncFD): bool =
+    result = x.nodes.hasKey(fd)  
+
+  proc register(x: Timeline, fd: AsyncFD) =
+    var node = newDoublyLinkedNode((fd: fd, timeout: x.timeout + epochTime())) 
+    x.nodes.add(fd, node)
+    x.timeouts.append(node)
+
+  proc update(x: Timeline, fd: AsyncFD) =
+    var node = x.nodes[fd]
+    node.value.timeout = x.timeout + epochTime()
+    x.timeouts.remove(node)
+    x.timeouts.append(node)
+
+  proc unregister(x: Timeline, fd: AsyncFD) =
+    x.timeouts.remove(x.nodes[fd])
+    x.nodes.del(fd)
 
   proc newDispatcher*(): PDispatcher =
     new result
     result.selector = newSelector()
     result.timers = @[]
+    result.timeline = newTimeline()
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -967,6 +1006,25 @@ else:
     p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
 
+  proc setTimeout*(fd: AsyncFD) =
+    let p = getGlobalDispatcher()
+    p.timeline.register(fd)
+
+  proc updateTimeout*(fd: AsyncFD) =
+    let p = getGlobalDispatcher()
+    p.timeline.update(fd)
+
+  # every poll, check the timeline to del descriptor which has been timeout.
+  proc processTimeout*(p: PDispatcher) = 
+    let now = epochTime()
+    for t in p.timeline.timeouts.items():
+      if now < t.timeout:
+        break
+      if now >= t.timeout:
+        echo "Timeout: fd ", repr t.fd
+        t.fd.closeSocket()
+        p.timeline.unregister(t.fd)
+
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
     for info in p.selector.select(timeout):
@@ -987,6 +1045,8 @@ else:
           if not cb(data.fd):
             # Callback wants to be called again.
             data.readCBs.add(cb)
+        if p.timeline.contains(data.fd):
+          data.fd.updateTimeout()
 
       if EvWrite in info.events:
         let currentCBs = data.writeCBs
@@ -1008,6 +1068,7 @@ else:
         discard
 
     processTimers(p)
+    processTimeout(p)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
     domain = AF_INET): Future[void] =
@@ -1161,6 +1222,7 @@ else:
             retFuture.fail(newException(OSError, osErrorMsg(lastError)))
       else:
         register(client.AsyncFD)
+        setTimeout(client.AsyncFD)
         retFuture.complete((getAddrString(cast[ptr SockAddr](addr sockAddress)), client.AsyncFD))
     addRead(socket, cb)
     return retFuture
