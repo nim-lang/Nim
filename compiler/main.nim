@@ -355,7 +355,9 @@ proc mainCommand* =
     gGlobalOptions.incl(optCaasEnabled)
     msgs.gErrorMax = high(int)  # do not stop after first error
     serve(mainCommand)
-  of "nop", "help": discard
+  of "nop", "help":
+    # prevent the "success" message:
+    gCmd = cmdDump
   else:
     rawMessage(errInvalidCommandX, command)
 

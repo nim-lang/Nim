@@ -19,6 +19,7 @@ proc listFiles*(dir: string): seq[string] = builtin
 proc removeDir(dir: string) = builtin
 proc removeFile(dir: string) = builtin
 proc moveFile(src, dest: string) = builtin
+proc copyFile(src, dest: string) = builtin
 proc createDir(dir: string) = builtin
 proc getOsError: string = builtin
 proc setCurrentDir(dir: string) = builtin
@@ -30,6 +31,25 @@ proc switch*(key: string, val="") = builtin
 proc getCommand*(): string = builtin
 proc setCommand*(cmd: string) = builtin
 proc cmpIgnoreStyle(a, b: string): int = builtin
+proc cmpIgnoreCase(a, b: string): int = builtin
+
+proc cmpic*(a, b: string): int = cmpIgnoreCase(a, b)
+
+proc getEnv*(key: string): string = builtin
+proc existsEnv*(key: string): bool = builtin
+proc fileExists*(filename: string): bool = builtin
+proc dirExists*(dir: string): bool = builtin
+
+proc existsFile*(filename: string): bool = fileExists(filename)
+proc existsDir*(dir: string): bool = dirExists(dir)
+
+proc toExe*(filename: string): string =
+  ## On Windows adds ".exe" to `filename`, else returns `filename` unmodified.
+  (when defined(windows): filename & ".exe" else: filename)
+
+proc toDll*(filename: string): string =
+  ## On Windows adds ".dll" to `filename`, on Posix produces "lib$filename.so".
+  (when defined(windows): filename & ".dll" else: "lib" & filename & ".so")
 
 proc strip(s: string): string =
   var i = 0
@@ -79,6 +99,11 @@ proc mvFile*(`from`, to: string) {.raises: [OSError].} =
     moveFile `from`, to
     checkOsError()
 
+proc cpFile*(`from`, to: string) {.raises: [OSError].} =
+  log "mvFile: " & `from` & ", " & to:
+    copyFile `from`, to
+    checkOsError()
+
 proc exec*(command: string, input = "", cache = "") =
   ## Executes an external process.
   log "exec: " & command:
@@ -120,7 +145,7 @@ template withDir*(dir: string; body: untyped): untyped =
   ##
   ## If you need a permanent change, use the `cd() <#cd>`_ proc. Usage example:
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##   withDir "foo":
   ##     # inside foo
   ##   #back to last dir
