@@ -164,7 +164,7 @@ Alternatively, the ``distinct`` type modifier can be applied to the type class
 to allow each param matching the type class to bind to a different type.
 
 If a proc param doesn't have a type specified, Nim will use the
-``distinct auto`` type class (also known as ``any``). Note this behavior is 
+``distinct auto`` type class (also known as ``any``). Note this behavior is
 deprecated for procs; templates, however, support them:
 
 .. code-block:: nim

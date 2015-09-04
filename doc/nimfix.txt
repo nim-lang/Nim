@@ -48,7 +48,7 @@ Options:
   --wholeProject                overwrite every processed file.
   --checkExtern:on|off          style check also extern names
   --styleCheck:on|off|auto      performs style checking for identifiers
-                                and suggests an alternative spelling; 
+                                and suggests an alternative spelling;
                                 'auto' corrects the spelling.
 
 In addition, all command line options of Nim are supported.

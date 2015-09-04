@@ -20,7 +20,7 @@ English word            To use         Notes
 -------------------     ------------   --------------------------------------
 initialize              initT          ``init`` is used to create a
                                        value type ``T``
-new                     newP           ``new`` is used to create a 
+new                     newP           ``new`` is used to create a
                                        reference type ``P``
 find                    find           should return the position where
                                        something was found; for a bool result
