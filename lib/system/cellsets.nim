@@ -65,7 +65,7 @@ proc init(s: var CellSeq, cap: int = 1024) =
   s.cap = cap
   s.d = cast[PCellArray](alloc0(cap * sizeof(PCell)))
 
-proc deinit(s: var CellSeq) = 
+proc deinit(s: var CellSeq) =
   dealloc(s.d)
   s.d = nil
   s.len = 0
@@ -98,7 +98,7 @@ proc nextTry(h, maxHash: int): int {.inline.} =
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
-  
+
 proc cellSetGet(t: CellSet, key: ByteAddress): PPageDesc =
   var h = cast[int](key) and t.max
   while t.data[h] != nil:
@@ -170,16 +170,16 @@ proc excl(s: var CellSet, cell: PCell) =
     t.bits[u shr IntShift] = (t.bits[u shr IntShift] and
                               not (1 shl (u and IntMask)))
 
-proc containsOrIncl(s: var CellSet, cell: PCell): bool = 
+proc containsOrIncl(s: var CellSet, cell: PCell): bool =
   var u = cast[ByteAddress](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
     u = (u %% PageSize) /% MemAlign
     result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
-    if not result: 
+    if not result:
       t.bits[u shr IntShift] = t.bits[u shr IntShift] or
           (1 shl (u and IntMask))
-  else: 
+  else:
     incl(s, cell)
     result = false
 

@@ -23,7 +23,7 @@ when defined(Windows):
     SysCond = Handle
 
   {.deprecated: [THandle: Handle, TSysLock: SysLock, TSysCond: SysCond].}
-          
+
   proc initSysLock(L: var SysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "InitializeCriticalSection".}
     ## Initializes the lock `L`.
@@ -31,14 +31,14 @@ when defined(Windows):
   proc tryAcquireSysAux(L: var SysLock): int32 {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "TryEnterCriticalSection".}
     ## Tries to acquire the lock `L`.
-    
-  proc tryAcquireSys(L: var SysLock): bool {.inline.} = 
+
+  proc tryAcquireSys(L: var SysLock): bool {.inline.} =
     result = tryAcquireSysAux(L) != 0'i32
 
   proc acquireSys(L: var SysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "EnterCriticalSection".}
     ## Acquires the lock `L`.
-    
+
   proc releaseSys(L: var SysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "LeaveCriticalSection".}
     ## Releases the lock `L`.
@@ -46,11 +46,11 @@ when defined(Windows):
   proc deinitSys(L: var SysLock) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "DeleteCriticalSection".}
 
-  proc createEvent(lpEventAttributes: pointer, 
+  proc createEvent(lpEventAttributes: pointer,
                    bManualReset, bInitialState: int32,
                    lpName: cstring): SysCond {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "CreateEventA".}
-  
+
   proc closeHandle(hObject: Handle) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "CloseHandle".}
   proc waitForSingleObject(hHandle: Handle, dwMilliseconds: int32): int32 {.
@@ -58,7 +58,7 @@ when defined(Windows):
 
   proc signalSysCond(hEvent: SysCond) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "SetEvent".}
-  
+
   proc initSysCond(cond: var SysCond) {.inline.} =
     cond = createEvent(nil, 0'i32, 0'i32, nil)
   proc deinitSysCond(cond: var SysCond) {.inline.} =
@@ -86,7 +86,7 @@ else:
   proc tryAcquireSysAux(L: var SysLock): cint {.noSideEffect,
     importc: "pthread_mutex_trylock", header: "<pthread.h>".}
 
-  proc tryAcquireSys(L: var SysLock): bool {.inline.} = 
+  proc tryAcquireSys(L: var SysLock): bool {.inline.} =
     result = tryAcquireSysAux(L) == 0'i32
 
   proc releaseSys(L: var SysLock) {.noSideEffect,
@@ -100,7 +100,7 @@ else:
     importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
   proc signalSysCond(cond: var SysCond) {.
     importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
-  
+
   proc deinitSysCond(cond: var SysCond) {.noSideEffect,
     importc: "pthread_cond_destroy", header: "<pthread.h>".}
-  
+

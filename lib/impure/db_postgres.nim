@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## A higher level `PostgreSQL`:idx: database wrapper. This interface 
+## A higher level `PostgreSQL`:idx: database wrapper. This interface
 ## is implemented for other databases too.
 
 import strutils, postgres
@@ -20,7 +20,7 @@ type
                                                     ## used to get a row's
                                                     ## column text on demand
   EDb* = object of IOError ## exception that is raised if a database error occurs
-  
+
   SqlQuery* = distinct string ## an SQL query string
   SqlPrepared* = distinct string ## a identifier for the prepared queries
 
@@ -30,15 +30,15 @@ type
 {.deprecated: [TRow: Row, TSqlQuery: SqlQuery, TDbConn: DbConn,
               TSqlPrepared: SqlPrepared].}
 
-proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =  
-  ## constructs a SqlQuery from the string `query`. This is supposed to be 
+proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =
+  ## constructs a SqlQuery from the string `query`. This is supposed to be
   ## used as a raw-string-literal modifier:
   ## ``sql"update user set counter = counter + 1"``
   ##
-  ## If assertions are turned off, it does nothing. If assertions are turned 
+  ## If assertions are turned off, it does nothing. If assertions are turned
   ## on, later versions will check the string for valid syntax.
   result = SqlQuery(query)
- 
+
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises an EDb exception.
   var e: ref EDb
@@ -73,7 +73,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
       inc(a)
     else:
       add(result, c)
-  
+
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
@@ -106,7 +106,7 @@ proc exec*(db: DbConn, stmtName: SqlPrepared,
 proc newRow(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
-  
+
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
   var arr = allocCStringArray(args)
@@ -128,7 +128,7 @@ proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
   var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   return SqlPrepared(stmtName)
-   
+
 proc setRow(res: PPGresult, r: var Row, line, cols: int32) =
   for col in 0..cols-1:
     setLen(r[col], 0)
@@ -140,7 +140,7 @@ proc setRow(res: PPGresult, r: var Row, line, cols: int32) =
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
-  ## executes the query and iterates over the result dataset. This is very 
+  ## executes the query and iterates over the result dataset. This is very
   ## fast, but potenially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Postgres it is safe though.
   var res = setupQuery(db, query, args)
@@ -224,14 +224,14 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## value is NULL.
   var x = pqgetvalue(setupQuery(db, query, args), 0, 0)
   result = if isNil(x): "" else: $x
-  
+
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64  {.tags: [FWriteDb].}=
-  ## executes the query (typically "INSERT") and returns the 
+  ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``. 
-  var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING id"), 
+  ## named ``id``.
+  var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING id"),
     args), 0, 0)
   if not isNil(x):
     result = parseBiggestInt($x)
@@ -240,13 +240,13 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
 
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
-  ## executes the query (typically "INSERT") and returns the 
+  ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``. 
+  ## named ``id``.
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
-  
+
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.tags: [
                        FReadDB, FWriteDb].} =
@@ -286,6 +286,6 @@ proc open*(connection, user, password, database: string): DbConn {.
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
   tags: [FDb].} =
-  ## sets the encoding of a database connection, returns true for 
+  ## sets the encoding of a database connection, returns true for
   ## success, false for failure.
   return pqsetClientEncoding(connection, encoding) == 0

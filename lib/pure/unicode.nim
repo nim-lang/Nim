@@ -1285,7 +1285,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
   result = a.len - b.len
 
 proc reversed*(s: string): string =
-  ## Returns the reverse of ``s``, interpreting it as Unicode characters. 
+  ## Returns the reverse of ``s``, interpreting it as Unicode characters.
   ## Unicode combining characters are correctly interpreted as well:
   ##
   ## .. code-block:: nim

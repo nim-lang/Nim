@@ -16,7 +16,7 @@ proc lowGauge(n: PAvlNode): int =
   while not isBottom(it):
     result = it.key
     it = it.link[0]
-  
+
 proc highGauge(n: PAvlNode): int =
   result = -1
   var it = n
@@ -24,7 +24,7 @@ proc highGauge(n: PAvlNode): int =
     result = it.upperBound
     it = it.link[1]
 
-proc find(root: PAvlNode, key: int): PAvlNode = 
+proc find(root: PAvlNode, key: int): PAvlNode =
   var it = root
   while not isBottom(it):
     if it.key == key: return it
