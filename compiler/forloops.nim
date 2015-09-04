@@ -14,11 +14,11 @@ import ast, astalgo
 const
   someCmp = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
     mEqUntracedRef, mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
-    mLeCh, mLeB, mLePtr, mLtI, mLtF64, mLtU, mLtU64, mLtEnum, 
+    mLeCh, mLeB, mLePtr, mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
     mLtCh, mLtB, mLtPtr}
 
 proc isCounter(s: PSym): bool {.inline.} =
-  s.kind in {skResult, skVar, skLet, skTemp} and 
+  s.kind in {skResult, skVar, skLet, skTemp} and
   {sfGlobal, sfAddrTaken} * s.flags == {}
 
 proc isCall(n: PNode): bool {.inline.} =
@@ -29,7 +29,7 @@ proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 proc getCounter(lastStmt: PNode): PSym =
   if lastStmt.isCall:
     let op = lastStmt.sym
-    if op.magic in {mDec, mInc} or 
+    if op.magic in {mDec, mInc} or
         ((op.name.s == "+=" or op.name.s == "-=") and op.fromSystem):
       if op[1].kind == nkSym and isCounter(op[1].sym):
         result = op[1].sym
@@ -67,7 +67,7 @@ proc extractForLoop*(loop, fullTree: PNode): ForLoop =
 
   if not cond.isCall: return
   if cond[0].sym.magic notin someCmp: return
-  
+
   var lastStmt = loop[1]
   while lastStmt.kind in {nkStmtList, nkStmtListExpr}:
     lastStmt = lastStmt.lastSon
@@ -76,7 +76,7 @@ proc extractForLoop*(loop, fullTree: PNode): ForLoop =
   if counter.isNil or counter.ast.isNil: return
 
   template `=~`(a, b): expr = a.kind == nkSym and a.sym == b
-  
+
   if cond[1] =~ counter or cond[2] =~ counter:
     # ok, now check 'counter' is not used *after* the loop
     if counterInTree(fullTree, loop, counter): return
