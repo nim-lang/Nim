@@ -169,7 +169,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [FReadDb].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within interator body.
+  ## on demand using []. Returned handle is valid only within the interator body.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(db)
   if sqlres != nil:
