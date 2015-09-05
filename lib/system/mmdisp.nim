@@ -157,7 +157,7 @@ when defined(boehmgc):
     proc setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() =
-    when defined(macosx): boehmGCinit()
+    boehmGCinit()
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     if ntfNoRefs in typ.flags: result = allocAtomic(size)
