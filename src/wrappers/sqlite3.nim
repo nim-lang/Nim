@@ -9,8 +9,12 @@
 
 {.deadCodeElim: on.}
 when defined(windows):
-  const
-    Lib = "sqlite3.dll"
+  when defined(nimOldDlls):
+    const Lib = "sqlite3.dll"
+  elif defined(cpu64):
+    const Lib = "sqlite3_64.dll"
+  else:
+    const Lib = "sqlite3_32.dll"
 elif defined(macosx):
   const
     Lib = "libsqlite3(|.0).dylib"
