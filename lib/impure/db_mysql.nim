@@ -140,9 +140,13 @@ proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
   
 iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
-  ## executes the query and iterates over the result dataset. This is very 
-  ## fast, but potenially dangerous: If the for-loop-body executes another
-  ## query, the results can be undefined. For MySQL this is the case!.
+  ## executes the query and iterates over the result dataset.
+  ##
+  ## This is very fast, but potenially dangerous.  Use this iterator only
+  ## if you require ALL the rows.
+  ##
+  ## Breaking the fastRows() iterator during a loop will cause the next
+  ## database query to raise an [EDb] exception ``Commands out of sync``.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(db)
   if sqlres != nil:
