@@ -62,6 +62,10 @@ News
     * ``libeay32.dll``: Split into ``libeay32.dll`` and ``libeay64.dll``.
 
     Compile with ``-d:nimOldDLLs`` to make the stdlib use the old DLL names.
+  - Nim VM now treats objects as nkObjConstr nodes, and not nkPar nodes as it
+    was previously. Macros that generate nkPar nodes when object is expected are
+    likely to break. Macros that expect nkPar nodes to which objects are passed
+    are likely to break as well.
 
 
   Library additions

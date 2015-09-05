@@ -1392,7 +1392,10 @@ proc getNullValueAux(obj: PNode, result: PNode) =
     for i in countup(1, sonsLen(obj) - 1):
       getNullValueAux(lastSon(obj.sons[i]), result)
   of nkSym:
-    addSon(result, getNullValue(obj.sym.typ, result.info))
+    let field = newNodeI(nkExprColonExpr, result.info)
+    field.add(obj)
+    field.add(getNullValue(obj.sym.typ, result.info))
+    addSon(result, field)
   else: globalError(result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo): PNode =
@@ -1418,7 +1421,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       result.add(newNodeIT(nkNilLit, info, t))
       result.add(newNodeIT(nkNilLit, info, t))
   of tyObject:
-    result = newNodeIT(nkPar, info, t)
+    result = newNodeIT(nkObjConstr, info, t)
+    result.add(newNodeIT(nkEmpty, info, t))
     getNullValueAux(t.n, result)
     # initialize inherited fields:
     var base = t.sons[0]
