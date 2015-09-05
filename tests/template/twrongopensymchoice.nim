@@ -4,11 +4,11 @@ discard """
 
 # bug #940
 
-type 
-  Foo* = ref object 
+type
+  Foo* = ref object
     b*: int
 
-proc new*(this: var Foo) = 
+proc new*(this: var Foo) =
   assert this != nil
   this.b = 10
 

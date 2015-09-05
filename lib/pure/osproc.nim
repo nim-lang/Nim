@@ -614,11 +614,14 @@ elif not defined(useNimRtl):
     optionPoStdErrToStdOut: bool
   {.deprecated: [TStartProcessData: StartProcessData].}
 
-  when not defined(useFork):
+  const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
+                             not defined(useClone) and not defined(linux)
+  when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid {.
       tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
-  proc startProcessAuxFork(data: StartProcessData): Pid {.
-    tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
+  else:
+    proc startProcessAuxFork(data: StartProcessData): Pid {.
+      tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
   {.push stacktrace: off, profiler: off.}
   proc startProcessAfterFork(data: ptr StartProcessData) {.
     tags: [ExecIOEffect, ReadEnvEffect], cdecl, gcsafe.}
@@ -674,9 +677,7 @@ elif not defined(useNimRtl):
     data.optionPoStdErrToStdOut = poStdErrToStdOut in options
     data.workingDir = workingDir
 
-
-    when declared(posix_spawn) and not defined(useFork) and
-        not defined(useClone) and not defined(linux):
+    when useProcessAuxSpawn:
       pid = startProcessAuxSpawn(data)
     else:
       pid = startProcessAuxFork(data)
@@ -706,7 +707,7 @@ elif not defined(useNimRtl):
       discard close(pStdin[readIdx])
       discard close(pStdout[writeIdx])
 
-  when not defined(useFork):
+  when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid =
       var attr: Tposix_spawnattr
       var fops: Tposix_spawn_file_actions
@@ -752,43 +753,43 @@ elif not defined(useNimRtl):
       discard posix_spawnattr_destroy(attr)
       chck res
       return pid
+  else:
+    proc startProcessAuxFork(data: StartProcessData): Pid =
+      if pipe(data.pErrorPipe) != 0:
+        raiseOSError(osLastError())
 
-  proc startProcessAuxFork(data: StartProcessData): Pid =
-    if pipe(data.pErrorPipe) != 0:
-      raiseOSError(osLastError())
+      defer:
+        discard close(data.pErrorPipe[readIdx])
 
-    defer:
-      discard close(data.pErrorPipe[readIdx])
+      var pid: Pid
+      var dataCopy = data
 
-    var pid: Pid
-    var dataCopy = data
+      when defined(useClone):
+        const stackSize = 65536
+        let stackEnd = cast[clong](alloc(stackSize))
+        let stack = cast[pointer](stackEnd + stackSize)
+        let fn: pointer = startProcessAfterFork
+        pid = clone(fn, stack,
+                    cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
+                    pointer(addr dataCopy), nil, nil, nil)
+        discard close(data.pErrorPipe[writeIdx])
+        dealloc(stack)
+      else:
+        pid = fork()
+        if pid == 0:
+          startProcessAfterFork(addr(dataCopy))
+          exitnow(1)
 
-    when defined(useClone):
-      const stackSize = 65536
-      let stackEnd = cast[clong](alloc(stackSize))
-      let stack = cast[pointer](stackEnd + stackSize)
-      let fn: pointer = startProcessAfterFork
-      pid = clone(fn, stack,
-                  cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
-                  pointer(addr dataCopy), nil, nil, nil)
       discard close(data.pErrorPipe[writeIdx])
-      dealloc(stack)
-    else:
-      pid = fork()
-      if pid == 0:
-        startProcessAfterFork(addr(dataCopy))
-        exitnow(1)
+      if pid < 0: raiseOSError(osLastError())
 
-    discard close(data.pErrorPipe[writeIdx])
-    if pid < 0: raiseOSError(osLastError())
+      var error: cint
+      let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
+      if sizeRead == sizeof(error):
+        raiseOSError("Could not find command: '$1'. OS error: $2" %
+            [$data.sysCommand, $strerror(error)])
 
-    var error: cint
-    let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
-    if sizeRead == sizeof(error):
-      raiseOSError("Could not find command: '$1'. OS error: $2" %
-          [$data.sysCommand, $strerror(error)])
-
-    return pid
+      return pid
 
   {.push stacktrace: off, profiler: off.}
   proc startProcessFail(data: ptr StartProcessData) =

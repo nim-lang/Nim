@@ -18,6 +18,6 @@ const magicIdentSeparatorRuneByteWidth* = 3
 
 # Used by pure/hashes.nim, and the compiler parsing
 proc isMagicIdentSeparatorRune*(cs: cstring, i: int): bool  {. inline } =
-  result =  cs[i] == '\226' and 
+  result =  cs[i] == '\226' and
             cs[i + 1] == '\128' and
             cs[i + 2] == '\147'     # en-dash  # 145 = nb-hyphen

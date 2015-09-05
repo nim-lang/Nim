@@ -9,4 +9,4 @@ if t==0x950412DE:
     echo "equal"
 else:
     echo "not equal"
-    
+

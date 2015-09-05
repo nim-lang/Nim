@@ -44,4 +44,4 @@ when isMainModule:
   var b = doBench()
   var output = genOutput(b)
   writeFile("benchmarkResults.json", pretty(output))
-  
+

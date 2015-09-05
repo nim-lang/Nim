@@ -6,7 +6,7 @@ discard """
 type
   TEnum = enum
     eA, eB, eC, eD, eE, eF
-    
+
 const
   myMapping: array[TEnum, array[0..1, int]] = [
     eA: [1, 2],

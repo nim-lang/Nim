@@ -15,10 +15,10 @@ const
 
 
 var i = 0
-for item in items(tabs): 
+for item in items(tabs):
   var content = $i
   var file: TFile
-  if open(file, changeFileExt(item[1], "html"), fmWrite): 
+  if open(file, changeFileExt(item[1], "html"), fmWrite):
     write(file, sunsetTemplate(current=item[1], ticker="", content=content,
                                tabs=tabs))
     close(file)

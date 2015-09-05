@@ -37,7 +37,8 @@ Installation on the Macintosh
 Only MacOS X is supported.
 Since MacOS X is UNIX based too, it works like the installation on Linux.
 However, for unknown reasons the symbolic link method does not work on MacOS X.
-You need to install Apple's developer's tools for the GNU Compiler Collection.
+You need to install Apple's developer's tools for the GNU Compiler Collection
+or clang.
 
 
 Installation on Windows
@@ -66,3 +67,13 @@ Bootstrapping from Github
 
 Take a look at the readme file on github `here <https://github.com/nim-lang/Nim#readme>`_
 for instructions.
+
+
+Installation of Nimble
+----------------------
+
+Nimble is Nim's package manager. For the source based installations where you
+added Nim's ``bin`` directory to your ``$PATH`` the easiest way of installing
+Nimble is via::
+
+  nim e install_nimble.nims

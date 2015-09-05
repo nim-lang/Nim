@@ -29,7 +29,7 @@ const
 var
   cacheEnabled = false
 
-type 
+type
   Rope* = ref RopeObj ## empty rope is represented by nil
   RopeObj {.acyclic.} = object
     left, right: Rope
@@ -59,7 +59,7 @@ proc newRope(data: string): Rope =
   result.length = len(data)
   result.data = data
 
-var 
+var
   cache {.threadvar.}: Rope     # the root of the cache tree
   N {.threadvar.}: Rope         # dummy rope needed for splay algorithm
 
@@ -81,7 +81,7 @@ proc splay(s: string, tree: Rope, cmpres: var int): Rope =
         t.left = y.right
         y.right = t
         t = y
-      if t.left == nil: break 
+      if t.left == nil: break
       r.left = t
       r = t
       t = t.left
@@ -91,7 +91,7 @@ proc splay(s: string, tree: Rope, cmpres: var int): Rope =
         t.right = y.left
         y.left = t
         t = y
-      if t.right == nil: break 
+      if t.right == nil: break
       le.right = t
       le = t
       t = t.right
@@ -109,7 +109,7 @@ proc insertInCache(s: string, tree: Rope): Rope =
   if t == nil:
     result = newRope(s)
     when countCacheMisses: inc(misses)
-    return 
+    return
   var cmp: int
   t = splay(s, t, cmp)
   if cmp == 0:
@@ -197,7 +197,7 @@ proc add*(a: var Rope, b: Rope) {.rtl, extern: "nro$1Rope".} =
 proc add*(a: var Rope, b: string) {.rtl, extern: "nro$1Str".} =
   ## adds `b` to the rope `a`.
   a = a & b
-  
+
 proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   ## returns the character at position `i` in the rope `r`. This is quite
   ## expensive! Worst-case: O(n). If ``i >= r.len``, ``\0`` is returned.
@@ -250,7 +250,7 @@ when false:
   proc compiledArg(idx: int): Rope =
     new(result)
     result.length = -idx
-  
+
   proc compileFrmt(frmt: string): Rope =
     var i = 0
     var length = len(frmt)
@@ -272,7 +272,7 @@ when false:
           while true:
             j = j * 10 + ord(frmt[i]) - ord('0')
             inc(i)
-            if frmt[i] notin {'0'..'9'}: break 
+            if frmt[i] notin {'0'..'9'}: break
           add(s, compiledArg(j))
         of '{':
           inc(i)
@@ -345,7 +345,7 @@ const
 
 proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
   ## returns true if the contents of the file `f` equal `r`.
-  var 
+  var
     buf: array[bufSize, char]
     bpos = buf.len
     blen = buf.len
@@ -363,7 +363,7 @@ proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
           return
       let n = min(blen - bpos, slen - spos)
       # TODO There's gotta be a better way of comparing here...
-      if not equalMem(addr(buf[bpos]), 
+      if not equalMem(addr(buf[bpos]),
                       cast[pointer](cast[int](cstring(s))+spos), n):
         result = false
         return

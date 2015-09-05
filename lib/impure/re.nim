@@ -41,11 +41,11 @@ type
     reExtended = 3,      ## ignore whitespace and ``#`` comments
     reStudy = 4          ## study the expression (may be omitted if the
                          ## expression will be used only once)
-  
-  RegexDesc = object 
+
+  RegexDesc = object
     h: ptr Pcre
     e: ptr ExtraData
-  
+
   Regex* {.deprecated.} = ref RegexDesc ## a compiled regular expression
 
   RegexError* = object of ValueError

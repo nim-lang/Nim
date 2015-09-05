@@ -50,7 +50,18 @@ News
     and are now deprecated and will be removed from the language. Instead you
     have to insert type conversions
     like ``(proc (a, b: int) {.closure.})(myToplevelProc)`` if necessary.
+  - The constant fights between 32 and 64 bit DLLs on Windows have been put to
+    an end: The standard distribution now ships with 32 and 64 bit versions
+    of all the DLLs the standard library needs. This means that the following
+    DLLs are now split into 32 and 64 versions:
 
+    * ``prce.dll``: Split into ``prce32.dll`` and ``prce64.dll``.
+    * ``pdcurses.dll``: Split into ``pdcurses32.dll`` and ``pdcurses64.dll``.
+    * ``sqlite3.dll``: Split into ``sqlite3_32.dll`` and ``sqlite3_64.dll``.
+    * ``ssleay32.dll``: Split into ``ssleay32.dll`` and ``ssleay64.dll``.
+    * ``libeay32.dll``: Split into ``libeay32.dll`` and ``libeay64.dll``.
+
+    Compile with ``-d:nimOldDLLs`` to make the stdlib use the old DLL names.
 
 
   Library additions
@@ -79,6 +90,8 @@ News
   - Tuple unpacking finally works in a non-var/let context: ``(x, y) == f()``
     is allowed. Note that this doesn't declare ``x`` and ``y`` variables, for
     this ``let (x, y) == f()`` still needs to be used.
+  - ``when nimvm`` can now be used for compiletime versions of some code
+    sections. See (XXX) for details.
 
 
   Bugfixes

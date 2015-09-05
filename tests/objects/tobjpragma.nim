@@ -12,7 +12,7 @@ discard """
 
 # Disabled since some versions of GCC ignore the 'packed' attribute
 
-# Test 
+# Test
 
 type
   Foo {.packed.} = object
@@ -21,12 +21,12 @@ type
 
   Bar {.packed.} = object
     a: int8
-    b: int16   
-    
+    b: int16
+
   Daz {.packed.} = object
     a: int32
-    b: int8 
-    c: int32  
+    b: int8
+    c: int32
 
 
 var f = Foo(a: 1, b: 1)

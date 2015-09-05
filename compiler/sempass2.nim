@@ -735,7 +735,7 @@ proc track(tracked: PEffects, n: PNode) =
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
   of nkCaseStmt: trackCase(tracked, n)
-  of nkIfStmt, nkIfExpr: trackIf(tracked, n)
+  of nkWhen, nkIfStmt, nkIfExpr: trackIf(tracked, n)
   of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n.sons[1])
   of nkWhileStmt:
     track(tracked, n.sons[0])

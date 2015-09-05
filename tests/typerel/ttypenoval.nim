@@ -11,7 +11,7 @@ type
   TBinHeap[T] = object
     heap: seq[TNode[T]]
     last: int
-  
+
   PBinHeap[T] = ref TBinHeap[T]
 
 proc newBinHeap*[T](heap: var PBinHeap[T], size: int) =
@@ -19,7 +19,7 @@ proc newBinHeap*[T](heap: var PBinHeap[T], size: int) =
   heap.last = 0
   newSeq(heap.heap, size)
   #newSeq(heap.seq, size)
- 
+
 proc parent(elem: int): int {.inline.} =
   return (elem-1) div 2
 

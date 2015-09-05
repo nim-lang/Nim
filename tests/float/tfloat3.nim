@@ -8,7 +8,7 @@ import math, strutils
 {.emit: """
 void printFloats(void) {
     double y = 1.234567890123456789;
-    
+
     printf("C double: %.10f, %.10f ", exp(y), cos(y));
 }
 """.}

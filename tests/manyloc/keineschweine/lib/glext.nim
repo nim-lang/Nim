@@ -13,14 +13,14 @@
 # *************************************************
 #*** Generated on 10/11/2002
 
-when defined(windows): 
+when defined(windows):
   {.push, callconv: stdcall.}
-else: 
+else:
   {.push, callconv: cdecl.}
-import 
+import
   gl
 
-type 
+type
   GLcharARB* = Char
   TGLcharARB* = GLcharARB
   PGLcharARB* = ptr GLcharARB
@@ -37,7 +37,7 @@ type
   TGLchar* = GLchar
   PGLchar* = cstring          #***** GL_version_1_2 *****//
 
-const 
+const
   GL_UNSIGNED_BYTE_3_3_2* = 0x00008032
   GL_UNSIGNED_SHORT_4_4_4_4* = 0x00008033
   GL_UNSIGNED_SHORT_5_5_5_1* = 0x00008034
@@ -79,44 +79,44 @@ const
   GL_TEXTURE_WRAP_R* = 0x00008072
   GL_MAX_3D_TEXTURE_SIZE* = 0x00008073
 
-proc glBlendColor*(red: TGLclampf, green: TGLclampf, blue: TGLclampf, 
+proc glBlendColor*(red: TGLclampf, green: TGLclampf, blue: TGLclampf,
                    alpha: TGLclampf){.dynlib: dllname, importc: "glBlendColor".}
-proc glBlendEquation*(mode: TGLenum){.dynlib: dllname, 
+proc glBlendEquation*(mode: TGLenum){.dynlib: dllname,
                                       importc: "glBlendEquation".}
-proc glDrawRangeElements*(mode: TGLenum, start: TGLuint, theend: TGLuint, 
+proc glDrawRangeElements*(mode: TGLenum, start: TGLuint, theend: TGLuint,
                           count: TGLsizei, thetype: TGLenum, indices: PGLvoid){.
     dynlib: dllname, importc: "glDrawRangeElements".}
-proc glColorTable*(target: TGLenum, internalformat: TGLenum, width: TGLsizei, 
+proc glColorTable*(target: TGLenum, internalformat: TGLenum, width: TGLsizei,
                    format: TGLenum, thetype: TGLenum, table: PGLvoid){.
     dynlib: dllname, importc: "glColorTable".}
 proc glColorTableParameterfv*(target: TGLenum, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glColorTableParameterfv".}
 proc glColorTableParameteriv*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glColorTableParameteriv".}
-proc glCopyColorTable*(target: TGLenum, internalformat: TGLenum, x: TGLint, 
-                       y: TGLint, width: TGLsizei){.dynlib: dllname, 
+proc glCopyColorTable*(target: TGLenum, internalformat: TGLenum, x: TGLint,
+                       y: TGLint, width: TGLsizei){.dynlib: dllname,
     importc: "glCopyColorTable".}
-proc glGetColorTable*(target: TGLenum, format: TGLenum, thetype: TGLenum, 
-                      table: PGLvoid){.dynlib: dllname, 
+proc glGetColorTable*(target: TGLenum, format: TGLenum, thetype: TGLenum,
+                      table: PGLvoid){.dynlib: dllname,
                                        importc: "glGetColorTable".}
-proc glGetColorTableParameterfv*(target: TGLenum, pname: TGLenum, 
-                                 params: PGLfloat){.dynlib: dllname, 
+proc glGetColorTableParameterfv*(target: TGLenum, pname: TGLenum,
+                                 params: PGLfloat){.dynlib: dllname,
     importc: "glGetColorTableParameterfv".}
 proc glGetColorTableParameteriv*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetColorTableParameteriv".}
-proc glColorSubTable*(target: TGLenum, start: TGLsizei, count: TGLsizei, 
+proc glColorSubTable*(target: TGLenum, start: TGLsizei, count: TGLsizei,
                       format: TGLenum, thetype: TGLenum, data: PGLvoid){.
     dynlib: dllname, importc: "glColorSubTable".}
-proc glCopyColorSubTable*(target: TGLenum, start: TGLsizei, x: TGLint, 
-                          y: TGLint, width: TGLsizei){.dynlib: dllname, 
+proc glCopyColorSubTable*(target: TGLenum, start: TGLsizei, x: TGLint,
+                          y: TGLint, width: TGLsizei){.dynlib: dllname,
     importc: "glCopyColorSubTable".}
-proc glConvolutionFilter1D*(target: TGLenum, internalformat: TGLenum, 
-                            width: TGLsizei, format: TGLenum, thetype: TGLenum, 
-                            image: PGLvoid){.dynlib: dllname, 
+proc glConvolutionFilter1D*(target: TGLenum, internalformat: TGLenum,
+                            width: TGLsizei, format: TGLenum, thetype: TGLenum,
+                            image: PGLvoid){.dynlib: dllname,
     importc: "glConvolutionFilter1D".}
-proc glConvolutionFilter2D*(target: TGLenum, internalformat: TGLenum, 
-                            width: TGLsizei, height: TGLsizei, format: TGLenum, 
-                            thetype: TGLenum, image: PGLvoid){.dynlib: dllname, 
+proc glConvolutionFilter2D*(target: TGLenum, internalformat: TGLenum,
+                            width: TGLsizei, height: TGLsizei, format: TGLenum,
+                            thetype: TGLenum, image: PGLvoid){.dynlib: dllname,
     importc: "glConvolutionFilter2D".}
 proc glConvolutionParameterf*(target: TGLenum, pname: TGLenum, params: TGLfloat){.
     dynlib: dllname, importc: "glConvolutionParameterf".}
@@ -126,170 +126,170 @@ proc glConvolutionParameteri*(target: TGLenum, pname: TGLenum, params: TGLint){.
     dynlib: dllname, importc: "glConvolutionParameteri".}
 proc glConvolutionParameteriv*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glConvolutionParameteriv".}
-proc glCopyConvolutionFilter1D*(target: TGLenum, internalformat: TGLenum, 
+proc glCopyConvolutionFilter1D*(target: TGLenum, internalformat: TGLenum,
                                 x: TGLint, y: TGLint, width: TGLsizei){.
     dynlib: dllname, importc: "glCopyConvolutionFilter1D".}
-proc glCopyConvolutionFilter2D*(target: TGLenum, internalformat: TGLenum, 
-                                x: TGLint, y: TGLint, width: TGLsizei, 
-                                height: TGLsizei){.dynlib: dllname, 
+proc glCopyConvolutionFilter2D*(target: TGLenum, internalformat: TGLenum,
+                                x: TGLint, y: TGLint, width: TGLsizei,
+                                height: TGLsizei){.dynlib: dllname,
     importc: "glCopyConvolutionFilter2D".}
-proc glGetConvolutionFilter*(target: TGLenum, format: TGLenum, thetype: TGLenum, 
-                             image: PGLvoid){.dynlib: dllname, 
+proc glGetConvolutionFilter*(target: TGLenum, format: TGLenum, thetype: TGLenum,
+                             image: PGLvoid){.dynlib: dllname,
     importc: "glGetConvolutionFilter".}
-proc glGetConvolutionParameterfv*(target: TGLenum, pname: TGLenum, 
-                                  params: PGLfloat){.dynlib: dllname, 
+proc glGetConvolutionParameterfv*(target: TGLenum, pname: TGLenum,
+                                  params: PGLfloat){.dynlib: dllname,
     importc: "glGetConvolutionParameterfv".}
-proc glGetConvolutionParameteriv*(target: TGLenum, pname: TGLenum, 
-                                  params: PGLint){.dynlib: dllname, 
+proc glGetConvolutionParameteriv*(target: TGLenum, pname: TGLenum,
+                                  params: PGLint){.dynlib: dllname,
     importc: "glGetConvolutionParameteriv".}
-proc glGetSeparableFilter*(target: TGLenum, format: TGLenum, thetype: TGLenum, 
+proc glGetSeparableFilter*(target: TGLenum, format: TGLenum, thetype: TGLenum,
                            row: PGLvoid, column: PGLvoid, span: PGLvoid){.
     dynlib: dllname, importc: "glGetSeparableFilter".}
-proc glSeparableFilter2D*(target: TGLenum, internalformat: TGLenum, 
-                          width: TGLsizei, height: TGLsizei, format: TGLenum, 
+proc glSeparableFilter2D*(target: TGLenum, internalformat: TGLenum,
+                          width: TGLsizei, height: TGLsizei, format: TGLenum,
                           thetype: TGLenum, row: PGLvoid, column: PGLvoid){.
     dynlib: dllname, importc: "glSeparableFilter2D".}
-proc glGetHistogram*(target: TGLenum, reset: TGLboolean, format: TGLenum, 
-                     thetype: TGLenum, values: PGLvoid){.dynlib: dllname, 
+proc glGetHistogram*(target: TGLenum, reset: TGLboolean, format: TGLenum,
+                     thetype: TGLenum, values: PGLvoid){.dynlib: dllname,
     importc: "glGetHistogram".}
-proc glGetHistogramParameterfv*(target: TGLenum, pname: TGLenum, 
-                                params: PGLfloat){.dynlib: dllname, 
+proc glGetHistogramParameterfv*(target: TGLenum, pname: TGLenum,
+                                params: PGLfloat){.dynlib: dllname,
     importc: "glGetHistogramParameterfv".}
 proc glGetHistogramParameteriv*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetHistogramParameteriv".}
-proc glGetMinmax*(target: TGLenum, reset: TGLboolean, format: TGLenum, 
-                  thetype: TGLenum, values: PGLvoid){.dynlib: dllname, 
+proc glGetMinmax*(target: TGLenum, reset: TGLboolean, format: TGLenum,
+                  thetype: TGLenum, values: PGLvoid){.dynlib: dllname,
     importc: "glGetMinmax".}
 proc glGetMinmaxParameterfv*(target: TGLenum, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetMinmaxParameterfv".}
 proc glGetMinmaxParameteriv*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetMinmaxParameteriv".}
-proc glHistogram*(target: TGLenum, width: TGLsizei, internalformat: TGLenum, 
+proc glHistogram*(target: TGLenum, width: TGLsizei, internalformat: TGLenum,
                   sink: TGLboolean){.dynlib: dllname, importc: "glHistogram".}
 proc glMinmax*(target: TGLenum, internalformat: TGLenum, sink: TGLboolean){.
     dynlib: dllname, importc: "glMinmax".}
-proc glResetHistogram*(target: TGLenum){.dynlib: dllname, 
+proc glResetHistogram*(target: TGLenum){.dynlib: dllname,
     importc: "glResetHistogram".}
 proc glResetMinmax*(target: TGLenum){.dynlib: dllname, importc: "glResetMinmax".}
-proc glTexImage3D*(target: TGLenum, level: TGLint, internalformat: TGLint, 
-                   width: TGLsizei, height: TGLsizei, depth: TGLsizei, 
-                   border: TGLint, format: TGLenum, thetype: TGLenum, 
+proc glTexImage3D*(target: TGLenum, level: TGLint, internalformat: TGLint,
+                   width: TGLsizei, height: TGLsizei, depth: TGLsizei,
+                   border: TGLint, format: TGLenum, thetype: TGLenum,
                    pixels: PGLvoid){.dynlib: dllname, importc: "glTexImage3D".}
-proc glTexSubImage3D*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                      yoffset: TGLint, zoffset: TGLint, width: TGLsizei, 
-                      height: TGLsizei, depth: TGLsizei, format: TGLenum, 
-                      thetype: TGLenum, pixels: PGLvoid){.dynlib: dllname, 
+proc glTexSubImage3D*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                      yoffset: TGLint, zoffset: TGLint, width: TGLsizei,
+                      height: TGLsizei, depth: TGLsizei, format: TGLenum,
+                      thetype: TGLenum, pixels: PGLvoid){.dynlib: dllname,
     importc: "glTexSubImage3D".}
-proc glCopyTexSubImage3D*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                          yoffset: TGLint, zoffset: TGLint, x: TGLint, 
+proc glCopyTexSubImage3D*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                          yoffset: TGLint, zoffset: TGLint, x: TGLint,
                           y: TGLint, width: TGLsizei, height: TGLsizei){.
     dynlib: dllname, importc: "glCopyTexSubImage3D".}
-proc glActiveTextureARB*(texture: TGLenum){.dynlib: dllname, 
+proc glActiveTextureARB*(texture: TGLenum){.dynlib: dllname,
     importc: "glActiveTextureARB".}
-proc glClientActiveTextureARB*(texture: TGLenum){.dynlib: dllname, 
+proc glClientActiveTextureARB*(texture: TGLenum){.dynlib: dllname,
     importc: "glClientActiveTextureARB".}
-proc glMultiTexCoord1dARB*(target: TGLenum, s: TGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord1dARB*(target: TGLenum, s: TGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord1dARB".}
-proc glMultiTexCoord1dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord1dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord1dvARB".}
-proc glMultiTexCoord1fARB*(target: TGLenum, s: TGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord1fARB*(target: TGLenum, s: TGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord1fARB".}
-proc glMultiTexCoord1fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord1fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord1fvARB".}
-proc glMultiTexCoord1iARB*(target: TGLenum, s: TGLint){.dynlib: dllname, 
+proc glMultiTexCoord1iARB*(target: TGLenum, s: TGLint){.dynlib: dllname,
     importc: "glMultiTexCoord1iARB".}
-proc glMultiTexCoord1ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord1ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord1ivARB".}
-proc glMultiTexCoord1sARB*(target: TGLenum, s: TGLshort){.dynlib: dllname, 
+proc glMultiTexCoord1sARB*(target: TGLenum, s: TGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord1sARB".}
-proc glMultiTexCoord1svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord1svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord1svARB".}
 proc glMultiTexCoord2dARB*(target: TGLenum, s: TGLdouble, t: TGLdouble){.
     dynlib: dllname, importc: "glMultiTexCoord2dARB".}
-proc glMultiTexCoord2dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord2dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord2dvARB".}
 proc glMultiTexCoord2fARB*(target: TGLenum, s: TGLfloat, t: TGLfloat){.
     dynlib: dllname, importc: "glMultiTexCoord2fARB".}
-proc glMultiTexCoord2fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord2fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord2fvARB".}
 proc glMultiTexCoord2iARB*(target: TGLenum, s: TGLint, t: TGLint){.
     dynlib: dllname, importc: "glMultiTexCoord2iARB".}
-proc glMultiTexCoord2ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord2ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord2ivARB".}
 proc glMultiTexCoord2sARB*(target: TGLenum, s: TGLshort, t: TGLshort){.
     dynlib: dllname, importc: "glMultiTexCoord2sARB".}
-proc glMultiTexCoord2svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord2svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord2svARB".}
-proc glMultiTexCoord3dARB*(target: TGLenum, s: TGLdouble, t: TGLdouble, 
-                           r: TGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord3dARB*(target: TGLenum, s: TGLdouble, t: TGLdouble,
+                           r: TGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord3dARB".}
-proc glMultiTexCoord3dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord3dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord3dvARB".}
-proc glMultiTexCoord3fARB*(target: TGLenum, s: TGLfloat, t: TGLfloat, 
-                           r: TGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord3fARB*(target: TGLenum, s: TGLfloat, t: TGLfloat,
+                           r: TGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord3fARB".}
-proc glMultiTexCoord3fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord3fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord3fvARB".}
 proc glMultiTexCoord3iARB*(target: TGLenum, s: TGLint, t: TGLint, r: TGLint){.
     dynlib: dllname, importc: "glMultiTexCoord3iARB".}
-proc glMultiTexCoord3ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord3ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord3ivARB".}
-proc glMultiTexCoord3sARB*(target: TGLenum, s: TGLshort, t: TGLshort, 
-                           r: TGLshort){.dynlib: dllname, 
+proc glMultiTexCoord3sARB*(target: TGLenum, s: TGLshort, t: TGLshort,
+                           r: TGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord3sARB".}
-proc glMultiTexCoord3svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord3svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord3svARB".}
-proc glMultiTexCoord4dARB*(target: TGLenum, s: TGLdouble, t: TGLdouble, 
-                           r: TGLdouble, q: TGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord4dARB*(target: TGLenum, s: TGLdouble, t: TGLdouble,
+                           r: TGLdouble, q: TGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord4dARB".}
-proc glMultiTexCoord4dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord4dvARB*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord4dvARB".}
-proc glMultiTexCoord4fARB*(target: TGLenum, s: TGLfloat, t: TGLfloat, 
-                           r: TGLfloat, q: TGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord4fARB*(target: TGLenum, s: TGLfloat, t: TGLfloat,
+                           r: TGLfloat, q: TGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord4fARB".}
-proc glMultiTexCoord4fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord4fvARB*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord4fvARB".}
-proc glMultiTexCoord4iARB*(target: TGLenum, s: TGLint, t: TGLint, r: TGLint, 
-                           q: TGLint){.dynlib: dllname, 
+proc glMultiTexCoord4iARB*(target: TGLenum, s: TGLint, t: TGLint, r: TGLint,
+                           q: TGLint){.dynlib: dllname,
                                        importc: "glMultiTexCoord4iARB".}
-proc glMultiTexCoord4ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord4ivARB*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord4ivARB".}
-proc glMultiTexCoord4sARB*(target: TGLenum, s: TGLshort, t: TGLshort, 
-                           r: TGLshort, q: TGLshort){.dynlib: dllname, 
+proc glMultiTexCoord4sARB*(target: TGLenum, s: TGLshort, t: TGLshort,
+                           r: TGLshort, q: TGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord4sARB".}
-proc glMultiTexCoord4svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord4svARB*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord4svARB".}
 proc glSampleCoverageARB*(value: TGLclampf, invert: TGLboolean){.
     dynlib: dllname, importc: "glSampleCoverageARB".}
   #***** GL_ARB_texture_env_add *****//
-proc glWeightbvARB*(size: TGLint, weights: PGLbyte){.dynlib: dllname, 
+proc glWeightbvARB*(size: TGLint, weights: PGLbyte){.dynlib: dllname,
     importc: "glWeightbvARB".}
-proc glWeightsvARB*(size: TGLint, weights: PGLshort){.dynlib: dllname, 
+proc glWeightsvARB*(size: TGLint, weights: PGLshort){.dynlib: dllname,
     importc: "glWeightsvARB".}
-proc glWeightivARB*(size: TGLint, weights: PGLint){.dynlib: dllname, 
+proc glWeightivARB*(size: TGLint, weights: PGLint){.dynlib: dllname,
     importc: "glWeightivARB".}
-proc glWeightfvARB*(size: TGLint, weights: PGLfloat){.dynlib: dllname, 
+proc glWeightfvARB*(size: TGLint, weights: PGLfloat){.dynlib: dllname,
     importc: "glWeightfvARB".}
-proc glWeightdvARB*(size: TGLint, weights: PGLdouble){.dynlib: dllname, 
+proc glWeightdvARB*(size: TGLint, weights: PGLdouble){.dynlib: dllname,
     importc: "glWeightdvARB".}
-proc glWeightvARB*(size: TGLint, weights: PGLdouble){.dynlib: dllname, 
+proc glWeightvARB*(size: TGLint, weights: PGLdouble){.dynlib: dllname,
     importc: "glWeightvARB".}
-proc glWeightubvARB*(size: TGLint, weights: PGLubyte){.dynlib: dllname, 
+proc glWeightubvARB*(size: TGLint, weights: PGLubyte){.dynlib: dllname,
     importc: "glWeightubvARB".}
-proc glWeightusvARB*(size: TGLint, weights: PGLushort){.dynlib: dllname, 
+proc glWeightusvARB*(size: TGLint, weights: PGLushort){.dynlib: dllname,
     importc: "glWeightusvARB".}
-proc glWeightuivARB*(size: TGLint, weights: PGLuint){.dynlib: dllname, 
+proc glWeightuivARB*(size: TGLint, weights: PGLuint){.dynlib: dllname,
     importc: "glWeightuivARB".}
-proc glWeightPointerARB*(size: TGLint, thetype: TGLenum, stride: TGLsizei, 
-                         pointer: PGLvoid){.dynlib: dllname, 
+proc glWeightPointerARB*(size: TGLint, thetype: TGLenum, stride: TGLsizei,
+                         pointer: PGLvoid){.dynlib: dllname,
     importc: "glWeightPointerARB".}
-proc glVertexBlendARB*(count: TGLint){.dynlib: dllname, 
+proc glVertexBlendARB*(count: TGLint){.dynlib: dllname,
                                        importc: "glVertexBlendARB".}
-proc glVertexAttrib1sARB*(index: TGLuint, x: TGLshort){.dynlib: dllname, 
+proc glVertexAttrib1sARB*(index: TGLuint, x: TGLshort){.dynlib: dllname,
     importc: "glVertexAttrib1sARB".}
-proc glVertexAttrib1fARB*(index: TGLuint, x: TGLfloat){.dynlib: dllname, 
+proc glVertexAttrib1fARB*(index: TGLuint, x: TGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib1fARB".}
-proc glVertexAttrib1dARB*(index: TGLuint, x: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib1dARB*(index: TGLuint, x: TGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib1dARB".}
 proc glVertexAttrib2sARB*(index: TGLuint, x: TGLshort, y: TGLshort){.
     dynlib: dllname, importc: "glVertexAttrib2sARB".}
@@ -301,120 +301,120 @@ proc glVertexAttrib3sARB*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort)
     dynlib: dllname, importc: "glVertexAttrib3sARB".}
 proc glVertexAttrib3fARB*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glVertexAttrib3fARB".}
-proc glVertexAttrib3dARB*(index: TGLuint, x: TGLdouble, y: TGLdouble, 
-                          z: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib3dARB*(index: TGLuint, x: TGLdouble, y: TGLdouble,
+                          z: TGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib3dARB".}
-proc glVertexAttrib4sARB*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort, 
-                          w: TGLshort){.dynlib: dllname, 
+proc glVertexAttrib4sARB*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort,
+                          w: TGLshort){.dynlib: dllname,
                                         importc: "glVertexAttrib4sARB".}
-proc glVertexAttrib4fARB*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat, 
-                          w: TGLfloat){.dynlib: dllname, 
+proc glVertexAttrib4fARB*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat,
+                          w: TGLfloat){.dynlib: dllname,
                                         importc: "glVertexAttrib4fARB".}
-proc glVertexAttrib4dARB*(index: TGLuint, x: TGLdouble, y: TGLdouble, 
-                          z: TGLdouble, w: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib4dARB*(index: TGLuint, x: TGLdouble, y: TGLdouble,
+                          z: TGLdouble, w: TGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib4dARB".}
-proc glVertexAttrib4NubARB*(index: TGLuint, x: TGLubyte, y: TGLubyte, 
-                            z: TGLubyte, w: TGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4NubARB*(index: TGLuint, x: TGLubyte, y: TGLubyte,
+                            z: TGLubyte, w: TGLubyte){.dynlib: dllname,
     importc: "glVertexAttrib4NubARB".}
-proc glVertexAttrib1svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib1svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib1svARB".}
-proc glVertexAttrib1fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib1fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib1fvARB".}
-proc glVertexAttrib1dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib1dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib1dvARB".}
-proc glVertexAttrib2svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib2svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib2svARB".}
-proc glVertexAttrib2fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib2fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib2fvARB".}
-proc glVertexAttrib2dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib2dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib2dvARB".}
-proc glVertexAttrib3svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib3svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib3svARB".}
-proc glVertexAttrib3fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib3fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib3fvARB".}
-proc glVertexAttrib3dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib3dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib3dvARB".}
-proc glVertexAttrib4bvARB*(index: TGLuint, v: PGLbyte){.dynlib: dllname, 
+proc glVertexAttrib4bvARB*(index: TGLuint, v: PGLbyte){.dynlib: dllname,
     importc: "glVertexAttrib4bvARB".}
-proc glVertexAttrib4svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib4svARB*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib4svARB".}
-proc glVertexAttrib4ivARB*(index: TGLuint, v: PGLint){.dynlib: dllname, 
+proc glVertexAttrib4ivARB*(index: TGLuint, v: PGLint){.dynlib: dllname,
     importc: "glVertexAttrib4ivARB".}
-proc glVertexAttrib4ubvARB*(index: TGLuint, v: PGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4ubvARB*(index: TGLuint, v: PGLubyte){.dynlib: dllname,
     importc: "glVertexAttrib4ubvARB".}
-proc glVertexAttrib4usvARB*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib4usvARB*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib4usvARB".}
-proc glVertexAttrib4uivARB*(index: TGLuint, v: PGLuint){.dynlib: dllname, 
+proc glVertexAttrib4uivARB*(index: TGLuint, v: PGLuint){.dynlib: dllname,
     importc: "glVertexAttrib4uivARB".}
-proc glVertexAttrib4fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib4fvARB*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib4fvARB".}
-proc glVertexAttrib4dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib4dvARB*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib4dvARB".}
-proc glVertexAttrib4NbvARB*(index: TGLuint, v: PGLbyte){.dynlib: dllname, 
+proc glVertexAttrib4NbvARB*(index: TGLuint, v: PGLbyte){.dynlib: dllname,
     importc: "glVertexAttrib4NbvARB".}
-proc glVertexAttrib4NsvARB*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib4NsvARB*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib4NsvARB".}
-proc glVertexAttrib4NivARB*(index: TGLuint, v: PGLint){.dynlib: dllname, 
+proc glVertexAttrib4NivARB*(index: TGLuint, v: PGLint){.dynlib: dllname,
     importc: "glVertexAttrib4NivARB".}
-proc glVertexAttrib4NubvARB*(index: TGLuint, v: PGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4NubvARB*(index: TGLuint, v: PGLubyte){.dynlib: dllname,
     importc: "glVertexAttrib4NubvARB".}
-proc glVertexAttrib4NusvARB*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib4NusvARB*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib4NusvARB".}
-proc glVertexAttrib4NuivARB*(index: TGLuint, v: PGLuint){.dynlib: dllname, 
+proc glVertexAttrib4NuivARB*(index: TGLuint, v: PGLuint){.dynlib: dllname,
     importc: "glVertexAttrib4NuivARB".}
-proc glVertexAttribPointerARB*(index: TGLuint, size: TGLint, thetype: TGLenum, 
-                               normalized: TGLboolean, stride: TGLsizei, 
-                               pointer: PGLvoid){.dynlib: dllname, 
+proc glVertexAttribPointerARB*(index: TGLuint, size: TGLint, thetype: TGLenum,
+                               normalized: TGLboolean, stride: TGLsizei,
+                               pointer: PGLvoid){.dynlib: dllname,
     importc: "glVertexAttribPointerARB".}
-proc glEnableVertexAttribArrayARB*(index: TGLuint){.dynlib: dllname, 
+proc glEnableVertexAttribArrayARB*(index: TGLuint){.dynlib: dllname,
     importc: "glEnableVertexAttribArrayARB".}
-proc glDisableVertexAttribArrayARB*(index: TGLuint){.dynlib: dllname, 
+proc glDisableVertexAttribArrayARB*(index: TGLuint){.dynlib: dllname,
     importc: "glDisableVertexAttribArrayARB".}
-proc glProgramStringARB*(target: TGLenum, format: TGLenum, length: TGLsizei, 
-                         str: PGLvoid){.dynlib: dllname, 
+proc glProgramStringARB*(target: TGLenum, format: TGLenum, length: TGLsizei,
+                         str: PGLvoid){.dynlib: dllname,
                                         importc: "glProgramStringARB".}
-proc glBindProgramARB*(target: TGLenum, theProgram: TGLuint){.dynlib: dllname, 
+proc glBindProgramARB*(target: TGLenum, theProgram: TGLuint){.dynlib: dllname,
     importc: "glBindProgramARB".}
-proc glDeleteProgramsARB*(n: TGLsizei, programs: PGLuint){.dynlib: dllname, 
+proc glDeleteProgramsARB*(n: TGLsizei, programs: PGLuint){.dynlib: dllname,
     importc: "glDeleteProgramsARB".}
-proc glGenProgramsARB*(n: TGLsizei, programs: PGLuint){.dynlib: dllname, 
+proc glGenProgramsARB*(n: TGLsizei, programs: PGLuint){.dynlib: dllname,
     importc: "glGenProgramsARB".}
-proc glProgramEnvParameter4dARB*(target: TGLenum, index: TGLuint, x: TGLdouble, 
+proc glProgramEnvParameter4dARB*(target: TGLenum, index: TGLuint, x: TGLdouble,
                                  y: TGLdouble, z: TGLdouble, w: TGLdouble){.
     dynlib: dllname, importc: "glProgramEnvParameter4dARB".}
-proc glProgramEnvParameter4dvARB*(target: TGLenum, index: TGLuint, 
-                                  params: PGLdouble){.dynlib: dllname, 
+proc glProgramEnvParameter4dvARB*(target: TGLenum, index: TGLuint,
+                                  params: PGLdouble){.dynlib: dllname,
     importc: "glProgramEnvParameter4dvARB".}
-proc glProgramEnvParameter4fARB*(target: TGLenum, index: TGLuint, x: TGLfloat, 
+proc glProgramEnvParameter4fARB*(target: TGLenum, index: TGLuint, x: TGLfloat,
                                  y: TGLfloat, z: TGLfloat, w: TGLfloat){.
     dynlib: dllname, importc: "glProgramEnvParameter4fARB".}
-proc glProgramEnvParameter4fvARB*(target: TGLenum, index: TGLuint, 
-                                  params: PGLfloat){.dynlib: dllname, 
+proc glProgramEnvParameter4fvARB*(target: TGLenum, index: TGLuint,
+                                  params: PGLfloat){.dynlib: dllname,
     importc: "glProgramEnvParameter4fvARB".}
-proc glProgramLocalParameter4dARB*(target: TGLenum, index: TGLuint, 
-                                   x: TGLdouble, y: TGLdouble, z: TGLdouble, 
-                                   w: TGLdouble){.dynlib: dllname, 
+proc glProgramLocalParameter4dARB*(target: TGLenum, index: TGLuint,
+                                   x: TGLdouble, y: TGLdouble, z: TGLdouble,
+                                   w: TGLdouble){.dynlib: dllname,
     importc: "glProgramLocalParameter4dARB".}
-proc glProgramLocalParameter4dvARB*(target: TGLenum, index: TGLuint, 
-                                    params: PGLdouble){.dynlib: dllname, 
+proc glProgramLocalParameter4dvARB*(target: TGLenum, index: TGLuint,
+                                    params: PGLdouble){.dynlib: dllname,
     importc: "glProgramLocalParameter4dvARB".}
-proc glProgramLocalParameter4fARB*(target: TGLenum, index: TGLuint, x: TGLfloat, 
+proc glProgramLocalParameter4fARB*(target: TGLenum, index: TGLuint, x: TGLfloat,
                                    y: TGLfloat, z: TGLfloat, w: TGLfloat){.
     dynlib: dllname, importc: "glProgramLocalParameter4fARB".}
-proc glProgramLocalParameter4fvARB*(target: TGLenum, index: TGLuint, 
-                                    params: PGLfloat){.dynlib: dllname, 
+proc glProgramLocalParameter4fvARB*(target: TGLenum, index: TGLuint,
+                                    params: PGLfloat){.dynlib: dllname,
     importc: "glProgramLocalParameter4fvARB".}
-proc glGetProgramEnvParameterdvARB*(target: TGLenum, index: TGLuint, 
-                                    params: PGLdouble){.dynlib: dllname, 
+proc glGetProgramEnvParameterdvARB*(target: TGLenum, index: TGLuint,
+                                    params: PGLdouble){.dynlib: dllname,
     importc: "glGetProgramEnvParameterdvARB".}
-proc glGetProgramEnvParameterfvARB*(target: TGLenum, index: TGLuint, 
-                                    params: PGLfloat){.dynlib: dllname, 
+proc glGetProgramEnvParameterfvARB*(target: TGLenum, index: TGLuint,
+                                    params: PGLfloat){.dynlib: dllname,
     importc: "glGetProgramEnvParameterfvARB".}
-proc glGetProgramLocalParameterdvARB*(target: TGLenum, index: TGLuint, 
-                                      params: PGLdouble){.dynlib: dllname, 
+proc glGetProgramLocalParameterdvARB*(target: TGLenum, index: TGLuint,
+                                      params: PGLdouble){.dynlib: dllname,
     importc: "glGetProgramLocalParameterdvARB".}
-proc glGetProgramLocalParameterfvARB*(target: TGLenum, index: TGLuint, 
-                                      params: PGLfloat){.dynlib: dllname, 
+proc glGetProgramLocalParameterfvARB*(target: TGLenum, index: TGLuint,
+                                      params: PGLfloat){.dynlib: dllname,
     importc: "glGetProgramLocalParameterfvARB".}
 proc glGetProgramivARB*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetProgramivARB".}
@@ -426,100 +426,100 @@ proc glGetVertexAttribfvARB*(index: TGLuint, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetVertexAttribfvARB".}
 proc glGetVertexAttribivARB*(index: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetVertexAttribivARB".}
-proc glGetVertexAttribPointervARB*(index: TGLuint, pname: TGLenum, 
-                                   pointer: PGLvoid){.dynlib: dllname, 
+proc glGetVertexAttribPointervARB*(index: TGLuint, pname: TGLenum,
+                                   pointer: PGLvoid){.dynlib: dllname,
     importc: "glGetVertexAttribPointervARB".}
-proc glIsProgramARB*(theProgram: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsProgramARB*(theProgram: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsProgramARB".}
   #***** GL_ARB_window_pos *****//
-proc glWindowPos2dARB*(x: TGLdouble, y: TGLdouble){.dynlib: dllname, 
+proc glWindowPos2dARB*(x: TGLdouble, y: TGLdouble){.dynlib: dllname,
     importc: "glWindowPos2dARB".}
-proc glWindowPos2fARB*(x: TGLfloat, y: TGLfloat){.dynlib: dllname, 
+proc glWindowPos2fARB*(x: TGLfloat, y: TGLfloat){.dynlib: dllname,
     importc: "glWindowPos2fARB".}
-proc glWindowPos2iARB*(x: TGLint, y: TGLint){.dynlib: dllname, 
+proc glWindowPos2iARB*(x: TGLint, y: TGLint){.dynlib: dllname,
     importc: "glWindowPos2iARB".}
-proc glWindowPos2sARB*(x: TGLshort, y: TGLshort){.dynlib: dllname, 
+proc glWindowPos2sARB*(x: TGLshort, y: TGLshort){.dynlib: dllname,
     importc: "glWindowPos2sARB".}
-proc glWindowPos2dvARB*(p: PGLdouble){.dynlib: dllname, 
+proc glWindowPos2dvARB*(p: PGLdouble){.dynlib: dllname,
                                        importc: "glWindowPos2dvARB".}
-proc glWindowPos2fvARB*(p: PGLfloat){.dynlib: dllname, 
+proc glWindowPos2fvARB*(p: PGLfloat){.dynlib: dllname,
                                       importc: "glWindowPos2fvARB".}
-proc glWindowPos2ivARB*(p: PGLint){.dynlib: dllname, 
+proc glWindowPos2ivARB*(p: PGLint){.dynlib: dllname,
                                     importc: "glWindowPos2ivARB".}
-proc glWindowPos2svARB*(p: PGLshort){.dynlib: dllname, 
+proc glWindowPos2svARB*(p: PGLshort){.dynlib: dllname,
                                       importc: "glWindowPos2svARB".}
 proc glWindowPos3dARB*(x: TGLdouble, y: TGLdouble, z: TGLdouble){.
     dynlib: dllname, importc: "glWindowPos3dARB".}
-proc glWindowPos3fARB*(x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glWindowPos3fARB*(x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glWindowPos3fARB".}
-proc glWindowPos3iARB*(x: TGLint, y: TGLint, z: TGLint){.dynlib: dllname, 
+proc glWindowPos3iARB*(x: TGLint, y: TGLint, z: TGLint){.dynlib: dllname,
     importc: "glWindowPos3iARB".}
-proc glWindowPos3sARB*(x: TGLshort, y: TGLshort, z: TGLshort){.dynlib: dllname, 
+proc glWindowPos3sARB*(x: TGLshort, y: TGLshort, z: TGLshort){.dynlib: dllname,
     importc: "glWindowPos3sARB".}
-proc glWindowPos3dvARB*(p: PGLdouble){.dynlib: dllname, 
+proc glWindowPos3dvARB*(p: PGLdouble){.dynlib: dllname,
                                        importc: "glWindowPos3dvARB".}
-proc glWindowPos3fvARB*(p: PGLfloat){.dynlib: dllname, 
+proc glWindowPos3fvARB*(p: PGLfloat){.dynlib: dllname,
                                       importc: "glWindowPos3fvARB".}
-proc glWindowPos3ivARB*(p: PGLint){.dynlib: dllname, 
+proc glWindowPos3ivARB*(p: PGLint){.dynlib: dllname,
                                     importc: "glWindowPos3ivARB".}
-proc glWindowPos3svARB*(p: PGLshort){.dynlib: dllname, 
+proc glWindowPos3svARB*(p: PGLshort){.dynlib: dllname,
                                       importc: "glWindowPos3svARB".}
 proc glBlendEquationSeparate*(modeRGB: TGLenum, modeAlpha: TGLenum){.
     dynlib: dllname, importc: "glBlendEquationSeparate".}
-proc glDrawBuffers*(n: TGLsizei, bufs: PGLenum){.dynlib: dllname, 
+proc glDrawBuffers*(n: TGLsizei, bufs: PGLenum){.dynlib: dllname,
     importc: "glDrawBuffers".}
-proc glStencilOpSeparate*(face: TGLenum, sfail: TGLenum, dpfail: TGLenum, 
-                          dppass: TGLenum){.dynlib: dllname, 
+proc glStencilOpSeparate*(face: TGLenum, sfail: TGLenum, dpfail: TGLenum,
+                          dppass: TGLenum){.dynlib: dllname,
     importc: "glStencilOpSeparate".}
-proc glStencilFuncSeparate*(frontfunc: TGLenum, backfunc: TGLenum, 
-                            theRef: TGLint, mask: TGLuint){.dynlib: dllname, 
+proc glStencilFuncSeparate*(frontfunc: TGLenum, backfunc: TGLenum,
+                            theRef: TGLint, mask: TGLuint){.dynlib: dllname,
     importc: "glStencilFuncSeparate".}
-proc glStencilMaskSeparate*(face: TGLenum, mask: TGLuint){.dynlib: dllname, 
+proc glStencilMaskSeparate*(face: TGLenum, mask: TGLuint){.dynlib: dllname,
     importc: "glStencilMaskSeparate".}
-proc glAttachShader*(theProgram: TGLuint, shader: TGLuint){.dynlib: dllname, 
+proc glAttachShader*(theProgram: TGLuint, shader: TGLuint){.dynlib: dllname,
     importc: "glAttachShader".}
 proc glBindAttribLocation*(theProgram: TGLuint, index: TGLuint, name: PGLchar){.
     dynlib: dllname, importc: "glBindAttribLocation".}
-proc glCompileShader*(shader: TGLuint){.dynlib: dllname, 
+proc glCompileShader*(shader: TGLuint){.dynlib: dllname,
                                         importc: "glCompileShader".}
 proc glCreateProgram*(): TGLuint{.dynlib: dllname, importc: "glCreateProgram".}
-proc glCreateShader*(thetype: TGLenum): TGLuint{.dynlib: dllname, 
+proc glCreateShader*(thetype: TGLenum): TGLuint{.dynlib: dllname,
     importc: "glCreateShader".}
-proc glDeleteProgram*(theProgram: TGLuint){.dynlib: dllname, 
+proc glDeleteProgram*(theProgram: TGLuint){.dynlib: dllname,
     importc: "glDeleteProgram".}
-proc glDeleteShader*(shader: TGLuint){.dynlib: dllname, 
+proc glDeleteShader*(shader: TGLuint){.dynlib: dllname,
                                        importc: "glDeleteShader".}
-proc glDetachShader*(theProgram: TGLuint, shader: TGLuint){.dynlib: dllname, 
+proc glDetachShader*(theProgram: TGLuint, shader: TGLuint){.dynlib: dllname,
     importc: "glDetachShader".}
-proc glDisableVertexAttribArray*(index: TGLuint){.dynlib: dllname, 
+proc glDisableVertexAttribArray*(index: TGLuint){.dynlib: dllname,
     importc: "glDisableVertexAttribArray".}
-proc glEnableVertexAttribArray*(index: TGLuint){.dynlib: dllname, 
+proc glEnableVertexAttribArray*(index: TGLuint){.dynlib: dllname,
     importc: "glEnableVertexAttribArray".}
-proc glGetActiveAttrib*(theProgram: TGLuint, index: TGLuint, bufSize: TGLsizei, 
-                        len: PGLsizei, size: PGLint, thetype: PGLenum, 
-                        name: PGLchar){.dynlib: dllname, 
+proc glGetActiveAttrib*(theProgram: TGLuint, index: TGLuint, bufSize: TGLsizei,
+                        len: PGLsizei, size: PGLint, thetype: PGLenum,
+                        name: PGLchar){.dynlib: dllname,
                                         importc: "glGetActiveAttrib".}
-proc glGetActiveUniform*(theProgram: TGLuint, index: TGLuint, bufSize: TGLsizei, 
-                         len: PGLsizei, size: PGLint, thetype: PGLenum, 
-                         name: PGLchar){.dynlib: dllname, 
+proc glGetActiveUniform*(theProgram: TGLuint, index: TGLuint, bufSize: TGLsizei,
+                         len: PGLsizei, size: PGLint, thetype: PGLenum,
+                         name: PGLchar){.dynlib: dllname,
     importc: "glGetActiveUniform".}
-proc glGetAttachedShaders*(theProgram: TGLuint, maxCount: TGLsizei, 
-                           count: PGLsizei, obj: PGLuint){.dynlib: dllname, 
+proc glGetAttachedShaders*(theProgram: TGLuint, maxCount: TGLsizei,
+                           count: PGLsizei, obj: PGLuint){.dynlib: dllname,
     importc: "glGetAttachedShaders".}
 proc glGetAttribLocation*(theProgram: TGLuint, name: PGLchar): TGLint{.
     dynlib: dllname, importc: "glGetAttribLocation".}
 proc glGetProgramiv*(theProgram: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetProgramiv".}
-proc glGetProgramInfoLog*(theProgram: TGLuint, bufSize: TGLsizei, len: PGLsizei, 
-                          infoLog: PGLchar){.dynlib: dllname, 
+proc glGetProgramInfoLog*(theProgram: TGLuint, bufSize: TGLsizei, len: PGLsizei,
+                          infoLog: PGLchar){.dynlib: dllname,
     importc: "glGetProgramInfoLog".}
 proc glGetShaderiv*(shader: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetShaderiv".}
-proc glGetShaderInfoLog*(shader: TGLuint, bufSize: TGLsizei, len: PGLsizei, 
-                         infoLog: PGLchar){.dynlib: dllname, 
+proc glGetShaderInfoLog*(shader: TGLuint, bufSize: TGLsizei, len: PGLsizei,
+                         infoLog: PGLchar){.dynlib: dllname,
     importc: "glGetShaderInfoLog".}
-proc glGetShaderSource*(shader: TGLuint, bufSize: TGLsizei, len: PGLsizei, 
-                        source: PGLchar){.dynlib: dllname, 
+proc glGetShaderSource*(shader: TGLuint, bufSize: TGLsizei, len: PGLsizei,
+                        source: PGLchar){.dynlib: dllname,
     importc: "glGetShaderSource".}
 proc glGetUniformLocation*(theProgram: TGLuint, name: PGLchar): TGLint{.
     dynlib: dllname, importc: "glGetUniformLocation".}
@@ -535,31 +535,31 @@ proc glGetVertexAttribiv*(index: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetVertexAttribiv".}
 proc glGetVertexAttribPointerv*(index: TGLuint, pname: TGLenum, pointer: PGLvoid){.
     dynlib: dllname, importc: "glGetVertexAttribPointerv".}
-proc glIsProgram*(theProgram: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsProgram*(theProgram: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsProgram".}
-proc glIsShader*(shader: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsShader*(shader: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsShader".}
-proc glLinkProgram*(theProgram: TGLuint){.dynlib: dllname, 
+proc glLinkProgram*(theProgram: TGLuint){.dynlib: dllname,
     importc: "glLinkProgram".}
 proc glShaderSource*(shader: TGLuint, count: TGLsizei, str: PGLchar, len: PGLint){.
     dynlib: dllname, importc: "glShaderSource".}
-proc glUseProgram*(theProgram: TGLuint){.dynlib: dllname, 
+proc glUseProgram*(theProgram: TGLuint){.dynlib: dllname,
     importc: "glUseProgram".}
-proc glUniform1f*(location: TGLint, v0: TGLfloat){.dynlib: dllname, 
+proc glUniform1f*(location: TGLint, v0: TGLfloat){.dynlib: dllname,
     importc: "glUniform1f".}
 proc glUniform2f*(location: TGLint, v0: TGLfloat, v1: TGLfloat){.
     dynlib: dllname, importc: "glUniform2f".}
 proc glUniform3f*(location: TGLint, v0: TGLfloat, v1: TGLfloat, v2: TGLfloat){.
     dynlib: dllname, importc: "glUniform3f".}
-proc glUniform4f*(location: TGLint, v0: TGLfloat, v1: TGLfloat, v2: TGLfloat, 
+proc glUniform4f*(location: TGLint, v0: TGLfloat, v1: TGLfloat, v2: TGLfloat,
                   v3: TGLfloat){.dynlib: dllname, importc: "glUniform4f".}
-proc glUniform1i*(location: TGLint, v0: TGLint){.dynlib: dllname, 
+proc glUniform1i*(location: TGLint, v0: TGLint){.dynlib: dllname,
     importc: "glUniform1i".}
-proc glUniform2i*(location: TGLint, v0: TGLint, v1: TGLint){.dynlib: dllname, 
+proc glUniform2i*(location: TGLint, v0: TGLint, v1: TGLint){.dynlib: dllname,
     importc: "glUniform2i".}
 proc glUniform3i*(location: TGLint, v0: TGLint, v1: TGLint, v2: TGLint){.
     dynlib: dllname, importc: "glUniform3i".}
-proc glUniform4i*(location: TGLint, v0: TGLint, v1: TGLint, v2: TGLint, 
+proc glUniform4i*(location: TGLint, v0: TGLint, v1: TGLint, v2: TGLint,
                   v3: TGLint){.dynlib: dllname, importc: "glUniform4i".}
 proc glUniform1fv*(location: TGLint, count: TGLsizei, value: PGLfloat){.
     dynlib: dllname, importc: "glUniform1fv".}
@@ -577,98 +577,98 @@ proc glUniform3iv*(location: TGLint, count: TGLsizei, value: PGLint){.
     dynlib: dllname, importc: "glUniform3iv".}
 proc glUniform4iv*(location: TGLint, count: TGLsizei, value: PGLint){.
     dynlib: dllname, importc: "glUniform4iv".}
-proc glUniformMatrix2fv*(location: TGLint, count: TGLsizei, 
+proc glUniformMatrix2fv*(location: TGLint, count: TGLsizei,
                          transpose: TGLboolean, value: PGLfloat){.
     dynlib: dllname, importc: "glUniformMatrix2fv".}
-proc glUniformMatrix3fv*(location: TGLint, count: TGLsizei, 
+proc glUniformMatrix3fv*(location: TGLint, count: TGLsizei,
                          transpose: TGLboolean, value: PGLfloat){.
     dynlib: dllname, importc: "glUniformMatrix3fv".}
-proc glUniformMatrix4fv*(location: TGLint, count: TGLsizei, 
+proc glUniformMatrix4fv*(location: TGLint, count: TGLsizei,
                          transpose: TGLboolean, value: PGLfloat){.
     dynlib: dllname, importc: "glUniformMatrix4fv".}
-proc glValidateProgram*(theProgram: TGLuint){.dynlib: dllname, 
+proc glValidateProgram*(theProgram: TGLuint){.dynlib: dllname,
     importc: "glValidateProgram".}
-proc glVertexAttrib1d*(index: TGLuint, x: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib1d*(index: TGLuint, x: TGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib1d".}
-proc glVertexAttrib1dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib1dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib1dv".}
-proc glVertexAttrib1f*(index: TGLuint, x: TGLfloat){.dynlib: dllname, 
+proc glVertexAttrib1f*(index: TGLuint, x: TGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib1f".}
-proc glVertexAttrib1fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib1fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib1fv".}
-proc glVertexAttrib1s*(index: TGLuint, x: TGLshort){.dynlib: dllname, 
+proc glVertexAttrib1s*(index: TGLuint, x: TGLshort){.dynlib: dllname,
     importc: "glVertexAttrib1s".}
-proc glVertexAttrib1sv*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib1sv*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib1sv".}
 proc glVertexAttrib2d*(index: TGLuint, x: TGLdouble, y: TGLdouble){.
     dynlib: dllname, importc: "glVertexAttrib2d".}
-proc glVertexAttrib2dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib2dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib2dv".}
 proc glVertexAttrib2f*(index: TGLuint, x: TGLfloat, y: TGLfloat){.
     dynlib: dllname, importc: "glVertexAttrib2f".}
-proc glVertexAttrib2fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib2fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib2fv".}
 proc glVertexAttrib2s*(index: TGLuint, x: TGLshort, y: TGLshort){.
     dynlib: dllname, importc: "glVertexAttrib2s".}
-proc glVertexAttrib2sv*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib2sv*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib2sv".}
 proc glVertexAttrib3d*(index: TGLuint, x: TGLdouble, y: TGLdouble, z: TGLdouble){.
     dynlib: dllname, importc: "glVertexAttrib3d".}
-proc glVertexAttrib3dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib3dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib3dv".}
 proc glVertexAttrib3f*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glVertexAttrib3f".}
-proc glVertexAttrib3fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib3fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib3fv".}
 proc glVertexAttrib3s*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort){.
     dynlib: dllname, importc: "glVertexAttrib3s".}
-proc glVertexAttrib3sv*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib3sv*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib3sv".}
-proc glVertexAttrib4Nbv*(index: TGLuint, v: PGLbyte){.dynlib: dllname, 
+proc glVertexAttrib4Nbv*(index: TGLuint, v: PGLbyte){.dynlib: dllname,
     importc: "glVertexAttrib4Nbv".}
-proc glVertexAttrib4Niv*(index: TGLuint, v: PGLint){.dynlib: dllname, 
+proc glVertexAttrib4Niv*(index: TGLuint, v: PGLint){.dynlib: dllname,
     importc: "glVertexAttrib4Niv".}
-proc glVertexAttrib4Nsv*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib4Nsv*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib4Nsv".}
-proc glVertexAttrib4Nub*(index: TGLuint, x: TGLubyte, y: TGLubyte, z: TGLubyte, 
-                         w: TGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4Nub*(index: TGLuint, x: TGLubyte, y: TGLubyte, z: TGLubyte,
+                         w: TGLubyte){.dynlib: dllname,
                                        importc: "glVertexAttrib4Nub".}
-proc glVertexAttrib4Nubv*(index: TGLuint, v: PGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4Nubv*(index: TGLuint, v: PGLubyte){.dynlib: dllname,
     importc: "glVertexAttrib4Nubv".}
-proc glVertexAttrib4Nuiv*(index: TGLuint, v: PGLuint){.dynlib: dllname, 
+proc glVertexAttrib4Nuiv*(index: TGLuint, v: PGLuint){.dynlib: dllname,
     importc: "glVertexAttrib4Nuiv".}
-proc glVertexAttrib4Nusv*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib4Nusv*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib4Nusv".}
-proc glVertexAttrib4bv*(index: TGLuint, v: PGLbyte){.dynlib: dllname, 
+proc glVertexAttrib4bv*(index: TGLuint, v: PGLbyte){.dynlib: dllname,
     importc: "glVertexAttrib4bv".}
-proc glVertexAttrib4d*(index: TGLuint, x: TGLdouble, y: TGLdouble, z: TGLdouble, 
-                       w: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib4d*(index: TGLuint, x: TGLdouble, y: TGLdouble, z: TGLdouble,
+                       w: TGLdouble){.dynlib: dllname,
                                       importc: "glVertexAttrib4d".}
-proc glVertexAttrib4dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib4dv*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib4dv".}
-proc glVertexAttrib4f*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat, 
-                       w: TGLfloat){.dynlib: dllname, 
+proc glVertexAttrib4f*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat,
+                       w: TGLfloat){.dynlib: dllname,
                                      importc: "glVertexAttrib4f".}
-proc glVertexAttrib4fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib4fv*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib4fv".}
-proc glVertexAttrib4iv*(index: TGLuint, v: PGLint){.dynlib: dllname, 
+proc glVertexAttrib4iv*(index: TGLuint, v: PGLint){.dynlib: dllname,
     importc: "glVertexAttrib4iv".}
-proc glVertexAttrib4s*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort, 
-                       w: TGLshort){.dynlib: dllname, 
+proc glVertexAttrib4s*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort,
+                       w: TGLshort){.dynlib: dllname,
                                      importc: "glVertexAttrib4s".}
-proc glVertexAttrib4sv*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib4sv*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib4sv".}
-proc glVertexAttrib4ubv*(index: TGLuint, v: PGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4ubv*(index: TGLuint, v: PGLubyte){.dynlib: dllname,
     importc: "glVertexAttrib4ubv".}
-proc glVertexAttrib4uiv*(index: TGLuint, v: PGLuint){.dynlib: dllname, 
+proc glVertexAttrib4uiv*(index: TGLuint, v: PGLuint){.dynlib: dllname,
     importc: "glVertexAttrib4uiv".}
-proc glVertexAttrib4usv*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib4usv*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib4usv".}
-proc glVertexAttribPointer*(index: TGLuint, size: TGLint, thetype: TGLenum, 
-                            normalized: TGLboolean, stride: TGLsizei, 
-                            pointer: PGLvoid){.dynlib: dllname, 
+proc glVertexAttribPointer*(index: TGLuint, size: TGLint, thetype: TGLenum,
+                            normalized: TGLboolean, stride: TGLsizei,
+                            pointer: PGLvoid){.dynlib: dllname,
     importc: "glVertexAttribPointer".}
-const 
+const
   GL_CONSTANT_COLOR* = 0x00008001
   GL_ONE_MINUS_CONSTANT_COLOR* = 0x00008002
   GL_CONSTANT_ALPHA* = 0x00008003
@@ -747,122 +747,122 @@ const
   GL_REPLICATE_BORDER* = 0x00008153
   GL_CONVOLUTION_BORDER_COLOR* = 0x00008154
 
-proc glActiveTexture*(texture: TGLenum){.dynlib: dllname, 
+proc glActiveTexture*(texture: TGLenum){.dynlib: dllname,
     importc: "glActiveTexture".}
-proc glClientActiveTexture*(texture: TGLenum){.dynlib: dllname, 
+proc glClientActiveTexture*(texture: TGLenum){.dynlib: dllname,
     importc: "glClientActiveTexture".}
-proc glMultiTexCoord1d*(target: TGLenum, s: TGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord1d*(target: TGLenum, s: TGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord1d".}
-proc glMultiTexCoord1dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord1dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord1dv".}
-proc glMultiTexCoord1f*(target: TGLenum, s: TGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord1f*(target: TGLenum, s: TGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord1f".}
-proc glMultiTexCoord1fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord1fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord1fv".}
-proc glMultiTexCoord1i*(target: TGLenum, s: TGLint){.dynlib: dllname, 
+proc glMultiTexCoord1i*(target: TGLenum, s: TGLint){.dynlib: dllname,
     importc: "glMultiTexCoord1i".}
-proc glMultiTexCoord1iv*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord1iv*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord1iv".}
-proc glMultiTexCoord1s*(target: TGLenum, s: TGLshort){.dynlib: dllname, 
+proc glMultiTexCoord1s*(target: TGLenum, s: TGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord1s".}
-proc glMultiTexCoord1sv*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord1sv*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord1sv".}
 proc glMultiTexCoord2d*(target: TGLenum, s: TGLdouble, t: TGLdouble){.
     dynlib: dllname, importc: "glMultiTexCoord2d".}
-proc glMultiTexCoord2dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord2dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord2dv".}
 proc glMultiTexCoord2f*(target: TGLenum, s: TGLfloat, t: TGLfloat){.
     dynlib: dllname, importc: "glMultiTexCoord2f".}
-proc glMultiTexCoord2fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord2fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord2fv".}
-proc glMultiTexCoord2i*(target: TGLenum, s: TGLint, t: TGLint){.dynlib: dllname, 
+proc glMultiTexCoord2i*(target: TGLenum, s: TGLint, t: TGLint){.dynlib: dllname,
     importc: "glMultiTexCoord2i".}
-proc glMultiTexCoord2iv*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord2iv*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord2iv".}
 proc glMultiTexCoord2s*(target: TGLenum, s: TGLshort, t: TGLshort){.
     dynlib: dllname, importc: "glMultiTexCoord2s".}
-proc glMultiTexCoord2sv*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord2sv*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord2sv".}
-proc glMultiTexCoord3d*(target: TGLenum, s: TGLdouble, t: TGLdouble, 
-                        r: TGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord3d*(target: TGLenum, s: TGLdouble, t: TGLdouble,
+                        r: TGLdouble){.dynlib: dllname,
                                        importc: "glMultiTexCoord3d".}
-proc glMultiTexCoord3dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord3dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord3dv".}
 proc glMultiTexCoord3f*(target: TGLenum, s: TGLfloat, t: TGLfloat, r: TGLfloat){.
     dynlib: dllname, importc: "glMultiTexCoord3f".}
-proc glMultiTexCoord3fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord3fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord3fv".}
 proc glMultiTexCoord3i*(target: TGLenum, s: TGLint, t: TGLint, r: TGLint){.
     dynlib: dllname, importc: "glMultiTexCoord3i".}
-proc glMultiTexCoord3iv*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord3iv*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord3iv".}
 proc glMultiTexCoord3s*(target: TGLenum, s: TGLshort, t: TGLshort, r: TGLshort){.
     dynlib: dllname, importc: "glMultiTexCoord3s".}
-proc glMultiTexCoord3sv*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord3sv*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord3sv".}
-proc glMultiTexCoord4d*(target: TGLenum, s: TGLdouble, t: TGLdouble, 
-                        r: TGLdouble, q: TGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord4d*(target: TGLenum, s: TGLdouble, t: TGLdouble,
+                        r: TGLdouble, q: TGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord4d".}
-proc glMultiTexCoord4dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname, 
+proc glMultiTexCoord4dv*(target: TGLenum, v: PGLdouble){.dynlib: dllname,
     importc: "glMultiTexCoord4dv".}
-proc glMultiTexCoord4f*(target: TGLenum, s: TGLfloat, t: TGLfloat, r: TGLfloat, 
-                        q: TGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord4f*(target: TGLenum, s: TGLfloat, t: TGLfloat, r: TGLfloat,
+                        q: TGLfloat){.dynlib: dllname,
                                       importc: "glMultiTexCoord4f".}
-proc glMultiTexCoord4fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname, 
+proc glMultiTexCoord4fv*(target: TGLenum, v: PGLfloat){.dynlib: dllname,
     importc: "glMultiTexCoord4fv".}
-proc glMultiTexCoord4i*(target: TGLenum, s: TGLint, t: TGLint, r: TGLint, 
-                        q: TGLint){.dynlib: dllname, 
+proc glMultiTexCoord4i*(target: TGLenum, s: TGLint, t: TGLint, r: TGLint,
+                        q: TGLint){.dynlib: dllname,
                                     importc: "glMultiTexCoord4i".}
-proc glMultiTexCoord4iv*(target: TGLenum, v: PGLint){.dynlib: dllname, 
+proc glMultiTexCoord4iv*(target: TGLenum, v: PGLint){.dynlib: dllname,
     importc: "glMultiTexCoord4iv".}
-proc glMultiTexCoord4s*(target: TGLenum, s: TGLshort, t: TGLshort, r: TGLshort, 
-                        q: TGLshort){.dynlib: dllname, 
+proc glMultiTexCoord4s*(target: TGLenum, s: TGLshort, t: TGLshort, r: TGLshort,
+                        q: TGLshort){.dynlib: dllname,
                                       importc: "glMultiTexCoord4s".}
-proc glMultiTexCoord4sv*(target: TGLenum, v: PGLshort){.dynlib: dllname, 
+proc glMultiTexCoord4sv*(target: TGLenum, v: PGLshort){.dynlib: dllname,
     importc: "glMultiTexCoord4sv".}
-proc glLoadTransposeMatrixf*(m: PGLfloat){.dynlib: dllname, 
+proc glLoadTransposeMatrixf*(m: PGLfloat){.dynlib: dllname,
     importc: "glLoadTransposeMatrixf".}
-proc glLoadTransposeMatrixd*(m: PGLdouble){.dynlib: dllname, 
+proc glLoadTransposeMatrixd*(m: PGLdouble){.dynlib: dllname,
     importc: "glLoadTransposeMatrixd".}
-proc glMultTransposeMatrixf*(m: PGLfloat){.dynlib: dllname, 
+proc glMultTransposeMatrixf*(m: PGLfloat){.dynlib: dllname,
     importc: "glMultTransposeMatrixf".}
-proc glMultTransposeMatrixd*(m: PGLdouble){.dynlib: dllname, 
+proc glMultTransposeMatrixd*(m: PGLdouble){.dynlib: dllname,
     importc: "glMultTransposeMatrixd".}
-proc glSampleCoverage*(value: TGLclampf, invert: TGLboolean){.dynlib: dllname, 
+proc glSampleCoverage*(value: TGLclampf, invert: TGLboolean){.dynlib: dllname,
     importc: "glSampleCoverage".}
-proc glCompressedTexImage3D*(target: TGLenum, level: TGLint, 
-                             internalformat: TGLenum, width: TGLsizei, 
-                             height: TGLsizei, depth: TGLsizei, border: TGLint, 
+proc glCompressedTexImage3D*(target: TGLenum, level: TGLint,
+                             internalformat: TGLenum, width: TGLsizei,
+                             height: TGLsizei, depth: TGLsizei, border: TGLint,
                              imageSize: TGLsizei, data: PGLvoid){.
     dynlib: dllname, importc: "glCompressedTexImage3D".}
-proc glCompressedTexImage2D*(target: TGLenum, level: TGLint, 
-                             internalformat: TGLenum, width: TGLsizei, 
-                             height: TGLsizei, border: TGLint, 
+proc glCompressedTexImage2D*(target: TGLenum, level: TGLint,
+                             internalformat: TGLenum, width: TGLsizei,
+                             height: TGLsizei, border: TGLint,
                              imageSize: TGLsizei, data: PGLvoid){.
     dynlib: dllname, importc: "glCompressedTexImage2D".}
-proc glCompressedTexImage1D*(target: TGLenum, level: TGLint, 
-                             internalformat: TGLenum, width: TGLsizei, 
+proc glCompressedTexImage1D*(target: TGLenum, level: TGLint,
+                             internalformat: TGLenum, width: TGLsizei,
                              border: TGLint, imageSize: TGLsizei, data: PGLvoid){.
     dynlib: dllname, importc: "glCompressedTexImage1D".}
-proc glCompressedTexSubImage3D*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                                yoffset: TGLint, zoffset: TGLint, 
-                                width: TGLsizei, height: TGLsizei, 
-                                depth: TGLsizei, format: TGLenum, 
+proc glCompressedTexSubImage3D*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                                yoffset: TGLint, zoffset: TGLint,
+                                width: TGLsizei, height: TGLsizei,
+                                depth: TGLsizei, format: TGLenum,
                                 imageSize: TGLsizei, data: PGLvoid){.
     dynlib: dllname, importc: "glCompressedTexSubImage3D".}
-proc glCompressedTexSubImage2D*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                                yoffset: TGLint, width: TGLsizei, 
-                                height: TGLsizei, format: TGLenum, 
+proc glCompressedTexSubImage2D*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                                yoffset: TGLint, width: TGLsizei,
+                                height: TGLsizei, format: TGLenum,
                                 imageSize: TGLsizei, data: PGLvoid){.
     dynlib: dllname, importc: "glCompressedTexSubImage2D".}
-proc glCompressedTexSubImage1D*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                                width: TGLsizei, format: TGLenum, 
+proc glCompressedTexSubImage1D*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                                width: TGLsizei, format: TGLenum,
                                 imageSize: TGLsizei, data: PGLvoid){.
     dynlib: dllname, importc: "glCompressedTexSubImage1D".}
 proc glGetCompressedTexImage*(target: TGLenum, level: TGLint, img: PGLvoid){.
     dynlib: dllname, importc: "glGetCompressedTexImage".}
   #***** GL_version_1_3 *****//
-const 
+const
   GL_TEXTURE0* = 0x000084C0
   GL_TEXTURE1* = 0x000084C1
   GL_TEXTURE2* = 0x000084C2
@@ -961,7 +961,7 @@ const
   GL_DOT3_RGB* = 0x000086AE
   GL_DOT3_RGBA* = 0x000086AF
 
-const 
+const
   GL_TEXTURE0_ARB* = 0x000084C0
   GL_TEXTURE1_ARB* = 0x000084C1
   GL_TEXTURE2_ARB* = 0x000084C2
@@ -999,21 +999,21 @@ const
   GL_MAX_TEXTURE_UNITS_ARB* = 0x000084E2
   #***** GL_ARB_transpose_matrix *****//
 
-const 
+const
   GL_TRANSPOSE_MODELVIEW_MATRIX_ARB* = 0x000084E3
   GL_TRANSPOSE_PROJECTION_MATRIX_ARB* = 0x000084E4
   GL_TRANSPOSE_TEXTURE_MATRIX_ARB* = 0x000084E5
   GL_TRANSPOSE_COLOR_MATRIX_ARB* = 0x000084E6
 
-proc glLoadTransposeMatrixfARB*(m: PGLfloat){.dynlib: dllname, 
+proc glLoadTransposeMatrixfARB*(m: PGLfloat){.dynlib: dllname,
     importc: "glLoadTransposeMatrixfARB".}
-proc glLoadTransposeMatrixdARB*(m: PGLdouble){.dynlib: dllname, 
+proc glLoadTransposeMatrixdARB*(m: PGLdouble){.dynlib: dllname,
     importc: "glLoadTransposeMatrixdARB".}
-proc glMultTransposeMatrixfARB*(m: PGLfloat){.dynlib: dllname, 
+proc glMultTransposeMatrixfARB*(m: PGLfloat){.dynlib: dllname,
     importc: "glMultTransposeMatrixfARB".}
-proc glMultTransposeMatrixdARB*(m: PGLdouble){.dynlib: dllname, 
+proc glMultTransposeMatrixdARB*(m: PGLdouble){.dynlib: dllname,
     importc: "glMultTransposeMatrixdARB".}
-const 
+const
   WGL_SAMPLE_BUFFERS_ARB* = 0x00002041
   WGL_SAMPLES_ARB* = 0x00002042
   GL_MULTISAMPLE_ARB* = 0x0000809D
@@ -1026,7 +1026,7 @@ const
   GL_SAMPLE_COVERAGE_VALUE_ARB* = 0x000080AA
   GL_SAMPLE_COVERAGE_INVERT_ARB* = 0x000080AB
 
-const 
+const
   GL_NORMAL_MAP_ARB* = 0x00008511
   GL_REFLECTION_MAP_ARB* = 0x00008512
   GL_TEXTURE_CUBE_MAP_ARB* = 0x00008513
@@ -1040,7 +1040,7 @@ const
   GL_PROXY_TEXTURE_CUBE_MAP_ARB* = 0x0000851B
   GL_MAX_CUBE_MAP_TEXTURE_SIZE_ARB* = 0x0000851C
 
-const 
+const
   GL_DEPTH_COMPONENT16_ARB* = 0x000081A5
   GL_DEPTH_COMPONENT24_ARB* = 0x000081A6
   GL_DEPTH_COMPONENT32_ARB* = 0x000081A7
@@ -1048,26 +1048,26 @@ const
   GL_DEPTH_TEXTURE_MODE_ARB* = 0x0000884B
   #***** GL_ARB_point_parameters *****//
 
-const 
+const
   GL_POINT_SIZE_MIN_ARB* = 0x00008126
   GL_POINT_SIZE_MAX_ARB* = 0x00008127
   GL_POINT_FADE_THRESHOLD_SIZE_ARB* = 0x00008128
   GL_POINT_DISTANCE_ATTENUATION_ARB* = 0x00008129
 
-proc glPointParameterfARB*(pname: TGLenum, param: TGLfloat){.dynlib: dllname, 
+proc glPointParameterfARB*(pname: TGLenum, param: TGLfloat){.dynlib: dllname,
     importc: "glPointParameterfARB".}
-proc glPointParameterfvARB*(pname: TGLenum, params: PGLfloat){.dynlib: dllname, 
+proc glPointParameterfvARB*(pname: TGLenum, params: PGLfloat){.dynlib: dllname,
     importc: "glPointParameterfvARB".}
-const 
+const
   GL_TEXTURE_COMPARE_MODE_ARB* = 0x0000884C
   GL_TEXTURE_COMPARE_FUNC_ARB* = 0x0000884D
   GL_COMPARE_R_TO_TEXTURE_ARB* = 0x0000884E
 
-const 
+const
   GL_TEXTURE_COMPARE_FAIL_VALUE_ARB* = 0x000080BF
   GL_CLAMP_TO_BORDER_ARB* = 0x0000812D
 
-const 
+const
   GL_COMPRESSED_ALPHA_ARB* = 0x000084E9
   GL_COMPRESSED_LUMINANCE_ARB* = 0x000084EA
   GL_COMPRESSED_LUMINANCE_ALPHA_ARB* = 0x000084EB
@@ -1080,44 +1080,44 @@ const
   GL_NUM_COMPRESSED_TEXTURE_FORMATS_ARB* = 0x000086A2
   GL_COMPRESSED_TEXTURE_FORMATS_ARB* = 0x000086A3
 
-proc glCompressedTexImage3DARB*(target: TGLenum, level: TGLint, 
-                                internalformat: TGLenum, width: TGLsizei, 
-                                height: TGLsizei, depth: TGLsizei, 
-                                border: TGLint, imageSize: TGLsizei, 
-                                data: PGLvoid){.dynlib: dllname, 
+proc glCompressedTexImage3DARB*(target: TGLenum, level: TGLint,
+                                internalformat: TGLenum, width: TGLsizei,
+                                height: TGLsizei, depth: TGLsizei,
+                                border: TGLint, imageSize: TGLsizei,
+                                data: PGLvoid){.dynlib: dllname,
     importc: "glCompressedTexImage3DARB".}
-proc glCompressedTexImage2DARB*(target: TGLenum, level: TGLint, 
-                                internalformat: TGLenum, width: TGLsizei, 
-                                height: TGLsizei, border: TGLint, 
+proc glCompressedTexImage2DARB*(target: TGLenum, level: TGLint,
+                                internalformat: TGLenum, width: TGLsizei,
+                                height: TGLsizei, border: TGLint,
                                 imageSize: TGLsizei, data: PGLvoid){.
     dynlib: dllname, importc: "glCompressedTexImage2DARB".}
-proc glCompressedTexImage1DARB*(target: TGLenum, level: TGLint, 
-                                internalformat: TGLenum, width: TGLsizei, 
-                                border: TGLint, imageSize: TGLsizei, 
-                                data: PGLvoid){.dynlib: dllname, 
+proc glCompressedTexImage1DARB*(target: TGLenum, level: TGLint,
+                                internalformat: TGLenum, width: TGLsizei,
+                                border: TGLint, imageSize: TGLsizei,
+                                data: PGLvoid){.dynlib: dllname,
     importc: "glCompressedTexImage1DARB".}
-proc glCompressedTexSubImage3DARB*(target: TGLenum, level: TGLint, 
-                                   xoffset: TGLint, yoffset: TGLint, 
-                                   zoffset: TGLint, width: TGLsizei, 
-                                   height: TGLsizei, depth: TGLsizei, 
-                                   format: TGLenum, imageSize: TGLsizei, 
-                                   data: PGLvoid){.dynlib: dllname, 
+proc glCompressedTexSubImage3DARB*(target: TGLenum, level: TGLint,
+                                   xoffset: TGLint, yoffset: TGLint,
+                                   zoffset: TGLint, width: TGLsizei,
+                                   height: TGLsizei, depth: TGLsizei,
+                                   format: TGLenum, imageSize: TGLsizei,
+                                   data: PGLvoid){.dynlib: dllname,
     importc: "glCompressedTexSubImage3DARB".}
-proc glCompressedTexSubImage2DARB*(target: TGLenum, level: TGLint, 
-                                   xoffset: TGLint, yoffset: TGLint, 
-                                   width: TGLsizei, height: TGLsizei, 
-                                   format: TGLenum, imageSize: TGLsizei, 
-                                   data: PGLvoid){.dynlib: dllname, 
+proc glCompressedTexSubImage2DARB*(target: TGLenum, level: TGLint,
+                                   xoffset: TGLint, yoffset: TGLint,
+                                   width: TGLsizei, height: TGLsizei,
+                                   format: TGLenum, imageSize: TGLsizei,
+                                   data: PGLvoid){.dynlib: dllname,
     importc: "glCompressedTexSubImage2DARB".}
-proc glCompressedTexSubImage1DARB*(target: TGLenum, level: TGLint, 
-                                   xoffset: TGLint, width: TGLsizei, 
-                                   format: TGLenum, imageSize: TGLsizei, 
-                                   data: PGLvoid){.dynlib: dllname, 
+proc glCompressedTexSubImage1DARB*(target: TGLenum, level: TGLint,
+                                   xoffset: TGLint, width: TGLsizei,
+                                   format: TGLenum, imageSize: TGLsizei,
+                                   data: PGLvoid){.dynlib: dllname,
     importc: "glCompressedTexSubImage1DARB".}
 proc glGetCompressedTexImageARB*(target: TGLenum, lod: TGLint, img: PGLvoid){.
     dynlib: dllname, importc: "glGetCompressedTexImageARB".}
   #***** GL_ARB_texture_env_combine *****//
-const 
+const
   GL_COMBINE_ARB* = 0x00008570
   GL_COMBINE_RGB_ARB* = 0x00008571
   GL_COMBINE_ALPHA_ARB* = 0x00008572
@@ -1143,16 +1143,16 @@ const
   #***** GL_ARB_texture_env_crossbar *****//
   #***** GL_ARB_texture_env_dot3 *****//
 
-const 
+const
   GL_DOT3_RGB_ARB* = 0x000086AE
   GL_DOT3_RGBA_ARB* = 0x000086AF
   #***** GL_ARB_texture_mirrored_repeat *****//
 
-const 
+const
   GL_MIRRORED_REPEAT_ARB* = 0x00008370
   #***** GL_ARB_vertex_blend *****//
 
-const 
+const
   GL_MAX_VERTEX_UNITS_ARB* = 0x000086A4
   GL_ACTIVE_VERTEX_UNITS_ARB* = 0x000086A5
   GL_WEIGHT_SUM_UNITY_ARB* = 0x000086A6
@@ -1196,7 +1196,7 @@ const
   GL_WEIGHT_ARRAY_POINTER_ARB* = 0x000086AC
   GL_WEIGHT_ARRAY_ARB* = 0x000086AD
 
-const 
+const
   GL_VERTEX_PROGRAM_ARB* = 0x00008620
   GL_VERTEX_PROGRAM_POINT_SIZE_ARB* = 0x00008642
   GL_VERTEX_PROGRAM_TWO_SIDE_ARB* = 0x00008643
@@ -1277,78 +1277,78 @@ const
   GL_MATRIX30_ARB* = 0x000088DE
   GL_MATRIX31_ARB* = 0x000088DF
 
-const 
+const
   GL_422_EXT* = 0x000080CC
   GL_422_REV_EXT* = 0x000080CD
   GL_422_AVERAGE_EXT* = 0x000080CE
   GL_422_REV_AVERAGE_EXT* = 0x000080CF
   #***** GL_EXT_abgr *****//
 
-const 
+const
   GL_ABGR_EXT* = 0x00008000
   #***** GL_EXT_bgra *****//
 
-const 
+const
   GL_BGR_EXT* = 0x000080E0
   GL_BGRA_EXT* = 0x000080E1
   #***** GL_EXT_blend_color *****//
 
-const 
+const
   GL_CONSTANT_COLOR_EXT* = 0x00008001
   GL_ONE_MINUS_CONSTANT_COLOR_EXT* = 0x00008002
   GL_CONSTANT_ALPHA_EXT* = 0x00008003
   GL_ONE_MINUS_CONSTANT_ALPHA_EXT* = 0x00008004
   constGL_BLEND_COLOR_EXT* = 0x00008005
 
-proc glBlendColorEXT*(red: TGLclampf, green: TGLclampf, blue: TGLclampf, 
-                      alpha: TGLclampf){.dynlib: dllname, 
+proc glBlendColorEXT*(red: TGLclampf, green: TGLclampf, blue: TGLclampf,
+                      alpha: TGLclampf){.dynlib: dllname,
     importc: "glBlendColorEXT".}
   #***** GL_EXT_blend_func_separate *****//
-const 
+const
   GL_BLEND_DST_RGB_EXT* = 0x000080C8
   GL_BLEND_SRC_RGB_EXT* = 0x000080C9
   GL_BLEND_DST_ALPHA_EXT* = 0x000080CA
   GL_BLEND_SRC_ALPHA_EXT* = 0x000080CB
 
-proc glBlendFuncSeparateEXT*(sfactorRGB: TGLenum, dfactorRGB: TGLenum, 
+proc glBlendFuncSeparateEXT*(sfactorRGB: TGLenum, dfactorRGB: TGLenum,
                              sfactorAlpha: TGLenum, dfactorAlpha: TGLenum){.
     dynlib: dllname, importc: "glBlendFuncSeparateEXT".}
   #***** GL_EXT_blend_logic_op *****//
   #***** GL_EXT_blend_minmax *****//
-const 
+const
   GL_FUNC_ADD_EXT* = 0x00008006
   GL_MIN_EXT* = 0x00008007
   GL_MAX_EXT* = 0x00008008
   constGL_BLEND_EQUATION_EXT* = 0x00008009
 
-proc glBlendEquationEXT*(mode: TGLenum){.dynlib: dllname, 
+proc glBlendEquationEXT*(mode: TGLenum){.dynlib: dllname,
     importc: "glBlendEquationEXT".}
   #***** GL_EXT_blend_subtract *****//
-const 
+const
   GL_FUNC_SUBTRACT_EXT* = 0x0000800A
   GL_FUNC_REVERSE_SUBTRACT_EXT* = 0x0000800B
   #***** GL_EXT_clip_volume_hint *****//
 
-const 
+const
   GL_CLIP_VOLUME_CLIPPING_HINT_EXT* = 0x000080F0
   #***** GL_EXT_color_subtable *****//
 
-proc glColorSubTableEXT*(target: TGLenum, start: TGLsizei, count: TGLsizei, 
+proc glColorSubTableEXT*(target: TGLenum, start: TGLsizei, count: TGLsizei,
                          format: TGLenum, thetype: TGLenum, data: PGLvoid){.
     dynlib: dllname, importc: "glColorSubTableEXT".}
-proc glCopyColorSubTableEXT*(target: TGLenum, start: TGLsizei, x: TGLint, 
-                             y: TGLint, width: TGLsizei){.dynlib: dllname, 
+proc glCopyColorSubTableEXT*(target: TGLenum, start: TGLsizei, x: TGLint,
+                             y: TGLint, width: TGLsizei){.dynlib: dllname,
     importc: "glCopyColorSubTableEXT".}
   #***** GL_EXT_compiled_vertex_array *****//
-const 
+const
   GL_ARRAY_ELEMENT_LOCK_FIRST_EXT* = 0x000081A8
   GL_ARRAY_ELEMENT_LOCK_COUNT_EXT* = 0x000081A9
 
-proc glLockArraysEXT*(first: TGLint, count: TGLsizei){.dynlib: dllname, 
+proc glLockArraysEXT*(first: TGLint, count: TGLsizei){.dynlib: dllname,
     importc: "glLockArraysEXT".}
 proc glUnlockArraysEXT*(){.dynlib: dllname, importc: "glUnlockArraysEXT".}
   #***** GL_EXT_convolution *****//
-const 
+const
   GL_CONVOLUTION_1D_EXT* = 0x00008010
   GL_CONVOLUTION_2D_EXT* = 0x00008011
   GL_SEPARABLE_2D_EXT* = 0x00008012
@@ -1370,51 +1370,51 @@ const
   GL_POST_CONVOLUTION_BLUE_BIAS_EXT* = 0x00008022
   GL_POST_CONVOLUTION_ALPHA_BIAS_EXT* = 0x00008023
 
-proc glConvolutionFilter1DEXT*(target: TGLenum, internalformat: TGLenum, 
-                               width: TGLsizei, format: TGLenum, 
+proc glConvolutionFilter1DEXT*(target: TGLenum, internalformat: TGLenum,
+                               width: TGLsizei, format: TGLenum,
                                thetype: TGLenum, image: PGLvoid){.
     dynlib: dllname, importc: "glConvolutionFilter1DEXT".}
-proc glConvolutionFilter2DEXT*(target: TGLenum, internalformat: TGLenum, 
-                               width: TGLsizei, height: TGLsizei, 
+proc glConvolutionFilter2DEXT*(target: TGLenum, internalformat: TGLenum,
+                               width: TGLsizei, height: TGLsizei,
                                format: TGLenum, thetype: TGLenum, image: PGLvoid){.
     dynlib: dllname, importc: "glConvolutionFilter2DEXT".}
-proc glCopyConvolutionFilter1DEXT*(target: TGLenum, internalformat: TGLenum, 
+proc glCopyConvolutionFilter1DEXT*(target: TGLenum, internalformat: TGLenum,
                                    x: TGLint, y: TGLint, width: TGLsizei){.
     dynlib: dllname, importc: "glCopyConvolutionFilter1DEXT".}
-proc glCopyConvolutionFilter2DEXT*(target: TGLenum, internalformat: TGLenum, 
-                                   x: TGLint, y: TGLint, width: TGLsizei, 
-                                   height: TGLsizei){.dynlib: dllname, 
+proc glCopyConvolutionFilter2DEXT*(target: TGLenum, internalformat: TGLenum,
+                                   x: TGLint, y: TGLint, width: TGLsizei,
+                                   height: TGLsizei){.dynlib: dllname,
     importc: "glCopyConvolutionFilter2DEXT".}
-proc glGetConvolutionFilterEXT*(target: TGLenum, format: TGLenum, 
+proc glGetConvolutionFilterEXT*(target: TGLenum, format: TGLenum,
                                 thetype: TGLenum, image: PGLvoid){.
     dynlib: dllname, importc: "glGetConvolutionFilterEXT".}
-proc glSeparableFilter2DEXT*(target: TGLenum, internalformat: TGLenum, 
-                             width: TGLsizei, height: TGLsizei, format: TGLenum, 
+proc glSeparableFilter2DEXT*(target: TGLenum, internalformat: TGLenum,
+                             width: TGLsizei, height: TGLsizei, format: TGLenum,
                              thetype: TGLenum, row: PGLvoid, column: PGLvoid){.
     dynlib: dllname, importc: "glSeparableFilter2DEXT".}
-proc glGetSeparableFilterEXT*(target: TGLenum, format: TGLenum, 
-                              thetype: TGLenum, row: PGLvoid, column: PGLvoid, 
-                              span: PGLvoid){.dynlib: dllname, 
+proc glGetSeparableFilterEXT*(target: TGLenum, format: TGLenum,
+                              thetype: TGLenum, row: PGLvoid, column: PGLvoid,
+                              span: PGLvoid){.dynlib: dllname,
     importc: "glGetSeparableFilterEXT".}
 proc glConvolutionParameteriEXT*(target: TGLenum, pname: TGLenum, param: TGLint){.
     dynlib: dllname, importc: "glConvolutionParameteriEXT".}
-proc glConvolutionParameterivEXT*(target: TGLenum, pname: TGLenum, 
-                                  params: PGLint){.dynlib: dllname, 
+proc glConvolutionParameterivEXT*(target: TGLenum, pname: TGLenum,
+                                  params: PGLint){.dynlib: dllname,
     importc: "glConvolutionParameterivEXT".}
-proc glConvolutionParameterfEXT*(target: TGLenum, pname: TGLenum, 
-                                 param: TGLfloat){.dynlib: dllname, 
+proc glConvolutionParameterfEXT*(target: TGLenum, pname: TGLenum,
+                                 param: TGLfloat){.dynlib: dllname,
     importc: "glConvolutionParameterfEXT".}
-proc glConvolutionParameterfvEXT*(target: TGLenum, pname: TGLenum, 
-                                  params: PGLfloat){.dynlib: dllname, 
+proc glConvolutionParameterfvEXT*(target: TGLenum, pname: TGLenum,
+                                  params: PGLfloat){.dynlib: dllname,
     importc: "glConvolutionParameterfvEXT".}
-proc glGetConvolutionParameterivEXT*(target: TGLenum, pname: TGLenum, 
-                                     params: PGLint){.dynlib: dllname, 
+proc glGetConvolutionParameterivEXT*(target: TGLenum, pname: TGLenum,
+                                     params: PGLint){.dynlib: dllname,
     importc: "glGetConvolutionParameterivEXT".}
-proc glGetConvolutionParameterfvEXT*(target: TGLenum, pname: TGLenum, 
-                                     params: PGLfloat){.dynlib: dllname, 
+proc glGetConvolutionParameterfvEXT*(target: TGLenum, pname: TGLenum,
+                                     params: PGLfloat){.dynlib: dllname,
     importc: "glGetConvolutionParameterfvEXT".}
   #***** GL_EXT_fog_coord *****//
-const 
+const
   GL_FOG_COORDINATE_SOURCE_EXT* = 0x00008450
   GL_FOG_COORDINATE_EXT* = 0x00008451
   GL_FRAGMENT_DEPTH_EXT* = 0x00008452
@@ -1424,18 +1424,18 @@ const
   GL_FOG_COORDINATE_ARRAY_POINTER_EXT* = 0x00008456
   GL_FOG_COORDINATE_ARRAY_EXT* = 0x00008457
 
-proc glFogCoordfEXfloat*(coord: TGLfloat){.dynlib: dllname, 
+proc glFogCoordfEXfloat*(coord: TGLfloat){.dynlib: dllname,
     importc: "glFogCoordfEXfloat".}
-proc glFogCoorddEXdouble*(coord: TGLdouble){.dynlib: dllname, 
+proc glFogCoorddEXdouble*(coord: TGLdouble){.dynlib: dllname,
     importc: "glFogCoorddEXdouble".}
-proc glFogCoordfvEXfloat*(coord: TGLfloat){.dynlib: dllname, 
+proc glFogCoordfvEXfloat*(coord: TGLfloat){.dynlib: dllname,
     importc: "glFogCoordfvEXfloat".}
-proc glFogCoorddvEXdouble*(coord: TGLdouble){.dynlib: dllname, 
+proc glFogCoorddvEXdouble*(coord: TGLdouble){.dynlib: dllname,
     importc: "glFogCoorddvEXdouble".}
 proc glFogCoordPointerEXT*(thetype: TGLenum, stride: TGLsizei, pointer: PGLvoid){.
     dynlib: dllname, importc: "glFogCoordPointerEXT".}
   #***** GL_EXT_histogram *****//
-const 
+const
   constGL_HISTOGRAM_EXT* = 0x00008024
   GL_PROXY_HISTOGRAM_EXT* = 0x00008025
   GL_HISTOGRAM_WIDTH_EXT* = 0x00008026
@@ -1450,41 +1450,41 @@ const
   GL_MINMAX_FORMAT_EXT* = 0x0000802F
   GL_MINMAX_SINK_EXT* = 0x00008030
 
-proc glHistogramEXT*(target: TGLenum, width: TGLsizei, internalformat: TGLenum, 
-                     sink: TGLboolean){.dynlib: dllname, 
+proc glHistogramEXT*(target: TGLenum, width: TGLsizei, internalformat: TGLenum,
+                     sink: TGLboolean){.dynlib: dllname,
                                         importc: "glHistogramEXT".}
-proc glResetHistogramEXT*(target: TGLenum){.dynlib: dllname, 
+proc glResetHistogramEXT*(target: TGLenum){.dynlib: dllname,
     importc: "glResetHistogramEXT".}
-proc glGetHistogramEXT*(target: TGLenum, reset: TGLboolean, format: TGLenum, 
-                        thetype: TGLenum, values: PGLvoid){.dynlib: dllname, 
+proc glGetHistogramEXT*(target: TGLenum, reset: TGLboolean, format: TGLenum,
+                        thetype: TGLenum, values: PGLvoid){.dynlib: dllname,
     importc: "glGetHistogramEXT".}
-proc glGetHistogramParameterivEXT*(target: TGLenum, pname: TGLenum, 
-                                   params: PGLint){.dynlib: dllname, 
+proc glGetHistogramParameterivEXT*(target: TGLenum, pname: TGLenum,
+                                   params: PGLint){.dynlib: dllname,
     importc: "glGetHistogramParameterivEXT".}
-proc glGetHistogramParameterfvEXT*(target: TGLenum, pname: TGLenum, 
-                                   params: PGLfloat){.dynlib: dllname, 
+proc glGetHistogramParameterfvEXT*(target: TGLenum, pname: TGLenum,
+                                   params: PGLfloat){.dynlib: dllname,
     importc: "glGetHistogramParameterfvEXT".}
 proc glMinmaxEXT*(target: TGLenum, internalformat: TGLenum, sink: TGLboolean){.
     dynlib: dllname, importc: "glMinmaxEXT".}
-proc glResetMinmaxEXT*(target: TGLenum){.dynlib: dllname, 
+proc glResetMinmaxEXT*(target: TGLenum){.dynlib: dllname,
     importc: "glResetMinmaxEXT".}
-proc glGetMinmaxEXT*(target: TGLenum, reset: TGLboolean, format: TGLenum, 
-                     thetype: TGLenum, values: PGLvoid){.dynlib: dllname, 
+proc glGetMinmaxEXT*(target: TGLenum, reset: TGLboolean, format: TGLenum,
+                     thetype: TGLenum, values: PGLvoid){.dynlib: dllname,
     importc: "glGetMinmaxEXT".}
 proc glGetMinmaxParameterivEXT*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetMinmaxParameterivEXT".}
-proc glGetMinmaxParameterfvEXT*(target: TGLenum, pname: TGLenum, 
-                                params: PGLfloat){.dynlib: dllname, 
+proc glGetMinmaxParameterfvEXT*(target: TGLenum, pname: TGLenum,
+                                params: PGLfloat){.dynlib: dllname,
     importc: "glGetMinmaxParameterfvEXT".}
   #***** GL_EXT_multi_draw_arrays *****//
-proc glMultiDrawArraysEXT*(mode: TGLenum, first: PGLint, count: PGLsizei, 
-                           primcount: TGLsizei){.dynlib: dllname, 
+proc glMultiDrawArraysEXT*(mode: TGLenum, first: PGLint, count: PGLsizei,
+                           primcount: TGLsizei){.dynlib: dllname,
     importc: "glMultiDrawArraysEXT".}
-proc glMultiDrawElementsEXT*(mode: TGLenum, count: PGLsizei, thetype: TGLenum, 
+proc glMultiDrawElementsEXT*(mode: TGLenum, count: PGLsizei, thetype: TGLenum,
                              indices: PGLvoid, primcount: TGLsizei){.
     dynlib: dllname, importc: "glMultiDrawElementsEXT".}
   #***** GL_EXT_packed_pixels *****//
-const 
+const
   GL_UNSIGNED_BYTE_3_3_2_EXT* = 0x00008032
   GL_UNSIGNED_SHORT_4_4_4_4_EXT* = 0x00008033
   GL_UNSIGNED_SHORT_5_5_5_1_EXT* = 0x00008034
@@ -1492,7 +1492,7 @@ const
   GL_UNSIGNED_INT_10_10_10_2_EXT* = 0x00008036
   #***** GL_EXT_paletted_texture *****//
 
-const 
+const
   GL_COLOR_INDEX1_EXT* = 0x000080E2
   GL_COLOR_INDEX2_EXT* = 0x000080E3
   GL_COLOR_INDEX4_EXT* = 0x000080E4
@@ -1519,40 +1519,40 @@ const
                                         # GL_TEXTURE_3D_EXT  { already defined }
                                         # GL_TEXTURE_CUBE_MAP_ARB  { already defined }
 
-proc glColorTableEXT*(target: TGLenum, internalFormat: TGLenum, width: TGLsizei, 
+proc glColorTableEXT*(target: TGLenum, internalFormat: TGLenum, width: TGLsizei,
                       format: TGLenum, thetype: TGLenum, data: PGLvoid){.
     dynlib: dllname, importc: "glColorTableEXT".}
   # glColorSubTableEXT  { already defined }
-proc glGetColorTableEXT*(target: TGLenum, format: TGLenum, thetype: TGLenum, 
-                         data: PGLvoid){.dynlib: dllname, 
+proc glGetColorTableEXT*(target: TGLenum, format: TGLenum, thetype: TGLenum,
+                         data: PGLvoid){.dynlib: dllname,
     importc: "glGetColorTableEXT".}
-proc glGetColorTableParameterivEXT*(target: TGLenum, pname: TGLenum, 
-                                    params: PGLint){.dynlib: dllname, 
+proc glGetColorTableParameterivEXT*(target: TGLenum, pname: TGLenum,
+                                    params: PGLint){.dynlib: dllname,
     importc: "glGetColorTableParameterivEXT".}
-proc glGetColorTableParameterfvEXT*(target: TGLenum, pname: TGLenum, 
-                                    params: PGLfloat){.dynlib: dllname, 
+proc glGetColorTableParameterfvEXT*(target: TGLenum, pname: TGLenum,
+                                    params: PGLfloat){.dynlib: dllname,
     importc: "glGetColorTableParameterfvEXT".}
   #***** GL_EXT_point_parameters *****//
-const 
+const
   GL_POINT_SIZE_MIN_EXT* = 0x00008126
   GL_POINT_SIZE_MAX_EXT* = 0x00008127
   GL_POINT_FADE_THRESHOLD_SIZE_EXT* = 0x00008128
   GL_DISTANCE_ATTENUATION_EXT* = 0x00008129
 
-proc glPointParameterfEXT*(pname: TGLenum, param: TGLfloat){.dynlib: dllname, 
+proc glPointParameterfEXT*(pname: TGLenum, param: TGLfloat){.dynlib: dllname,
     importc: "glPointParameterfEXT".}
-proc glPointParameterfvEXT*(pname: TGLenum, params: PGLfloat){.dynlib: dllname, 
+proc glPointParameterfvEXT*(pname: TGLenum, params: PGLfloat){.dynlib: dllname,
     importc: "glPointParameterfvEXT".}
   #***** GL_EXT_polygon_offset *****//
-const 
+const
   constGL_POLYGON_OFFSET_EXT* = 0x00008037
   GL_POLYGON_OFFSET_FACTOR_EXT* = 0x00008038
   GL_POLYGON_OFFSET_BIAS_EXT* = 0x00008039
 
-proc glPolygonOffsetEXT*(factor: TGLfloat, bias: TGLfloat){.dynlib: dllname, 
+proc glPolygonOffsetEXT*(factor: TGLfloat, bias: TGLfloat){.dynlib: dllname,
     importc: "glPolygonOffsetEXT".}
   #***** GL_EXT_secondary_color *****//
-const 
+const
   GL_COLOR_SUM_EXT* = 0x00008458
   GL_CURRENT_SECONDARY_COLOR_EXT* = 0x00008459
   GL_SECONDARY_COLOR_ARRAY_SIZE_EXT* = 0x0000845A
@@ -1561,80 +1561,80 @@ const
   GL_SECONDARY_COLOR_ARRAY_POINTER_EXT* = 0x0000845D
   GL_SECONDARY_COLOR_ARRAY_EXT* = 0x0000845E
 
-proc glSecondaryColor3bEXT*(components: TGLbyte){.dynlib: dllname, 
+proc glSecondaryColor3bEXT*(components: TGLbyte){.dynlib: dllname,
     importc: "glSecondaryColor3bEXT".}
-proc glSecondaryColor3sEXT*(components: TGLshort){.dynlib: dllname, 
+proc glSecondaryColor3sEXT*(components: TGLshort){.dynlib: dllname,
     importc: "glSecondaryColor3sEXT".}
-proc glSecondaryColor3iEXT*(components: TGLint){.dynlib: dllname, 
+proc glSecondaryColor3iEXT*(components: TGLint){.dynlib: dllname,
     importc: "glSecondaryColor3iEXT".}
-proc glSecondaryColor3fEXT*(components: TGLfloat){.dynlib: dllname, 
+proc glSecondaryColor3fEXT*(components: TGLfloat){.dynlib: dllname,
     importc: "glSecondaryColor3fEXT".}
-proc glSecondaryColor3dEXT*(components: TGLdouble){.dynlib: dllname, 
+proc glSecondaryColor3dEXT*(components: TGLdouble){.dynlib: dllname,
     importc: "glSecondaryColor3dEXT".}
-proc glSecondaryColor3ubEXT*(components: TGLubyte){.dynlib: dllname, 
+proc glSecondaryColor3ubEXT*(components: TGLubyte){.dynlib: dllname,
     importc: "glSecondaryColor3ubEXT".}
-proc glSecondaryColor3usEXT*(components: TGLushort){.dynlib: dllname, 
+proc glSecondaryColor3usEXT*(components: TGLushort){.dynlib: dllname,
     importc: "glSecondaryColor3usEXT".}
-proc glSecondaryColor3uiEXT*(components: TGLuint){.dynlib: dllname, 
+proc glSecondaryColor3uiEXT*(components: TGLuint){.dynlib: dllname,
     importc: "glSecondaryColor3uiEXT".}
-proc glSecondaryColor3bvEXT*(components: TGLbyte){.dynlib: dllname, 
+proc glSecondaryColor3bvEXT*(components: TGLbyte){.dynlib: dllname,
     importc: "glSecondaryColor3bvEXT".}
-proc glSecondaryColor3svEXT*(components: TGLshort){.dynlib: dllname, 
+proc glSecondaryColor3svEXT*(components: TGLshort){.dynlib: dllname,
     importc: "glSecondaryColor3svEXT".}
-proc glSecondaryColor3ivEXT*(components: TGLint){.dynlib: dllname, 
+proc glSecondaryColor3ivEXT*(components: TGLint){.dynlib: dllname,
     importc: "glSecondaryColor3ivEXT".}
-proc glSecondaryColor3fvEXT*(components: TGLfloat){.dynlib: dllname, 
+proc glSecondaryColor3fvEXT*(components: TGLfloat){.dynlib: dllname,
     importc: "glSecondaryColor3fvEXT".}
-proc glSecondaryColor3dvEXT*(components: TGLdouble){.dynlib: dllname, 
+proc glSecondaryColor3dvEXT*(components: TGLdouble){.dynlib: dllname,
     importc: "glSecondaryColor3dvEXT".}
-proc glSecondaryColor3ubvEXT*(components: TGLubyte){.dynlib: dllname, 
+proc glSecondaryColor3ubvEXT*(components: TGLubyte){.dynlib: dllname,
     importc: "glSecondaryColor3ubvEXT".}
-proc glSecondaryColor3usvEXT*(components: TGLushort){.dynlib: dllname, 
+proc glSecondaryColor3usvEXT*(components: TGLushort){.dynlib: dllname,
     importc: "glSecondaryColor3usvEXT".}
-proc glSecondaryColor3uivEXT*(components: TGLuint){.dynlib: dllname, 
+proc glSecondaryColor3uivEXT*(components: TGLuint){.dynlib: dllname,
     importc: "glSecondaryColor3uivEXT".}
-proc glSecondaryColorPointerEXT*(size: TGLint, thetype: TGLenum, 
+proc glSecondaryColorPointerEXT*(size: TGLint, thetype: TGLenum,
                                  stride: TGLsizei, pointer: PGLvoid){.
     dynlib: dllname, importc: "glSecondaryColorPointerEXT".}
   #***** GL_EXT_separate_specular_color *****//
-const 
+const
   GL_LIGHT_MODEL_COLOR_CONTROL_EXT* = 0x000081F8
   GL_SINGLE_COLOR_EXT* = 0x000081F9
   GL_SEPARATE_SPECULAR_COLOR_EXT* = 0x000081FA
   #***** GL_EXT_shadow_funcs *****//
   #***** GL_EXT_shared_texture_palette *****//
 
-const 
+const
   GL_SHARED_TEXTURE_PALETTE_EXT* = 0x000081FB
   #***** GL_EXT_stencil_two_side *****//
 
-const 
+const
   GL_STENCIL_TEST_TWO_SIDE_EXT* = 0x00008910
   constGL_ACTIVE_STENCIL_FACE_EXT* = 0x00008911
 
-proc glActiveStencilFaceEXT*(face: TGLenum){.dynlib: dllname, 
+proc glActiveStencilFaceEXT*(face: TGLenum){.dynlib: dllname,
     importc: "glActiveStencilFaceEXT".}
   #***** GL_EXT_stencil_wrap *****//
-const 
+const
   GL_INCR_WRAP_EXT* = 0x00008507
   GL_DECR_WRAP_EXT* = 0x00008508
   #***** GL_EXT_subtexture *****//
 
-proc glTexSubImage1DEXT*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                         width: TGLsizei, format: TGLenum, thetype: TGLenum, 
-                         pixels: PGLvoid){.dynlib: dllname, 
+proc glTexSubImage1DEXT*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                         width: TGLsizei, format: TGLenum, thetype: TGLenum,
+                         pixels: PGLvoid){.dynlib: dllname,
     importc: "glTexSubImage1DEXT".}
-proc glTexSubImage2DEXT*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                         yoffset: TGLint, width: TGLsizei, height: TGLsizei, 
+proc glTexSubImage2DEXT*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                         yoffset: TGLint, width: TGLsizei, height: TGLsizei,
                          format: TGLenum, thetype: TGLenum, pixels: PGLvoid){.
     dynlib: dllname, importc: "glTexSubImage2DEXT".}
-proc glTexSubImage3DEXT*(target: TGLenum, level: TGLint, xoffset: TGLint, 
-                         yoffset: TGLint, zoffset: TGLint, width: TGLsizei, 
-                         height: TGLsizei, depth: TGLsizei, format: TGLenum, 
-                         thetype: TGLenum, pixels: PGLvoid){.dynlib: dllname, 
+proc glTexSubImage3DEXT*(target: TGLenum, level: TGLint, xoffset: TGLint,
+                         yoffset: TGLint, zoffset: TGLint, width: TGLsizei,
+                         height: TGLsizei, depth: TGLsizei, format: TGLenum,
+                         thetype: TGLenum, pixels: PGLvoid){.dynlib: dllname,
     importc: "glTexSubImage3DEXT".}
   #***** GL_EXT_texture3D *****//
-const 
+const
   GL_PACK_SKIP_IMAGES_EXT* = 0x0000806B
   GL_PACK_IMAGE_HEIGHT_EXT* = 0x0000806C
   GL_UNPACK_SKIP_IMAGES_EXT* = 0x0000806D
@@ -1644,13 +1644,13 @@ const
   GL_TEXTURE_WRAP_R_EXT* = 0x00008072
   GL_MAX_3D_TEXTURE_SIZE_EXT* = 0x00008073
 
-proc glTexImage3DEXT*(target: TGLenum, level: TGLint, internalformat: TGLenum, 
-                      width: TGLsizei, height: TGLsizei, depth: TGLsizei, 
-                      border: TGLint, format: TGLenum, thetype: TGLenum, 
-                      pixels: PGLvoid){.dynlib: dllname, 
+proc glTexImage3DEXT*(target: TGLenum, level: TGLint, internalformat: TGLenum,
+                      width: TGLsizei, height: TGLsizei, depth: TGLsizei,
+                      border: TGLint, format: TGLenum, thetype: TGLenum,
+                      pixels: PGLvoid){.dynlib: dllname,
                                         importc: "glTexImage3DEXT".}
   #***** GL_EXT_texture_compression_s3tc *****//
-const 
+const
   GL_COMPRESSED_RGB_S3TC_DXT1_EXT* = 0x000083F0
   GL_COMPRESSED_RGBA_S3TC_DXT1_EXT* = 0x000083F1
   GL_COMPRESSED_RGBA_S3TC_DXT3_EXT* = 0x000083F2
@@ -1658,7 +1658,7 @@ const
   #***** GL_EXT_texture_env_add *****//
   #***** GL_EXT_texture_env_combine *****//
 
-const 
+const
   GL_COMBINE_EXT* = 0x00008570
   GL_COMBINE_RGB_EXT* = 0x00008571
   GL_COMBINE_ALPHA_EXT* = 0x00008572
@@ -1682,45 +1682,45 @@ const
   GL_PREVIOUS_EXT* = 0x00008578
   #***** GL_EXT_texture_env_dot3 *****//
 
-const 
+const
   GL_DOT3_RGB_EXT* = 0x00008740
   GL_DOT3_RGBA_EXT* = 0x00008741
   #***** GL_EXT_texture_filter_anisotropic *****//
 
-const 
+const
   GL_TEXTURE_MAX_ANISOTROPY_EXT* = 0x000084FE
   GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT* = 0x000084FF
   #***** GL_EXT_texture_lod_bias *****//
 
-const 
+const
   GL_TEXTURE_FILTER_CONTROL_EXT* = 0x00008500
   GL_TEXTURE_LOD_BIAS_EXT* = 0x00008501
   GL_MAX_TEXTURE_LOD_BIAS_EXT* = 0x000084FD
   #***** GL_EXT_texture_object *****//
 
-const 
+const
   GL_TEXTURE_PRIORITY_EXT* = 0x00008066
   GL_TEXTURE_RESIDENT_EXT* = 0x00008067
   GL_TEXTURE_1D_BINDING_EXT* = 0x00008068
   GL_TEXTURE_2D_BINDING_EXT* = 0x00008069
   GL_TEXTURE_3D_BINDING_EXT* = 0x0000806A
 
-proc glGenTexturesEXT*(n: TGLsizei, textures: PGLuint){.dynlib: dllname, 
+proc glGenTexturesEXT*(n: TGLsizei, textures: PGLuint){.dynlib: dllname,
     importc: "glGenTexturesEXT".}
-proc glDeleteTexturesEXT*(n: TGLsizei, textures: PGLuint){.dynlib: dllname, 
+proc glDeleteTexturesEXT*(n: TGLsizei, textures: PGLuint){.dynlib: dllname,
     importc: "glDeleteTexturesEXT".}
-proc glBindTextureEXT*(target: TGLenum, texture: TGLuint){.dynlib: dllname, 
+proc glBindTextureEXT*(target: TGLenum, texture: TGLuint){.dynlib: dllname,
     importc: "glBindTextureEXT".}
-proc glPrioritizeTexturesEXT*(n: TGLsizei, textures: PGLuint, 
-                              priorities: PGLclampf){.dynlib: dllname, 
+proc glPrioritizeTexturesEXT*(n: TGLsizei, textures: PGLuint,
+                              priorities: PGLclampf){.dynlib: dllname,
     importc: "glPrioritizeTexturesEXT".}
-proc glAreTexturesResidentEXT*(n: TGLsizei, textures: PGLuint, 
+proc glAreTexturesResidentEXT*(n: TGLsizei, textures: PGLuint,
                                residences: PGLboolean): TGLboolean{.
     dynlib: dllname, importc: "glAreTexturesResidentEXT".}
-proc glIsTextureEXT*(texture: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsTextureEXT*(texture: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsTextureEXT".}
   #***** GL_EXT_vertex_array *****//
-const 
+const
   GL_VERTEX_ARRAY_EXT* = 0x00008074
   GL_NORMAL_ARRAY_EXT* = 0x00008075
   GL_COLOR_ARRAY_EXT* = 0x00008076
@@ -1755,32 +1755,32 @@ const
   GL_TEXTURE_COORD_ARRAY_POINTER_EXT* = 0x00008092
   GL_EDGE_FLAG_ARRAY_POINTER_EXT* = 0x00008093
 
-proc glArrayElementEXT*(i: TGLint){.dynlib: dllname, 
+proc glArrayElementEXT*(i: TGLint){.dynlib: dllname,
                                     importc: "glArrayElementEXT".}
 proc glDrawArraysEXT*(mode: TGLenum, first: TGLint, count: TGLsizei){.
     dynlib: dllname, importc: "glDrawArraysEXT".}
-proc glVertexPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei, 
-                         count: TGLsizei, pointer: PGLvoid){.dynlib: dllname, 
+proc glVertexPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei,
+                         count: TGLsizei, pointer: PGLvoid){.dynlib: dllname,
     importc: "glVertexPointerEXT".}
-proc glNormalPointerEXT*(thetype: TGLenum, stride: TGLsizei, count: TGLsizei, 
-                         pointer: PGLvoid){.dynlib: dllname, 
+proc glNormalPointerEXT*(thetype: TGLenum, stride: TGLsizei, count: TGLsizei,
+                         pointer: PGLvoid){.dynlib: dllname,
     importc: "glNormalPointerEXT".}
-proc glColorPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei, 
-                        count: TGLsizei, pointer: PGLvoid){.dynlib: dllname, 
+proc glColorPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei,
+                        count: TGLsizei, pointer: PGLvoid){.dynlib: dllname,
     importc: "glColorPointerEXT".}
-proc glIndexPointerEXT*(thetype: TGLenum, stride: TGLsizei, count: TGLsizei, 
-                        pointer: PGLvoid){.dynlib: dllname, 
+proc glIndexPointerEXT*(thetype: TGLenum, stride: TGLsizei, count: TGLsizei,
+                        pointer: PGLvoid){.dynlib: dllname,
     importc: "glIndexPointerEXT".}
-proc glTexCoordPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei, 
-                           count: TGLsizei, pointer: PGLvoid){.dynlib: dllname, 
+proc glTexCoordPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei,
+                           count: TGLsizei, pointer: PGLvoid){.dynlib: dllname,
     importc: "glTexCoordPointerEXT".}
-proc glEdgeFlagPointerEXT*(stride: TGLsizei, count: TGLsizei, 
-                           pointer: PGLboolean){.dynlib: dllname, 
+proc glEdgeFlagPointerEXT*(stride: TGLsizei, count: TGLsizei,
+                           pointer: PGLboolean){.dynlib: dllname,
     importc: "glEdgeFlagPointerEXT".}
-proc glGetPointervEXT*(pname: TGLenum, params: PGLvoid){.dynlib: dllname, 
+proc glGetPointervEXT*(pname: TGLenum, params: PGLvoid){.dynlib: dllname,
     importc: "glGetPointervEXT".}
   #***** GL_EXT_vertex_shader *****//
-const 
+const
   GL_VERTEX_SHADER_EXT* = 0x00008780
   GL_VARIANT_VALUE_EXT* = 0x000087E4
   GL_VARIANT_DATATYPE_EXT* = 0x000087E5
@@ -1892,60 +1892,60 @@ const
   GL_CURRENT_VERTEX_EXT* = 0x000087E2
   GL_MVP_MATRIX_EXT* = 0x000087E3
 
-proc glBeginVertexShaderEXT*(){.dynlib: dllname, 
+proc glBeginVertexShaderEXT*(){.dynlib: dllname,
                                 importc: "glBeginVertexShaderEXT".}
 proc glEndVertexShaderEXT*(){.dynlib: dllname, importc: "glEndVertexShaderEXT".}
-proc glBindVertexShaderEXT*(id: TGLuint){.dynlib: dllname, 
+proc glBindVertexShaderEXT*(id: TGLuint){.dynlib: dllname,
     importc: "glBindVertexShaderEXT".}
-proc glGenVertexShadersEXT*(range: TGLuint): TGLuint{.dynlib: dllname, 
+proc glGenVertexShadersEXT*(range: TGLuint): TGLuint{.dynlib: dllname,
     importc: "glGenVertexShadersEXT".}
-proc glDeleteVertexShaderEXT*(id: TGLuint){.dynlib: dllname, 
+proc glDeleteVertexShaderEXT*(id: TGLuint){.dynlib: dllname,
     importc: "glDeleteVertexShaderEXT".}
-proc glShaderOp1EXT*(op: TGLenum, res: TGLuint, arg1: TGLuint){.dynlib: dllname, 
+proc glShaderOp1EXT*(op: TGLenum, res: TGLuint, arg1: TGLuint){.dynlib: dllname,
     importc: "glShaderOp1EXT".}
 proc glShaderOp2EXT*(op: TGLenum, res: TGLuint, arg1: TGLuint, arg2: TGLuint){.
     dynlib: dllname, importc: "glShaderOp2EXT".}
-proc glShaderOp3EXT*(op: TGLenum, res: TGLuint, arg1: TGLuint, arg2: TGLuint, 
+proc glShaderOp3EXT*(op: TGLenum, res: TGLuint, arg1: TGLuint, arg2: TGLuint,
                      arg3: TGLuint){.dynlib: dllname, importc: "glShaderOp3EXT".}
-proc glSwizzleEXT*(res: TGLuint, theIn: TGLuint, outX: TGLenum, outY: TGLenum, 
-                   outZ: TGLenum, outW: TGLenum){.dynlib: dllname, 
+proc glSwizzleEXT*(res: TGLuint, theIn: TGLuint, outX: TGLenum, outY: TGLenum,
+                   outZ: TGLenum, outW: TGLenum){.dynlib: dllname,
     importc: "glSwizzleEXT".}
-proc glWriteMaskEXT*(res: TGLuint, theIn: TGLuint, outX: TGLenum, outY: TGLenum, 
-                     outZ: TGLenum, outW: TGLenum){.dynlib: dllname, 
+proc glWriteMaskEXT*(res: TGLuint, theIn: TGLuint, outX: TGLenum, outY: TGLenum,
+                     outZ: TGLenum, outW: TGLenum){.dynlib: dllname,
     importc: "glWriteMaskEXT".}
 proc glInsertComponentEXT*(res: TGLuint, src: TGLuint, num: TGLuint){.
     dynlib: dllname, importc: "glInsertComponentEXT".}
 proc glExtractComponentEXT*(res: TGLuint, src: TGLuint, num: TGLuint){.
     dynlib: dllname, importc: "glExtractComponentEXT".}
-proc glGenSymbolsEXT*(datatype: TGLenum, storagetype: TGLenum, range: TGLenum, 
-                      components: TGLuint): TGLuint{.dynlib: dllname, 
+proc glGenSymbolsEXT*(datatype: TGLenum, storagetype: TGLenum, range: TGLenum,
+                      components: TGLuint): TGLuint{.dynlib: dllname,
     importc: "glGenSymbolsEXT".}
 proc glSetInvariantEXT*(id: TGLuint, thetype: TGLenum, address: PGLvoid){.
     dynlib: dllname, importc: "glSetInvariantEXT".}
 proc glSetLocalConstantEXT*(id: TGLuint, thetype: TGLenum, address: PGLvoid){.
     dynlib: dllname, importc: "glSetLocalConstantEXT".}
-proc glVariantbvEXT*(id: TGLuint, address: PGLbyte){.dynlib: dllname, 
+proc glVariantbvEXT*(id: TGLuint, address: PGLbyte){.dynlib: dllname,
     importc: "glVariantbvEXT".}
-proc glVariantsvEXT*(id: TGLuint, address: PGLshort){.dynlib: dllname, 
+proc glVariantsvEXT*(id: TGLuint, address: PGLshort){.dynlib: dllname,
     importc: "glVariantsvEXT".}
-proc glVariantivEXT*(id: TGLuint, address: PGLint){.dynlib: dllname, 
+proc glVariantivEXT*(id: TGLuint, address: PGLint){.dynlib: dllname,
     importc: "glVariantivEXT".}
-proc glVariantfvEXT*(id: TGLuint, address: PGLfloat){.dynlib: dllname, 
+proc glVariantfvEXT*(id: TGLuint, address: PGLfloat){.dynlib: dllname,
     importc: "glVariantfvEXT".}
-proc glVariantdvEXT*(id: TGLuint, address: PGLdouble){.dynlib: dllname, 
+proc glVariantdvEXT*(id: TGLuint, address: PGLdouble){.dynlib: dllname,
     importc: "glVariantdvEXT".}
-proc glVariantubvEXT*(id: TGLuint, address: PGLubyte){.dynlib: dllname, 
+proc glVariantubvEXT*(id: TGLuint, address: PGLubyte){.dynlib: dllname,
     importc: "glVariantubvEXT".}
-proc glVariantusvEXT*(id: TGLuint, address: PGLushort){.dynlib: dllname, 
+proc glVariantusvEXT*(id: TGLuint, address: PGLushort){.dynlib: dllname,
     importc: "glVariantusvEXT".}
-proc glVariantuivEXT*(id: TGLuint, address: PGLuint){.dynlib: dllname, 
+proc glVariantuivEXT*(id: TGLuint, address: PGLuint){.dynlib: dllname,
     importc: "glVariantuivEXT".}
-proc glVariantPointerEXT*(id: TGLuint, thetype: TGLenum, stride: TGLuint, 
-                          address: PGLvoid){.dynlib: dllname, 
+proc glVariantPointerEXT*(id: TGLuint, thetype: TGLenum, stride: TGLuint,
+                          address: PGLvoid){.dynlib: dllname,
     importc: "glVariantPointerEXT".}
-proc glEnableVariantClientStateEXT*(id: TGLuint){.dynlib: dllname, 
+proc glEnableVariantClientStateEXT*(id: TGLuint){.dynlib: dllname,
     importc: "glEnableVariantClientStateEXT".}
-proc glDisableVariantClientStateEXT*(id: TGLuint){.dynlib: dllname, 
+proc glDisableVariantClientStateEXT*(id: TGLuint){.dynlib: dllname,
     importc: "glDisableVariantClientStateEXT".}
 proc glBindLightParameterEXT*(light: TGLenum, value: TGLenum): TGLuint{.
     dynlib: dllname, importc: "glBindLightParameterEXT".}
@@ -1955,7 +1955,7 @@ proc glBindTexGenParameterEXT*(theunit: TGLenum, coord: TGLenum, value: TGLenum)
     dynlib: dllname, importc: "glBindTexGenParameterEXT".}
 proc glBindTextureUnitParameterEXT*(theunit: TGLenum, value: TGLenum): TGLuint{.
     dynlib: dllname, importc: "glBindTextureUnitParameterEXT".}
-proc glBindParameterEXT*(value: TGLenum): TGLuint{.dynlib: dllname, 
+proc glBindParameterEXT*(value: TGLenum): TGLuint{.dynlib: dllname,
     importc: "glBindParameterEXT".}
 proc glIsVariantEnabledEXT*(id: TGLuint, cap: TGLenum): TGLboolean{.
     dynlib: dllname, importc: "glIsVariantEnabledEXT".}
@@ -1973,15 +1973,15 @@ proc glGetInvariantIntegervEXT*(id: TGLuint, value: TGLenum, data: PGLint){.
     dynlib: dllname, importc: "glGetInvariantIntegervEXT".}
 proc glGetInvariantFloatvEXT*(id: TGLuint, value: TGLenum, data: PGLfloat){.
     dynlib: dllname, importc: "glGetInvariantFloatvEXT".}
-proc glGetLocalConstantBooleanvEXT*(id: TGLuint, value: TGLenum, 
-                                    data: PGLboolean){.dynlib: dllname, 
+proc glGetLocalConstantBooleanvEXT*(id: TGLuint, value: TGLenum,
+                                    data: PGLboolean){.dynlib: dllname,
     importc: "glGetLocalConstantBooleanvEXT".}
 proc glGetLocalConstantIntegervEXT*(id: TGLuint, value: TGLenum, data: PGLint){.
     dynlib: dllname, importc: "glGetLocalConstantIntegervEXT".}
 proc glGetLocalConstantFloatvEXT*(id: TGLuint, value: TGLenum, data: PGLfloat){.
     dynlib: dllname, importc: "glGetLocalConstantFloatvEXT".}
   #***** GL_EXT_vertex_weighting *****//
-const 
+const
   GL_VERTEX_WEIGHTING_EXT* = 0x00008509
   GL_MODELVIEW0_EXT* = 0x00001700
   GL_MODELVIEW1_EXT* = 0x0000850A
@@ -1996,30 +1996,30 @@ const
   GL_MODELVIEW1_STACK_DEPTH_EXT* = 0x00008502
   GL_VERTEX_WEIGHT_ARRAY_POINTER_EXT* = 0x00008510
 
-proc glVertexWeightfEXT*(weight: TGLfloat){.dynlib: dllname, 
+proc glVertexWeightfEXT*(weight: TGLfloat){.dynlib: dllname,
     importc: "glVertexWeightfEXT".}
-proc glVertexWeightfvEXT*(weight: PGLfloat){.dynlib: dllname, 
+proc glVertexWeightfvEXT*(weight: PGLfloat){.dynlib: dllname,
     importc: "glVertexWeightfvEXT".}
-proc glVertexWeightPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei, 
-                               pointer: PGLvoid){.dynlib: dllname, 
+proc glVertexWeightPointerEXT*(size: TGLint, thetype: TGLenum, stride: TGLsizei,
+                               pointer: PGLvoid){.dynlib: dllname,
     importc: "glVertexWeightPointerEXT".}
   #***** GL_HP_occlusion_test *****//
-const 
+const
   GL_OCCLUSION_TEST_HP* = 0x00008165
   GL_OCCLUSION_TEST_RESULT_HP* = 0x00008166
   #***** GL_NV_blend_square *****//
   #***** GL_NV_copy_depth_to_color *****//
 
-const 
+const
   GL_DEPTH_STENCIL_TO_RGBA_NV* = 0x0000886E
   GL_DEPTH_STENCIL_TO_BGRA_NV* = 0x0000886F
   #***** GL_NV_depth_clamp *****//
 
-const 
+const
   GL_DEPTH_CLAMP_NV* = 0x0000864F
   #***** GL_NV_evaluators *****//
 
-const 
+const
   GL_EVAL_2D_NV* = 0x000086C0
   GL_EVAL_TRIANGULAR_2D_NV* = 0x000086C1
   GL_MAP_TESSELLATION_NV* = 0x000086C2
@@ -2045,82 +2045,82 @@ const
   GL_MAX_MAP_TESSELLATION_NV* = 0x000086D6
   GL_MAX_RATIONAL_EVAL_ORDER_NV* = 0x000086D7
 
-proc glMapControlPointsNV*(target: TGLenum, index: TGLuint, thetype: TGLenum, 
-                           ustride: TGLsizei, vstride: TGLsizei, uorder: TGLint, 
-                           vorder: TGLint, thepacked: TGLboolean, 
-                           points: PGLvoid){.dynlib: dllname, 
+proc glMapControlPointsNV*(target: TGLenum, index: TGLuint, thetype: TGLenum,
+                           ustride: TGLsizei, vstride: TGLsizei, uorder: TGLint,
+                           vorder: TGLint, thepacked: TGLboolean,
+                           points: PGLvoid){.dynlib: dllname,
     importc: "glMapControlPointsNV".}
 proc glMapParameterivNV*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glMapParameterivNV".}
 proc glMapParameterfvNV*(target: TGLenum, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glMapParameterfvNV".}
-proc glGetMapControlPointsNV*(target: TGLenum, index: TGLuint, thetype: TGLenum, 
-                              ustride: TGLsizei, vstride: TGLsizei, 
+proc glGetMapControlPointsNV*(target: TGLenum, index: TGLuint, thetype: TGLenum,
+                              ustride: TGLsizei, vstride: TGLsizei,
                               thepacked: TGLboolean, points: PGLvoid){.
     dynlib: dllname, importc: "glGetMapControlPointsNV".}
 proc glGetMapParameterivNV*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetMapParameterivNV".}
 proc glGetMapParameterfvNV*(target: TGLenum, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetMapParameterfvNV".}
-proc glGetMapAttribParameterivNV*(target: TGLenum, index: TGLuint, 
+proc glGetMapAttribParameterivNV*(target: TGLenum, index: TGLuint,
                                   pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetMapAttribParameterivNV".}
-proc glGetMapAttribParameterfvNV*(target: TGLenum, index: TGLuint, 
+proc glGetMapAttribParameterfvNV*(target: TGLenum, index: TGLuint,
                                   pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetMapAttribParameterfvNV".}
-proc glEvalMapsNV*(target: TGLenum, mode: TGLenum){.dynlib: dllname, 
+proc glEvalMapsNV*(target: TGLenum, mode: TGLenum){.dynlib: dllname,
     importc: "glEvalMapsNV".}
   #***** GL_NV_fence *****//
-const 
+const
   GL_ALL_COMPLETED_NV* = 0x000084F2
   GL_FENCE_STATUS_NV* = 0x000084F3
   GL_FENCE_CONDITION_NV* = 0x000084F4
 
-proc glGenFencesNV*(n: TGLsizei, fences: PGLuint){.dynlib: dllname, 
+proc glGenFencesNV*(n: TGLsizei, fences: PGLuint){.dynlib: dllname,
     importc: "glGenFencesNV".}
-proc glDeleteFencesNV*(n: TGLsizei, fences: PGLuint){.dynlib: dllname, 
+proc glDeleteFencesNV*(n: TGLsizei, fences: PGLuint){.dynlib: dllname,
     importc: "glDeleteFencesNV".}
-proc glSetFenceNV*(fence: TGLuint, condition: TGLenum){.dynlib: dllname, 
+proc glSetFenceNV*(fence: TGLuint, condition: TGLenum){.dynlib: dllname,
     importc: "glSetFenceNV".}
-proc glTestFenceNV*(fence: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glTestFenceNV*(fence: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glTestFenceNV".}
-proc glFinishFenceNV*(fence: TGLuint){.dynlib: dllname, 
+proc glFinishFenceNV*(fence: TGLuint){.dynlib: dllname,
                                        importc: "glFinishFenceNV".}
-proc glIsFenceNV*(fence: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsFenceNV*(fence: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsFenceNV".}
 proc glGetFenceivNV*(fence: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetFenceivNV".}
   #***** GL_NV_fog_distance *****//
-const 
+const
   GL_FOG_DISTANCE_MODE_NV* = 0x0000855A
   GL_EYE_RADIAL_NV* = 0x0000855B
   GL_EYE_PLANE_ABSOLUTE_NV* = 0x0000855C
   #***** GL_NV_light_max_exponent *****//
 
-const 
+const
   GL_MAX_SHININESS_NV* = 0x00008504
   GL_MAX_SPOT_EXPONENT_NV* = 0x00008505
   #***** GL_NV_multisample_filter_hint *****//
 
-const 
+const
   GL_MULTISAMPLE_FILTER_HINT_NV* = 0x00008534
   #***** GL_NV_occlusion_query *****//
   # GL_OCCLUSION_TEST_HP  { already defined }
   # GL_OCCLUSION_TEST_RESULT_HP  { already defined }
 
-const 
+const
   GL_PIXEL_COUNTER_BITS_NV* = 0x00008864
   GL_CURRENT_OCCLUSION_QUERY_ID_NV* = 0x00008865
   GL_PIXEL_COUNT_NV* = 0x00008866
   GL_PIXEL_COUNT_AVAILABLE_NV* = 0x00008867
 
-proc glGenOcclusionQueriesNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glGenOcclusionQueriesNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glGenOcclusionQueriesNV".}
-proc glDeleteOcclusionQueriesNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glDeleteOcclusionQueriesNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glDeleteOcclusionQueriesNV".}
-proc glIsOcclusionQueryNV*(id: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsOcclusionQueryNV*(id: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsOcclusionQueryNV".}
-proc glBeginOcclusionQueryNV*(id: TGLuint){.dynlib: dllname, 
+proc glBeginOcclusionQueryNV*(id: TGLuint){.dynlib: dllname,
     importc: "glBeginOcclusionQueryNV".}
 proc glEndOcclusionQueryNV*(){.dynlib: dllname, importc: "glEndOcclusionQueryNV".}
 proc glGetOcclusionQueryivNV*(id: TGLuint, pname: TGLenum, params: PGLint){.
@@ -2128,22 +2128,22 @@ proc glGetOcclusionQueryivNV*(id: TGLuint, pname: TGLenum, params: PGLint){.
 proc glGetOcclusionQueryuivNV*(id: TGLuint, pname: TGLenum, params: PGLuint){.
     dynlib: dllname, importc: "glGetOcclusionQueryuivNV".}
   #***** GL_NV_packed_depth_stencil *****//
-const 
+const
   GL_DEPTH_STENCIL_NV* = 0x000084F9
   GL_UNSIGNED_INT_24_8_NV* = 0x000084FA
   #***** GL_NV_point_sprite *****//
 
-const 
+const
   GL_POINT_SPRITE_NV* = 0x00008861
   GL_COORD_REPLACE_NV* = 0x00008862
   GL_POINT_SPRITE_R_MODE_NV* = 0x00008863
 
-proc glPointParameteriNV*(pname: TGLenum, param: TGLint){.dynlib: dllname, 
+proc glPointParameteriNV*(pname: TGLenum, param: TGLint){.dynlib: dllname,
     importc: "glPointParameteriNV".}
-proc glPointParameterivNV*(pname: TGLenum, params: PGLint){.dynlib: dllname, 
+proc glPointParameterivNV*(pname: TGLenum, params: PGLint){.dynlib: dllname,
     importc: "glPointParameterivNV".}
   #***** GL_NV_register_combiners *****//
-const 
+const
   GL_REGISTER_COMBINERS_NV* = 0x00008522
   GL_COMBINER0_NV* = 0x00008550
   GL_COMBINER1_NV* = 0x00008551
@@ -2198,62 +2198,62 @@ const
 
 proc glCombinerParameterfvNV*(pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glCombinerParameterfvNV".}
-proc glCombinerParameterivNV*(pname: TGLenum, params: PGLint){.dynlib: dllname, 
+proc glCombinerParameterivNV*(pname: TGLenum, params: PGLint){.dynlib: dllname,
     importc: "glCombinerParameterivNV".}
-proc glCombinerParameterfNV*(pname: TGLenum, param: TGLfloat){.dynlib: dllname, 
+proc glCombinerParameterfNV*(pname: TGLenum, param: TGLfloat){.dynlib: dllname,
     importc: "glCombinerParameterfNV".}
-proc glCombinerParameteriNV*(pname: TGLenum, param: TGLint){.dynlib: dllname, 
+proc glCombinerParameteriNV*(pname: TGLenum, param: TGLint){.dynlib: dllname,
     importc: "glCombinerParameteriNV".}
-proc glCombinerInputNV*(stage: TGLenum, portion: TGLenum, variable: TGLenum, 
-                        input: TGLenum, mapping: TGLenum, 
-                        componentUsage: TGLenum){.dynlib: dllname, 
+proc glCombinerInputNV*(stage: TGLenum, portion: TGLenum, variable: TGLenum,
+                        input: TGLenum, mapping: TGLenum,
+                        componentUsage: TGLenum){.dynlib: dllname,
     importc: "glCombinerInputNV".}
-proc glCombinerOutputNV*(stage: TGLenum, portion: TGLenum, abOutput: TGLenum, 
-                         cdOutput: TGLenum, sumOutput: TGLenum, scale: TGLenum, 
-                         bias: TGLenum, abDotProduct: TGLboolean, 
+proc glCombinerOutputNV*(stage: TGLenum, portion: TGLenum, abOutput: TGLenum,
+                         cdOutput: TGLenum, sumOutput: TGLenum, scale: TGLenum,
+                         bias: TGLenum, abDotProduct: TGLboolean,
                          cdDotProduct: TGLboolean, muxSum: TGLboolean){.
     dynlib: dllname, importc: "glCombinerOutputNV".}
-proc glFinalCombinerInputNV*(variable: TGLenum, input: TGLenum, 
+proc glFinalCombinerInputNV*(variable: TGLenum, input: TGLenum,
                              mapping: TGLenum, componentUsage: TGLenum){.
     dynlib: dllname, importc: "glFinalCombinerInputNV".}
-proc glGetCombinerInputParameterfvNV*(stage: TGLenum, portion: TGLenum, 
-                                      variable: TGLenum, pname: TGLenum, 
-                                      params: PGLfloat){.dynlib: dllname, 
+proc glGetCombinerInputParameterfvNV*(stage: TGLenum, portion: TGLenum,
+                                      variable: TGLenum, pname: TGLenum,
+                                      params: PGLfloat){.dynlib: dllname,
     importc: "glGetCombinerInputParameterfvNV".}
-proc glGetCombinerInputParameterivNV*(stage: TGLenum, portion: TGLenum, 
-                                      variable: TGLenum, pname: TGLenum, 
-                                      params: PGLint){.dynlib: dllname, 
+proc glGetCombinerInputParameterivNV*(stage: TGLenum, portion: TGLenum,
+                                      variable: TGLenum, pname: TGLenum,
+                                      params: PGLint){.dynlib: dllname,
     importc: "glGetCombinerInputParameterivNV".}
-proc glGetCombinerOutputParameterfvNV*(stage: TGLenum, portion: TGLenum, 
+proc glGetCombinerOutputParameterfvNV*(stage: TGLenum, portion: TGLenum,
                                        pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetCombinerOutputParameterfvNV".}
-proc glGetCombinerOutputParameterivNV*(stage: TGLenum, portion: TGLenum, 
+proc glGetCombinerOutputParameterivNV*(stage: TGLenum, portion: TGLenum,
                                        pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetCombinerOutputParameterivNV".}
-proc glGetFinalCombinerInputParameterfvNV*(variable: TGLenum, pname: TGLenum, 
-    params: PGLfloat){.dynlib: dllname, 
+proc glGetFinalCombinerInputParameterfvNV*(variable: TGLenum, pname: TGLenum,
+    params: PGLfloat){.dynlib: dllname,
                        importc: "glGetFinalCombinerInputParameterfvNV".}
-proc glGetFinalCombinerInputParameterivNV*(variable: TGLenum, pname: TGLenum, 
-    params: PGLint){.dynlib: dllname, 
+proc glGetFinalCombinerInputParameterivNV*(variable: TGLenum, pname: TGLenum,
+    params: PGLint){.dynlib: dllname,
                      importc: "glGetFinalCombinerInputParameterivNV".}
   #***** GL_NV_register_combiners2 *****//
-const 
+const
   GL_PER_STAGE_CONSTANTS_NV* = 0x00008535
 
-proc glCombinerStageParameterfvNV*(stage: TGLenum, pname: TGLenum, 
-                                   params: PGLfloat){.dynlib: dllname, 
+proc glCombinerStageParameterfvNV*(stage: TGLenum, pname: TGLenum,
+                                   params: PGLfloat){.dynlib: dllname,
     importc: "glCombinerStageParameterfvNV".}
-proc glGetCombinerStageParameterfvNV*(stage: TGLenum, pname: TGLenum, 
-                                      params: PGLfloat){.dynlib: dllname, 
+proc glGetCombinerStageParameterfvNV*(stage: TGLenum, pname: TGLenum,
+                                      params: PGLfloat){.dynlib: dllname,
     importc: "glGetCombinerStageParameterfvNV".}
   #***** GL_NV_texgen_emboss *****//
-const 
+const
   GL_EMBOSS_MAP_NV* = 0x0000855F
   GL_EMBOSS_LIGHT_NV* = 0x0000855D
   GL_EMBOSS_CONSTANT_NV* = 0x0000855E
   #***** GL_NV_texgen_reflection *****//
 
-const 
+const
   GL_NORMAL_MAP_NV* = 0x00008511
   GL_REFLECTION_MAP_NV* = 0x00008512
   #***** GL_NV_texture_compression_vtc *****//
@@ -2263,7 +2263,7 @@ const
   # GL_COMPRESSED_RGBA_S3TC_DXT5_EXT  { already defined }
   #***** GL_NV_texture_env_combine4 *****//
 
-const 
+const
   GL_COMBINE4_NV* = 0x00008503
   GL_SOURCE3_RGB_NV* = 0x00008583
   GL_SOURCE3_ALPHA_NV* = 0x0000858B
@@ -2271,14 +2271,14 @@ const
   GL_OPERAND3_ALPHA_NV* = 0x0000859B
   #***** GL_NV_texture_rectangle *****//
 
-const 
+const
   GL_TEXTURE_RECTANGLE_NV* = 0x000084F5
   GL_TEXTURE_BINDING_RECTANGLE_NV* = 0x000084F6
   GL_PROXY_TEXTURE_RECTANGLE_NV* = 0x000084F7
   GL_MAX_RECTANGLE_TEXTURE_SIZE_NV* = 0x000084F8
   #***** GL_NV_texture_shader *****//
 
-const 
+const
   GL_TEXTURE_SHADER_NV* = 0x000086DE
   GL_RGBA_UNSIGNED_DOT_PRODUCT_MAPPING_NV* = 0x000086D9
   GL_SHADER_OPERATION_NV* = 0x000086DF
@@ -2351,7 +2351,7 @@ const
   GL_TEXTURE_MAG_SIZE_NV* = 0x0000871F
   #***** GL_NV_texture_shader2 *****//
 
-const 
+const
   GL_DOT_PRODUCT_TEXTURE_3D_NV* = 0x000086EF # GL_HILO_NV  { already defined }
                                              # GL_DSDT_NV  { already defined }
                                              # GL_DSDT_MAG_NV  { already defined }
@@ -2381,7 +2381,7 @@ const
                                              # GL_DSDT8_MAG8_INTENSITY8_NV  { already defined }
   #***** GL_NV_texture_shader3 *****//
 
-const 
+const
   GL_OFFSET_PROJECTIVE_TEXTURE_2D_NV* = 0x00008850
   GL_OFFSET_PROJECTIVE_TEXTURE_2D_SCALE_NV* = 0x00008851
   GL_OFFSET_PROJECTIVE_TEXTURE_RECTANGLE_NV* = 0x00008852
@@ -2401,23 +2401,23 @@ const
   GL_FORCE_BLUE_TO_ONE_NV* = 0x00008860
   #***** GL_NV_vertex_array_range *****//
 
-const 
+const
   constGL_VERTEX_ARRAY_RANGE_NV* = 0x0000851D
   GL_VERTEX_ARRAY_RANGE_LENGTH_NV* = 0x0000851E
   GL_VERTEX_ARRAY_RANGE_VALID_NV* = 0x0000851F
   GL_MAX_VERTEX_ARRAY_RANGE_ELEMENT_NV* = 0x00008520
   GL_VERTEX_ARRAY_RANGE_POINTER_NV* = 0x00008521
 
-proc glVertexArrayRangeNV*(len: TGLsizei, pointer: PGLvoid){.dynlib: dllname, 
+proc glVertexArrayRangeNV*(len: TGLsizei, pointer: PGLvoid){.dynlib: dllname,
     importc: "glVertexArrayRangeNV".}
-proc glFlushVertexArrayRangeNV*(){.dynlib: dllname, 
+proc glFlushVertexArrayRangeNV*(){.dynlib: dllname,
                                    importc: "glFlushVertexArrayRangeNV".}
   #***** GL_NV_vertex_array_range2 *****//
-const 
+const
   GL_VERTEX_ARRAY_RANGE_WITHOUT_FLUSH_NV* = 0x00008533
   #***** GL_NV_vertex_program *****//
 
-const 
+const
   GL_VERTEX_PROGRAM_NV* = 0x00008620
   GL_VERTEX_PROGRAM_POINT_SIZE_NV* = 0x00008642
   GL_VERTEX_PROGRAM_TWO_SIDE_NV* = 0x00008643
@@ -2502,30 +2502,30 @@ const
   GL_MAP2_VERTEX_ATTRIB14_4_NV* = 0x0000867E
   GL_MAP2_VERTEX_ATTRIB15_4_NV* = 0x0000867F
 
-proc glBindProgramNV*(target: TGLenum, id: TGLuint){.dynlib: dllname, 
+proc glBindProgramNV*(target: TGLenum, id: TGLuint){.dynlib: dllname,
     importc: "glBindProgramNV".}
-proc glDeleteProgramsNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glDeleteProgramsNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glDeleteProgramsNV".}
 proc glExecuteProgramNV*(target: TGLenum, id: TGLuint, params: PGLfloat){.
     dynlib: dllname, importc: "glExecuteProgramNV".}
-proc glGenProgramsNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glGenProgramsNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glGenProgramsNV".}
 proc glAreProgramsResidentNV*(n: TGLsizei, ids: PGLuint, residences: PGLboolean): TGLboolean{.
     dynlib: dllname, importc: "glAreProgramsResidentNV".}
-proc glRequestResidentProgramsNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glRequestResidentProgramsNV*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glRequestResidentProgramsNV".}
-proc glGetProgramParameterfvNV*(target: TGLenum, index: TGLuint, pname: TGLenum, 
-                                params: PGLfloat){.dynlib: dllname, 
+proc glGetProgramParameterfvNV*(target: TGLenum, index: TGLuint, pname: TGLenum,
+                                params: PGLfloat){.dynlib: dllname,
     importc: "glGetProgramParameterfvNV".}
-proc glGetProgramParameterdvNV*(target: TGLenum, index: TGLuint, pname: TGLenum, 
-                                params: PGLdouble){.dynlib: dllname, 
+proc glGetProgramParameterdvNV*(target: TGLenum, index: TGLuint, pname: TGLenum,
+                                params: PGLdouble){.dynlib: dllname,
     importc: "glGetProgramParameterdvNV".}
 proc glGetProgramivNV*(id: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetProgramivNV".}
 proc glGetProgramStringNV*(id: TGLuint, pname: TGLenum, theProgram: PGLubyte){.
     dynlib: dllname, importc: "glGetProgramStringNV".}
-proc glGetTrackMatrixivNV*(target: TGLenum, address: TGLuint, pname: TGLenum, 
-                           params: PGLint){.dynlib: dllname, 
+proc glGetTrackMatrixivNV*(target: TGLenum, address: TGLuint, pname: TGLenum,
+                           params: PGLint){.dynlib: dllname,
     importc: "glGetTrackMatrixivNV".}
 proc glGetVertexAttribdvNV*(index: TGLuint, pname: TGLenum, params: PGLdouble){.
     dynlib: dllname, importc: "glGetVertexAttribdvNV".}
@@ -2533,36 +2533,36 @@ proc glGetVertexAttribfvNV*(index: TGLuint, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetVertexAttribfvNV".}
 proc glGetVertexAttribivNV*(index: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetVertexAttribivNV".}
-proc glGetVertexAttribPointervNV*(index: TGLuint, pname: TGLenum, 
-                                  pointer: PGLvoid){.dynlib: dllname, 
+proc glGetVertexAttribPointervNV*(index: TGLuint, pname: TGLenum,
+                                  pointer: PGLvoid){.dynlib: dllname,
     importc: "glGetVertexAttribPointervNV".}
-proc glIsProgramNV*(id: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsProgramNV*(id: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsProgramNV".}
-proc glLoadProgramNV*(target: TGLenum, id: TGLuint, length: TGLsizei, 
-                      theProgram: PGLubyte){.dynlib: dllname, 
+proc glLoadProgramNV*(target: TGLenum, id: TGLuint, length: TGLsizei,
+                      theProgram: PGLubyte){.dynlib: dllname,
     importc: "glLoadProgramNV".}
-proc glProgramParameter4fNV*(target: TGLenum, index: TGLuint, x: TGLfloat, 
+proc glProgramParameter4fNV*(target: TGLenum, index: TGLuint, x: TGLfloat,
                              y: TGLfloat, z: TGLfloat, w: TGLfloat){.
     dynlib: dllname, importc: "glProgramParameter4fNV".}
 proc glProgramParameter4fvNV*(target: TGLenum, index: TGLuint, params: PGLfloat){.
     dynlib: dllname, importc: "glProgramParameter4fvNV".}
-proc glProgramParameters4dvNV*(target: TGLenum, index: TGLuint, num: TGLuint, 
-                               params: PGLdouble){.dynlib: dllname, 
+proc glProgramParameters4dvNV*(target: TGLenum, index: TGLuint, num: TGLuint,
+                               params: PGLdouble){.dynlib: dllname,
     importc: "glProgramParameters4dvNV".}
-proc glProgramParameters4fvNV*(target: TGLenum, index: TGLuint, num: TGLuint, 
-                               params: PGLfloat){.dynlib: dllname, 
+proc glProgramParameters4fvNV*(target: TGLenum, index: TGLuint, num: TGLuint,
+                               params: PGLfloat){.dynlib: dllname,
     importc: "glProgramParameters4fvNV".}
-proc glTrackMatrixNV*(target: TGLenum, address: TGLuint, matrix: TGLenum, 
-                      transform: TGLenum){.dynlib: dllname, 
+proc glTrackMatrixNV*(target: TGLenum, address: TGLuint, matrix: TGLenum,
+                      transform: TGLenum){.dynlib: dllname,
     importc: "glTrackMatrixNV".}
-proc glVertexAttribPointerNV*(index: TGLuint, size: TGLint, thetype: TGLenum, 
+proc glVertexAttribPointerNV*(index: TGLuint, size: TGLint, thetype: TGLenum,
                               stride: TGLsizei, pointer: PGLvoid){.
     dynlib: dllname, importc: "glVertexAttribPointerNV".}
-proc glVertexAttrib1sNV*(index: TGLuint, x: TGLshort){.dynlib: dllname, 
+proc glVertexAttrib1sNV*(index: TGLuint, x: TGLshort){.dynlib: dllname,
     importc: "glVertexAttrib1sNV".}
-proc glVertexAttrib1fNV*(index: TGLuint, x: TGLfloat){.dynlib: dllname, 
+proc glVertexAttrib1fNV*(index: TGLuint, x: TGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib1fNV".}
-proc glVertexAttrib1dNV*(index: TGLuint, x: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib1dNV*(index: TGLuint, x: TGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib1dNV".}
 proc glVertexAttrib2sNV*(index: TGLuint, x: TGLshort, y: TGLshort){.
     dynlib: dllname, importc: "glVertexAttrib2sNV".}
@@ -2574,46 +2574,46 @@ proc glVertexAttrib3sNV*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort){
     dynlib: dllname, importc: "glVertexAttrib3sNV".}
 proc glVertexAttrib3fNV*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glVertexAttrib3fNV".}
-proc glVertexAttrib3dNV*(index: TGLuint, x: TGLdouble, y: TGLdouble, 
-                         z: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib3dNV*(index: TGLuint, x: TGLdouble, y: TGLdouble,
+                         z: TGLdouble){.dynlib: dllname,
                                         importc: "glVertexAttrib3dNV".}
-proc glVertexAttrib4sNV*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort, 
-                         w: TGLshort){.dynlib: dllname, 
+proc glVertexAttrib4sNV*(index: TGLuint, x: TGLshort, y: TGLshort, z: TGLshort,
+                         w: TGLshort){.dynlib: dllname,
                                        importc: "glVertexAttrib4sNV".}
-proc glVertexAttrib4fNV*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat, 
-                         w: TGLfloat){.dynlib: dllname, 
+proc glVertexAttrib4fNV*(index: TGLuint, x: TGLfloat, y: TGLfloat, z: TGLfloat,
+                         w: TGLfloat){.dynlib: dllname,
                                        importc: "glVertexAttrib4fNV".}
-proc glVertexAttrib4dNV*(index: TGLuint, x: TGLdouble, y: TGLdouble, 
-                         z: TGLdouble, w: TGLdouble){.dynlib: dllname, 
+proc glVertexAttrib4dNV*(index: TGLuint, x: TGLdouble, y: TGLdouble,
+                         z: TGLdouble, w: TGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib4dNV".}
-proc glVertexAttrib4ubNV*(index: TGLuint, x: TGLubyte, y: TGLubyte, z: TGLubyte, 
-                          w: TGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4ubNV*(index: TGLuint, x: TGLubyte, y: TGLubyte, z: TGLubyte,
+                          w: TGLubyte){.dynlib: dllname,
                                         importc: "glVertexAttrib4ubNV".}
-proc glVertexAttrib1svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib1svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib1svNV".}
-proc glVertexAttrib1fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib1fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib1fvNV".}
-proc glVertexAttrib1dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib1dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib1dvNV".}
-proc glVertexAttrib2svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib2svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib2svNV".}
-proc glVertexAttrib2fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib2fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib2fvNV".}
-proc glVertexAttrib2dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib2dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib2dvNV".}
-proc glVertexAttrib3svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib3svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib3svNV".}
-proc glVertexAttrib3fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib3fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib3fvNV".}
-proc glVertexAttrib3dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib3dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib3dvNV".}
-proc glVertexAttrib4svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname, 
+proc glVertexAttrib4svNV*(index: TGLuint, v: PGLshort){.dynlib: dllname,
     importc: "glVertexAttrib4svNV".}
-proc glVertexAttrib4fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname, 
+proc glVertexAttrib4fvNV*(index: TGLuint, v: PGLfloat){.dynlib: dllname,
     importc: "glVertexAttrib4fvNV".}
-proc glVertexAttrib4dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname, 
+proc glVertexAttrib4dvNV*(index: TGLuint, v: PGLdouble){.dynlib: dllname,
     importc: "glVertexAttrib4dvNV".}
-proc glVertexAttrib4ubvNV*(index: TGLuint, v: PGLubyte){.dynlib: dllname, 
+proc glVertexAttrib4ubvNV*(index: TGLuint, v: PGLubyte){.dynlib: dllname,
     importc: "glVertexAttrib4ubvNV".}
 proc glVertexAttribs1svNV*(index: TGLuint, n: TGLsizei, v: PGLshort){.
     dynlib: dllname, importc: "glVertexAttribs1svNV".}
@@ -2643,20 +2643,20 @@ proc glVertexAttribs4ubvNV*(index: TGLuint, n: TGLsizei, v: PGLubyte){.
     dynlib: dllname, importc: "glVertexAttribs4ubvNV".}
   #***** GL_NV_vertex_program1_1 *****//
   #***** GL_ATI_element_array *****//
-const 
+const
   GL_ELEMENT_ARRAY_ATI* = 0x00008768
   GL_ELEMENT_ARRAY_TYPE_ATI* = 0x00008769
   GL_ELEMENT_ARRAY_POINTER_ATI* = 0x0000876A
 
-proc glElementPointerATI*(thetype: TGLenum, pointer: PGLvoid){.dynlib: dllname, 
+proc glElementPointerATI*(thetype: TGLenum, pointer: PGLvoid){.dynlib: dllname,
     importc: "glElementPointerATI".}
-proc glDrawElementArrayATI*(mode: TGLenum, count: TGLsizei){.dynlib: dllname, 
+proc glDrawElementArrayATI*(mode: TGLenum, count: TGLsizei){.dynlib: dllname,
     importc: "glDrawElementArrayATI".}
-proc glDrawRangeElementArrayATI*(mode: TGLenum, start: TGLuint, theend: TGLuint, 
-                                 count: TGLsizei){.dynlib: dllname, 
+proc glDrawRangeElementArrayATI*(mode: TGLenum, start: TGLuint, theend: TGLuint,
+                                 count: TGLsizei){.dynlib: dllname,
     importc: "glDrawRangeElementArrayATI".}
   #***** GL_ATI_envmap_bumpmap *****//
-const 
+const
   GL_BUMP_ROT_MATRIX_ATI* = 0x00008775
   GL_BUMP_ROT_MATRIX_SIZE_ATI* = 0x00008776
   GL_BUMP_NUM_TEX_UNITS_ATI* = 0x00008777
@@ -2666,16 +2666,16 @@ const
   GL_BUMP_ENVMAP_ATI* = 0x0000877B
   GL_BUMP_TARGET_ATI* = 0x0000877C
 
-proc glTexBumpParameterivATI*(pname: TGLenum, param: PGLint){.dynlib: dllname, 
+proc glTexBumpParameterivATI*(pname: TGLenum, param: PGLint){.dynlib: dllname,
     importc: "glTexBumpParameterivATI".}
-proc glTexBumpParameterfvATI*(pname: TGLenum, param: PGLfloat){.dynlib: dllname, 
+proc glTexBumpParameterfvATI*(pname: TGLenum, param: PGLfloat){.dynlib: dllname,
     importc: "glTexBumpParameterfvATI".}
 proc glGetTexBumpParameterivATI*(pname: TGLenum, param: PGLint){.
     dynlib: dllname, importc: "glGetTexBumpParameterivATI".}
 proc glGetTexBumpParameterfvATI*(pname: TGLenum, param: PGLfloat){.
     dynlib: dllname, importc: "glGetTexBumpParameterfvATI".}
   #***** GL_ATI_fragment_shader *****//
-const 
+const
   GL_FRAGMENT_SHADER_ATI* = 0x00008920
   GL_REG_0_ATI* = 0x00008921
   GL_REG_1_ATI* = 0x00008922
@@ -2721,51 +2721,51 @@ const
   GL_NEGATE_BIT_ATI* = 0x00000004
   GL_BIAS_BIT_ATI* = 0x00000008
 
-proc glGenFragmentShadersATI*(range: TGLuint): TGLuint{.dynlib: dllname, 
+proc glGenFragmentShadersATI*(range: TGLuint): TGLuint{.dynlib: dllname,
     importc: "glGenFragmentShadersATI".}
-proc glBindFragmentShaderATI*(id: TGLuint){.dynlib: dllname, 
+proc glBindFragmentShaderATI*(id: TGLuint){.dynlib: dllname,
     importc: "glBindFragmentShaderATI".}
-proc glDeleteFragmentShaderATI*(id: TGLuint){.dynlib: dllname, 
+proc glDeleteFragmentShaderATI*(id: TGLuint){.dynlib: dllname,
     importc: "glDeleteFragmentShaderATI".}
-proc glBeginFragmentShaderATI*(){.dynlib: dllname, 
+proc glBeginFragmentShaderATI*(){.dynlib: dllname,
                                   importc: "glBeginFragmentShaderATI".}
-proc glEndFragmentShaderATI*(){.dynlib: dllname, 
+proc glEndFragmentShaderATI*(){.dynlib: dllname,
                                 importc: "glEndFragmentShaderATI".}
 proc glPassTexCoordATI*(dst: TGLuint, coord: TGLuint, swizzle: TGLenum){.
     dynlib: dllname, importc: "glPassTexCoordATI".}
 proc glSampleMapATI*(dst: TGLuint, interp: TGLuint, swizzle: TGLenum){.
     dynlib: dllname, importc: "glSampleMapATI".}
-proc glColorFragmentOp1ATI*(op: TGLenum, dst: TGLuint, dstMask: TGLuint, 
-                            dstMod: TGLuint, arg1: TGLuint, arg1Rep: TGLuint, 
-                            arg1Mod: TGLuint){.dynlib: dllname, 
+proc glColorFragmentOp1ATI*(op: TGLenum, dst: TGLuint, dstMask: TGLuint,
+                            dstMod: TGLuint, arg1: TGLuint, arg1Rep: TGLuint,
+                            arg1Mod: TGLuint){.dynlib: dllname,
     importc: "glColorFragmentOp1ATI".}
-proc glColorFragmentOp2ATI*(op: TGLenum, dst: TGLuint, dstMask: TGLuint, 
-                            dstMod: TGLuint, arg1: TGLuint, arg1Rep: TGLuint, 
-                            arg1Mod: TGLuint, arg2: TGLuint, arg2Rep: TGLuint, 
-                            arg2Mod: TGLuint){.dynlib: dllname, 
+proc glColorFragmentOp2ATI*(op: TGLenum, dst: TGLuint, dstMask: TGLuint,
+                            dstMod: TGLuint, arg1: TGLuint, arg1Rep: TGLuint,
+                            arg1Mod: TGLuint, arg2: TGLuint, arg2Rep: TGLuint,
+                            arg2Mod: TGLuint){.dynlib: dllname,
     importc: "glColorFragmentOp2ATI".}
-proc glColorFragmentOp3ATI*(op: TGLenum, dst: TGLuint, dstMask: TGLuint, 
-                            dstMod: TGLuint, arg1: TGLuint, arg1Rep: TGLuint, 
-                            arg1Mod: TGLuint, arg2: TGLuint, arg2Rep: TGLuint, 
-                            arg2Mod: TGLuint, arg3: TGLuint, arg3Rep: TGLuint, 
-                            arg3Mod: TGLuint){.dynlib: dllname, 
+proc glColorFragmentOp3ATI*(op: TGLenum, dst: TGLuint, dstMask: TGLuint,
+                            dstMod: TGLuint, arg1: TGLuint, arg1Rep: TGLuint,
+                            arg1Mod: TGLuint, arg2: TGLuint, arg2Rep: TGLuint,
+                            arg2Mod: TGLuint, arg3: TGLuint, arg3Rep: TGLuint,
+                            arg3Mod: TGLuint){.dynlib: dllname,
     importc: "glColorFragmentOp3ATI".}
-proc glAlphaFragmentOp1ATI*(op: TGLenum, dst: TGLuint, dstMod: TGLuint, 
+proc glAlphaFragmentOp1ATI*(op: TGLenum, dst: TGLuint, dstMod: TGLuint,
                             arg1: TGLuint, arg1Rep: TGLuint, arg1Mod: TGLuint){.
     dynlib: dllname, importc: "glAlphaFragmentOp1ATI".}
-proc glAlphaFragmentOp2ATI*(op: TGLenum, dst: TGLuint, dstMod: TGLuint, 
-                            arg1: TGLuint, arg1Rep: TGLuint, arg1Mod: TGLuint, 
+proc glAlphaFragmentOp2ATI*(op: TGLenum, dst: TGLuint, dstMod: TGLuint,
+                            arg1: TGLuint, arg1Rep: TGLuint, arg1Mod: TGLuint,
                             arg2: TGLuint, arg2Rep: TGLuint, arg2Mod: TGLuint){.
     dynlib: dllname, importc: "glAlphaFragmentOp2ATI".}
-proc glAlphaFragmentOp3ATI*(op: TGLenum, dst: TGLuint, dstMod: TGLuint, 
-                            arg1: TGLuint, arg1Rep: TGLuint, arg1Mod: TGLuint, 
-                            arg2: TGLuint, arg2Rep: TGLuint, arg2Mod: TGLuint, 
+proc glAlphaFragmentOp3ATI*(op: TGLenum, dst: TGLuint, dstMod: TGLuint,
+                            arg1: TGLuint, arg1Rep: TGLuint, arg1Mod: TGLuint,
+                            arg2: TGLuint, arg2Rep: TGLuint, arg2Mod: TGLuint,
                             arg3: TGLuint, arg3Rep: TGLuint, arg3Mod: TGLuint){.
     dynlib: dllname, importc: "glAlphaFragmentOp3ATI".}
 proc glSetFragmentShaderConstantATI*(dst: TGLuint, value: PGLfloat){.
     dynlib: dllname, importc: "glSetFragmentShaderConstantATI".}
   #***** GL_ATI_pn_triangles *****//
-const 
+const
   GL_PN_TRIANGLES_ATI* = 0x000087F0
   GL_MAX_PN_TRIANGLES_TESSELATION_LEVEL_ATI* = 0x000087F1
   GL_PN_TRIANGLES_POINT_MODE_ATI* = 0x000087F2
@@ -2776,17 +2776,17 @@ const
   GL_PN_TRIANGLES_NORMAL_MODE_LINEAR_ATI* = 0x000087F7
   GL_PN_TRIANGLES_NORMAL_MODE_QUADRATIC_ATI* = 0x000087F8
 
-proc glPNTrianglesiATI*(pname: TGLenum, param: TGLint){.dynlib: dllname, 
+proc glPNTrianglesiATI*(pname: TGLenum, param: TGLint){.dynlib: dllname,
     importc: "glPNTrianglesiATI".}
-proc glPNTrianglesfATI*(pname: TGLenum, param: TGLfloat){.dynlib: dllname, 
+proc glPNTrianglesfATI*(pname: TGLenum, param: TGLfloat){.dynlib: dllname,
     importc: "glPNTrianglesfATI".}
   #***** GL_ATI_texture_mirror_once *****//
-const 
+const
   GL_MIRROR_CLAMP_ATI* = 0x00008742
   GL_MIRROR_CLAMP_TO_EDGE_ATI* = 0x00008743
   #***** GL_ATI_vertex_array_object *****//
 
-const 
+const
   GL_STATIC_ATI* = 0x00008760
   GL_DYNAMIC_ATI* = 0x00008761
   GL_PRESERVE_ATI* = 0x00008762
@@ -2798,25 +2798,25 @@ const
 
 proc glNewObjectBufferATI*(size: TGLsizei, pointer: PGLvoid, usage: TGLenum): TGLuint{.
     dynlib: dllname, importc: "glNewObjectBufferATI".}
-proc glIsObjectBufferATI*(buffer: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsObjectBufferATI*(buffer: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsObjectBufferATI".}
-proc glUpdateObjectBufferATI*(buffer: TGLuint, offset: TGLuint, size: TGLsizei, 
+proc glUpdateObjectBufferATI*(buffer: TGLuint, offset: TGLuint, size: TGLsizei,
                               pointer: PGLvoid, preserve: TGLenum){.
     dynlib: dllname, importc: "glUpdateObjectBufferATI".}
 proc glGetObjectBufferfvATI*(buffer: TGLuint, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetObjectBufferfvATI".}
 proc glGetObjectBufferivATI*(buffer: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetObjectBufferivATI".}
-proc glDeleteObjectBufferATI*(buffer: TGLuint){.dynlib: dllname, 
+proc glDeleteObjectBufferATI*(buffer: TGLuint){.dynlib: dllname,
     importc: "glDeleteObjectBufferATI".}
-proc glArrayObjectATI*(thearray: TGLenum, size: TGLint, thetype: TGLenum, 
+proc glArrayObjectATI*(thearray: TGLenum, size: TGLint, thetype: TGLenum,
                        stride: TGLsizei, buffer: TGLuint, offset: TGLuint){.
     dynlib: dllname, importc: "glArrayObjectATI".}
 proc glGetArrayObjectfvATI*(thearray: TGLenum, pname: TGLenum, params: PGLfloat){.
     dynlib: dllname, importc: "glGetArrayObjectfvATI".}
 proc glGetArrayObjectivATI*(thearray: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetArrayObjectivATI".}
-proc glVariantArrayObjectATI*(id: TGLuint, thetype: TGLenum, stride: TGLsizei, 
+proc glVariantArrayObjectATI*(id: TGLuint, thetype: TGLenum, stride: TGLsizei,
                               buffer: TGLuint, offset: TGLuint){.
     dynlib: dllname, importc: "glVariantArrayObjectATI".}
 proc glGetVariantArrayObjectfvATI*(id: TGLuint, pname: TGLenum, params: PGLfloat){.
@@ -2824,7 +2824,7 @@ proc glGetVariantArrayObjectfvATI*(id: TGLuint, pname: TGLenum, params: PGLfloat
 proc glGetVariantArrayObjectivATI*(id: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetVariantArrayObjectivATI".}
   #***** GL_ATI_vertex_streams *****//
-const 
+const
   GL_MAX_VERTEX_STREAMS_ATI* = 0x0000876B
   GL_VERTEX_STREAM0_ATI* = 0x0000876C
   GL_VERTEX_STREAM1_ATI* = 0x0000876D
@@ -2836,123 +2836,123 @@ const
   GL_VERTEX_STREAM7_ATI* = 0x00008773
   GL_VERTEX_SOURCE_ATI* = 0x00008774
 
-proc glVertexStream1s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream1s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream1s".}
-proc glVertexStream1i*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream1i*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream1i".}
-proc glVertexStream1f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream1f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream1f".}
-proc glVertexStream1d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream1d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream1d".}
-proc glVertexStream1sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream1sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream1sv".}
-proc glVertexStream1iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream1iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream1iv".}
-proc glVertexStream1fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream1fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream1fv".}
-proc glVertexStream1dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream1dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream1dv".}
-proc glVertexStream2s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream2s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream2s".}
-proc glVertexStream2i*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream2i*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream2i".}
-proc glVertexStream2f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream2f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream2f".}
-proc glVertexStream2d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream2d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream2d".}
-proc glVertexStream2sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream2sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream2sv".}
-proc glVertexStream2iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream2iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream2iv".}
-proc glVertexStream2fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream2fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream2fv".}
-proc glVertexStream2dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream2dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream2dv".}
-proc glVertexStream3s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream3s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream3s".}
-proc glVertexStream3i*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream3i*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream3i".}
-proc glVertexStream3f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream3f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream3f".}
-proc glVertexStream3d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream3d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream3d".}
-proc glVertexStream3sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream3sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream3sv".}
-proc glVertexStream3iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream3iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream3iv".}
-proc glVertexStream3fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream3fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream3fv".}
-proc glVertexStream3dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream3dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream3dv".}
-proc glVertexStream4s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream4s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream4s".}
-proc glVertexStream4i*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream4i*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream4i".}
-proc glVertexStream4f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream4f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream4f".}
-proc glVertexStream4d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream4d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream4d".}
-proc glVertexStream4sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glVertexStream4sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glVertexStream4sv".}
-proc glVertexStream4iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glVertexStream4iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glVertexStream4iv".}
-proc glVertexStream4fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glVertexStream4fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glVertexStream4fv".}
-proc glVertexStream4dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glVertexStream4dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glVertexStream4dv".}
-proc glNormalStream3b*(stream: TGLenum, coords: TGLByte){.dynlib: dllname, 
+proc glNormalStream3b*(stream: TGLenum, coords: TGLByte){.dynlib: dllname,
     importc: "glNormalStream3b".}
-proc glNormalStream3s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glNormalStream3s*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glNormalStream3s".}
-proc glNormalStream3i*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glNormalStream3i*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glNormalStream3i".}
-proc glNormalStream3f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glNormalStream3f*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glNormalStream3f".}
-proc glNormalStream3d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glNormalStream3d*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glNormalStream3d".}
-proc glNormalStream3bv*(stream: TGLenum, coords: TGLByte){.dynlib: dllname, 
+proc glNormalStream3bv*(stream: TGLenum, coords: TGLByte){.dynlib: dllname,
     importc: "glNormalStream3bv".}
-proc glNormalStream3sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname, 
+proc glNormalStream3sv*(stream: TGLenum, coords: TGLshort){.dynlib: dllname,
     importc: "glNormalStream3sv".}
-proc glNormalStream3iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname, 
+proc glNormalStream3iv*(stream: TGLenum, coords: TGLint){.dynlib: dllname,
     importc: "glNormalStream3iv".}
-proc glNormalStream3fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname, 
+proc glNormalStream3fv*(stream: TGLenum, coords: TGLfloat){.dynlib: dllname,
     importc: "glNormalStream3fv".}
-proc glNormalStream3dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname, 
+proc glNormalStream3dv*(stream: TGLenum, coords: TGLdouble){.dynlib: dllname,
     importc: "glNormalStream3dv".}
-proc glClientActiveVertexStream*(stream: TGLenum){.dynlib: dllname, 
+proc glClientActiveVertexStream*(stream: TGLenum){.dynlib: dllname,
     importc: "glClientActiveVertexStream".}
-proc glVertexBlendEnvi*(pname: TGLenum, param: TGLint){.dynlib: dllname, 
+proc glVertexBlendEnvi*(pname: TGLenum, param: TGLint){.dynlib: dllname,
     importc: "glVertexBlendEnvi".}
-proc glVertexBlendEnvf*(pname: TGLenum, param: TGLfloat){.dynlib: dllname, 
+proc glVertexBlendEnvf*(pname: TGLenum, param: TGLfloat){.dynlib: dllname,
     importc: "glVertexBlendEnvf".}
   #***** GL_3DFX_texture_compression_FXT1 *****//
-const 
+const
   GL_COMPRESSED_RGB_FXT1_3DFX* = 0x000086B0
   GL_COMPRESSED_RGBA_FXT1_3DFX* = 0x000086B1
   #***** GL_IBM_cull_vertex *****//
 
-const 
+const
   GL_CULL_VERTEX_IBM* = 0x0001928A
   #***** GL_IBM_multimode_draw_arrays *****//
 
-proc glMultiModeDrawArraysIBM*(mode: PGLenum, first: PGLint, count: PGLsizei, 
+proc glMultiModeDrawArraysIBM*(mode: PGLenum, first: PGLint, count: PGLsizei,
                                primcount: TGLsizei, modestride: TGLint){.
     dynlib: dllname, importc: "glMultiModeDrawArraysIBM".}
-proc glMultiModeDrawElementsIBM*(mode: PGLenum, count: PGLsizei, 
-                                 thetype: TGLenum, indices: PGLvoid, 
+proc glMultiModeDrawElementsIBM*(mode: PGLenum, count: PGLsizei,
+                                 thetype: TGLenum, indices: PGLvoid,
                                  primcount: TGLsizei, modestride: TGLint){.
     dynlib: dllname, importc: "glMultiModeDrawElementsIBM".}
   #***** GL_IBM_raster_pos_clip *****//
-const 
+const
   GL_RASTER_POSITION_UNCLIPPED_IBM* = 0x00019262
   #***** GL_IBM_texture_mirrored_repeat *****//
 
-const 
+const
   GL_MIRRORED_REPEAT_IBM* = 0x00008370
   #***** GL_IBM_vertex_array_lists *****//
 
-const 
+const
   GL_VERTEX_ARRAY_LIST_IBM* = 0x0001929E
   GL_NORMAL_ARRAY_LIST_IBM* = 0x0001929F
   GL_COLOR_ARRAY_LIST_IBM* = 0x000192A0
@@ -2970,62 +2970,62 @@ const
   GL_FOG_COORDINATE_ARRAY_LIST_STRIDE_IBM* = 0x000192AE
   GL_SECONDARY_COLOR_ARRAY_LIST_STRIDE_IBM* = 0x000192AF
 
-proc glColorPointerListIBM*(size: TGLint, thetype: TGLenum, stride: TGLint, 
+proc glColorPointerListIBM*(size: TGLint, thetype: TGLenum, stride: TGLint,
                             pointer: PGLvoid, ptrstride: TGLint){.
     dynlib: dllname, importc: "glColorPointerListIBM".}
-proc glSecondaryColorPointerListIBM*(size: TGLint, thetype: TGLenum, 
-                                     stride: TGLint, pointer: PGLvoid, 
-                                     ptrstride: TGLint){.dynlib: dllname, 
+proc glSecondaryColorPointerListIBM*(size: TGLint, thetype: TGLenum,
+                                     stride: TGLint, pointer: PGLvoid,
+                                     ptrstride: TGLint){.dynlib: dllname,
     importc: "glSecondaryColorPointerListIBM".}
-proc glEdgeFlagPointerListIBM*(stride: TGLint, pointer: PGLboolean, 
-                               ptrstride: TGLint){.dynlib: dllname, 
+proc glEdgeFlagPointerListIBM*(stride: TGLint, pointer: PGLboolean,
+                               ptrstride: TGLint){.dynlib: dllname,
     importc: "glEdgeFlagPointerListIBM".}
-proc glFogCoordPointerListIBM*(thetype: TGLenum, stride: TGLint, 
+proc glFogCoordPointerListIBM*(thetype: TGLenum, stride: TGLint,
                                pointer: PGLvoid, ptrstride: TGLint){.
     dynlib: dllname, importc: "glFogCoordPointerListIBM".}
-proc glNormalPointerListIBM*(thetype: TGLenum, stride: TGLint, pointer: PGLvoid, 
-                             ptrstride: TGLint){.dynlib: dllname, 
+proc glNormalPointerListIBM*(thetype: TGLenum, stride: TGLint, pointer: PGLvoid,
+                             ptrstride: TGLint){.dynlib: dllname,
     importc: "glNormalPointerListIBM".}
-proc glTexCoordPointerListIBM*(size: TGLint, thetype: TGLenum, stride: TGLint, 
+proc glTexCoordPointerListIBM*(size: TGLint, thetype: TGLenum, stride: TGLint,
                                pointer: PGLvoid, ptrstride: TGLint){.
     dynlib: dllname, importc: "glTexCoordPointerListIBM".}
-proc glVertexPointerListIBM*(size: TGLint, thetype: TGLenum, stride: TGLint, 
+proc glVertexPointerListIBM*(size: TGLint, thetype: TGLenum, stride: TGLint,
                              pointer: PGLvoid, ptrstride: TGLint){.
     dynlib: dllname, importc: "glVertexPointerListIBM".}
   #***** GL_MESA_resize_buffers *****//
 proc glResizeBuffersMESA*(){.dynlib: dllname, importc: "glResizeBuffersMESA".}
   #***** GL_MESA_window_pos *****//
-proc glWindowPos2dMESA*(x: TGLdouble, y: TGLdouble){.dynlib: dllname, 
+proc glWindowPos2dMESA*(x: TGLdouble, y: TGLdouble){.dynlib: dllname,
     importc: "glWindowPos2dMESA".}
-proc glWindowPos2fMESA*(x: TGLfloat, y: TGLfloat){.dynlib: dllname, 
+proc glWindowPos2fMESA*(x: TGLfloat, y: TGLfloat){.dynlib: dllname,
     importc: "glWindowPos2fMESA".}
-proc glWindowPos2iMESA*(x: TGLint, y: TGLint){.dynlib: dllname, 
+proc glWindowPos2iMESA*(x: TGLint, y: TGLint){.dynlib: dllname,
     importc: "glWindowPos2iMESA".}
-proc glWindowPos2sMESA*(x: TGLshort, y: TGLshort){.dynlib: dllname, 
+proc glWindowPos2sMESA*(x: TGLshort, y: TGLshort){.dynlib: dllname,
     importc: "glWindowPos2sMESA".}
-proc glWindowPos2ivMESA*(p: PGLint){.dynlib: dllname, 
+proc glWindowPos2ivMESA*(p: PGLint){.dynlib: dllname,
                                      importc: "glWindowPos2ivMESA".}
-proc glWindowPos2svMESA*(p: PGLshort){.dynlib: dllname, 
+proc glWindowPos2svMESA*(p: PGLshort){.dynlib: dllname,
                                        importc: "glWindowPos2svMESA".}
-proc glWindowPos2fvMESA*(p: PGLfloat){.dynlib: dllname, 
+proc glWindowPos2fvMESA*(p: PGLfloat){.dynlib: dllname,
                                        importc: "glWindowPos2fvMESA".}
-proc glWindowPos2dvMESA*(p: PGLdouble){.dynlib: dllname, 
+proc glWindowPos2dvMESA*(p: PGLdouble){.dynlib: dllname,
                                         importc: "glWindowPos2dvMESA".}
-proc glWindowPos3iMESA*(x: TGLint, y: TGLint, z: TGLint){.dynlib: dllname, 
+proc glWindowPos3iMESA*(x: TGLint, y: TGLint, z: TGLint){.dynlib: dllname,
     importc: "glWindowPos3iMESA".}
-proc glWindowPos3sMESA*(x: TGLshort, y: TGLshort, z: TGLshort){.dynlib: dllname, 
+proc glWindowPos3sMESA*(x: TGLshort, y: TGLshort, z: TGLshort){.dynlib: dllname,
     importc: "glWindowPos3sMESA".}
-proc glWindowPos3fMESA*(x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glWindowPos3fMESA*(x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glWindowPos3fMESA".}
 proc glWindowPos3dMESA*(x: TGLdouble, y: TGLdouble, z: TGLdouble){.
     dynlib: dllname, importc: "glWindowPos3dMESA".}
-proc glWindowPos3ivMESA*(p: PGLint){.dynlib: dllname, 
+proc glWindowPos3ivMESA*(p: PGLint){.dynlib: dllname,
                                      importc: "glWindowPos3ivMESA".}
-proc glWindowPos3svMESA*(p: PGLshort){.dynlib: dllname, 
+proc glWindowPos3svMESA*(p: PGLshort){.dynlib: dllname,
                                        importc: "glWindowPos3svMESA".}
-proc glWindowPos3fvMESA*(p: PGLfloat){.dynlib: dllname, 
+proc glWindowPos3fvMESA*(p: PGLfloat){.dynlib: dllname,
                                        importc: "glWindowPos3fvMESA".}
-proc glWindowPos3dvMESA*(p: PGLdouble){.dynlib: dllname, 
+proc glWindowPos3dvMESA*(p: PGLdouble){.dynlib: dllname,
                                         importc: "glWindowPos3dvMESA".}
 proc glWindowPos4iMESA*(x: TGLint, y: TGLint, z: TGLint, w: TGLint){.
     dynlib: dllname, importc: "glWindowPos4iMESA".}
@@ -3035,21 +3035,21 @@ proc glWindowPos4fMESA*(x: TGLfloat, y: TGLfloat, z: TGLfloat, w: TGLfloat){.
     dynlib: dllname, importc: "glWindowPos4fMESA".}
 proc glWindowPos4dMESA*(x: TGLdouble, y: TGLdouble, z: TGLdouble, w: TGLdouble){.
     dynlib: dllname, importc: "glWindowPos4dMESA".}
-proc glWindowPos4ivMESA*(p: PGLint){.dynlib: dllname, 
+proc glWindowPos4ivMESA*(p: PGLint){.dynlib: dllname,
                                      importc: "glWindowPos4ivMESA".}
-proc glWindowPos4svMESA*(p: PGLshort){.dynlib: dllname, 
+proc glWindowPos4svMESA*(p: PGLshort){.dynlib: dllname,
                                        importc: "glWindowPos4svMESA".}
-proc glWindowPos4fvMESA*(p: PGLfloat){.dynlib: dllname, 
+proc glWindowPos4fvMESA*(p: PGLfloat){.dynlib: dllname,
                                        importc: "glWindowPos4fvMESA".}
-proc glWindowPos4dvMESA*(p: PGLdouble){.dynlib: dllname, 
+proc glWindowPos4dvMESA*(p: PGLdouble){.dynlib: dllname,
                                         importc: "glWindowPos4dvMESA".}
   #***** GL_OML_interlace *****//
-const 
+const
   GL_INTERLACE_OML* = 0x00008980
   GL_INTERLACE_READ_OML* = 0x00008981
   #***** GL_OML_resample *****//
 
-const 
+const
   GL_PACK_RESAMPLE_OML* = 0x00008984
   GL_UNPACK_RESAMPLE_OML* = 0x00008985
   GL_RESAMPLE_REPLICATE_OML* = 0x00008986
@@ -3058,17 +3058,17 @@ const
   GL_RESAMPLE_DECIMATE_OML* = 0x00008989 # GL_RESAMPLE_AVERAGE_OML  { already defined }
   #***** GL_OML_subsample *****//
 
-const 
+const
   GL_FORMAT_SUBSAMPLE_24_24_OML* = 0x00008982
   GL_FORMAT_SUBSAMPLE_244_244_OML* = 0x00008983
   #***** GL_SGIS_generate_mipmap *****//
 
-const 
+const
   GL_GENERATE_MIPMAP_SGIS* = 0x00008191
   GL_GENERATE_MIPMAP_HINT_SGIS* = 0x00008192
   #***** GL_SGIS_multisample *****//
 
-const 
+const
   GLX_SAMPLE_BUFFERS_SGIS* = 0x000186A0
   GLX_SAMPLES_SGIS* = 0x000186A1
   GL_MULTISAMPLE_SGIS* = 0x0000809D
@@ -3089,12 +3089,12 @@ const
   GL_SAMPLE_MASK_INVERT_SGIS* = 0x000080AB
   constGL_SAMPLE_PATTERN_SGIS* = 0x000080AC
 
-proc glSampleMaskSGIS*(value: TGLclampf, invert: TGLboolean){.dynlib: dllname, 
+proc glSampleMaskSGIS*(value: TGLclampf, invert: TGLboolean){.dynlib: dllname,
     importc: "glSampleMaskSGIS".}
-proc glSamplePatternSGIS*(pattern: TGLenum){.dynlib: dllname, 
+proc glSamplePatternSGIS*(pattern: TGLenum){.dynlib: dllname,
     importc: "glSamplePatternSGIS".}
   #***** GL_SGIS_pixel_texture *****//
-const 
+const
   GL_PIXEL_TEXTURE_SGIS* = 0x00008353
   GL_PIXEL_FRAGMENT_RGB_SOURCE_SGIS* = 0x00008354
   GL_PIXEL_FRAGMENT_ALPHA_SOURCE_SGIS* = 0x00008355
@@ -3111,44 +3111,44 @@ proc glGetPixelTexGenParameterfvSGIS*(pname: TGLenum, params: TGLfloat){.
   #***** GL_SGIS_texture_border_clamp *****//
   # GL_CLAMP_TO_BORDER_SGIS  { already defined }
   #***** GL_SGIS_texture_color_mask *****//
-const 
+const
   GL_TEXTURE_COLOR_WRITEMASK_SGIS* = 0x000081EF
 
-proc glTextureColorMaskSGIS*(r: TGLboolean, g: TGLboolean, b: TGLboolean, 
-                             a: TGLboolean){.dynlib: dllname, 
+proc glTextureColorMaskSGIS*(r: TGLboolean, g: TGLboolean, b: TGLboolean,
+                             a: TGLboolean){.dynlib: dllname,
     importc: "glTextureColorMaskSGIS".}
   #***** GL_SGIS_texture_edge_clamp *****//
-const 
+const
   GL_CLAMP_TO_EDGE_SGIS* = 0x0000812F
   #***** GL_SGIS_texture_lod *****//
 
-const 
+const
   GL_TEXTURE_MIN_LOD_SGIS* = 0x0000813A
   GL_TEXTURE_MAX_LOD_SGIS* = 0x0000813B
   GL_TEXTURE_BASE_LEVEL_SGIS* = 0x0000813C
   GL_TEXTURE_MAX_LEVEL_SGIS* = 0x0000813D
   #***** GL_SGIS_depth_texture *****//
 
-const 
+const
   GL_DEPTH_COMPONENT16_SGIX* = 0x000081A5
   GL_DEPTH_COMPONENT24_SGIX* = 0x000081A6
   GL_DEPTH_COMPONENT32_SGIX* = 0x000081A7
   #***** GL_SGIX_fog_offset *****//
 
-const 
+const
   GL_FOG_OFFSET_SGIX* = 0x00008198
   GL_FOG_OFFSET_VALUE_SGIX* = 0x00008199
   #***** GL_SGIX_interlace *****//
 
-const 
+const
   GL_INTERLACE_SGIX* = 0x00008094
   #***** GL_SGIX_shadow_ambient *****//
 
-const 
+const
   GL_SHADOW_AMBIENT_SGIX* = 0x000080BF
   #***** GL_SGI_color_matrix *****//
 
-const 
+const
   GL_COLOR_MATRIX_SGI* = 0x000080B1
   GL_COLOR_MATRIX_STACK_DEPTH_SGI* = 0x000080B2
   GL_MAX_COLOR_MATRIX_STACK_DEPTH_SGI* = 0x000080B3
@@ -3162,7 +3162,7 @@ const
   GL_POST_COLOR_MATRIX_ALPHA_BIAS_SGI* = 0x000080BB
   #***** GL_SGI_color_table *****//
 
-const 
+const
   constGL_COLOR_TABLE_SGI* = 0x000080D0
   GL_POST_CONVOLUTION_COLOR_TABLE_SGI* = 0x000080D1
   GL_POST_COLOR_MATRIX_COLOR_TABLE_SGI* = 0x000080D2
@@ -3180,151 +3180,151 @@ const
   GL_COLOR_TABLE_LUMINANCE_SIZE_SGI* = 0x000080DE
   GL_COLOR_TABLE_INTENSITY_SIZE_SGI* = 0x000080DF
 
-proc glColorTableSGI*(target: TGLenum, internalformat: TGLenum, width: TGLsizei, 
+proc glColorTableSGI*(target: TGLenum, internalformat: TGLenum, width: TGLsizei,
                       format: TGLenum, thetype: TGLenum, table: PGLvoid){.
     dynlib: dllname, importc: "glColorTableSGI".}
-proc glCopyColorTableSGI*(target: TGLenum, internalformat: TGLenum, x: TGLint, 
-                          y: TGLint, width: TGLsizei){.dynlib: dllname, 
+proc glCopyColorTableSGI*(target: TGLenum, internalformat: TGLenum, x: TGLint,
+                          y: TGLint, width: TGLsizei){.dynlib: dllname,
     importc: "glCopyColorTableSGI".}
 proc glColorTableParameterivSGI*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glColorTableParameterivSGI".}
-proc glColorTableParameterfvSGI*(target: TGLenum, pname: TGLenum, 
-                                 params: PGLfloat){.dynlib: dllname, 
+proc glColorTableParameterfvSGI*(target: TGLenum, pname: TGLenum,
+                                 params: PGLfloat){.dynlib: dllname,
     importc: "glColorTableParameterfvSGI".}
-proc glGetColorTableSGI*(target: TGLenum, format: TGLenum, thetype: TGLenum, 
-                         table: PGLvoid){.dynlib: dllname, 
+proc glGetColorTableSGI*(target: TGLenum, format: TGLenum, thetype: TGLenum,
+                         table: PGLvoid){.dynlib: dllname,
     importc: "glGetColorTableSGI".}
-proc glGetColorTableParameterivSGI*(target: TGLenum, pname: TGLenum, 
-                                    params: PGLint){.dynlib: dllname, 
+proc glGetColorTableParameterivSGI*(target: TGLenum, pname: TGLenum,
+                                    params: PGLint){.dynlib: dllname,
     importc: "glGetColorTableParameterivSGI".}
-proc glGetColorTableParameterfvSGI*(target: TGLenum, pname: TGLenum, 
-                                    params: PGLfloat){.dynlib: dllname, 
+proc glGetColorTableParameterfvSGI*(target: TGLenum, pname: TGLenum,
+                                    params: PGLfloat){.dynlib: dllname,
     importc: "glGetColorTableParameterfvSGI".}
   #***** GL_SGI_texture_color_table *****//
-const 
+const
   GL_TEXTURE_COLOR_TABLE_SGI* = 0x000080BC
   GL_PROXY_TEXTURE_COLOR_TABLE_SGI* = 0x000080BD
   #***** GL_SUN_vertex *****//
 
-proc glColor4ubVertex2fSUN*(r: TGLubyte, g: TGLubyte, b: TGLubyte, a: TGLubyte, 
-                            x: TGLfloat, y: TGLfloat){.dynlib: dllname, 
+proc glColor4ubVertex2fSUN*(r: TGLubyte, g: TGLubyte, b: TGLubyte, a: TGLubyte,
+                            x: TGLfloat, y: TGLfloat){.dynlib: dllname,
     importc: "glColor4ubVertex2fSUN".}
-proc glColor4ubVertex2fvSUN*(c: PGLubyte, v: PGLfloat){.dynlib: dllname, 
+proc glColor4ubVertex2fvSUN*(c: PGLubyte, v: PGLfloat){.dynlib: dllname,
     importc: "glColor4ubVertex2fvSUN".}
-proc glColor4ubVertex3fSUN*(r: TGLubyte, g: TGLubyte, b: TGLubyte, a: TGLubyte, 
+proc glColor4ubVertex3fSUN*(r: TGLubyte, g: TGLubyte, b: TGLubyte, a: TGLubyte,
                             x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glColor4ubVertex3fSUN".}
-proc glColor4ubVertex3fvSUN*(c: PGLubyte, v: PGLfloat){.dynlib: dllname, 
+proc glColor4ubVertex3fvSUN*(c: PGLubyte, v: PGLfloat){.dynlib: dllname,
     importc: "glColor4ubVertex3fvSUN".}
-proc glColor3fVertex3fSUN*(r: TGLfloat, g: TGLfloat, b: TGLfloat, x: TGLfloat, 
-                           y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glColor3fVertex3fSUN*(r: TGLfloat, g: TGLfloat, b: TGLfloat, x: TGLfloat,
+                           y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glColor3fVertex3fSUN".}
-proc glColor3fVertex3fvSUN*(c: PGLfloat, v: PGLfloat){.dynlib: dllname, 
+proc glColor3fVertex3fvSUN*(c: PGLfloat, v: PGLfloat){.dynlib: dllname,
     importc: "glColor3fVertex3fvSUN".}
-proc glNormal3fVertex3fSUN*(nx: TGLfloat, ny: TGLfloat, nz: TGLfloat, 
+proc glNormal3fVertex3fSUN*(nx: TGLfloat, ny: TGLfloat, nz: TGLfloat,
                             x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glNormal3fVertex3fSUN".}
-proc glNormal3fVertex3fvSUN*(n: PGLfloat, v: PGLfloat){.dynlib: dllname, 
+proc glNormal3fVertex3fvSUN*(n: PGLfloat, v: PGLfloat){.dynlib: dllname,
     importc: "glNormal3fVertex3fvSUN".}
-proc glColor4fNormal3fVertex3fSUN*(r: TGLfloat, g: TGLfloat, b: TGLfloat, 
-                                   a: TGLfloat, nx: TGLfloat, ny: TGLfloat, 
-                                   nz: TGLfloat, x: TGLfloat, y: TGLfloat, 
-                                   z: TGLfloat){.dynlib: dllname, 
+proc glColor4fNormal3fVertex3fSUN*(r: TGLfloat, g: TGLfloat, b: TGLfloat,
+                                   a: TGLfloat, nx: TGLfloat, ny: TGLfloat,
+                                   nz: TGLfloat, x: TGLfloat, y: TGLfloat,
+                                   z: TGLfloat){.dynlib: dllname,
     importc: "glColor4fNormal3fVertex3fSUN".}
 proc glColor4fNormal3fVertex3fvSUN*(c: PGLfloat, n: PGLfloat, v: PGLfloat){.
     dynlib: dllname, importc: "glColor4fNormal3fVertex3fvSUN".}
-proc glTexCoord2fVertex3fSUN*(s: TGLfloat, t: TGLfloat, x: TGLfloat, 
-                              y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glTexCoord2fVertex3fSUN*(s: TGLfloat, t: TGLfloat, x: TGLfloat,
+                              y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glTexCoord2fVertex3fSUN".}
-proc glTexCoord2fVertex3fvSUN*(tc: PGLfloat, v: PGLfloat){.dynlib: dllname, 
+proc glTexCoord2fVertex3fvSUN*(tc: PGLfloat, v: PGLfloat){.dynlib: dllname,
     importc: "glTexCoord2fVertex3fvSUN".}
-proc glTexCoord4fVertex4fSUN*(s: TGLfloat, t: TGLfloat, p: TGLfloat, 
-                              q: TGLfloat, x: TGLfloat, y: TGLfloat, 
-                              z: TGLfloat, w: TGLfloat){.dynlib: dllname, 
+proc glTexCoord4fVertex4fSUN*(s: TGLfloat, t: TGLfloat, p: TGLfloat,
+                              q: TGLfloat, x: TGLfloat, y: TGLfloat,
+                              z: TGLfloat, w: TGLfloat){.dynlib: dllname,
     importc: "glTexCoord4fVertex4fSUN".}
-proc glTexCoord4fVertex4fvSUN*(tc: PGLfloat, v: PGLfloat){.dynlib: dllname, 
+proc glTexCoord4fVertex4fvSUN*(tc: PGLfloat, v: PGLfloat){.dynlib: dllname,
     importc: "glTexCoord4fVertex4fvSUN".}
-proc glTexCoord2fColor4ubVertex3fSUN*(s: TGLfloat, t: TGLfloat, r: TGLubyte, 
-                                      g: TGLubyte, b: TGLubyte, a: TGLubyte, 
+proc glTexCoord2fColor4ubVertex3fSUN*(s: TGLfloat, t: TGLfloat, r: TGLubyte,
+                                      g: TGLubyte, b: TGLubyte, a: TGLubyte,
                                       x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glTexCoord2fColor4ubVertex3fSUN".}
 proc glTexCoord2fColor4ubVertex3fvSUN*(tc: PGLfloat, c: PGLubyte, v: PGLfloat){.
     dynlib: dllname, importc: "glTexCoord2fColor4ubVertex3fvSUN".}
-proc glTexCoord2fColor3fVertex3fSUN*(s: TGLfloat, t: TGLfloat, r: TGLfloat, 
-                                     g: TGLfloat, b: TGLfloat, x: TGLfloat, 
-                                     y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glTexCoord2fColor3fVertex3fSUN*(s: TGLfloat, t: TGLfloat, r: TGLfloat,
+                                     g: TGLfloat, b: TGLfloat, x: TGLfloat,
+                                     y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glTexCoord2fColor3fVertex3fSUN".}
 proc glTexCoord2fColor3fVertex3fvSUN*(tc: PGLfloat, c: PGLfloat, v: PGLfloat){.
     dynlib: dllname, importc: "glTexCoord2fColor3fVertex3fvSUN".}
-proc glTexCoord2fNormal3fVertex3fSUN*(s: TGLfloat, t: TGLfloat, nx: TGLfloat, 
-                                      ny: TGLfloat, nz: TGLfloat, x: TGLfloat, 
+proc glTexCoord2fNormal3fVertex3fSUN*(s: TGLfloat, t: TGLfloat, nx: TGLfloat,
+                                      ny: TGLfloat, nz: TGLfloat, x: TGLfloat,
                                       y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glTexCoord2fNormal3fVertex3fSUN".}
 proc glTexCoord2fNormal3fVertex3fvSUN*(tc: PGLfloat, n: PGLfloat, v: PGLfloat){.
     dynlib: dllname, importc: "glTexCoord2fNormal3fVertex3fvSUN".}
-proc glTexCoord2fColor4fNormal3fVertex3fSUN*(s: TGLfloat, t: TGLfloat, 
-    r: TGLfloat, g: TGLfloat, b: TGLfloat, a: TGLfloat, nx: TGLfloat, 
+proc glTexCoord2fColor4fNormal3fVertex3fSUN*(s: TGLfloat, t: TGLfloat,
+    r: TGLfloat, g: TGLfloat, b: TGLfloat, a: TGLfloat, nx: TGLfloat,
     ny: TGLfloat, nz: TGLfloat, x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glTexCoord2fColor4fNormal3fVertex3fSUN".}
-proc glTexCoord2fColor4fNormal3fVertex3fvSUN*(tc: PGLfloat, c: PGLfloat, 
+proc glTexCoord2fColor4fNormal3fVertex3fvSUN*(tc: PGLfloat, c: PGLfloat,
     n: PGLfloat, v: PGLfloat){.dynlib: dllname, importc: "glTexCoord2fColor4fNormal3fVertex3fvSUN".}
-proc glTexCoord4fColor4fNormal3fVertex4fSUN*(s: TGLfloat, t: TGLfloat, 
-    p: TGLfloat, q: TGLfloat, r: TGLfloat, g: TGLfloat, b: TGLfloat, 
-    a: TGLfloat, nx: TGLfloat, ny: TGLfloat, nz: TGLfloat, x: TGLfloat, 
-    y: TGLfloat, z: TGLfloat, w: TGLfloat){.dynlib: dllname, 
+proc glTexCoord4fColor4fNormal3fVertex4fSUN*(s: TGLfloat, t: TGLfloat,
+    p: TGLfloat, q: TGLfloat, r: TGLfloat, g: TGLfloat, b: TGLfloat,
+    a: TGLfloat, nx: TGLfloat, ny: TGLfloat, nz: TGLfloat, x: TGLfloat,
+    y: TGLfloat, z: TGLfloat, w: TGLfloat){.dynlib: dllname,
     importc: "glTexCoord4fColor4fNormal3fVertex4fSUN".}
-proc glTexCoord4fColor4fNormal3fVertex4fvSUN*(tc: PGLfloat, c: PGLfloat, 
+proc glTexCoord4fColor4fNormal3fVertex4fvSUN*(tc: PGLfloat, c: PGLfloat,
     n: PGLfloat, v: PGLfloat){.dynlib: dllname, importc: "glTexCoord4fColor4fNormal3fVertex4fvSUN".}
-proc glReplacementCodeuiVertex3fSUN*(rc: TGLuint, x: TGLfloat, y: TGLfloat, 
-                                     z: TGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiVertex3fSUN*(rc: TGLuint, x: TGLfloat, y: TGLfloat,
+                                     z: TGLfloat){.dynlib: dllname,
     importc: "glReplacementCodeuiVertex3fSUN".}
 proc glReplacementCodeuiVertex3fvSUN*(rc: PGLuint, v: PGLfloat){.
     dynlib: dllname, importc: "glReplacementCodeuiVertex3fvSUN".}
-proc glReplacementCodeuiColor4ubVertex3fSUN*(rc: TGLuint, r: TGLubyte, 
+proc glReplacementCodeuiColor4ubVertex3fSUN*(rc: TGLuint, r: TGLubyte,
     g: TGLubyte, b: TGLubyte, a: TGLubyte, x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glReplacementCodeuiColor4ubVertex3fSUN".}
-proc glReplacementCodeuiColor4ubVertex3fvSUN*(rc: PGLuint, c: PGLubyte, 
-    v: PGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiColor4ubVertex3fvSUN*(rc: PGLuint, c: PGLubyte,
+    v: PGLfloat){.dynlib: dllname,
                   importc: "glReplacementCodeuiColor4ubVertex3fvSUN".}
-proc glReplacementCodeuiColor3fVertex3fSUN*(rc: TGLuint, r: TGLfloat, 
+proc glReplacementCodeuiColor3fVertex3fSUN*(rc: TGLuint, r: TGLfloat,
     g: TGLfloat, b: TGLfloat, x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glReplacementCodeuiColor3fVertex3fSUN".}
-proc glReplacementCodeuiColor3fVertex3fvSUN*(rc: PGLuint, c: PGLfloat, 
-    v: PGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiColor3fVertex3fvSUN*(rc: PGLuint, c: PGLfloat,
+    v: PGLfloat){.dynlib: dllname,
                   importc: "glReplacementCodeuiColor3fVertex3fvSUN".}
-proc glReplacementCodeuiNormal3fVertex3fSUN*(rc: TGLuint, nx: TGLfloat, 
+proc glReplacementCodeuiNormal3fVertex3fSUN*(rc: TGLuint, nx: TGLfloat,
     ny: TGLfloat, nz: TGLfloat, x: TGLfloat, y: TGLfloat, z: TGLfloat){.
     dynlib: dllname, importc: "glReplacementCodeuiNormal3fVertex3fSUN".}
-proc glReplacementCodeuiNormal3fVertex3fvSUN*(rc: PGLuint, n: PGLfloat, 
-    v: PGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiNormal3fVertex3fvSUN*(rc: PGLuint, n: PGLfloat,
+    v: PGLfloat){.dynlib: dllname,
                   importc: "glReplacementCodeuiNormal3fVertex3fvSUN".}
-proc glReplacementCodeuiColor4fNormal3fVertex3fSUN*(rc: TGLuint, r: TGLfloat, 
-    g: TGLfloat, b: TGLfloat, a: TGLfloat, nx: TGLfloat, ny: TGLfloat, 
-    nz: TGLfloat, x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiColor4fNormal3fVertex3fSUN*(rc: TGLuint, r: TGLfloat,
+    g: TGLfloat, b: TGLfloat, a: TGLfloat, nx: TGLfloat, ny: TGLfloat,
+    nz: TGLfloat, x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glReplacementCodeuiColor4fNormal3fVertex3fSUN".}
-proc glReplacementCodeuiColor4fNormal3fVertex3fvSUN*(rc: PGLuint, c: PGLfloat, 
+proc glReplacementCodeuiColor4fNormal3fVertex3fvSUN*(rc: PGLuint, c: PGLfloat,
     n: PGLfloat, v: PGLfloat){.dynlib: dllname, importc: "glReplacementCodeuiColor4fNormal3fVertex3fvSUN".}
-proc glReplacementCodeuiTexCoord2fVertex3fSUN*(rc: TGLuint, s: TGLfloat, 
-    t: TGLfloat, x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiTexCoord2fVertex3fSUN*(rc: TGLuint, s: TGLfloat,
+    t: TGLfloat, x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glReplacementCodeuiTexCoord2fVertex3fSUN".}
-proc glReplacementCodeuiTexCoord2fVertex3fvSUN*(rc: PGLuint, tc: PGLfloat, 
-    v: PGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiTexCoord2fVertex3fvSUN*(rc: PGLuint, tc: PGLfloat,
+    v: PGLfloat){.dynlib: dllname,
                   importc: "glReplacementCodeuiTexCoord2fVertex3fvSUN".}
-proc glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN*(rc: TGLuint, s: TGLfloat, 
-    t: TGLfloat, nx: TGLfloat, ny: TGLfloat, nz: TGLfloat, x: TGLfloat, 
+proc glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN*(rc: TGLuint, s: TGLfloat,
+    t: TGLfloat, nx: TGLfloat, ny: TGLfloat, nz: TGLfloat, x: TGLfloat,
     y: TGLfloat, z: TGLfloat){.dynlib: dllname, importc: "glReplacementCodeuiTexCoord2fNormal3fVertex3fSUN".}
-proc glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN*(rc: PGLuint, 
-    tc: PGLfloat, n: PGLfloat, v: PGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN*(rc: PGLuint,
+    tc: PGLfloat, n: PGLfloat, v: PGLfloat){.dynlib: dllname,
     importc: "glReplacementCodeuiTexCoord2fNormal3fVertex3fvSUN".}
-proc glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN*(rc: TGLuint, 
-    s: TGLfloat, t: TGLfloat, r: TGLfloat, g: TGLfloat, b: TGLfloat, 
-    a: TGLfloat, nx: TGLfloat, ny: TGLfloat, nz: TGLfloat, x: TGLfloat, 
+proc glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN*(rc: TGLuint,
+    s: TGLfloat, t: TGLfloat, r: TGLfloat, g: TGLfloat, b: TGLfloat,
+    a: TGLfloat, nx: TGLfloat, ny: TGLfloat, nz: TGLfloat, x: TGLfloat,
     y: TGLfloat, z: TGLfloat){.dynlib: dllname, importc: "glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fSUN".}
-proc glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN*(rc: PGLuint, 
-    tc: PGLfloat, c: PGLfloat, n: PGLfloat, v: PGLfloat){.dynlib: dllname, 
+proc glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN*(rc: PGLuint,
+    tc: PGLfloat, c: PGLfloat, n: PGLfloat, v: PGLfloat){.dynlib: dllname,
     importc: "glReplacementCodeuiTexCoord2fColor4fNormal3fVertex3fvSUN".}
   #***** GL_ARB_fragment_program *****//
-const 
+const
   GL_FRAGMENT_PROGRAM_ARB* = 0x00008804 # GL_PROGRAM_FORMAT_ASCII_ARB  { already defined }
                                         # GL_PROGRAM_LENGTH_ARB  { already defined }
                                         # GL_PROGRAM_FORMAT_ARB  { already defined }
@@ -3360,21 +3360,21 @@ const
   GL_MAX_PROGRAM_NATIVE_ALU_INSTRUCTIONS_ARB* = 0x0000880E
   GL_MAX_PROGRAM_NATIVE_TEX_INSTRUCTIONS_ARB* = 0x0000880F
   GL_MAX_PROGRAM_NATIVE_TEX_INDIRECTIONS_ARB* = 0x00008810 # GL_PROGRAM_STRING_ARB  { already defined }
-                                                           # 
-                                                           # 
+                                                           #
+                                                           #
                                                            # GL_PROGRAM_ERROR_POSITION_ARB  { already defined }
                                                            # GL_CURRENT_MATRIX_ARB  { already defined }
-                                                           # 
-                                                           # 
+                                                           #
+                                                           #
                                                            # GL_TRANSPOSE_CURRENT_MATRIX_ARB  { already defined }
-                                                           # 
-                                                           # 
+                                                           #
+                                                           #
                                                            # GL_CURRENT_MATRIX_STACK_DEPTH_ARB  { already defined }
-                                                           # 
-                                                           # 
+                                                           #
+                                                           #
                                                            # GL_MAX_PROGRAM_MATRICES_ARB  { already defined }
-                                                           # 
-                                                           # 
+                                                           #
+                                                           #
                                                            # GL_MAX_PROGRAM_MATRIX_STACK_DEPTH_ARB  { already defined }
   GL_MAX_TEXTURE_COORDS_ARB* = 0x00008871
   GL_MAX_TEXTURE_IMAGE_UNITS_ARB* = 0x00008872 # GL_PROGRAM_ERROR_STRING_ARB  { already defined }
@@ -3431,10 +3431,10 @@ const
                                                # glIsProgramARB  { already defined }
   #***** GL_ATI_text_fragment_shader *****
 
-const 
+const
   GL_TEXT_FRAGMENT_SHADER_ATI* = 0x00008200 #***** GL_ARB_vertex_buffer_object *****
 
-const 
+const
   GL_BUFFER_SIZE_ARB* = 0x00008764
   GL_BUFFER_USAGE_ARB* = 0x00008765
   GL_ARRAY_BUFFER_ARB* = 0x00008892
@@ -3467,37 +3467,37 @@ const
   GL_DYNAMIC_READ_ARB* = 0x000088E9
   GL_DYNAMIC_COPY_ARB* = 0x000088EA
 
-proc glBindBufferARB*(target: TGLenum, buffer: TGLuint){.dynlib: dllname, 
+proc glBindBufferARB*(target: TGLenum, buffer: TGLuint){.dynlib: dllname,
     importc: "glBindBufferARB".}
-proc glDeleteBuffersARB*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname, 
+proc glDeleteBuffersARB*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname,
     importc: "glDeleteBuffersARB".}
-proc glGenBuffersARB*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname, 
+proc glGenBuffersARB*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname,
     importc: "glGenBuffersARB".}
-proc glIsBufferARB*(buffer: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsBufferARB*(buffer: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsBufferARB".}
-proc glBufferDataARB*(target: TGLenum, size: TGLsizei, data: PGLvoid, 
-                      usage: TGLenum){.dynlib: dllname, 
+proc glBufferDataARB*(target: TGLenum, size: TGLsizei, data: PGLvoid,
+                      usage: TGLenum){.dynlib: dllname,
                                        importc: "glBufferDataARB".}
-proc glBufferSubDataARB*(target: TGLenum, offset: TGLint, size: TGLsizei, 
-                         data: PGLvoid){.dynlib: dllname, 
+proc glBufferSubDataARB*(target: TGLenum, offset: TGLint, size: TGLsizei,
+                         data: PGLvoid){.dynlib: dllname,
     importc: "glBufferSubDataARB".}
-proc glGetBufferSubDataARB*(target: TGLenum, offset: TGLint, size: TGLsizei, 
-                            data: PGLvoid){.dynlib: dllname, 
+proc glGetBufferSubDataARB*(target: TGLenum, offset: TGLint, size: TGLsizei,
+                            data: PGLvoid){.dynlib: dllname,
     importc: "glGetBufferSubDataARB".}
 proc glMapBufferARB*(target: TGLenum, access: TGLenum): PGLvoid{.
     dynlib: dllname, importc: "glMapBufferARB".}
-proc glUnmapBufferARB*(target: TGLenum): TGLboolean{.dynlib: dllname, 
+proc glUnmapBufferARB*(target: TGLenum): TGLboolean{.dynlib: dllname,
     importc: "glUnmapBufferARB".}
 proc glGetBufferParameterivARB*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetBufferParameterivARB".}
 proc glGetBufferPointervARB*(target: TGLenum, pname: TGLenum, params: PPGLvoid){.
     dynlib: dllname, importc: "glGetBufferPointervARB".}
   #***** GL_APPLE_client_storage *****//
-const 
+const
   GL_UNPACK_CLIENT_STORAGE_APPLE* = 0x000085B2
   #***** GL_APPLE_element_array *****//
 
-const 
+const
   GL_ELEMENT_ARRAY_APPLE* = 0x00008768
   GL_ELEMENT_ARRAY_TYPE_APPLE* = 0x00008769
   GL_ELEMENT_ARRAY_POINTER_APPLE* = 0x0000876A
@@ -3506,52 +3506,52 @@ proc glElementPointerAPPLE*(thetype: TGLenum, pointer: PGLvoid){.
     dynlib: dllname, importc: "glElementPointerAPPLE".}
 proc glDrawElementArrayAPPLE*(mode: TGLenum, first: TGLint, count: TGLsizei){.
     dynlib: dllname, importc: "glDrawElementArrayAPPLE".}
-proc glDrawRangeElementArrayAPPLE*(mode: TGLenum, start: TGLuint, 
-                                   theend: TGLuint, first: TGLint, 
-                                   count: TGLsizei){.dynlib: dllname, 
+proc glDrawRangeElementArrayAPPLE*(mode: TGLenum, start: TGLuint,
+                                   theend: TGLuint, first: TGLint,
+                                   count: TGLsizei){.dynlib: dllname,
     importc: "glDrawRangeElementArrayAPPLE".}
-proc glMultiDrawElementArrayAPPLE*(mode: TGLenum, first: PGLint, 
+proc glMultiDrawElementArrayAPPLE*(mode: TGLenum, first: PGLint,
                                    count: PGLsizei, primcount: TGLsizei){.
     dynlib: dllname, importc: "glMultiDrawElementArrayAPPLE".}
-proc glMultiDrawRangeElementArrayAPPLE*(mode: TGLenum, start: TGLuint, 
-                                        theend: TGLuint, first: PGLint, 
+proc glMultiDrawRangeElementArrayAPPLE*(mode: TGLenum, start: TGLuint,
+                                        theend: TGLuint, first: PGLint,
                                         count: PGLsizei, primcount: TGLsizei){.
     dynlib: dllname, importc: "glMultiDrawRangeElementArrayAPPLE".}
   #***** GL_APPLE_fence *****//
-const 
+const
   GL_DRAW_PIXELS_APPLE* = 0x00008A0A
   GL_FENCE_APPLE* = 0x00008A0B
 
-proc glGenFencesAPPLE*(n: TGLsizei, fences: PGLuint){.dynlib: dllname, 
+proc glGenFencesAPPLE*(n: TGLsizei, fences: PGLuint){.dynlib: dllname,
     importc: "glGenFencesAPPLE".}
-proc glDeleteFencesAPPLE*(n: TGLsizei, fences: PGLuint){.dynlib: dllname, 
+proc glDeleteFencesAPPLE*(n: TGLsizei, fences: PGLuint){.dynlib: dllname,
     importc: "glDeleteFencesAPPLE".}
-proc glSetFenceAPPLE*(fence: TGLuint){.dynlib: dllname, 
+proc glSetFenceAPPLE*(fence: TGLuint){.dynlib: dllname,
                                        importc: "glSetFenceAPPLE".}
-proc glIsFenceAPPLE*(fence: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsFenceAPPLE*(fence: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsFenceAPPLE".}
-proc glTestFenceAPPLE*(fence: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glTestFenceAPPLE*(fence: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glTestFenceAPPLE".}
-proc glFinishFenceAPPLE*(fence: TGLuint){.dynlib: dllname, 
+proc glFinishFenceAPPLE*(fence: TGLuint){.dynlib: dllname,
     importc: "glFinishFenceAPPLE".}
 proc glTestObjectAPPLE*(theobject: TGLenum, name: TGLuint): TGLboolean{.
     dynlib: dllname, importc: "glTestObjectAPPLE".}
-proc glFinishObjectAPPLE*(theobject: TGLenum, name: TGLint){.dynlib: dllname, 
+proc glFinishObjectAPPLE*(theobject: TGLenum, name: TGLint){.dynlib: dllname,
     importc: "glFinishObjectAPPLE".}
   #***** GL_APPLE_vertex_array_object *****//
-const 
+const
   GL_VERTEX_ARRAY_BINDING_APPLE* = 0x000085B5
 
-proc glBindVertexArrayAPPLE*(thearray: TGLuint){.dynlib: dllname, 
+proc glBindVertexArrayAPPLE*(thearray: TGLuint){.dynlib: dllname,
     importc: "glBindVertexArrayAPPLE".}
-proc glDeleteVertexArraysAPPLE*(n: TGLsizei, arrays: PGLuint){.dynlib: dllname, 
+proc glDeleteVertexArraysAPPLE*(n: TGLsizei, arrays: PGLuint){.dynlib: dllname,
     importc: "glDeleteVertexArraysAPPLE".}
-proc glGenVertexArraysAPPLE*(n: TGLsizei, arrays: PGLuint){.dynlib: dllname, 
+proc glGenVertexArraysAPPLE*(n: TGLsizei, arrays: PGLuint){.dynlib: dllname,
     importc: "glGenVertexArraysAPPLE".}
-proc glIsVertexArrayAPPLE*(thearray: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsVertexArrayAPPLE*(thearray: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsVertexArrayAPPLE".}
   #***** GL_APPLE_vertex_array_range *****//
-const 
+const
   constGL_VERTEX_ARRAY_RANGE_APPLE* = 0x0000851D
   GL_VERTEX_ARRAY_RANGE_LENGTH_APPLE* = 0x0000851E
   GL_MAX_VERTEX_ARRAY_RANGE_ELEMENT_APPLE* = 0x00008520
@@ -3560,14 +3560,14 @@ const
   GL_STORAGE_CACHED_APPLE* = 0x000085BE
   GL_STORAGE_SHARED_APPLE* = 0x000085BF
 
-proc glVertexArrayRangeAPPLE*(len: TGLsizei, pointer: PGLvoid){.dynlib: dllname, 
+proc glVertexArrayRangeAPPLE*(len: TGLsizei, pointer: PGLvoid){.dynlib: dllname,
     importc: "glVertexArrayRangeAPPLE".}
 proc glFlushVertexArrayRangeAPPLE*(len: TGLsizei, pointer: PGLvoid){.
     dynlib: dllname, importc: "glFlushVertexArrayRangeAPPLE".}
 proc glVertexArrayParameteriAPPLE*(pname: TGLenum, param: TGLint){.
     dynlib: dllname, importc: "glVertexArrayParameteriAPPLE".}
   #***** GL_ARB_matrix_palette *****//
-const 
+const
   GL_MATRIX_PALETTE_ARB* = 0x00008840
   GL_MAX_MATRIX_PALETTE_STACK_DEPTH_ARB* = 0x00008841
   GL_MAX_PALETTE_MATRICES_ARB* = 0x00008842
@@ -3579,38 +3579,38 @@ const
   GL_MATRIX_INDEX_ARRAY_STRIDE_ARB* = 0x00008848
   GL_MATRIX_INDEX_ARRAY_POINTER_ARB* = 0x00008849
 
-proc glCurrentPaletteMatrixARB*(index: TGLint){.dynlib: dllname, 
+proc glCurrentPaletteMatrixARB*(index: TGLint){.dynlib: dllname,
     importc: "glCurrentPaletteMatrixARB".}
-proc glMatrixIndexubvARB*(size: TGLint, indices: PGLubyte){.dynlib: dllname, 
+proc glMatrixIndexubvARB*(size: TGLint, indices: PGLubyte){.dynlib: dllname,
     importc: "glMatrixIndexubvARB".}
-proc glMatrixIndexusvARB*(size: TGLint, indices: PGLushort){.dynlib: dllname, 
+proc glMatrixIndexusvARB*(size: TGLint, indices: PGLushort){.dynlib: dllname,
     importc: "glMatrixIndexusvARB".}
-proc glMatrixIndexuivARB*(size: TGLint, indices: PGLuint){.dynlib: dllname, 
+proc glMatrixIndexuivARB*(size: TGLint, indices: PGLuint){.dynlib: dllname,
     importc: "glMatrixIndexuivARB".}
-proc glMatrixIndexPointerARB*(size: TGLint, thetype: TGLenum, stride: TGLsizei, 
-                              pointer: PGLvoid){.dynlib: dllname, 
+proc glMatrixIndexPointerARB*(size: TGLint, thetype: TGLenum, stride: TGLsizei,
+                              pointer: PGLvoid){.dynlib: dllname,
     importc: "glMatrixIndexPointerARB".}
   #***** GL_NV_element_array *****//
-const 
+const
   GL_ELEMENT_ARRAY_TYPE_NV* = 0x00008769
   GL_ELEMENT_ARRAY_POINTER_NV* = 0x0000876A
 
-proc glElementPointerNV*(thetype: TGLenum, pointer: PGLvoid){.dynlib: dllname, 
+proc glElementPointerNV*(thetype: TGLenum, pointer: PGLvoid){.dynlib: dllname,
     importc: "glElementPointerNV".}
 proc glDrawElementArrayNV*(mode: TGLenum, first: TGLint, count: TGLsizei){.
     dynlib: dllname, importc: "glDrawElementArrayNV".}
-proc glDrawRangeElementArrayNV*(mode: TGLenum, start: TGLuint, theend: TGLuint, 
+proc glDrawRangeElementArrayNV*(mode: TGLenum, start: TGLuint, theend: TGLuint,
                                 first: TGLint, count: TGLsizei){.
     dynlib: dllname, importc: "glDrawRangeElementArrayNV".}
-proc glMultiDrawElementArrayNV*(mode: TGLenum, first: PGLint, count: PGLsizei, 
-                                primcount: TGLsizei){.dynlib: dllname, 
+proc glMultiDrawElementArrayNV*(mode: TGLenum, first: PGLint, count: PGLsizei,
+                                primcount: TGLsizei){.dynlib: dllname,
     importc: "glMultiDrawElementArrayNV".}
-proc glMultiDrawRangeElementArrayNV*(mode: TGLenum, start: TGLuint, 
-                                     theend: TGLuint, first: PGLint, 
+proc glMultiDrawRangeElementArrayNV*(mode: TGLenum, start: TGLuint,
+                                     theend: TGLuint, first: PGLint,
                                      count: PGLsizei, primcount: TGLsizei){.
     dynlib: dllname, importc: "glMultiDrawRangeElementArrayNV".}
   #***** GL_NV_float_buffer *****//
-const 
+const
   GL_FLOAT_R_NV* = 0x00008880
   GL_FLOAT_RG_NV* = 0x00008881
   GL_FLOAT_RGB_NV* = 0x00008882
@@ -3628,7 +3628,7 @@ const
   GL_FLOAT_RGBA_MODE_NV* = 0x0000888E
   #***** GL_NV_fragment_program *****//
 
-const 
+const
   GL_FRAGMENT_PROGRAM_NV* = 0x00008870
   GL_MAX_TEXTURE_COORDS_NV* = 0x00008871
   GL_MAX_TEXTURE_IMAGE_UNITS_NV* = 0x00008872
@@ -3636,18 +3636,18 @@ const
   GL_MAX_FRAGMENT_PROGRAM_LOCAL_PARAMETERS_NV* = 0x00008868
   GL_PROGRAM_ERROR_STRING_NV* = 0x00008874
 
-proc glProgramNamedParameter4fNV*(id: TGLuint, length: TGLsizei, name: PGLubyte, 
-                                  x: TGLfloat, y: TGLfloat, z: TGLfloat, 
-                                  w: TGLfloat){.dynlib: dllname, 
+proc glProgramNamedParameter4fNV*(id: TGLuint, length: TGLsizei, name: PGLubyte,
+                                  x: TGLfloat, y: TGLfloat, z: TGLfloat,
+                                  w: TGLfloat){.dynlib: dllname,
     importc: "glProgramNamedParameter4fNV".}
-proc glProgramNamedParameter4dNV*(id: TGLuint, length: TGLsizei, name: PGLubyte, 
-                                  x: TGLdouble, y: TGLdouble, z: TGLdouble, 
-                                  w: TGLdouble){.dynlib: dllname, 
+proc glProgramNamedParameter4dNV*(id: TGLuint, length: TGLsizei, name: PGLubyte,
+                                  x: TGLdouble, y: TGLdouble, z: TGLdouble,
+                                  w: TGLdouble){.dynlib: dllname,
     importc: "glProgramNamedParameter4dNV".}
-proc glGetProgramNamedParameterfvNV*(id: TGLuint, length: TGLsizei, 
+proc glGetProgramNamedParameterfvNV*(id: TGLuint, length: TGLsizei,
                                      name: PGLubyte, params: PGLfloat){.
     dynlib: dllname, importc: "glGetProgramNamedParameterfvNV".}
-proc glGetProgramNamedParameterdvNV*(id: TGLuint, length: TGLsizei, 
+proc glGetProgramNamedParameterdvNV*(id: TGLuint, length: TGLsizei,
                                      name: PGLubyte, params: PGLdouble){.
     dynlib: dllname, importc: "glGetProgramNamedParameterdvNV".}
   # glProgramLocalParameter4dARB  { already defined }
@@ -3657,16 +3657,16 @@ proc glGetProgramNamedParameterdvNV*(id: TGLuint, length: TGLsizei,
   # glGetProgramLocalParameterdvARB  { already defined }
   # glGetProgramLocalParameterfvARB  { already defined }
   #***** GL_NV_primitive_restart *****//
-const 
+const
   constGL_PRIMITIVE_RESTART_NV* = 0x00008558
   constGL_PRIMITIVE_RESTART_INDEX_NV* = 0x00008559
 
 proc glPrimitiveRestartNV*(){.dynlib: dllname, importc: "glPrimitiveRestartNV".}
-proc glPrimitiveRestartIndexNV*(index: TGLuint){.dynlib: dllname, 
+proc glPrimitiveRestartIndexNV*(index: TGLuint){.dynlib: dllname,
     importc: "glPrimitiveRestartIndexNV".}
   #***** GL_NV_vertex_program2 *****//
   #***** GL_NV_pixel_data_range *****//
-const 
+const
   GL_WRITE_PIXEL_DATA_RANGE_NV* = 0x00008878
   GL_READ_PIXEL_DATA_RANGE_NV* = 0x00008879
   GL_WRITE_PIXEL_DATA_RANGE_LENGTH_NV* = 0x0000887A
@@ -3676,26 +3676,26 @@ const
 
 proc glPixelDataRangeNV*(target: TGLenum, len: TGLsizei, pointer: PGLvoid){.
     dynlib: dllname, importc: "glPixelDataRangeNV".}
-proc glFlushPixelDataRangeNV*(target: TGLenum){.dynlib: dllname, 
+proc glFlushPixelDataRangeNV*(target: TGLenum){.dynlib: dllname,
     importc: "glFlushPixelDataRangeNV".}
   # wglAllocateMemoryNV  { already defined }
   # wglFreeMemoryNV  { already defined }
   #***** GL_EXT_texture_rectangle *****//
-const 
+const
   GL_TEXTURE_RECTANGLE_EXT* = 0x000084F5
   GL_TEXTURE_BINDING_RECTANGLE_EXT* = 0x000084F6
   GL_PROXY_TEXTURE_RECTANGLE_EXT* = 0x000084F7
   GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT* = 0x000084F8
   #***** GL_S3_s3tc *****//
 
-const 
+const
   GL_RGB_S3TC* = 0x000083A0
   GL_RGB4_S3TC* = 0x000083A1
   GL_RGBA_S3TC* = 0x000083A2
   GL_RGBA4_S3TC* = 0x000083A3
   #***** GL_ATI_draw_buffers *****//
 
-const 
+const
   GL_MAX_DRAW_BUFFERS_ATI* = 0x00008824
   GL_DRAW_BUFFER0_ATI* = 0x00008825
   GL_DRAW_BUFFER1_ATI* = 0x00008826
@@ -3714,16 +3714,16 @@ const
   GL_DRAW_BUFFER14_ATI* = 0x00008833
   GL_DRAW_BUFFER15_ATI* = 0x00008834
 
-proc glDrawBuffersATI*(n: TGLsizei, bufs: PGLenum){.dynlib: dllname, 
+proc glDrawBuffersATI*(n: TGLsizei, bufs: PGLenum){.dynlib: dllname,
     importc: "glDrawBuffersATI".}
   #***** GL_ATI_texture_env_combine3 *****//
-const 
+const
   GL_MODULATE_ADD_ATI* = 0x00008744
   GL_MODULATE_SIGNED_ADD_ATI* = 0x00008745
   GL_MODULATE_SUBTRACT_ATI* = 0x00008746
   #***** GL_ATI_texture_float *****//
 
-const 
+const
   GL_RGBA_FLOAT32_ATI* = 0x00008814
   GL_RGB_FLOAT32_ATI* = 0x00008815
   GL_ALPHA_FLOAT32_ATI* = 0x00008816
@@ -3738,17 +3738,17 @@ const
   GL_LUMINANCE_ALPHA_FLOAT16_ATI* = 0x0000881F
   #***** GL_NV_texture_expand_normal *****//
 
-const 
+const
   GL_TEXTURE_UNSIGNED_REMAP_MODE_NV* = 0x0000888F
   #***** GL_NV_half_float *****//
 
-const 
+const
   GL_HALF_FLOAT_NV* = 0x0000140B
 
-proc glVertex2hNV*(x: TGLushort, y: TGLushort){.dynlib: dllname, 
+proc glVertex2hNV*(x: TGLushort, y: TGLushort){.dynlib: dllname,
     importc: "glVertex2hNV".}
 proc glVertex2hvNV*(v: PGLushort){.dynlib: dllname, importc: "glVertex2hvNV".}
-proc glVertex3hNV*(x: TGLushort, y: TGLushort, z: TGLushort){.dynlib: dllname, 
+proc glVertex3hNV*(x: TGLushort, y: TGLushort, z: TGLushort){.dynlib: dllname,
     importc: "glVertex3hNV".}
 proc glVertex3hvNV*(v: PGLushort){.dynlib: dllname, importc: "glVertex3hvNV".}
 proc glVertex4hNV*(x: TGLushort, y: TGLushort, z: TGLushort, w: TGLushort){.
@@ -3760,65 +3760,65 @@ proc glNormal3hvNV*(v: PGLushort){.dynlib: dllname, importc: "glNormal3hvNV".}
 proc glColor3hNV*(red: TGLushort, green: TGLushort, blue: TGLushort){.
     dynlib: dllname, importc: "glColor3hNV".}
 proc glColor3hvNV*(v: PGLushort){.dynlib: dllname, importc: "glColor3hvNV".}
-proc glColor4hNV*(red: TGLushort, green: TGLushort, blue: TGLushort, 
+proc glColor4hNV*(red: TGLushort, green: TGLushort, blue: TGLushort,
                   alpha: TGLushort){.dynlib: dllname, importc: "glColor4hNV".}
 proc glColor4hvNV*(v: PGLushort){.dynlib: dllname, importc: "glColor4hvNV".}
 proc glTexCoord1hNV*(s: TGLushort){.dynlib: dllname, importc: "glTexCoord1hNV".}
 proc glTexCoord1hvNV*(v: PGLushort){.dynlib: dllname, importc: "glTexCoord1hvNV".}
-proc glTexCoord2hNV*(s: TGLushort, t: TGLushort){.dynlib: dllname, 
+proc glTexCoord2hNV*(s: TGLushort, t: TGLushort){.dynlib: dllname,
     importc: "glTexCoord2hNV".}
 proc glTexCoord2hvNV*(v: PGLushort){.dynlib: dllname, importc: "glTexCoord2hvNV".}
-proc glTexCoord3hNV*(s: TGLushort, t: TGLushort, r: TGLushort){.dynlib: dllname, 
+proc glTexCoord3hNV*(s: TGLushort, t: TGLushort, r: TGLushort){.dynlib: dllname,
     importc: "glTexCoord3hNV".}
 proc glTexCoord3hvNV*(v: PGLushort){.dynlib: dllname, importc: "glTexCoord3hvNV".}
 proc glTexCoord4hNV*(s: TGLushort, t: TGLushort, r: TGLushort, q: TGLushort){.
     dynlib: dllname, importc: "glTexCoord4hNV".}
 proc glTexCoord4hvNV*(v: PGLushort){.dynlib: dllname, importc: "glTexCoord4hvNV".}
-proc glMultiTexCoord1hNV*(target: TGLenum, s: TGLushort){.dynlib: dllname, 
+proc glMultiTexCoord1hNV*(target: TGLenum, s: TGLushort){.dynlib: dllname,
     importc: "glMultiTexCoord1hNV".}
-proc glMultiTexCoord1hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname, 
+proc glMultiTexCoord1hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname,
     importc: "glMultiTexCoord1hvNV".}
 proc glMultiTexCoord2hNV*(target: TGLenum, s: TGLushort, t: TGLushort){.
     dynlib: dllname, importc: "glMultiTexCoord2hNV".}
-proc glMultiTexCoord2hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname, 
+proc glMultiTexCoord2hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname,
     importc: "glMultiTexCoord2hvNV".}
-proc glMultiTexCoord3hNV*(target: TGLenum, s: TGLushort, t: TGLushort, 
-                          r: TGLushort){.dynlib: dllname, 
+proc glMultiTexCoord3hNV*(target: TGLenum, s: TGLushort, t: TGLushort,
+                          r: TGLushort){.dynlib: dllname,
     importc: "glMultiTexCoord3hNV".}
-proc glMultiTexCoord3hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname, 
+proc glMultiTexCoord3hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname,
     importc: "glMultiTexCoord3hvNV".}
-proc glMultiTexCoord4hNV*(target: TGLenum, s: TGLushort, t: TGLushort, 
-                          r: TGLushort, q: TGLushort){.dynlib: dllname, 
+proc glMultiTexCoord4hNV*(target: TGLenum, s: TGLushort, t: TGLushort,
+                          r: TGLushort, q: TGLushort){.dynlib: dllname,
     importc: "glMultiTexCoord4hNV".}
-proc glMultiTexCoord4hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname, 
+proc glMultiTexCoord4hvNV*(target: TGLenum, v: PGLushort){.dynlib: dllname,
     importc: "glMultiTexCoord4hvNV".}
 proc glFogCoordhNV*(fog: TGLushort){.dynlib: dllname, importc: "glFogCoordhNV".}
 proc glFogCoordhvNV*(fog: PGLushort){.dynlib: dllname, importc: "glFogCoordhvNV".}
 proc glSecondaryColor3hNV*(red: TGLushort, green: TGLushort, blue: TGLushort){.
     dynlib: dllname, importc: "glSecondaryColor3hNV".}
-proc glSecondaryColor3hvNV*(v: PGLushort){.dynlib: dllname, 
+proc glSecondaryColor3hvNV*(v: PGLushort){.dynlib: dllname,
     importc: "glSecondaryColor3hvNV".}
-proc glVertexWeighthNV*(weight: TGLushort){.dynlib: dllname, 
+proc glVertexWeighthNV*(weight: TGLushort){.dynlib: dllname,
     importc: "glVertexWeighthNV".}
-proc glVertexWeighthvNV*(weight: PGLushort){.dynlib: dllname, 
+proc glVertexWeighthvNV*(weight: PGLushort){.dynlib: dllname,
     importc: "glVertexWeighthvNV".}
-proc glVertexAttrib1hNV*(index: TGLuint, x: TGLushort){.dynlib: dllname, 
+proc glVertexAttrib1hNV*(index: TGLuint, x: TGLushort){.dynlib: dllname,
     importc: "glVertexAttrib1hNV".}
-proc glVertexAttrib1hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib1hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib1hvNV".}
 proc glVertexAttrib2hNV*(index: TGLuint, x: TGLushort, y: TGLushort){.
     dynlib: dllname, importc: "glVertexAttrib2hNV".}
-proc glVertexAttrib2hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib2hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib2hvNV".}
-proc glVertexAttrib3hNV*(index: TGLuint, x: TGLushort, y: TGLushort, 
-                         z: TGLushort){.dynlib: dllname, 
+proc glVertexAttrib3hNV*(index: TGLuint, x: TGLushort, y: TGLushort,
+                         z: TGLushort){.dynlib: dllname,
                                         importc: "glVertexAttrib3hNV".}
-proc glVertexAttrib3hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib3hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib3hvNV".}
-proc glVertexAttrib4hNV*(index: TGLuint, x: TGLushort, y: TGLushort, 
-                         z: TGLushort, w: TGLushort){.dynlib: dllname, 
+proc glVertexAttrib4hNV*(index: TGLuint, x: TGLushort, y: TGLushort,
+                         z: TGLushort, w: TGLushort){.dynlib: dllname,
     importc: "glVertexAttrib4hNV".}
-proc glVertexAttrib4hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname, 
+proc glVertexAttrib4hvNV*(index: TGLuint, v: PGLushort){.dynlib: dllname,
     importc: "glVertexAttrib4hvNV".}
 proc glVertexAttribs1hvNV*(index: TGLuint, n: TGLsizei, v: PGLushort){.
     dynlib: dllname, importc: "glVertexAttribs1hvNV".}
@@ -3829,12 +3829,12 @@ proc glVertexAttribs3hvNV*(index: TGLuint, n: TGLsizei, v: PGLushort){.
 proc glVertexAttribs4hvNV*(index: TGLuint, n: TGLsizei, v: PGLushort){.
     dynlib: dllname, importc: "glVertexAttribs4hvNV".}
   #***** GL_ATI_map_object_buffer *****//
-proc glMapObjectBufferATI*(buffer: TGLuint): PGLvoid{.dynlib: dllname, 
+proc glMapObjectBufferATI*(buffer: TGLuint): PGLvoid{.dynlib: dllname,
     importc: "glMapObjectBufferATI".}
-proc glUnmapObjectBufferATI*(buffer: TGLuint){.dynlib: dllname, 
+proc glUnmapObjectBufferATI*(buffer: TGLuint){.dynlib: dllname,
     importc: "glUnmapObjectBufferATI".}
   #***** GL_ATI_separate_stencil *****//
-const 
+const
   GL_KEEP* = 0x00001E00
   GL_ZERO* = 0x00000000
   GL_REPLACE* = 0x00001E01
@@ -3857,39 +3857,39 @@ const
   GL_STENCIL_BACK_PASS_DEPTH_FAIL_ATI* = 0x00008802
   GL_STENCIL_BACK_PASS_DEPTH_PASS_ATI* = 0x00008803
 
-proc glStencilOpSeparateATI*(face: TGLenum, sfail: TGLenum, dpfail: TGLenum, 
-                             dppass: TGLenum){.dynlib: dllname, 
+proc glStencilOpSeparateATI*(face: TGLenum, sfail: TGLenum, dpfail: TGLenum,
+                             dppass: TGLenum){.dynlib: dllname,
     importc: "glStencilOpSeparateATI".}
-proc glStencilFuncSeparateATI*(frontfunc: TGLenum, backfunc: TGLenum, 
-                               theRef: TGLint, mask: TGLuint){.dynlib: dllname, 
+proc glStencilFuncSeparateATI*(frontfunc: TGLenum, backfunc: TGLenum,
+                               theRef: TGLint, mask: TGLuint){.dynlib: dllname,
     importc: "glStencilFuncSeparateATI".}
   #***** GL_ATI_vertex_attrib_array_object *****//
-proc glVertexAttribArrayObjectATI*(index: TGLuint, size: TGLint, 
-                                   thetype: TGLenum, normalized: TGLboolean, 
-                                   stride: TGLsizei, buffer: TGLuint, 
-                                   offset: TGLuint){.dynlib: dllname, 
+proc glVertexAttribArrayObjectATI*(index: TGLuint, size: TGLint,
+                                   thetype: TGLenum, normalized: TGLboolean,
+                                   stride: TGLsizei, buffer: TGLuint,
+                                   offset: TGLuint){.dynlib: dllname,
     importc: "glVertexAttribArrayObjectATI".}
-proc glGetVertexAttribArrayObjectfvATI*(index: TGLuint, pname: TGLenum, 
-                                        params: PGLfloat){.dynlib: dllname, 
+proc glGetVertexAttribArrayObjectfvATI*(index: TGLuint, pname: TGLenum,
+                                        params: PGLfloat){.dynlib: dllname,
     importc: "glGetVertexAttribArrayObjectfvATI".}
-proc glGetVertexAttribArrayObjectivATI*(index: TGLuint, pname: TGLenum, 
-                                        params: PGLint){.dynlib: dllname, 
+proc glGetVertexAttribArrayObjectivATI*(index: TGLuint, pname: TGLenum,
+                                        params: PGLint){.dynlib: dllname,
     importc: "glGetVertexAttribArrayObjectivATI".}
   #***** GL_ARB_occlusion_query *****//
-const 
+const
   GL_SAMPLES_PASSED_ARB* = 0x00008914
   GL_QUERY_COUNTER_BITS_ARB* = 0x00008864
   GL_CURRENT_QUERY_ARB* = 0x00008865
   GL_QUERY_RESULT_ARB* = 0x00008866
   GL_QUERY_RESULT_AVAILABLE_ARB* = 0x00008867
 
-proc glGenQueriesARB*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glGenQueriesARB*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glGenQueriesARB".}
-proc glDeleteQueriesARB*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glDeleteQueriesARB*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glDeleteQueriesARB".}
-proc glIsQueryARB*(id: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsQueryARB*(id: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsQueryARB".}
-proc glBeginQueryARB*(target: TGLenum, id: TGLuint){.dynlib: dllname, 
+proc glBeginQueryARB*(target: TGLenum, id: TGLuint){.dynlib: dllname,
     importc: "glBeginQueryARB".}
 proc glEndQueryARB*(target: TGLenum){.dynlib: dllname, importc: "glEndQueryARB".}
 proc glGetQueryivARB*(target: TGLenum, pname: TGLenum, params: PGLint){.
@@ -3899,7 +3899,7 @@ proc glGetQueryObjectivARB*(id: TGLuint, pname: TGLenum, params: PGLint){.
 proc glGetQueryObjectuivARB*(id: TGLuint, pname: TGLenum, params: PGLuint){.
     dynlib: dllname, importc: "glGetQueryObjectuivARB".}
   #***** GL_ARB_shader_objects *****//
-const 
+const
   GL_PROGRAM_OBJECT_ARB* = 0x00008B40
   GL_OBJECT_TYPE_ARB* = 0x00008B4E
   GL_OBJECT_SUBTYPE_ARB* = 0x00008B4F
@@ -3929,44 +3929,44 @@ const
   GL_FLOAT_MAT3_ARB* = 0x00008B5B
   GL_FLOAT_MAT4_ARB* = 0x00008B5C
 
-proc glDeleteObjectARB*(obj: GLhandleARB){.dynlib: dllname, 
+proc glDeleteObjectARB*(obj: GLhandleARB){.dynlib: dllname,
     importc: "glDeleteObjectARB".}
-proc glGetHandleARB*(pname: TGLenum): GLhandleARB{.dynlib: dllname, 
+proc glGetHandleARB*(pname: TGLenum): GLhandleARB{.dynlib: dllname,
     importc: "glGetHandleARB".}
 proc glDetachObjectARB*(containerObj: GLhandleARB, attachedObj: GLhandleARB){.
     dynlib: dllname, importc: "glDetachObjectARB".}
 proc glCreateShaderObjectARB*(shaderType: TGLenum): GLhandleARB{.
     dynlib: dllname, importc: "glCreateShaderObjectARB".}
-proc glShaderSourceARB*(shaderObj: GLhandleARB, count: TGLsizei, str: PGLvoid, 
-                        len: PGLint){.dynlib: dllname, 
+proc glShaderSourceARB*(shaderObj: GLhandleARB, count: TGLsizei, str: PGLvoid,
+                        len: PGLint){.dynlib: dllname,
                                       importc: "glShaderSourceARB".}
-proc glCompileShaderARB*(shaderObj: GLhandleARB){.dynlib: dllname, 
+proc glCompileShaderARB*(shaderObj: GLhandleARB){.dynlib: dllname,
     importc: "glCompileShaderARB".}
-proc glCreateProgramObjectARB*(): GLhandleARB{.dynlib: dllname, 
+proc glCreateProgramObjectARB*(): GLhandleARB{.dynlib: dllname,
     importc: "glCreateProgramObjectARB".}
 proc glAttachObjectARB*(containerObj: GLhandleARB, obj: GLhandleARB){.
     dynlib: dllname, importc: "glAttachObjectARB".}
-proc glLinkProgramARB*(programObj: GLhandleARB){.dynlib: dllname, 
+proc glLinkProgramARB*(programObj: GLhandleARB){.dynlib: dllname,
     importc: "glLinkProgramARB".}
-proc glUseProgramObjectARB*(programObj: GLhandleARB){.dynlib: dllname, 
+proc glUseProgramObjectARB*(programObj: GLhandleARB){.dynlib: dllname,
     importc: "glUseProgramObjectARB".}
-proc glValidateProgramARB*(programObj: GLhandleARB){.dynlib: dllname, 
+proc glValidateProgramARB*(programObj: GLhandleARB){.dynlib: dllname,
     importc: "glValidateProgramARB".}
-proc glUniform1fARB*(location: TGLint, v0: TGLfloat){.dynlib: dllname, 
+proc glUniform1fARB*(location: TGLint, v0: TGLfloat){.dynlib: dllname,
     importc: "glUniform1fARB".}
 proc glUniform2fARB*(location: TGLint, v0: TGLfloat, v1: TGLfloat){.
     dynlib: dllname, importc: "glUniform2fARB".}
 proc glUniform3fARB*(location: TGLint, v0: TGLfloat, v1: TGLfloat, v2: TGLfloat){.
     dynlib: dllname, importc: "glUniform3fARB".}
-proc glUniform4fARB*(location: TGLint, v0: TGLfloat, v1: TGLfloat, v2: TGLfloat, 
+proc glUniform4fARB*(location: TGLint, v0: TGLfloat, v1: TGLfloat, v2: TGLfloat,
                      v3: TGLfloat){.dynlib: dllname, importc: "glUniform4fARB".}
-proc glUniform1iARB*(location: TGLint, v0: TGLint){.dynlib: dllname, 
+proc glUniform1iARB*(location: TGLint, v0: TGLint){.dynlib: dllname,
     importc: "glUniform1iARB".}
-proc glUniform2iARB*(location: TGLint, v0: TGLint, v1: TGLint){.dynlib: dllname, 
+proc glUniform2iARB*(location: TGLint, v0: TGLint, v1: TGLint){.dynlib: dllname,
     importc: "glUniform2iARB".}
 proc glUniform3iARB*(location: TGLint, v0: TGLint, v1: TGLint, v2: TGLint){.
     dynlib: dllname, importc: "glUniform3iARB".}
-proc glUniform4iARB*(location: TGLint, v0: TGLint, v1: TGLint, v2: TGLint, 
+proc glUniform4iARB*(location: TGLint, v0: TGLint, v1: TGLint, v2: TGLint,
                      v3: TGLint){.dynlib: dllname, importc: "glUniform4iARB".}
 proc glUniform1fvARB*(location: TGLint, count: TGLsizei, value: PGLfloat){.
     dynlib: dllname, importc: "glUniform1fvARB".}
@@ -3984,80 +3984,80 @@ proc glUniform3ivARB*(location: TGLint, count: TGLsizei, value: PGLint){.
     dynlib: dllname, importc: "glUniform3ivARB".}
 proc glUniform4ivARB*(location: TGLint, count: TGLsizei, value: PGLint){.
     dynlib: dllname, importc: "glUniform4ivARB".}
-proc glUniformMatrix2fvARB*(location: TGLint, count: TGLsizei, 
+proc glUniformMatrix2fvARB*(location: TGLint, count: TGLsizei,
                             transpose: TGLboolean, value: PGLfloat){.
     dynlib: dllname, importc: "glUniformMatrix2fvARB".}
-proc glUniformMatrix3fvARB*(location: TGLint, count: TGLsizei, 
+proc glUniformMatrix3fvARB*(location: TGLint, count: TGLsizei,
                             transpose: TGLboolean, value: PGLfloat){.
     dynlib: dllname, importc: "glUniformMatrix3fvARB".}
-proc glUniformMatrix4fvARB*(location: TGLint, count: TGLsizei, 
+proc glUniformMatrix4fvARB*(location: TGLint, count: TGLsizei,
                             transpose: TGLboolean, value: PGLfloat){.
     dynlib: dllname, importc: "glUniformMatrix4fvARB".}
-proc glGetObjectParameterfvARB*(obj: GLhandleARB, pname: TGLenum, 
-                                params: PGLfloat){.dynlib: dllname, 
+proc glGetObjectParameterfvARB*(obj: GLhandleARB, pname: TGLenum,
+                                params: PGLfloat){.dynlib: dllname,
     importc: "glGetObjectParameterfvARB".}
 proc glGetObjectParameterivARB*(obj: GLhandleARB, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetObjectParameterivARB".}
-proc glGetInfoLogARB*(obj: GLhandleARB, maxLength: TGLsizei, len: PGLsizei, 
-                      infoLog: PGLcharARB){.dynlib: dllname, 
+proc glGetInfoLogARB*(obj: GLhandleARB, maxLength: TGLsizei, len: PGLsizei,
+                      infoLog: PGLcharARB){.dynlib: dllname,
     importc: "glGetInfoLogARB".}
-proc glGetAttachedObjectsARB*(containerObj: GLhandleARB, maxCount: TGLsizei, 
+proc glGetAttachedObjectsARB*(containerObj: GLhandleARB, maxCount: TGLsizei,
                               count: PGLsizei, obj: PGLhandleARB){.
     dynlib: dllname, importc: "glGetAttachedObjectsARB".}
 proc glGetUniformLocationARB*(programObj: GLhandleARB, name: PGLcharARB): TGLint{.
     dynlib: dllname, importc: "glGetUniformLocationARB".}
-proc glGetActiveUniformARB*(programObj: GLhandleARB, index: TGLuint, 
-                            maxLength: TGLsizei, len: PGLsizei, size: PGLint, 
+proc glGetActiveUniformARB*(programObj: GLhandleARB, index: TGLuint,
+                            maxLength: TGLsizei, len: PGLsizei, size: PGLint,
                             thetype: PGLenum, name: PGLcharARB){.
     dynlib: dllname, importc: "glGetActiveUniformARB".}
-proc glGetUniformfvARB*(programObj: GLhandleARB, location: TGLint, 
-                        params: PGLfloat){.dynlib: dllname, 
+proc glGetUniformfvARB*(programObj: GLhandleARB, location: TGLint,
+                        params: PGLfloat){.dynlib: dllname,
     importc: "glGetUniformfvARB".}
-proc glGetUniformivARB*(programObj: GLhandleARB, location: TGLint, 
-                        params: PGLint){.dynlib: dllname, 
+proc glGetUniformivARB*(programObj: GLhandleARB, location: TGLint,
+                        params: PGLint){.dynlib: dllname,
     importc: "glGetUniformivARB".}
-proc glGetShaderSourceARB*(obj: GLhandleARB, maxLength: TGLsizei, len: PGLsizei, 
-                           source: PGLcharARB){.dynlib: dllname, 
+proc glGetShaderSourceARB*(obj: GLhandleARB, maxLength: TGLsizei, len: PGLsizei,
+                           source: PGLcharARB){.dynlib: dllname,
     importc: "glGetShaderSourceARB".}
-const 
+const
   GL_VERTEX_SHADER_ARB* = 0x00008B31
   GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB* = 0x00008B4A
   GL_MAX_VARYING_FLOATS_ARB* = 0x00008B4B # GL_MAX_VERTEX_ATTRIBS_ARB  { already defined }
                                           # GL_MAX_TEXTURE_IMAGE_UNITS_ARB  { already defined }
   GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB* = 0x00008B4C
-  GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS_ARB* = 0x00008B4D # 
-                                                        # 
+  GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS_ARB* = 0x00008B4D #
+                                                        #
                                                         # GL_MAX_TEXTURE_COORDS_ARB  { already defined }
-                                                        # 
-                                                        # 
+                                                        #
+                                                        #
                                                         # GL_VERTEX_PROGRAM_POINT_SIZE_ARB  { already defined }
-                                                        # 
-                                                        # 
+                                                        #
+                                                        #
                                                         # GL_VERTEX_PROGRAM_TWO_SIDE_ARB  { already defined }
                                                         # GL_OBJECT_TYPE_ARB  { already defined }
                                                         # GL_OBJECT_SUBTYPE_ARB  { already defined }
   GL_OBJECT_ACTIVE_ATTRIBUTES_ARB* = 0x00008B89
   GL_OBJECT_ACTIVE_ATTRIBUTE_MAX_LENGTH_ARB* = 0x00008B8A # GL_SHADER_OBJECT_ARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # GL_VERTEX_ATTRIB_ARRAY_ENABLED_ARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # GL_VERTEX_ATTRIB_ARRAY_SIZE_ARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # GL_VERTEX_ATTRIB_ARRAY_STRIDE_ARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # GL_VERTEX_ATTRIB_ARRAY_TYPE_ARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # GL_VERTEX_ATTRIB_ARRAY_NORMALIZED_ARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # GL_CURRENT_VERTEX_ATTRIB_ARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # GL_VERTEX_ATTRIB_ARRAY_POINTER_ARB  { already defined }
                                                           # GL_FLOAT  { already defined }
                                                           # GL_FLOAT_VEC2_ARB  { already defined }
@@ -4102,22 +4102,22 @@ const
                                                           # glVertexAttrib4NubvARB  { already defined }
                                                           # glVertexAttrib4NusvARB  { already defined }
                                                           # glVertexAttrib4NuivARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # glVertexAttribPointerARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # glEnableVertexAttribArrayARB  { already defined }
-                                                          # 
-                                                          # 
+                                                          #
+                                                          #
                                                           # glDisableVertexAttribArrayARB  { already defined }
 
-proc glBindAttribLocationARB*(programObj: GLhandleARB, index: TGLuint, 
-                              name: PGLcharARB){.dynlib: dllname, 
+proc glBindAttribLocationARB*(programObj: GLhandleARB, index: TGLuint,
+                              name: PGLcharARB){.dynlib: dllname,
     importc: "glBindAttribLocationARB".}
-proc glGetActiveAttribARB*(programObj: GLhandleARB, index: TGLuint, 
-                           maxLength: TGLsizei, len: PGLsizei, size: PGLint, 
-                           thetype: PGLenum, name: PGLcharARB){.dynlib: dllname, 
+proc glGetActiveAttribARB*(programObj: GLhandleARB, index: TGLuint,
+                           maxLength: TGLsizei, len: PGLsizei, size: PGLint,
+                           thetype: PGLenum, name: PGLcharARB){.dynlib: dllname,
     importc: "glGetActiveAttribARB".}
 proc glGetAttribLocationARB*(programObj: GLhandleARB, name: PGLcharARB): TGLint{.
     dynlib: dllname, importc: "glGetAttribLocationARB".}
@@ -4126,11 +4126,11 @@ proc glGetAttribLocationARB*(programObj: GLhandleARB, name: PGLcharARB): TGLint{
   # glGetVertexAttribivARB  { already defined }
   # glGetVertexAttribPointervARB  { already defined }
   #***** GL_ARB_fragment_shader *****//
-const 
+const
   GL_FRAGMENT_SHADER_ARB* = 0x00008B30
   GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB* = 0x00008B49 # GL_MAX_TEXTURE_COORDS_ARB  { already defined }
-                                                       # 
-                                                       # 
+                                                       #
+                                                       #
                                                        # GL_MAX_TEXTURE_IMAGE_UNITS_ARB  { already defined }
                                                        # GL_OBJECT_TYPE_ARB  { already defined }
                                                        # GL_OBJECT_SUBTYPE_ARB  { already defined }
@@ -4139,36 +4139,36 @@ const
   #***** GL_ARB_texture_non_power_of_two *****//
   #***** GL_ARB_point_sprite *****//
 
-const 
+const
   GL_POINT_SPRITE_ARB* = 0x00008861
   GL_COORD_REPLACE_ARB* = 0x00008862
   #***** GL_EXT_depth_bounds_test *****//
 
-const 
+const
   constGL_DEPTH_BOUNDS_TEST_EXT* = 0x00008890
   constGL_DEPTH_BOUNDS_EXT* = 0x00008891
 
-proc glDepthBoundsEXT*(zmin: TGLclampd, zmax: TGLclampd){.dynlib: dllname, 
+proc glDepthBoundsEXT*(zmin: TGLclampd, zmax: TGLclampd){.dynlib: dllname,
     importc: "glDepthBoundsEXT".}
   #***** GL_EXT_texture_mirror_clamp *****//
-const 
+const
   GL_MIRROR_CLAMP_EXT* = 0x00008742
   GL_MIRROR_CLAMP_TO_EDGE_EXT* = 0x00008743
   GL_MIRROR_CLAMP_TO_BORDER_EXT* = 0x00008912
   #***** GL_EXT_blend_equation_separate *****//
 
-const 
+const
   GL_BLEND_EQUATION_RGB_EXT* = 0x00008009
   GL_BLEND_EQUATION_ALPHA_EXT* = 0x0000883D
 
 proc glBlendEquationSeparateEXT*(modeRGB: TGLenum, modeAlpha: TGLenum){.
     dynlib: dllname, importc: "glBlendEquationSeparateEXT".}
   #***** GL_MESA_pack_invert *****//
-const 
+const
   GL_PACK_INVERT_MESA* = 0x00008758
   #***** GL_MESA_ycbcr_texture *****//
 
-const 
+const
   GL_YCBCR_MESA* = 0x00008757
   GL_UNSIGNED_SHORT_8_8_MESA* = 0x000085BA
   GL_UNSIGNED_SHORT_8_8_REV_MESA* = 0x000085BB
@@ -4176,14 +4176,14 @@ const
   #***** GL_NV_fragment_program_option *****//
   #***** GL_EXT_pixel_buffer_object *****//
 
-const 
+const
   GL_PIXEL_PACK_BUFFER_EXT* = 0x000088EB
   GL_PIXEL_UNPACK_BUFFER_EXT* = 0x000088EC
   GL_PIXEL_PACK_BUFFER_BINDING_EXT* = 0x000088ED
   GL_PIXEL_UNPACK_BUFFER_BINDING_EXT* = 0x000088EF
   #***** GL_NV_fragment_program2 *****//
 
-const 
+const
   GL_MAX_PROGRAM_EXEC_INSTRUCTIONS_NV* = 0x000088F4
   GL_MAX_PROGRAM_CALL_DEPTH_NV* = 0x000088F5
   GL_MAX_PROGRAM_IF_DEPTH_NV* = 0x000088F6
@@ -4196,7 +4196,7 @@ const
   # GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS_ARB  { already defined }
   #***** GL_ARB_draw_buffers *****//
 
-const 
+const
   GL_MAX_DRAW_BUFFERS_ARB* = 0x00008824
   GL_DRAW_BUFFER0_ARB* = 0x00008825
   GL_DRAW_BUFFER1_ARB* = 0x00008826
@@ -4215,17 +4215,17 @@ const
   GL_DRAW_BUFFER14_ARB* = 0x00008833
   GL_DRAW_BUFFER15_ARB* = 0x00008834
 
-proc glDrawBuffersARB*(n: TGLsizei, bufs: PGLenum){.dynlib: dllname, 
+proc glDrawBuffersARB*(n: TGLsizei, bufs: PGLenum){.dynlib: dllname,
     importc: "glDrawBuffersARB".}
   #***** GL_ARB_texture_rectangle *****//
-const 
+const
   GL_TEXTURE_RECTANGLE_ARB* = 0x000084F5
   GL_TEXTURE_BINDING_RECTANGLE_ARB* = 0x000084F6
   GL_PROXY_TEXTURE_RECTANGLE_ARB* = 0x000084F7
   GL_MAX_RECTANGLE_TEXTURE_SIZE_ARB* = 0x000084F8
   #***** GL_ARB_color_buffer_float *****//
 
-const 
+const
   GL_RGBA_FLOAT_MODE_ARB* = 0x00008820
   GL_CLAMP_VERTEX_COLOR_ARB* = 0x0000891A
   GL_CLAMP_FRAGMENT_COLOR_ARB* = 0x0000891B
@@ -4233,14 +4233,14 @@ const
   GL_FIXED_ONLY_ARB* = 0x0000891D
   WGL_TYPE_RGBA_FLOAT_ARB* = 0x000021A0
 
-proc glClampColorARB*(target: TGLenum, clamp: TGLenum){.dynlib: dllname, 
+proc glClampColorARB*(target: TGLenum, clamp: TGLenum){.dynlib: dllname,
     importc: "glClampColorARB".}
   #***** GL_ARB_half_float_pixel *****//
-const 
+const
   GL_HALF_FLOAT_ARB* = 0x0000140B
   #***** GL_ARB_texture_float *****//
 
-const 
+const
   GL_TEXTURE_RED_TYPE_ARB* = 0x00008C10
   GL_TEXTURE_GREEN_TYPE_ARB* = 0x00008C11
   GL_TEXTURE_BLUE_TYPE_ARB* = 0x00008C12
@@ -4266,14 +4266,14 @@ const
   # GL_COMPRESSED_RGBA_S3TC_DXT1_EXT  { already defined }
   #***** GL_ARB_pixel_buffer_object *****//
 
-const 
+const
   GL_PIXEL_PACK_BUFFER_ARB* = 0x000088EB
   GL_PIXEL_UNPACK_BUFFER_ARB* = 0x000088EC
   GL_PIXEL_PACK_BUFFER_BINDING_ARB* = 0x000088ED
   GL_PIXEL_UNPACK_BUFFER_BINDING_ARB* = 0x000088EF
   #***** GL_EXT_framebuffer_object *****//
 
-const 
+const
   GL_FRAMEBUFFER_EXT* = 0x00008D40
   GL_RENDERBUFFER_EXT* = 0x00008D41
   GL_STENCIL_INDEX_EXT* = 0x00008D45
@@ -4323,7 +4323,7 @@ const
   GL_MAX_RENDERBUFFER_SIZE_EXT* = 0x000084E8
   GL_INVALID_FRAMEBUFFER_OPERATION_EXT* = 0x00000506
 
-proc glIsRenderbufferEXT*(renderbuffer: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsRenderbufferEXT*(renderbuffer: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsRenderbufferEXT".}
 proc glBindRenderbufferEXT*(target: TGLenum, renderbuffer: TGLuint){.
     dynlib: dllname, importc: "glBindRenderbufferEXT".}
@@ -4331,45 +4331,45 @@ proc glDeleteRenderbuffersEXT*(n: TGLsizei, renderbuffers: PGLuint){.
     dynlib: dllname, importc: "glDeleteRenderbuffersEXT".}
 proc glGenRenderbuffersEXT*(n: TGLsizei, renderbuffers: PGLuint){.
     dynlib: dllname, importc: "glGenRenderbuffersEXT".}
-proc glRenderbufferStorageEXT*(target: TGLenum, internalformat: TGLenum, 
+proc glRenderbufferStorageEXT*(target: TGLenum, internalformat: TGLenum,
                                width: TGLsizei, height: TGLsizei){.
     dynlib: dllname, importc: "glRenderbufferStorageEXT".}
-proc glGetRenderbufferParameterivEXT*(target: TGLenum, pname: TGLenum, 
-                                      params: PGLint){.dynlib: dllname, 
+proc glGetRenderbufferParameterivEXT*(target: TGLenum, pname: TGLenum,
+                                      params: PGLint){.dynlib: dllname,
     importc: "glGetRenderbufferParameterivEXT".}
-proc glIsFramebufferEXT*(framebuffer: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsFramebufferEXT*(framebuffer: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsFramebufferEXT".}
 proc glBindFramebufferEXT*(target: TGLenum, framebuffer: TGLuint){.
     dynlib: dllname, importc: "glBindFramebufferEXT".}
 proc glDeleteFramebuffersEXT*(n: TGLsizei, framebuffers: PGLuint){.
     dynlib: dllname, importc: "glDeleteFramebuffersEXT".}
-proc glGenFramebuffersEXT*(n: TGLsizei, framebuffers: PGLuint){.dynlib: dllname, 
+proc glGenFramebuffersEXT*(n: TGLsizei, framebuffers: PGLuint){.dynlib: dllname,
     importc: "glGenFramebuffersEXT".}
-proc glCheckFramebufferStatusEXT*(target: TGLenum): TGLenum{.dynlib: dllname, 
+proc glCheckFramebufferStatusEXT*(target: TGLenum): TGLenum{.dynlib: dllname,
     importc: "glCheckFramebufferStatusEXT".}
-proc glFramebufferTexture1DEXT*(target: TGLenum, attachment: TGLenum, 
-                                textarget: TGLenum, texture: TGLuint, 
-                                level: TGLint){.dynlib: dllname, 
+proc glFramebufferTexture1DEXT*(target: TGLenum, attachment: TGLenum,
+                                textarget: TGLenum, texture: TGLuint,
+                                level: TGLint){.dynlib: dllname,
     importc: "glFramebufferTexture1DEXT".}
-proc glFramebufferTexture2DEXT*(target: TGLenum, attachment: TGLenum, 
-                                textarget: TGLenum, texture: TGLuint, 
-                                level: TGLint){.dynlib: dllname, 
+proc glFramebufferTexture2DEXT*(target: TGLenum, attachment: TGLenum,
+                                textarget: TGLenum, texture: TGLuint,
+                                level: TGLint){.dynlib: dllname,
     importc: "glFramebufferTexture2DEXT".}
-proc glFramebufferTexture3DEXT*(target: TGLenum, attachment: TGLenum, 
-                                textarget: TGLenum, texture: TGLuint, 
+proc glFramebufferTexture3DEXT*(target: TGLenum, attachment: TGLenum,
+                                textarget: TGLenum, texture: TGLuint,
                                 level: TGLint, zoffset: TGLint){.
     dynlib: dllname, importc: "glFramebufferTexture3DEXT".}
-proc glFramebufferRenderbufferEXT*(target: TGLenum, attachment: TGLenum, 
-                                   renderbuffertarget: TGLenum, 
-                                   renderbuffer: TGLuint){.dynlib: dllname, 
+proc glFramebufferRenderbufferEXT*(target: TGLenum, attachment: TGLenum,
+                                   renderbuffertarget: TGLenum,
+                                   renderbuffer: TGLuint){.dynlib: dllname,
     importc: "glFramebufferRenderbufferEXT".}
-proc glGetFramebufferAttachmentParameterivEXT*(target: TGLenum, 
-    attachment: TGLenum, pname: TGLenum, params: PGLint){.dynlib: dllname, 
+proc glGetFramebufferAttachmentParameterivEXT*(target: TGLenum,
+    attachment: TGLenum, pname: TGLenum, params: PGLint){.dynlib: dllname,
     importc: "glGetFramebufferAttachmentParameterivEXT".}
-proc glGenerateMipmapEXT*(target: TGLenum){.dynlib: dllname, 
+proc glGenerateMipmapEXT*(target: TGLenum){.dynlib: dllname,
     importc: "glGenerateMipmapEXT".}
   #***** GL_version_1_4 *****//
-const 
+const
   GL_BLEND_DST_RGB* = 0x000080C8
   GL_BLEND_SRC_RGB* = 0x000080C9
   GL_BLEND_DST_ALPHA* = 0x000080CA
@@ -4410,7 +4410,7 @@ const
   GL_TEXTURE_COMPARE_FUNC* = 0x0000884D
   GL_COMPARE_R_TO_TEXTURE* = 0x0000884E
 
-proc glBlendFuncSeparate*(sfactorRGB: TGLenum, dfactorRGB: TGLenum, 
+proc glBlendFuncSeparate*(sfactorRGB: TGLenum, dfactorRGB: TGLenum,
                           sfactorAlpha: TGLenum, dfactorAlpha: TGLenum){.
     dynlib: dllname, importc: "glBlendFuncSeparate".}
 proc glFogCoordf*(coord: TGLfloat){.dynlib: dllname, importc: "glFogCoordf".}
@@ -4419,81 +4419,81 @@ proc glFogCoordd*(coord: TGLdouble){.dynlib: dllname, importc: "glFogCoordd".}
 proc glFogCoorddv*(coord: PGLdouble){.dynlib: dllname, importc: "glFogCoorddv".}
 proc glFogCoordPointer*(thetype: TGLenum, stride: TGLsizei, pointer: PGLvoid){.
     dynlib: dllname, importc: "glFogCoordPointer".}
-proc glMultiDrawArrays*(mode: TGLenum, first: PGLint, count: PGLsizei, 
-                        primcount: TGLsizei){.dynlib: dllname, 
+proc glMultiDrawArrays*(mode: TGLenum, first: PGLint, count: PGLsizei,
+                        primcount: TGLsizei){.dynlib: dllname,
     importc: "glMultiDrawArrays".}
-proc glMultiDrawElements*(mode: TGLenum, count: PGLsizei, thetype: TGLenum, 
+proc glMultiDrawElements*(mode: TGLenum, count: PGLsizei, thetype: TGLenum,
                           indices: PGLvoid, primcount: TGLsizei){.
     dynlib: dllname, importc: "glMultiDrawElements".}
-proc glPointParameterf*(pname: TGLenum, param: TGLfloat){.dynlib: dllname, 
+proc glPointParameterf*(pname: TGLenum, param: TGLfloat){.dynlib: dllname,
     importc: "glPointParameterf".}
-proc glPointParameterfv*(pname: TGLenum, params: PGLfloat){.dynlib: dllname, 
+proc glPointParameterfv*(pname: TGLenum, params: PGLfloat){.dynlib: dllname,
     importc: "glPointParameterfv".}
-proc glPointParameteri*(pname: TGLenum, param: TGLint){.dynlib: dllname, 
+proc glPointParameteri*(pname: TGLenum, param: TGLint){.dynlib: dllname,
     importc: "glPointParameteri".}
-proc glPointParameteriv*(pname: TGLenum, params: PGLint){.dynlib: dllname, 
+proc glPointParameteriv*(pname: TGLenum, params: PGLint){.dynlib: dllname,
     importc: "glPointParameteriv".}
 proc glSecondaryColor3b*(red: TGLByte, green: TGLByte, blue: TGLByte){.
     dynlib: dllname, importc: "glSecondaryColor3b".}
-proc glSecondaryColor3bv*(v: PGLbyte){.dynlib: dllname, 
+proc glSecondaryColor3bv*(v: PGLbyte){.dynlib: dllname,
                                        importc: "glSecondaryColor3bv".}
 proc glSecondaryColor3d*(red: TGLdouble, green: TGLdouble, blue: TGLdouble){.
     dynlib: dllname, importc: "glSecondaryColor3d".}
-proc glSecondaryColor3dv*(v: PGLdouble){.dynlib: dllname, 
+proc glSecondaryColor3dv*(v: PGLdouble){.dynlib: dllname,
     importc: "glSecondaryColor3dv".}
 proc glSecondaryColor3f*(red: TGLfloat, green: TGLfloat, blue: TGLfloat){.
     dynlib: dllname, importc: "glSecondaryColor3f".}
-proc glSecondaryColor3fv*(v: PGLfloat){.dynlib: dllname, 
+proc glSecondaryColor3fv*(v: PGLfloat){.dynlib: dllname,
                                         importc: "glSecondaryColor3fv".}
 proc glSecondaryColor3i*(red: TGLint, green: TGLint, blue: TGLint){.
     dynlib: dllname, importc: "glSecondaryColor3i".}
-proc glSecondaryColor3iv*(v: PGLint){.dynlib: dllname, 
+proc glSecondaryColor3iv*(v: PGLint){.dynlib: dllname,
                                       importc: "glSecondaryColor3iv".}
 proc glSecondaryColor3s*(red: TGLshort, green: TGLshort, blue: TGLshort){.
     dynlib: dllname, importc: "glSecondaryColor3s".}
-proc glSecondaryColor3sv*(v: PGLshort){.dynlib: dllname, 
+proc glSecondaryColor3sv*(v: PGLshort){.dynlib: dllname,
                                         importc: "glSecondaryColor3sv".}
 proc glSecondaryColor3ub*(red: TGLubyte, green: TGLubyte, blue: TGLubyte){.
     dynlib: dllname, importc: "glSecondaryColor3ub".}
-proc glSecondaryColor3ubv*(v: PGLubyte){.dynlib: dllname, 
+proc glSecondaryColor3ubv*(v: PGLubyte){.dynlib: dllname,
     importc: "glSecondaryColor3ubv".}
 proc glSecondaryColor3ui*(red: TGLuint, green: TGLuint, blue: TGLuint){.
     dynlib: dllname, importc: "glSecondaryColor3ui".}
-proc glSecondaryColor3uiv*(v: PGLuint){.dynlib: dllname, 
+proc glSecondaryColor3uiv*(v: PGLuint){.dynlib: dllname,
                                         importc: "glSecondaryColor3uiv".}
 proc glSecondaryColor3us*(red: TGLushort, green: TGLushort, blue: TGLushort){.
     dynlib: dllname, importc: "glSecondaryColor3us".}
-proc glSecondaryColor3usv*(v: PGLushort){.dynlib: dllname, 
+proc glSecondaryColor3usv*(v: PGLushort){.dynlib: dllname,
     importc: "glSecondaryColor3usv".}
-proc glSecondaryColorPointer*(size: TGLint, thetype: TGLenum, stride: TGLsizei, 
-                              pointer: PGLvoid){.dynlib: dllname, 
+proc glSecondaryColorPointer*(size: TGLint, thetype: TGLenum, stride: TGLsizei,
+                              pointer: PGLvoid){.dynlib: dllname,
     importc: "glSecondaryColorPointer".}
-proc glWindowPos2d*(x: TGLdouble, y: TGLdouble){.dynlib: dllname, 
+proc glWindowPos2d*(x: TGLdouble, y: TGLdouble){.dynlib: dllname,
     importc: "glWindowPos2d".}
 proc glWindowPos2dv*(v: PGLdouble){.dynlib: dllname, importc: "glWindowPos2dv".}
-proc glWindowPos2f*(x: TGLfloat, y: TGLfloat){.dynlib: dllname, 
+proc glWindowPos2f*(x: TGLfloat, y: TGLfloat){.dynlib: dllname,
     importc: "glWindowPos2f".}
 proc glWindowPos2fv*(v: PGLfloat){.dynlib: dllname, importc: "glWindowPos2fv".}
-proc glWindowPos2i*(x: TGLint, y: TGLint){.dynlib: dllname, 
+proc glWindowPos2i*(x: TGLint, y: TGLint){.dynlib: dllname,
     importc: "glWindowPos2i".}
 proc glWindowPos2iv*(v: PGLint){.dynlib: dllname, importc: "glWindowPos2iv".}
-proc glWindowPos2s*(x: TGLshort, y: TGLshort){.dynlib: dllname, 
+proc glWindowPos2s*(x: TGLshort, y: TGLshort){.dynlib: dllname,
     importc: "glWindowPos2s".}
 proc glWindowPos2sv*(v: PGLshort){.dynlib: dllname, importc: "glWindowPos2sv".}
-proc glWindowPos3d*(x: TGLdouble, y: TGLdouble, z: TGLdouble){.dynlib: dllname, 
+proc glWindowPos3d*(x: TGLdouble, y: TGLdouble, z: TGLdouble){.dynlib: dllname,
     importc: "glWindowPos3d".}
 proc glWindowPos3dv*(v: PGLdouble){.dynlib: dllname, importc: "glWindowPos3dv".}
-proc glWindowPos3f*(x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname, 
+proc glWindowPos3f*(x: TGLfloat, y: TGLfloat, z: TGLfloat){.dynlib: dllname,
     importc: "glWindowPos3f".}
 proc glWindowPos3fv*(v: PGLfloat){.dynlib: dllname, importc: "glWindowPos3fv".}
-proc glWindowPos3i*(x: TGLint, y: TGLint, z: TGLint){.dynlib: dllname, 
+proc glWindowPos3i*(x: TGLint, y: TGLint, z: TGLint){.dynlib: dllname,
     importc: "glWindowPos3i".}
 proc glWindowPos3iv*(v: PGLint){.dynlib: dllname, importc: "glWindowPos3iv".}
-proc glWindowPos3s*(x: TGLshort, y: TGLshort, z: TGLshort){.dynlib: dllname, 
+proc glWindowPos3s*(x: TGLshort, y: TGLshort, z: TGLshort){.dynlib: dllname,
     importc: "glWindowPos3s".}
 proc glWindowPos3sv*(v: PGLshort){.dynlib: dllname, importc: "glWindowPos3sv".}
   #***** GL_version_1_5 *****//
-const 
+const
   GL_BUFFER_SIZE* = 0x00008764
   GL_BUFFER_USAGE* = 0x00008765
   GL_QUERY_COUNTER_BITS* = 0x00008864
@@ -4545,12 +4545,12 @@ const
   GL_SRC1_ALPHA* = 0x00008589
   GL_SRC2_ALPHA* = 0x0000858A
 
-proc glGenQueries*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glGenQueries*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glGenQueries".}
-proc glDeleteQueries*(n: TGLsizei, ids: PGLuint){.dynlib: dllname, 
+proc glDeleteQueries*(n: TGLsizei, ids: PGLuint){.dynlib: dllname,
     importc: "glDeleteQueries".}
 proc glIsQuery*(id: TGLuint): TGLboolean{.dynlib: dllname, importc: "glIsQuery".}
-proc glBeginQuery*(target: TGLenum, id: TGLuint){.dynlib: dllname, 
+proc glBeginQuery*(target: TGLenum, id: TGLuint){.dynlib: dllname,
     importc: "glBeginQuery".}
 proc glEndQuery*(target: TGLenum){.dynlib: dllname, importc: "glEndQuery".}
 proc glGetQueryiv*(target: TGLenum, pname: TGLenum, params: PGLint){.
@@ -4559,32 +4559,32 @@ proc glGetQueryObjectiv*(id: TGLuint, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetQueryObjectiv".}
 proc glGetQueryObjectuiv*(id: TGLuint, pname: TGLenum, params: PGLuint){.
     dynlib: dllname, importc: "glGetQueryObjectuiv".}
-proc glBindBuffer*(target: TGLenum, buffer: TGLuint){.dynlib: dllname, 
+proc glBindBuffer*(target: TGLenum, buffer: TGLuint){.dynlib: dllname,
     importc: "glBindBuffer".}
-proc glDeleteBuffers*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname, 
+proc glDeleteBuffers*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname,
     importc: "glDeleteBuffers".}
-proc glGenBuffers*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname, 
+proc glGenBuffers*(n: TGLsizei, buffers: PGLuint){.dynlib: dllname,
     importc: "glGenBuffers".}
-proc glIsBuffer*(buffer: TGLuint): TGLboolean{.dynlib: dllname, 
+proc glIsBuffer*(buffer: TGLuint): TGLboolean{.dynlib: dllname,
     importc: "glIsBuffer".}
-proc glBufferData*(target: TGLenum, size: GLsizeiptr, data: PGLvoid, 
+proc glBufferData*(target: TGLenum, size: GLsizeiptr, data: PGLvoid,
                    usage: TGLenum){.dynlib: dllname, importc: "glBufferData".}
-proc glBufferSubData*(target: TGLenum, offset: GLintptr, size: GLsizeiptr, 
-                      data: PGLvoid){.dynlib: dllname, 
+proc glBufferSubData*(target: TGLenum, offset: GLintptr, size: GLsizeiptr,
+                      data: PGLvoid){.dynlib: dllname,
                                       importc: "glBufferSubData".}
-proc glGetBufferSubData*(target: TGLenum, offset: GLintptr, size: GLsizeiptr, 
-                         data: PGLvoid){.dynlib: dllname, 
+proc glGetBufferSubData*(target: TGLenum, offset: GLintptr, size: GLsizeiptr,
+                         data: PGLvoid){.dynlib: dllname,
     importc: "glGetBufferSubData".}
-proc glMapBuffer*(target: TGLenum, access: TGLenum): PGLvoid{.dynlib: dllname, 
+proc glMapBuffer*(target: TGLenum, access: TGLenum): PGLvoid{.dynlib: dllname,
     importc: "glMapBuffer".}
-proc glUnmapBuffer*(target: TGLenum): TGLboolean{.dynlib: dllname, 
+proc glUnmapBuffer*(target: TGLenum): TGLboolean{.dynlib: dllname,
     importc: "glUnmapBuffer".}
 proc glGetBufferParameteriv*(target: TGLenum, pname: TGLenum, params: PGLint){.
     dynlib: dllname, importc: "glGetBufferParameteriv".}
 proc glGetBufferPointerv*(target: TGLenum, pname: TGLenum, params: PGLvoid){.
     dynlib: dllname, importc: "glGetBufferPointerv".}
   #***** GL_version_2_0 *****//
-const 
+const
   GL_BLEND_EQUATION_RGB* = 0x00008009
   GL_VERTEX_ATTRIB_ARRAY_ENABLED* = 0x00008622
   GL_VERTEX_ATTRIB_ARRAY_SIZE* = 0x00008623

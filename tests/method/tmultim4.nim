@@ -26,7 +26,7 @@ var s:ref Test = newTest()
 for z in 1..4:
   s.doMethod()
   break
- 
+
 #works
 #for z in 1..4:
 #  s.doProc()

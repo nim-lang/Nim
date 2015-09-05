@@ -76,7 +76,7 @@ proc main[T]() =
   b = (1, 2, 3)
   myType = b
   echo myType
-  
+
   var myType2: MyType2
   var c: MyType2
   c = (1.0, 2.0)

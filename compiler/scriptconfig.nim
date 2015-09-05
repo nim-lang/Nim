@@ -68,8 +68,19 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     setResult(a, os.getCurrentDir())
   cbos moveFile:
     os.moveFile(getString(a, 0), getString(a, 1))
+  cbos copyFile:
+    os.copyFile(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
     setResult(a, toSeconds(getLastModificationTime(getString(a, 0))))
+
+  cbconf getEnv:
+    setResult(a, os.getEnv(a.getString 0))
+  cbconf existsEnv:
+    setResult(a, os.existsEnv(a.getString 0))
+  cbconf dirExists:
+    setResult(a, os.dirExists(a.getString 0))
+  cbconf fileExists:
+    setResult(a, os.fileExists(a.getString 0))
 
   cbconf thisDir:
     setResult(a, vthisDir)
@@ -87,6 +98,8 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     setResult(a, os.paramCount())
   cbconf cmpIgnoreStyle:
     setResult(a, strutils.cmpIgnoreStyle(a.getString 0, a.getString 1))
+  cbconf cmpIgnoreCase:
+    setResult(a, strutils.cmpIgnoreCase(a.getString 0, a.getString 1))
   cbconf setCommand:
     options.command = a.getString 0
   cbconf getCommand:

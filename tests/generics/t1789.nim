@@ -38,7 +38,7 @@ type
 proc `[]`*[N, T](f: Bar[N, T], n: range[0..(N - 1)]): T =
   assert high(n) == N-1
   result = f.bar[n]
-  
+
 var b: Bar[3, int]
 echo b[2]
 

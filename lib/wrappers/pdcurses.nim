@@ -42,8 +42,14 @@ pdcwin.h:
 when defined(windows):
   import windows
 
+  when defined(nimOldDlls):
+    const pdcursesdll = "pdcurses.dll"
+  elif defined(cpu64):
+    const pdcursesdll = "pdcurses64.dll"
+  else:
+    const pdcursesdll = "pdcurses32.dll"
+
   const
-    pdcursesdll = "pdcurses.dll"
     unixOS = false
   {.pragma: extdecl, stdcall.}
 

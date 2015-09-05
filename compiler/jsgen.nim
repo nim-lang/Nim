@@ -1687,6 +1687,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, lastSon(n), r)
   of nkBlockStmt, nkBlockExpr: genBlock(p, n, r)
   of nkIfStmt, nkIfExpr: genIf(p, n, r)
+  of nkWhen:
+    # This is "when nimvm" node
+    gen(p, n.sons[1].sons[0], r)
   of nkWhileStmt: genWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
   of nkConstSection: discard

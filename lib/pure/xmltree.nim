@@ -65,7 +65,7 @@ proc newCData*(cdata: string): XmlNode =
 
 proc newEntity*(entity: string): XmlNode =
   ## creates a new ``PXmlNode`` of kind ``xnEntity`` with the text `entity`.
-  result = newXmlNode(xnCData)
+  result = newXmlNode(xnEntity)
   result.fText = entity
 
 proc text*(n: XmlNode): string {.inline.} =

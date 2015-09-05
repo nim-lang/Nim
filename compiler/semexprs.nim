@@ -1764,22 +1764,39 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
     if semCheck: result = semStmt(c, e) # do not open a new scope!
     else: result = e
 
+  # Check if the node is "when nimvm"
+  # when nimvm:
+  #   ...
+  # else:
+  #   ...
+  let whenNimvm = n.sons.len == 2 and n.sons[0].kind == nkElifBranch and
+      n.sons[1].kind == nkElse and n.sons[0].sons[0].kind == nkIdent and
+      lookUp(c, n.sons[0].sons[0]).magic == mNimvm
+
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
     case it.kind
     of nkElifBranch, nkElifExpr:
       checkSonsLen(it, 2)
-      var e = semConstExpr(c, it.sons[0])
-      if e.kind != nkIntLit:
-        # can happen for cascading errors, assume false
-        # InternalError(n.info, "semWhen")
-        discard
-      elif e.intVal != 0 and result == nil:
-        setResult(it.sons[1])
+      if whenNimvm:
+        if semCheck:
+          it.sons[1] = semStmt(c, it.sons[1])
+        result = n # when nimvm is not elimited until codegen
+      else:
+        var e = semConstExpr(c, it.sons[0])
+        if e.kind != nkIntLit:
+          # can happen for cascading errors, assume false
+          # InternalError(n.info, "semWhen")
+          discard
+        elif e.intVal != 0 and result == nil:
+          setResult(it.sons[1])
     of nkElse, nkElseExpr:
       checkSonsLen(it, 1)
-      if result == nil:
-        setResult(it.sons[0])
+      if result == nil or whenNimvm:
+        if semCheck:
+          it.sons[0] = semStmt(c, it.sons[0])
+        if result == nil:
+          result = it.sons[0]
     else: illFormedAst(n)
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
@@ -2162,7 +2179,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = semWhen(c, n, true)
     else:
       result = semWhen(c, n, false)
-      result = semExpr(c, result, flags)
+      if result == n:
+        # This is a "when nimvm" stmt.
+        result = semWhen(c, n, true)
+      else:
+        result = semExpr(c, result, flags)
   of nkBracketExpr:
     checkMinSonsLen(n, 1)
     var s = qualifiedLookUp(c, n.sons[0], {checkUndeclared})

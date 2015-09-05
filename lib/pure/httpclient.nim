@@ -402,7 +402,11 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
   headers.add(" HTTP/1.1\c\L")
 
-  add(headers, "Host: " & parseUri(url).hostname & "\c\L")
+  if r.port == "":
+    add(headers, "Host: " & r.hostname & "\c\L")
+  else:
+    add(headers, "Host: " & r.hostname & ":" & r.port & "\c\L")
+
   if userAgent != "":
     add(headers, "User-Agent: " & userAgent & "\c\L")
   if proxy != nil and proxy.auth != "":
@@ -580,7 +584,11 @@ proc generateHeaders(r: Uri, httpMethod: string,
     result.add("?" & r.query)
   result.add(" HTTP/1.1\c\L")
 
-  add(result, "Host: " & r.hostname & "\c\L")
+  if r.port == "":
+    add(result, "Host: " & r.hostname & "\c\L")
+  else:
+    add(result, "Host: " & r.hostname & ":" & r.port & "\c\L")
+
   add(result, "Connection: Keep-Alive\c\L")
   if body.len > 0 and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")

@@ -306,7 +306,7 @@ const
 
 proc equalsFile*(r: Rope, f: File): bool =
   ## returns true if the contents of the file `f` equal `r`.
-  var 
+  var
     buf: array[bufSize, char]
     bpos = buf.len
     blen = buf.len

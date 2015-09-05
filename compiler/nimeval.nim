@@ -10,7 +10,7 @@
 ## exposes the Nim VM to clients.
 
 import
-  ast, modules, passes, passaux, condsyms, 
+  ast, modules, passes, passaux, condsyms,
   options, nimconf, lists, sem, semdata, llstream, vm
 
 proc execute*(program: string) =

@@ -11,7 +11,7 @@ type
 
   PNodeFoo* = ref object of TNode
 
-  TSomethingElse = object 
+  TSomethingElse = object
   PSomethingElse = ref TSomethingElse
 
 method foo(a: PNode, b: PSomethingElse) = discard

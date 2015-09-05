@@ -124,7 +124,7 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
     if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
       # If the 16 bits following the high surrogate are in the source buffer...
       let ch2 = int(cast[uint16](w[i]))
-      
+
       # If it's a low surrogate, convert to UTF32:
       if ch2 >= UNI_SUR_LOW_START and ch2 <= UNI_SUR_LOW_END:
         ch = (((ch and halfMask) shl halfShift) + (ch2 and halfMask)) + halfBase
@@ -135,7 +135,7 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
     elif ch >= UNI_SUR_LOW_START and ch <= UNI_SUR_LOW_END:
       #invalid UTF-16
       ch = replacement
-      
+
     if ch < 0x80:
       result.add chr(ch)
     elif ch < 0x800:
@@ -155,6 +155,6 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
       result.add chr(0xFFFD shr 12 or 0b1110_0000)
       result.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
       result.add chr(0xFFFD and ones(6) or 0b10_0000_00)
-      
+
 proc `$`*(s: WideCString): string =
   result = s $ 80

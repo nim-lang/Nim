@@ -8,8 +8,8 @@ type
 
 var
   e: TE
-  
+
 case e
-of A..D, B..C: 
+of A..D, B..C:
   echo "redundant"
 else: nil

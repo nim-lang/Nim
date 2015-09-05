@@ -320,7 +320,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
             x.call.add newSymNode(s, n.info)
           else:
             internalAssert false
-  
+
   result = x.call
   instGenericConvertersSons(c, result, x)
   result.sons[0] = newSymNode(finalCallee, result.sons[0].info)

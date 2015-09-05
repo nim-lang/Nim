@@ -1,10 +1,10 @@
 # Test the discardable pragma
 
-proc p(x, y: int): int {.discardable.} = 
+proc p(x, y: int): int {.discardable.} =
   return x + y
 
 # test that it is inherited from generic procs too:
-proc q[T](x, y: T): T {.discardable.} = 
+proc q[T](x, y: T): T {.discardable.} =
   return x + y
 
 

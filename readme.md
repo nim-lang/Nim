@@ -6,7 +6,8 @@ documentation.
 Compiling the Nim compiler is quite straightforward. Because
 the Nim compiler itself is written in the Nim programming language
 the C source of an older version of the compiler are needed to bootstrap the
-latest version. The C sources are available in a separate repo [here](http://github.com/nim-lang/csources).
+latest version. The C sources are available in a separate
+repo [here](http://github.com/nim-lang/csources).
 
 The compiler currently supports the following platform and architecture
 combinations:
@@ -35,12 +36,23 @@ $ bin/nim c koch
 $ ./koch boot -d:release
 ```
 
-``koch install [dir]`` may then be used to install Nim, but lots of things don't work then so don't do that. Add it to your PATH instead. More ``koch`` related options are documented in
-[doc/koch.txt](doc/koch.txt).
+``koch install [dir]`` may then be used to install Nim, but lots of things
+don't work then so don't do that. Add it to your PATH instead. More ``koch``
+related options are documented in [doc/koch.txt](doc/koch.txt).
 
 The above steps can be performed on Windows in a similar fashion, the
 ``build.bat`` and ``build64.bat`` (for x86_64 systems) are provided to be used
 instead of ``build.sh``.
+
+
+## Nimble
+[Nimble](https://github.com/nim-lang/nimble) is Nim's package manager. For the
+source based installations where you added Nim's ``bin`` directory to your PATH
+the easiest way of installing Nimble is via:
+
+```
+$ nim e install_nimble.nims
+```
 
 ## Getting help
 A [forum](http://forum.nim-lang.org/) is available if you have any

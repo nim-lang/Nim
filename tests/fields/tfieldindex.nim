@@ -14,7 +14,7 @@ proc indexOf*(t: typedesc, name: string): int =
   for n, x in fieldPairs(d):
     if n == name: return i
     i.inc
-  raise newException(EInvalidValue, "No field " & name & " in type " & 
+  raise newException(EInvalidValue, "No field " & name & " in type " &
     astToStr(t))
 
 echo TMyTuple.indexOf("b")

@@ -301,7 +301,7 @@ matches better than just ``T`` then.
   proc sayHi(x: var int): string =
     # matches a var int
     result = $(x + 10)
-    
+
   proc sayHello(x: int) =
     var m = x # a mutable version of x
     echo sayHi(x) # matches the non-var version of sayHi

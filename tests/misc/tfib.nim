@@ -1,8 +1,8 @@
 
-iterator fibonacci(): int = 
+iterator fibonacci(): int =
   var a = 0
   var b = 1
-  while true: 
+  while true:
     yield a
     var c = b
     b = a

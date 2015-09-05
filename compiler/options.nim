@@ -191,6 +191,17 @@ proc getPrefixDir*(): string =
   else:
     result = splitPath(getAppDir()).head
 
+proc setDefaultLibpath*() =
+  # set default value (can be overwritten):
+  if libpath == "":
+    # choose default libpath:
+    var prefix = getPrefixDir()
+    when defined(posix):
+      if prefix == "/usr": libpath = "/usr/lib/nim"
+      elif prefix == "/usr/local": libpath = "/usr/local/lib/nim"
+      else: libpath = joinPath(prefix, "lib")
+    else: libpath = joinPath(prefix, "lib")
+
 proc canonicalizePath*(path: string): string =
   when not FileSystemCaseSensitive: result = path.expandFilename.toLower
   else: result = path.expandFilename

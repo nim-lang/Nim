@@ -29,18 +29,18 @@ int main() {
 """
 
 type
-  TTypeKind = enum 
+  TTypeKind = enum
     cint, cshort, clong, cstring, pointer
 
 var
   hd = ""
   tl = ""
 
-proc myExec(cmd: string): bool = 
+proc myExec(cmd: string): bool =
   echo "CMD ", cmd
   return execShellCmd(cmd) == 0
 
-proc header(s: string): bool = 
+proc header(s: string): bool =
   const testh = "testh"
   var f: TFile
   if open(f, addFileExt(testh, "c"), fmWrite):
@@ -55,10 +55,10 @@ proc header(s: string): bool =
   else:
     echo("Not found: ", s)
 
-proc main = 
+proc main =
   const gen = "genconsts"
   var f: TFile
-  if open(f, addFileExt(gen, "c"), fmWrite): 
+  if open(f, addFileExt(gen, "c"), fmWrite):
     f.write(cfile % [hd, tl, system.hostOS, system.hostCPU])
     close(f)
   if not myExec(cc % [gen.addFileExt(ExeExt), gen]): quit(1)
@@ -69,26 +69,26 @@ proc main =
   #removeFile(addFileExt(gen, "c"))
   echo("Success")
 
-proc v(name: string, typ: TTypeKind=cint) = 
+proc v(name: string, typ: TTypeKind=cint) =
   var n = if name[0] == '_': substr(name, 1) else: name
   var t = $typ
   case typ
-  of pointer: 
-    addf(tl, 
-      "#ifdef $3\n  fprintf(f, \"  $1* = cast[$2](%p)\\n\", $3);\n#endif\n", 
+  of pointer:
+    addf(tl,
+      "#ifdef $3\n  fprintf(f, \"  $1* = cast[$2](%p)\\n\", $3);\n#endif\n",
       n, t, name)
-  
+
   of cstring:
-    addf(tl, 
+    addf(tl,
       "#ifdef $3\n  fprintf(f, \"  $1* = $2(\\\"%s\\\")\\n\", $3);\n#endif\n",
       n, t, name)
   of clong:
-    addf(tl, 
-      "#ifdef $3\n  fprintf(f, \"  $1* = $2(%ld)\\n\", $3);\n#endif\n", 
-      n, t, name)  
-  else:  
-    addf(tl, 
-      "#ifdef $3\n  fprintf(f, \"  $1* = $2(%d)\\n\", $3);\n#endif\n", 
+    addf(tl,
+      "#ifdef $3\n  fprintf(f, \"  $1* = $2(%ld)\\n\", $3);\n#endif\n",
+      n, t, name)
+  else:
+    addf(tl,
+      "#ifdef $3\n  fprintf(f, \"  $1* = $2(%d)\\n\", $3);\n#endif\n",
       n, t, name)
 
 if header("<aio.h>"):
@@ -187,7 +187,7 @@ if header("<errno.h>"):
   v("ETXTBSY")
   v("EWOULDBLOCK")
   v("EXDEV")
-  
+
 if header("<fcntl.h>"):
   v("F_DUPFD")
   v("F_GETFD")
@@ -346,7 +346,7 @@ if header("<langinfo.h>"):
   v("YESEXPR")
   v("NOEXPR")
   v("CRNCYSTR")
-    
+
 if header("<locale.h>"):
   v("LC_ALL") #{.importc, header: .}: cint
   v("LC_COLLATE") #{.importc, header: "<locale.h>".}: cint
@@ -358,20 +358,20 @@ if header("<locale.h>"):
 
 if header("<pthread.h>"):
   v("PTHREAD_BARRIER_SERIAL_THREAD")
-  v("PTHREAD_CANCEL_ASYNCHRONOUS") 
-  v("PTHREAD_CANCEL_ENABLE") 
+  v("PTHREAD_CANCEL_ASYNCHRONOUS")
+  v("PTHREAD_CANCEL_ENABLE")
   v("PTHREAD_CANCEL_DEFERRED")
-  v("PTHREAD_CANCEL_DISABLE") 
+  v("PTHREAD_CANCEL_DISABLE")
   #v("PTHREAD_CANCELED")
-  #v("PTHREAD_COND_INITIALIZER") 
+  #v("PTHREAD_COND_INITIALIZER")
   v("PTHREAD_CREATE_DETACHED")
   v("PTHREAD_CREATE_JOINABLE")
   v("PTHREAD_EXPLICIT_SCHED")
-  v("PTHREAD_INHERIT_SCHED") 
-  v("PTHREAD_MUTEX_DEFAULT") 
+  v("PTHREAD_INHERIT_SCHED")
+  v("PTHREAD_MUTEX_DEFAULT")
   v("PTHREAD_MUTEX_ERRORCHECK")
-  #v("PTHREAD_MUTEX_INITIALIZER") 
-  v("PTHREAD_MUTEX_NORMAL") 
+  #v("PTHREAD_MUTEX_INITIALIZER")
+  v("PTHREAD_MUTEX_NORMAL")
   v("PTHREAD_MUTEX_RECURSIVE") #{.importc, header: "<pthread.h>".}: cint
   #v("PTHREAD_ONCE_INIT") #{.importc, header: "<pthread.h>".}: cint
   v("PTHREAD_PRIO_INHERIT") #{.importc, header: "<pthread.h>".}: cint
@@ -392,28 +392,28 @@ if header("<unistd.h>"):
   v("X_OK")
 
   v("_CS_PATH")
-  v("_CS_POSIX_V6_ILP32_OFF32_CFLAGS") 
-  v("_CS_POSIX_V6_ILP32_OFF32_LDFLAGS") 
-  v("_CS_POSIX_V6_ILP32_OFF32_LIBS") 
-  v("_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS") 
-  v("_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS") 
-  v("_CS_POSIX_V6_ILP32_OFFBIG_LIBS") 
-  v("_CS_POSIX_V6_LP64_OFF64_CFLAGS") 
+  v("_CS_POSIX_V6_ILP32_OFF32_CFLAGS")
+  v("_CS_POSIX_V6_ILP32_OFF32_LDFLAGS")
+  v("_CS_POSIX_V6_ILP32_OFF32_LIBS")
+  v("_CS_POSIX_V6_ILP32_OFFBIG_CFLAGS")
+  v("_CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS")
+  v("_CS_POSIX_V6_ILP32_OFFBIG_LIBS")
+  v("_CS_POSIX_V6_LP64_OFF64_CFLAGS")
   v("_CS_POSIX_V6_LP64_OFF64_LDFLAGS")
-  v("_CS_POSIX_V6_LP64_OFF64_LIBS") 
-  v("_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS") 
-  v("_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS") 
-  v("_CS_POSIX_V6_LPBIG_OFFBIG_LIBS") 
+  v("_CS_POSIX_V6_LP64_OFF64_LIBS")
+  v("_CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS")
+  v("_CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS")
+  v("_CS_POSIX_V6_LPBIG_OFFBIG_LIBS")
   v("_CS_POSIX_V6_WIDTH_RESTRICTED_ENVS")
 
-  v("F_LOCK") 
+  v("F_LOCK")
   v("F_TEST") #{.importc: "F_TEST", header: "<unistd.h>".}: cint
   v("F_TLOCK") #{.importc: "F_TLOCK", header: "<unistd.h>".}: cint
   v("F_ULOCK") #{.importc: "F_ULOCK", header: "<unistd.h>".}: cint
   v("_PC_2_SYMLINKS") #{.importc: "_PC_2_SYMLINKS", header: "<unistd.h>".}: cint
-  v("_PC_ALLOC_SIZE_MIN") 
+  v("_PC_ALLOC_SIZE_MIN")
   v("_PC_ASYNC_IO") #{.importc: "_PC_ASYNC_IO", header: "<unistd.h>".}: cint
-  v("_PC_CHOWN_RESTRICTED") 
+  v("_PC_CHOWN_RESTRICTED")
   v("_PC_FILESIZEBITS") #{.importc: "_PC_FILESIZEBITS", header: "<unistd.h>".}: cint
   v("_PC_LINK_MAX") #{.importc: "_PC_LINK_MAX", header: "<unistd.h>".}: cint
   v("_PC_MAX_CANON") #{.importc: "_PC_MAX_CANON", header: "<unistd.h>".}: cint
@@ -423,9 +423,9 @@ if header("<unistd.h>"):
   v("_PC_PATH_MAX") #{.importc: "_PC_PATH_MAX", header: "<unistd.h>".}: cint
   v("_PC_PIPE_BUF") #{.importc: "_PC_PIPE_BUF", header: "<unistd.h>".}: cint
   v("_PC_PRIO_IO") #{.importc: "_PC_PRIO_IO", header: "<unistd.h>".}: cint
-  v("_PC_REC_INCR_XFER_SIZE") 
-  v("_PC_REC_MIN_XFER_SIZE") 
-  v("_PC_REC_XFER_ALIGN") 
+  v("_PC_REC_INCR_XFER_SIZE")
+  v("_PC_REC_MIN_XFER_SIZE")
+  v("_PC_REC_XFER_ALIGN")
   v("_PC_SYMLINK_MAX") #{.importc: "_PC_SYMLINK_MAX", header: "<unistd.h>".}: cint
   v("_PC_SYNC_IO") #{.importc: "_PC_SYNC_IO", header: "<unistd.h>".}: cint
   v("_PC_VDISABLE") #{.importc: "_PC_VDISABLE", header: "<unistd.h>".}: cint
@@ -436,8 +436,8 @@ if header("<unistd.h>"):
   v("_SC_2_FORT_RUN") #{.importc: "_SC_2_FORT_RUN", header: "<unistd.h>".}: cint
   v("_SC_2_LOCALEDEF") #{.importc: "_SC_2_LOCALEDEF", header: "<unistd.h>".}: cint
   v("_SC_2_PBS") #{.importc: "_SC_2_PBS", header: "<unistd.h>".}: cint
-  v("_SC_2_PBS_ACCOUNTING") 
-  v("_SC_2_PBS_CHECKPOINT") 
+  v("_SC_2_PBS_ACCOUNTING")
+  v("_SC_2_PBS_CHECKPOINT")
   v("_SC_2_PBS_LOCATE") #{.importc: "_SC_2_PBS_LOCATE", header: "<unistd.h>".}: cint
   v("_SC_2_PBS_MESSAGE") #{.importc: "_SC_2_PBS_MESSAGE", header: "<unistd.h>".}: cint
   v("_SC_2_PBS_TRACK") #{.importc: "_SC_2_PBS_TRACK", header: "<unistd.h>".}: cint
@@ -445,11 +445,11 @@ if header("<unistd.h>"):
   v("_SC_2_UPE") #{.importc: "_SC_2_UPE", header: "<unistd.h>".}: cint
   v("_SC_2_VERSION") #{.importc: "_SC_2_VERSION", header: "<unistd.h>".}: cint
   v("_SC_ADVISORY_INFO") #{.importc: "_SC_ADVISORY_INFO", header: "<unistd.h>".}: cint
-  v("_SC_AIO_LISTIO_MAX") 
+  v("_SC_AIO_LISTIO_MAX")
   v("_SC_AIO_MAX") #{.importc: "_SC_AIO_MAX", header: "<unistd.h>".}: cint
-  v("_SC_AIO_PRIO_DELTA_MAX") 
+  v("_SC_AIO_PRIO_DELTA_MAX")
   v("_SC_ARG_MAX") #{.importc: "_SC_ARG_MAX", header: "<unistd.h>".}: cint
-  v("_SC_ASYNCHRONOUS_IO") 
+  v("_SC_ASYNCHRONOUS_IO")
   v("_SC_ATEXIT_MAX") #{.importc: "_SC_ATEXIT_MAX", header: "<unistd.h>".}: cint
   v("_SC_BARRIERS") #{.importc: "_SC_BARRIERS", header: "<unistd.h>".}: cint
   v("_SC_BC_BASE_MAX") #{.importc: "_SC_BC_BASE_MAX", header: "<unistd.h>".}: cint
@@ -458,10 +458,10 @@ if header("<unistd.h>"):
   v("_SC_BC_STRING_MAX") #{.importc: "_SC_BC_STRING_MAX", header: "<unistd.h>".}: cint
   v("_SC_CHILD_MAX") #{.importc: "_SC_CHILD_MAX", header: "<unistd.h>".}: cint
   v("_SC_CLK_TCK") #{.importc: "_SC_CLK_TCK", header: "<unistd.h>".}: cint
-  v("_SC_CLOCK_SELECTION") 
+  v("_SC_CLOCK_SELECTION")
   v("_SC_COLL_WEIGHTS_MAX")
   v("_SC_CPUTIME") #{.importc: "_SC_CPUTIME", header: "<unistd.h>".}: cint
-  v("_SC_DELAYTIMER_MAX") 
+  v("_SC_DELAYTIMER_MAX")
   v("_SC_EXPR_NEST_MAX") #{.importc: "_SC_EXPR_NEST_MAX", header: "<unistd.h>".}: cint
   v("_SC_FSYNC") #{.importc: "_SC_FSYNC", header: "<unistd.h>".}: cint
   v("_SC_GETGR_R_SIZE_MAX")
@@ -471,82 +471,82 @@ if header("<unistd.h>"):
   v("_SC_IPV6") #{.importc: "_SC_IPV6", header: "<unistd.h>".}: cint
   v("_SC_JOB_CONTROL") #{.importc: "_SC_JOB_CONTROL", header: "<unistd.h>".}: cint
   v("_SC_LINE_MAX") #{.importc: "_SC_LINE_MAX", header: "<unistd.h>".}: cint
-  v("_SC_LOGIN_NAME_MAX") 
+  v("_SC_LOGIN_NAME_MAX")
   v("_SC_MAPPED_FILES") #{.importc: "_SC_MAPPED_FILES", header: "<unistd.h>".}: cint
   v("_SC_MEMLOCK") #{.importc: "_SC_MEMLOCK", header: "<unistd.h>".}: cint
   v("_SC_MEMLOCK_RANGE") #{.importc: "_SC_MEMLOCK_RANGE", header: "<unistd.h>".}: cint
   v("_SC_MEMORY_PROTECTION")
-  v("_SC_MESSAGE_PASSING") 
-  v("_SC_MONOTONIC_CLOCK") 
+  v("_SC_MESSAGE_PASSING")
+  v("_SC_MONOTONIC_CLOCK")
   v("_SC_MQ_OPEN_MAX") #{.importc: "_SC_MQ_OPEN_MAX", header: "<unistd.h>".}: cint
   v("_SC_MQ_PRIO_MAX") #{.importc: "_SC_MQ_PRIO_MAX", header: "<unistd.h>".}: cint
   v("_SC_NGROUPS_MAX") #{.importc: "_SC_NGROUPS_MAX", header: "<unistd.h>".}: cint
   v("_SC_OPEN_MAX") #{.importc: "_SC_OPEN_MAX", header: "<unistd.h>".}: cint
   v("_SC_PAGE_SIZE") #{.importc: "_SC_PAGE_SIZE", header: "<unistd.h>".}: cint
-  v("_SC_PRIORITIZED_IO") 
-  v("_SC_PRIORITY_SCHEDULING") 
+  v("_SC_PRIORITIZED_IO")
+  v("_SC_PRIORITY_SCHEDULING")
   v("_SC_RAW_SOCKETS") #{.importc: "_SC_RAW_SOCKETS", header: "<unistd.h>".}: cint
   v("_SC_RE_DUP_MAX") #{.importc: "_SC_RE_DUP_MAX", header: "<unistd.h>".}: cint
-  v("_SC_READER_WRITER_LOCKS") 
-  v("_SC_REALTIME_SIGNALS") 
+  v("_SC_READER_WRITER_LOCKS")
+  v("_SC_REALTIME_SIGNALS")
   v("_SC_REGEXP") #{.importc: "_SC_REGEXP", header: "<unistd.h>".}: cint
   v("_SC_RTSIG_MAX") #{.importc: "_SC_RTSIG_MAX", header: "<unistd.h>".}: cint
   v("_SC_SAVED_IDS") #{.importc: "_SC_SAVED_IDS", header: "<unistd.h>".}: cint
   v("_SC_SEM_NSEMS_MAX") #{.importc: "_SC_SEM_NSEMS_MAX", header: "<unistd.h>".}: cint
   v("_SC_SEM_VALUE_MAX") #{.importc: "_SC_SEM_VALUE_MAX", header: "<unistd.h>".}: cint
   v("_SC_SEMAPHORES") #{.importc: "_SC_SEMAPHORES", header: "<unistd.h>".}: cint
-  v("_SC_SHARED_MEMORY_OBJECTS") 
+  v("_SC_SHARED_MEMORY_OBJECTS")
   v("_SC_SHELL") #{.importc: "_SC_SHELL", header: "<unistd.h>".}: cint
   v("_SC_SIGQUEUE_MAX") #{.importc: "_SC_SIGQUEUE_MAX", header: "<unistd.h>".}: cint
   v("_SC_SPAWN") #{.importc: "_SC_SPAWN", header: "<unistd.h>".}: cint
   v("_SC_SPIN_LOCKS") #{.importc: "_SC_SPIN_LOCKS", header: "<unistd.h>".}: cint
-  v("_SC_SPORADIC_SERVER") 
+  v("_SC_SPORADIC_SERVER")
   v("_SC_SS_REPL_MAX") #{.importc: "_SC_SS_REPL_MAX", header: "<unistd.h>".}: cint
   v("_SC_STREAM_MAX") #{.importc: "_SC_STREAM_MAX", header: "<unistd.h>".}: cint
   v("_SC_SYMLOOP_MAX") #{.importc: "_SC_SYMLOOP_MAX", header: "<unistd.h>".}: cint
-  v("_SC_SYNCHRONIZED_IO") 
-  v("_SC_THREAD_ATTR_STACKADDR") 
-  v("_SC_THREAD_ATTR_STACKSIZE") 
-  v("_SC_THREAD_CPUTIME") 
-  v("_SC_THREAD_DESTRUCTOR_ITERATIONS") 
-  v("_SC_THREAD_KEYS_MAX") 
-  v("_SC_THREAD_PRIO_INHERIT") 
-  v("_SC_THREAD_PRIO_PROTECT") 
-  v("_SC_THREAD_PRIORITY_SCHEDULING") 
-  v("_SC_THREAD_PROCESS_SHARED") 
-  v("_SC_THREAD_SAFE_FUNCTIONS") 
+  v("_SC_SYNCHRONIZED_IO")
+  v("_SC_THREAD_ATTR_STACKADDR")
+  v("_SC_THREAD_ATTR_STACKSIZE")
+  v("_SC_THREAD_CPUTIME")
+  v("_SC_THREAD_DESTRUCTOR_ITERATIONS")
+  v("_SC_THREAD_KEYS_MAX")
+  v("_SC_THREAD_PRIO_INHERIT")
+  v("_SC_THREAD_PRIO_PROTECT")
+  v("_SC_THREAD_PRIORITY_SCHEDULING")
+  v("_SC_THREAD_PROCESS_SHARED")
+  v("_SC_THREAD_SAFE_FUNCTIONS")
   v("_SC_THREAD_SPORADIC_SERVER")
-  v("_SC_THREAD_STACK_MIN") 
-  v("_SC_THREAD_THREADS_MAX") 
+  v("_SC_THREAD_STACK_MIN")
+  v("_SC_THREAD_THREADS_MAX")
   v("_SC_THREADS") #{.importc: "_SC_THREADS", header: "<unistd.h>".}: cint
   v("_SC_TIMEOUTS") #{.importc: "_SC_TIMEOUTS", header: "<unistd.h>".}: cint
   v("_SC_TIMER_MAX") #{.importc: "_SC_TIMER_MAX", header: "<unistd.h>".}: cint
   v("_SC_TIMERS") #{.importc: "_SC_TIMERS", header: "<unistd.h>".}: cint
   v("_SC_TRACE") #{.importc: "_SC_TRACE", header: "<unistd.h>".}: cint
-  v("_SC_TRACE_EVENT_FILTER") 
+  v("_SC_TRACE_EVENT_FILTER")
   v("_SC_TRACE_EVENT_NAME_MAX")
   v("_SC_TRACE_INHERIT") #{.importc: "_SC_TRACE_INHERIT", header: "<unistd.h>".}: cint
   v("_SC_TRACE_LOG") #{.importc: "_SC_TRACE_LOG", header: "<unistd.h>".}: cint
-  v("_SC_TRACE_NAME_MAX") 
+  v("_SC_TRACE_NAME_MAX")
   v("_SC_TRACE_SYS_MAX") #{.importc: "_SC_TRACE_SYS_MAX", header: "<unistd.h>".}: cint
-  v("_SC_TRACE_USER_EVENT_MAX") 
+  v("_SC_TRACE_USER_EVENT_MAX")
   v("_SC_TTY_NAME_MAX") #{.importc: "_SC_TTY_NAME_MAX", header: "<unistd.h>".}: cint
-  v("_SC_TYPED_MEMORY_OBJECTS") 
+  v("_SC_TYPED_MEMORY_OBJECTS")
   v("_SC_TZNAME_MAX") #{.importc: "_SC_TZNAME_MAX", header: "<unistd.h>".}: cint
-  v("_SC_V6_ILP32_OFF32") 
-  v("_SC_V6_ILP32_OFFBIG") 
+  v("_SC_V6_ILP32_OFF32")
+  v("_SC_V6_ILP32_OFFBIG")
   v("_SC_V6_LP64_OFF64") #{.importc: "_SC_V6_LP64_OFF64", header: "<unistd.h>".}: cint
-  v("_SC_V6_LPBIG_OFFBIG") 
+  v("_SC_V6_LPBIG_OFFBIG")
   v("_SC_VERSION") #{.importc: "_SC_VERSION", header: "<unistd.h>".}: cint
-  v("_SC_XBS5_ILP32_OFF32") 
-  v("_SC_XBS5_ILP32_OFFBIG") 
-  v("_SC_XBS5_LP64_OFF64") 
-  v("_SC_XBS5_LPBIG_OFFBIG") 
+  v("_SC_XBS5_ILP32_OFF32")
+  v("_SC_XBS5_ILP32_OFFBIG")
+  v("_SC_XBS5_LP64_OFF64")
+  v("_SC_XBS5_LPBIG_OFFBIG")
   v("_SC_XOPEN_CRYPT") #{.importc: "_SC_XOPEN_CRYPT", header: "<unistd.h>".}: cint
-  v("_SC_XOPEN_ENH_I18N") 
+  v("_SC_XOPEN_ENH_I18N")
   v("_SC_XOPEN_LEGACY") #{.importc: "_SC_XOPEN_LEGACY", header: "<unistd.h>".}: cint
-  v("_SC_XOPEN_REALTIME") 
-  v("_SC_XOPEN_REALTIME_THREADS") 
+  v("_SC_XOPEN_REALTIME")
+  v("_SC_XOPEN_REALTIME_THREADS")
   v("_SC_XOPEN_SHM") #{.importc: "_SC_XOPEN_SHM", header: "<unistd.h>".}: cint
   v("_SC_XOPEN_STREAMS") #{.importc: "_SC_XOPEN_STREAMS", header: "<unistd.h>".}: cint
   v("_SC_XOPEN_UNIX") #{.importc: "_SC_XOPEN_UNIX", header: "<unistd.h>".}: cint
@@ -597,7 +597,7 @@ if header("<sys/stat.h>"):
 if header("<sys/statvfs.h>"):
   v("ST_RDONLY") #{.importc, header: .}: cint
   v("ST_NOSUID") #{.importc, header: "<sys/statvfs.h>".}: cint
-       
+
 if header("<sys/mman.h>"):
   v("PROT_READ") #{.importc, header: .}: cint
   v("PROT_WRITE") #{.importc, header: "<sys/mman.h>".}: cint
@@ -623,31 +623,31 @@ if header("<sys/mman.h>"):
   v("POSIX_TYPED_MEM_MAP_ALLOCATABLE") #{.importc, header: "<sys/mman.h>".}: cint
 
 if header("<time.h>"):
-  v("CLOCKS_PER_SEC", clong) 
+  v("CLOCKS_PER_SEC", clong)
   v("CLOCK_PROCESS_CPUTIME_ID")
   v("CLOCK_THREAD_CPUTIME_ID")
   v("CLOCK_REALTIME")
-  v("TIMER_ABSTIME") 
-  v("CLOCK_MONOTONIC") 
+  v("TIMER_ABSTIME")
+  v("CLOCK_MONOTONIC")
 
 if header("<sys/wait.h>"):
   v("WNOHANG") #{.importc, header: .}: cint
   v("WUNTRACED") #{.importc, header: "<sys/wait.h>".}: cint
-  #v("WEXITSTATUS") 
-  #v("WIFCONTINUED") 
-  #v("WIFEXITED") 
+  #v("WEXITSTATUS")
+  #v("WIFCONTINUED")
+  #v("WIFEXITED")
   #v("WIFSIGNALED")
-  #v("WIFSTOPPED") 
-  #v("WSTOPSIG") 
-  #v("WTERMSIG") 
+  #v("WIFSTOPPED")
+  #v("WSTOPSIG")
+  #v("WTERMSIG")
   v("WEXITED") #{.importc, header: "<sys/wait.h>".}: cint
   v("WSTOPPED") #{.importc, header: "<sys/wait.h>".}: cint
   v("WCONTINUED") #{.importc, header: "<sys/wait.h>".}: cint
   v("WNOWAIT") #{.importc, header: "<sys/wait.h>".}: cint
-  v("P_ALL") #{.importc, header: "<sys/wait.h>".}: cint 
-  v("P_PID") #{.importc, header: "<sys/wait.h>".}: cint 
+  v("P_ALL") #{.importc, header: "<sys/wait.h>".}: cint
+  v("P_PID") #{.importc, header: "<sys/wait.h>".}: cint
   v("P_PGID") #{.importc, header: "<sys/wait.h>".}: cint
-         
+
 if header("<signal.h>"):
   v("SIGEV_NONE") #{.importc, header: "<signal.h>".}: cint
   v("SIGEV_SIGNAL") #{.importc, header: "<signal.h>".}: cint
@@ -776,23 +776,23 @@ if header("<netdb.h>"):
 
   v("HOST_NOT_FOUND")
   v("NO_DATA")
-  v("NO_RECOVERY") 
-  v("TRY_AGAIN") 
+  v("NO_RECOVERY")
+  v("TRY_AGAIN")
 
-  v("AI_PASSIVE") 
-  v("AI_CANONNAME") 
-  v("AI_NUMERICHOST") 
-  v("AI_NUMERICSERV") 
-  v("AI_V4MAPPED") 
-  v("AI_ALL") 
-  v("AI_ADDRCONFIG") 
+  v("AI_PASSIVE")
+  v("AI_CANONNAME")
+  v("AI_NUMERICHOST")
+  v("AI_NUMERICSERV")
+  v("AI_V4MAPPED")
+  v("AI_ALL")
+  v("AI_ADDRCONFIG")
 
-  v("NI_NOFQDN") 
-  v("NI_NUMERICHOST") 
-  v("NI_NAMEREQD") 
-  v("NI_NUMERICSERV") 
-  v("NI_NUMERICSCOPE") 
-  v("NI_DGRAM") 
+  v("NI_NOFQDN")
+  v("NI_NUMERICHOST")
+  v("NI_NAMEREQD")
+  v("NI_NUMERICSERV")
+  v("NI_NUMERICSCOPE")
+  v("NI_DGRAM")
   v("EAI_AGAIN")
   v("EAI_BADFLAGS")
   v("EAI_FAIL")
