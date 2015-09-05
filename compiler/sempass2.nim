@@ -168,7 +168,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
-  if {tfNeedsInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
+  if {tfNeedsInit, tfOrNil} * s.typ.flags == {}:
     # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n, volatileCheck=true)
@@ -220,7 +220,8 @@ proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
     if s.id notin a.init:
-      if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
+      if tfNeedsInit in s.typ.flags or
+         tfOrNil notin s.typ.flags and s.typ.kind in NilableTypes:
         message(n.info, warnProveInit, s.name.s)
       else:
         message(n.info, warnUninit, s.name.s)
@@ -499,8 +500,8 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
-  if paramType != nil and tfNotNil in paramType.flags and
-      n.typ != nil and tfNotNil notin n.typ.flags:
+  if paramType != nil and tfOrNil notin paramType.flags and
+      n.typ != nil and tfOrNil in n.typ.flags:
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return

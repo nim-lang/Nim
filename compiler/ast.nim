@@ -459,8 +459,7 @@ type
     tfByRef,          # pass object/tuple by reference (C backend)
     tfIterator,       # type is really an iterator, not a tyProc
     tfShared,         # type is 'shared'
-    tfNotNil,         # type cannot be 'nil'
-
+    tfOrNil,          # type can be 'nil'
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
                       # other type so that it requires initalization
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
@@ -532,7 +531,7 @@ const
   skError* = skUnknown
 
   # type flags that are essential for type equality:
-  eqTypeFlags* = {tfIterator, tfShared, tfNotNil, tfVarIsPtr}
+  eqTypeFlags* = {tfIterator, tfShared, tfOrNil, tfVarIsPtr}
 
 type
   TMagic* = enum # symbols that require compiler magic:
@@ -1205,6 +1204,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.align = 2            # default alignment
   result.id = getID()
   result.lockLevel = UnspecifiedLockLevel
+  result.flags = {tfOrNil}
   when debugIds:
     registerId(result)
   #if result.id == 92231:
@@ -1358,11 +1358,11 @@ proc isGCedMem*(t: PType): bool {.inline.} =
 proc propagateToOwner*(owner, elem: PType) =
   const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta})
-  if tfNotNil in elem.flags:
+  if tfOrNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
-      owner.flags.incl tfNotNil
-    elif owner.kind notin HaveTheirOwnEmpty:
-      owner.flags.incl tfNeedsInit
+      owner.flags.incl tfOrNil
+  elif owner.kind notin HaveTheirOwnEmpty:
+    owner.flags.incl tfNeedsInit
 
   if tfNeedsInit in elem.flags:
     if owner.kind in HaveTheirOwnEmpty: discard
