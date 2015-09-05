@@ -142,8 +142,8 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
   ## executes the query and iterates over the result dataset.
   ##
-  ## This is very fast, but potenially dangerous.  Use this iterator only
-  ## if you require ALL the rows.
+  ## This is very fast, but potentially dangerous.  Use this iterator only
+  ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
   ## database query to raise an [EDb] exception ``Commands out of sync``.
