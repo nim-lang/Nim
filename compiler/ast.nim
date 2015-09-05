@@ -605,7 +605,8 @@ type
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
-    mInstantiationInfo, mGetTypeInfo, mNGenSym
+    mInstantiationInfo, mGetTypeInfo, mNGenSym,
+    mNimvm
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const

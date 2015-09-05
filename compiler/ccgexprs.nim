@@ -2069,6 +2069,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkStmtList:
     for i in countup(0, sonsLen(n) - 1): genStmts(p, n.sons[i])
   of nkIfExpr, nkIfStmt: genIf(p, n, d)
+  of nkWhen:
+    # This should be a "when nimvm" node.
+    expr(p, n.sons[1].sons[0], d)
   of nkObjDownConv: downConv(p, n, d)
   of nkObjUpConv: upConv(p, n, d)
   of nkChckRangeF: genRangeChck(p, n, d, "chckRangeF")

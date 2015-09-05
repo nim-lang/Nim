@@ -329,6 +329,35 @@ The ``when`` statement enables conditional compilation techniques. As
 a special syntactic extension, the ``when`` construct is also available
 within ``object`` definitions.
 
+When nimvm statement
+---------------------
+``nimvm`` is a special symbol, that may be used as expression of ``when nimvm``
+statement to differentiate execution path between runtime and compile time.
+
+Example:
+
+.. code-block:: nim
+  proc someProcThatMayRunInCompileTime(): bool =
+    when nimvm:
+      # This code runs in compile time
+      result = true
+    else:
+      # This code runs in runtime
+      result = false
+  const ctValue = someProcThatMayRunInCompileTime()
+  let rtValue = someProcThatMayRunInCompileTime()
+  assert(ctValue == true)
+  assert(rtValue == false)
+
+``when nimvm`` statement must meet the following requirements:
+
+* Its expression must always be ``nimvm``. More complex expressions are not
+  allowed.
+* It must not contain ``elif`` branches.
+* It must contain ``else`` branch.
+* Code in branches must not affect semantics of the code that follows the
+  ``when nimvm`` statement. E.g. it must not define symbols that are used in
+  the following code.
 
 Return statement
 ----------------

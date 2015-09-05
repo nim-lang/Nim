@@ -1173,6 +1173,10 @@ const
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
     ## "amd64", "mips", "mipsel", "arm", "arm64".
 
+  nimvm* {.magic: "Nimvm".}: bool = false
+    ## may be used only in "when" expression.
+    ## It is true in Nim VM context and false otherwise
+
   seqShallowFlag = low(int)
 
 proc compileOption*(option: string): bool {.
