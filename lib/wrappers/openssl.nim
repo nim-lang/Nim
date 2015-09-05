@@ -14,9 +14,15 @@
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
 when useWinVersion:
-  const
-    DLLSSLName = "(ssleay32|libssl32).dll"
-    DLLUtilName = "libeay32.dll"
+  when not defined(nimOldDlls) and defined(cpu64):
+    const
+      DLLSSLName = "(ssleay64|libssl64).dll"
+      DLLUtilName = "libeay64.dll"
+  else:
+    const
+      DLLSSLName = "(ssleay32|libssl32).dll"
+      DLLUtilName = "libeay32.dll"
+
   from winlean import SocketHandle
 else:
   const
