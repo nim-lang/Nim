@@ -13,6 +13,7 @@ version 0.11.4
 
 - add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
+- make people annotate .anchor methods
 
 
 version 1.0
@@ -26,7 +27,6 @@ version 1.0
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - iterators always require a return type
-- make nimble part of the distribution
 - split docgen into separate tool
 - special rule for ``[]=``, items, pairs
 - BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
