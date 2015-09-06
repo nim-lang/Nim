@@ -159,6 +159,7 @@ proc processClient(client: AsyncSocket, address: string,
     # Header: val
     # \n
     request.headers.clear(modeCaseInsensitive)
+    request.body = ""
     request.hostname.shallowCopy(address)
     assert client != nil
     request.client = client
