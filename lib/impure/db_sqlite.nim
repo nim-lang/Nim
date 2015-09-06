@@ -130,7 +130,7 @@ proc setRow(stmt: Pstmt, r: var Row, cols: cint) =
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row  {.tags: [FReadDb].} =
-  ## Executes the query and iterates over the result dataset. 
+  ## Executes the query and iterates over the result dataset.
   ##
   ## This is very fast, but potentially dangerous.  Use this iterator only
   ## if you require **ALL** the rows.
