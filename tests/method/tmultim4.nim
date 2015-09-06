@@ -5,7 +5,7 @@ discard """
 type
   Test = object of TObject
 
-method doMethod(a: ref TObject) {.raises: [EIO].} =
+method doMethod(a: ref TObject) {.base, raises: [EIO].} =
   quit "override"
 
 method doMethod(a: ref Test) =

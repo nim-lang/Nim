@@ -27,7 +27,7 @@ const
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
     wOverride, wConstructor}
   converterPragmas* = procPragmas
-  methodPragmas* = procPragmas
+  methodPragmas* = procPragmas+{wBase}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
@@ -867,6 +867,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           localError(it.info, "'experimental' pragma only valid as toplevel statement")
       of wNoRewrite:
         noVal(it)
+      of wBase:
+        noVal(it)
+        sym.flags.incl sfBase
       else: invalidPragma(it)
     else: invalidPragma(it)
 

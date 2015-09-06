@@ -11,7 +11,7 @@ type
   PlusExpr = ref object of Expression
     a, b: Expression
 
-method eval(e: Expression): int = quit "to override!"
+method eval(e: Expression): int {.base.} = quit "to override!"
 method eval(e: Literal): int = return e.x
 method eval(e: PlusExpr): int = return eval(e.a) + eval(e.b)
 

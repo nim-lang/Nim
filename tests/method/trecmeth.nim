@@ -2,12 +2,12 @@
 # for recursive methods works, no code is being executed
 
 type
-  Obj = ref object of TObject
+  Obj = ref object of RootObj
 
 # Mutual recursion
 
-method alpha(x: Obj)
-method beta(x: Obj)
+method alpha(x: Obj) {.base.}
+method beta(x: Obj) {.base.}
 
 method alpha(x: Obj) =
   beta(x)
@@ -17,6 +17,6 @@ method beta(x: Obj) =
 
 # Simple recursion
 
-method gamma(x: Obj) =
+method gamma(x: Obj) {.base.} =
   gamma(x)
 

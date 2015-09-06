@@ -47,8 +47,10 @@ proc methodCall*(n: PNode): PNode =
 var
   gMethods: seq[tuple[methods: TSymSeq, dispatcher: PSym]] = @[]
 
-proc sameMethodBucket(a, b: PSym): bool =
-  result = false
+type
+  MethodResult = enum No, Invalid, Yes
+
+proc sameMethodBucket(a, b: PSym): MethodResult =
   if a.name.id != b.name.id: return
   if sonsLen(a.typ) != sonsLen(b.typ):
     return                    # check for return type:
@@ -64,13 +66,15 @@ proc sameMethodBucket(a, b: PSym): bool =
         bb = bb.lastSon
       else:
         break
-    if sameType(aa, bb) or
-        (aa.kind == tyObject) and (bb.kind == tyObject) and
-        (inheritanceDiff(bb, aa) < 0):
-      discard
+    if sameType(aa, bb): discard
+    elif aa.kind == tyObject and bb.kind == tyObject:
+      let diff = inheritanceDiff(bb, aa)
+      if diff < 0: discard "Ok"
+      elif diff != high(int):
+        result = Invalid
     else:
-      return
-  result = true
+      return No
+  if result != Invalid: result = Yes
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
   var L = s.ast.len-1
@@ -133,18 +137,31 @@ proc fixupDispatcher(meth, disp: PSym) =
 
 proc methodDef*(s: PSym, fromCache: bool) =
   var L = len(gMethods)
+  var witness: PSym
   for i in countup(0, L - 1):
     var disp = gMethods[i].dispatcher
-    if sameMethodBucket(disp, s):
+    case sameMethodBucket(disp, s)
+    of Yes:
       add(gMethods[i].methods, s)
       attachDispatcher(s, lastSon(disp.ast))
       fixupDispatcher(s, disp)
       when useEffectSystem: checkMethodEffects(disp, s)
+      if sfBase in s.flags and gMethods[i].methods[0] != s:
+        # already exists due to forwarding definition?
+        localError(s.info, "method is not a base")
       return
+    of No: discard
+    of Invalid:
+      if witness.isNil: witness = gMethods[i].methods[0]
   # create a new dispatcher:
   add(gMethods, (methods: @[s], dispatcher: createDispatcher(s)))
   if fromCache:
     internalError(s.info, "no method dispatcher found")
+  if witness != nil:
+    localError(s.info, "invalid declaration order; cannot attach '" & s.name.s &
+                       "' to method defined here: " & $witness.info)
+  elif sfBase notin s.flags:
+    message(s.info, warnUseBase)
 
 proc relevantCol(methods: TSymSeq, col: int): bool =
   # returns true iff the position is relevant
