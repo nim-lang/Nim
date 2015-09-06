@@ -1204,7 +1204,6 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.align = 2            # default alignment
   result.id = getID()
   result.lockLevel = UnspecifiedLockLevel
-  result.flags = {tfOrNil}
   when debugIds:
     registerId(result)
   #if result.id == 92231:
