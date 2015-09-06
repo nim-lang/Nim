@@ -411,6 +411,10 @@ const
 
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
 
+proc addTypeFlags(name: var string, typ: PType) {.inline.} =
+  if tfShared in typ.flags: name = "shared " & name
+  if tfNotNil in typ.flags: name.add(" not nil")
+
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
@@ -418,11 +422,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   if prefer in preferToResolveSymbols and t.sym != nil and
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
-      return t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    if prefer == preferName or t.sym.owner.isNil:
-      return t.sym.name.s
+      result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
+    elif prefer == preferName or t.sym.owner.isNil:
+      result = t.sym.name.s
     else:
-      return t.sym.owner.name.s & '.' & t.sym.name.s
+      result = t.sym.owner.name.s & '.' & t.sym.name.s
+    result.addTypeFlags(t)
+    return
   case t.kind
   of tyInt:
     if not isIntLit(t) or prefer == preferExported:
@@ -563,8 +569,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind] % typeToString(t.sons[0])
   else:
     result = typeToStr[t.kind]
-  if tfShared in t.flags: result = "shared " & result
-  if tfNotNil in t.flags: result.add(" not nil")
+  result.addTypeFlags(t)
 
 proc resultType(t: PType): PType =
   assert(t.kind == tyProc)
