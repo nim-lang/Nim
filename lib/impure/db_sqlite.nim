@@ -9,6 +9,36 @@
 
 ## A higher level `SQLite`:idx: database wrapper. This interface
 ## is implemented for other databases too.
+##
+## Example:
+##
+## .. code-block:: nim
+##
+##  import db_sqlite, math
+##
+##  let theDb = open("mytest.db", nil, nil, nil)
+##
+##  theDb.exec(sql"Drop table if exists myTestTbl")
+##  theDb.exec(sql("""create table myTestTbl (
+##       Id    INTEGER PRIMARY KEY,
+##       Name  VARCHAR(50) NOT NULL,
+##       i     INT(11),
+##       f     DECIMAL(18,10))"""))
+##
+##  theDb.exec(sql"BEGIN")
+##  for i in 1..1000:
+##    theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##          "Item#" & $i, i, sqrt(i.float))
+##  theDb.exec(sql"COMMIT")
+##
+##  for x in theDb.fastRows(sql"select * from myTestTbl"):
+##    echo x
+##
+##  let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##        "Item#1001", 1001, sqrt(1001.0))
+##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+##
+##  theDb.close()
 
 import strutils, sqlite3
 
