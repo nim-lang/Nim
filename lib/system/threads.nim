@@ -135,10 +135,18 @@ else:
   proc pthread_attr_setstacksize(a1: var PthreadAttr, a2: int) {.
     importc, header: pthreadh.}
 
-  proc pthread_create(a1: var SysThread, a2: var PthreadAttr,
-            a3: proc (x: pointer): pointer {.noconv.},
-            a4: pointer): cint {.importc: "pthread_create",
-            header: pthreadh.}
+  when not defined(boehmgc):
+    proc pthread_create(a1: var SysThread, a2: var PthreadAttr,
+              a3: proc (x: pointer): pointer {.noconv.},
+              a4: pointer): cint {.importc: "pthread_create",
+              header: pthreadh.}
+  else:
+    # The Boehm GC needs to know about newly created threads,
+    # so pthread_create() is redirected to GC_pthread_create().
+    proc pthread_create(a1: var SysThread, a2: var PthreadAttr,
+              a3: proc (x: pointer): pointer {.noconv.},
+              a4: pointer): cint {.importc: "GC_pthread_create",
+              dynlib: boehmLib.}
   proc pthread_join(a1: SysThread, a2: ptr pointer): cint {.
     importc, header: pthreadh.}
 

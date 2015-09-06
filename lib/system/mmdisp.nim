@@ -66,13 +66,6 @@ proc raiseOutOfMem() {.noinline.} =
   quit(1)
 
 when defined(boehmgc):
-  when defined(windows):
-    const boehmLib = "boehmgc.dll"
-  elif defined(macosx):
-    const boehmLib = "libgc.dylib"
-  else:
-    const boehmLib = "libgc.so.1"
-
   proc boehmGCinit {.importc: "GC_init", dynlib: boehmLib.}
   proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.}
   proc boehmGC_enable {.importc: "GC_enable", dynlib: boehmLib.}
