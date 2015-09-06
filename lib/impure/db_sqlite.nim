@@ -130,9 +130,13 @@ proc setRow(stmt: Pstmt, r: var Row, cols: cint) =
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row  {.tags: [FReadDb].} =
-  ## executes the query and iterates over the result dataset. This is very
-  ## fast, but potenially dangerous: If the for-loop-body executes another
-  ## query, the results can be undefined. For Sqlite it is safe though.
+  ## Executes the query and iterates over the result dataset. 
+  ##
+  ## This is very fast, but potentially dangerous.  Use this iterator only
+  ## if you require **ALL** the rows.
+  ##
+  ## Breaking the fastRows() iterator during a loop will cause the next
+  ## database query to raise an [EDb] exception ``unable to close due to ...``.
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   var result = newRow(L)
