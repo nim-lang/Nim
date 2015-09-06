@@ -283,7 +283,7 @@ proc `==` *[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
   ##    e2 = Enum1(Place2)
   ##  echo (e1 == e2) # true
   ##  echo (e1 == Place2) # raises error
-proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
+proc `==` *(x, y: pointer or nil): bool {.magic: "EqRef", noSideEffect.}
   ## .. code-block:: nim
   ##  var # this is a wildly dangerous example
   ##    a = cast[pointer](0)
@@ -291,7 +291,7 @@ proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
   ##  echo (a == b) # true due to the special meaning of `nil`/0 as a pointer
 proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
   ## Checks for equality between two `string` variables
-proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
+proc `==` *(x, y: cstring or nil): bool {.magic: "EqCString", noSideEffect.}
   ## Checks for equality between two `cstring` variables
 proc `==` *(x, y: char): bool {.magic: "EqCh", noSideEffect.}
   ## Checks for equality between two `char` variables
@@ -304,9 +304,9 @@ proc `==` *[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
   ##  var a = {1, 2, 2, 3} # duplication in sets is ignored
   ##  var b = {1, 2, 3}
   ##  echo (a == b) # true
-proc `==` *[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
+proc `==` *[T](x, y: ref T or nil): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ref` variables refer to the same item
-proc `==` *[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
+proc `==` *[T](x, y: ptr T or nil): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ptr` variables refer to the same item
 proc `==` *[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
   ## Checks that two `proc` variables refer to the same procedure
