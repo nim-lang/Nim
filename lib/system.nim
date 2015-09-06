@@ -1380,7 +1380,7 @@ type # these work for most platforms:
     ## This is the same as the type ``unsigned long long`` in *C*.
 
   cstringArray* {.importc: "char**", nodecl.} = ptr
-    array [0..ArrayDummySize, cstring]
+    array [0..ArrayDummySize, cstring or nil]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
@@ -2721,7 +2721,9 @@ when not defined(JS): #and not defined(nimscript):
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
       ## of length ``len``.
       newSeq(result, len)
-      for i in 0..len-1: result[i] = $a[i]
+      for i in 0..len-1:
+        let cs = a[i]
+        if cs != nil: result[i] = $cs
 
     proc cstringArrayToSeq*(a: cstringArray): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
@@ -2739,15 +2741,18 @@ when not defined(JS): #and not defined(nimscript):
       result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
       let x = cast[ptr array[0..ArrayDummySize, string]](a)
       for i in 0 .. a.high:
-        result[i] = cast[cstring](alloc0(x[i].len+1))
-        copyMem(result[i], addr(x[i][0]), x[i].len)
+        let cs = cast[cstring](alloc0(x[i].len+1))
+        result[i] = cs
+        copyMem(cs, addr(x[i][0]), x[i].len)
 
     proc deallocCStringArray*(a: cstringArray) =
       ## frees a NULL terminated cstringArray.
       var i = 0
-      while a[i] != nil:
-        dealloc(a[i])
+      var cs = a[i]
+      while cs != nil:
+        dealloc(cs)
         inc(i)
+        cs = a[i]
       dealloc(a)
 
   when not defined(nimscript):
