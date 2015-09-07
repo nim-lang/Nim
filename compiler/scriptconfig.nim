@@ -13,7 +13,7 @@
 import
   ast, modules, passes, passaux, condsyms,
   options, nimconf, lists, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times
+  os, times, osproc
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle
@@ -72,6 +72,9 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     os.copyFile(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
     setResult(a, toSeconds(getLastModificationTime(getString(a, 0))))
+
+  cbos rawExec:
+    setResult(a, osproc.execCmd getString(a, 0))
 
   cbconf getEnv:
     setResult(a, os.getEnv(a.getString 0))
