@@ -3,7 +3,7 @@ type
 
 var myObj* : ref TObj
 
-method test123(a : ref TObj) =
+method test123(a : ref TObj) {.base.} =
     echo("Hi base!")
 
 proc testMyObj*() =

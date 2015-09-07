@@ -13,7 +13,6 @@ version 0.11.4
 
 - add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
-- make people annotate .anchor methods
 
 
 version 1.0

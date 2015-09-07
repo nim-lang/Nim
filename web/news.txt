@@ -50,6 +50,9 @@ News
     and are now deprecated and will be removed from the language. Instead you
     have to insert type conversions
     like ``(proc (a, b: int) {.closure.})(myToplevelProc)`` if necessary.
+  - The modules ``libffi``, ``sdl``, ``windows``, ``zipfiles``, ``libzip``,
+    ``zlib``, ``zzip``, ``dialogs``, ``expat``, ``graphics``, ``libcurl``,
+    ``sphinx`` have been moved out of the stdlib and are Nimble packages now.
   - The constant fights between 32 and 64 bit DLLs on Windows have been put to
     an end: The standard distribution now ships with 32 and 64 bit versions
     of all the DLLs the standard library needs. This means that the following
@@ -62,9 +65,15 @@ News
     * ``libeay32.dll``: Split into ``libeay32.dll`` and ``libeay64.dll``.
 
     Compile with ``-d:nimOldDLLs`` to make the stdlib use the old DLL names.
+  - Nim VM now treats objects as nkObjConstr nodes, and not nkPar nodes as it
+    was previously. Macros that generate nkPar nodes when object is expected are
+    likely to break. Macros that expect nkPar nodes to which objects are passed
+    are likely to break as well.
+  - Base methods now need to be annotated with the ``base`` pragma. This makes
+    multi methods less error-prone to use with the effect system.
 
 
-  Library additions
+  Library Additions
   -----------------
 
   - The nre module has been added, providing a better interface to PCRE than re.
@@ -75,6 +84,12 @@ News
     to benchmark it.
   - ``strutils.formatFloat`` and ``formatBiggestFloat`` do not depend on the C
     locale anymore and now take an optional ``decimalSep = '.'`` parameter.
+
+
+  Compiler Additions
+  ------------------
+
+  - The compiler now supports a new configuration system based on ``NimScript``.
 
 
   Language Additions

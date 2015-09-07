@@ -9,6 +9,36 @@
 
 ## A higher level `SQLite`:idx: database wrapper. This interface
 ## is implemented for other databases too.
+##
+## Example:
+##
+## .. code-block:: nim
+##
+##  import db_sqlite, math
+##
+##  let theDb = open("mytest.db", nil, nil, nil)
+##
+##  theDb.exec(sql"Drop table if exists myTestTbl")
+##  theDb.exec(sql("""create table myTestTbl (
+##       Id    INTEGER PRIMARY KEY,
+##       Name  VARCHAR(50) NOT NULL,
+##       i     INT(11),
+##       f     DECIMAL(18,10))"""))
+##
+##  theDb.exec(sql"BEGIN")
+##  for i in 1..1000:
+##    theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##          "Item#" & $i, i, sqrt(i.float))
+##  theDb.exec(sql"COMMIT")
+##
+##  for x in theDb.fastRows(sql"select * from myTestTbl"):
+##    echo x
+##
+##  let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##        "Item#1001", 1001, sqrt(1001.0))
+##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+##
+##  theDb.close()
 
 import strutils, sqlite3
 
@@ -100,9 +130,13 @@ proc setRow(stmt: Pstmt, r: var Row, cols: cint) =
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row  {.tags: [FReadDb].} =
-  ## executes the query and iterates over the result dataset. This is very
-  ## fast, but potenially dangerous: If the for-loop-body executes another
-  ## query, the results can be undefined. For Sqlite it is safe though.
+  ## Executes the query and iterates over the result dataset.
+  ##
+  ## This is very fast, but potentially dangerous.  Use this iterator only
+  ## if you require **ALL** the rows.
+  ##
+  ## Breaking the fastRows() iterator during a loop will cause the next
+  ## database query to raise an [EDb] exception ``unable to close due to ...``.
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   var result = newRow(L)
@@ -115,7 +149,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [FReadDb].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within interator body.
+  ## on demand using []. Returned handle is valid only within the interator body.
   var stmt = setupQuery(db, query, args)
   while step(stmt) == SQLITE_ROW:
     yield stmt

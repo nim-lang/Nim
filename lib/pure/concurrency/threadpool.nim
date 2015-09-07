@@ -295,7 +295,8 @@ proc slave(w: ptr Worker) {.thread.} =
     readyWorker = w
     signal(gSomeReady)
     await(w.taskArrived)
-    # XXX Somebody needs to look into this (why does this assertion fail in Visual Studio?)
+    # XXX Somebody needs to look into this (why does this assertion fail
+    # in Visual Studio?)
     when not defined(vcc): assert(not w.ready)
     w.f(w, w.data)
     if w.q.len != 0: w.cleanFlowVars
@@ -338,6 +339,9 @@ proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
       let w = addr(workersData[i])
       w.shutdown = true
 
+when defined(nimRecursiveSpawn):
+  var localThreadId {.threadvar.}: int
+
 proc activateWorkerThread(i: int) {.noinline.} =
   workersData[i].taskArrived = createSemaphore()
   workersData[i].taskStarted = createSemaphore()
@@ -345,6 +349,8 @@ proc activateWorkerThread(i: int) {.noinline.} =
   workersData[i].q.empty = createSemaphore()
   initLock(workersData[i].q.lock)
   createThread(workers[i], slave, addr(workersData[i]))
+  when defined(nimRecursiveSpawn):
+    localThreadId = i+1
   when defined(nimPinToCpu):
     if gCpus > 0: pinToCpu(workers[i], i mod gCpus)
 
@@ -436,7 +442,19 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
         release(stateLock)
       # else the acquire failed, but this means some
       # other thread succeeded, so we don't need to do anything here.
-    await(gSomeReady)
+    when defined(nimRecursiveSpawn):
+      if localThreadId > 0:
+        # we are a worker thread, so instead of waiting for something which
+        # might as well never happen (see tparallel_quicksort), we run the task
+        # on the current thread instead.
+        var self = addr(workersData[localThreadId-1])
+        fn(self, data)
+        await(self.taskStarted)
+        return
+      else:
+        await(gSomeReady)
+    else:
+      await(gSomeReady)
 
 var
   distinguishedLock: TLock

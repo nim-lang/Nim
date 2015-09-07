@@ -297,6 +297,7 @@ const
   sfGoto* = sfOverriden               # var is used for 'goto' code generation
   sfWrittenTo* = sfBorrow             # param is assigned to
   sfEscapes* = sfProcvar              # param escapes
+  sfBase* = sfDiscriminant
 
 const
   # getting ready for the future expr/stmt merge

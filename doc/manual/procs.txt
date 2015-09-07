@@ -385,7 +385,7 @@ dispatch.
     PlusExpr = ref object of Expression
       a, b: Expression
 
-  method eval(e: Expression): int =
+  method eval(e: Expression): int {.base.} =
     # override this base method
     quit "to override!"
 
@@ -410,6 +410,11 @@ In the example the constructors ``newLit`` and ``newPlus`` are procs
 because they should use static binding, but ``eval`` is a method because it
 requires dynamic binding.
 
+As can be seen in the example, base methods have to be annotated with
+the `base`:idx: pragma. The ``base`` pragma also acts as a reminder for the
+programmer that a base method ``m`` is used as the foundation to determine all
+the effects that a call to ``m`` might cause.
+
 In a multi-method all parameters that have an object type are used for the
 dispatching:
 
@@ -419,7 +424,7 @@ dispatching:
     Unit = ref object of Thing
       x: int
 
-  method collide(a, b: Thing) {.inline.} =
+  method collide(a, b: Thing) {.base, inline.} =
     quit "to override!"
 
   method collide(a: Thing, b: Unit) {.inline.} =

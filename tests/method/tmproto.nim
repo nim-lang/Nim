@@ -2,7 +2,7 @@ type
   Obj1 = ref object {.inheritable.}
   Obj2 = ref object of Obj1
 
-method beta(x: Obj1): int
+method beta(x: Obj1): int {.base.}
 
 proc delta(x: Obj2): int =
   beta(x)
