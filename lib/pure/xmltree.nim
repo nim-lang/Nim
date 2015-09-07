@@ -74,6 +74,12 @@ proc text*(n: XmlNode): string {.inline.} =
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
 
+proc `text=`*(n: XmlNode, text: string){.inline.} =
+  ## sets the associated text with the node `n`. `n` can be a CDATA, Text,
+  ## comment, or entity node.
+  assert n.k in {xnText, xnComment, xnCData, xnEntity}
+  n.fText = text
+
 proc rawText*(n: XmlNode): string {.inline.} =
   ## returns the underlying 'text' string by reference.
   ## This is only used for speed hacks.
@@ -114,6 +120,11 @@ proc `[]`* (n: XmlNode, i: int): XmlNode {.inline.} =
   ## returns the `i`'th child of `n`.
   assert n.k == xnElement
   result = n.s[i]
+
+proc delete*(n: XmlNode, i: Natural) {.noSideEffect.} =
+  ## delete the `i`'th child of `n`.
+  assert n.k == xnElement
+  n.s.delete(i)
 
 proc mget* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   ## returns the `i`'th child of `n` so that it can be modified
