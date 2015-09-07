@@ -3001,6 +3001,23 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
+  when defined(nodejs):
+    type
+      WritableStreamObj = object {.importc.}
+      WritableStream = ref WritableStreamObj
+    proc write*(f: WritableStream, s: cstring) {.importcpp.}
+    proc write*(f: WritableStream, r: float32) = f.write($r)
+    proc write*(f: WritableStream, i: int) = f.write($i)
+    proc write*(f: WritableStream, i: BiggestInt) = f.write($i)
+    proc write*(f: WritableStream, r: BiggestFloat) = f.write($r)
+    proc write*(f: WritableStream, b: bool) = f.write($b)
+    proc write*(f: WritableStream, c: char) = f.write($c)
+    var
+      stdout* {.importc: "process.stdout", nodecl.}: WritableStream
+        ## The standard output stream.
+      stderr* {.importc: "process.stderr", nodecl.}: WritableStream
+        ## The standard error stream.
+
   when defined(JS):
     include "system/jssys"
     include "system/reprjs"
