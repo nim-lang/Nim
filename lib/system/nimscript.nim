@@ -13,23 +13,51 @@
 
 template builtin = discard
 
-proc listDirs*(dir: string): seq[string] = builtin
-proc listFiles*(dir: string): seq[string] = builtin
+proc listDirs*(dir: string): seq[string] =
+  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
+  builtin
+proc listFiles*(dir: string): seq[string] =
+  ## Lists all the files (non-recursively) in the directory `dir`.
+  builtin
 
-proc removeDir(dir: string) = builtin
-proc removeFile(dir: string) = builtin
-proc moveFile(src, dest: string) = builtin
-proc copyFile(src, dest: string) = builtin
-proc createDir(dir: string) = builtin
+proc removeDir(dir: string){.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc removeFile(dir: string) {.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc moveFile(src, dest: string) {.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc copyFile(src, dest: string) {.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} = builtin
 proc getOsError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir(): string = builtin
-proc paramStr*(i: int): string = builtin
-proc paramCount*(): int = builtin
+proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
+  builtin
 
-proc switch*(key: string, val="") = builtin
-proc getCommand*(): string = builtin
-proc setCommand*(cmd: string) = builtin
+proc paramStr*(i: int): string =
+  ## Retrieves the ``i``'th command line parameter.
+  builtin
+
+proc paramCount*(): int =
+  ## Retrieves the number of command line parameters.
+  builtin
+
+proc switch*(key: string, val="") =
+  ## Sets a Nim compiler command line switch, for
+  ## example ``switch("checks", "on")``.
+  builtin
+
+proc getCommand*(): string =
+  ## Gets the Nim command that the compiler has been invoked with, for example
+  ## "c", "js", "build", "help".
+  builtin
+
+proc setCommand*(cmd: string) =
+  ## Sets the Nim command that should be continued with after this Nimscript
+  ## has finished.
+  builtin
+
 proc cmpIgnoreStyle(a, b: string): int = builtin
 proc cmpIgnoreCase(a, b: string): int = builtin
 
@@ -37,11 +65,23 @@ proc cmpic*(a, b: string): int = cmpIgnoreCase(a, b)
 
 proc getEnv*(key: string): string = builtin
 proc existsEnv*(key: string): bool = builtin
-proc fileExists*(filename: string): bool = builtin
-proc dirExists*(dir: string): bool = builtin
 
-proc existsFile*(filename: string): bool = fileExists(filename)
-proc existsDir*(dir: string): bool = dirExists(dir)
+proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
+  ## Checks if the file exists.
+  builtin
+
+proc dirExists*(dir: string): bool {.
+  tags: [ReadIOEffect].} =
+  ## Checks if the directory `dir` exists.
+  builtin
+
+proc existsFile*(filename: string): bool =
+  ## An alias for ``fileExists``.
+  fileExists(filename)
+
+proc existsDir*(dir: string): bool =
+  ## An alias for ``dirExists``.
+  dirExists(dir)
 
 proc toExe*(filename: string): string =
   ## On Windows adds ".exe" to `filename`, else returns `filename` unmodified.
@@ -60,10 +100,11 @@ template `--`*(key, val: untyped) = switch(astToStr(key), strip astToStr(val))
 template `--`*(key: untyped) = switch(astToStr(key), "")
 
 type
-  ScriptMode* {.pure.} = enum
-    Silent,
-    Verbose,
-    Whatif
+  ScriptMode* {.pure.} = enum ## Controls the behaviour of the script.
+    Silent,                   ## Be silent.
+    Verbose,                  ## Be verbose.
+    Whatif                    ## Do not run commands, instead just echo what
+                              ## would have been done.
 
 var
   mode*: ScriptMode ## Set this to influence how mkDir, rmDir, rmFile etc.
@@ -80,31 +121,44 @@ template log(msg: string, body: untyped) =
     body
 
 proc rmDir*(dir: string) {.raises: [OSError].} =
+  ## Removes the directory `dir`.
   log "rmDir: " & dir:
     removeDir dir
     checkOsError()
 
-proc rmFile*(dir: string) {.raises: [OSError].} =
-  log "rmFile: " & dir:
-    removeFile dir
+proc rmFile*(file: string) {.raises: [OSError].} =
+  ## Removes the `file`.
+  log "rmFile: " & file:
+    removeFile file
     checkOsError()
 
 proc mkDir*(dir: string) {.raises: [OSError].} =
+  ## Creates the directory `dir` including all necessary subdirectories. If
+  ## the directory already exists, no error is raised.
   log "mkDir: " & dir:
     createDir dir
     checkOsError()
 
 proc mvFile*(`from`, to: string) {.raises: [OSError].} =
+  ## Moves the file `from` to `to`.
   log "mvFile: " & `from` & ", " & to:
     moveFile `from`, to
     checkOsError()
 
 proc cpFile*(`from`, to: string) {.raises: [OSError].} =
+  ## Copies the file `from` to `to`.
   log "mvFile: " & `from` & ", " & to:
     copyFile `from`, to
     checkOsError()
 
-proc exec*(command: string, input = "", cache = "") =
+proc exec*(command: string) =
+  ## Executes an external process.
+  log "exec: " & command:
+    if rawExec(command) != 0:
+      raise newException(OSError, "FAILED: " & command)
+    checkOsError()
+
+proc exec*(command: string, input: string, cache = "") =
   ## Executes an external process.
   log "exec: " & command:
     echo staticExec(command, input, cache)
@@ -166,6 +220,11 @@ proc writeTask(name, desc: string) =
 
 template task*(name: untyped; description: string; body: untyped): untyped =
   ## Defines a task. Hidden tasks are supported via an empty description.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##  task build, "default build is via the C backend":
+  ##    setCommand "c"
   proc `name Task`() = body
 
   let cmd = getCommand()
@@ -177,13 +236,23 @@ template task*(name: untyped; description: string; body: untyped): untyped =
     `name Task`()
 
 var
-  packageName* = ""
-  version*, author*, description*, license*, srcdir*,
-    binDir*, backend*: string
+  packageName* = ""    ## Nimble support: Set this to the package name. It
+                       ## is usually not required to do that, nims' filename is
+                       ## the default.
+  version*: string     ## Nimble support: The package's version.
+  author*: string      ## Nimble support: The package's author.
+  description*: string ## Nimble support: The package's description.
+  license*: string     ## Nimble support: The package's license.
+  srcdir*: string      ## Nimble support: The package's source directory.
+  binDir*: string      ## Nimble support: The package's binary directory.
+  backend*: string     ## Nimble support: The package's backend.
 
   skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
-    installExt*, bin*: seq[string] = @[]
-  requiresData*: seq[string] = @[]
+    installExt*, bin*: seq[string] = @[] ## Nimble metadata.
+  requiresData*: seq[string] = @[] ## Exposes the list of requirements for read
+                                   ## and write accesses.
 
 proc requires*(deps: varargs[string]) =
+  ## Nimble support: Call this to set the list of requirements of your Nimble
+  ## package.
   for d in deps: requiresData.add(d)
