@@ -121,6 +121,11 @@ proc `[]`* (n: XmlNode, i: int): XmlNode {.inline.} =
   assert n.k == xnElement
   result = n.s[i]
 
+proc delete*(n: XmlNode, i: Natural) {.noSideEffect.} =
+  ## delete the `i`'th child of `n`.
+  assert n.k == xnElement
+  n.s.delete(i)
+
 proc mget* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   ## returns the `i`'th child of `n` so that it can be modified
   assert n.k == xnElement
