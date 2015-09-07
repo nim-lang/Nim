@@ -124,6 +124,9 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         return newSymNode(u, n.info)
     result = newSymNode(s, n.info)
   of skVar, skLet, skResult, skForVar:
+    if s.magic == mNimvm:
+      localError(n.info, "illegal context for 'nimvm' magic")
+
     markUsed(n.info, s)
     styleCheckUse(n.info, s)
     # if a proc accesses a global variable, it is not side effect free:
@@ -1769,9 +1772,14 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   #   ...
   # else:
   #   ...
-  let whenNimvm = n.sons.len == 2 and n.sons[0].kind == nkElifBranch and
-      n.sons[1].kind == nkElse and n.sons[0].sons[0].kind == nkIdent and
-      lookUp(c, n.sons[0].sons[0]).magic == mNimvm
+  var whenNimvm = false
+  if n.sons.len == 2 and n.sons[0].kind == nkElifBranch and
+      n.sons[1].kind == nkElse:
+    let exprNode = n.sons[0].sons[0]
+    if exprNode.kind == nkIdent:
+      whenNimvm = lookUp(c, exprNode).magic == mNimvm
+    elif exprNode.kind == nkSym:
+      whenNimvm = exprNode.sym.magic == mNimvm
 
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
