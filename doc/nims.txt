@@ -40,7 +40,7 @@ NimScript as a build tool
 =========================
 
 The ``task`` template that the ``system`` module defines allows a NimScript
-file to be used as a build tool. The following exampled defines a
+file to be used as a build tool. The following example defines a
 task ``build`` that is an alias for the ``c`` command:
 
 .. code-block:: nim
