@@ -199,9 +199,6 @@ elif defined(gogc):
   else:
     const goLib = "libgo.so"
 
-  proc `div`[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
-  proc `-`[T: SomeUnsignedInt](x, y: T): T {.magic: "SubU", noSideEffect.}
-
   proc roundup(x, v: int): int {.inline.} =
     result = (x + (v-1)) and not (v-1)
 
