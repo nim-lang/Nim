@@ -1,13 +1,13 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2011 Alex Mitchell
+#        (c) Copyright 2011 Alexander Mitchell-Robinson
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## :Author: Alex Mitchell
+## :Author: Alexander Mitchell-Robinson (Amrykid)
 ##
 ## This module implements an event system that is not dependent on external
 ## graphical toolkits. It was originally called ``NimEE`` because
