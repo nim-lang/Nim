@@ -1520,7 +1520,7 @@ proc convStrToCStr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[0], r)
     if r.res == nil: internalError(n.info, "convStrToCStr")
     useMagic(p, "toJSStr")
-    r.res = "toJSStr($1)" % [r.res]
+    r.res = "($1===null) ? null : toJSStr($1)" % [r.res]
     r.kind = resExpr
 
 proc convCStrToStr(p: PProc, n: PNode, r: var TCompRes) =
