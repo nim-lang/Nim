@@ -12,8 +12,8 @@ a ``myproject.nims`` file that simply contains Nim code controlling the
 compilation process.
 
 The VM cannot deal with ``importc``, the FFI is not available, so there are not
-many stdlib modules that you can use with Nim's VM. However, the following
-modules are available:
+many stdlib modules that you can use with Nim's VM. However, at least the
+following modules are available:
 
 * `strutils <strutils.html>`_
 * `ospaths <ospaths.html>`_
