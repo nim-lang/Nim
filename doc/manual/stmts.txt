@@ -329,8 +329,10 @@ The ``when`` statement enables conditional compilation techniques. As
 a special syntactic extension, the ``when`` construct is also available
 within ``object`` definitions.
 
+
 When nimvm statement
----------------------
+--------------------
+
 ``nimvm`` is a special symbol, that may be used as expression of ``when nimvm``
 statement to differentiate execution path between runtime and compile time.
 

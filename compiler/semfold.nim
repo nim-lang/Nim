@@ -640,8 +640,6 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)
       of mNegInf: result = newFloatNodeT(NegInf, n)
-      of mNimvm:
-        localError(n.info, "illegal context for 'nimvm' magic")
       else:
         if sfFakeConst notin s.flags: result = copyTree(s.ast)
     of {skProc, skMethod}:

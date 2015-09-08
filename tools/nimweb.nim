@@ -334,7 +334,7 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   result = @[]
   if not open(input, inputFilename):
     quit("Could not read $1 for rss generation" % [inputFilename])
-  finally: input.close()
+  defer: input.close()
   while input.readLine(line):
     if line =~ reYearMonthDayTitle:
       result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
@@ -368,7 +368,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
 
   if not open(output, outputFilename, mode = fmWrite):
     quit("Could not write to $1 for rss generation" % [outputFilename])
-  finally: output.close()
+  defer: output.close()
 
   output.write("""<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">

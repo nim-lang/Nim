@@ -1173,11 +1173,11 @@ const
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
     ## "amd64", "mips", "mipsel", "arm", "arm64".
 
-  nimvm* {.magic: "Nimvm".}: bool = false
+  seqShallowFlag = low(int)
+
+let nimvm* {.magic: "Nimvm".}: bool = false
     ## may be used only in "when" expression.
     ## It is true in Nim VM context and false otherwise
-
-  seqShallowFlag = low(int)
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -3042,7 +3042,7 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # fill the hole:
   for i in 0 .. <b.len: s[i+a] = b[i]
 
-when hasAlloc:
+when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
     result = s.substr(x.a, x.b)

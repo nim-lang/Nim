@@ -10,7 +10,7 @@
 # Included by the ``os`` module but a module in its own right for NimScript
 # support.
 
-when defined(nimscript):
+when defined(nimscript) or (defined(nimdoc) and not declared(os)):
   {.pragma: rtl.}
   {.push hint[ConvFromXtoItselfNotNeeded]:off.}
 
@@ -417,6 +417,7 @@ when not declared(getEnv) or defined(nimscript):
     else:
       when defined(nimscript):
         result = cmpic(pathA, pathB)
+      elif defined(nimdoc): discard
       else:
         result = cmpIgnoreCase(pathA, pathB)
 
@@ -490,6 +491,10 @@ when not declared(getEnv) or defined(nimscript):
           add result, path[i]
           inc(i)
 
+when defined(nimdoc) and not declared(os):
+  proc getEnv(x: string): string = discard
+  proc existsFile(x: string): bool = discard
+
 when declared(getEnv) or defined(nimscript):
   proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
     ## Returns the home directory of the current user.
@@ -556,5 +561,5 @@ when declared(getEnv) or defined(nimscript):
       if existsFile(x): return x
     result = ""
 
-when defined(nimscript):
+when defined(nimscript) or (defined(nimdoc) and not declared(os)):
   {.pop.} # hint[ConvFromXtoItselfNotNeeded]:off

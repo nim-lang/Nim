@@ -89,7 +89,8 @@ News
   Compiler Additions
   ------------------
 
-  - The compiler now supports a new configuration system based on ``NimScript``.
+  - The compiler now supports a new configuration system based on
+    `NimScript <docs/nims.html>`_.
 
 
   Language Additions
@@ -106,7 +107,7 @@ News
     is allowed. Note that this doesn't declare ``x`` and ``y`` variables, for
     this ``let (x, y) == f()`` still needs to be used.
   - ``when nimvm`` can now be used for compiletime versions of some code
-    sections. See (XXX) for details.
+    sections. Click `here <docs/manual.html#when-nimvm-statement>`_ for details.
 
 
   Bugfixes
