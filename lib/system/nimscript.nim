@@ -13,6 +13,9 @@
 
 template builtin = discard
 
+# We know the effects better than the compiler:
+{.push hint[XDeclaredButNotUsed]: off.}
+
 proc listDirs*(dir: string): seq[string] =
   ## Lists all the subdirectories (non-recursively) in the directory `dir`.
   builtin
@@ -269,3 +272,5 @@ proc requires*(deps: varargs[string]) =
   ## Nimble support: Call this to set the list of requirements of your Nimble
   ## package.
   for d in deps: requiresData.add(d)
+
+{.pop.}
