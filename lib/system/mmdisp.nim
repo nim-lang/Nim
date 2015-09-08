@@ -66,41 +66,34 @@ proc raiseOutOfMem() {.noinline.} =
   quit(1)
 
 when defined(boehmgc):
-  when defined(windows):
-    const boehmLib = "boehmgc.dll"
-  elif defined(macosx):
-    const boehmLib = "libgc.dylib"
-  else:
-    const boehmLib = "libgc.so.1"
-
-  proc boehmGCinit {.importc: "GC_init", dynlib: boehmLib.}
-  proc boehmGC_disable {.importc: "GC_disable", dynlib: boehmLib.}
-  proc boehmGC_enable {.importc: "GC_enable", dynlib: boehmLib.}
+  proc boehmGCinit {.importc: "GC_init", boehmGC.}
+  proc boehmGC_disable {.importc: "GC_disable", boehmGC.}
+  proc boehmGC_enable {.importc: "GC_enable", boehmGC.}
   proc boehmGCincremental {.
-    importc: "GC_enable_incremental", dynlib: boehmLib.}
-  proc boehmGCfullCollect {.importc: "GC_gcollect", dynlib: boehmLib.}
-  proc boehmAlloc(size: int): pointer {.
-    importc: "GC_malloc", dynlib: boehmLib.}
+    importc: "GC_enable_incremental", boehmGC.}
+  proc boehmGCfullCollect {.importc: "GC_gcollect", boehmGC.}
+  proc boehmAlloc(size: int): pointer {.importc: "GC_malloc", boehmGC.}
   proc boehmAllocAtomic(size: int): pointer {.
-    importc: "GC_malloc_atomic", dynlib: boehmLib.}
+    importc: "GC_malloc_atomic", boehmGC.}
   proc boehmRealloc(p: pointer, size: int): pointer {.
-    importc: "GC_realloc", dynlib: boehmLib.}
-  proc boehmDealloc(p: pointer) {.importc: "GC_free", dynlib: boehmLib.}
+    importc: "GC_realloc", boehmGC.}
+  proc boehmDealloc(p: pointer) {.importc: "GC_free", boehmGC.}
+  when hasThreadSupport:
+    proc boehmGC_allow_register_threads {.
+      importc: "GC_allow_register_threads", boehmGC.}
 
-  proc boehmGetHeapSize: int {.importc: "GC_get_heap_size", dynlib: boehmLib.}
+  proc boehmGetHeapSize: int {.importc: "GC_get_heap_size", boehmGC.}
     ## Return the number of bytes in the heap.  Excludes collector private
     ## data structures. Includes empty blocks and fragmentation loss.
     ## Includes some pages that were allocated but never written.
 
-  proc boehmGetFreeBytes: int {.importc: "GC_get_free_bytes", dynlib: boehmLib.}
+  proc boehmGetFreeBytes: int {.importc: "GC_get_free_bytes", boehmGC.}
     ## Return a lower bound on the number of free bytes in the heap.
 
-  proc boehmGetBytesSinceGC: int {.importc: "GC_get_bytes_since_gc",
-    dynlib: boehmLib.}
+  proc boehmGetBytesSinceGC: int {.importc: "GC_get_bytes_since_gc", boehmGC.}
     ## Return the number of bytes allocated since the last collection.
 
-  proc boehmGetTotalBytes: int {.importc: "GC_get_total_bytes",
-    dynlib: boehmLib.}
+  proc boehmGetTotalBytes: int {.importc: "GC_get_total_bytes", boehmGC.}
     ## Return the total number of bytes allocated in this process.
     ## Never decreases.
 
@@ -158,6 +151,8 @@ when defined(boehmgc):
 
   proc initGC() =
     boehmGCinit()
+    when hasThreadSupport:
+      boehmGC_allow_register_threads()
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     if ntfNoRefs in typ.flags: result = allocAtomic(size)
