@@ -3042,7 +3042,7 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # fill the hole:
   for i in 0 .. <b.len: s[i+a] = b[i]
 
-when hasAlloc:
+when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
     result = s.substr(x.a, x.b)
