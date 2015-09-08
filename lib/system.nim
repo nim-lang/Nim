@@ -1200,6 +1200,14 @@ const
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
 
+when defined(boehmgc):
+  when defined(windows):
+    const boehmLib = "boehmgc.dll"
+  elif defined(macosx):
+    const boehmLib = "libgc.dylib"
+  else:
+    const boehmLib = "libgc.so.1"
+
 when taintMode:
   type TaintedString* = distinct string ## a distinct string type that
                                         ## is `tainted`:idx:. It is an alias for
