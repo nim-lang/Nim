@@ -1074,9 +1074,9 @@ when not defined(js):
     ## for nice error messages.
     var p: JsonParser
     p.open(s, filename)
+    defer: p.close()
     discard getTok(p) # read first token
     result = p.parseJson()
-    p.close()
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
