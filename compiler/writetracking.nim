@@ -200,7 +200,7 @@ proc deps(w: var W; n: PNode) =
 
 proc possibleAliases(w: var W; result: var seq[ptr TSym]) =
   # this is an expensive fixpoint iteration. We could speed up this analysis
-  # by a smarter data-structure but we wait until prolifing shows us it's
+  # by a smarter data-structure but we wait until profiling shows us it's
   # expensive. Usually 'w.assignments' is small enough.
   var alreadySeen = initIntSet()
   template addNoDup(x) =
