@@ -1,4 +1,4 @@
-#! strongSpaces
+#? strongSpaces
 
 discard """
   output: '''35
