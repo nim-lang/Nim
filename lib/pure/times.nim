@@ -307,10 +307,10 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## very accurate.
   let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
-  if a.tzname == "UTC":
-    result = getGMTime(fromSeconds(t + secs))
-  else:
-    result = getLocalTime(fromSeconds(t + secs))
+  #if a.tzname == "UTC":
+  #  result = getGMTime(fromSeconds(t + secs))
+  #else:
+  result = getLocalTime(fromSeconds(t + secs))
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## subtracts ``interval`` time.
@@ -319,10 +319,10 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## when you subtract so much that you reach the Julian calendar.
   let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
-  if a.tzname == "UTC":
-    result = getGMTime(fromSeconds(t - secs))
-  else:
-    result = getLocalTime(fromSeconds(t - secs))
+  #if a.tzname == "UTC":
+  #  result = getGMTime(fromSeconds(t - secs))
+  #else:
+  result = getLocalTime(fromSeconds(t - secs))
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
