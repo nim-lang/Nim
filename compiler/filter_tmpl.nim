@@ -67,9 +67,9 @@ proc parseLine(p: var TTmplParser) =
     keyw: string
   j = 0
   while p.x[j] == ' ': inc(j)
-  if (p.x[0] == p.nimDirective) and (p.x[0 + 1] == '!'):
+  if p.x[0] == p.nimDirective and p.x[1] in {'?', '!'}:
     newLine(p)
-  elif (p.x[j] == p.nimDirective):
+  elif p.x[j] == p.nimDirective:
     newLine(p)
     inc(j)
     while p.x[j] == ' ': inc(j)
