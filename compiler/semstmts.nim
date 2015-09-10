@@ -1425,7 +1425,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
             localError(result.info, "type class predicate failed")
         of tyUnknown: continue
         else: discard
-      if n.sons[i].typ == enforceVoidContext or usesResult(n.sons[i]):
+      if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
         voidContext = true
         n.typ = enforceVoidContext
       if i == last and (length == 1 or efWantValue in flags):
