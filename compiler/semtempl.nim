@@ -471,27 +471,6 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBodyDirty(c, n.sons[i])
 
-proc transformToExpr(n: PNode): PNode =
-  var realStmt: int
-  result = n
-  case n.kind
-  of nkStmtList:
-    realStmt = - 1
-    for i in countup(0, sonsLen(n) - 1):
-      case n.sons[i].kind
-      of nkCommentStmt, nkEmpty, nkNilLit:
-        discard
-      else:
-        if realStmt == - 1: realStmt = i
-        else: realStmt = - 2
-    if realStmt >= 0: result = transformToExpr(n.sons[realStmt])
-    else: n.kind = nkStmtListExpr
-  of nkBlockStmt:
-    n.kind = nkBlockExpr
-    #nkIfStmt: n.kind = nkIfExpr // this is not correct!
-  else:
-    discard
-
 proc semTemplateDef(c: PContext, n: PNode): PNode =
   var s: PSym
   if isTopLevel(c):
@@ -549,9 +528,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n.sons[bodyPos] = semTemplBodyDirty(ctx, n.sons[bodyPos])
   else:
     n.sons[bodyPos] = semTemplBody(ctx, n.sons[bodyPos])
-  if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:
-    n.sons[bodyPos] = transformToExpr(n.sons[bodyPos])
-    # only parameters are resolved, no type checking is performed
+  # only parameters are resolved, no type checking is performed
   semIdeForTemplateOrGeneric(c, n.sons[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner()
