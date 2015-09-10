@@ -11,6 +11,25 @@
 ## This module contains routines and types for dealing with time.
 ## This module is available for the `JavaScript target
 ## <backends.html#the-javascript-target>`_.
+##
+## Examples:
+##
+## .. code-block:: nim
+##
+##  import times, os
+##  var
+##    t = cpuTime()
+##
+##  sleep(100)   # replace this with something to be timed
+##  echo "Time taken: ",cpuTime() - t
+##
+##  echo "My formatted time: ", format(getLocalTime(getTime()), "d MMMM yyyy HH:mm")
+##  echo "Using predefined formats: ", getClockStr(), " ", getDateStr()
+##
+##  echo "epochTime() float value: ", epochTime()
+##  echo "getTime()   float value: ", toSeconds(getTime())
+##  echo "cpuTime()   float value: ", cpuTime()
+##  echo "An hour from now: ", getLocalTime(getTime()) + initInterval(0,0,0,1)
 
 {.push debugger:off.} # the user does not want to trace a part
                       # of the standard library!
