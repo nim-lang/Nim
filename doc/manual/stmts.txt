@@ -60,6 +60,24 @@ An empty ``discard`` statement is often used as a null statement:
     else: discard
 
 
+Void context
+------------
+
+In a list of statements every expression except the last one needs to have the
+type ``void``. In addition to this rule an assignment to the builtin ``result``
+symbol also triggers a ``void`` context:
+
+.. code-block:: nim
+  proc invalid*(): string =
+    result = "foo"
+    "invalid"  # Error: value of type 'string' has to be discarded
+
+.. code-block:: nim
+  proc valid*(): string =
+    let x = 317
+    "valid"
+
+
 Var statement
 -------------
 
