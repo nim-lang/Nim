@@ -71,6 +71,8 @@ News
     are likely to break as well.
   - Base methods now need to be annotated with the ``base`` pragma. This makes
     multi methods less error-prone to use with the effect system.
+  - Nim's parser directive ``#!`` is now ``#?`` in order to produce no conflicts
+    with Unix's ``#!``.
 
 
   Library Additions

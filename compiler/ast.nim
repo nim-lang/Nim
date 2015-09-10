@@ -709,6 +709,7 @@ type
     lfSingleUse               # no location yet and will only be used once
   TStorageLoc* = enum
     OnUnknown,                # location is unknown (stack, heap or static)
+    OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
     OnHeap                    # location is on heap or global
                               # (reference counting needed)
