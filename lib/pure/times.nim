@@ -1288,3 +1288,28 @@ when isMainModule:
   assert getDayOfWeekJulian(21, 9, 1970) == dMon
   assert getDayOfWeekJulian(1, 1, 2000) == dSat
   assert getDayOfWeekJulian(1, 1, 2021) == dFri
+
+  # toSeconds tests with GM and Local timezones
+  #var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
+  var t4L = getLocalTime(fromSeconds(876124714))
+  assert toSeconds(timeInfoToTime(t4L)) == 876124714    # fromSeconds is effectively "localTime"
+  assert toSeconds(timeInfoToTime(t4L)) + t4L.timezone.float == toSeconds(timeInfoToTime(t4))
+
+  assert toSeconds(t4, initInterval(seconds=0)) == 0.0
+  assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
+  assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))
+  assert toSeconds(t4L, initInterval(minutes=1)) == toSeconds(t4, initInterval(minutes=1))
+  assert toSeconds(t4L, initInterval(hours=1)) == toSeconds(t4, initInterval(hours=1))
+  assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
+  assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
+  assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
+
+  # adding intervals
+  var
+    a1L = toSeconds(timeInfoToTime(t4L + initInterval(hours = 1))) + t4L.timezone.float
+    a1G = toSeconds(timeInfoToTime(t4)) + 60.0 * 60.0
+  assert a1L == a1G
+  # subtracting intervals
+  a1L = toSeconds(timeInfoToTime(t4L - initInterval(hours = 1))) + t4L.timezone.float
+  a1G = toSeconds(timeInfoToTime(t4)) - (60.0 * 60.0)
+  assert a1L == a1G
