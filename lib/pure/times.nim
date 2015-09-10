@@ -29,7 +29,8 @@
 ##  echo "epochTime() float value: ", epochTime()
 ##  echo "getTime()   float value: ", toSeconds(getTime())
 ##  echo "cpuTime()   float value: ", cpuTime()
-##  echo "An hour from now: ", getLocalTime(getTime()) + initInterval(0,0,0,1)
+##  echo "An hour from now      : ", getLocalTime(getTime()) + initInterval(0,0,0,1)
+##  echo "An hour from (UTC) now: ", getGmTime(getTime()) + initInterval(0,0,0,1)
 
 {.push debugger:off.} # the user does not want to trace a part
                       # of the standard library!
