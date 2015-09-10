@@ -1203,6 +1203,17 @@ when isMainModule:
   testJson{["c", "d"]} = %true
   assert(testJson["c"]["d"].bval)
 
+  # make sure no memory leek when parsing invalid string
+  let startMemory = getOccupiedMem()
+  for i in 0 .. 10000:
+    try:
+      discard parseJson"""{ invalid"""
+    except:
+      discard
+  # memory diff should less than 2M
+  assert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
+
+
   # test `$`
   let stringified = $testJson
   let parsedAgain = parseJson(stringified)
