@@ -22,7 +22,7 @@ import queues
 
 type
   TWidget = object
-    names: TQueue[string]
+    names: Queue[string]
 
 var w = TWidget(names: initQueue[string]())
 
