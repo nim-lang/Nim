@@ -73,6 +73,8 @@ News
     multi methods less error-prone to use with the effect system.
   - Nim's parser directive ``#!`` is now ``#?`` in order to produce no conflicts
     with Unix's ``#!``.
+  - An implicit return type for an iterator is now deprecated. Use ``auto`` if
+    you want more type inference.
 
 
   Library Additions
