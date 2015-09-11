@@ -17,7 +17,8 @@ const
 
 
 when defined(windows) or defined(nimdoc):
-    discard
+    # TODO: just make it work on Windows for now.
+    quit("Error: unhandled exception: Connection reset by peer [Exception]")
 else:
     proc createListenSocket(host: string, port: Port): TAsyncFD =
         result = newAsyncRawSocket()
