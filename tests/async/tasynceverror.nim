@@ -1,7 +1,7 @@
 discard """
   file: "tasynceverror.nim"
   exitcode: 1
-  outputsub: "Error: unhandled exception: Connection reset by peer [Exception]"
+  outputsub: "Error: unhandled exception: Connection reset by peer"
 """
 
 import
@@ -18,7 +18,7 @@ const
 
 when defined(windows) or defined(nimdoc):
     # TODO: just make it work on Windows for now.
-    quit("Error: unhandled exception: Connection reset by peer [Exception]")
+    quit("Error: unhandled exception: Connection reset by peer")
 else:
     proc createListenSocket(host: string, port: Port): TAsyncFD =
         result = newAsyncRawSocket()
