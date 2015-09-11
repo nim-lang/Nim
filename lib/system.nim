@@ -1175,9 +1175,12 @@ const
 
   seqShallowFlag = low(int)
 
-let nimvm* {.magic: "Nimvm".}: bool = false
+when defined(nimKnowsNimvm):
+  let nimvm* {.magic: "Nimvm".}: bool = false
     ## may be used only in "when" expression.
     ## It is true in Nim VM context and false otherwise
+else:
+  const nimvm*: bool = false
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -1293,25 +1296,42 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
-  let xl = x.len
-  shallowCopy(x[i], x[xl-1])
-  setLen(x, xl-1)
+  let xl = x.len - 1
+  shallowCopy(x[i], x[xl])
+  setLen(x, xl)
 
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
-  let xl = x.len
-  for j in i..xl-2: shallowCopy(x[j], x[j+1])
-  setLen(x, xl-1)
+  template defaultImpl =
+    let xl = x.len
+    for j in i..xl-2: shallowCopy(x[j], x[j+1])
+    setLen(x, xl-1)
+
+  when nimvm:
+    defaultImpl()
+  else:
+    when defined(js):
+      {.emit: "`x`[`x`_Idx].splice(`i`, 1);".}
+    else:
+      defaultImpl()
 
 proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   ## inserts `item` into `x` at position `i`.
-  let xl = x.len
-  setLen(x, xl+1)
-  var j = xl-1
-  while j >= i:
-    shallowCopy(x[j+1], x[j])
-    dec(j)
+  template defaultImpl =
+    let xl = x.len
+    setLen(x, xl+1)
+    var j = xl-1
+    while j >= i:
+      shallowCopy(x[j+1], x[j])
+      dec(j)
+  when nimvm:
+    defaultImpl()
+  else:
+    when defined(js):
+      {.emit: "`x`[`x`_Idx].splice(`i`, 0, null);".}
+    else:
+      defaultImpl()
   x[i] = item
 
 proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
@@ -3042,7 +3062,7 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # fill the hole:
   for i in 0 .. <b.len: s[i+a] = b[i]
 
-when hasAlloc:
+when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
     result = s.substr(x.a, x.b)

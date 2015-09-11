@@ -645,11 +645,18 @@ proc processSwitch*(pass: TCmdLinePass; p: OptParser) =
 proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int): bool =
   if argsCount == 0:
-    if pass != passCmd2: options.command = p.key
+    # nim filename.nims  is the same as "nim e filename.nims":
+    if p.key.endswith(".nims"):
+      options.command = "e"
+      options.gProjectName = unixToNativePath(p.key)
+      arguments = cmdLineRest(p)
+      result = true
+    elif pass != passCmd2:
+      options.command = p.key
   else:
     if pass == passCmd1: options.commandArgs.add p.key
     if argsCount == 1:
-      # support UNIX style filenames anywhere for portable build scripts:
+      # support UNIX style filenames everywhere for portable build scripts:
       options.gProjectName = unixToNativePath(p.key)
       arguments = cmdLineRest(p)
       result = true

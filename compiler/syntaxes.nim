@@ -92,10 +92,15 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
     var line = newStringOfCap(80)
     discard llStreamReadLine(s, line)
     var i = utf8Bom(line)
+    var linenumber = 1
     if containsShebang(line, i):
       discard llStreamReadLine(s, line)
       i = 0
-    if line[i] == '#' and line[i+1] == '!':
+      inc linenumber
+    if line[i] == '#' and line[i+1] in {'?', '!'}:
+      if line[i+1] == '!':
+        message(newLineInfo(filename, linenumber, 1),
+                warnDeprecated, "use '#?' instead; '#!'")
       inc(i, 2)
       while line[i] in Whitespace: inc(i)
       var q: TParser
