@@ -630,6 +630,22 @@ proc wordWrap*(s: string, maxLineWidth = 80,
       result.add(lastSep & word)
       lastSep.setLen(0)
 
+proc indent*(s: string, count: Natural, padding: string = " "): string
+    {.noSideEffect, rtl, extern: "nsuIndent".} =
+  ## Indents each line in ``s`` by ``count`` amount of ``padding``.
+  ##
+  ## **Note:** This currently does not preserve the specific new line characters
+  ## used.
+  result = ""
+  var i = 0
+  for line in s.splitLines():
+    if i != 0:
+      result.add("\n")
+    for j in 1..count:
+      result.add(padding)
+    result.add(line)
+    i.inc
+
 proc unindent*(s: string, eatAllIndent = false): string {.
                noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents `s`.
@@ -1502,3 +1518,5 @@ when isMainModule:
                  chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) == " but don't strip this "
   doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
   doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
+
+  doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
