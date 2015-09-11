@@ -95,7 +95,9 @@ proc setupForeignThreadGc*() =
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
 
-when defined(sparc):
+when defined(emscripten):
+  const stackIncreases = true
+elif defined(sparc):
   const stackIncreases = false
 elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
      defined(hp9000s700) or defined(hp9000s800) or defined(hp9000s820):
@@ -173,14 +175,14 @@ elif stackIncreases:
       # in a platform independent way
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
-    var registers: C_JmpBuf
+    var registers {.noinit.}: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      var max = cast[TAddress](gch.stackBottom)
-      var sp = cast[TAddress](addr(registers)) +% jmpbufSize -% sizeof(pointer)
+      var max = cast[ByteAddress](gch.stackBottom)
+      var sp = cast[ByteAddress](addr(registers)) +% jmpbufSize -% sizeof(pointer)
       # sp will traverse the JMP_BUF as well (jmp_buf size is added,
       # otherwise sp would be below the registers structure).
       while sp >=% max:
-        gcMark(gch, cast[ppointer](sp)[])
+        gcMark(gch, cast[PPointer](sp)[])
         sp = sp -% sizeof(pointer)
 
 else:
