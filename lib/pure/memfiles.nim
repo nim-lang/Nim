@@ -175,7 +175,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
   else:
     template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
-      if result.handle != 0: discard close(result.handle)
+      if result.handle != -1: discard close(result.handle)
       raiseOSError(errCode)
 
     var flags = if readonly: O_RDONLY else: O_RDWR
@@ -232,7 +232,7 @@ proc close*(f: var MemFile) =
       error = (closeHandle(f.mapHandle) == 0) or error
       error = (closeHandle(f.fHandle) == 0) or error
   else:
-    if f.handle != 0:
+    if f.handle != -1:
       error = munmap(f.mem, f.size) != 0
       lastErr = osLastError()
       error = (close(f.handle) != 0) or error
@@ -244,7 +244,7 @@ proc close*(f: var MemFile) =
     f.fHandle = 0
     f.mapHandle = 0
   else:
-    f.handle = 0
+    f.handle = -1
 
   if error: raiseOSError(lastErr)
 
