@@ -581,6 +581,11 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       localError(n.info, errInvalidExpression)
       result = n
 
+  proc stupidStmtListExpr(n: PNode): bool =
+    for i in 0 .. n.len-2:
+      if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
+    result = true
+
   result = n
   case n.kind
   of nkIdent:
@@ -606,6 +611,12 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
         localError(n.info, errInvalidExpression)
     else:
       localError(n.info, errInvalidExpression)
+  of nkStmtList, nkStmtListExpr:
+    if stupidStmtListExpr(n):
+      result = semPatternBody(c, n.lastSon)
+    else:
+      for i in countup(0, sonsLen(n) - 1):
+        result.sons[i] = semPatternBody(c, n.sons[i])
   of nkCallKinds:
     let s = qualifiedLookUp(c.c, n.sons[0], {})
     if s != nil:
