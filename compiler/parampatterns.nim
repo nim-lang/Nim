@@ -225,8 +225,11 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     result = isAssignable(owner, n.sons[0], isUnsafeAddr)
   of nkCallKinds:
     # builtin slice keeps lvalue-ness:
-    if getMagic(n) == mSlice:
+    if getMagic(n) in {mArrGet, mSlice}:
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
+  of nkStmtList, nkStmtListExpr:
+    if n.typ != nil:
+      result = isAssignable(owner, n.lastSon, isUnsafeAddr)
   else:
     discard
 

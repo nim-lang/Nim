@@ -537,7 +537,7 @@ const
 type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
-    mDefined, mDefinedInScope, mCompiles,
+    mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
@@ -614,6 +614,7 @@ const
   ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mArrGet, mArrPut, mAsgn,
     mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI,
     mAddF64, mSubF64, mMulF64, mDivF64,
@@ -1586,3 +1587,10 @@ proc createMagic*(name: string, m: TMagic): PSym =
 let
   opNot* = createMagic("not", mNot)
   opContains* = createMagic("contains", mInSet)
+
+when false:
+  proc containsNil*(n: PNode): bool =
+    # only for debugging
+    if n.isNil: return true
+    for i in 0 ..< n.safeLen:
+      if n[i].containsNil: return true
