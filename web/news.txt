@@ -95,6 +95,9 @@ News
 
   - The compiler now supports a new configuration system based on
     `NimScript <docs/nims.html>`_.
+  - The compiler finally considers symbol binding rules in templates and
+    generics for overloaded ``[]``, ``[]=``, ``{}``, ``{}=`` operators
+    (issue `#2599 <https://github.com/nim-lang/Nim/issues/2599>`_).
 
 
   Language Additions

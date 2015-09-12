@@ -265,6 +265,9 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType =
+  # currently `[]=` is defined rather sloppily in system.nim, so we have
+  # a special type matching rule for it:
+  if c.calleeSym != nil and c.calleeSym.magic == mArrPut: return t
   case t.kind
   of tyArrayConstr:
     # make it an array
@@ -1691,6 +1694,9 @@ proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
 
 proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
+  if m.calleeSym != nil and m.calleeSym.magic == mArrGet:
+    m.state = csMatch
+    return
   var marker = initIntSet()
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return

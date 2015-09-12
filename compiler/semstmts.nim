@@ -1033,6 +1033,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
   of "=":
+    if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     let t = s.typ
     if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar:

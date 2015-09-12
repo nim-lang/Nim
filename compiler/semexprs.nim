@@ -1250,7 +1250,7 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
 template resultTypeIsInferrable(typ: PType): expr =
   typ.isMetaType and typ.kind != tyTypeDesc
 
-proc semAsgn(c: PContext, n: PNode): PNode =
+proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   checkSonsLen(n, 2)
   var a = n.sons[0]
   case a.kind
@@ -1273,12 +1273,15 @@ proc semAsgn(c: PContext, n: PNode): PNode =
     # --> `[]=`(a, i, x)
     let oldBracketExpr = c.p.bracketExpr
     a = semSubscript(c, a, {efLValue})
-    if a == nil:
+    if a == nil and mode != noOverloadedSubscript:
       result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
       add(result, n[1])
       result = semExprNoType(c, result)
       c.p.bracketExpr = oldBracketExpr
       return result
+    elif a == nil:
+      localError(n.info, "could not resolve: " & $n[0])
+      return n
     c.p.bracketExpr = oldBracketExpr
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
@@ -1323,7 +1326,8 @@ proc semAsgn(c: PContext, n: PNode): PNode =
           typeMismatch(n, lhs.typ, rhs.typ)
 
     n.sons[1] = fitNode(c, le, rhs)
-    if tfHasAsgn in lhs.typ.flags and not lhsIsResult:
+    if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
+        mode != noOverloadedAsgn:
       return overloadedAsgn(c, lhs, n.sons[1])
 
     fixAbstractType(c, n)
@@ -1715,6 +1719,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mTypeOf:
     checkSonsLen(n, 2)
     result = semTypeOf(c, n.sons[1])
+  #of mArrGet: result = semArrGet(c, n, flags)
+  #of mArrPut: result = semArrPut(c, n, flags)
+  #of mAsgn: result = semAsgnOpr(c, n)
   of mDefined: result = semDefined(c, setMs(n, s), false)
   of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
   of mCompiles: result = semCompiles(c, setMs(n, s), flags)

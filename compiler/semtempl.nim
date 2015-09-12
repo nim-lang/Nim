@@ -281,6 +281,35 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   for i in 0.. < n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
 
+proc wrapInBind(c: var TemplCtx; n: PNode; opr: string): PNode =
+  let ident = getIdent(opr)
+  if ident.id in c.toInject: return n
+
+  let s = searchInScopes(c.c, ident)
+  if s != nil:
+    var callee: PNode
+    if contains(c.toBind, s.id):
+      callee = symChoice(c.c, n, s, scClosed)
+    elif contains(c.toMixin, s.name.id):
+      callee = symChoice(c.c, n, s, scForceOpen)
+    elif s.owner == c.owner and sfGenSym in s.flags:
+      # template tmp[T](x: var seq[T]) =
+      # var yz: T
+      incl(s.flags, sfUsed)
+      callee = newSymNode(s, n.info)
+      styleCheckUse(n.info, s)
+    else:
+      callee = semTemplSymbol(c.c, n, s)
+
+    let call = newNodeI(nkCall, n.info)
+    call.add(callee)
+    for i in 0 .. n.len-1: call.add(n[i])
+    result = newNodeI(nkBind, n.info, 2)
+    result.sons[0] = n
+    result.sons[1] = call
+  else:
+    result = n
+
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
@@ -423,6 +452,28 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
     result = onlyReplaceParams(c, n)
+  of nkBracketExpr, nkCurlyExpr:
+    result = newNodeI(nkCall, n.info)
+    result.add newIdentNode(getIdent(if n.kind == nkBracketExpr:"[]" else:"{}"),
+                            n.info)
+    for i in 0 ..< n.len: result.add(n[i])
+    result = semTemplBodySons(c, result)
+  of nkAsgn, nkFastAsgn:
+    checkSonsLen(n, 2)
+    let a = n.sons[0]
+    let b = n.sons[1]
+
+    let k = a.kind
+    case k
+    of nkBracketExpr, nkCurlyExpr:
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(if k == nkBracketExpr:"[]=" else:"{}="),
+                              n.info)
+      for i in 0 ..< a.len: result.add(a[i])
+      result.add(b)
+    else:
+      result = n
+    result = semTemplBodySons(c, result)
   else:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too

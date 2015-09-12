@@ -1149,7 +1149,17 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       result = semAnonTuple(c, n, prev)
   of nkCallKinds:
-    if isRange(n):
+    let x = n[0]
+    let ident = case x.kind
+                of nkIdent: x.ident
+                of nkSym: x.sym.name
+                of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
+                else: nil
+    if ident != nil and ident.s == "[]":
+      let b = newNodeI(nkBracketExpr, n.info)
+      for i in 1..<n.len: b.add(n[i])
+      result = semTypeNode(c, b, prev)
+    elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)
     elif n[0].kind notin nkIdentKinds:
       result = semTypeExpr(c, n)

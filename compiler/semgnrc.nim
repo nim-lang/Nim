@@ -251,6 +251,29 @@ proc semGenericStmt(c: PContext, n: PNode,
     let flags = if mixinContext: flags+{withinMixin} else: flags
     for i in countup(first, sonsLen(result) - 1):
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, ctx)
+  of nkBracketExpr, nkCurlyExpr:
+    result = newNodeI(nkCall, n.info)
+    result.add newIdentNode(getIdent(if n.kind == nkBracketExpr:"[]" else:"{}"),
+                            n.info)
+    for i in 0 ..< n.len: result.add(n[i])
+    result = semGenericStmt(c, result, flags, ctx)
+  of nkAsgn, nkFastAsgn:
+    checkSonsLen(n, 2)
+    let a = n.sons[0]
+    let b = n.sons[1]
+
+    let k = a.kind
+    case k
+    of nkBracketExpr, nkCurlyExpr:
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent(if k == nkBracketExpr:"[]=" else:"{}="),
+                              n.info)
+      for i in 0 ..< a.len: result.add(a[i])
+      result.add(b)
+      result = semGenericStmt(c, result, flags, ctx)
+    else:
+      for i in countup(0, sonsLen(n) - 1):
+        result.sons[i] = semGenericStmt(c, n.sons[i], flags, ctx)
   of nkIfStmt:
     for i in countup(0, sonsLen(n)-1):
       n.sons[i] = semGenericStmtScope(c, n.sons[i], flags, ctx)
