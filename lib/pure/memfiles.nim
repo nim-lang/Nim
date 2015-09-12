@@ -226,7 +226,7 @@ proc close*(f: var MemFile) =
   var lastErr: OSErrorCode
 
   when defined(windows):
-    if f.fHandle != INVALID_HANDLE_VALUE:
+    if f.fHandle != INVALID_HANDLE_VALUE and f.fHandle != 0:
       error = unmapViewOfFile(f.mem) == 0
       lastErr = osLastError()
       error = (closeHandle(f.mapHandle) == 0) or error
