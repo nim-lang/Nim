@@ -24,12 +24,19 @@ else:
 
 import os
 
+when defined(windows):
+  const INVALID_HANDLE = INVALID_HANDLE_VALUE
+else:
+  const INVALID_HANDLE = -1
+
 type
   MemFile* = object  ## represents a memory mapped file
     mem*: pointer    ## a pointer to the memory mapped file. The pointer
                      ## can be used directly to change the contents of the
                      ## file, if it was opened with write access.
     size*: int       ## size of the memory mapped file
+
+    initialized: bool
 
     when defined(windows):
       fHandle: int
@@ -39,8 +46,19 @@ type
 
 {.deprecated: [TMemFile: MemFile].}
 
+proc checkConstructed(m: var MemFile) =
+  if (not m.initialized):
+    when defined(windows):
+      m.fHandle = INVALID_HANDLE
+      m.mapHandle = INVALID_HANDLE
+    else:
+      m.handle = INVALID_HANDLE
+    m.initialized = true
+
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
+  checkConstructed(m)
+
   var readonly = mode == fmRead
   when defined(windows):
     result = mapViewOfFileEx(
@@ -65,6 +83,8 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
 
 
 proc unmapMem*(f: var MemFile, p: pointer, size: int) =
+  checkConstructed(f)
+
   ## unmaps the memory region ``(p, <p+size)`` of the mapped file `f`.
   ## All changes are written back to the file system, if `f` was opened
   ## with write access. ``size`` must be of exactly the size that was requested
@@ -95,6 +115,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##   # Read the first 512 bytes
   ##   mm_half = memfiles.open("/tmp/test.mmap", mode = fmReadWrite, mappedSize = 512)
 
+  checkConstructed(result)
+
   # The file can be resized only when write mode is used:
   assert newFileSize == -1 or mode != fmRead
   var readonly = mode == fmRead
@@ -106,8 +128,12 @@ proc open*(filename: string, mode: FileMode = fmRead,
   when defined(windows):
     template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
-      if result.fHandle != 0: discard closeHandle(result.fHandle)
-      if result.mapHandle != 0: discard closeHandle(result.mapHandle)
+      if result.fHandle != INVALID_HANDLE:
+        discard closeHandle(result.fHandle)
+        result.fHandle = INVALID_HANDLE
+      if result.mapHandle != INVALID_HANDLE:
+        discard closeHandle(result.mapHandle)
+        result.mapHandle = INVALID_HANDLE
       raiseOSError(errCode)
       # return false
       #raise newException(EIO, msg)
@@ -127,7 +153,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
     else:
       result.fHandle = callCreateFile(createFileA, filename)
 
-    if result.fHandle == INVALID_HANDLE_VALUE:
+    if result.fHandle == INVALID_HANDLE:
       fail(osLastError(), "error opening file")
 
     if newFileSize != -1:
@@ -144,13 +170,15 @@ proc open*(filename: string, mode: FileMode = fmRead,
 
     # since the strings are always 'nil', we simply always call
     # CreateFileMappingW which should be slightly faster anyway:
-    result.mapHandle = createFileMappingW(
+    let mapHandle = createFileMappingW(
       result.fHandle, nil,
       if readonly: PAGE_READONLY else: PAGE_READWRITE,
       0, 0, nil)
 
-    if result.mapHandle == 0:
+    if mapHandle == nil:
       fail(osLastError(), "error creating mapping")
+
+    result.mapHandle = mapHandle
 
     result.mem = mapViewOfFileEx(
       result.mapHandle,
@@ -175,7 +203,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
   else:
     template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
-      if result.handle != -1: discard close(result.handle)
+      if result.handle != INVALID_HANDLE:
+        discard close(result.handle)
+        result.handle = INVALID_HANDLE
       raiseOSError(errCode)
 
     var flags = if readonly: O_RDONLY else: O_RDWR
@@ -187,7 +217,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
     else:
       result.handle = open(filename, flags)
 
-    if result.handle == -1:
+    if result.handle == INVALID_HANDLE:
       # XXX: errno is supposed to be set here
       # Is there an exception that wraps it?
       fail(osLastError(), "error opening file")
@@ -222,29 +252,28 @@ proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
   ## file system, if `f` was opened with write access.
 
+  checkConstructed(f)
+
   var error = false
   var lastErr: OSErrorCode
 
   when defined(windows):
-    if f.fHandle != INVALID_HANDLE_VALUE:
+    if f.fHandle != INVALID_HANDLE:
       error = unmapViewOfFile(f.mem) == 0
       lastErr = osLastError()
       error = (closeHandle(f.mapHandle) == 0) or error
       error = (closeHandle(f.fHandle) == 0) or error
+      f.fHandle = INVALID_HANDLE
+      f.mapHandle = INVALID_HANDLE
   else:
-    if f.handle != -1:
+    if f.handle != INVALID_HANDLE:
       error = munmap(f.mem, f.size) != 0
       lastErr = osLastError()
       error = (close(f.handle) != 0) or error
+      f.handle = INVALID_HANDLE
 
   f.size = 0
   f.mem = nil
-
-  when defined(windows):
-    f.fHandle = 0
-    f.mapHandle = 0
-  else:
-    f.handle = -1
 
   if error: raiseOSError(lastErr)
 
