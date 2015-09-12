@@ -1,7 +1,7 @@
 discard """
   file: "tasyncexceptions.nim"
   exitcode: 1
-  outputsub: "Error: unhandled exception: foobar [Exception]"
+  outputsub: "Error: unhandled exception: foobar"
 """
 import asyncdispatch
 
