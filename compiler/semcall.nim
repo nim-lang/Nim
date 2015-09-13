@@ -308,7 +308,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   let gp = finalCallee.ast.sons[genericParamsPos]
   if gp.kind != nkEmpty:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
-      if x.calleeSym.magic == mArrPut:
+      if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
       else:
         finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
