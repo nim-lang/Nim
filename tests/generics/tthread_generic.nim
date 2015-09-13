@@ -3,7 +3,7 @@ discard """
 """
 
 type
-  TThreadFuncArgs[T] = object of TObject
+  TThreadFuncArgs[T] = object of RootObj
     a: proc(): T {.thread.}
     b: proc(val: T) {.thread.}
 
