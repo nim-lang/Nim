@@ -108,6 +108,36 @@ proc get*[T](self: Option[T]): T =
     raise UnpackError(msg : "Can't obtain a value from a `none`")
   self.val
 
+proc get*[T](self: Option[T], otherwise: T): T =
+  ## Returns the contents of this option or `otherwise` if the option is none.
+  if self.isSome:
+    self.val
+  else:
+    otherwise
+
+
+proc map*[T](self: Option[T], callback: proc (input: T)) =
+  ## Applies a callback to the value in this Option
+  if self.has:
+    callback(self.val)
+
+proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
+  ## Applies a callback to the value in this Option and returns an option
+  ## containing the new value. If this option is None, None will be returned
+  if self.has:
+    some[R]( callback(self.val) )
+  else:
+    none(R)
+
+proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
+  ## Applies a callback to the value in this Option. If the callback returns
+  ## `true`, the option is returned as a Some. If it returns false, it is
+  ## returned as a None.
+  if self.has and not callback(self.val):
+    none(T)
+  else:
+    self
+
 
 proc `==`*(a, b: Option): bool =
   ## Returns ``true`` if both ``Option``s are ``none``,
@@ -115,8 +145,16 @@ proc `==`*(a, b: Option): bool =
   (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
 
 
+proc `$`*[T]( self: Option[T] ): string =
+  ## Returns the contents of this option or `otherwise` if the option is none.
+  if self.has:
+    "Some(" & $self.val & ")"
+  else:
+    "None[" & T.name & "]"
+
+
 when isMainModule:
-  import unittest
+  import unittest, sequtils
 
   suite "optionals":
     # work around a bug in unittest
@@ -158,3 +196,27 @@ when isMainModule:
         check false
       when compiles(none(string) == none(int)):
         check false
+
+    test "get with a default value":
+      check( some("Correct").get("Wrong") == "Correct" )
+      check( stringNone.get("Correct") == "Correct" )
+
+    test "$":
+      check( $(some("Correct")) == "Some(Correct)" )
+      check( $(stringNone) == "None[string]" )
+
+    test "map with a void result":
+      var procRan = 0
+      some(123).map(proc (v: int) = procRan = v)
+      check procRan == 123
+      intNone.map(proc (v: int) = check false)
+
+    test "map":
+      check( some(123).map(proc (v: int): int = v * 2) == some(246) )
+      check( intNone.map(proc (v: int): int = v * 2).isNone )
+
+    test "filter":
+      check( some(123).filter(proc (v: int): bool = v == 123) == some(123) )
+      check( some(456).filter(proc (v: int): bool = v == 123).isNone )
+      check( intNone.filter(proc (v: int): bool = check false).isNone )
+
