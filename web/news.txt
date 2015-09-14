@@ -115,6 +115,9 @@ News
     this ``let (x, y) == f()`` still needs to be used.
   - ``when nimvm`` can now be used for compiletime versions of some code
     sections. Click `here <docs/manual.html#when-nimvm-statement>`_ for details.
+  - Usage of the type ``NimNode`` in a proc now implicitly annotates the proc
+    with ``.compileTime``. This means generics work much better
+    for ``NimNode``.
 
 
   Bugfixes
