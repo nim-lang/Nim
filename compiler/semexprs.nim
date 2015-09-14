@@ -452,18 +452,18 @@ proc changeType(n: PNode, newType: PType, check: bool) =
     let tup = newType.skipTypes({tyGenericInst})
     if tup.kind != tyTuple:
       if tup.kind == tyObject: return
-      internalError(n.info, "changeType: no tuple type for constructor")
+      globalError(n.info, "no tuple type for constructor")
     elif sonsLen(n) > 0 and n.sons[0].kind == nkExprColonExpr:
       # named tuple?
       for i in countup(0, sonsLen(n) - 1):
         var m = n.sons[i].sons[0]
         if m.kind != nkSym:
-          internalError(m.info, "changeType(): invalid tuple constr")
+          globalError(m.info, "invalid tuple constructor")
           return
         if tup.n != nil:
           var f = getSymFromList(tup.n, m.sym.name)
           if f == nil:
-            internalError(m.info, "changeType(): invalid identifier")
+            globalError(m.info, "unknown identifier: " & m.sym.name.s)
             return
           changeType(n.sons[i].sons[1], f.typ, check)
         else:
