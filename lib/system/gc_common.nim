@@ -164,9 +164,9 @@ elif stackIncreases:
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
     stackTop = addr(stackTop)
-    var a = cast[TAddress](gch.stackBottom)
-    var b = cast[TAddress](stackTop)
-    var x = cast[TAddress](p)
+    var a = cast[ByteAddress](gch.stackBottom)
+    var b = cast[ByteAddress](stackTop)
+    var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
   var
