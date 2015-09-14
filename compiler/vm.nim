@@ -320,8 +320,19 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
       dest.node.strVal = if src.intVal == 0: "false" else: "true"
     of tyFloat..tyFloat128:
       dest.node.strVal = $src.floatVal
-    of tyString, tyCString:
+    of tyString:
       dest.node.strVal = src.node.strVal
+    of tyCString:
+      if src.node.kind == nkBracket:
+        # Array of chars
+        var strVal = ""
+        for son in src.node.sons:
+          let c = char(son.intVal)
+          if c == '\0': break
+          strVal.add(c)
+        dest.node.strVal = strVal
+      else:
+        dest.node.strVal = src.node.strVal
     of tyChar:
       dest.node.strVal = $chr(src.intVal)
     else:
