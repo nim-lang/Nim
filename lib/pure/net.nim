@@ -365,8 +365,22 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   ## Binds ``address``:``port`` to the socket.
   ##
   ## If ``address`` is "" then ADDR_ANY will be bound.
+  ## If ``domain`` is AF_UNIX then ``address`` is the filepath.
+  if socket.domain == AF_UNIX:
+    var name: Sockaddr_un
+    let maxLen = name.sun_path.len
 
-  if address == "":
+    if address == "":
+      raise newException(AssertionError, "Address cannot be empty")
+    elif address.len >= maxLen:
+      raise newException(AssertionError, "Maximum address length exceeded")
+    else:
+      name.sun_family = toInt(Domain.AF_UNIX)
+      for i in 0..<address.len: name.sun_path[i] = address[i]
+      if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
+                    sizeof(name).SockLen) < 0'i32:
+        raiseOSError(osLastError())
+  elif address == "":
     var name: Sockaddr_in
     when useWinVersion:
       name.sin_family = toInt(AF_INET).int16
@@ -547,31 +561,47 @@ proc connect*(socket: Socket, address: string,
   ## not do it.
   ##
   ## If ``socket`` is an SSL socket a handshake will be automatically performed.
-  var aiList = getAddrInfo(address, port, socket.domain)
-  # try all possibilities:
-  var success = false
-  var lastError: OSErrorCode
-  var it = aiList
-  while it != nil:
-    if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
-      success = true
-      break
-    else: lastError = osLastError()
-    it = it.ai_next
+  ## If ``domain`` is AF_UNIX then ``address`` is the filepath.
+  if socket.domain == AF_UNIX:
+    var name: Sockaddr_un
+    let maxLen = name.sun_path.len
 
-  dealloc(aiList)
-  if not success: raiseOSError(lastError)
+    if address == "":
+      raise newException(AssertionError, "Address cannot be empty")
+    elif address.len >= maxLen:
+      raise newException(AssertionError, "Maximum address length exceeded")
+    else:
+      name.sun_family = toInt(Domain.AF_UNIX)
+      for i in 0..<address.len: name.sun_path[i] = address[i]
+      if connect(socket.fd, cast[ptr SockAddr](addr(name)),
+                    sizeof(name).SockLen) != 0'i32:
+        raiseOSError(osLastError())
+  else:
+    var aiList = getAddrInfo(address, port, socket.domain)
+    # try all possibilities:
+    var success = false
+    var lastError: OSErrorCode
+    var it = aiList
+    while it != nil:
+      if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
+        success = true
+        break
+      else: lastError = osLastError()
+      it = it.ai_next
 
-  when defined(ssl):
-    if socket.isSSL:
-      # RFC3546 for SNI specifies that IP addresses are not allowed.
-      if not isIpAddress(address):
-        # Discard result in case OpenSSL version doesn't support SNI, or we're
-        # not using TLSv1+
-        discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+    dealloc(aiList)
+    if not success: raiseOSError(lastError)
 
-      let ret = SSLConnect(socket.sslHandle)
-      socketError(socket, ret)
+    when defined(ssl):
+      if socket.isSSL:
+        # RFC3546 for SNI specifies that IP addresses are not allowed.
+        if not isIpAddress(address):
+          # Discard result in case OpenSSL version doesn't support SNI, or we're
+          # not using TLSv1+
+          discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
+        let ret = SSLConnect(socket.sslHandle)
+        socketError(socket, ret)
 
 when defined(ssl):
   proc handshake*(socket: Socket): bool {.tags: [ReadIOEffect, WriteIOEffect].} =
@@ -972,32 +1002,50 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
   ##
   ## **Note**: For SSL sockets, the ``handshake`` procedure must be called
   ## whenever the socket successfully connects to a server.
-  var aiList = getAddrInfo(name, port, af)
-  # try all possibilities:
-  var success = false
-  var lastError: OSErrorCode
-  var it = aiList
-  while it != nil:
-    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
-    if ret == 0'i32:
-      success = true
-      break
+  if socket.domain == AF_UNIX:
+    var sun: Sockaddr_un
+    let maxLen = sun.sun_path.len
+
+    if name == "":
+      raise newException(AssertionError, "Name cannot be empty")
+    elif name.len >= maxLen:
+      raise newException(AssertionError, "Maximum name length exceeded")
     else:
-      lastError = osLastError()
-      when useWinVersion:
-        # Windows EINTR doesn't behave same as POSIX.
-        if lastError.int32 == WSAEWOULDBLOCK:
-          success = true
-          break
+      sun.sun_family = toInt(Domain.AF_UNIX)
+      for i in 0..<name.len: sun.sun_path[i] = name[i]
+      var ret = connect(socket.fd, cast[ptr SockAddr](addr(sun)),
+                    sizeof(sun).SockLen)
+      if ret != 0'i32:
+        var lastError = osLastError()
+        if lastError.int32 != EINTR or lastError.int32 != EINPROGRESS:
+          raiseOSError(osLastError())
+  else:
+    var aiList = getAddrInfo(name, port, af)
+    # try all possibilities:
+    var success = false
+    var lastError: OSErrorCode
+    var it = aiList
+    while it != nil:
+      var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
+      if ret == 0'i32:
+        success = true
+        break
       else:
-        if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
-          success = true
-          break
+        lastError = osLastError()
+        when useWinVersion:
+          # Windows EINTR doesn't behave same as POSIX.
+          if lastError.int32 == WSAEWOULDBLOCK:
+            success = true
+            break
+        else:
+          if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
+            success = true
+            break
 
-    it = it.ai_next
+      it = it.ai_next
 
-  dealloc(aiList)
-  if not success: raiseOSError(lastError)
+    dealloc(aiList)
+    if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0),
     timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
@@ -1012,10 +1060,11 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   if selectWrite(s, timeout) != 1:
     raise newException(TimeoutError, "Call to 'connect' timed out.")
   else:
-    when defined(ssl):
-      if socket.isSSL:
-        socket.fd.setBlocking(true)
-        doAssert socket.handshake()
+    if socket.domain != AF_UNIX:
+      when defined(ssl):
+        if socket.isSSL:
+          socket.fd.setBlocking(true)
+          doAssert socket.handshake()
   socket.fd.setBlocking(true)
 
 proc isSsl*(socket: Socket): bool =
