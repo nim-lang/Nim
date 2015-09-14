@@ -1461,6 +1461,8 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   let n = transformExpr(module, n)
   setupGlobalCtx(module)
   var c = globalCtx
+  let oldMode = c.mode
+  defer: c.mode = oldMode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
   if c.code[start].opcode == opcEof: return emptyNode
