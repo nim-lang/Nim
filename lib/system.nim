@@ -78,7 +78,7 @@ type
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
-  auto* = expr ## meta type for automatic type determination
+  auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type
   untyped* {.magic: Expr.} ## meta type to denote an expression that
                            ## is not resolved (for templates)
@@ -104,7 +104,7 @@ type
   SomeNumber* = SomeInteger|SomeReal
     ## type class matching all number types
 
-proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
+proc defined*(x: expr): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
   ## `x` is an external symbol introduced through the compiler's
@@ -125,7 +125,7 @@ when defined(nimalias):
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
-proc declared*(x: expr): bool {.magic: "Defined", noSideEffect.}
+proc declared*(x: expr): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared. `x` has to be an identifier or a qualified identifier.
   ## This can be used to check whether a library provides a certain
@@ -140,11 +140,11 @@ when defined(useNimRtl):
   {.deadCodeElim: on.}
 
 proc definedInScope*(x: expr): bool {.
-  magic: "DefinedInScope", noSideEffect, deprecated.}
+  magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
   ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
 
 proc declaredInScope*(x: expr): bool {.
-  magic: "DefinedInScope", noSideEffect.}
+  magic: "DefinedInScope", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared in the current scope. `x` has to be an identifier.
 
@@ -160,7 +160,7 @@ proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
-proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect.} =
+proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin 'type' operator for accessing the type of an expression.
   ## Cannot be overloaded.
   discard
@@ -3392,7 +3392,7 @@ when hasAlloc:
       x[j+i] = item[j]
       inc(j)
 
-proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
+proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect, compileTime.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
@@ -3456,7 +3456,7 @@ when hasAlloc and not defined(nimscript) and not defined(JS):
 
   include "system/deepcopy"
 
-proc procCall*(x: expr) {.magic: "ProcCall".} =
+proc procCall*(x: expr) {.magic: "ProcCall", compileTime.} =
   ## special magic to prohibit dynamic binding for `method`:idx: calls.
   ## This is similar to `super`:idx: in ordinary OO languages.
   ##
