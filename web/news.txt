@@ -119,6 +119,196 @@ News
 
   Bugfixes
   --------
+  - Fixed "Compiler internal error on iterator it(T: typedesc[Base]) called with
+ it(Child), where Child = object of Base"
+    (`#2662 <https://github.com/Araq/Nim/issues/2662>`_)
+  - Fixed "repr() misses base object field in 2nd level derived object"
+    (`#2749 <https://github.com/Araq/Nim/issues/2749>`_)
+  - Fixed "nimsuggest doesn't work more than once on the non-main file"
+    (`#2694 <https://github.com/Araq/Nim/issues/2694>`_)
+  - Fixed "JS Codegen. Passing arguments by var in certain cases leads to invali
+d JS."
+    (`#2798 <https://github.com/Araq/Nim/issues/2798>`_)
+  - Fixed ""check" proc in unittest.nim prevents the propagation of changes to v
+ar parameters."
+    (`#964 <https://github.com/Araq/Nim/issues/964>`_)
+  - Fixed "Excessive letters in integer literals are not an error"
+    (`#2523 <https://github.com/Araq/Nim/issues/2523>`_)
+  - Fixed "Unicode dashes as "lisp'ish" alternative to hump and snake notation"
+    (`#2811 <https://github.com/Araq/Nim/issues/2811>`_)
+  - Fixed "Bad error message when trying to construct an object incorrectly"
+    (`#2584 <https://github.com/Araq/Nim/issues/2584>`_)
+  - Fixed "Determination of GC safety of globals is broken "
+    (`#2854 <https://github.com/Araq/Nim/issues/2854>`_)
+  - Fixed "v2 gc crashes compiler"
+    (`#2687 <https://github.com/Araq/Nim/issues/2687>`_)
+  - Fixed "Compile error using object in const array"
+    (`#2774 <https://github.com/Araq/Nim/issues/2774>`_)
+  - Fixed "httpclient async requests with method httpPOST isn't sending Content-
+Length header"
+    (`#2884 <https://github.com/Araq/Nim/issues/2884>`_)
+  - Fixed "Streams module not working with JS backend"
+    (`#2148 <https://github.com/Araq/Nim/issues/2148>`_)
+  - Fixed "Sign of certain short constants is wrong"
+    (`#1179 <https://github.com/Araq/Nim/issues/1179>`_)
+  - Fixed "Symlinks to directories reported as symlinks to files"
+    (`#1985 <https://github.com/Araq/Nim/issues/1985>`_)
+  - Fixed "64-bit literals broken on x86"
+    (`#2909 <https://github.com/Araq/Nim/issues/2909>`_)
+  - Fixed "import broken for certain names"
+    (`#2904 <https://github.com/Araq/Nim/issues/2904>`_)
+  - Fixed "Invalid UTF-8 strings in JavaScript"
+    (`#2917 <https://github.com/Araq/Nim/issues/2917>`_)
+  - Fixed "[JS][Codegen] Initialising object doesn't create unmentioned fields."
+
+    (`#2617 <https://github.com/Araq/Nim/issues/2617>`_)
+  - Fixed "Table returned from proc computed at compile time is missing keys:"
+    (`#2297 <https://github.com/Araq/Nim/issues/2297>`_)
+  - Fixed "Clarify copyright status for some files"
+    (`#2949 <https://github.com/Araq/Nim/issues/2949>`_)
+  - Fixed "math.nim: trigonometry: radians to degrees conversion"
+    (`#2881 <https://github.com/Araq/Nim/issues/2881>`_)
+  - Fixed "xoring unsigned integers yields RangeError in certain conditions"
+    (`#2979 <https://github.com/Araq/Nim/issues/2979>`_)
+  - Fixed "Directly checking equality between procs"
+    (`#2985 <https://github.com/Araq/Nim/issues/2985>`_)
+  - Fixed "Compiler crashed, but there have to be meaningful error message"
+    (`#2974 <https://github.com/Araq/Nim/issues/2974>`_)
+  - Fixed "repr is broken"
+    (`#2992 <https://github.com/Araq/Nim/issues/2992>`_)
+  - Fixed "Ipv6 devel - add IPv6 support for asyncsockets, make AF_INET6 a defau
+lt"
+    (`#2976 <https://github.com/Araq/Nim/issues/2976>`_)
+  - Fixed "Compilation broken on windows"
+    (`#2996 <https://github.com/Araq/Nim/issues/2996>`_)
+  - Fixed "'u64 literal conversion compiler error"
+    (`#2731 <https://github.com/Araq/Nim/issues/2731>`_)
+  - Fixed "Importing 'impure' libraries while using threads causes segfaults"
+    (`#2672 <https://github.com/Araq/Nim/issues/2672>`_)
+  - Fixed "Uncatched exception in async procedure on raise statement"
+    (`#3014 <https://github.com/Araq/Nim/issues/3014>`_)
+  - Fixed "nim doc2 fails in Mac OS X due to system.nim (possibly related to #18
+98)"
+    (`#3005 <https://github.com/Araq/Nim/issues/3005>`_)
+  - Fixed "IndexError when rebuilding Nim on iteration 2"
+    (`#3018 <https://github.com/Araq/Nim/issues/3018>`_)
+  - Fixed "Assigning large const set to variable looses some information"
+    (`#2880 <https://github.com/Araq/Nim/issues/2880>`_)
+  - Fixed "Inconsistent generics behavior"
+    (`#3022 <https://github.com/Araq/Nim/issues/3022>`_)
+  - Fixed "Compiler breaks on float64 division"
+    (`#3028 <https://github.com/Araq/Nim/issues/3028>`_)
+  - Fixed "Confusing error message comparing string to nil "
+    (`#2935 <https://github.com/Araq/Nim/issues/2935>`_)
+  - Fixed "convert 64bit number to float on 32bit"
+    (`#1463 <https://github.com/Araq/Nim/issues/1463>`_)
+  - Fixed "Type redefinition and construction will break nim check"
+    (`#3032 <https://github.com/Araq/Nim/issues/3032>`_)
+  - Fixed "XmlParser fails on very large XML files without new lines"
+    (`#2429 <https://github.com/Araq/Nim/issues/2429>`_)
+  - Fixed "Error parsing arguments with whitespaces"
+    (`#2874 <https://github.com/Araq/Nim/issues/2874>`_)
+  - Fixed "Crash when missing one arg and used a named arg"
+    (`#2993 <https://github.com/Araq/Nim/issues/2993>`_)
+  - Fixed "Wrong number of arguments in assert will break nim check"
+    (`#3044 <https://github.com/Araq/Nim/issues/3044>`_)
+  - Fixed "Wrong const definition will break nim check"
+    (`#3041 <https://github.com/Araq/Nim/issues/3041>`_)
+  - Fixed "Wrong set declaration will break nim check"
+    (`#3040 <https://github.com/Araq/Nim/issues/3040>`_)
+  - Fixed "Compiler segfault (type section)"
+    (`#2540 <https://github.com/Araq/Nim/issues/2540>`_)
+  - Fixed "Segmentation fault when compiling this code"
+    (`#3038 <https://github.com/Araq/Nim/issues/3038>`_)
+  - Fixed "Kill nim i"
+    (`#2633 <https://github.com/Araq/Nim/issues/2633>`_)
+  - Fixed "Nim check will break on wrong array declaration"
+    (`#3048 <https://github.com/Araq/Nim/issues/3048>`_)
+  - Fixed "boolVal seems to be broken"
+    (`#3046 <https://github.com/Araq/Nim/issues/3046>`_)
+  - Fixed "Nim check crashes on wrong set/array declaration inside ref object"
+    (`#3062 <https://github.com/Araq/Nim/issues/3062>`_)
+  - Fixed "Nim check crashes on incorrect generic arg definition"
+    (`#3051 <https://github.com/Araq/Nim/issues/3051>`_)
+  - Fixed "Nim check crashes on iterating nonexistent var"
+    (`#3053 <https://github.com/Araq/Nim/issues/3053>`_)
+  - Fixed "Nim check crashes on wrong param set declaration + iteration"
+    (`#3054 <https://github.com/Araq/Nim/issues/3054>`_)
+  - Fixed "Wrong sharing of static_t instantations"
+    (`#3112 <https://github.com/Araq/Nim/issues/3112>`_)
+  - Fixed "Automatically generated proc conflicts with user-defined proc when .e
+xportc.'ed"
+    (`#3134 <https://github.com/Araq/Nim/issues/3134>`_)
+  - Fixed "getTypeInfo call crashes nim"
+    (`#3099 <https://github.com/Araq/Nim/issues/3099>`_)
+  - Fixed "Array ptr dereference"
+    (`#2963 <https://github.com/Araq/Nim/issues/2963>`_)
+  - Fixed "Internal error when `repr`-ing a type directly"
+    (`#3079 <https://github.com/Araq/Nim/issues/3079>`_)
+  - Fixed "unknown type name 'TNimType' after importing typeinfo module"
+    (`#2841 <https://github.com/Araq/Nim/issues/2841>`_)
+  - Fixed "Can export a template twice and from inside a block"
+    (`#1738 <https://github.com/Araq/Nim/issues/1738>`_)
+  - Fixed "C Codegen: C Types are defined after their usage in certain cases"
+    (`#2823 <https://github.com/Araq/Nim/issues/2823>`_)
+  - Fixed "s.high refers to the current seq instead of the old one"
+    (`#1832 <https://github.com/Araq/Nim/issues/1832>`_)
+  - Fixed "Error while unmarshaling null values"
+    (`#3149 <https://github.com/Araq/Nim/issues/3149>`_)
+  - Fixed "Inference of `static[T]` in sequences"
+    (`#3144 <https://github.com/Araq/Nim/issues/3144>`_)
+  - Fixed "Argument named "closure" to proc inside template interfere with closu
+re pragma"
+    (`#3171 <https://github.com/Araq/Nim/issues/3171>`_)
+  - Fixed "Internal error with aliasing inside template"
+    (`#3158 <https://github.com/Araq/Nim/issues/3158>`_)
+  - Fixed "Cardinality of sets prints unexpected value"
+    (`#3135 <https://github.com/Araq/Nim/issues/3135>`_)
+  - Fixed "Nim crashes on const assignment from function returning var ref objec
+t"
+    (`#3103 <https://github.com/Araq/Nim/issues/3103>`_)
+  - Fixed "`repr` cstring"
+    (`#3080 <https://github.com/Araq/Nim/issues/3080>`_)
+  - Fixed "Nim check crashes on wrong enum declaration"
+    (`#3052 <https://github.com/Araq/Nim/issues/3052>`_)
+  - Fixed "Compiler assertion when evaluating template with static[T]"
+    (`#1858 <https://github.com/Araq/Nim/issues/1858>`_)
+  - Fixed "Erroneous overflow in iterators when compiler built with overflowChec
+ks enabled"
+    (`#3140 <https://github.com/Araq/Nim/issues/3140>`_)
+  - Fixed "Unicode dashes as "lisp'ish" alternative to hump and snake notation"
+    (`#2811 <https://github.com/Araq/Nim/issues/2811>`_)
+  - Fixed "Calling discardable proc from a defer is an error."
+    (`#3185 <https://github.com/Araq/Nim/issues/3185>`_)
+  - Fixed "Defer statement at the end of a block produces ICE"
+    (`#3186 <https://github.com/Araq/Nim/issues/3186>`_)
+  - Fixed "Call to `createU` fails to compile"
+    (`#3193 <https://github.com/Araq/Nim/issues/3193>`_)
+  - Fixed "VM crash when accessing array's element"
+    (`#3192 <https://github.com/Araq/Nim/issues/3192>`_)
+  - Fixed "Unexpected proc invoked when different modules add procs to a type fr
+om a 3rd module"
+    (`#2664 <https://github.com/Araq/Nim/issues/2664>`_)
+  - Fixed "Nim crashes on conditional declaration inside a template"
+    (`#2670 <https://github.com/Araq/Nim/issues/2670>`_)
+  - Fixed "Iterator names conflict within different scopes"
+    (`#2752 <https://github.com/Araq/Nim/issues/2752>`_)
+  - Fixed "VM: Cannot assign int value to ref variable"
+    (`#1329 <https://github.com/Araq/Nim/issues/1329>`_)
+  - Fixed "Incorrect code generated for tagged unions with enums not starting at
+ zero"
+    (`#3096 <https://github.com/Araq/Nim/issues/3096>`_)
+  - Fixed "Compile time procs using forward declarations are silently ignored"
+    (`#3066 <https://github.com/Araq/Nim/issues/3066>`_)
+  - Fixed "re binding error in generic"
+    (`#1965 <https://github.com/Araq/Nim/issues/1965>`_)
+  - Fixed "os.getCreationTime is incorrect/impossible on Posix systems"
+    (`#1058 <https://github.com/Araq/Nim/issues/1058>`_)
+  - Fixed "Improve error message for osproc.startProcess when command does not e
+xist"
+    (`#2183 <https://github.com/Araq/Nim/issues/2183>`_)
+  - Fixed "gctest segfaults with --gc:markandsweep on x86_64"
+    (`#2305 <https://github.com/Araq/Nim/issues/2305>`_)
 
 
 2015-05-04 Version 0.11.2 released
