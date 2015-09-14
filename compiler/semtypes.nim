@@ -1375,7 +1375,8 @@ proc processMagicType(c: PContext, m: PSym) =
   of mOrdinal:
     setMagicType(m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
-  of mPNimrodNode: discard
+  of mPNimrodNode:
+    incl m.typ.flags, tfTriggersCompileTime
   of mShared:
     setMagicType(m, tyObject, 0)
     m.typ.n = newNodeI(nkRecList, m.info)

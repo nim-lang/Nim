@@ -1741,6 +1741,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
+    echo "from here ", p.prc.name.s, " ", p.prc.info
+    writestacktrace()
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   of mSpawn:
     let n = lowerings.wrapProcForSpawn(p.module.module, e, e.typ, nil, nil)
@@ -1973,6 +1975,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
     of skProc, skConverter, skIterators:
+      if sfCompileTime in sym.flags:
+        localError(n.info, "request to generate code for .compileTime proc: " &
+           sym.name.s)
       genProc(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         internalError(n.info, "expr: proc not init " & sym.name.s)
@@ -2126,7 +2131,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # due to a bug/limitation in the lambda lifting, unused inner procs
       # are not transformed correctly. We work around this issue (#411) here
       # by ensuring it's no inner proc (owner is a module):
-      if prc.skipGenericOwner.kind == skModule:
+      if prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if (optDeadCodeElim notin gGlobalOptions and
             sfDeadCodeElim notin getModule(prc).flags) or
             ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

@@ -1132,6 +1132,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # semParamList(c, n.sons[ParamsPos], nil, s)
   else:
     s.typ = newProcType(c, n.info)
+  if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind in skIterators:
