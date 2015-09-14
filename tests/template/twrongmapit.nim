@@ -1,7 +1,5 @@
 discard """
-  errormsg: "'"
-  file: "sequtils.nim"
-  line: 435
+  output: "####"
 """
 # unfortunately our tester doesn't support multiple lines of compiler
 # error messages yet...
@@ -29,4 +27,6 @@ when ATTEMPT == 0:
 # bug #1543
 import sequtils
 
-(var i= @[""];i).mapIt(it)
+(var i = @[""];i).mapIt(it)
+# now works:
+echo "##", i[0], "##"

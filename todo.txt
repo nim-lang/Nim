@@ -23,7 +23,6 @@ version 1.0
 - nimsuggest: auto-completion needs to work in 'class' macros
 - The bitwise 'not' operator will be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
-- iterators always require a return type
 - split docgen into separate tool
 - special rule for ``[]=``, items, pairs
 - BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
