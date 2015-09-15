@@ -30,7 +30,7 @@ type
     c: char
     se: seq[TA]
 
-proc p(param1, param2: TC): TC =
+proc p(param1, param2: TC, param3: var TC): TC =
   var
     local: TC
     plocal: ptr TC
@@ -43,6 +43,7 @@ proc p(param1, param2: TC): TC =
   plocal2[] ?<| local
 
   param1 ?<| param2
+  local ?<| param3
 
   local.arr[0] !<| param1
   local.arr !<| param1
@@ -62,5 +63,5 @@ var
 a <| a
 a !<| b
 
-discard p(x, x)
+discard p(x, x, x)
 

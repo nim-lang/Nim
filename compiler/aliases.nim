@@ -146,7 +146,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
     # go down recursively; this is quite demanding:
     const
       Ix0Kinds = {nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
-                  nkCheckedFieldExpr}
+                  nkCheckedFieldExpr, nkHiddenAddr}
       Ix1Kinds = {nkHiddenStdConv, nkHiddenSubConv, nkConv}
       DerefKinds = {nkHiddenDeref, nkDerefExpr}
     case b.kind
