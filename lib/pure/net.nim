@@ -534,11 +534,15 @@ proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
   result = res != 0
 
 proc getLocalAddr*(socket: Socket): (string, Port) =
-  ## Get the socket's local address and port number
+  ## Get the socket's local address and port number.
+  ##
+  ## This is high-level interface for `getsockname`:idx:.
   getLocalAddr(socket.fd, socket.domain)
 
 proc getPeerAddr*(socket: Socket): (string, Port) =
-  ## Get the socket's peer address and port number
+  ## Get the socket's peer address and port number.
+  ##
+  ## This is high-level interface for `getpeername`:idx:.
   getPeerAddr(socket.fd, socket.domain)
 
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {.

@@ -373,6 +373,8 @@ proc getSockName*(socket: SocketHandle): Port =
 
 proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
   ## returns the socket's local address and port number.
+  ##
+  ## Similar to POSIX's `getsockname`:idx:.
   case domain
   of AF_INET:
     var name: Sockaddr_in
@@ -406,6 +408,8 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
 
 proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
   ## returns the socket's peer address and port number.
+  ##
+  ## Similar to POSIX's `getpeername`:idx:
   case domain
   of AF_INET:
     var name: Sockaddr_in
