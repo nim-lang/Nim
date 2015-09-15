@@ -47,7 +47,6 @@ type
   DbConn* = PMySQL    ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
-  RowNew* = tuple[hasData: bool,data: seq[string]]
   InstantRow* = tuple[row: cstringArray, len: int]  ## a handle that can be
                                                     ## used to get a row's
                                                     ## column text on demand
@@ -120,7 +119,7 @@ proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   var q = dbFormat(query, args)
   return mysql.realQuery(db, q, q.len) == 0'i32
 
-proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
+proc rawExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
 
@@ -130,11 +129,11 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   var q = dbFormat(query, args)
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
 
-proc newRow(L: int): Row =
+proc newRow*(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
 
-proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
+proc properFreeResult*(sqlres: mysql.PRES, row: cstringArray) =
   if row != nil:
     while mysql.fetchRow(sqlres) != nil: discard
   mysql.freeResult(sqlres)
@@ -207,51 +206,6 @@ proc hasData*(value: string): bool =
   result = false
   if value != "":
     result = true
-
-proc getRowNew*(db: DbConn, query: SqlQuery,
-             args: varargs[string, `$`]): RowNew {.tags: [FReadDB].} =
-  result.hasData = false
-  rawExec(db, query, args)
-  var sqlres = mysql.useResult(db)
-  if sqlres != nil:
-    var L = int(mysql.numFields(sqlres))
-    result.data = newRow(L)
-    var row = mysql.fetchRow(sqlres)
-    if row != nil:
-      for i in 0..L-1:
-        setLen(result.data[i], 0)
-        if row[i] == nil:
-          result.data[i] = nil
-        else:
-          add(result.data[i], row[i])
-          result.hasData = true
-    properFreeResult(sqlres, row)
-
-proc getAllRowsNew*(db: DbConn, query: SqlQuery,
-                 args: varargs[string, `$`]): seq[RowNew] {.tags: [FReadDB].} =
-  ## executes the query and returns the whole result dataset.
-  result = @[]
-  rawExec(db, query, args)
-  var sqlres = mysql.useResult(db)
-  if sqlres != nil:
-    var L = int(mysql.numFields(sqlres))
-    var row: cstringArray
-    var j = 0
-    while true:
-      row = mysql.fetchRow(sqlres)
-      if row == nil: break
-      setLen(result, j+1)
-      result[j].data = @[]
-      result[j].hasData = false
-      newSeq(result[j].data, L)
-      for i in 0..L-1:
-        if row[i] == nil:
-          result[j].data[i] = nil
-        else:
-          result[j].data[i] = $row[i]
-          result[j].hasData = true
-      inc(j)
-    mysql.freeResult(sqlres)
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
