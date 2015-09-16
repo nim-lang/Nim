@@ -718,12 +718,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   if paramType == nil: return # (e.g. proc return type)
 
   proc addImplicitGenericImpl(typeClass: PType, typId: PIdent): PType =
-    let finalTypId = if typId != nil: typId
-                     else: getIdent(paramName & ":type")
     if genericParams == nil:
       # This happens with anonymous proc types appearing in signatures
       # XXX: we need to lift these earlier
       return
+    let finalTypId = if typId != nil: typId
+                     else: getIdent(paramName & ":type")
     # is this a bindOnce type class already present in the param list?
     for i in countup(0, genericParams.len - 1):
       if genericParams.sons[i].sym.name.id == finalTypId.id:
@@ -757,7 +757,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   case paramType.kind:
   of tyAnything:
-    result = addImplicitGeneric(newTypeS(tyGenericParam, c))
+    result = addImplicitGenericImpl(newTypeS(tyGenericParam, c), nil)
 
   of tyStatic:
     # proc(a: expr{string}, b: expr{nkLambda})
@@ -868,6 +868,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyExpr:
     if procKind notin {skMacro, skTemplate}:
       result = addImplicitGeneric(newTypeS(tyAnything, c))
+      #result = addImplicitGenericImpl(newTypeS(tyGenericParam, c), nil)
 
   of tyGenericParam:
     markUsed(info, paramType.sym)
@@ -977,7 +978,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
       # 'auto' as a return type does not imply a generic:
-      if r.kind != tyExpr:
+      if r.kind == tyAnything:
+        # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
+        # compiler is hardly aware of 'auto':
+        r = newTypeS(tyExpr, c)
+      elif r.kind != tyExpr:
         if r.sym == nil or sfAnon notin r.sym.flags:
           let lifted = liftParamType(c, kind, genericParams, r, "result",
                                      n.sons[0].info)
@@ -1149,7 +1154,17 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else:
       result = semAnonTuple(c, n, prev)
   of nkCallKinds:
-    if isRange(n):
+    let x = n[0]
+    let ident = case x.kind
+                of nkIdent: x.ident
+                of nkSym: x.sym.name
+                of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
+                else: nil
+    if ident != nil and ident.s == "[]":
+      let b = newNodeI(nkBracketExpr, n.info)
+      for i in 1..<n.len: b.add(n[i])
+      result = semTypeNode(c, b, prev)
+    elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)
     elif n[0].kind notin nkIdentKinds:
       result = semTypeExpr(c, n)
@@ -1336,8 +1351,11 @@ proc processMagicType(c: PContext, m: PSym) =
   of mIntSetBaseType: setMagicType(m, tyRange, intSize)
   of mNil: setMagicType(m, tyNil, ptrSize)
   of mExpr:
-    setMagicType(m, tyExpr, 0)
-    if m.name.s == "expr": m.typ.flags.incl tfOldSchoolExprStmt
+    if m.name.s == "auto":
+      setMagicType(m, tyAnything, 0)
+    else:
+      setMagicType(m, tyExpr, 0)
+      if m.name.s == "expr": m.typ.flags.incl tfOldSchoolExprStmt
   of mStmt:
     setMagicType(m, tyStmt, 0)
     if m.name.s == "stmt": m.typ.flags.incl tfOldSchoolExprStmt
@@ -1365,7 +1383,8 @@ proc processMagicType(c: PContext, m: PSym) =
   of mOrdinal:
     setMagicType(m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
-  of mPNimrodNode: discard
+  of mPNimrodNode:
+    incl m.typ.flags, tfTriggersCompileTime
   of mShared:
     setMagicType(m, tyObject, 0)
     m.typ.n = newNodeI(nkRecList, m.info)

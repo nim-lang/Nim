@@ -1110,7 +1110,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
 
 proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
-    arr[i] = nil
+    arr[i] = Rope(nil)
 
 proc resetModule*(m: BModule) =
   # between two compilations in CAAS mode, we can throw

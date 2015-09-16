@@ -1033,6 +1033,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
   of "=":
+    if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     let t = s.typ
     if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar:
@@ -1131,6 +1132,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # semParamList(c, n.sons[ParamsPos], nil, s)
   else:
     s.typ = newProcType(c, n.info)
+  if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind in skIterators:

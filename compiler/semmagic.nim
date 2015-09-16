@@ -26,6 +26,37 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   result.add typExpr
   result.typ = makeTypeDesc(c, typExpr.typ.skipTypes({tyTypeDesc, tyIter}))
 
+type
+  SemAsgnMode = enum asgnNormal, noOverloadedSubscript, noOverloadedAsgn
+
+proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode
+proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode
+
+proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
+  result = newNodeI(nkBracketExpr, n.info)
+  for i in 1..<n.len: result.add(n[i])
+  let oldBracketExpr = c.p.bracketExpr
+  result = semSubscript(c, result, flags)
+  c.p.bracketExpr = oldBracketExpr
+  if result.isNil:
+    localError(n.info, "could not resolve: " & $n)
+    result = n
+
+proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
+  # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
+  let b = newNodeI(nkBracketExpr, n.info)
+  for i in 1..n.len-2: b.add(n[i])
+  result = newNodeI(nkAsgn, n.info, 2)
+  result.sons[0] = b
+  result.sons[1] = n.lastSon
+  result = semAsgn(c, result, noOverloadedSubscript)
+
+proc semAsgnOpr(c: PContext; n: PNode): PNode =
+  result = newNodeI(nkAsgn, n.info, 2)
+  result.sons[0] = n[1]
+  result.sons[1] = n[2]
+  result = semAsgn(c, result, noOverloadedAsgn)
+
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
   result = newIntNodeT(ord(r), n)
@@ -125,6 +156,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mTypeOf:
     checkSonsLen(n, 2)
     result = semTypeOf(c, n.sons[1])
+  of mArrGet: result = semArrGet(c, n, flags)
+  of mArrPut: result = semArrPut(c, n, flags)
+  of mAsgn: result = semAsgnOpr(c, n)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:

@@ -3,7 +3,7 @@ News
 ====
 
 ..
-  2015-05-05 Version 0.11.4 released
+  2015-09-14 Version 0.11.4 released
   ==================================
 
   Changes affecting backwards compatibility
@@ -58,7 +58,7 @@ News
     of all the DLLs the standard library needs. This means that the following
     DLLs are now split into 32 and 64 versions:
 
-    * ``prce.dll``: Split into ``prce32.dll`` and ``prce64.dll``.
+    * ``pcre.dll``: Split into ``pcre32.dll`` and ``pcre64.dll``.
     * ``pdcurses.dll``: Split into ``pdcurses32.dll`` and ``pdcurses64.dll``.
     * ``sqlite3.dll``: Split into ``sqlite3_32.dll`` and ``sqlite3_64.dll``.
     * ``ssleay32.dll``: Split into ``ssleay32.dll`` and ``ssleay64.dll``.
@@ -75,6 +75,13 @@ News
     with Unix's ``#!``.
   - An implicit return type for an iterator is now deprecated. Use ``auto`` if
     you want more type inference.
+  - The type ``auto`` is now a "multi-bind" metatype, so the following compiles:
+
+    .. code-block:: nim
+      proc f(x, y: auto): auto =
+        result = $x & y
+
+      echo f(0, "abc")
 
 
   Library Additions
@@ -95,6 +102,9 @@ News
 
   - The compiler now supports a new configuration system based on
     `NimScript <docs/nims.html>`_.
+  - The compiler finally considers symbol binding rules in templates and
+    generics for overloaded ``[]``, ``[]=``, ``{}``, ``{}=`` operators
+    (issue `#2599 <https://github.com/nim-lang/Nim/issues/2599>`_).
 
 
   Language Additions
@@ -112,22 +122,21 @@ News
     this ``let (x, y) == f()`` still needs to be used.
   - ``when nimvm`` can now be used for compiletime versions of some code
     sections. Click `here <docs/manual.html#when-nimvm-statement>`_ for details.
+  - Usage of the type ``NimNode`` in a proc now implicitly annotates the proc
+    with ``.compileTime``. This means generics work much better for ``NimNode``.
 
 
   Bugfixes
   --------
-  - Fixed "Compiler internal error on iterator it(T: typedesc[Base]) called with
- it(Child), where Child = object of Base"
+  - Fixed "Compiler internal error on iterator it(T: typedesc[Base]) called with it(Child), where Child = object of Base"
     (`#2662 <https://github.com/Araq/Nim/issues/2662>`_)
   - Fixed "repr() misses base object field in 2nd level derived object"
     (`#2749 <https://github.com/Araq/Nim/issues/2749>`_)
   - Fixed "nimsuggest doesn't work more than once on the non-main file"
     (`#2694 <https://github.com/Araq/Nim/issues/2694>`_)
-  - Fixed "JS Codegen. Passing arguments by var in certain cases leads to invali
-d JS."
+  - Fixed "JS Codegen. Passing arguments by var in certain cases leads to invalid JS."
     (`#2798 <https://github.com/Araq/Nim/issues/2798>`_)
-  - Fixed ""check" proc in unittest.nim prevents the propagation of changes to v
-ar parameters."
+  - Fixed ""check" proc in unittest.nim prevents the propagation of changes to var parameters."
     (`#964 <https://github.com/Araq/Nim/issues/964>`_)
   - Fixed "Excessive letters in integer literals are not an error"
     (`#2523 <https://github.com/Araq/Nim/issues/2523>`_)
@@ -141,8 +150,7 @@ ar parameters."
     (`#2687 <https://github.com/Araq/Nim/issues/2687>`_)
   - Fixed "Compile error using object in const array"
     (`#2774 <https://github.com/Araq/Nim/issues/2774>`_)
-  - Fixed "httpclient async requests with method httpPOST isn't sending Content-
-Length header"
+  - Fixed "httpclient async requests with method httpPOST isn't sending Content-Length header"
     (`#2884 <https://github.com/Araq/Nim/issues/2884>`_)
   - Fixed "Streams module not working with JS backend"
     (`#2148 <https://github.com/Araq/Nim/issues/2148>`_)
@@ -173,8 +181,7 @@ Length header"
     (`#2974 <https://github.com/Araq/Nim/issues/2974>`_)
   - Fixed "repr is broken"
     (`#2992 <https://github.com/Araq/Nim/issues/2992>`_)
-  - Fixed "Ipv6 devel - add IPv6 support for asyncsockets, make AF_INET6 a defau
-lt"
+  - Fixed "Ipv6 devel - add IPv6 support for asyncsockets, make AF_INET6 a default"
     (`#2976 <https://github.com/Araq/Nim/issues/2976>`_)
   - Fixed "Compilation broken on windows"
     (`#2996 <https://github.com/Araq/Nim/issues/2996>`_)
@@ -184,8 +191,7 @@ lt"
     (`#2672 <https://github.com/Araq/Nim/issues/2672>`_)
   - Fixed "Uncatched exception in async procedure on raise statement"
     (`#3014 <https://github.com/Araq/Nim/issues/3014>`_)
-  - Fixed "nim doc2 fails in Mac OS X due to system.nim (possibly related to #18
-98)"
+  - Fixed "nim doc2 fails in Mac OS X due to system.nim (possibly related to #1898)"
     (`#3005 <https://github.com/Araq/Nim/issues/3005>`_)
   - Fixed "IndexError when rebuilding Nim on iteration 2"
     (`#3018 <https://github.com/Araq/Nim/issues/3018>`_)
@@ -233,8 +239,7 @@ lt"
     (`#3054 <https://github.com/Araq/Nim/issues/3054>`_)
   - Fixed "Wrong sharing of static_t instantations"
     (`#3112 <https://github.com/Araq/Nim/issues/3112>`_)
-  - Fixed "Automatically generated proc conflicts with user-defined proc when .e
-xportc.'ed"
+  - Fixed "Automatically generated proc conflicts with user-defined proc when .exportc.'ed"
     (`#3134 <https://github.com/Araq/Nim/issues/3134>`_)
   - Fixed "getTypeInfo call crashes nim"
     (`#3099 <https://github.com/Araq/Nim/issues/3099>`_)
@@ -254,15 +259,13 @@ xportc.'ed"
     (`#3149 <https://github.com/Araq/Nim/issues/3149>`_)
   - Fixed "Inference of `static[T]` in sequences"
     (`#3144 <https://github.com/Araq/Nim/issues/3144>`_)
-  - Fixed "Argument named "closure" to proc inside template interfere with closu
-re pragma"
+  - Fixed "Argument named "closure" to proc inside template interfere with closure pragma"
     (`#3171 <https://github.com/Araq/Nim/issues/3171>`_)
   - Fixed "Internal error with aliasing inside template"
     (`#3158 <https://github.com/Araq/Nim/issues/3158>`_)
   - Fixed "Cardinality of sets prints unexpected value"
     (`#3135 <https://github.com/Araq/Nim/issues/3135>`_)
-  - Fixed "Nim crashes on const assignment from function returning var ref objec
-t"
+  - Fixed "Nim crashes on const assignment from function returning var ref object"
     (`#3103 <https://github.com/Araq/Nim/issues/3103>`_)
   - Fixed "`repr` cstring"
     (`#3080 <https://github.com/Araq/Nim/issues/3080>`_)
@@ -270,8 +273,7 @@ t"
     (`#3052 <https://github.com/Araq/Nim/issues/3052>`_)
   - Fixed "Compiler assertion when evaluating template with static[T]"
     (`#1858 <https://github.com/Araq/Nim/issues/1858>`_)
-  - Fixed "Erroneous overflow in iterators when compiler built with overflowChec
-ks enabled"
+  - Fixed "Erroneous overflow in iterators when compiler built with overflowChecks enabled"
     (`#3140 <https://github.com/Araq/Nim/issues/3140>`_)
   - Fixed "Unicode dashes as "lisp'ish" alternative to hump and snake notation"
     (`#2811 <https://github.com/Araq/Nim/issues/2811>`_)
@@ -283,8 +285,7 @@ ks enabled"
     (`#3193 <https://github.com/Araq/Nim/issues/3193>`_)
   - Fixed "VM crash when accessing array's element"
     (`#3192 <https://github.com/Araq/Nim/issues/3192>`_)
-  - Fixed "Unexpected proc invoked when different modules add procs to a type fr
-om a 3rd module"
+  - Fixed "Unexpected proc invoked when different modules add procs to a type from a 3rd module"
     (`#2664 <https://github.com/Araq/Nim/issues/2664>`_)
   - Fixed "Nim crashes on conditional declaration inside a template"
     (`#2670 <https://github.com/Araq/Nim/issues/2670>`_)
@@ -292,8 +293,7 @@ om a 3rd module"
     (`#2752 <https://github.com/Araq/Nim/issues/2752>`_)
   - Fixed "VM: Cannot assign int value to ref variable"
     (`#1329 <https://github.com/Araq/Nim/issues/1329>`_)
-  - Fixed "Incorrect code generated for tagged unions with enums not starting at
- zero"
+  - Fixed "Incorrect code generated for tagged unions with enums not starting at zero"
     (`#3096 <https://github.com/Araq/Nim/issues/3096>`_)
   - Fixed "Compile time procs using forward declarations are silently ignored"
     (`#3066 <https://github.com/Araq/Nim/issues/3066>`_)
@@ -301,8 +301,7 @@ om a 3rd module"
     (`#1965 <https://github.com/Araq/Nim/issues/1965>`_)
   - Fixed "os.getCreationTime is incorrect/impossible on Posix systems"
     (`#1058 <https://github.com/Araq/Nim/issues/1058>`_)
-  - Fixed "Improve error message for osproc.startProcess when command does not e
-xist"
+  - Fixed "Improve error message for osproc.startProcess when command does not exist"
     (`#2183 <https://github.com/Araq/Nim/issues/2183>`_)
   - Fixed "gctest segfaults with --gc:markandsweep on x86_64"
     (`#2305 <https://github.com/Araq/Nim/issues/2305>`_)
