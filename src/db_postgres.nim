@@ -64,6 +64,8 @@ proc dbQuote*(s: string): string =
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   result = ""
   var a = 0
+  if args.len > 0 and not string(formatstr).contains("?"):
+    dbError("""parameter substitution expects "?" """)
   for c in items(string(formatstr)):
     if c == '?':
       if args[a] == nil:
@@ -125,6 +127,8 @@ proc setupQuery(db: DbConn, stmtName: SqlPrepared,
 
 proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
               nParams: int): SqlPrepared =
+  if nParams > 0 and not string(query).contains("$1"):
+    dbError("""parameter substitution expects "$1" """)
   var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   return SqlPrepared(stmtName)
