@@ -2316,7 +2316,7 @@ proc timer_settime*(a1: Timer, a2: cint, a3: var Itimerspec,
 proc tzset*() {.importc, header: "<time.h>".}
 
 
-proc wait*(a1: var cint): Pid {.importc, header: "<sys/wait.h>".}
+proc wait*(a1: ptr cint): Pid {.importc, header: "<sys/wait.h>".}
 proc waitid*(a1: cint, a2: Id, a3: var SigInfo, a4: cint): cint {.
   importc, header: "<sys/wait.h>".}
 proc waitpid*(a1: Pid, a2: var cint, a3: cint): Pid {.
