@@ -514,6 +514,7 @@ const
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
+                                         hintPath, hintConf,
                                          hintDependency,
                                          hintExecuting,
                                          hintCodeBegin, hintCodeEnd,

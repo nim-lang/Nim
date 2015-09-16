@@ -409,7 +409,7 @@ type
     bytes*: array[0..15, char]
 
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
-                   header: "winsock2.h".} = object
+                   header: "ws2tcpip.h".} = object
     sin6_family*: int16
     sin6_port*: int16 # unsigned
     sin6_flowinfo*: int32 # unsigned
@@ -511,6 +511,9 @@ proc connect*(s: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint {.
 proc getsockname*(s: SocketHandle, name: ptr SockAddr,
                   namelen: ptr SockLen): cint {.
   stdcall, importc: "getsockname", dynlib: ws2dll.}
+proc getpeername*(s: SocketHandle, name: ptr SockAddr,
+                  namelen: ptr SockLen): cint {.
+  stdcall, importc, dynlib: ws2dll.}
 proc getsockopt*(s: SocketHandle, level, optname: cint, optval: pointer,
                  optlen: ptr SockLen): cint {.
   stdcall, importc: "getsockopt", dynlib: ws2dll.}
@@ -571,6 +574,9 @@ proc freeaddrinfo*(ai: ptr AddrInfo) {.
 
 proc inet_ntoa*(i: InAddr): cstring {.
   stdcall, importc, dynlib: ws2dll.}
+
+proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
+            stringBufSize: int32): cstring {.stdcall, importc, dynlib: ws2dll.}
 
 const
   MAXIMUM_WAIT_OBJECTS* = 0x00000040

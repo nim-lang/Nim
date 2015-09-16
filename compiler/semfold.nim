@@ -430,17 +430,10 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mCompileOptionArg:
     result = newIntNodeT(ord(
       testCompileOptionArg(getStr(a), getStr(b), n.info)), n)
-  of mNewString, mNewStringOfCap,
-     mExit, mInc, ast.mDec, mEcho, mSwap, mAppendStrCh,
-     mAppendStrStr, mAppendSeqElem, mSetLengthStr, mSetLengthSeq,
-     mParseExprToAst, mParseStmtToAst, mExpandToAst, mTypeTrait, mDotDot,
-     mNLen..mNError, mEqRef, mSlurp, mStaticExec, mNGenSym, mSpawn,
-     mParallel, mPlugin, mGetTypeInfo, mTypeOf:
-    discard
   of mEqProc:
     result = newIntNodeT(ord(
         exprStructuralEquivalent(a, b, strictSymEquality=true)), n)
-  else: internalError(a.info, "evalOp(" & $m & ')')
+  else: discard
 
 proc getConstIfExpr(c: PSym, n: PNode): PNode =
   result = nil

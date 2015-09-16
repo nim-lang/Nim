@@ -477,6 +477,8 @@ type
                       # wildcard type.
     tfHasAsgn         # type has overloaded assignment operator
     tfBorrowDot       # distinct type borrows '.'
+    tfTriggersCompileTime # uses the NimNode type which make the proc
+                          # implicitly '.compiletime'
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -1379,6 +1381,9 @@ proc propagateToOwner*(owner, elem: PType) =
                    tySequence, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
+
+  if tfTriggersCompileTime in elem.flags:
+    owner.flags.incl tfTriggersCompileTime
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:

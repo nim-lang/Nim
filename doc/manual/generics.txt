@@ -116,7 +116,7 @@ type class           matches
 ``array``            any array type
 ``set``              any set type
 ``seq``              any seq type
-``auto``             any type
+``any``              any type
 ==================   ===================================================
 
 Furthermore, every generic type automatically creates a type class of the same
@@ -162,15 +162,6 @@ module to illustrate this:
 
 Alternatively, the ``distinct`` type modifier can be applied to the type class
 to allow each param matching the type class to bind to a different type.
-
-If a proc param doesn't have a type specified, Nim will use the
-``distinct auto`` type class (also known as ``any``). Note this behavior is
-deprecated for procs; templates, however, support them:
-
-.. code-block:: nim
-  # allow any combination of param types
-  proc concat(a, b): string = $a & $b # deprecated
-  proc concat(a, b: any): string = $a & $b # preferred
 
 Procs written with the implicitly generic style will often need to refer to the
 type parameters of the matched generic type. They can be easily accessed using

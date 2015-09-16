@@ -1691,6 +1691,10 @@ proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
 
 proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
+  if m.calleeSym != nil and m.calleeSym.magic in {mArrGet, mArrPut}:
+    m.state = csMatch
+    m.call = n
+    return
   var marker = initIntSet()
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return

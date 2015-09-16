@@ -246,6 +246,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     inc i
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
+  if tfTriggersCompileTime in result.typ.flags:
+    incl(result.flags, sfCompileTime)
   n.sons[genericParamsPos] = ast.emptyNode
   var oldPrc = genericCacheGet(fn, entry[])
   if oldPrc == nil:

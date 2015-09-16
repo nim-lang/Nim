@@ -92,3 +92,4 @@ proc initDefines*() =
   defineSymbol("nimvarargstyped")
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
+  defineSymbol("nimArrIdx")

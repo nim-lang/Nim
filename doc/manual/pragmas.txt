@@ -72,7 +72,20 @@ compileTime pragma
 ------------------
 The ``compileTime`` pragma is used to mark a proc or variable to be used at
 compile time only. No code will be generated for it. Compile time procs are
-useful as helpers for macros.
+useful as helpers for macros. Since version 0.12.0 of the language, a proc
+that uses ``system.NimNode`` within its parameter types is implictly declared
+``compileTime``:
+
+.. code-block:: nim
+  proc astHelper(n: NimNode): NimNode =
+    result = n
+
+Is the same as:
+
+.. code-block:: nim
+  proc astHelper(n: NimNode): NimNode {.compileTime.} =
+    result = n
+
 
 noReturn pragma
 ---------------
