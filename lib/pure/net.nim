@@ -533,6 +533,18 @@ proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
   var res = getSockOptInt(socket.fd, cint(level), toCInt(opt))
   result = res != 0
 
+proc getLocalAddr*(socket: Socket): (string, Port) =
+  ## Get the socket's local address and port number.
+  ##
+  ## This is high-level interface for `getsockname`:idx:.
+  getLocalAddr(socket.fd, socket.domain)
+
+proc getPeerAddr*(socket: Socket): (string, Port) =
+  ## Get the socket's peer address and port number.
+  ##
+  ## This is high-level interface for `getpeername`:idx:.
+  getPeerAddr(socket.fd, socket.domain)
+
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {.
   tags: [WriteIOEffect].} =
   ## Sets option ``opt`` to a boolean value specified by ``value``.

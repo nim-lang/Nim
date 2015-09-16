@@ -371,6 +371,76 @@ proc getSockName*(socket: SocketHandle): Port =
     raiseOSError(osLastError())
   result = Port(rawsockets.ntohs(name.sin_port))
 
+proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
+  ## returns the socket's local address and port number.
+  ##
+  ## Similar to POSIX's `getsockname`:idx:.
+  case domain
+  of AF_INET:
+    var name: Sockaddr_in
+    when useWinVersion:
+      name.sin_family = int16(ord(AF_INET))
+    else:
+      name.sin_family = posix.AF_INET
+    var namelen = sizeof(name).SockLen
+    if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                   addr(namelen)) == -1'i32:
+      raiseOSError(osLastError())
+    result = ($inet_ntoa(name.sin_addr), Port(rawsockets.ntohs(name.sin_port)))
+  of AF_INET6:
+    var name: Sockaddr_in6
+    when useWinVersion:
+      name.sin6_family = int16(ord(AF_INET6))
+    else:
+      name.sin6_family = posix.AF_INET6
+    var namelen = sizeof(name).SockLen
+    if getsockname(socket, cast[ptr SockAddr](addr(name)),
+                   addr(namelen)) == -1'i32:
+      raiseOSError(osLastError())
+    # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
+    var buf: array[64, char]
+    if inet_ntop(name.sin6_family.cint,
+                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+      raiseOSError(osLastError())
+    result = ($buf, Port(rawsockets.ntohs(name.sin6_port)))
+  else:
+    raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
+
+proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
+  ## returns the socket's peer address and port number.
+  ##
+  ## Similar to POSIX's `getpeername`:idx:
+  case domain
+  of AF_INET:
+    var name: Sockaddr_in
+    when useWinVersion:
+      name.sin_family = int16(ord(AF_INET))
+    else:
+      name.sin_family = posix.AF_INET
+    var namelen = sizeof(name).SockLen
+    if getpeername(socket, cast[ptr SockAddr](addr(name)),
+                   addr(namelen)) == -1'i32:
+      raiseOSError(osLastError())
+    result = ($inet_ntoa(name.sin_addr), Port(rawsockets.ntohs(name.sin_port)))
+  of AF_INET6:
+    var name: Sockaddr_in6
+    when useWinVersion:
+      name.sin6_family = int16(ord(AF_INET6))
+    else:
+      name.sin6_family = posix.AF_INET6
+    var namelen = sizeof(name).SockLen
+    if getpeername(socket, cast[ptr SockAddr](addr(name)),
+                   addr(namelen)) == -1'i32:
+      raiseOSError(osLastError())
+    # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
+    var buf: array[64, char]
+    if inet_ntop(name.sin6_family.cint,
+                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+      raiseOSError(osLastError())
+    result = ($buf, Port(rawsockets.ntohs(name.sin6_port)))
+  else:
+    raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
+
 proc getSockOptInt*(socket: SocketHandle, level, optname: int): int {.
   tags: [ReadIOEffect].} =
   ## getsockopt for integer options.

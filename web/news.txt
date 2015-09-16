@@ -305,6 +305,26 @@ News
     (`#2183 <https://github.com/Araq/Nim/issues/2183>`_)
   - Fixed "gctest segfaults with --gc:markandsweep on x86_64"
     (`#2305 <https://github.com/Araq/Nim/issues/2305>`_)
+  - Fixed "Coroutine changes break compilation on unsupported architectures"
+    (`#3245 <https://github.com/Araq/Nim/issues/3245>`_)
+  - Fixed "Bugfix: Windows 32bit  TinyCC support issue fixed"
+    (`#3237 <https://github.com/Araq/Nim/issues/3237>`_)
+  - Fixed "db_mysql getValue() followed by exec() causing error"
+    (`#3220 <https://github.com/Araq/Nim/issues/3220>`_)
+  - Fixed "xmltree.newEntity creates xnCData instead of xnEntity"
+    (`#3282 <https://github.com/Araq/Nim/issues/3282>`_)
+  - Fixed "Methods and modules don't work together"
+    (`#2590 <https://github.com/Araq/Nim/issues/2590>`_)
+  - Fixed "String slicing not working in the vm"
+    (`#3300 <https://github.com/Araq/Nim/issues/3300>`_)
+  - Fixed "internal error: evalOp(mTypeOf)"
+    (`#3230 <https://github.com/Araq/Nim/issues/3230>`_)
+  - Fixed "#! source code prefix collides with Unix Shebang"
+    (`#2559 <https://github.com/Araq/Nim/issues/2559>`_)
+  - Fixed "wrong codegen for constant object"
+    (`#3195 <https://github.com/Araq/Nim/issues/3195>`_)
+  - Fixed "Doc comments inside procs with implicit returns don't work"
+    (`#1528 <https://github.com/Araq/Nim/issues/1528>`_)
 
 
 2015-05-04 Version 0.11.2 released
