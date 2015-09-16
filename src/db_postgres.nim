@@ -79,9 +79,17 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
-  var arr = allocCStringArray(args)
-  var res = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
                         nil, nil, 0)
+  result = pqresultStatus(res) == PGRES_COMMAND_OK
+  pqclear(res)
+
+proc tryExec*(db: DbConn, stmtName: SqlPrepared,
+              args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
+  ## tries to execute the query and returns true if successful, false otherwise.
+  var arr = allocCStringArray(args)
+  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+                           nil, nil, 0)
   deallocCStringArray(arr)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
   pqclear(res)
@@ -89,10 +97,8 @@ proc tryExec*(db: DbConn, query: SqlQuery,
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
-  var arr = allocCStringArray(args)
-  var res = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
                         nil, nil, 0)
-  deallocCStringArray(arr)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   pqclear(res)
 
