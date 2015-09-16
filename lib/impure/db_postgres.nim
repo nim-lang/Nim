@@ -64,6 +64,8 @@ proc dbQuote*(s: string): string =
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   result = ""
   var a = 0
+  if args.len > 0 and not string(formatstr).contains("?"):
+    dbError("""parameter substitution expects "?" """)
   for c in items(string(formatstr)):
     if c == '?':
       if args[a] == nil:
