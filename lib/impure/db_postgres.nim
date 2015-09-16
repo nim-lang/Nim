@@ -79,10 +79,8 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
-  var arr = allocCStringArray(args)
-  var res = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
                         nil, nil, 0)
-  deallocCStringArray(arr)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
   pqclear(res)
 
