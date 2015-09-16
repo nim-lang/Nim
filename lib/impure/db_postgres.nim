@@ -107,7 +107,7 @@ proc newRow(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
 
-proc setupQuery(db: DbConn, query: SqlQuery,
+proc setupQuery*(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
   var arr = allocCStringArray(args)
   result = pqexecParams(db, query.string, int32(args.len), nil, arr,
@@ -115,7 +115,7 @@ proc setupQuery(db: DbConn, query: SqlQuery,
   deallocCStringArray(arr)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
-proc setupQuery(db: DbConn, stmtName: SqlPrepared,
+proc setupQuery*(db: DbConn, stmtName: SqlPrepared,
                  args: varargs[string]): PPGresult =
   var arr = allocCStringArray(args)
   result = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
@@ -179,6 +179,26 @@ proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
 proc len*(row: InstantRow): int32 {.inline.} =
   ## returns number of columns in the row
   pqNfields(row.res)
+
+proc hasData*(rows: seq[Row]): bool =
+  result = false
+  for row in rows:
+    for item in row:
+      if item != "":
+        result = true
+        break
+
+proc hasData*(row: Row): bool =
+  result = false
+  for item in row:
+    if item != "":
+      result = true
+      break
+
+proc hasData*(value: string): bool =
+  result = false
+  if value != "":
+    result = true
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [FReadDB].} =

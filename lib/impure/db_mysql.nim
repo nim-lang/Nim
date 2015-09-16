@@ -129,7 +129,7 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   var q = dbFormat(query, args)
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
 
-proc newRow*(L: int): Row =
+proc newRow(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
 
@@ -195,12 +195,14 @@ proc hasData*(rows: seq[Row]): bool =
     for item in row:
       if item != "":
         result = true
+        break
 
 proc hasData*(row: Row): bool =
   result = false
   for item in row:
     if item != "":
       result = true
+      break
 
 proc hasData*(value: string): bool =
   result = false
