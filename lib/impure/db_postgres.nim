@@ -181,6 +181,16 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     yield (res: res, line: i)
   pqClear(res)
 
+iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [FReadDb].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within interator body.
+  var res = setupQuery(db, stmtName, args)
+  for i in 0..pqNtuples(res)-1:
+    yield (res: res, line: i)
+  pqClear(res)
+
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ## returns text for given column of the row
   $pqgetvalue(row.res, row.line, col)
