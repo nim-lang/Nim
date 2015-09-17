@@ -19,7 +19,7 @@
 ##
 ##  .. code-block:: Nim
 ##   ``prepare(theDb, "MyExampleInsert",
-##                    """INSERT INTO myTable
+##                    sql"""INSERT INTO myTable
 ##                       (colA,colB,colC)
 ##                       VALUES ($1,$2,$3)""",
 ##                    3)``
