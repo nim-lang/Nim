@@ -9,7 +9,61 @@
 
 ## A higher level `PostgreSQL`:idx: database wrapper. This interface
 ## is implemented for other databases too.
-
+##
+##  **Note**: There are two approaches to **parameter substitution** in this module
+##  1.  ``SqlQuery`` using ``?,?,?,...`` (same as the other db_xxxx modules)
+##
+##  .. code-block:: Nim
+##   ``sql"INSERT INTO myTable (colA,colB,colC) VALUES (?,?,?)"``
+##  2.  ``SqlPrepared``  using ``$1,$2,$3,...``  (the Postgres way, using numbered parameters)
+##
+##  .. code-block:: Nim
+##   ``prepare(theDb, "MyExampleInsert",
+##                    sql"""INSERT INTO myTable
+##                       (colA,colB,colC)
+##                       VALUES ($1,$2,$3)""",
+##                    3)``
+##
+## Example:
+##
+## .. code-block:: Nim
+##
+##  import db_postgres, math
+##
+##  let theDb = open("localhost", "nim", "nim", "test")
+##
+##  theDb.exec(sql"Drop table if exists myTestTbl")
+##  theDb.exec(sql("""create table myTestTbl (
+##     Id    SERIAL PRIMARY KEY,
+##     Name  VARCHAR(50) NOT NULL,
+##     i     INTEGER,
+##     f     NUMERIC(18,10))"""))
+##
+##  var psql: SqlPrepared = theDb.prepare("testSql",
+##                                sql"""INSERT INTO myTestTbl (name,i,f)
+##                                      VALUES ($1,$2,$3)""", 3)
+##  theDb.exec(sql"START TRANSACTION")
+##  for i in 1..1000:
+##    if i %% 2 == 0:
+##      # using Postgres prepared statement (SqlPrepare)
+##      theDb.exec(psql, "Item#" & $i, $i, $sqrt(i.float))
+##    else:
+##      # using SqlQuery
+##      theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##              "Item#" & $i, $i, $sqrt(i.float))
+##  theDb.exec(sql"COMMIT")
+##
+##  for x in theDb.fastRows(sql"select * from myTestTbl"):
+##    echo x
+##
+##  let id = theDb.tryInsertId(sql"""INSERT INTO myTestTbl
+##                                   (name,i,f)
+##                                   VALUES (?,?,?)""",
+##                             "Item#1001", 1001, sqrt(1001.0))
+##  echo "Inserted item: ",
+##        theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+##
+##  theDb.close()
 import strutils, postgres
 
 type
