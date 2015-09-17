@@ -3465,6 +3465,7 @@ proc procCall*(x: expr) {.magic: "ProcCall", compileTime.} =
   ##   procCall someMethod(a, b)
   discard
 
+proc `^`*[T](x: int; y: openArray[T]): int {.noSideEffect, magic: "Roof".}
 proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
   ## builtin `roof`:idx: operator that can be used for convenient array access.
   ## ``a[^x]`` is rewritten to ``a[a.len-x]``. However currently the ``a``

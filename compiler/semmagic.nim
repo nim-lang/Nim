@@ -32,6 +32,9 @@ type
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode
 
+proc skipAddr(n: PNode): PNode {.inline.} =
+  (if n.kind == nkHiddenAddr: n.sons[0] else: n)
+
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = newNodeI(nkBracketExpr, n.info)
   for i in 1..<n.len: result.add(n[i])
@@ -45,7 +48,8 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
   let b = newNodeI(nkBracketExpr, n.info)
-  for i in 1..n.len-2: b.add(n[i])
+  b.add(n[1].skipAddr)
+  for i in 2..n.len-2: b.add(n[i])
   result = newNodeI(nkAsgn, n.info, 2)
   result.sons[0] = b
   result.sons[1] = n.lastSon
@@ -179,25 +183,28 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       if isNegative(n.sons[1]) or (n.len > 2 and isNegative(n.sons[2])):
         localError(n.info, "use '^' instead of '-'; negative indexing is obsolete")
   of mRoof:
-    # error correction:
-    result = n.sons[1]
-    if c.p.bracketExpr.isNil:
+    let bracketExpr = if n.len == 3: n.sons[2] else: c.p.bracketExpr
+    if bracketExpr.isNil:
       localError(n.info, "no surrounding array access context for '^'")
-    elif c.p.bracketExpr.checkForSideEffects != seNoSideEffect:
+      result = n.sons[1]
+    elif bracketExpr.checkForSideEffects != seNoSideEffect:
       localError(n.info, "invalid context for '^' as '$#' has side effects" %
-        renderTree(c.p.bracketExpr))
-    elif c.p.bracketExpr.typ.isStrangeArray:
+        renderTree(bracketExpr))
+      result = n.sons[1]
+    elif bracketExpr.typ.isStrangeArray:
       localError(n.info, "invalid context for '^' as len!=high+1 for '$#'" %
-        renderTree(c.p.bracketExpr))
+        renderTree(bracketExpr))
+      result = n.sons[1]
     else:
       # ^x  is rewritten to: len(a)-x
       let lenExpr = newNodeI(nkCall, n.info)
       lenExpr.add newIdentNode(getIdent"len", n.info)
-      lenExpr.add c.p.bracketExpr
+      lenExpr.add bracketExpr
       let lenExprB = semExprWithType(c, lenExpr)
       if lenExprB.typ.isNil or not isOrdinalType(lenExprB.typ):
         localError(n.info, "'$#' has to be of an ordinal type for '^'" %
           renderTree(lenExpr))
+        result = n.sons[1]
       else:
         result = newNodeIT(nkCall, n.info, getSysType(tyInt))
         result.add newSymNode(createMagic("-", mSubI), n.info)
