@@ -117,10 +117,11 @@ proc newRow(L: int): Row =
 
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
-  var arr = allocCStringArray(args)
-  result = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  # s is a dummy unique id str for each setupQuery query
+  let s = "setupQuery_Query_" & string(query)
+  var res = pqprepare(db, s, dbFormat(query, args), 0, nil)
+  result = pqexecPrepared(db, s, 0, nil,
                         nil, nil, 0)
-  deallocCStringArray(arr)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared,
@@ -182,6 +183,16 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     yield (res: res, line: i)
   pqClear(res)
 
+iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [FReadDb].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within interator body.
+  var res = setupQuery(db, stmtName, args)
+  for i in 0..pqNtuples(res)-1:
+    yield (res: res, line: i)
+  pqClear(res)
+
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ## returns text for given column of the row
   $pqgetvalue(row.res, row.line, col)
@@ -227,6 +238,11 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ## same as `fastRows`, but slower and safe.
   for r in items(getAllRows(db, query, args)): yield r
 
+iterator rows*(db: DbConn, stmtName: SqlPrepared,
+               args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
+  ## same as `fastRows`, but slower and safe.
+  for r in items(getAllRows(db, stmtName, args)): yield r
+
 proc getValue*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.tags: [FReadDB].} =
   ## executes the query and returns the first column of the first row of the
@@ -264,6 +280,19 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   ## number of affected rows.
   var q = dbFormat(query, args)
   var res = pqExec(db, q)
+  if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
+  result = parseBiggestInt($pqcmdTuples(res))
+  pqclear(res)
+
+proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared,
+                       args: varargs[string, `$`]): int64 {.tags: [
+                       FReadDB, FWriteDb].} =
+  ## executes the query (typically "UPDATE") and returns the
+  ## number of affected rows.
+  var arr = allocCStringArray(args)
+  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+                           nil, nil, 0)
+  deallocCStringArray(arr)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   result = parseBiggestInt($pqcmdTuples(res))
   pqclear(res)
