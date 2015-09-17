@@ -238,6 +238,11 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ## same as `fastRows`, but slower and safe.
   for r in items(getAllRows(db, query, args)): yield r
 
+iterator rows*(db: DbConn, stmtName: SqlPrepared,
+               args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
+  ## same as `fastRows`, but slower and safe.
+  for r in items(getAllRows(db, stmtName, args)): yield r
+
 proc getValue*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.tags: [FReadDB].} =
   ## executes the query and returns the first column of the first row of the
