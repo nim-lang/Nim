@@ -184,20 +184,20 @@ proc hasData*(rows: seq[Row]): bool =
   result = false
   for row in rows:
     for item in row:
-      if item != "":
+      if item != "" and item != nil:
         result = true
         break
 
 proc hasData*(row: Row): bool =
   result = false
   for item in row:
-    if item != "":
+    if item != "" and item != nil:
       result = true
       break
 
 proc hasData*(value: string): bool =
   result = false
-  if value != "":
+  if value != "" and value != nil:
     result = true
 
 proc getRow*(db: DbConn, query: SqlQuery,
