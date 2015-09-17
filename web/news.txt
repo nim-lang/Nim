@@ -82,6 +82,8 @@ News
         result = $x & y
 
       echo f(0, "abc")
+  - The ``ftpclient`` module is now deprecated in favour of the
+    ``asyncdispatch`` module.
 
 
   Library Additions
