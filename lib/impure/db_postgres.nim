@@ -18,7 +18,11 @@
 ##  2.  ``SqlPrepared``  using ``$1,$2,$3,...``  (the Postgres way, using numbered parameters)
 ##
 ##  .. code-block:: Nim
-##   ``prepare(theDb, "MyExampleInsert", "INSERT INTO myTable (colA,colB,colC) VALUES ($1,$2,$3)", 3)``
+##   ``prepare(theDb, "MyExampleInsert",
+##                    """INSERT INTO myTable
+##                       (colA,colB,colC)
+##                       VALUES ($1,$2,$3)""",
+##                    3)``
 ##
 ## Example:
 ##
@@ -35,7 +39,9 @@
 ##     i     INTEGER,
 ##     f     NUMERIC(18,10))"""))
 ##
-##  var psql: SqlPrepared = theDb.prepare("testSql", sql"INSERT INTO myTestTbl (name,i,f) VALUES ($1,$2,$3)", 3)
+##  var psql: SqlPrepared = theDb.prepare("testSql",
+##                                sql"""INSERT INTO myTestTbl (name,i,f)
+##                                      VALUES ($1,$2,$3)""", 3)
 ##  theDb.exec(sql"START TRANSACTION")
 ##  for i in 1..1000:
 ##    if i %% 2 == 0:
@@ -50,9 +56,12 @@
 ##  for x in theDb.fastRows(sql"select * from myTestTbl"):
 ##    echo x
 ##
-##  let id = theDb.tryInsertId(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##          "Item#1001", 1001, sqrt(1001.0))
-##  echo "Inserted item: ", theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+##  let id = theDb.tryInsertId(sql"""INSERT INTO myTestTbl
+##                                   (name,i,f)
+##                                   VALUES (?,?,?)""",
+##                             "Item#1001", 1001, sqrt(1001.0))
+##  echo "Inserted item: ",
+##        theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
 ##
 ##  theDb.close()
 import strutils, postgres
