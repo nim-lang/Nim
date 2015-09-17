@@ -117,10 +117,9 @@ proc newRow(L: int): Row =
 
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
-  var arr = allocCStringArray(args)
-  result = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  var res = pqprepare(db, "setupQuery_Query", dbFormat(query, args), 0, nil)
+  result = pqexecPrepared(db, "setupQuery_Query", 0, nil,
                         nil, nil, 0)
-  deallocCStringArray(arr)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared,
