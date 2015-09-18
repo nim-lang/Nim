@@ -986,8 +986,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         if r.sym == nil or sfAnon notin r.sym.flags:
           let lifted = liftParamType(c, kind, genericParams, r, "result",
                                      n.sons[0].info)
-          if lifted != nil: r = lifted
-          r.flags.incl tfRetType
+          if lifted != nil:
+            r = lifted
+            #if r.kind != tyGenericParam:
+            #echo "came here for ", typeToString(r)
+            r.flags.incl tfRetType
         r = skipIntLit(r)
         if kind == skIterator:
           # see tchainediterators
