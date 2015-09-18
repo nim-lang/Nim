@@ -164,7 +164,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   addDecl(c, prc)
 
   pushInfoContext(info)
-  var cl = initTypeVars(c, pt, info)
+  var cl = initTypeVars(c, pt, info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy

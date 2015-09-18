@@ -234,7 +234,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         discard
       of skProc, skMethod, skIterators, skConverter, skModule:
         result.sons[0] = symChoice(c, fn, s, scOption)
-        # do check of 's.magic==mRoof' here because it might be some
+        # do not check of 's.magic==mRoof' here because it might be some
         # other '^' but after overload resolution the proper one:
         if ctx.bracketExpr != nil and n.len == 2 and s.name.s == "^":
           result.add ctx.bracketExpr
