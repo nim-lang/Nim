@@ -402,7 +402,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         of nkEnumFieldDef: a = n.sons[i].sons[0]
         of nkIdent: a = n.sons[i]
         else: illFormedAst(n)
-        addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c))
+        addDecl(c, newSymS(skUnknown, getIdentNode(a), c))
   of nkObjectTy, nkTupleTy, nkTupleClassTy:
     discard
   of nkFormalParams:
