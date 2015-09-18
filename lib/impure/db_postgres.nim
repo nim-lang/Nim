@@ -9,7 +9,61 @@
 
 ## A higher level `PostgreSQL`:idx: database wrapper. This interface
 ## is implemented for other databases too.
-
+##
+##  **Note**: There are two approaches to **parameter substitution** in this module
+##  1.  ``SqlQuery`` using ``?,?,?,...`` (same as the other db_xxxx modules)
+##
+##  .. code-block:: Nim
+##   ``sql"INSERT INTO myTable (colA,colB,colC) VALUES (?,?,?)"``
+##  2.  ``SqlPrepared``  using ``$1,$2,$3,...``  (the Postgres way, using numbered parameters)
+##
+##  .. code-block:: Nim
+##   ``prepare(theDb, "MyExampleInsert",
+##                    sql"""INSERT INTO myTable
+##                       (colA,colB,colC)
+##                       VALUES ($1,$2,$3)""",
+##                    3)``
+##
+## Example:
+##
+## .. code-block:: Nim
+##
+##  import db_postgres, math
+##
+##  let theDb = open("localhost", "nim", "nim", "test")
+##
+##  theDb.exec(sql"Drop table if exists myTestTbl")
+##  theDb.exec(sql("""create table myTestTbl (
+##     Id    SERIAL PRIMARY KEY,
+##     Name  VARCHAR(50) NOT NULL,
+##     i     INTEGER,
+##     f     NUMERIC(18,10))"""))
+##
+##  var psql: SqlPrepared = theDb.prepare("testSql",
+##                                sql"""INSERT INTO myTestTbl (name,i,f)
+##                                      VALUES ($1,$2,$3)""", 3)
+##  theDb.exec(sql"START TRANSACTION")
+##  for i in 1..1000:
+##    if i %% 2 == 0:
+##      # using Postgres prepared statement (SqlPrepare)
+##      theDb.exec(psql, "Item#" & $i, $i, $sqrt(i.float))
+##    else:
+##      # using SqlQuery
+##      theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
+##              "Item#" & $i, $i, $sqrt(i.float))
+##  theDb.exec(sql"COMMIT")
+##
+##  for x in theDb.fastRows(sql"select * from myTestTbl"):
+##    echo x
+##
+##  let id = theDb.tryInsertId(sql"""INSERT INTO myTestTbl
+##                                   (name,i,f)
+##                                   VALUES (?,?,?)""",
+##                             "Item#1001", 1001, sqrt(1001.0))
+##  echo "Inserted item: ",
+##        theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+##
+##  theDb.close()
 import strutils, postgres
 
 type
@@ -64,6 +118,8 @@ proc dbQuote*(s: string): string =
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   result = ""
   var a = 0
+  if args.len > 0 and not string(formatstr).contains("?"):
+    dbError("""parameter substitution expects "?" """)
   for c in items(string(formatstr)):
     if c == '?':
       if args[a] == nil:
@@ -77,9 +133,17 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
   ## tries to execute the query and returns true if successful, false otherwise.
-  var arr = allocCStringArray(args)
-  var res = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
                         nil, nil, 0)
+  result = pqresultStatus(res) == PGRES_COMMAND_OK
+  pqclear(res)
+
+proc tryExec*(db: DbConn, stmtName: SqlPrepared,
+              args: varargs[string, `$`]): bool {.tags: [FReadDB, FWriteDb].} =
+  ## tries to execute the query and returns true if successful, false otherwise.
+  var arr = allocCStringArray(args)
+  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+                           nil, nil, 0)
   deallocCStringArray(arr)
   result = pqresultStatus(res) == PGRES_COMMAND_OK
   pqclear(res)
@@ -87,10 +151,8 @@ proc tryExec*(db: DbConn, query: SqlQuery,
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [FReadDB, FWriteDb].} =
   ## executes the query and raises EDB if not successful.
-  var arr = allocCStringArray(args)
-  var res = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  var res = pqexecParams(db, dbFormat(query, args), 0, nil, nil,
                         nil, nil, 0)
-  deallocCStringArray(arr)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   pqclear(res)
 
@@ -109,10 +171,11 @@ proc newRow(L: int): Row =
 
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
-  var arr = allocCStringArray(args)
-  result = pqexecParams(db, query.string, int32(args.len), nil, arr,
+  # s is a dummy unique id str for each setupQuery query
+  let s = "setupQuery_Query_" & string(query)
+  var res = pqprepare(db, s, dbFormat(query, args), 0, nil)
+  result = pqexecPrepared(db, s, 0, nil,
                         nil, nil, 0)
-  deallocCStringArray(arr)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared,
@@ -125,6 +188,8 @@ proc setupQuery(db: DbConn, stmtName: SqlPrepared,
 
 proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
               nParams: int): SqlPrepared =
+  if nParams > 0 and not string(query).contains("$1"):
+    dbError("""parameter substitution expects "$1" """)
   var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   return SqlPrepared(stmtName)
@@ -168,6 +233,16 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   ## same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within interator body.
   var res = setupQuery(db, query, args)
+  for i in 0..pqNtuples(res)-1:
+    yield (res: res, line: i)
+  pqClear(res)
+
+iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [FReadDb].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within interator body.
+  var res = setupQuery(db, stmtName, args)
   for i in 0..pqNtuples(res)-1:
     yield (res: res, line: i)
   pqClear(res)
@@ -217,6 +292,11 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ## same as `fastRows`, but slower and safe.
   for r in items(getAllRows(db, query, args)): yield r
 
+iterator rows*(db: DbConn, stmtName: SqlPrepared,
+               args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
+  ## same as `fastRows`, but slower and safe.
+  for r in items(getAllRows(db, stmtName, args)): yield r
+
 proc getValue*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.tags: [FReadDB].} =
   ## executes the query and returns the first column of the first row of the
@@ -254,6 +334,19 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   ## number of affected rows.
   var q = dbFormat(query, args)
   var res = pqExec(db, q)
+  if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
+  result = parseBiggestInt($pqcmdTuples(res))
+  pqclear(res)
+
+proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared,
+                       args: varargs[string, `$`]): int64 {.tags: [
+                       FReadDB, FWriteDb].} =
+  ## executes the query (typically "UPDATE") and returns the
+  ## number of affected rows.
+  var arr = allocCStringArray(args)
+  var res = pqexecPrepared(db, stmtName.string, int32(args.len), arr,
+                           nil, nil, 0)
+  deallocCStringArray(arr)
   if pqresultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   result = parseBiggestInt($pqcmdTuples(res))
   pqclear(res)
