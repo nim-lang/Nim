@@ -1,5 +1,5 @@
 
-proc myFun[A,B](x: A): B =
+proc myFun[A](x: A): auto =
   result = float(x+10)
 
 proc myMap[T,S](sIn: seq[T], f: proc (q: T): S): seq[S] =

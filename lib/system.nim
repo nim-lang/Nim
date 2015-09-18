@@ -243,7 +243,7 @@ when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
-  proc `[]=`*[I: Ordinal;T,S](a: var T; i: I;
+  proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 

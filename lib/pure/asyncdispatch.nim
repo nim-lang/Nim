@@ -992,8 +992,8 @@ else:
 
   proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()
-    sock.SocketHandle.close()
     disp.selector.unregister(sock.SocketHandle)
+    sock.SocketHandle.close()
 
   proc unregister*(fd: AsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)

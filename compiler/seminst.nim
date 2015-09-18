@@ -47,10 +47,11 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                           flags = {ExactTypeDescValues}): return
     result = true
 
-proc genericCacheGet(genericSym: PSym, entry: TInstantiation): PSym =
+proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
+                     id: CompilesId): PSym =
   if genericSym.procInstCache != nil:
     for inst in genericSym.procInstCache:
-      if sameInstantiation(entry, inst[]):
+      if inst.compilesId == id and sameInstantiation(entry, inst[]):
         return inst.sym
 
 proc removeDefaultParamValues(n: PNode) =
@@ -249,13 +250,15 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
   n.sons[genericParamsPos] = ast.emptyNode
-  var oldPrc = genericCacheGet(fn, entry[])
+  var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.
     # This means recursive instantiations behave differently when in
     # a ``compiles`` context but this is the lesser evil. See
     # bug #1055 (tevilcompiles).
-    if c.inCompilesContext == 0: fn.procInstCache.safeAdd(entry)
+    #if c.compilesContextId == 0:
+    entry.compilesId = c.compilesContextId
+    fn.procInstCache.safeAdd(entry)
     c.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
