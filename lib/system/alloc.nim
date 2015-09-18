@@ -27,8 +27,11 @@ sysAssert(roundup(65, 8) == 72, "roundup broken 2")
 # some platforms have really weird unmap behaviour: unmap(blockStart, PageSize)
 # really frees the whole block. Happens for Linux/PowerPC for example. Amd64
 # and x86 are safe though; Windows is special because MEM_RELEASE can only be
-# used with a size of 0:
-const weirdUnmap = not (defined(amd64) or defined(i386)) or defined(windows)
+# used with a size of 0. We also allow unmapping to be turned off with
+# -d:nimAllocNoUnmap:
+const doNotUnmap = not (defined(amd64) or defined(i386)) or
+                   defined(windows) or defined(nimAllocNoUnmap)
+
 
 when defined(posix):
   const
@@ -478,7 +481,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
           excl(a.chunkStarts, pageIndex(c))
           c = cast[PBigChunk](le)
 
-  if c.size < ChunkOsReturn or weirdUnmap:
+  if c.size < ChunkOsReturn or doNotUnmap:
     incl(a, a.chunkStarts, pageIndex(c))
     updatePrevSize(a, c, c.size)
     listAdd(a.freeChunksList, c)
@@ -762,7 +765,7 @@ proc deallocOsPages(a: var MemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
   for p in elements(a.chunkStarts):
     var page = cast[PChunk](p shl PageShift)
-    when not weirdUnmap:
+    when not doNotUnmap:
       var size = if page.size < PageSize: PageSize else: page.size
       osDeallocPages(page, size)
     else:
