@@ -622,9 +622,12 @@ proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
 proc getFNum*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JFloat``, or if ``n`` is nil.
-  if n.isNil or n.kind != JFloat: return default
-  else: return n.fnum
+  ## Returns ``default`` if ``n`` is not a ``JFloat`` or ``JInt``, or if ``n`` is nil.
+  if n.isNil: return default
+  case n.kind
+  of JFloat: return n.fnum
+  of JInt: return float(n.num)
+  else: return default
 
 proc getBVal*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
