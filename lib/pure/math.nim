@@ -21,6 +21,20 @@ include "system/inclrtl"
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
+proc binom*(n, k: int): int {.noSideEffect.} =
+  ## Computes the binomial coefficient
+  if k <= 0: return 1
+  if 2*k > n: return binom(n, n-k)
+  result = n
+  for i in countup(2, k):
+    result = (result * (n + 1 - i)) div i
+
+proc fac*(n: int): int {.noSideEffect.} =
+  ## Computes the faculty/factorial function.
+  result = 1
+  for i in countup(2, n):
+    result = result * i
+
 {.push checks:off, line_dir:off, stack_trace:off.}
 
 when defined(Posix) and not defined(haiku):
@@ -71,21 +85,6 @@ proc classify*(x: float): FloatClass =
   if x != x: return fcNan
   return fcNormal
   # XXX: fcSubnormal is not detected!
-
-
-proc binom*(n, k: int): int {.noSideEffect.} =
-  ## Computes the binomial coefficient
-  if k <= 0: return 1
-  if 2*k > n: return binom(n, n-k)
-  result = n
-  for i in countup(2, k):
-    result = (result * (n + 1 - i)) div i
-
-proc fac*(n: int): int {.noSideEffect.} =
-  ## Computes the faculty/factorial function.
-  result = 1
-  for i in countup(2, n):
-    result = result * i
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns true, if `x` is a power of two, false otherwise.
