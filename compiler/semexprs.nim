@@ -818,7 +818,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
-      if c.inCompilesContext > 0:
+      if c.compilesContextId > 0:
         # speed up error generation:
         globalError(n.info, errTypeMismatch, "")
         return emptyNode
@@ -1636,9 +1636,9 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
-  let oldCompilesId = c.inCompilesContext
+  let oldCompilesId = c.compilesContextId
   inc c.compilesContextIdGenerator
-  c.inCompilesContext = c.compilesContextIdGenerator
+  c.compilesContextId = c.compilesContextIdGenerator
   # do not halt after first error:
   msgs.gErrorMax = high(int)
 
@@ -1662,7 +1662,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   except ERecoverableError:
     discard
   # undo symbol table changes (as far as it's possible):
-  c.inCompilesContext = oldCompilesId
+  c.compilesContextId = oldCompilesId
   c.generics = oldGenerics
   c.inGenericContext = oldInGenericContext
   c.inUnrolledContext = oldInUnrolledContext
