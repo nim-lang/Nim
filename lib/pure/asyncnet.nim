@@ -432,6 +432,7 @@ proc recvLine*(socket: AsyncSocket,
 
   # TODO: Optimise this
   var resString = newFutureVar[string]("asyncnet.recvLine")
+  resString.mget() = ""
   await socket.recvLineInto(resString, flags)
   result = resString.mget()
 
