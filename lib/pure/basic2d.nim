@@ -18,6 +18,8 @@ import strutils
 ##
 ## Quick start example:
 ##
+## .. code-block:: nim
+##
 ##   # Create a matrix which first rotates, then scales and at last translates
 ##
 ##   var m:Matrix2d=rotate(DEG90) & scale(2.0) & move(100.0,200.0)
