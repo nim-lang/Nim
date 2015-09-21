@@ -32,12 +32,6 @@ type
     cursorInBody: bool # only for nimsuggest
     bracketExpr: PNode
 
-template withBracketExpr(x, body: untyped) =
-  let old = ctx.bracketExpr
-  ctx.bracketExpr = x
-  body
-  ctx.bracketExpr = old
-
 type
   TSemGenericFlag = enum
     withinBind, withinTypeDesc, withinMixin
@@ -271,7 +265,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent("[]"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
-    withBracketExpr n.sons[0]:
+    withBracketExpr ctx, n.sons[0]:
       result = semGenericStmt(c, result, flags, ctx)
   of nkAsgn, nkFastAsgn:
     checkSonsLen(n, 2)
@@ -291,7 +285,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       result.add newIdentNode(getIdent("[]="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
-      withBracketExpr a.sons[0]:
+      withBracketExpr ctx, a.sons[0]:
         result = semGenericStmt(c, result, flags, ctx)
     else:
       for i in countup(0, sonsLen(n) - 1):
