@@ -23,6 +23,8 @@ import times
 ##
 ## Quick start example:
 ##
+## .. code-block:: nim
+##
 ##   # Create a matrix which first rotates, then scales and at last translates
 ##
 ##   var m:Matrix3d=rotate(PI,vector3d(1,1,2.5)) & scale(2.0) & move(100.0,200.0,300.0)

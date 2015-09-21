@@ -1,7 +1,7 @@
 Substitution Expressions (subex)
 ================================
 
-A *subex* (*Substitution Expression*) represents an advanted string
+A *subex* (*Substitution Expression*) represents an advanced string
 substitution. In contrast to a `regex`:idx: which deals with string analysis, a
 *subex* deals with string synthesis.
 
