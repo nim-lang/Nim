@@ -93,11 +93,11 @@ let
   IDMATRIX*:Matrix2d=matrix2d(1.0,0.0,0.0,1.0,0.0,0.0)
     ## Quick access to an identity matrix
   ORIGO*:Point2d=point2d(0.0,0.0)
-    ## Quick acces to point (0,0)
+    ## Quick access to point (0,0)
   XAXIS*:Vector2d=vector2d(1.0,0.0)
-    ## Quick acces to an 2d x-axis unit vector
+    ## Quick access to an 2d x-axis unit vector
   YAXIS*:Vector2d=vector2d(0.0,1.0)
-    ## Quick acces to an 2d y-axis unit vector
+    ## Quick access to an 2d y-axis unit vector
 
 
 # ***************************************
