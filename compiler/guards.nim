@@ -37,6 +37,7 @@ const
   someMod = {mModI}
   someMax = {mMaxI, mMaxF64}
   someMin = {mMinI, mMinF64}
+  someBinaryOp = someAdd+someSub+someMul+someDiv+someMod+someMax+someMin
 
 proc isValue(n: PNode): bool = n.kind in {nkCharLit..nkNilLit}
 proc isLocation(n: PNode): bool = not n.isValue
@@ -721,6 +722,7 @@ proc ple(m: TModel; a, b: PNode): TImplication =
     if a.intVal <= 0: return impYes
 
   #   x <= y+c  if 0 <= c and x <= y
+  #   x <= y+(-c)  if c <= 0  and y >= x
   if b.getMagic in someAdd and zero() <=? b[2] and a <=? b[1]: return impYes
 
   #   x+c <= y  if c <= 0 and x <= y
@@ -729,6 +731,10 @@ proc ple(m: TModel; a, b: PNode): TImplication =
   #   x <= y*c  if  1 <= c and x <= y  and 0 <= y
   if b.getMagic in someMul:
     if a <=? b[1] and one() <=? b[2] and zero() <=? b[1]: return impYes
+
+  #  x+c <= x+d  if c <= d. Same for *, div etc.
+  if a.getMagic in someBinaryOp and a.getMagic == b.getMagic:
+    if sameTree(a[1], b[1]) and a[2] <=? b[2]: return impYes
 
   #   x div c <= y   if   1 <= c  and  0 <= y  and x <= y:
   if a.getMagic in someDiv:
@@ -769,11 +775,19 @@ proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
   for i in 0..m.high:
     let fact = m[i]
     if fact != nil and fact.getMagic in someLe:
-      # x <= y implies a <= b  if  a <= x and y <= b
-      let x = fact[1]
-      let y = fact[2]
       # mark as used:
       m[i] = nil
+      # i <= len-100
+      # i <=? len-1
+      # --> true  if  (len-100) <= (len-1)
+      let x = fact[1]
+      let y = fact[2]
+      if sameTree(x, a) and y.getMagic in someAdd and b.getMagic in someAdd and
+         sameTree(y[1], b[1]):
+        if ple(m, b[2], y[2]) == impYes:
+          return impYes
+
+      # x <= y implies a <= b  if  a <= x and y <= b
       if ple(m, a, x) == impYes:
         if ple(m, y, b) == impYes:
           return impYes

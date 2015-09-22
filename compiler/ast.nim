@@ -1588,6 +1588,14 @@ proc makeStmtList*(n: PNode): PNode =
     result = newNodeI(nkStmtList, n.info)
     result.add n
 
+proc skipStmtList*(n: PNode): PNode =
+  if n.kind in {nkStmtList, nkStmtListExpr}:
+    for i in 0 .. n.len-2:
+      if n[i].kind notin {nkEmpty, nkCommentStmt}: return n
+    result = n.lastSon
+  else:
+    result = n
+
 proc createMagic*(name: string, m: TMagic): PSym =
   result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
   result.magic = m
