@@ -97,6 +97,7 @@ News
     to benchmark it.
   - ``strutils.formatFloat`` and ``formatBiggestFloat`` do not depend on the C
     locale anymore and now take an optional ``decimalSep = '.'`` parameter.
+  - Added ``unicode.lastRune``, ``unicode.graphemeLen``.
 
 
   Compiler Additions
