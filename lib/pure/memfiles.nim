@@ -34,6 +34,7 @@ type
     when defined(windows):
       fHandle: int
       mapHandle: int
+      wasOpened: bool
     else:
       handle: cint
 
@@ -172,6 +173,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if mappedSize != -1: result.size = min(fileSize, mappedSize).int
       else: result.size = fileSize.int
 
+    result.wasOpened = true
+
   else:
     template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
@@ -226,7 +229,7 @@ proc close*(f: var MemFile) =
   var lastErr: OSErrorCode
 
   when defined(windows):
-    if f.fHandle != INVALID_HANDLE_VALUE:
+    if f.fHandle != INVALID_HANDLE_VALUE and wasOpened:
       error = unmapViewOfFile(f.mem) == 0
       lastErr = osLastError()
       error = (closeHandle(f.mapHandle) == 0) or error
