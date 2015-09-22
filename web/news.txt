@@ -792,7 +792,7 @@ is the installation of packages containing libraries and/or applications
 written in Nim.
 Even though Nimble is still very young it already is very
 functional. It can install packages by name, it does so by accessing a
-packages repository which is hosted on a Github repo. Packages can also be
+packages repository which is hosted on a GitHub repo. Packages can also be
 installed via a Git repo URL or Mercurial repo URL. The package repository
 is searchable through Nimble. Anyone is free to add their own packages to
 the package repository by forking the
