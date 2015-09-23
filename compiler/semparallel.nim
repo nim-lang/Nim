@@ -128,10 +128,10 @@ template `?`(x): expr = x.renderTree
 proc checkLe(c: AnalysisCtx; a, b: PNode) =
   case proveLe(c.guards, a, b)
   of impUnknown:
-    localError(a.info, "cannot prove: " & ?a & " <= " & ?b)
+    localError(a.info, "cannot prove: " & ?a & " <= " & ?b & " (bounds check)")
   of impYes: discard
   of impNo:
-    localError(a.info, "can prove: " & ?a & " > " & ?b)
+    localError(a.info, "can prove: " & ?a & " > " & ?b & " (bounds check)")
 
 proc checkBounds(c: AnalysisCtx; arr, idx: PNode) =
   checkLe(c, arr.lowBound, idx)
