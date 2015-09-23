@@ -116,7 +116,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
     template callCreateFile(winApiProc, filename: expr): expr =
       winApiProc(
         filename,
-        if readonly: GENERIC_READ else: GENERIC_ALL,
+        # GENERIC_ALL != (GENERIC_READ or GENERIC_WRITE)
+        if readonly: GENERIC_READ else: GENERIC_READ or GENERIC_WRITE,
         FILE_SHARE_READ,
         nil,
         if newFileSize != -1: CREATE_ALWAYS else: OPEN_EXISTING,
