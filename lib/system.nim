@@ -2235,7 +2235,9 @@ proc `$`*[T: tuple|object](x: T): string =
     firstElement = false
   result.add(")")
 
-proc collectionToString[T](x: T, b, e: string): string =
+proc collectionToString[T: set | seq](x: T, b, e: string): string =
+  when x is seq:
+    if x.isNil: return "nil"
   result = b
   var firstElement = true
   for value in items(x):

@@ -3,7 +3,7 @@ News
 ====
 
 ..
-  2015-09-14 Version 0.11.4 released
+  2015-xx-xx Version 0.11.4 released
   ==================================
 
   Changes affecting backwards compatibility
@@ -120,9 +120,9 @@ News
   - Added ``macros.getImpl`` that can be used to access the implementation of
     a routine or a constant. This allows for example for user-defined inlining
     of function calls.
-  - Tuple unpacking finally works in a non-var/let context: ``(x, y) == f()``
+  - Tuple unpacking finally works in a non-var/let context: ``(x, y) = f()``
     is allowed. Note that this doesn't declare ``x`` and ``y`` variables, for
-    this ``let (x, y) == f()`` still needs to be used.
+    this ``let (x, y) = f()`` still needs to be used.
   - ``when nimvm`` can now be used for compiletime versions of some code
     sections. Click `here <docs/manual.html#when-nimvm-statement>`_ for details.
   - Usage of the type ``NimNode`` in a proc now implicitly annotates the proc
@@ -792,7 +792,7 @@ is the installation of packages containing libraries and/or applications
 written in Nim.
 Even though Nimble is still very young it already is very
 functional. It can install packages by name, it does so by accessing a
-packages repository which is hosted on a Github repo. Packages can also be
+packages repository which is hosted on a GitHub repo. Packages can also be
 installed via a Git repo URL or Mercurial repo URL. The package repository
 is searchable through Nimble. Anyone is free to add their own packages to
 the package repository by forking the
