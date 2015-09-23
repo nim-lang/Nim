@@ -62,7 +62,7 @@ Currently, the following C compilers are supported under Windows:
 
 However, most testing is done with GCC.
 
-Bootstrapping from Github
+Bootstrapping from GitHub
 -------------------------
 
 Take a look at the readme file on github `here <https://github.com/nim-lang/Nim#readme>`_

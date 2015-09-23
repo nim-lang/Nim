@@ -75,7 +75,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
         identDefs.add(newEmptyNode())
       of nnkIdent:
         identDefs.add(c)
-        identDefs.add(newEmptyNode())
+        identDefs.add(newIdentNode("auto"))
         identDefs.add(newEmptyNode())
       of nnkInfix:
         if c[0].kind == nnkIdent and c[0].ident == !"->":
@@ -93,7 +93,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
   of nnkIdent:
     var identDefs = newNimNode(nnkIdentDefs)
     identDefs.add(p)
-    identDefs.add(newEmptyNode())
+    identDefs.add(newIdentNode("auto"))
     identDefs.add(newEmptyNode())
     params.add(identDefs)
   of nnkInfix:
