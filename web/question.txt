@@ -94,9 +94,9 @@ General FAQ
   What about JVM/CLR backends?
   ----------------------------
 
-  A JVM backend is almost impossible. The JVM is not expressive enough. It has
-  never been designed as a general purpose VM anyway. A CLR backend is possible
-  but would require much work.
+  JVM/CLR support is not in the nearest plans. However, since these VMs support FFI to C
+  it should be possible to create native Nim bridges, that transparenlty generate all the
+  glue code thanks to powerful metaprogramming capabilities of Nim.
 
 
 .. container:: standout

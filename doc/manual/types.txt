@@ -1228,3 +1228,27 @@ However, a ``void`` type cannot be inferred in generic code:
 
 The ``void`` type is only valid for parameters and return types; other symbols
 cannot have the type ``void``.
+
+
+Auto type
+---------
+
+The ``auto`` type can only be used for return types and parameters. For return
+types it causes the compiler to infer the type from the routine body:
+
+.. code-block:: nim
+  proc returnsInt(): auto = 1984
+
+For parameters it currently creates implicitly generic routines:
+
+.. code-block:: nim
+  proc foo(a, b: auto) = discard
+
+Is the same as:
+
+.. code-block:: nim
+  proc foo[T1, T2](a: T1, b: T2) = discard
+
+However later versions of the language might change this to mean "infer the
+parameters' types from the body". Then the above ``foo`` would be rejected as
+the parameters' types can not be infered from an empty ``discard`` statement.

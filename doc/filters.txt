@@ -8,9 +8,9 @@ A `Source Code Filter` transforms the input character stream to an in-memory
 output stream before parsing. A filter can be used to provide templating
 systems or preprocessors.
 
-To use a filter for a source file the *shebang* notation is used::
+To use a filter for a source file the ``#?`` notation is used::
 
-  #! stdtmpl(subsChar = '$', metaChar = '#')
+  #? stdtmpl(subsChar = '$', metaChar = '#')
   #proc generateXML(name, age: string): string =
   #  result = ""
   <xml>
@@ -20,7 +20,8 @@ To use a filter for a source file the *shebang* notation is used::
 
 As the example shows, passing arguments to a filter can be done
 just like an ordinary procedure call with named or positional arguments. The
-available parameters depend on the invoked filter.
+available parameters depend on the invoked filter. Before version 0.12.0 of
+the language ``#!`` was used instead of ``#?``.
 
 
 Pipe operator
@@ -28,7 +29,7 @@ Pipe operator
 
 Filters can be combined with the ``|`` pipe operator::
 
-  #! strip(startswith="<") | stdtmpl
+  #? strip(startswith="<") | stdtmpl
   #proc generateXML(name, age: string): string =
   #  result = ""
   <xml>
@@ -104,7 +105,7 @@ Parameters and their defaults:
 
 Example::
 
-  #! stdtmpl | standard
+  #? stdtmpl | standard
   #proc generateHTMLPage(title, currentTab, content: string,
   #                      tabs: openArray[string]): string =
   #  result = ""
@@ -172,7 +173,7 @@ produces ``$``.
 The template engine is quite flexible. It is easy to produce a procedure that
 writes the template code directly to a file::
 
-  #! stdtmpl(emit="f.write") | standard
+  #? stdtmpl(emit="f.write") | standard
   #proc writeHTMLPage(f: File, title, currentTab, content: string,
   #                   tabs: openArray[string]) =
   <head><title>$title</title></head>

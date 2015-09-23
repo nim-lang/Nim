@@ -13,6 +13,9 @@
 
 template builtin = discard
 
+# We know the effects better than the compiler:
+{.push hint[XDeclaredButNotUsed]: off.}
+
 proc listDirs*(dir: string): seq[string] =
   ## Lists all the subdirectories (non-recursively) in the directory `dir`.
   builtin
@@ -61,10 +64,17 @@ proc setCommand*(cmd: string) =
 proc cmpIgnoreStyle(a, b: string): int = builtin
 proc cmpIgnoreCase(a, b: string): int = builtin
 
-proc cmpic*(a, b: string): int = cmpIgnoreCase(a, b)
+proc cmpic*(a, b: string): int =
+  ## Compares `a` and `b` ignoring case.
+  cmpIgnoreCase(a, b)
 
-proc getEnv*(key: string): string = builtin
-proc existsEnv*(key: string): bool = builtin
+proc getEnv*(key: string): string {.tags: [ReadIOEffect].} =
+  ## Retrieves the environment variable of name `key`.
+  builtin
+
+proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
+  ## Checks for the existance of an environment variable named `key`.
+  builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
   ## Checks if the file exists.
@@ -96,8 +106,13 @@ proc strip(s: string): string =
   while s[i] in {' ', '\c', '\L'}: inc i
   result = s.substr(i)
 
-template `--`*(key, val: untyped) = switch(astToStr(key), strip astToStr(val))
-template `--`*(key: untyped) = switch(astToStr(key), "")
+template `--`*(key, val: untyped) =
+  ## A shortcut for ``switch(astToStr(key), astToStr(val))``.
+  switch(astToStr(key), strip astToStr(val))
+
+template `--`*(key: untyped) =
+  ## A shortcut for ``switch(astToStr(key)``.
+  switch(astToStr(key), "")
 
 type
   ScriptMode* {.pure.} = enum ## Controls the behaviour of the script.
@@ -158,7 +173,8 @@ proc exec*(command: string) =
       raise newException(OSError, "FAILED: " & command)
     checkOsError()
 
-proc exec*(command: string, input: string, cache = "") =
+proc exec*(command: string, input: string, cache = "") {.
+  raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external process.
   log "exec: " & command:
     echo staticExec(command, input, cache)
@@ -256,3 +272,5 @@ proc requires*(deps: varargs[string]) =
   ## Nimble support: Call this to set the list of requirements of your Nimble
   ## package.
   for d in deps: requiresData.add(d)
+
+{.pop.}

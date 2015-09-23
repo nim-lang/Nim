@@ -316,7 +316,7 @@ proc accept*(socket: AsyncSocket,
         retFut.complete(future.read.client)
   return retFut
 
-proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
+proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
     flags = {SocketFlag.SafeDisconn}) {.async.} =
   ## Reads a line of data from ``socket`` into ``resString``.
   ##
@@ -338,16 +338,23 @@ proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
   ## **Warning**: ``recvLineInto`` currently uses a raw pointer to a string for
   ## performance reasons. This will likely change soon to use FutureVars.
   assert SocketFlag.Peek notin flags ## TODO:
+  assert(not resString.mget.isNil(),
+         "String inside resString future needs to be initialised")
   result = newFuture[void]("asyncnet.recvLineInto")
 
+  # TODO: Make the async transformation check for FutureVar params and complete
+  # them when the result future is completed.
+  # Can we replace the result future with the FutureVar?
+
   template addNLIfEmpty(): stmt =
-    if resString[].len == 0:
-      resString[].add("\c\L")
+    if resString.mget.len == 0:
+      resString.mget.add("\c\L")
 
   if socket.isBuffered:
     if socket.bufLen == 0:
       let res = socket.readIntoBuf(flags)
       if res == 0:
+        resString.complete()
         return
 
     var lastR = false
@@ -355,7 +362,8 @@ proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
       if socket.currPos >= socket.bufLen:
         let res = socket.readIntoBuf(flags)
         if res == 0:
-          resString[].setLen(0)
+          resString.mget.setLen(0)
+          resString.complete()
           return
 
       case socket.buffer[socket.currPos]
@@ -365,13 +373,15 @@ proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
       of '\L':
         addNLIfEmpty()
         socket.currPos.inc()
+        resString.complete()
         return
       else:
         if lastR:
           socket.currPos.inc()
+          resString.complete()
           return
         else:
-          resString[].add socket.buffer[socket.currPos]
+          resString.mget.add socket.buffer[socket.currPos]
       socket.currPos.inc()
   else:
     var c = ""
@@ -379,18 +389,22 @@ proc recvLineInto*(socket: AsyncSocket, resString: ptr string,
       let recvFut = recv(socket, 1, flags)
       c = recvFut.read()
       if c.len == 0:
-        resString[].setLen(0)
+        resString.mget.setLen(0)
+        resString.complete()
         return
       if c == "\r":
         let recvFut = recv(socket, 1, flags) # Skip \L
         c = recvFut.read()
         assert c == "\L"
         addNLIfEmpty()
+        resString.complete()
         return
       elif c == "\L":
         addNLIfEmpty()
+        resString.complete()
         return
-      resString[].add c
+      resString.mget.add c
+  resString.complete()
 
 proc recvLine*(socket: AsyncSocket,
     flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
@@ -416,8 +430,11 @@ proc recvLine*(socket: AsyncSocket,
       result.add("\c\L")
   assert SocketFlag.Peek notin flags ## TODO:
 
-  result = ""
-  await socket.recvLineInto(addr result, flags)
+  # TODO: Optimise this
+  var resString = newFutureVar[string]("asyncnet.recvLine")
+  resString.mget() = ""
+  await socket.recvLineInto(resString, flags)
+  result = resString.mget()
 
 proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.

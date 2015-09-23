@@ -11,6 +11,26 @@
 ## This module contains routines and types for dealing with time.
 ## This module is available for the `JavaScript target
 ## <backends.html#the-javascript-target>`_.
+##
+## Examples:
+##
+## .. code-block:: nim
+##
+##  import times, os
+##  var
+##    t = cpuTime()
+##
+##  sleep(100)   # replace this with something to be timed
+##  echo "Time taken: ",cpuTime() - t
+##
+##  echo "My formatted time: ", format(getLocalTime(getTime()), "d MMMM yyyy HH:mm")
+##  echo "Using predefined formats: ", getClockStr(), " ", getDateStr()
+##
+##  echo "epochTime() float value: ", epochTime()
+##  echo "getTime()   float value: ", toSeconds(getTime())
+##  echo "cpuTime()   float value: ", cpuTime()
+##  echo "An hour from now      : ", getLocalTime(getTime()) + initInterval(0,0,0,1)
+##  echo "An hour from (UTC) now: ", getGmTime(getTime()) + initInterval(0,0,0,1)
 
 {.push debugger:off.} # the user does not want to trace a part
                       # of the standard library!
@@ -288,10 +308,10 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## very accurate.
   let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
-  if a.tzname == "UTC":
-    result = getGMTime(fromSeconds(t + secs))
-  else:
-    result = getLocalTime(fromSeconds(t + secs))
+  #if a.tzname == "UTC":
+  #  result = getGMTime(fromSeconds(t + secs))
+  #else:
+  result = getLocalTime(fromSeconds(t + secs))
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## subtracts ``interval`` time.
@@ -300,10 +320,10 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## when you subtract so much that you reach the Julian calendar.
   let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
-  if a.tzname == "UTC":
-    result = getGMTime(fromSeconds(t - secs))
-  else:
-    result = getLocalTime(fromSeconds(t - secs))
+  #if a.tzname == "UTC":
+  #  result = getGMTime(fromSeconds(t - secs))
+  #else:
+  result = getLocalTime(fromSeconds(t - secs))
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
@@ -1269,3 +1289,28 @@ when isMainModule:
   assert getDayOfWeekJulian(21, 9, 1970) == dMon
   assert getDayOfWeekJulian(1, 1, 2000) == dSat
   assert getDayOfWeekJulian(1, 1, 2021) == dFri
+
+  # toSeconds tests with GM and Local timezones
+  #var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
+  var t4L = getLocalTime(fromSeconds(876124714))
+  assert toSeconds(timeInfoToTime(t4L)) == 876124714    # fromSeconds is effectively "localTime"
+  assert toSeconds(timeInfoToTime(t4L)) + t4L.timezone.float == toSeconds(timeInfoToTime(t4))
+
+  assert toSeconds(t4, initInterval(seconds=0)) == 0.0
+  assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
+  assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))
+  assert toSeconds(t4L, initInterval(minutes=1)) == toSeconds(t4, initInterval(minutes=1))
+  assert toSeconds(t4L, initInterval(hours=1)) == toSeconds(t4, initInterval(hours=1))
+  assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
+  assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
+  assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
+
+  # adding intervals
+  var
+    a1L = toSeconds(timeInfoToTime(t4L + initInterval(hours = 1))) + t4L.timezone.float
+    a1G = toSeconds(timeInfoToTime(t4)) + 60.0 * 60.0
+  assert a1L == a1G
+  # subtracting intervals
+  a1L = toSeconds(timeInfoToTime(t4L - initInterval(hours = 1))) + t4L.timezone.float
+  a1G = toSeconds(timeInfoToTime(t4)) - (60.0 * 60.0)
+  assert a1L == a1G

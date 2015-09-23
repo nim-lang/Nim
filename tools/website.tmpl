@@ -1,5 +1,5 @@
-#! stdtmpl | standard
-#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string = 
+#? stdtmpl | standard
+#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string =
 #  result = ""
 <!DOCTYPE html>
 <html>
@@ -23,7 +23,7 @@
       # if t != "index" and t != "community" and t != "news":
       #   let name = c.tabs[i].key
       #   if currentTab == t:
-            <a class="active" 
+            <a class="active"
       #   else:
             <a
       #   end if
@@ -104,7 +104,7 @@ p.greet() <span class="cmt"># or greet(p)</span>
 <span class="cmt"># declare a C procedure..</span>
 <span class="kwd">proc</span> <span class="def">unsafeScanf</span>(f: <span class="typ">File</span>, s: <span class="typ">cstring</span>)
 <span class="tab">  </span>{.varargs,
-<span class="tab">    </span>importc: <span class="val">"fscanf"</span>, 
+<span class="tab">    </span>importc: <span class="val">"fscanf"</span>,
 <span class="tab end">    </span>header: <span class="val">"&lt;stdio.h&gt;"</span>.}
 
 <span class="cmt"># ..and use it...</span>
@@ -191,7 +191,7 @@ runForever()
 				</div>
 			</div>
 		</footer>
-  
+
 #  if currentTab == "index":
   <script src="assets/index.js"></script>
 # end if

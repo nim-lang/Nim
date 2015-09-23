@@ -335,8 +335,8 @@ proc suggestExpr*(c: PContext, node: PNode) =
     if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
-  if c.inCompilesContext > 0: return
-  inc(c.inCompilesContext)
+  if c.compilesContextId > 0: return
+  inc(c.compilesContextId)
 
   if gIdeCmd == ideSug:
     var n = if nfIsCursor in node.flags: node else: findClosestDot(node)
@@ -365,7 +365,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
         addSon(a, x)
       suggestCall(c, a, n, outputs)
 
-  dec(c.inCompilesContext)
+  dec(c.compilesContextId)
   if outputs > 0 and gIdeCmd != ideUse: suggestQuit()
 
 proc suggestStmt*(c: PContext, n: PNode) =

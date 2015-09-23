@@ -622,9 +622,12 @@ proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
 proc getFNum*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JFloat``, or if ``n`` is nil.
-  if n.isNil or n.kind != JFloat: return default
-  else: return n.fnum
+  ## Returns ``default`` if ``n`` is not a ``JFloat`` or ``JInt``, or if ``n`` is nil.
+  if n.isNil: return default
+  case n.kind
+  of JFloat: return n.fnum
+  of JInt: return float(n.num)
+  else: return default
 
 proc getBVal*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
@@ -1074,9 +1077,9 @@ when not defined(js):
     ## for nice error messages.
     var p: JsonParser
     p.open(s, filename)
+    defer: p.close()
     discard getTok(p) # read first token
     result = p.parseJson()
-    p.close()
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
@@ -1202,6 +1205,17 @@ when isMainModule:
   assert(testJson{"doesnt_exist"}{"anything"}.isNil)
   testJson{["c", "d"]} = %true
   assert(testJson["c"]["d"].bval)
+
+  # make sure no memory leek when parsing invalid string
+  let startMemory = getOccupiedMem()
+  for i in 0 .. 10000:
+    try:
+      discard parseJson"""{ invalid"""
+    except:
+      discard
+  # memory diff should less than 2M
+  assert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
+
 
   # test `$`
   let stringified = $testJson

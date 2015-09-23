@@ -110,6 +110,13 @@ type
     toBind, toMixin, toInject: IntSet
     owner: PSym
     cursorInBody: bool # only for nimsuggest
+    bracketExpr: PNode
+
+template withBracketExpr(ctx, x, body: untyped) =
+  let old = ctx.bracketExpr
+  ctx.bracketExpr = x
+  body
+  ctx.bracketExpr = old
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
@@ -281,6 +288,47 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   for i in 0.. < n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
 
+proc wrapInBind(c: var TemplCtx; n: PNode; opr: string): PNode =
+  let ident = getIdent(opr)
+  if ident.id in c.toInject: return n
+
+  let s = searchInScopes(c.c, ident)
+  if s != nil:
+    var callee: PNode
+    if contains(c.toBind, s.id):
+      callee = symChoice(c.c, n, s, scClosed)
+    elif contains(c.toMixin, s.name.id):
+      callee = symChoice(c.c, n, s, scForceOpen)
+    elif s.owner == c.owner and sfGenSym in s.flags:
+      # template tmp[T](x: var seq[T]) =
+      # var yz: T
+      incl(s.flags, sfUsed)
+      callee = newSymNode(s, n.info)
+      styleCheckUse(n.info, s)
+    else:
+      callee = semTemplSymbol(c.c, n, s)
+
+    let call = newNodeI(nkCall, n.info)
+    call.add(callee)
+    for i in 0 .. n.len-1: call.add(n[i])
+    result = newNodeI(nkBind, n.info, 2)
+    result.sons[0] = n
+    result.sons[1] = call
+  else:
+    result = n
+
+proc oprIsRoof(n: PNode): bool =
+  const roof = "^"
+  case n.kind
+  of nkIdent: result = n.ident.s == roof
+  of nkSym: result = n.sym.name.s == roof
+  of nkAccQuoted:
+    if n.len == 1:
+      result = oprIsRoof(n.sons[0])
+  of nkOpenSymChoice, nkClosedSymChoice:
+    result = oprIsRoof(n.sons[0])
+  else: discard
+
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
@@ -423,24 +471,64 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
     result = onlyReplaceParams(c, n)
-  else:
+  of nkBracketExpr:
+    result = newNodeI(nkCall, n.info)
+    result.add newIdentNode(getIdent("[]"), n.info)
+    for i in 0 ..< n.len: result.add(n[i])
+    let n0 = semTemplBody(c, n.sons[0])
+    withBracketExpr c, n0:
+      result = semTemplBodySons(c, result)
+  of nkCurlyExpr:
+    result = newNodeI(nkCall, n.info)
+    result.add newIdentNode(getIdent("{}"), n.info)
+    for i in 0 ..< n.len: result.add(n[i])
+    result = semTemplBodySons(c, result)
+  of nkAsgn, nkFastAsgn:
+    checkSonsLen(n, 2)
+    let a = n.sons[0]
+    let b = n.sons[1]
+
+    let k = a.kind
+    case k
+    of nkBracketExpr:
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent("[]="), n.info)
+      for i in 0 ..< a.len: result.add(a[i])
+      result.add(b)
+      let a0 = semTemplBody(c, a.sons[0])
+      withBracketExpr c, a0:
+        result = semTemplBodySons(c, result)
+    of nkCurlyExpr:
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent("{}="), n.info)
+      for i in 0 ..< a.len: result.add(a[i])
+      result.add(b)
+      result = semTemplBodySons(c, result)
+    else:
+      result = semTemplBodySons(c, n)
+  of nkCallKinds-{nkPostfix}:
+    result = semTemplBodySons(c, n)
+    if c.bracketExpr != nil and n.len == 2 and oprIsRoof(n.sons[0]):
+      result.add c.bracketExpr
+  of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
-    if n.kind == nkDotExpr or n.kind == nkAccQuoted:
-      let s = qualifiedLookUp(c.c, n, {})
-      if s != nil:
-        # do not symchoice a quoted template parameter (bug #2390):
-        if s.owner == c.owner and s.kind == skParam and
-            n.kind == nkAccQuoted and n.len == 1:
-          incl(s.flags, sfUsed)
-          styleCheckUse(n.info, s)
-          return newSymNode(s, n.info)
-        elif contains(c.toBind, s.id):
-          return symChoice(c.c, n, s, scClosed)
-        elif contains(c.toMixin, s.name.id):
-          return symChoice(c.c, n, s, scForceOpen)
-        else:
-          return symChoice(c.c, n, s, scOpen)
+    let s = qualifiedLookUp(c.c, n, {})
+    if s != nil:
+      # do not symchoice a quoted template parameter (bug #2390):
+      if s.owner == c.owner and s.kind == skParam and
+          n.kind == nkAccQuoted and n.len == 1:
+        incl(s.flags, sfUsed)
+        styleCheckUse(n.info, s)
+        return newSymNode(s, n.info)
+      elif contains(c.toBind, s.id):
+        return symChoice(c.c, n, s, scClosed)
+      elif contains(c.toMixin, s.name.id):
+        return symChoice(c.c, n, s, scForceOpen)
+      else:
+        return symChoice(c.c, n, s, scOpen)
+    result = semTemplBodySons(c, n)
+  else:
     result = semTemplBodySons(c, n)
 
 proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
@@ -470,27 +558,6 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     result = n
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBodyDirty(c, n.sons[i])
-
-proc transformToExpr(n: PNode): PNode =
-  var realStmt: int
-  result = n
-  case n.kind
-  of nkStmtList:
-    realStmt = - 1
-    for i in countup(0, sonsLen(n) - 1):
-      case n.sons[i].kind
-      of nkCommentStmt, nkEmpty, nkNilLit:
-        discard
-      else:
-        if realStmt == - 1: realStmt = i
-        else: realStmt = - 2
-    if realStmt >= 0: result = transformToExpr(n.sons[realStmt])
-    else: n.kind = nkStmtListExpr
-  of nkBlockStmt:
-    n.kind = nkBlockExpr
-    #nkIfStmt: n.kind = nkIfExpr // this is not correct!
-  else:
-    discard
 
 proc semTemplateDef(c: PContext, n: PNode): PNode =
   var s: PSym
@@ -549,9 +616,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n.sons[bodyPos] = semTemplBodyDirty(ctx, n.sons[bodyPos])
   else:
     n.sons[bodyPos] = semTemplBody(ctx, n.sons[bodyPos])
-  if s.typ.sons[0].kind notin {tyStmt, tyTypeDesc}:
-    n.sons[bodyPos] = transformToExpr(n.sons[bodyPos])
-    # only parameters are resolved, no type checking is performed
+  # only parameters are resolved, no type checking is performed
   semIdeForTemplateOrGeneric(c, n.sons[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner()
@@ -604,6 +669,11 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       localError(n.info, errInvalidExpression)
       result = n
 
+  proc stupidStmtListExpr(n: PNode): bool =
+    for i in 0 .. n.len-2:
+      if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
+    result = true
+
   result = n
   case n.kind
   of nkIdent:
@@ -629,6 +699,12 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
         localError(n.info, errInvalidExpression)
     else:
       localError(n.info, errInvalidExpression)
+  of nkStmtList, nkStmtListExpr:
+    if stupidStmtListExpr(n):
+      result = semPatternBody(c, n.lastSon)
+    else:
+      for i in countup(0, sonsLen(n) - 1):
+        result.sons[i] = semPatternBody(c, n.sons[i])
   of nkCallKinds:
     let s = qualifiedLookUp(c.c, n.sons[0], {})
     if s != nil:

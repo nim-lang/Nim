@@ -7,7 +7,7 @@ type
 
 proc getTypeName(t: typedesc): string = t.name
 
-proc foo(T: typedesc[float], a: expr): string =
+proc foo(T: typedesc[float], a: auto): string =
   result = "float " & $(a.len > 5)
 
 proc foo(T: typedesc[TFoo], a: int): string =

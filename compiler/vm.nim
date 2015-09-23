@@ -320,8 +320,19 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
       dest.node.strVal = if src.intVal == 0: "false" else: "true"
     of tyFloat..tyFloat128:
       dest.node.strVal = $src.floatVal
-    of tyString, tyCString:
+    of tyString:
       dest.node.strVal = src.node.strVal
+    of tyCString:
+      if src.node.kind == nkBracket:
+        # Array of chars
+        var strVal = ""
+        for son in src.node.sons:
+          let c = char(son.intVal)
+          if c == '\0': break
+          strVal.add(c)
+        dest.node.strVal = strVal
+      else:
+        dest.node.strVal = src.node.strVal
     of tyChar:
       dest.node.strVal = $chr(src.intVal)
     else:
@@ -1461,6 +1472,8 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   let n = transformExpr(module, n)
   setupGlobalCtx(module)
   var c = globalCtx
+  let oldMode = c.mode
+  defer: c.mode = oldMode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
   if c.code[start].opcode == opcEof: return emptyNode

@@ -477,6 +477,8 @@ type
                       # wildcard type.
     tfHasAsgn         # type has overloaded assignment operator
     tfBorrowDot       # distinct type borrows '.'
+    tfTriggersCompileTime # uses the NimNode type which make the proc
+                          # implicitly '.compiletime'
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -537,7 +539,7 @@ const
 type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
-    mDefined, mDefinedInScope, mCompiles,
+    mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
@@ -614,6 +616,7 @@ const
   ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mArrGet, mArrPut, mAsgn,
     mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI,
     mAddF64, mSubF64, mMulF64, mDivF64,
@@ -709,6 +712,7 @@ type
     lfSingleUse               # no location yet and will only be used once
   TStorageLoc* = enum
     OnUnknown,                # location is unknown (stack, heap or static)
+    OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
     OnHeap                    # location is on heap or global
                               # (reference counting needed)
@@ -734,6 +738,8 @@ type
     name*: Rope
     path*: PNode              # can be a string literal!
 
+  CompilesId* = int ## id that is used for the caching logic within
+                    ## ``system.compiles``. See the seminst module.
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
@@ -741,6 +747,7 @@ type
                               # needed in caas mode for purging the cache
                               # XXX: it's possible to switch to a
                               # simple ref count here
+    compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
 
@@ -1378,6 +1385,9 @@ proc propagateToOwner*(owner, elem: PType) =
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
 
+  if tfTriggersCompileTime in elem.flags:
+    owner.flags.incl tfTriggersCompileTime
+
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
     let elemB = elem.skipTypes({tyGenericInst})
@@ -1585,3 +1595,10 @@ proc createMagic*(name: string, m: TMagic): PSym =
 let
   opNot* = createMagic("not", mNot)
   opContains* = createMagic("contains", mInSet)
+
+when false:
+  proc containsNil*(n: PNode): bool =
+    # only for debugging
+    if n.isNil: return true
+    for i in 0 ..< n.safeLen:
+      if n[i].containsNil: return true

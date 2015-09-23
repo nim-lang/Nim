@@ -78,7 +78,7 @@ type
   stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
-  auto* = expr ## meta type for automatic type determination
+  auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type
   untyped* {.magic: Expr.} ## meta type to denote an expression that
                            ## is not resolved (for templates)
@@ -104,7 +104,7 @@ type
   SomeNumber* = SomeInteger|SomeReal
     ## type class matching all number types
 
-proc defined*(x: expr): bool {.magic: "Defined", noSideEffect.}
+proc defined*(x: expr): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
   ## `x` is an external symbol introduced through the compiler's
@@ -125,7 +125,7 @@ when defined(nimalias):
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
-proc declared*(x: expr): bool {.magic: "Defined", noSideEffect.}
+proc declared*(x: expr): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared. `x` has to be an identifier or a qualified identifier.
   ## This can be used to check whether a library provides a certain
@@ -140,11 +140,11 @@ when defined(useNimRtl):
   {.deadCodeElim: on.}
 
 proc definedInScope*(x: expr): bool {.
-  magic: "DefinedInScope", noSideEffect, deprecated.}
+  magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
   ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
 
 proc declaredInScope*(x: expr): bool {.
-  magic: "DefinedInScope", noSideEffect.}
+  magic: "DefinedInScope", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared in the current scope. `x` has to be an identifier.
 
@@ -160,7 +160,7 @@ proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
-proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect.} =
+proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin 'type' operator for accessing the type of an expression.
   ## Cannot be overloaded.
   discard
@@ -238,6 +238,14 @@ type
   varargs*{.magic: "Varargs".}[T] ## Generic type to construct a varargs type.
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
+
+when defined(nimArrIdx):
+  # :array|openarray|string|seq|cstring|tuple
+  proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
+    noSideEffect, magic: "ArrGet".}
+  proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
+    x: S) {.noSideEffect, magic: "ArrPut".}
+  proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
 type
   Slice*[T] = object ## builtin slice type
@@ -1175,9 +1183,12 @@ const
 
   seqShallowFlag = low(int)
 
-let nimvm* {.magic: "Nimvm".}: bool = false
+when defined(nimKnowsNimvm):
+  let nimvm* {.magic: "Nimvm".}: bool = false
     ## may be used only in "when" expression.
     ## It is true in Nim VM context and false otherwise
+else:
+  const nimvm*: bool = false
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -1293,25 +1304,42 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
-  let xl = x.len
-  shallowCopy(x[i], x[xl-1])
-  setLen(x, xl-1)
+  let xl = x.len - 1
+  shallowCopy(x[i], x[xl])
+  setLen(x, xl)
 
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
-  let xl = x.len
-  for j in i..xl-2: shallowCopy(x[j], x[j+1])
-  setLen(x, xl-1)
+  template defaultImpl =
+    let xl = x.len
+    for j in i..xl-2: shallowCopy(x[j], x[j+1])
+    setLen(x, xl-1)
+
+  when nimvm:
+    defaultImpl()
+  else:
+    when defined(js):
+      {.emit: "`x`[`x`_Idx].splice(`i`, 1);".}
+    else:
+      defaultImpl()
 
 proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   ## inserts `item` into `x` at position `i`.
-  let xl = x.len
-  setLen(x, xl+1)
-  var j = xl-1
-  while j >= i:
-    shallowCopy(x[j+1], x[j])
-    dec(j)
+  template defaultImpl =
+    let xl = x.len
+    setLen(x, xl+1)
+    var j = xl-1
+    while j >= i:
+      shallowCopy(x[j+1], x[j])
+      dec(j)
+  when nimvm:
+    defaultImpl()
+  else:
+    when defined(js):
+      {.emit: "`x`[`x`_Idx].splice(`i`, 0, null);".}
+    else:
+      defaultImpl()
   x[i] = item
 
 proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
@@ -2207,7 +2235,9 @@ proc `$`*[T: tuple|object](x: T): string =
     firstElement = false
   result.add(")")
 
-proc collectionToString[T](x: T, b, e: string): string =
+proc collectionToString[T: set | seq](x: T, b, e: string): string =
+  when x is seq:
+    if x.isNil: return "nil"
   result = b
   var firstElement = true
   for value in items(x):
@@ -3042,7 +3072,7 @@ template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
   # fill the hole:
   for i in 0 .. <b.len: s[i+a] = b[i]
 
-when hasAlloc:
+when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
     result = s.substr(x.a, x.b)
@@ -3364,7 +3394,7 @@ when hasAlloc:
       x[j+i] = item[j]
       inc(j)
 
-proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect.} =
+proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect, compileTime.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
@@ -3428,7 +3458,7 @@ when hasAlloc and not defined(nimscript) and not defined(JS):
 
   include "system/deepcopy"
 
-proc procCall*(x: expr) {.magic: "ProcCall".} =
+proc procCall*(x: expr) {.magic: "ProcCall", compileTime.} =
   ## special magic to prohibit dynamic binding for `method`:idx: calls.
   ## This is similar to `super`:idx: in ordinary OO languages.
   ##
@@ -3437,6 +3467,7 @@ proc procCall*(x: expr) {.magic: "ProcCall".} =
   ##   procCall someMethod(a, b)
   discard
 
+proc `^`*[T](x: int; y: openArray[T]): int {.noSideEffect, magic: "Roof".}
 proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
   ## builtin `roof`:idx: operator that can be used for convenient array access.
   ## ``a[^x]`` is rewritten to ``a[a.len-x]``. However currently the ``a``

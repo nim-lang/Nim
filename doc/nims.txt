@@ -12,8 +12,8 @@ a ``myproject.nims`` file that simply contains Nim code controlling the
 compilation process.
 
 The VM cannot deal with ``importc``, the FFI is not available, so there are not
-many stdlib modules that you can use with Nim's VM. However, the following
-modules are available:
+many stdlib modules that you can use with Nim's VM. However, at least the
+following modules are available:
 
 * `strutils <strutils.html>`_
 * `ospaths <ospaths.html>`_
@@ -40,7 +40,7 @@ NimScript as a build tool
 =========================
 
 The ``task`` template that the ``system`` module defines allows a NimScript
-file to be used as a build tool. The following exampled defines a
+file to be used as a build tool. The following example defines a
 task ``build`` that is an alias for the ``c`` command:
 
 .. code-block:: nim

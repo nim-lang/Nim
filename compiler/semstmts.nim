@@ -957,26 +957,34 @@ proc semDo(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
 
-  n = replaceTypesInBody(c, pt, n)
+  let original = n.sons[namePos].sym
+  let s = copySym(original, false)
+  incl(s.flags, sfFromGeneric)
+
+  n = replaceTypesInBody(c, pt, n, original)
   result = n
-
+  s.ast = result
+  n.sons[namePos].sym = s
   n.sons[genericParamsPos] = emptyNode
-  n.sons[paramsPos] = n.typ.n
-
+  let params = n.typ.n
+  n.sons[paramsPos] = params
+  s.typ = n.typ
+  for i in 1..<params.len:
+    if params[i].typ.kind in {tyTypeDesc, tyGenericParam,
+                              tyFromExpr, tyFieldAccessor}+tyTypeClasses:
+      localError(params[i].info, "cannot infer type of parameter: " &
+                 params[i].sym.name.s)
   openScope(c)
-  var s = n.sons[namePos].sym
   pushOwner(s)
-  addParams(c, n.typ.n, skProc)
+  addParams(c, params, skProc)
   pushProcCon(c, s)
   addResult(c, n.typ.sons[0], n.info, skProc)
   addResultNode(c, n)
   let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-  n.sons[bodyPos] = transformBody(c.module, semBody, n.sons[namePos].sym)
+  n.sons[bodyPos] = transformBody(c.module, semBody, s)
   popProcCon(c)
   popOwner()
   closeScope(c)
-
-  s.ast = result
 
   # alternative variant (not quite working):
   # var prc = arg[0].sym
@@ -1033,6 +1041,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
   of "=":
+    if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     let t = s.typ
     if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar:
@@ -1131,6 +1140,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # semParamList(c, n.sons[ParamsPos], nil, s)
   else:
     s.typ = newProcType(c, n.info)
+  if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind in skIterators:
@@ -1425,7 +1435,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
             localError(result.info, "type class predicate failed")
         of tyUnknown: continue
         else: discard
-      if n.sons[i].typ == enforceVoidContext or usesResult(n.sons[i]):
+      if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
         voidContext = true
         n.typ = enforceVoidContext
       if i == last and (length == 1 or efWantValue in flags):

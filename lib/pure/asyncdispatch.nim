@@ -126,6 +126,7 @@ export Port, SocketFlag
 ## * Can't await in a ``except`` body
 ## * Forward declarations for async procs are broken,
 ##   link includes workaround: https://github.com/nim-lang/Nim/issues/3182.
+## * FutureVar[T] needs to be completed manually.
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
@@ -145,10 +146,15 @@ type
   Future*[T] = ref object of FutureBase ## Typed future.
     value: T ## Stored value
 
+  FutureVar*[T] = distinct Future[T]
+
+  FutureError* = object of Exception
+    cause*: FutureBase
+
 {.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
 
-
-var currentID = 0
+when not defined(release):
+  var currentID = 0
 proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   ## Creates a new future.
   ##
@@ -162,18 +168,39 @@ proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
     result.fromProc = fromProc
     currentID.inc()
 
+proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
+  ## Create a new ``FutureVar``. This Future type is ideally suited for
+  ## situations where you want to avoid unnecessary allocations of Futures.
+  ##
+  ## Specifying ``fromProc``, which is a string specifying the name of the proc
+  ## that this future belongs to, is a good habit as it helps with debugging.
+  result = FutureVar[T](newFuture[T](fromProc))
+
+proc clean*[T](future: FutureVar[T]) =
+  ## Resets the ``finished`` status of ``future``.
+  Future[T](future).finished = false
+  Future[T](future).error = nil
+
 proc checkFinished[T](future: Future[T]) =
+  ## Checks whether `future` is finished. If it is then raises a
+  ## ``FutureError``.
   when not defined(release):
     if future.finished:
-      echo("<-----> ", future.id, " ", future.fromProc)
-      echo(future.stackTrace)
-      echo("-----")
+      var msg = ""
+      msg.add("An attempt was made to complete a Future more than once. ")
+      msg.add("Details:")
+      msg.add("\n  Future ID: " & $future.id)
+      msg.add("\n  Created in proc: " & future.fromProc)
+      msg.add("\n  Stack trace to moment of creation:")
+      msg.add("\n" & indent(future.stackTrace.strip(), 4))
       when T is string:
-        echo("Contents: ", future.value.repr)
-      echo("<----->")
-      echo("Future already finished, cannot finish twice.")
-      echo getStackTrace()
-      assert false
+        msg.add("\n  Contents (string): ")
+        msg.add("\n" & indent(future.value.repr, 4))
+      msg.add("\n  Stack trace to moment of secondary completion:")
+      msg.add("\n" & indent(getStackTrace().strip(), 4))
+      var err = newException(FutureError, msg)
+      err.cause = future
+      raise err
 
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
@@ -193,6 +220,15 @@ proc complete*(future: Future[void]) =
   future.finished = true
   if future.cb != nil:
     future.cb()
+
+proc complete*[T](future: FutureVar[T]) =
+  ## Completes a ``FutureVar``.
+  template fut: expr = Future[T](future)
+  checkFinished(fut)
+  assert(fut.error == nil)
+  fut.finished = true
+  if fut.cb != nil:
+    fut.cb()
 
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
@@ -230,15 +266,17 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
-proc echoOriginalStackTrace[T](future: Future[T]) =
+proc injectStacktrace[T](future: Future[T]) =
   # TODO: Come up with something better.
   when not defined(release):
-    echo("Original stack trace in ", future.fromProc, ":")
+    var msg = ""
+    msg.add("\n  " & future.fromProc & "'s lead up to read of failed Future:")
+
     if not future.errorStackTrace.isNil and future.errorStackTrace != "":
-      echo(future.errorStackTrace)
+      msg.add("\n" & indent(future.errorStackTrace.strip(), 4))
     else:
-      echo("Empty or nil stack trace.")
-    echo("Continuing...")
+      msg.add("\n    Empty or nil stack trace.")
+    future.error.msg.add(msg)
 
 proc read*[T](future: Future[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
@@ -247,7 +285,7 @@ proc read*[T](future: Future[T]): T =
   ## If the result of the future is an error then that error will be raised.
   if future.finished:
     if future.error != nil:
-      echoOriginalStackTrace(future)
+      injectStacktrace(future)
       raise future.error
     when T isnot void:
       return future.value
@@ -263,6 +301,13 @@ proc readError*[T](future: Future[T]): ref Exception =
   if future.error != nil: return future.error
   else:
     raise newException(ValueError, "No error in future.")
+
+proc mget*[T](future: FutureVar[T]): var T =
+  ## Returns a mutable value stored in ``future``.
+  ##
+  ## Unlike ``read``, this function will not raise an exception if the
+  ## Future has not been finished.
+  result = Future[T](future).value
 
 proc finished*[T](future: Future[T]): bool =
   ## Determines whether ``future`` has completed.
@@ -282,7 +327,7 @@ proc asyncCheck*[T](future: Future[T]) =
   future.callback =
     proc () =
       if future.failed:
-        echoOriginalStackTrace(future)
+        injectStacktrace(future)
         raise future.error
 
 proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
@@ -947,8 +992,8 @@ else:
 
   proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()
-    sock.SocketHandle.close()
     disp.selector.unregister(sock.SocketHandle)
+    sock.SocketHandle.close()
 
   proc unregister*(fd: AsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)

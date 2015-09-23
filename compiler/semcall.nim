@@ -95,7 +95,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.inCompilesContext > 0:
+  if c.compilesContextId > 0:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
   if errors.isNil or errors.len == 0:
@@ -235,7 +235,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if c.inCompilesContext > 0:
+    if c.compilesContextId > 0:
       # quick error message for performance of 'compiles' built-in:
       globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
@@ -308,7 +308,10 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   let gp = finalCallee.ast.sons[genericParamsPos]
   if gp.kind != nkEmpty:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
-      finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
+      if x.calleeSym.magic in {mArrGet, mArrPut}:
+        finalCallee = x.calleeSym
+      else:
+        finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
     else:
       # For macros and templates, the resolved generic params
       # are added as normal params.
