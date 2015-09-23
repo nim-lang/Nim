@@ -32,9 +32,9 @@ type
     size*: int       ## size of the memory mapped file
 
     when defined(windows):
-      fHandle: int
-      mapHandle: int
-      wasOpened: bool
+      fHandle: Handle
+      mapHandle: Handle
+      wasOpened: bool   ## only close if wasOpened
     else:
       handle: cint
 
