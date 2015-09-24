@@ -1377,10 +1377,13 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   genObjAccess(c, n.sons[0], dest, flags)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  if n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
-      tyString, tyCString}:
+  let arrayType = n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
+  if arrayType in {tyString, tyCString}:
     genArrAccess2(c, n, dest, opcLdStrIdx, {})
+  elif arrayType == tyTypeDesc:
+    c.genTypeLit(n.typ, dest)
   else:
+    echo renderTree(n)
     genArrAccess2(c, n, dest, opcLdArr, flags)
 
 proc getNullValueAux(obj: PNode, result: PNode) =
