@@ -32,8 +32,9 @@ type
     size*: int       ## size of the memory mapped file
 
     when defined(windows):
-      fHandle: int
-      mapHandle: int
+      fHandle: Handle
+      mapHandle: Handle
+      wasOpened: bool   ## only close if wasOpened
     else:
       handle: cint
 
@@ -115,7 +116,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
     template callCreateFile(winApiProc, filename: expr): expr =
       winApiProc(
         filename,
-        if readonly: GENERIC_READ else: GENERIC_ALL,
+        # GENERIC_ALL != (GENERIC_READ or GENERIC_WRITE)
+        if readonly: GENERIC_READ else: GENERIC_READ or GENERIC_WRITE,
         FILE_SHARE_READ,
         nil,
         if newFileSize != -1: CREATE_ALWAYS else: OPEN_EXISTING,
@@ -172,6 +174,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if mappedSize != -1: result.size = min(fileSize, mappedSize).int
       else: result.size = fileSize.int
 
+    result.wasOpened = true
+
   else:
     template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
@@ -226,7 +230,7 @@ proc close*(f: var MemFile) =
   var lastErr: OSErrorCode
 
   when defined(windows):
-    if f.fHandle != INVALID_HANDLE_VALUE:
+    if f.fHandle != INVALID_HANDLE_VALUE and f.wasOpened:
       error = unmapViewOfFile(f.mem) == 0
       lastErr = osLastError()
       error = (closeHandle(f.mapHandle) == 0) or error
@@ -243,6 +247,7 @@ proc close*(f: var MemFile) =
   when defined(windows):
     f.fHandle = 0
     f.mapHandle = 0
+    f.wasOpened = false
   else:
     f.handle = 0
 
