@@ -2103,10 +2103,10 @@ proc each*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) {.
   ## The well-known ``map`` operation from functional programming. Applies
   ## `op` to every item in `data` modifying it directly.
   ##
-  ## **Deprecated since version 0.9:** Use the ``map`` proc instead.
+  ## **Deprecated since version 0.9:** Use the ``apply`` proc instead.
   for i in 0..data.len-1: op(data[i])
 
-proc map*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] =
+proc map*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] {.inline.} =
   ## Returns a new sequence with the results of `op` applied to every item in
   ## `data`.
   ##
@@ -2121,7 +2121,8 @@ proc map*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] =
   newSeq(result, data.len)
   for i in 0..data.len-1: result[i] = op(data[i])
 
-proc map*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
+proc map*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) {.
+  deprecated.} =
   ## Applies `op` to every item in `data` modifying it directly.
   ##
   ## Note that this version of ``map`` requires your input and output types to
@@ -2134,7 +2135,48 @@ proc map*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
   ##   map(a, proc(x: var string) = x &= "42")
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
+  ##
+  ## **Deprecated since version 0.11.4:** Use the ``apply`` proc instead.
   for i in 0..data.len-1: op(data[i])
+
+proc apply*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) {.
+  inline.} =
+  ## Applies `op` to every item in `data` modifying it directly.
+  ##
+  ## Note that this requires your input and output types to
+  ## be the same, since they are modified in-place.
+  ## The parameter function takes a ``var T`` type parameter.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var a = @["1", "2", "3", "4"]
+  ##   echo repr(a)
+  ##   # --> ["1", "2", "3", "4"]
+  ##   map(a, proc(x: var string) = x &= "42")
+  ##   echo repr(a)
+  ##   # --> ["142", "242", "342", "442"]
+  ##
+  for i in 0..data.len-1: op(data[i])
+
+proc apply*[T](data: var openArray[T], op: proc (x: T): T {.closure.}) {.
+  inline.} =
+  ## Applies `op` to every item in `data` modifying it directly.
+  ##
+  ## Note that this requires your input and output types to
+  ## be the same, since they are modified in-place.
+  ## The parameter function takes and returns a ``T`` type variable.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var a = @["1", "2", "3", "4"]
+  ##   echo repr(a)
+  ##   # --> ["1", "2", "3", "4"]
+  ##   map(a, proc(x: string): string = x & "42")
+  ##   echo repr(a)
+  ##   # --> ["142", "242", "342", "442"]
+  ##
+  for i in 0..data.len-1: data[i] = op(data[i])
+
 
 iterator fields*[T: tuple|object](x: T): RootObj {.
   magic: "Fields", noSideEffect.}
