@@ -787,6 +787,8 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     initLoc(test, locNone, it.typ, OnStack)
     initLocExpr(p, it.sons[1], u)
     initLoc(v, locExpr, disc.typ, OnUnknown)
+    if disc.sym.loc.r == nil:
+      disc.sym.loc.r = disc.sym.name.s.rope
     v.r = "$1.$2" % [obj, disc.sym.loc.r]
     genInExprAux(p, it, u, v, test)
     let id = nodeTableTestOrSet(p.module.dataCache,
