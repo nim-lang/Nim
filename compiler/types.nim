@@ -1265,13 +1265,16 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
       else: result = 8
     a = result
   of tySet:
-    length = lengthOrd(typ.sons[0])
-    if length <= 8: result = 1
-    elif length <= 16: result = 2
-    elif length <= 32: result = 4
-    elif length <= 64: result = 8
-    elif align(length, 8) mod 8 == 0: result = align(length, 8) div 8
-    else: result = align(length, 8) div 8 + 1
+    if typ.sons[0].kind == tyGenericParam:
+      result = szUnknownSize
+    else:
+      length = lengthOrd(typ.sons[0])
+      if length <= 8: result = 1
+      elif length <= 16: result = 2
+      elif length <= 32: result = 4
+      elif length <= 64: result = 8
+      elif align(length, 8) mod 8 == 0: result = align(length, 8) div 8
+      else: result = align(length, 8) div 8 + 1
     a = result
   of tyRange:
     result = computeSizeAux(typ.sons[0], a)
