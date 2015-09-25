@@ -1468,16 +1468,25 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   hint("Processing " & prc[0].getName & " as an async proc.")
 
   let returnType = prc[3][0]
+  var baseType: NimNode
   # Verify that the return type is a Future[T]
-  if returnType.kind == nnkIdent:
-    error("Expected return type of 'Future' got '" & $returnType & "'")
-  elif returnType.kind == nnkBracketExpr:
-    if $returnType[0] != "Future":
-      error("Expected return type of 'Future' got '" & $returnType[0] & "'")
+  if returnType.kind == nnkBracketExpr:
+    let fut = repr(returnType[0])
+    if fut != "Future":
+      error("Expected return type of 'Future' got '" & fut & "'")
+    baseType = returnType[1]
+  elif returnType.kind in nnkCallKinds and $returnType[0] == "[]":
+    let fut = repr(returnType[1])
+    if fut != "Future":
+      error("Expected return type of 'Future' got '" & fut & "'")
+    baseType = returnType[2]
+  elif returnType.kind == nnkEmpty:
+    baseType = returnType
+  else:
+    error("Expected return type of 'Future' got '" & repr(returnType) & "'")
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
-        (returnType.kind == nnkBracketExpr and
-         returnType[1].kind == nnkIdent and returnType[1].ident == !"void")
+        (baseType.kind == nnkIdent and returnType[1].ident == !"void")
 
   var outerProcBody = newNimNode(nnkStmtList, prc[6])
 
@@ -1485,7 +1494,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   var retFutureSym = genSym(nskVar, "retFuture")
   var subRetType =
     if returnType.kind == nnkEmpty: newIdentNode("void")
-    else: returnType[1]
+    else: baseType
   outerProcBody.add(
     newVarStmt(retFutureSym,
       newCall(
@@ -1509,7 +1518,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
 
     procBody.insert(1, newNimNode(nnkVarSection, prc[6]).add(
-      newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T
+      newIdentDefs(newIdentNode("result"), baseType))) # -> var result: T
 
     procBody.insert(2, newNimNode(nnkPragma).add(
       newIdentNode("pop"))) # -> {.pop.})
@@ -1550,8 +1559,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  if prc[0].getName == "hubConnectionLoop":
-    echo(toStrLit(result))
+  #if prc[0].getName == "hubConnectionLoop":
+  #  echo(toStrLit(result))
 
 macro async*(prc: stmt): stmt {.immediate.} =
   ## Macro which processes async procedures into the appropriate

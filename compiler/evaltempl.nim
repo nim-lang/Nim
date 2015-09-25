@@ -62,7 +62,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
   # if the template has zero arguments, it can be called without ``()``
   # `n` is then a nkSym or something similar
   var totalParams = case n.kind
-    of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: <n.len
+    of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: n.len-1
     else: 0
 
   var
@@ -90,8 +90,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
   # not supplied by the user
   for i in givenRegularParams+1 .. expectedRegularParams:
     let default = s.typ.n.sons[i].sym.ast
-    internalAssert default != nil
-    if default.kind == nkEmpty:
+    if default.isNil or default.kind == nkEmpty:
       localError(n.info, errWrongNumberOfArguments)
       addSon(result, ast.emptyNode)
     else:
