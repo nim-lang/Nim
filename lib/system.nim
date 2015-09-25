@@ -221,11 +221,21 @@ proc high*[T](x: T): T {.magic: "High", noSideEffect.}
   ## the highest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  high(arr) #=> 6
+  ##  high(2) #=> 9223372036854775807
 
 proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ## returns the lowest possible index of an array, a sequence, a string or
   ## the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  high(arr) #=> 0
+  ##  high(2) #=> -9223372036854775808
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
@@ -584,6 +594,10 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
+  ##
+  ## .. code-block:: nim
+  ##  sizeof('A') #=> 1
+  ##  sizeof(2) #=> 8
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
@@ -703,12 +717,22 @@ template excl*[T](s: var set[T], flags: set[T]) =
 proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ## returns the cardinality of the set ``x``, i.e. the number of elements
   ## in the set.
+  ##
+  ## .. code-block:: nim
+  ##  var i = {1,2,3,4}
+  ##  card(i) #=> 4
 
 proc ord*[T](x: T): int {.magic: "Ord", noSideEffect.}
   ## returns the internal int value of an ordinal value ``x``.
+  ##
+  ## .. code-block:: nim
+  ##  card('A') #=> 65
 
 proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
   ## converts an int in the range 0..255 to a character.
+  ##
+  ## .. code-block:: nim
+  ##  chr(65) #=> A
 
 # --------------------------------------------------------------------------
 # built-in operators
