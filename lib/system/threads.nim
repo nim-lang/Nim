@@ -428,6 +428,11 @@ proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.
   result = addr(t)
 
+when hostOS == "windows":
+  proc threadHandle*[TArg](t: var Thread[TArg]): Handle {.inline.} =
+    ## returns the thread handle of `t`.
+    result = t.sys
+
 when false:
   proc mainThreadId*[TArg](): ThreadId[TArg] =
     ## returns the thread ID of the main thread.
