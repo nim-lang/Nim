@@ -610,11 +610,21 @@ proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
+  ##
+  ## .. code-block:: nim
+  ##  var i = 2
+  ##  inc(i) #=> 3
+  ##  inc(i, 3) #=> 6
 
 proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
+  ##
+  ## .. code-block:: nim
+  ##  var i = 2
+  ##  dec(i) #=> 1
+  ##  dec(i, 3) #=> -2
 
 proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
@@ -659,11 +669,22 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
   ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
   ## always an int.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,1,1,1,1]
+  ##  len(arr) #=> 5
+  ##  for i in 0..<arr.len:
+  ##    echo arr[i] #=> 1,1,1,1,1
 
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
   ## ``x = x + {y}``, but it might be more efficient.
+  ##
+  ## .. code-block:: nim
+  ##  var a = initSet[int](4)
+  ##  a.incl(2) #=> {2}
+  ##  a.incl(3) #=> {2, 3}
 
 template incl*[T](s: var set[T], flags: set[T]) =
   ## includes the set of flags to the set ``x``.
@@ -672,6 +693,10 @@ template incl*[T](s: var set[T], flags: set[T]) =
 proc excl*[T](x: var set[T], y: T) {.magic: "Excl", noSideEffect.}
   ## excludes element ``y`` to the set ``x``. This is the same as
   ## ``x = x - {y}``, but it might be more efficient.
+  ##
+  ## .. code-block:: nim
+  ##  var b = {2,3,5,6,12,545}
+  ##  b.excl(5)  #=> {2,3,6,12,545}
 
 template excl*[T](s: var set[T], flags: set[T]) =
   ## excludes the set of flags to ``x``.
