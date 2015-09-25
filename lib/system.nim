@@ -1337,6 +1337,10 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
+  ##
+  ## .. code-block:: nim
+  ##   var s: seq[string] = @["test2","test2"]
+  ##   s.add("test") #=> @[test2, test2, test]
   let xl = x.len
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
@@ -1351,6 +1355,10 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
+  ##
+  ## .. code-block:: nim
+  ##  var i = @[1,2,3,4,5]
+  ##  i.del(2) #=> @[1, 2, 5, 4]
   let xl = x.len - 1
   shallowCopy(x[i], x[xl])
   setLen(x, xl)
@@ -1358,6 +1366,10 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
+  ##
+  ## .. code-block:: nim
+  ##  var i = @[1,2,3,4,5]
+  ##  i.del(2) #=> @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
     for j in i..xl-2: shallowCopy(x[j], x[j+1])
@@ -1373,6 +1385,10 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
 
 proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   ## inserts `item` into `x` at position `i`.
+  ##
+  ## .. code-block:: nim
+  ##  var i = @[1,2,3,4,5]
+  ##  i.insert(2,4) #=> @[1, 2, 3, 4, 2, 5]
   template defaultImpl =
     let xl = x.len
     setLen(x, xl+1)
@@ -1393,6 +1409,12 @@ proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
   ## takes any Nim variable and returns its string representation. It
   ## works even for complex data graphs with cycles. This is a great
   ## debugging tool.
+  ##
+  ## .. code-block:: nim
+  ##  var s: seq[string] = @["test2","test2"]
+  ##  var i = @[1,2,3,4,5]
+  ##  repr(s) #=> 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
+  ##  repr(i) #=> 0x1055ed050[1, 2, 3, 4, 5]
 
 type
   ByteAddress* = int
