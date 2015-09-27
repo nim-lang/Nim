@@ -11,6 +11,26 @@
 ## the `FileStream` and the `StringStream` which implement the stream
 ## interface for Nim file objects (`File`) and strings. Other modules
 ## may provide other implementations for this standard stream interface.
+##
+## Examples:
+##
+## .. code-block:: Nim
+##
+##  import streams
+##  var
+##    ss = newStringStream("""The first line
+##  the second line
+##  the third line""")
+##    line = ""
+##  while ss.readLine(line):
+##    echo line
+##  ss.close()
+##
+##  var fs = newFileStream("somefile.txt", fmRead)
+##  if not isNil(fs):
+##    while fs.readLine(line):
+##      echo line
+##    fs.close()
 
 include "system/inclrtl"
 
@@ -371,7 +391,7 @@ when not defined(js):
     result.writeDataImpl = fsWriteData
     result.flushImpl = fsFlush
 
-  proc newFileStream*(filename: string, mode: FileMode): FileStream =
+  proc newFileStream*(filename: string, mode: FileMode = fmRead): FileStream =
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, nil is returned. See the `system
     ## <system.html>`_ module for a list of available FileMode enums.
