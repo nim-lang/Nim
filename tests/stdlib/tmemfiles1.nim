@@ -1,5 +1,4 @@
 discard """
-  test that closing a closed file is ignored (no error raised)
   file: "tmemfiles1.nim"
 """
 import memfiles, os
