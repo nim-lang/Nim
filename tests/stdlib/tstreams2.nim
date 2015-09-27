@@ -1,7 +1,6 @@
 discard """
-  test newFileStream opening a missing file returns nil
   file: "tstreams2.nim"
-  output: 'fs is: nil'
+  output: '''fs is: nil'''
 """
 import streams
 var
