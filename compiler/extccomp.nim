@@ -474,7 +474,7 @@ proc execWithEcho(cmd: string, msg = hintExecuting): int =
 
 proc execExternalProgram*(cmd: string, msg = hintExecuting) =
   if execWithEcho(cmd, msg) != 0:
-    rawMessage(errExecutionOfProgramFailed, "")
+    rawMessage(errExecutionOfProgramFailed, cmd)
 
 proc generateScript(projectFile: string, script: Rope) =
   let (dir, name, ext) = splitFile(projectFile)
@@ -680,7 +680,7 @@ proc callCCompiler*(projectfile: string) =
     if gNumberOfProcessors <= 1:
       for i in countup(0, high(cmds)):
         res = execWithEcho(cmds[i])
-        if res != 0: rawMessage(errExecutionOfProgramFailed, [])
+        if res != 0: rawMessage(errExecutionOfProgramFailed, cmds[i])
     elif optListCmd in gGlobalOptions or gVerbosity > 1:
       res = execProcesses(cmds, {poEchoCmd, poUsePath, poParentStreams},
                           gNumberOfProcessors)
@@ -692,9 +692,11 @@ proc callCCompiler*(projectfile: string) =
                           gNumberOfProcessors)
     if res != 0:
       if gNumberOfProcessors <= 1:
-        rawMessage(errExecutionOfProgramFailed, [])
+        rawMessage(errExecutionOfProgramFailed, cmds.join())
       else:
-        rawMessage(errGenerated, " execution of an external program failed; " &
+        rawMessage(errGenerated,
+                   " execution of an external compiler program failed: " &
+                   cmds.join() & "; " &
                    "rerun with --parallelBuild:1 to see the error message")
   if optNoLinking notin gGlobalOptions:
     # call the linker:
