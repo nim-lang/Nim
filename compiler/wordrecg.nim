@@ -82,6 +82,7 @@ type
     wStdIn, wStdOut, wStdErr,
 
     wInOut, wByCopy, wByRef, wOneWay,
+    wBitsize,
 
   TSpecialWords* = set[TSpecialWord]
 
@@ -168,6 +169,7 @@ const
     "stdin", "stdout", "stderr",
 
     "inout", "bycopy", "byref", "oneway",
+    "bitsize",
     ]
 
 proc findStr*(a: openArray[string], s: string): int =
