@@ -1,5 +1,4 @@
 discard """
-  test creating/reading/writing/changing memfiles
   file: "tmemfiles2.nim"
   output: '''Full read size: 20
 Half read size: 10 Data: Hello'''

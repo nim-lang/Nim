@@ -203,7 +203,7 @@ const
     errUseQualifier: "ambiguous identifier: \'$1\' -- use a qualifier",
     errTypeExpected: "type expected",
     errSystemNeeds: "system module needs \'$1\'",
-    errExecutionOfProgramFailed: "execution of an external program failed",
+    errExecutionOfProgramFailed: "execution of an external program failed: '$1'",
     errNotOverloadable: "overloaded \'$1\' leads to ambiguous calls",
     errInvalidArgForX: "invalid argument for \'$1\'",
     errStmtHasNoEffect: "statement has no effect",
