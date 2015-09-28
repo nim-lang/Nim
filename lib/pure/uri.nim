@@ -142,6 +142,7 @@ proc parseUri*(uri: string): Uri =
   parseUri(uri, result)
 
 proc removeDotSegments(path: string): string =
+  if path.len == 0: return ""
   var collection: seq[string] = @[]
   let endsWithSlash = path[path.len-1] == '/'
   var i = 0
@@ -432,3 +433,12 @@ when isMainModule:
   block:
     let test = parseUri("http://example.com/foo/") / "/bar/asd"
     doAssert test.path == "/foo/bar/asd"
+
+  # removeDotSegments tests
+  block:
+    # empty test
+    doAssert removeDotSegments("") == ""
+
+  # bug #3207
+  block:
+    doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
