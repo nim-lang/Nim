@@ -56,7 +56,7 @@ proc getCommand*(): string =
   ## "c", "js", "build", "help".
   builtin
 
-proc setCommand*(cmd: string) =
+proc setCommand*(cmd: string; project="") =
   ## Sets the Nim command that should be continued with after this Nimscript
   ## has finished.
   builtin

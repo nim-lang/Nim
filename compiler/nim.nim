@@ -48,7 +48,7 @@ proc handleCmdLine() =
         gProjectFull = canonicalizePath(gProjectName)
       except OSError:
         gProjectFull = gProjectName
-      var p = splitFile(gProjectFull)
+      let p = splitFile(gProjectFull)
       gProjectPath = p.dir
       gProjectName = p.name
     else:
