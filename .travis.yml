@@ -2,6 +2,11 @@ sudo: false
 language: c
 os:
   - linux
+addons:
+  apt:
+    packages:
+    - libcurl4-openssl-dev
+    - libsdl1.2-dev
 script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
