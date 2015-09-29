@@ -1,6 +1,8 @@
 sudo: false
 language: c
-os: linux
+os:
+  - linux
+  - osx
 script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
