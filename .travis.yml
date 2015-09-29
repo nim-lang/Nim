@@ -1,3 +1,4 @@
+sudo: false
 language: c
 os: linux
 script:
