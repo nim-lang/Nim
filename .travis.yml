@@ -2,7 +2,9 @@ language: c
 os: linux
 script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
-  - cd csources && sh build.sh
+  - cd csources
+  - sh build.sh
+  - cd ..
   - ./bin/nim c koch
   - ./koch boot
   - ./koch boot -d:release
