@@ -534,6 +534,7 @@ when defined(Windows) and not defined(useNimRtl):
 
     if e != nil: dealloc(e)
     if success == 0:
+      if poInteractive in result.options: close(result)
       const errInvalidParameter = 87.int
       const errFileNotFound = 2.int
       if lastError.int in {errInvalidParameter, errFileNotFound}:
