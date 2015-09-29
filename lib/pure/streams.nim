@@ -101,6 +101,18 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
+proc readAll*(s: Stream): string =
+  ## Reads all available data.
+  result = newString(1000)
+  var r = 0
+  while true:
+    let readBytes = readData(s, addr(result[r]), 1000)
+    if readBytes < 1000:
+      setLen(result, r+readBytes)
+      break
+    inc r, 1000
+    setLen(result, r+1000)
+
 proc readData*(s, unused: Stream, buffer: pointer,
                bufLen: int): int {.deprecated.} =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.

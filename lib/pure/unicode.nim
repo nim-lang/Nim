@@ -1340,10 +1340,9 @@ proc lastRune*(s: string; last: int): (Rune, int) =
   else:
     var L = 0
     while last-L >= 0 and ord(s[last-L]) shr 6 == 0b10: inc(L)
-    inc(L)
     var r: Rune
     fastRuneAt(s, last-L, r, false)
-    result = (r, L)
+    result = (r, L+1)
 
 when isMainModule:
   let
