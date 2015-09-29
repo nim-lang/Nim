@@ -1383,7 +1383,6 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   elif arrayType == tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
-    echo renderTree(n)
     genArrAccess2(c, n, dest, opcLdArr, flags)
 
 proc getNullValueAux(obj: PNode, result: PNode) =
