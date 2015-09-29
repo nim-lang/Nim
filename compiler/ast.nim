@@ -784,7 +784,7 @@ type
       tab*: TStrTable         # interface table for modules
     of skLet, skVar, skField, skForVar:
       guard*: PSym
-      bitsize*: BiggestInt
+      bitsize*: int
     else: nil
     magic*: TMagic
     typ*: PType
