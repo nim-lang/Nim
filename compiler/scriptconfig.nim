@@ -105,6 +105,13 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     setResult(a, strutils.cmpIgnoreCase(a.getString 0, a.getString 1))
   cbconf setCommand:
     options.command = a.getString 0
+    let arg = a.getString 1
+    if arg.len > 0:
+      gProjectName = arg
+      try:
+        gProjectFull = canonicalizePath(gProjectPath / gProjectName)
+      except OSError:
+        gProjectFull = gProjectName
   cbconf getCommand:
     setResult(a, options.command)
   cbconf switch:

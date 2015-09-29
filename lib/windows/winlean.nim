@@ -108,6 +108,13 @@ const
 
   CREATE_UNICODE_ENVIRONMENT* = 1024'i32
 
+  PIPE_ACCESS_DUPLEX* = 0x00000003'i32
+  PIPE_ACCESS_INBOUND* = 1'i32
+  PIPE_ACCESS_OUTBOUND* = 2'i32
+  PIPE_NOWAIT* = 0x00000001'i32
+  SYNCHRONIZE* = 0x00100000'i32
+  FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
+
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
 
@@ -124,6 +131,19 @@ proc createPipe*(hReadPipe, hWritePipe: var Handle,
                  lpPipeAttributes: var SECURITY_ATTRIBUTES,
                  nSize: int32): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "CreatePipe".}
+
+proc createNamedPipe*(lpName: WideCString,
+                     dwOpenMode, dwPipeMode, nMaxInstances, nOutBufferSize,
+                     nInBufferSize, nDefaultTimeOut: int32,
+                     lpSecurityAttributes: ptr SECURITY_ATTRIBUTES): Handle {.
+    stdcall, dynlib: "kernel32", importc: "CreateNamedPipeW".}
+
+proc peekNamedPipe*(hNamedPipe: Handle, lpBuffer: pointer=nil,
+                    nBufferSize: int32 = 0,
+                    lpBytesRead: ptr int32 = nil,
+                    lpTotalBytesAvail: ptr int32 = nil,
+                    lpBytesLeftThisMessage: ptr int32 = nil): bool {.
+    stdcall, dynlib: "kernel32", importc: "PeekNamedPipe".}
 
 when useWinUnicode:
   proc createProcessW*(lpApplicationName, lpCommandLine: WideCString,
@@ -615,11 +635,23 @@ const
 
   FILE_FLAG_BACKUP_SEMANTICS* = 33554432'i32
   FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
+  DUPLICATE_SAME_ACCESS* = 2
+  FILE_READ_DATA* = 0x00000001 # file & pipe
+  FILE_WRITE_DATA* = 0x00000002 # file & pipe
 
 # Error Constants
 const
   ERROR_ACCESS_DENIED* = 5
   ERROR_HANDLE_EOF* = 38
+
+proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
+                      hTargetProcessHandle: HANDLE,
+                      lpTargetHandle: ptr HANDLE,
+                      dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
+                      dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
+    importc: "DuplicateHandle".}
+proc getCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
+                                   importc: "GetCurrentProcess".}
 
 when useWinUnicode:
   proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
