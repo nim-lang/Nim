@@ -1,0 +1,6 @@
+language: c
+os: linux
+script:
+  - sh build.sh
+after_script:
+  - ./koch tests
