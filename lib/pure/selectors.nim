@@ -81,7 +81,6 @@ when defined(nimdoc):
   proc `[]`*(s: Selector, fd: SocketHandle): SelectorKey =
     ## Retrieves the selector key for ``fd``.
 
-
 elif defined(linux):
   type
     Selector* = object
@@ -101,15 +100,13 @@ elif defined(linux):
     result.data.fd = fd.cint
 
   proc register*(s: var Selector, fd: SocketHandle, events: set[Event],
-      data: SelectorData) =
+                 data: SelectorData) =
     var event = createEventStruct(events, fd)
     if events != {}:
       if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
         raiseOSError(osLastError())
 
-    var key = SelectorKey(fd: fd, events: events, data: data)
-
-    s.fds[fd] = key
+    s.fds[fd] = SelectorKey(fd: fd, events: events, data: data)
 
   proc update*(s: var Selector, fd: SocketHandle, events: set[Event]) =
     if s.fds[fd].events != events:
@@ -156,11 +153,6 @@ elif defined(linux):
       raiseOSError(err)
 
   proc select*(s: var Selector, timeout: int): seq[ReadyInfo] =
-    ##
-    ## The ``events`` field of the returned ``key`` contains the original events
-    ## for which the ``fd`` was bound. This is contrary to the ``events`` field
-    ## of the ``TReadyInfo`` tuple which determines which events are ready
-    ## on the ``fd``.
     result = @[]
     let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
     if evNum < 0:
