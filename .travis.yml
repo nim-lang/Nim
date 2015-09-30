@@ -1,10 +1,20 @@
+sudo: false
 language: c
-os: linux
+os:
+  - linux
+addons:
+  apt:
+    packages:
+    - libcurl4-openssl-dev
+    - libsdl1.2-dev
 script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
-  - cd csources && sh build.sh
+  - cd csources
+  - sh build.sh
+  - cd ..
   - ./bin/nim c koch
   - ./koch boot
   - ./koch boot -d:release
 after_script:
+  - export PATH=$(pwd)/bin:$PATH
   - ./koch test
