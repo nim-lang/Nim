@@ -9,7 +9,8 @@ system.
 
 So instead of a ``myproject.nim.cfg`` configuration file, you can use
 a ``myproject.nims`` file that simply contains Nim code controlling the
-compilation process.
+compilation process. For a directory wide configuration, use ``config.nims``
+instead of ``nim.cfg``.
 
 The VM cannot deal with ``importc``, the FFI is not available, so there are not
 many stdlib modules that you can use with Nim's VM. However, at least the
