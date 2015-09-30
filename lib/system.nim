@@ -1256,7 +1256,7 @@ proc compileOption*(option, arg: string): bool {.
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
 const
-  hasThreadSupport = compileOption("threads")
+  hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
 
