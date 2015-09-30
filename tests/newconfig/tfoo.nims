@@ -10,5 +10,6 @@ task listDirs, "lists every subdirectory":
     echo "DIR ", x
 
 task default, "default target":
+  --define: definedefine
   setCommand "c"
 

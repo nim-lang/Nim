@@ -140,4 +140,7 @@ proc runNimScript*(scriptName: string) =
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetAllModulesHard()
   vm.globalCtx = nil
-  initDefines()
+  # do not remove the defined symbols
+  #initDefines()
+  undefSymbol("nimscript")
+  undefSymbol("nimconfig")
