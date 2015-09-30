@@ -23,6 +23,7 @@ const
 Command:
   all                         run all tests
   c|category <category>       run all the tests of a certain category
+  r|run <test>                run single test file
   html [commit]               generate $1 from the database; uses the latest
                               commit or a specific one (use -1 for the commit
                               before latest etc)
@@ -376,6 +377,11 @@ proc main() =
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string)
+  of "r", "run":
+    let (dir, file) = splitPath(p.key.string)
+    let (_, subdir) = splitPath(dir)
+    var cat = Category(subdir)
+    processCategory(r, cat, p.cmdLineRest.string, file)
   of "html":
     var commit = 0
     discard parseInt(p.cmdLineRest.string, commit)

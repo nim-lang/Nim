@@ -339,7 +339,7 @@ proc `&?.`(a, b: string): string =
   # candidate for the stdlib?
   result = if a.endswith(b): a else: a & b
 
-proc processCategory(r: var TResults, cat: Category, options: string) =
+proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: string = "t*.nim") =
   case cat.string.normalize
   of "rodfiles":
     discard # Disabled for now
@@ -376,5 +376,5 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
   else:
-    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
+    for name in os.walkFiles("tests" & DirSep &.? cat.string / fileGlob):
       testSpec r, makeTest(name, options, cat)
