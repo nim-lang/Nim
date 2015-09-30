@@ -81,7 +81,7 @@
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
 import asyncnet, asyncdispatch
-import rawsockets
+import nativesockets
 
 type
   Response* = tuple[
@@ -764,10 +764,10 @@ proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
     let port =
       if url.port == "":
         if url.scheme.toLower() == "https":
-          rawsockets.Port(443)
+          nativesockets.Port(443)
         else:
-          rawsockets.Port(80)
-      else: rawsockets.Port(url.port.parseInt)
+          nativesockets.Port(80)
+      else: nativesockets.Port(url.port.parseInt)
 
     if url.scheme.toLower() == "https":
       when defined(ssl):
