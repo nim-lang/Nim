@@ -12,8 +12,11 @@ cd ".."
 
 ./bin/nim c koch
 ./koch boot -d:release
+./koch geninstall
 
-cp -f install.sh.template install.sh
-chmod +x install.sh
+set +x
+
+echo
+echo 'Install Nim using "./install.sh <dir>" or "sudo ./install.sh <dir>".'
 
 exit 0
