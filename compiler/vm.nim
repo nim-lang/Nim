@@ -311,7 +311,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
           if f.position == x:
             dest.node.strVal = if f.ast.isNil: f.name.s else: f.ast.strVal
             return
-        internalError("opConv for enum")
+        dest.node.strVal = styp.sym.name.s & " " & $x
     of tyInt..tyInt64:
       dest.node.strVal = $src.intVal
     of tyUInt..tyUInt64:

@@ -103,15 +103,16 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
 
 proc readAll*(s: Stream): string =
   ## Reads all available data.
-  result = newString(1000)
+  const bufferSize = 1000
+  result = newString(bufferSize)
   var r = 0
   while true:
-    let readBytes = readData(s, addr(result[r]), 1000)
-    if readBytes < 1000:
+    let readBytes = readData(s, addr(result[r]), bufferSize)
+    if readBytes < bufferSize:
       setLen(result, r+readBytes)
       break
-    inc r, 1000
-    setLen(result, r+1000)
+    inc r, bufferSize
+    setLen(result, r+bufferSize)
 
 proc readData*(s, unused: Stream, buffer: pointer,
                bufLen: int): int {.deprecated.} =

@@ -37,7 +37,7 @@ when hasFFI:
   import evalffi
 
 type
-  TGenFlag = enum gfNone, gfAddrOf
+  TGenFlag = enum gfAddrOf, gfFieldAccess
   TGenFlags = set[TGenFlag]
 
 proc debugInfo(info: TLineInfo): string =
@@ -535,7 +535,7 @@ proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le.sons[0], {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     c.gABC(le, opcWrArr, dest, idx, value)
     c.freeTemp(dest)
@@ -543,7 +543,7 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   of nkDotExpr, nkCheckedFieldExpr:
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfAddrOf})
+    let dest = c.genx(left.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = genField(left.sons[1])
     c.gABC(left, opcWrObj, dest, idx, value)
     c.freeTemp(dest)
@@ -1216,7 +1216,7 @@ proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le.sons[0], {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     let tmp = c.genx(ri)
     if le.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
@@ -1228,7 +1228,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   of nkDotExpr, nkCheckedFieldExpr:
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfAddrOf})
+    let dest = c.genx(left.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = genField(left.sons[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(left, opcWrObj, dest, idx, tmp)
@@ -1321,7 +1321,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       c.gABx(n, opcLdGlobal, cc, s.position)
       c.gABC(n, opcNodeToReg, dest, cc)
       c.freeTemp(cc)
-    elif gfAddrOf in flags:
+    elif {gfAddrOf, gfFieldAccess} * flags == {gfAddrOf}:
       c.gABx(n, opcLdGlobalAddr, dest, s.position)
     else:
       c.gABx(n, opcLdGlobal, dest, s.position)
@@ -1772,6 +1772,9 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
       globalError(n.info, errGenerated, "VM problem: dest register is not set")
     d = 0
   c.gABC(n, opcEof, d)
+
+  #echo renderTree(n)
+  #c.echoCode(result)
 
 proc genParams(c: PCtx; params: PNode) =
   # res.sym.position is already 0

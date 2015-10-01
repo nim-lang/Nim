@@ -1,8 +1,10 @@
 discard """
   file: "tmemfiles2.nim"
+  disabled: true
   output: '''Full read size: 20
 Half read size: 10 Data: Hello'''
 """
+# doesn't work on windows. fmReadWrite doesn't create a file.
 import memfiles, os
 var
   mm, mm_full, mm_half: MemFile
