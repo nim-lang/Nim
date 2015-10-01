@@ -20,4 +20,4 @@ script:
   - ./koch boot
   - ./koch boot -d:release
   - ./koch test help || true
-  - echo lib types typerel metatype generics macros template vm stdlib array tuples | xargs -n1 -P$(nproc) tests/testament/tester c
+  - echo lib types typerel metatype generics macros template vm stdlib array tuples | xargs -n1 -P$(nproc) tests/testament/tester --pedantic c
