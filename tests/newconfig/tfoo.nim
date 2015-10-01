@@ -4,4 +4,7 @@ discard """
   msg: '''[NimScript] exec: gcc -v'''
 """
 
+when not defined(definedefine):
+  {.fatal: "wrong nim script configuration".}
+
 echo "hello world!"

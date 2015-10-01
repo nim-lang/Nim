@@ -531,6 +531,24 @@ Implementation Specific Pragmas
 This section describes additional pragmas that the current Nim implementation
 supports but which should not be seen as part of the language specification.
 
+Bitsize pragma
+--------------
+
+The ``bitsize`` pragma is for object field members. It declares the field as
+a bitfield in C/C++.
+
+.. code-block:: Nim
+  type
+    mybitfield = object
+      flag {.bitsize:1.}: cuint
+
+generates:
+
+.. code-block:: C
+  struct mybitfield {
+    unsigned int flag:1;
+  };
+
 
 Volatile pragma
 ---------------
