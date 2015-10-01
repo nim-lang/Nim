@@ -675,9 +675,9 @@ proc callCCompiler*(projectfile: string) =
   let runCb = proc (idx: int, p: Process) =
     let exitCode = p.peekExitCode
     if exitCode != 0:
-      echo p.outputStream.readAll
       rawMessage(errGenerated, "execution of an external compiler program '" &
-        cmds[idx] & "' failed with exit code: " & $exitCode)
+        cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n" &
+        p.outputStream.readAll.strip)
   compileCFile(toCompile, script, cmds, prettyCmds, false)
   compileCFile(externalToCompile, script, cmds, prettyCmds, true)
   if optCompileOnly notin gGlobalOptions:
