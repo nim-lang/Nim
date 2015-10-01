@@ -10,6 +10,10 @@
 # Included by the ``os`` module but a module in its own right for NimScript
 # support.
 
+when isMainModule:
+  {.pragma: rtl.}
+  import strutils
+
 when defined(nimscript) or (defined(nimdoc) and not declared(os)):
   {.pragma: rtl.}
   {.push hint[ConvFromXtoItselfNotNeeded]:off.}
