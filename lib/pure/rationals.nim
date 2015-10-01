@@ -20,6 +20,7 @@ type Rational*[T] = object
 
 proc initRational*[T](num, den: T): Rational[T] =
   ## Create a new rational number.
+  assert(den != 0, "a denominator of zero value is invalid")
   result.num = num
   result.den = den
 
