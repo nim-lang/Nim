@@ -1,4 +1,4 @@
-#! stdtmpl | standard
+#? stdtmpl | standard
 #proc generateHTMLPage(title, currentTab, content: string,
 #                      tabs: openArray[string]): string =
 #  result = ""
