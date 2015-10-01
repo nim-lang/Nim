@@ -14,7 +14,7 @@
 
 import
   lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  securehash
+  securehash, streams
 
 type
   TSystemCC* = enum
@@ -672,6 +672,12 @@ proc callCCompiler*(projectfile: string) =
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
     echo prettyCmds[idx]
+  let runCb = proc (idx: int, p: Process) =
+    let exitCode = p.peekExitCode
+    if exitCode != 0:
+      echo p.outputStream.readAll
+      rawMessage(errGenerated, "execution of an external compiler program '" &
+        cmds[idx] & "' failed with exit code: " & $exitCode)
   compileCFile(toCompile, script, cmds, prettyCmds, false)
   compileCFile(externalToCompile, script, cmds, prettyCmds, true)
   if optCompileOnly notin gGlobalOptions:
@@ -682,22 +688,17 @@ proc callCCompiler*(projectfile: string) =
         res = execWithEcho(cmds[i])
         if res != 0: rawMessage(errExecutionOfProgramFailed, cmds[i])
     elif optListCmd in gGlobalOptions or gVerbosity > 1:
-      res = execProcesses(cmds, {poEchoCmd, poUsePath, poParentStreams},
-                          gNumberOfProcessors)
+      res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
+                          gNumberOfProcessors, afterRunEvent=runCb)
     elif gVerbosity == 1:
-      res = execProcesses(cmds, {poUsePath, poParentStreams},
-                          gNumberOfProcessors, prettyCb)
+      res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+                          gNumberOfProcessors, prettyCb, afterRunEvent=runCb)
     else:
-      res = execProcesses(cmds, {poUsePath, poParentStreams},
-                          gNumberOfProcessors)
+      res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+                          gNumberOfProcessors, afterRunEvent=runCb)
     if res != 0:
       if gNumberOfProcessors <= 1:
         rawMessage(errExecutionOfProgramFailed, cmds.join())
-      else:
-        rawMessage(errGenerated,
-                   " execution of an external compiler program failed: " &
-                   cmds.join() & "; " &
-                   "rerun with --parallelBuild:1 to see the error message")
   if optNoLinking notin gGlobalOptions:
     # call the linker:
     var it = PStrEntry(toLink.head)
