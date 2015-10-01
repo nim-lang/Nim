@@ -31,7 +31,8 @@ proc moveFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc copyFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} = builtin
+proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
+  builtin
 proc getOsError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir(): string = builtin
