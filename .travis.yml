@@ -1,7 +1,7 @@
 sudo: false
 language: c
-os:
-  - linux
+os: linux
+compiler: clang
 addons:
   apt:
     packages:
