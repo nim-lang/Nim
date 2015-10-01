@@ -384,15 +384,15 @@ when isMainModule:
 
   doAssert "$#($', '10c'\n    '{#..})" % ["doAssert", "longishA", "longish"] ==
            """doAssert(
-    longishA,
+    longishA, 
     longish)"""
 
   assert "type MyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
     "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"] ==
     strutils.unindent """
       type MyEnum* = enum
-        fieldA, fieldB,
-        FiledClkad, fieldD,
+        fieldA, fieldB, 
+        FiledClkad, fieldD, 
         fieldE, longishFieldName"""
 
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
@@ -406,7 +406,7 @@ when isMainModule:
     strutils.unindent """
       type
         Enum = enum
-          fieldNameA, fieldNameB, fieldNameC,
+          fieldNameA, fieldNameB, fieldNameC, 
           fieldNameD"""
 
 
