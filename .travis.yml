@@ -16,6 +16,7 @@ script:
   - cd csources
   - sh build.sh
   - cd ..
+  - echo "cc = clang" > nim.cfg
   - ./bin/nim c koch
   - ./koch boot
   - ./koch boot -d:release
