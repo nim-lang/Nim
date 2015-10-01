@@ -2104,7 +2104,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkFastAsgn:
     # transf is overly aggressive with 'nkFastAsgn', so we work around here.
     # See tests/run/tcnstseq3 for an example that would fail otherwise.
-    genAsgn(p, n, fastAsgn=p.prc != nil)
+    #
+    # Update: modified back to "fastAsgn=true". All the tests are success.
+    genAsgn(p, n, fastAsgn=true)
   of nkDiscardStmt:
     if n.sons[0].kind != nkEmpty:
       genLineDir(p, n)
