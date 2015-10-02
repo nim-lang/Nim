@@ -496,7 +496,7 @@ when defined(nimdoc) and not declared(os):
   proc existsFile(x: string): bool = discard
 
 when declared(getEnv) or defined(nimscript):
-  proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
+  proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the home directory of the current user.
     ##
     ## This proc is wrapped by the expandTilde proc for the convenience of
@@ -504,7 +504,7 @@ when declared(getEnv) or defined(nimscript):
     when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
     else: return string(getEnv("HOME")) & "/"
 
-  proc getConfigDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
+  proc getConfigDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the config directory of the current user for applications.
     when defined(windows): return string(getEnv("APPDATA")) & "\\"
     else: return string(getEnv("HOME")) & "/.config/"
@@ -515,7 +515,7 @@ when declared(getEnv) or defined(nimscript):
     when defined(windows): return string(getEnv("TEMP")) & "\\"
     else: return "/tmp/"
 
-  proc expandTilde*(path: string): string {.tags: [ReadEnvEffect].} =
+  proc expandTilde*(path: string): string {.tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Expands a path starting with ``~/`` to a full path.
     ##
     ## If `path` starts with the tilde character and is followed by `/` or `\\`
@@ -545,7 +545,7 @@ when declared(getEnv) or defined(nimscript):
           yield substr(s, first, last-1)
           inc(last)
 
-  proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect].} =
+  proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
     ## Searches for `exe` in the current working directory and then
     ## in directories listed in the ``PATH`` environment variable.
     ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
