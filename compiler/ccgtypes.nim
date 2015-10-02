@@ -441,6 +441,8 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       elif fieldType.kind == tySequence:
         # we need to use a weak dependency here for trecursive_table.
         addf(result, "$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check), sname])
+      elif field.bitsize != 0:
+        addf(result, "$1 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check), sname, rope($field.bitsize)])
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support

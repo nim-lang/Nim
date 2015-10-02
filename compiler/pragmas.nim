@@ -56,7 +56,7 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
-    wImportCpp, wImportObjC, wError, wGuard}
+    wImportCpp, wImportObjC, wError, wGuard, wBitsize}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
@@ -844,6 +844,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(it)
         else: sym.typ.lockLevel = pragmaLocks(c, it)
+      of wBitsize:
+        if sym == nil or sym.kind != skField or it.kind != nkExprColonExpr:
+          invalidPragma(it)
+        else:
+          sym.bitsize = expectIntLit(c, it)
       of wGuard:
         if sym == nil or sym.kind notin {skVar, skLet, skField}:
           invalidPragma(it)
