@@ -7,6 +7,11 @@ addons:
     packages:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
+before_script:
+  - set -e
+  - wget http://flatassembler.net/fasm-1.71.39.tgz
+  - tar xvf fasm-1.71.39.tgz
+  - export PATH=$(pwd)/fasm:$PATH
 script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
