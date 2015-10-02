@@ -213,6 +213,8 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
       expectedmsg = expected.nimout
       givenmsg = given.nimout.strip
       nimoutCheck(test, expectedmsg, given)
+  else:
+    givenmsg = given.nimout.strip
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, expectedmsg, givenmsg, given.err)
 
