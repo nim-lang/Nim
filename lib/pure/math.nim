@@ -475,7 +475,7 @@ when isMainModule and not defined(JS):
     return sqrt(num)
 
   # check gamma function
-  assert(tgamma(5.0) == 24.0) # 4!
+  assert($tgamma(5.0) == $24.0) # 4!
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
