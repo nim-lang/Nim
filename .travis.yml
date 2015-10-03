@@ -11,21 +11,19 @@ before_script:
   - set -e
   - wget http://flatassembler.net/fasm-1.71.39.tgz
   - tar xvf fasm-1.71.39.tgz
-  - export PATH=$(pwd)/fasm:$PATH
-script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
   - sh build.sh
   - cd ..
   - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
-  - ./bin/nim c koch
+  - export PATH=$(pwd)/bin:$(pwd)/fasm:$PATH
+script:
+  - nim c koch
   - ./koch boot
   - ./koch boot -d:release
-after_script:
-  - export PATH=$(pwd)/bin:$PATH
   - nim e install_nimble.nims
   - nimble update
   - nimble install zip
   - nimble install opengl
   - nimble install sdl1
-  - ./koch test
+  - ./koch test --pedantic
