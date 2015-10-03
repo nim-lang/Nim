@@ -66,7 +66,7 @@ proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =
   ## on, later versions will check the string for valid syntax.
   result = SqlQuery(query)
 
-proc dbError(db: DbConn) {.noreturn.} =
+proc dbError*(db: DbConn) {.noreturn.} =
   ## raises an EDb exception.
   var e: ref EDb
   new(e)
@@ -116,7 +116,7 @@ proc newRow(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
 
-proc setupQuery(db: DbConn, query: SqlQuery,
+proc setupQuery*(db: DbConn, query: SqlQuery,
                 args: varargs[string]): Pstmt =
   var q = dbFormat(query, args)
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
@@ -162,6 +162,26 @@ proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
 proc len*(row: InstantRow): int32 {.inline.} =
   ## returns number of columns in the row
   column_count(row)
+
+proc hasData*(rows: seq[Row]): bool =
+  result = false
+  for row in rows:
+    for item in row:
+      if item != "" and item != nil:
+        result = true
+        break
+
+proc hasData*(row: Row): bool =
+  result = false
+  for item in row:
+    if item != "" and item != nil:
+      result = true
+      break
+
+proc hasData*(value: string): bool =
+  result = false
+  if value != "" and value != nil:
+    result = true
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [FReadDb].} =

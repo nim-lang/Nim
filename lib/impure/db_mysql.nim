@@ -119,7 +119,7 @@ proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   var q = dbFormat(query, args)
   return mysql.realQuery(db, q, q.len) == 0'i32
 
-proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
+proc rawExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
 
@@ -133,7 +133,7 @@ proc newRow(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
 
-proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
+proc properFreeResult*(sqlres: mysql.PRES, row: cstringArray) =
   if row != nil:
     while mysql.fetchRow(sqlres) != nil: discard
   mysql.freeResult(sqlres)
@@ -188,6 +188,26 @@ proc `[]`*(row: InstantRow, col: int): string {.inline.} =
 proc len*(row: InstantRow): int {.inline.} =
   ## returns number of columns in the row
   row.len
+
+proc hasData*(rows: seq[Row]): bool =
+  result = false
+  for row in rows:
+    for item in row:
+      if item != "" and item != nil:
+        result = true
+        break
+
+proc hasData*(row: Row): bool =
+  result = false
+  for item in row:
+    if item != "" and item != nil:
+      result = true
+      break
+
+proc hasData*(value: string): bool =
+  result = false
+  if value != "" and value != nil:
+    result = true
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
