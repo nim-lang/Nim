@@ -282,7 +282,7 @@ proc testSpec(r: var TResults, test: TTest) =
       return
 
     let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
-    let (buf, exitCode) = execCmdEx(exeCmd)
+    var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
     let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
                else: strip(buf.string)
     let expectedOut = strip(expected.outp)
