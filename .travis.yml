@@ -23,4 +23,7 @@ script:
   - ./koch boot -d:release
 after_script:
   - export PATH=$(pwd)/bin:$PATH
+  - nim e install_nimble.nims
+  - nimble update
+  - nimble install zip
   - ./koch test
