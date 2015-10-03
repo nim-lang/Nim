@@ -1,9 +1,0 @@
-#!/bin/sh
-set -e
-set -x
-
-if [ "$1" != "" ]; then
-	exec ./koch install "$1"
-else
-	exec ./koch install
-fi
