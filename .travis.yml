@@ -26,4 +26,6 @@ after_script:
   - nim e install_nimble.nims
   - nimble update
   - nimble install zip
+  - nimble install opengl
+  - nimble install sdl1
   - ./koch test
