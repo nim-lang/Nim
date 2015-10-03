@@ -201,7 +201,9 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   hints.ai_family = toInt(domain)
   hints.ai_socktype = toInt(sockType)
   hints.ai_protocol = toInt(protocol)
-  hints.ai_flags = AI_V4MAPPED
+  # https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=198092
+  when not defined(freebsd):
+    hints.ai_flags = AI_V4MAPPED
   var gaiResult = getaddrinfo(address, $port, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
