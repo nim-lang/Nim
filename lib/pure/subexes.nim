@@ -351,6 +351,7 @@ proc format*(formatstr: Subex, a: varargs[string, `$`]): string {.noSideEffect,
 {.pop.}
 
 when isMainModule:
+  from strutils import replace
 
   proc `%`(formatstr: string, a: openarray[string]): string =
     result = newStringOfCap(formatstr.len + a.len shl 4)
@@ -382,18 +383,18 @@ when isMainModule:
   doAssert "${$1}" % "1" == "1"
   doAssert "${$$-1} $$1" % "1" == "1 $1"
 
-  doAssert "$#($', '10c'\n    '{#..})" % ["doAssert", "longishA", "longish"] ==
+  doAssert(("$#($', '10c'\n    '{#..})" % ["doAssert", "longishA", "longish"]).replace(" \n", "\n") ==
            """doAssert(
-    longishA, 
-    longish)"""
+    longishA,
+    longish)""")
 
-  assert "type MyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
-    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"] ==
+  doAssert(("type MyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
+    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]).replace(" \n", "\n") ==
     strutils.unindent """
       type MyEnum* = enum
-        fieldA, fieldB, 
-        FiledClkad, fieldD, 
-        fieldE, longishFieldName"""
+        fieldA, fieldB,
+        FiledClkad, fieldD,
+        fieldE, longishFieldName""")
 
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
 
@@ -401,12 +402,10 @@ when isMainModule:
 
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
 
-  assert subex("type\n  Enum = enum\n    $', '40c'\n    '{..}") % [
-    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"] ==
+  doAssert((subex("type\n  Enum = enum\n    $', '40c'\n    '{..}") % [
+    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]).replace(" \n", "\n") ==
     strutils.unindent """
       type
         Enum = enum
-          fieldNameA, fieldNameB, fieldNameC, 
-          fieldNameD"""
-
-
+          fieldNameA, fieldNameB, fieldNameC,
+          fieldNameD""")
