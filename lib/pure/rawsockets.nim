@@ -30,7 +30,7 @@ else:
   export Sockaddr_storage
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
-  Sockaddr_in6,
+  Sockaddr_in6, Sockaddr_un,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
 
 export

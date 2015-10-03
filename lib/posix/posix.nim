@@ -502,6 +502,11 @@ type
     sin_port*: InPort      ## Port number.
     sin_addr*: InAddr      ## IP address.
 
+  Sockaddr_un* {.importc: "struct sockaddr_un", pure, final,
+                  header: "<sys/un.h>".} = object
+    sun_family*: TSa_Family         ## AF_UNIX.
+    sun_path*: array [0..107, char] ## Path name.
+
   In6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr
     s6_addr*: array [0..15, char]
