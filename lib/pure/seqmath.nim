@@ -823,6 +823,23 @@ proc shape*[T](x: seq[T]): seq[int] =
     result[k] = sNr
     inc(k)
 
+proc ptp[T: int|float](x: T): T = (result = T(0))
+  # this is required for liftScalarProc(ptp)
+
+proc ptp*[T: int|float](x: seq[T]): T =
+  ## ``peak to peak`` returns the difference
+  ## between the maximum and minimum elements
+  ## of ``x`` (a seq or nested seq[])
+  if x.len == 0: return T(0)
+  var a = x[0]
+  var b = x[0]
+  for i in 1..<x.len:
+    if x[i] < a: a = x[i]
+    if x[i] > b: b = x[i]
+    result = abs[T](b - a)
+
+liftScalarProc(ptp)
+
 proc pointOnLinePC(p0, p1: Point, dPC: float): Point =
   ## get the ``Point`` (`x`` and ``y`` values) a percentage ``dPC``
   ## of the way along the ``x`` axis between the two points
@@ -1094,6 +1111,10 @@ if isMainModule:
   let cf = @[-100_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0]
   var myPv = newSeq[float](13)
   assert( round(npv(cf, myPv, 0.10)*10000)/10000 == -31863.0818 )
+
+  assert( ptp(@[1,3,2,6]) == 5 )
+  assert( ptp(@[@[1,3],@[2,6]]) == @[2,4] )
+  assert( ptp(@[@[@[1,3],@[2,6]], @[@[100,10],@[-5,-11]]]) == @[@[2,4], @[90,6]] )
 
   assert( pointOnLine(Point(x:2.0, y:2.0), Point(x:5.0, y:2.0), 3.0) == Point(x:3.0, y:2.0) )
   assert( interp(2.5, @[1,2,3], @[3,2,0]) == 1.0)
