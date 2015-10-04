@@ -19,7 +19,7 @@ when defined(windows) or defined(nimdoc):
     quit("Error: unhandled exception: Connection refused")
 else:
     proc testAsyncConnect() {.async.} =
-        var s = newAsyncRawSocket()
+        var s = newAsyncNativeSocket()
 
         await s.connect(testHost, testPort)
 

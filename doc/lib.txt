@@ -244,7 +244,7 @@ Internet Protocols and Support
   This module implements a high-level sockets API. It will replace the
   ``sockets`` module in the future.
 
-* `rawsockets <rawsockets.html>`_
+* `nativesockets <nativesockets.html>`_
   This module implements a low-level sockets API.
 
 * `selectors <selectors.html>`_
@@ -405,6 +405,10 @@ Deprecated modules
   **Deprecated since version 0.11.2:**
   Use the `net <net.html>`_ or the `rawsockets <rawsockets.html>`_ module
   instead.
+
+* `rawsockets <rawsockets.html>`_
+  **Deprecated since version 0.11.4:**
+  This module has been renamed to `nativesockets <nativesockets.html>`_.
 
 
 Impure libraries
