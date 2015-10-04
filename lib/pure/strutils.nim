@@ -169,7 +169,8 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
     inc(j)
 
 
-proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string
+proc strip*(s: string, leading = true, trailing = true,
+            chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
   ## Strips `chars` from `s` and returns the resulting string.
   ##
@@ -504,7 +505,8 @@ proc repeat*(c: char, count: Natural): string {.noSideEffect,
   ##
   ## .. code-block:: nim
   ##   proc tabexpand(indent: int, text: string, tabsize: int = 4) =
-  ##     echo '\t'.repeat(indent div tabsize), ' '.repeat(indent mod tabsize), text
+  ##     echo '\t'.repeat(indent div tabsize), ' '.repeat(indent mod tabsize),
+  ##         text
   ##
   ##   tabexpand(4, "At four")
   ##   tabexpand(5, "At five")
@@ -533,11 +535,13 @@ template spaces*(n: Natural): string =  repeat(' ',n)
   ##   echo text1 & spaces(max(0, width - text1.len)) & "|"
   ##   echo text2 & spaces(max(0, width - text2.len)) & "|"
 
-proc repeatChar*(count: Natural, c: char = ' '): string {.deprecated.} = repeat(c, count)
+proc repeatChar*(count: Natural, c: char = ' '): string {.deprecated.} =
   ## deprecated: use repeat() or spaces()
+  repeat(c, count)
 
-proc repeatStr*(count: Natural, s: string): string {.deprecated.} = repeat(s, count)
+proc repeatStr*(count: Natural, s: string): string {.deprecated.} =
   ## deprecated: use repeat(string, count) or string.repeat(count)
+  repeat(s, count)
 
 proc align*(s: string, count: Natural, padding = ' '): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
@@ -850,8 +854,8 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
     if sub == s[i]: return i
   return -1
 
-proc count*(s: string, sub: string, overlapping: bool = false): int {.noSideEffect,
-  rtl, extern: "nsuCountString".} =
+proc count*(s: string, sub: string, overlapping: bool = false): int {.
+  noSideEffect, rtl, extern: "nsuCountString".} =
   ## Count the occurrences of a substring `sub` in the string `s`.
   ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true.
@@ -1449,7 +1453,8 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
 
   s.setLen(last + 1)
 
-proc removeSuffix*(s: var string, c: char) {.rtl, extern: "nsuRemoveSuffixChar".} =
+proc removeSuffix*(s: var string, c: char) {.
+  rtl, extern: "nsuRemoveSuffixChar".} =
   ## Removes a single character (in-place) from a string.
   ## .. code-block:: nim
   ##   var
@@ -1515,7 +1520,8 @@ when isMainModule:
   doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
   doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
   doAssert strip("stripme but don't strip this stripme",
-                 chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) == " but don't strip this "
+                 chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) ==
+                 " but don't strip this "
   doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
   doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
