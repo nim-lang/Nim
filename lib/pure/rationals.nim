@@ -39,6 +39,63 @@ proc toRational*[T:SomeInteger](x: T): Rational[T] =
   result.num = x
   result.den = 1
 
+proc toRationalSub(x: float, n: int): Rational[int] =
+  var
+    a = 0
+    b, c, d = 1
+  result = 0 // 1   # rational 0
+  while b <= n and d <= n:
+    let ac = (a+c)
+    let bd = (b+d)
+    # scale by 1000 so not overflow for high precision
+    let mediant = (ac/1000) / (bd/1000)
+    if x == mediant:
+      if bd <= n:
+        result.num = ac
+        result.den = bd
+        return result
+      elif d > b:
+        result.num = c
+        result.den = d
+        return result
+      else:
+        result.num = a
+        result.den = b
+        return result
+    elif x > mediant:
+      a = ac
+      b = bd
+    else:
+      c = ac
+      d = bd
+  if (b > n):
+    return initRational(c, d)
+  return initRational(a, b)
+
+proc toRational*(x: float, n: int = high(int)): Rational[int] =
+  ## Calculate the best rational numerator and denominator
+  ## that approximates to `x`, where the denominator is
+  ## smaller than `n` (default is the largest possible
+  ## int to give maximum resolution)
+  ##
+  ## The algorithm is based on the Farey sequence named
+  ## after John Farey
+  ##
+  ## .. code-block:: Nim
+  ##  import math, rationals
+  ##  for i in 1..10:
+  ##    let t = (10 ^ (i+3)).int
+  ##    let x = toRational(PI, t)
+  ##    let newPI = x.num / x.den
+  ##    echo x, " ", newPI, " error: ", PI - newPI, "  ", t
+  if x > 1:
+    result = toRationalSub(1.0/x, n)
+    swap(result.num, result.den)
+  elif x == 1.0:
+    result = 1 // 1
+  else:
+    result = toRationalSub(x, n)
+
 proc toFloat*[T](x: Rational[T]): float =
   ## Convert a rational number `x` to a float.
   x.num / x.den
@@ -288,3 +345,8 @@ when isMainModule:
   assert toRational(5) == 5//1
   assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
   assert toInt(z) == 0
+
+  assert toRational(0.98765432) == 12345679 // 12500000
+  assert toRational(0.1, 1000000) == 1 // 10
+  assert toRational(0.9, 1000000) == 9 // 10
+  assert toRational(PI) == 80143857 // 25510582
