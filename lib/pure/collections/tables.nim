@@ -204,6 +204,13 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
+proc initTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
+  ## creates a new hash table that contains the given `pairs`.
+  ##
+  ## ``var t2 = {"theFirst": 1, "theSecond": 2}.initTable``
+  result = initTable[A, B](rightSize(pairs.len))
+  for key, val in items(pairs): result[key] = val
+
 proc toTable*[A, B](pairs: openArray[(A,
                     B)]): Table[A, B] =
   ## creates a new hash table that contains the given `pairs`.
@@ -314,11 +321,14 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
   t[].del(key)
 
 proc newTable*[A, B](initialSize=64): TableRef[A, B] =
+  ## creates a new hash table reference that is empty.
   new(result)
   result[] = initTable[A, B](initialSize)
 
 proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
-  ## creates a new hash table that contains the given `pairs`.
+  ## creates a new hash table reference that contains the given `pairs`.
+  ##
+  ## ``var t2 = {"theFirst": 1, "theSecond": 2}.newTable``
   new(result)
   result[] = toTable[A, B](pairs)
 
@@ -477,6 +487,14 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
+proc initOrderedTable*[A, B](pairs: openArray[(A,
+                           B)]): OrderedTable[A, B] =
+  ## creates a new ordered hash table that contains `pairs`.
+  ##
+  ## ``var ot = {"foo":5, "bar":3}.initOrderedTable``
+  result = initOrderedTable[A, B](rightSize(pairs.len))
+  for key, val in items(pairs): result[key] = val
+
 proc toOrderedTable*[A, B](pairs: openArray[(A,
                            B)]): OrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
@@ -610,16 +628,19 @@ proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   t[].add(key, val)
 
 proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
-  ## creates a new ordered hash table that is empty.
+  ## creates a new ordered hash table reference that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
   ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   new(result)
-  result[] = initOrderedTable[A, B]()
+  result[] = initOrderedTable[A, B](initialSize)
 
 proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
-  ## creates a new ordered hash table that contains the given `pairs`.
+  ## creates a new ordered hash table reference that contains
+  ## the given `pairs`.
+  ##
+  ## ``var ot = {"foo":5, "bar":3}.newOrderedTable``
   result = newOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
@@ -743,6 +764,11 @@ proc initCountTable*[A](initialSize=64): CountTable[A] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
+proc initCountTable*[A](keys: openArray[A]): CountTable[A] =
+  ## creates a new count table with every key in `keys` having a count of 1.
+  result = initCountTable[A](rightSize(keys.len))
+  for key in items(keys): result[key] = 1
+
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## creates a new count table with every key in `keys` having a count of 1.
   result = initCountTable[A](rightSize(keys.len))
@@ -856,7 +882,7 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   t[][key] = val
 
 proc newCountTable*[A](initialSize=64): CountTableRef[A] =
-  ## creates a new count table that is empty.
+  ## creates a new count table reference that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
@@ -865,7 +891,10 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   result[] = initCountTable[A](initialSize)
 
 proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
+  ## creates a new count table reference with every key
+  ## in `keys` having a count of 1.
+  ##
+  ## ``var ct = {"foo":5, "bar":3}.newCountTable``
   result = newCountTable[A](rightSize(keys.len))
   for key in items(keys): result[key] = 1
 
@@ -981,3 +1010,7 @@ when isMainModule:
   assert(merged["foo"] == 5)
   assert(merged["bar"] == 3)
   assert(merged["baz"] == 14)
+
+  assert( {"1":1, "2":2}.newTable[] == {"1":1, "2":2}.initTable )
+  assert( {"foo":5, "bar":3}.newCountTable[] == {"foo":5, "bar":3}.initCountTable )
+  assert({"1":1, "2":2}.newOrderedTable[] == {"1":1, "2":2}.initOrderedTable )
