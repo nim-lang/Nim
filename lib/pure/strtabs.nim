@@ -135,18 +135,15 @@ proc enlarge(t: StringTableRef) =
     if not isNil(t.data[i].key): rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc addVal(t: StringTableRef, key, val: string) =
+proc `[]=`*(t: StringTableRef, key, val: string) {.rtl, extern: "nstPut".} =
+  ## puts a (key, value)-pair into `t`.
   var index = rawGet(t, key)
   if index >= 0:
     t.data[index].val = val
   else:
     if mustRehash(len(t.data), t.counter): enlarge(t)
     rawInsert(t, t.data, key, val)
-
-proc `[]=`*(t: StringTableRef, key, val: string) {.rtl, extern: "nstPut".} =
-  ## puts a (key, value)-pair into `t`.
-  t.addVal(key, val)
-  inc(t.counter)
+    inc(t.counter)
 
 proc raiseFormatException(s: string) =
   var e: ref ValueError
@@ -176,6 +173,9 @@ proc clear*(s: StringTableRef, mode: StringTableMode) =
   s.mode = mode
   s.counter = 0
   s.data.setLen(startSize)
+  for i in 0..<s.data.len:
+    if not isNil(s.data[i].key):
+      s.data[i].key = nil
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): StringTableRef {.
@@ -251,3 +251,6 @@ when isMainModule:
   x.mget("11") = "23"
   assert x["11"] == "23"
 
+  x.clear(modeCaseInsensitive)
+  x["11"] = "22"
+  assert x["11"] == "22"
