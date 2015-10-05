@@ -414,13 +414,22 @@ template mapIt*(seq1, typ, op: expr): expr =
   ##     nums = @[1, 2, 3, 4]
   ##     strings = nums.mapIt(string, $(4 * it))
   ##   assert strings == @["4", "8", "12", "16"]
-  var result {.gensym.}: seq[typ] = @[]
-  for it {.inject.} in items(seq1):
-    result.add(op)
+  let s = seq1
+  var result {.gensym.}: seq[typ]
+  when compiles(s.len):
+    var i = 0
+    result = newSeq[typ](s.len)
+    for it {.inject.} in items(s):
+      result[i] = op
+      i += 1
+  else:
+    result = @[]
+    for it {.inject.} in items(s):
+      result.add(op)
   result
 
-template mapIt*(varSeq, op: expr) =
-  ## Convenience template around the mutable ``map`` proc to reduce typing.
+template mapIt*(varSeq, op: expr) {.deprecated.}=
+  ## Convenience template around the mutable ``apply`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
   ## expression. The expression has to return the same type as the sequence you
@@ -430,9 +439,27 @@ template mapIt*(varSeq, op: expr) =
   ##   var nums = @[1, 2, 3, 4]
   ##   nums.mapIt(it * 3)
   ##   assert nums[0] + nums[3] == 15
+  ##
+  ## **Deprecated:** Use the ``applyIt`` proc instead.
   for i in 0 .. <len(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
+
+template applyIt*(varSeq, op: expr) =
+  ## Convenience template around the mutable ``apply`` proc to reduce typing.
+  ##
+  ## The template injects the ``it`` variable which you can use directly in an
+  ## expression. The expression has to return the same type as the sequence you
+  ## are mutating. Example:
+  ##
+  ## .. code-block::
+  ##   var nums = @[1, 2, 3, 4]
+  ##   nums.applyIt(it * 3)
+  ##   assert nums[0] + nums[3] == 15
+  for i in 0 .. <len(varSeq):
+    let it {.inject.} = varSeq[i]
+    varSeq[i] = op
+
 
 template newSeqWith*(len: int, init: expr): expr =
   ## creates a new sequence, calling `init` to initialize each value. Example:
@@ -569,7 +596,12 @@ when isMainModule:
     var
       nums = @[1, 2, 3, 4]
       strings = nums.mapIt(string, $(4 * it))
-    nums.mapIt(it * 3)
+    assert strings[2] == "12"
+
+  block: # applyIt tests
+    var
+      nums = @[1, 2, 3, 4]
+    nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
 
   block: # distribute tests
