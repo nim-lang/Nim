@@ -11,7 +11,7 @@ include "system/inclrtl"
 
 import os, oids, tables, strutils, macros, times
 
-import rawsockets, net
+import nativesockets, net
 
 export Port, SocketFlag
 
@@ -475,7 +475,7 @@ when defined(windows) or defined(nimdoc):
                       addr bytesRet, nil, nil) == 0
 
   proc initAll() =
-    let dummySock = newRawSocket()
+    let dummySock = newNativeSocket()
     if not initPointer(dummySock, connectExPtr, WSAID_CONNECTEX):
       raiseOSError(osLastError())
     if not initPointer(dummySock, acceptExPtr, WSAID_ACCEPTEX):
@@ -528,7 +528,7 @@ when defined(windows) or defined(nimdoc):
                   RemoteSockaddr, RemoteSockaddrLength)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
-    domain = rawsockets.AF_INET): Future[void] =
+    domain = nativesockets.AF_INET): Future[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
     ## Returns a ``Future`` which will complete when the connection succeeds
@@ -827,7 +827,7 @@ when defined(windows) or defined(nimdoc):
     verifyPresence(socket)
     var retFuture = newFuture[tuple[address: string, client: AsyncFD]]("acceptAddr")
 
-    var clientSock = newRawSocket()
+    var clientSock = newNativeSocket()
     if clientSock == osInvalidSocket: raiseOSError(osLastError())
 
     const lpOutputLen = 1024
@@ -900,17 +900,17 @@ when defined(windows) or defined(nimdoc):
 
     return retFuture
 
-  proc newAsyncRawSocket*(domain, sockType, protocol: cint): AsyncFD =
+  proc newAsyncNativeSocket*(domain, sockType, protocol: cint): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
-  proc newAsyncRawSocket*(domain: Domain = rawsockets.AF_INET,
-               sockType: SockType = SOCK_STREAM,
-               protocol: Protocol = IPPROTO_TCP): AsyncFD =
+  proc newAsyncNativeSocket*(domain: Domain = nativesockets.AF_INET,
+                             sockType: SockType = SOCK_STREAM,
+                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
@@ -973,18 +973,18 @@ else:
     var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
     p.selector.register(fd.SocketHandle, {}, data.RootRef)
 
-  proc newAsyncRawSocket*(domain: cint, sockType: cint,
-      protocol: cint): AsyncFD =
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+  proc newAsyncNativeSocket*(domain: cint, sockType: cint,
+                             protocol: cint): AsyncFD =
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
       result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
-  proc newAsyncRawSocket*(domain: Domain = AF_INET,
-               sockType: SockType = SOCK_STREAM,
-               protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+  proc newAsyncNativeSocket*(domain: Domain = AF_INET,
+                             sockType: SockType = SOCK_STREAM,
+                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
       result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)

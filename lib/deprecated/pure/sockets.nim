@@ -9,7 +9,7 @@
 
 ## **Warning:** Since version 0.10.2 this module is deprecated.
 ## Use the `net <net.html>`_ or the
-## `rawsockets <rawsockets.html>`_ module instead.
+## `nativesockets <nativesockets.html>`_ module instead.
 ##
 ## This module implements portable sockets, it supports a mix of different types
 ## of sockets. Sockets are buffered by default meaning that data will be
