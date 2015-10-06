@@ -53,6 +53,8 @@ type
 let
   pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Error') ':' \s* {.*}"
+  pegLineTemplate =
+    peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' 'template/generic instantiation from here'.*"
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
@@ -66,6 +68,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   let outp = p.outputStream
   var suc = ""
   var err = ""
+  var tmpl = ""
   var x = newStringOfCap(120)
   result.nimout = ""
   while outp.readLine(x.TaintedString) or running(p):
@@ -73,6 +76,9 @@ proc callCompiler(cmdTemplate, filename, options: string,
     if x =~ pegOfInterest:
       # `err` should contain the last error/warning message
       err = x
+    elif x =~ pegLineTemplate and err == "":
+      # `tmpl` contains the last template expansion before the error
+      tmpl = x
     elif x =~ pegSuccess:
       suc = x
   close(p)
@@ -81,6 +87,13 @@ proc callCompiler(cmdTemplate, filename, options: string,
   result.outp = ""
   result.line = 0
   result.column = 0
+  result.tfile = ""
+  result.tline = 0
+  result.tcolumn = 0
+  if tmpl =~ pegLineTemplate:
+    result.tfile = extractFilename(matches[0])
+    result.tline = parseInt(matches[1])
+    result.tcolumn = parseInt(matches[2])
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
@@ -154,13 +167,21 @@ proc addResult(r: var TResults, test: TTest,
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, expected.msg, given.msg, reMsgsDiffer)
-  elif extractFilename(expected.file) != extractFilename(given.file) and
+  elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, expected.file, given.file, reFilesDiffer)
   elif expected.line   != given.line   and expected.line   != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, $expected.line & ':' & $expected.column,
                       $given.line    & ':' & $given.column,
+                      reLinesDiffer)
+  elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
+      "internal error:" notin expected.msg:
+    r.addResult(test, expected.tfile, given.tfile, reFilesDiffer)
+  elif expected.tline   != given.tline   and expected.tline   != 0 or
+       expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
+    r.addResult(test, $expected.tline & ':' & $expected.tcolumn,
+                      $given.tline    & ':' & $given.tcolumn,
                       reLinesDiffer)
   else:
     r.addResult(test, expected.msg, given.msg, reSuccess)
@@ -282,7 +303,7 @@ proc testSpec(r: var TResults, test: TTest) =
       return
 
     let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
-    let (buf, exitCode) = execCmdEx(exeCmd)
+    var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
     let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
                else: strip(buf.string)
     let expectedOut = strip(expected.outp)

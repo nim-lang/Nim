@@ -1,5 +1,5 @@
 import nake
-import httpclient, zipfiles, times, math
+import httpclient, zip/zipfiles, times, math
 nakeImports
 
 randomize()

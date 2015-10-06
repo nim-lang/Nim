@@ -349,7 +349,6 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
   elif sockAddr.sa_family == nativeAfInet6:
     when not useWinVersion:
       # TODO: Windows
-      var v6addr = cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       result = newString(posix.INET6_ADDRSTRLEN)
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       discard posix.inet_ntop(posix.AF_INET6, addr6, result.cstring,
