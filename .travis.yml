@@ -1,20 +1,24 @@
 sudo: false
 language: c
-os:
-  - linux
+os: linux
+compiler: clang
 addons:
   apt:
     packages:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
+before_script:
+  - set -x
+  - set -e
+  - export PATH=$(pwd)/bin:$PATH
 script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
   - sh build.sh
   - cd ..
+  - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
   - ./bin/nim c koch
   - ./koch boot
   - ./koch boot -d:release
-after_script:
-  - export PATH=$(pwd)/bin:$PATH
-  - ./koch test
+  - ./koch test help || true
+  - echo lib cpp types typerel metatype generics macros template vm stdlib array tuples threads | xargs -n1 -P$(nproc) tests/testament/tester --pedantic c
