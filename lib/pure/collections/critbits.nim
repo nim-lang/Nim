@@ -123,6 +123,14 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   var n = rawInsert(c, key)
   result = c.count == oldCount
 
+proc inc*(c: var CritBitTree[int]; key: string) =
+  ## counts the 'key'.
+  let oldCount = c.count
+  var n = rawInsert(c, key)
+  if c.count == oldCount:
+    # not a new key:
+    inc n.val
+
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
   discard rawInsert(c, key)
