@@ -1,6 +1,6 @@
-import rawsockets, asyncdispatch, macros
+import nativesockets, asyncdispatch, macros
 var p = newDispatcher()
-var sock = newAsyncRawSocket()
+var sock = newAsyncNativeSocket()
 
 proc convertReturns(node, retFutureSym: NimNode): NimNode {.compileTime.} =
   case node.kind

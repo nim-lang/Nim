@@ -42,7 +42,7 @@ type
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wIncompleteStruct, wRequiresInit,
+    wImportc, wExportc, wExportNims, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
     wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
     wCompilerproc, wProcVar, wBase,
@@ -126,7 +126,8 @@ const
 
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
-    "importcompilerproc", "importc", "exportc", "incompletestruct",
+    "importcompilerproc", "importc", "exportc", "exportnims",
+    "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
     "compilerproc", "procvar", "base",

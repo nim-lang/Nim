@@ -56,7 +56,7 @@
 ##
 
 import asyncdispatch
-import rawsockets
+import nativesockets
 import net
 import os
 
@@ -112,8 +112,8 @@ proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncRawSocket(domain, sockType, protocol), domain,
-      sockType, protocol, buffered)
+  result = newAsyncSocket(newAsyncNativeSocket(domain, sockType, protocol),
+                          domain, sockType, protocol, buffered)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
     buffered = true): AsyncSocket =
@@ -121,8 +121,9 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncRawSocket(domain, sockType, protocol),
-      Domain(domain), SockType(sockType), Protocol(protocol), buffered)
+  result = newAsyncSocket(newAsyncNativeSocket(domain, sockType, protocol),
+                          Domain(domain), SockType(sockType),
+                          Protocol(protocol), buffered)
 
 when defined(ssl):
   proc getSslError(handle: SslPtr, err: cint): cint =

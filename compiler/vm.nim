@@ -1411,6 +1411,31 @@ proc execute(c: PCtx, start: int): PNode =
   newSeq(tos.slots, c.prc.maxSlots)
   result = rawExecute(c, start, tos).regToNode
 
+proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
+  if sym.kind in routineKinds:
+    if sym.typ.len-1 != args.len:
+      localError(sym.info,
+        "NimScript: expected $# arguments, but got $#" % [
+        $(sym.typ.len-1), $args.len])
+    else:
+      let start = genProc(c, sym)
+
+      var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
+      let maxSlots = sym.offset
+      newSeq(tos.slots, maxSlots)
+
+      # setup parameters:
+      if not isEmptyType(sym.typ.sons[0]) or sym.kind == skMacro:
+        putIntoReg(tos.slots[0], getNullValue(sym.typ.sons[0], sym.info))
+      # XXX We could perform some type checking here.
+      for i in 1.. <sym.typ.len:
+        putIntoReg(tos.slots[i], args[i-1])
+
+      result = rawExecute(c, start, tos).regToNode
+  else:
+    localError(sym.info,
+      "NimScript: attempt to call non-routine: " & sym.name.s)
+
 proc evalStmt*(c: PCtx, n: PNode) =
   let n = transformExpr(c.module, n)
   let start = genStmt(c, n)

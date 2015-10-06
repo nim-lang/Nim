@@ -14,22 +14,14 @@ import
 
 var systemModule*: PSym
 
-proc registerSysType*(t: PType)
-  # magic symbols in the system module:
-proc getSysType*(kind: TTypeKind): PType
-proc getCompilerProc*(name: string): PSym
-proc registerCompilerProc*(s: PSym)
-proc finishSystem*(tab: TStrTable)
-proc getSysSym*(name: string): PSym
-# implementation
-
 var
   gSysTypes: array[TTypeKind, PType]
   compilerprocs: TStrTable
+  exposed: TStrTable
 
 proc nilOrSysInt*: PType = gSysTypes[tyInt]
 
-proc registerSysType(t: PType) =
+proc registerSysType*(t: PType) =
   if gSysTypes[t.kind] == nil: gSysTypes[t.kind] = t
 
 proc newSysType(kind: TTypeKind, size: int): PType =
@@ -37,7 +29,7 @@ proc newSysType(kind: TTypeKind, size: int): PType =
   result.size = size
   result.align = size.int16
 
-proc getSysSym(name: string): PSym =
+proc getSysSym*(name: string): PSym =
   result = strTableGet(systemModule.tab, getIdent(name))
   if result == nil:
     rawMessage(errSystemNeeds, name)
@@ -61,7 +53,7 @@ proc getSysMagic*(name: string, m: TMagic): PSym =
 proc sysTypeFromName*(name: string): PType =
   result = getSysSym(name).typ
 
-proc getSysType(kind: TTypeKind): PType =
+proc getSysType*(kind: TTypeKind): PType =
   result = gSysTypes[kind]
   if result == nil:
     case kind
@@ -97,6 +89,7 @@ var
 proc resetSysTypes* =
   systemModule = nil
   initStrTable(compilerprocs)
+  initStrTable(exposed)
   for i in low(gSysTypes)..high(gSysTypes):
     gSysTypes[i] = nil
 
@@ -163,8 +156,8 @@ proc setIntLitType*(result: PNode) =
       result.typ = getSysType(tyInt64)
   else: internalError(result.info, "invalid int size")
 
-proc getCompilerProc(name: string): PSym =
-  var ident = getIdent(name, hashIgnoreStyle(name))
+proc getCompilerProc*(name: string): PSym =
+  let ident = getIdent(name)
   result = strTableGet(compilerprocs, ident)
   if result == nil:
     result = strTableGet(rodCompilerprocs, ident)
@@ -173,9 +166,22 @@ proc getCompilerProc(name: string): PSym =
       if result.kind == skStub: loadStub(result)
       if result.kind == skAlias: result = result.owner
 
-proc registerCompilerProc(s: PSym) =
+proc registerCompilerProc*(s: PSym) =
   strTableAdd(compilerprocs, s)
 
-proc finishSystem(tab: TStrTable) = discard
+proc registerNimScriptSymbol*(s: PSym) =
+  # Nimscript symbols must be al unique:
+  let conflict = strTableGet(exposed, s.name)
+  if conflict == nil:
+    strTableAdd(exposed, s)
+  else:
+    localError(s.info, "symbol conflicts with other .exportNims symbol at: " &
+      $conflict.info)
+
+proc getNimScriptSymbol*(name: string): PSym =
+  strTableGet(exposed, getIdent(name))
+
+proc resetNimScriptSymbols*() = initStrTable(exposed)
 
 initStrTable(compilerprocs)
+initStrTable(exposed)
