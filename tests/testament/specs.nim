@@ -44,6 +44,8 @@ type
     file*, cmd*: string
     outp*: string
     line*, column*: int
+    tfile*: string
+    tline*, tcolumn*: int
     exitCode*: int
     msg*: string
     ccodeCheck*: string
@@ -116,6 +118,9 @@ proc parseSpec*(filename: string): TSpec =
     of "file": result.file = e.value
     of "line": discard parseInt(e.value, result.line)
     of "column": discard parseInt(e.value, result.column)
+    of "tfile": result.tfile = e.value
+    of "tline": discard parseInt(e.value, result.tline)
+    of "tcolumn": discard parseInt(e.value, result.tcolumn)
     of "output":
       result.action = actionRun
       result.outp = e.value
