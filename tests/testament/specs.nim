@@ -103,6 +103,9 @@ proc specDefaults*(result: var TSpec) =
   result.cmd = cmdTemplate
   result.line = 0
   result.column = 0
+  result.tfile = ""
+  result.tline = 0
+  result.tcolumn = 0
 
 proc parseSpec*(filename: string): TSpec =
   specDefaults(result)
