@@ -398,7 +398,7 @@ template keepItIf*(varSeq: seq, pred: expr) =
   setLen(varSeq, pos)
 
 
-template toSeq*(iter: expr): expr =
+template toSeq*(iter: expr): expr {.immediate.} =
   ## Transforms any iterator into a sequence.
   ##
   ## Example:
