@@ -1,11 +1,3 @@
-#
-#
-#            Nim's Runtime Library
-#        (c) Copyright 2015 Andreas Rumpf
-#
-#    See the file "copying.txt", included in this
-#    distribution, for details about the copyright.
-#
 import math, algorithm, sequtils, strutils, typetraits
 
 ## Extensions of the math module to work with sequences
@@ -34,14 +26,12 @@ type
     x*: float
     y*: float
 
+  PtileInterp = enum
+    linear, lower, higher, nearest, midpoint
+
 template toFloat(f: float): float = f
 
 # ----------- Point -----------------------
-proc `!=`*[T:Point](a, b: T): bool {.inline.} =
-  result = (a.x != b.x or a.y != b.y)
-
-proc `==`*[T:Point](a, b: T): bool {.inline.} =
-  result = not (a.`!=`(b))
 
 proc `>`*[T:Point](a, b: T): bool {.inline.} =
   result = (a.x*a.x + a.y*a.y) > (b.x*b.x + b.y*b.y)
@@ -184,7 +174,7 @@ liftScalarProc(lcm)
 
 # ----------- cumulative seq math -----------------------
 
-proc cumProd*[T:int|float](x: openArray[T]): seq[T] =
+proc cumProd*[T](x: openArray[T]): seq[T] =
   ## cumulative product for each element of ``x``
   ##
   ## ``cumProd(@[1,2,3,4])`` produces ``@[1,2,6,24]``
@@ -194,7 +184,7 @@ proc cumProd*[T:int|float](x: openArray[T]): seq[T] =
     cp = cp * x[i]
     result[i] = cp
 
-proc cumSum*[T:int|float](x: openArray[T]): seq[T] =
+proc cumSum*[T](x: openArray[T]): seq[T] =
   ## cumulative sum for each element of ``x``
   ##
   ## ``cumSum(@[1,2,3,4])`` produces ``@[1,3,6,10]``
@@ -204,7 +194,7 @@ proc cumSum*[T:int|float](x: openArray[T]): seq[T] =
     cp = cp + x[i]
     result[i] = cp
 
-proc cumCount*[T:int|float](x: openArray[T], v: T): seq[T] =
+proc cumCount*[T](x: openArray[T], v: T): seq[T] =
   ## cumulative count of a number in ``x``
   ##
   ## the cumulative count of ``3`` for ``@[1,3,3,2,3]`` produces ``@[0,1,2,2,3]``
@@ -214,7 +204,7 @@ proc cumCount*[T:int|float](x: openArray[T], v: T): seq[T] =
     if x[i] == v: inc(cp)
     result[i] = cp
 
-proc cumPowSum*[T:int|float](x: openArray[T], p: T): seq[float] =
+proc cumPowSum*[T](x: openArray[T], p: T): seq[float] =
   ## cumulative sum of ``pow(x[], p)`` for each element
   ## The resultant sequence is of type ``float``
   ##
@@ -227,7 +217,7 @@ proc cumPowSum*[T:int|float](x: openArray[T], p: T): seq[float] =
 
 # ----------- single-result seq math -----------------------
 
-proc product*[T:int|float](x: openArray[T]): T =
+proc product*[T](x: openArray[T]): T =
   ## sum each element of ``x``
   ## returning a single value
   ##
@@ -236,7 +226,7 @@ proc product*[T:int|float](x: openArray[T]): T =
   for i in 0..<x.len: cp *= x[i]
   result = cp
 
-proc sum*[T:int|float](x: openArray[T]): T =
+proc sum*[T](x: openArray[T]): T =
   ## sum each element of ``x``
   ## returning a single value
   ##
@@ -246,7 +236,7 @@ proc sum*[T:int|float](x: openArray[T]): T =
     cp = cp + x[i]
   result = cp
 
-proc sumSquares*[T:int|float](x: openArray[T]): T =
+proc sumSquares*[T](x: openArray[T]): T =
   ## sum of ``x[i] * x[i]`` for each element
   ## returning a single value
   ##
@@ -257,7 +247,7 @@ proc sumSquares*[T:int|float](x: openArray[T]): T =
     ps += i*i
   result = ps
 
-proc powSum*[T:int|float](x: openArray[T], p: T): float =
+proc powSum*[T](x: openArray[T], p: T): float =
   ## sum of ``pow(x[], p)`` of each element
   ## returning a single value
   ##
@@ -267,7 +257,7 @@ proc powSum*[T:int|float](x: openArray[T], p: T): float =
   for i in 0..<x.len: ps += pow(x[i].toFloat, p.toFloat)
   result = ps
 
-proc max*[T:int|float](x: openArray[T]): T =
+proc max*[T](x: openArray[T]): T =
   ## Maximum element in ``x``
   if x.len == 0: result = T(0)
   else:
@@ -275,7 +265,7 @@ proc max*[T:int|float](x: openArray[T]): T =
     for i in 0..<x.len:
       if x[i] > result: result = x[i]
 
-proc max*[T:int|float](x: openArray[T], m: T): seq[T] =
+proc max*[T](x: openArray[T], m: T): seq[T] =
   ## Maximum of each element of ``x`` compared to the value ``m``
   ## as a sequence
   ##
@@ -286,7 +276,7 @@ proc max*[T:int|float](x: openArray[T], m: T): seq[T] =
     for i in 0..<x.len:
       result[i] = max(m, x[i])
 
-proc max*[T:int|float](x, y: openArray[T]): seq[T] =
+proc max*[T](x, y: openArray[T]): seq[T] =
   ## Maximum value of each element of ``x`` and
   ## ``y`` respectively, as a sequence.
   ##
@@ -301,7 +291,7 @@ proc max*[T:int|float](x, y: openArray[T]): seq[T] =
       elif i < x.len: result[i] = x[i]
       else: result[i] = y[i]
 
-proc min*[T:int|float](x: openArray[T]): T =
+proc min*[T](x: openArray[T]): T =
   ## Minimum element in ``x``
   if x.len == 0: result = T(0)
   else:
@@ -309,7 +299,7 @@ proc min*[T:int|float](x: openArray[T]): T =
     for i in 0..<x.len:
       if x[i] < result: result = x[i]
 
-proc min*[T:int|float](x: openArray[T], m: T): seq[T] =
+proc min*[T](x: openArray[T], m: T): seq[T] =
   ## Minimum of each element of ``x`` compared to the value ``m``
   ## as a sequence
   ##
@@ -320,7 +310,7 @@ proc min*[T:int|float](x: openArray[T], m: T): seq[T] =
     for i in 0..<x.len:
       result[i] = min(m, x[i])
 
-proc min*[T:int|float](x, y: openArray[T]): seq[T] =
+proc min*[T](x, y: openArray[T]): seq[T] =
   ## Minimum value of each element of ``x`` and
   ## ``y`` respectively, as a sequence.
   ##
@@ -338,7 +328,7 @@ proc min*[T:int|float](x, y: openArray[T]): seq[T] =
 
 # ----------- per element seq math -----------------------
 
-proc eAdd*[T:int|float](x, y: openArray[T]): seq[T] =
+proc eAdd*[T](x, y: openArray[T]): seq[T] =
   ## add each element ``x`` and ``y`` respectively,
   ## returning a sequence
   ##
@@ -348,7 +338,7 @@ proc eAdd*[T:int|float](x, y: openArray[T]): seq[T] =
   for i in 0..<x.len:
     result[i] = x[i] + y[i]
 
-proc eAdd*[T:int|float](x: openArray[T], y: T): seq[T] =
+proc eAdd*[T](x: openArray[T], y: T): seq[T] =
   ## add ``y`` to each element of ``x``
   ##
   ## ``eAdd(@[1,2], 4)`` produces ``@[5,6]``
@@ -356,7 +346,7 @@ proc eAdd*[T:int|float](x: openArray[T], y: T): seq[T] =
   for i in 0..<x.len:
     result[i] = x[i] + y
 
-proc eSub*[T:int|float](x, y: openarray[T]): seq[T] =
+proc eSub*[T](x, y: openarray[T]): seq[T] =
   ## ``subtract`` each element of ``y`` from ``x`` as a sequence,
   ## where x.len <= y.len
   ##
@@ -366,7 +356,7 @@ proc eSub*[T:int|float](x, y: openarray[T]): seq[T] =
   for i in 0..<x.len:
     result[i] = x[i] - y[i]
 
-proc eSub*[T:int|float](x: openArray[T], y: T): seq[T] =
+proc eSub*[T](x: openArray[T], y: T): seq[T] =
   ## ``subtract`` ``y`` from each element of ``x``
   ##
   ## ``eSub(@[1,2], 2)`` produces ``@[-1,0]``
@@ -374,7 +364,7 @@ proc eSub*[T:int|float](x: openArray[T], y: T): seq[T] =
   for i in 0..<x.len:
     result[i] = x[i] - y
 
-proc eMul*[T:int|float](x, y: openArray[T]): seq[T] =
+proc eMul*[T](x, y: openArray[T]): seq[T] =
   ## ``multiply`` each element of ``x`` and ``y`` as a sequence,
   ## where x.len <= y.len
   ##
@@ -384,7 +374,7 @@ proc eMul*[T:int|float](x, y: openArray[T]): seq[T] =
   for i in 0..<x.len:
     result[i] = x[i] * y[i]
 
-proc eMul*[T:int|float](x: openArray[T], y: T): seq[T] =
+proc eMul*[T](x: openArray[T], y: T): seq[T] =
   ## ``multiply`` ``y`` by each element of ``x`` as a sequence
   ##
   ## ``eMul(@[1,2], 8)`` produces``@[8,16]``
@@ -392,7 +382,7 @@ proc eMul*[T:int|float](x: openArray[T], y: T): seq[T] =
   for i in 0..<x.len:
     result[i] = x[i] * y
 
-proc eDiv*[T:int|float](x, y: openArray[T]): seq[float] =
+proc eDiv*[T](x, y: openArray[T]): seq[float] =
   ## ``divide`` each element of ``x`` by ``y`` as a sequence,
   ## where dividing by zero is a zero result,
   ## and the results are of type ``float``
@@ -405,7 +395,7 @@ proc eDiv*[T:int|float](x, y: openArray[T]): seq[float] =
     if y[i] == T(0): result[i] = 0.0
     else: result[i] = x[i] / y[i]
 
-proc eDiv*[T:int|float](x: openArray[T], y: T): seq[float] =
+proc eDiv*[T](x: openArray[T], y: T): seq[float] =
   ## ``divide`` each element of ``x`` by ``y`` as a sequence,
   ## where dividing by zero is a zero result
   ## and the results are of type ``float``
@@ -416,7 +406,7 @@ proc eDiv*[T:int|float](x: openArray[T], y: T): seq[float] =
     if y == T(0): result[i] = 0.0
     else: result[i] = x[i].toFloat / y.toFloat
 
-proc eMod*[T:int|float](x, y: openArray[T]): seq[float] =
+proc eMod*[T](x, y: openArray[T]): seq[float] =
   ## ``modulus`` or ``remainder`` from the division of each
   ## corresponding element of ``x`` and ``y`` as a sequence,
   ## where dividing by zero is a zero result
@@ -430,7 +420,7 @@ proc eMod*[T:int|float](x, y: openArray[T]): seq[float] =
     if y[i] == 0: result[i] = 0.0
     else: result[i] = fmod(x[i].toFloat, y[i].toFloat)
 
-proc eMod*[T:int|float](x: openArray[T], y: T): seq[float] =
+proc eMod*[T](x: openArray[T], y: T): seq[float] =
   ## ``modulus`` or ``remainder`` of ``x`` and ``y`` as a sequence,
   ## remainder from the division of each element of ``x`` by ``y``
   ## as a sequence,
@@ -443,33 +433,33 @@ proc eMod*[T:int|float](x: openArray[T], y: T): seq[float] =
     if y == 0: result[i] = 0.0
     else: result[i] = fmod(x[i].toFloat, y.toFloat)
 
-proc eRem*[T:int|float](x, y: openArray[T]): seq[float] =
+proc eRem*[T](x, y: openArray[T]): seq[float] =
   ## ``remainder`` - use eMod
   eMod(x,y)
 
-proc eRem*[T:int|float](x: openArray[T], y: T): seq[float] =
+proc eRem*[T](x: openArray[T], y: T): seq[float] =
   ## ``remainder`` - use eMod
   eMod(x,y)
 
-proc exp2*[T:int|float](x: openArray[T]): seq[T] =
+proc exp2*[T](x: openArray[T]): seq[T] =
   ## ``pow(2,x)`` for each element of ``x``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
     result[i] = pow(2,x[i].toFloat())
 
-proc expm1*[T:int|float](x: openArray[T]): seq[T] =
+proc expm1*[T](x: openArray[T]): seq[T] =
   ## ``exp(x)-1`` for each element of ``x``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
     result[i] = exp(x[i].toFloat) - 1
 
-proc log1p*[T:int|float](x: openArray[T]): seq[T] =
+proc log1p*[T](x: openArray[T]): seq[T] =
   ## ``log(1+x)`` for each element of ``x``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
     result[i] = log10(1 + x[i].toFloat())
 
-proc eDiff*[T:int|float](x: openArray[T]): seq[T] =
+proc eDiff*[T](x: openArray[T]): seq[T] =
   ## ``difference`` between adjacent element of ``x`
   ## where ``diff = x[n+1] - x[n]``
   ##
@@ -481,7 +471,7 @@ proc eDiff*[T:int|float](x: openArray[T]): seq[T] =
     result[i-1] = x[i] - prev
     prev = x[i]
 
-proc diff*[T:int|float](x: openArray[T], n: int = 1): seq[T] =
+proc diff*[T](x: openArray[T], n: int = 1): seq[T] =
   ## ``difference`` between adjacent element of ``x`
   ## where ``diff = x[i+1] - x[i]``
   ## and ``n`` is the number of times to recursively take the
@@ -494,19 +484,19 @@ proc diff*[T:int|float](x: openArray[T], n: int = 1): seq[T] =
   for k in 1..<n:
     result = eDiff(result)
 
-proc reciprocal*[T:int|float](x: openArray[T]): seq[float] =
+proc reciprocal*[T](x: openArray[T]): seq[float] =
   ## ``1/x[]`` for each element of ``x``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
     result[i] = 1.0 / x[i].toFloat()
 
-proc negative*[T:int|float](x: openArray[T]): seq[T] =
+proc negative*[T](x: openArray[T]): seq[T] =
   ## ``- x[]`` for each element of ``x``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
     result[i] =  - x[i]
 
-proc clip*[T:int|float](x: openArray[T], min, max: T): seq[T] =
+proc clip*[T](x: openArray[T], min, max: T): seq[T] =
   ## limit each element of ``x`` to ``min<=x[]<=max``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
@@ -514,38 +504,38 @@ proc clip*[T:int|float](x: openArray[T], min, max: T): seq[T] =
     elif i > max: result[i] = max
     else: result[i] = x[i]
 
-proc clamp*[T:int|float](x: openArray[T], min, max: T): seq[T] =
+proc clamp*[T](x: openArray[T], min, max: T): seq[T] =
   result = clip(x, min, max)
 
-proc clip*[T:int|float](x: var openArray[T], min, max: T) =
+proc clip*[T](x: var openArray[T], min, max: T) =
   ## limit each element of ``x`` to ``min<=x[]<=max``
   for i in 0..<x.len:
     if x[i] < min: x[i] = min
     if x[i] > max: x[i] = max
 
-proc clamp*[T:int|float](x: var openArray[T], min, max: T) =
+proc clamp*[T](x: var openArray[T], min, max: T) =
   ## limits the value ``x`` within the interval [a, b]
   clip(x, min, max)
 
-#proc abs*[T:int|float](x: openArray[T]): seq[T] =
+#proc abs*[T](x: openArray[T]): seq[T] =
 #  ## return the absolute value of each element of ``x``
 #  result = newSeq[T](x.len)
 #  for i in 0..<x.len:
 #    result[i] = abs(x[i])
 
-proc sign*[T:int|float](x: openArray[T]): seq[int] =
+proc sign*[T](x: openArray[T]): seq[int] =
   ## return the sign of each element of ``x``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
     result[i] = sign(x[i])
 
-proc square*[T:int|float](x: openArray[T]): seq[T] =
+proc square*[T](x: openArray[T]): seq[T] =
   ## return ``x[]*x[]`` for each element of ``x``
   result = newSeq[T](x.len)
   for i in 0..<x.len:
     result[i] = x[i]*x[i]
 
-proc cube*[T:int|float](x: openArray[T]): seq[T] =
+proc cube*[T](x: openArray[T]): seq[T] =
   ## return ``x[]*x[]*x[]`` for each element of ``x``
   let limt = pow(high(T),0.33333333)
   result = newSeq[T](x.len)
@@ -554,7 +544,7 @@ proc cube*[T:int|float](x: openArray[T]): seq[T] =
     if v > limt: result[i] = high(T)
     else: result[i] = v*v*v
 
-proc sort[T:int|float](x: openarray[T]): seq[T] =
+proc sort[T](x: openarray[T]): seq[T] =
   ## return a sorted copy of ``x`` according to the
   ## element type ``T``
   result = newSeq[T](x.len)
@@ -562,14 +552,15 @@ proc sort[T:int|float](x: openarray[T]): seq[T] =
     result[i] = x[i]
   sort(result, cmp[T])
 
-proc percentile*[T:int|float](x: openArray[T], p: int, interp = "linear"): float =
+proc percentile*[T](x: openArray[T], p: int, interp = PtileInterp.linear): float =
   ## statistical percentile value of ``x``, where ``p`` percentile value
   ## is between ``0`` and ``100`` inclusively,
   ## and ``p=0`` gives the min value, ``p=100`` gives the max value
   ## and ``p=50`` gives the median value.
   ##
-  ## The ``interp`` is the interpolation of the percentile when it
-  ## does not lie on a discrete element of ``x``, but between two
+  ## The ``interp`` is the ``PercentileInterp`` interpolation of the
+  ## percentile when it does not lie on a discrete element of ``x``,
+  ## but between two
   ## arbitrary elements ``x[i]`` and ``x[j]``, and can be one of
   ## - ``linear`` => i + (j-1)*fraction
   ## - ``lower`` => i
@@ -589,18 +580,18 @@ proc percentile*[T:int|float](x: openArray[T], p: int, interp = "linear"): float
     let frac: float = f - i.float
     if f == i.float:  result = a[i].float
     else:
-      case interp.toLower()
-      of "lower": result = a[i].float
-      of "higher": result = a[i+1].float
-      of "nearest":
+      case interp
+      of PtileInterp.lower: result = a[i].float
+      of PtileInterp.higher: result = a[i+1].float
+      of PtileInterp.nearest:
         if frac < 0.5:  result = a[i].float
         else: result = a[i+1].float
-      of "midpoint":
+      of PtileInterp.midpoint:
         result = (a[i] + a[i+1])/2
-      else:  # "linear"
+      else:  # PtileInterp.linear
         result = (a[i].float + (a[i+1] - a[i]).float * frac)
 
-proc median*[T:int|float](x: openArray[T], q: int, interp = "linear"): float =
+proc median*[T](x: openArray[T], q: int, interp = "linear"): float =
   ## median is the middle value of sorted ``x`` if ``x.len`` is odd,
   ## and is the average of the middle two elements if ``x.len`` is even
   result = percentile(x, 50)
@@ -718,7 +709,7 @@ proc bincount*(x: openArray[int]): seq[int] =
     if ss[i] < 0: continue
     inc(result[ss[i] - sslow])
 
-proc digitize*[T:int|float](x: openArray[T], bins: openArray[T], right = false): seq[int] =
+proc digitize*[T](x: openArray[T], bins: openArray[T], right = false): seq[int] =
   ## Return the indices of the ``bins`` to which each value of ``x`` belongs.
   ##
   ## Each returned index for *increasing ``bins``* is ``bins[i-1]<=x< bins[i]``
@@ -729,7 +720,7 @@ proc digitize*[T:int|float](x: openArray[T], bins: openArray[T], right = false):
   ##
   ## Note: if ``x`` has values outside of ``bins``, then ``digitize`` returns an index
   ## outside the range of ``bins`` (``0`` or ``bins.len``)
-  assert(bins.len > 1,"digitize() must have two or more bin values")
+  doAssert(bins.len > 1,"digitize() must have two or more bin values")
   result = newSeq[int](x.len)
   # default of increasing bin values
   for i in 0..<x.len:
@@ -752,7 +743,7 @@ proc digitize*[T:int|float](x: openArray[T], bins: openArray[T], right = false):
           result[i] = k
           break
 
-proc unwrap*[T:int|float](p: openArray[T], discont = PI): seq[float] =
+proc unwrap*[T](p: openArray[T], discont = PI): seq[float] =
   ## unwrap radian values of ``p`` by changing deltas between
   ## consecutive elements to its ``2*pi`` complement
   ##
@@ -781,7 +772,7 @@ proc unwrap*[T:int|float](p: openArray[T], discont = PI): seq[float] =
       # if a discontinuity, then add diff to that value
       result[i] = result[i-1] + d
 
-proc transpose*[T: int|float](x: openArray[seq[T]]): seq[seq[T]] =
+proc transpose*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## transpose a seq[seq[]]
   ##
   ## A 2 x 3-element becomes a 3 x 2-element seq[seq[]]
@@ -793,7 +784,8 @@ proc transpose*[T: int|float](x: openArray[seq[T]]): seq[seq[T]] =
     for j in 0..<alen:
       result[i][j] = x[j][i]
 
-proc shape*[T:int|float](x: T): seq[int] = @[]
+proc shape[T:SomeNumber](x: T): seq[int] = @[]
+  # Exists so that recursive template stops with this proc.
 
 proc shape*[T](x: openarray[T]): seq[int] =
   ## return the shape of a (nested) [seq[....]]
@@ -823,10 +815,10 @@ proc shape*[T](x: seq[T]): seq[int] =
     result[k] = sNr
     inc(k)
 
-proc ptp[T: int|float](x: T): T = (result = T(0))
+proc ptp[T: SomeNumber](x: T): T = (result = T(0))
   # this is required for liftScalarProc(ptp)
 
-proc ptp*[T: int|float](x: seq[T]): T =
+proc ptp*[T: SomeNumber](x: seq[T]): T =
   ## ``peak to peak`` returns the difference
   ## between the maximum and minimum elements
   ## of ``x`` (a seq or nested seq[])
@@ -1023,114 +1015,110 @@ proc npv*(cashflows: openArray[float], pv: var openArray[float], rate: float): f
   result = netPV
 
 # ---------------------------------------------
-if isMainModule:
-  assert(Point(x:2.0, y:2.0) != Point(x:2.0001, y:2.0) )
-  assert(Point(x:2.0, y:2.0) == Point(x:2.0, y:2.0) )
-  assert(Point(x:2.0, y:2.0) > Point(x:1.99999, y:2.0) )
-  assert(Point(x:1.99998, y:2.0) < Point(x:1.99999, y:2.0) )
-  assert(Point(x:1.99999, y:2.0) <= Point(x:1.99999, y:2.0) )
-  assert(Point(x:1.99999, y:2.0) >= Point(x:1.99999, y:2.0) )
-  assert(swap(Point(x:1.99999, y:2.0)) == Point(x:2.0, y:1.99999) )
-  assert(swap(Point(x:1.99999, y:2.0)) == Point(x:2.0, y:1.99999) )
+when isMainModule:
+  doAssert(Point(x:2.0, y:2.0) != Point(x:2.0001, y:2.0) )
+  doAssert(Point(x:2.0, y:2.0) == Point(x:2.0, y:2.0) )
+  doAssert(Point(x:2.0, y:2.0) > Point(x:1.99999, y:2.0) )
+  doAssert(Point(x:1.99998, y:2.0) < Point(x:1.99999, y:2.0) )
+  doAssert(Point(x:1.99999, y:2.0) <= Point(x:1.99999, y:2.0) )
+  doAssert(Point(x:1.99999, y:2.0) >= Point(x:1.99999, y:2.0) )
+  doAssert(swap(Point(x:1.99999, y:2.0)) == Point(x:2.0, y:1.99999) )
+  doAssert(swap(Point(x:1.99999, y:2.0)) == Point(x:2.0, y:1.99999) )
   var p = Point(x:1.99999, y:2.0)
   swap(p)
-  assert( p == Point(x:2.0, y:1.99999) )
+  doAssert( p == Point(x:2.0, y:1.99999) )
 
-  assert( min(@[-1,-2,3,4]) == -2 )
-  assert( max(@[-1,-2,3,4]) == 4 )
-  assert( max(@[-1,-2,3,4], 0) == @[0,0,3,4] )
-  assert( max(@[-1,-2,3,4], @[4,3,2,1]) == @[4,3,3,4] )
-  assert( min(@[-1,-2,3,4], @[4,3,2,1]) == @[-1,-2,2,1] )
+  doAssert( min(@[-1,-2,3,4]) == -2 )
+  doAssert( max(@[-1,-2,3,4]) == 4 )
+  doAssert( max(@[-1,-2,3,4], 0) == @[0,0,3,4] )
+  doAssert( max(@[-1,-2,3,4], @[4,3,2,1]) == @[4,3,3,4] )
+  doAssert( min(@[-1,-2,3,4], @[4,3,2,1]) == @[-1,-2,2,1] )
 
-  assert( cumProd([1,2,3,4]) == @[1,2,6,24])
-  assert( cumSum([1,2,3,4]) == @[1,3,6,10])
-  assert( cumCount([1,3,3,2,3],3) == @[0,1,2,2,3])
-  assert( cumPowSum(@[1,2,3,4], 2) == @[1.0, 5.0, 14.0, 30.0])
+  doAssert( cumProd([1,2,3,4]) == @[1,2,6,24])
+  doAssert( cumSum([1,2,3,4]) == @[1,3,6,10])
+  doAssert( cumCount([1,3,3,2,3],3) == @[0,1,2,2,3])
+  doAssert( cumPowSum(@[1,2,3,4], 2) == @[1.0, 5.0, 14.0, 30.0])
 
-  assert( sum([1,2,3,4]) == 10 )
-  assert( product([1,2,3,4]) == 24 )
-  assert( sumSquares(@[1,2,3,4]) == 30 )
-  assert( powSum(@[1,2], 3) == 9 )
+  doAssert( sum([1,2,3,4]) == 10 )
+  doAssert( product([1,2,3,4]) == 24 )
+  doAssert( sumSquares(@[1,2,3,4]) == 30 )
+  doAssert( powSum(@[1,2], 3) == 9 )
 
-  assert( eAdd(@[1,2,-1], @[3,4,-2]) == @[4,6,-3] )
-  assert( eAdd(@[1,2], 4) == @[5,6] )
-  assert( eSub(@[1,2,-1], @[3,1,-2]) == @[-2,1,1] )
-  assert( eSub(@[1,20], 4) == @[-3,16] )
-  assert( eSub( @[1.0, 2.0, -1.0], @[3.0, 1.0, -2.1231]) == @[-2.0,1.0,1.1231] )
-  assert( eSub(@[1.0,20.321], 4.0) == @[-3.0,16.321] )
-  assert( eMul(@[1,2,-1], @[3,1,-2]) == @[3,2,2] )
-  assert( eMul(@[-1,20], 4) == @[-4,80] )
-  assert( eMul( @[1.0, 2.0, -1.0], @[3.0, 1.0, -2.1231]) == @[3.0,2.0,2.1231] )
-  assert( eMul(@[-1.111,20.0], 4.0) == @[-4.444,80.0] )
-  assert( eDiv(@[1,2,-1], @[1,0,-2]) == @[1.0,0.0,0.5] )
-  assert( eDiv(@[-1,20], 4) == @[-0.25,5.0] )
-  assert( eDiv( @[1.0, 2.0, -1.1231], @[1.0, 0.0, -1.0]) == @[1.0,0.0,1.1231] )
-  assert( eDiv(@[-4.444,20.0], 4.0) == @[-1.111,5.0] )
-  assert( eMod(@[2,4,-5], @[3,0,-4]) == @[2.0,0.0,-1.0] )
-  assert( eMod(@[-5,20], 4) == @[-1.0,0.0] )
-  assert( eMod( @[2.0, 4.0, -5.1231], @[3.0, 0.0, -4.0]) == @[2.0,0.0,-1.1231] )
-  assert( eMod(@[-5.0,20.0], 4.0) == @[-1.0,0.0] )
-  assert( eDiff([1,2,4,7,0]) == @[1,2,3,-7] )
+  doAssert( eAdd(@[1,2,-1], @[3,4,-2]) == @[4,6,-3] )
+  doAssert( eAdd(@[1,2], 4) == @[5,6] )
+  doAssert( eSub(@[1,2,-1], @[3,1,-2]) == @[-2,1,1] )
+  doAssert( eSub(@[1,20], 4) == @[-3,16] )
+  doAssert( eSub( @[1.0, 2.0, -1.0], @[3.0, 1.0, -2.1231]) == @[-2.0,1.0,1.1231] )
+  doAssert( eSub(@[1.0,20.321], 4.0) == @[-3.0,16.321] )
+  doAssert( eMul(@[1,2,-1], @[3,1,-2]) == @[3,2,2] )
+  doAssert( eMul(@[-1,20], 4) == @[-4,80] )
+  doAssert( eMul( @[1.0, 2.0, -1.0], @[3.0, 1.0, -2.1231]) == @[3.0,2.0,2.1231] )
+  doAssert( eMul(@[-1.111,20.0], 4.0) == @[-4.444,80.0] )
+  doAssert( eDiv(@[1,2,-1], @[1,0,-2]) == @[1.0,0.0,0.5] )
+  doAssert( eDiv(@[-1,20], 4) == @[-0.25,5.0] )
+  doAssert( eDiv( @[1.0, 2.0, -1.1231], @[1.0, 0.0, -1.0]) == @[1.0,0.0,1.1231] )
+  doAssert( eDiv(@[-4.444,20.0], 4.0) == @[-1.111,5.0] )
+  doAssert( eMod(@[2,4,-5], @[3,0,-4]) == @[2.0,0.0,-1.0] )
+  doAssert( eMod(@[-5,20], 4) == @[-1.0,0.0] )
+  doAssert( eMod( @[2.0, 4.0, -5.1231], @[3.0, 0.0, -4.0]) == @[2.0,0.0,-1.1231] )
+  doAssert( eMod(@[-5.0,20.0], 4.0) == @[-1.0,0.0] )
+  doAssert( eDiff([1,2,4,7,0]) == @[1,2,3,-7] )
   var w: seq[int] = @[]
-  assert( eDiff(w) == @[] )
-  assert( diff([1,2,4,7,0],0) == @[1,2,3,-7] )
-  assert( diff([1,2,4,7,0],1) == @[1,2,3,-7] )
-  assert( diff([1,2,4,7,0],2) == @[1,1,-10] )
-  assert( diff([1,2,4,7,0],3) == @[0,-11] )
-  assert( diff([1,2,4,7,0],4) == @[-11] )
-  assert( diff([1,2,4,7,0],7) == @[] )
+  doAssert( eDiff(w) == @[] )
+  doAssert( diff([1,2,4,7,0],0) == @[1,2,3,-7] )
+  doAssert( diff([1,2,4,7,0],1) == @[1,2,3,-7] )
+  doAssert( diff([1,2,4,7,0],2) == @[1,1,-10] )
+  doAssert( diff([1,2,4,7,0],3) == @[0,-11] )
+  doAssert( diff([1,2,4,7,0],4) == @[-11] )
+  doAssert( diff([1,2,4,7,0],7) == @[] )
 
-  assert( percentile(@[10,7,4,3,2,1],0) == 1.0 )
-  assert( percentile(@[10,7,4,3,2,1],100) == 10.0 )
-  assert( percentile(@[10,7,4,3,2,1,0],50) == 3.0 )
-  assert( percentile(@[10,7,4,3,2,1],50) == 3.5 )
-  assert(bincount(@[1,-1,0,1,3,2,0,2,3,2,1,5,-2,-3]) == @[2,3,3,2,0,1])
-  assert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[0.0,5.0,10.0,15.0,20.0], true) == @[1,2,3,4,4])
-  assert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[0.0,5.0,10.0,15.0,20.0]) == @[1,3,3,4,5])
-  assert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[20.0,15.0,10.0,5.0,0.0], true) == @[4,3,2,1,1])
-  assert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[20.0,15.0,10.0,5.0,0.0]) == @[4,2,2,1,0])
-  assert(eDiv(@[4,2],@[2,1]) == @[2.0,2.0])
-  assert(eDiv(@[4.0,2.0],@[2.0,1.0]) == @[2.0,2.0])
-  assert(eRem(@[1.0,2.0],@[2.0,1.5]) == @[1.0,0.5])
-  assert(eRem(@[1.0,2.0], 1.5) == @[1.0,0.5])
+  doAssert( percentile(@[10,7,4,3,2,1],0) == 1.0 )
+  doAssert( percentile(@[10,7,4,3,2,1],100) == 10.0 )
+  doAssert( percentile(@[10,7,4,3,2,1,0],50) == 3.0 )
+  doAssert( percentile(@[10,7,4,3,2,1],50) == 3.5 )
+  doAssert(bincount(@[1,-1,0,1,3,2,0,2,3,2,1,5,-2,-3]) == @[2,3,3,2,0,1])
+  doAssert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[0.0,5.0,10.0,15.0,20.0], true) == @[1,2,3,4,4])
+  doAssert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[0.0,5.0,10.0,15.0,20.0]) == @[1,3,3,4,5])
+  doAssert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[20.0,15.0,10.0,5.0,0.0], true) == @[4,3,2,1,1])
+  doAssert(digitize(@[1.2, 10.0, 12.4, 15.5, 20.0], @[20.0,15.0,10.0,5.0,0.0]) == @[4,2,2,1,0])
+  doAssert(eDiv(@[4,2],@[2,1]) == @[2.0,2.0])
+  doAssert(eDiv(@[4.0,2.0],@[2.0,1.0]) == @[2.0,2.0])
+  doAssert(eRem(@[1.0,2.0],@[2.0,1.5]) == @[1.0,0.5])
+  doAssert(eRem(@[1.0,2.0], 1.5) == @[1.0,0.5])
   let x = eMul(@[0.0, 0.1, 0.2, 0.3, 1.5, 1.7, 1.8, 1.9, 2.0, 2.4, 2.5, 2.6], PI)
-  assert(x.unwrap().eDiv(PI) == @[0.0, 0.1, 0.2, 0.3, -0.5, -0.3, -0.2, -0.1, 0.0, 0.4, 0.5, 0.6])
-  assert(transpose(@[ @[1,2,3], @[4,5,6]]) == @[ @[1,4], @[2,5], @[3,6]])
-  assert( @[@[1,2],@[3,4],@[5,6]].shape() == @[3,2])
-  assert( @[@[1,3,4,5,6,7,8],@[1,1,1,1,1,5,6]].shape() == @[2,7])
-  assert( transpose(@[@[1,3,4,5,6,7,8],@[1,1,1,1,1,5,6]]).shape() == @[7,2])
+  doAssert(x.unwrap().eDiv(PI) == @[0.0, 0.1, 0.2, 0.3, -0.5, -0.3, -0.2, -0.1, 0.0, 0.4, 0.5, 0.6])
+  doAssert(transpose(@[ @[1,2,3], @[4,5,6]]) == @[ @[1,4], @[2,5], @[3,6]])
+  doAssert( @[@[1,2],@[3,4],@[5,6]].shape() == @[3,2])
+  doAssert( @[@[1,3,4,5,6,7,8],@[1,1,1,1,1,5,6]].shape() == @[2,7])
+  doAssert( transpose(@[@[1,3,4,5,6,7,8],@[1,1,1,1,1,5,6]]).shape() == @[7,2])
 
-  assert( shape([@[1,2,3], @[4,5,6]]) == @[2,3] )
-  assert( shape(@[@[1,2,3], @[4,5,6]]) == @[2,3] )
-  assert( shape(@[@[@[@[1,2,3], @[4,5,6]]]]) == @[1,1,2,3] )
+  doAssert( shape([@[1,2,3], @[4,5,6]]) == @[2,3] )
+  doAssert( shape(@[@[1,2,3], @[4,5,6]]) == @[2,3] )
+  doAssert( shape(@[@[@[@[1,2,3], @[4,5,6]]]]) == @[1,1,2,3] )
 
-  assert( round(fv(0.05/12, 10*12, -100.0, -100)*10000)/10000 == 15692.9289 )
-  assert( pv(0.05/12, 10*12, -100.0, -100.0) ==  9488.851136853429 )
-  assert( pmt(0.05/12, 10*12, -100.0, -8000.0) == 52.57973401031737 )
-  assert( round(pmt(0.05/12, 10*12, 0.0, -8000.0)*10000)/10000 == 51.5191 )
+  doAssert( round(fv(0.05/12, 10*12, -100.0, -100)*10000)/10000 == 15692.9289 )
+  doAssert( pv(0.05/12, 10*12, -100.0, -100.0) ==  9488.851136853429 )
+  doAssert( pmt(0.05/12, 10*12, -100.0, -8000.0) == 52.57973401031737 )
+  doAssert( round(pmt(0.05/12, 10*12, 0.0, -8000.0)*10000)/10000 == 51.5191 )
   let cf = @[-100_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0, 10_000.0]
   var myPv = newSeq[float](13)
-  assert( round(npv(cf, myPv, 0.10)*10000)/10000 == -31863.0818 )
+  doAssert( round(npv(cf, myPv, 0.10)*10000)/10000 == -31863.0818 )
 
-  assert( ptp(@[1,3,2,6]) == 5 )
-  assert( ptp(@[@[1,3],@[2,6]]) == @[2,4] )
-  assert( ptp(@[@[@[1,3],@[2,6]], @[@[100,10],@[-5,-11]]]) == @[@[2,4], @[90,6]] )
+  doAssert( ptp(@[1,3,2,6]) == 5 )
+  doAssert( ptp(@[@[1,3],@[2,6]]) == @[2,4] )
+  doAssert( ptp(@[@[@[1,3],@[2,6]], @[@[100,10],@[-5,-11]]]) == @[@[2,4], @[90,6]] )
 
-  assert( pointOnLine(Point(x:2.0, y:2.0), Point(x:5.0, y:2.0), 3.0) == Point(x:3.0, y:2.0) )
-  assert( interp(2.5, @[1,2,3], @[3,2,0]) == 1.0)
-  assert( interpRaw(2.5, Point(x:2.0, y:2.0), Point(x:3.0, y:0.0)) == 1.0)
-  assert( interpRaw(2.0, Point(x:2.0, y:2.0), Point(x:2.0, y:5.0)) == 2.0)  # p0.y = 2.0
-  assert( bezier([Point(x:2.0, y:2.0), Point(x:5.0, y:2.0)], 4) ==
+  doAssert( pointOnLine(Point(x:2.0, y:2.0), Point(x:5.0, y:2.0), 3.0) == Point(x:3.0, y:2.0) )
+  doAssert( interp(2.5, @[1,2,3], @[3,2,0]) == 1.0)
+  doAssert( interpRaw(2.5, Point(x:2.0, y:2.0), Point(x:3.0, y:0.0)) == 1.0)
+  doAssert( interpRaw(2.0, Point(x:2.0, y:2.0), Point(x:2.0, y:5.0)) == 2.0)  # p0.y = 2.0
+  doAssert( bezier([Point(x:2.0, y:2.0), Point(x:5.0, y:2.0)], 4) ==
     @[Point(x: 2.0, y: 2.0), Point(x: 3.0, y: 2.0), Point(x: 4.0, y: 2.0), Point(x: 5.0, y: 2.0)] )
-  assert( bezier([Point(x:2.0, y:2.0), Point(x:2.0, y:5.0)], 4) ==
+  doAssert( bezier([Point(x:2.0, y:2.0), Point(x:2.0, y:5.0)], 4) ==
     @[Point(x: 2.0, y: 2.0), Point(x: 2.0, y: 3.0), Point(x: 2.0, y: 4.0), Point(x: 2.0, y: 5.0)] )
 
-  assert( cos(sin(@[@[0.0],@[PI],@[2*PI]])) == @[@[1.0],@[1.0],@[1.0]] )
-  assert(abs(@[@[1,-2,-2,-3]]) == @[@[1,2,2,3]])
-  assert( toInt(toFloat(@[@[1,-2,-2,-3]])) == @[@[1,-2,-2,-3]] )
-  assert( nextPowerOfTwo(@[@[1,15,25,99]]) == @[@[1,16,32,128]] )
-  assert( round(@[@[1.1,2.213,25.52,99.9999999999]]) == @[@[1,2,26,100]] )
-
-  #echo pow(@[0.0, 2.0, 3.0]), @[1.0, 3.0, 2.0])
-  #assert( pow(@[0.0, 2.0, 3.0]), @[1.0, 3.0, 2.0]) == @[0.0, 8.0, 9.0] )
-
+  doAssert( cos(sin(@[@[0.0],@[PI],@[2*PI]])) == @[@[1.0],@[1.0],@[1.0]] )
+  doAssert(abs(@[@[1,-2,-2,-3]]) == @[@[1,2,2,3]])
+  doAssert( toInt(toFloat(@[@[1,-2,-2,-3]])) == @[@[1,-2,-2,-3]] )
+  doAssert( nextPowerOfTwo(@[@[1,15,25,99]]) == @[@[1,16,32,128]] )
+  doAssert( round(@[@[1.1,2.213,25.52,99.9999999999]]) == @[@[1,2,26,100]] )
