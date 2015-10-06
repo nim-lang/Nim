@@ -248,7 +248,8 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors(),
-                    beforeRunEvent: proc(idx: int) = nil): int
+                    beforeRunEvent: proc(idx: int) = nil,
+                    afterRunEvent: proc(idx: int, p: Process) = nil): int
                     {.rtl, extern: "nosp$1",
                     tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
@@ -278,6 +279,7 @@ proc execProcesses*(cmds: openArray[string],
             err.add("\n")
           echo(err)
         result = max(waitForExit(q[r]), result)
+        if afterRunEvent != nil: afterRunEvent(r, q[r])
         if q[r] != nil: close(q[r])
         if beforeRunEvent != nil:
           beforeRunEvent(i)
@@ -291,6 +293,7 @@ proc execProcesses*(cmds: openArray[string],
           if not running(q[r]):
             #echo(outputStream(q[r]).readLine())
             result = max(waitForExit(q[r]), result)
+            if afterRunEvent != nil: afterRunEvent(r, q[r])
             if q[r] != nil: close(q[r])
             if beforeRunEvent != nil:
               beforeRunEvent(i)
@@ -299,6 +302,7 @@ proc execProcesses*(cmds: openArray[string],
             if i > high(cmds): break
     for j in 0..m-1:
       result = max(waitForExit(q[j]), result)
+      if afterRunEvent != nil: afterRunEvent(j, q[j])
       if q[j] != nil: close(q[j])
   else:
     for i in 0..high(cmds):
@@ -306,6 +310,7 @@ proc execProcesses*(cmds: openArray[string],
         beforeRunEvent(i)
       var p = startProcess(cmds[i], options=options + {poEvalCommand})
       result = max(waitForExit(p), result)
+      if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
 proc select*(readfds: var seq[Process], timeout = 500): int {.benign.}

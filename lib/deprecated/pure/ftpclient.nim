@@ -11,7 +11,7 @@ include "system/inclrtl"
 import sockets, strutils, parseutils, times, os, asyncio
 
 from asyncnet import nil
-from rawsockets import nil
+from nativesockets import nil
 from asyncdispatch import PFuture
 ## **Note**: This module is deprecated since version 0.11.3.
 ## You should use the async version of this module
@@ -55,7 +55,7 @@ type
     user*, pass*: string
     address*: string
     when SockType is asyncnet.AsyncSocket:
-      port*: rawsockets.Port
+      port*: nativesockets.Port
     else:
       port*: Port
 

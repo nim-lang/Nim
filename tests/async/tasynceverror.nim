@@ -7,7 +7,7 @@ discard """
 import
     asyncdispatch,
     asyncnet,
-    rawsockets,
+    nativesockets,
     os
 
 
@@ -21,7 +21,7 @@ when defined(windows) or defined(nimdoc):
     quit("Error: unhandled exception: Connection reset by peer")
 else:
     proc createListenSocket(host: string, port: Port): TAsyncFD =
-        result = newAsyncRawSocket()
+        result = newAsyncNativeSocket()
 
         SocketHandle(result).setSockOptInt(SOL_SOCKET, SO_REUSEADDR, 1)
 

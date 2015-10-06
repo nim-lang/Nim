@@ -490,6 +490,11 @@ to an open array parameter.
 The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
 
+.. code-block:: nim
+  proc testOpenArray(x: openArray[int]) = echo repr(x)
+
+  testOpenArray([1,2,3])  # array[]
+  testOpenArray(@[1,2,3]) # seq[]
 
 Varargs
 -------

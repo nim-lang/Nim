@@ -25,18 +25,19 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor}
+    wOverride, wConstructor, wExportNims}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator}
+    wDelegator, wExportNims}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
-    wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator}
+    wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
+    wExportNims}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
-    wTags, wLocks, wGcSafe}
+    wTags, wLocks, wGcSafe, wExportNims}
   exprPragmas* = {wLine, wLocks, wNoRewrite}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
@@ -54,15 +55,15 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe}
+    wBorrow, wGcSafe, wExportNims}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject}
+    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -859,6 +860,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           invalidPragma(it)
         else:
           sym.flags.incl sfGoto
+      of wExportNims:
+        if sym == nil: invalidPragma(it)
+        else: magicsys.registerNimScriptSymbol(sym)
       of wInjectStmt:
         if it.kind != nkExprColonExpr:
           localError(it.info, errExprExpected)
