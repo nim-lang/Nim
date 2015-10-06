@@ -1,4 +1,4 @@
-import unittest
+import unittest, sequtils
 
 
 proc doThings(spuds: var int): int =
