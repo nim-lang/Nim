@@ -6,10 +6,10 @@ artifacts:
 platform:
   - x64
 
+before_build:
+  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S openssl-devel"
+
 build_script:
-  - C:\msys64\usr\bin\bash -lc "pacman -Ql openssl"
-  - dir c:\msys64\ssl
-  - dir c:\msys64\mingw64\lib
   - SET PATH=C:\msys64\mingw64\bin;bin;%PATH%
   - gcc -v
   - git clone -q --depth 1 https://github.com/nim-lang/csources
