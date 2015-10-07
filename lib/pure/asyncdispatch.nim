@@ -611,7 +611,7 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[string]("recv")
     var dataBuf: TWSABuf
     dataBuf.buf = cast[cstring](alloc0(size))
-    dataBuf.len = size
+    dataBuf.len = size.ULONG
 
     var bytesReceived: Dword
     var flagsio = flags.toOSFlags().Dword
@@ -706,7 +706,7 @@ when defined(windows) or defined(nimdoc):
     #buf[] = '\0'
     var dataBuf: TWSABuf
     dataBuf.buf = buf
-    dataBuf.len = size
+    dataBuf.len = size.ULONG
 
     var bytesReceived: Dword
     var flagsio = flags.toOSFlags().Dword
@@ -777,7 +777,7 @@ when defined(windows) or defined(nimdoc):
 
     var dataBuf: TWSABuf
     dataBuf.buf = data # since this is not used in a callback, this is fine
-    dataBuf.len = data.len
+    dataBuf.len = data.len.ULONG
 
     var bytesReceived, lowFlags: Dword
     var ol = PCustomOverlapped()

@@ -363,7 +363,7 @@ when defined(Windows) and not defined(useNimRtl):
     # TRUE and n (>0) bytes returned (good data).
     # FALSE and bytes returned undefined (system error).
     if a == 0 and br != 0: raiseOSError(osLastError())
-    s.atTheEnd = br < bufLen
+    s.atTheEnd = br == 0 #< bufLen
     result = br
 
   proc hsWriteData(s: Stream, buffer: pointer, bufLen: int) =
