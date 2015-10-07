@@ -9,7 +9,8 @@ platform:
 before_build:
   - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S openssl-devel"
   - C:\msys64\usr\bin\bash -lc "pacman -Ql libopenssl"
-  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S libcurl-devel libsqlite-devel pcre-devel ncurses-devel mingw-w64-ncurses mingw-w64-SDL mingw-w64-glfw"
+  - C:\msys64\usr\bin\bash -lc "pacman -Ql openssl-devel"
+  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S libcurl-devel libsqlite-devel pcre-devel ncurses-devel"
 
 build_script:
   - SET PATH=C:\msys64\mingw64\bin;bin;%PATH%
