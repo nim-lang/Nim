@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, re
+  algorithm, compiler/nodejs, re, times
 
 const
   resultsFile = "testresults.html"
@@ -47,6 +47,7 @@ type
     options: string
     target: TTarget
     action: TTestAction
+    startTime: float
 
 # ----------------------------------------------------------------------------
 
@@ -143,6 +144,7 @@ proc `$`(x: TResults): string =
 proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & test.options
+  let duration = epochTime() - test.startTime
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $test.target,
@@ -172,7 +174,7 @@ proc addResult(r: var TResults, test: TTest,
         ("Skipped", "")
       else:
         ("Failed", "Expected:\n" & expected & "\n\n" & "Gotten:\n" & given)
-    discard execProcess("appveyor", args=["AddTest", test.name & test.options, "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg], options={poStdErrToStdOut, poUsePath})
+    discard execProcess("appveyor", args=["AddTest", test.name & test.options, "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath})
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -366,7 +368,7 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
               target = targetC, env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
   result = TTest(cat: cat, name: test, options: options,
-                 target: target, action: action)
+                 target: target, action: action, startTime: epochTime())
 
 include categories
 
