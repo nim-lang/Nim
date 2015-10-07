@@ -3,4 +3,9 @@ platform:
   - x64
 
 build_script:
-  - C:/cygwin/bin/bash bootstrap.sh
+  - git clone -q --depth 1 git://github.com/nim-lang/csources.git csources
+  - cd csources
+  - build.bat
+  - cd ..
+  - bin/nim koch
+  - koch boot
