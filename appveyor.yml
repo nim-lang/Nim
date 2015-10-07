@@ -7,13 +7,11 @@ platform:
   - x64
 
 before_build:
-  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S openssl-devel"
-  - C:\msys64\usr\bin\bash -lc "pacman -Ql libopenssl"
-  - C:\msys64\usr\bin\bash -lc "pacman -Ql openssl-devel"
-  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S libcurl-devel libsqlite-devel pcre-devel ncurses-devel"
+  - appveyor DownloadFile http://nim-lang.org/download/dlls.zip
+  - 7z x dlls.zip
 
 build_script:
-  - SET PATH=C:\msys64\mingw64\bin;bin;%PATH%
+  - SET PATH=C:\msys64\mingw64\bin;dlls;bin;%PATH%
   - gcc -v
   - git clone -q --depth 1 https://github.com/nim-lang/csources
   - cd csources
@@ -27,8 +25,6 @@ before_test:
   - nim e install_nimble.nims
   - nimble update
   - nimble install zip
-  - nimble install opengl
-  - nimble install sdl1
 
 test_script:
   - koch test all --pedantic
