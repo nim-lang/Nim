@@ -1,6 +1,6 @@
 discard """
-  file: "tnot.nim"
-  line: 14
+  tfile: "tnot.nim"
+  tline: 14
   errormsg: "type mismatch"
 """
 # BUG: following compiles, but should not:
@@ -17,6 +17,3 @@ proc main =
         echo "No"
 
 main()
-
-
-

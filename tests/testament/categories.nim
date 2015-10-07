@@ -89,8 +89,11 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
     putEnv("LD_LIBRARY_PATH", "lib:" & libpath)
+    defer: putEnv("LD_LIBRARY_PATH", libpath)
     var serverDll = DynlibFormat % "server"
     safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
+    var nimrtlDll = DynlibFormat % "nimrtl"
+    safeCopyFile("tests/dll" / nimrtlDll, "lib" / nimrtlDll)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl",
                        cat, actionRun)
@@ -121,6 +124,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat, actionRun)
 
+  test "gcemscripten"
   test "growobjcrash"
   test "gcbench"
   test "gcleak"

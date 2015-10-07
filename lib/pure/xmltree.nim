@@ -104,9 +104,22 @@ proc tag*(n: XmlNode): string {.inline.} =
   assert n.k == xnElement
   result = n.fTag
 
+proc `tag=`*(n: XmlNode, tag: string) {.inline.} =
+  ## sets the tag name of `n`. `n` has to be an ``xnElement`` node.
+  assert n.k == xnElement
+  n.fTag = tag
+
 proc add*(father, son: XmlNode) {.inline.} =
   ## adds the child `son` to `father`.
   add(father.s, son)
+
+proc insert*(father, son: XmlNode, index: int) {.inline.} =
+  ## insert the child `son` to a given position in `father`.
+  assert father.k == xnElement and son.k == xnElement
+  if len(father.s) > index:
+    insert(father.s, son, index)
+  else:
+    insert(father.s, son, len(father.s))
 
 proc len*(n: XmlNode): int {.inline.} =
   ## returns the number `n`'s children.

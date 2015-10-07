@@ -18,7 +18,7 @@ const
 type
   Handle* = int
   LONG* = int32
-  ULONG* = int
+  ULONG* = int32
   PULONG* = ptr int
   WINBOOL* = int32
   DWORD* = int32
