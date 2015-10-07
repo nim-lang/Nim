@@ -3,6 +3,7 @@ platform:
   - x64
 
 build_script:
+  - SET PATH=c:\msys64\bin;%PATH%
   - git clone -q --depth 1 git://github.com/nim-lang/csources.git csources
   - cd csources
   - build.bat
