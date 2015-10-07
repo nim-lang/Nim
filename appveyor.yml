@@ -7,6 +7,7 @@ platform:
   - x64
 
 before_build:
+  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S zlib-devel"
   - appveyor DownloadFile http://nim-lang.org/download/dlls.zip
   - 7z e dlls.zip -odlls
   - del dlls\libcurl.dll
