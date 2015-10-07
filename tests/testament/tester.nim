@@ -171,7 +171,7 @@ proc addResult(r: var TResults, test: TTest,
       elif success == reIgnored:
         ("Skipped", "")
       else:
-        ("Failed", "Expected:" & expected & "\n" & "Gotten:" & given & "\n")
+        ("Failed", "Expected:\n" & expected & "\n\n" & "Gotten:\n" & given)
     discard execProcess("appveyor", args=["AddTest", name, "-Framework", test.cat.string, "-FileName", $test.name, "-Outcome", outcome, "-ErrorMessage", msg], options={poStdErrToStdOut, poUsePath})
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
