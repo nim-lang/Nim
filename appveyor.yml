@@ -12,3 +12,12 @@ build_script:
   - cd ..
   - bin\nim c koch
   - koch boot
+  - koch boot -d:release
+
+before_test:
+  - nim e install_nimble.nims
+  - nimble update
+  - nimble install zip
+
+test_script:
+  - koch test all --pedantic
