@@ -7,13 +7,13 @@ platform:
   - x64
 
 build_script:
-  - SET PATH=C:\msys64\mingw64\bin;%PATH%
+  - SET PATH=C:\msys64\mingw64\bin;bin;%PATH%
   - gcc -v
   - git clone -q --depth 1 https://github.com/nim-lang/csources
   - cd csources
   - build64.bat
   - cd ..
-  - bin\nim c koch
+  - nim c koch
   - koch boot
   - koch boot -d:release
 
