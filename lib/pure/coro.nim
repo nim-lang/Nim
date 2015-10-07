@@ -119,7 +119,7 @@ proc wait*(c: proc(), interval=0.01) =
   while alive(c):
     suspend interval
 
-when isMainModule:
+when defined(nimCoroutines) and isMainModule:
   var stackCheckValue = 1100220033
   proc c2()
 

@@ -859,11 +859,17 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
         return indirectAccess(newSymNode(it.closureParam), local, n.info)
 
     if local.kind == skClosureIterator:
+      # bug #3354; allow for
+      #iterator iter(): int {.closure.}=
+      #  s.add(iter)
+      #  yield 1
+
+      #if local == o.fn or local == it.fn:
+      #  message(n.info, errRecursiveDependencyX, local.name.s)
+
       # consider: [i1, i2, i1]  Since we merged the iterator's closure
       # with the captured owning variables, we need to generate the
       # closure generation code again:
-      if local == o.fn or local == it.fn:
-        message(n.info, errRecursiveDependencyX, local.name.s)
       # XXX why doesn't this work?
       var closure = PEnv(idTableGet(o.lambdasToEnv, local))
       if closure.isNil:

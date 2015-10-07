@@ -1,5 +1,5 @@
 discard """
-  errormsg: "illegal recursion in type 'object'"
+  errormsg: "inheritance only works with non-final objects"
   line: 7
 """
 # bug #1691

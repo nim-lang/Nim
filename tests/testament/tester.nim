@@ -23,6 +23,7 @@ const
 Command:
   all                         run all tests
   c|category <category>       run all the tests of a certain category
+  r|run <test>                run single test file
   html [commit]               generate $1 from the database; uses the latest
                               commit or a specific one (use -1 for the commit
                               before latest etc)
@@ -52,6 +53,8 @@ type
 let
   pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Error') ':' \s* {.*}"
+  pegLineTemplate =
+    peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' 'template/generic instantiation from here'.*"
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
@@ -65,6 +68,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   let outp = p.outputStream
   var suc = ""
   var err = ""
+  var tmpl = ""
   var x = newStringOfCap(120)
   result.nimout = ""
   while outp.readLine(x.TaintedString) or running(p):
@@ -72,6 +76,9 @@ proc callCompiler(cmdTemplate, filename, options: string,
     if x =~ pegOfInterest:
       # `err` should contain the last error/warning message
       err = x
+    elif x =~ pegLineTemplate and err == "":
+      # `tmpl` contains the last template expansion before the error
+      tmpl = x
     elif x =~ pegSuccess:
       suc = x
   close(p)
@@ -80,6 +87,13 @@ proc callCompiler(cmdTemplate, filename, options: string,
   result.outp = ""
   result.line = 0
   result.column = 0
+  result.tfile = ""
+  result.tline = 0
+  result.tcolumn = 0
+  if tmpl =~ pegLineTemplate:
+    result.tfile = extractFilename(matches[0])
+    result.tline = parseInt(matches[1])
+    result.tcolumn = parseInt(matches[2])
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
@@ -153,13 +167,21 @@ proc addResult(r: var TResults, test: TTest,
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, expected.msg, given.msg, reMsgsDiffer)
-  elif extractFilename(expected.file) != extractFilename(given.file) and
+  elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, expected.file, given.file, reFilesDiffer)
   elif expected.line   != given.line   and expected.line   != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, $expected.line & ':' & $expected.column,
                       $given.line    & ':' & $given.column,
+                      reLinesDiffer)
+  elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
+      "internal error:" notin expected.msg:
+    r.addResult(test, expected.tfile, given.tfile, reFilesDiffer)
+  elif expected.tline   != given.tline   and expected.tline   != 0 or
+       expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
+    r.addResult(test, $expected.tline & ':' & $expected.tcolumn,
+                      $given.tline    & ':' & $given.tcolumn,
                       reLinesDiffer)
   else:
     r.addResult(test, expected.msg, given.msg, reSuccess)
@@ -212,6 +234,8 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
       expectedmsg = expected.nimout
       givenmsg = given.nimout.strip
       nimoutCheck(test, expectedmsg, given)
+  else:
+    givenmsg = given.nimout.strip
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, expectedmsg, givenmsg, given.err)
 
@@ -279,7 +303,7 @@ proc testSpec(r: var TResults, test: TTest) =
       return
 
     let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
-    let (buf, exitCode) = execCmdEx(exeCmd)
+    var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
     let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
                else: strip(buf.string)
     let expectedOut = strip(expected.outp)
@@ -376,6 +400,11 @@ proc main() =
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string)
+  of "r", "run":
+    let (dir, file) = splitPath(p.key.string)
+    let (_, subdir) = splitPath(dir)
+    var cat = Category(subdir)
+    processCategory(r, cat, p.cmdLineRest.string, file)
   of "html":
     var commit = 0
     discard parseInt(p.cmdLineRest.string, commit)

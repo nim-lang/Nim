@@ -9,7 +9,7 @@
 
 ## **Warning:** Since version 0.10.2 this module is deprecated.
 ## Use the `net <net.html>`_ or the
-## `rawsockets <rawsockets.html>`_ module instead.
+## `nativesockets <nativesockets.html>`_ module instead.
 ##
 ## This module implements portable sockets, it supports a mix of different types
 ## of sockets. Sockets are buffered by default meaning that data will be
@@ -314,10 +314,7 @@ when defined(ssl):
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
     of protSSLv2:
-      when not defined(linux) and not defined(OpenBSD):
-        newCTX = SSL_CTX_new(SSLv2_method())
-      else:
-        raiseSslError()
+      raiseSslError("SSLv2 is no longer secure and has been deprecated, use protSSLv3")
     of protSSLv3:
       newCTX = SSL_CTX_new(SSLv3_method())
     of protTLSv1:

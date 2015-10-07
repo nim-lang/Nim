@@ -173,6 +173,9 @@ proc clear*(s: StringTableRef, mode: StringTableMode) =
   s.mode = mode
   s.counter = 0
   s.data.setLen(startSize)
+  for i in 0..<s.data.len:
+    if not isNil(s.data[i].key):
+      s.data[i].key = nil
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): StringTableRef {.
@@ -248,3 +251,6 @@ when isMainModule:
   x.mget("11") = "23"
   assert x["11"] == "23"
 
+  x.clear(modeCaseInsensitive)
+  x["11"] = "22"
+  assert x["11"] == "22"

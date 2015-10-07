@@ -31,7 +31,8 @@ proc moveFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc copyFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} = builtin
+proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
+  builtin
 proc getOsError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir(): string = builtin
@@ -56,7 +57,7 @@ proc getCommand*(): string =
   ## "c", "js", "build", "help".
   builtin
 
-proc setCommand*(cmd: string) =
+proc setCommand*(cmd: string; project="") =
   ## Sets the Nim command that should be continued with after this Nimscript
   ## has finished.
   builtin

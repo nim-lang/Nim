@@ -24,6 +24,20 @@ when defined(linux):
   import linux
 
 type
+  ProcessOption* = enum ## options that can be passed `startProcess`
+    poEchoCmd,           ## echo the command before execution
+    poUsePath,           ## Asks system to search for executable using PATH environment
+                         ## variable.
+                         ## On Windows, this is the default.
+    poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
+                         ## Use it only if `command` comes from trused source.
+    poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
+    poParentStreams,     ## use the parent's streams
+    poInteractive        ## optimize the buffer handling for responsiveness for
+                         ## UI applications. Currently this only affects
+                         ## Windows: Named pipes are used so that you can peek
+                         ## at the process' output streams.
+
   ProcessObj = object of RootObj
     when defined(windows):
       fProcessHandle: Handle
@@ -34,18 +48,10 @@ type
       inStream, outStream, errStream: Stream
       id: Pid
     exitCode: cint
+    options: set[ProcessOption]
 
   Process* = ref ProcessObj ## represents an operating system process
 
-  ProcessOption* = enum ## options that can be passed `startProcess`
-    poEchoCmd,           ## echo the command before execution
-    poUsePath,           ## Asks system to search for executable using PATH environment
-                         ## variable.
-                         ## On Windows, this is the default.
-    poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
-                         ## Use it only if `command` comes from trused source.
-    poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
-    poParentStreams      ## use the parent's streams
 
 {.deprecated: [TProcess: ProcessObj, PProcess: Process,
   TProcessOption: ProcessOption].}
@@ -242,7 +248,8 @@ proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
 proc execProcesses*(cmds: openArray[string],
                     options = {poStdErrToStdOut, poParentStreams},
                     n = countProcessors(),
-                    beforeRunEvent: proc(idx: int) = nil): int
+                    beforeRunEvent: proc(idx: int) = nil,
+                    afterRunEvent: proc(idx: int, p: Process) = nil): int
                     {.rtl, extern: "nosp$1",
                     tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
@@ -272,6 +279,7 @@ proc execProcesses*(cmds: openArray[string],
             err.add("\n")
           echo(err)
         result = max(waitForExit(q[r]), result)
+        if afterRunEvent != nil: afterRunEvent(r, q[r])
         if q[r] != nil: close(q[r])
         if beforeRunEvent != nil:
           beforeRunEvent(i)
@@ -285,6 +293,7 @@ proc execProcesses*(cmds: openArray[string],
           if not running(q[r]):
             #echo(outputStream(q[r]).readLine())
             result = max(waitForExit(q[r]), result)
+            if afterRunEvent != nil: afterRunEvent(r, q[r])
             if q[r] != nil: close(q[r])
             if beforeRunEvent != nil:
               beforeRunEvent(i)
@@ -293,6 +302,7 @@ proc execProcesses*(cmds: openArray[string],
             if i > high(cmds): break
     for j in 0..m-1:
       result = max(waitForExit(q[j]), result)
+      if afterRunEvent != nil: afterRunEvent(j, q[j])
       if q[j] != nil: close(q[j])
   else:
     for i in 0..high(cmds):
@@ -300,9 +310,10 @@ proc execProcesses*(cmds: openArray[string],
         beforeRunEvent(i)
       var p = startProcess(cmds[i], options=options + {poEvalCommand})
       result = max(waitForExit(p), result)
+      if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-proc select*(readfds: var seq[Process], timeout = 500): int
+proc select*(readfds: var seq[Process], timeout = 500): int {.benign.}
   ## `select` with a sensible Nim interface. `timeout` is in milliseconds.
   ## Specify -1 for no timeout. Returns the number of processes that are
   ## ready to read from. The processes that are ready to be read from are
@@ -394,13 +405,68 @@ when defined(Windows) and not defined(useNimRtl):
   #var
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
+  proc myDup(h: Handle; inherit: WinBool=1): Handle =
+    let thisProc = getCurrentProcess()
+    if duplicateHandle(thisProc, h,
+                       thisProc, addr result,0,inherit,
+                       DUPLICATE_SAME_ACCESS) == 0:
+      raiseOSError(osLastError())
+
+  proc createAllPipeHandles(si: var STARTUPINFO;
+                            stdin, stdout, stderr: var Handle) =
+    var sa: SECURITY_ATTRIBUTES
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
+    sa.lpSecurityDescriptor = nil
+    sa.bInheritHandle = 1
+    let pipeOutName = newWideCString(r"\\.\pipe\stdout")
+    let pipeInName = newWideCString(r"\\.\pipe\stdin")
+    let pipeOut = createNamedPipe(pipeOutName,
+      dwOpenMode=PIPE_ACCESS_INBOUND or FILE_FLAG_WRITE_THROUGH,
+      dwPipeMode=PIPE_NOWAIT,
+      nMaxInstances=1,
+      nOutBufferSize=1024, nInBufferSize=1024,
+      nDefaultTimeOut=0,addr sa)
+    if pipeOut == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError())
+    let pipeIn = createNamedPipe(pipeInName,
+      dwOpenMode=PIPE_ACCESS_OUTBOUND or FILE_FLAG_WRITE_THROUGH,
+      dwPipeMode=PIPE_NOWAIT,
+      nMaxInstances=1,
+      nOutBufferSize=1024, nInBufferSize=1024,
+      nDefaultTimeOut=0,addr sa)
+    if pipeIn == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError())
+
+    si.hStdOutput = createFileW(pipeOutName,
+        FILE_WRITE_DATA or SYNCHRONIZE, 0, addr sa,
+        OPEN_EXISTING, # very important flag!
+        FILE_ATTRIBUTE_NORMAL,
+        0 # no template file for OPEN_EXISTING
+      )
+    if si.hStdOutput == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError())
+    si.hStdError = myDup(si.hStdOutput)
+    si.hStdInput = createFileW(pipeInName,
+        FILE_READ_DATA or SYNCHRONIZE, 0, addr sa,
+        OPEN_EXISTING, # very important flag!
+        FILE_ATTRIBUTE_NORMAL,
+        0 # no template file for OPEN_EXISTING
+      )
+    if si.hStdOutput == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError())
+
+    stdin = myDup(pipeIn, 0)
+    stdout = myDup(pipeOut, 0)
+    discard closeHandle(pipeIn)
+    discard closeHandle(pipeOut)
+    stderr = stdout
 
   proc createPipeHandles(rdHandle, wrHandle: var Handle) =
-    var piInheritablePipe: SECURITY_ATTRIBUTES
-    piInheritablePipe.nLength = sizeof(SECURITY_ATTRIBUTES).cint
-    piInheritablePipe.lpSecurityDescriptor = nil
-    piInheritablePipe.bInheritHandle = 1
-    if createPipe(rdHandle, wrHandle, piInheritablePipe, 1024) == 0'i32:
+    var sa: SECURITY_ATTRIBUTES
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
+    sa.lpSecurityDescriptor = nil
+    sa.bInheritHandle = 1
+    if createPipe(rdHandle, wrHandle, sa, 1024) == 0'i32:
       raiseOSError(osLastError())
 
   proc fileClose(h: Handle) {.inline.} =
@@ -417,16 +483,20 @@ when defined(Windows) and not defined(useNimRtl):
       success: int
       hi, ho, he: Handle
     new(result)
+    result.options = options
     si.cb = sizeof(si).cint
     if poParentStreams notin options:
       si.dwFlags = STARTF_USESTDHANDLES # STARTF_USESHOWWINDOW or
-      createPipeHandles(si.hStdInput, hi)
-      createPipeHandles(ho, si.hStdOutput)
-      if poStdErrToStdOut in options:
-        si.hStdError = si.hStdOutput
-        he = ho
+      if poInteractive notin options:
+        createPipeHandles(si.hStdInput, hi)
+        createPipeHandles(ho, si.hStdOutput)
+        if poStdErrToStdOut in options:
+          si.hStdError = si.hStdOutput
+          he = ho
+        else:
+          createPipeHandles(he, si.hStdError)
       else:
-        createPipeHandles(he, si.hStdError)
+        createAllPipeHandles(si, hi, ho, he)
       result.inHandle = FileHandle(hi)
       result.outHandle = FileHandle(ho)
       result.errHandle = FileHandle(he)
@@ -469,6 +539,7 @@ when defined(Windows) and not defined(useNimRtl):
 
     if e != nil: dealloc(e)
     if success == 0:
+      if poInteractive in result.options: close(result)
       const errInvalidParameter = 87.int
       const errFileNotFound = 2.int
       if lastError.int in {errInvalidParameter, errFileNotFound}:
@@ -482,12 +553,12 @@ when defined(Windows) and not defined(useNimRtl):
     result.id = procInfo.dwProcessId
 
   proc close(p: Process) =
-    when false:
-      # somehow this does not work on Windows:
+    if poInteractive in p.options:
+      # somehow this is not always required on Windows:
       discard closeHandle(p.inHandle)
       discard closeHandle(p.outHandle)
       discard closeHandle(p.errHandle)
-      discard closeHandle(p.FProcessHandle)
+      #discard closeHandle(p.FProcessHandle)
 
   proc suspend(p: Process) =
     discard suspendThread(p.fProcessHandle)
@@ -564,7 +635,7 @@ when defined(Windows) and not defined(useNimRtl):
     assert readfds.len <= MAXIMUM_WAIT_OBJECTS
     var rfds: WOHandleArray
     for i in 0..readfds.len()-1:
-      rfds[i] = readfds[i].fProcessHandle
+      rfds[i] = readfds[i].outHandle #fProcessHandle
 
     var ret = waitForMultipleObjects(readfds.len.int32,
                                      addr(rfds), 0'i32, timeout.int32)
@@ -577,6 +648,11 @@ when defined(Windows) and not defined(useNimRtl):
       var i = ret - WAIT_OBJECT_0
       readfds.del(i)
       return 1
+
+  proc hasData*(p: Process): bool =
+    var x: int32
+    if peekNamedPipe(p.outHandle, lpTotalBytesAvail=addr x):
+      result = x > 0
 
 elif not defined(useNimRtl):
   const
@@ -635,6 +711,7 @@ elif not defined(useNimRtl):
     var
       pStdin, pStdout, pStderr: array [0..1, cint]
     new(result)
+    result.options = options
     result.exitCode = -3 # for ``waitForExit``
     if poParentStreams notin options:
       if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or
@@ -959,6 +1036,15 @@ elif not defined(useNimRtl):
       result = int(select(cint(m+1), addr(rd), nil, nil, nil))
 
     pruneProcessSet(readfds, (rd))
+
+  proc hasData*(p: Process): bool =
+    var rd: TFdSet
+
+    FD_ZERO(rd)
+    let m = max(0, int(p.outHandle))
+    FD_SET(cint(p.outHandle), rd)
+
+    result = int(select(cint(m+1), addr(rd), nil, nil, nil)) == 1
 
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {

@@ -48,7 +48,7 @@ proc handleCmdLine() =
         gProjectFull = canonicalizePath(gProjectName)
       except OSError:
         gProjectFull = gProjectName
-      var p = splitFile(gProjectFull)
+      let p = splitFile(gProjectFull)
       gProjectPath = p.dir
       gProjectName = p.name
     else:
@@ -59,6 +59,9 @@ proc handleCmdLine() =
       runNimScript(scriptFile)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == gProjectFull: return
+    elif fileExists(gProjectPath / "config.nims"):
+      # directory wide NimScript file
+      runNimScript(gProjectPath / "config.nims")
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()

@@ -9,6 +9,9 @@ News
   Changes affecting backwards compatibility
   -----------------------------------------
 
+  - The ``rawsockets`` module has been renamed to ``nativesockets`` to avoid
+    confusion with TCP/IP raw sockets, so ``newNativeSocket`` should be used
+    instead of ``newRawSocket``.
   - The ``miliseconds`` property of ``times.TimeInterval`` is now ``milliseconds``.
     Code accessing that property is deprecated and code using ``miliseconds``
     during object initialization or as a named parameter of ``initInterval()``
@@ -108,6 +111,8 @@ News
   - The compiler finally considers symbol binding rules in templates and
     generics for overloaded ``[]``, ``[]=``, ``{}``, ``{}=`` operators
     (issue `#2599 <https://github.com/nim-lang/Nim/issues/2599>`_).
+  - The compiler now supports a `bitsize pragma <docs/manual.html#pragmas-bitsize-pragma>`_
+    for constructing bitfields.
 
 
   Language Additions

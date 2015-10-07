@@ -41,6 +41,7 @@ Options:
 Possible Commands:
   boot [options]           bootstraps with given command line options
   install [bindir]         installs to given directory; Unix only!
+  geninstall               generate ./install.sh; Unix only!
   clean                    cleans Nim project; removes generated files
   web [options]            generates the website and the full documentation
   website [options]        generates only the website
@@ -127,9 +128,12 @@ proc nsis(args: string) =
   exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
         " nsis compiler/installer.ini") % [VersionAsString, $(sizeof(pointer)*8)])
 
+proc geninstall(args="") =
+  exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini $#" %
+       [findNim(), compileNimInst, VersionAsString, args])
+
 proc install(args: string) =
-  exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
-       [findNim(), compileNimInst, VersionAsString])
+  geninstall()
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
@@ -373,6 +377,7 @@ of cmdArgument:
   of "zip": zip(op.cmdLineRest)
   of "xz": xz(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)
+  of "geninstall": geninstall(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
   of "update":

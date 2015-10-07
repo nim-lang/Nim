@@ -10,7 +10,7 @@
 ## This module implements a high-level cross-platform sockets interface.
 
 {.deadCodeElim: on.}
-import rawsockets, os, strutils, unsigned, parseutils, times
+import nativesockets, os, strutils, unsigned, parseutils, times
 export Port, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
@@ -145,7 +145,7 @@ proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = newRawSocket(domain, sockType, protocol)
+  let fd = newNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain.Domain, sockType.SockType, protocol.Protocol,
@@ -156,7 +156,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = newRawSocket(domain, sockType, protocol)
+  let fd = newNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain, sockType, protocol, buffered)
@@ -223,10 +223,7 @@ when defined(ssl):
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
     of protSSLv2:
-      when not defined(linux):
-        newCTX = SSL_CTX_new(SSLv2_method())
-      else:
-        raiseSslError()
+      raiseSslError("SSLv2 is no longer secure and has been deprecated, use protSSLv3")
     of protSSLv3:
       newCTX = SSL_CTX_new(SSLv3_method())
     of protTLSv1:
@@ -357,7 +354,7 @@ proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## queue of pending connections.
   ##
   ## Raises an EOS error upon failure.
-  if rawsockets.listen(socket.fd, backlog) < 0'i32:
+  if nativesockets.listen(socket.fd, backlog) < 0'i32:
     raiseOSError(osLastError())
 
 proc bindAddr*(socket: Socket, port = Port(0), address = "") {.

@@ -89,8 +89,11 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
     putEnv("LD_LIBRARY_PATH", "lib:" & libpath)
+    defer: putEnv("LD_LIBRARY_PATH", libpath)
     var serverDll = DynlibFormat % "server"
     safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
+    var nimrtlDll = DynlibFormat % "nimrtl"
+    safeCopyFile("tests/dll" / nimrtlDll, "lib" / nimrtlDll)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl",
                        cat, actionRun)
@@ -121,6 +124,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat, actionRun)
 
+  test "gcemscripten"
   test "growobjcrash"
   test "gcbench"
   test "gcleak"
@@ -339,7 +343,7 @@ proc `&?.`(a, b: string): string =
   # candidate for the stdlib?
   result = if a.endswith(b): a else: a & b
 
-proc processCategory(r: var TResults, cat: Category, options: string) =
+proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: string = "t*.nim") =
   case cat.string.normalize
   of "rodfiles":
     discard # Disabled for now
@@ -376,5 +380,5 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
   else:
-    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
+    for name in os.walkFiles("tests" & DirSep &.? cat.string / fileGlob):
       testSpec r, makeTest(name, options, cat)
