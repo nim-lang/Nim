@@ -1,5 +1,8 @@
 clone_depth: 5
 
+artifacts:
+  - path: bin\nim.exe
+
 platform:
   - x64
 
