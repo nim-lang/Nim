@@ -8,7 +8,8 @@ platform:
 
 before_build:
   - appveyor DownloadFile http://nim-lang.org/download/dlls.zip
-  - 7z x dlls.zip
+  - 7z e dlls.zip -odlls
+  - del dlls\libcurl.dll
 
 build_script:
   - SET PATH=C:\msys64\mingw64\bin;dlls;bin;%PATH%
