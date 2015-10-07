@@ -10,5 +10,5 @@ build_script:
   - cd csources
   - build64.bat
   - cd ..
-  - bin\nim koch
+  - bin\nim c koch
   - koch boot
