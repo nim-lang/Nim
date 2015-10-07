@@ -10,6 +10,8 @@ before_build:
   - appveyor DownloadFile http://nim-lang.org/download/dlls.zip
   - 7z e dlls.zip -odlls
   - del dlls\libcurl.dll
+  - appveyor DownloadFile http://flatassembler.net/fasmw17139.zip
+  - 7z e fasmw17139.zip -obin fasm.exe
 
 build_script:
   - SET PATH=C:\msys64\mingw64\bin;dlls;bin;%PATH%
