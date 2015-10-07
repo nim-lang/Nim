@@ -172,7 +172,7 @@ proc addResult(r: var TResults, test: TTest,
         ("Skipped", "")
       else:
         ("Failed", "Expected:\n" & expected & "\n\n" & "Gotten:\n" & given)
-    discard execProcess("appveyor", args=["AddTest", name, "-Framework", test.cat.string, "-FileName", $test.name, "-Outcome", outcome, "-ErrorMessage", msg], options={poStdErrToStdOut, poUsePath})
+    discard execProcess("appveyor", args=["AddTest", test.name & test.options, "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg], options={poStdErrToStdOut, poUsePath})
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
