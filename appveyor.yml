@@ -8,6 +8,8 @@ platform:
 
 before_build:
   - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S openssl-devel"
+  - C:\msys64\usr\bin\bash -lc "pacman -Ql libopenssl"
+  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S libcurl-devel libsqlite-devel pcre-devel ncurses-devel mingw-w64-ncurses mingw-w64-SDL mingw-w64-glfw"
 
 build_script:
   - SET PATH=C:\msys64\mingw64\bin;bin;%PATH%
@@ -24,6 +26,8 @@ before_test:
   - nim e install_nimble.nims
   - nimble update
   - nimble install zip
+  - nimble install opengl
+  - nimble install sdl1
 
 test_script:
   - koch test all --pedantic
