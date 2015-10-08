@@ -174,7 +174,7 @@ proc addResult(r: var TResults, test: TTest,
         ("Skipped", "")
       else:
         ("Failed", "Expected:\n" & expected & "\n\n" & "Gotten:\n" & given)
-    var p = startProcess("appveyor", args=["AddTest", test.name & test.options, "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath, poParentStreams})
+    var p = startProcess("appveyor", args=["AddTest", test.name & test.options, "-Framework", "nim-testament", "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath, poParentStreams})
     discard waitForExit(p)
     close(p)
 
