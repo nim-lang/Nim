@@ -82,6 +82,8 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
 
   when defined(Windows):
     # windows looks in the dir of the exe (yay!):
+    var serverDll = DynlibFormat % "server"
+    safeCopyFile("lib" / serverDll, "tests/dll" / serverDll)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
   else:
