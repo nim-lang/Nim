@@ -174,7 +174,9 @@ proc addResult(r: var TResults, test: TTest,
         ("Skipped", "")
       else:
         ("Failed", "Expected:\n" & expected & "\n\n" & "Gotten:\n" & given)
-    discard execProcess("appveyor", args=["AddTest", test.name & test.options, "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath})
+    var p = startProcess("appveyor", args=["AddTest", test.name & test.options, "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath, poParentStreams})
+    waitForExit(p)
+    close(p)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
