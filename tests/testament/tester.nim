@@ -105,6 +105,12 @@ proc callCompiler(cmdTemplate, filename, options: string,
   elif suc =~ pegSuccess:
     result.err = reSuccess
 
+  if result.err == reNimcCrash and
+     ("Your platform is not supported" in result.msg or
+      "cannot open 'sdl'" in result.msg or
+      "cannot open 'opengl'" in result.msg):
+    result.err = reIgnored
+
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
