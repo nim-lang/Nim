@@ -92,7 +92,7 @@ type
 {.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger,
     PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
 
-proc substituteLog(frmt: string, level: Level, args: varargs[string, `$`]): string =
+proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
   var msgLen = 0
   for arg in args:
     msgLen += arg.len
