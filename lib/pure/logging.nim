@@ -93,6 +93,8 @@ type
     PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
 
 proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
+  ## Format a log message using the ``frmt`` format string, ``level`` and varargs.
+  ## See the module documentation for the format string syntax.
   var msgLen = 0
   for arg in args:
     msgLen += arg.len
