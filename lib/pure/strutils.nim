@@ -1653,54 +1653,54 @@ when isMainModule:
 
   doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
 
-  doAssert isAlpha('r') == true
-  doAssert isAlpha('A') == true
-  doAssert isAlpha('$') == false
+  doAssert isAlpha('r')
+  doAssert isAlpha('A')
+  doAssert(not isAlpha('$'))
 
-  doAssert isAlpha("Rasp") == true
-  doAssert isAlpha("Args") == true
-  doAssert isAlpha("$Tomato") == false
+  doAssert isAlpha("Rasp")
+  doAssert isAlpha("Args")
+  doAssert(not isAlpha("$Tomato"))
   
-  doAssert isAlphaNumeric('3') == true
-  doAssert isAlphaNumeric('R') == true
-  doAssert isAlphaNumeric('!') == false
+  doAssert isAlphaNumeric('3')
+  doAssert isAlphaNumeric('R')
+  doAssert(not isAlphaNumeric('!'))
 
-  doAssert isAlphaNumeric("34ABc") == true
-  doAssert isAlphaNumeric("Rad") == true
-  doAssert isAlphaNumeric("1234") == true
-  doAssert isAlphaNumeric("@nose") == false
+  doAssert isAlphaNumeric("34ABc")
+  doAssert isAlphaNumeric("Rad")
+  doAssert isAlphaNumeric("1234")
+  doAssert(not isAlphaNumeric("@nose"))
 
-  doAssert isDigit('3') == true
-  doAssert isDigit('a') == false
-  doAssert isDigit('%') == false
+  doAssert isDigit('3')
+  doAssert(not isDigit('a'))
+  doAssert(not isDigit('%'))
 
-  doAssert isDigit("12533") == true
-  doAssert isDigit("12.33") == false
-  doAssert isDigit("A45b") == false
+  doAssert isDigit("12533")
+  doAssert(not isDigit("12.33"))
+  doAssert(not isDigit("A45b"))
 
-  doAssert isSpace('\t') == true
-  doAssert isSpace('\l') == true
-  doAssert isSpace('A') == false
+  doAssert isSpace('\t')
+  doAssert isSpace('\l')
+  doAssert(not isSpace('A'))
 
-  doAssert isSpace("\t\l \v\r\f") == true
-  doAssert isSpace("       ") == true
-  doAssert isSpace("ABc   \td") == false
+  doAssert isSpace("\t\l \v\r\f")
+  doAssert isSpace("       ")
+  doAssert(not isSpace("ABc   \td"))
 
-  doAssert isLower('a') == true
-  doAssert isLower('z') == true
-  doAssert isLower('A') == false
-  doAssert isLower('5') == false
-  doAssert isLower('&') == false
+  doAssert isLower('a')
+  doAssert isLower('z')
+  doAssert(not isLower('A'))
+  doAssert(not isLower('5'))
+  doAssert(not isLower('&'))
 
-  doAssert isLower("abcd") == true
-  doAssert isLower("abCD") == false
-  doAssert isLower("33aa") == false
+  doAssert isLower("abcd")
+  doAssert(not isLower("abCD"))
+  doAssert(not isLower("33aa"))
 
-  doAssert isUpper('A') == true
-  doAssert isUpper('b') == false
-  doAssert isUpper('5') == false
-  doAssert isUpper('%') == false
+  doAssert isUpper('A')
+  doAssert(not isUpper('b'))
+  doAssert(not isUpper('5'))
+  doAssert(not isUpper('%'))
 
-  doAssert isUpper("ABC") == true
-  doAssert isUpper("AAcc") == false
-  doAssert isUpper("A#$") == false
+  doAssert isUpper("ABC")
+  doAssert(not isUpper("AAcc"))
+  doAssert(not isUpper("A#$"))
