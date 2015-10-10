@@ -94,7 +94,6 @@ All rights reserved.
 [windows-x86-img]:    http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x32-builder
 [windows-x86_64-img]: http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x64-builder
 
-[mac-x86-img]:        http://buildbot.nim-lang.org/buildstatusimage?builder=mac-x32-builder
 [mac-x86_64-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=mac-x64-builder
 
 [waterfall]: http://buildbot.nim-lang.org/waterfall
