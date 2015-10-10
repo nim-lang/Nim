@@ -79,11 +79,11 @@ All rights reserved.
 # Build Status
 [**Build Waterfall**][waterfall]
 
-|        | Linux                                                                                                  | Windows                               | Mac                           |
-| ------ | -----                                                                                                  | -------                               | ---                           |
-| x86    | ![linux-x86][linux-x86-img]                                                                            | ![windows-x86][windows-x86-img]       | ![mac-x86][mac-x86-img]       |
-| x86_64 | ![linux-x86_64][linux-x86_64-img]                                                                      | ![windows-x86_64][windows-x86_64-img] | ![mac-x86_64][mac-x86_64-img] |
-| arm    | ![linux-armv5][linux-arm5-img]<br/> ![linux-armv6][linux-arm6-img]<br/> ![linux-armv7][linux-arm7-img] |                                       |                               |
+|        | Linux | Windows | Mac |
+| ------ | ----- | ------- | --- |
+| x86    | ![linux-x86][linux-x86-img] | ![windows-x86][windows-x86-img] | 
+| x86_64 | ![linux-x86_64][linux-x86_64-img] | ![windows-x86_64][windows-x86_64-img] | ![mac-x86_64][mac-x86_64-img] |
+| arm    | ![linux-armv5][linux-arm5-img]<br/> ![linux-armv6][linux-arm6-img]<br/> ![linux-armv7][linux-arm7-img]
 
 [linux-x86-img]:      http://buildbot.nim-lang.org/buildstatusimage?builder=linux-x32-builder
 [linux-x86_64-img]:   http://buildbot.nim-lang.org/buildstatusimage?builder=linux-x64-builder
@@ -94,7 +94,6 @@ All rights reserved.
 [windows-x86-img]:    http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x32-builder
 [windows-x86_64-img]: http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x64-builder
 
-[mac-x86-img]:        http://buildbot.nim-lang.org/buildstatusimage?builder=mac-x32-builder
 [mac-x86_64-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=mac-x64-builder
 
 [waterfall]: http://buildbot.nim-lang.org/waterfall
