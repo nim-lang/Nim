@@ -60,6 +60,132 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
+proc isAlpha*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaChar".}=
+  ## Checks whether or not `c` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  return c in Letters
+
+proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaNumericChar".}=
+  ## Checks whether or not `c` is alphanumeric.
+  ##
+  ## This checks a-z, A-Z, 0-9 ASCII characters only.
+  return c in Letters and c in Digits
+
+proc isDigit*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsDigitChar".}=
+  ## Checks whether or not `c` is a number.
+  ##
+  ## This checks 0-9 ASCII characters only.
+  return c in Digits
+
+proc isSpace*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceChar".}=
+  ## Checks whether or not `c` is a whitespace character.
+  return c in Whitespace
+
+proc isLower*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerChar".}=
+  ## Checks whether or not `c` is a lower case character.
+  ##
+  ## This checks ASCII characters only.
+  return c in {'a'..'z'}
+
+proc isUpper*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperChar".}=
+  ## Checks whether or not `c` is an upper case character.
+  ##
+  ## This checks ASCII characters only.
+  return c in {'A'..'Z'}
+
+proc isAlpha*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaStr".}=
+  ## Checks whether or not `s` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## alphabetic and there is at least one character
+  ## in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isAlpha() and result
+
+proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaNumericStr".}=
+  ## Checks whether or not `s` is alphanumeric.
+  ##
+  ## This checks a-z, A-Z, 0-9 ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## alpanumeric and there is at least one character
+  ## in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isAlphaNumeric() and result
+
+proc isDigit*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsDigitStr".}=
+  ## Checks whether or not `s` is a numeric value.
+  ##
+  ## This checks 0-9 ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## numeric and there is at least one character
+  ## in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isDigit() and result
+
+proc isSpace*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceStr".}=
+  ## Checks whether or not `s` is completely whitespace.
+  ##
+  ## Returns true if all characters in `s` are whitespace
+  ## characters and there is at least one character in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isSpace() and result
+
+proc isLower*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerStr".}=
+  ## Checks whether or not `s` contains all lower case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are lower case
+  ## and there is at least one character  in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isLower() and result
+
+proc isUpper*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperStr".}=
+  ## Checks whether or not `s` contains all upper case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are upper case
+  ## and there is at least one character in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isUpper() and result
+
 proc toLower*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerChar".} =
   ## Converts `c` into lower case.
