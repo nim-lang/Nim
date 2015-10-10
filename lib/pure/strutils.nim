@@ -72,7 +72,7 @@ proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
-  return c in Letters and c in Digits
+  return c in Letters or c in Digits
 
 proc isDigit*(c: char): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsDigitChar".}=
