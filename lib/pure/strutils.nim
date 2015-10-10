@@ -1652,3 +1652,55 @@ when isMainModule:
   doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
   doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
+
+  doAssert isAlpha('r') == true
+  doAssert isAlpha('A') == true
+  doAssert isAlpha('$') == false
+
+  doAssert isAlpha("Rasp") == true
+  doAssert isAlpha("Args") == true
+  doAssert isAlpha("$Tomato") == false
+  
+  doAssert isAlphaNumeric('3') == true
+  doAssert isAlphaNumeric('R') == true
+  doAssert isAlphaNumeric('!') == false
+
+  doAssert isAlphaNumeric("34ABc") == true
+  doAssert isAlphaNumeric("Rad") == true
+  doAssert isAlphaNumeric("1234") == true
+  doAssert isAlphaNumeric("@nose") == false
+
+  doAssert isDigit('3') == true
+  doAssert isDigit('a') == false
+  doAssert isDigit('%') == false
+
+  doAssert isDigit("12533") == true
+  doAssert isDigit("12.33") == false
+  doAssert isDigit("A45b") == false
+
+  doAssert isSpace('\t') == true
+  doAssert isSpace('\l') == true
+  doAssert isSpace('A') == false
+
+  doAssert isSpace("\t\l \v\r\f") == true
+  doAssert isSpace("       ") == true
+  doAssert isSpace("ABc   \td") == false
+
+  doAssert isLower('a') == true
+  doAssert isLower('z') == true
+  doAssert isLower('A') == false
+  doAssert isLower('5') == false
+  doAssert isLower('&') == false
+
+  doAssert isLower("abcd") == true
+  doAssert isLower("abCD") == false
+  doAssert isLower("33aa") == false
+
+  doAssert isUpper('A') == true
+  doAssert isUpper('b') == false
+  doAssert isUpper('5') == false
+  doAssert isUpper('%') == false
+
+  doAssert isUpper("ABC") == true
+  doAssert isUpper("AAcc") == false
+  doAssert isUpper("A#$") == false
