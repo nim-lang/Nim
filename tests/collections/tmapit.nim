@@ -1,9 +1,14 @@
+discard """
+  output: '''true
+true'''
+"""
+
 import sequtils
 
 var x = @[1, 2, 3]
 # This mapIt call will run with preallocation because ``len`` is available.
 var y = x.mapIt($(it+10))
-doAssert y == @["11", "12", "13"]
+echo y == @["11", "12", "13"]
 
 type structureWithoutLen = object
   a: array[5, int]
@@ -25,4 +30,4 @@ st.a[4] = 4
 # this will run without preallocating the result
 # since ``len`` is not available
 var r = st.mapIt($(it+10))
-doAssert r == @["10", "11", "12", "13", "14"]
+echo r == @["10", "11", "12", "13", "14"]
