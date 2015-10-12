@@ -125,10 +125,13 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " -d:release --gc:markAndSweep", cat, actionRun)
   template test(filename: expr): stmt =
     testWithoutBoehm filename
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:boehm", cat, actionRun)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:boehm", cat, actionRun)
+    when not defined(windows):
+      # AR: cannot find any boehm.dll on the net, right now, so disabled
+      # for windows:
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " --gc:boehm", cat, actionRun)
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " -d:release --gc:boehm", cat, actionRun)
 
   test "gcemscripten"
   test "growobjcrash"
