@@ -77,7 +77,7 @@ type
                                         ## console
 
   FileLogger* = ref object of Logger ## logger that writes the messages to a file
-    f: File
+    file*: File  ## the wrapped file.
 
   RollingFileLogger* = ref object of FileLogger ## logger that writes the
                                                 ## messages to a file and
@@ -126,7 +126,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception],
-            tags: [TimeEffect, WriteIOEffect, ReadIOEffect].} =
+            tags: [TimeEffect, WriteIOEffect, ReadIOEffect], base.} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
   discard
@@ -135,15 +135,17 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
   if level >= logger.levelThreshold:
     writeLine(stdout, substituteLog(logger.fmtStr, level, args))
+    if level in {lvlError, lvlFatal}: flushFile(stdout)
 
 method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
   if level >= logger.levelThreshold:
-    writeLine(logger.f, substituteLog(logger.fmtStr, level, args))
+    writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
+    if level in {lvlError, lvlFatal}: flushFile(logger.file)
 
 proc defaultFilename*(): string =
   ## Returns the default filename for a logger.
-  var (path, name, ext) = splitFile(getAppFilename())
+  var (path, name, _) = splitFile(getAppFilename())
   result = changeFileExt(path / name, "log")
 
 proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): ConsoleLogger =
@@ -162,14 +164,14 @@ proc newFileLogger*(filename = defaultFilename(),
   ## (-1: use system defaults, 0: unbuffered, >0: fixed buffer size).
   new(result)
   result.levelThreshold = levelThreshold
-  result.f = open(filename, mode, bufSize = bufSize)
+  result.file = open(filename, mode, bufSize = bufSize)
   result.fmtStr = fmtStr
 
 # ------
 
 proc countLogLines(logger: RollingFileLogger): int =
   result = 0
-  for line in logger.f.lines():
+  for line in logger.file.lines():
     result.inc()
 
 proc countFiles(filename: string): int =
@@ -202,7 +204,7 @@ proc newRollingFileLogger*(filename = defaultFilename(),
   result.fmtStr = fmtStr
   result.maxLines = maxLines
   result.bufSize = bufSize
-  result.f = open(filename, mode, bufSize=result.bufSize)
+  result.file = open(filename, mode, bufSize=result.bufSize)
   result.curLine = 0
   result.baseName = filename
   result.baseMode = mode
@@ -224,13 +226,14 @@ method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`])
   ## Logs to a file using rolling ``logger`` only.
   if level >= logger.levelThreshold:
     if logger.curLine >= logger.maxLines:
-      logger.f.close()
+      logger.file.close()
       rotate(logger)
       logger.logFiles.inc
       logger.curLine = 0
-      logger.f = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
+      logger.file = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
 
-    writeLine(logger.f, substituteLog(logger.fmtStr, level, args))
+    writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
+    if level in {lvlError, lvlFatal}: flushFile(logger.file)
     logger.curLine.inc
 
 # --------
