@@ -309,6 +309,10 @@ proc suggestSym*(info: TLineInfo; s: PSym) {.inline.} =
     findUsages(info, s)
   elif gIdeCmd == ideDef:
     findDefinition(info, s)
+  elif gIdeCmd == ideDus and s != nil:
+    if isTracked(info, s.name.s.len):
+      suggestResult(symToSuggest(s, isLocal=false, $ideDef))
+    findUsages(info, s)
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
@@ -366,7 +370,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       suggestCall(c, a, n, outputs)
 
   dec(c.compilesContextId)
-  if outputs > 0 and gIdeCmd != ideUse: suggestQuit()
+  if outputs > 0 and gIdeCmd notin {ideUse, ideDus}: suggestQuit()
 
 proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)
