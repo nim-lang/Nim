@@ -81,19 +81,27 @@ All rights reserved.
 
 |        | Linux | Windows | Mac |
 | ------ | ----- | ------- | --- |
-| x86    | ![linux-x86][linux-x86-img] | ![windows-x86][windows-x86-img] | 
-| x86_64 | ![linux-x86_64][linux-x86_64-img] | ![windows-x86_64][windows-x86_64-img] | ![mac-x86_64][mac-x86_64-img] |
-| arm    | ![linux-armv5][linux-arm5-img]<br/> ![linux-armv6][linux-arm6-img]<br/> ![linux-armv7][linux-arm7-img]
+| x86    | [![linux-x86][linux-x86-img]][linux-x86] | [![windows-x86][windows-x86-img]][windows-x86] |
+| x86_64 | [![linux-x86_64][linux-x86_64-img]][linux-x86_64] | [![windows-x86_64][windows-x86_64-img]][windows-x86_64] | [![mac-x86_64][mac-x86_64-img]][mac-x86_64] |
+| arm    | [![linux-armv5][linux-arm5-img]][linux-arm5]<br/> [![linux-armv6][linux-arm6-img]][linux-arm6]<br/> [![linux-armv7][linux-arm7-img]][linux-arm7]
 
+[linux-x86]:          http://buildbot.nim-lang.org/builders/linux-x32-builder
 [linux-x86-img]:      http://buildbot.nim-lang.org/buildstatusimage?builder=linux-x32-builder
+[linux-x86_64]:       http://buildbot.nim-lang.org/builders/linux-x64-builder
 [linux-x86_64-img]:   http://buildbot.nim-lang.org/buildstatusimage?builder=linux-x64-builder
+[linux-arm5]:         http://buildbot.nim-lang.org/builders/linux-arm5-builder
 [linux-arm5-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=linux-arm5-builder
+[linux-arm6]:         http://buildbot.nim-lang.org/builders/linux-arm6-builder
 [linux-arm6-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=linux-arm6-builder
+[linux-arm7]:         http://buildbot.nim-lang.org/builders/linux-arm7-builder
 [linux-arm7-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=linux-arm7-builder
 
+[windows-x86]:        http://buildbot.nim-lang.org/builders/windows-x32-builder
 [windows-x86-img]:    http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x32-builder
+[windows-x86_64]:     http://buildbot.nim-lang.org/builders/windows-x64-builder
 [windows-x86_64-img]: http://buildbot.nim-lang.org/buildstatusimage?builder=windows-x64-builder
 
+[mac-x86_64]:         http://buildbot.nim-lang.org/builders/mac-x64-builder
 [mac-x86_64-img]:     http://buildbot.nim-lang.org/buildstatusimage?builder=mac-x64-builder
 
 [waterfall]: http://buildbot.nim-lang.org/waterfall
