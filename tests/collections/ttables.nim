@@ -60,8 +60,12 @@ block tableTest2:
   t["123"] = 1.5 # test overwriting
 
   assert t["123"] == 1.5
-  assert t["111"] == 0.0 # deleted
+  try:
+    echo t["111"] # deleted
+  except KeyError:
+    discard
   assert(not hasKey(t, "111"))
+
   assert "123" in t
   assert("111" notin t)
 

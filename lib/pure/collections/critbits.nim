@@ -140,20 +140,31 @@ proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   var n = rawInsert(c, key)
   n.val = val
 
-proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
-  ## retrieves the value at ``c[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
+template get[T](c: CritBitTree[T], key: string): T {.immediate.} =
   let n = rawGet(c, key)
   if n != nil: result = n.val
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
-proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
+proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
+  ## retrieves the value at ``c[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
+  get(c, key)
+
+proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  let n = rawGet(c, key)
-  if n != nil: result = n.val
-  else: raise newException(KeyError, "key not found: " & $key)
+  get(c, key)
+
+proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} =
+  ## retrieves the value at ``c[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## Use ```[]``` instead.
+  get(c, key)
 
 proc excl*[T](c: var CritBitTree[T], key: string) =
   ## removes `key` (and its associated value) from the set `c`.
