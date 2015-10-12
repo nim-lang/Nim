@@ -8,21 +8,21 @@
 #
 
 ## A higher level `PostgreSQL`:idx: database wrapper. This interface
-## is implemented for other databases too.
+## is implemented for other databases also.
 ##
 ##  **Note**: There are two approaches to **parameter substitution** in this module
 ##  1.  ``SqlQuery`` using ``?,?,?,...`` (same as the other db_xxxx modules)
 ##
 ##  .. code-block:: Nim
-##   ``sql"INSERT INTO myTable (colA,colB,colC) VALUES (?,?,?)"``
+##   sql"INSERT INTO myTable (colA,colB,colC) VALUES (?,?,?)"
 ##  2.  ``SqlPrepared``  using ``$1,$2,$3,...``  (the Postgres way, using numbered parameters)
 ##
 ##  .. code-block:: Nim
-##   ``prepare(theDb, "MyExampleInsert",
-##                    sql"""INSERT INTO myTable
-##                       (colA,colB,colC)
-##                       VALUES ($1,$2,$3)""",
-##                    3)``
+##   prepare(theDb, "MyExampleInsert",
+##                  sql"""INSERT INTO myTable
+##                    (colA,colB,colC)
+##                    VALUES ($1,$2,$3)""",
+##                    3)
 ##
 ## Example:
 ##
