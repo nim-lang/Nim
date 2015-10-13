@@ -33,4 +33,4 @@ before_test:
 
 test_script:
   - nim c --taintMode:on tests/testament/tester
-  - tests/testament/tester --pedantic all
+  - tests\testament\tester --pedantic all
