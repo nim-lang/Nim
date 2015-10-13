@@ -825,11 +825,13 @@ proc flattenStmts(n: PNode) =
   var goOn = true
   while goOn:
     goOn = false
-    for i in 0..<n.len:
+    var i = 0
+    while i < n.len:
       let it = n[i]
       if it.kind in {nkStmtList, nkStmtListExpr}:
         n.sons[i..i] = it.sons[0..<it.len]
         goOn = true
+      inc i
 
 proc liftDeferAux(n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
