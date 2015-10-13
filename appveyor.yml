@@ -32,4 +32,5 @@ before_test:
   - nimble install zip
 
 test_script:
-  - koch test --pedantic all
+  - nim c --taintMode:on tests/testament/tester
+  - tests/testament/tester --pedantic all
