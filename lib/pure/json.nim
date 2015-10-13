@@ -1220,11 +1220,15 @@ when isMainModule:
     assert(false)
   except IndexError: assert(true)
 
-  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
+  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
   assert(testJson{"doesnt_exist"}{"anything"}.isNil)
-  testJson{["c", "d"]} = %true
-  assert(testJson["c"]["d"].bval)
+  testJson{["e", "f"]} = %true
+  assert(testJson["e"]["f"].bval)
+
+  # make sure UTF-16 decoding works.
+  assert(testJson["c"].str == "🎃")
+  assert(testJson["d"].str == "æ")
 
   # make sure no memory leek when parsing invalid string
   let startMemory = getOccupiedMem()
