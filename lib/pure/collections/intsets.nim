@@ -138,6 +138,8 @@ proc initIntSet*: IntSet =
   result.counter = 0
   result.head = nil
 
+proc isNil*(x: IntSet): bool {.inline.} = x.head.isNil
+
 proc assign*(dest: var IntSet, src: IntSet) =
   ## copies `src` to `dest`. `dest` does not need to be initialized by
   ## `initIntSet`.

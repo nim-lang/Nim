@@ -48,7 +48,7 @@ proc addPackage(packages: StringTableRef, p: string) =
   let name = p.substr(0, x-1)
   if x < p.len:
     let version = p.substr(x+1)
-    if packages[name] <. version:
+    if packages.getOrDefault(name) <. version:
       packages[name] = version
   else:
     packages[name] = latest

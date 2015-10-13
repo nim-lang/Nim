@@ -28,6 +28,8 @@
 import
   pcre, strutils, rtarrays
 
+{.deprecated.}
+
 const
   MaxSubpatterns* = 20
     ## defines the maximum number of subpatterns that can be captured.
@@ -46,7 +48,7 @@ type
     h: ptr Pcre
     e: ptr ExtraData
 
-  Regex* {.deprecated.} = ref RegexDesc ## a compiled regular expression
+  Regex* = ref RegexDesc ## a compiled regular expression
 
   RegexError* = object of ValueError
     ## is raised if the pattern is no valid regular expression.

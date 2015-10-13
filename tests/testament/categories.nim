@@ -119,12 +119,21 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat, actionRun)
 
-  template test(filename: expr): stmt =
+  template testWithoutBoehm(filename: expr): stmt =
     testWithoutMs filename
     testSpec r, makeTest("tests/gc" / filename, options &
                   " --gc:markAndSweep", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat, actionRun)
+  template test(filename: expr): stmt =
+    testWithoutBoehm filename
+    when not defined(windows):
+      # AR: cannot find any boehm.dll on the net, right now, so disabled
+      # for windows:
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " --gc:boehm", cat, actionRun)
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " -d:release --gc:boehm", cat, actionRun)
 
   test "gcemscripten"
   test "growobjcrash"
@@ -136,9 +145,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcleak4"
   # Disabled because it works and takes too long to run:
   #test "gcleak5"
-  test "weakrefs"
+  testWithoutBoehm "weakrefs"
   test "cycleleak"
-  test "closureleak"
+  testWithoutBoehm "closureleak"
   testWithoutMs "refarrayleak"
 
   test "stackrefleak"

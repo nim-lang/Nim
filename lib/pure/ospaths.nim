@@ -26,8 +26,10 @@ when not declared(getEnv) or defined(nimscript):
                                               ## to an environment variable
 
     ReadDirEffect* = object of ReadIOEffect   ## effect that denotes a write
-                                              ## operation to the directory structure
-    WriteDirEffect* = object of WriteIOEffect ## effect that denotes a write operation to
+                                              ## operation to the directory
+                                              ## structure
+    WriteDirEffect* = object of WriteIOEffect ## effect that denotes a write
+                                              ## operation to
                                               ## the directory structure
 
     OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
@@ -63,13 +65,13 @@ when not declared(getEnv) or defined(nimscript):
       AltSep* = '/'
         ## An alternative character used by the operating system to separate
         ## pathname components, or the same as `DirSep` if only one separator
-        ## character exists. This is set to '/' on Windows systems where `DirSep`
-        ## is a backslash.
+        ## character exists. This is set to '/' on Windows systems
+        ## where `DirSep` is a backslash.
 
       PathSep* = ':'
         ## The character conventionally used by the operating system to separate
-        ## search patch components (as in PATH), such as ':' for POSIX or ';' for
-        ## Windows.
+        ## search patch components (as in PATH), such as ':' for POSIX
+        ## or ';' for Windows.
 
       FileSystemCaseSensitive* = true
         ## true if the file system is case sensitive, false otherwise. Used by
@@ -104,7 +106,8 @@ when not declared(getEnv) or defined(nimscript):
     #  MacOS directory separator is a colon ":" which is the only character not
     #  allowed in filenames.
     #
-    #  A path containing no colon or which begins with a colon is a partial path.
+    #  A path containing no colon or which begins with a colon is a partial
+    #  path.
     #  E.g. ":kalle:petter" ":kalle" "kalle"
     #
     #  All other paths are full (absolute) paths. E.g. "HD:kalle:" "HD:"
@@ -206,9 +209,9 @@ when not declared(getEnv) or defined(nimscript):
 
   proc joinPath*(parts: varargs[string]): string {.noSideEffect,
     rtl, extern: "nos$1OpenArray".} =
-    ## The same as `joinPath(head, tail)`, but works with any number of directory
-    ## parts. You need to pass at least one element or the proc will assert in
-    ## debug builds and crash on release builds.
+    ## The same as `joinPath(head, tail)`, but works with any number of
+    ## directory parts. You need to pass at least one element or the proc
+    ## will assert in debug builds and crash on release builds.
     result = parts[0]
     for i in 1..high(parts):
       result = joinPath(result, parts[i])
@@ -316,8 +319,8 @@ when not declared(getEnv) or defined(nimscript):
       if inclusive: yield path
 
   proc `/../` * (head, tail: string): string {.noSideEffect.} =
-    ## The same as ``parentDir(head) / tail`` unless there is no parent directory.
-    ## Then ``head / tail`` is performed instead.
+    ## The same as ``parentDir(head) / tail`` unless there is no parent
+    ## directory. Then ``head / tail`` is performed instead.
     let sepPos = parentDirPos(head)
     if sepPos >= 0:
       result = substr(head, 0, sepPos-1) / tail
@@ -500,7 +503,8 @@ when defined(nimdoc) and not declared(os):
   proc existsFile(x: string): bool = discard
 
 when declared(getEnv) or defined(nimscript):
-  proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect, ReadIOEffect].} =
+  proc getHomeDir*(): string {.rtl, extern: "nos$1",
+    tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the home directory of the current user.
     ##
     ## This proc is wrapped by the expandTilde proc for the convenience of
@@ -508,18 +512,21 @@ when declared(getEnv) or defined(nimscript):
     when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
     else: return string(getEnv("HOME")) & "/"
 
-  proc getConfigDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect, ReadIOEffect].} =
+  proc getConfigDir*(): string {.rtl, extern: "nos$1",
+    tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the config directory of the current user for applications.
     when defined(windows): return string(getEnv("APPDATA")) & "\\"
     else: return string(getEnv("HOME")) & "/.config/"
 
-  proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect].} =
+  proc getTempDir*(): string {.rtl, extern: "nos$1",
+    tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the temporary directory of the current user for applications to
     ## save temporary files in.
     when defined(windows): return string(getEnv("TEMP")) & "\\"
     else: return "/tmp/"
 
-  proc expandTilde*(path: string): string {.tags: [ReadEnvEffect, ReadIOEffect].} =
+  proc expandTilde*(path: string): string {.
+    tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Expands a path starting with ``~/`` to a full path.
     ##
     ## If `path` starts with the tilde character and is followed by `/` or `\\`
@@ -527,8 +534,8 @@ when declared(getEnv) or defined(nimscript):
     ## the getHomeDir() proc, otherwise the input path will be returned without
     ## modification.
     ##
-    ## The behaviour of this proc is the same on the Windows platform despite not
-    ## having this convention. Example:
+    ## The behaviour of this proc is the same on the Windows platform despite
+    ## not having this convention. Example:
     ##
     ## .. code-block:: nim
     ##   let configFile = expandTilde("~" / "appname.cfg")
@@ -549,7 +556,8 @@ when declared(getEnv) or defined(nimscript):
           yield substr(s, first, last-1)
           inc(last)
 
-  proc findExe*(exe: string): string {.tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
+  proc findExe*(exe: string): string {.
+    tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
     ## Searches for `exe` in the current working directory and then
     ## in directories listed in the ``PATH`` environment variable.
     ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`

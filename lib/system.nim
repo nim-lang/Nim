@@ -1260,6 +1260,15 @@ const
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
 
+when defined(boehmgc):
+  when defined(windows):
+    const boehmLib = "boehmgc.dll"
+  elif defined(macosx):
+    const boehmLib = "libgc.dylib"
+  else:
+    const boehmLib = "libgc.so.1"
+  {.pragma: boehmGC, noconv, dynlib: boehmLib.}
+
 when taintMode:
   type TaintedString* = distinct string ## a distinct string type that
                                         ## is `tainted`:idx:. It is an alias for
@@ -2159,53 +2168,6 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   var L = s.len-1
   result = s[L]
   setLen(s, L)
-
-proc each*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] {.
-  deprecated.} =
-  ## The well-known ``map`` operation from functional programming. Applies
-  ## `op` to every item in `data` and returns the result as a sequence.
-  ##
-  ## **Deprecated since version 0.9:** Use the ``map`` proc instead.
-  newSeq(result, data.len)
-  for i in 0..data.len-1: result[i] = op(data[i])
-
-proc each*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) {.
-  deprecated.} =
-  ## The well-known ``map`` operation from functional programming. Applies
-  ## `op` to every item in `data` modifying it directly.
-  ##
-  ## **Deprecated since version 0.9:** Use the ``map`` proc instead.
-  for i in 0..data.len-1: op(data[i])
-
-proc map*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] =
-  ## Returns a new sequence with the results of `op` applied to every item in
-  ## `data`.
-  ##
-  ## Since the input is not modified you can use this version of ``map`` to
-  ## transform the type of the elements in the input sequence. Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     a = @[1, 2, 3, 4]
-  ##     b = map(a, proc(x: int): string = $x)
-  ##   assert b == @["1", "2", "3", "4"]
-  newSeq(result, data.len)
-  for i in 0..data.len-1: result[i] = op(data[i])
-
-proc map*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
-  ## Applies `op` to every item in `data` modifying it directly.
-  ##
-  ## Note that this version of ``map`` requires your input and output types to
-  ## be the same, since they are modified in-place. Example:
-  ##
-  ## .. code-block:: nim
-  ##   var a = @["1", "2", "3", "4"]
-  ##   echo repr(a)
-  ##   # --> ["1", "2", "3", "4"]
-  ##   map(a, proc(x: var string) = x &= "42")
-  ##   echo repr(a)
-  ##   # --> ["142", "242", "342", "442"]
-  for i in 0..data.len-1: op(data[i])
 
 iterator fields*[T: tuple|object](x: T): RootObj {.
   magic: "Fields", noSideEffect.}

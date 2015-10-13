@@ -65,7 +65,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell])
   var p = startProcess(command=c[0], args=c[1.. ^1],
-                       options={poStdErrToStdOut, poUseShell})
+                       options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
   var suc = ""
   var err = ""
@@ -215,7 +215,7 @@ proc generatedFile(path, name: string, target: TTarget): string =
 
 proc codegenCheck(test: TTest, check: string, given: var TSpec) =
   try:
-    let (path, name, ext2) = test.name.splitFile
+    let (path, name, _) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
     let contents = readFile(genFile).string
     if check[0] == '\\':
@@ -307,7 +307,7 @@ proc testSpec(r: var TResults, test: TTest) =
     let isJsTarget = test.target == targetJS
     var exeFile: string
     if isJsTarget:
-      let (dir, file, ext) = splitFile(tname)
+      let (dir, file, _) = splitFile(tname)
       exeFile = dir / "nimcache" / file & ".js" # *TODO* hardcoded "nimcache"
     else:
       exeFile = changeFileExt(tname, ExeExt)
@@ -352,7 +352,7 @@ proc testSpec(r: var TResults, test: TTest) =
 
 proc testNoSpec(r: var TResults, test: TTest) =
   # does not extract the spec because the file is not supposed to have any
-  let tname = test.name.addFileExt(".nim")
+  #let tname = test.name.addFileExt(".nim")
   inc(r.total)
   let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
@@ -368,7 +368,7 @@ proc testC(r: var TResults, test: TTest) =
     r.addResult(test, "", given.msg, given.err)
   elif test.action == actionRun:
     let exeFile = changeFileExt(test.name, ExeExt)
-    var (buf, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUseShell})
+    var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
     if exitCode != 0: given.err = reExitCodesDiffer
   if given.err == reSuccess: inc(r.passed)
 

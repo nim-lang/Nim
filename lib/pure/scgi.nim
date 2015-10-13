@@ -145,8 +145,8 @@ proc next*(s: var ScgiState, timeout: int = -1): bool =
       L = L * 10 + ord(d) - ord('0')
     recvBuffer(s, L+1)
     s.headers = parseHeaders(s.input, L)
-    if s.headers["SCGI"] != "1": raiseScgiError("SCGI Version 1 expected")
-    L = parseInt(s.headers["CONTENT_LENGTH"])
+    if s.headers.getOrDefault("SCGI") != "1": raiseScgiError("SCGI Version 1 expected")
+    L = parseInt(s.headers.getOrDefault("CONTENT_LENGTH"))
     recvBuffer(s, L)
     return true
 
@@ -221,10 +221,10 @@ proc handleClientRead(client: AsyncClient, s: AsyncScgiState) =
     case ret
     of ReadFullLine:
       client.headers = parseHeaders(client.input, client.input.len-1)
-      if client.headers["SCGI"] != "1": raiseScgiError("SCGI Version 1 expected")
+      if client.headers.getOrDefault("SCGI") != "1": raiseScgiError("SCGI Version 1 expected")
       client.input = "" # For next part
 
-      let contentLen = parseInt(client.headers["CONTENT_LENGTH"])
+      let contentLen = parseInt(client.headers.getOrDefault("CONTENT_LENGTH"))
       if contentLen > 0:
         client.mode = ClientReadContent
       else:
@@ -232,7 +232,8 @@ proc handleClientRead(client: AsyncClient, s: AsyncScgiState) =
         checkCloseSocket(client)
     of ReadPartialLine, ReadDisconnected, ReadNone: return
   of ClientReadContent:
-    let L = parseInt(client.headers["CONTENT_LENGTH"])-client.input.len
+    let L = parseInt(client.headers.getOrDefault("CONTENT_LENGTH")) -
+               client.input.len
     if L > 0:
       let ret = recvBufferAsync(client, L)
       case ret
