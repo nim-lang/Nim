@@ -3,6 +3,9 @@ mode = ScriptMode.Whatif
 
 exec "gcc -v"
 
+# test that ospaths actually compiles:
+import ospaths
+
 --forceBuild
 
 task listDirs, "lists every subdirectory":

@@ -139,7 +139,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.seenIndexTerms = initTable[string, int]()
   g.msgHandler = msgHandler
 
-  let s = config["split.item.toc"]
+  let s = config.getOrDefault"split.item.toc"
   if s != "": g.splitAfter = parseInt(s)
   for i in low(g.meta)..high(g.meta): g.meta[i] = ""
 
@@ -341,10 +341,10 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   ## previously appeared to give a different identifier value for each.
   let refname = n.rstnodeToRefname
   if d.seenIndexTerms.hasKey(refname):
-    d.seenIndexTerms[refname] = d.seenIndexTerms[refname] + 1
+    d.seenIndexTerms[refname] = d.seenIndexTerms.getOrDefault(refname) + 1
   else:
     d.seenIndexTerms[refname] = 1
-  let id = refname & '_' & $d.seenIndexTerms[refname]
+  let id = refname & '_' & $d.seenIndexTerms.getOrDefault(refname)
 
   var term = ""
   renderAux(d, n, term)
@@ -518,7 +518,7 @@ proc generateDocumentationIndex(docs: IndexedDocs): string =
   sort(titles, cmp)
 
   for title in titles:
-    let tocList = generateDocumentationTOC(docs[title])
+    let tocList = generateDocumentationTOC(docs.getOrDefault(title))
     result.add("<ul><li><a href=\"" &
       title.link & "\">" & title.keyword & "</a>\n" & tocList & "</ul>\n")
 
@@ -786,7 +786,8 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
     """<img src="$1" width="15"
         height="17" hspace="2" vspace="2" class="smiley" />""",
-    "\\includegraphics{$1}", [d.config["doc.smiley_format"] % n.text])
+    "\\includegraphics{$1}",
+    [d.config.getOrDefault"doc.smiley_format" % n.text])
 
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ## Parses useful fields which can appear before a code block.
@@ -844,8 +845,8 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
   inc d.listingCounter
   let id = $d.listingCounter
   if not params.numberLines:
-    result = (d.config["doc.listing_start"] % id,
-              d.config["doc.listing_end"] % id)
+    result = (d.config.getOrDefault"doc.listing_start" % id,
+              d.config.getOrDefault"doc.listing_end" % id)
     return
 
   var codeLines = 1 + code.strip.countLines
@@ -856,9 +857,11 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
     result.beginTable.add($line & "\n")
     line.inc
     codeLines.dec
-  result.beginTable.add("</pre></td><td>" & (d.config["doc.listing_start"] % id))
-  result.endTable = (d.config["doc.listing_end"] % id) &
-      "</td></tr></tbody></table>" & (d.config["doc.listing_button"] % id)
+  result.beginTable.add("</pre></td><td>" & (
+      d.config.getOrDefault"doc.listing_start" % id))
+  result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
+      "</td></tr></tbody></table>" & (
+      d.config.getOrDefault"doc.listing_button" % id)
 
 proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   ## Renders a code block, appending it to `result`.

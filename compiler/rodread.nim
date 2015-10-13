@@ -372,7 +372,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   else:
     internalError(info, "decodeSym: no ident")
   #echo "decoding: {", ident.s
-  result = r.syms[id]
+  result = r.syms.getOrDefault(id)
   if result == nil:
     new(result)
     result.id = id
@@ -491,7 +491,7 @@ proc processCompilerProcs(r: PRodReader, module: PSym) =
     inc(r.pos)
     var key = decodeVInt(r.s, r.pos)
     inc(r.pos)                # #10
-    var s = r.syms[key]
+    var s = r.syms.getOrDefault(key)
     if s == nil:
       s = newStub(r, w, key)
       s.owner = module
@@ -737,7 +737,7 @@ proc getReader(moduleId: int): PRodReader =
   return nil
 
 proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
-  result = r.syms[id]
+  result = r.syms.getOrDefault(id)
   if result == nil:
     # load the symbol:
     var d = iiTableGet(r.index.tab, id)

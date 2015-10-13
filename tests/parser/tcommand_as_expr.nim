@@ -5,6 +5,7 @@ discard """
 77'''
 """
 #import math
+import sequtils
 
 proc optarg(x:int, y:int = 0):int = x + 3 * y
 proc singlearg(x:int):int = 20*x

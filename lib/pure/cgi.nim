@@ -387,7 +387,7 @@ var
 proc getCookie*(name: string): TaintedString =
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
-  result = TaintedString(gcookies[name])
+  result = TaintedString(gcookies.getOrDefault(name))
 
 proc existsCookie*(name: string): bool =
   ## Checks if a cookie of `name` exists.

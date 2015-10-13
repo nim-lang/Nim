@@ -75,7 +75,7 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   ga('send', 'pageview');
 
 </script>
-    """ % [config["doc.googleAnalytics"]]
+    """ % [config.getOrDefault"doc.googleAnalytics"]
   else:
     result.analytics = ""
 

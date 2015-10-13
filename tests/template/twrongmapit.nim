@@ -27,6 +27,6 @@ when ATTEMPT == 0:
 # bug #1543
 import sequtils
 
-(var i = @[""];i).mapIt(it)
+(var i = @[""];i).applyIt(it)
 # now works:
 echo "##", i[0], "##"
