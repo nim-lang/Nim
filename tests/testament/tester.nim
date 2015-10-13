@@ -292,7 +292,8 @@ proc testSpec(r: var TResults, test: TTest) =
   case expected.action
   of actionCompile:
     var given = callCompiler(expected.cmd, test.name,
-      test.options & " --hint[Path]:off --hint[Processing]:off", test.target)
+      test.options & " --stdout --hint[Path]:off --hint[Processing]:off",
+      test.target)
     compilerOutputTests(test, given, expected, r)
   of actionRun, actionRunNoSpec:
     # In this branch of code "early return" pattern is clearer than deep
