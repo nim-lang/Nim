@@ -79,25 +79,25 @@ when defined(windows):
       stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
 
   var
-    conHandle: Handle
+    hStdout: Handle
   # = createFile("CONOUT$", GENERIC_WRITE, 0, nil, OPEN_ALWAYS, 0, 0)
 
   block:
     var hTemp = getStdHandle(STD_OUTPUT_HANDLE)
     if duplicateHandle(getCurrentProcess(), hTemp, getCurrentProcess(),
-                       addr(conHandle), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
+                       addr(hStdout), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
       raiseOSError(osLastError())
 
   proc getCursorPos(): tuple [x,y: int] =
     var c: CONSOLESCREENBUFFERINFO
-    if getConsoleScreenBufferInfo(conHandle, addr(c)) == 0:
+    if getConsoleScreenBufferInfo(hStdout, addr(c)) == 0:
       raiseOSError(osLastError())
     return (int(c.dwCursorPosition.X), int(c.dwCursorPosition.Y))
 
   proc getAttributes(): int16 =
     var c: CONSOLESCREENBUFFERINFO
     # workaround Windows bugs: try several times
-    if getConsoleScreenBufferInfo(conHandle, addr(c)) != 0:
+    if getConsoleScreenBufferInfo(hStdout, addr(c)) != 0:
       return c.wAttributes
     return 0x70'i16 # ERROR: return white background, black text
 
@@ -126,7 +126,7 @@ proc setCursorPos*(x, y: int) =
     var c: COORD
     c.X = int16(x)
     c.Y = int16(y)
-    if setConsoleCursorPosition(conHandle, c) == 0: raiseOSError(osLastError())
+    if setConsoleCursorPosition(hStdout, c) == 0: raiseOSError(osLastError())
   else:
     stdout.write("\e[" & $y & ';' & $x & 'f')
 
@@ -135,12 +135,11 @@ proc setCursorXPos*(x: int) =
   ## not changed.
   when defined(windows):
     var scrbuf: CONSOLESCREENBUFFERINFO
-    var hStdout = conHandle
     if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.X = int16(x)
-    if setConsoleCursorPosition(conHandle, origin) == 0:
+    if setConsoleCursorPosition(hStdout, origin) == 0:
       raiseOSError(osLastError())
   else:
     stdout.write("\e[" & $x & 'G')
@@ -151,12 +150,11 @@ when defined(windows):
     ## not changed. **Warning**: This is not supported on UNIX!
     when defined(windows):
       var scrbuf: CONSOLESCREENBUFFERINFO
-      var hStdout = conHandle
       if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
         raiseOSError(osLastError())
       var origin = scrbuf.dwCursorPosition
       origin.Y = int16(y)
-      if setConsoleCursorPosition(conHandle, origin) == 0:
+      if setConsoleCursorPosition(hStdout, origin) == 0:
         raiseOSError(osLastError())
     else:
       discard
@@ -233,12 +231,11 @@ proc eraseLine* =
   when defined(windows):
     var scrbuf: CONSOLESCREENBUFFERINFO
     var numwrote: DWORD
-    var hStdout = conHandle
     if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
     var origin = scrbuf.dwCursorPosition
     origin.X = 0'i16
-    if setConsoleCursorPosition(conHandle, origin) == 0:
+    if setConsoleCursorPosition(hStdout, origin) == 0:
       raiseOSError(osLastError())
     var ht = scrbuf.dwSize.Y - origin.Y
     var wt = scrbuf.dwSize.X - origin.X
@@ -258,7 +255,6 @@ proc eraseScreen* =
     var scrbuf: CONSOLESCREENBUFFERINFO
     var numwrote: DWORD
     var origin: COORD # is inititalized to 0, 0
-    var hStdout = conHandle
 
     if getConsoleScreenBufferInfo(hStdout, addr(scrbuf)) == 0:
       raiseOSError(osLastError())
@@ -278,7 +274,7 @@ proc resetAttributes* {.noconv.} =
   ## resets all attributes; it is advisable to register this as a quit proc
   ## with ``system.addQuitProc(resetAttributes)``.
   when defined(windows):
-    discard setConsoleTextAttribute(conHandle, oldAttr)
+    discard setConsoleTextAttribute(hStdout, oldAttr)
   else:
     stdout.write("\e[0m")
 
@@ -308,7 +304,7 @@ proc setStyle*(style: set[Style]) =
     if styleBlink in style: a = a or int16(BACKGROUND_INTENSITY)
     if styleReverse in style: a = a or 0x4000'i16 # COMMON_LVB_REVERSE_VIDEO
     if styleUnderscore in style: a = a or 0x8000'i16 # COMMON_LVB_UNDERSCORE
-    discard setConsoleTextAttribute(conHandle, a)
+    discard setConsoleTextAttribute(hStdout, a)
   else:
     for s in items(style):
       stdout.write("\e[" & $ord(s) & 'm')
@@ -319,7 +315,7 @@ proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
     var old = getAttributes()
     setStyle(style)
     stdout.write(txt)
-    discard setConsoleTextAttribute(conHandle, old)
+    discard setConsoleTextAttribute(hStdout, old)
   else:
     setStyle(style)
     stdout.write(txt)
@@ -368,7 +364,7 @@ proc setForegroundColor*(fg: ForegroundColor, bright=false) =
       (FOREGROUND_RED or FOREGROUND_BLUE),
       (FOREGROUND_BLUE or FOREGROUND_GREEN),
       (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED)]
-    discard setConsoleTextAttribute(conHandle, toU16(old or lookup[fg]))
+    discard setConsoleTextAttribute(hStdout, toU16(old or lookup[fg]))
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
@@ -389,7 +385,7 @@ proc setBackgroundColor*(bg: BackgroundColor, bright=false) =
       (BACKGROUND_RED or BACKGROUND_BLUE),
       (BACKGROUND_BLUE or BACKGROUND_GREEN),
       (BACKGROUND_BLUE or BACKGROUND_GREEN or BACKGROUND_RED)]
-    discard setConsoleTextAttribute(conHandle, toU16(old or lookup[bg]))
+    discard setConsoleTextAttribute(hStdout, toU16(old or lookup[bg]))
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)
