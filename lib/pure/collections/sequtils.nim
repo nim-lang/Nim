@@ -397,6 +397,67 @@ template keepItIf*(varSeq: seq, pred: expr) =
       inc(pos)
   setLen(varSeq, pos)
 
+proc all*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): bool =
+  ## Iterates through a sequence and checks if every item fulfills the
+  ## predicate.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
+  ##   assert all(numbers, proc (x: int): bool = return x < 10) == true
+  ##   assert all(numbers, proc (x: int): bool = return x < 9) == false
+  for i in seq1:
+    if not pred(i):
+      return false
+  return true
+
+template allIt*(seq1, pred: expr): bool {.immediate.} =
+  ## Checks if every item fulfills the predicate.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
+  ##   assert allIt(numbers, it < 10) == true
+  ##   assert allIt(numbers, it < 9) == false
+  var result {.gensym.} = true
+  for it {.inject.} in items(seq1):
+    if not pred:
+      result = false
+      break
+  result
+
+proc any*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): bool =
+  ## Iterates through a sequence and checks if some item fulfills the
+  ## predicate.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
+  ##   assert any(numbers, proc (x: int): bool = return x > 8) == true
+  ##   assert any(numbers, proc (x: int): bool = return x > 9) == false
+  for i in seq1:
+    if pred(i):
+      return true
+  return false
+
+template anyIt*(seq1, pred: expr): bool {.immediate.} =
+  ## Checks if some item fulfills the predicate.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
+  ##   assert anyIt(numbers, it > 8) == true
+  ##   assert anyIt(numbers, it > 9) == false
+  var result {.gensym.} = false
+  for it {.inject.} in items(seq1):
+    if pred:
+      result = true
+      break
+  result
 
 template toSeq*(iter: expr): expr {.immediate.} =
   ## Transforms any iterator into a sequence.
@@ -641,6 +702,38 @@ when isMainModule:
     var candidates = @["foo", "bar", "baz", "foobar"]
     keepItIf(candidates, it.len == 3 and it[0] == 'b')
     assert candidates == @["bar", "baz"]
+
+  block: # any
+    let
+      numbers = @[1, 4, 5, 8, 9, 7, 4]
+      len0seq : seq[int] = @[]
+    assert any(numbers, proc (x: int): bool = return x > 8) == true
+    assert any(numbers, proc (x: int): bool = return x > 9) == false
+    assert any(len0seq, proc (x: int): bool = return true) == false
+
+  block: # anyIt
+    let
+      numbers = @[1, 4, 5, 8, 9, 7, 4]
+      len0seq : seq[int] = @[]
+    assert anyIt(numbers, it > 8) == true
+    assert anyIt(numbers, it > 9) == false
+    assert anyIt(len0seq, true) == false
+
+  block: # all
+    let
+      numbers = @[1, 4, 5, 8, 9, 7, 4]
+      len0seq : seq[int] = @[]
+    assert all(numbers, proc (x: int): bool = return x < 10) == true
+    assert all(numbers, proc (x: int): bool = return x < 9) == false
+    assert all(len0seq, proc (x: int): bool = return false) == true
+
+  block: # allIt
+    let
+      numbers = @[1, 4, 5, 8, 9, 7, 4]
+      len0seq : seq[int] = @[]
+    assert allIt(numbers, it < 10) == true
+    assert allIt(numbers, it < 9) == false
+    assert allIt(len0seq, false) == true
 
   block: # toSeq test
     let
