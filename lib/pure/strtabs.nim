@@ -111,7 +111,7 @@ template get(t: StringTableRef, key: string): stmt {.immediate.} =
       raise newException(KeyError, "key not found")
 
 proc `[]`*(t: StringTableRef, key: string): var string {.
-           rtl, extern: "nstTake".} =
+           rtl, extern: "nstTake", deprecatedGet.} =
   ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
@@ -162,7 +162,7 @@ proc raiseFormatException(s: string) =
   raise e
 
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
-  if hasKey(t, key): return t[key]
+  if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
   if useEnvironment in flags: result = os.getEnv(key).string
   else: result = ""

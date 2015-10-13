@@ -156,7 +156,7 @@ proc rawGet[A](s: HashSet[A], key: A, hc: var Hash): int {.inline.} =
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## returns the element that is actually stored in 's' which has the same
-  ## value as 'key' or raises the ``EInvalidKey`` exception. This is useful
+  ## value as 'key' or raises the ``KeyError`` exception. This is useful
   ## when one overloaded 'hash' and '==' but still needs reference semantics
   ## for sharing.
   assert s.isValid, "The set needs to be initialized."
@@ -167,7 +167,7 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
 
 proc mget*[A](s: var HashSet[A], key: A): var A {.deprecated.} =
   ## returns the element that is actually stored in 's' which has the same
-  ## value as 'key' or raises the ``EInvalidKey`` exception. This is useful
+  ## value as 'key' or raises the ``KeyError`` exception. This is useful
   ## when one overloaded 'hash' and '==' but still needs reference semantics
   ## for sharing. Use ```[]``` instead.
   s[key]

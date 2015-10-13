@@ -8,7 +8,11 @@ News
 
   Changes affecting backwards compatibility
   -----------------------------------------
-
+  - ``tables.[]``, ``strtabs.[]``, ``critbits.[]`` **now raise**
+    the ``KeyError`` **exception when the key does not exist**! Use the
+    new ``getOrDefault`` instead to get the old behaviour. Compile all your
+    code with ``-d:nimTableGet`` to get a listing of where your code
+    uses ``[]``!
   - The ``rawsockets`` module has been renamed to ``nativesockets`` to avoid
     confusion with TCP/IP raw sockets, so ``newNativeSocket`` should be used
     instead of ``newRawSocket``.
@@ -68,10 +72,10 @@ News
     * ``libeay32.dll``: Split into ``libeay32.dll`` and ``libeay64.dll``.
 
     Compile with ``-d:nimOldDLLs`` to make the stdlib use the old DLL names.
-  - Nim VM now treats objects as nkObjConstr nodes, and not nkPar nodes as it
-    was previously. Macros that generate nkPar nodes when object is expected are
-    likely to break. Macros that expect nkPar nodes to which objects are passed
-    are likely to break as well.
+  - Nim VM now treats objects as ``nkObjConstr`` nodes, and not ``nkPar`` nodes
+    as it was previously. Macros that generate ``nkPar`` nodes when object is
+    expected are likely to break. Macros that expect ``nkPar`` nodes to which
+    objects are passed are likely to break as well.
   - Base methods now need to be annotated with the ``base`` pragma. This makes
     multi methods less error-prone to use with the effect system.
   - Nim's parser directive ``#!`` is now ``#?`` in order to produce no conflicts
@@ -86,7 +90,7 @@ News
 
       echo f(0, "abc")
   - The ``ftpclient`` module is now deprecated in favour of the
-    ``asyncdispatch`` module.
+    ``asyncftpclient`` module.
   - In sequtils.nim renamed ``repeat`` function to ``cycle`` (concatenating
     a sequence by itself the given times), and also introduced ``repeat``,
     which repeats an element the given times.

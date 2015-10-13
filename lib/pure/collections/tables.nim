@@ -68,6 +68,8 @@
 import
   hashes, math
 
+include "system/inclrtl"
+
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]
@@ -115,13 +117,13 @@ template getOrDefaultImpl(t, key): untyped {.immediate.} =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
-proc `[]`*[A, B](t: Table[A, B], key: A): B =
+proc `[]`*[A, B](t: Table[A, B], key: A): B {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   get(t, key)
 
-proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
+proc `[]`*[A, B](t: var Table[A, B], key: A): var B {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   get(t, key)
@@ -293,7 +295,7 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
-proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
+proc `[]`*[A, B](t: TableRef[A, B], key: A): var B {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``.  If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
@@ -418,13 +420,13 @@ proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline
 proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
   rawGetImpl()
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
+proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   get(t, key)
 
-proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
+proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B{.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   get(t, key)
@@ -718,13 +720,13 @@ template ctget(t, key: untyped): untyped {.immediate.} =
     else:
       raise newException(KeyError, "key not found")
 
-proc `[]`*[A](t: CountTable[A], key: A): int =
+proc `[]`*[A](t: CountTable[A], key: A): int {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
   ## the ``KeyError`` exception is raised. One can check with ``hasKey``
   ## whether the key exists.
   ctget(t, key)
 
-proc `[]`*[A](t: var CountTable[A], key: A): var int =
+proc `[]`*[A](t: var CountTable[A], key: A): var int {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ctget(t, key)
@@ -873,7 +875,7 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-proc `[]`*[A](t: CountTableRef[A], key: A): var int =
+proc `[]`*[A](t: CountTableRef[A], key: A): var int {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   result = t[][key]

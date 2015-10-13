@@ -11,6 +11,8 @@
 ## container for a set or a mapping of strings. Based on the excellent paper
 ## by Adam Langley.
 
+include "system/inclrtl"
+
 type
   NodeObj[T] = object {.acyclic.}
     byte: int ## byte index of the difference
@@ -149,13 +151,14 @@ template get[T](c: CritBitTree[T], key: string): T {.immediate.} =
     else:
       raise newException(KeyError, "key not found")
 
-proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
+proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline, deprecatedGet.} =
   ## retrieves the value at ``c[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   get(c, key)
 
-proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
+proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
+  deprecatedGet.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   get(c, key)

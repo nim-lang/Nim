@@ -342,7 +342,7 @@ proc attr*(n: XmlNode, name: string): string =
   ## Returns "" on failure.
   assert n.kind == xnElement
   if n.attrs == nil: return ""
-  return n.attrs[name]
+  return n.attrs.getOrDefault(name)
 
 proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
   ## Iterates over all the children of `n` returning those matching `tag`.
