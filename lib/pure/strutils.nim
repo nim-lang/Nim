@@ -22,6 +22,8 @@ import parseutils
 
 include "system/inclrtl"
 
+{.pop.}
+
 type
   CharSet* {.deprecated.} = set[char] # for compatibility with Nim
 {.deprecated: [TCharSet: CharSet].}
@@ -1660,7 +1662,7 @@ when isMainModule:
   doAssert isAlpha("Rasp")
   doAssert isAlpha("Args")
   doAssert(not isAlpha("$Tomato"))
-  
+
   doAssert isAlphaNumeric('3')
   doAssert isAlphaNumeric('R')
   doAssert(not isAlphaNumeric('!'))
