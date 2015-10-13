@@ -32,4 +32,4 @@ before_test:
   - nimble install zip
 
 test_script:
-  - koch test all --pedantic
+  - koch test --pedantic all
