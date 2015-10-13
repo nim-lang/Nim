@@ -239,7 +239,7 @@ proc loadAny(p: var JsonParser, t: PType,
       result = newNode(nkNilLit)
       next(p)
     of jsonInt:
-      result = tab[p.getInt]
+      result = tab.getOrDefault(p.getInt)
       if result.isNil:
         raiseParseErr(p, "cannot load object with address " & $p.getInt)
       next(p)

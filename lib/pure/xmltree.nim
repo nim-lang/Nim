@@ -144,7 +144,7 @@ proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   assert n.k == xnElement
   result = n.s[i]
 
-proc mget* (n: var XmlNode, i: int): var XmlNode {.inline, deprecated.} =
+proc mget*(n: var XmlNode, i: int): var XmlNode {.inline, deprecated.} =
   ## returns the `i`'th child of `n` so that it can be modified. Use ```[]```
   ## instead.
   n[i]

@@ -15,7 +15,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  tables, docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists
+  docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists
 
 from magicsys import systemModule, resetSysTypes
 

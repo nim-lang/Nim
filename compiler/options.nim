@@ -173,7 +173,7 @@ proc existsConfigVar*(key: string): bool =
   result = hasKey(gConfigVars, key)
 
 proc getConfigVar*(key: string): string =
-  result = gConfigVars[key]
+  result = gConfigVars.getOrDefault key
 
 proc setConfigVar*(key, val: string) =
   gConfigVars[key] = val
