@@ -342,7 +342,8 @@ proc tests(args: string) =
   exec "nim c --lib:lib -d:release --opt:speed compiler/nim.nim"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
   let success = tryExec tester & " " & (args|"all")
-  exec tester & " html"
+  if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
+    exec tester & " html"
   if not success:
     quit("tests failed", QuitFailure)
 
