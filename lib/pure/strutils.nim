@@ -1719,3 +1719,9 @@ when isMainModule:
   doAssert isUpper("ABC")
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
+
+  let s = " this   is     an example   "
+  doAssert s.split() == @["this", "is", "an", "example"]
+  doAssert s.split(maxsplit=4) == @["this", "is", "an", "example"]
+  doAssert s.split(' ', maxsplit=4) == @["", "this", "", "", "is     an example   "]
+  doAssert s.split(" ", maxsplit=4) == @["", "this", "", "", "is     an example   "]
