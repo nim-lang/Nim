@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, re
+  algorithm, compiler/nodejs, re, times
 
 const
   resultsFile = "testresults.html"
@@ -47,6 +47,7 @@ type
     options: string
     target: TTarget
     action: TTestAction
+    startTime: float
 
 # ----------------------------------------------------------------------------
 
@@ -104,6 +105,12 @@ proc callCompiler(cmdTemplate, filename, options: string,
   elif suc =~ pegSuccess:
     result.err = reSuccess
 
+  if result.err == reNimcCrash and
+     ("Your platform is not supported" in result.msg or
+      "cannot open 'sdl'" in result.msg or
+      "cannot open 'opengl'" in result.msg):
+    result.err = reIgnored
+
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
@@ -143,6 +150,7 @@ proc `$`(x: TResults): string =
 proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & test.options
+  let duration = epochTime() - test.startTime
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $test.target,
@@ -163,6 +171,18 @@ proc addResult(r: var TResults, test: TTest,
     styledEcho styleBright, expected, "\n"
     styledEcho fgYellow, "Gotten:"
     styledEcho styleBright, given, "\n"
+
+  if existsEnv("APPVEYOR"):
+    let (outcome, msg) =
+      if success == reSuccess:
+        ("Passed", "")
+      elif success == reIgnored:
+        ("Skipped", "")
+      else:
+        ("Failed", "Failure: " & $success & "\nExpected:\n" & expected & "\n\n" & "Gotten:\n" & given)
+    var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options, "-Framework", "nim-testament", "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath, poParentStreams})
+    discard waitForExit(p)
+    close(p)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -356,7 +376,7 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
               target = targetC, env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
   result = TTest(cat: cat, name: test, options: options,
-                 target: target, action: action)
+                 target: target, action: action, startTime: epochTime())
 
 include categories
 

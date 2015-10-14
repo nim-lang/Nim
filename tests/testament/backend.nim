@@ -112,7 +112,8 @@ proc writeTestResult*(name, category, target,
                                         thisCommit, thisMachine)
 
 proc open*() =
-  db = open(connection="testament.db", user="testament", password="",
+  let dbFile = if existsEnv("TRAVIS") or existsEnv("APPVEYOR"): ":memory:" else: "testament.db"
+  db = open(connection=dbFile, user="testament", password="",
             database="testament")
   createDb()
   thisMachine = getMachine(db)

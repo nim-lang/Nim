@@ -26,4 +26,5 @@ script:
   - nimble install zip
   - nimble install opengl
   - nimble install sdl1
-  - ./koch test all --pedantic
+  - nim c --taintMode:on tests/testament/tester
+  - tests/testament/tester --pedantic all
