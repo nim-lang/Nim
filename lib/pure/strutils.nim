@@ -374,10 +374,9 @@ iterator split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): st
     var first = last
     while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
     if first <= last-1:
-      if splits == 0:
-        yield substr(s, first, len(s)-1)
-        break
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
       dec(splits)
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
@@ -414,10 +413,9 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
     while last <= len(s):
       var first = last
       while last < len(s) and s[last] != sep: inc(last)
-      if splits == 0:
-        yield substr(s, first, len(s)-1)
-        break
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
       dec(splits)
       inc(last)
 
@@ -432,10 +430,9 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
       var first = last
       while last < len(s) and s.substr(last, last + <sep.len) != sep:
         inc(last)
-      if splits == 0:
-        yield substr(s, first, len(s)-1)
-        break
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
       dec(splits)
       inc(last, sep.len)
 
