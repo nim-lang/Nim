@@ -121,7 +121,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
   case t.kind
   of tyDistinct:
-    result = genTypeInfo(p, typ.sons[0])
+    result = genTypeInfo(p, t.sons[0])
   of tyPointer, tyProc, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
@@ -133,7 +133,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
               [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
     addf(p.g.typeInfo, "$1.base = $2;$n",
-         [result, genTypeInfo(p, typ.lastSon)])
+         [result, genTypeInfo(p, t.lastSon)])
   of tyArrayConstr, tyArray:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %

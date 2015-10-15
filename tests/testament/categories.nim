@@ -216,7 +216,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
                    "actiontable/tactiontable", "method/tmultim1",
-                   "method/tmultim3", "method/tmultim4"]:
+                   "method/tmultim3", "method/tmultim4",
+                   "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
+                   "varres/tvartup"]:
     test "tests/" & testfile & ".nim"
 
 # ------------------------- manyloc -------------------------------------------

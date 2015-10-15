@@ -790,19 +790,34 @@ proc needsNoCopy(y: PNode): bool =
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
   gen(p, x, a)
+
+  let xtyp = mapType(x.typ)
+
+  if x.kind == nkHiddenDeref and x.sons[0].kind == nkCall and xtyp != etyObject:
+    gen(p, x.sons[0], a)
+    addf(p.body, "nimVarUnpack = $1;$n", [a.rdLoc])
+    a.res = rope "nimVarUnpack[0][nimVarUnpack[1]]"
+  else:
+    gen(p, x, a)
+
   gen(p, y, b)
-  case mapType(x.typ)
+
+  case xtyp
   of etyObject:
-    if needsNoCopy(y) or noCopyNeeded:
+    if (needsNoCopy(y) and needsNoCopy(x)) or noCopyNeeded:
       addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      addf(p.body, "$1 = nimCopy($1, $2, $3);$n",
+      addf(p.body, "nimCopy($1, $2, $3);$n",
            [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
-      internalError(x.info, "genAsgn")
-    addf(p.body, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
+      if y.kind == nkCall:
+        addf(p.body, "nimVarUnpack = $3; $1 = nimVarUnpack[0]; $2 = nimVarUnpack[1];$n", [a.address, a.res, b.rdLoc])
+      else:
+        internalError(x.info, "genAsgn")
+    else:
+      addf(p.body, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
   else:
     addf(p.body, "$1 = $2;$n", [a.res, b.res])
 
@@ -1029,8 +1044,12 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
   else:
     var a: TCompRes
     gen(p, n.sons[0], a)
-    if a.typ != etyBaseIndex: internalError(n.info, "genDeref")
-    r.res = "$1[$2]" % [a.address, a.res]
+    if a.typ == etyBaseIndex:
+      r.res = "$1[$2]" % [a.address, a.res]
+    elif n.sons[0].kind == nkCall:
+      r.res = "(nimVarUnpack = $#, nimVarUnpack[0][nimVarUnpack[1]])" % [a.res]
+    else:
+      internalError(n.info, "genDeref")
 
 proc genArgNoParam(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
@@ -1584,7 +1603,10 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
         mangleName(resultSym),
         createVar(p, resultSym.typ, isIndirect(resultSym))]
     gen(p, prc.ast.sons[resultPos], a)
-    returnStmt = "return $#;$n" % [a.res]
+    if mapType(resultSym.typ) == etyBaseIndex:
+      returnStmt = "return [$#, $#];$n" % [a.address, a.res]
+    else:
+      returnStmt = "return $#;$n" % [a.res]
   genStmt(p, prc.getBody)
   result = ("function $#($#) {$n$#$#$#$#}$n" |
             "function $#($#) $n$#$#$#$#$nend$n") %
