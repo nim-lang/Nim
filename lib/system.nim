@@ -1411,7 +1411,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
     defaultImpl()
   else:
     when defined(js):
-      var it = item
+      var it : T
       {.emit: "`x`[`x`_Idx].splice(`i`, 0, `it`);".}
     else:
       defaultImpl()
