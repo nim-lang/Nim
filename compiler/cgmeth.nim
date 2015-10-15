@@ -231,7 +231,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
                            curr.typ.sons[col], false))
     var ret: PNode
     if base.typ.sons[0] != nil:
-      var a = newNodeI(nkAsgn, base.info)
+      var a = newNodeI(nkFastAsgn, base.info)
       addSon(a, newSymNode(base.ast.sons[resultPos].sym))
       addSon(a, call)
       ret = newNodeI(nkReturnStmt, base.info)
@@ -256,4 +256,3 @@ proc generateMethodDispatchers*(): PNode =
     sortBucket(gMethods[bucket].methods, relevantCols)
     addSon(result,
            newSymNode(genDispatcher(gMethods[bucket].methods, relevantCols)))
-
