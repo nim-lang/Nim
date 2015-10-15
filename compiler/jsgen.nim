@@ -197,10 +197,10 @@ proc isSimpleExpr(n: PNode): bool =
   elif n.isAtom:
     result = true
 
-proc getTemp(p: PProc): Rope =
+proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
   result = "Tmp$1" % [rope(p.unique)]
-  addf(p.locals, "var $1;$n" | "local $1;$n", [result])
+  if defineInLocals: addf(p.locals, "var $1;$n" | "local $1;$n", [result])
 
 proc genAnd(p: PProc, a, b: PNode, r: var TCompRes) =
   assert r.kind == resNone
@@ -795,8 +795,9 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
 
   if x.kind == nkHiddenDeref and x.sons[0].kind == nkCall and xtyp != etyObject:
     gen(p, x.sons[0], a)
-    addf(p.body, "nimVarUnpack = $1;$n", [a.rdLoc])
-    a.res = rope "nimVarUnpack[0][nimVarUnpack[1]]"
+    let tmp = p.getTemp(false)
+    addf(p.body, "var $1 = $2;$n", [tmp, a.rdLoc])
+    a.res = "$1[0][$1[1]]" % [tmp]
   else:
     gen(p, x, a)
 
@@ -813,7 +814,8 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
-        addf(p.body, "nimVarUnpack = $3; $1 = nimVarUnpack[0]; $2 = nimVarUnpack[1];$n", [a.address, a.res, b.rdLoc])
+        let tmp = p.getTemp(false)
+        addf(p.body, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
       else:
         internalError(x.info, "genAsgn")
     else:
@@ -833,11 +835,9 @@ proc genSwap(p: PProc, n: PNode) =
   var a, b: TCompRes
   gen(p, n.sons[1], a)
   gen(p, n.sons[2], b)
-  inc(p.unique)
-  var tmp = "Tmp$1" % [rope(p.unique)]
+  var tmp = p.getTemp(false)
   if mapType(skipTypes(n.sons[1].typ, abstractVar)) == etyBaseIndex:
-    inc(p.unique)
-    let tmp2 = "Tmp$1" % [rope(p.unique)]
+    let tmp2 = p.getTemp(false)
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       internalError(n.info, "genSwap")
     addf(p.body, "var $1 = $2; $2 = $3; $3 = $1;$n" |
@@ -1047,7 +1047,8 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
     if a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
     elif n.sons[0].kind == nkCall:
-      r.res = "(nimVarUnpack = $#, nimVarUnpack[0][nimVarUnpack[1]])" % [a.res]
+      let tmp = p.getTemp
+      r.res = "($1 = $2, $1[0][$1[1]])" % [tmp, a.res]
     else:
       internalError(n.info, "genDeref")
 
