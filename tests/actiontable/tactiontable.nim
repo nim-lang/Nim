@@ -24,4 +24,3 @@ var
     "D": action4}.toTable
 
 actionTable["C"]("arg")
-

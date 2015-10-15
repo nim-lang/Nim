@@ -3,8 +3,8 @@ discard """
 """
 
 {.emit: """
-long sum(long* a, long len) {
-  long i, result = 0;
+NI sum(NI* a, NI len) {
+  NI i, result = 0;
   for (i = 0; i < len; ++i) result += a[i];
   return result;
 }

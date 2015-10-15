@@ -809,6 +809,9 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return semExpr(c, result, flags)
   else:
     n.sons[0] = semExpr(c, n.sons[0])
+    let t = n.sons[0].typ
+    if t != nil and t.kind == tyVar:
+      n.sons[0] = newDeref(n.sons[0])
   let nOrig = n.copyTree
   semOpAux(c, n)
   var t: PType = nil

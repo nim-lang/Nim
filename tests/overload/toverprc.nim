@@ -5,7 +5,7 @@ yay'''
 
 # Test overloading of procs when used as function pointers
 
-import strutils
+import strutils, sequtils
 
 proc parseInt(x: float): int {.noSideEffect.} = discard
 proc parseInt(x: bool): int {.noSideEffect.} = discard

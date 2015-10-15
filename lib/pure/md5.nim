@@ -9,8 +9,6 @@
 
 ## Module for computing MD5 checksums.
 
-import unsigned
-
 type
   MD5State = array[0..3, uint32]
   MD5Block = array[0..15, uint32]

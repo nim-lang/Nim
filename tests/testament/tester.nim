@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, re
+  algorithm, compiler/nodejs, re, times
 
 const
   resultsFile = "testresults.html"
@@ -47,6 +47,7 @@ type
     options: string
     target: TTarget
     action: TTestAction
+    startTime: float
 
 # ----------------------------------------------------------------------------
 
@@ -64,7 +65,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell])
   var p = startProcess(command=c[0], args=c[1.. ^1],
-                       options={poStdErrToStdOut, poUseShell})
+                       options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
   var suc = ""
   var err = ""
@@ -103,6 +104,12 @@ proc callCompiler(cmdTemplate, filename, options: string,
     result.msg = matches[0]
   elif suc =~ pegSuccess:
     result.err = reSuccess
+
+  if result.err == reNimcCrash and
+     ("Your platform is not supported" in result.msg or
+      "cannot open 'sdl'" in result.msg or
+      "cannot open 'opengl'" in result.msg):
+    result.err = reIgnored
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
@@ -143,6 +150,7 @@ proc `$`(x: TResults): string =
 proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & test.options
+  let duration = epochTime() - test.startTime
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $test.target,
@@ -163,6 +171,18 @@ proc addResult(r: var TResults, test: TTest,
     styledEcho styleBright, expected, "\n"
     styledEcho fgYellow, "Gotten:"
     styledEcho styleBright, given, "\n"
+
+  if existsEnv("APPVEYOR"):
+    let (outcome, msg) =
+      if success == reSuccess:
+        ("Passed", "")
+      elif success == reIgnored:
+        ("Skipped", "")
+      else:
+        ("Failed", "Failure: " & $success & "\nExpected:\n" & expected & "\n\n" & "Gotten:\n" & given)
+    var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options, "-Framework", "nim-testament", "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath, poParentStreams})
+    discard waitForExit(p)
+    close(p)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
@@ -195,7 +215,7 @@ proc generatedFile(path, name: string, target: TTarget): string =
 
 proc codegenCheck(test: TTest, check: string, given: var TSpec) =
   try:
-    let (path, name, ext2) = test.name.splitFile
+    let (path, name, _) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
     let contents = readFile(genFile).string
     if check[0] == '\\':
@@ -287,7 +307,7 @@ proc testSpec(r: var TResults, test: TTest) =
     let isJsTarget = test.target == targetJS
     var exeFile: string
     if isJsTarget:
-      let (dir, file, ext) = splitFile(tname)
+      let (dir, file, _) = splitFile(tname)
       exeFile = dir / "nimcache" / file & ".js" # *TODO* hardcoded "nimcache"
     else:
       exeFile = changeFileExt(tname, ExeExt)
@@ -332,7 +352,7 @@ proc testSpec(r: var TResults, test: TTest) =
 
 proc testNoSpec(r: var TResults, test: TTest) =
   # does not extract the spec because the file is not supposed to have any
-  let tname = test.name.addFileExt(".nim")
+  #let tname = test.name.addFileExt(".nim")
   inc(r.total)
   let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
@@ -348,7 +368,7 @@ proc testC(r: var TResults, test: TTest) =
     r.addResult(test, "", given.msg, given.err)
   elif test.action == actionRun:
     let exeFile = changeFileExt(test.name, ExeExt)
-    var (buf, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUseShell})
+    var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
     if exitCode != 0: given.err = reExitCodesDiffer
   if given.err == reSuccess: inc(r.passed)
 
@@ -356,7 +376,7 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
               target = targetC, env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
   result = TTest(cat: cat, name: test, options: options,
-                 target: target, action: action)
+                 target: target, action: action, startTime: epochTime())
 
 include categories
 

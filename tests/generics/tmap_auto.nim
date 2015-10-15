@@ -1,4 +1,4 @@
-import future
+import future, sequtils
 
 let x = map(@[1, 2, 3], x => x+10)
 assert x == @[11, 12, 13]

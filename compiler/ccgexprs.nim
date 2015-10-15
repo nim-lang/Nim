@@ -1155,7 +1155,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     let field = lookupFieldAgain(p, ty, it.sons[0].sym, tmp2.r)
     if field.loc.r == nil: internalError(e.info, "genObjConstr")
     if it.len == 3 and optFieldCheck in p.options:
-      genFieldCheck(p, it.sons[2], tmp2.r, field, ty)
+      genFieldCheck(p, it.sons[2], r, field, ty)
     add(tmp2.r, ".")
     add(tmp2.r, field.loc.r)
     tmp2.k = locTemp

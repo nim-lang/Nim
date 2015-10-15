@@ -499,7 +499,7 @@ proc newMimetypes*(): MimeDB =
 proc getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to ``ext``. Returns ``default`` if ``ext``
   ## could not be found.
-  result = mimedb.mimes[ext]
+  result = mimedb.mimes.getOrDefault(ext)
   if result == "":
     return default
 
