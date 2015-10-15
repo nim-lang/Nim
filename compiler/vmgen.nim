@@ -1091,10 +1091,32 @@ proc requiresCopy(n: PNode): bool =
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
 
+proc canElimAddr(n: PNode): PNode =
+  case n.sons[0].kind
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+    var m = n.sons[0].sons[0]
+    if m.kind in {nkDerefExpr, nkHiddenDeref}:
+      # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
+      result = copyNode(n.sons[0])
+      result.add m.sons[0]
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    var m = n.sons[0].sons[1]
+    if m.kind in {nkDerefExpr, nkHiddenDeref}:
+      # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
+      result = copyNode(n.sons[0])
+      result.add m.sons[0]
+  else:
+    if n.sons[0].kind in {nkDerefExpr, nkHiddenDeref}:
+      # addr ( deref ( x )) --> x
+      result = n.sons[0].sons[0]
+
 proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                   flags: TGenFlags) =
   # a nop for certain types
   let isAddr = opc in {opcAddrNode, opcAddrReg}
+  if isAddr and (let m = canElimAddr(n); m != nil):
+    gen(c, m, dest, flags)
+    return
   let newflags = if isAddr: flags+{gfAddrOf} else: flags
   # consider:
   # proc foo(f: var ref int) =
