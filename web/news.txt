@@ -2,6 +2,28 @@
 News
 ====
 
+2015-10-16 First Nim conference
+===============================
+
+This Autumn you have a unique opportunity to take part in the first Nim event
+held in Kyiv and to meet the creator of Nim language - Andreas Rumpf.
+
+
+During the workshop you will learn:
+
+- The basics of the language including its safe and unsafe subsets.
+- How to use Nim to develop web applications.
+- How Nim's meta programming capabilities make Nim the ultimate glue language,
+  excellent at interoperability with C++, JavaScript, Java and others.
+
+Registration is free, but the number of places is limited. More details
+can be found `here <https://nimworkshop.splashthat.com/>`_.
+
+
+
+
+
+
 ..
   2015-xx-xx Version 0.11.4 released
   ==================================
