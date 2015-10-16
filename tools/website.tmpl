@@ -49,8 +49,13 @@
 #  if currentTab == "index":
         <div id="slideshow">
           <!-- slides -->
-          <div id="slide0" class="active">
-            <h2><a name="why-should-i-be-excited">Why should I be excited?</a></h2>
+          <div id="slide0" class="active zeoslide">
+            <a href="news.html#Z2015-10-16-first-nim-conference">
+              <img src="assets/zeo/banner.jpg" alt="First Nim workshop in Ukraine!"/>
+            </a>
+          </div>
+          <div id="slide1" class="codeslide1">
+            <h2>Why should I be excited?</h2>
             <span class="desc">Nim is the only language that leverages automated proof technology to perform a <i>disjoint check</i> for your parallel code. Working on disjoint data means no locking is required and yet data races are impossible:</span><br><br>
 <pre>
 <span class="kwd">parallel</span>:
@@ -63,7 +68,7 @@
 <span class="tab end">  <span class="tab end">  </span></span>i += <span class="val">1</span>
 </pre>
           </div>
-          <div id="slide1">
+          <div id="slide2" class="codeslide2">
             <div>
               <h2>Nim is simple..</h2>
 <pre>
@@ -97,7 +102,7 @@ p.greet() <span class="cmt"># or greet(p)</span>
 </pre>
              </div>
           </div>
-          <div id="slide2" class="">
+          <div id="slide3" class="codeslide3">
             <div>
               <h2>C FFI is easy in Nim..</h2>
 <pre>
@@ -134,6 +139,7 @@ runForever()
           <div id="slideControl0" onclick="slideshow_click(0)" class="active"></div>
           <div id="slideControl1" onclick="slideshow_click(1)"></div>
           <div id="slideControl2" onclick="slideshow_click(2)"></div>
+          <div id="slideControl3" onclick="slideshow_click(3)"></div>
         </div>
 #  end
         <aside id="sidebar">
