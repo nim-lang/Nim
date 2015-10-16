@@ -511,7 +511,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].regAddr = addr(regs[rb])
     of opcAddrNode:
       decodeB(rkNodeAddr)
-      regs[ra].nodeAddr = addr(regs[rb].node)
+      if regs[rb].kind == rkNode:
+        regs[ra].nodeAddr = addr(regs[rb].node)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "limited VM support for 'addr'")
     of opcLdDeref:
       # a = b[]
       let ra = instr.regA

@@ -197,10 +197,10 @@ proc isSimpleExpr(n: PNode): bool =
   elif n.isAtom:
     result = true
 
-proc getTemp(p: PProc): Rope =
+proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
   result = "Tmp$1" % [rope(p.unique)]
-  addf(p.locals, "var $1;$n" | "local $1;$n", [result])
+  if defineInLocals: addf(p.locals, "var $1;$n" | "local $1;$n", [result])
 
 proc genAnd(p: PProc, a, b: PNode, r: var TCompRes) =
   assert r.kind == resNone
@@ -790,19 +790,36 @@ proc needsNoCopy(y: PNode): bool =
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
   gen(p, x, a)
+
+  let xtyp = mapType(x.typ)
+
+  if x.kind == nkHiddenDeref and x.sons[0].kind == nkCall and xtyp != etyObject:
+    gen(p, x.sons[0], a)
+    let tmp = p.getTemp(false)
+    addf(p.body, "var $1 = $2;$n", [tmp, a.rdLoc])
+    a.res = "$1[0][$1[1]]" % [tmp]
+  else:
+    gen(p, x, a)
+
   gen(p, y, b)
-  case mapType(x.typ)
+
+  case xtyp
   of etyObject:
-    if needsNoCopy(y) or noCopyNeeded:
+    if (needsNoCopy(y) and needsNoCopy(x)) or noCopyNeeded:
       addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      addf(p.body, "$1 = nimCopy($1, $2, $3);$n",
+      addf(p.body, "nimCopy($1, $2, $3);$n",
            [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
-      internalError(x.info, "genAsgn")
-    addf(p.body, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
+      if y.kind == nkCall:
+        let tmp = p.getTemp(false)
+        addf(p.body, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
+      else:
+        internalError(x.info, "genAsgn")
+    else:
+      addf(p.body, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
   else:
     addf(p.body, "$1 = $2;$n", [a.res, b.res])
 
@@ -818,11 +835,9 @@ proc genSwap(p: PProc, n: PNode) =
   var a, b: TCompRes
   gen(p, n.sons[1], a)
   gen(p, n.sons[2], b)
-  inc(p.unique)
-  var tmp = "Tmp$1" % [rope(p.unique)]
+  var tmp = p.getTemp(false)
   if mapType(skipTypes(n.sons[1].typ, abstractVar)) == etyBaseIndex:
-    inc(p.unique)
-    let tmp2 = "Tmp$1" % [rope(p.unique)]
+    let tmp2 = p.getTemp(false)
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       internalError(n.info, "genSwap")
     addf(p.body, "var $1 = $2; $2 = $3; $3 = $1;$n" |
@@ -1029,8 +1044,13 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
   else:
     var a: TCompRes
     gen(p, n.sons[0], a)
-    if a.typ != etyBaseIndex: internalError(n.info, "genDeref")
-    r.res = "$1[$2]" % [a.address, a.res]
+    if a.typ == etyBaseIndex:
+      r.res = "$1[$2]" % [a.address, a.res]
+    elif n.sons[0].kind == nkCall:
+      let tmp = p.getTemp
+      r.res = "($1 = $2, $1[0][$1[1]])" % [tmp, a.res]
+    else:
+      internalError(n.info, "genDeref")
 
 proc genArgNoParam(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
@@ -1584,7 +1604,10 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
         mangleName(resultSym),
         createVar(p, resultSym.typ, isIndirect(resultSym))]
     gen(p, prc.ast.sons[resultPos], a)
-    returnStmt = "return $#;$n" % [a.res]
+    if mapType(resultSym.typ) == etyBaseIndex:
+      returnStmt = "return [$#, $#];$n" % [a.address, a.res]
+    else:
+      returnStmt = "return $#;$n" % [a.res]
   genStmt(p, prc.getBody)
   result = ("function $#($#) {$n$#$#$#$#}$n" |
             "function $#($#) $n$#$#$#$#$nend$n") %

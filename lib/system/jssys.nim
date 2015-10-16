@@ -532,7 +532,7 @@ proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 type NimString = string # hack for hti.nim
 include "system/hti"
 
-type JSRef = int # Fake type.
+type JSRef = ref RootObj # Fake type.
 
 proc isFatPointer(ti: PNimType): bool =
   # This has to be consistent with the code generator!
@@ -569,8 +569,14 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
       asm "`result` = [`src`[0], `src`[1]];"
   of tySet:
     asm """
-      `result` = {};
-      for (var key in `src`) { `result`[key] = `src`[key]; }
+      if (`dest` === null || `dest` === undefined) {
+        `dest` = {};
+      }
+      else {
+        for (var key in `dest`) { delete `dest`[key]; }
+      }
+      for (var key in `src`) { `dest`[key] = `src`[key]; }
+      `result` = `dest`;
     """
   of tyTuple, tyObject:
     if ti.base != nil: result = nimCopy(dest, src, ti.base)
