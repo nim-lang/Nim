@@ -751,6 +751,15 @@ proc msgWriteln*(s: string) =
       when defined(windows):
         flushFile(stderr)
 
+proc stdoutWriteln*(s: string) =
+  ## Writes to stdout.
+  ## Should be used only for VM time equivalents to procs outputting to stdout.
+  if not isNil(writelnHook):
+    writelnHook(s)
+  else:
+    writeLine(stdout, s)
+    flushFile(stdout)
+
 macro callIgnoringStyle(theProc: typed, first: typed,
                         args: varargs[expr]): stmt =
   let typForegroundColor = bindSym"ForegroundColor".getType
