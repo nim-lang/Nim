@@ -1,6 +1,6 @@
 <a class="news" href="news.html#Z2015-10-16-first-nim-conference">
   <h4>October 16, 2015</h4>
-  <p>First official Nim conference will be in Kiyv!</p>
+  <p>First official Nim conference will be in Kyiv!</p>
 </a>
 
 <a class="news" href="news.html#Z2015-05-04-version-0-11-2-released">
