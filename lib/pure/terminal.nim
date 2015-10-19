@@ -87,11 +87,13 @@ when defined(windows):
     var hStdoutTemp = getStdHandle(STD_OUTPUT_HANDLE)
     if duplicateHandle(getCurrentProcess(), hStdoutTemp, getCurrentProcess(),
                        addr(hStdout), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
-      raiseOSError(osLastError())
+      when defined(consoleapp):
+        raiseOSError(osLastError())
     var hStderrTemp = getStdHandle(STD_ERROR_HANDLE)
     if duplicateHandle(getCurrentProcess(), hStderrTemp, getCurrentProcess(),
                        addr(hStderr), 0, 1, DUPLICATE_SAME_ACCESS) == 0:
-      raiseOSError(osLastError())
+      when defined(consoleapp):
+        raiseOSError(osLastError())
 
   proc getCursorPos(h: Handle): tuple [x,y: int] =
     var c: CONSOLESCREENBUFFERINFO
