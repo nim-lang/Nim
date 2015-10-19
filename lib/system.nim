@@ -151,6 +151,12 @@ proc declaredInScope*(x: expr): bool {.
 proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin 'addr' operator for taking the address of a memory location.
   ## Cannot be overloaded.
+  ##
+  ## .. code-block:: nim
+  ##  var
+  ##    buf: seq[char] = @['a','b','c']
+  ##    p: pointer = buf[1].addr
+  ##  echo cast[ptr char](p)[]    # b
   discard
 
 proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
@@ -842,6 +848,7 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ##   1 div 2 == 0
   ##   2 div 2 == 1
   ##   3 div 2 == 1
+  ##   7 div 5 == 2
 
 when defined(nimnomagic64):
   proc `div` *(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
@@ -852,8 +859,12 @@ proc `mod` *(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
-  ## computes the integer modulo operation. This is the same as
+  ## computes the integer modulo operation (remainder).
+  ## This is the same as
   ## ``x - (x div y) * y``.
+  ##
+  # .. code-block:: Nim
+  ##  (7 mod 5) == 2
 
 when defined(nimnomagic64):
   proc `mod` *(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
@@ -878,6 +889,10 @@ proc `shl` *(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
   ## computes the `shift left` operation of `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  1'i32 shl 4  == 0x0000_0010
+  ##  1'i64 shl 4  == 0x0000_0000_0000_0010
 
 proc `and` *(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
@@ -885,6 +900,9 @@ proc `and` *(x, y: int16): int16 {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int32): int32 {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int64): int64 {.magic: "BitandI", noSideEffect.}
   ## computes the `bitwise and` of numbers `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  (0xffff'i16 and 0x0010'i16) == 0x0010
 
 proc `or` *(x, y: int): int {.magic: "BitorI", noSideEffect.}
 proc `or` *(x, y: int8): int8 {.magic: "BitorI", noSideEffect.}
@@ -892,6 +910,9 @@ proc `or` *(x, y: int16): int16 {.magic: "BitorI", noSideEffect.}
 proc `or` *(x, y: int32): int32 {.magic: "BitorI", noSideEffect.}
 proc `or` *(x, y: int64): int64 {.magic: "BitorI", noSideEffect.}
   ## computes the `bitwise or` of numbers `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  (0x0005'i16 or 0x0010'i16) == 0x0015
 
 proc `xor` *(x, y: int): int {.magic: "BitxorI", noSideEffect.}
 proc `xor` *(x, y: int8): int8 {.magic: "BitxorI", noSideEffect.}
@@ -899,6 +920,9 @@ proc `xor` *(x, y: int16): int16 {.magic: "BitxorI", noSideEffect.}
 proc `xor` *(x, y: int32): int32 {.magic: "BitxorI", noSideEffect.}
 proc `xor` *(x, y: int64): int64 {.magic: "BitxorI", noSideEffect.}
   ## computes the `bitwise xor` of numbers `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  (0x1011'i16 xor 0x0101'i16) == 0x1110
 
 proc `==` *(x, y: int): bool {.magic: "EqI", noSideEffect.}
 proc `==` *(x, y: int8): bool {.magic: "EqI", noSideEffect.}
@@ -999,10 +1023,17 @@ proc `*`*[T: SomeUnsignedInt](x, y: T): T {.magic: "MulU", noSideEffect.}
 proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
+  ##
+  ## .. code-block:: Nim
+  ##  (7 div 5) == 2
 
 proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
-  ## computes the integer modulo operation. This is the same as
+  ## computes the integer modulo operation (remainder).
+  ## This is the same as
   ## ``x - (x div y) * y``.
+  ##
+  # .. code-block:: Nim
+  ##  (7 mod 5) == 2
 
 proc `<=`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
   ## Returns true iff ``x <= y``.
@@ -1111,6 +1142,10 @@ proc cmp*[T](x, y: T): int {.procvar.} =
   ## and 0 iff x == y. This is useful for writing generic algorithms without
   ## performance loss. This generic implementation uses the `==` and `<`
   ## operators.
+  ##
+  ## .. code-block:: Nim
+  ##  import algorithm
+  ##  echo sorted(@[4,2,6,5,8,7], cmp[int])
   if x == y: return 0
   if x < y: return -1
   return 1
@@ -1138,6 +1173,11 @@ proc setLen*(s: var string, newlen: Natural) {.
   ## If the current length is greater than the new length,
   ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
   ## a size, use ``newString`` instead.
+  ##
+  ## .. code-block:: Nim
+  ##  var myS = "Nim is great!!"
+  ##  myS.setLen(3)
+  ##  echo myS, " is fantastic!!"
 
 proc newString*(len: Natural): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
