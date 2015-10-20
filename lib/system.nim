@@ -863,8 +863,8 @@ proc `mod` *(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
   ## This is the same as
   ## ``x - (x div y) * y``.
   ##
-  # .. code-block:: Nim
-  ##  (7 mod 5) == 2
+  ## .. code-block:: Nim
+  ##   (7 mod 5) == 2
 
 when defined(nimnomagic64):
   proc `mod` *(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
@@ -1032,8 +1032,8 @@ proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
   ## This is the same as
   ## ``x - (x div y) * y``.
   ##
-  # .. code-block:: Nim
-  ##  (7 mod 5) == 2
+  ## .. code-block:: Nim
+  ##   (7 mod 5) == 2
 
 proc `<=`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
   ## Returns true iff ``x <= y``.

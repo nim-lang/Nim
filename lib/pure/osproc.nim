@@ -30,13 +30,14 @@ type
                          ## variable.
                          ## On Windows, this is the default.
     poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
-                         ## Use it only if `command` comes from trused source.
+                         ## Use it only if `command` comes from trusted source.
     poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
     poParentStreams,     ## use the parent's streams
-    poInteractive        ## optimize the buffer handling for responsiveness for
+    poInteractive,       ## optimize the buffer handling for responsiveness for
                          ## UI applications. Currently this only affects
                          ## Windows: Named pipes are used so that you can peek
                          ## at the process' output streams.
+    poDemon              ## Windows: The program creates no Window.
 
   ProcessObj = object of RootObj
     when defined(windows):
@@ -523,8 +524,9 @@ when defined(Windows) and not defined(useNimRtl):
       var tmp = newWideCString(cmdl)
       var ee = newWideCString(e)
       var wwd = newWideCString(wd)
-      success = winlean.createProcessW(nil,
-        tmp, nil, nil, 1, NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT,
+      var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT
+      if poDemon in options: flags = flags or CREATE_NO_WINDOW
+      success = winlean.createProcessW(nil, tmp, nil, nil, 1, flags,
         ee, wwd, si, procInfo)
     else:
       success = winlean.createProcessA(nil,
