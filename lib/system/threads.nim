@@ -455,6 +455,9 @@ else:
     cpusetIncl(cpu.cint, s)
     setAffinity(t.sys, sizeof(s), s)
 
+proc createThread*(t: var Thread[void], tp: proc () {.thread.}) =
+  createThread[void](t, tp)
+
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.
   result = addr(t)

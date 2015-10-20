@@ -115,6 +115,8 @@ const
   SYNCHRONIZE* = 0x00100000'i32
   FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
+  CREATE_NO_WINDOW* = 0x08000000'i32
+
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
 
