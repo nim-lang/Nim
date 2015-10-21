@@ -215,7 +215,7 @@ postfix notation.)
 So "pure object oriented" code is easy to write:
 
 .. code-block:: nim
-  import strutils
+  import strutils, sequtils
 
   stdout.writeLine("Give a list of numbers (separated by spaces): ")
   stdout.write(stdin.readLine.split.map(parseInt).max.`$`)

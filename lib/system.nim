@@ -14,14 +14,6 @@
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 ##
-## Exception hierarchy
-## ===================
-##
-## For visual convenience here is the exception inheritance hierarchy
-## represented as a tree:
-##
-## .. include:: ../doc/exception_hierarchy_fragment.txt
-##
 ## Module system
 ## =============
 ##
