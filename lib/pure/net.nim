@@ -243,6 +243,20 @@ when defined(ssl):
     newCTX.loadCertificates(certFile, keyFile)
     return SSLContext(newCTX)
 
+  proc getSslContextExtraDataIndex*(): cint =
+    ## Retrieves unique index for storing extra data in SSLContext.
+    return SSL_CTX_get_ex_new_index(0, nil, nil, nil, nil)
+
+  proc setExtraData*(ctx: SSLContext, index: cint, data: pointer) =
+    ## Stores arbitrary data inside SSLContext. The unique `index`
+    ## should be retrieved using getSslContextExtraDataIndex.
+    if SslCtx(ctx).SSL_CTX_set_ex_data(index, data) == -1:
+      raiseSSLError()
+
+  proc getExtraData*(ctx: SSLContext, index: cint): pointer =
+    ## Retrieves arbitrary data stored inside SSLContext.
+    return SslCtx(ctx).SSL_CTX_get_ex_data(index)
+
   proc wrapSocket*(ctx: SSLContext, socket: Socket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## ``socket`` into an SSL socket.
