@@ -75,8 +75,12 @@ proc searchInstTypes*(key: PType): PType =
 proc cacheTypeInst*(inst: PType) =
   # XXX: add to module's generics
   #      update the refcount
-  let genericTyp = inst.sons[0]
-  genericTyp.sym.typeInstCache.safeAdd(inst)
+  let gt = inst.sons[0]
+  let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
+  if t.kind in {tyStatic, tyGenericParam, tyIter} + tyTypeClasses:
+    return
+  gt.sym.typeInstCache.safeAdd(inst)
+
 
 type
   TReplTypeVars* {.final.} = object
