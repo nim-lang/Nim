@@ -991,7 +991,9 @@ proc compareTypes*(x, y: PType,
   var c = initSameTypeClosure()
   c.cmp = cmp
   c.flags = flags
-  result = sameTypeAux(x, y, c)
+  if x == y: result = true
+  elif x.isNil or y.isNil: result = false
+  else: result = sameTypeAux(x, y, c)
 
 proc inheritanceDiff*(a, b: PType): int =
   # | returns: 0 iff `a` == `b`
