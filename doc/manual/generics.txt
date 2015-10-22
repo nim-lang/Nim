@@ -246,6 +246,10 @@ Much like generics, concepts are instantiated exactly
 once for each tested type and any static code included within them is also
 executed once.
 
+**Hint**: Since concepts are still very rough at the edges there is a
+command line switch ``--reportConceptFailures:on`` to make debugging
+concept related type failures more easy.
+
 
 Symbol lookup in generics
 -------------------------
