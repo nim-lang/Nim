@@ -52,6 +52,9 @@ Advanced options:
   --embedsrc                embeds the original source code as comments
                             in the generated output
   --threadanalysis:on|off   turn thread analysis on|off
+  --reportConceptFailures:on|off
+                            show errors for 'system.compiles' and concept
+                            evaluation
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
