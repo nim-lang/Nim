@@ -151,6 +151,9 @@ can be found `here <https://nimworkshop.splashthat.com/>`_.
     (issue `#2599 <https://github.com/nim-lang/Nim/issues/2599>`_).
   - The compiler now supports a `bitsize pragma <docs/manual.html#pragmas-bitsize-pragma>`_
     for constructing bitfields.
+  - Added a new ``--reportConceptFailures`` switch for better debugging of
+    concept related type mismatches. This can also be used to debug
+    ``system.compiles`` failures.
 
 
   Language Additions

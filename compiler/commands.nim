@@ -434,6 +434,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
+  of "reportconceptfailures":
+    processOnOffSwitchG({optReportConceptFailures}, arg, pass, info)
   of "threads":
     processOnOffSwitchG({optThreads}, arg, pass, info)
     #if optThreads in gGlobalOptions: incl(gNotes, warnGcUnsafe)
