@@ -684,6 +684,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyAnything:
     return if f.kind == tyAnything: isGeneric
            else: isNone
+
+  of tyUserTypeClass, tyUserTypeClassInst:
+    # consider this: 'var g: Node' *within* a concept where 'Node'
+    # is a concept too (tgraph)
+    let x = typeRel(c, a, f, false)
+    if x >= isGeneric:
+      return isGeneric
   else: discard
 
   case f.kind
