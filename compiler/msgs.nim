@@ -727,20 +727,23 @@ proc `??`* (info: TLineInfo, filename: string): bool =
 
 var gTrackPos*: TLineInfo
 
-proc outWriteln*(s: string) =
-  ## Writes to stdout. Always.
-  if eStdOut in errorOutputs:
-    writeLine(stdout, s)
-    flushFile(stdout)
+type
+  MsgFlag* = enum  ## flags altering msgWriteln behavior
+    msgStdout,     ## force writing to stdout, even stderr is default
+    msgSkipHook    ## skip message hook even if it is present
+  MsgFlags* = set[MsgFlag]
 
-proc msgWriteln*(s: string) =
-  ## Writes to stderr. If --stdout option is given, writes to stdout instead.
+proc msgWriteln*(s: string, flags: MsgFlags = {}) =
+  ## Writes given message string to stderr by default.
+  ## If ``--stdout`` option is given, writes to stdout instead. If message hook
+  ## is present, then it is used to output message rather than stderr/stdout.
+  ## This behavior can be altered by given optional flags.
 
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
-  if not isNil(writelnHook):
+  if not isNil(writelnHook) and msgSkipHook notin flags:
     writelnHook(s)
-  elif optStdout in gGlobalOptions:
+  elif optStdout in gGlobalOptions or msgStdout in flags:
     if eStdOut in errorOutputs:
       writeLine(stdout, s)
       flushFile(stdout)
@@ -750,15 +753,6 @@ proc msgWriteln*(s: string) =
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
         flushFile(stderr)
-
-proc stdoutWriteln*(s: string) =
-  ## Writes to stdout.
-  ## Should be used only for VM time equivalents to procs outputting to stdout.
-  if not isNil(writelnHook):
-    writelnHook(s)
-  else:
-    writeLine(stdout, s)
-    flushFile(stdout)
 
 macro callIgnoringStyle(theProc: typed, first: typed,
                         args: varargs[expr]): stmt =

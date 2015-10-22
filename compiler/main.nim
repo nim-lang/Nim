@@ -317,11 +317,12 @@ proc mainCommand* =
         (key: "lib_paths", val: libpaths)
       ]
 
-      outWriteln($dumpdata)
+      msgWriteln($dumpdata, {msgStdout, msgSkipHook})
     else:
-      outWriteln("-- list of currently defined symbols --")
-      for s in definedSymbolNames(): outWriteln(s)
-      outWriteln("-- end of list --")
+      msgWriteln("-- list of currently defined symbols --",
+                 {msgStdout, msgSkipHook})
+      for s in definedSymbolNames(): msgWriteln(s, {msgStdout, msgSkipHook})
+      msgWriteln("-- end of list --", {msgStdout, msgSkipHook})
 
       for it in iterSearchPath(searchPaths): msgWriteln(it)
   of "check":
