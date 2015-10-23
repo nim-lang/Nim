@@ -124,11 +124,21 @@ proc execProcess*(command: string,
   ## and returns its output as a string.
   ## WARNING: this function uses poEvalCommand by default for backward compatibility.
   ## Make sure to pass options explicitly.
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##  let outp = execProcess("nim c -r mytestfile.nim")
+  ##  # Note: outp may have an interleave of text from the nim compile
+  ##  # and any output from mytestfile when it runs
 
 proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [ExecIOEffect].}
   ## Executes ``command`` and returns its error code. Standard input, output,
   ## error streams are inherited from the calling process. This operation
   ## is also often called `system`:idx:.
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##  let errC = execCmd("nim c -r mytestfile.nim")
 
 proc startProcess*(command: string,
                    workingDir: string = "",
@@ -1055,6 +1065,10 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 exitCode: int] {.tags: [ExecIOEffect, ReadIOEffect], gcsafe.} =
   ## a convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
+  ##
+  ## .. code-block:: Nim
+  ##
+  ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
   var p = startProcess(command, options=options + {poEvalCommand})
   var outp = outputStream(p)
   result = (TaintedString"", -1)

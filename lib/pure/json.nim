@@ -203,6 +203,15 @@ proc handleHexChar(c: char, x: var int): bool =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: result = false # error
 
+proc parseEscapedUTF16(buf: cstring, pos: var int): int =
+  result = 0
+  #UTF-16 escape is always 4 bytes.
+  for _ in 0..3:
+    if handleHexChar(buf[pos], result):
+      inc(pos)
+    else:
+      return -1
+
 proc parseString(my: var JsonParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
@@ -238,11 +247,22 @@ proc parseString(my: var JsonParser): TokKind =
         inc(pos, 2)
       of 'u':
         inc(pos, 2)
-        var r: int
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
+        var r = parseEscapedUTF16(buf, pos)
+        if r < 0:
+          my.err = errInvalidToken
+          break
+        # Deal with surrogates
+        if (r and 0xfc00) == 0xd800:
+          if buf[pos] & buf[pos+1] != "\\u":
+            my.err = errInvalidToken
+            break
+          inc(pos, 2)
+          var s = parseEscapedUTF16(buf, pos)
+          if (s and 0xfc00) == 0xdc00 and s > 0:
+            r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
+          else:
+            my.err = errInvalidToken
+            break
         add(my.a, toUTF8(Rune(r)))
       else:
         # don't bother with the error
@@ -1200,11 +1220,15 @@ when isMainModule:
     assert(false)
   except IndexError: assert(true)
 
-  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
+  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
   assert(testJson{"doesnt_exist"}{"anything"}.isNil)
-  testJson{["c", "d"]} = %true
-  assert(testJson["c"]["d"].bval)
+  testJson{["e", "f"]} = %true
+  assert(testJson["e"]["f"].bval)
+
+  # make sure UTF-16 decoding works.
+  assert(testJson["c"].str == "🎃")
+  assert(testJson["d"].str == "æ")
 
   # make sure no memory leek when parsing invalid string
   let startMemory = getOccupiedMem()
