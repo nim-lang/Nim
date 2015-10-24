@@ -28,5 +28,7 @@ script:
   - nimble install opengl
   - nimble install sdl1
   - nimble install jester
+  - nimble install niminst
   - nim c --taintMode:on tests/testament/tester
   - tests/testament/tester --pedantic all
+  - ./koch xz
