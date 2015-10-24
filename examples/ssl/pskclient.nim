@@ -13,3 +13,4 @@ proc clientFunc(identityHint: string): tuple[identity: string, psk: string] =
 let context = newContext(cipherList="PSK-AES256-CBC-SHA")
 context.clientGetPskFunc = clientFunc
 context.wrapConnectedSocket(sock, handshakeAsClient)
+context.destroyContext()

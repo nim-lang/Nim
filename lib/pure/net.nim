@@ -267,13 +267,19 @@ when defined(ssl):
     newCTX.loadCertificates(certFile, keyFile)
 
     result = SSLContext(newCTX)
-    # this is never freed, but SSLContext can't be freed anyway yet
     let extraInternal = new(SslContextExtraInternal)
     GC_ref(extraInternal)
     result.setExtraData(extraInternalIndex, cast[pointer](extraInternal))
 
   proc getExtraInternal(ctx: SSLContext): SslContextExtraInternal =
     return cast[SslContextExtraInternal](ctx.getExtraData(extraInternalIndex))
+
+  proc destroyContext*(ctx: SSLContext) =
+    ## Free memory referenced by SSLContext.
+    let extraInternal = ctx.getExtraInternal()
+    if extraInternal != nil:
+      GC_unref(extraInternal)
+    SSLCTX(ctx).SSL_CTX_free()
 
   proc `pskIdentityHint=`*(ctx: SSLContext, hint: string) =
     ## Sets the identity hint passed to server.
