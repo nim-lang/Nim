@@ -123,7 +123,7 @@ proc rawSkipComment(p: var TParser, node: PNode) =
     getTok(p)
 
 proc skipComment(p: var TParser, node: PNode) =
-  if p.tok.indent < 0: rawSkipComment(p, node)
+  if p.tok.indent < 0 or realInd(p): rawSkipComment(p, node)
 
 proc skipInd(p: var TParser) =
   if p.tok.indent >= 0:
@@ -887,7 +887,7 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
     skipComment(p, result)
     if realInd(p):
       withInd(p):
-        skipComment(p, result)
+        rawSkipComment(p, result)
         while true:
           case p.tok.tokType
           of tkSymbol, tkAccent:
@@ -1608,6 +1608,7 @@ proc parseEnum(p: var TParser): PNode =
   getTok(p)
   addSon(result, ast.emptyNode)
   optInd(p, result)
+  rawSkipComment(p, result)
   while true:
     var a = parseSymbol(p)
     if a.kind == nkEmpty: return
