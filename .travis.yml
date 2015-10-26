@@ -31,4 +31,5 @@ script:
   - nimble install niminst
   - nim c --taintMode:on tests/testament/tester
   - tests/testament/tester --pedantic all
+  - ./koch csource
   - ./koch xz
