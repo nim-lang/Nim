@@ -10,60 +10,56 @@
 ## A higher level `PostgreSQL`:idx: database wrapper. This interface
 ## is implemented for other databases also.
 ##
-##  **Note**: There are two approaches to **parameter substitution** in this module
-##  1.  ``SqlQuery`` using ``?,?,?,...`` (same as the other db_xxxx modules)
+## Parameter substitution
+## ----------------------
 ##
-##  .. code-block:: Nim
-##   sql"INSERT INTO myTable (colA,colB,colC) VALUES (?,?,?)"
-##  2.  ``SqlPrepared``  using ``$1,$2,$3,...``  (the Postgres way, using numbered parameters)
-##
-##  .. code-block:: Nim
-##   prepare(theDb, "MyExampleInsert",
-##                  sql"""INSERT INTO myTable
-##                    (colA,colB,colC)
-##                    VALUES ($1,$2,$3)""",
-##                    3)
-##
-## Example:
+## All ``db_*`` modules support the same form of parameter substitution.
+## That is, using the ``?`` (question mark) to signify the place where a
+## value should be placed. For example:
 ##
 ## .. code-block:: Nim
+##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
 ##
-##  import db_postgres, math
+## **Note**: There are two approaches to parameter substitution support by
+## this module.
 ##
-##  let theDb = open("localhost", "nim", "nim", "test")
+## 1.  ``SqlQuery`` using ``?, ?, ?, ...`` (same as all the ``db_*`` modules)
 ##
-##  theDb.exec(sql"Drop table if exists myTestTbl")
-##  theDb.exec(sql("""create table myTestTbl (
-##     Id    SERIAL PRIMARY KEY,
-##     Name  VARCHAR(50) NOT NULL,
-##     i     INTEGER,
-##     f     NUMERIC(18,10))"""))
+## 2. ``SqlPrepared`` using ``$1, $2, $3, ...``
 ##
-##  var psql: SqlPrepared = theDb.prepare("testSql",
-##                                sql"""INSERT INTO myTestTbl (name,i,f)
-##                                      VALUES ($1,$2,$3)""", 3)
-##  theDb.exec(sql"START TRANSACTION")
-##  for i in 1..1000:
-##    if i %% 2 == 0:
-##      # using Postgres prepared statement (SqlPrepare)
-##      theDb.exec(psql, "Item#" & $i, $i, $sqrt(i.float))
-##    else:
-##      # using SqlQuery
-##      theDb.exec(sql"INSERT INTO myTestTbl (name,i,f) VALUES (?,?,?)",
-##              "Item#" & $i, $i, $sqrt(i.float))
-##  theDb.exec(sql"COMMIT")
+##  .. code-block:: Nim
+##   prepare(db, "myExampleInsert",
+##           sql"""INSERT INTO myTable
+##                 (colA, colB, colC)
+##                 VALUES ($1, $2, $3)""",
+##           3)
 ##
-##  for x in theDb.fastRows(sql"select * from myTestTbl"):
-##    echo x
+## Examples
+## --------
 ##
-##  let id = theDb.tryInsertId(sql"""INSERT INTO myTestTbl
-##                                   (name,i,f)
-##                                   VALUES (?,?,?)""",
-##                             "Item#1001", 1001, sqrt(1001.0))
-##  echo "Inserted item: ",
-##        theDb.getValue(sql"SELECT name FROM myTestTbl WHERE id=?", id)
+## Opening a connection to a database
+## ==================================
 ##
-##  theDb.close()
+## .. code-block:: Nim
+##     import db_postgres
+##     let db = open("localhost", "user", "password", "dbname")
+##     db.close()
+##
+## Creating a table
+## ================
+##
+## .. code-block:: Nim
+##      db.exec(sql"DROP TABLE IF EXISTS myTable")
+##      db.exec(sql("""CREATE TABLE myTable (
+##                       id integer,
+##                       name varchar(50) not null)"""))
+##
+## Inserting data
+## ==============
+##
+## .. code-block:: Nim
+##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
+##             "Dominik")
 import strutils, postgres
 
 type
@@ -382,3 +378,6 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   ## sets the encoding of a database connection, returns true for
   ## success, false for failure.
   return pqsetClientEncoding(connection, encoding) == 0
+
+
+# Tests are in ../../tests/untestable/tpostgres.
