@@ -7,6 +7,7 @@ addons:
     packages:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
+    - libgc-dev
 before_script:
   - set -e
   - wget http://flatassembler.net/fasm-1.71.39.tgz
@@ -26,5 +27,9 @@ script:
   - nimble install zip
   - nimble install opengl
   - nimble install sdl1
+  - nimble install jester
+  - nimble install niminst
   - nim c --taintMode:on tests/testament/tester
   - tests/testament/tester --pedantic all
+  - ./koch csource
+  - ./koch xz

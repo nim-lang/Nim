@@ -66,15 +66,16 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
         bb = bb.lastSon
       else:
         break
-    if sameType(aa, bb): discard
+    if sameType(aa, bb):
+      if aa.kind == tyObject and result != Invalid: result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject:
       let diff = inheritanceDiff(bb, aa)
-      if diff < 0: discard "Ok"
+      if diff < 0:
+        if result != Invalid: result = Yes
       elif diff != high(int):
         result = Invalid
     else:
       return No
-  if result != Invalid: result = Yes
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
   var L = s.ast.len-1

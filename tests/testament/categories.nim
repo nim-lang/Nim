@@ -75,29 +75,31 @@ proc safeCopyFile(src, dest: string) =
     echo "[Warning] could not copy: ", src, " to ", dest
 
 proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
+  const rpath = when defined(macosx):
+      " --passL:-rpath --passL:@loader_path"
+    else:
+      ""
+
   testSpec c, makeTest("lib/nimrtl.nim",
     options & " --app:lib -d:createNimRtl", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl", cat)
+    options & " --app:lib -d:useNimRtl" & rpath, cat)
+
 
   when defined(Windows):
     # windows looks in the dir of the exe (yay!):
-    var serverDll = DynlibFormat % "server"
-    safeCopyFile("lib" / serverDll, "tests/dll" / serverDll)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "lib:" & libpath)
+    putEnv("LD_LIBRARY_PATH", "tests/dll:" & libpath)
     defer: putEnv("LD_LIBRARY_PATH", libpath)
-    var serverDll = DynlibFormat % "server"
-    safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
     var nimrtlDll = DynlibFormat % "nimrtl"
-    safeCopyFile("tests/dll" / nimrtlDll, "lib" / nimrtlDll)
+    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl",
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
