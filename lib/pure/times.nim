@@ -439,7 +439,9 @@ when not defined(JS):
   proc getTime(): Time = return timec(nil)
   proc getLocalTime(t: Time): TimeInfo =
     var a = t
-    result = tmToTimeInfo(localtime(addr(a))[], true)
+    let lt = localtime(addr(a))
+    assert(not lt.isNil)
+    result = tmToTimeInfo(lt[], true)
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
 
