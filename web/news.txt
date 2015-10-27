@@ -22,7 +22,7 @@ We are getting closer and closer to a 1.0 release and are hoping that only
 a few 0.x releases will be necessary before we are happy to release version 1.0.
 
 As always you can download the latest version of Nim from the
-`downloads <downloads.html>`_ page.
+`download <download.html>`_ page.
 
 For a more detailed list of changes look below. Some of the upcoming breaking
 changes are also documented in this forum
