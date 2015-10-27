@@ -14,7 +14,7 @@ type
   TPlusExpr = object of TExpr
     a, b: ref TExpr
     op2: string
-    
+
 method eval(e: ref TExpr): int =
   # override this base method
   quit "to override!"
@@ -30,7 +30,7 @@ proc newLit(x: int): ref TLiteral =
   {.watchpoint: result.}
   result.x = x
   result.op1 = $getOccupiedMem()
-  
+
 proc newPlus(a, b: ref TExpr): ref TPlusExpr =
   new(result)
   {.watchpoint: result.}

@@ -27,7 +27,7 @@ proc `==`*(a, b: Rune): bool = return int(a) == int(b)
 template ones(n: expr): expr = ((1 shl n)-1)
 
 proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
-  ## returns the number of Unicode characters of the string `s`.
+  ## Returns the number of Unicode characters of the string ``s``
   var i = 0
   while i < len(s):
     if ord(s[i]) <=% 127: inc(i)
@@ -40,7 +40,7 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
     inc(result)
 
 proc runeLenAt*(s: string, i: Natural): int =
-  ## returns the number of bytes the rune starting at ``s[i]`` takes.
+  ## Returns the number of bytes the rune starting at ``s[i]`` takes
   if ord(s[i]) <=% 127: result = 1
   elif ord(s[i]) shr 5 == 0b110: result = 2
   elif ord(s[i]) shr 4 == 0b1110: result = 3
@@ -50,8 +50,8 @@ proc runeLenAt*(s: string, i: Natural): int =
   else: result = 1
 
 template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
-  ## Returns the unicode character ``s[i]`` in `result`. If ``doInc == true``
-  ## `i` is incremented by the number of bytes that have been processed.
+  ## Returns the Unicode character ``s[i]`` in ``result``. If ``doInc == true``
+  ## ``i`` is incremented by the number of bytes that have been processed.
   bind ones
   if ord(s[i]) <=% 127:
     result = Rune(ord(s[i]))
@@ -106,8 +106,8 @@ template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
     when doInc: inc(i)
 
 proc validateUtf8*(s: string): int =
-  ## returns the position of the invalid byte in ``s`` if the string ``s`` does
-  ## not hold valid UTF-8 data. Otherwise -1 is returned.
+  ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
+  ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
   var i = 0
   let L = s.len
   while i < L:
@@ -131,11 +131,11 @@ proc validateUtf8*(s: string): int =
   return -1
 
 proc runeAt*(s: string, i: Natural): Rune =
-  ## returns the unicode character in `s` at byte index `i`
+  ## Returns the unicode character in ``s`` at byte index ``i``
   fastRuneAt(s, i, result, false)
 
 proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
-  ## converts a rune into its UTF8 representation
+  ## Converts a rune into its UTF-8 representation
   var i = RuneImpl(c)
   if i <=% 127:
     result = newString(1)
@@ -174,11 +174,11 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
     discard # error, exception?
 
 proc `$`*(rune: Rune): string =
-  ## converts a rune to a string
+  ## Converts a Rune to a string
   rune.toUTF8
 
 proc `$`*(runes: seq[Rune]): string =
-  ## converts a sequence of runes to a string
+  ## Converts a sequence of Runes to a string
   result = ""
   for rune in runes: result.add(rune.toUTF8)
 
@@ -372,11 +372,17 @@ const
     0xfe74]  #
 
   spaceRanges = [
-    0x0009,  0x000a,  # tab and newline
+    0x0009,  0x000d,  # tab and newline
     0x0020,  0x0020,  # space
+    0x0085,  0x0085,  # next line
     0x00a0,  0x00a0,  #
-    0x2000,  0x200b,  #  -
+    0x1680,  0x1680,  # Ogham space mark
+    0x2000,  0x200b,  # en dash .. zero-width space
+    0x200e,  0x200f,  # LTR mark .. RTL mark (pattern whitespace)
     0x2028,  0x2029,  #  -     0x3000,  0x3000,  #
+    0x202f,  0x202f,  # narrow no-break space
+    0x205f,  0x205f,  # medium mathematical space
+    0x3000,  0x3000,  # ideographic space
     0xfeff,  0xfeff]  #
 
   toupperRanges = [
@@ -1157,8 +1163,8 @@ proc binarySearch(c: RuneImpl, tab: openArray[RuneImpl], len, stride: int): int 
   return -1
 
 proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
-  ## Converts `c` into lower case. This works for any Unicode character.
-  ## If possible, prefer `toLower` over `toUpper`.
+  ## Converts ``c`` into lower case. This works for any Unicode character.
+  ## If possible, prefer ``toLower`` over ``toUpper``.
   var c = RuneImpl(c)
   var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
   if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
@@ -1169,8 +1175,8 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
-  ## Converts `c` into upper case. This works for any Unicode character.
-  ## If possible, prefer `toLower` over `toUpper`.
+  ## Converts ``c`` into upper case. This works for any Unicode character.
+  ## If possible, prefer ``toLower`` over ``toUpper``.
   var c = RuneImpl(c)
   var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
   if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
@@ -1181,6 +1187,7 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
+  ## Converts ``c`` to title case
   var c = RuneImpl(c)
   var p = binarySearch(c, toTitleSinglets, len(toTitleSinglets) div 2, 2)
   if p >= 0 and c == toTitleSinglets[p]:
@@ -1188,8 +1195,8 @@ proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a lower case Unicode character
-  ## If possible, prefer `isLower` over `isUpper`.
+  ## Returns true iff ``c`` is a lower case Unicode character.
+  ## If possible, prefer ``isLower`` over ``isUpper``.
   var c = RuneImpl(c)
   # Note: toUpperRanges is correct here!
   var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
@@ -1200,8 +1207,8 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a upper case Unicode character
-  ## If possible, prefer `isLower` over `isUpper`.
+  ## Returns true iff ``c`` is a upper case Unicode character.
+  ## If possible, prefer ``isLower`` over ``isUpper``.
   var c = RuneImpl(c)
   # Note: toLowerRanges is correct here!
   var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
@@ -1212,7 +1219,7 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is an *alpha* Unicode character (i.e. a letter)
+  ## Returns true iff ``c`` is an *alpha* Unicode character (i.e., a letter)
   if isUpper(c) or isLower(c):
     return true
   var c = RuneImpl(c)
@@ -1224,17 +1231,18 @@ proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## Returns true iff ``c`` is a Unicode titlecase character
   return isUpper(c) and isLower(c)
 
 proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a Unicode whitespace character
+  ## Returns true iff ``c`` is a Unicode whitespace character
   var c = RuneImpl(c)
   var p = binarySearch(c, spaceRanges, len(spaceRanges) div 2, 2)
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
 
 proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## returns true iff `c` is a Unicode combining character
+  ## Returns true iff ``c`` is a Unicode combining character
   var c = RuneImpl(c)
 
   # Optimized to return false immediately for ASCII
@@ -1245,7 +1253,7 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     (c >= 0xfe20 and c <= 0xfe2f))
 
 iterator runes*(s: string): Rune =
-  ## iterates over any unicode character of the string `s`.
+  ## Iterates over any unicode character of the string ``s``
   var
     i = 0
     result: Rune
@@ -1253,8 +1261,14 @@ iterator runes*(s: string): Rune =
     fastRuneAt(s, i, result, true)
     yield result
 
+proc toRunes*(s: string): seq[Rune] =
+  ## Obtains a sequence containing the Runes in ``s``
+  result = newSeq[Rune]()
+  for r in s.runes:
+    result.add(r)
+
 proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
-  ## compares two UTF8 strings and ignores the case. Returns:
+  ## Compares two UTF-8 strings and ignores the case. Returns:
   ##
   ## | 0 iff a == b
   ## | < 0 iff a < b
@@ -1271,8 +1285,8 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
   result = a.len - b.len
 
 proc reversed*(s: string): string =
-  ## returns the reverse of `s`, interpreting it as unicode characters. Unicode
-  ## combining characters are correctly interpreted as well:
+  ## Returns the reverse of ``s``, interpreting it as Unicode characters.
+  ## Unicode combining characters are correctly interpreted as well:
   ##
   ## .. code-block:: nim
   ##
@@ -1305,14 +1319,43 @@ proc reversed*(s: string): string =
 
   reverseUntil(len(s))
 
+proc graphemeLen*(s: string; i: Natural): Natural =
+  ## The number of bytes belonging to 's[i]' including following combining
+  ## characters.
+  var j = i.int
+  var r, r2: Rune
+  if j < s.len:
+    fastRuneAt(s, j, r, true)
+    result = j-i
+    while j < s.len:
+      fastRuneAt(s, j, r2, true)
+      if not isCombining(r2): break
+      result = j-i
+
+proc lastRune*(s: string; last: int): (Rune, int) =
+  ## length of the last rune in 's[0..last]'. Returns the rune and its length
+  ## in bytes.
+  if s[last] <= chr(127):
+    result = (Rune(s[last]), 1)
+  else:
+    var L = 0
+    while last-L >= 0 and ord(s[last-L]) shr 6 == 0b10: inc(L)
+    var r: Rune
+    fastRuneAt(s, last-L, r, false)
+    result = (r, L+1)
+
 when isMainModule:
   let
     someString = "öÑ"
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
     compared = (someString == $someRunes)
-  assert compared == true
+  doAssert compared == true
 
-  assert reversed("Reverse this!") == "!siht esreveR"
-  assert reversed("先秦兩漢") == "漢兩秦先"
-  assert reversed("as⃝df̅") == "f̅ds⃝a"
-  assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
+  doAssert reversed("Reverse this!") == "!siht esreveR"
+  doAssert reversed("先秦兩漢") == "漢兩秦先"
+  doAssert reversed("as⃝df̅") == "f̅ds⃝a"
+  doAssert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
+  doAssert len(toRunes("as⃝df̅")) == runeLen("as⃝df̅")
+  const test = "as⃝"
+  doAssert lastRune(test, test.len-1)[1] == 3
+  doAssert graphemeLen("è", 0) == 2

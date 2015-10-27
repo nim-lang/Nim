@@ -20,21 +20,21 @@ when not defined(nimNewShared):
   {.pragma: gcsafe.}
 
 when defined(createNimRtl):
-  when defined(useNimRtl): 
+  when defined(useNimRtl):
     {.error: "Cannot create and use nimrtl at the same time!".}
   elif appType != "lib":
     {.error: "nimrtl must be built as a library!".}
 
-when defined(createNimRtl): 
+when defined(createNimRtl):
   {.pragma: rtl, exportc: "nimrtl_$1", dynlib, gcsafe.}
   {.pragma: inl.}
   {.pragma: compilerRtl, compilerproc, exportc: "nimrtl_$1", dynlib.}
 elif defined(useNimRtl):
-  when defined(windows): 
+  when defined(windows):
     const nimrtl* = "nimrtl.dll"
   elif defined(macosx):
-    const nimrtl* = "nimrtl.dylib"
-  else: 
+    const nimrtl* = "libnimrtl.dylib"
+  else:
     const nimrtl* = "libnimrtl.so"
   {.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtl, gcsafe.}
   {.pragma: inl.}
@@ -51,3 +51,8 @@ when defined(nimlocks):
   {.pragma: benign, gcsafe, locks: 0.}
 else:
   {.pragma: benign, gcsafe.}
+
+when defined(nimTableGet):
+  {.pragma: deprecatedGet, deprecated.}
+else:
+  {.pragma: deprecatedGet.}

@@ -37,17 +37,17 @@ proc cmpPlatforms(a, b: string): int =
       else:
         return system.cmp(a, b)
 
-proc sorted[T](a: openArray[T]): bool = 
+proc sorted[T](a: openArray[T]): bool =
   result = true
   for i in 0 .. < a.high:
-    if cmpPlatforms(a[i], a[i+1]) > 0: 
+    if cmpPlatforms(a[i], a[i+1]) > 0:
       echo "Out of order: ", a[i], " ", a[i+1]
       result = false
 
 proc main() =
-  var testData = @["netbsd-x86_64", "windows-x86", "linux-x86_64", "linux-x86", 
+  var testData = @["netbsd-x86_64", "windows-x86", "linux-x86_64", "linux-x86",
     "linux-ppc64", "macosx-x86-1058", "macosx-x86-1068"]
-    
+
   sort(testData, cmpPlatforms)
 
   doAssert sorted(testData)

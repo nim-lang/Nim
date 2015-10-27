@@ -11,7 +11,7 @@ type
 
 template `|`(x, y: int): expr = y * m.fWidth + x
 
-proc createMatrix*(width, height: int): TMatrix = 
+proc createMatrix*(width, height: int): TMatrix =
   result.fWidth = width
   result.fHeight = height
   newSeq(result.data, width*height)
@@ -24,7 +24,7 @@ proc `[]`*(m: TMatrix, x, y: int): float {.inline.} =
 
 proc `[]=`*(m: var TMatrix, x, y: int, val: float) {.inline.} =
   m.data[x|y] = val
-  
+
 proc `-|`*(m: TMatrix): TMatrix =
   ## transposes a matrix
   result = createMatrix(m.height, m.width)

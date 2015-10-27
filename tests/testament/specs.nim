@@ -10,7 +10,7 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 const
-  cmdTemplate* = r"nim $target --hints:on -d:testing $options $file"
+  cmdTemplate* = r"compiler" / "nim $target --lib:lib --hints:on -d:testing $options $file"
 
 type
   TTestAction* = enum
@@ -44,6 +44,8 @@ type
     file*, cmd*: string
     outp*: string
     line*, column*: int
+    tfile*: string
+    tline*, tcolumn*: int
     exitCode*: int
     msg*: string
     ccodeCheck*: string
@@ -101,6 +103,9 @@ proc specDefaults*(result: var TSpec) =
   result.cmd = cmdTemplate
   result.line = 0
   result.column = 0
+  result.tfile = ""
+  result.tline = 0
+  result.tcolumn = 0
 
 proc parseSpec*(filename: string): TSpec =
   specDefaults(result)
@@ -116,6 +121,9 @@ proc parseSpec*(filename: string): TSpec =
     of "file": result.file = e.value
     of "line": discard parseInt(e.value, result.line)
     of "column": discard parseInt(e.value, result.column)
+    of "tfile": result.tfile = e.value
+    of "tline": discard parseInt(e.value, result.tline)
+    of "tcolumn": discard parseInt(e.value, result.tcolumn)
     of "output":
       result.action = actionRun
       result.outp = e.value

@@ -8,14 +8,14 @@ type
   TObjB = object of TObj
     a, b, c: string
     fn: proc (): int {.tags: [FReadIO].}
-  
+
   EIO2 = ref object of EIO
 
 proc q() {.tags: [FIO].} =
   nil
-  
+
 proc raiser(): int =
-  writeln stdout, "arg"
+  writeLine stdout, "arg"
   if true:
     q()
 

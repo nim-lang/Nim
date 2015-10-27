@@ -37,13 +37,14 @@ proc raiseInvalidFormat(msg: string) {.noinline.} =
   raise newException(SubexError, "invalid format string: " & msg)
 
 type
-  TFormatParser = object {.pure, final.}
+  FormatParser = object {.pure, final.}
     when defined(js):
       f: string # we rely on the '\0' terminator
                 # which JS's native string doesn't have
     else:
       f: cstring
     num, i, lineLen: int
+{.deprecated: [TFormatParser: FormatParser].}
 
 template call(x: stmt) {.immediate.} =
   p.i = i
@@ -57,7 +58,7 @@ template callNoLineLenTracking(x: stmt) {.immediate.} =
   i = p.i
   p.lineLen = oldLineLen
 
-proc getFormatArg(p: var TFormatParser, a: openArray[string]): int =
+proc getFormatArg(p: var FormatParser, a: openArray[string]): int =
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = p.i
   var f = p.f
@@ -76,7 +77,7 @@ proc getFormatArg(p: var TFormatParser, a: openArray[string]): int =
     result = if not negative: j-1 else: a.len-j
   of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
     var name = ""
-    while f[i] in PatternChars: 
+    while f[i] in PatternChars:
       name.add(f[i])
       inc(i)
     result = findNormalized(name, a)+1
@@ -90,22 +91,22 @@ proc getFormatArg(p: var TFormatParser, a: openArray[string]): int =
   if result >=% a.len: raiseInvalidFormat("index out of bounds: " & $result)
   p.i = i
 
-proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) {.
+proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) {.
   noSideEffect.}
 
-proc emitChar(p: var TFormatParser, x: var string, ch: char) {.inline.} =
+proc emitChar(p: var FormatParser, x: var string, ch: char) {.inline.} =
   x.add(ch)
   if ch == '\L': p.lineLen = 0
   else: inc p.lineLen
 
-proc emitStrLinear(p: var TFormatParser, x: var string, y: string) {.inline.} =
+proc emitStrLinear(p: var FormatParser, x: var string, y: string) {.inline.} =
   for ch in items(y): emitChar(p, x, ch)
 
-proc emitStr(p: var TFormatParser, x: var string, y: string) {.inline.} =
+proc emitStr(p: var FormatParser, x: var string, y: string) {.inline.} =
   x.add(y)
   inc p.lineLen, y.len
 
-proc scanQuote(p: var TFormatParser, x: var string, toAdd: bool) =
+proc scanQuote(p: var FormatParser, x: var string, toAdd: bool) =
   var i = p.i+1
   var f = p.f
   while true:
@@ -120,7 +121,7 @@ proc scanQuote(p: var TFormatParser, x: var string, toAdd: bool) =
       inc i
   p.i = i
 
-proc scanBranch(p: var TFormatParser, a: openArray[string],
+proc scanBranch(p: var FormatParser, a: openArray[string],
                 x: var string, choice: int) =
   var i = p.i
   var f = p.f
@@ -130,7 +131,7 @@ proc scanBranch(p: var TFormatParser, a: openArray[string],
   while true:
     case f[i]
     of ']': break
-    of '|': 
+    of '|':
       inc i
       elsePart = i
       inc c
@@ -167,11 +168,11 @@ proc scanBranch(p: var TFormatParser, a: openArray[string],
     i = last
   p.i = i+1
 
-proc scanSlice(p: var TFormatParser, a: openarray[string]): tuple[x, y: int] =
+proc scanSlice(p: var FormatParser, a: openarray[string]): tuple[x, y: int] =
   var slice = false
   var i = p.i
   var f = p.f
-  
+
   if f[i] == '{': inc i
   else: raiseInvalidFormat("'{' expected")
   if f[i] == '.' and f[i+1] == '.':
@@ -192,12 +193,12 @@ proc scanSlice(p: var TFormatParser, a: openarray[string]): tuple[x, y: int] =
   if f[i] != '}': raiseInvalidFormat("'}' expected")
   inc i
   p.i = i
-  
-proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
+
+proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) =
   var i = p.i
   var f = p.f
   case f[i]
-  of '$': 
+  of '$':
     emitChar p, s, '$'
     inc i
   of '*':
@@ -231,7 +232,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
       # $' '~{1..3}
       # insert space followed by 1..3 if not empty
       inc i
-      call: 
+      call:
         let (x, y) = scanSlice(p, a)
       var L = 0
       for j in x..y: inc L, a[j].len
@@ -257,7 +258,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
           of 'i':
             inc i
             callNoLineLenTracking: scanQuote(p, indent, true)
-            
+
             call:
               let (x, y) = scanSlice(p, a)
             if maxLen < 1: emitStrLinear(p, s, indent)
@@ -265,7 +266,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
             emitStr p, s, a[x]
             for j in x+1..y:
               emitStr p, s, sep
-              if items >= maxLen: 
+              if items >= maxLen:
                 emitStrLinear p, s, indent
                 items = 0
               emitStr p, s, a[j]
@@ -273,7 +274,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
           of 'c':
             inc i
             callNoLineLenTracking: scanQuote(p, indent, true)
-            
+
             call:
               let (x, y) = scanSlice(p, a)
             if p.lineLen + a[x].len > maxLen: emitStrLinear(p, s, indent)
@@ -282,7 +283,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
               emitStr p, s, sep
               if p.lineLen + a[j].len > maxLen: emitStrLinear(p, s, indent)
               emitStr p, s, a[j]
-            
+
           else: raiseInvalidFormat("unit 'c' (chars) or 'i' (items) expected")
           break StringJoin
 
@@ -293,7 +294,7 @@ proc scanDollar(p: var TFormatParser, a: openarray[string], s: var string) =
           emitStr p, s, sep
           emitStr p, s, a[j]
   else:
-    call: 
+    call:
       var x = getFormatArg(p, a)
     emitStr p, s, a[x]
   p.i = i
@@ -312,7 +313,7 @@ proc subex*(s: string): Subex =
 proc addf*(s: var string, formatstr: Subex, a: varargs[string, `$`]) {.
            noSideEffect, rtl, extern: "nfrmtAddf".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
-  var p: TFormatParser
+  var p: FormatParser
   p.f = formatstr.string
   var i = 0
   while i < len(formatstr.string):
@@ -350,6 +351,7 @@ proc format*(formatstr: Subex, a: varargs[string, `$`]): string {.noSideEffect,
 {.pop.}
 
 when isMainModule:
+  from strutils import replace
 
   proc `%`(formatstr: string, a: openarray[string]): string =
     result = newStringOfCap(formatstr.len + a.len shl 4)
@@ -374,38 +376,36 @@ when isMainModule:
   doAssert "$1($', '{2..})" % ["f", "a", "b"] == "f(a, b)"
 
   doAssert "$[$1($', '{2..})|''''|fg'$3']1" % ["7", "a", "b"] == "fg$3"
-  
+
   doAssert "$[$#($', '{#..})|''''|$3]1" % ["0", "a", "b"] == "0(a, b)"
   doAssert "$' '~{..}" % "" == ""
   doAssert "$' '~{..}" % "P0" == " P0"
   doAssert "${$1}" % "1" == "1"
   doAssert "${$$-1} $$1" % "1" == "1 $1"
-           
-  doAssert "$#($', '10c'\n    '{#..})" % ["doAssert", "longishA", "longish"] ==
+
+  doAssert(("$#($', '10c'\n    '{#..})" % ["doAssert", "longishA", "longish"]).replace(" \n", "\n") ==
            """doAssert(
-    longishA, 
-    longish)"""
-  
-  assert "type TMyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
-    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"] ==
+    longishA,
+    longish)""")
+
+  doAssert(("type MyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
+    "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]).replace(" \n", "\n") ==
     strutils.unindent """
-      type TMyEnum* = enum
-        fieldA, fieldB, 
-        FiledClkad, fieldD, 
-        fieldE, longishFieldName"""
-  
+      type MyEnum* = enum
+        fieldA, fieldB,
+        FiledClkad, fieldD,
+        fieldE, longishFieldName""")
+
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
-  
+
   doAssert subex"$1 $[files|file|files]{1} copied" % ["1"] == "1 file copied"
-  
+
   doAssert subex"$['''|'|''''|']']#" % "0" == "'|"
-  
-  assert subex("type\n  TEnum = enum\n    $', '40c'\n    '{..}") % [
-    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"] ==
+
+  doAssert((subex("type\n  Enum = enum\n    $', '40c'\n    '{..}") % [
+    "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]).replace(" \n", "\n") ==
     strutils.unindent """
       type
-        TEnum = enum
-          fieldNameA, fieldNameB, fieldNameC, 
-          fieldNameD"""
-  
-  
+        Enum = enum
+          fieldNameA, fieldNameB, fieldNameC,
+          fieldNameD""")

@@ -9,33 +9,33 @@
 
 ## This module implements code generation for multi methods.
 
-import 
+import
   intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
   sempass2, strutils
 
-proc genConv(n: PNode, d: PType, downcast: bool): PNode = 
+proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   var dest = skipTypes(d, abstractPtrs)
   var source = skipTypes(n.typ, abstractPtrs)
-  if (source.kind == tyObject) and (dest.kind == tyObject): 
+  if (source.kind == tyObject) and (dest.kind == tyObject):
     var diff = inheritanceDiff(dest, source)
     if diff == high(int): internalError(n.info, "cgmeth.genConv")
-    if diff < 0: 
+    if diff < 0:
       result = newNodeIT(nkObjUpConv, n.info, d)
       addSon(result, n)
       if downcast: internalError(n.info, "cgmeth.genConv: no upcast allowed")
-    elif diff > 0: 
+    elif diff > 0:
       result = newNodeIT(nkObjDownConv, n.info, d)
       addSon(result, n)
-      if not downcast: 
+      if not downcast:
         internalError(n.info, "cgmeth.genConv: no downcast allowed")
-    else: 
+    else:
       result = n
-  else: 
+  else:
     result = n
-  
-proc methodCall*(n: PNode): PNode = 
+
+proc methodCall*(n: PNode): PNode =
   result = n
-  # replace ordinary method by dispatcher method: 
+  # replace ordinary method by dispatcher method:
   var disp = lastSon(result.sons[0].sym.ast).sym
   assert sfDispatcher in disp.flags
   result.sons[0].sym = disp
@@ -47,30 +47,35 @@ proc methodCall*(n: PNode): PNode =
 var
   gMethods: seq[tuple[methods: TSymSeq, dispatcher: PSym]] = @[]
 
-proc sameMethodBucket(a, b: PSym): bool = 
-  result = false
-  if a.name.id != b.name.id: return 
-  if sonsLen(a.typ) != sonsLen(b.typ): 
+type
+  MethodResult = enum No, Invalid, Yes
+
+proc sameMethodBucket(a, b: PSym): MethodResult =
+  if a.name.id != b.name.id: return
+  if sonsLen(a.typ) != sonsLen(b.typ):
     return                    # check for return type:
-  if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]): return 
-  for i in countup(1, sonsLen(a.typ) - 1): 
+  if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]): return
+  for i in countup(1, sonsLen(a.typ) - 1):
     var aa = a.typ.sons[i]
     var bb = b.typ.sons[i]
-    while true: 
+    while true:
       aa = skipTypes(aa, {tyGenericInst})
       bb = skipTypes(bb, {tyGenericInst})
-      if (aa.kind == bb.kind) and (aa.kind in {tyVar, tyPtr, tyRef}): 
+      if (aa.kind == bb.kind) and (aa.kind in {tyVar, tyPtr, tyRef}):
         aa = aa.lastSon
         bb = bb.lastSon
-      else: 
-        break 
-    if sameType(aa, bb) or
-        (aa.kind == tyObject) and (bb.kind == tyObject) and
-        (inheritanceDiff(bb, aa) < 0):
-      discard
+      else:
+        break
+    if sameType(aa, bb):
+      if aa.kind == tyObject and result != Invalid: result = Yes
+    elif aa.kind == tyObject and bb.kind == tyObject:
+      let diff = inheritanceDiff(bb, aa)
+      if diff < 0:
+        if result != Invalid: result = Yes
+      elif diff != high(int):
+        result = Invalid
     else:
-      return
-  result = true
+      return No
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
   var L = s.ast.len-1
@@ -133,18 +138,31 @@ proc fixupDispatcher(meth, disp: PSym) =
 
 proc methodDef*(s: PSym, fromCache: bool) =
   var L = len(gMethods)
+  var witness: PSym
   for i in countup(0, L - 1):
     var disp = gMethods[i].dispatcher
-    if sameMethodBucket(disp, s):
+    case sameMethodBucket(disp, s)
+    of Yes:
       add(gMethods[i].methods, s)
       attachDispatcher(s, lastSon(disp.ast))
       fixupDispatcher(s, disp)
       when useEffectSystem: checkMethodEffects(disp, s)
-      return 
+      if sfBase in s.flags and gMethods[i].methods[0] != s:
+        # already exists due to forwarding definition?
+        localError(s.info, "method is not a base")
+      return
+    of No: discard
+    of Invalid:
+      if witness.isNil: witness = gMethods[i].methods[0]
   # create a new dispatcher:
   add(gMethods, (methods: @[s], dispatcher: createDispatcher(s)))
   if fromCache:
     internalError(s.info, "no method dispatcher found")
+  if witness != nil:
+    localError(s.info, "invalid declaration order; cannot attach '" & s.name.s &
+                       "' to method defined here: " & $witness.info)
+  elif sfBase notin s.flags:
+    message(s.info, warnUseBase)
 
 proc relevantCol(methods: TSymSeq, col: int): bool =
   # returns true iff the position is relevant
@@ -154,35 +172,35 @@ proc relevantCol(methods: TSymSeq, col: int): bool =
       let t2 = skipTypes(methods[i].typ.sons[col], skipPtrs)
       if not sameType(t2, t):
         return true
-  
-proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int = 
-  for col in countup(1, sonsLen(a.typ) - 1): 
-    if contains(relevantCols, col): 
+
+proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
+  for col in countup(1, sonsLen(a.typ) - 1):
+    if contains(relevantCols, col):
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
       var bb = skipTypes(b.typ.sons[col], skipPtrs)
       var d = inheritanceDiff(aa, bb)
-      if (d != high(int)): 
+      if (d != high(int)):
         return d
-  
-proc sortBucket(a: var TSymSeq, relevantCols: IntSet) = 
+
+proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =
   # we use shellsort here; fast and simple
   var n = len(a)
   var h = 1
-  while true: 
+  while true:
     h = 3 * h + 1
-    if h > n: break 
-  while true: 
+    if h > n: break
+  while true:
     h = h div 3
-    for i in countup(h, n - 1): 
+    for i in countup(h, n - 1):
       var v = a[i]
       var j = i
-      while cmpSignatures(a[j - h], v, relevantCols) >= 0: 
+      while cmpSignatures(a[j - h], v, relevantCols) >= 0:
         a[j] = a[j - h]
         j = j - h
-        if j < h: break 
+        if j < h: break
       a[j] = v
-    if h == 1: break 
-  
+    if h == 1: break
+
 proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
   var base = lastSon(methods[0].ast).sym
   result = base
@@ -199,7 +217,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
         addSon(isn, newSymNode(iss))
         addSon(isn, newSymNode(base.typ.n.sons[col].sym))
         addSon(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
-        if cond != nil: 
+        if cond != nil:
           var a = newNodeIT(nkCall, base.info, getSysType(tyBool))
           addSon(a, newSymNode(ands))
           addSon(a, cond)
@@ -209,12 +227,12 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
           cond = isn
     var call = newNodeI(nkCall, base.info)
     addSon(call, newSymNode(curr))
-    for col in countup(1, paramLen - 1): 
-      addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym), 
+    for col in countup(1, paramLen - 1):
+      addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym),
                            curr.typ.sons[col], false))
     var ret: PNode
     if base.typ.sons[0] != nil:
-      var a = newNodeI(nkAsgn, base.info)
+      var a = newNodeI(nkFastAsgn, base.info)
       addSon(a, newSymNode(base.ast.sons[resultPos].sym))
       addSon(a, call)
       ret = newNodeI(nkReturnStmt, base.info)
@@ -230,13 +248,12 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
       disp = ret
   result.ast.sons[bodyPos] = disp
 
-proc generateMethodDispatchers*(): PNode = 
+proc generateMethodDispatchers*(): PNode =
   result = newNode(nkStmtList)
-  for bucket in countup(0, len(gMethods) - 1): 
+  for bucket in countup(0, len(gMethods) - 1):
     var relevantCols = initIntSet()
-    for col in countup(1, sonsLen(gMethods[bucket].methods[0].typ) - 1): 
+    for col in countup(1, sonsLen(gMethods[bucket].methods[0].typ) - 1):
       if relevantCol(gMethods[bucket].methods, col): incl(relevantCols, col)
     sortBucket(gMethods[bucket].methods, relevantCols)
     addSon(result,
            newSymNode(genDispatcher(gMethods[bucket].methods, relevantCols)))
-

@@ -88,3 +88,8 @@ proc initDefines*() =
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
   defineSymbol("nimnode")
+  defineSymbol("nimnomagic64")
+  defineSymbol("nimvarargstyped")
+  defineSymbol("nimtypedescfixed")
+  defineSymbol("nimKnowsNimvm")
+  defineSymbol("nimArrIdx")

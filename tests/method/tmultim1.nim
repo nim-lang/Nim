@@ -10,15 +10,15 @@ type
     x: int
   PlusExpr = ref object of Expression
     a, b: Expression
-    
-method eval(e: Expression): int = quit "to override!"
+
+method eval(e: Expression): int {.base.} = quit "to override!"
 method eval(e: Literal): int = return e.x
 method eval(e: PlusExpr): int = return eval(e.a) + eval(e.b)
 
 proc newLit(x: int): Literal =
   new(result)
   result.x = x
-  
+
 proc newPlus(a, b: Expression): PlusExpr =
   new(result)
   result.a = a

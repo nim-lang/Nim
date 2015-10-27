@@ -5,7 +5,7 @@ type Deck = object
 
 proc sort(h: var seq[Deck]) =
   # works:
-  h.sort(proc (x, y: Deck): auto = 
+  h.sort(proc (x, y: Deck): auto =
     cmp(x.value, y.value))
   # fails:
   h.sort((x, y: Deck) => cmp(ord(x.value), ord(y.value)))

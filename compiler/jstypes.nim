@@ -116,13 +116,12 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
          [name, genTypeInfo(p, typ.sons[0])])
 
 proc genTypeInfo(p: PProc, typ: PType): Rope =
-  var t = typ
-  if t.kind == tyGenericInst: t = lastSon(t)
+  let t = typ.skipTypes({tyGenericInst})
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
   case t.kind
   of tyDistinct:
-    result = genTypeInfo(p, typ.sons[0])
+    result = genTypeInfo(p, t.sons[0])
   of tyPointer, tyProc, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
@@ -134,14 +133,14 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
               [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
     addf(p.g.typeInfo, "$1.base = $2;$n",
-         [result, genTypeInfo(p, typ.lastSon)])
+         [result, genTypeInfo(p, t.lastSon)])
   of tyArrayConstr, tyArray:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
               [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
     addf(p.g.typeInfo, "$1.base = $2;$n",
-         [result, genTypeInfo(p, typ.sons[1])])
+         [result, genTypeInfo(p, t.sons[1])])
   of tyEnum: genEnumInfo(p, t, result)
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)

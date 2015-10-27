@@ -20,11 +20,5 @@ installed on your system, you can simply run "ant debug" to build everything.
 Once the apk is built you can install it on your device or emulator with the
 command "adb install bin/CrossCalculator-debug.apk".
 
-You can use this example as a starting point for your project or look at the
-history of the github project at https://github.com/gradha/nimrod-on-android.
-That repository documents the individual integration steps you would take for
-any Android project (note it uses Eclipse rather than ant to build and
-therefore the build process requires more manual fiddling).
-
 This example runs against the Android level 3 API, meaning devices from
 Android 1.5 and above should be able to run the generated binary.

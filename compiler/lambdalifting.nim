@@ -184,7 +184,7 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   var params = routine.ast.sons[paramsPos]
   # -1 is correct here as param.position is 0 based but we have at position 0
   # some nkEffect node:
-  param.position = params.len-1
+  param.position = routine.typ.n.len-1
   addSon(params, newSymNode(param))
   incl(routine.typ.flags, tfCapturesEnv)
   assert sfFromGeneric in param.flags
@@ -859,11 +859,17 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
         return indirectAccess(newSymNode(it.closureParam), local, n.info)
 
     if local.kind == skClosureIterator:
+      # bug #3354; allow for
+      #iterator iter(): int {.closure.}=
+      #  s.add(iter)
+      #  yield 1
+
+      #if local == o.fn or local == it.fn:
+      #  message(n.info, errRecursiveDependencyX, local.name.s)
+
       # consider: [i1, i2, i1]  Since we merged the iterator's closure
       # with the captured owning variables, we need to generate the
       # closure generation code again:
-      if local == o.fn or local == it.fn:
-        message(n.info, errRecursiveDependencyX, local.name.s)
       # XXX why doesn't this work?
       var closure = PEnv(idTableGet(o.lambdasToEnv, local))
       if closure.isNil:
@@ -946,7 +952,11 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
 proc liftLambdas*(fn: PSym, body: PNode): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
-  if body.kind == nkEmpty or gCmd == cmdCompileToJS or
+
+  # However we can do lifting for the stuff which is *only* compiletime.
+  let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
+
+  if body.kind == nkEmpty or (gCmd == cmdCompileToJS and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body
@@ -1012,7 +1022,9 @@ proc liftForLoop*(body: PNode): PNode =
         ...
     """
   var L = body.len
-  internalAssert body.kind == nkForStmt and body[L-2].kind in nkCallKinds
+  if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
+    localError(body.info, "ignored invalid for loop")
+    return body
   var call = body[L-2]
 
   result = newNodeI(nkStmtList, body.info)

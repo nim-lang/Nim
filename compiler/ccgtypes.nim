@@ -323,7 +323,8 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
     result = OnUnknown
 
 proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
-                   check: var IntSet, declareEnvironment=true) =
+                   check: var IntSet, declareEnvironment=true;
+                   weakDep=false) =
   params = nil
   if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]):
     rettype = ~"void"
@@ -341,6 +342,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       add(params, ~"*")
       incl(param.loc.flags, lfIndirect)
       param.loc.s = OnUnknown
+    elif weakDep:
+      add(params, getTypeDescWeak(m, param.typ, check))
     else:
       add(params, getTypeDescAux(m, param.typ, check))
     add(params, ~" ")
@@ -438,6 +441,8 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       elif fieldType.kind == tySequence:
         # we need to use a weak dependency here for trecursive_table.
         addf(result, "$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check), sname])
+      elif field.bitsize != 0:
+        addf(result, "$1 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check), sname, rope($field.bitsize)])
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
@@ -577,7 +582,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     result = getTypeName(t)
     idTablePut(m.typeCache, t, result)
     var rettype, desc: Rope
-    genProcParams(m, t, rettype, desc, check)
+    genProcParams(m, t, rettype, desc, check, true, true)
     if not isImportedType(t):
       if t.callConv != ccClosure: # procedure vars may need a closure!
         addf(m.s[cfsTypes], "typedef $1_PTR($2, $3) $4;$n",

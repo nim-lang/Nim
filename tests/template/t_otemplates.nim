@@ -210,7 +210,7 @@ proc parse_complex_stmt(value, identifier: string, index: var int): NimNode {.co
         inc(index, read + 1)
 
         # Insert body into result
-        var stmtIndex = macros.high(result[resultIndex])
+        var stmtIndex = result[resultIndex].len-1
         result[resultIndex][stmtIndex] = body
 
         # Parse through EOL again & increment result index
@@ -245,7 +245,7 @@ proc parse_simple_statement(value: string, index: var int): NimNode {.compiletim
     inc(index, read + 1)
 
     # Insert body into result
-    var stmtIndex = macros.high(result)
+    var stmtIndex = result.len-1
     result[stmtIndex] = body
 
     # Parse through EOL again

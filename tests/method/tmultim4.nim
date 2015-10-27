@@ -5,7 +5,7 @@ discard """
 type
   Test = object of TObject
 
-method doMethod(a: ref TObject) {.raises: [EIO].} =
+method doMethod(a: ref TObject) {.base, raises: [EIO].} =
   quit "override"
 
 method doMethod(a: ref Test) =
@@ -26,7 +26,7 @@ var s:ref Test = newTest()
 for z in 1..4:
   s.doMethod()
   break
- 
+
 #works
 #for z in 1..4:
 #  s.doProc()

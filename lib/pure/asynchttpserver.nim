@@ -67,6 +67,12 @@ type
     Http409 = "409 Conflict",
     Http410 = "410 Gone",
     Http411 = "411 Length Required",
+    Http412 = "412 Precondition Failed",
+    Http413 = "413 Request Entity Too Large",
+    Http414 = "414 Request-URI Too Long",
+    Http415 = "415 Unsupported Media Type",
+    Http416 = "416 Requested Range Not Satisfiable",
+    Http417 = "417 Expectation Failed",
     Http418 = "418 I'm a teapot",
     Http500 = "500 Internal Server Error",
     Http501 = "501 Not Implemented",
@@ -126,8 +132,11 @@ proc parseHeader(line: string): tuple[key, value: string] =
   var i = 0
   i = line.parseUntil(result.key, ':')
   inc(i) # skip :
-  i += line.skipWhiteSpace(i)
-  i += line.parseUntil(result.value, {'\c', '\L'}, i)
+  if i < len(line):
+    i += line.skipWhiteSpace(i)
+    i += line.parseUntil(result.value, {'\c', '\L'}, i)
+  else:
+    result.value = ""
 
 proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
   var i = protocol.skipIgnoreCase("HTTP/")
@@ -148,7 +157,8 @@ proc processClient(client: AsyncSocket, address: string,
   var request: Request
   request.url = initUri()
   request.headers = newStringTable(modeCaseInsensitive)
-  var line = newStringOfCap(80)
+  var lineFut = newFutureVar[string]("asynchttpserver.processClient")
+  lineFut.mget() = newStringOfCap(80)
   var key, value = ""
 
   while not client.isClosed:
@@ -156,19 +166,21 @@ proc processClient(client: AsyncSocket, address: string,
     # Header: val
     # \n
     request.headers.clear(modeCaseInsensitive)
+    request.body = ""
     request.hostname.shallowCopy(address)
     assert client != nil
     request.client = client
 
     # First line - GET /path HTTP/1.1
-    line.setLen(0)
-    await client.recvLineInto(addr line) # TODO: Timeouts.
-    if line == "":
+    lineFut.mget().setLen(0)
+    lineFut.clean()
+    await client.recvLineInto(lineFut) # TODO: Timeouts.
+    if lineFut.mget == "":
       client.close()
       return
 
     var i = 0
-    for linePart in line.split(' '):
+    for linePart in lineFut.mget.split(' '):
       case i
       of 0: request.reqMethod.shallowCopy(linePart.normalize)
       of 1: parseUri(linePart, request.url)
@@ -180,26 +192,27 @@ proc processClient(client: AsyncSocket, address: string,
             "Invalid request protocol. Got: " & linePart)
           continue
       else:
-        await request.respond(Http400, "Invalid request. Got: " & line)
+        await request.respond(Http400, "Invalid request. Got: " & lineFut.mget)
         continue
       inc i
 
     # Headers
     while true:
       i = 0
-      line.setLen(0)
-      await client.recvLineInto(addr line)
+      lineFut.mget.setLen(0)
+      lineFut.clean()
+      await client.recvLineInto(lineFut)
 
-      if line == "":
+      if lineFut.mget == "":
         client.close(); return
-      if line == "\c\L": break
-      let (key, value) = parseHeader(line)
+      if lineFut.mget == "\c\L": break
+      let (key, value) = parseHeader(lineFut.mget)
       request.headers[key] = value
 
     if request.reqMethod == "post":
       # Check for Expect header
       if request.headers.hasKey("Expect"):
-        if request.headers["Expect"].toLower == "100-continue":
+        if request.headers.getOrDefault("Expect").toLower == "100-continue":
           await client.sendStatus("100 Continue")
         else:
           await client.sendStatus("417 Expectation Failed")
@@ -208,8 +221,10 @@ proc processClient(client: AsyncSocket, address: string,
       # - Check for Content-length header
       if request.headers.hasKey("Content-Length"):
         var contentLength = 0
-        if parseInt(request.headers["Content-Length"], contentLength) == 0:
+        if parseInt(request.headers.getOrDefault("Content-Length"),
+                    contentLength) == 0:
           await request.respond(Http400, "Bad Request. Invalid Content-Length.")
+          continue
         else:
           request.body = await client.recv(contentLength)
           assert request.body.len == contentLength
@@ -218,16 +233,18 @@ proc processClient(client: AsyncSocket, address: string,
         continue
 
     case request.reqMethod
-    of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
+    of "get", "post", "head", "put", "delete", "trace", "options",
+       "connect", "patch":
       await callback(request)
     else:
-      await request.respond(Http400, "Invalid request method. Got: " & request.reqMethod)
+      await request.respond(Http400, "Invalid request method. Got: " &
+        request.reqMethod)
 
     # Persistent connections
     if (request.protocol == HttpVer11 and
-        request.headers["connection"].normalize != "close") or
+        request.headers.getOrDefault("connection").normalize != "close") or
        (request.protocol == HttpVer10 and
-        request.headers["connection"].normalize == "keep-alive"):
+        request.headers.getOrDefault("connection").normalize == "keep-alive"):
       # In HTTP 1.1 we assume that connection is persistent. Unless connection
       # header states otherwise.
       # In HTTP 1.0 we assume that the connection should not be persistent.

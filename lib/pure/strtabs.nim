@@ -74,7 +74,7 @@ const
   growthFactor = 2
   startSize = 64
 
-proc myhash(t: StringTableRef, key: string): THash =
+proc myhash(t: StringTableRef, key: string): Hash =
   case t.mode
   of modeCaseSensitive: result = hashes.hash(key)
   of modeCaseInsensitive: result = hashes.hashIgnoreCase(key)
@@ -90,39 +90,49 @@ proc mustRehash(length, counter: int): bool =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 proc rawGet(t: StringTableRef, key: string): int =
-  var h: THash = myhash(t, key) and high(t.data) # start with real hash value
+  var h: Hash = myhash(t, key) and high(t.data) # start with real hash value
   while not isNil(t.data[h].key):
     if myCmp(t, t.data[h].key, key):
       return h
     h = nextTry(h, high(t.data))
   result = - 1
 
-proc `[]`*(t: StringTableRef, key: string): string {.rtl, extern: "nstGet".} =
-  ## retrieves the value at ``t[key]``. If `key` is not in `t`, "" is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
+template get(t: StringTableRef, key: string): stmt {.immediate.} =
+  var index = rawGet(t, key)
+  if index >= 0: result = t.data[index].val
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
+
+proc `[]`*(t: StringTableRef, key: string): var string {.
+           rtl, extern: "nstTake", deprecatedGet.} =
+  ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
+  get(t, key)
+
+proc mget*(t: StringTableRef, key: string): var string {.deprecated.} =
+  ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. Use ```[]``` instead.
+  get(t, key)
+
+proc getOrDefault*(t: StringTableRef; key: string): string =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = ""
-
-proc mget*(t: StringTableRef, key: string): var string {.
-             rtl, extern: "nstTake".} =
-  ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
-  ## ``KeyError`` exception is raised.
-  var index = rawGet(t, key)
-  if index >= 0: result = t.data[index].val
-  else: raise newException(KeyError, "key does not exist: " & key)
 
 proc hasKey*(t: StringTableRef, key: string): bool {.rtl, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
 proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
-  var h: THash = myhash(t, key) and high(data)
+  var h: Hash = myhash(t, key) and high(data)
   while not isNil(data[h].key):
     h = nextTry(h, high(data))
   data[h].key = key
@@ -152,7 +162,7 @@ proc raiseFormatException(s: string) =
   raise e
 
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
-  if hasKey(t, key): return t[key]
+  if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
   if useEnvironment in flags: result = os.getEnv(key).string
   else: result = ""
@@ -173,6 +183,9 @@ proc clear*(s: StringTableRef, mode: StringTableMode) =
   s.mode = mode
   s.counter = 0
   s.data.setLen(startSize)
+  for i in 0..<s.data.len:
+    if not isNil(s.data[i].key):
+      s.data[i].key = nil
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): StringTableRef {.
@@ -245,6 +258,9 @@ when isMainModule:
   assert x["k"] == "v"
   assert x["11"] == "22"
   assert x["565"] == "67"
-  x.mget("11") = "23"
+  x["11"] = "23"
   assert x["11"] == "23"
 
+  x.clear(modeCaseInsensitive)
+  x["11"] = "22"
+  assert x["11"] == "22"

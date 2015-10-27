@@ -1,4 +1,4 @@
-type 
+type
   TFoo[T, U, R = int] = object
     x: T
     y: U
@@ -12,7 +12,7 @@ static:
   assert type(x1.x) is int
   assert type(x1.y) is float
   assert type(x1.z) is int
-  
+
 var x2: TFoo[string, R = float, U = seq[int]]
 
 static:

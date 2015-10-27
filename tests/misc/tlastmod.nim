@@ -8,8 +8,8 @@ proc main() =
     a, b: TTime
   a = getLastModificationTime(paramStr(1))
   b = getLastModificationTime(paramStr(2))
-  writeln(stdout, $a)
-  writeln(stdout, $b)
+  writeLine(stdout, $a)
+  writeLine(stdout, $b)
   if a < b:
     write(stdout, "$2 is newer than $1\n" % [paramStr(1), paramStr(2)])
   else:

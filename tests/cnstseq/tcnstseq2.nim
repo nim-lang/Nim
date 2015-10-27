@@ -4,8 +4,8 @@ discard """
 
 const
   myWords = @["Angelika", "Anne", "Anna", "Anka", "Anja"]
-  
-for i in 0 .. high(myWords): 
+
+for i in 0 .. high(myWords):
   write(stdout, myWords[i]) #OUT AngelikaAnneAnnaAnkaAnja
 
 

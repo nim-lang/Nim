@@ -13,23 +13,25 @@
 ##
 ## **Note:** The current implementation of message passing is slow and does
 ## not work with cyclic data structures.
-  
+
 when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 type
   pbytes = ptr array[0.. 0xffff, byte]
-  TRawChannel {.pure, final.} = object ## msg queue for a thread
+  RawChannel {.pure, final.} = object ## msg queue for a thread
     rd, wr, count, mask: int
     data: pbytes
-    lock: TSysLock
-    cond: TSysCond
+    lock: SysLock
+    cond: SysCond
     elemType: PNimType
     ready: bool
-    region: TMemRegion
-  PRawChannel = ptr TRawChannel
-  TLoadStoreMode = enum mStore, mLoad
-  TChannel* {.gcsafe.}[TMsg] = TRawChannel ## a channel for thread communication
+    region: MemRegion
+  PRawChannel = ptr RawChannel
+  LoadStoreMode = enum mStore, mLoad
+  Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
+{.deprecated: [TRawChannel: RawChannel, TLoadStoreMode: LoadStoreMode,
+              TChannel: Channel].}
 
 const ChannelDeadMask = -2
 
@@ -48,15 +50,15 @@ proc deinitRawChannel(p: pointer) =
   deinitSys(c.lock)
   deinitSysCond(c.cond)
 
-proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel, 
-              mode: TLoadStoreMode) {.benign.}
+proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
+              mode: LoadStoreMode) {.benign.}
 proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
-              mode: TLoadStoreMode) {.benign.} =
+              mode: LoadStoreMode) {.benign.} =
   var
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
   case n.kind
-  of nkSlot: storeAux(cast[pointer](d +% n.offset), 
+  of nkSlot: storeAux(cast[pointer](d +% n.offset),
                       cast[pointer](s +% n.offset), n.typ, t, mode)
   of nkList:
     for i in 0..n.len-1: storeAux(dest, src, n.sons[i], t, mode)
@@ -67,8 +69,8 @@ proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
     if m != nil: storeAux(dest, src, m, t, mode)
   of nkNone: sysAssert(false, "storeAux")
 
-proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel, 
-              mode: TLoadStoreMode) =
+proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
+              mode: LoadStoreMode) =
   var
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
@@ -78,7 +80,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     if mode == mStore:
       var x = cast[PPointer](dest)
       var s2 = cast[PPointer](s)[]
-      if s2 == nil: 
+      if s2 == nil:
         x[] = nil
       else:
         var ss = cast[NimString](s2)
@@ -190,7 +192,7 @@ template lockChannel(q: expr, action: stmt) {.immediate.} =
   action
   releaseSys(q.lock)
 
-template sendImpl(q: expr) {.immediate.} =  
+template sendImpl(q: expr) {.immediate.} =
   if q.mask == ChannelDeadMask:
     sysFatal(DeadThreadError, "cannot send message; thread died")
   acquireSys(q.lock)
@@ -202,7 +204,7 @@ template sendImpl(q: expr) {.immediate.} =
   releaseSys(q.lock)
   signalSysCond(q.cond)
 
-proc send*[TMsg](c: var TChannel[TMsg], msg: TMsg) =
+proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) =
   ## sends a message to a thread. `msg` is deeply copied.
   var q = cast[PRawChannel](addr(c))
   sendImpl(q)
@@ -218,7 +220,7 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
     sysFatal(ValueError, "cannot receive message of wrong type")
   rawRecv(q, res, typ)
 
-proc recv*[TMsg](c: var TChannel[TMsg]): TMsg =
+proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
   ## receives a message from the channel `c`. This blocks until
   ## a message has arrived! You may use ``peek`` to avoid the blocking.
   var q = cast[PRawChannel](addr(c))
@@ -226,7 +228,7 @@ proc recv*[TMsg](c: var TChannel[TMsg]): TMsg =
   llRecv(q, addr(result), cast[PNimType](getTypeInfo(result)))
   releaseSys(q.lock)
 
-proc tryRecv*[TMsg](c: var TChannel[TMsg]): tuple[dataAvailable: bool,
+proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
                                                   msg: TMsg] =
   ## try to receives a message from the channel `c` if available. Otherwise
   ## it returns ``(false, default(msg))``.
@@ -238,7 +240,7 @@ proc tryRecv*[TMsg](c: var TChannel[TMsg]): tuple[dataAvailable: bool,
         result.dataAvailable = true
       releaseSys(q.lock)
 
-proc peek*[TMsg](c: var TChannel[TMsg]): int =
+proc peek*[TMsg](c: var Channel[TMsg]): int =
   ## returns the current number of messages in the channel `c`. Returns -1
   ## if the channel has been closed. **Note**: This is dangerous to use
   ## as it encourages races. It's much better to use ``tryRecv`` instead.
@@ -249,15 +251,15 @@ proc peek*[TMsg](c: var TChannel[TMsg]): int =
   else:
     result = -1
 
-proc open*[TMsg](c: var TChannel[TMsg]) =
+proc open*[TMsg](c: var Channel[TMsg]) =
   ## opens a channel `c` for inter thread communication.
   initRawChannel(addr(c))
 
-proc close*[TMsg](c: var TChannel[TMsg]) =
+proc close*[TMsg](c: var Channel[TMsg]) =
   ## closes a channel `c` and frees its associated resources.
   deinitRawChannel(addr(c))
 
-proc ready*[TMsg](c: var TChannel[TMsg]): bool =
+proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## returns true iff some thread is waiting on the channel `c` for
   ## new messages.
   var q = cast[PRawChannel](addr(c))

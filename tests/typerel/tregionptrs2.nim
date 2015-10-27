@@ -8,14 +8,14 @@ type
         next: ThingyPtr
         name: string
 
-proc iname(t: ThingyPtr) = 
+proc iname(t: ThingyPtr) =
     var x = t
 
     while not x.isNil:
         echo x.name
         x = x.next
 
-proc go() = 
+proc go() =
     var athing : ThingyPtr
 
     iname(athing)

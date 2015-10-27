@@ -19,10 +19,11 @@ const
   MaxTraceLen = 20 # tracking the last 20 calls is enough
 
 type
-  TStackTrace* = array [0..MaxTraceLen-1, cstring]
-  TProfilerHook* = proc (st: TStackTrace) {.nimcall.}
+  StackTrace* = array [0..MaxTraceLen-1, cstring]
+  ProfilerHook* = proc (st: StackTrace) {.nimcall.}
+{.deprecated: [TStackTrace: StackTrace, TProfilerHook: ProfilerHook].}
 
-proc captureStackTrace(f: PFrame, st: var TStackTrace) =
+proc captureStackTrace(f: PFrame, st: var StackTrace) =
   const
     firstCalls = 5
   var
@@ -39,7 +40,7 @@ proc captureStackTrace(f: PFrame, st: var TStackTrace) =
   while it != nil:
     inc(total)
     it = it.prev
-  for j in 1..total-i-(firstCalls-1): 
+  for j in 1..total-i-(firstCalls-1):
     if b != nil: b = b.prev
   if total != i:
     st[i] = "..."
@@ -51,14 +52,15 @@ proc captureStackTrace(f: PFrame, st: var TStackTrace) =
 
 when defined(memProfiler):
   type
-    TMemProfilerHook* = proc (st: TStackTrace, requestedSize: int) {.nimcall, benign.}
+    MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, benign.}
+  {.deprecated: [TMemProfilerHook: MemProfilerHook].}
   var
-    profilerHook*: TMemProfilerHook
+    profilerHook*: MemProfilerHook
       ## set this variable to provide a procedure that implements a profiler in
       ## user space. See the `nimprof` module for a reference implementation.
 
-  proc callProfilerHook(hook: TMemProfilerHook, requestedSize: int) =
-    var st: TStackTrace
+  proc callProfilerHook(hook: MemProfilerHook, requestedSize: int) =
+    var st: StackTrace
     captureStackTrace(framePtr, st)
     hook(st, requestedSize)
 
@@ -70,15 +72,15 @@ else:
     SamplingInterval = 50_000
       # set this to change the default sampling interval
   var
-    profilerHook*: TProfilerHook
+    profilerHook*: ProfilerHook
       ## set this variable to provide a procedure that implements a profiler in
       ## user space. See the `nimprof` module for a reference implementation.
     gTicker {.threadvar.}: int
 
-  proc callProfilerHook(hook: TProfilerHook) {.noinline.} =
+  proc callProfilerHook(hook: ProfilerHook) {.noinline.} =
     # 'noinline' so that 'nimProfile' does not perform the stack allocation
     # in the common case.
-    var st: TStackTrace
+    var st: StackTrace
     captureStackTrace(framePtr, st)
     hook(st)
 

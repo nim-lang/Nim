@@ -64,7 +64,7 @@
 ## ========
 ## Currently all functions support an optional timeout, by default the timeout is set to
 ## `-1` which means that the function will never time out. The timeout is
-## measured in miliseconds, once it is set any call on a socket which may
+## measured in milliseconds, once it is set any call on a socket which may
 ## block will be susceptible to this timeout, however please remember that the
 ## function as a whole can take longer than the specified timeout, only
 ## individual internal calls on the socket are affected. In practice this means
@@ -81,7 +81,7 @@
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
 import asyncnet, asyncdispatch
-import rawsockets
+import nativesockets
 
 type
   Response* = tuple[
@@ -166,12 +166,12 @@ proc parseChunks(s: Socket, timeout: int): string =
 
 proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
   result = ""
-  if headers["Transfer-Encoding"] == "chunked":
+  if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = parseChunks(s, timeout)
   else:
     # -REGION- Content-Length
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
-    var contentLengthHeader = headers["Content-Length"]
+    var contentLengthHeader = headers.getOrDefault"Content-Length"
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
       if length > 0:
@@ -190,7 +190,7 @@ proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers["Connection"] == "close":
+      if headers.getOrDefault"Connection" == "close":
         var buf = ""
         while true:
           buf = newString(4000)
@@ -386,7 +386,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   ## | Requests ``url`` with the custom method string specified by the
   ## | ``httpMethod`` parameter.
   ## | Extra headers can be specified and must be separated by ``\c\L``
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var headers = substr(httpMethod, len("http"))
@@ -402,7 +402,11 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
   headers.add(" HTTP/1.1\c\L")
 
-  add(headers, "Host: " & r.hostname & "\c\L")
+  if r.port == "":
+    add(headers, "Host: " & r.hostname & "\c\L")
+  else:
+    add(headers, "Host: " & r.hostname & ":" & r.port & "\c\L")
+
   if userAgent != "":
     add(headers, "User-Agent: " & userAgent & "\c\L")
   if proxy != nil and proxy.auth != "":
@@ -440,7 +444,7 @@ proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               userAgent = defUserAgent, proxy: Proxy = nil): Response =
   ## | Requests ``url`` with the specified ``httpMethod``.
   ## | Extra headers can be specified and must be separated by ``\c\L``
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout,
                    userAgent, proxy)
@@ -452,7 +456,7 @@ proc redirection(status: string): bool =
       return true
 
 proc getNewLocation(lastUrl: string, headers: StringTableRef): string =
-  result = headers["Location"]
+  result = headers.getOrDefault"Location"
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
   let r = parseUri(result)
@@ -467,7 +471,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
   ## | GETs the ``url`` and returns a ``Response`` object
   ## | This proc also handles redirection
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
@@ -486,7 +490,7 @@ proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
   ## | GETs the body and returns it as a string.
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = get(url, extraHeaders, maxRedirects, sslContext, timeout, userAgent,
               proxy)
@@ -505,7 +509,7 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   ## | The optional ``multipart`` parameter can be used to create
   ## ``multipart/form-data`` POSTs comfortably.
@@ -542,7 +546,7 @@ proc postContent*(url: string, extraHeaders = "", body = "",
   ## | POSTs ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   ## | The optional ``multipart`` parameter can be used to create
   ## ``multipart/form-data`` POSTs comfortably.
@@ -558,7 +562,7 @@ proc downloadFile*(url: string, outputFilename: string,
                    timeout = -1, userAgent = defUserAgent,
                    proxy: Proxy = nil) =
   ## | Downloads ``url`` and saves it to ``outputFilename``
-  ## | An optional timeout can be specified in miliseconds, if reading from the
+  ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var f: File
   if open(f, outputFilename, fmWrite):
@@ -569,7 +573,7 @@ proc downloadFile*(url: string, outputFilename: string,
     fileError("Unable to open file")
 
 proc generateHeaders(r: Uri, httpMethod: string,
-                     headers: StringTableRef): string =
+                     headers: StringTableRef, body: string): string =
   # TODO: Use this in the blocking HttpClient once it supports proxies.
   result = substr(httpMethod, len("http"))
   # TODO: Proxies
@@ -580,8 +584,14 @@ proc generateHeaders(r: Uri, httpMethod: string,
     result.add("?" & r.query)
   result.add(" HTTP/1.1\c\L")
 
-  add(result, "Host: " & r.hostname & "\c\L")
+  if r.port == "":
+    add(result, "Host: " & r.hostname & "\c\L")
+  else:
+    add(result, "Host: " & r.hostname & ":" & r.port & "\c\L")
+
   add(result, "Connection: Keep-Alive\c\L")
+  if body.len > 0 and not headers.hasKey("Content-Length"):
+    add(result, "Content-Length: " & $body.len & "\c\L")
   for key, val in headers:
     add(result, key & ": " & val & "\c\L")
 
@@ -669,12 +679,12 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
 proc parseBody(client: AsyncHttpClient,
                headers: StringTableRef): Future[string] {.async.} =
   result = ""
-  if headers["Transfer-Encoding"] == "chunked":
+  if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = await parseChunks(client)
   else:
     # -REGION- Content-Length
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
-    var contentLengthHeader = headers["Content-Length"]
+    var contentLengthHeader = headers.getOrDefault"Content-Length"
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
       if length > 0:
@@ -689,7 +699,7 @@ proc parseBody(client: AsyncHttpClient,
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers["Connection"] == "close":
+      if headers.getOrDefault"Connection" == "close":
         var buf = ""
         while true:
           buf = await client.socket.recvFull(4000)
@@ -754,10 +764,10 @@ proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
     let port =
       if url.port == "":
         if url.scheme.toLower() == "https":
-          rawsockets.Port(443)
+          nativesockets.Port(443)
         else:
-          rawsockets.Port(80)
-      else: rawsockets.Port(url.port.parseInt)
+          nativesockets.Port(80)
+      else: nativesockets.Port(url.port.parseInt)
 
     if url.scheme.toLower() == "https":
       when defined(ssl):
@@ -786,7 +796,7 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
     client.headers["User-Agent"] = client.userAgent
 
-  var headers = generateHeaders(r, $httpMethod, client.headers)
+  var headers = generateHeaders(r, $httpMethod, client.headers, body)
 
   await client.socket.send(headers)
   if body != "":
@@ -818,6 +828,25 @@ proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = await client.request(redirectTo, httpGET)
       lastUrl = redirectTo
+
+proc post*(client: AsyncHttpClient, url: string, body = "", multipart: MultipartData = nil): Future[Response] {.async.} =
+  ## Connects to the hostname specified by the URL and performs a POST request.
+  ##
+  ## This procedure will follow redirects up to a maximum number of redirects
+  ## specified in ``newAsyncHttpClient``.
+  let (mpHeader, mpBody) = format(multipart)
+
+  template withNewLine(x): expr =
+    if x.len > 0 and not x.endsWith("\c\L"):
+      x & "\c\L"
+    else:
+      x
+  var xb = mpBody.withNewLine() & body
+  if multipart != nil:
+    client.headers["Content-Type"] = mpHeader.split(": ")[1]
+  client.headers["Content-Length"] = $len(xb)
+
+  result = await client.request(url, httpPOST, xb)
 
 when not defined(testing) and isMainModule:
   when true:

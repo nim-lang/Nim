@@ -36,15 +36,18 @@ proc cyclicTree*(n: PNode): bool =
   var s = newNodeI(nkEmpty, n.info)
   result = cyclicTreeAux(n, s)
 
-proc exprStructuralEquivalent*(a, b: PNode): bool =
+proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
   result = false
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
     case a.kind
     of nkSym:
-      # don't go nuts here: same symbol as string is enough:
-      result = a.sym.name.id == b.sym.name.id
+      if strictSymEquality:
+        result = a.sym == b.sym
+      else:
+        # don't go nuts here: same symbol as string is enough:
+        result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
@@ -53,7 +56,8 @@ proc exprStructuralEquivalent*(a, b: PNode): bool =
     else:
       if sonsLen(a) == sonsLen(b):
         for i in countup(0, sonsLen(a) - 1):
-          if not exprStructuralEquivalent(a.sons[i], b.sons[i]): return
+          if not exprStructuralEquivalent(a.sons[i], b.sons[i],
+                                          strictSymEquality): return
         result = true
 
 proc sameTree*(a, b: PNode): bool =

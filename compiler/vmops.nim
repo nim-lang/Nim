@@ -46,7 +46,7 @@ template wrap2svoid(op) {.immediate, dirty.} =
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
-               else: a.currentException.sons[2].strVal)
+               else: a.currentException.sons[3].skipColon.strVal)
 
 proc registerAdditionalOps*(c: PCtx) =
   wrap1f(sqrt)

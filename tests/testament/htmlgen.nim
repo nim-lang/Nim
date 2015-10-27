@@ -109,7 +109,7 @@ div.tabContent.hide { display: none; }
 proc td(s: string): string =
   result = "<td>" & s.substr(0, 200).xmlEncode & "</td>"
 
-proc getCommit(db: TDbConn, c: int): string =
+proc getCommit(db: DbConn, c: int): string =
   var commit = c
   for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
     if commit == 0: result = thisCommit[0]
@@ -138,7 +138,7 @@ proc generateHtml*(filename: string, commit: int; onlyFailing: bool) =
   # generate navigation:
   outfile.write("""<ul id="tabs">""")
   for m in db.rows(sql"select id, name, os, cpu from Machine order by id"):
-    outfile.writeln """<li><a href="#$#">$#: $#, $#</a></li>""" % m
+    outfile.writeLine """<li><a href="#$#">$#: $#, $#</a></li>""" % m
   outfile.write("</ul>")
 
   for currentMachine in db.rows(sql"select id from Machine order by id"):
@@ -195,7 +195,7 @@ proc generateJson*(filename: string, commit: int) =
   let machine = $backend.getMachine(db)
   let data = db.getRow(sql(selRow), lastCommit, machine)
 
-  outfile.writeln("""{"total": $#, "passed": $#, "skipped": $#""" % data)
+  outfile.writeLine("""{"total": $#, "passed": $#, "skipped": $#""" % data)
 
   let results = newJArray()
   for row in db.rows(sql(selResults), lastCommit):
@@ -208,7 +208,7 @@ proc generateJson*(filename: string, commit: int) =
     obj["expected"] = %row[5]
     obj["given"] = %row[6]
     results.add(obj)
-  outfile.writeln(""", "results": """)
+  outfile.writeLine(""", "results": """)
   outfile.write(results.pretty)
 
   if not previousCommit.isNil:
@@ -220,9 +220,9 @@ proc generateJson*(filename: string, commit: int) =
       obj["old"] = %row[1]
       obj["new"] = %row[2]
       diff.add obj
-    outfile.writeln(""", "diff": """)
-    outfile.writeln(diff.pretty)
+    outfile.writeLine(""", "diff": """)
+    outfile.writeLine(diff.pretty)
 
-  outfile.writeln "}"
+  outfile.writeLine "}"
   close(db)
   close(outfile)

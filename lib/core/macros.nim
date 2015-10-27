@@ -144,6 +144,11 @@ proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
+proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
+  ## compares two Nim nodes' types. Return true if the types are the same,
+  ## eg. true when comparing alias with original type.
+  discard
+
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
 
@@ -164,7 +169,7 @@ proc kind*(n: NimNode): NimNodeKind {.magic: "NKind", noSideEffect.}
   ## returns the `kind` of the node `n`.
 
 proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
-proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} = n.intVal != 0
+
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
@@ -176,6 +181,12 @@ proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## so there is no danger of infinite recursions during traversal. To
   ## resolve recursive types, you have to call 'getType' again. To see what
   ## kind of type it is, call `typeKind` on getType's result.
+
+proc getType*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Returns the Nim type node for given type. This can be used to turn macro
+  ## typedesc parameter into proper NimNode representing type, since typedesc
+  ## are an exception in macro calls - they are not mapped implicitly to
+  ## NimNode like any other arguments.
 
 proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
@@ -201,6 +212,11 @@ proc newNimNode*(kind: NimNodeKind,
 
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
+
+proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
+  ## retrieve the implementation of a symbol `s`. `s` can be a routine or a
+  ## const.
+  discard
 
 proc error*(msg: string) {.magic: "NError", benign.}
   ## writes an error message at compile time
@@ -480,7 +496,7 @@ macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
-  ## You can use this as a tool to explore the Nimrod's abstract syntax
+  ## You can use this as a tool to explore the Nim's abstract syntax
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 
@@ -581,10 +597,8 @@ proc newNilLit*(): NimNode {.compileTime.} =
   ## New nil literal shortcut
   result = newNimNode(nnkNilLit)
 
-proc high*(node: NimNode): int {.compileTime.} = len(node) - 1
-  ## Return the highest index available for a node
-proc last*(node: NimNode): NimNode {.compileTime.} = node[node.high]
-  ## Return the last item in nodes children. Same as `node[node.high()]`
+proc last*(node: NimNode): NimNode {.compileTime.} = node[<node.len]
+  ## Return the last item in nodes children. Same as `node[^1]`
 
 
 const
@@ -684,7 +698,7 @@ proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   of nnkBlockStmt, nnkWhileStmt:
     someProc[1] = val
   of nnkForStmt:
-    someProc[high(someProc)] = val
+    someProc[len(someProc)-1] = val
   else:
     badNodeKind someProc.kind, "body="
 
@@ -702,14 +716,22 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = node.strVal
   of nnkSym:
     result = $node.symbol
+  of nnkOpenSymChoice, nnkClosedSymChoice:
+    result = $node[0]
   else:
     badNodeKind node.kind, "$"
 
 proc ident*(name: string): NimNode {.compileTime,inline.} = newIdentNode(name)
   ## Create a new ident node from a string
 
-iterator children*(n: NimNode): NimNode {.inline.}=
-  for i in 0 .. high(n):
+iterator items*(n: NimNode): NimNode {.inline.} =
+  ## Iterates over the children of the NimNode ``n``.
+  for i in 0 ..< n.len:
+    yield n[i]
+
+iterator children*(n: NimNode): NimNode {.inline.} =
+  ## Iterates over the children of the NimNode ``n``.
+  for i in 0 ..< n.len:
     yield n[i]
 
 template findChild*(n: NimNode; cond: expr): NimNode {.
@@ -729,16 +751,16 @@ template findChild*(n: NimNode; cond: expr): NimNode {.
 
 proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
   ## Insert node B into A at pos
-  if high(a) < pos:
+  if len(a)-1 < pos:
     ## add some empty nodes first
-    for i in high(a)..pos-2:
+    for i in len(a)-1..pos-2:
       a.add newEmptyNode()
     a.add b
   else:
     ## push the last item onto the list again
     ## and shift each item down to pos up one
-    a.add(a[a.high])
-    for i in countdown(high(a) - 2, pos):
+    a.add(a[a.len-1])
+    for i in countdown(len(a) - 3, pos):
       a[i + 1] = a[i]
     a[pos] = b
 
@@ -824,6 +846,10 @@ proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compiletime.} =
       if ident.eqIdent($node[0]): return
     else: discard
   dest.add(ident(ident))
+
+proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
+  if n.kind == nnkIntLit: n.intVal != 0
+  else: n == bindSym"true" # hacky solution for now
 
 when not defined(booting):
   template emit*(e: static[string]): stmt =

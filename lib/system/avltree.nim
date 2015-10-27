@@ -16,7 +16,7 @@ proc lowGauge(n: PAvlNode): int =
   while not isBottom(it):
     result = it.key
     it = it.link[0]
-  
+
 proc highGauge(n: PAvlNode): int =
   result = -1
   var it = n
@@ -24,7 +24,7 @@ proc highGauge(n: PAvlNode): int =
     result = it.upperBound
     it = it.link[1]
 
-proc find(root: PAvlNode, key: int): PAvlNode = 
+proc find(root: PAvlNode, key: int): PAvlNode =
   var it = root
   while not isBottom(it):
     if it.key == key: return it
@@ -51,7 +51,7 @@ proc split(t: var PAvlNode) =
     t.link[0] = temp
     inc t.level
 
-proc add(a: var TMemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
+proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
   if t == bottom:
     t = allocAvlNode(a, key, upperBound)
   else:
@@ -64,7 +64,7 @@ proc add(a: var TMemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
     skew(t)
     split(t)
 
-proc del(a: var TMemRegion, t: var PAvlNode, x: int) {.benign.} =
+proc del(a: var MemRegion, t: var PAvlNode, x: int) {.benign.} =
   if t == bottom: return
   a.last = t
   if x <% t.key:

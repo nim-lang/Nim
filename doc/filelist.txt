@@ -4,12 +4,12 @@ Short description of Nim's modules
 ==============  ==========================================================
 Module          Description
 ==============  ==========================================================
-nim          main module: parses the command line and calls
+nim             main module: parses the command line and calls
                 ``main.MainCommand``
 main            implements the top-level command dispatching
 nimconf         implements the config file reader
 syntaxes        dispatcher for the different parsers and filters
-filter_tmpl     standard template filter (``#! stdtempl``)
+filter_tmpl     standard template filter (``#? stdtempl``)
 lexbase         buffer handling of the lexical analyser
 lexer           lexical analyser
 parser          Nim's parser

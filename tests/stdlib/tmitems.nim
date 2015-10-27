@@ -11,8 +11,8 @@ fpqeew
 [11, 12, 13]
 [11, 12, 13]
 [11, 12, 13]
-{"key1": 11, "key2": 12, "key3": 13}
-[11, 12, 13]
+{"key1":11,"key2":12,"key3":13}
+[11,12,13]
 <Students>
   <Student Name="Aprilfoo" />
   <Student Name="bar" />
@@ -132,5 +132,5 @@ block:
   </Students>""")
   for x in d.mitems:
     x = <>Student(Name=x.attrs["Name"] & "foo")
-  d.mget(1).attrs["Name"] = "bar"
+  d[1].attrs["Name"] = "bar"
   echo d

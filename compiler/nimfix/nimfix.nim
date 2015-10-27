@@ -10,8 +10,10 @@
 ## Nimfix is a tool that helps to convert old-style Nimrod code to Nim code.
 
 import strutils, os, parseopt
-import options, commands, modules, sem, passes, passaux, pretty, msgs, nimconf,
-  extccomp, condsyms, lists
+import compiler/options, compiler/commands, compiler/modules, compiler/sem,
+  compiler/passes, compiler/passaux, compiler/nimfix/pretty,
+  compiler/msgs, compiler/nimconf,
+  compiler/extccomp, compiler/condsyms, compiler/lists
 
 const Usage = """
 Nimfix - Tool to patch Nim code
@@ -24,7 +26,7 @@ Options:
   --wholeProject                   overwrite every processed file.
   --checkExtern:on|off             style check also extern names
   --styleCheck:on|off|auto         performs style checking for identifiers
-                                   and suggests an alternative spelling; 
+                                   and suggests an alternative spelling;
                                    'auto' corrects the spelling.
   --bestEffort                     try to fix the code even when there
                                    are errors.
@@ -48,11 +50,11 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   gOnlyMainfile = true
-  while true: 
+  while true:
     parseopt.next(p)
     case p.kind
-    of cmdEnd: break 
-    of cmdLongoption, cmdShortOption: 
+    of cmdEnd: break
+    of cmdLongoption, cmdShortOption:
       case p.key.normalize
       of "overwritefiles":
         case p.val.normalize
@@ -80,7 +82,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
 
 proc handleCmdLine() =
   if paramCount() == 0:
-    stdout.writeln(Usage)
+    stdout.writeLine(Usage)
   else:
     processCmdLine(passCmd1, "")
     if gProjectName != "":

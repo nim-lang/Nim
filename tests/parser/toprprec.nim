@@ -2,7 +2,7 @@ discard """
   file: "toprprec.nim"
   output: "done"
 """
-# Test operator precedence: 
+# Test operator precedence:
 
 template `@` (x: expr): expr {.immediate.} = self.x
 template `@!` (x: expr): expr {.immediate.} = x
@@ -12,7 +12,7 @@ type
   TO = object
     x: int
   TA = tuple[a, b: int, obj: TO]
-  
+
 proc init(self: var TA): string =
   @a = 3
   === @b = 4
@@ -22,10 +22,10 @@ proc init(self: var TA): string =
 
 assert 3+5*5-2 == 28- -26-28
 
-proc `^-` (x, y: int): int =  
+proc `^-` (x, y: int): int =
   # now right-associative!
   result = x - y
-  
+
 assert 34 ^- 6 ^- 2 == 30
 assert 34 - 6 - 2 == 26
 

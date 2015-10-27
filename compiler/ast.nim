@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, crc, ropes, idents, lists,
+  msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
   intsets, idgen
 
 type
@@ -291,12 +291,13 @@ const
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
 
-  sfNoRoot* = sfBorrow # a local variable is provably no root so it doesn't
-                       # require RC ops
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
   sfExperimental* = sfOverriden       # module uses the .experimental switch
   sfGoto* = sfOverriden               # var is used for 'goto' code generation
+  sfWrittenTo* = sfBorrow             # param is assigned to
+  sfEscapes* = sfProcvar              # param escapes
+  sfBase* = sfDiscriminant
 
 const
   # getting ready for the future expr/stmt merge
@@ -423,6 +424,7 @@ type
                 # but unfortunately it has measurable impact for compilation
                 # efficiency
     nfTransf,   # node has been transformed
+    nfNoRewrite # node should not be transformed anymore
     nfSem       # node has been checked for semantics
     nfLL        # node has gone through lambda lifting
     nfDotField  # the call can use a dot operator
@@ -475,6 +477,8 @@ type
                       # wildcard type.
     tfHasAsgn         # type has overloaded assignment operator
     tfBorrowDot       # distinct type borrows '.'
+    tfTriggersCompileTime # uses the NimNode type which make the proc
+                          # implicitly '.compiletime'
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -521,6 +525,12 @@ const
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
+  tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
+    # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
+    # deprecated and this mess can be cleaned up.
+  tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
+                      # 'empty' ('@[]' has the type 'seq[empty]').
+  tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
   # type flags that are essential for type equality:
@@ -529,40 +539,52 @@ const
 type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
-    mDefined, mDefinedInScope, mCompiles,
+    mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
-    mUnaryLt, mInc, mDec, mOrd, mNew, mNewFinalize, mNewSeq, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mUnaryLt, mInc, mDec, mOrd,
+    mNew, mNewFinalize, mNewSeq,
+    mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
+    mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
     mGCref, mGCunref,
-
-    mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
-    mDivI64, mModI64, mSucc, mPred,
+    mAddI, mSubI, mMulI, mDivI, mModI,
+    mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
-
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
-    mMinF64, mMaxF64, mAddU, mSubU, mMulU,
-    mDivU, mModU, mEqI, mLeI,
-    mLtI,
-    mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64,
-    mLeU, mLtU, mLeU64, mLtU64,
-    mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
-    mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mEqProc, mUnaryMinusI,
-    mUnaryMinusI64, mAbsI, mAbsI64, mNot,
+    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mMinI, mMaxI,
+    mMinF64, mMaxF64,
+    mAddU, mSubU, mMulU, mDivU, mModU,
+    mEqI, mLeI, mLtI,
+    mEqF64, mLeF64, mLtF64,
+    mLeU, mLtU,
+    mLeU64, mLtU64,
+    mEqEnum, mLeEnum, mLtEnum,
+    mEqCh, mLeCh, mLtCh,
+    mEqB, mLeB, mLtB,
+    mEqRef, mEqUntracedRef, mLePtr, mLtPtr, mEqCString,
+    mXor, mEqProc,
+    mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
-    mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
-    mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
-    mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
-    mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
-    mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet,
-    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr, mSlice,
+    mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
+    mZe8ToI, mZe8ToI64,
+    mZe16ToI, mZe16ToI64,
+    mZe32ToI64, mZeIToI64,
+    mToU8, mToU16, mToU32,
+    mToFloat, mToBiggestFloat,
+    mToInt, mToBiggestInt,
+    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mStrToStr, mEnumToStr,
+    mAnd, mOr,
+    mEqStr, mLeStr, mLtStr,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mConStrStr, mSlice,
     mDotDot, # this one is only necessary to give nice compile time warnings
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr, mExit, mSetLengthStr, mSetLengthSeq,
+    mInRange, mInSet, mRepr, mExit,
+    mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
@@ -584,42 +606,53 @@ type
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
     mNBindSym, mLocals, mNCallSite,
-    mEqIdent, mEqNimrodNode, mNHint, mNWarning, mNError,
-    mInstantiationInfo, mGetTypeInfo, mNGenSym
+    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
+    mNHint, mNWarning, mNError,
+    mInstantiationInfo, mGetTypeInfo, mNGenSym,
+    mNimvm
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
   ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
     mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mArrGet, mArrPut, mAsgn,
     mIncl, mExcl, mCard, mChr,
-    mAddI, mSubI, mMulI, mDivI, mModI, mAddI64, mSubI64, mMulI64,
-    mDivI64, mModI64, mAddF64, mSubF64, mMulF64, mDivF64,
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI, mMinI, mMaxI,
-    mShrI64, mShlI64, mBitandI64, mBitorI64, mBitxorI64,
-    mMinF64, mMaxF64, mAddU, mSubU, mMulU,
-    mDivU, mModU, mEqI, mLeI,
-    mLtI,
-    mEqI64, mLeI64, mLtI64, mEqF64, mLeF64, mLtF64,
-    mLeU, mLtU, mLeU64, mLtU64,
-    mEqEnum, mLeEnum, mLtEnum, mEqCh, mLeCh, mLtCh, mEqB, mLeB, mLtB, mEqRef,
-    mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor, mUnaryMinusI,
-    mUnaryMinusI64, mAbsI, mAbsI64, mNot,
-    mUnaryPlusI, mBitnotI,
-    mBitnotI64, mUnaryPlusF64, mUnaryMinusF64, mAbsF64, mZe8ToI, mZe8ToI64,
-    mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64, mToU8, mToU16, mToU32,
-    mToFloat, mToBiggestFloat, mToInt, mToBiggestInt, mCharToStr, mBoolToStr,
-    mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr,
-    mAnd, mOr, mEqStr, mLeStr, mLtStr, mEqSet, mLeSet, mLtSet, mMulSet,
-    mPlusSet, mMinusSet, mSymDiffSet, mConStrStr,
-    mAppendStrCh, mAppendStrStr, mAppendSeqElem,
+    mAddI, mSubI, mMulI, mDivI, mModI,
+    mAddF64, mSubF64, mMulF64, mDivF64,
+    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mMinI, mMaxI,
+    mMinF64, mMaxF64,
+    mAddU, mSubU, mMulU, mDivU, mModU,
+    mEqI, mLeI, mLtI,
+    mEqF64, mLeF64, mLtF64,
+    mLeU, mLtU,
+    mLeU64, mLtU64,
+    mEqEnum, mLeEnum, mLtEnum,
+    mEqCh, mLeCh, mLtCh,
+    mEqB, mLeB, mLtB,
+    mEqRef, mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor,
+    mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
+    mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
+    mZe8ToI, mZe8ToI64,
+    mZe16ToI, mZe16ToI64,
+    mZe32ToI64, mZeIToI64,
+    mToU8, mToU16, mToU32,
+    mToFloat, mToBiggestFloat,
+    mToInt, mToBiggestInt,
+    mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
+    mStrToStr, mEnumToStr,
+    mAnd, mOr,
+    mEqStr, mLeStr, mLtStr,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr,
     mCopyStr, mCopyStrLast}
   # magics that require special semantic checking and
   # thus cannot be overloaded (also documented in the spec!):
   SpecialSemMagics* = {
     mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf,
-    mEcho, mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
+    mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
 
 type
   PNode* = ref TNode
@@ -679,6 +712,7 @@ type
     lfSingleUse               # no location yet and will only be used once
   TStorageLoc* = enum
     OnUnknown,                # location is unknown (stack, heap or static)
+    OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
     OnHeap                    # location is on heap or global
                               # (reference counting needed)
@@ -704,6 +738,8 @@ type
     name*: Rope
     path*: PNode              # can be a string literal!
 
+  CompilesId* = int ## id that is used for the caching logic within
+                    ## ``system.compiles``. See the seminst module.
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
@@ -711,6 +747,7 @@ type
                               # needed in caas mode for purging the cache
                               # XXX: it's possible to switch to a
                               # simple ref count here
+    compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
 
@@ -747,6 +784,7 @@ type
       tab*: TStrTable         # interface table for modules
     of skLet, skVar, skField, skForVar:
       guard*: PSym
+      bitsize*: int
     else: nil
     magic*: TMagic
     typ*: PType
@@ -842,7 +880,7 @@ type
     data*: TIdNodePairSeq
 
   TNodePair* = object
-    h*: THash                 # because it is expensive to compute!
+    h*: Hash                 # because it is expensive to compute!
     key*: PNode
     val*: int
 
@@ -947,6 +985,9 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
+template `-|`*(b, s: expr): expr =
+  (if b >= 0: b else: s.len + b)
+
 # son access operators with support for negative indices
 template `{}`*(n: PNode, i: int): expr = n[i -| n]
 template `{}=`*(n: PNode, i: int, s: PNode): stmt =
@@ -1000,7 +1041,8 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id < 2000:
+  #if result.id == 93289:
+  #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
 
 var emptyNode* = newNode(nkEmpty)
@@ -1198,23 +1240,11 @@ proc newSons*(father: PType, length: int) =
   else:
     setLen(father.sons, length)
 
-proc sonsLen*(n: PType): int =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
-
-proc len*(n: PType): int =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
-
-proc sonsLen*(n: PNode): int =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
-
-proc lastSon*(n: PNode): PNode =
-  result = n.sons[sonsLen(n) - 1]
-
-proc lastSon*(n: PType): PType =
-  result = n.sons[sonsLen(n) - 1]
+proc sonsLen*(n: PType): int = n.sons.len
+proc len*(n: PType): int = n.sons.len
+proc sonsLen*(n: PNode): int = n.sons.len
+proc lastSon*(n: PNode): PNode = n.sons[^1]
+proc lastSon*(n: PType): PType = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1356,8 +1386,11 @@ proc propagateToOwner*(owner, elem: PType) =
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
 
+  if tfTriggersCompileTime in elem.flags:
+    owner.flags.incl tfTriggersCompileTime
+
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
-                       tyGenericInvocation}:
+                       tyGenericInvocation, tyPtr}:
     let elemB = elem.skipTypes({tyGenericInst})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
@@ -1496,6 +1529,9 @@ proc getFloat*(a: PNode): BiggestFloat =
 proc getStr*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
+  of nkNilLit:
+    # let's hope this fixes more problems than it creates:
+    result = nil
   else:
     internalError(a.info, "getStr")
     result = ""
@@ -1553,6 +1589,14 @@ proc makeStmtList*(n: PNode): PNode =
     result = newNodeI(nkStmtList, n.info)
     result.add n
 
+proc skipStmtList*(n: PNode): PNode =
+  if n.kind in {nkStmtList, nkStmtListExpr}:
+    for i in 0 .. n.len-2:
+      if n[i].kind notin {nkEmpty, nkCommentStmt}: return n
+    result = n.lastSon
+  else:
+    result = n
+
 proc createMagic*(name: string, m: TMagic): PSym =
   result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
   result.magic = m
@@ -1560,3 +1604,10 @@ proc createMagic*(name: string, m: TMagic): PSym =
 let
   opNot* = createMagic("not", mNot)
   opContains* = createMagic("contains", mInSet)
+
+when false:
+  proc containsNil*(n: PNode): bool =
+    # only for debugging
+    if n.isNil: return true
+    for i in 0 ..< n.safeLen:
+      if n[i].containsNil: return true

@@ -342,6 +342,34 @@ builtin ``len`` procedure; the length never counts the terminating zero.
 The assignment operator for strings always copies the string.
 The ``&`` operator concatenates strings.
 
+Most native Nim types support conversion to strings with the special ``$`` proc.
+When calling the ``echo`` proc, for example, the built-in stringify operation
+for the parameter is called:
+
+.. code-block:: nim
+
+  echo 3 # calls `$` for `int`
+
+Whenever a user creates a specialized object, implementation of this procedure
+provides for ``string`` representation.
+
+.. code-block:: nim
+  type
+    Person = object
+      name: string
+      age: int
+
+  proc `$`(p: Person): string = # `$` always returns a string
+    result = p.name & " is " &
+            $p.age & # we *need* the `$` in front of p.age, which
+                     # is natively an integer, to convert it to
+                     # a string
+            " years old."
+
+While ``$p.name`` can also be used, the ``$`` operation on a string does
+nothing. Note that we cannot rely on automatic conversion from an ``int`` to
+a ``string`` like we can for the ``echo`` proc.
+
 Strings are compared by their lexicographical order. All comparison operators
 are available. Strings can be indexed like arrays (lower bound is 0). Unlike
 arrays, they can be used in case statements:
@@ -462,6 +490,11 @@ to an open array parameter.
 The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
 
+.. code-block:: nim
+  proc testOpenArray(x: openArray[int]) = echo repr(x)
+
+  testOpenArray([1,2,3])  # array[]
+  testOpenArray(@[1,2,3]) # seq[]
 
 Varargs
 -------
@@ -560,11 +593,12 @@ can also be defined with indentation instead of ``[]``:
 
 Objects provide many features that tuples do not. Object provide inheritance
 and information hiding. Objects have access to their type at runtime, so that
-the ``of`` operator can be used to determine the object's type.
+the ``of`` operator can be used to determine the object's type. The ``of`` operator
+is similar to the ``instanceof`` operator in Java.
 
 .. code-block:: nim
   type
-    Person {.inheritable.} = object
+    Person = object of RootObj
       name*: string   # the * means that `name` is accessible from other modules
       age: int        # no * means that the field is hidden
 
@@ -575,6 +609,7 @@ the ``of`` operator can be used to determine the object's type.
     student: Student
     person: Person
   assert(student of Student) # is true
+  assert(student of Person) # also true
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
@@ -593,6 +628,7 @@ an ``object`` type or a ``ref object`` type:
 .. code-block:: nim
   var student = Student(name: "Anton", age: 5, id: 3)
 
+Note that, unlike tuples, objects require the field names along with their values.
 For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 
@@ -803,7 +839,7 @@ exclude ``nil`` as a valid value with the ``not nil`` annotation:
   p(x)
 
 The compiler ensures that every code path initializes variables which contain
-not nilable pointers. The details of this analysis are still to be specified
+non nilable pointers. The details of this analysis are still to be specified
 here.
 
 
@@ -963,7 +999,7 @@ Most calling conventions exist only for the Windows 32-bit platform.
 Assigning/passing a procedure to a procedural variable is only allowed if one
 of the following conditions hold:
 1) The procedure that is accessed resides in the current module.
-2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma`_).
+2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma <#pragmas-procvar-pragma>`_).
 3) The procedure has a calling convention that differs from ``nimcall``.
 4) The procedure is anonymous.
 
@@ -1132,7 +1168,7 @@ that don't. Distinct types provide a means to introduce a new string type
 
 
 It is an essential property of abstract types that they **do not** imply a
-subtype relation between the abtract type and its base type. Explict type
+subtype relation between the abstract type and its base type. Explicit type
 conversions from ``string`` to ``SQL`` are allowed:
 
 .. code-block:: nim
@@ -1197,3 +1233,27 @@ However, a ``void`` type cannot be inferred in generic code:
 
 The ``void`` type is only valid for parameters and return types; other symbols
 cannot have the type ``void``.
+
+
+Auto type
+---------
+
+The ``auto`` type can only be used for return types and parameters. For return
+types it causes the compiler to infer the type from the routine body:
+
+.. code-block:: nim
+  proc returnsInt(): auto = 1984
+
+For parameters it currently creates implicitly generic routines:
+
+.. code-block:: nim
+  proc foo(a, b: auto) = discard
+
+Is the same as:
+
+.. code-block:: nim
+  proc foo[T1, T2](a: T1, b: T2) = discard
+
+However later versions of the language might change this to mean "infer the
+parameters' types from the body". Then the above ``foo`` would be rejected as
+the parameters' types can not be infered from an empty ``discard`` statement.

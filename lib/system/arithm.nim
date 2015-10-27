@@ -10,24 +10,121 @@
 
 # simple integer arithmetic with overflow checking
 
-proc raiseOverflow {.compilerproc, noinline, noreturn.} =
+proc raiseOverflow {.compilerproc, noinline.} =
   # a single proc to reduce code size to a minimum
   sysFatal(OverflowError, "over- or underflow")
 
-proc raiseDivByZero {.compilerproc, noinline, noreturn.} =
+proc raiseDivByZero {.compilerproc, noinline.} =
   sysFatal(DivByZeroError, "division by zero")
 
-proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
-  result = a +% b
-  if (result xor a) >= int64(0) or (result xor b) >= int64(0):
-    return result
-  raiseOverflow()
+when defined(builtinOverflow):
+  # Builtin compiler functions for improved performance
+  when sizeof(clong) == 8:
+    proc addInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+      importc: "__builtin_saddl_overflow", nodecl, nosideeffect.}
 
-proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
-  result = a -% b
-  if (result xor a) >= int64(0) or (result xor not b) >= int64(0):
-    return result
-  raiseOverflow()
+    proc subInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+      importc: "__builtin_ssubl_overflow", nodecl, nosideeffect.}
+
+    proc mulInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+      importc: "__builtin_smull_overflow", nodecl, nosideeffect.}
+
+  elif sizeof(clonglong) == 8:
+    proc addInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+      importc: "__builtin_saddll_overflow", nodecl, nosideeffect.}
+
+    proc subInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+      importc: "__builtin_ssubll_overflow", nodecl, nosideeffect.}
+
+    proc mulInt64Overflow[T: int64|int](a, b: T, c: var T): bool {.
+      importc: "__builtin_smulll_overflow", nodecl, nosideeffect.}
+
+  when sizeof(int) == 8:
+    proc addIntOverflow(a, b: int, c: var int): bool {.inline.} =
+      addInt64Overflow(a, b, c)
+
+    proc subIntOverflow(a, b: int, c: var int): bool {.inline.} =
+      subInt64Overflow(a, b, c)
+
+    proc mulIntOverflow(a, b: int, c: var int): bool {.inline.} =
+      mulInt64Overflow(a, b, c)
+
+  elif sizeof(int) == 4 and sizeof(cint) == 4:
+    proc addIntOverflow(a, b: int, c: var int): bool {.
+      importc: "__builtin_sadd_overflow", nodecl, nosideeffect.}
+
+    proc subIntOverflow(a, b: int, c: var int): bool {.
+      importc: "__builtin_ssub_overflow", nodecl, nosideeffect.}
+
+    proc mulIntOverflow(a, b: int, c: var int): bool {.
+      importc: "__builtin_smul_overflow", nodecl, nosideeffect.}
+
+  proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
+    if addInt64Overflow(a, b, result):
+      raiseOverflow()
+
+  proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
+    if subInt64Overflow(a, b, result):
+      raiseOverflow()
+
+  proc mulInt64(a, b: int64): int64 {.compilerproc, inline.} =
+    if mulInt64Overflow(a, b, result):
+      raiseOverflow()
+else:
+  proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
+    result = a +% b
+    if (result xor a) >= int64(0) or (result xor b) >= int64(0):
+      return result
+    raiseOverflow()
+
+  proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
+    result = a -% b
+    if (result xor a) >= int64(0) or (result xor not b) >= int64(0):
+      return result
+    raiseOverflow()
+
+  #
+  # This code has been inspired by Python's source code.
+  # The native int product x*y is either exactly right or *way* off, being
+  # just the last n bits of the true product, where n is the number of bits
+  # in an int (the delivered product is the true product plus i*2**n for
+  # some integer i).
+  #
+  # The native float64 product x*y is subject to three
+  # rounding errors: on a sizeof(int)==8 box, each cast to double can lose
+  # info, and even on a sizeof(int)==4 box, the multiplication can lose info.
+  # But, unlike the native int product, it's not in *range* trouble:  even
+  # if sizeof(int)==32 (256-bit ints), the product easily fits in the
+  # dynamic range of a float64. So the leading 50 (or so) bits of the float64
+  # product are correct.
+  #
+  # We check these two ways against each other, and declare victory if they're
+  # approximately the same. Else, because the native int product is the only
+  # one that can lose catastrophic amounts of information, it's the native int
+  # product that must have overflowed.
+  #
+  proc mulInt64(a, b: int64): int64 {.compilerproc.} =
+    var
+      resAsFloat, floatProd: float64
+    result = a *% b
+    floatProd = toBiggestFloat(a) # conversion
+    floatProd = floatProd * toBiggestFloat(b)
+    resAsFloat = toBiggestFloat(result)
+
+    # Fast path for normal case: small multiplicands, and no info
+    # is lost in either method.
+    if resAsFloat == floatProd: return result
+
+    # Somebody somewhere lost info. Close enough, or way off? Note
+    # that a != 0 and b != 0 (else resAsFloat == floatProd == 0).
+    # The difference either is or isn't significant compared to the
+    # true value (of which floatProd is a good approximation).
+
+    # abs(diff)/abs(prod) <= 1/32 iff
+    #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
+    if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
+      return result
+    raiseOverflow()
 
 proc negInt64(a: int64): int64 {.compilerProc, inline.} =
   if a != low(int64): return -a
@@ -50,50 +147,6 @@ proc modInt64(a, b: int64): int64 {.compilerProc, inline.} =
   if b == int64(0):
     raiseDivByZero()
   return a mod b
-
-#
-# This code has been inspired by Python's source code.
-# The native int product x*y is either exactly right or *way* off, being
-# just the last n bits of the true product, where n is the number of bits
-# in an int (the delivered product is the true product plus i*2**n for
-# some integer i).
-#
-# The native float64 product x*y is subject to three
-# rounding errors: on a sizeof(int)==8 box, each cast to double can lose
-# info, and even on a sizeof(int)==4 box, the multiplication can lose info.
-# But, unlike the native int product, it's not in *range* trouble:  even
-# if sizeof(int)==32 (256-bit ints), the product easily fits in the
-# dynamic range of a float64. So the leading 50 (or so) bits of the float64
-# product are correct.
-#
-# We check these two ways against each other, and declare victory if they're
-# approximately the same. Else, because the native int product is the only
-# one that can lose catastrophic amounts of information, it's the native int
-# product that must have overflowed.
-#
-proc mulInt64(a, b: int64): int64 {.compilerproc.} =
-  var
-    resAsFloat, floatProd: float64
-  result = a *% b
-  floatProd = toBiggestFloat(a) # conversion
-  floatProd = floatProd * toBiggestFloat(b)
-  resAsFloat = toBiggestFloat(result)
-
-  # Fast path for normal case: small multiplicands, and no info
-  # is lost in either method.
-  if resAsFloat == floatProd: return result
-
-  # Somebody somewhere lost info. Close enough, or way off? Note
-  # that a != 0 and b != 0 (else resAsFloat == floatProd == 0).
-  # The difference either is or isn't significant compared to the
-  # true value (of which floatProd is a good approximation).
-
-  # abs(diff)/abs(prod) <= 1/32 iff
-  #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
-  if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
-    return result
-  raiseOverflow()
-
 
 proc absInt(a: int): int {.compilerProc, inline.} =
   if a != low(int):
@@ -246,6 +299,21 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
             :"%edx"
     """
 
+when not declared(addInt) and defined(builtinOverflow):
+  proc addInt(a, b: int): int {.compilerProc, inline.} =
+    if addIntOverflow(a, b, result):
+      raiseOverflow()
+
+when not declared(subInt) and defined(builtinOverflow):
+  proc subInt(a, b: int): int {.compilerProc, inline.} =
+    if subIntOverflow(a, b, result):
+      raiseOverflow()
+
+when not declared(mulInt) and defined(builtinOverflow):
+  proc mulInt(a, b: int): int {.compilerProc, inline.} =
+    if mulIntOverflow(a, b, result):
+      raiseOverflow()
+
 # Platform independent versions of the above (slower!)
 when not declared(addInt):
   proc addInt(a, b: int): int {.compilerProc, inline.} =
@@ -327,13 +395,13 @@ when not declared(mulInt):
 # We avoid setting the FPU control word here for compatibility with libraries
 # written in other languages.
 
-proc raiseFloatInvalidOp {.noinline, noreturn.} =
+proc raiseFloatInvalidOp {.noinline.} =
   sysFatal(FloatInvalidOpError, "FPU operation caused a NaN result")
 
 proc nanCheck(x: float64) {.compilerProc, inline.} =
   if x != x: raiseFloatInvalidOp()
 
-proc raiseFloatOverflow(x: float64) {.noinline, noreturn.} =
+proc raiseFloatOverflow(x: float64) {.noinline.} =
   if x > 0.0:
     sysFatal(FloatOverflowError, "FPU operation caused an overflow")
   else:

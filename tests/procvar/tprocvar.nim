@@ -13,6 +13,6 @@ proc huh(x, y: var int) =
 
 proc so(c: TCallback) =
   c(2, 4)
-  
+
 so(huh)
 

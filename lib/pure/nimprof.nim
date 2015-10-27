@@ -26,17 +26,19 @@ const
   withThreads = compileOption("threads")
   tickCountCorrection = 50_000
 
-when not declared(system.TStackTrace):
-  type TStackTrace = array [0..20, cstring]
+when not declared(system.StackTrace):
+  type StackTrace = array [0..20, cstring]
+  {.deprecated: [TStackTrace: StackTrace].}
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
 type
-  TProfileEntry = object
+  ProfileEntry = object
     total: int
-    st: TStackTrace
-  TProfileData = array [0..64*1024-1, ptr TProfileEntry]
+    st: StackTrace
+  ProfileData = array [0..64*1024-1, ptr ProfileEntry]
+{.deprecated: [TProfileEntry: ProfileEntry, TProfileData: ProfileData].}
 
-proc `==`(a, b: TStackTrace): bool =
+proc `==`(a, b: StackTrace): bool =
   for i in 0 .. high(a):
     if a[i] != b[i]: return false
   result = true
@@ -44,13 +46,13 @@ proc `==`(a, b: TStackTrace): bool =
 # XXX extract this data structure; it is generally useful ;-)
 # However a chain length of over 3000 is suspicious...
 var
-  profileData: TProfileData
+  profileData: ProfileData
   emptySlots = profileData.len * 3 div 2
   maxChainLen = 0
   totalCalls = 0
 
 when not defined(memProfiler):
-  var interval: TNanos = 5_000_000 - tickCountCorrection # 5ms
+  var interval: Nanos = 5_000_000 - tickCountCorrection # 5ms
 
   proc setSamplingFrequency*(intervalInUs: int) =
     ## set this to change the sampling frequency. Default value is 5ms.
@@ -62,11 +64,11 @@ when not defined(memProfiler):
 when withThreads:
   import locks
   var
-    profilingLock: TLock
+    profilingLock: Lock
 
   initLock profilingLock
 
-proc hookAux(st: TStackTrace, costs: int) =
+proc hookAux(st: StackTrace, costs: int) =
   # this is quite performance sensitive!
   when withThreads: acquire profilingLock
   inc totalCalls
@@ -94,8 +96,8 @@ proc hookAux(st: TStackTrace, costs: int) =
     var chain = 0
     while true:
       if profileData[h] == nil:
-        profileData[h] = cast[ptr TProfileEntry](
-                             allocShared0(sizeof(TProfileEntry)))
+        profileData[h] = cast[ptr ProfileEntry](
+                             allocShared0(sizeof(ProfileEntry)))
         profileData[h].total = costs
         profileData[h].st = st
         dec emptySlots
@@ -115,7 +117,7 @@ when defined(memProfiler):
   var
     gTicker {.threadvar.}: int
 
-  proc hook(st: TStackTrace, size: int) {.nimcall.} =
+  proc hook(st: StackTrace, size: int) {.nimcall.} =
     if gTicker == 0:
       gTicker = -1
       when defined(ignoreAllocationSize):
@@ -127,33 +129,33 @@ when defined(memProfiler):
 
 else:
   var
-    t0 {.threadvar.}: TTicks
+    t0 {.threadvar.}: Ticks
 
-  proc hook(st: TStackTrace) {.nimcall.} =
+  proc hook(st: StackTrace) {.nimcall.} =
     if interval == 0:
       hookAux(st, 1)
     elif int64(t0) == 0 or getTicks() - t0 > interval:
       hookAux(st, 1)
       t0 = getTicks()
 
-proc getTotal(x: ptr TProfileEntry): int =
+proc getTotal(x: ptr ProfileEntry): int =
   result = if isNil(x): 0 else: x.total
 
-proc cmpEntries(a, b: ptr TProfileEntry): int =
+proc cmpEntries(a, b: ptr ProfileEntry): int =
   result = b.getTotal - a.getTotal
 
 proc `//`(a, b: int): string =
   result = format("$1/$2 = $3%", a, b, formatFloat(a / b * 100.0, ffDefault, 2))
 
 proc writeProfile() {.noconv.} =
-  when declared(system.TStackTrace):
+  when declared(system.StackTrace):
     system.profilerHook = nil
   const filename = "profile_results.txt"
   echo "writing " & filename & "..."
   var f: File
   if open(f, filename, fmWrite):
     sort(profileData, cmpEntries)
-    writeln(f, "total executions of each stack trace:")
+    writeLine(f, "total executions of each stack trace:")
     var entries = 0
     for i in 0..high(profileData):
       if profileData[i] != nil: inc entries
@@ -161,7 +163,7 @@ proc writeProfile() {.noconv.} =
     var perProc = initCountTable[string]()
     for i in 0..entries-1:
       var dups = initSet[string]()
-      for ii in 0..high(TStackTrace):
+      for ii in 0..high(StackTrace):
         let procname = profileData[i].st[ii]
         if isNil(procname): break
         let p = $procname
@@ -173,13 +175,13 @@ proc writeProfile() {.noconv.} =
     for i in 0..min(100, entries-1):
       if profileData[i].total > 1:
         inc sum, profileData[i].total
-        writeln(f, "Entry: ", i+1, "/", entries, " Calls: ",
+        writeLine(f, "Entry: ", i+1, "/", entries, " Calls: ",
           profileData[i].total // totalCalls, " [sum: ", sum, "; ",
           sum // totalCalls, "]")
-        for ii in 0..high(TStackTrace):
+        for ii in 0..high(StackTrace):
           let procname = profileData[i].st[ii]
           if isNil(procname): break
-          writeln(f, "  ", procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", procname, " ", perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:
@@ -189,16 +191,16 @@ var
   disabled: int
 
 proc disableProfiling*() =
-  when declared(system.TStackTrace):
+  when declared(system.StackTrace):
     atomicDec disabled
     system.profilerHook = nil
 
 proc enableProfiling*() =
-  when declared(system.TStackTrace):
+  when declared(system.StackTrace):
     if atomicInc(disabled) >= 0:
       system.profilerHook = hook
 
-when declared(system.TStackTrace):
+when declared(system.StackTrace):
   system.profilerHook = hook
   addQuitProc(writeProfile)
 

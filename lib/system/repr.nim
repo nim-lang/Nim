@@ -21,9 +21,22 @@ proc reprPointer(x: pointer): string {.compilerproc.} =
   return $buf
 
 proc `$`(x: uint64): string =
-  var buf: array [0..59, char]
-  discard c_sprintf(buf, "%llu", x)
-  return $buf
+  if x == 0:
+    result = "0"
+  else:
+    var buf: array [60, char]
+    var i = 0
+    var n = x
+    while n != 0:
+      let nn = n div 10'u64
+      buf[i] = char(n - 10'u64 * nn + ord('0'))
+      inc i
+      n = nn
+
+    let half = i div 2
+    # Reverse
+    for t in 0 .. < half: swap(buf[t], buf[i-t-1])
+    result = $buf
 
 proc reprStrAux(result: var string, s: string) =
   if cast[pointer](s) == nil:
@@ -121,38 +134,39 @@ proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
   reprSetAux(result, p, typ)
 
 type
-  TReprClosure {.final.} = object # we cannot use a global variable here
+  ReprClosure {.final.} = object # we cannot use a global variable here
                                   # as this wouldn't be thread-safe
-    when declared(TCellSet):
-      marked: TCellSet
+    when declared(CellSet):
+      marked: CellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
+{.deprecated: [TReprClosure: ReprClosure].}
 
 when not defined(useNimRtl):
-  proc initReprClosure(cl: var TReprClosure) =
+  proc initReprClosure(cl: var ReprClosure) =
     # Important: cellsets does not lock the heap when doing allocations! We
     # have to do it here ...
     when hasThreadSupport and hasSharedHeap and declared(heapLock):
       AcquireSys(HeapLock)
-    when declared(TCellSet):
+    when declared(CellSet):
       init(cl.marked)
     cl.recdepth = -1      # default is to display everything!
     cl.indent = 0
 
-  proc deinitReprClosure(cl: var TReprClosure) =
-    when declared(TCellSet): deinit(cl.marked)
-    when hasThreadSupport and hasSharedHeap and declared(heapLock): 
+  proc deinitReprClosure(cl: var ReprClosure) =
+    when declared(CellSet): deinit(cl.marked)
+    when hasThreadSupport and hasSharedHeap and declared(heapLock):
       ReleaseSys(HeapLock)
 
-  proc reprBreak(result: var string, cl: TReprClosure) =
+  proc reprBreak(result: var string, cl: ReprClosure) =
     add result, "\n"
     for i in 0..cl.indent-1: add result, ' '
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure) {.benign.}
+               cl: var ReprClosure) {.benign.}
 
   proc reprArray(result: var string, p: pointer, typ: PNimType,
-                 cl: var TReprClosure) =
+                 cl: var ReprClosure) =
     add result, "["
     var bs = typ.base.size
     for i in 0..typ.size div bs - 1:
@@ -161,7 +175,7 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
-                    cl: var TReprClosure) =
+                    cl: var ReprClosure) =
     if p == nil:
       add result, "nil"
       return
@@ -174,7 +188,7 @@ when not defined(useNimRtl):
     add result, "]"
 
   proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
-                     cl: var TReprClosure) {.benign.} =
+                     cl: var ReprClosure) {.benign.} =
     case n.kind
     of nkNone: sysAssert(false, "reprRecordAux")
     of nkSlot:
@@ -191,20 +205,26 @@ when not defined(useNimRtl):
       if m != nil: reprRecordAux(result, p, m, cl)
 
   proc reprRecord(result: var string, p: pointer, typ: PNimType,
-                  cl: var TReprClosure) =
+                  cl: var ReprClosure) =
     add result, "["
-    let oldLen = result.len
-    reprRecordAux(result, p, typ.node, cl)
-    if typ.base != nil: 
-      if oldLen != result.len: add result, ",\n"
-      reprRecordAux(result, p, typ.base.node, cl)
+    var curTyp = typ
+    var first = true
+    while curTyp != nil:
+      var part = ""
+      reprRecordAux(part, p, curTyp.node, cl)
+      if part.len > 0:
+        if not first:
+          add result, ",\n"
+        add result, part
+        first = false
+      curTyp = curTyp.base
     add result, "]"
 
   proc reprRef(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure) =
+               cl: var ReprClosure) =
     # we know that p is not nil here:
-    when declared(TCellSet):
-      when defined(boehmGC) or defined(nogc):
+    when declared(CellSet):
+      when defined(boehmGC) or defined(gogc) or defined(nogc):
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)
@@ -216,7 +236,7 @@ when not defined(useNimRtl):
         reprAux(result, p, typ.base, cl)
 
   proc reprAux(result: var string, p: pointer, typ: PNimType,
-               cl: var TReprClosure) =
+               cl: var ReprClosure) =
     if cl.recdepth == 0:
       add result, "..."
       return
@@ -225,7 +245,7 @@ when not defined(useNimRtl):
     of tySet: reprSetAux(result, p, typ)
     of tyArray, tyArrayConstr: reprArray(result, p, typ, cl)
     of tyTuple: reprRecord(result, p, typ, cl)
-    of tyObject: 
+    of tyObject:
       var t = cast[ptr PNimType](p)[]
       reprRecord(result, p, t, cl)
     of tyRef, tyPtr:
@@ -241,7 +261,7 @@ when not defined(useNimRtl):
     of tyInt64: add result, $(cast[ptr int64](p)[])
     of tyUInt8: add result, $ze(cast[ptr int8](p)[])
     of tyUInt16: add result, $ze(cast[ptr int16](p)[])
-    
+
     of tyFloat: add result, $(cast[ptr float](p)[])
     of tyFloat32: add result, $(cast[ptr float32](p)[])
     of tyFloat64: add result, $(cast[ptr float64](p)[])
@@ -249,7 +269,10 @@ when not defined(useNimRtl):
     of tyBool: add result, reprBool(cast[ptr bool](p)[])
     of tyChar: add result, reprChar(cast[ptr char](p)[])
     of tyString: reprStrAux(result, cast[ptr string](p)[])
-    of tyCString: reprStrAux(result, $(cast[ptr cstring](p)[]))
+    of tyCString:
+      let cs = cast[ptr cstring](p)[]
+      if cs.isNil: add result, "nil"
+      else: reprStrAux(result, $cs)
     of tyRange: reprAux(result, p, typ.base, cl)
     of tyProc, tyPointer:
       if cast[PPointer](p)[] == nil: add result, "nil"
@@ -261,7 +284,7 @@ when not defined(useNimRtl):
 proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
                    compilerRtl.} =
   var
-    cl: TReprClosure
+    cl: ReprClosure
   initReprClosure(cl)
   result = "["
   var bs = elemtyp.size
@@ -274,7 +297,7 @@ proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string =
     var
-      cl: TReprClosure
+      cl: ReprClosure
     initReprClosure(cl)
     result = ""
     if typ.kind in {tyObject, tyTuple, tyArray, tyArrayConstr, tySet}:
@@ -284,4 +307,3 @@ when not defined(useNimRtl):
       reprAux(result, addr(p), typ, cl)
     add result, "\n"
     deinitReprClosure(cl)
-

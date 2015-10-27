@@ -13,7 +13,7 @@ of r"[\+\-\*\?]+":
   return tkOperator
 else:
   return tkUnknown
-  
+
 case_token: inc i
 
 #bug #488

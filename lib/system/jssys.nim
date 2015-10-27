@@ -15,13 +15,13 @@ else:
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
-  PSafePoint = ptr TSafePoint
-  TSafePoint {.compilerproc, final.} = object
+  PSafePoint = ptr SafePoint
+  SafePoint {.compilerproc, final.} = object
     prev: PSafePoint # points to next safe point
     exc: ref Exception
 
-  PCallFrame = ptr TCallFrame
-  TCallFrame {.importc, nodecl, final.} = object
+  PCallFrame = ptr CallFrame
+  CallFrame {.importc, nodecl, final.} = object
     prev: PCallFrame
     procname: cstring
     line: int # current line number
@@ -33,12 +33,11 @@ type
     lineNumber {.importc.}: int
     message {.importc.}: cstring
     stack {.importc.}: cstring
+{.deprecated: [TSafePoint: SafePoint, TCallFrame: CallFrame].}
 
 var
   framePtr {.importc, nodecl, volatile.}: PCallFrame
-  excHandler {.importc, nodecl, volatile.}: PSafePoint = nil
-    # list of exception handlers
-    # a global variable for the root of all try blocks
+  excHandler {.importc, nodecl, volatile.}: int = 0
   lastJSError {.importc, nodecl, volatile.}: PJSError = nil
 
 {.push stacktrace: off, profiler:off.}
@@ -51,21 +50,20 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result[0] = x
 
 proc getCurrentExceptionMsg*(): string =
-  if excHandler != nil and excHandler.exc != nil:
-    return $excHandler.exc.msg
-  elif lastJSError != nil:
+  if lastJSError != nil:
     return $lastJSError.message
   else:
     return ""
 
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
-    TTempFrame = tuple[procname: cstring, line: int]
+    TempFrame = tuple[procname: cstring, line: int]
+  {.deprecated: [TTempFrame: TempFrame].}
   var
     it = f
     i = 0
     total = 0
-    tempFrames: array [0..63, TTempFrame]
+    tempFrames: array [0..63, TempFrame]
   while it != nil and i <= high(tempFrames):
     tempFrames[i].procname = it.procname
     tempFrames[i].line = it.line
@@ -97,32 +95,41 @@ proc rawWriteStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
-proc raiseException(e: ref Exception, ename: cstring) {.
+proc unhandledException(e: ref Exception) {.
     compilerproc, asmNoStackFrame.} =
-  e.name = ename
-  if excHandler != nil:
-    excHandler.exc = e
+  when NimStackTrace:
+    var buf = rawWriteStackTrace()
   else:
-    when NimStackTrace:
-      var buf = rawWriteStackTrace()
-    else:
-      var buf = ""
+    var buf = ""
     if e.msg != nil and e.msg[0] != '\0':
       add(buf, "Error: unhandled exception: ")
       add(buf, e.msg)
     else:
       add(buf, "Error: unhandled exception")
     add(buf, " [")
-    add(buf, ename)
+    add(buf, e.name)
     add(buf, "]\n")
     alert(buf)
-  asm """throw `e`;"""
+
+proc raiseException(e: ref Exception, ename: cstring) {.
+    compilerproc, asmNoStackFrame.} =
+  e.name = ename
+  when not defined(noUnhandledHandler):
+    if excHandler == 0:
+      unhandledException(e)
+  asm "throw `e`;"
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
-  if excHandler == nil:
+  if lastJSError == nil:
     raise newException(ReraiseError, "no exception to reraise")
   else:
-    asm """throw excHandler.exc;"""
+    when not defined(noUnhandledHandler):
+      if excHandler == 0:
+        var isNimException : bool
+        asm "`isNimException` = lastJSError.m_type;"
+        if isNimException:
+          unhandledException(cast[ref Exception](lastJSError))
+    asm "throw lastJSError;"
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
   raise newException(OverflowError, "over- or underflow")
@@ -168,12 +175,28 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
     var len = `s`.length-1;
-    var result = new Array(len);
+    var asciiPart = new Array(len);
     var fcc = String.fromCharCode;
+    var nonAsciiPart = null;
+    var nonAsciiOffset = 0;
     for (var i = 0; i < len; ++i) {
-      result[i] = fcc(`s`[i]);
+      if (nonAsciiPart !== null) {
+        var offset = (i - nonAsciiOffset) * 2;
+        nonAsciiPart[offset] = "%";
+        nonAsciiPart[offset + 1] = `s`[i].toString(16);
+      }
+      else if (`s`[i] < 128)
+        asciiPart[i] = fcc(`s`[i]);
+      else {
+        asciiPart.length = i;
+        nonAsciiOffset = i;
+        nonAsciiPart = new Array((len - i) * 2);
+        --i;
+      }
     }
-    return result.join("");
+    asciiPart = asciiPart.join("");
+    return (nonAsciiPart === null) ?
+        asciiPart : asciiPart + decodeURIComponent(nonAsciiPart.join(""));
   """
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
@@ -260,17 +283,17 @@ proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   """
 
 type
-  TDocument {.importc.} = object of RootObj
+  Document {.importc.} = object of RootObj
     write: proc (text: cstring) {.nimcall.}
     writeln: proc (text: cstring) {.nimcall.}
-    createAttribute: proc (identifier: cstring): ref TNode {.nimcall.}
-    createElement: proc (identifier: cstring): ref TNode {.nimcall.}
-    createTextNode: proc (identifier: cstring): ref TNode {.nimcall.}
-    getElementById: proc (id: cstring): ref TNode {.nimcall.}
-    getElementsByName: proc (name: cstring): seq[ref TNode] {.nimcall.}
-    getElementsByTagName: proc (name: cstring): seq[ref TNode] {.nimcall.}
+    createAttribute: proc (identifier: cstring): ref Node {.nimcall.}
+    createElement: proc (identifier: cstring): ref Node {.nimcall.}
+    createTextNode: proc (identifier: cstring): ref Node {.nimcall.}
+    getElementById: proc (id: cstring): ref Node {.nimcall.}
+    getElementsByName: proc (name: cstring): seq[ref Node] {.nimcall.}
+    getElementsByTagName: proc (name: cstring): seq[ref Node] {.nimcall.}
 
-  TNodeType* = enum
+  NodeType* = enum
     ElementNode = 1,
     AttributeNode,
     TextNode,
@@ -283,35 +306,36 @@ type
     DocumentTypeNode,
     DocumentFragmentNode,
     NotationNode
-  TNode* {.importc.} = object of RootObj
-    attributes*: seq[ref TNode]
-    childNodes*: seq[ref TNode]
+  Node* {.importc.} = object of RootObj
+    attributes*: seq[ref Node]
+    childNodes*: seq[ref Node]
     data*: cstring
-    firstChild*: ref TNode
-    lastChild*: ref TNode
-    nextSibling*: ref TNode
+    firstChild*: ref Node
+    lastChild*: ref Node
+    nextSibling*: ref Node
     nodeName*: cstring
-    nodeType*: TNodeType
+    nodeType*: NodeType
     nodeValue*: cstring
-    parentNode*: ref TNode
-    previousSibling*: ref TNode
-    appendChild*: proc (child: ref TNode) {.nimcall.}
+    parentNode*: ref Node
+    previousSibling*: ref Node
+    appendChild*: proc (child: ref Node) {.nimcall.}
     appendData*: proc (data: cstring) {.nimcall.}
     cloneNode*: proc (copyContent: bool) {.nimcall.}
     deleteData*: proc (start, len: int) {.nimcall.}
     getAttribute*: proc (attr: cstring): cstring {.nimcall.}
-    getAttributeNode*: proc (attr: cstring): ref TNode {.nimcall.}
-    getElementsByTagName*: proc (): seq[ref TNode] {.nimcall.}
+    getAttributeNode*: proc (attr: cstring): ref Node {.nimcall.}
+    getElementsByTagName*: proc (): seq[ref Node] {.nimcall.}
     hasChildNodes*: proc (): bool {.nimcall.}
-    insertBefore*: proc (newNode, before: ref TNode) {.nimcall.}
+    insertBefore*: proc (newNode, before: ref Node) {.nimcall.}
     insertData*: proc (position: int, data: cstring) {.nimcall.}
     removeAttribute*: proc (attr: cstring) {.nimcall.}
-    removeAttributeNode*: proc (attr: ref TNode) {.nimcall.}
-    removeChild*: proc (child: ref TNode) {.nimcall.}
-    replaceChild*: proc (newNode, oldNode: ref TNode) {.nimcall.}
+    removeAttributeNode*: proc (attr: ref Node) {.nimcall.}
+    removeChild*: proc (child: ref Node) {.nimcall.}
+    replaceChild*: proc (newNode, oldNode: ref Node) {.nimcall.}
     replaceData*: proc (start, len: int, text: cstring) {.nimcall.}
     setAttribute*: proc (name, value: cstring) {.nimcall.}
-    setAttributeNode*: proc (attr: ref TNode) {.nimcall.}
+    setAttributeNode*: proc (attr: ref Node) {.nimcall.}
+{.deprecated: [TNode: Node, TNodeType: NodeType, TDocument: Document].}
 
 when defined(kwin):
   proc rawEcho {.compilerproc, asmNoStackFrame.} =
@@ -337,7 +361,7 @@ elif defined(nodejs):
 
 else:
   var
-    document {.importc, nodecl.}: ref TDocument
+    document {.importc, nodecl.}: ref Document
 
   proc ewriteln(x: cstring) =
     var node = document.getElementsByTagName("body")[0]
@@ -508,75 +532,86 @@ proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 type NimString = string # hack for hti.nim
 include "system/hti"
 
+type JSRef = ref RootObj # Fake type.
+
 proc isFatPointer(ti: PNimType): bool =
   # This has to be consistent with the code generator!
   return ti.base.kind notin {tyObject,
     tyArray, tyArrayConstr, tyTuple,
     tyOpenArray, tySet, tyVar, tyRef, tyPtr}
 
-proc nimCopy(x: pointer, ti: PNimType): pointer {.compilerproc.}
+proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef {.compilerproc.}
 
-proc nimCopyAux(dest, src: pointer, n: ptr TNimNode) {.compilerproc.} =
+proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
   case n.kind
   of nkNone: sysAssert(false, "nimCopyAux")
   of nkSlot:
-    asm "`dest`[`n`.offset] = nimCopy(`src`[`n`.offset], `n`.typ);"
+    asm """
+      `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
+    """
   of nkList:
     for i in 0..n.len-1:
       nimCopyAux(dest, src, n.sons[i])
   of nkCase:
     asm """
-      `dest`[`n`.offset] = nimCopy(`src`[`n`.offset], `n`.typ);
+      `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
       for (var i = 0; i < `n`.sons.length; ++i) {
         nimCopyAux(`dest`, `src`, `n`.sons[i][1]);
       }
     """
 
-proc nimCopy(x: pointer, ti: PNimType): pointer =
+proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
     if not isFatPointer(ti):
-      result = x
+      result = src
     else:
-      asm """
-        `result` = [null, 0];
-        `result`[0] = `x`[0];
-        `result`[1] = `x`[1];
-      """
+      asm "`result` = [`src`[0], `src`[1]];"
   of tySet:
     asm """
-      `result` = {};
-      for (var key in `x`) { `result`[key] = `x`[key]; }
+      if (`dest` === null || `dest` === undefined) {
+        `dest` = {};
+      }
+      else {
+        for (var key in `dest`) { delete `dest`[key]; }
+      }
+      for (var key in `src`) { `dest`[key] = `src`[key]; }
+      `result` = `dest`;
     """
   of tyTuple, tyObject:
-    if ti.base != nil: result = nimCopy(x, ti.base)
+    if ti.base != nil: result = nimCopy(dest, src, ti.base)
     elif ti.kind == tyObject:
-      asm "`result` = {m_type: `ti`};"
+      asm "`result` = (`dest` === null || `dest` === undefined) ? {m_type: `ti`} : `dest`;"
     else:
-      asm "`result` = {};"
-    nimCopyAux(result, x, ti.node)
+      asm "`result` = (`dest` === null || `dest` === undefined) ? {} : `dest`;"
+    nimCopyAux(result, src, ti.node)
   of tySequence, tyArrayConstr, tyOpenArray, tyArray:
     asm """
-      `result` = new Array(`x`.length);
-      for (var i = 0; i < `x`.length; ++i) {
-        `result`[i] = nimCopy(`x`[i], `ti`.base);
+      if (`dest` === null || `dest` === undefined) {
+        `dest` = new Array(`src`.length);
+      }
+      else {
+        `dest`.length = `src`.length;
+      }
+      `result` = `dest`;
+      for (var i = 0; i < `src`.length; ++i) {
+        `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
       }
     """
   of tyString:
     asm """
-      if (`x` !== null) {
-        `result` = `x`.slice(0);
+      if (`src` !== null) {
+        `result` = `src`.slice(0);
       }
     """
   else:
-    result = x
+    result = src
 
-proc genericReset(x: pointer, ti: PNimType): pointer {.compilerproc.} =
+proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
+  asm "`result` = null;"
   case ti.kind
   of tyPtr, tyRef, tyVar, tyNil:
-    if not isFatPointer(ti):
-      result = nil
-    else:
+    if isFatPointer(ti):
       asm """
         `result` = [null, 0];
       """
@@ -601,14 +636,14 @@ proc genericReset(x: pointer, ti: PNimType): pointer {.compilerproc.} =
       }
     """
   else:
-    result = nil
+    discard
 
-proc arrayConstr(len: int, value: pointer, typ: PNimType): pointer {.
+proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
                  asmNoStackFrame, compilerproc.} =
   # types are fake
   asm """
     var result = new Array(`len`);
-    for (var i = 0; i < `len`; ++i) result[i] = nimCopy(`value`, `typ`);
+    for (var i = 0; i < `len`; ++i) result[i] = nimCopy(null, `value`, `typ`);
     return result;
   """
 

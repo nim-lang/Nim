@@ -14,9 +14,19 @@ Nim's Documentation
     - | `Language Manual <docs/manual.html>`_
       | The Nim manual is a draft that will evolve into a proper specification.
 
+    - | `Nim Style Guide <docs/nep1.html>`_
+      | The stylistic conventions that Nim's official projects adhere to.
+
     - | `Compiler User Guide <docs/nimc.html>`_
       | The user guide lists command line arguments, special features of the
         compiler, etc.
+
+    - | `NimScript <docs/nims.html>`_
+      | NimScript is the upcoming new way to configure Nim.
+
+    - | `Nim Backend Integration <docs/backends.html>`_
+      | The Backend Integeration guide gives further information of how Nim can
+        interact with C, C++, Objective C and JavaScript.
 
 
 .. container:: standout

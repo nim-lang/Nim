@@ -21,7 +21,7 @@ type
   TTreeIterator* [T,D] = ref object {.inheritable.}
 
   TKeysIterator* [T,D] = ref object of TTreeIterator[T,D]  #this not
-  
+
 var
   it: TKeysIterator[int, string] = nil
 

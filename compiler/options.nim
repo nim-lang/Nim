@@ -13,6 +13,7 @@ import
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
+  useWriteTracking* = false
   hasFFI* = defined(useFFI)
   newScopeForIf* = true
   useCaas* = not defined(noCaas)
@@ -39,7 +40,7 @@ type                          # please make sure we have under 32 options
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optDeadCodeElim,
     optListCmd, optCompileOnly, optNoLinking,
-    optSafeCode,              # only allow safe code
+    optReportConceptFailures, # report 'compiles' or 'concept' matching failures
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
     optGenStaticLib,          # generate a static library
@@ -54,6 +55,7 @@ type                          # please make sure we have under 32 options
     optSkipUserConfigFile,    # skip the users's config file
     optSkipParentConfigFiles, # skip parent dir's config files
     optNoMain,                # do not generate a "main" proc
+    optUseColors,             # use colors for hints, warnings, and errors
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
     optThreadAnalysis,        # thread analysis pass
@@ -81,13 +83,13 @@ type                          # please make sure we have under 32 options
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
+    gcNone, gcBoehm, gcGo, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
 
-  TIdeCmd* = enum
-    ideNone, ideSug, ideCon, ideDef, ideUse
+  IdeCmd* = enum
+    ideNone, ideSug, ideCon, ideDef, ideUse, ideDus
 
 var
-  gIdeCmd*: TIdeCmd
+  gIdeCmd*: IdeCmd
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
@@ -126,9 +128,6 @@ template compilationCachePresent*: expr =
 template optPreserveOrigSource*: expr =
   optEmbedOrigSrc in gGlobalOptions
 
-template optPrintSurroundingSrc*: expr =
-  gVerbosity >= 2
-
 const
   genSubDir* = "nimcache"
   NimExt* = "nim"
@@ -145,10 +144,12 @@ const
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
   gDllOverrides = newStringTable(modeCaseInsensitive)
+  gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
   libpath* = ""
   gProjectName* = "" # holds a name like 'nimrod'
   gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
   gProjectFull* = "" # projectPath/projectName
+  gProjectIsStdin* = false # whether we're compiling from stdin
   gProjectMainIdx*: int32 # the canonical path id of the main module
   nimcacheDir* = ""
   command* = "" # the main command (e.g. cc, check, scan, etc)
@@ -172,7 +173,7 @@ proc existsConfigVar*(key: string): bool =
   result = hasKey(gConfigVars, key)
 
 proc getConfigVar*(key: string): string =
-  result = gConfigVars[key]
+  result = gConfigVars.getOrDefault key
 
 proc setConfigVar*(key, val: string) =
   gConfigVars[key] = val
@@ -182,8 +183,24 @@ proc getOutFile*(filename, ext: string): string =
   else: result = changeFileExt(filename, ext)
 
 proc getPrefixDir*(): string =
-  ## gets the application directory
-  result = splitPath(getAppDir()).head
+  ## Gets the prefix dir, usually the parent directory where the binary resides.
+  ##
+  ## This is overrided by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## global.
+  if gPrefixDir != "": result = gPrefixDir
+  else:
+    result = splitPath(getAppDir()).head
+
+proc setDefaultLibpath*() =
+  # set default value (can be overwritten):
+  if libpath == "":
+    # choose default libpath:
+    var prefix = getPrefixDir()
+    when defined(posix):
+      if prefix == "/usr": libpath = "/usr/lib/nim"
+      elif prefix == "/usr/local": libpath = "/usr/local/lib/nim"
+      else: libpath = joinPath(prefix, "lib")
+    else: libpath = joinPath(prefix, "lib")
 
 proc canonicalizePath*(path: string): string =
   when not FileSystemCaseSensitive: result = path.expandFilename.toLower
@@ -205,7 +222,7 @@ proc removeTrailingDirSep*(path: string): string =
   else:
     result = path
 
-proc getGeneratedPath: string =
+proc getNimcacheDir*: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
 
@@ -261,7 +278,7 @@ proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
   var (head, tail) = splitPath(path)
   #if len(head) > 0: head = shortenDir(head & dirSep)
-  result = joinPath([getGeneratedPath(), changeFileExt(tail, ext)])
+  result = joinPath([getNimcacheDir(), changeFileExt(tail, ext)])
   #echo "toGeneratedFile(", path, ", ", ext, ") = ", result
 
 when noTimeMachine:
@@ -289,14 +306,14 @@ when noTimeMachine:
 proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   var (head, tail) = splitPath(f)
   #if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
-  var subdir = getGeneratedPath() # / head
+  var subdir = getNimcacheDir() # / head
   if createSubDir:
     try:
       createDir(subdir)
       when noTimeMachine:
-       excludeDirFromTimeMachine(subdir)
+        excludeDirFromTimeMachine(subdir)
     except OSError:
-      writeln(stdout, "cannot create directory: " & subdir)
+      writeLine(stdout, "cannot create directory: " & subdir)
       quit(1)
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
@@ -325,13 +342,16 @@ proc rawFindFile2(f: string): string =
   result = ""
 
 proc findFile*(f: string): string {.procvar.} =
-  result = f.rawFindFile
-  if result.len == 0:
-    result = f.toLower.rawFindFile
+  if f.isAbsolute:
+    result = if f.existsFile: f else: ""
+  else:
+    result = f.rawFindFile
     if result.len == 0:
-      result = f.rawFindFile2
+      result = f.toLower.rawFindFile
       if result.len == 0:
-        result = f.toLower.rawFindFile2
+        result = f.rawFindFile2
+        if result.len == 0:
+          result = f.toLower.rawFindFile2
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module
@@ -395,3 +415,20 @@ template cnimdbg*: expr = p.module.module.fileIdx == gProjectMainIdx
 template pnimdbg*: expr = p.lex.fileIdx == gProjectMainIdx
 template lnimdbg*: expr = L.fileIdx == gProjectMainIdx
 
+proc parseIdeCmd*(s: string): IdeCmd =
+  case s:
+  of "sug": ideSug
+  of "con": ideCon
+  of "def": ideDef
+  of "use": ideUse
+  of "dus": ideDus
+  else: ideNone
+
+proc `$`*(c: IdeCmd): string =
+  case c:
+  of ideSug: "sug"
+  of ideCon: "con"
+  of ideDef: "def"
+  of ideUse: "use"
+  of ideDus: "dus"
+  of ideNone: "none"

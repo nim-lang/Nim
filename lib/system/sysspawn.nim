@@ -9,7 +9,7 @@
 
 ## Implements Nim's 'spawn'.
 
-when not declared(NimString): 
+when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 {.push stackTrace:off.}
@@ -19,9 +19,9 @@ when not declared(NimString):
 
 type
   CondVar = object
-    c: TSysCond
+    c: SysCond
     when defined(posix):
-      stupidLock: TSysLock
+      stupidLock: SysLock
       counter: int
 
 proc createCondVar(): CondVar =

@@ -11,7 +11,7 @@ proc wrap[T]() =
 
   var x: proc (x, y: T): int
   x = notConcrete
-  
+
 
 wrap[int]()
 

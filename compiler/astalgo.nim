@@ -14,7 +14,7 @@
 import
   ast, hashes, intsets, strutils, options, msgs, ropes, idents, rodutils
 
-proc hashNode*(p: RootRef): THash
+proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
   # YAML code generator and it is invaluable for debugging purposes.
@@ -49,7 +49,7 @@ proc strTableGet*(t: TStrTable, name: PIdent): PSym
 
 type
   TTabIter*{.final.} = object # consider all fields here private
-    h*: THash                 # current hash
+    h*: Hash                  # current hash
 
 proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym
 proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym
@@ -65,7 +65,7 @@ proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym
 
 type
   TIdentIter*{.final.} = object # iterator over all syms with same identifier
-    h*: THash                   # current hash
+    h*: Hash                    # current hash
     name*: PIdent
 
 
@@ -94,7 +94,7 @@ proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
 proc getModule*(s: PSym): PSym
 proc mustRehash*(length, counter: int): bool
-proc nextTry*(h, maxHash: THash): THash {.inline.}
+proc nextTry*(h, maxHash: Hash): Hash {.inline.}
 
 # ------------- table[int, int] ---------------------------------------------
 const
@@ -196,7 +196,7 @@ proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
     else: internalError(list.info, "getSymFromList")
   result = nil
 
-proc hashNode(p: RootRef): THash =
+proc hashNode(p: RootRef): Hash =
   result = hash(cast[pointer](p))
 
 proc mustRehash(length, counter: int): bool =
@@ -452,7 +452,7 @@ proc debug(n: PSym) =
   elif n.kind == skUnknown:
     msgWriteln("skUnknown")
   else:
-    #writeln(stdout, $symToYaml(n, 0, 1))
+    #writeLine(stdout, $symToYaml(n, 0, 1))
     msgWriteln("$1_$2: $3, $4, $5, $6" % [
       n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
       $lineInfoToStr(n.info), $n.kind])
@@ -466,7 +466,7 @@ proc debug(n: PNode) =
 const
   EmptySeq = @[]
 
-proc nextTry(h, maxHash: THash): THash =
+proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
@@ -474,7 +474,7 @@ proc nextTry(h, maxHash: THash): THash =
 
 proc objectSetContains(t: TObjectSet, obj: RootRef): bool =
   # returns true whether n is in t
-  var h: THash = hashNode(obj) and high(t.data) # start with real hash value
+  var h: Hash = hashNode(obj) and high(t.data) # start with real hash value
   while t.data[h] != nil:
     if t.data[h] == obj:
       return true
@@ -482,7 +482,7 @@ proc objectSetContains(t: TObjectSet, obj: RootRef): bool =
   result = false
 
 proc objectSetRawInsert(data: var TObjectSeq, obj: RootRef) =
-  var h: THash = hashNode(obj) and high(data)
+  var h: Hash = hashNode(obj) and high(data)
   while data[h] != nil:
     assert(data[h] != obj)
     h = nextTry(h, high(data))
@@ -503,7 +503,7 @@ proc objectSetIncl(t: var TObjectSet, obj: RootRef) =
 
 proc objectSetContainsOrIncl(t: var TObjectSet, obj: RootRef): bool =
   # returns true if obj is already in the string table:
-  var h: THash = hashNode(obj) and high(t.data)
+  var h: Hash = hashNode(obj) and high(t.data)
   while true:
     var it = t.data[h]
     if it == nil: break
@@ -520,7 +520,7 @@ proc objectSetContainsOrIncl(t: var TObjectSet, obj: RootRef): bool =
   result = false
 
 proc tableRawGet(t: TTable, key: RootRef): int =
-  var h: THash = hashNode(key) and high(t.data) # start with real hash value
+  var h: Hash = hashNode(key) and high(t.data) # start with real hash value
   while t.data[h].key != nil:
     if t.data[h].key == key:
       return h
@@ -529,7 +529,7 @@ proc tableRawGet(t: TTable, key: RootRef): int =
 
 proc tableSearch(t: TTable, key, closure: RootRef,
                  comparator: TCmpProc): RootRef =
-  var h: THash = hashNode(key) and high(t.data) # start with real hash value
+  var h: Hash = hashNode(key) and high(t.data) # start with real hash value
   while t.data[h].key != nil:
     if t.data[h].key == key:
       if comparator(t.data[h].val, closure):
@@ -544,7 +544,7 @@ proc tableGet(t: TTable, key: RootRef): RootRef =
   else: result = nil
 
 proc tableRawInsert(data: var TPairSeq, key, val: RootRef) =
-  var h: THash = hashNode(key) and high(data)
+  var h: Hash = hashNode(key) and high(data)
   while data[h].key != nil:
     assert(data[h].key != key)
     h = nextTry(h, high(data))
@@ -569,7 +569,7 @@ proc tablePut(t: var TTable, key, val: RootRef) =
     inc(t.counter)
 
 proc strTableContains(t: TStrTable, n: PSym): bool =
-  var h: THash = n.name.h and high(t.data) # start with real hash value
+  var h: Hash = n.name.h and high(t.data) # start with real hash value
   while t.data[h] != nil:
     if (t.data[h] == n):
       return true
@@ -577,7 +577,7 @@ proc strTableContains(t: TStrTable, n: PSym): bool =
   result = false
 
 proc strTableRawInsert(data: var TSymSeq, n: PSym) =
-  var h: THash = n.name.h and high(data)
+  var h: Hash = n.name.h and high(data)
   if sfImmediate notin n.flags:
     # fast path:
     while data[h] != nil:
@@ -606,7 +606,7 @@ proc strTableRawInsert(data: var TSymSeq, n: PSym) =
 
 proc symTabReplaceRaw(data: var TSymSeq, prevSym: PSym, newSym: PSym) =
   assert prevSym.name.h == newSym.name.h
-  var h: THash = prevSym.name.h and high(data)
+  var h: Hash = prevSym.name.h and high(data)
   while data[h] != nil:
     if data[h] == prevSym:
       data[h] = newSym
@@ -640,7 +640,7 @@ proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
   assert n.name != nil
-  var h: THash = n.name.h and high(t.data)
+  var h: Hash = n.name.h and high(t.data)
   var replaceSlot = -1
   while true:
     var it = t.data[h]
@@ -666,7 +666,7 @@ proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
   result = false
 
 proc strTableGet(t: TStrTable, name: PIdent): PSym =
-  var h: THash = name.h and high(t.data)
+  var h: Hash = name.h and high(t.data)
   while true:
     result = t.data[h]
     if result == nil: break
@@ -694,7 +694,7 @@ proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
 
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
                          excluding: IntSet): PSym =
-  var h: THash = ti.h and high(tab.data)
+  var h: Hash = ti.h and high(tab.data)
   var start = h
   result = tab.data[h]
   while result != nil:
@@ -743,7 +743,7 @@ proc hasEmptySlot(data: TIdPairSeq): bool =
   result = false
 
 proc idTableRawGet(t: TIdTable, key: int): int =
-  var h: THash
+  var h: Hash
   h = key and high(t.data)    # start with real hash value
   while t.data[h].key != nil:
     if t.data[h].key.id == key:
@@ -772,7 +772,7 @@ iterator pairs*(t: TIdTable): tuple[key: int, value: RootRef] =
       yield (t.data[i].key.id, t.data[i].val)
 
 proc idTableRawInsert(data: var TIdPairSeq, key: PIdObj, val: RootRef) =
-  var h: THash
+  var h: Hash
   h = key.id and high(data)
   while data[h].key != nil:
     assert(data[h].key.id != key.id)
@@ -805,7 +805,7 @@ iterator idTablePairs*(t: TIdTable): tuple[key: PIdObj, val: RootRef] =
     if not isNil(t.data[i].key): yield (t.data[i].key, t.data[i].val)
 
 proc idNodeTableRawGet(t: TIdNodeTable, key: PIdObj): int =
-  var h: THash
+  var h: Hash
   h = key.id and high(t.data) # start with real hash value
   while t.data[h].key != nil:
     if t.data[h].key.id == key.id:
@@ -824,7 +824,7 @@ proc idNodeTableGetLazy*(t: TIdNodeTable, key: PIdObj): PNode =
     result = idNodeTableGet(t, key)
 
 proc idNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
-  var h: THash
+  var h: Hash
   h = key.id and high(data)
   while data[h].key != nil:
     assert(data[h].key.id != key.id)
@@ -863,7 +863,7 @@ proc initIITable(x: var TIITable) =
   for i in countup(0, StartSize - 1): x.data[i].key = InvalidKey
 
 proc iiTableRawGet(t: TIITable, key: int): int =
-  var h: THash
+  var h: Hash
   h = key and high(t.data)    # start with real hash value
   while t.data[h].key != InvalidKey:
     if t.data[h].key == key: return h
@@ -876,7 +876,7 @@ proc iiTableGet(t: TIITable, key: int): int =
   else: result = InvalidKey
 
 proc iiTableRawInsert(data: var TIIPairSeq, key, val: int) =
-  var h: THash
+  var h: Hash
   h = key and high(data)
   while data[h].key != InvalidKey:
     assert(data[h].key != key)

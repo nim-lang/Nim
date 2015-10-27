@@ -8,10 +8,10 @@ else:
   import posix
 
 when defined(Windows):
-  template orig: expr = 
+  template orig: expr =
     winlean
 else:
-  template orig: expr = 
+  template orig: expr =
     posix
 
 proc socket(domain, typ, protocol: int): int =

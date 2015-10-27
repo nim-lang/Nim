@@ -102,7 +102,7 @@ proc assignLabel(b: var TBlock): Rope {.inline.} =
 proc blockBody(b: var TBlock): Rope =
   result = b.sections[cpsLocals]
   if b.frameLen > 0:
-    result.addf("F.len+=$1;$n", [b.frameLen.rope])
+    result.addf("FR.len+=$1;$n", [b.frameLen.rope])
   result.add(b.sections[cpsInit])
   result.add(b.sections[cpsStmts])
 
@@ -123,7 +123,7 @@ proc endBlock(p: BProc) =
       ~"}$n"
   let frameLen = p.blocks[topBlock].frameLen
   if frameLen > 0:
-    blockEnd.addf("F.len-=$1;$n", [frameLen.rope])
+    blockEnd.addf("FR.len-=$1;$n", [frameLen.rope])
   endBlock(p, blockEnd)
 
 proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =
@@ -1002,8 +1002,10 @@ proc genAsmStmt(p: BProc, t: PNode) =
 proc determineSection(n: PNode): TCFileSection =
   result = cfsProcHeaders
   if n.len >= 1 and n.sons[0].kind in {nkStrLit..nkTripleStrLit}:
-    if n.sons[0].strVal.startsWith("/*TYPESECTION*/"): result = cfsTypes
-    elif n.sons[0].strVal.startsWith("/*VARSECTION*/"): result = cfsVars
+    let sec = n.sons[0].strVal
+    if sec.startsWith("/*TYPESECTION*/"): result = cfsTypes
+    elif sec.startsWith("/*VARSECTION*/"): result = cfsVars
+    elif sec.startsWith("/*INCLUDESECTION*/"): result = cfsHeaders
 
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t.sons[1])
@@ -1099,7 +1101,10 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     genGotoVar(p, e.sons[1])
   elif not fieldDiscriminantCheckNeeded(p, e):
     var a: TLoc
-    initLocExpr(p, e.sons[0], a)
+    if e[0].kind in {nkDerefExpr, nkHiddenDeref}:
+      genDeref(p, e[0], a, enforceDeref=true)
+    else:
+      initLocExpr(p, e.sons[0], a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
     loadInto(p, e.sons[0], e.sons[1], a)

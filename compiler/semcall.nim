@@ -95,7 +95,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.inCompilesContext > 0:
+  if c.compilesContextId > 0 and optReportConceptFailures notin gGlobalOptions:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
   if errors.isNil or errors.len == 0:
@@ -133,7 +133,10 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     add(candidates, "\n")
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  localError(n.info, errGenerated, result)
+  if c.compilesContextId > 0 and optReportConceptFailures in gGlobalOptions:
+    globalError(n.info, errGenerated, result)
+  else:
+    localError(n.info, errGenerated, result)
 
 proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
   for scope in walkScopes(c.currentScope):
@@ -209,7 +212,10 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      localError(n.info, errUndeclaredIdentifier, considerQuotedIdent(f).s)
+      if nfDotField in n.flags and nfExplicitCall notin n.flags:
+        localError(n.info, errUndeclaredField, considerQuotedIdent(f).s)
+      else:
+        localError(n.info, errUndeclaredRoutine, considerQuotedIdent(f).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -232,7 +238,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if c.inCompilesContext > 0:
+    if c.compilesContextId > 0:
       # quick error message for performance of 'compiles' built-in:
       globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
@@ -302,8 +308,25 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
     if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
       result.typ = newTypeS(x.fauxMatch, c)
     return
-  if finalCallee.ast.sons[genericParamsPos].kind != nkEmpty:
-    finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
+  let gp = finalCallee.ast.sons[genericParamsPos]
+  if gp.kind != nkEmpty:
+    if x.calleeSym.kind notin {skMacro, skTemplate}:
+      if x.calleeSym.magic in {mArrGet, mArrPut}:
+        finalCallee = x.calleeSym
+      else:
+        finalCallee = generateInstance(c, x.calleeSym, x.bindings, n.info)
+    else:
+      # For macros and templates, the resolved generic params
+      # are added as normal params.
+      for s in instantiateGenericParamList(c, gp, x.bindings):
+        case s.kind
+          of skConst:
+            x.call.add s.ast
+          of skType:
+            x.call.add newSymNode(s, n.info)
+          else:
+            internalAssert false
+
   result = x.call
   instGenericConvertersSons(c, result, x)
   result.sons[0] = newSymNode(finalCallee, result.sons[0].info)

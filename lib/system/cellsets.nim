@@ -10,10 +10,10 @@
 # Efficient set of pointers for the GC (and repr)
 
 type
-  TRefCount = int
+  RefCount = int
 
-  TCell {.pure.} = object
-    refcount: TRefCount  # the refcount and some flags
+  Cell {.pure.} = object
+    refcount: RefCount  # the refcount and some flags
     typ: PNimType
     when trackAllocationSource:
       filename: cstring
@@ -21,34 +21,35 @@ type
     when useCellIds:
       id: int
 
-  PCell = ptr TCell
+  PCell = ptr Cell
 
-  PPageDesc = ptr TPageDesc
-  TBitIndex = range[0..UnitsPerPage-1]
-  TPageDesc {.final, pure.} = object
+  PPageDesc = ptr PageDesc
+  BitIndex = range[0..UnitsPerPage-1]
+  PageDesc {.final, pure.} = object
     next: PPageDesc # all nodes are connected with this pointer
     key: ByteAddress   # start address at bit 0
-    bits: array[TBitIndex, int] # a bit vector
+    bits: array[BitIndex, int] # a bit vector
 
   PPageDescArray = ptr array[0..1000_000, PPageDesc]
-  TCellSet {.final, pure.} = object
+  CellSet {.final, pure.} = object
     counter, max: int
     head: PPageDesc
     data: PPageDescArray
 
   PCellArray = ptr array[0..100_000_000, PCell]
-  TCellSeq {.final, pure.} = object
+  CellSeq {.final, pure.} = object
     len, cap: int
     d: PCellArray
-
+{.deprecated: [TCell: Cell, TBitIndex: BitIndex, TPageDesc: PageDesc,
+              TRefCount: RefCount, TCellSet: CellSet, TCellSeq: CellSeq].}
 # ------------------- cell seq handling ---------------------------------------
 
-proc contains(s: TCellSeq, c: PCell): bool {.inline.} =
+proc contains(s: CellSeq, c: PCell): bool {.inline.} =
   for i in 0 .. s.len-1:
     if s.d[i] == c: return true
   return false
 
-proc add(s: var TCellSeq, c: PCell) {.inline.} =
+proc add(s: var CellSeq, c: PCell) {.inline.} =
   if s.len >= s.cap:
     s.cap = s.cap * 3 div 2
     var d = cast[PCellArray](alloc(s.cap * sizeof(PCell)))
@@ -59,12 +60,12 @@ proc add(s: var TCellSeq, c: PCell) {.inline.} =
   s.d[s.len] = c
   inc(s.len)
 
-proc init(s: var TCellSeq, cap: int = 1024) =
+proc init(s: var CellSeq, cap: int = 1024) =
   s.len = 0
   s.cap = cap
   s.d = cast[PCellArray](alloc0(cap * sizeof(PCell)))
 
-proc deinit(s: var TCellSeq) = 
+proc deinit(s: var CellSeq) =
   dealloc(s.d)
   s.d = nil
   s.len = 0
@@ -75,13 +76,13 @@ proc deinit(s: var TCellSeq) =
 const
   InitCellSetSize = 1024 # must be a power of two!
 
-proc init(s: var TCellSet) =
+proc init(s: var CellSet) =
   s.data = cast[PPageDescArray](alloc0(InitCellSetSize * sizeof(PPageDesc)))
   s.max = InitCellSetSize-1
   s.counter = 0
   s.head = nil
 
-proc deinit(s: var TCellSet) =
+proc deinit(s: var CellSet) =
   var it = s.head
   while it != nil:
     var n = it.next
@@ -97,15 +98,15 @@ proc nextTry(h, maxHash: int): int {.inline.} =
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
-  
-proc cellSetGet(t: TCellSet, key: ByteAddress): PPageDesc =
+
+proc cellSetGet(t: CellSet, key: ByteAddress): PPageDesc =
   var h = cast[int](key) and t.max
   while t.data[h] != nil:
     if t.data[h].key == key: return t.data[h]
     h = nextTry(h, t.max)
   return nil
 
-proc cellSetRawInsert(t: TCellSet, data: PPageDescArray, desc: PPageDesc) =
+proc cellSetRawInsert(t: CellSet, data: PPageDescArray, desc: PPageDesc) =
   var h = cast[int](desc.key) and t.max
   while data[h] != nil:
     sysAssert(data[h] != desc, "CellSetRawInsert 1")
@@ -113,7 +114,7 @@ proc cellSetRawInsert(t: TCellSet, data: PPageDescArray, desc: PPageDesc) =
   sysAssert(data[h] == nil, "CellSetRawInsert 2")
   data[h] = desc
 
-proc cellSetEnlarge(t: var TCellSet) =
+proc cellSetEnlarge(t: var CellSet) =
   var oldMax = t.max
   t.max = ((t.max+1)*2)-1
   var n = cast[PPageDescArray](alloc0((t.max + 1) * sizeof(PPageDesc)))
@@ -123,7 +124,7 @@ proc cellSetEnlarge(t: var TCellSet) =
   dealloc(t.data)
   t.data = n
 
-proc cellSetPut(t: var TCellSet, key: ByteAddress): PPageDesc =
+proc cellSetPut(t: var CellSet, key: ByteAddress): PPageDesc =
   var h = cast[int](key) and t.max
   while true:
     var x = t.data[h]
@@ -138,7 +139,7 @@ proc cellSetPut(t: var TCellSet, key: ByteAddress): PPageDesc =
   while t.data[h] != nil: h = nextTry(h, t.max)
   sysAssert(t.data[h] == nil, "CellSetPut")
   # the new page descriptor goes into result
-  result = cast[PPageDesc](alloc0(sizeof(TPageDesc)))
+  result = cast[PPageDesc](alloc0(sizeof(PageDesc)))
   result.next = t.head
   result.key = key
   t.head = result
@@ -146,7 +147,7 @@ proc cellSetPut(t: var TCellSet, key: ByteAddress): PPageDesc =
 
 # ---------- slightly higher level procs --------------------------------------
 
-proc contains(s: TCellSet, cell: PCell): bool =
+proc contains(s: CellSet, cell: PCell): bool =
   var u = cast[ByteAddress](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
@@ -155,13 +156,13 @@ proc contains(s: TCellSet, cell: PCell): bool =
   else:
     result = false
 
-proc incl(s: var TCellSet, cell: PCell) {.noinline.} =
+proc incl(s: var CellSet, cell: PCell) {.noinline.} =
   var u = cast[ByteAddress](cell)
   var t = cellSetPut(s, u shr PageShift)
   u = (u %% PageSize) /% MemAlign
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
 
-proc excl(s: var TCellSet, cell: PCell) =
+proc excl(s: var CellSet, cell: PCell) =
   var u = cast[ByteAddress](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
@@ -169,20 +170,20 @@ proc excl(s: var TCellSet, cell: PCell) =
     t.bits[u shr IntShift] = (t.bits[u shr IntShift] and
                               not (1 shl (u and IntMask)))
 
-proc containsOrIncl(s: var TCellSet, cell: PCell): bool = 
+proc containsOrIncl(s: var CellSet, cell: PCell): bool =
   var u = cast[ByteAddress](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
     u = (u %% PageSize) /% MemAlign
     result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
-    if not result: 
+    if not result:
       t.bits[u shr IntShift] = t.bits[u shr IntShift] or
           (1 shl (u and IntMask))
-  else: 
+  else:
     incl(s, cell)
     result = false
 
-iterator elements(t: TCellSet): PCell {.inline.} =
+iterator elements(t: CellSet): PCell {.inline.} =
   # while traversing it is forbidden to add pointers to the tree!
   var r = t.head
   while r != nil:
@@ -200,7 +201,7 @@ iterator elements(t: TCellSet): PCell {.inline.} =
       inc(i)
     r = r.next
 
-iterator elementsExcept(t, s: TCellSet): PCell {.inline.} =
+iterator elementsExcept(t, s: CellSet): PCell {.inline.} =
   var r = t.head
   while r != nil:
     let ss = cellSetGet(s, r.key)

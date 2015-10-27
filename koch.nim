@@ -41,12 +41,14 @@ Options:
 Possible Commands:
   boot [options]           bootstraps with given command line options
   install [bindir]         installs to given directory; Unix only!
+  geninstall               generate ./install.sh; Unix only!
   clean                    cleans Nim project; removes generated files
   web [options]            generates the website and the full documentation
   website [options]        generates only the website
   csource [options]        builds the C sources for installation
   pdf                      builds the PDF documentation
   zip                      builds the installation ZIP package
+  xz                       builds the installation XZ package
   nsis [options]           builds the NSIS Setup installer (for Windows)
   tests [options]          run the testsuite
   update                   updates nim to the latest version from github
@@ -56,7 +58,7 @@ Possible Commands:
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
-  -d:useGnuReadline        use the GNU readline library for interactive mode
+  -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
   -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
   -d:noCaas                build Nim without CAAS support
@@ -106,10 +108,10 @@ proc zip(args: string) =
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
-proc targz(args: string) =
+proc xz(args: string) =
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
-  exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim targz compiler/installer.ini" %
+  exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim xz compiler/installer.ini" %
        ["tools" / "niminst" / "niminst".exe, VersionAsString])
 
 proc buildTool(toolname, args: string) =
@@ -126,9 +128,12 @@ proc nsis(args: string) =
   exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
         " nsis compiler/installer.ini") % [VersionAsString, $(sizeof(pointer)*8)])
 
+proc geninstall(args="") =
+  exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini $#" %
+       [findNim(), compileNimInst, VersionAsString, args])
+
 proc install(args: string) =
-  exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
-       [findNim(), compileNimInst, VersionAsString])
+  geninstall()
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
@@ -332,9 +337,15 @@ proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
   exec "nim cc --taintMode:on tests/testament/tester"
+  # Since tests take a long time (on my machine), and we want to defy Murhpys
+  # law - lets make sure the compiler really is freshly compiled!
+  exec "nim c --lib:lib -d:release --opt:speed compiler/nim.nim"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
-  exec tester & " " & (args|"all")
-  exec tester & " html"
+  let success = tryExec tester & " " & (args|"all")
+  if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
+    exec tester & " html"
+  if not success:
+    quit("tests failed", QuitFailure)
 
 proc temp(args: string) =
   var output = "compiler" / "nim".exe
@@ -365,8 +376,9 @@ of cmdArgument:
   of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
-  of "targz": targz(op.cmdLineRest)
+  of "xz": xz(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)
+  of "geninstall": geninstall(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
   of "test", "tests": tests(op.cmdLineRest)
   of "update":

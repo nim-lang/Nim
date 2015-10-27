@@ -2,7 +2,7 @@ discard """
   output: "do nothing"
 """
 
-method somethin(obj: TObject) =
+method somethin(obj: RootObj) {.base.} =
   echo "do nothing"
 
 type
@@ -11,12 +11,12 @@ type
 
   PNodeFoo* = ref object of TNode
 
-  TSomethingElse = object 
+  TSomethingElse = object
   PSomethingElse = ref TSomethingElse
 
-method foo(a: PNode, b: PSomethingElse) = discard
+method foo(a: PNode, b: PSomethingElse) {.base.} = discard
 method foo(a: PNodeFoo, b: PSomethingElse) = discard
 
-var o: TObject
+var o: RootObj
 o.somethin()
 

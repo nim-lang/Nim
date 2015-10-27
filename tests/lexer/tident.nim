@@ -2,7 +2,7 @@
 type
   TIdObj* = object of TObject
     id*: int                  # unique id; use this for comparisons and not the pointers
-  
+
   PIdObj* = ref TIdObj
   PIdent* = ref TIdent
   TIdent*{.acyclic.} = object
@@ -15,8 +15,8 @@ proc myNewString(L: int): string {.inline.} =
   for i in 0..L-1:
     if result[i] == '\0':
       echo("Correct")
-    else: 
+    else:
       echo("Wrong")
-  
+
 var s = myNewString(8)
 

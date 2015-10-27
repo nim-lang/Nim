@@ -7,5 +7,5 @@ var x: ref int
 new(x)
 x[] = 3
 
-echo x[] 
+echo x[]
 

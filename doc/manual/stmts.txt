@@ -10,7 +10,7 @@ Statements are separated into `simple statements`:idx: and
 Simple statements are statements that cannot contain other statements like
 assignments, calls or the ``return`` statement; complex statements can
 contain other statements. To avoid the `dangling else problem`:idx:, complex
-statements always have to be intended. The details can be found in the grammar.
+statements always have to be indented. The details can be found in the grammar.
 
 
 Statement list expression
@@ -58,6 +58,24 @@ An empty ``discard`` statement is often used as a null statement:
     of SymChars, '_': echo "an identifier"
     of '0'..'9': echo "a number"
     else: discard
+
+
+Void context
+------------
+
+In a list of statements every expression except the last one needs to have the
+type ``void``. In addition to this rule an assignment to the builtin ``result``
+symbol also triggers a ``void`` context:
+
+.. code-block:: nim
+  proc invalid*(): string =
+    result = "foo"
+    "invalid"  # Error: value of type 'string' has to be discarded
+
+.. code-block:: nim
+  proc valid*(): string =
+    let x = 317
+    "valid"
 
 
 Var statement
@@ -176,9 +194,9 @@ The rules for compile-time computability are:
 1. Literals are compile-time computable.
 2. Type conversions are compile-time computable.
 3. Procedure calls of the form ``p(X)`` are compile-time computable if
-   ``p`` is a proc without side-effects (see the `noSideEffect pragma`_
-   for details) and if ``X`` is a (possibly empty) list of compile-time
-   computable arguments.
+   ``p`` is a proc without side-effects (see the `noSideEffect pragma
+   <#pragmas-nosideeffect-pragma>`_ for details) and if ``X`` is a
+   (possibly empty) list of compile-time computable arguments.
 
 
 Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can
@@ -229,22 +247,18 @@ the expression after the ``elif`` is evaluated (if there is an
 ``elif`` branch), if it is true the corresponding statements after
 the ``:`` are executed. This goes on until the last ``elif``. If all
 conditions fail, the ``else`` part is executed. If there is no ``else``
-part, execution continues with the statement after the ``if`` statement.
+part, execution continues with the next statement.
 
-The scoping for an ``if`` statement is slightly subtle to support an important
-use case. A new scope starts for the ``if``/``elif`` condition and ends after
-the corresponding *then* block:
+In ``if`` statements new scopes begin immediately after the ``if``/``elif``/``else`` keywords and ends after the corresponding *then* block.
+For visualization purposes the scopes have been enclosed in ``{|  |}`` in the following example:
 
 .. code-block:: nim
   if {| (let m = input =~ re"(\w+)=\w+"; m.isMatch):
     echo "key ", m[0], " value ", m[1]  |}
   elif {| (let m = input =~ re""; m.isMatch):
-    echo "new m in this scope" |}
-  else:
-    # 'm' not declared here
-
-In the example the scopes have been enclosed in ``{|  |}``.
-
+    echo "new m in this scope"  |}
+  else: {|
+    echo "m not declared here"  |}
 
 Case statement
 --------------
@@ -333,6 +347,37 @@ The ``when`` statement enables conditional compilation techniques. As
 a special syntactic extension, the ``when`` construct is also available
 within ``object`` definitions.
 
+
+When nimvm statement
+--------------------
+
+``nimvm`` is a special symbol, that may be used as expression of ``when nimvm``
+statement to differentiate execution path between runtime and compile time.
+
+Example:
+
+.. code-block:: nim
+  proc someProcThatMayRunInCompileTime(): bool =
+    when nimvm:
+      # This code runs in compile time
+      result = true
+    else:
+      # This code runs in runtime
+      result = false
+  const ctValue = someProcThatMayRunInCompileTime()
+  let rtValue = someProcThatMayRunInCompileTime()
+  assert(ctValue == true)
+  assert(rtValue == false)
+
+``when nimvm`` statement must meet the following requirements:
+
+* Its expression must always be ``nimvm``. More complex expressions are not
+  allowed.
+* It must not contain ``elif`` branches.
+* It must contain ``else`` branch.
+* Code in branches must not affect semantics of the code that follows the
+  ``when nimvm`` statement. E.g. it must not define symbols that are used in
+  the following code.
 
 Return statement
 ----------------
@@ -601,7 +646,7 @@ A table constructor is syntactic sugar for an array constructor:
 
 The empty table can be written ``{:}`` (in contrast to the empty set
 which is ``{}``) which is thus another way to write as the empty array
-constructor ``[]``. This slightly unusal way of supporting tables
+constructor ``[]``. This slightly unusual way of supporting tables
 has lots of advantages:
 
 * The order of the (key,value)-pairs is preserved, thus it is easy to

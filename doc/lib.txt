@@ -35,11 +35,6 @@ Core
   implicitly by the compiler. Do not import it directly. It relies on compiler
   magic to work.
 
-* `unsigned <unsigned.html>`_
-  This module implements basic arithmetic operators for unsigned integers.
-  To discourage users from using unsigned integers, it's not part
-  of ``system``, but an extra import.
-
 * `threads <threads.html>`_
   Nim thread support. **Note**: This is part of the system module. Do not
   import it explicitly.
@@ -123,16 +118,11 @@ String handling
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
 
-* `unidecode <unidecode.html>`_
-  This module provides Unicode to ASCII transliterations:
-  It finds the sequence of ASCII characters that is the closest approximation
-  to the Unicode string.
-
 * `matchers <matchers.html>`_
   This module contains various string matchers for email addresses, etc.
 
 * `subexes <subexes.html>`_
-  This module implements advanted string substitution operations.
+  This module implements advanced string substitution operations.
 
 
 Generic Operating System Services
@@ -211,12 +201,6 @@ Internet Protocols and Support
 * `scgi <scgi.html>`_
   This module implements helpers for SCGI applications.
 
-* `sockets <sockets.html>`_
-  This module implements a simple portable type-safe sockets layer.
-
-* `asyncio <asyncio.html>`_
-  This module implements an asynchronous event loop for sockets.
-
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.
@@ -229,9 +213,6 @@ Internet Protocols and Support
 
 * `smtp <smtp.html>`_
   This module implement a simple SMTP client.
-
-* `ftpclient <ftpclient.html>`_
-  This module implements an FTP client.
 
 * `cookies <cookies.html>`_
   This module contains helper procs for parsing and generating cookies.
@@ -263,7 +244,7 @@ Internet Protocols and Support
   This module implements a high-level sockets API. It will replace the
   ``sockets`` module in the future.
 
-* `rawsockets <rawsockets.html>`_
+* `nativesockets <nativesockets.html>`_
   This module implements a low-level sockets API.
 
 * `selectors <selectors.html>`_
@@ -275,8 +256,6 @@ Parsers
 
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser.
-  **Deprecated since version 0.9.3:** Use the `parseopt2
-  <parseopt2.html>`_ module instead.
 
 * `parseopt2 <parseopt2.html>`_
   The ``parseopt2`` module implements a command line option parser. This
@@ -324,6 +303,10 @@ Parsers
 
 * `rstgen <rstgen.html>`_
   This module implements a generator of HTML/Latex from reStructuredText.
+
+* `sexp <sexp.html>`_
+  High performance sexp parser and generator, mainly for communication
+  with emacs.
 
 
 XML Processing
@@ -395,19 +378,37 @@ Miscellaneous
   This module implements new experimental features. Currently the syntax
   sugar for anonymous procedures.
 
-Database support
-----------------
-
-* `redis <redis.html>`_
-  This module implements a redis client. It allows you to connect to a
-  redis-server instance, send commands and receive replies.
-
 
 Modules for JS backend
 ---------------------------
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
+
+
+Deprecated modules
+------------------
+
+* `asyncio <asyncio.html>`_
+  This module implements an asynchronous event loop for sockets.
+  **Deprecated since version 0.11.2:**
+  Use the `asyncnet <asyncnet.html>`_ together with the
+  `asyncdispatch <asyncdispatch.html>`_ module instead.
+
+* `ftpclient <ftpclient.html>`_
+  This module implements an FTP client.
+  **Deprecated since version 0.11.3:**
+  Use the `asyncftpclient <asyncftpclient.html>`_ module instead.
+
+* `sockets <sockets.html>`_
+  This module implements a simple portable type-safe sockets layer.
+  **Deprecated since version 0.11.2:**
+  Use the `net <net.html>`_ or the `rawsockets <rawsockets.html>`_ module
+  instead.
+
+* `rawsockets <rawsockets.html>`_
+  **Deprecated since version 0.11.4:**
+  This module has been renamed to `nativesockets <nativesockets.html>`_.
 
 
 Impure libraries
@@ -440,26 +441,9 @@ Database support
 Other
 -----
 
-* `graphics <graphics.html>`_
-  This module implements graphical output for Nim; the current
-  implementation uses SDL but the interface is meant to support multiple
-  backends some day.
-
-* `dialogs <dialogs.html>`_
-  This module implements portable dialogs for Nim; the implementation
-  builds on the GTK interface. On Windows, native dialogs are shown if
-  appropriate.
-
-* `zipfiles <zipfiles.html>`_
-  This module implements a zip archive creator/reader/modifier.
-
 * `ssl <ssl.html>`_
   This module provides an easy to use sockets-style
   Nim interface to the OpenSSL library.
-
-* `rdstdin <rdstdin.html>`_
-  This module contains code for reading from `stdin`:idx:. On UNIX the GNU
-  readline library is wrapped and set up.
 
 
 Wrappers
@@ -471,20 +455,8 @@ not contained in the distribution. You can then find them on the website.
 Windows specific
 ----------------
 
-* `windows <windows.html>`_
-  Contains a wrapper for the Win32 API.
 * `winlean <winlean.html>`_
   Contains a wrapper for a small subset of the Win32 API.
-* `shellapi <shellapi.html>`_
-  Contains a wrapper for the ``shellapi.h`` header.
-* `shfolder <shfolder.html>`_
-  Contains a wrapper for the ``shfolder.h`` header.
-* `mmsystem <mmsystem.html>`_
-  Contains a wrapper for the ``mmsystem.h`` header.
-* `psapi <psapi.html>`_
-  Contains a wrapper for the ``psapi.h`` header.
-* `nb30 <nb30.html>`_
-  This module contains the definitions for portable NetBIOS 3.0 support.
 
 
 UNIX specific
@@ -492,12 +464,6 @@ UNIX specific
 
 * `posix <posix.html>`_
   Contains a wrapper for the POSIX standard.
-* `readline <readline.html>`_
-  Part of the wrapper for the GNU readline library.
-* `history <history.html>`_
-  Part of the wrapper for the GNU readline library.
-* `rltypedefs <rltypedefs.html>`_
-  Part of the wrapper for the GNU readline library.
 
 
 Regular expressions
@@ -505,8 +471,6 @@ Regular expressions
 
 * `pcre <pcre.html>`_
   Wrapper for the PCRE library.
-* `tre <tre.html>`_
-  Wrapper for the TRE library.
 
 
 GUI libraries
@@ -527,15 +491,6 @@ Database support
   Contains a wrapper for SQLite 3 API.
 * `odbcsql <odbcsql.html>`_
   interface to the ODBC driver.
-* `sphinx <sphinx.html>`_
-  Nim wrapper for ``sphinx``.
-
-
-XML Processing
---------------
-
-* `expat <expat.html>`_
-  Wrapper of the expat XML parser.
 
 
 Network Programming and Internet Protocols
@@ -554,16 +509,6 @@ Network Programming and Internet Protocols
   Wrapper for OpenSSL.
 
 
-Data Compression and Archiving
-------------------------------
-
-* `zlib <zlib.html>`_
-  Wrapper for the zlib library.
-
-* `libzip <libzip.html>`_
-  Interface to the `lib zip <http://www.nih.at/libzip/index.html>`_ library by
-  Dieter Baron and Thomas Klausner.
-
 
 Scientific computing
 --------------------
@@ -571,8 +516,9 @@ Scientific computing
 * `libsvm <libsvm.html>`_
   Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
+
 Nimble
-====================
+======
 
 Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see

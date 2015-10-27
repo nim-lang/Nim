@@ -12,18 +12,18 @@ import posix
 
 type
   Speed* = cuint
-  Tcflag* = cuint
+  Cflag* = cuint
+{.deprecated: [Tcflag: Cflag].}
 
 const
   NCCS* = 32
 
 type
   Termios* {.importc: "struct termios", header: "<termios.h>".} = object
-    c_iflag*: Tcflag        # input mode flags
-    c_oflag*: Tcflag        # output mode flags
-    c_cflag*: Tcflag        # control mode flags
-    c_lflag*: Tcflag        # local mode flags
-    c_line*: cuchar         # line discipline
+    c_iflag*: Cflag        # input mode flags
+    c_oflag*: Cflag        # output mode flags
+    c_cflag*: Cflag        # control mode flags
+    c_lflag*: Cflag        # local mode flags
     c_cc*: array[NCCS, cuchar]  # control characters
 
 # cc characters
@@ -258,4 +258,4 @@ proc tcFlow*(fd: cint; action: cint): cint {.importc: "tcflow",
     header: "<termios.h>".}
 # Get process group ID for session leader for controlling terminal FD.
 
-proc tcGetSid*(fd: cint): TPid {.importc: "tcgetsid", header: "<termios.h>".}
+proc tcGetSid*(fd: cint): Pid {.importc: "tcgetsid", header: "<termios.h>".}

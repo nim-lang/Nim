@@ -30,7 +30,7 @@ type
     fd: cint
     handleEvent: proc (m: FSMonitor, ev: MonitorEvent) {.closure.}
     targets: Table[cint, string]
-  
+
   MonitorEventType* = enum ## Monitor event type
     MonitorAccess,       ## File was accessed.
     MonitorAttrib,       ## Metadata changed.
@@ -44,7 +44,7 @@ type
     MonitorMoved,        ## File was moved.
     MonitorOpen,         ## File was opened.
     MonitorAll           ## Filter for all event types.
-  
+
   MonitorEvent* = object
     case kind*: MonitorEventType  ## Type of the event.
     of MonitorMoveSelf, MonitorMoved:
@@ -77,7 +77,7 @@ proc add*(monitor: FSMonitor, target: string,
   ## Adds ``target`` which may be a directory or a file to the list of
   ## watched paths of ``monitor``.
   ## You can specify the events to report using the ``filters`` parameter.
-  
+
   var INFilter = -1
   for f in filters:
     case f
@@ -93,7 +93,7 @@ proc add*(monitor: FSMonitor, target: string,
     of MonitorMoved: INFilter = INFilter and IN_MOVED_FROM and IN_MOVED_TO
     of MonitorOpen: INFilter = INFilter and IN_OPEN
     of MonitorAll: INFilter = INFilter and IN_ALL_EVENTS
-  
+
   result = inotifyAddWatch(monitor.fd, target, INFilter.uint32)
   if result < 0:
     raiseOSError(osLastError())
@@ -108,7 +108,7 @@ proc del*(monitor: FSMonitor, wd: cint) =
 
 proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
   result = @[]
-  let size = (sizeof(TINotifyEvent)+2000)*MaxEvents
+  let size = (sizeof(INotifyEvent)+2000)*MaxEvents
   var buffer = newString(size)
 
   let le = read(fd, addr(buffer[0]), size)
@@ -117,7 +117,7 @@ proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
 
   var i = 0
   while i < le:
-    var event = cast[ptr TINotifyEvent](addr(buffer[i]))
+    var event = cast[ptr INotifyEvent](addr(buffer[i]))
     var mev: MonitorEvent
     mev.wd = event.wd
     if event.len.int != 0:
@@ -125,13 +125,13 @@ proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
       mev.name = $cstr
     else:
       mev.name = ""
-    
-    if (event.mask.int and IN_MOVED_FROM) != 0: 
+
+    if (event.mask.int and IN_MOVED_FROM) != 0:
       # Moved from event, add to m's collection
       movedFrom.add(event.cookie.cint, (mev.wd, mev.name))
-      inc(i, sizeof(TINotifyEvent) + event.len.int)
+      inc(i, sizeof(INotifyEvent) + event.len.int)
       continue
-    elif (event.mask.int and IN_MOVED_TO) != 0: 
+    elif (event.mask.int and IN_MOVED_TO) != 0:
       mev.kind = MonitorMoved
       assert movedFrom.hasKey(event.cookie.cint)
       # Find the MovedFrom event.
@@ -141,25 +141,25 @@ proc getEvent(m: FSMonitor, fd: cint): seq[MonitorEvent] =
       movedFrom.del(event.cookie.cint)
     elif (event.mask.int and IN_ACCESS) != 0: mev.kind = MonitorAccess
     elif (event.mask.int and IN_ATTRIB) != 0: mev.kind = MonitorAttrib
-    elif (event.mask.int and IN_CLOSE_WRITE) != 0: 
+    elif (event.mask.int and IN_CLOSE_WRITE) != 0:
       mev.kind = MonitorCloseWrite
-    elif (event.mask.int and IN_CLOSE_NOWRITE) != 0: 
+    elif (event.mask.int and IN_CLOSE_NOWRITE) != 0:
       mev.kind = MonitorCloseNoWrite
     elif (event.mask.int and IN_CREATE) != 0: mev.kind = MonitorCreate
-    elif (event.mask.int and IN_DELETE) != 0: 
+    elif (event.mask.int and IN_DELETE) != 0:
       mev.kind = MonitorDelete
-    elif (event.mask.int and IN_DELETE_SELF) != 0: 
+    elif (event.mask.int and IN_DELETE_SELF) != 0:
       mev.kind = MonitorDeleteSelf
     elif (event.mask.int and IN_MODIFY) != 0: mev.kind = MonitorModify
-    elif (event.mask.int and IN_MOVE_SELF) != 0: 
+    elif (event.mask.int and IN_MOVE_SELF) != 0:
       mev.kind = MonitorMoveSelf
     elif (event.mask.int and IN_OPEN) != 0: mev.kind = MonitorOpen
-    
+
     if mev.kind != MonitorMoved:
       mev.fullname = ""
-    
+
     result.add(mev)
-    inc(i, sizeof(TINotifyEvent) + event.len.int)
+    inc(i, sizeof(INotifyEvent) + event.len.int)
 
   # If movedFrom events have not been matched with a moveTo. File has
   # been moved to an unwatched location, emit a MonitorDelete.
@@ -211,7 +211,7 @@ when not defined(testing) and isMainModule:
           echo("Name is ", ev.name)
         else:
           echo("Name ", ev.name, " fullname ", ev.fullName))
-        
+
     while true:
       if not disp.poll(): break
   main()

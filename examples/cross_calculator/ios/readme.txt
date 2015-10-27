@@ -8,10 +8,6 @@ When the calculate button is used the view controller calls the Nim code to
 delegate the logic of the operation and puts the result in a label for display.
 All interface error checks are implemented in the view controller.
 
-You can use this as a starting point for your project or look at the history of
-the github project at https://github.com/gradha/nimrod-on-ios. That repository
-documents the individual integration steps you would take for any iOS project.
-
 This version of the iOS project is known to work with Xcode 4.2 and Xcode
 4.4.1. The final binary can be deployed on iOS 3.x to 5.x supporting all iOS
 platforms and versions available at the moment.

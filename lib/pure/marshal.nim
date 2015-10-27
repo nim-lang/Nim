@@ -17,13 +17,13 @@
 ## .. code-block:: nim
 ##
 ##   type
-##     TA = object
-##     TB = object of TA
+##     A = object of RootObj
+##     B = object of A
 ##       f: int
 ##
 ##   var
-##     a: ref TA
-##     b: ref TB
+##     a: ref A
+##     b: ref B
 ##
 ##   new(b)
 ##   a = b
@@ -36,7 +36,7 @@ import streams, typeinfo, json, intsets, tables
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
 
-proc storeAny(s: Stream, a: TAny, stored: var IntSet) =
+proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   case a.kind
   of akNone: assert false
   of akBool: s.write($getBool(a))
@@ -96,7 +96,7 @@ proc storeAny(s: Stream, a: TAny, stored: var IntSet) =
   of akInt..akInt64, akUInt..akUInt64: s.write($getBiggestInt(a))
   of akFloat..akFloat128: s.write($getBiggestFloat(a))
 
-proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
+proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
   case a.kind
   of akNone: assert false
   of akBool:
@@ -176,7 +176,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
       setPointer(a, nil)
       next(p)
     of jsonInt:
-      setPointer(a, t[p.getInt])
+      setPointer(a, t.getOrDefault(p.getInt))
       next(p)
     of jsonArrayStart:
       next(p)
@@ -222,7 +222,7 @@ proc loadAny(p: var JsonParser, a: TAny, t: var Table[BiggestInt, pointer]) =
     raiseParseErr(p, "float expected")
   of akRange: loadAny(p, a.skipRange, t)
 
-proc loadAny(s: Stream, a: TAny, t: var Table[BiggestInt, pointer]) =
+proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
   var p: JsonParser
   open(p, s, "unknown file")
   next(p)
@@ -278,10 +278,11 @@ when not defined(testing) and isMainModule:
       else:
         nil
 
-    PNode = ref TNode
-    TNode = object
+    PNode = ref Node
+    Node = object
       next, prev: PNode
       data: string
+  {.deprecated: [TNode: Node].}
 
   proc buildList(): PNode =
     new(result)
@@ -317,14 +318,15 @@ when not defined(testing) and isMainModule:
   testit(test7)
 
   type
-    TA {.inheritable.} = object
-    TB = object of TA
+    A {.inheritable.} = object
+    B = object of A
       f: int
 
   var
-    a: ref TA
-    b: ref TB
+    a: ref A
+    b: ref B
   new(b)
   a = b
   echo($$a[]) # produces "{}", not "{f: 0}"
+
 

@@ -13,7 +13,7 @@ proc echoLoop(str: string): string =
   discard process.waitForExit
   while not output.atEnd:
     result.add(output.readLine)
-    
+
 suite "io":
   suite "readAll":
     test "stdin":

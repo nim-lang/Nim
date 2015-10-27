@@ -11,8 +11,8 @@
 
 import parseutils, strutils, strtabs, os, options, msgs, lists
 
-proc addPath*(path: string, info: TLineInfo) = 
-  if not contains(options.searchPaths, path): 
+proc addPath*(path: string, info: TLineInfo) =
+  if not contains(options.searchPaths, path):
     lists.prependStr(options.searchPaths, path)
 
 proc versionSplitPos(s: string): int =
@@ -23,7 +23,7 @@ proc versionSplitPos(s: string): int =
 const
   latest = "head"
 
-proc `<.`(a, b: string): bool = 
+proc `<.`(a, b: string): bool =
   # wether a has a smaller version than b:
   if a == latest: return false
   var i = 0
@@ -48,7 +48,7 @@ proc addPackage(packages: StringTableRef, p: string) =
   let name = p.substr(0, x-1)
   if x < p.len:
     let version = p.substr(x+1)
-    if packages[name] <. version:
+    if packages.getOrDefault(name) <. version:
       packages[name] = version
   else:
     packages[name] = latest
@@ -60,7 +60,7 @@ iterator chosen(packages: StringTableRef): string =
 
 proc addNimblePath(p: string, info: TLineInfo) =
   if not contains(options.searchPaths, p):
-    if gVerbosity >= 1: message(info, hintPath, p)
+    message(info, hintPath, p)
     lists.prependStr(options.lazyPaths, p)
 
 proc addPathWithNimFiles(p: string, info: TLineInfo) =

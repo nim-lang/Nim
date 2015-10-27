@@ -15,57 +15,79 @@ import algorithm, sequtils
 
 const
   sep = '\t'
-  sectionSuggest = "sug"
-  sectionDef = "def"
-  sectionContext = "con"
-  sectionUsage = "use"
+
+type
+  Suggest* = object
+    section*: IdeCmd
+    qualifiedPath*: seq[string]
+    filePath*: string
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    doc*: string           # Not escaped (yet)
+    symkind*: TSymKind
+    forth*: string               # XXX TODO object on symkind
+
+var
+  suggestionResultHook*: proc (result: Suggest) {.closure.}
 
 #template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
 
 template origModuleName(m: PSym): string = m.name.s
 
-proc symToStr(s: PSym, isLocal: bool, section: string, li: TLineInfo): string = 
-  result = section
-  result.add(sep)
+proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo): Suggest =
+  result.section = parseIdeCmd(section)
   if optIdeTerse in gGlobalOptions:
-    if s.kind in routineKinds:
-      result.add renderTree(s.ast, {renderNoBody, renderNoComments,
-                                    renderDocComments, renderNoPragmas})
-    else:
-      result.add s.name.s
-    result.add(sep)
-    result.add(toFullPath(li))
-    result.add(sep)
-    result.add($toLinenumber(li))
-    result.add(sep)
-    result.add($toColumn(li))
+    result.symkind = s.kind
+    result.filePath = toFullPath(li)
+    result.line = toLinenumber(li)
+    result.column = toColumn(li)
   else:
-    result.add($s.kind)
-    result.add(sep)
+    result.symkind = s.kind
+    result.qualifiedPath = @[]
     if not isLocal and s.kind != skModule:
       let ow = s.owner
       if ow.kind != skModule and ow.owner != nil:
         let ow2 = ow.owner
-        result.add(ow2.origModuleName)
-        result.add('.')
-      result.add(ow.origModuleName)
-      result.add('.')
-    result.add(s.name.s)
-    result.add(sep)
-    if s.typ != nil: 
-      result.add(typeToString(s.typ))
-    result.add(sep)
-    result.add(toFullPath(li))
-    result.add(sep)
-    result.add($toLinenumber(li))
-    result.add(sep)
-    result.add($toColumn(li))
-    result.add(sep)
-    when not defined(noDocgen):
-      result.add(s.extractDocComment.escape)
+        result.qualifiedPath.add(ow2.origModuleName)
+      result.qualifiedPath.add(ow.origModuleName)
+    result.qualifiedPath.add(s.name.s)
 
-proc symToStr(s: PSym, isLocal: bool, section: string): string = 
-  result = symToStr(s, isLocal, section, s.info)
+    if s.typ != nil:
+      result.forth = typeToString(s.typ)
+    else:
+      result.forth = ""
+    result.filePath = toFullPath(li)
+    result.line = toLinenumber(li)
+    result.column = toColumn(li)
+    when not defined(noDocgen):
+      result.doc = s.extractDocComment
+
+proc `$`(suggest: Suggest): string =
+  result = $suggest.section
+  result.add(sep)
+  result.add($suggest.symkind)
+  result.add(sep)
+  result.add(suggest.qualifiedPath.join("."))
+  result.add(sep)
+  result.add(suggest.forth)
+  result.add(sep)
+  result.add(suggest.filePath)
+  result.add(sep)
+  result.add($suggest.line)
+  result.add(sep)
+  result.add($suggest.column)
+  result.add(sep)
+  when not defined(noDocgen):
+    result.add(suggest.doc.escape)
+
+proc symToSuggest(s: PSym, isLocal: bool, section: string): Suggest =
+  result = symToSuggest(s, isLocal, section, s.info)
+
+proc suggestResult(s: Suggest) =
+  if not isNil(suggestionResultHook):
+    suggestionResultHook(s)
+  else:
+    suggestWriteln($(s))
 
 proc filterSym(s: PSym): bool {.inline.} =
   result = s.kind != skModule
@@ -82,9 +104,9 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       result = true
       break
 
-proc suggestField(c: PContext, s: PSym, outputs: var int) = 
+proc suggestField(c: PContext, s: PSym, outputs: var int) =
   if filterSym(s) and fieldVisible(c, s):
-    suggestWriteln(symToStr(s, isLocal=true, sectionSuggest))
+    suggestResult(symToSuggest(s, isLocal=true, $ideSug))
     inc outputs
 
 template wholeSymTab(cond, section: expr) {.immediate.} =
@@ -97,20 +119,20 @@ template wholeSymTab(cond, section: expr) {.immediate.} =
     for item in entries:
       let it {.inject.} = item
       if cond:
-        suggestWriteln(symToStr(it, isLocal = isLocal, section))
+        suggestResult(symToSuggest(it, isLocal = isLocal, section))
         inc outputs
 
-proc suggestSymList(c: PContext, list: PNode, outputs: var int) = 
-  for i in countup(0, sonsLen(list) - 1): 
+proc suggestSymList(c: PContext, list: PNode, outputs: var int) =
+  for i in countup(0, sonsLen(list) - 1):
     if list.sons[i].kind == nkSym:
       suggestField(c, list.sons[i].sym, outputs)
     #else: InternalError(list.info, "getSymFromList")
 
-proc suggestObject(c: PContext, n: PNode, outputs: var int) = 
+proc suggestObject(c: PContext, n: PNode, outputs: var int) =
   case n.kind
-  of nkRecList: 
+  of nkRecList:
     for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], outputs)
-  of nkRecCase: 
+  of nkRecCase:
     var L = sonsLen(n)
     if L > 0:
       suggestObject(c, n.sons[0], outputs)
@@ -118,7 +140,7 @@ proc suggestObject(c: PContext, n: PNode, outputs: var int) =
   of nkSym: suggestField(c, n.sym, outputs)
   else: discard
 
-proc nameFits(c: PContext, s: PSym, n: PNode): bool = 
+proc nameFits(c: PContext, s: PSym, n: PNode): bool =
   var op = n.sons[0]
   if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op.sons[0]
   var opr: PIdent
@@ -128,8 +150,8 @@ proc nameFits(c: PContext, s: PSym, n: PNode): bool =
   else: return false
   result = opr.id == s.name.id
 
-proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool = 
-  case candidate.kind 
+proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
+  case candidate.kind
   of OverloadableSyms:
     var m: TCandidate
     initCandidate(c, m, candidate, nil)
@@ -138,11 +160,11 @@ proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
   else:
     result = false
 
-proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) = 
+proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) =
   wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
-              sectionContext)
+              $ideCon)
 
-proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} = 
+proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
   if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
     # special rule: if system and some weird generic match via 'tyExpr'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
@@ -157,7 +179,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
 
 proc suggestOperations(c: PContext, n: PNode, typ: PType, outputs: var int) =
   assert typ != nil
-  wholeSymTab(filterSymNoOpr(it) and typeFits(c, it, typ), sectionSuggest)
+  wholeSymTab(filterSymNoOpr(it) and typeFits(c, it, typ), $ideSug)
 
 proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
   # do not produce too many symbols:
@@ -166,7 +188,7 @@ proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
     if scope == c.topLevelScope: isLocal = false
     for it in items(scope.symbols):
       if filterSym(it):
-        suggestWriteln(symToStr(it, isLocal = isLocal, sectionSuggest))
+        suggestResult(symToSuggest(it, isLocal = isLocal, $ideSug))
         inc outputs
     if scope == c.topLevelScope: break
 
@@ -176,48 +198,48 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
   var typ = n.typ
   if typ == nil:
     # a module symbol has no type for example:
-    if n.kind == nkSym and n.sym.kind == skModule: 
-      if n.sym == c.module: 
+    if n.kind == nkSym and n.sym.kind == skModule:
+      if n.sym == c.module:
         # all symbols accessible, because we are in the current module:
         for it in items(c.topLevelScope.symbols):
-          if filterSym(it): 
-            suggestWriteln(symToStr(it, isLocal=false, sectionSuggest))
+          if filterSym(it):
+            suggestResult(symToSuggest(it, isLocal=false, $ideSug))
             inc outputs
-      else: 
-        for it in items(n.sym.tab): 
-          if filterSym(it): 
-            suggestWriteln(symToStr(it, isLocal=false, sectionSuggest))
+      else:
+        for it in items(n.sym.tab):
+          if filterSym(it):
+            suggestResult(symToSuggest(it, isLocal=false, $ideSug))
             inc outputs
     else:
       # fallback:
       suggestEverything(c, n, outputs)
-  elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType: 
+  elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType:
     # look up if the identifier belongs to the enum:
     var t = typ
-    while t != nil: 
+    while t != nil:
       suggestSymList(c, t.n, outputs)
       t = t.sons[0]
     suggestOperations(c, n, typ, outputs)
   else:
     typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef})
-    if typ.kind == tyObject: 
+    if typ.kind == tyObject:
       var t = typ
-      while true: 
+      while true:
         suggestObject(c, t.n, outputs)
-        if t.sons[0] == nil: break 
+        if t.sons[0] == nil: break
         t = skipTypes(t.sons[0], {tyGenericInst})
       suggestOperations(c, n, typ, outputs)
-    elif typ.kind == tyTuple and typ.n != nil: 
+    elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, outputs)
       suggestOperations(c, n, typ, outputs)
     else:
       suggestOperations(c, n, typ, outputs)
 
 type
-  TCheckPointResult = enum 
+  TCheckPointResult = enum
     cpNone, cpFuzzy, cpExact
 
-proc inCheckpoint(current: TLineInfo): TCheckPointResult = 
+proc inCheckpoint(current: TLineInfo): TCheckPointResult =
   if current.fileIndex == gTrackPos.fileIndex:
     if current.line == gTrackPos.line and
         abs(current.col-gTrackPos.col) < 4:
@@ -233,8 +255,8 @@ proc findClosestDot(n: PNode): PNode =
       result = findClosestDot(n.sons[i])
       if result != nil: return
 
-proc findClosestCall(n: PNode): PNode = 
-  if n.kind in nkCallKinds and inCheckpoint(n.info) == cpExact: 
+proc findClosestCall(n: PNode): PNode =
+  if n.kind in nkCallKinds and inCheckpoint(n.info) == cpExact:
     result = n
   else:
     for i in 0.. <safeLen(n):
@@ -248,8 +270,8 @@ proc isTracked(current: TLineInfo, tokenLen: int): bool =
       if col >= current.col and col <= current.col+tokenLen-1:
         return true
 
-proc findClosestSym(n: PNode): PNode = 
-  if n.kind == nkSym and inCheckpoint(n.info) == cpExact: 
+proc findClosestSym(n: PNode): PNode =
+  if n.kind == nkSym and inCheckpoint(n.info) == cpExact:
     result = n
   elif n.kind notin {nkNone..nkNilLit}:
     for i in 0.. <sonsLen(n):
@@ -263,16 +285,16 @@ var
 proc findUsages(info: TLineInfo; s: PSym) =
   if usageSym == nil and isTracked(info, s.name.s.len):
     usageSym = s
-    suggestWriteln(symToStr(s, isLocal=false, sectionUsage))
+    suggestResult(symToSuggest(s, isLocal=false, $ideUse))
   elif s == usageSym:
     if lastLineInfo != info:
-      suggestWriteln(symToStr(s, isLocal=false, sectionUsage, info))
+      suggestResult(symToSuggest(s, isLocal=false, $ideUse, info))
     lastLineInfo = info
 
 proc findDefinition(info: TLineInfo; s: PSym) =
   if s.isNil: return
   if isTracked(info, s.name.s.len):
-    suggestWriteln(symToStr(s, isLocal=false, sectionDef))
+    suggestResult(symToSuggest(s, isLocal=false, $ideDef))
     suggestQuit()
 
 proc ensureIdx[T](x: var T, y: int) =
@@ -287,6 +309,10 @@ proc suggestSym*(info: TLineInfo; s: PSym) {.inline.} =
     findUsages(info, s)
   elif gIdeCmd == ideDef:
     findDefinition(info, s)
+  elif gIdeCmd == ideDus and s != nil:
+    if isTracked(info, s.name.s.len):
+      suggestResult(symToSuggest(s, isLocal=false, $ideDef))
+    findUsages(info, s)
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
@@ -306,15 +332,15 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
   except ERecoverableError:
     result = ast.emptyNode
 
-proc suggestExpr*(c: PContext, node: PNode) = 
+proc suggestExpr*(c: PContext, node: PNode) =
   if nfIsCursor notin node.flags:
     if gTrackPos.line < 0: return
     var cp = inCheckpoint(node.info)
     if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
-  if c.inCompilesContext > 0: return
-  inc(c.inCompilesContext)
+  if c.compilesContextId > 0: return
+  inc(c.compilesContextId)
 
   if gIdeCmd == ideSug:
     var n = if nfIsCursor in node.flags: node else: findClosestDot(node)
@@ -327,7 +353,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       #writeStackTrace()
     else:
       suggestEverything(c, n, outputs)
-  
+
   elif gIdeCmd == ideCon:
     var n = if nfIsCursor in node.flags: node else: findClosestCall(node)
     if n == nil: n = node
@@ -342,9 +368,9 @@ proc suggestExpr*(c: PContext, node: PNode) =
         if x.kind == nkEmpty or x.typ == nil: break
         addSon(a, x)
       suggestCall(c, a, n, outputs)
-          
-  dec(c.inCompilesContext)
-  if outputs > 0 and gIdeCmd != ideUse: suggestQuit()
 
-proc suggestStmt*(c: PContext, n: PNode) = 
+  dec(c.compilesContextId)
+  if outputs > 0 and gIdeCmd notin {ideUse, ideDus}: suggestQuit()
+
+proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)

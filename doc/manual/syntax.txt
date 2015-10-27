@@ -15,15 +15,22 @@ Associativity
 Binary operators whose first character is ``^`` are right-associative, all
 other binary operators are left-associative.
 
-
+.. code-block:: nim
+  proc `^/`(x, y: float): float =
+    # a right-associative division operator
+    result = x / y
+  echo 12 ^/ 4 ^/ 8 # 24.0 (4 / 8 = 0.5, then
+                           12 / 0.5 = 24.0)
+  echo 12  / 4  / 8 # 0.375 (12 / 4 = 3.0, then
+                              3 / 8 = 0.375)
 
 Precedence
 ----------
 
-Unary operators always bind stronger than any binary 
+Unary operators always bind stronger than any binary
 operator: ``$a + b`` is ``($a) + b`` and not ``$(a + b)``.
 
-If an unary operator's first character is ``@`` it is a `sigil-like`:idx: 
+If an unary operator's first character is ``@`` it is a `sigil-like`:idx:
 operator which binds stronger than a ``primarySuffix``: ``@x.abc`` is parsed
 as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
 
@@ -34,7 +41,7 @@ following rules:
 Operators ending in either ``->``, ``~>`` or ``=>`` are called
 `arrow like`:idx:, and have the lowest precedence of all operators.
 
-If the operator ends with ``=`` and its first character is none of 
+If the operator ends with ``=`` and its first character is none of
 ``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
 has the second lowest precedence.
 
@@ -61,13 +68,13 @@ Strong spaces
 -------------
 
 The number of spaces preceding a non-keyword operator affects precedence
-if the experimental parser directive ``#!strongSpaces`` is used. Indentation
+if the experimental parser directive ``#?strongSpaces`` is used. Indentation
 is not used to determine the number of spaces. If 2 or more operators have the
 same number of preceding spaces the precedence table applies, so ``1 + 3 * 4``
 is still parsed as ``1 + (3 * 4)``, but ``1+3 * 4`` is parsed as ``(1+3) * 4``:
 
 .. code-block:: nim
-  #! strongSpaces
+  #? strongSpaces
   if foo+4 * 4 == 8  and  b&c | 9  ++
       bar:
     echo ""
@@ -76,10 +83,10 @@ is still parsed as ``1 + (3 * 4)``, but ``1+3 * 4`` is parsed as ``(1+3) * 4``:
 
 
 Furthermore whether an operator is used a prefix operator is affected by the
-number of spaces: 
+number of spaces:
 
 .. code-block:: nim
-  #! strongSpaces
+  #? strongSpaces
   echo $foo
   # is parsed as
   echo($foo)
@@ -88,7 +95,7 @@ This also affects whether ``[]``, ``{}``, ``()`` are parsed as constructors
 or as accessors:
 
 .. code-block:: nim
-  #! strongSpaces
+  #? strongSpaces
   echo (1,2)
   # is parsed as
   echo((1,2))

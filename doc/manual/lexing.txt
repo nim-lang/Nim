@@ -25,7 +25,7 @@ a separate token. This trick allows parsing of Nim with only 1 token of
 lookahead.
 
 The parser uses a stack of indentation levels: the stack consists of integers
-counting the spaces. The indentation information is queried at strategic 
+counting the spaces. The indentation information is queried at strategic
 places in the parser but ignored otherwise: The pseudo terminal ``IND{>}``
 denotes an indentation that consists of more spaces than the entry at the top
 of the stack; IND{=} an indentation that has the same number of spaces. ``DED``
@@ -36,7 +36,7 @@ With this notation we can now easily define the core of the grammar: A block of
 statements (simplified example)::
 
   ifStmt = 'if' expr ':' stmt
-           (IND{=} 'elif' expr ':' stmt)* 
+           (IND{=} 'elif' expr ':' stmt)*
            (IND{=} 'else' ':' stmt)?
 
   simpleStmt = ifStmt / ...
@@ -80,7 +80,7 @@ underscores ``__`` are not allowed::
   digit ::= '0'..'9'
   IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
 
-Currently any unicode character with an ordinal value > 127 (non ASCII) is
+Currently any Unicode character with an ordinal value > 127 (non ASCII) is
 classified as a ``letter`` and may thus be part of an identifier but later
 versions of the language may assign some Unicode characters to belong to the
 operator characters instead.
@@ -101,25 +101,28 @@ Two identifiers are considered equal if the following algorithm returns true:
 
 .. code-block:: nim
   proc sameIdentifier(a, b: string): bool =
-    a[0] == b[0] and a.replace("_", "").toLower == b.replace("_", "").toLower
+    a[0] == b[0] and
+      a.replace(re"_|–", "").toLower == b.replace(re"_|–", "").toLower
 
 That means only the first letters are compared in a case sensitive manner. Other
-letters are compared case insensitively and underscores are ignored.
+letters are compared case insensitively and underscores and en-dash (Unicode
+point U+2013) are ignored.
 
-This rather strange way to do identifier comparisons is called
+This rather unorthodox way to do identifier comparisons is called
 `partial case insensitivity`:idx: and has some advantages over the conventional
 case sensitivity:
 
 It allows programmers to mostly use their own preferred
-spelling style and libraries written by different programmers cannot use
-incompatible conventions. A Nim-aware editor or IDE can show the identifiers as
-preferred. Another advantage is that it frees the programmer from remembering
+spelling style, be it humpStyle, snake_style or dash–style and libraries written
+by different programmers cannot use incompatible conventions.
+A Nim-aware editor or IDE can show the identifiers as preferred.
+Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
 
-Historically, Nim was a `style-insensitive`:idx: language. This means that it
-was not case-sensitive and underscores were ignored and there was no distinction
-between ``foo`` and ``Foo``.
+Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
+it was not case-sensitive and underscores were ignored and there was no even a
+distinction between ``foo`` and ``Foo``.
 
 
 String literals
@@ -153,7 +156,7 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
 
 
-Strings in Nim may contain any 8-bit value, even embedded zeros. However 
+Strings in Nim may contain any 8-bit value, even embedded zeros. However
 some operations may interpret the first binary zero as a terminator.
 
 
@@ -171,7 +174,7 @@ be whitespace between the opening ``"""`` and the newline),
 the newline (and the preceding whitespace) is not included in the string. The
 ending of the string literal is defined by the pattern ``"""[^"]``, so this:
 
-.. code-block:: nim 
+.. code-block:: nim
   """"long string within quotes""""
 
 Produces::
@@ -184,9 +187,9 @@ Raw string literals
 
 Terminal symbol in the grammar: ``RSTR_LIT``.
 
-There are also raw string literals that are preceded with the 
-letter ``r`` (or ``R``) and are delimited by matching double quotes (just 
-like ordinary string literals) and do not interpret the escape sequences. 
+There are also raw string literals that are preceded with the
+letter ``r`` (or ``R``) and are delimited by matching double quotes (just
+like ordinary string literals) and do not interpret the escape sequences.
 This is especially convenient for regular expressions or Windows paths:
 
 .. code-block:: nim
@@ -198,21 +201,21 @@ To produce a single ``"`` within a raw string literal, it has to be doubled:
 .. code-block:: nim
 
   r"a""b"
-  
+
 Produces::
-  
+
   a"b
 
-``r""""`` is not possible with this notation, because the three leading 
-quotes introduce a triple quoted string literal. ``r"""`` is the same 
-as ``"""`` since triple quoted string literals do not interpret escape 
+``r""""`` is not possible with this notation, because the three leading
+quotes introduce a triple quoted string literal. ``r"""`` is the same
+as ``"""`` since triple quoted string literals do not interpret escape
 sequences either.
 
 
 Generalized raw string literals
 -------------------------------
 
-Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``, 
+Terminal symbols in the grammar: ``GENERALIZED_STR_LIT``,
 ``GENERALIZED_TRIPLESTR_LIT``.
 
 The construct ``identifier"string literal"`` (without whitespace between the
@@ -276,9 +279,9 @@ Numerical constants are of a single type and have the form::
   bindigit = '0'..'1'
   HEX_LIT = '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
   DEC_LIT = digit ( ['_'] digit )*
-  OCT_LIT = '0o' octdigit ( ['_'] octdigit )*
+  OCT_LIT = '0' ('o' | 'c' | 'C') octdigit ( ['_'] octdigit )*
   BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
-  
+
   INT_LIT = HEX_LIT
           | DEC_LIT
           | OCT_LIT
@@ -297,15 +300,17 @@ Numerical constants are of a single type and have the form::
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
   FLOAT_LIT = digit (['_'] digit)* (('.' (['_'] digit)* [exponent]) |exponent)
-  FLOAT32_LIT = HEX_LIT '\'' ('f'|'F') '32'
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '32'
-  FLOAT64_LIT = HEX_LIT '\'' ('f'|'F') '64'
-              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] ('f'|'F') '64'
+  FLOAT32_SUFFIX = ('f' | 'F') ['32']
+  FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
+              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
+  FLOAT64_SUFFIX = ( ('f' | 'F') '64' ) | 'd' | 'D'
+  FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
+              | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
 
 As can be seen in the productions, numerical constants can contain underscores
 for readability. Integer and floating point literals may be given in decimal (no
-prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal
+prefix), binary (prefix ``0b``), octal (prefix ``0o`` or ``0c``) and hexadecimal
 (prefix ``0x``) notation.
 
 There exists a literal for each numerical type that is
@@ -331,8 +336,11 @@ The type suffixes are:
   ``'u16``           uint16
   ``'u32``           uint32
   ``'u64``           uint64
+  ``'f``             float32
+  ``'d``             float64
   ``'f32``           float32
   ``'f64``           float64
+  ``'f128``          float128
 =================    =========================
 
 Floating point literals may also be in binary, octal or hexadecimal
@@ -340,12 +348,18 @@ notation:
 ``0B0_10001110100_0000101001000111101011101111111011000101001101001001'f64``
 is approximately 1.72826e35 according to the IEEE floating point standard.
 
+Literals are bounds checked so that they fit the datatype. Non base-10
+literals are used mainly for flags and bit pattern representations, therefore
+bounds checking is done on bit width, not value range. If the literal fits in
+the bit width of the datatype, it is accepted.
+Hence: 0b10000000'u8 == 0x80'u8 == 128, but, 0b10000000'i8 == 0x80'i8 == -1
+instead of causing an overflow error.
 
 Operators
 ---------
 
-In Nim one can define his own operators. An operator is any
-combination of the following characters::
+Nim allows user defined operators. An operator is any combination of the
+following characters::
 
        =     +     -     *     /     <     >
        @     $     ~     &     %     |
@@ -355,7 +369,7 @@ These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
 `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
-are used for other notational purposes. 
+are used for other notational purposes.
 
 ``*:`` is as a special case the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).
@@ -369,7 +383,7 @@ The following strings denote other tokens::
     `   (     )     {     }     [     ]     ,  ;   [.    .]  {.   .}  (.  .)
 
 
-The `slice`:idx: operator `..`:tok: takes precedence over other tokens that 
-contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok: 
+The `slice`:idx: operator `..`:tok: takes precedence over other tokens that
+contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
 and not the two tokens `{.`:tok:, `.}`:tok:.
 

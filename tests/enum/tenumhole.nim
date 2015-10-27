@@ -12,10 +12,10 @@ type
     valueB = strValB & "conc",
     valueC,
     valueD = (4, "abc")
- 
+
 # test the new "proc body can be an expr" feature:
 proc getValue: TMyEnum = valueD
- 
+
 # trick the optimizer with a variable:
 var x = getValue()
 echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x

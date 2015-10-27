@@ -395,7 +395,7 @@ proc rangeToStr(n: PNode): string =
 
 const
   typeToStr: array[TTypeKind, string] = ["None", "bool", "Char", "empty",
-    "Array Constructor [$1]", "nil", "expr", "stmt", "typeDesc",
+    "Array Constructor [$1]", "nil", "untyped", "typed", "typeDesc",
     "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
@@ -411,6 +411,10 @@ const
 
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
 
+proc addTypeFlags(name: var string, typ: PType) {.inline.} =
+  if tfShared in typ.flags: name = "shared " & name
+  if tfNotNil in typ.flags: name.add(" not nil")
+
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   var t = typ
   result = ""
@@ -418,11 +422,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   if prefer in preferToResolveSymbols and t.sym != nil and
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
-      return t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    if prefer == preferName or t.sym.owner.isNil:
-      return t.sym.name.s
+      result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
+    elif prefer == preferName or t.sym.owner.isNil:
+      result = t.sym.name.s
     else:
-      return t.sym.owner.name.s & '.' & t.sym.name.s
+      result = t.sym.owner.name.s & '.' & t.sym.name.s
+    result.addTypeFlags(t)
+    return
   case t.kind
   of tyInt:
     if not isIntLit(t) or prefer == preferExported:
@@ -481,7 +487,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
     internalAssert t.len == 0
-    result = "expr"
+    result = "untyped"
   of tyFromExpr, tyFieldAccessor:
     result = renderTree(t.n)
   of tyArray:
@@ -563,8 +569,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind] % typeToString(t.sons[0])
   else:
     result = typeToStr[t.kind]
-  if tfShared in t.flags: result = "shared " & result
-  if tfNotNil in t.flags: result.add(" not nil")
+  result.addTypeFlags(t)
 
 proc resultType(t: PType): PType =
   assert(t.kind == tyProc)
@@ -986,7 +991,9 @@ proc compareTypes*(x, y: PType,
   var c = initSameTypeClosure()
   c.cmp = cmp
   c.flags = flags
-  result = sameTypeAux(x, y, c)
+  if x == y: result = true
+  elif x.isNil or y.isNil: result = false
+  else: result = sameTypeAux(x, y, c)
 
 proc inheritanceDiff*(a, b: PType): int =
   # | returns: 0 iff `a` == `b`
@@ -1260,13 +1267,16 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
       else: result = 8
     a = result
   of tySet:
-    length = lengthOrd(typ.sons[0])
-    if length <= 8: result = 1
-    elif length <= 16: result = 2
-    elif length <= 32: result = 4
-    elif length <= 64: result = 8
-    elif align(length, 8) mod 8 == 0: result = align(length, 8) div 8
-    else: result = align(length, 8) div 8 + 1
+    if typ.sons[0].kind == tyGenericParam:
+      result = szUnknownSize
+    else:
+      length = lengthOrd(typ.sons[0])
+      if length <= 8: result = 1
+      elif length <= 16: result = 2
+      elif length <= 32: result = 4
+      elif length <= 64: result = 8
+      elif align(length, 8) mod 8 == 0: result = align(length, 8) div 8
+      else: result = align(length, 8) div 8 + 1
     a = result
   of tyRange:
     result = computeSizeAux(typ.sons[0], a)

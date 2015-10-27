@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables, ropes, platform
+  options, strutils, os, tables, ropes, platform, terminal, macros
 
 type
   TMsgKind* = enum
@@ -17,10 +17,9 @@ type
     errIntLiteralExpected, errInvalidCharacterConstant,
     errClosingTripleQuoteExpected, errClosingQuoteExpected,
     errTabulatorsAreNotAllowed, errInvalidToken, errLineTooLong,
-    errInvalidNumber, errNumberOutOfRange, errNnotAllowedInCharacter,
-    errClosingBracketExpected, errMissingFinalQuote, errIdentifierExpected,
-    errNewlineExpected,
-    errInvalidModuleName,
+    errInvalidNumber, errInvalidNumberOctalCode, errNumberOutOfRange,
+    errNnotAllowedInCharacter, errClosingBracketExpected, errMissingFinalQuote,
+    errIdentifierExpected, errNewlineExpected, errInvalidModuleName,
     errOperatorExpected, errTokenExpected, errStringAfterIncludeExpected,
     errRecursiveDependencyX, errOnOrOffExpected, errNoneSpeedOrSizeExpected,
     errInvalidPragma, errUnknownPragma, errInvalidDirectiveX,
@@ -31,11 +30,14 @@ type
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
     errInvalidVarSubstitution, errUnknownVar, errUnknownCcompiler,
-    errOnOrOffExpectedButXFound, errNoneBoehmRefcExpectedButXFound,
+    errOnOrOffExpectedButXFound, errOnOffOrListExpectedButXFound,
+    errNoneBoehmRefcExpectedButXFound,
     errNoneSpeedOrSizeExpectedButXFound, errGuiConsoleOrLibExpectedButXFound,
     errUnknownOS, errUnknownCPU, errGenOutExpectedButXFound,
     errArgsNeedRunOption, errInvalidMultipleAsgn, errColonOrEqualsExpected,
-    errExprExpected, errUndeclaredIdentifier, errUseQualifier, errTypeExpected,
+    errExprExpected, errUndeclaredIdentifier, errUndeclaredField,
+    errUndeclaredRoutine, errUseQualifier,
+    errTypeExpected,
     errSystemNeeds, errExecutionOfProgramFailed, errNotOverloadable,
     errInvalidArgForX, errStmtHasNoEffect, errXExpectsTypeOrValue,
     errXExpectsArrayType, errIteratorCannotBeInstantiated, errExprXAmbiguous,
@@ -80,7 +82,7 @@ type
     errArrayExpectsTwoTypeParams, errInvalidVisibilityX, errInitHereNotAllowed,
     errXCannotBeAssignedTo, errIteratorNotAllowed, errXNeedsReturnType,
     errNoReturnTypeDeclared,
-    errInvalidCommandX, errXOnlyAtModuleScope,
+    errNoCommand, errInvalidCommandX, errXOnlyAtModuleScope,
     errXNeedsParamObjectType,
     errTemplateInstantiationTooNested, errInstantiationFrom,
     errInvalidIndexValueForTuple, errCommandExpectsFilename,
@@ -106,6 +108,8 @@ type
     errCannotInferReturnType,
     errGenericLambdaNotAllowed,
     errCompilerDoesntSupportTarget,
+    errExternalAssemblerNotFound,
+    errExternalAssemblerNotValid,
     errUser,
     warnCannotOpenFile,
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit,
@@ -114,7 +118,7 @@ type
     warnUnknownSubstitutionX, warnLanguageXNotSupported,
     warnFieldXNotSupported, warnCommentXIgnored,
     warnNilStatement, warnTypelessParam,
-    warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
+    warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
@@ -124,6 +128,8 @@ type
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
+    hintExecuting, hintLinking, hintDependency,
+    hintSource, hintStackTrace, hintGCStats,
     hintUser
 
 const
@@ -143,6 +149,7 @@ const
     errInvalidToken: "invalid token: $1",
     errLineTooLong: "line too long",
     errInvalidNumber: "$1 is not a valid number",
+    errInvalidNumberOctalCode: "$1 is not a valid number; did you mean octal? Then use one of '0o', '0c' or '0C'.",
     errNumberOutOfRange: "number $1 out of valid range",
     errNnotAllowedInCharacter: "\\n not allowed in character literal",
     errClosingBracketExpected: "closing ']' expected, but end of file reached",
@@ -179,6 +186,7 @@ const
     errUnknownVar: "unknown variable: \'$1\'",
     errUnknownCcompiler: "unknown C compiler: \'$1\'",
     errOnOrOffExpectedButXFound: "\'on\' or \'off\' expected, but \'$1\' found",
+    errOnOffOrListExpectedButXFound: "\'on\', \'off\' or \'list\' expected, but \'$1\' found",
     errNoneBoehmRefcExpectedButXFound: "'none', 'boehm' or 'refc' expected, but '$1' found",
     errNoneSpeedOrSizeExpectedButXFound: "'none', 'speed' or 'size' expected, but '$1' found",
     errGuiConsoleOrLibExpectedButXFound: "'gui', 'console' or 'lib' expected, but '$1' found",
@@ -190,10 +198,12 @@ const
     errColonOrEqualsExpected: "\':\' or \'=\' expected, but found \'$1\'",
     errExprExpected: "expression expected, but found \'$1\'",
     errUndeclaredIdentifier: "undeclared identifier: \'$1\'",
+    errUndeclaredField: "undeclared field: \'$1\'",
+    errUndeclaredRoutine: "attempting to call undeclared routine: \'$1\'",
     errUseQualifier: "ambiguous identifier: \'$1\' -- use a qualifier",
     errTypeExpected: "type expected",
     errSystemNeeds: "system module needs \'$1\'",
-    errExecutionOfProgramFailed: "execution of an external program failed",
+    errExecutionOfProgramFailed: "execution of an external program failed: '$1'",
     errNotOverloadable: "overloaded \'$1\' leads to ambiguous calls",
     errInvalidArgForX: "invalid argument for \'$1\'",
     errStmtHasNoEffect: "statement has no effect",
@@ -308,6 +318,7 @@ const
     errIteratorNotAllowed: "iterators can only be defined at the module\'s top level",
     errXNeedsReturnType: "$1 needs a return type",
     errNoReturnTypeDeclared: "no return type declared",
+    errNoCommand: "no command given",
     errInvalidCommandX: "invalid command: \'$1\'",
     errXOnlyAtModuleScope: "\'$1\' is only allowed at top level",
     errXNeedsParamObjectType: "'$1' needs a parameter that has an object type",
@@ -362,55 +373,63 @@ const
                                 "it is used as an operand to another routine and the types " &
                                 "of the generic paramers can be inferred from the expected signature.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
+    errExternalAssemblerNotFound: "External assembler not found",
+    errExternalAssemblerNotValid: "External assembler '$1' is not a valid assembler",
     errUser: "$1",
-    warnCannotOpenFile: "cannot open \'$1\' [CannotOpenFile]",
-    warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored [OctalEscape]",
-    warnXIsNeverRead: "\'$1\' is never read [XIsNeverRead]",
-    warnXmightNotBeenInit: "\'$1\' might not have been initialized [XmightNotBeenInit]",
-    warnDeprecated: "$1 is deprecated [Deprecated]",
-    warnConfigDeprecated: "config file '$1' is deprecated [ConfigDeprecated]",
-    warnSmallLshouldNotBeUsed: "\'l\' should not be used as an identifier; may look like \'1\' (one) [SmallLshouldNotBeUsed]",
-    warnUnknownMagic: "unknown magic \'$1\' might crash the compiler [UnknownMagic]",
-    warnRedefinitionOfLabel: "redefinition of label \'$1\' [RedefinitionOfLabel]",
-    warnUnknownSubstitutionX: "unknown substitution \'$1\' [UnknownSubstitutionX]",
-    warnLanguageXNotSupported: "language \'$1\' not supported [LanguageXNotSupported]",
-    warnFieldXNotSupported: "field \'$1\' not supported [FieldXNotSupported]",
-    warnCommentXIgnored: "comment \'$1\' ignored [CommentXIgnored]",
-    warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead [NilStmt]",
-    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template' [TypelessParam]",
-    warnDifferentHeaps: "possible inconsistency of thread local heaps [DifferentHeaps]",
-    warnWriteToForeignHeap: "write to foreign heap [WriteToForeignHeap]",
-    warnUnsafeCode: "unsafe code: '$1' [UnsafeCode]",
-    warnEachIdentIsTuple: "each identifier is a tuple [EachIdentIsTuple]",
-    warnShadowIdent: "shadowed identifier: '$1' [ShadowIdent]",
-    warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future. [ProveInit]",
-    warnProveField: "cannot prove that field '$1' is accessible [ProveField]",
-    warnProveIndex: "cannot prove index '$1' is valid [ProveIndex]",
-    warnGcUnsafe: "not GC-safe: '$1' [GcUnsafe]",
+    warnCannotOpenFile: "cannot open \'$1\'",
+    warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
+    warnXIsNeverRead: "\'$1\' is never read",
+    warnXmightNotBeenInit: "\'$1\' might not have been initialized",
+    warnDeprecated: "$1 is deprecated",
+    warnConfigDeprecated: "config file '$1' is deprecated",
+    warnSmallLshouldNotBeUsed: "\'l\' should not be used as an identifier; may look like \'1\' (one)",
+    warnUnknownMagic: "unknown magic \'$1\' might crash the compiler",
+    warnRedefinitionOfLabel: "redefinition of label \'$1\'",
+    warnUnknownSubstitutionX: "unknown substitution \'$1\'",
+    warnLanguageXNotSupported: "language \'$1\' not supported",
+    warnFieldXNotSupported: "field \'$1\' not supported",
+    warnCommentXIgnored: "comment \'$1\' ignored",
+    warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead",
+    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
+    warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
+    warnWriteToForeignHeap: "write to foreign heap",
+    warnUnsafeCode: "unsafe code: '$1'",
+    warnEachIdentIsTuple: "each identifier is a tuple",
+    warnShadowIdent: "shadowed identifier: '$1'",
+    warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
+    warnProveField: "cannot prove that field '$1' is accessible",
+    warnProveIndex: "cannot prove index '$1' is valid",
+    warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
-    warnUninit: "'$1' might not have been initialized [Uninit]",
-    warnGcMem: "'$1' uses GC'ed memory [GcMem]",
-    warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future. [Destructor]",
-    warnLockLevel: "$1 [LockLevel]",
-    warnResultShadowed: "Special variable 'result' is shadowed. [ResultShadowed]",
-    warnUser: "$1 [User]",
-    hintSuccess: "operation successful [Success]",
-    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#) [SuccessX]",
-    hintLineTooLong: "line too long [LineTooLong]",
-    hintXDeclaredButNotUsed: "\'$1\' is declared but not used [XDeclaredButNotUsed]",
-    hintConvToBaseNotNeeded: "conversion to base object is not needed [ConvToBaseNotNeeded]",
-    hintConvFromXtoItselfNotNeeded: "conversion from $1 to itself is pointless [ConvFromXtoItselfNotNeeded]",
-    hintExprAlwaysX: "expression evaluates always to \'$1\' [ExprAlwaysX]",
-    hintQuitCalled: "quit() called [QuitCalled]",
-    hintProcessing: "$1 [Processing]",
-    hintCodeBegin: "generated code listing: [CodeBegin]",
-    hintCodeEnd: "end of listing [CodeEnd]",
-    hintConf: "used config file \'$1\' [Conf]",
-    hintPath: "added path: '$1' [Path]",
-    hintConditionAlwaysTrue: "condition is always true: '$1' [CondTrue]",
-    hintName: "name should be: '$1' [Name]",
-    hintPattern: "$1 [Pattern]",
-    hintUser: "$1 [User]"]
+    warnUninit: "'$1' might not have been initialized",
+    warnGcMem: "'$1' uses GC'ed memory",
+    warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
+    warnLockLevel: "$1",
+    warnResultShadowed: "Special variable 'result' is shadowed.",
+    warnUser: "$1",
+    hintSuccess: "operation successful",
+    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    hintLineTooLong: "line too long",
+    hintXDeclaredButNotUsed: "\'$1\' is declared but not used",
+    hintConvToBaseNotNeeded: "conversion to base object is not needed",
+    hintConvFromXtoItselfNotNeeded: "conversion from $1 to itself is pointless",
+    hintExprAlwaysX: "expression evaluates always to \'$1\'",
+    hintQuitCalled: "quit() called",
+    hintProcessing: "$1",
+    hintCodeBegin: "generated code listing:",
+    hintCodeEnd: "end of listing",
+    hintConf: "used config file \'$1\'",
+    hintPath: "added path: '$1'",
+    hintConditionAlwaysTrue: "condition is always true: '$1'",
+    hintName: "name should be: '$1'",
+    hintPattern: "$1",
+    hintExecuting: "$1",
+    hintLinking: "",
+    hintDependency: "$1",
+    hintSource: "$1",
+    hintStackTrace: "$1",
+    hintGCStats: "$1",
+    hintUser: "$1"]
 
 const
   WarningsToStr*: array[0..30, string] = ["CannotOpenFile", "OctalEscape",
@@ -420,15 +439,16 @@ const
     "RedefinitionOfLabel", "UnknownSubstitutionX",
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored", "NilStmt",
-    "TypelessParam", "DifferentHeaps", "WriteToForeignHeap",
+    "TypelessParam", "UseBase", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
-  HintsToStr*: array[0..16, string] = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr*: array[0..22, string] = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "Name", "Pattern",
+    "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
+    "Source", "StackTrace", "GCStats",
     "User"]
 
 const
@@ -449,10 +469,10 @@ type
     fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
-    quotedName*: Rope         # cached quoted short name for codegen
+    quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
 
-    lines*: seq[Rope]         # the source code of the module
+    lines*: seq[Rope]          # the source code of the module
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
@@ -478,6 +498,30 @@ type
 
   ERecoverableError* = object of ValueError
   ESuggestDone* = object of Exception
+
+const
+  NotesVerbosity*: array[0..3, TNoteKinds] = [
+    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
+                                         warnProveField, warnProveIndex,
+                                         warnGcUnsafe,
+                                         hintSuccessX, hintPath, hintConf,
+                                         hintProcessing,
+                                         hintDependency,
+                                         hintExecuting, hintLinking,
+                                         hintCodeBegin, hintCodeEnd,
+                                         hintSource, hintStackTrace,
+                                         hintGCStats},
+    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
+                                         warnProveField, warnProveIndex,
+                                         warnGcUnsafe,
+                                         hintPath, hintConf,
+                                         hintDependency,
+                                         hintExecuting,
+                                         hintCodeBegin, hintCodeEnd,
+                                         hintSource, hintStackTrace,
+                                         hintGCStats},
+    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace},
+    {low(TNoteKind)..high(TNoteKind)}]
 
 const
   InvalidFileIDX* = int32(-1)
@@ -567,9 +611,7 @@ proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
 proc sourceLine*(i: TLineInfo): Rope
 
 var
-  gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} -
-                        {warnShadowIdent, warnUninit,
-                         warnProveField, warnProveIndex, warnGcUnsafe}
+  gNotes*: TNoteKinds = NotesVerbosity[1] # defaults to verbosity of 1
   gErrorCounter*: int = 0     # counts the number of errors
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
@@ -589,8 +631,11 @@ var
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
-    if isNil(writelnHook): writeln(stdout, s)
-    else: writelnHook(s)
+    if isNil(writelnHook):
+      writeLine(stdout, s)
+      flushFile(stdout)
+    else:
+      writelnHook(s)
 
 proc msgQuit*(x: int8) = quit x
 proc msgQuit*(x: string) = quit x
@@ -601,13 +646,17 @@ proc suggestQuit*() =
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
 const
-  PosErrorFormat* = "$1($2, $3) Error: $4"
-  PosWarningFormat* = "$1($2, $3) Warning: $4"
-  PosHintFormat* = "$1($2, $3) Hint: $4"
-  PosContextFormat = "$1($2, $3) Info: $4"
-  RawErrorFormat* = "Error: $1"
-  RawWarningFormat* = "Warning: $1"
-  RawHintFormat* = "Hint: $1"
+  PosFormat    = "$1($2, $3) "
+  KindFormat   = " [$1]"
+  KindColor    = fgCyan
+  ErrorTitle   = "Error: "
+  ErrorColor   = fgRed
+  WarningTitle = "Warning: "
+  WarningColor = fgYellow
+  HintTitle    = "Hint: "
+  HintColor    = fgGreen
+  InfoTitle    = "Info: "
+  InfoColor    = fgCyan
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)
@@ -678,21 +727,79 @@ proc `??`* (info: TLineInfo, filename: string): bool =
 
 var gTrackPos*: TLineInfo
 
-proc outWriteln*(s: string) =
-  ## Writes to stdout. Always.
-  if eStdOut in errorOutputs: writeln(stdout, s)
+type
+  MsgFlag* = enum  ## flags altering msgWriteln behavior
+    msgStdout,     ## force writing to stdout, even stderr is default
+    msgSkipHook    ## skip message hook even if it is present
+  MsgFlags* = set[MsgFlag]
 
-proc msgWriteln*(s: string) =
-  ## Writes to stdout. If --stdout option is given, writes to stderr instead.
+proc msgWriteln*(s: string, flags: MsgFlags = {}) =
+  ## Writes given message string to stderr by default.
+  ## If ``--stdout`` option is given, writes to stdout instead. If message hook
+  ## is present, then it is used to output message rather than stderr/stdout.
+  ## This behavior can be altered by given optional flags.
 
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
-  if not isNil(writelnHook):
+  if not isNil(writelnHook) and msgSkipHook notin flags:
     writelnHook(s)
-  elif optStdout in gGlobalOptions:
-    if eStdErr in errorOutputs: writeln(stderr, s)
+  elif optStdout in gGlobalOptions or msgStdout in flags:
+    if eStdOut in errorOutputs:
+      writeLine(stdout, s)
+      flushFile(stdout)
   else:
-    if eStdOut in errorOutputs: writeln(stdout, s)
+    if eStdErr in errorOutputs:
+      writeLine(stderr, s)
+      # On Windows stderr is fully-buffered when piped, regardless of C std.
+      when defined(windows):
+        flushFile(stderr)
+
+macro callIgnoringStyle(theProc: typed, first: typed,
+                        args: varargs[expr]): stmt =
+  let typForegroundColor = bindSym"ForegroundColor".getType
+  let typBackgroundColor = bindSym"BackgroundColor".getType
+  let typStyle = bindSym"Style".getType
+  let typTerminalCmd = bindSym"TerminalCmd".getType
+  result = newCall(theProc)
+  if first.kind != nnkNilLit: result.add(first)
+  for arg in children(args[0][1]):
+    if arg.kind == nnkNilLit: continue
+    let typ = arg.getType
+    if typ.kind != nnkEnumTy or
+       typ != typForegroundColor and
+       typ != typBackgroundColor and
+       typ != typStyle and
+       typ != typTerminalCmd:
+      result.add(arg)
+
+macro callStyledWriteLineStderr(args: varargs[expr]): stmt =
+  result = newCall(bindSym"styledWriteLine")
+  result.add(bindSym"stderr")
+  for arg in children(args[0][1]):
+    result.add(arg)
+
+template callWritelnHook(args: varargs[string, `$`]) =
+  var s = ""
+  for arg in args:
+    s.add arg
+  writelnHook s
+
+template styledMsgWriteln*(args: varargs[expr]) =
+  if not isNil(writelnHook):
+    callIgnoringStyle(callWritelnHook, nil, args)
+  elif optStdout in gGlobalOptions:
+    if eStdOut in errorOutputs:
+      callIgnoringStyle(writeLine, stdout, args)
+      flushFile(stdout)
+  else:
+    if eStdErr in errorOutputs:
+      if optUseColors in gGlobalOptions:
+        callStyledWriteLineStderr(args)
+      else:
+        callIgnoringStyle(writeLine, stderr, args)
+      # On Windows stderr is fully-buffered when piped, regardless of C std.
+      when defined(windows):
+        flushFile(stderr)
 
 proc coordToStr(coord: int): string =
   if coord == -1: result = "???"
@@ -710,11 +817,11 @@ type
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   template quit =
-    if defined(debug) or gVerbosity >= 3 or msg == errInternal:
+    if defined(debug) or msg == errInternal or hintStackTrace in gNotes:
       if stackTraceAvailable() and isNil(writelnHook):
         writeStackTrace()
       else:
-        msgWriteln("No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
+        styledMsgWriteln(fgRed, "No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
     quit 1
 
   if msg >= fatalMin and msg <= fatalMax:
@@ -736,39 +843,57 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastinfo
   for i in countup(0, len(msgContext) - 1):
     if msgContext[i] != lastinfo and msgContext[i] != info:
-      msgWriteln(PosContextFormat % [toMsgFilename(msgContext[i]),
-                                     coordToStr(msgContext[i].line),
-                                     coordToStr(msgContext[i].col+1),
-                                     getMessageStr(errInstantiationFrom, "")])
+      styledMsgWriteln(styleBright,
+                       PosFormat % [toMsgFilename(msgContext[i]),
+                                    coordToStr(msgContext[i].line),
+                                    coordToStr(msgContext[i].col+1)],
+                       resetStyle,
+                       getMessageStr(errInstantiationFrom, ""))
     info = msgContext[i]
 
 proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
   msg >= errGenerated and gCmd == cmdIdeTools and optIdeDebug notin gGlobalOptions
 
 proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
-  var frmt: string
+  var
+    title: string
+    color: ForegroundColor
+    kind:  string
   case msg
   of errMin..errMax:
     writeContext(unknownLineInfo())
-    frmt = RawErrorFormat
+    title = ErrorTitle
+    color = ErrorColor
   of warnMin..warnMax:
     if optWarns notin gOptions: return
     if msg notin gNotes: return
     writeContext(unknownLineInfo())
-    frmt = RawWarningFormat
+    title = WarningTitle
+    color = WarningColor
+    kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
   of hintMin..hintMax:
     if optHints notin gOptions: return
     if msg notin gNotes: return
-    frmt = RawHintFormat
+    title = HintTitle
+    color = HintColor
+    kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
-  let s = `%`(frmt, `%`(msgKindToString(msg), args))
+  let s = `%`(msgKindToString(msg), args)
   if not ignoreMsgBecauseOfIdeTools(msg):
-    msgWriteln(s)
+    if kind != nil:
+      styledMsgWriteln(color, title, resetStyle, s,
+                       KindColor, `%`(KindFormat, kind))
+    else:
+      styledMsgWriteln(color, title, resetStyle, s)
   handleError(msg, doAbort, s)
 
 proc rawMessage*(msg: TMsgKind, arg: string) =
   rawMessage(msg, [arg])
+
+proc resetAttributes* =
+  if {optUseColors, optStdout} * gGlobalOptions == {optUseColors}:
+    terminal.resetAttributes(stderr)
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
@@ -776,21 +901,27 @@ proc writeSurroundingSrc(info: TLineInfo) =
   msgWriteln(indent & spaces(info.col) & '^')
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
-  let frmt = case msg
-             of warnMin..warnMax: PosWarningFormat
-             of hintMin..hintMax: PosHintFormat
-             else: PosErrorFormat
-  result = frmt % [toMsgFilename(info), coordToStr(info.line),
-                   coordToStr(info.col+1), getMessageStr(msg, arg)]
+  let title = case msg
+              of warnMin..warnMax: WarningTitle
+              of hintMin..hintMax: HintTitle
+              else: ErrorTitle
+  result = PosFormat % [toMsgFilename(info), coordToStr(info.line),
+                        coordToStr(info.col+1)] &
+           title &
+           getMessageStr(msg, arg)
 
 proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
-  var frmt: string
-  var ignoreMsg = false
+  var
+    title: string
+    color: ForegroundColor
+    kind:  string
+    ignoreMsg = false
   case msg
   of errMin..errMax:
     writeContext(info)
-    frmt = PosErrorFormat
+    title = ErrorTitle
+    color = ErrorColor
     # we try to filter error messages so that not two error message
     # in the same file and line are produced:
     #ignoreMsg = lastError == info and eh != doAbort
@@ -798,20 +929,29 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   of warnMin..warnMax:
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
     if not ignoreMsg: writeContext(info)
-    frmt = PosWarningFormat
+    title = WarningTitle
+    color = WarningColor
+    kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
   of hintMin..hintMax:
     ignoreMsg = optHints notin gOptions or msg notin gNotes
-    frmt = PosHintFormat
+    title = HintTitle
+    color = HintColor
+    kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
   # NOTE: currently line info line numbers start with 1,
   # but column numbers start with 0, however most editors expect
   # first column to be 1, so we need to +1 here
-  let s = frmt % [toMsgFilename(info), coordToStr(info.line),
-                  coordToStr(info.col+1), getMessageStr(msg, arg)]
+  let x = PosFormat % [toMsgFilename(info), coordToStr(info.line),
+                       coordToStr(info.col+1)]
+  let s = getMessageStr(msg, arg)
   if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
-    msgWriteln(s)
-    if optPrintSurroundingSrc and msg in errMin..errMax:
+    if kind != nil:
+      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
+                       KindColor, `%`(KindFormat, kind))
+    else:
+      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
+    if msg in errMin..errMax and hintSource in gNotes:
       info.writeSurroundingSrc
   handleError(msg, eh, s)
 
@@ -882,3 +1022,22 @@ ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   of rCannotOpenFile:
     rawMessage(if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
 
+proc listWarnings*() =
+  msgWriteln("Warnings:")
+  for warn in warnMin..warnMax:
+    msgWriteln("  [$1] $2" % [
+      if warn in gNotes: "x" else: " ",
+      msgs.WarningsToStr[ord(warn) - ord(warnMin)]
+    ])
+
+proc listHints*() =
+  msgWriteln("Hints:")
+  for hint in hintMin..hintMax:
+    msgWriteln("  [$1] $2" % [
+      if hint in gNotes: "x" else: " ",
+      msgs.HintsToStr[ord(hint) - ord(hintMin)]
+    ])
+
+# enable colors by default on terminals
+if terminal.isatty(stderr):
+  incl(gGlobalOptions, optUseColors)

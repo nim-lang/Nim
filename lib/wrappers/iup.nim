@@ -1,6 +1,12 @@
 #
-#    Binding for the IUP GUI toolkit
-#       (c) 2012 Andreas Rumpf
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2012 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 #    C header files translated by hand
 #    Licence of IUP follows:
 
@@ -301,6 +307,8 @@ proc menuv*(children: ptr PIhandle): PIhandle {.
 
 proc button*(title, action: cstring): PIhandle {.
   importc: "IupButton", cdecl, dynlib: dllname.}
+proc link*(url, title: cstring): PIhandle {.
+  importc: "IupLink", cdecl, dynlib: dllname.}
 proc canvas*(action: cstring): PIhandle {.
   importc: "IupCanvas", cdecl, dynlib: dllname.}
 proc dialog*(child: PIhandle): PIhandle {.

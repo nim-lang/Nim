@@ -44,10 +44,12 @@ var
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
 
+proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
+
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev
 
-proc setFrame(s: PFrame) {.compilerRtl, inl.} =
+proc setFrame*(s: PFrame) {.compilerRtl, inl.} =
   framePtr = s
 
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
@@ -63,7 +65,7 @@ proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
   currException = e
 
 proc popCurrentException {.compilerRtl, inl.} =
-  currException = currException.parent
+  currException = nil # currException.parent
 
 # some platforms have native support for stack traces:
 const
@@ -365,5 +367,6 @@ when not defined(noSignalHandler):
 
 proc setControlCHook(hook: proc () {.noconv.} not nil) =
   # ugly cast, but should work on all architectures:
-  type TSignalHandler = proc (sig: cint) {.noconv, benign.}
-  c_signal(SIGINT, cast[TSignalHandler](hook))
+  type SignalHandler = proc (sig: cint) {.noconv, benign.}
+  {.deprecated: [TSignalHandler: SignalHandler].}
+  c_signal(SIGINT, cast[SignalHandler](hook))

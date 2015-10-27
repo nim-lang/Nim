@@ -1,0 +1,36 @@
+clone_depth: 5
+
+artifacts:
+  - path: bin\nim.exe
+
+platform:
+  - x64
+
+before_build:
+  - git log -1
+  - C:\msys64\usr\bin\bash -lc "pacman --noconfirm -S zlib-devel"
+  - appveyor DownloadFile http://nim-lang.org/download/dlls.zip
+  - 7z e dlls.zip -odlls
+  - del dlls\libcurl.dll
+  - appveyor DownloadFile http://flatassembler.net/fasmw17139.zip
+  - 7z e fasmw17139.zip -obin fasm.exe
+
+build_script:
+  - SET PATH=C:\msys64\mingw64\bin;dlls;bin;%PATH%
+  - gcc -v
+  - git clone -q --depth 1 https://github.com/nim-lang/csources
+  - cd csources
+  - build64.bat
+  - cd ..
+  - nim c koch
+  - koch boot
+  - koch boot -d:release
+
+before_test:
+  - nim e install_nimble.nims
+  - nimble update
+  - nimble install zip
+
+test_script:
+  - nim c --taintMode:on tests/testament/tester
+  - tests\testament\tester --pedantic all

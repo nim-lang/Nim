@@ -1,5 +1,5 @@
 
-import json, tables
+import json, tables, sequtils
 
 proc run(json_params: TTable) =
   let json_elems = json_params["files"].elems

@@ -1,5 +1,7 @@
 discard """
-  output: '''255
+  output: '''[10, 0, 0, 0, 0, 0, 0, 0]
+
+255
 1 1
 0.5'''
 """
@@ -26,5 +28,14 @@ proc mainowar =
   let p = addr a
   var b = p[]
   echo b[0]
+
+
+# bug 2963
+var
+  a = [8, 7, 3, 10, 0, 0, 0, 1]
+  b = [10, 0, 0, 0, 0, 0, 0, 0]
+  ap = addr a
+ap[] = b
+echo repr(a)
 
 mainowar()

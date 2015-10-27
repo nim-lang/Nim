@@ -68,7 +68,7 @@ type
     jsonArrayStart,      ## start of an array: the ``[`` token
     jsonArrayEnd         ## start of an array: the ``]`` token
 
-  TTokKind = enum        # must be synchronized with TJsonEventKind!
+  TokKind = enum         # must be synchronized with TJsonEventKind!
     tkError,
     tkEof,
     tkString,
@@ -103,14 +103,14 @@ type
 
   JsonParser* = object of BaseLexer ## the parser object.
     a: string
-    tok: TTokKind
+    tok: TokKind
     kind: JsonEventKind
     err: JsonError
     state: seq[ParserState]
     filename: string
 
 {.deprecated: [TJsonEventKind: JsonEventKind, TJsonError: JsonError,
-  TJsonParser: JsonParser].}
+  TJsonParser: JsonParser, TTokKind: TokKind].}
 
 const
   errorMessages: array [JsonError, string] = [
@@ -126,7 +126,7 @@ const
     "EOF expected",
     "expression expected"
   ]
-  tokToStr: array [TTokKind, string] = [
+  tokToStr: array [TokKind, string] = [
     "invalid token",
     "EOF",
     "string literal",
@@ -203,7 +203,16 @@ proc handleHexChar(c: char, x: var int): bool =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: result = false # error
 
-proc parseString(my: var JsonParser): TTokKind =
+proc parseEscapedUTF16(buf: cstring, pos: var int): int =
+  result = 0
+  #UTF-16 escape is always 4 bytes.
+  for _ in 0..3:
+    if handleHexChar(buf[pos], result):
+      inc(pos)
+    else:
+      return -1
+
+proc parseString(my: var JsonParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
   var buf = my.buf
@@ -238,11 +247,22 @@ proc parseString(my: var JsonParser): TTokKind =
         inc(pos, 2)
       of 'u':
         inc(pos, 2)
-        var r: int
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
+        var r = parseEscapedUTF16(buf, pos)
+        if r < 0:
+          my.err = errInvalidToken
+          break
+        # Deal with surrogates
+        if (r and 0xfc00) == 0xd800:
+          if buf[pos] & buf[pos+1] != "\\u":
+            my.err = errInvalidToken
+            break
+          inc(pos, 2)
+          var s = parseEscapedUTF16(buf, pos)
+          if (s and 0xfc00) == 0xdc00 and s > 0:
+            r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
+          else:
+            my.err = errInvalidToken
+            break
         add(my.a, toUTF8(Rune(r)))
       else:
         # don't bother with the error
@@ -359,7 +379,7 @@ proc parseName(my: var JsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc getTok(my: var JsonParser): TTokKind =
+proc getTok(my: var JsonParser): TokKind =
   setLen(my.a, 0)
   skip(my) # skip whitespace, comments
   case my.buf[my.bufpos]
@@ -608,29 +628,32 @@ proc newJArray*(): JsonNode =
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JString``.
-  if n.kind != JString: return default
+  ## Returns ``default`` if ``n`` is not a ``JString``, or if ``n`` is nil.
+  if n.isNil or n.kind != JString: return default
   else: return n.str
 
 proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   ## Retrieves the int value of a `JInt JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JInt``.
-  if n.kind != JInt: return default
+  ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  if n.isNil or n.kind != JInt: return default
   else: return n.num
 
 proc getFNum*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JFloat``.
-  if n.kind != JFloat: return default
-  else: return n.fnum
+  ## Returns ``default`` if ``n`` is not a ``JFloat`` or ``JInt``, or if ``n`` is nil.
+  if n.isNil: return default
+  case n.kind
+  of JFloat: return n.fnum
+  of JInt: return float(n.num)
+  else: return default
 
 proc getBVal*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JBool``.
-  if n.kind != JBool: return default
+  ## Returns ``default`` if ``n`` is not a ``JBool``, or if ``n`` is nil.
+  if n.isNil or n.kind != JBool: return default
   else: return n.bval
 
 proc getFields*(n: JsonNode,
@@ -638,15 +661,15 @@ proc getFields*(n: JsonNode,
         seq[tuple[key: string, val: JsonNode]] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JObject``.
-  if n.kind != JObject: return default
+  ## Returns ``default`` if ``n`` is not a ``JObject``, or if ``n`` is nil.
+  if n.isNil or n.kind != JObject: return default
   else: return n.fields
 
 proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
   ## Retrieves the int value of a `JArray JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JArray``.
-  if n.kind != JArray: return default
+  ## Returns ``default`` if ``n`` is not a ``JArray``, or if ``n`` is nil.
+  if n.isNil or n.kind != JArray: return default
   else: return n.elems
 
 proc `%`*(s: string): JsonNode =
@@ -734,7 +757,7 @@ proc `==`* (a,b: JsonNode): bool =
     of JObject:
       a.fields == b.fields
 
-proc hash* (n:JsonNode): THash =
+proc hash* (n:JsonNode): Hash =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
@@ -761,7 +784,7 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode =
+proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, returns nil
   assert(not isNil(node))
@@ -771,7 +794,7 @@ proc `[]`*(node: JsonNode, name: string): JsonNode =
       return item
   return nil
 
-proc `[]`*(node: JsonNode, index: int): JsonNode =
+proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds
   assert(not isNil(node))
@@ -799,7 +822,7 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
   assert obj.kind == JObject
   obj.fields.add((key, val))
 
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) =
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`. Performs a check for duplicate keys.
   assert(obj.kind == JObject)
   for i in 0..obj.fields.len-1:
@@ -815,7 +838,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   result = node
   for key in keys:
     if isNil(result) or result.kind!=JObject:
-      return nil    
+      return nil
     result=result[key]
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
@@ -949,10 +972,46 @@ proc pretty*(node: JsonNode, indent = 2): string =
   result = ""
   toPretty(result, node, indent)
 
+proc toUgly*(result: var string, node: JsonNode) =
+  ## Converts `node` to its JSON Representation, without
+  ## regard for human readability. Meant to improve ``$`` string
+  ## conversion performance.
+  ##
+  ## This provides higher efficiency than the ``toPretty`` procedure as it
+  ## does **not** attempt to format the resulting JSON to make it human readable.
+  var comma = false
+  case node.kind:
+  of JArray:
+    result.add "["
+    for child in node.elems:
+      if comma: result.add ","
+      else:     comma = true
+      result.toUgly child
+    result.add "]"
+  of JObject:
+    result.add "{"
+    for key, value in items(node.fields):
+      if comma: result.add ","
+      else:     comma = true
+      result.add key.escapeJson()
+      result.add ":"
+      result.toUgly value
+    result.add "}"
+  of JString:
+    result.add node.str.escapeJson()
+  of JInt:
+    result.add($node.num)
+  of JFloat:
+    result.add($node.fnum)
+  of JBool:
+    result.add(if node.bval: "true" else: "false")
+  of JNull:
+    result.add "null"
+
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
-  result = ""
-  toPretty(result, node, 0, false)
+  result = newStringOfCap(node.len shl 1)
+  toUgly(result, node)
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
@@ -980,7 +1039,7 @@ iterator mpairs*(node: var JsonNode): var tuple[key: string, val: JsonNode] =
   for keyVal in mitems(node.fields):
     yield keyVal
 
-proc eat(p: var JsonParser, tok: TTokKind) =
+proc eat(p: var JsonParser, tok: TokKind) =
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])
 
@@ -1038,9 +1097,9 @@ when not defined(js):
     ## for nice error messages.
     var p: JsonParser
     p.open(s, filename)
+    defer: p.close()
     discard getTok(p) # read first token
     result = p.parseJson()
-    p.close()
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
@@ -1055,8 +1114,10 @@ when not defined(js):
 else:
   from math import `mod`
   type
-    TJSObject = object
-  proc parseNativeJson(x: cstring): TJSObject {.importc: "JSON.parse".}
+    JSObject = object
+  {.deprecated: [TJSObject: JSObject].}
+
+  proc parseNativeJson(x: cstring): JSObject {.importc: "JSON.parse".}
 
   proc getVarType(x): JsonNodeKind =
     result = JNull
@@ -1075,25 +1136,25 @@ else:
     of "[object String]": return JString
     else: assert false
 
-  proc len(x: TJSObject): int =
+  proc len(x: JSObject): int =
     assert x.getVarType == JArray
     asm """
       return `x`.length;
     """
 
-  proc `[]`(x: TJSObject, y: string): TJSObject =
+  proc `[]`(x: JSObject, y: string): JSObject =
     assert x.getVarType == JObject
     asm """
       return `x`[`y`];
     """
 
-  proc `[]`(x: TJSObject, y: int): TJSObject =
+  proc `[]`(x: JSObject, y: int): JSObject =
     assert x.getVarType == JArray
     asm """
       return `x`[`y`];
     """
 
-  proc convertObject(x: TJSObject): JsonNode =
+  proc convertObject(x: JSObject): JsonNode =
     case getVarType(x)
     of JArray:
       result = newJArray()
@@ -1105,7 +1166,7 @@ else:
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
-      var nimValue: TJSObject
+      var nimValue: JSObject
       asm "`nimProperty` = property; `nimValue` = `x`[property];"
       result[$nimProperty] = nimValue.convertObject()
       asm "}}"
@@ -1151,30 +1212,39 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
-  #var node = parse("{ \"test\": null }")
-  #echo(node.existsKey("test56"))
-  
   var parsed = parseFile("tests/testdata/jsontest.json")
   var parsed2 = parseFile("tests/testdata/jsontest2.json")
 
-  when not defined(testing):
-    echo(parsed)
-    echo()
-    echo(pretty(parsed, 2))
-    echo()
-    echo(parsed["keyÄÖöoßß"])
-    echo()
-    echo(pretty(parsed2))
-    try:
-      echo(parsed["key2"][12123])
-      raise newException(ValueError, "That line was expected to fail")
-    except IndexError: echo()
+  try:
+    discard parsed["key2"][12123]
+    assert(false)
+  except IndexError: assert(true)
 
-  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd" }"""
+  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
   assert(testJson{"doesnt_exist"}{"anything"}.isNil)
-  testJson{["c", "d"]} = %true
-  assert(testJson["c"]["d"].bval)
+  testJson{["e", "f"]} = %true
+  assert(testJson["e"]["f"].bval)
+
+  # make sure UTF-16 decoding works.
+  assert(testJson["c"].str == "🎃")
+  assert(testJson["d"].str == "æ")
+
+  # make sure no memory leek when parsing invalid string
+  let startMemory = getOccupiedMem()
+  for i in 0 .. 10000:
+    try:
+      discard parseJson"""{ invalid"""
+    except:
+      discard
+  # memory diff should less than 2M
+  assert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
+
+
+  # test `$`
+  let stringified = $testJson
+  let parsedAgain = parseJson(stringified)
+  assert(parsedAgain["b"].str == "asd")
 
   # Bounds checking
   try:
@@ -1192,17 +1262,17 @@ when isMainModule:
   except:
     assert(false, "EInvalidIndex thrown for valid index")
 
-  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}") 
-  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil") 
+  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
+  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
   assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
   assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
   assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
- 
+
   # Generator:
   var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}] 
+  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
   var j2 = %*
     [
@@ -1230,13 +1300,3 @@ when isMainModule:
       }
     ]
   assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-  
-  when not defined(testing):
-    discard """
-    while true:
-      var json = stdin.readLine()
-      var node = parse(json)
-      echo(node)
-      echo()
-      echo()
-    """

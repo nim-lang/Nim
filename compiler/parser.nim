@@ -64,6 +64,7 @@ proc setBaseFlags*(n: PNode, base: TNumericalBase)
 proc parseSymbol*(p: var TParser, allowNil = false): PNode
 proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
+proc parseStmtPragma(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -123,6 +124,9 @@ proc rawSkipComment(p: var TParser, node: PNode) =
 
 proc skipComment(p: var TParser, node: PNode) =
   if p.tok.indent < 0: rawSkipComment(p, node)
+
+proc flexComment(p: var TParser, node: PNode) =
+  if p.tok.indent < 0 or realInd(p): rawSkipComment(p, node)
 
 proc skipInd(p: var TParser) =
   if p.tok.indent >= 0:
@@ -499,10 +503,13 @@ proc parsePar(p: var TParser): PNode =
   #| parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
   #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
   #|         | 'when' | 'var' | 'mixin'
-  #| par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';'
-  #|                  | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
-  #|                             | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
-  #|         optPar ')'
+  #| par = '(' optInd
+  #|           ( &parKeyw complexOrSimpleStmt ^+ ';'
+  #|           | ';' complexOrSimpleStmt ^+ ';'
+  #|           | pragmaStmt
+  #|           | simpleExpr ( ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )
+  #|                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
+  #|           optPar ')'
   #
   # unfortunately it's ambiguous: (expr: expr) vs (exprStmt); however a
   # leading ';' could be used to enforce a 'stmt' context ...
@@ -521,6 +528,8 @@ proc parsePar(p: var TParser): PNode =
     getTok(p)
     optInd(p, result)
     semiStmtList(p, result)
+  elif p.tok.tokType == tkCurlyDotLe:
+    result.add(parseStmtPragma(p))
   elif p.tok.tokType != tkParRi:
     var a = simpleExpr(p)
     if p.tok.tokType == tkEquals:
@@ -881,12 +890,13 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
     skipComment(p, result)
     if realInd(p):
       withInd(p):
-        skipComment(p, result)
+        rawSkipComment(p, result)
         while true:
           case p.tok.tokType
           of tkSymbol, tkAccent:
             var a = parseIdentColonEquals(p, {})
-            skipComment(p, a)
+            if p.tok.indent < 0 or p.tok.indent >= p.currInd:
+              rawSkipComment(p, a)
             addSon(result, a)
           of tkEof: break
           else:
@@ -1602,6 +1612,7 @@ proc parseEnum(p: var TParser): PNode =
   getTok(p)
   addSon(result, ast.emptyNode)
   optInd(p, result)
+  flexComment(p, result)
   while true:
     var a = parseSymbol(p)
     if a.kind == nkEmpty: return
@@ -1615,12 +1626,14 @@ proc parseEnum(p: var TParser): PNode =
       a = newNodeP(nkEnumFieldDef, p)
       addSon(a, b)
       addSon(a, parseExpr(p))
-      skipComment(p, a)
+      if p.tok.indent < 0 or p.tok.indent >= p.currInd:
+        rawSkipComment(p, a)
     if p.tok.tokType == tkComma and p.tok.indent < 0:
       getTok(p)
       rawSkipComment(p, a)
     else:
-      skipComment(p, a)
+      if p.tok.indent < 0 or p.tok.indent >= p.currInd:
+        rawSkipComment(p, a)
     addSon(result, a)
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd or
         p.tok.tokType == tkEof:
@@ -1641,7 +1654,7 @@ proc parseObjectWhen(p: var TParser): PNode =
     addSon(branch, parseExpr(p))
     colcom(p, branch)
     addSon(branch, parseObjectPart(p))
-    skipComment(p, branch)
+    flexComment(p, branch)
     addSon(result, branch)
     if p.tok.tokType != tkElif: break
   if p.tok.tokType == tkElse and sameInd(p):
@@ -1649,7 +1662,7 @@ proc parseObjectWhen(p: var TParser): PNode =
     eat(p, tkElse)
     colcom(p, branch)
     addSon(branch, parseObjectPart(p))
-    skipComment(p, branch)
+    flexComment(p, branch)
     addSon(result, branch)
 
 proc parseObjectCase(p: var TParser): PNode =
@@ -1669,7 +1682,7 @@ proc parseObjectCase(p: var TParser): PNode =
   addSon(a, ast.emptyNode)
   addSon(result, a)
   if p.tok.tokType == tkColon: getTok(p)
-  skipComment(p, result)
+  flexComment(p, result)
   var wasIndented = false
   let oldInd = p.currInd
   if realInd(p):
@@ -1718,7 +1731,8 @@ proc parseObjectPart(p: var TParser): PNode =
       result = parseObjectCase(p)
     of tkSymbol, tkAccent:
       result = parseIdentColonEquals(p, {withPragma})
-      skipComment(p, result)
+      if p.tok.indent < 0 or p.tok.indent >= p.currInd:
+        rawSkipComment(p, result)
     of tkNil, tkDiscard:
       result = newNodeP(nkNilLit, p)
       getTok(p)

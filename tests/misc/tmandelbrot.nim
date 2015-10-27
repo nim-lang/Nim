@@ -24,10 +24,10 @@ var size    = parseInt (paramStr (1))
 var bit     = 128
 var byteAcc = 0
 
-stdout.writeln ("P4")
+stdout.writeLine ("P4")
 stdout.write ($size)
 stdout.write (" ")
-stdout.writeln ($size)
+stdout.writeLine ($size)
 
 var fsize = float (size)
 for y in 0 .. size-1:

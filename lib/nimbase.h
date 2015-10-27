@@ -110,18 +110,31 @@ __clang__
 #  endif
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
-#  define N_CDECL(rettype, name) rettype name
-#  define N_STDCALL(rettype, name) rettype name
-#  define N_SYSCALL(rettype, name) rettype name
-#  define N_FASTCALL(rettype, name) rettype name
-#  define N_SAFECALL(rettype, name) rettype name
-/* function pointers with calling convention: */
-#  define N_CDECL_PTR(rettype, name) rettype (*name)
-#  define N_STDCALL_PTR(rettype, name) rettype (*name)
-#  define N_SYSCALL_PTR(rettype, name) rettype (*name)
-#  define N_FASTCALL_PTR(rettype, name) rettype (*name)
-#  define N_SAFECALL_PTR(rettype, name) rettype (*name)
-
+#  if defined(__GNUC__)
+#    define N_CDECL(rettype, name) rettype name
+#    define N_STDCALL(rettype, name) rettype name
+#    define N_SYSCALL(rettype, name) rettype name
+#    define N_FASTCALL(rettype, name) __attribute__((fastcall)) rettype name
+#    define N_SAFECALL(rettype, name) rettype name
+/*   function pointers with calling convention: */
+#    define N_CDECL_PTR(rettype, name) rettype (*name)
+#    define N_STDCALL_PTR(rettype, name) rettype (*name)
+#    define N_SYSCALL_PTR(rettype, name) rettype (*name)
+#    define N_FASTCALL_PTR(rettype, name) __attribute__((fastcall)) rettype (*name)
+#    define N_SAFECALL_PTR(rettype, name) rettype (*name)
+#  else
+#    define N_CDECL(rettype, name) rettype name
+#    define N_STDCALL(rettype, name) rettype name
+#    define N_SYSCALL(rettype, name) rettype name
+#    define N_FASTCALL(rettype, name) rettype name
+#    define N_SAFECALL(rettype, name) rettype name
+/*   function pointers with calling convention: */
+#    define N_CDECL_PTR(rettype, name) rettype (*name)
+#    define N_STDCALL_PTR(rettype, name) rettype (*name)
+#    define N_SYSCALL_PTR(rettype, name) rettype (*name)
+#    define N_FASTCALL_PTR(rettype, name) rettype (*name)
+#    define N_SAFECALL_PTR(rettype, name) rettype (*name)
+#  endif
 #  ifdef __cplusplus
 #    define N_LIB_EXPORT  extern "C"
 #  else
@@ -147,9 +160,15 @@ __clang__
 #if defined(__BORLANDC__) || defined(__WATCOMC__) || \
     defined(__POCC__) || defined(_MSC_VER) || defined(WIN32) || defined(_WIN32)
 /* these compilers have a fastcall so use it: */
-#  define N_NIMCALL(rettype, name) rettype __fastcall name
-#  define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
-#  define N_RAW_NIMCALL __fastcall
+#  ifdef __TINYC__
+#    define N_NIMCALL(rettype, name) rettype __attribute((__fastcall)) name
+#    define N_NIMCALL_PTR(rettype, name) rettype (__attribute((__fastcall)) *name)
+#    define N_RAW_NIMCALL __attribute((__fastcall))
+#  else
+#    define N_NIMCALL(rettype, name) rettype __fastcall name
+#    define N_NIMCALL_PTR(rettype, name) rettype (__fastcall *name)
+#    define N_RAW_NIMCALL __fastcall
+#  endif
 #else
 #  define N_NIMCALL(rettype, name) rettype name /* no modifier */
 #  define N_NIMCALL_PTR(rettype, name) rettype (*name)
@@ -347,7 +366,7 @@ struct TFrame {
   FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
 
 #define nimfrs(proc, file, slots, length) \
-  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; TVarSlot s[slots];} FR; \
+  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
   FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
 
 #define nimln(n, file) \
@@ -398,6 +417,10 @@ typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(
 #else
 #  define NIM_EXTERNC
 #endif
+
+/* we have to tinker with TNimType as it's both part of system.nim and
+   typeinfo.nim but system.nim doesn't export it cleanly... */
+typedef struct TNimType TNimType;
 
 /* ---------------- platform specific includes ----------------------- */
 

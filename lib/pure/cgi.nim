@@ -25,9 +25,9 @@
 ##    # generate content:
 ##    write(stdout, "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\">\n")
 ##    write(stdout, "<html><head><title>Test</title></head><body>\n")
-##    writeln(stdout, "your name: " & myData["name"])
-##    writeln(stdout, "your password: " & myData["password"])
-##    writeln(stdout, "</body></html>")
+##    writeLine(stdout, "your name: " & myData["name"])
+##    writeLine(stdout, "your password: " & myData["password"])
+##    writeLine(stdout, "</body></html>")
 
 import strutils, os, strtabs, cookies
 
@@ -387,7 +387,7 @@ var
 proc getCookie*(name: string): TaintedString =
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
-  result = TaintedString(gcookies[name])
+  result = TaintedString(gcookies.getOrDefault(name))
 
 proc existsCookie*(name: string): bool =
   ## Checks if a cookie of `name` exists.

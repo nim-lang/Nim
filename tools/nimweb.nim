@@ -48,7 +48,7 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
-  c.gitRepo = "https://github.com/Araq/Nim/tree"
+  c.gitRepo = "https://github.com/nim-lang/Nim/tree"
   c.gitCommit = "master"
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
@@ -126,10 +126,10 @@ proc parseCmdLine(c: var TConfigData) =
       break
     of cmdLongOption, cmdShortOption:
       case normalize(key)
-      of "help", "h": 
+      of "help", "h":
         stdout.write(usage)
         quit(0)
-      of "version", "v": 
+      of "version", "v":
         stdout.write(version & "\n")
         quit(0)
       of "o", "output": c.outdir = val
@@ -334,7 +334,7 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   result = @[]
   if not open(input, inputFilename):
     quit("Could not read $1 for rss generation" % [inputFilename])
-  finally: input.close()
+  defer: input.close()
   while input.readLine(line):
     if line =~ reYearMonthDayTitle:
       result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
@@ -368,7 +368,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
 
   if not open(output, outputFilename, mode = fmWrite):
     quit("Could not write to $1 for rss generation" % [outputFilename])
-  finally: output.close()
+  defer: output.close()
 
   output.write("""<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
@@ -431,7 +431,7 @@ proc buildWebsite(c: var TConfigData) =
     if not existsDir("web/upload"):
       createDir("web/upload")
     if open(f, outfile, fmWrite):
-      writeln(f, generateHTMLPage(c, file, content, rss))
+      writeLine(f, generateHTMLPage(c, file, content, rss))
       close(f)
     else:
       quit("[Error] cannot write file: " & outfile)

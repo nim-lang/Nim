@@ -1,4 +1,4 @@
-import zlib
+import zip/zlib
 
 proc compress*(source: string): string =
   var
@@ -18,7 +18,7 @@ proc uncompress*(source: string, destLen: var int): string =
   var res = zlib.uncompress(cstring(result), addr destLen, cstring(source), source.len)
   if res != Z_OK:
     echo "Error occurred: ", res
-    
+
 
 when isMainModule:
   import strutils

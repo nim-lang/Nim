@@ -5,10 +5,11 @@ discard """
 3'''
 """
 
+import sequtils
 # https://github.com/Araq/Nim/issues/797
 proc foo[T](s:T):string = $s
 
-type IntStringProc = proc(x: int): string 
+type IntStringProc = proc(x: int): string
 
 var f1 = IntStringProc(foo)
 var f2: proc(x: int): string = foo

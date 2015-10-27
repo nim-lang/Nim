@@ -53,7 +53,7 @@ The following example shows a generic binary tree can be modelled:
   add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and
   add(root, newNode("world")) # ``add``
   for str in inorder(root):
-    writeln(stdout, str)
+    writeLine(stdout, str)
 
 
 Is operator
@@ -116,7 +116,7 @@ type class           matches
 ``array``            any array type
 ``set``              any set type
 ``seq``              any seq type
-``auto``             any type
+``any``              any type
 ==================   ===================================================
 
 Furthermore, every generic type automatically creates a type class of the same
@@ -162,13 +162,6 @@ module to illustrate this:
 
 Alternatively, the ``distinct`` type modifier can be applied to the type class
 to allow each param matching the type class to bind to a different type.
-
-If a proc param doesn't have a type specified, Nim will use the
-``distinct auto`` type class (also known as ``any``):
-
-.. code-block:: nim
-  # allow any combination of param types
-  proc concat(a, b): string = $a & $b
 
 Procs written with the implicitly generic style will often need to refer to the
 type parameters of the matched generic type. They can be easily accessed using
@@ -252,6 +245,10 @@ passed in its explicit ``typedesc[T]`` form:
 Much like generics, concepts are instantiated exactly
 once for each tested type and any static code included within them is also
 executed once.
+
+**Hint**: Since concepts are still very rough at the edges there is a
+command line switch ``--reportConceptFailures:on`` to make debugging
+concept related type failures more easy.
 
 
 Symbol lookup in generics

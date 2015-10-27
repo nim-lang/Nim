@@ -9,10 +9,10 @@ type
     x: T
   TParticle = object of TThing
     a, b: int
-    
-method collide(a, b: TThing) {.inline.} =
+
+method collide(a, b: TThing) {.base, inline.} =
   quit "to override!"
-  
+
 method collide[T](a: TThing, b: TUnit[T]) {.inline.} =
   write stdout, "collide: thing, unit | "
 

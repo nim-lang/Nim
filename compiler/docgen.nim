@@ -18,7 +18,7 @@ import
 
 type
   TSections = array[TSymKind, Rope]
-  TDocumentor = object of rstgen.TRstGenerator
+  TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope           # module description
     id: int                  # for generating IDs
     toc, section: TSections
@@ -29,7 +29,7 @@ type
   PDoc* = ref TDocumentor ## Alias to type less.
 
 proc compilerMsgHandler(filename: string, line, col: int,
-                        msgKind: rst.TMsgKind, arg: string) {.procvar.} =
+                        msgKind: rst.MsgKind, arg: string) {.procvar.} =
   # translate msg kind:
   var k: msgs.TMsgKind
   case msgKind
@@ -53,7 +53,7 @@ proc docgenFindFile(s: string): string {.procvar.} =
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
-              rstOptions: TRstParseOptions): PRstNode =
+              rstOptions: RstParseOptions): PRstNode =
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     docgenFindFile, compilerMsgHandler)
 
@@ -75,7 +75,7 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   ga('send', 'pageview');
 
 </script>
-    """ % [config["doc.googleAnalytics"]]
+    """ % [config.getOrDefault"doc.googleAnalytics"]
   else:
     result.analytics = ""
 
@@ -158,7 +158,7 @@ proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
   result = genComment(d, n).rope
   if result == nil:
-    if n.kind notin {nkEmpty..nkNilLit}:
+    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy}:
       for i in countup(0, len(n)-1):
         result = genRecComment(d, n.sons[i])
         if result != nil: return

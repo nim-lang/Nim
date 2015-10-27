@@ -58,7 +58,7 @@ for x in low(TAZ) .. high(TAZ):
 for x in low(TTokTypeRange) .. high(TTokTypeRange):
   if x in tokTypes:
     discard
-    #writeln(stdout, "the token '$1' is in the set" % repr(x))
+    #writeLine(stdout, "the token '$1' is in the set" % repr(x))
 
 #OUT Ha ein F ist in s!
 

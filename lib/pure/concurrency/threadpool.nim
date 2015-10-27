@@ -18,8 +18,8 @@ import cpuinfo, cpuload, locks
 
 type
   Semaphore = object
-    c: TCond
-    L: TLock
+    c: Cond
+    L: Lock
     counter: int
 
 proc createSemaphore(): Semaphore =
@@ -113,7 +113,7 @@ type
 
   ToFreeQueue = object
     len: int
-    lock: TLock
+    lock: Lock
     empty: Semaphore
     data: array[128, pointer]
 
@@ -128,6 +128,7 @@ type
     initialized: bool # whether it has even been initialized
     shutdown: bool # the pool requests to shut down this worker thread
     q: ToFreeQueue
+    readyForTask: Semaphore
 
 proc await*(fv: FlowVarBase) =
   ## waits until the value for the flowVar arrives. Usually it is not necessary
@@ -221,10 +222,16 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     action(fv.blob)
   finished(fv)
 
-proc `^`*[T](fv: FlowVar[ref T]): foreign ptr T =
+proc unsafeRead*[T](fv: FlowVar[ref T]): foreign ptr T =
   ## blocks until the value is available and then returns this value.
   await(fv)
   result = cast[foreign ptr T](fv.data)
+
+proc `^`*[T](fv: FlowVar[ref T]): ref T =
+  ## blocks until the value is available and then returns this value.
+  await(fv)
+  let src = cast[ref T](fv.data)
+  deepCopy result, src
 
 proc `^`*[T](fv: FlowVar[T]): T =
   ## blocks until the value is available and then returns this value.
@@ -260,6 +267,17 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
     result = -1
   destroySemaphore(ai.cv)
 
+proc isReady*(fv: FlowVarBase): bool =
+  ## Determines whether the specified ``FlowVarBase``'s value is available.
+  ##
+  ## If ``true`` awaiting ``fv`` will not block.
+  if fv.usesSemaphore and not fv.awaited:
+    acquire(fv.cv.L)
+    result = fv.cv.counter > 0
+    release(fv.cv.L)
+  else:
+    result = true
+
 proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   let w = cast[ptr Worker](p)
   signal(w.taskStarted)
@@ -267,6 +285,10 @@ proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
 const
   MaxThreadPoolSize* = 256 ## maximal size of the thread pool. 256 threads
                            ## should be good enough for anybody ;-)
+  MaxDistinguishedThread* = 32 ## maximal number of "distinguished" threads.
+
+type
+  ThreadId* = range[0..MaxDistinguishedThread-1]
 
 var
   currentPoolSize: int
@@ -284,16 +306,36 @@ proc slave(w: ptr Worker) {.thread.} =
     readyWorker = w
     signal(gSomeReady)
     await(w.taskArrived)
-    assert(not w.ready)
+    # XXX Somebody needs to look into this (why does this assertion fail
+    # in Visual Studio?)
+    when not defined(vcc): assert(not w.ready)
     w.f(w, w.data)
     if w.q.len != 0: w.cleanFlowVars
     if w.shutdown:
       w.shutdown = false
       atomicDec currentPoolSize
 
+proc distinguishedSlave(w: ptr Worker) {.thread.} =
+  while true:
+    when declared(atomicStoreN):
+      atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
+    else:
+      w.ready = true
+    signal(w.readyForTask)
+    await(w.taskArrived)
+    assert(not w.ready)
+    w.f(w, w.data)
+    if w.q.len != 0: w.cleanFlowVars
+
 var
   workers: array[MaxThreadPoolSize, TThread[ptr Worker]]
   workersData: array[MaxThreadPoolSize, Worker]
+
+  distinguished: array[MaxDistinguishedThread, TThread[ptr Worker]]
+  distinguishedData: array[MaxDistinguishedThread, Worker]
+
+when defined(nimPinToCpu):
+  var gCpus: Natural
 
 proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
   ## sets the minimal thread pool size. The default value of this is 4.
@@ -308,18 +350,37 @@ proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
       let w = addr(workersData[i])
       w.shutdown = true
 
-proc activateThread(i: int) {.noinline.} =
+when defined(nimRecursiveSpawn):
+  var localThreadId {.threadvar.}: int
+
+proc activateWorkerThread(i: int) {.noinline.} =
   workersData[i].taskArrived = createSemaphore()
   workersData[i].taskStarted = createSemaphore()
   workersData[i].initialized = true
   workersData[i].q.empty = createSemaphore()
   initLock(workersData[i].q.lock)
   createThread(workers[i], slave, addr(workersData[i]))
+  when defined(nimRecursiveSpawn):
+    localThreadId = i+1
+  when defined(nimPinToCpu):
+    if gCpus > 0: pinToCpu(workers[i], i mod gCpus)
+
+proc activateDistinguishedThread(i: int) {.noinline.} =
+  distinguishedData[i].taskArrived = createSemaphore()
+  distinguishedData[i].taskStarted = createSemaphore()
+  distinguishedData[i].initialized = true
+  distinguishedData[i].q.empty = createSemaphore()
+  initLock(distinguishedData[i].q.lock)
+  distinguishedData[i].readyForTask = createSemaphore()
+  createThread(distinguished[i], distinguishedSlave, addr(distinguishedData[i]))
 
 proc setup() =
-  currentPoolSize = min(countProcessors(), MaxThreadPoolSize)
+  let p = countProcessors()
+  when defined(nimPinToCpu):
+    gCpus = p
+  currentPoolSize = min(p, MaxThreadPoolSize)
   readyWorker = addr(workersData[0])
-  for i in 0.. <currentPoolSize: activateThread(i)
+  for i in 0.. <currentPoolSize: activateWorkerThread(i)
 
 proc preferSpawn*(): bool =
   ## Use this proc to determine quickly if a 'spawn' or a direct call is
@@ -330,6 +391,13 @@ proc preferSpawn*(): bool =
 proc spawn*(call: expr): expr {.magic: "Spawn".}
   ## always spawns a new task, so that the 'call' is never executed on
   ## the calling thread. 'call' has to be proc call 'p(...)' where 'p'
+  ## is gcsafe and has a return type that is either 'void' or compatible
+  ## with ``FlowVar[T]``.
+
+proc pinnedSpawn*(id: ThreadId; call: expr): expr {.magic: "Spawn".}
+  ## always spawns a new task on the worker thread with ``id``, so that
+  ## the 'call' is **always** executed on
+  ## the this thread. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has a return type that is either 'void' or compatible
   ## with ``FlowVar[T]``.
 
@@ -349,11 +417,11 @@ proc parallel*(body: stmt) {.magic: "Parallel".}
 
 var
   state: ThreadPoolState
-  stateLock: TLock
+  stateLock: Lock
 
 initLock stateLock
 
-proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
+proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
   # implementation of 'spawn' that is used by the code generator.
   while true:
     if selectWorker(readyWorker, fn, data): return
@@ -370,7 +438,7 @@ proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
         of doCreateThread:
           if currentPoolSize < maxPoolSize:
             if not workersData[currentPoolSize].initialized:
-              activateThread(currentPoolSize)
+              activateWorkerThread(currentPoolSize)
             let w = addr(workersData[currentPoolSize])
             atomicInc currentPoolSize
             if selectWorker(w, fn, data):
@@ -385,7 +453,34 @@ proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
         release(stateLock)
       # else the acquire failed, but this means some
       # other thread succeeded, so we don't need to do anything here.
-    await(gSomeReady)
+    when defined(nimRecursiveSpawn):
+      if localThreadId > 0:
+        # we are a worker thread, so instead of waiting for something which
+        # might as well never happen (see tparallel_quicksort), we run the task
+        # on the current thread instead.
+        var self = addr(workersData[localThreadId-1])
+        fn(self, data)
+        await(self.taskStarted)
+        return
+      else:
+        await(gSomeReady)
+    else:
+      await(gSomeReady)
+
+var
+  distinguishedLock: TLock
+
+initLock distinguishedLock
+
+proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
+  acquire(distinguishedLock)
+  if not distinguishedData[id].initialized:
+    activateDistinguishedThread(id)
+  release(distinguishedLock)
+  while true:
+    if selectWorker(addr(distinguishedData[id]), fn, data): break
+    await(distinguishedData[id].readyForTask)
+
 
 proc sync*() =
   ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate

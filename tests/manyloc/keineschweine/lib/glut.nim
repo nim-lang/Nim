@@ -15,17 +15,17 @@
 #   For the latest updates, visit Delphi3D: http://www.delphi3d.net
 #******************************************************************************
 
-import 
+import
   GL
 
-when defined(windows): 
-  const 
+when defined(windows):
+  const
     dllname = "glut32.dll"
-elif defined(macosx): 
-  const 
+elif defined(macosx):
+  const
     dllname = "/System/Library/Frameworks/GLUT.framework/GLUT"
-else: 
-  const 
+else:
+  const
     dllname = "libglut.so.3"
 type
   TGlutVoidCallback* = proc (){.cdecl.}
@@ -36,7 +36,7 @@ type
   TGlut1Char2IntCallback* = proc (c: int8, v1, v2: cint){.cdecl.}
   TGlut1UInt3IntCallback* = proc (u, v1, v2, v3: cint){.cdecl.}
 
-const 
+const
   GLUT_API_VERSION* = 3
   GLUT_XLIB_IMPLEMENTATION* = 12 # Display mode bit masks.
   GLUT_RGB* = 0
@@ -93,7 +93,7 @@ const
   GLUT_NORMAL* = 0
   GLUT_OVERLAY* = 1
 
-when defined(Windows): 
+when defined(Windows):
   const                       # Stroke font constants (use these in GLUT program).
     GLUT_STROKE_ROMAN* = cast[Pointer](0)
     GLUT_STROKE_MONO_ROMAN* = cast[Pointer](1) # Bitmap font constants (use these in GLUT program).
@@ -104,7 +104,7 @@ when defined(Windows):
     GLUT_BITMAP_HELVETICA_10* = cast[Pointer](6)
     GLUT_BITMAP_HELVETICA_12* = cast[Pointer](7)
     GLUT_BITMAP_HELVETICA_18* = cast[Pointer](8)
-else: 
+else:
   var                         # Stroke font constants (use these in GLUT program).
     GLUT_STROKE_ROMAN*: Pointer
     GLUT_STROKE_MONO_ROMAN*: Pointer # Bitmap font constants (use these in GLUT program).
@@ -229,7 +229,7 @@ const                         # glutGet parameters.
   GLUT_GAME_MODE_REFRESH_RATE* = 5
   GLUT_GAME_MODE_DISPLAY_CHANGED* = 6 # GLUT initialization sub-API.
 
-proc glutInit*(argcp: ptr cint, argv: pointer){.dynlib: dllname, 
+proc glutInit*(argcp: ptr cint, argv: pointer){.dynlib: dllname,
     importc: "glutInit".}
 
 proc glutInit*() =
@@ -239,34 +239,34 @@ proc glutInit*() =
     cmdCount {.importc: "cmdCount".}: cint
   glutInit(addr(cmdCount), addr(cmdLine))
 
-proc glutInitDisplayMode*(mode: int16){.dynlib: dllname, 
+proc glutInitDisplayMode*(mode: int16){.dynlib: dllname,
                                         importc: "glutInitDisplayMode".}
-proc glutInitDisplayString*(str: cstring){.dynlib: dllname, 
+proc glutInitDisplayString*(str: cstring){.dynlib: dllname,
     importc: "glutInitDisplayString".}
-proc glutInitWindowPosition*(x, y: int){.dynlib: dllname, 
+proc glutInitWindowPosition*(x, y: int){.dynlib: dllname,
     importc: "glutInitWindowPosition".}
-proc glutInitWindowSize*(width, height: int){.dynlib: dllname, 
+proc glutInitWindowSize*(width, height: int){.dynlib: dllname,
     importc: "glutInitWindowSize".}
 proc glutMainLoop*(){.dynlib: dllname, importc: "glutMainLoop".}
   # GLUT window sub-API.
-proc glutCreateWindow*(title: cstring): int{.dynlib: dllname, 
+proc glutCreateWindow*(title: cstring): int{.dynlib: dllname,
     importc: "glutCreateWindow".}
-proc glutCreateSubWindow*(win, x, y, width, height: int): int{.dynlib: dllname, 
+proc glutCreateSubWindow*(win, x, y, width, height: int): int{.dynlib: dllname,
     importc: "glutCreateSubWindow".}
 proc glutDestroyWindow*(win: int){.dynlib: dllname, importc: "glutDestroyWindow".}
 proc glutPostRedisplay*(){.dynlib: dllname, importc: "glutPostRedisplay".}
-proc glutPostWindowRedisplay*(win: int){.dynlib: dllname, 
+proc glutPostWindowRedisplay*(win: int){.dynlib: dllname,
     importc: "glutPostWindowRedisplay".}
 proc glutSwapBuffers*(){.dynlib: dllname, importc: "glutSwapBuffers".}
 proc glutGetWindow*(): int{.dynlib: dllname, importc: "glutGetWindow".}
 proc glutSetWindow*(win: int){.dynlib: dllname, importc: "glutSetWindow".}
-proc glutSetWindowTitle*(title: cstring){.dynlib: dllname, 
+proc glutSetWindowTitle*(title: cstring){.dynlib: dllname,
     importc: "glutSetWindowTitle".}
-proc glutSetIconTitle*(title: cstring){.dynlib: dllname, 
+proc glutSetIconTitle*(title: cstring){.dynlib: dllname,
                                         importc: "glutSetIconTitle".}
-proc glutPositionWindow*(x, y: int){.dynlib: dllname, 
+proc glutPositionWindow*(x, y: int){.dynlib: dllname,
                                      importc: "glutPositionWindow".}
-proc glutReshapeWindow*(width, height: int){.dynlib: dllname, 
+proc glutReshapeWindow*(width, height: int){.dynlib: dllname,
     importc: "glutReshapeWindow".}
 proc glutPopWindow*(){.dynlib: dllname, importc: "glutPopWindow".}
 proc glutPushWindow*(){.dynlib: dllname, importc: "glutPushWindow".}
@@ -280,107 +280,107 @@ proc glutWarpPointer*(x, y: int){.dynlib: dllname, importc: "glutWarpPointer".}
 proc glutEstablishOverlay*(){.dynlib: dllname, importc: "glutEstablishOverlay".}
 proc glutRemoveOverlay*(){.dynlib: dllname, importc: "glutRemoveOverlay".}
 proc glutUseLayer*(layer: TGLenum){.dynlib: dllname, importc: "glutUseLayer".}
-proc glutPostOverlayRedisplay*(){.dynlib: dllname, 
+proc glutPostOverlayRedisplay*(){.dynlib: dllname,
                                   importc: "glutPostOverlayRedisplay".}
-proc glutPostWindowOverlayRedisplay*(win: int){.dynlib: dllname, 
+proc glutPostWindowOverlayRedisplay*(win: int){.dynlib: dllname,
     importc: "glutPostWindowOverlayRedisplay".}
 proc glutShowOverlay*(){.dynlib: dllname, importc: "glutShowOverlay".}
 proc glutHideOverlay*(){.dynlib: dllname, importc: "glutHideOverlay".}
   # GLUT menu sub-API.
-proc glutCreateMenu*(callback: TGlut1IntCallback): int{.dynlib: dllname, 
+proc glutCreateMenu*(callback: TGlut1IntCallback): int{.dynlib: dllname,
     importc: "glutCreateMenu".}
 proc glutDestroyMenu*(menu: int){.dynlib: dllname, importc: "glutDestroyMenu".}
 proc glutGetMenu*(): int{.dynlib: dllname, importc: "glutGetMenu".}
 proc glutSetMenu*(menu: int){.dynlib: dllname, importc: "glutSetMenu".}
-proc glutAddMenuEntry*(caption: cstring, value: int){.dynlib: dllname, 
+proc glutAddMenuEntry*(caption: cstring, value: int){.dynlib: dllname,
     importc: "glutAddMenuEntry".}
-proc glutAddSubMenu*(caption: cstring, submenu: int){.dynlib: dllname, 
+proc glutAddSubMenu*(caption: cstring, submenu: int){.dynlib: dllname,
     importc: "glutAddSubMenu".}
 proc glutChangeToMenuEntry*(item: int, caption: cstring, value: int){.
     dynlib: dllname, importc: "glutChangeToMenuEntry".}
 proc glutChangeToSubMenu*(item: int, caption: cstring, submenu: int){.
     dynlib: dllname, importc: "glutChangeToSubMenu".}
-proc glutRemoveMenuItem*(item: int){.dynlib: dllname, 
+proc glutRemoveMenuItem*(item: int){.dynlib: dllname,
                                      importc: "glutRemoveMenuItem".}
 proc glutAttachMenu*(button: int){.dynlib: dllname, importc: "glutAttachMenu".}
 proc glutDetachMenu*(button: int){.dynlib: dllname, importc: "glutDetachMenu".}
   # GLUT window callback sub-API.
-proc glutDisplayFunc*(f: TGlutVoidCallback){.dynlib: dllname, 
+proc glutDisplayFunc*(f: TGlutVoidCallback){.dynlib: dllname,
     importc: "glutDisplayFunc".}
-proc glutReshapeFunc*(f: TGlut2IntCallback){.dynlib: dllname, 
+proc glutReshapeFunc*(f: TGlut2IntCallback){.dynlib: dllname,
     importc: "glutReshapeFunc".}
-proc glutKeyboardFunc*(f: TGlut1Char2IntCallback){.dynlib: dllname, 
+proc glutKeyboardFunc*(f: TGlut1Char2IntCallback){.dynlib: dllname,
     importc: "glutKeyboardFunc".}
-proc glutMouseFunc*(f: TGlut4IntCallback){.dynlib: dllname, 
+proc glutMouseFunc*(f: TGlut4IntCallback){.dynlib: dllname,
     importc: "glutMouseFunc".}
-proc glutMotionFunc*(f: TGlut2IntCallback){.dynlib: dllname, 
+proc glutMotionFunc*(f: TGlut2IntCallback){.dynlib: dllname,
     importc: "glutMotionFunc".}
-proc glutPassiveMotionFunc*(f: TGlut2IntCallback){.dynlib: dllname, 
+proc glutPassiveMotionFunc*(f: TGlut2IntCallback){.dynlib: dllname,
     importc: "glutPassiveMotionFunc".}
-proc glutEntryFunc*(f: TGlut1IntCallback){.dynlib: dllname, 
+proc glutEntryFunc*(f: TGlut1IntCallback){.dynlib: dllname,
     importc: "glutEntryFunc".}
-proc glutVisibilityFunc*(f: TGlut1IntCallback){.dynlib: dllname, 
+proc glutVisibilityFunc*(f: TGlut1IntCallback){.dynlib: dllname,
     importc: "glutVisibilityFunc".}
-proc glutIdleFunc*(f: TGlutVoidCallback){.dynlib: dllname, 
+proc glutIdleFunc*(f: TGlutVoidCallback){.dynlib: dllname,
     importc: "glutIdleFunc".}
 proc glutTimerFunc*(millis: int16, f: TGlut1IntCallback, value: int){.
     dynlib: dllname, importc: "glutTimerFunc".}
-proc glutMenuStateFunc*(f: TGlut1IntCallback){.dynlib: dllname, 
+proc glutMenuStateFunc*(f: TGlut1IntCallback){.dynlib: dllname,
     importc: "glutMenuStateFunc".}
-proc glutSpecialFunc*(f: TGlut3IntCallback){.dynlib: dllname, 
+proc glutSpecialFunc*(f: TGlut3IntCallback){.dynlib: dllname,
     importc: "glutSpecialFunc".}
-proc glutSpaceballMotionFunc*(f: TGlut3IntCallback){.dynlib: dllname, 
+proc glutSpaceballMotionFunc*(f: TGlut3IntCallback){.dynlib: dllname,
     importc: "glutSpaceballMotionFunc".}
-proc glutSpaceballRotateFunc*(f: TGlut3IntCallback){.dynlib: dllname, 
+proc glutSpaceballRotateFunc*(f: TGlut3IntCallback){.dynlib: dllname,
     importc: "glutSpaceballRotateFunc".}
-proc glutSpaceballButtonFunc*(f: TGlut2IntCallback){.dynlib: dllname, 
+proc glutSpaceballButtonFunc*(f: TGlut2IntCallback){.dynlib: dllname,
     importc: "glutSpaceballButtonFunc".}
-proc glutButtonBoxFunc*(f: TGlut2IntCallback){.dynlib: dllname, 
+proc glutButtonBoxFunc*(f: TGlut2IntCallback){.dynlib: dllname,
     importc: "glutButtonBoxFunc".}
-proc glutDialsFunc*(f: TGlut2IntCallback){.dynlib: dllname, 
+proc glutDialsFunc*(f: TGlut2IntCallback){.dynlib: dllname,
     importc: "glutDialsFunc".}
-proc glutTabletMotionFunc*(f: TGlut2IntCallback){.dynlib: dllname, 
+proc glutTabletMotionFunc*(f: TGlut2IntCallback){.dynlib: dllname,
     importc: "glutTabletMotionFunc".}
-proc glutTabletButtonFunc*(f: TGlut4IntCallback){.dynlib: dllname, 
+proc glutTabletButtonFunc*(f: TGlut4IntCallback){.dynlib: dllname,
     importc: "glutTabletButtonFunc".}
-proc glutMenuStatusFunc*(f: TGlut3IntCallback){.dynlib: dllname, 
+proc glutMenuStatusFunc*(f: TGlut3IntCallback){.dynlib: dllname,
     importc: "glutMenuStatusFunc".}
-proc glutOverlayDisplayFunc*(f: TGlutVoidCallback){.dynlib: dllname, 
+proc glutOverlayDisplayFunc*(f: TGlutVoidCallback){.dynlib: dllname,
     importc: "glutOverlayDisplayFunc".}
-proc glutWindowStatusFunc*(f: TGlut1IntCallback){.dynlib: dllname, 
+proc glutWindowStatusFunc*(f: TGlut1IntCallback){.dynlib: dllname,
     importc: "glutWindowStatusFunc".}
-proc glutKeyboardUpFunc*(f: TGlut1Char2IntCallback){.dynlib: dllname, 
+proc glutKeyboardUpFunc*(f: TGlut1Char2IntCallback){.dynlib: dllname,
     importc: "glutKeyboardUpFunc".}
-proc glutSpecialUpFunc*(f: TGlut3IntCallback){.dynlib: dllname, 
+proc glutSpecialUpFunc*(f: TGlut3IntCallback){.dynlib: dllname,
     importc: "glutSpecialUpFunc".}
 proc glutJoystickFunc*(f: TGlut1UInt3IntCallback, pollInterval: int){.
     dynlib: dllname, importc: "glutJoystickFunc".}
   # GLUT color index sub-API.
-proc glutSetColor*(cell: int, red, green, blue: TGLfloat){.dynlib: dllname, 
+proc glutSetColor*(cell: int, red, green, blue: TGLfloat){.dynlib: dllname,
     importc: "glutSetColor".}
-proc glutGetColor*(ndx, component: int): TGLfloat{.dynlib: dllname, 
+proc glutGetColor*(ndx, component: int): TGLfloat{.dynlib: dllname,
     importc: "glutGetColor".}
 proc glutCopyColormap*(win: int){.dynlib: dllname, importc: "glutCopyColormap".}
   # GLUT state retrieval sub-API.
 proc glutGet*(t: TGLenum): int{.dynlib: dllname, importc: "glutGet".}
 proc glutDeviceGet*(t: TGLenum): int{.dynlib: dllname, importc: "glutDeviceGet".}
   # GLUT extension support sub-API
-proc glutExtensionSupported*(name: cstring): int{.dynlib: dllname, 
+proc glutExtensionSupported*(name: cstring): int{.dynlib: dllname,
     importc: "glutExtensionSupported".}
 proc glutGetModifiers*(): int{.dynlib: dllname, importc: "glutGetModifiers".}
 proc glutLayerGet*(t: TGLenum): int{.dynlib: dllname, importc: "glutLayerGet".}
   # GLUT font sub-API
-proc glutBitmapCharacter*(font: pointer, character: int){.dynlib: dllname, 
+proc glutBitmapCharacter*(font: pointer, character: int){.dynlib: dllname,
     importc: "glutBitmapCharacter".}
-proc glutBitmapWidth*(font: pointer, character: int): int{.dynlib: dllname, 
+proc glutBitmapWidth*(font: pointer, character: int): int{.dynlib: dllname,
     importc: "glutBitmapWidth".}
-proc glutStrokeCharacter*(font: pointer, character: int){.dynlib: dllname, 
+proc glutStrokeCharacter*(font: pointer, character: int){.dynlib: dllname,
     importc: "glutStrokeCharacter".}
-proc glutStrokeWidth*(font: pointer, character: int): int{.dynlib: dllname, 
+proc glutStrokeWidth*(font: pointer, character: int): int{.dynlib: dllname,
     importc: "glutStrokeWidth".}
-proc glutBitmapLength*(font: pointer, str: cstring): int{.dynlib: dllname, 
+proc glutBitmapLength*(font: pointer, str: cstring): int{.dynlib: dllname,
     importc: "glutBitmapLength".}
-proc glutStrokeLength*(font: pointer, str: cstring): int{.dynlib: dllname, 
+proc glutStrokeLength*(font: pointer, str: cstring): int{.dynlib: dllname,
     importc: "glutStrokeLength".}
   # GLUT pre-built models sub-API
 proc glutWireSphere*(radius: TGLdouble, slices, stacks: TGLint){.
@@ -399,9 +399,9 @@ proc glutSolidTorus*(innerRadius, outerRadius: TGLdouble, sides, rings: TGLint){
     dynlib: dllname, importc: "glutSolidTorus".}
 proc glutWireDodecahedron*(){.dynlib: dllname, importc: "glutWireDodecahedron".}
 proc glutSolidDodecahedron*(){.dynlib: dllname, importc: "glutSolidDodecahedron".}
-proc glutWireTeapot*(size: TGLdouble){.dynlib: dllname, 
+proc glutWireTeapot*(size: TGLdouble){.dynlib: dllname,
                                        importc: "glutWireTeapot".}
-proc glutSolidTeapot*(size: TGLdouble){.dynlib: dllname, 
+proc glutSolidTeapot*(size: TGLdouble){.dynlib: dllname,
                                         importc: "glutSolidTeapot".}
 proc glutWireOctahedron*(){.dynlib: dllname, importc: "glutWireOctahedron".}
 proc glutSolidOctahedron*(){.dynlib: dllname, importc: "glutSolidOctahedron".}
@@ -410,29 +410,29 @@ proc glutSolidTetrahedron*(){.dynlib: dllname, importc: "glutSolidTetrahedron".}
 proc glutWireIcosahedron*(){.dynlib: dllname, importc: "glutWireIcosahedron".}
 proc glutSolidIcosahedron*(){.dynlib: dllname, importc: "glutSolidIcosahedron".}
   # GLUT video resize sub-API.
-proc glutVideoResizeGet*(param: TGLenum): int{.dynlib: dllname, 
+proc glutVideoResizeGet*(param: TGLenum): int{.dynlib: dllname,
     importc: "glutVideoResizeGet".}
-proc glutSetupVideoResizing*(){.dynlib: dllname, 
+proc glutSetupVideoResizing*(){.dynlib: dllname,
                                 importc: "glutSetupVideoResizing".}
 proc glutStopVideoResizing*(){.dynlib: dllname, importc: "glutStopVideoResizing".}
-proc glutVideoResize*(x, y, width, height: int){.dynlib: dllname, 
+proc glutVideoResize*(x, y, width, height: int){.dynlib: dllname,
     importc: "glutVideoResize".}
-proc glutVideoPan*(x, y, width, height: int){.dynlib: dllname, 
+proc glutVideoPan*(x, y, width, height: int){.dynlib: dllname,
     importc: "glutVideoPan".}
   # GLUT debugging sub-API.
 proc glutReportErrors*(){.dynlib: dllname, importc: "glutReportErrors".}
   # GLUT device control sub-API.
-proc glutIgnoreKeyRepeat*(ignore: int){.dynlib: dllname, 
+proc glutIgnoreKeyRepeat*(ignore: int){.dynlib: dllname,
                                         importc: "glutIgnoreKeyRepeat".}
-proc glutSetKeyRepeat*(repeatMode: int){.dynlib: dllname, 
+proc glutSetKeyRepeat*(repeatMode: int){.dynlib: dllname,
     importc: "glutSetKeyRepeat".}
 proc glutForceJoystickFunc*(){.dynlib: dllname, importc: "glutForceJoystickFunc".}
   # GLUT game mode sub-API.
   #example glutGameModeString('1280x1024:32@75');
-proc glutGameModeString*(AString: cstring){.dynlib: dllname, 
+proc glutGameModeString*(AString: cstring){.dynlib: dllname,
     importc: "glutGameModeString".}
 proc glutEnterGameMode*(): int{.dynlib: dllname, importc: "glutEnterGameMode".}
 proc glutLeaveGameMode*(){.dynlib: dllname, importc: "glutLeaveGameMode".}
-proc glutGameModeGet*(mode: TGLenum): int{.dynlib: dllname, 
+proc glutGameModeGet*(mode: TGLenum): int{.dynlib: dllname,
     importc: "glutGameModeGet".}
 # implementation

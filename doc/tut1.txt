@@ -20,7 +20,8 @@ This document is a tutorial for the programming language *Nim*.
 This tutorial assumes that you are familiar with basic programming concepts
 like variables, types or statements but is kept very basic. The `manual
 <manual.html>`_ contains many more examples of the advanced language features.
-
+All code examples in this tutorial, as well as the ones found in the rest of
+Nim's documentation, follow the `Nim style guide <nep1.html>`.
 
 
 The first program
@@ -333,8 +334,8 @@ The while statement is a simple looping construct:
     name = readLine(stdin)
     # no ``var``, because we do not declare a new variable here
 
-The example uses a while loop to keep asking the user for his name, as long as
-he types in nothing (only presses RETURN).
+The example uses a while loop to keep asking the users for their name, as long
+as the user types in nothing (only presses RETURN).
 
 
 For statement
@@ -545,9 +546,9 @@ procedures are defined with the ``proc`` keyword:
     echo("I think you know what the problem is just as well as I do.")
 
 This example shows a procedure named ``yes`` that asks the user a ``question``
-and returns true if he answered "yes" (or something similar) and returns
-false if he answered "no" (or something similar). A ``return`` statement leaves
-the procedure (and therefore the while loop) immediately. The
+and returns true if they answered "yes" (or something similar) and returns
+false if they answered "no" (or something similar). A ``return`` statement
+leaves the procedure (and therefore the while loop) immediately. The
 ``(question: string): bool`` syntax describes that the procedure expects a
 parameter named ``question`` of type ``string`` and returns a value of type
 ``bool``. ``Bool`` is a built-in type: the only valid values for ``bool`` are
@@ -757,16 +758,25 @@ However, this cannot be done for mutually recursive procedures:
   # forward declaration:
   proc even(n: int): bool
 
-  proc odd(n: int): bool =
+proc even(n: int): bool
+
+proc odd(n: int): bool =
+  assert(n >= 0) # makes sure we don't run into negative recursion
+  if n == 0: false
+  else:
     n == 1 or even(n-1)
 
-  proc even(n: int): bool =
+proc even(n: int): bool =
+  assert(n >= 0) # makes sure we don't run into negative recursion
+  if n == 1: false
+  else:
     n == 0 or odd(n-1)
 
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
 such a forward declaration is simple: just omit the ``=`` and the
-procedure's body.
+procedure's body. The ``assert`` just adds border conditions, and will be
+covered later in `Modules`_ section.
 
 Later versions of the language will weaken the requirements for forward
 declarations.
@@ -1224,8 +1234,8 @@ Example:
 .. code-block:: nim
 
   var
-    x: seq[int] # a sequence of integers
-  x = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence
+    x: seq[int] # a reference to a sequence of integers
+  x = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence allocated on the heap
 
 Sequence variables are initialized with ``nil``. However, most sequence
 operations cannot deal with ``nil`` (leading to an exception being
@@ -1269,6 +1279,23 @@ The `len <system.html#len,TOpenArray>`_, `low <system.html#low>`_ and `high
 with a compatible base type can be passed to an openarray parameter, the index
 type does not matter.
 
+.. code-block:: nim
+  var
+    fruits:   seq[string]       # reference to a sequence of strings that is initialized with 'nil'
+    capitals: array[3, string]  # array of strings with a fixed size
+
+  fruits = @[]                  # creates an empty sequence on the heap that will be referenced by 'fruits'
+
+  capitals = ["New York", "London", "Berlin"]   # array 'capitals' allows only assignment of three elements
+  fruits.add("Banana")          # sequence 'fruits' is dynamically expandable during runtime
+  fruits.add("Mango")
+
+  proc openArraySize(oa: openArray[string]): int =
+    oa.len
+
+  assert openArraySize(fruits) == 2     # procedure accepts a sequence as parameter
+  assert openArraySize(capitals) == 3   # but also an array type
+
 The openarray type cannot be nested: multidimensional openarrays are not
 supported because this is seldom needed and cannot be done efficiently.
 
@@ -1303,7 +1330,7 @@ type conversions in this context:
 
   myWriteln(stdout, 123, "abc", 4.0)
   # is transformed by the compiler to:
-  myWriteln(stdout, [$123, $"def", $4.0])
+  myWriteln(stdout, [$123, $"abc", $4.0])
 
 In this example `$ <system.html#$>`_ is applied to any argument that is passed
 to the parameter ``a``. Note that `$ <system.html#$>`_ applied to strings is a
@@ -1325,11 +1352,11 @@ define operators which accept Slice objects to define ranges.
     b = "Slices are useless."
 
   echo a[7..12] # --> 'a prog'
-  b[11.. -2] = "useful"
+  b[11..^2] = "useful"
   echo b # --> 'Slices are useful.'
 
-In the previous example slices are used to modify a part of a string, and even
-a negative index is used. The slice's bounds can hold any value supported by
+In the previous example slices are used to modify a part of a string. The
+slice's bounds can hold any value supported by
 their type, but it is the proc using the slice object which defines what values
 are accepted.
 

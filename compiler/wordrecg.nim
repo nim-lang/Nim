@@ -42,10 +42,10 @@ type
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wIncompleteStruct, wRequiresInit,
+    wImportc, wExportc, wExportNims, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
     wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
-    wCompilerproc, wProcVar,
+    wCompilerproc, wProcVar, wBase,
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
     wLinedir, wStacktrace, wLinetrace, wLink, wCompile,
     wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger,
@@ -55,7 +55,7 @@ type
     wFloatchecks, wNanChecks, wInfChecks,
     wAssertions, wPatterns, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
-    wDeadCodeElim, wSafecode, wNoForward,
+    wDeadCodeElim, wSafecode, wNoForward, wNoRewrite,
     wPragma,
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
@@ -82,6 +82,7 @@ type
     wStdIn, wStdOut, wStdErr,
 
     wInOut, wByCopy, wByRef, wOneWay,
+    wBitsize,
 
   TSpecialWords* = set[TSpecialWord]
 
@@ -125,10 +126,12 @@ const
 
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
-    "importcompilerproc", "importc", "exportc", "incompletestruct",
+    "importcompilerproc", "importc", "exportc", "exportnims",
+    "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
-    "compilerproc", "procvar", "fatal", "error", "warning", "hint", "line",
+    "compilerproc", "procvar", "base",
+    "fatal", "error", "warning", "hint", "line",
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
     "link", "compile", "linksys", "deprecated", "varargs",
     "callconv", "breakpoint", "debugger", "nimcall", "stdcall",
@@ -139,7 +142,7 @@ const
 
     "assertions", "patterns", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
-    "deadcodeelim", "safecode", "noforward",
+    "deadcodeelim", "safecode", "noforward", "norewrite",
     "pragma",
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",
@@ -167,6 +170,7 @@ const
     "stdin", "stdout", "stderr",
 
     "inout", "bycopy", "byref", "oneway",
+    "bitsize",
     ]
 
 proc findStr*(a: openArray[string], s: string): int =

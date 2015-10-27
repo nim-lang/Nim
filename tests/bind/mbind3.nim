@@ -1,5 +1,5 @@
 # Module A
-var 
+var
   lastId = 0
 
 template genId*: expr =

@@ -9,4 +9,4 @@ var
 x = 1
 y = high(int)
 
-writeln(stdout, $ ( x +% y ) )
+writeLine(stdout, $ ( x +% y ) )

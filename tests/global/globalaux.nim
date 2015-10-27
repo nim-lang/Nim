@@ -1,4 +1,4 @@
-type 
+type
   TObj*[T] = object
     val*: T
 

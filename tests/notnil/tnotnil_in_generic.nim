@@ -9,14 +9,14 @@ type
         x: int
         ud: T
 
-proc good[T](p: A[T]) = 
+proc good[T](p: A[T]) =
     discard
 
-proc bad[T](p: A[T] not nil) = 
+proc bad[T](p: A[T] not nil) =
     discard
 
 
-proc go() = 
+proc go() =
     let s = A[int](x: 1)
 
     good(s)

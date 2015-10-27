@@ -22,10 +22,10 @@ proc test() =
 
   b = a # perform a deep copy here!
   b.seq = @["xyz", "huch", "was", "soll"]
-  writeln(stdout, len(a.seq))
-  writeln(stdout, a.seq[3])
-  writeln(stdout, len(b.seq))
-  writeln(stdout, b.seq[3])
-  writeln(stdout, b.y)
+  writeLine(stdout, len(a.seq))
+  writeLine(stdout, a.seq[3])
+  writeLine(stdout, len(b.seq))
+  writeLine(stdout, b.seq[3])
+  writeLine(stdout, b.y)
 
 test()

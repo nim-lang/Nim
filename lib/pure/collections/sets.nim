@@ -29,7 +29,7 @@ when not defined(nimhygiene):
 # codes should never be needed, and this can pack more entries per cache-line.
 # Losing hcode entirely is also possible - if some element value is forbidden.
 type
-  KeyValuePair[A] = tuple[hcode: THash, key: A]
+  KeyValuePair[A] = tuple[hcode: Hash, key: A]
   KeyValuePairSeq[A] = seq[KeyValuePair[A]]
   HashSet* {.myShallow.}[A] = object ## \
     ## A generic hash set.
@@ -43,10 +43,10 @@ type
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: THash): bool {.inline.} =
+proc isEmpty(hcode: Hash): bool {.inline.} =
   result = hcode == 0
 
-proc isFilled(hcode: THash): bool {.inline.} =
+proc isFilled(hcode: Hash): bool {.inline.} =
   result = hcode != 0
 
 proc isValid*[A](s: HashSet[A]): bool =
@@ -58,7 +58,7 @@ proc isValid*[A](s: HashSet[A]): bool =
   ## initialized. Example:
   ##
   ## .. code-block ::
-  ##   proc savePreferences(options: TSet[string]) =
+  ##   proc savePreferences(options: Set[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
   result = not s.data.isNil
@@ -72,7 +72,7 @@ proc len*[A](s: HashSet[A]): int =
   ##
   ## .. code-block::
   ##
-  ##   var values: TSet[int]
+  ##   var values: Set[int]
   ##   assert(not values.isValid)
   ##   assert values.len == 0
   result = s.counter
@@ -123,15 +123,15 @@ proc rightSize*(count: Natural): int {.inline.} =
   ## Internally, we want mustRehash(rightSize(x), x) == false.
   result = nextPowerOfTwo(count * 3 div 2  +  4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
 template rawGetKnownHCImpl() {.dirty.} =
-  var h: THash = hc and high(s.data)  # start with real hash value
+  var h: Hash = hc and high(s.data)  # start with real hash value
   while isFilled(s.data[h].hcode):
     # Compare hc THEN key with boolean short circuit. This makes the common case
     # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
-    # It does slow down succeeding lookups by one extra THash cmp&and..usually
+    # It does slow down succeeding lookups by one extra Hash cmp&and..usually
     # just a few clock cycles, generally worth it for any non-integer-like A.
     if s.data[h].hcode == hc and s.data[h].key == key:  # compare hc THEN key
       return h
@@ -148,22 +148,29 @@ template rawInsertImpl() {.dirty.} =
   data[h].key = key
   data[h].hcode = hc
 
-proc rawGetKnownHC[A](s: HashSet[A], key: A, hc: THash): int {.inline.} =
+proc rawGetKnownHC[A](s: HashSet[A], key: A, hc: Hash): int {.inline.} =
   rawGetKnownHCImpl()
 
-proc rawGet[A](s: HashSet[A], key: A, hc: var THash): int {.inline.} =
+proc rawGet[A](s: HashSet[A], key: A, hc: var Hash): int {.inline.} =
   rawGetImpl()
 
-proc mget*[A](s: var HashSet[A], key: A): var A =
+proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## returns the element that is actually stored in 's' which has the same
-  ## value as 'key' or raises the ``EInvalidKey`` exception. This is useful
+  ## value as 'key' or raises the ``KeyError`` exception. This is useful
   ## when one overloaded 'hash' and '==' but still needs reference semantics
   ## for sharing.
   assert s.isValid, "The set needs to be initialized."
-  var hc: THash
+  var hc: Hash
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
   else: raise newException(KeyError, "key not found: " & $key)
+
+proc mget*[A](s: var HashSet[A], key: A): var A {.deprecated.} =
+  ## returns the element that is actually stored in 's' which has the same
+  ## value as 'key' or raises the ``KeyError`` exception. This is useful
+  ## when one overloaded 'hash' and '==' but still needs reference semantics
+  ## for sharing. Use ```[]``` instead.
+  s[key]
 
 proc contains*[A](s: HashSet[A], key: A): bool =
   ## Returns true iff `key` is in `s`.
@@ -178,12 +185,12 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   ##   values.excl(2)
   ##   assert(not values.contains(2))
   assert s.isValid, "The set needs to be initialized."
-  var hc: THash
+  var hc: Hash
   var index = rawGet(s, key, hc)
   result = index >= 0
 
 proc rawInsert[A](s: var HashSet[A], data: var KeyValuePairSeq[A], key: A,
-                  hc: THash, h: THash) =
+                  hc: Hash, h: Hash) =
   rawInsertImpl()
 
 proc enlarge[A](s: var HashSet[A]) =
@@ -196,7 +203,7 @@ proc enlarge[A](s: var HashSet[A]) =
       rawInsert(s, s.data, n[i].key, n[i].hcode, j)
 
 template inclImpl() {.dirty.} =
-  var hc: THash
+  var hc: Hash
   var index = rawGet(s, key, hc)
   if index < 0:
     if mustRehash(len(s.data), s.counter):
@@ -206,7 +213,7 @@ template inclImpl() {.dirty.} =
     inc(s.counter)
 
 template containsOrInclImpl() {.dirty.} =
-  var hc: THash
+  var hc: Hash
   var index = rawGet(s, key, hc)
   if index >= 0:
     result = true
@@ -261,7 +268,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
   ##   s.excl(2)
   ##   assert s.len == 3
   assert s.isValid, "The set needs to be initialized."
-  var hc: THash
+  var hc: Hash
   var i = rawGet(s, key, hc)
   var msk = high(s.data)
   if i >= 0:
@@ -323,7 +330,7 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   ## existing values and calling `excl() <#excl,TSet[A],A>`_ on them. Example:
   ##
   ## .. code-block ::
-  ##   var a: TSet[int]
+  ##   var a: Set[int]
   ##   a.init(4)
   ##   a.incl(2)
   ##   a.init
@@ -552,7 +559,7 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
 
 type
   OrderedKeyValuePair[A] = tuple[
-    hcode: THash, next: int, key: A]
+    hcode: Hash, next: int, key: A]
   OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
   OrderedSet* {.myShallow.}[A] = object ## \
     ## A generic hash set that remembers insertion order.
@@ -574,7 +581,7 @@ proc isValid*[A](s: OrderedSet[A]): bool =
   ## correctly initialized. Example:
   ##
   ## .. code-block::
-  ##   proc saveTarotCards(cards: TOrderedSet[int]) =
+  ##   proc saveTarotCards(cards: OrderedSet[int]) =
   ##     assert cards.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
   result = not s.data.isNil
@@ -588,7 +595,7 @@ proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ##
   ## .. code-block::
   ##
-  ##   var values: TOrderedSet[int]
+  ##   var values: OrderedSet[int]
   ##   assert(not values.isValid)
   ##   assert values.len == 0
   result = s.counter
@@ -629,10 +636,10 @@ iterator items*[A](s: OrderedSet[A]): A =
   forAllOrderedPairs:
     yield s.data[h].key
 
-proc rawGetKnownHC[A](s: OrderedSet[A], key: A, hc: THash): int {.inline.} =
+proc rawGetKnownHC[A](s: OrderedSet[A], key: A, hc: Hash): int {.inline.} =
   rawGetKnownHCImpl()
 
-proc rawGet[A](s: OrderedSet[A], key: A, hc: var THash): int {.inline.} =
+proc rawGet[A](s: OrderedSet[A], key: A, hc: var Hash): int {.inline.} =
   rawGetImpl()
 
 proc contains*[A](s: OrderedSet[A], key: A): bool =
@@ -646,12 +653,12 @@ proc contains*[A](s: OrderedSet[A], key: A): bool =
   ##   values.incl(2)
   ##   assert values.contains(2)
   assert s.isValid, "The set needs to be initialized."
-  var hc: THash
+  var hc: Hash
   var index = rawGet(s, key, hc)
   result = index >= 0
 
 proc rawInsert[A](s: var OrderedSet[A], data: var OrderedKeyValuePairSeq[A],
-                  key: A, hc: THash, h: THash) =
+                  key: A, hc: Hash, h: Hash) =
   rawInsertImpl()
   data[h].next = -1
   if s.first < 0: s.first = h
@@ -729,7 +736,7 @@ proc init*[A](s: var OrderedSet[A], initialSize=64) =
   ## from an ordered hash set. Example:
   ##
   ## .. code-block ::
-  ##   var a: TOrderedSet[int]
+  ##   var a: OrderedSet[int]
   ##   a.init(4)
   ##   a.incl(2)
   ##   a.init

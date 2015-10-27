@@ -7,7 +7,7 @@ import typetraits
 
 proc typeNameLen(x: typedesc): int {.compileTime.} =
   result = x.name.len
-  
+
 macro selectType(a, b: typedesc): typedesc =
   result = a
 
@@ -33,7 +33,7 @@ static:
   assert high(f1.data2) == 5 # length of MyEnum minus one, because we used T.high
 
   assert high(f2.data1) == 126
-  assert high(f2.data2) == 3 
+  assert high(f2.data2) == 3
 
   assert high(f1.data3) == 6 # length of MyEnum
   assert high(f2.data3) == 4 # length of int8

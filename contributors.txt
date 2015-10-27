@@ -1,4 +1,4 @@
-Comex
+﻿Comex
 Eric Doughty-Papassideris
 Simon Hafner
 Keita Haga
@@ -6,8 +6,7 @@ Grzegorz Adam Hankiewicz
 Philippe Lhoste
 Zahary Karadjov
 Mario Ray Mahardhika
-Alex Mitchell
+Alexander Mitchell-Robinson (Amrykid)
 Dominik Picheta
 Jonathan Plona
-Alexander R�dseth
-
+Alexander Rødseth

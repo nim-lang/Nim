@@ -28,7 +28,7 @@ while readRow(x):
       for i in 0..x.row.len-1: header[i] = "Col " & $(i+1)
   else:
     # data line:
-    for i in 0..x.row.len-1: 
+    for i in 0..x.row.len-1:
       push(res[i], parseFloat(x.row[i]))
 x.close()
 

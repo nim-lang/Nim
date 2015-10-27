@@ -8,7 +8,7 @@
 
 import strutils, db_sqlite, os, osproc
 
-var db: TDbConn
+var db: DbConn
 
 proc createDb() =
   db.exec(sql"""
@@ -61,7 +61,7 @@ var
 
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
 
-proc getMachine*(db: TDbConn): MachineId =
+proc getMachine*(db: DbConn): MachineId =
   var name = "hostname"()
   if name.len == 0:
     name = when defined(posix): getenv"HOSTNAME".string
@@ -76,43 +76,44 @@ proc getMachine*(db: TDbConn): MachineId =
     result = db.insertId(sql"insert into Machine(name, os, cpu) values (?,?,?)",
                          name, system.hostOS, system.hostCPU).MachineId
 
-proc getCommit(db: TDbConn): CommitId =
+proc getCommit(db: DbConn): CommitId =
   const commLen = "commit ".len
   let hash = "git log -n 1"()[commLen..commLen+10]
   let branch = "git symbolic-ref --short HEAD"()
   if hash.len == 0 or branch.len == 0: quit "cannot determine git HEAD"
-  
+
   let id = db.getValue(sql"select id from [Commit] where hash = ? and branch = ?",
                        hash, branch)
   if id.len > 0:
     result = id.parseInt.CommitId
   else:
-    result = db.insertId(sql"insert into [Commit](hash, branch) values (?, ?)", 
+    result = db.insertId(sql"insert into [Commit](hash, branch) values (?, ?)",
                          hash, branch).CommitId
 
-proc writeTestResult*(name, category, target, 
+proc writeTestResult*(name, category, target,
                       action, result, expected, given: string) =
-  let id = db.getValue(sql"""select id from TestResult 
+  let id = db.getValue(sql"""select id from TestResult
                              where name = ? and category = ? and target = ? and
-                                machine = ? and [commit] = ?""", 
+                                machine = ? and [commit] = ?""",
                                 name, category, target,
                                 thisMachine, thisCommit)
   if id.len > 0:
     db.exec(sql"""update TestResult
-                  set action = ?, result = ?, expected = ?, given = ? 
+                  set action = ?, result = ?, expected = ?, given = ?
                   where id = ?""", action, result, expected, given, id)
   else:
-    db.exec(sql"""insert into TestResult(name, category, target, 
-                                         action, 
+    db.exec(sql"""insert into TestResult(name, category, target,
+                                         action,
                                          result, expected, given,
                                          [commit], machine)
-                  values (?,?,?,?,?,?,?,?,?) """, name, category, target, 
+                  values (?,?,?,?,?,?,?,?,?) """, name, category, target,
                                         action,
-                                        result, expected, given, 
+                                        result, expected, given,
                                         thisCommit, thisMachine)
 
 proc open*() =
-  db = open(connection="testament.db", user="testament", password="",
+  let dbFile = if existsEnv("TRAVIS") or existsEnv("APPVEYOR"): ":memory:" else: "testament.db"
+  db = open(connection=dbFile, user="testament", password="",
             database="testament")
   createDb()
   thisMachine = getMachine(db)

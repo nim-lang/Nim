@@ -14,7 +14,7 @@ proc newConnection =
 
   proc cb {.closure.} =
     discard
-  
+
   first.callback = cb
 
 newConnection()

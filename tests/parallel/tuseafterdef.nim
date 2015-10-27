@@ -7,11 +7,11 @@ discard """
 
 import strutils, math, threadpool
 
-type 
+type
   BoxedFloat = object
     value: float
 
-proc term(k: float): ptr BoxedFloat = 
+proc term(k: float): ptr BoxedFloat =
   var temp = 4 * math.pow(-1, k) / (2*k + 1)
   result = cast[ptr BoxedFloat](allocShared(sizeof(BoxedFloat)))
   result.value = temp

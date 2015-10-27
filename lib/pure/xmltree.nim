@@ -65,7 +65,7 @@ proc newCData*(cdata: string): XmlNode =
 
 proc newEntity*(entity: string): XmlNode =
   ## creates a new ``PXmlNode`` of kind ``xnEntity`` with the text `entity`.
-  result = newXmlNode(xnCData)
+  result = newXmlNode(xnEntity)
   result.fText = entity
 
 proc text*(n: XmlNode): string {.inline.} =
@@ -73,6 +73,12 @@ proc text*(n: XmlNode): string {.inline.} =
   ## comment, or entity node.
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
+
+proc `text=`*(n: XmlNode, text: string){.inline.} =
+  ## sets the associated text with the node `n`. `n` can be a CDATA, Text,
+  ## comment, or entity node.
+  assert n.k in {xnText, xnComment, xnCData, xnEntity}
+  n.fText = text
 
 proc rawText*(n: XmlNode): string {.inline.} =
   ## returns the underlying 'text' string by reference.
@@ -98,9 +104,22 @@ proc tag*(n: XmlNode): string {.inline.} =
   assert n.k == xnElement
   result = n.fTag
 
+proc `tag=`*(n: XmlNode, tag: string) {.inline.} =
+  ## sets the tag name of `n`. `n` has to be an ``xnElement`` node.
+  assert n.k == xnElement
+  n.fTag = tag
+
 proc add*(father, son: XmlNode) {.inline.} =
   ## adds the child `son` to `father`.
   add(father.s, son)
+
+proc insert*(father, son: XmlNode, index: int) {.inline.} =
+  ## insert the child `son` to a given position in `father`.
+  assert father.k == xnElement and son.k == xnElement
+  if len(father.s) > index:
+    insert(father.s, son, index)
+  else:
+    insert(father.s, son, len(father.s))
 
 proc len*(n: XmlNode): int {.inline.} =
   ## returns the number `n`'s children.
@@ -115,10 +134,20 @@ proc `[]`* (n: XmlNode, i: int): XmlNode {.inline.} =
   assert n.k == xnElement
   result = n.s[i]
 
-proc mget* (n: var XmlNode, i: int): var XmlNode {.inline.} =
+proc delete*(n: XmlNode, i: Natural) {.noSideEffect.} =
+  ## delete the `i`'th child of `n`.
+  assert n.k == xnElement
+  n.s.delete(i)
+
+proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   ## returns the `i`'th child of `n` so that it can be modified
   assert n.k == xnElement
   result = n.s[i]
+
+proc mget*(n: var XmlNode, i: int): var XmlNode {.inline, deprecated.} =
+  ## returns the `i`'th child of `n` so that it can be modified. Use ```[]```
+  ## instead.
+  n[i]
 
 iterator items*(n: XmlNode): XmlNode {.inline.} =
   ## iterates over any child of `n`.
@@ -128,7 +157,7 @@ iterator items*(n: XmlNode): XmlNode {.inline.} =
 iterator mitems*(n: var XmlNode): var XmlNode {.inline.} =
   ## iterates over any child of `n`.
   assert n.k == xnElement
-  for i in 0 .. n.len-1: yield mget(n, i)
+  for i in 0 .. n.len-1: yield n[i]
 
 proc attrs*(n: XmlNode): XmlAttributes {.inline.} =
   ## gets the attributes belonging to `n`.
@@ -313,7 +342,7 @@ proc attr*(n: XmlNode, name: string): string =
   ## Returns "" on failure.
   assert n.kind == xnElement
   if n.attrs == nil: return ""
-  return n.attrs[name]
+  return n.attrs.getOrDefault(name)
 
 proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
   ## Iterates over all the children of `n` returning those matching `tag`.
@@ -337,8 +366,7 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
       continue
     if child.tag == tag:
       result.add(child)
-    elif child.k == xnElement:
-      child.findAll(tag, result)
+    child.findAll(tag, result)
 
 proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   ## Shortcut version to assign in let blocks. Example:
