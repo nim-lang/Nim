@@ -243,14 +243,14 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # generic[void](), generic[int]()
   # see ttypeor.nim test.
   var i = 0
-  newSeq(entry.concreteTypes, fn.typ.len+gp.len)
+  newSeq(entry.concreteTypes, fn.typ.len+gp.len-1)
   for s in instantiateGenericParamList(c, gp, pt):
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
-  for j in 0 .. result.typ.len-1:
+  for j in 1 .. result.typ.len-1:
     entry.concreteTypes[i] = result.typ.sons[j]
     inc i
   if tfTriggersCompileTime in result.typ.flags:

@@ -394,6 +394,9 @@ proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: 
     testNimblePackages(r, cat, pfExtraOnly)
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
+  of "untestable":
+    # We can't test it because it depends on a third party.
+    discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
   else:
     for name in os.walkFiles("tests" & DirSep &.? cat.string / fileGlob):
       testSpec r, makeTest(name, options, cat)
