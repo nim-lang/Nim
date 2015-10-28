@@ -439,6 +439,14 @@ when hasSpawnH:
     Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
                                  header: "<spawn.h>", final, pure.} = object
 
+when defined(linux):
+  # from sys/un.h
+  const Sockaddr_un_path_length* = 108
+else:
+  # according to http://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
+  # this is >=92
+  const Sockaddr_un_path_length* = 92
+
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
@@ -447,6 +455,11 @@ type
               pure, final.} = object ## struct sockaddr
     sa_family*: TSa_Family         ## Address family.
     sa_data*: array [0..255, char] ## Socket address (variable-length data).
+
+  Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
+              pure, final.} = object ## struct sockaddr_un
+    sun_family*: TSa_Family         ## Address family.
+    sun_path*: array [0..Sockaddr_un_path_length-1, char] ## Socket path
 
   Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",

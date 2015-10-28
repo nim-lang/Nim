@@ -10,8 +10,9 @@
 ## This module implements a high-level cross-platform sockets interface.
 
 {.deadCodeElim: on.}
-import nativesockets, os, strutils, unsigned, parseutils, times
+import nativesockets, os, strutils, parseutils, times
 export Port, `$`, `==`
+export Domain, SockType, Protocol
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
@@ -581,6 +582,27 @@ proc connect*(socket: Socket, address: string,
 
       let ret = SSLConnect(socket.sslHandle)
       socketError(socket, ret)
+
+when defined(posix):
+  proc makeUnixAddr(path: string): Sockaddr_un =
+    result.sun_family = AF_UNIX.toInt
+    if path.len >= Sockaddr_un_path_length:
+      raise newException(ValueError, "socket path too long")
+    copyMem(addr result.sun_path, path.cstring, path.len + 1)
+
+  proc connectUnix*(socket: Socket, path: string) =
+    ## Connects to Unix socket on `path`.
+    var socketAddr = makeUnixAddr(path)
+    if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
+                      sizeof(socketAddr).Socklen) != 0'i32:
+      raiseOSError(osLastError())
+
+  proc bindUnix*(socket: Socket, path: string) =
+    ## Binds Unix socket to `path`.
+    var socketAddr = makeUnixAddr(path)
+    if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
+                          sizeof(socketAddr).Socklen) != 0'i32:
+      raiseOSError(osLastError())
 
 when defined(ssl):
   proc handshake*(socket: Socket): bool {.tags: [ReadIOEffect, WriteIOEffect].} =
