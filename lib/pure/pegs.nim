@@ -886,7 +886,7 @@ proc startsWith*(s: string, prefix: Peg, start = 0): bool {.
 
 proc endsWith*(s: string, suffix: Peg, start = 0): bool {.
   nosideEffect, rtl, extern: "npegs$1".} =
-  ## returns true if `s` ends with the pattern `prefix`
+  ## returns true if `s` ends with the pattern `suffix`
   var c: Captures
   c.origStart = start
   for i in start .. s.len-1:

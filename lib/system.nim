@@ -868,12 +868,13 @@ proc `shr` *(x, y: int8): int8 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI", noSideEffect.}
-  ## computes the `shift right` operation of `x` and `y`.
+  ## computes the `shift right` operation of `x` and `y`, filling
+  ## vacant bit positions with zeros.
   ##
   ## .. code-block:: Nim
-  ##   0b0001_0000'i8 shr 2 == 0b0100_0000'i8
-  ##   0b1000_0000'i8 shr 2 == 0b0000_0000'i8
-  ##   0b0000_0001'i8 shr 9 == 0b0000_0000'i8
+  ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+  ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
+  ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
 
 proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
@@ -1807,10 +1808,10 @@ const
   NimMajor*: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 11
+  NimMinor*: int = 12
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 3
+  NimPatch*: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
