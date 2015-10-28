@@ -49,7 +49,7 @@ proc rawGet[T](c: CritBitTree[T], key: string): Node[T] =
       return if it.key == key: it else: nil
 
 proc contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
-  ## returns true iff `c` contains the given `key`.
+  ## returns true if `c` contains the given `key`.
   result = rawGet(c, key) != nil
 
 proc hasKey*[T](c: CritBitTree[T], key: string): bool {.inline.} =
@@ -110,7 +110,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
   inc c.count
 
 proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
-  ## returns true iff `c` contains the given `key`. If the key does not exist
+  ## returns true if `c` contains the given `key`. If the key does not exist
   ## ``c[key] = val`` is performed.
   let oldCount = c.count
   var n = rawInsert(c, key)
@@ -119,7 +119,7 @@ proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
     if not result: n.val = val
 
 proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
-  ## returns true iff `c` contains the given `key`. If the key does not exist
+  ## returns true if `c` contains the given `key`. If the key does not exist
   ## it is inserted into `c`.
   let oldCount = c.count
   var n = rawInsert(c, key)
