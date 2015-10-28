@@ -1,3 +1,8 @@
+<a class="news" href="news.html#Z2015-10-27-version-0-12-0-released">
+  <h4>October 27, 2015</h4>
+  <p>Nim version 0.12.0 has been released!</p>
+</a>
+
 <a class="news" href="news.html#Z2015-10-16-first-nim-conference">
   <h4>October 16, 2015</h4>
   <p>First official Nim conference will be in Kyiv!</p>
