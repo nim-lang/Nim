@@ -545,11 +545,17 @@ proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
         result = TLockLevel(x)
 
 proc typeBorrow(sym: PSym, n: PNode) =
-  if n.kind == nkExprColonExpr:
+  if n.kind == nkIdent:
+    incl(sym.typ.flags, tfBorrowAll)
+  elif n.kind == nkExprColonExpr:
     let it = n.sons[1]
-    if it.kind != nkAccQuoted:
+    if it.kind == nkAccQuoted:
+      incl(sym.typ.flags, tfBorrowDot)
+    else:
       localError(n.info, "a type can only borrow `.` for now")
-  incl(sym.typ.flags, tfBorrowDot)
+  else:
+    localError(n.info,
+               "expected 'borrow' or 'borrow: `.`', but found '" & $n & "'")
 
 proc markCompilerProc(s: PSym) =
   makeExternExport(s, "$1", s.info)
