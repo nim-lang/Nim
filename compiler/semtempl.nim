@@ -228,10 +228,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
   of skParam:
     result = n
   of skType:
-    if (s.typ != nil) and (s.typ.kind != tyGenericParam):
-      result = newSymNodeTypeDesc(s, n.info)
-    else:
-      result = n
+    result = newSymNodeTypeDesc(s, n.info)
   else:
     result = newSymNode(s, n.info)
 
