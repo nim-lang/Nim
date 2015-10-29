@@ -46,7 +46,7 @@ type
     efLValue, efWantIterator, efInTypeof,
     efWantStmt, efAllowStmt, efDetermineType,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoProcvarCheck
+    efNoProcvarCheck, efNoEvaluateGeneric, efInCall
   TExprFlags* = set[TExprFlag]
 
   TTypeAttachedOp* = enum
