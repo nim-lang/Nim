@@ -26,7 +26,7 @@ when useWinVersion:
   from winlean import SocketHandle
 else:
   const
-    versions = "(.10|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
+    versions = "(|.10|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
   when defined(macosx):
     const
       DLLSSLName = "libssl" & versions & ".dylib"
