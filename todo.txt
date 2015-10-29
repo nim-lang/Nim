@@ -1,5 +1,5 @@
-version 0.11.4
-==============
+essential for 1.0
+=================
 
 - document special cased varargs[untyped] and varargs[typed]
 - The remaining bugs of the lambda lifting pass that is responsible to enable
@@ -11,110 +11,47 @@ version 0.11.4
 
 - add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
-
-
-version 1.0
-===========
-
-- map ``string`` and ``seq`` to ``std::string`` and ``std::vector``
-- macro support for '='; bind '=' to a memory region
+- document NimMain and check whether it works for threading
 - remove   echo $foo  gotcha
+- ``not`` or ``~`` for the effects system
+
+
+Not critical for 1.0
+====================
+
 - figure out why C++ bootstrapping is so much slower
-- nimsuggest: auto-completion needs to work in 'class' macros
-- The bitwise 'not' operator will be renamed to 'bnot' to
+- The bitwise 'not' operator cold be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
-- split docgen into separate tool
-- BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
 - make 'nil' work for 'add':
   - resizeString
   - incrSeq
   - addChar
-
-
-Concurrency
------------
-
-- test 'deepCopy' for closures
-- implement 'foo[1..4] = spawn(f[4..7])'
-
-Low priority:
-- support for exception propagation? (hard to implement)
-- the copying of the 'ref Promise' into the thead local storage only
-  happens to work due to the write barrier's implementation
-
-
-Misc
-----
-
-- prevent 'alloc(TypeWithGCedMemory)'
-
-
-Bugs
-====
-
-- Can lead to wrong C code:
-
-template cd*(dir: string, body: stmt) =
-  ## Sets the current dir to ``dir``, executes ``body`` and restores the
-  ## previous working dir.
-  let lastDir = getCurrentDir()
-  setCurrentDir(dir)
-  try:
-    body
-  finally:
-    setCurrentDir(lastDir)
-
-proc test =
-  cd dir:
-    var output = execProcess("git tag")
-    case meth
-    of DownloadMethod.git:
-      output = execProcess("git tag")
-    of DownloadMethod.hg:
-      output = execProcess("hg tags")
-  if output.len > 0:
-    case meth
-    of DownloadMethod.git:
-      result = @[]
-      for i in output.splitLines():
-        if i == "": continue
-        result.add(i)
-    of DownloadMethod.hg:
-      result = @[]
-      for i in output.splitLines():
-        if i == "": continue
-        var tag = ""
-        discard parseUntil(i, tag, ' ')
-        if tag != "tip":
-          result.add(tag)
-  else:
-    result = @[]
-
-- VM: Pegs do not work at compile-time
-- VM: ptr/ref T cannot work in general
-- blocks can "export" an identifier but the CCG generates {} for them ...
-- ConcreteTypes in a 'case' means we don't check for duplicated case branches
-
-
-version 0.9.x
-=============
-
 - pragmas need 'bindSym' support
 - allow simple read accesses to global variables --> difficult to ensure that
   no data races happen
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
 - memory manager: add a measure of fragmentation
-- implement 'bits' pragmas
 - we need a magic thisModule symbol
 - optimize 'genericReset'; 'newException' leads to code bloat
 
-
-version 0.9.X
-=============
-
+- prevent 'alloc(TypeWithGCedMemory)'?
+- split docgen into separate tool; not happy how it worked with ``nimsuggest``
+  though
+- map ``string`` and ``seq`` to ``std::string`` and ``std::vector``
+- macro support for '='; bind '=' to a memory region
 - macros as type pragmas
-- document NimMain and check whether it works for threading
+
+
+Bugs
+====
+
+- VM: Pegs do not work at compile-time
+- VM: ptr/ref T cannot work in general
+- blocks can "export" an identifier but the CCG generates {} for them ...
+- ConcreteTypes in a 'case' means we don't check for duplicated case branches
+- BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
+
 
 GC
 ==
@@ -124,6 +61,18 @@ GC
 - provide tool/API to track leaks/object counts
 - resizing of strings/sequences could take into account the memory that
   is allocated
+
+
+Concurrency
+===========
+
+- test 'deepCopy' for closures
+- implement 'foo[1..4] = spawn(f[4..7])'
+
+Low priority:
+- support for exception propagation? (hard to implement)
+- the copying of the 'ref Promise' into the thead local storage only
+  happens to work due to the write barrier's implementation
 
 
 CGEN
