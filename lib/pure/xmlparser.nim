@@ -96,7 +96,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     next(x)
   of xmlEntity:
     ## &entity;
-    errors.add(errorMsg(x, "unknown entity: " & x.entityName))
+    result = newEntity(x.entityName)
     next(x)
   of xmlEof: discard
 
