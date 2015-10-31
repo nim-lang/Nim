@@ -18,7 +18,7 @@ do
       break;
       ;;
     -*)
-      echo "Error: Unknown option: $1" >&2
+      echo 2>&1 "Error: Unknown option: $1" >&2
       exit 1
       ;;
     *)  # No more options
@@ -31,6 +31,7 @@ CC="gcc"
 LINKER="gcc"
 COMP_FLAGS="?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="?{c.linker.flags}"
+PS4=""
 #  add(result, "# platform detection\n")
 ucpu=`uname -m`
 uos=`uname`
@@ -93,7 +94,7 @@ case $uos in
     myos="haiku"
     ;;
   *) 
-    echo "Error: unknown operating system: $uos"
+    echo 2>&1 "Error: unknown operating system: $uos"
     exit 1
     ;;
 esac
@@ -118,7 +119,7 @@ case $ucpu in
   *arm*|*armv6l* )
     mycpu="arm" ;;
   *) 
-    echo "Error: unknown processor: $ucpu"
+    echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1
     ;;
 esac
@@ -131,28 +132,27 @@ case $myos in
   case $mycpu in
 #    for cpuA in 1..c.cpus.len:
   ?{c.cpus[cpuA-1]})
+    set -x
 #      var linkCmd = ""
 #      for ff in items(c.cfiles[osA][cpuA]):
 #        let f = ff.toUnix
-    echo "$CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}"
     $CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
-    echo "$LINKER -o ?{"$binDir/" & toLower(c.name)} ?linkCmd $LINK_FLAGS"
     $LINKER -o ?{"$binDir/" & toLower(c.name)} ?linkCmd $LINK_FLAGS
     ;;
 #    end for
   *)
-    echo "Error: no C code generated for: [$myos: $mycpu]"
+    echo 2>&1 "Error: no C code generated for: [$myos: $mycpu]"
     exit 1
     ;;
   esac
   ;;
 #  end for
 *) 
-  echo "Error: no C code generated for: [$myos: $mycpu]"
+  echo 2>&1 "Error: no C code generated for: [$myos: $mycpu]"
   exit 1
   ;;
 esac
 
-echo "SUCCESS"
+: SUCCESS
