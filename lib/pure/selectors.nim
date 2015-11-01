@@ -242,7 +242,7 @@ elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
 
   proc select*(s: var Selector, timeout: int): seq[ReadyInfo] =
     result = @[]
-    var tv = Timespec(tv_sec: timeout.Time, tv_nsec: 0)
+    var tv = Timespec(tv_sec: (timeout div 1000).Time, tv_nsec: 0)
     let evNum = kevent(s.kqFD, nil, 0, addr s.events[0], 64.cint, addr tv)
     if evNum < 0:
       let err = osLastError()
