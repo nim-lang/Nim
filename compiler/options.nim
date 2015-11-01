@@ -86,7 +86,8 @@ type                          # please make sure we have under 32 options
     gcNone, gcBoehm, gcGo, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
 
   IdeCmd* = enum
-    ideNone, ideSug, ideCon, ideDef, ideUse, ideDus
+    ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
+    ideHighlight, ideOutline
 
 var
   gIdeCmd*: IdeCmd
@@ -422,6 +423,10 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "def": ideDef
   of "use": ideUse
   of "dus": ideDus
+  of "chk": ideChk
+  of "mod": ideMod
+  of "highlight": ideHighlight
+  of "outline": ideOutline
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -431,4 +436,8 @@ proc `$`*(c: IdeCmd): string =
   of ideDef: "def"
   of ideUse: "use"
   of ideDus: "dus"
+  of ideChk: "chk"
+  of ideMod: "mod"
   of ideNone: "none"
+  of ideHighlight: "highlight"
+  of ideOutline: "outline"

@@ -819,6 +819,8 @@ type
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
+    when defined(nimsuggest):
+      allUsages*: seq[TLineInfo]
 
   TTypeSeq* = seq[PType]
   TLockLevel* = distinct int16

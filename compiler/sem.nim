@@ -61,8 +61,8 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
   when defined(nimsuggest):
     assert gCmd == cmdIdeTools
     if requiresCheck:
-      if optIdeDebug in gGlobalOptions:
-        echo "passing to safeSemExpr: ", renderTree(n)
+      #if optIdeDebug in gGlobalOptions:
+      #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
 
 proc typeMismatch(n: PNode, formal, actual: PType) =
@@ -441,6 +441,8 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   result = hloStmt(c, result)
   if gCmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
+  if gCmd == cmdIdeTools:
+    appendToModule(c.module, result)
   result = transformStmt(c.module, result)
 
 proc recoverContext(c: PContext) =
