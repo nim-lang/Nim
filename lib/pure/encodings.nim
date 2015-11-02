@@ -263,11 +263,6 @@ else:
   else:
     const iconvDll = "(libc.so.6|libiconv.so)"
 
-  when defined(macosx):
-    const prefix = "lib"
-  else:
-    const prefix = ""
-
   const
     E2BIG = 7.cint
     EINVAL = 22.cint
@@ -283,15 +278,15 @@ else:
   var errno {.importc, header: "<errno.h>".}: cint
 
   proc iconvOpen(tocode, fromcode: cstring): EncodingConverter {.
-    importc: prefix & "iconv_open", cdecl, dynlib: iconvDll.}
+    importc: "iconv_open", cdecl, dynlib: iconvDll.}
   proc iconvClose(c: EncodingConverter) {.
-    importc: prefix & "iconv_close", cdecl, dynlib: iconvDll.}
+    importc: "iconv_close", cdecl, dynlib: iconvDll.}
   proc iconv(c: EncodingConverter, inbuf: var cstring, inbytesLeft: var int,
              outbuf: var cstring, outbytesLeft: var int): int {.
-    importc: prefix & "iconv", cdecl, dynlib: iconvDll.}
+    importc: "iconv", cdecl, dynlib: iconvDll.}
   proc iconv(c: EncodingConverter, inbuf: pointer, inbytesLeft: pointer,
              outbuf: var cstring, outbytesLeft: var int): int {.
-    importc: prefix & "iconv", cdecl, dynlib: iconvDll.}
+    importc: "iconv", cdecl, dynlib: iconvDll.}
 
 proc getCurrentEncoding*(): string =
   ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
@@ -462,4 +457,3 @@ when not defined(testing) and isMainModule:
   echo "Forced ibm850 encoding: ", ibm850
   echo "Current encoding: ", current
   echo "From ibm850 to current: ", convert(ibm850, current, "ibm850")
-
