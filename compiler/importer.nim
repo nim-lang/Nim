@@ -163,6 +163,7 @@ proc myImportModule(c: PContext, n: PNode): PSym =
       localError(n.info, errGenerated, "A module cannot import itself")
     if sfDeprecated in result.flags:
       message(n.info, warnDeprecated, result.name.s)
+    #suggestSym(n.info, result, false)
 
 proc evalImport(c: PContext, n: PNode): PNode =
   result = n

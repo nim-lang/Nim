@@ -66,7 +66,7 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
     else: 0
 
   var
-    # XXX: Since immediate templates are not subjected to the
+    # XXX: Since immediate templates are not subject to the
     # standard sigmatching algorithm, they will have a number
     # of deficiencies when it comes to generic params:
     # Type dependencies between the parameters won't be honoured
@@ -126,9 +126,9 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym): PNode =
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)
-    ctx.instLines = body.kind notin {nkStmtList, nkStmtListExpr,
-                                     nkBlockStmt, nkBlockExpr}
-    if ctx.instLines: result.info = n.info
+    #ctx.instLines = body.kind notin {nkStmtList, nkStmtListExpr,
+    #                                 nkBlockStmt, nkBlockExpr}
+    #if ctx.instLines: result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
 
