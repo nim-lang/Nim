@@ -815,24 +815,33 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
-proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
-  template quit =
-    if defined(debug) or msg == errInternal or hintStackTrace in gNotes:
-      if stackTraceAvailable() and isNil(writelnHook):
-        writeStackTrace()
-      else:
-        styledMsgWriteln(fgRed, "No stack traceback available\nTo create a stacktrace, rerun compilation with ./koch temp " & options.command & " <file>")
-    quit 1
+proc quit(msg: TMsgKind) =
+  if defined(debug) or msg == errInternal or hintStackTrace in gNotes:
+    if stackTraceAvailable() and isNil(writelnHook):
+      writeStackTrace()
+    else:
+      styledMsgWriteln(fgRed, "No stack traceback available\n" &
+          "To create a stacktrace, rerun compilation with ./koch temp " &
+          options.command & " <file>")
+  quit 1
 
+proc log*(s: string) {.procvar.} =
+  var f: File
+  if open(f, "nimsuggest.log", fmAppend):
+    f.writeln(s)
+    close(f)
+
+proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   if msg >= fatalMin and msg <= fatalMax:
-    quit()
+    if gCmd == cmdIdeTools: log(s)
+    quit(msg)
   if msg >= errMin and msg <= errMax:
     inc(gErrorCounter)
     options.gExitcode = 1'i8
     if gErrorCounter >= gErrorMax:
-      quit()
+      quit(msg)
     elif eh == doAbort and gCmd != cmdIdeTools:
-      quit()
+      quit(msg)
     elif eh == doRaise:
       raiseRecoverableError(s)
 

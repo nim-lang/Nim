@@ -699,7 +699,7 @@ proc track(tracked: PEffects, n: PNode) =
         if notGcSafe(op) and not importedFromC(a):
           # and it's not a recursive call:
           if not (a.kind == nkSym and a.sym == tracked.owner):
-            warnAboutGcUnsafe(n)
+            if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
             markGcUnsafe(tracked, a)
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:

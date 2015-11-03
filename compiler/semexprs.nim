@@ -2083,11 +2083,6 @@ proc semExport(c: PContext, n: PNode): PNode =
           x.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
         s = nextOverloadIter(o, c, a)
-  when false:
-    if c.module.ast.isNil:
-      c.module.ast = newNodeI(nkStmtList, n.info)
-    assert c.module.ast.kind == nkStmtList
-    c.module.ast.add x
   result = n
 
 proc shouldBeBracketExpr(n: PNode): bool =

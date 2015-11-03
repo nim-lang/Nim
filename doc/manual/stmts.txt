@@ -65,7 +65,7 @@ Void context
 
 In a list of statements every expression except the last one needs to have the
 type ``void``. In addition to this rule an assignment to the builtin ``result``
-symbol also triggers a ``void`` context:
+symbol also triggers a mandatory ``void`` context for the subsequent expressions:
 
 .. code-block:: nim
   proc invalid*(): string =
