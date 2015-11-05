@@ -35,7 +35,7 @@ proc setupEnvironment =
   when defined(linux):
     defineSymbol(gTinyC, "__linux__", nil)
     defineSymbol(gTinyC, "__linux", nil)
-  var nimrodDir = getPrefixDir()
+  var nimDir = getPrefixDir()
 
   addIncludePath(gTinyC, libpath)
   when defined(windows):
@@ -44,7 +44,7 @@ proc setupEnvironment =
   when defined(windows):
     defineSymbol(gTinyC, "_WIN32", nil)
     # we need Mingw's headers too:
-    var gccbin = getConfigVar("gcc.path") % ["nimrod", nimrodDir]
+    var gccbin = getConfigVar("gcc.path") % ["nim", nimDir]
     addSysincludePath(gTinyC, gccbin /../ "include")
     #addFile(nimrodDir / r"tinyc\win32\wincrt1.o")
     addFile(nimrodDir / r"tinyc\win32\alloca86.o")

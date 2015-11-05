@@ -1713,7 +1713,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     genArrayLen(p, e, d, op)
   of mXLenStr, mXLenSeq:
     if not p.module.compileToCpp:
-      unaryExpr(p, e, d, "($1->Sup.len-1)")
+      unaryExpr(p, e, d, "($1->Sup.len)")
     else:
       unaryExpr(p, e, d, "$1->len")
   of mGCref: unaryStmt(p, e, d, "#nimGCref($1);$n")

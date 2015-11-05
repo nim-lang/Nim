@@ -1,6 +1,6 @@
 @echo off
 REM COLOR 0A
-SET NIMRODPATH=.
-SET PATH=%NIMRODPATH%\bin;%NIMRODPATH%\dist\mingw\bin;%PATH%
+SET NIMPATH=%~dp0
+SET PATH=%NIMPATH%\bin;%NIMPATH%\dist\mingw\bin;%PATH%
 cmd
 

@@ -163,7 +163,7 @@ proc mvFile*(`from`, to: string) {.raises: [OSError].} =
 
 proc cpFile*(`from`, to: string) {.raises: [OSError].} =
   ## Copies the file `from` to `to`.
-  log "mvFile: " & `from` & ", " & to:
+  log "cpFile: " & `from` & ", " & to:
     copyFile `from`, to
     checkOsError()
 
