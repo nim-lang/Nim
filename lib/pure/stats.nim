@@ -15,6 +15,7 @@
 ## - n (data count)
 ## - min  (smallest value)
 ## - max  (largest value)
+## - sum
 ## - mean
 ## - variance
 ## - varianceS (sample var)
@@ -36,25 +37,26 @@ from math import FloatClass, sqrt, pow, round
 {.push checks:off, line_dir:off, stack_trace:off.}
 
 type
-  RunningStat* = object  ## an accumulator for statistical data
-    n*: int  ## number of pushed data
-    min*, max*: float      ## self-explaining
-    mom1, mom2, mom3, mom4: float     ## statistical moments, mom1 is mean
+  RunningStat* = object             ## an accumulator for statistical data
+    n*: int                         ## number of pushed data
+    min*, max*, sum*: float         ## self-explaining
+    mom1, mom2, mom3, mom4: float   ## statistical moments, mom1 is mean
 
 
   RunningRegress* = object  ## an accumulator for regression calculations
     n*: int                 ## number of pushed data
     x_stats*: RunningStat   ## stats for first set of data
-    y_stats*: RunningStat   ## stats for second  set of data
-    s_xy: float      ## acculated data for combined xy
+    y_stats*: RunningStat   ## stats for second set of data
+    s_xy: float             ## accumulated data for combined xy
 
 {.deprecated: [TFloatClass: FloatClass, TRunningStat: RunningStat].}
 
-proc clear(s: var RunningStat) =
+proc clear*(s: var RunningStat) =
   ## reset `s`
   s.n = 0
-  s.min = 0.0
+  s.min = toBiggestFloat(int.high)
   s.max = 0.0
+  s.sum = 0.0
   s.mom1 = 0.0
   s.mom2 = 0.0
   s.mom3 = 0.0
@@ -62,10 +64,12 @@ proc clear(s: var RunningStat) =
 
 proc push*(s: var RunningStat, x: float) =
   ## pushes a value `x` for processing
+  if s.n == 0: s.min = x
   inc(s.n)
   # See Knuth TAOCP vol 2, 3rd edition, page 232
   if s.min > x: s.min = x
   if s.max < x: s.max = x
+  s.sum += x
   let n = toFloat(s.n)
   let delta = x - s.mom1
   let delta_n = delta / toFloat(s.n)
@@ -92,8 +96,9 @@ proc push*(s: var RunningStat, x: openarray[float|int]) =
   for val in x:
     s.push(val)
 
-proc mean*(s: RunningStat): float = result = s.mom1
+proc mean*(s: RunningStat): float =
   ## computes the current mean of `s`
+  result = s.mom1
 
 proc variance*(s: RunningStat): float =
   ## computes the current population variance of `s`
@@ -172,8 +177,8 @@ proc clear*(r: var RunningRegress) =
 
 proc push*(r: var RunningRegress, x, y: float) =
   ## pushes two values `x` and `y` for processing
-  r.s_xy += (r.x_stats.mean() -x)*(r.y_stats.mean() - y)*toFloat(r.n)/toFloat(r.n+1)
-
+  r.s_xy += (r.x_stats.mean() - x)*(r.y_stats.mean() - y)*
+                toFloat(r.n) / toFloat(r.n + 1)
   r.x_stats.push(x)
   r.y_stats.push(y)
   inc(r.n)
@@ -254,6 +259,10 @@ when isMainModule:
   doAssert(clean(rs1.mom2) == clean(rs.mom2))
   doAssert(clean(rs1.mom3) == clean(rs.mom3))
   doAssert(clean(rs1.mom4) == clean(rs.mom4))
+  rs1.clear()
+  rs1.push(@[1.0, 2.2, 1.4, 4.9])
+  doAssert(rs1.sum == 9.5)
+  doAssert(rs1.mean() == 2.375)
 
   var rr: RunningRegress
   rr.push(@[0.0,1.0,2.8,3.0,4.0], @[0.0,1.0,2.3,3.0,4.0])
