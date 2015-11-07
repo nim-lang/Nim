@@ -713,8 +713,8 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [ReadIOEffect]
       # Save the error in case it gets reset.
       socket.lastError = osLastError()
 
-proc waitFor(socket: Socket, waited: var float, timeout, size: int,
-             funcName: string): int {.tags: [TimeEffect].} =
+proc waitFor*(socket: Socket, waited: var float, timeout, size: int,
+              funcName: string): int {.tags: [TimeEffect].} =
   ## determines the amount of characters that can be read. Result will never
   ## be larger than ``size``. For unbuffered sockets this will be ``1``.
   ## For buffered sockets it can be as big as ``BufferSize``.
