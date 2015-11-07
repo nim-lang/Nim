@@ -376,48 +376,6 @@ proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
-type
-  RunningStat* = object                 ## an accumulator for statistical data
-    n*: int                             ## number of pushed data
-    sum*, min*, max*, mean*: float      ## self-explaining
-    oldM, oldS, newS: float
-
-{.deprecated: [TFloatClass: FloatClass, TRunningStat: RunningStat].}
-
-proc push*(s: var RunningStat, x: float) =
-  ## pushes a value `x` for processing
-  inc(s.n)
-  # See Knuth TAOCP vol 2, 3rd edition, page 232
-  if s.n == 1:
-    s.min = x
-    s.max = x
-    s.oldM = x
-    s.mean = x
-    s.oldS = 0.0
-  else:
-    if s.min > x: s.min = x
-    if s.max < x: s.max = x
-    s.mean = s.oldM + (x - s.oldM)/toFloat(s.n)
-    s.newS = s.oldS + (x - s.oldM)*(x - s.mean)
-
-    # set up for next iteration:
-    s.oldM = s.mean
-    s.oldS = s.newS
-  s.sum = s.sum + x
-
-proc push*(s: var RunningStat, x: int) =
-  ## pushes a value `x` for processing. `x` is simply converted to ``float``
-  ## and the other push operation is called.
-  push(s, toFloat(x))
-
-proc variance*(s: RunningStat): float =
-  ## computes the current variance of `s`
-  if s.n > 1: result = s.newS / (toFloat(s.n - 1))
-
-proc standardDeviation*(s: RunningStat): float =
-  ## computes the current standard deviation of `s`
-  result = sqrt(variance(s))
-
 {.pop.}
 {.pop.}
 
