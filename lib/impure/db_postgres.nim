@@ -60,7 +60,7 @@
 ## .. code-block:: Nim
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Dominik")
-import strutils, postgres, oids
+import strutils, postgres
 
 type
   DbConn* = PPGconn   ## encapsulates a database connection
@@ -168,7 +168,7 @@ proc newRow(L: int): Row =
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
   # s is a dummy unique id str for each setupQuery query
-  let s = "Q_" & $genOid() & "_" & string(query)
+  let s = ""
   let res = pqprepare(db, s, dbFormat(query, args), 0, nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   result = pqexecPrepared(db, s, 0, nil,
