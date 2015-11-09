@@ -203,6 +203,17 @@ proc setDefaultLibpath*() =
       else: libpath = joinPath(prefix, "lib")
     else: libpath = joinPath(prefix, "lib")
 
+    # Special rule to support other tools (nimble) which import the compiler
+    # modules and make use of them.
+    let realNimPath = # Make sure we expand the symlink
+      if symlinkExists(findExe("nim")): expandSymlink(findExe("nim"))
+      else: findExe("nim")
+    # Find out if $nim/../../lib/system.nim exists.
+    let parentNimLibPath = realNimPath.parentDir().parentDir() / "lib"
+    if not fileExists(libpath / "system.nim") and
+        fileExists(parentNimlibPath / "system.nim"):
+      libpath = parentNimLibPath
+
 proc canonicalizePath*(path: string): string =
   when not FileSystemCaseSensitive: result = path.expandFilename.toLower
   else: result = path.expandFilename

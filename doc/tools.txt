@@ -4,7 +4,7 @@ Tools available with Nim
 
 The standard distribution ships with the following tools:
 
-- | `Documentation generator <docs/docgen.html>`_
+- | `Documentation generator <docgen.html>`_
   | The builtin document generator ``nim doc2`` generates HTML documentation
     from ``.nim`` source files.
 
