@@ -937,9 +937,10 @@ elif not defined(useNimRtl):
     if p.inStream != nil: close(p.inStream)
     if p.outStream != nil: close(p.outStream)
     if p.errStream != nil: close(p.errStream)
-    discard close(p.inHandle)
-    discard close(p.outHandle)
-    discard close(p.errHandle)
+    if poParentStreams notin p.options:
+      discard close(p.inHandle)
+      discard close(p.outHandle)
+      discard close(p.errHandle)
 
   proc suspend(p: Process) =
     if kill(p.id, SIGSTOP) != 0'i32: raiseOsError(osLastError())
