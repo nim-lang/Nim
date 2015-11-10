@@ -1,4 +1,7 @@
 
+## Compile-time only version for walkDir if you need it at compile-time
+## for JavaScript.
+
 type
   PathComponent* = enum   ## Enumeration specifying a path component.
     pcFile,               ## path refers to a file
@@ -10,7 +13,15 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
-  tags: [ReadDirEffect], compiletime.} =
-  for k, v in staticWalkDir(dir, relative)):
+iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] =
+  for k, v in items(staticWalkDir(dir, relative)):
     yield (k, v)
+
+iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string =
+  var stack = @[dir]
+  while stack.len > 0:
+    for k,p in walkDir(stack.pop()):
+      if k in filter:
+        case k
+        of pcFile, pcLinkToFile: yield p
+        of pcDir, pcLinkToDir: stack.add(p)
