@@ -51,6 +51,7 @@ type
 
 {.deprecated: [TFloatClass: FloatClass, TRunningStat: RunningStat].}
 
+# ----------- RunningStat --------------------------
 proc clear*(s: var RunningStat) =
   ## reset `s`
   s.n = 0
