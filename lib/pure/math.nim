@@ -118,26 +118,6 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-template toFloat(f: float): float = f
-
-proc mean*[T](x: openArray[T]): float {.noSideEffect.} =
-  ## Computes the mean of the elements in `x`, which are first converted to floats.
-  ## If `x` is empty, NaN is returned.
-  ## ``toFloat(x: T): float`` must be defined.
-  for i in items(x): result = result + toFloat(i)
-  result = result / toFloat(len(x))
-
-proc variance*[T](x: openArray[T]): float {.noSideEffect.} =
-  ## Computes the variance of the elements in `x`.
-  ## If `x` is empty, NaN is returned.
-  ## ``toFloat(x: T): float`` must be defined.
-  result = 0.0
-  var m = mean(x)
-  for i in items(x):
-    var diff = toFloat(i) - m
-    result = result + diff*diff
-  result = result / toFloat(len(x))
-
 proc random*(max: int): int {.benign.}
   ## Returns a random number in the range 0..max-1. The sequence of
   ## random number is always the same, unless `randomize` is called
