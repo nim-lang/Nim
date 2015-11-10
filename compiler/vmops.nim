@@ -13,7 +13,7 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, fmod
 
-from os import getEnv, existsEnv, dirExists, fileExists
+from os import getEnv, existsEnv, dirExists, fileExists, walkDir
 
 template mathop(op) {.immediate, dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -48,6 +48,12 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
                else: a.currentException.sons[3].skipColon.strVal)
 
+proc staticWalkDirImpl(path: string, relative: bool): PNode =
+  result = newNode(nkBracket)
+  for k, f in walkDir(path, relative):
+    result.add newTree(nkPar, newIntNode(nkIntLit, k.ord),
+                              newStrNode(nkStrLit, f))
+
 proc registerAdditionalOps*(c: PCtx) =
   wrap1f(sqrt)
   wrap1f(ln)
@@ -78,3 +84,5 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1s(fileExists)
   wrap2svoid(writeFile)
   systemop getCurrentExceptionMsg
+  registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+    setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))

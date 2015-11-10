@@ -1604,7 +1604,8 @@ proc matches(s: PSym; x: string): bool =
   var s = s
   var L = y.len-1
   while L >= 0:
-    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+      return false
     s = s.owner
     dec L
   result = true
@@ -1613,7 +1614,8 @@ proc matches(s: PSym; y: varargs[string]): bool =
   var s = s
   var L = y.len-1
   while L >= 0:
-    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+      return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
     dec L
   result = true
