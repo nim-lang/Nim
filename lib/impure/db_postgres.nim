@@ -89,14 +89,14 @@ proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =
   ## on, later versions will check the string for valid syntax.
   result = SqlQuery(query)
 
-proc dbError*(db: DbConn) {.noreturn.} =
+proc dbError*(db: DbConn) {.noreturn, raises: [EDb].} =
   ## raises an EDb exception.
   var e: ref EDb
   new(e)
   e.msg = $pqErrorMessage(db)
   raise e
 
-proc dbError*(msg: string) {.noreturn.} =
+proc dbError*(msg: string) {.noreturn, raises: [EDb].} =
   ## raises an EDb exception with message `msg`.
   var e: ref EDb
   new(e)
@@ -168,8 +168,9 @@ proc newRow(L: int): Row =
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
   # s is a dummy unique id str for each setupQuery query
-  let s = "setupQuery_Query_" & string(query)
-  var res = pqprepare(db, s, dbFormat(query, args), 0, nil)
+  let s = ""
+  let res = pqprepare(db, s, dbFormat(query, args), 0, nil)
+  if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   result = pqexecPrepared(db, s, 0, nil,
                         nil, nil, 0)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
@@ -183,7 +184,7 @@ proc setupQuery(db: DbConn, stmtName: SqlPrepared,
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
-              nParams: int): SqlPrepared =
+              nParams: int): SqlPrepared {.tags: [FDb].} =
   if nParams > 0 and not string(query).contains("$1"):
     dbError("""parameter substitution expects "$1" """)
   var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
