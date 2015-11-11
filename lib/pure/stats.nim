@@ -166,6 +166,51 @@ proc `+`*(a, b: RunningStat): RunningStat =
 proc `+=`*(a: var RunningStat, b: RunningStat) {.inline.} =
   ## add a second RunningStats `b` to `a`
   a = a + b
+# ---------------------- standalone array/seq stats ---------------------
+proc mean*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.mean()
+
+proc variance*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.variance()
+
+proc varianceS*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.varianceS()
+
+proc standardDeviation*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.standardDeviation()
+
+proc standardDeviationS*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.standardDeviationS()
+
+proc skewness*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.skewness()
+
+proc skewnessS*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.skewnessS()
+
+proc kurtosis*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.kurtosis()
+
+proc kurtosisS*[T](x: openArray[T]): float =
+  var rs: RunningStat
+  rs.push(x)
+  result = rs.kurtosisS()
 
 # ---------------------- Running Regression -----------------------------
 
