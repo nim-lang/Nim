@@ -30,6 +30,21 @@
 ## - intercept
 ## - correlation
 ##
+## Procs have been provided to calculate statistics on arrays and sequences.
+##
+## However, if more than a single statistical calculation is required, it is more
+## efficient to push the data once to the RunningStat object, and
+## call the numerous statistical procs for the RunningStat object.
+##
+## .. code-block:: Nim
+##
+##  var rs: RunningStat
+##  rs.push(MySeqOfData)
+##  rs.mean()
+##  rs.variance()
+##  rs.skewness()
+##  rs.kurtosis()
+
 from math import FloatClass, sqrt, pow, round
 
 {.push debugger:off .} # the user does not want to trace a part
@@ -168,46 +183,55 @@ proc `+=`*(a: var RunningStat, b: RunningStat) {.inline.} =
   a = a + b
 # ---------------------- standalone array/seq stats ---------------------
 proc mean*[T](x: openArray[T]): float =
+  ## computes the mean of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.mean()
 
 proc variance*[T](x: openArray[T]): float =
+  ## computes the population variance of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.variance()
 
 proc varianceS*[T](x: openArray[T]): float =
+  ## computes the sample variance of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.varianceS()
 
 proc standardDeviation*[T](x: openArray[T]): float =
+  ## computes the population standardDeviation of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.standardDeviation()
 
 proc standardDeviationS*[T](x: openArray[T]): float =
+  ## computes the sanple standardDeviation of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.standardDeviationS()
 
 proc skewness*[T](x: openArray[T]): float =
+  ## computes the population skewness of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.skewness()
 
 proc skewnessS*[T](x: openArray[T]): float =
+  ## computes the sample skewness of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.skewnessS()
 
 proc kurtosis*[T](x: openArray[T]): float =
+  ## computes the population kurtosis of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.kurtosis()
 
 proc kurtosisS*[T](x: openArray[T]): float =
+  ## computes the sample kurtosis of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.kurtosisS()
