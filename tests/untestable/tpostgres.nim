@@ -9,5 +9,7 @@ let name = "Dom"
 db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
         name)
 doAssert db.getValue(sql"SELECT name FROM myTable") == name
+# Check issue #3513
+doAssert db.getValue(sql"SELECT name FROM myTable") == name
 
 db.close()

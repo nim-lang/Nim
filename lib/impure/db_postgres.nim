@@ -167,11 +167,7 @@ proc newRow(L: int): Row =
 
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): PPGresult =
-  # s is a dummy unique id str for each setupQuery query
-  let s = "setupQuery_Query_" & string(query)
-  var res = pqprepare(db, s, dbFormat(query, args), 0, nil)
-  result = pqexecPrepared(db, s, 0, nil,
-                        nil, nil, 0)
+  result = pqexec(db, dbFormat(query, args))
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared,
