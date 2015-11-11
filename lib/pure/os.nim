@@ -810,6 +810,10 @@ type
 
 {.deprecated: [TPathComponent: PathComponent].}
 
+proc staticWalkDir(dir: string; relative: bool): seq[
+                  tuple[kind: PathComponent, path: string]] =
+  discard
+
 iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
   tags: [ReadDirEffect].} =
   ## walks over the directory `dir` and yields for each directory or file in
@@ -833,49 +837,53 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
   ##   dirA/dirC
   ##   dirA/fileA1.txt
   ##   dirA/fileA2.txt
-  when defined(windows):
-    var f: WIN32_FIND_DATA
-    var h = findFirstFile(dir / "*", f)
-    if h != -1:
-      while true:
-        var k = pcFile
-        if not skipFindData(f):
-          if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
-            k = pcDir
-          if (f.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
-            k = succ(k)
-          let xx = if relative: extractFilename(getFilename(f))
-                   else: dir / extractFilename(getFilename(f))
-          yield (k, xx)
-        if findNextFile(h, f) == 0'i32: break
-      findClose(h)
+  when nimvm:
+    for k, v in items(staticWalkDir(dir, relative)):
+      yield (k, v)
   else:
-    var d = opendir(dir)
-    if d != nil:
-      while true:
-        var x = readdir(d)
-        if x == nil: break
-        var y = $x.d_name
-        if y != "." and y != "..":
-          var s: Stat
-          if not relative:
-            y = dir / y
+    when defined(windows):
+      var f: WIN32_FIND_DATA
+      var h = findFirstFile(dir / "*", f)
+      if h != -1:
+        while true:
           var k = pcFile
+          if not skipFindData(f):
+            if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
+              k = pcDir
+            if (f.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+              k = succ(k)
+            let xx = if relative: extractFilename(getFilename(f))
+                     else: dir / extractFilename(getFilename(f))
+            yield (k, xx)
+          if findNextFile(h, f) == 0'i32: break
+        findClose(h)
+    else:
+      var d = opendir(dir)
+      if d != nil:
+        while true:
+          var x = readdir(d)
+          if x == nil: break
+          var y = $x.d_name
+          if y != "." and y != "..":
+            var s: Stat
+            if not relative:
+              y = dir / y
+            var k = pcFile
 
-          when defined(linux) or defined(macosx) or defined(bsd):
-            if x.d_type != DT_UNKNOWN:
-              if x.d_type == DT_DIR: k = pcDir
-              if x.d_type == DT_LNK:
-                if dirExists(y): k = pcLinkToDir
-                else: k = succ(k)
-              yield (k, y)
-              continue
+            when defined(linux) or defined(macosx) or defined(bsd):
+              if x.d_type != DT_UNKNOWN:
+                if x.d_type == DT_DIR: k = pcDir
+                if x.d_type == DT_LNK:
+                  if dirExists(y): k = pcLinkToDir
+                  else: k = succ(k)
+                yield (k, y)
+                continue
 
-          if lstat(y, s) < 0'i32: break
-          if S_ISDIR(s.st_mode): k = pcDir
-          if S_ISLNK(s.st_mode): k = succ(k)
-          yield (k, y)
-      discard closedir(d)
+            if lstat(y, s) < 0'i32: break
+            if S_ISDIR(s.st_mode): k = pcDir
+            if S_ISLNK(s.st_mode): k = succ(k)
+            yield (k, y)
+        discard closedir(d)
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [ReadDirEffect].} =
