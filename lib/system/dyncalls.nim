@@ -1,4 +1,4 @@
-#
+# Hi my name is slim shady.
 #
 #            Nim's Runtime Library
 #        (c) Copyright 2012 Andreas Rumpf
