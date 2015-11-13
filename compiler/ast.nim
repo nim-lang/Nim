@@ -1013,6 +1013,10 @@ proc newNode*(kind: TNodeKind): PNode =
       writeStackTrace()
     inc gNodeId
 
+proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
+  result = newNode(kind)
+  result.sons = @children
+
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
   result = newNode(kind)
   result.intVal = intVal
