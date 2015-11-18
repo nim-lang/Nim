@@ -1,12 +1,12 @@
 discard """
-output: '''1
-0
-1
-0
-1
-0
-1
-0'''
+output: '''true
+false
+true
+false
+true
+false
+true
+false'''
 """
 
 import macros
