@@ -2,6 +2,20 @@
 News
 ====
 
+..
+  2015-11-XX Version 0.12.2 released
+  ==================================
+
+  This is a bugfix release.
+
+
+  Changes affecting backwards compatibility
+  -----------------------------------------
+
+  - ``macros.newLit`` for ``bool`` now produces false/true symbols which
+    actually work with the bool datatype.
+
+
 2015-10-27 Version 0.12.0 released
 ==================================
 

@@ -416,8 +416,7 @@ proc newLit*(i: BiggestInt): NimNode {.compileTime.} =
 
 proc newLit*(b: bool): NimNode {.compileTime.} =
   ## produces a new boolean literal node.
-  result = newNimNode(nnkIntLit)
-  result.intVal = ord(b)
+  result = if b: bindSym"true" else: bindSym"false"
 
 proc newLit*(f: BiggestFloat): NimNode {.compileTime.} =
   ## produces a new float literal node.
