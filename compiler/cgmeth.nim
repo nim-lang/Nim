@@ -23,8 +23,8 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
       # how the real fix looks like:
       localError(n.info, "there is no subtype relation between " &
                  typeToString(d) & " and " & typeToString(n.typ))
-      #internalError(n.info, "cgmeth.genConv")
-    if diff < 0:
+      result = n
+    elif diff < 0:
       result = newNodeIT(nkObjUpConv, n.info, d)
       addSon(result, n)
       if downcast: internalError(n.info, "cgmeth.genConv: no upcast allowed")
