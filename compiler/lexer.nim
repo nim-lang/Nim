@@ -662,6 +662,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         L.lineNumber = line
         lexMessagePos(L, errClosingTripleQuoteExpected, L.lineStart)
         L.lineNumber = line2
+        L.bufpos = pos
         break
       else:
         add(tok.literal, buf[pos])
