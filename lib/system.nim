@@ -2584,11 +2584,7 @@ when not defined(JS): #and not defined(nimscript):
 
   when hasAlloc:
     var
-      strDesc: TNimType
-
-    strDesc.size = sizeof(string)
-    strDesc.kind = tyString
-    strDesc.flags = {ntfAcyclic}
+      strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
 
   when not defined(nimscript):
     include "system/ansi_c"
