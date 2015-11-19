@@ -18,8 +18,13 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   var source = skipTypes(n.typ, abstractPtrs)
   if (source.kind == tyObject) and (dest.kind == tyObject):
     var diff = inheritanceDiff(dest, source)
-    if diff == high(int): internalError(n.info, "cgmeth.genConv")
-    if diff < 0:
+    if diff == high(int):
+      # see bug #3550 which triggers it. XXX This is a hack but I don't know yet
+      # how the real fix looks like:
+      localError(n.info, "there is no subtype relation between " &
+                 typeToString(d) & " and " & typeToString(n.typ))
+      result = n
+    elif diff < 0:
       result = newNodeIT(nkObjUpConv, n.info, d)
       addSon(result, n)
       if downcast: internalError(n.info, "cgmeth.genConv: no upcast allowed")

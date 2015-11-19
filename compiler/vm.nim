@@ -255,9 +255,12 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
       nextExceptOrFinally = pc2 + c.code[pc2].regBx - wordExcess
       inc pc2
     while c.code[pc2].opcode == opcExcept:
-      let exceptType = c.types[c.code[pc2].regBx-wordExcess].skipTypes(
+      let excIndex = c.code[pc2].regBx-wordExcess
+      let exceptType = if excIndex > 0: c.types[excIndex].skipTypes(
                           abstractPtrs)
-      if inheritanceDiff(exceptType, raisedType) <= 0:
+                       else: nil
+      #echo typeToString(exceptType), " ", typeToString(raisedType)
+      if exceptType.isNil or inheritanceDiff(exceptType, raisedType) <= 0:
         # mark exception as handled but keep it in B for
         # the getCurrentException() builtin:
         c.currentExceptionB = c.currentExceptionA
@@ -1190,6 +1193,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       let a = regs[rb].node
       if a.kind in {nkStrLit..nkTripleStrLit}: regs[ra].node.strVal = a.strVal
+      elif a.kind == nkCommentStmt: regs[ra].node.strVal = a.comment
       else: stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcSlurp:
       decodeB(rkNode)
