@@ -1193,7 +1193,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       let a = regs[rb].node
       if a.kind in {nkStrLit..nkTripleStrLit}: regs[ra].node.strVal = a.strVal
-      elif a.kind == nkCommentStmt: regs[ra].node.strVal = a.comment
+      elif a.kind == nkCommentStmt:
+        var lines = a.comment.split("\n")
+        for idx in 0..high(lines):
+          if lines[idx].startsWith("##"): lines[idx] = lines[idx][2..^0].strip
+        regs[ra].node.strVal = lines.join("\n")
       else: stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcSlurp:
       decodeB(rkNode)
