@@ -1281,7 +1281,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
   # another special case:
   if len1 == 1:
-    for j in s..len2-1:
+    for j in s..s+len2-1:
       if a[s] == b[j]: return len2 - 1
     return len2
 
