@@ -1651,8 +1651,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      useMagic(p, "cstrToNimstr")
-      r.res = "cstrToNimstr($1)" % [makeJSString(n.strVal)]
+      if n.strVal.isNil:
+        r.res = rope"null"
+      else:
+        useMagic(p, "cstrToNimstr")
+        r.res = "cstrToNimstr($1)" % [makeJSString(n.strVal)]
     else:
       r.res = makeJSString(n.strVal)
     r.kind = resExpr
