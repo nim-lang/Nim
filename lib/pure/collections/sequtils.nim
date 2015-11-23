@@ -10,12 +10,9 @@
 ## :Author: Alexander Mitchell-Robinson (Amrykid)
 ##
 ## This module implements operations for the built-in `seq`:idx: type which
-## were inspired by functional programming languages. If you are looking for
-## the typical `map` function which applies a function to every element in a
-## sequence, it already exists in the `system <system.html>`_ module in both
-## mutable and immutable styles.
+## were inspired by functional programming languages.
 ##
-## Also, for functional style programming you may want to pass `anonymous procs
+## For functional style programming you may want to pass `anonymous procs
 ## <manual.html#anonymous-procs>`_ to procs like ``filter`` to reduce typing.
 ## Anonymous procs can use `the special do notation <manual.html#do-notation>`_
 ## which is more convenient in certain situations.
@@ -471,7 +468,7 @@ template toSeq*(iter: expr): expr {.immediate.} =
   ##       if x mod 2 == 1:
   ##         result = true)
   ##   assert odd_numbers == @[1, 3, 5, 7, 9]
-  
+
   when compiles(iter.len):
     var i = 0
     var result = newSeq[type(iter)](iter.len)
