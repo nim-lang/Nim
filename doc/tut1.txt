@@ -758,19 +758,18 @@ However, this cannot be done for mutually recursive procedures:
   # forward declaration:
   proc even(n: int): bool
 
-proc even(n: int): bool
+.. code-block:: nim
+  proc odd(n: int): bool =
+    assert(n >= 0) # makes sure we don't run into negative recursion
+    if n == 0: false
+    else:
+      n == 1 or even(n-1)
 
-proc odd(n: int): bool =
-  assert(n >= 0) # makes sure we don't run into negative recursion
-  if n == 0: false
-  else:
-    n == 1 or even(n-1)
-
-proc even(n: int): bool =
-  assert(n >= 0) # makes sure we don't run into negative recursion
-  if n == 1: false
-  else:
-    n == 0 or odd(n-1)
+  proc even(n: int): bool =
+    assert(n >= 0) # makes sure we don't run into negative recursion
+    if n == 1: false
+    else:
+      n == 0 or odd(n-1)
 
 Here ``odd`` depends on ``even`` and vice versa. Thus ``even`` needs to be
 introduced to the compiler before it is completely defined. The syntax for
