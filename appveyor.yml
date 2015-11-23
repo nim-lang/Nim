@@ -30,6 +30,7 @@ before_test:
   - nim e install_nimble.nims
   - nimble update
   - nimble install zip
+  - nimble install jester
 
 test_script:
   - nim c --taintMode:on tests/testament/tester
