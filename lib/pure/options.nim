@@ -28,7 +28,7 @@
 ##
 ## .. code-block:: nim
 ##
-##   import optionals
+##   import options
 ##
 ##   proc find(haystack: string, needle: char): Option[int] =
 ##     for i, c in haystack:
@@ -156,7 +156,7 @@ proc `$`*[T]( self: Option[T] ): string =
 when isMainModule:
   import unittest, sequtils
 
-  suite "optionals":
+  suite "options":
     # work around a bug in unittest
     let intNone = none(int)
     let stringNone = none(string)
