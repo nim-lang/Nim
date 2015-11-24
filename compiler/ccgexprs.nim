@@ -1733,8 +1733,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
-    echo "from here ", p.prc.name.s, " ", p.prc.info
-    writestacktrace()
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   of mSpawn:
     let n = lowerings.wrapProcForSpawn(p.module.module, e, e.typ, nil, nil)
