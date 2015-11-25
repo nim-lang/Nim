@@ -387,7 +387,7 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
           if x.name.id != y.name.id: return isNone
 
 proc allowsNil(f: PType): TTypeRelation {.inline.} =
-  result = if tfNotNil notin f.flags: isSubtype else: isNone
+  result = if tfOrNil in f.flags: isSubtype else: isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
   result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
@@ -815,7 +815,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         result = typeRel(c, f.sons[0], a.sons[0])
         if result < isGeneric: result = isNone
-        elif tfNotNil in f.flags and tfNotNil notin a.flags:
+        elif tfOrNil notin f.flags and tfOrNil in a.flags:
           result = isNilConversion
     of tyNil: result = f.allowsNil
     else: discard
@@ -863,18 +863,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
       result = typeRel(c, f.lastSon, a.lastSon)
       if result <= isConvertible: result = isNone
-      elif tfNotNil in f.flags and tfNotNil notin a.flags:
+      elif tfOrNil notin f.flags and tfOrNil in a.flags:
         result = isNilConversion
     elif a.kind == tyNil: result = f.allowsNil
     else: discard
   of tyProc:
     result = procTypeRel(c, f, a)
-    if result != isNone and tfNotNil in f.flags and tfNotNil notin a.flags:
+    if result != isNone and tfOrNil notin f.flags and tfOrNil in a.flags:
       result = isNilConversion
   of tyPointer:
     case a.kind
     of tyPointer:
-      if tfNotNil in f.flags and tfNotNil notin a.flags:
+      if tfOrNil notin f.flags and tfOrNil in a.flags:
         result = isNilConversion
       else:
         result = isEqual
@@ -890,7 +890,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyString:
     case a.kind
     of tyString:
-      if tfNotNil in f.flags and tfNotNil notin a.flags:
+      if tfOrNil notin f.flags and tfOrNil in a.flags:
         result = isNilConversion
       else:
         result = isEqual
@@ -900,7 +900,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     # conversion from string to cstring is automatic:
     case a.kind
     of tyCString:
-      if tfNotNil in f.flags and tfNotNil notin a.flags:
+      if tfOrNil notin f.flags and tfOrNil in a.flags:
         result = isNilConversion
       else:
         result = isEqual

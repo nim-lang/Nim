@@ -1173,7 +1173,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeExpr(c, n)
     else:
       let op = considerQuotedIdent(n.sons[0])
-      if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
+      if op.id == ord(wOr) and n.len == 3 and n.sons[2].kind == nkNilLit:
+        result = semTypeNode(c, n.sons[1], prev)
+        if result.skipTypes({tyGenericInst}).kind in NilableTypes+GenericTypes:
+          result = freshType(result, prev)
+          result.flags.incl(tfOrNil)
+        else:
+          localError(n.info, errGenerated, "invalid type")
+      elif op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
         checkSonsLen(n, 3)
         var
           t1 = semTypeNode(c, n.sons[1], nil)
@@ -1194,7 +1201,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           if result.skipTypes({tyGenericInst}).kind in NilableTypes+GenericTypes and
               n.sons[2].kind == nkNilLit:
             result = freshType(result, prev)
-            result.flags.incl(tfNotNil)
+            result.flags.excl(tfOrNil)
           else:
             localError(n.info, errGenerated, "invalid type")
         of 2:

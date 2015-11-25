@@ -330,10 +330,12 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   styleCheckDef(result)
 
 proc checkNilable(v: PSym) =
-  if sfGlobal in v.flags and {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
+  if sfGlobal in v.flags and
+     (tfNeedsInit in v.typ.flags or
+      tfOrNil notin v.typ.flags and v.typ.kind in NilableTypes):
     if v.ast.isNil:
       message(v.info, warnProveInit, v.name.s)
-    elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
+    elif tfOrNil notin v.typ.flags and tfOrNil in v.ast.typ.flags:
       message(v.info, warnProveInit, v.name.s)
 
 include semasgn
