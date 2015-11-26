@@ -35,10 +35,13 @@ castExpr = 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
         | 'when' | 'var' | 'mixin'
-par = '(' optInd (&parKeyw complexOrSimpleStmt ^+ ';'
-                 | simpleExpr ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )?
-                            | (':' expr)? (',' (exprColonEqExpr comma?)*)?  )?
-        optPar ')'
+par = '(' optInd
+          ( &parKeyw complexOrSimpleStmt ^+ ';'
+          | ';' complexOrSimpleStmt ^+ ';'
+          | pragmaStmt
+          | simpleExpr ( ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )
+                       | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
+          optPar ')'
 literal = | INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
           | UINT_LIT | UINT8_LIT | UINT16_LIT | UINT32_LIT | UINT64_LIT
           | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
@@ -86,7 +89,7 @@ expr = (ifExpr
       | caseExpr
       | tryExpr)
       / simpleExpr
-typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'tuple'
+typeKeyw = 'var' | 'out' | 'ref' | 'ptr' | 'shared' | 'tuple'
          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
 primary = typeKeyw typeDescK
         /  prefixOperator* identOrLiteral primarySuffix*
@@ -165,7 +168,7 @@ objectCase = 'case' identWithPragma ':' typeDesc ':'? COMMENT?
 objectPart = IND{>} objectPart^+IND{=} DED
            / objectWhen / objectCase / 'nil' / 'discard' / declColonEquals
 object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
-typeClassParam = ('var')? symbol
+typeClassParam = ('var' | 'out')? symbol
 typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
               &IND{>} stmt
 typeDef = identWithPragma genericParamList? '=' optInd typeDefAux
