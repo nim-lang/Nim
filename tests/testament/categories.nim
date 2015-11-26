@@ -108,8 +108,9 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
   runBasicDLLTest c, r, cat, options
   runBasicDLLTest c, r, cat, options & " -d:release"
-  runBasicDLLTest c, r, cat, options & " --gc:boehm"
-  runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
+  when not defined(windows):
+    runBasicDLLTest c, r, cat, options & " --gc:boehm"
+    runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
 
 # ------------------------------ GC tests -------------------------------------
 
