@@ -504,7 +504,8 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
-    elif (n.kind == nkSym and n.sym.kind in routineKinds) or n.kind in procDefs:
+    elif (n.kind == nkSym and n.sym.kind in routineKinds) or
+         n.kind in procDefs+{nkObjConstr}:
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
@@ -875,7 +876,8 @@ proc trackProc*(s: PSym, body: PNode) =
   var t: TEffects
   initEffects(effects, s, t)
   track(t, body)
-  if not isEmptyType(s.typ.sons[0]) and tfNeedsInit in s.typ.sons[0].flags and
+  if not isEmptyType(s.typ.sons[0]) and
+      {tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} and
       s.kind in {skProc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:
