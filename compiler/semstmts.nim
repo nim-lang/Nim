@@ -330,7 +330,8 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   styleCheckDef(result)
 
 proc checkNilable(v: PSym) =
-  if sfGlobal in v.flags and {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
+  if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
+      {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
     if v.ast.isNil:
       message(v.info, warnProveInit, v.name.s)
     elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
