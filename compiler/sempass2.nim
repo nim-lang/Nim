@@ -705,7 +705,15 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
-      initVarViaNew(tracked, n.sons[1])
+      let arg = n.sons[1]
+      initVarViaNew(tracked, arg)
+      if {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+        if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
+            n[2].intVal == 0:
+          # var s: seq[notnil];  newSeq(s, 0)  is a special case!
+          discard
+        else:
+          message(arg.info, warnProveInit, $arg)
     for i in 0 .. <safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:
