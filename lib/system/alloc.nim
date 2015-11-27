@@ -27,10 +27,60 @@ sysAssert(roundup(65, 8) == 72, "roundup broken 2")
 # some platforms have really weird unmap behaviour: unmap(blockStart, PageSize)
 # really frees the whole block. Happens for Linux/PowerPC for example. Amd64
 # and x86 are safe though; Windows is special because MEM_RELEASE can only be
-# used with a size of 0:
-const weirdUnmap = not (defined(amd64) or defined(i386)) or defined(windows)
+# used with a size of 0. We also allow unmapping to be turned off with
+# -d:nimAllocNoUnmap:
+const doNotUnmap = not (defined(amd64) or defined(i386)) or
+                   defined(windows) or defined(nimAllocNoUnmap)
 
-when defined(posix):
+
+when defined(emscripten):
+  const
+    PROT_READ  = 1             # page can be read
+    PROT_WRITE = 2             # page can be written
+    MAP_PRIVATE = 2'i32        # Changes are private
+
+  var MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
+  type 
+    PEmscriptenMMapBlock = ptr EmscriptenMMapBlock
+    EmscriptenMMapBlock {.pure, inheritable.} = object
+      realSize: int        # size of previous chunk; for coalescing
+      realPointer: pointer     # if < PageSize it is a small chunk
+
+  proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
+            off: int): pointer {.header: "<sys/mman.h>".}
+
+  proc munmap(adr: pointer, len: int) {.header: "<sys/mman.h>".}
+
+  proc osAllocPages(block_size: int): pointer {.inline.} =
+    let realSize = block_size + sizeof(EmscriptenMMapBlock) + PageSize + 1
+    result = mmap(nil, realSize, PROT_READ or PROT_WRITE,
+                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+    if result == nil or result == cast[pointer](-1):
+      raiseOutOfMem()
+
+    let realPointer = result
+    let pos = cast[int](result)
+
+    # Convert pointer to PageSize correct one.
+    var new_pos = cast[ByteAddress](pos) +% (PageSize - (pos %% PageSize))
+    if (new_pos-pos)< sizeof(EmscriptenMMapBlock):
+      new_pos = new_pos +% PageSize
+    result = cast[pointer](new_pos)
+
+    var mmapDescrPos = cast[ByteAddress](result) -% sizeof(EmscriptenMMapBlock)
+
+    var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
+    mmapDescr.realSize = realSize
+    mmapDescr.realPointer = realPointer
+
+    c_fprintf(c_stdout, "[Alloc] size %d %d realSize:%d realPos:%d\n", block_size, cast[int](result), realSize, cast[int](realPointer))
+
+  proc osDeallocPages(p: pointer, size: int) {.inline} =
+    var mmapDescrPos = cast[ByteAddress](p) -% sizeof(EmscriptenMMapBlock)
+    var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
+    munmap(mmapDescr.realPointer, mmapDescr.realSize)
+
+elif defined(posix):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
@@ -478,7 +528,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
           excl(a.chunkStarts, pageIndex(c))
           c = cast[PBigChunk](le)
 
-  if c.size < ChunkOsReturn or weirdUnmap:
+  if c.size < ChunkOsReturn or doNotUnmap:
     incl(a, a.chunkStarts, pageIndex(c))
     updatePrevSize(a, c, c.size)
     listAdd(a.freeChunksList, c)
@@ -762,7 +812,7 @@ proc deallocOsPages(a: var MemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
   for p in elements(a.chunkStarts):
     var page = cast[PChunk](p shl PageShift)
-    when not weirdUnmap:
+    when not doNotUnmap:
       var size = if page.size < PageSize: PageSize else: page.size
       osDeallocPages(page, size)
     else:

@@ -4,12 +4,22 @@ var timer;
 var prevIndex = 0;
 var slideCount = 2;
 
+function modifyActive(el, add) {
+  var element = document.getElementById(el);
+  if (add) {
+    element.className = element.className + " active";
+  }
+  else {
+    element.className = element.className.replace("active", "");
+  }
+}
+
 function setSlideShow(index, short) {
   if (index >= slideCount) index = 0;
-  document.getElementById("slide"+prevIndex).className = "";
-  document.getElementById("slide"+index).className = "active";
-  document.getElementById("slideControl"+prevIndex).className = "";
-  document.getElementById("slideControl"+index).className = "active";
+  modifyActive("slide" + prevIndex, false);
+  modifyActive("slide" + index, true);
+  modifyActive("slideControl" + prevIndex, false);
+  modifyActive("slideControl" + index, true);
   prevIndex = index;
   startTimer(short ? 8000 : 32000);
 }

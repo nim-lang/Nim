@@ -5,6 +5,7 @@ discard """
 3'''
 """
 
+import sequtils
 # https://github.com/Araq/Nim/issues/797
 proc foo[T](s:T):string = $s
 

@@ -24,7 +24,7 @@ var b = Bar(x: 100, y: 200) # used to fail
 # bug 1275
 
 type
-  Graphic = object of TObject
+  Graphic = object of RootObj
     case kind: range[0..1]
     of 0:
       radius: float

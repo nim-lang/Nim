@@ -311,7 +311,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
           if f.position == x:
             dest.node.strVal = if f.ast.isNil: f.name.s else: f.ast.strVal
             return
-        internalError("opConv for enum")
+        dest.node.strVal = styp.sym.name.s & " " & $x
     of tyInt..tyInt64:
       dest.node.strVal = $src.intVal
     of tyUInt..tyUInt64:
@@ -511,7 +511,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].regAddr = addr(regs[rb])
     of opcAddrNode:
       decodeB(rkNodeAddr)
-      regs[ra].nodeAddr = addr(regs[rb].node)
+      if regs[rb].kind == rkNode:
+        regs[ra].nodeAddr = addr(regs[rb].node)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "limited VM support for 'addr'")
     of opcLdDeref:
       # a = b[]
       let ra = instr.regA
@@ -808,13 +811,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
-        msgWriteln(regs[ra].node.strVal)
+        msgWriteln(regs[ra].node.strVal, {msgStdout})
       else:
         var outp = ""
         for i in ra..ra+rb-1:
           #if regs[i].kind != rkNode: debug regs[i]
           outp.add(regs[i].node.strVal)
-        msgWriteln(outp)
+        msgWriteln(outp, {msgStdout})
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
@@ -1410,6 +1413,31 @@ proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
   result = rawExecute(c, start, tos).regToNode
+
+proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
+  if sym.kind in routineKinds:
+    if sym.typ.len-1 != args.len:
+      localError(sym.info,
+        "NimScript: expected $# arguments, but got $#" % [
+        $(sym.typ.len-1), $args.len])
+    else:
+      let start = genProc(c, sym)
+
+      var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)
+      let maxSlots = sym.offset
+      newSeq(tos.slots, maxSlots)
+
+      # setup parameters:
+      if not isEmptyType(sym.typ.sons[0]) or sym.kind == skMacro:
+        putIntoReg(tos.slots[0], getNullValue(sym.typ.sons[0], sym.info))
+      # XXX We could perform some type checking here.
+      for i in 1.. <sym.typ.len:
+        putIntoReg(tos.slots[i], args[i-1])
+
+      result = rawExecute(c, start, tos).regToNode
+  else:
+    localError(sym.info,
+      "NimScript: attempt to call non-routine: " & sym.name.s)
 
 proc evalStmt*(c: PCtx, n: PNode) =
   let n = transformExpr(c.module, n)

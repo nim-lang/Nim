@@ -855,6 +855,8 @@ proc initEffects(effects: PNode; s: PSym; t: var TEffects) =
   newSeq(effects.sons, effectListLen)
   effects.sons[exceptionEffects] = newNodeI(nkArgList, s.info)
   effects.sons[tagEffects] = newNodeI(nkArgList, s.info)
+  effects.sons[usesEffects] = ast.emptyNode
+  effects.sons[writeEffects] = ast.emptyNode
 
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]

@@ -33,7 +33,7 @@ import
 const
   coreAttr* = " id class title style "
   eventAttr* = " onclick ondblclick onmousedown onmouseup " &
-    "onmouseover onmousemove onmouseout onkeypress onkeydown onkeyup "
+    "onmouseover onmousemove onmouseout onkeypress onkeydown onkeyup onload "
   commonAttr* = coreAttr & eventAttr
 
 proc getIdent(e: NimNode): string {.compileTime.} =

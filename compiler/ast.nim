@@ -738,6 +738,8 @@ type
     name*: Rope
     path*: PNode              # can be a string literal!
 
+  CompilesId* = int ## id that is used for the caching logic within
+                    ## ``system.compiles``. See the seminst module.
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
@@ -745,6 +747,7 @@ type
                               # needed in caas mode for purging the cache
                               # XXX: it's possible to switch to a
                               # simple ref count here
+    compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
 
@@ -781,6 +784,7 @@ type
       tab*: TStrTable         # interface table for modules
     of skLet, skVar, skField, skForVar:
       guard*: PSym
+      bitsize*: int
     else: nil
     magic*: TMagic
     typ*: PType
@@ -1584,6 +1588,14 @@ proc makeStmtList*(n: PNode): PNode =
   else:
     result = newNodeI(nkStmtList, n.info)
     result.add n
+
+proc skipStmtList*(n: PNode): PNode =
+  if n.kind in {nkStmtList, nkStmtListExpr}:
+    for i in 0 .. n.len-2:
+      if n[i].kind notin {nkEmpty, nkCommentStmt}: return n
+    result = n.lastSon
+  else:
+    result = n
 
 proc createMagic*(name: string, m: TMagic): PSym =
   result = newSym(skProc, getIdent(name), nil, unknownLineInfo())

@@ -8,6 +8,38 @@
 #
 
 ## This module implements a base64 encoder and decoder.
+##
+## Encoding data
+## -------------
+##
+## In order to encode some text simply call the ``encode`` procedure:
+##
+##   .. code-block::nim
+##      import base64
+##      let encoded = encode("Hello World")
+##      echo(encoded) # SGVsbG8gV29ybGQ=
+##
+## Apart from strings you can also encode lists of integers or characters:
+##
+##   .. code-block::nim
+##      import base64
+##      let encodedInts = encode([1,2,3])
+##      echo(encodedInts) # AQID
+##      let encodedChars = encode(['h','e','y'])
+##      echo(encodedChars) # aGV5
+##
+## The ``encode`` procedure takes an ``openarray`` so both arrays and sequences
+## can be passed as parameters.
+##
+## Decoding data
+## -------------
+##
+## To decode a base64 encoded data string simply call the ``decode``
+## procedure:
+##
+##   .. code-block::nim
+##      import base64
+##      echo(decode("SGVsbG8gV29ybGQ=")) # Hello World
 
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -64,11 +96,16 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
 proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
+  ##
+  ## This procedure encodes an openarray (array or sequence) of either integers
+  ## or characters.
   encodeInternal(s, lineLen, newLine)
 
 proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
+  ##
+  ## This procedure encodes a string.
   encodeInternal(s, lineLen, newLine)
 
 proc decodeByte(b: char): int {.inline.} =

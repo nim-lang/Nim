@@ -13,6 +13,8 @@ import os, unsigned, hashes
 
 when defined(linux):
   import posix, epoll
+elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
+  import posix, kqueue, times
 elif defined(windows):
   import winlean
 else:
@@ -79,7 +81,6 @@ when defined(nimdoc):
   proc `[]`*(s: Selector, fd: SocketHandle): SelectorKey =
     ## Retrieves the selector key for ``fd``.
 
-
 elif defined(linux):
   type
     Selector* = object
@@ -99,15 +100,13 @@ elif defined(linux):
     result.data.fd = fd.cint
 
   proc register*(s: var Selector, fd: SocketHandle, events: set[Event],
-      data: SelectorData) =
+                 data: SelectorData) =
     var event = createEventStruct(events, fd)
     if events != {}:
       if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fd, addr(event)) != 0:
         raiseOSError(osLastError())
 
-    var key = SelectorKey(fd: fd, events: events, data: data)
-
-    s.fds[fd] = key
+    s.fds[fd] = SelectorKey(fd: fd, events: events, data: data)
 
   proc update*(s: var Selector, fd: SocketHandle, events: set[Event]) =
     if s.fds[fd].events != events:
@@ -154,11 +153,6 @@ elif defined(linux):
       raiseOSError(err)
 
   proc select*(s: var Selector, timeout: int): seq[ReadyInfo] =
-    ##
-    ## The ``events`` field of the returned ``key`` contains the original events
-    ## for which the ``fd`` was bound. This is contrary to the ``events`` field
-    ## of the ``TReadyInfo`` tuple which determines which events are ready
-    ## on the ``fd``.
     result = @[]
     let evNum = epoll_wait(s.epollFD, addr s.events[0], 64.cint, timeout.cint)
     if evNum < 0:
@@ -199,6 +193,86 @@ elif defined(linux):
         result = true
     else:
       return false
+
+  proc `[]`*(s: Selector, fd: SocketHandle): SelectorKey =
+    ## Retrieves the selector key for ``fd``.
+    return s.fds[fd]
+
+elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
+  type
+    Selector* = object
+      kqFD: cint
+      events: array[64, KEvent]
+      when MultiThreaded:
+        fds: SharedTable[SocketHandle, SelectorKey]
+      else:
+        fds: Table[SocketHandle, SelectorKey]
+
+  template modifyKQueue(kqFD: cint, fd: SocketHandle, event: Event,
+                        op: cushort) =
+    var kev = KEvent(ident:  fd.cuint,
+                     filter: if event == EvRead: EVFILT_READ else: EVFILT_WRITE,
+                     flags:  op)
+    if kevent(kqFD, addr kev, 1, nil, 0, nil) == -1:
+      raiseOSError(osLastError())
+
+  proc register*(s: var Selector, fd: SocketHandle, events: set[Event],
+                 data: SelectorData) =
+    for event in events:
+      modifyKQueue(s.kqFD, fd, event, EV_ADD)
+    s.fds[fd] = SelectorKey(fd: fd, events: events, data: data)
+
+  proc update*(s: var Selector, fd: SocketHandle, events: set[Event]) =
+    let previousEvents = s.fds[fd].events
+    if previousEvents != events:
+      for event in events-previousEvents:
+        modifyKQueue(s.kqFD, fd, event, EV_ADD)
+      for event in previousEvents-events:
+        modifyKQueue(s.kqFD, fd, event, EV_DELETE)
+      s.fds.mget(fd).events = events
+
+  proc unregister*(s: var Selector, fd: SocketHandle) =
+    for event in s.fds[fd].events:
+      modifyKQueue(s.kqFD, fd, event, EV_DELETE)
+    s.fds.del(fd)
+
+  proc close*(s: var Selector) =
+    when MultiThreaded: deinitSharedTable(s.fds)
+    if s.kqFD.close() != 0: raiseOSError(osLastError())
+
+  proc select*(s: var Selector, timeout: int): seq[ReadyInfo] =
+    result = @[]
+    var tv = Timespec(tv_sec: timeout.Time, tv_nsec: 0)
+    let evNum = kevent(s.kqFD, nil, 0, addr s.events[0], 64.cint, addr tv)
+    if evNum < 0:
+      let err = osLastError()
+      if err.cint == EINTR:
+        return @[]
+      raiseOSError(err)
+    if evNum == 0: return @[]
+    for i in 0 .. <evNum:
+      let fd = s.events[i].ident.SocketHandle
+
+      var evSet: set[Event] = {}
+      if  (s.events[i].flags and EV_EOF) != 0: evSet = evSet + {EvError}
+      if   s.events[i].filter == EVFILT_READ:  evSet = evSet + {EvRead}
+      elif s.events[i].filter == EVFILT_WRITE: evSet = evSet + {EvWrite}
+      let selectorKey = s.fds[fd]
+      assert selectorKey.fd != 0.SocketHandle
+      result.add((selectorKey, evSet))
+
+  proc newSelector*(): Selector =
+    result.kqFD = kqueue()
+    if result.kqFD < 0:
+      raiseOSError(osLastError())
+    when MultiThreaded:
+      result.fds = initSharedTable[SocketHandle, SelectorKey]()
+    else:
+      result.fds = initTable[SocketHandle, SelectorKey]()
+
+  proc contains*(s: Selector, fd: SocketHandle): bool =
+    ## Determines whether selector contains a file descriptor.
+    s.fds.hasKey(fd) # and s.fds[fd].events != {}
 
   proc `[]`*(s: Selector, fd: SocketHandle): SelectorKey =
     ## Retrieves the selector key for ``fd``.

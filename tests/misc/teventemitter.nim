@@ -18,7 +18,7 @@ proc on*(emitter: var EventEmitter, event: string,
   if not hasKey(emitter.events, event):
     var list: DoublyLinkedList[proc(e: EventArgs) {.nimcall.}]
     add(emitter.events, event, list) #if not, add it.
-  append(emitter.events.mget(event), fn)
+  append(emitter.events[event], fn)
 
 proc initEmitter(emitter: var EventEmitter) =
   emitter.events = initTable[string,
@@ -30,4 +30,3 @@ var
 initEmitter(ee)
 ee.on("print", proc(e: EventArgs) = echo("pie"))
 ee.emit("print", args)
-

@@ -75,7 +75,7 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   ga('send', 'pageview');
 
 </script>
-    """ % [config["doc.googleAnalytics"]]
+    """ % [config.getOrDefault"doc.googleAnalytics"]
   else:
     result.analytics = ""
 
@@ -158,7 +158,7 @@ proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
   result = genComment(d, n).rope
   if result == nil:
-    if n.kind notin {nkEmpty..nkNilLit}:
+    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy}:
       for i in countup(0, len(n)-1):
         result = genRecComment(d, n.sons[i])
         if result != nil: return

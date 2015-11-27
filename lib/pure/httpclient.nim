@@ -81,7 +81,7 @@
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
 import asyncnet, asyncdispatch
-import rawsockets
+import nativesockets
 
 type
   Response* = tuple[
@@ -166,12 +166,12 @@ proc parseChunks(s: Socket, timeout: int): string =
 
 proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
   result = ""
-  if headers["Transfer-Encoding"] == "chunked":
+  if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = parseChunks(s, timeout)
   else:
     # -REGION- Content-Length
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
-    var contentLengthHeader = headers["Content-Length"]
+    var contentLengthHeader = headers.getOrDefault"Content-Length"
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
       if length > 0:
@@ -190,7 +190,7 @@ proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers["Connection"] == "close":
+      if headers.getOrDefault"Connection" == "close":
         var buf = ""
         while true:
           buf = newString(4000)
@@ -456,7 +456,7 @@ proc redirection(status: string): bool =
       return true
 
 proc getNewLocation(lastUrl: string, headers: StringTableRef): string =
-  result = headers["Location"]
+  result = headers.getOrDefault"Location"
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
   let r = parseUri(result)
@@ -679,12 +679,12 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
 proc parseBody(client: AsyncHttpClient,
                headers: StringTableRef): Future[string] {.async.} =
   result = ""
-  if headers["Transfer-Encoding"] == "chunked":
+  if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = await parseChunks(client)
   else:
     # -REGION- Content-Length
     # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.3
-    var contentLengthHeader = headers["Content-Length"]
+    var contentLengthHeader = headers.getOrDefault"Content-Length"
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
       if length > 0:
@@ -699,7 +699,7 @@ proc parseBody(client: AsyncHttpClient,
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers["Connection"] == "close":
+      if headers.getOrDefault"Connection" == "close":
         var buf = ""
         while true:
           buf = await client.socket.recvFull(4000)
@@ -764,10 +764,10 @@ proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
     let port =
       if url.port == "":
         if url.scheme.toLower() == "https":
-          rawsockets.Port(443)
+          nativesockets.Port(443)
         else:
-          rawsockets.Port(80)
-      else: rawsockets.Port(url.port.parseInt)
+          nativesockets.Port(80)
+      else: nativesockets.Port(url.port.parseInt)
 
     if url.scheme.toLower() == "https":
       when defined(ssl):

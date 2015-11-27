@@ -1810,7 +1810,7 @@ proc ntohs*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
 proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
 proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
 proc inet_ntop*(a1: cint, a2: pointer, a3: cstring, a4: int32): cstring {.
-  importc, header: "<arpa/inet.h>".}
+  importc:"(char *)$1", header: "<arpa/inet.h>".}
 proc inet_pton*(a1: cint, a2: cstring, a3: pointer): cint {.
   importc, header: "<arpa/inet.h>".}
 
@@ -2316,7 +2316,7 @@ proc timer_settime*(a1: Timer, a2: cint, a3: var Itimerspec,
 proc tzset*() {.importc, header: "<time.h>".}
 
 
-proc wait*(a1: ptr cint): Pid {.importc, header: "<sys/wait.h>".}
+proc wait*(a1: ptr cint): Pid {.importc, discardable, header: "<sys/wait.h>".}
 proc waitid*(a1: cint, a2: Id, a3: var SigInfo, a4: cint): cint {.
   importc, header: "<sys/wait.h>".}
 proc waitpid*(a1: Pid, a2: var cint, a3: cint): Pid {.
@@ -2381,7 +2381,7 @@ proc sched_setscheduler*(a1: Pid, a2: cint, a3: var Sched_param): cint {.
 proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 
 proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
-proc hstrerror*(herrnum: cint): cstring {.importc, header: "<netdb.h>".}
+proc hstrerror*(herrnum: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>".}
 
 proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
 proc FD_ISSET*(a1: cint | SocketHandle, a2: var TFdSet): cint {.
@@ -2565,7 +2565,7 @@ proc endprotoent*() {.importc, header: "<netdb.h>".}
 proc endservent*() {.importc, header: "<netdb.h>".}
 proc freeaddrinfo*(a1: ptr AddrInfo) {.importc, header: "<netdb.h>".}
 
-proc gai_strerror*(a1: cint): cstring {.importc, header: "<netdb.h>".}
+proc gai_strerror*(a1: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>".}
 
 proc getaddrinfo*(a1, a2: cstring, a3: ptr AddrInfo,
                   a4: var ptr AddrInfo): cint {.importc, header: "<netdb.h>".}

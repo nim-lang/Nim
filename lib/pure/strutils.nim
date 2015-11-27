@@ -22,6 +22,8 @@ import parseutils
 
 include "system/inclrtl"
 
+{.pop.}
+
 type
   CharSet* {.deprecated.} = set[char] # for compatibility with Nim
 {.deprecated: [TCharSet: CharSet].}
@@ -59,6 +61,132 @@ const
     ##   let invalid = AllChars - Digits
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
+
+proc isAlpha*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaChar".}=
+  ## Checks whether or not `c` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  return c in Letters
+
+proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaNumericChar".}=
+  ## Checks whether or not `c` is alphanumeric.
+  ##
+  ## This checks a-z, A-Z, 0-9 ASCII characters only.
+  return c in Letters or c in Digits
+
+proc isDigit*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsDigitChar".}=
+  ## Checks whether or not `c` is a number.
+  ##
+  ## This checks 0-9 ASCII characters only.
+  return c in Digits
+
+proc isSpace*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceChar".}=
+  ## Checks whether or not `c` is a whitespace character.
+  return c in Whitespace
+
+proc isLower*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerChar".}=
+  ## Checks whether or not `c` is a lower case character.
+  ##
+  ## This checks ASCII characters only.
+  return c in {'a'..'z'}
+
+proc isUpper*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperChar".}=
+  ## Checks whether or not `c` is an upper case character.
+  ##
+  ## This checks ASCII characters only.
+  return c in {'A'..'Z'}
+
+proc isAlpha*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaStr".}=
+  ## Checks whether or not `s` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## alphabetic and there is at least one character
+  ## in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isAlpha() and result
+
+proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaNumericStr".}=
+  ## Checks whether or not `s` is alphanumeric.
+  ##
+  ## This checks a-z, A-Z, 0-9 ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## alpanumeric and there is at least one character
+  ## in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isAlphaNumeric() and result
+
+proc isDigit*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsDigitStr".}=
+  ## Checks whether or not `s` is a numeric value.
+  ##
+  ## This checks 0-9 ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## numeric and there is at least one character
+  ## in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isDigit() and result
+
+proc isSpace*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceStr".}=
+  ## Checks whether or not `s` is completely whitespace.
+  ##
+  ## Returns true if all characters in `s` are whitespace
+  ## characters and there is at least one character in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isSpace() and result
+
+proc isLower*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerStr".}=
+  ## Checks whether or not `s` contains all lower case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are lower case
+  ## and there is at least one character  in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isLower() and result
+
+proc isUpper*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperStr".}=
+  ## Checks whether or not `s` contains all upper case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are upper case
+  ## and there is at least one character in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+  for c in s:
+    result = c.isUpper() and result
 
 proc toLower*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerChar".} =
@@ -169,7 +297,8 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
     inc(j)
 
 
-proc strip*(s: string, leading = true, trailing = true, chars: set[char] = Whitespace): string
+proc strip*(s: string, leading = true, trailing = true,
+            chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
   ## Strips `chars` from `s` and returns the resulting string.
   ##
@@ -504,7 +633,8 @@ proc repeat*(c: char, count: Natural): string {.noSideEffect,
   ##
   ## .. code-block:: nim
   ##   proc tabexpand(indent: int, text: string, tabsize: int = 4) =
-  ##     echo '\t'.repeat(indent div tabsize), ' '.repeat(indent mod tabsize), text
+  ##     echo '\t'.repeat(indent div tabsize), ' '.repeat(indent mod tabsize),
+  ##         text
   ##
   ##   tabexpand(4, "At four")
   ##   tabexpand(5, "At five")
@@ -533,11 +663,13 @@ template spaces*(n: Natural): string =  repeat(' ',n)
   ##   echo text1 & spaces(max(0, width - text1.len)) & "|"
   ##   echo text2 & spaces(max(0, width - text2.len)) & "|"
 
-proc repeatChar*(count: Natural, c: char = ' '): string {.deprecated.} = repeat(c, count)
+proc repeatChar*(count: Natural, c: char = ' '): string {.deprecated.} =
   ## deprecated: use repeat() or spaces()
+  repeat(c, count)
 
-proc repeatStr*(count: Natural, s: string): string {.deprecated.} = repeat(s, count)
+proc repeatStr*(count: Natural, s: string): string {.deprecated.} =
   ## deprecated: use repeat(string, count) or string.repeat(count)
+  repeat(s, count)
 
 proc align*(s: string, count: Natural, padding = ' '): string {.
   noSideEffect, rtl, extern: "nsuAlignString".} =
@@ -850,8 +982,8 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
     if sub == s[i]: return i
   return -1
 
-proc count*(s: string, sub: string, overlapping: bool = false): int {.noSideEffect,
-  rtl, extern: "nsuCountString".} =
+proc count*(s: string, sub: string, overlapping: bool = false): int {.
+  noSideEffect, rtl, extern: "nsuCountString".} =
   ## Count the occurrences of a substring `sub` in the string `s`.
   ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true.
@@ -1449,7 +1581,8 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
 
   s.setLen(last + 1)
 
-proc removeSuffix*(s: var string, c: char) {.rtl, extern: "nsuRemoveSuffixChar".} =
+proc removeSuffix*(s: var string, c: char) {.
+  rtl, extern: "nsuRemoveSuffixChar".} =
   ## Removes a single character (in-place) from a string.
   ## .. code-block:: nim
   ##   var
@@ -1515,8 +1648,61 @@ when isMainModule:
   doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
   doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
   doAssert strip("stripme but don't strip this stripme",
-                 chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) == " but don't strip this "
+                 chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) ==
+                 " but don't strip this "
   doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
   doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
   doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
+
+  doAssert isAlpha('r')
+  doAssert isAlpha('A')
+  doAssert(not isAlpha('$'))
+
+  doAssert isAlpha("Rasp")
+  doAssert isAlpha("Args")
+  doAssert(not isAlpha("$Tomato"))
+
+  doAssert isAlphaNumeric('3')
+  doAssert isAlphaNumeric('R')
+  doAssert(not isAlphaNumeric('!'))
+
+  doAssert isAlphaNumeric("34ABc")
+  doAssert isAlphaNumeric("Rad")
+  doAssert isAlphaNumeric("1234")
+  doAssert(not isAlphaNumeric("@nose"))
+
+  doAssert isDigit('3')
+  doAssert(not isDigit('a'))
+  doAssert(not isDigit('%'))
+
+  doAssert isDigit("12533")
+  doAssert(not isDigit("12.33"))
+  doAssert(not isDigit("A45b"))
+
+  doAssert isSpace('\t')
+  doAssert isSpace('\l')
+  doAssert(not isSpace('A'))
+
+  doAssert isSpace("\t\l \v\r\f")
+  doAssert isSpace("       ")
+  doAssert(not isSpace("ABc   \td"))
+
+  doAssert isLower('a')
+  doAssert isLower('z')
+  doAssert(not isLower('A'))
+  doAssert(not isLower('5'))
+  doAssert(not isLower('&'))
+
+  doAssert isLower("abcd")
+  doAssert(not isLower("abCD"))
+  doAssert(not isLower("33aa"))
+
+  doAssert isUpper('A')
+  doAssert(not isUpper('b'))
+  doAssert(not isUpper('5'))
+  doAssert(not isUpper('%'))
+
+  doAssert isUpper("ABC")
+  doAssert(not isUpper("AAcc"))
+  doAssert(not isUpper("A#$"))

@@ -1,4 +1,4 @@
-import zlib
+import zip/zlib
 
 proc compress*(source: string): string =
   var

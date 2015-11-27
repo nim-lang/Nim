@@ -37,7 +37,7 @@ when hasFFI:
   import evalffi
 
 type
-  TGenFlag = enum gfNone, gfAddrOf
+  TGenFlag = enum gfAddrOf, gfFieldAccess
   TGenFlags = set[TGenFlag]
 
 proc debugInfo(info: TLineInfo): string =
@@ -535,7 +535,7 @@ proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le.sons[0], {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     c.gABC(le, opcWrArr, dest, idx, value)
     c.freeTemp(dest)
@@ -543,7 +543,7 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   of nkDotExpr, nkCheckedFieldExpr:
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfAddrOf})
+    let dest = c.genx(left.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = genField(left.sons[1])
     c.gABC(left, opcWrObj, dest, idx, value)
     c.freeTemp(dest)
@@ -1091,10 +1091,32 @@ proc requiresCopy(n: PNode): bool =
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
 
+proc canElimAddr(n: PNode): PNode =
+  case n.sons[0].kind
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+    var m = n.sons[0].sons[0]
+    if m.kind in {nkDerefExpr, nkHiddenDeref}:
+      # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
+      result = copyNode(n.sons[0])
+      result.add m.sons[0]
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    var m = n.sons[0].sons[1]
+    if m.kind in {nkDerefExpr, nkHiddenDeref}:
+      # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
+      result = copyNode(n.sons[0])
+      result.add m.sons[0]
+  else:
+    if n.sons[0].kind in {nkDerefExpr, nkHiddenDeref}:
+      # addr ( deref ( x )) --> x
+      result = n.sons[0].sons[0]
+
 proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                   flags: TGenFlags) =
   # a nop for certain types
   let isAddr = opc in {opcAddrNode, opcAddrReg}
+  if isAddr and (let m = canElimAddr(n); m != nil):
+    gen(c, m, dest, flags)
+    return
   let newflags = if isAddr: flags+{gfAddrOf} else: flags
   # consider:
   # proc foo(f: var ref int) =
@@ -1216,7 +1238,7 @@ proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le.sons[0], {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     let tmp = c.genx(ri)
     if le.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
@@ -1228,7 +1250,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   of nkDotExpr, nkCheckedFieldExpr:
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfAddrOf})
+    let dest = c.genx(left.sons[0], {gfAddrOf, gfFieldAccess})
     let idx = genField(left.sons[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(left, opcWrObj, dest, idx, tmp)
@@ -1321,7 +1343,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       c.gABx(n, opcLdGlobal, cc, s.position)
       c.gABC(n, opcNodeToReg, dest, cc)
       c.freeTemp(cc)
-    elif gfAddrOf in flags:
+    elif {gfAddrOf, gfFieldAccess} * flags == {gfAddrOf}:
       c.gABx(n, opcLdGlobalAddr, dest, s.position)
     else:
       c.gABx(n, opcLdGlobal, dest, s.position)
@@ -1377,9 +1399,11 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   genObjAccess(c, n.sons[0], dest, flags)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  if n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
-      tyString, tyCString}:
+  let arrayType = n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
+  if arrayType in {tyString, tyCString}:
     genArrAccess2(c, n, dest, opcLdStrIdx, {})
+  elif arrayType == tyTypeDesc:
+    c.genTypeLit(n.typ, dest)
   else:
     genArrAccess2(c, n, dest, opcLdArr, flags)
 
@@ -1770,6 +1794,9 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
       globalError(n.info, errGenerated, "VM problem: dest register is not set")
     d = 0
   c.gABC(n, opcEof, d)
+
+  #echo renderTree(n)
+  #c.echoCode(result)
 
 proc genParams(c: PCtx; params: PNode) =
   # res.sym.position is already 0

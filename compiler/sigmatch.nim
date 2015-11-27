@@ -511,6 +511,9 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                          ff, a: PType): TTypeRelation =
   var body = ff.skipTypes({tyUserTypeClassInst})
+  if c.inTypeClass > 20:
+    localError(body.n[3].info, $body.n[3] & " too nested for type matching")
+    return isNone
 
   openScope(c)
   inc c.inTypeClass
@@ -590,7 +593,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode): PNode =
   # Here, N-1 will be initially nkStaticExpr that can be evaluated only after
   # N is bound to a concrete value during the matching of the first param.
   # This proc is used to evaluate such static expressions.
-  let instantiated = replaceTypesInBody(c.c, c.bindings, n)
+  let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil)
   result = c.c.semExpr(c.c, instantiated)
 
 proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
@@ -681,6 +684,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyAnything:
     return if f.kind == tyAnything: isGeneric
            else: isNone
+
+  of tyUserTypeClass, tyUserTypeClassInst:
+    # consider this: 'var g: Node' *within* a concept where 'Node'
+    # is a concept too (tgraph)
+    let x = typeRel(c, a, f, false)
+    if x >= isGeneric:
+      return isGeneric
   else: discard
 
   case f.kind

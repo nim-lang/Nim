@@ -78,6 +78,13 @@ proc resetModule*(fileIdx: int32) =
   if fileIdx <% cgendata.gModules.len:
     cgendata.gModules[fileIdx] = nil
 
+proc resetModule*(module: PSym) =
+  let conflict = getModule(module.position.int32)
+  if conflict == nil: return
+  doAssert conflict == module
+  resetModule(module.position.int32)
+  initStrTable(module.tab)
+
 proc resetAllModules* =
   for i in 0..gCompiledModules.high:
     if gCompiledModules[i] != nil:

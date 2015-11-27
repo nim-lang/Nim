@@ -154,9 +154,9 @@ proc rawGetKnownHC[A](s: HashSet[A], key: A, hc: Hash): int {.inline.} =
 proc rawGet[A](s: HashSet[A], key: A, hc: var Hash): int {.inline.} =
   rawGetImpl()
 
-proc mget*[A](s: var HashSet[A], key: A): var A =
+proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## returns the element that is actually stored in 's' which has the same
-  ## value as 'key' or raises the ``EInvalidKey`` exception. This is useful
+  ## value as 'key' or raises the ``KeyError`` exception. This is useful
   ## when one overloaded 'hash' and '==' but still needs reference semantics
   ## for sharing.
   assert s.isValid, "The set needs to be initialized."
@@ -164,6 +164,13 @@ proc mget*[A](s: var HashSet[A], key: A): var A =
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
   else: raise newException(KeyError, "key not found: " & $key)
+
+proc mget*[A](s: var HashSet[A], key: A): var A {.deprecated.} =
+  ## returns the element that is actually stored in 's' which has the same
+  ## value as 'key' or raises the ``KeyError`` exception. This is useful
+  ## when one overloaded 'hash' and '==' but still needs reference semantics
+  ## for sharing. Use ```[]``` instead.
+  s[key]
 
 proc contains*[A](s: HashSet[A], key: A): bool =
   ## Returns true iff `key` is in `s`.

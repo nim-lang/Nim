@@ -11,7 +11,7 @@ include "system/inclrtl"
 
 import os, oids, tables, strutils, macros, times
 
-import rawsockets, net
+import nativesockets, net
 
 export Port, SocketFlag
 
@@ -475,7 +475,7 @@ when defined(windows) or defined(nimdoc):
                       addr bytesRet, nil, nil) == 0
 
   proc initAll() =
-    let dummySock = newRawSocket()
+    let dummySock = newNativeSocket()
     if not initPointer(dummySock, connectExPtr, WSAID_CONNECTEX):
       raiseOSError(osLastError())
     if not initPointer(dummySock, acceptExPtr, WSAID_ACCEPTEX):
@@ -528,7 +528,7 @@ when defined(windows) or defined(nimdoc):
                   RemoteSockaddr, RemoteSockaddrLength)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
-    domain = rawsockets.AF_INET): Future[void] =
+    domain = nativesockets.AF_INET): Future[void] =
     ## Connects ``socket`` to server at ``address:port``.
     ##
     ## Returns a ``Future`` which will complete when the connection succeeds
@@ -611,7 +611,7 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[string]("recv")
     var dataBuf: TWSABuf
     dataBuf.buf = cast[cstring](alloc0(size))
-    dataBuf.len = size
+    dataBuf.len = size.ULONG
 
     var bytesReceived: Dword
     var flagsio = flags.toOSFlags().Dword
@@ -706,7 +706,7 @@ when defined(windows) or defined(nimdoc):
     #buf[] = '\0'
     var dataBuf: TWSABuf
     dataBuf.buf = buf
-    dataBuf.len = size
+    dataBuf.len = size.ULONG
 
     var bytesReceived: Dword
     var flagsio = flags.toOSFlags().Dword
@@ -777,7 +777,7 @@ when defined(windows) or defined(nimdoc):
 
     var dataBuf: TWSABuf
     dataBuf.buf = data # since this is not used in a callback, this is fine
-    dataBuf.len = data.len
+    dataBuf.len = data.len.ULONG
 
     var bytesReceived, lowFlags: Dword
     var ol = PCustomOverlapped()
@@ -827,7 +827,7 @@ when defined(windows) or defined(nimdoc):
     verifyPresence(socket)
     var retFuture = newFuture[tuple[address: string, client: AsyncFD]]("acceptAddr")
 
-    var clientSock = newRawSocket()
+    var clientSock = newNativeSocket()
     if clientSock == osInvalidSocket: raiseOSError(osLastError())
 
     const lpOutputLen = 1024
@@ -900,17 +900,17 @@ when defined(windows) or defined(nimdoc):
 
     return retFuture
 
-  proc newAsyncRawSocket*(domain, sockType, protocol: cint): AsyncFD =
+  proc newAsyncNativeSocket*(domain, sockType, protocol: cint): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
-  proc newAsyncRawSocket*(domain: Domain = rawsockets.AF_INET,
-               sockType: SockType = SOCK_STREAM,
-               protocol: Protocol = IPPROTO_TCP): AsyncFD =
+  proc newAsyncNativeSocket*(domain: Domain = nativesockets.AF_INET,
+                             sockType: SockType = SOCK_STREAM,
+                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     register(result)
 
@@ -973,18 +973,18 @@ else:
     var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
     p.selector.register(fd.SocketHandle, {}, data.RootRef)
 
-  proc newAsyncRawSocket*(domain: cint, sockType: cint,
-      protocol: cint): AsyncFD =
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+  proc newAsyncNativeSocket*(domain: cint, sockType: cint,
+                             protocol: cint): AsyncFD =
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
       result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
     register(result)
 
-  proc newAsyncRawSocket*(domain: Domain = AF_INET,
-               sockType: SockType = SOCK_STREAM,
-               protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    result = newRawSocket(domain, sockType, protocol).AsyncFD
+  proc newAsyncNativeSocket*(domain: Domain = AF_INET,
+                             sockType: SockType = SOCK_STREAM,
+                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
+    result = newNativeSocket(domain, sockType, protocol).AsyncFD
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
       result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
@@ -992,8 +992,8 @@ else:
 
   proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()
-    sock.SocketHandle.close()
     disp.selector.unregister(sock.SocketHandle)
+    sock.SocketHandle.close()
 
   proc unregister*(fd: AsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)
@@ -1468,16 +1468,25 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   hint("Processing " & prc[0].getName & " as an async proc.")
 
   let returnType = prc[3][0]
+  var baseType: NimNode
   # Verify that the return type is a Future[T]
-  if returnType.kind == nnkIdent:
-    error("Expected return type of 'Future' got '" & $returnType & "'")
-  elif returnType.kind == nnkBracketExpr:
-    if $returnType[0] != "Future":
-      error("Expected return type of 'Future' got '" & $returnType[0] & "'")
+  if returnType.kind == nnkBracketExpr:
+    let fut = repr(returnType[0])
+    if fut != "Future":
+      error("Expected return type of 'Future' got '" & fut & "'")
+    baseType = returnType[1]
+  elif returnType.kind in nnkCallKinds and $returnType[0] == "[]":
+    let fut = repr(returnType[1])
+    if fut != "Future":
+      error("Expected return type of 'Future' got '" & fut & "'")
+    baseType = returnType[2]
+  elif returnType.kind == nnkEmpty:
+    baseType = returnType
+  else:
+    error("Expected return type of 'Future' got '" & repr(returnType) & "'")
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
-        (returnType.kind == nnkBracketExpr and
-         returnType[1].kind == nnkIdent and returnType[1].ident == !"void")
+        (baseType.kind == nnkIdent and returnType[1].ident == !"void")
 
   var outerProcBody = newNimNode(nnkStmtList, prc[6])
 
@@ -1485,7 +1494,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   var retFutureSym = genSym(nskVar, "retFuture")
   var subRetType =
     if returnType.kind == nnkEmpty: newIdentNode("void")
-    else: returnType[1]
+    else: baseType
   outerProcBody.add(
     newVarStmt(retFutureSym,
       newCall(
@@ -1509,7 +1518,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
 
     procBody.insert(1, newNimNode(nnkVarSection, prc[6]).add(
-      newIdentDefs(newIdentNode("result"), returnType[1]))) # -> var result: T
+      newIdentDefs(newIdentNode("result"), baseType))) # -> var result: T
 
     procBody.insert(2, newNimNode(nnkPragma).add(
       newIdentNode("pop"))) # -> {.pop.})
@@ -1550,8 +1559,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  if prc[0].getName == "hubConnectionLoop":
-    echo(toStrLit(result))
+  #if prc[0].getName == "hubConnectionLoop":
+  #  echo(toStrLit(result))
 
 macro async*(prc: stmt): stmt {.immediate.} =
   ## Macro which processes async procedures into the appropriate

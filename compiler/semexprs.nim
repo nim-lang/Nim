@@ -292,8 +292,6 @@ proc semConv(c: PContext, n: PNode): PNode =
 
 proc semCast(c: PContext, n: PNode): PNode =
   ## Semantically analyze a casting ("cast[type](param)")
-  if optSafeCode in gGlobalOptions: localError(n.info, errCastNotInSafeMode)
-  #incl(c.p.owner.flags, sfSideEffect)
   checkSonsLen(n, 2)
   result = newNodeI(nkCast, n.info)
   result.typ = semTypeNode(c, n.sons[0], nil)
@@ -809,6 +807,9 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return semExpr(c, result, flags)
   else:
     n.sons[0] = semExpr(c, n.sons[0])
+    let t = n.sons[0].typ
+    if t != nil and t.kind == tyVar:
+      n.sons[0] = newDeref(n.sons[0])
   let nOrig = n.copyTree
   semOpAux(c, n)
   var t: PType = nil
@@ -818,7 +819,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
-      if c.inCompilesContext > 0:
+      if c.compilesContextId > 0:
         # speed up error generation:
         globalError(n.info, errTypeMismatch, "")
         return emptyNode
@@ -1636,7 +1637,9 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
   let oldErrorCount = msgs.gErrorCounter
   let oldErrorMax = msgs.gErrorMax
-  inc c.inCompilesContext
+  let oldCompilesId = c.compilesContextId
+  inc c.compilesContextIdGenerator
+  c.compilesContextId = c.compilesContextIdGenerator
   # do not halt after first error:
   msgs.gErrorMax = high(int)
 
@@ -1654,12 +1657,15 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldInGenericInst = c.inGenericInst
   let oldProcCon = c.p
   c.generics = @[]
+  var err: string
   try:
     result = semExpr(c, n, flags)
     if msgs.gErrorCounter != oldErrorCount: result = nil
   except ERecoverableError:
-    discard
+    if optReportConceptFailures in gGlobalOptions:
+      err = getCurrentExceptionMsg()
   # undo symbol table changes (as far as it's possible):
+  c.compilesContextId = oldCompilesId
   c.generics = oldGenerics
   c.inGenericContext = oldInGenericContext
   c.inUnrolledContext = oldInUnrolledContext
@@ -1668,10 +1674,11 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   msgs.setInfoContextLen(oldContextLen)
   setLen(gOwners, oldOwnerLen)
   c.currentScope = oldScope
-  dec c.inCompilesContext
   errorOutputs = oldErrorOutputs
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
+  if optReportConceptFailures in gGlobalOptions and not err.isNil:
+    localError(n.info, err)
 
 proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:

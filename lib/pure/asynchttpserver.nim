@@ -67,6 +67,12 @@ type
     Http409 = "409 Conflict",
     Http410 = "410 Gone",
     Http411 = "411 Length Required",
+    Http412 = "412 Precondition Failed",
+    Http413 = "413 Request Entity Too Large",
+    Http414 = "414 Request-URI Too Long",
+    Http415 = "415 Unsupported Media Type",
+    Http416 = "416 Requested Range Not Satisfiable",
+    Http417 = "417 Expectation Failed",
     Http418 = "418 I'm a teapot",
     Http500 = "500 Internal Server Error",
     Http501 = "501 Not Implemented",
@@ -206,7 +212,7 @@ proc processClient(client: AsyncSocket, address: string,
     if request.reqMethod == "post":
       # Check for Expect header
       if request.headers.hasKey("Expect"):
-        if request.headers["Expect"].toLower == "100-continue":
+        if request.headers.getOrDefault("Expect").toLower == "100-continue":
           await client.sendStatus("100 Continue")
         else:
           await client.sendStatus("417 Expectation Failed")
@@ -215,7 +221,8 @@ proc processClient(client: AsyncSocket, address: string,
       # - Check for Content-length header
       if request.headers.hasKey("Content-Length"):
         var contentLength = 0
-        if parseInt(request.headers["Content-Length"], contentLength) == 0:
+        if parseInt(request.headers.getOrDefault("Content-Length"),
+                    contentLength) == 0:
           await request.respond(Http400, "Bad Request. Invalid Content-Length.")
           continue
         else:
@@ -226,16 +233,18 @@ proc processClient(client: AsyncSocket, address: string,
         continue
 
     case request.reqMethod
-    of "get", "post", "head", "put", "delete", "trace", "options", "connect", "patch":
+    of "get", "post", "head", "put", "delete", "trace", "options",
+       "connect", "patch":
       await callback(request)
     else:
-      await request.respond(Http400, "Invalid request method. Got: " & request.reqMethod)
+      await request.respond(Http400, "Invalid request method. Got: " &
+        request.reqMethod)
 
     # Persistent connections
     if (request.protocol == HttpVer11 and
-        request.headers["connection"].normalize != "close") or
+        request.headers.getOrDefault("connection").normalize != "close") or
        (request.protocol == HttpVer10 and
-        request.headers["connection"].normalize == "keep-alive"):
+        request.headers.getOrDefault("connection").normalize == "keep-alive"):
       # In HTTP 1.1 we assume that connection is persistent. Unless connection
       # header states otherwise.
       # In HTTP 1.0 we assume that the connection should not be persistent.

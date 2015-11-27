@@ -65,14 +65,15 @@ proc getCommandLineDesc(): string =
 
 proc helpOnError(pass: TCmdLinePass) =
   if pass == passCmd1:
-    msgWriteln(getCommandLineDesc())
+    msgWriteln(getCommandLineDesc(), {msgStdout})
     msgQuit(0)
 
 proc writeAdvancedUsage(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name]) & AdvancedUsage)
+                                 CPU[platform.hostCPU].name]) & AdvancedUsage,
+               {msgStdout})
     msgQuit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) =
@@ -95,7 +96,7 @@ var
 
 proc writeCommandLineUsage() =
   if not helpWritten:
-    msgWriteln(getCommandLineDesc())
+    msgWriteln(getCommandLineDesc(), {msgStdout})
     helpWritten = true
 
 proc addPrefix(switch: string): string =
@@ -434,6 +435,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
+  of "reportconceptfailures":
+    processOnOffSwitchG({optReportConceptFailures}, arg, pass, info)
   of "threads":
     processOnOffSwitchG({optThreads}, arg, pass, info)
     #if optThreads in gGlobalOptions: incl(gNotes, warnGcUnsafe)

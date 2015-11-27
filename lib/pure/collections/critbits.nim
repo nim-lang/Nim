@@ -11,6 +11,8 @@
 ## container for a set or a mapping of strings. Based on the excellent paper
 ## by Adam Langley.
 
+include "system/inclrtl"
+
 type
   NodeObj[T] = object {.acyclic.}
     byte: int ## byte index of the difference
@@ -123,6 +125,14 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   var n = rawInsert(c, key)
   result = c.count == oldCount
 
+proc inc*(c: var CritBitTree[int]; key: string) =
+  ## counts the 'key'.
+  let oldCount = c.count
+  var n = rawInsert(c, key)
+  if c.count == oldCount:
+    # not a new key:
+    inc n.val
+
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
   discard rawInsert(c, key)
@@ -132,20 +142,32 @@ proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   var n = rawInsert(c, key)
   n.val = val
 
-proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
-  ## retrieves the value at ``c[key]``. If `key` is not in `t`,
-  ## default empty value for the type `B` is returned
-  ## and no exception is raised. One can check with ``hasKey`` whether the key
-  ## exists.
+template get[T](c: CritBitTree[T], key: string): T {.immediate.} =
   let n = rawGet(c, key)
   if n != nil: result = n.val
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
-proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
+proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline, deprecatedGet.} =
+  ## retrieves the value at ``c[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists.
+  get(c, key)
+
+proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
+  deprecatedGet.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  let n = rawGet(c, key)
-  if n != nil: result = n.val
-  else: raise newException(KeyError, "key not found: " & $key)
+  get(c, key)
+
+proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} =
+  ## retrieves the value at ``c[key]``. The value can be modified.
+  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## Use ```[]``` instead.
+  get(c, key)
 
 proc excl*[T](c: var CritBitTree[T], key: string) =
   ## removes `key` (and its associated value) from the set `c`.

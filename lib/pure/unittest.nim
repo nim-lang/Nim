@@ -150,6 +150,8 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
     try:
       when declared(testSetupIMPLFlag): testSetupIMPL()
       body
+      when declared(testTeardownIMPLFlag):
+        defer: testTeardownIMPL()
 
     except:
       when not defined(js):
@@ -158,7 +160,6 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
       fail()
 
     finally:
-      when declared(testTeardownIMPLFlag): testTeardownIMPL()
       testDone name, testStatusIMPL
 
 proc checkpoint*(msg: string) =

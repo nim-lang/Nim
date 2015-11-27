@@ -11,9 +11,14 @@ include "system/inclrtl"
 import sockets, strutils, parseutils, times, os, asyncio
 
 from asyncnet import nil
-from rawsockets import nil
+from nativesockets import nil
 from asyncdispatch import PFuture
-
+## **Note**: This module is deprecated since version 0.11.3.
+## You should use the async version of this module
+## `asyncftpclient <asyncftpclient.html>`_.
+##
+## ----
+##
 ## This module **partially** implements an FTP client as specified
 ## by `RFC 959 <http://tools.ietf.org/html/rfc959>`_.
 ##
@@ -36,6 +41,8 @@ from asyncdispatch import PFuture
 ## **Warning:** The API of this module is unstable, and therefore is subject
 ## to change.
 
+{.deprecated.}
+
 type
   FtpBase*[SockType] = ref FtpBaseObj[SockType]
   FtpBaseObj*[SockType] = object
@@ -48,7 +55,7 @@ type
     user*, pass*: string
     address*: string
     when SockType is asyncnet.AsyncSocket:
-      port*: rawsockets.Port
+      port*: nativesockets.Port
     else:
       port*: Port
 

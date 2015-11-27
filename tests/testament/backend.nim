@@ -8,7 +8,7 @@
 
 import strutils, db_sqlite, os, osproc
 
-var db: TDbConn
+var db: DbConn
 
 proc createDb() =
   db.exec(sql"""
@@ -61,7 +61,7 @@ var
 
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
 
-proc getMachine*(db: TDbConn): MachineId =
+proc getMachine*(db: DbConn): MachineId =
   var name = "hostname"()
   if name.len == 0:
     name = when defined(posix): getenv"HOSTNAME".string
@@ -76,7 +76,7 @@ proc getMachine*(db: TDbConn): MachineId =
     result = db.insertId(sql"insert into Machine(name, os, cpu) values (?,?,?)",
                          name, system.hostOS, system.hostCPU).MachineId
 
-proc getCommit(db: TDbConn): CommitId =
+proc getCommit(db: DbConn): CommitId =
   const commLen = "commit ".len
   let hash = "git log -n 1"()[commLen..commLen+10]
   let branch = "git symbolic-ref --short HEAD"()
@@ -112,7 +112,8 @@ proc writeTestResult*(name, category, target,
                                         thisCommit, thisMachine)
 
 proc open*() =
-  db = open(connection="testament.db", user="testament", password="",
+  let dbFile = if existsEnv("TRAVIS") or existsEnv("APPVEYOR"): ":memory:" else: "testament.db"
+  db = open(connection=dbFile, user="testament", password="",
             database="testament")
   createDb()
   thisMachine = getMachine(db)

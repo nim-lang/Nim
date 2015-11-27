@@ -1319,15 +1319,43 @@ proc reversed*(s: string): string =
 
   reverseUntil(len(s))
 
+proc graphemeLen*(s: string; i: Natural): Natural =
+  ## The number of bytes belonging to 's[i]' including following combining
+  ## characters.
+  var j = i.int
+  var r, r2: Rune
+  if j < s.len:
+    fastRuneAt(s, j, r, true)
+    result = j-i
+    while j < s.len:
+      fastRuneAt(s, j, r2, true)
+      if not isCombining(r2): break
+      result = j-i
+
+proc lastRune*(s: string; last: int): (Rune, int) =
+  ## length of the last rune in 's[0..last]'. Returns the rune and its length
+  ## in bytes.
+  if s[last] <= chr(127):
+    result = (Rune(s[last]), 1)
+  else:
+    var L = 0
+    while last-L >= 0 and ord(s[last-L]) shr 6 == 0b10: inc(L)
+    var r: Rune
+    fastRuneAt(s, last-L, r, false)
+    result = (r, L+1)
+
 when isMainModule:
   let
     someString = "öÑ"
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
     compared = (someString == $someRunes)
-  assert compared == true
+  doAssert compared == true
 
-  assert reversed("Reverse this!") == "!siht esreveR"
-  assert reversed("先秦兩漢") == "漢兩秦先"
-  assert reversed("as⃝df̅") == "f̅ds⃝a"
-  assert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
-  assert len(toRunes("as⃝df̅")) == runeLen("as⃝df̅")
+  doAssert reversed("Reverse this!") == "!siht esreveR"
+  doAssert reversed("先秦兩漢") == "漢兩秦先"
+  doAssert reversed("as⃝df̅") == "f̅ds⃝a"
+  doAssert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
+  doAssert len(toRunes("as⃝df̅")) == runeLen("as⃝df̅")
+  const test = "as⃝"
+  doAssert lastRune(test, test.len-1)[1] == 3
+  doAssert graphemeLen("è", 0) == 2

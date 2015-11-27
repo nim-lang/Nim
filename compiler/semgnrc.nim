@@ -30,6 +30,7 @@ type
   GenericCtx = object
     toMixin: IntSet
     cursorInBody: bool # only for nimsuggest
+    bracketExpr: PNode
 
 type
   TSemGenericFlag = enum
@@ -227,6 +228,10 @@ proc semGenericStmt(c: PContext, n: PNode,
         discard
       of skProc, skMethod, skIterators, skConverter, skModule:
         result.sons[0] = symChoice(c, fn, s, scOption)
+        # do not check of 's.magic==mRoof' here because it might be some
+        # other '^' but after overload resolution the proper one:
+        if ctx.bracketExpr != nil and n.len == 2 and s.name.s == "^":
+          result.add ctx.bracketExpr
         first = 1
       of skGenericParam:
         result.sons[0] = newSymNodeTypeDesc(s, fn.info)
@@ -251,12 +256,17 @@ proc semGenericStmt(c: PContext, n: PNode,
     let flags = if mixinContext: flags+{withinMixin} else: flags
     for i in countup(first, sonsLen(result) - 1):
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, ctx)
-  of nkBracketExpr, nkCurlyExpr:
+  of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(if n.kind == nkBracketExpr:"[]" else:"{}"),
-                            n.info)
+    result.add newIdentNode(getIdent("{}"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
     result = semGenericStmt(c, result, flags, ctx)
+  of nkBracketExpr:
+    result = newNodeI(nkCall, n.info)
+    result.add newIdentNode(getIdent("[]"), n.info)
+    for i in 0 ..< n.len: result.add(n[i])
+    withBracketExpr ctx, n.sons[0]:
+      result = semGenericStmt(c, result, flags, ctx)
   of nkAsgn, nkFastAsgn:
     checkSonsLen(n, 2)
     let a = n.sons[0]
@@ -264,13 +274,19 @@ proc semGenericStmt(c: PContext, n: PNode,
 
     let k = a.kind
     case k
-    of nkBracketExpr, nkCurlyExpr:
+    of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(if k == nkBracketExpr:"[]=" else:"{}="),
-                              n.info)
+      result.add newIdentNode(getIdent("{}="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
       result = semGenericStmt(c, result, flags, ctx)
+    of nkBracketExpr:
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent("[]="), n.info)
+      for i in 0 ..< a.len: result.add(a[i])
+      result.add(b)
+      withBracketExpr ctx, a.sons[0]:
+        result = semGenericStmt(c, result, flags, ctx)
     else:
       for i in countup(0, sonsLen(n) - 1):
         result.sons[i] = semGenericStmt(c, n.sons[i], flags, ctx)
@@ -380,7 +396,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         of nkEnumFieldDef: a = n.sons[i].sons[0]
         of nkIdent: a = n.sons[i]
         else: illFormedAst(n)
-        addDecl(c, newSymS(skUnknown, getIdentNode(a.sons[i]), c))
+        addDecl(c, newSymS(skUnknown, getIdentNode(a), c))
   of nkObjectTy, nkTupleTy, nkTupleClassTy:
     discard
   of nkFormalParams:

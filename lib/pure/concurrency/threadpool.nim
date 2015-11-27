@@ -267,6 +267,17 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
     result = -1
   destroySemaphore(ai.cv)
 
+proc isReady*(fv: FlowVarBase): bool =
+  ## Determines whether the specified ``FlowVarBase``'s value is available.
+  ##
+  ## If ``true`` awaiting ``fv`` will not block.
+  if fv.usesSemaphore and not fv.awaited:
+    acquire(fv.cv.L)
+    result = fv.cv.counter > 0
+    release(fv.cv.L)
+  else:
+    result = true
+
 proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   let w = cast[ptr Worker](p)
   signal(w.taskStarted)

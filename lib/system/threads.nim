@@ -304,22 +304,53 @@ type
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc):
   proc deallocOsPages()
 
+when defined(boehmgc):
+  type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
+  proc boehmGC_call_with_stack_base(sbp: GCStackBaseProc, p: pointer)
+    {.importc: "GC_call_with_stack_base", boehmGC.}
+  proc boehmGC_register_my_thread(sb: pointer)
+    {.importc: "GC_register_my_thread", boehmGC.}
+  proc boehmGC_unregister_my_thread()
+    {.importc: "GC_unregister_my_thread", boehmGC.}
+
+  proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv.} =
+    boehmGC_register_my_thread(sb)
+    let thrd = cast[ptr Thread[TArg]](thrd)
+    when TArg is void:
+      thrd.dataFn()
+    else:
+      thrd.dataFn(thrd.data)
+    boehmGC_unregister_my_thread()
+else:
+  proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) =
+    when TArg is void:
+      thrd.dataFn()
+    else:
+      thrd.dataFn(thrd.data)
+
+proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
+  when defined(boehmgc):
+    boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
+  elif not defined(nogc) and not defined(gogc):
+    var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
+      threadProcWrapDispatch[TArg]
+    when not hasSharedHeap:
+      # init the GC for refc/markandsweep
+      setStackBottom(addr(p))
+      initGC()
+    when declared(registerThread):
+      thrd.stackBottom = addr(thrd)
+      registerThread(thrd)
+    p(thrd)
+    when declared(registerThread): unregisterThread(thrd)
+    when declared(deallocOsPages): deallocOsPages()
+  else:
+    threadProcWrapDispatch(thrd)
+
 template threadProcWrapperBody(closure: expr) {.immediate.} =
   when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
-  var t = cast[ptr Thread[TArg]](closure)
-  when useStackMaskHack:
-    var tls: ThreadLocalStorage
-  when not defined(boehmgc) and not defined(gogc) and not defined(nogc) and not hasSharedHeap:
-    # init the GC for this thread:
-    setStackBottom(addr(t))
-    initGC()
-  when declared(registerThread):
-    t.stackBottom = addr(t)
-    registerThread(t)
-  when TArg is void: t.dataFn()
-  else: t.dataFn(t.data)
-  when declared(registerThread): unregisterThread(t)
-  when declared(deallocOsPages): deallocOsPages()
+  var thrd = cast[ptr Thread[TArg]](closure)
+  threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is
   # no need for a ``try finally`` here, nor would it be correct: The current
   # exception is tried to be re-raised by the code-gen after the ``finally``!
@@ -327,7 +358,7 @@ template threadProcWrapperBody(closure: expr) {.immediate.} =
   # page!
 
   # mark as not running anymore:
-  t.dataFn = nil
+  thrd.dataFn = nil
 
 {.push stack_trace:off.}
 when defined(windows):
@@ -423,6 +454,9 @@ else:
     cpusetZero(s)
     cpusetIncl(cpu.cint, s)
     setAffinity(t.sys, sizeof(s), s)
+
+proc createThread*(t: var Thread[void], tp: proc () {.thread.}) =
+  createThread[void](t, tp)
 
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
   ## returns the thread ID of `t`.

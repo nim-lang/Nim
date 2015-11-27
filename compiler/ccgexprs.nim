@@ -747,6 +747,17 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   addf(r, ".Field$1", [rope(i)])
   putIntoDest(p, d, ty.sons[i], r, a.s)
 
+proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope): PSym =
+  var ty = ty
+  assert r != nil
+  while ty != nil:
+    assert(ty.kind in {tyTuple, tyObject})
+    result = lookupInRecord(ty.n, field.name)
+    if result != nil: break
+    if not p.module.compileToCpp: add(r, ".Sup")
+    ty = getUniqueType(ty.sons[0])
+  if result == nil: internalError(field.info, "genCheckedRecordField")
+
 proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   var a: TLoc
   var ty = genRecordFieldAux(p, e, d, a)
@@ -758,15 +769,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     addf(r, ".Field$1", [rope(f.position)])
     putIntoDest(p, d, f.typ, r, a.s)
   else:
-    var field: PSym = nil
-    while ty != nil:
-      if ty.kind notin {tyTuple, tyObject}:
-        internalError(e.info, "genRecordField")
-      field = lookupInRecord(ty.n, f.name)
-      if field != nil: break
-      if not p.module.compileToCpp: add(r, ".Sup")
-      ty = getUniqueType(ty.sons[0])
-    if field == nil: internalError(e.info, "genRecordField 2 ")
+    let field = lookupFieldAgain(p, ty, f, r)
     if field.loc.r == nil: internalError(e.info, "genRecordField 3")
     addf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r, a.s)
@@ -774,7 +777,8 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
-proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
+proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym;
+                   origTy: PType) =
   var test, u, v: TLoc
   for i in countup(1, sonsLen(e) - 1):
     var it = e.sons[i]
@@ -786,8 +790,12 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     assert(disc.kind == nkSym)
     initLoc(test, locNone, it.typ, OnStack)
     initLocExpr(p, it.sons[1], u)
-    initLoc(v, locExpr, disc.typ, OnUnknown)
-    v.r = "$1.$2" % [obj, disc.sym.loc.r]
+    var o = obj
+    let d = lookupFieldAgain(p, origTy, disc.sym, o)
+    initLoc(v, locExpr, d.typ, OnUnknown)
+    v.r = o
+    v.r.add(".")
+    v.r.add(d.loc.r)
     genInExprAux(p, it, u, v, test)
     let id = nodeTableTestOrSet(p.module.dataCache,
                                newStrNode(nkStrLit, field.name.s), gBackendId)
@@ -804,25 +812,14 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   if optFieldCheck in p.options:
-    var
-      a: TLoc
-      f, field: PSym
-      ty: PType
-      r: Rope
-    ty = genRecordFieldAux(p, e.sons[0], d, a)
-    r = rdLoc(a)
-    f = e.sons[0].sons[1].sym
-    field = nil
-    while ty != nil:
-      assert(ty.kind in {tyTuple, tyObject})
-      field = lookupInRecord(ty.n, f.name)
-      if field != nil: break
-      if not p.module.compileToCpp: add(r, ".Sup")
-      ty = getUniqueType(ty.sons[0])
-    if field == nil: internalError(e.info, "genCheckedRecordField")
+    var a: TLoc
+    let ty = genRecordFieldAux(p, e.sons[0], d, a)
+    var r = rdLoc(a)
+    let f = e.sons[0].sons[1].sym
+    let field = lookupFieldAgain(p, ty, f, r)
     if field.loc.r == nil:
       internalError(e.info, "genCheckedRecordField") # generate the checks:
-    genFieldCheck(p, e, r, field)
+    genFieldCheck(p, e, r, field, ty)
     add(r, rfmt(nil, ".$1", field.loc.r))
     putIntoDest(p, d, field.typ, r, a.s)
   else:
@@ -1150,20 +1147,15 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   else:
     constructLoc(p, tmp)
   discard getTypeDesc(p.module, t)
+  let ty = getUniqueType(t)
   for i in 1 .. <e.len:
     let it = e.sons[i]
     var tmp2: TLoc
     tmp2.r = r
-    var field: PSym = nil
-    var ty = getUniqueType(t)
-    while ty != nil:
-      field = lookupInRecord(ty.n, it.sons[0].sym.name)
-      if field != nil: break
-      if not p.module.compileToCpp: add(tmp2.r, ".Sup")
-      ty = getUniqueType(ty.sons[0])
-    if field == nil or field.loc.r == nil: internalError(e.info, "genObjConstr")
+    let field = lookupFieldAgain(p, ty, it.sons[0].sym, tmp2.r)
+    if field.loc.r == nil: internalError(e.info, "genObjConstr")
     if it.len == 3 and optFieldCheck in p.options:
-      genFieldCheck(p, it.sons[2], tmp2.r, field)
+      genFieldCheck(p, it.sons[2], r, field, ty)
     add(tmp2.r, ".")
     add(tmp2.r, field.loc.r)
     tmp2.k = locTemp

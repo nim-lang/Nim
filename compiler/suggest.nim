@@ -309,6 +309,10 @@ proc suggestSym*(info: TLineInfo; s: PSym) {.inline.} =
     findUsages(info, s)
   elif gIdeCmd == ideDef:
     findDefinition(info, s)
+  elif gIdeCmd == ideDus and s != nil:
+    if isTracked(info, s.name.s.len):
+      suggestResult(symToSuggest(s, isLocal=false, $ideDef))
+    findUsages(info, s)
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
@@ -335,8 +339,8 @@ proc suggestExpr*(c: PContext, node: PNode) =
     if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
-  if c.inCompilesContext > 0: return
-  inc(c.inCompilesContext)
+  if c.compilesContextId > 0: return
+  inc(c.compilesContextId)
 
   if gIdeCmd == ideSug:
     var n = if nfIsCursor in node.flags: node else: findClosestDot(node)
@@ -365,8 +369,8 @@ proc suggestExpr*(c: PContext, node: PNode) =
         addSon(a, x)
       suggestCall(c, a, n, outputs)
 
-  dec(c.inCompilesContext)
-  if outputs > 0 and gIdeCmd != ideUse: suggestQuit()
+  dec(c.compilesContextId)
+  if outputs > 0 and gIdeCmd notin {ideUse, ideDus}: suggestQuit()
 
 proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)

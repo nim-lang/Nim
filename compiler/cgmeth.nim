@@ -66,15 +66,16 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
         bb = bb.lastSon
       else:
         break
-    if sameType(aa, bb): discard
+    if sameType(aa, bb):
+      if aa.kind == tyObject and result != Invalid: result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject:
       let diff = inheritanceDiff(bb, aa)
-      if diff < 0: discard "Ok"
+      if diff < 0:
+        if result != Invalid: result = Yes
       elif diff != high(int):
         result = Invalid
     else:
       return No
-  if result != Invalid: result = Yes
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
   var L = s.ast.len-1
@@ -231,7 +232,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
                            curr.typ.sons[col], false))
     var ret: PNode
     if base.typ.sons[0] != nil:
-      var a = newNodeI(nkAsgn, base.info)
+      var a = newNodeI(nkFastAsgn, base.info)
       addSon(a, newSymNode(base.ast.sons[resultPos].sym))
       addSon(a, call)
       ret = newNodeI(nkReturnStmt, base.info)
@@ -256,4 +257,3 @@ proc generateMethodDispatchers*(): PNode =
     sortBucket(gMethods[bucket].methods, relevantCols)
     addSon(result,
            newSymNode(genDispatcher(gMethods[bucket].methods, relevantCols)))
-

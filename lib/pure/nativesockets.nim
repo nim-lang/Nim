@@ -93,8 +93,8 @@ when useWinVersion:
     IOC_IN* = int(-2147483648)
     FIONBIO* = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or
                              (102 shl 8) or 126
-    rawAfInet = winlean.AF_INET
-    rawAfInet6 = winlean.AF_INET6
+    nativeAfInet = winlean.AF_INET
+    nativeAfInet6 = winlean.AF_INET6
 
   proc ioctlsocket*(s: SocketHandle, cmd: clong,
                    argptr: ptr clong): cint {.
@@ -102,8 +102,8 @@ when useWinVersion:
 else:
   let
     osInvalidSocket* = posix.INVALID_SOCKET
-    rawAfInet = posix.AF_INET
-    rawAfInet6 = posix.AF_INET6
+    nativeAfInet = posix.AF_INET
+    nativeAfInet6 = posix.AF_INET6
 
 proc `==`*(a, b: Port): bool {.borrow.}
   ## ``==`` for ports.
@@ -157,12 +157,14 @@ else:
     result = cint(ord(p))
 
 
-proc newRawSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-             protocol: Protocol = IPPROTO_TCP): SocketHandle =
+proc newNativeSocket*(domain: Domain = AF_INET,
+                      sockType: SockType = SOCK_STREAM,
+                      protocol: Protocol = IPPROTO_TCP): SocketHandle =
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(sockType), toInt(protocol))
 
-proc newRawSocket*(domain: cint, sockType: cint, protocol: cint): SocketHandle =
+proc newNativeSocket*(domain: cint, sockType: cint,
+                      protocol: cint): SocketHandle =
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
@@ -201,7 +203,9 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   hints.ai_family = toInt(domain)
   hints.ai_socktype = toInt(sockType)
   hints.ai_protocol = toInt(protocol)
-  hints.ai_flags = AI_V4MAPPED
+  # https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=198092
+  when not defined(freebsd):
+    hints.ai_flags = AI_V4MAPPED
   var gaiResult = getaddrinfo(address, $port, addr(hints), result)
   if gaiResult != 0'i32:
     when useWinVersion:
@@ -229,17 +233,17 @@ proc ntohs*(x: int16): int16 =
   when cpuEndian == bigEndian: result = x
   else: result = (x shr 8'i16) or (x shl 8'i16)
 
-proc htonl*(x: int32): int32 =
+template htonl*(x: int32): expr =
   ## Converts 32-bit integers from host to network byte order. On machines
   ## where the host byte order is the same as network byte order, this is
   ## a no-op; otherwise, it performs a 4-byte swap operation.
-  result = rawsockets.ntohl(x)
+  nativesockets.ntohl(x)
 
-proc htons*(x: int16): int16 =
+template htons*(x: int16): expr =
   ## Converts 16-bit positive integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
-  result = rawsockets.ntohs(x)
+  nativesockets.ntohs(x)
 
 proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
   ## Searches the database from the beginning and finds the first entry for
@@ -280,7 +284,7 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
 
   when useWinVersion:
     var s = winlean.gethostbyaddr(addr(myaddr), sizeof(myaddr).cuint,
-                                  cint(rawsockets.AF_INET))
+                                  cint(AF_INET))
     if s == nil: raiseOSError(osLastError())
   else:
     var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
@@ -330,9 +334,9 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  if name.sa_family == rawAfInet:
+  if name.sa_family == nativeAfInet:
     result = AF_INET
-  elif name.sa_family == rawAfInet6:
+  elif name.sa_family == nativeAfInet6:
     result = AF_INET6
   else:
     raiseOSError(osLastError(), "unknown socket family in getSockFamily")
@@ -340,12 +344,11 @@ proc getSockDomain*(socket: SocketHandle): Domain =
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
   ## return the string representation of address within sockAddr
-  if sockAddr.sa_family == rawAfInet:
+  if sockAddr.sa_family == nativeAfInet:
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
-  elif sockAddr.sa_family == rawAfInet6:
+  elif sockAddr.sa_family == nativeAfInet6:
     when not useWinVersion:
       # TODO: Windows
-      var v6addr = cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       result = newString(posix.INET6_ADDRSTRLEN)
       let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
       discard posix.inet_ntop(posix.AF_INET6, addr6, result.cstring,
@@ -369,7 +372,7 @@ proc getSockName*(socket: SocketHandle): Port =
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  result = Port(rawsockets.ntohs(name.sin_port))
+  result = Port(nativesockets.ntohs(name.sin_port))
 
 proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
   ## returns the socket's local address and port number.
@@ -386,7 +389,8 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     if getsockname(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
-    result = ($inet_ntoa(name.sin_addr), Port(rawsockets.ntohs(name.sin_port)))
+    result = ($inet_ntoa(name.sin_addr),
+              Port(nativesockets.ntohs(name.sin_port)))
   of AF_INET6:
     var name: Sockaddr_in6
     when useWinVersion:
@@ -402,7 +406,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     if inet_ntop(name.sin6_family.cint,
                  addr name, buf.cstring, sizeof(buf).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(rawsockets.ntohs(name.sin6_port)))
+    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
@@ -421,7 +425,8 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     if getpeername(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
-    result = ($inet_ntoa(name.sin_addr), Port(rawsockets.ntohs(name.sin_port)))
+    result = ($inet_ntoa(name.sin_addr),
+              Port(nativesockets.ntohs(name.sin_port)))
   of AF_INET6:
     var name: Sockaddr_in6
     when useWinVersion:
@@ -437,7 +442,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     if inet_ntop(name.sin6_family.cint,
                  addr name, buf.cstring, sizeof(buf).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(rawsockets.ntohs(name.sin6_port)))
+    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 

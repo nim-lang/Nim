@@ -139,23 +139,26 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
     if it.kind == nkCommentStmt:
       result[i] = PTransNode(it)
     elif it.kind == nkIdentDefs:
-      if it.sons[0].kind != nkSym: internalError(it.info, "transformVarSection")
-      internalAssert(it.len == 3)
-      var newVar = copySym(it.sons[0].sym)
-      incl(newVar.flags, sfFromGeneric)
-      # fixes a strange bug for rodgen:
-      #include(it.sons[0].sym.flags, sfFromGeneric);
-      newVar.owner = getCurrOwner(c)
-      idNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
-      var defs = newTransNode(nkIdentDefs, it.info, 3)
-      if importantComments():
-        # keep documentation information:
-        PNode(defs).comment = it.comment
-      defs[0] = newSymNode(newVar).PTransNode
-      defs[1] = it.sons[1].PTransNode
-      defs[2] = transform(c, it.sons[2])
-      newVar.ast = defs[2].PNode
-      result[i] = defs
+      if it.sons[0].kind == nkSym:
+        internalAssert(it.len == 3)
+        var newVar = copySym(it.sons[0].sym)
+        incl(newVar.flags, sfFromGeneric)
+        # fixes a strange bug for rodgen:
+        #include(it.sons[0].sym.flags, sfFromGeneric);
+        newVar.owner = getCurrOwner(c)
+        idNodeTablePut(c.transCon.mapping, it.sons[0].sym, newSymNode(newVar))
+        var defs = newTransNode(nkIdentDefs, it.info, 3)
+        if importantComments():
+          # keep documentation information:
+          PNode(defs).comment = it.comment
+        defs[0] = newSymNode(newVar).PTransNode
+        defs[1] = it.sons[1].PTransNode
+        defs[2] = transform(c, it.sons[2])
+        newVar.ast = defs[2].PNode
+        result[i] = defs
+      else:
+        # has been transformed into 'param.x' for closure iterators, so keep it:
+        result[i] = PTransNode(it)
     else:
       if it.kind != nkVarTuple:
         internalError(it.info, "transformVarSection: not nkVarTuple")
@@ -301,6 +304,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
   var e = n.sons[0]
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
+  if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
   if skipTypes(e.typ, {tyGenericInst}).kind == tyTuple and
       c.transCon.forStmt.len != 3:
     e = skipConv(e)
@@ -822,11 +826,13 @@ proc flattenStmts(n: PNode) =
   var goOn = true
   while goOn:
     goOn = false
-    for i in 0..<n.len:
+    var i = 0
+    while i < n.len:
       let it = n[i]
       if it.kind in {nkStmtList, nkStmtListExpr}:
         n.sons[i..i] = it.sons[0..<it.len]
         goOn = true
+      inc i
 
 proc liftDeferAux(n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:

@@ -75,10 +75,16 @@ proc safeCopyFile(src, dest: string) =
     echo "[Warning] could not copy: ", src, " to ", dest
 
 proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
+  const rpath = when defined(macosx):
+      " --passL:-rpath --passL:@loader_path"
+    else:
+      ""
+
   testSpec c, makeTest("lib/nimrtl.nim",
     options & " --app:lib -d:createNimRtl", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl", cat)
+    options & " --app:lib -d:useNimRtl" & rpath, cat)
+
 
   when defined(Windows):
     # windows looks in the dir of the exe (yay!):
@@ -88,11 +94,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "lib:" & libpath)
-    var serverDll = DynlibFormat % "server"
-    safeCopyFile("tests/dll" / serverDll, "lib" / serverDll)
+    putEnv("LD_LIBRARY_PATH", "tests/dll:" & libpath)
+    defer: putEnv("LD_LIBRARY_PATH", libpath)
+    var nimrtlDll = DynlibFormat % "nimrtl"
+    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl",
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -114,13 +121,23 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat, actionRun)
 
-  template test(filename: expr): stmt =
+  template testWithoutBoehm(filename: expr): stmt =
     testWithoutMs filename
     testSpec r, makeTest("tests/gc" / filename, options &
                   " --gc:markAndSweep", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat, actionRun)
+  template test(filename: expr): stmt =
+    testWithoutBoehm filename
+    when not defined(windows):
+      # AR: cannot find any boehm.dll on the net, right now, so disabled
+      # for windows:
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " --gc:boehm", cat, actionRun)
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " -d:release --gc:boehm", cat, actionRun)
 
+  test "gcemscripten"
   test "growobjcrash"
   test "gcbench"
   test "gcleak"
@@ -130,9 +147,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcleak4"
   # Disabled because it works and takes too long to run:
   #test "gcleak5"
-  test "weakrefs"
+  testWithoutBoehm "weakrefs"
   test "cycleleak"
-  test "closureleak"
+  testWithoutBoehm "closureleak"
   testWithoutMs "refarrayleak"
 
   test "stackrefleak"
@@ -201,7 +218,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
                    "actiontable/tactiontable", "method/tmultim1",
-                   "method/tmultim3", "method/tmultim4"]:
+                   "method/tmultim3", "method/tmultim4",
+                   "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
+                   "varres/tvartup"]:
     test "tests/" & testfile & ".nim"
 
 # ------------------------- manyloc -------------------------------------------
@@ -339,7 +358,7 @@ proc `&?.`(a, b: string): string =
   # candidate for the stdlib?
   result = if a.endswith(b): a else: a & b
 
-proc processCategory(r: var TResults, cat: Category, options: string) =
+proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: string = "t*.nim") =
   case cat.string.normalize
   of "rodfiles":
     discard # Disabled for now
@@ -375,6 +394,9 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfExtraOnly)
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
+  of "untestable":
+    # We can't test it because it depends on a third party.
+    discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
   else:
-    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
+    for name in os.walkFiles("tests" & DirSep &.? cat.string / fileGlob):
       testSpec r, makeTest(name, options, cat)

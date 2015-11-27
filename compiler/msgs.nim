@@ -203,7 +203,7 @@ const
     errUseQualifier: "ambiguous identifier: \'$1\' -- use a qualifier",
     errTypeExpected: "type expected",
     errSystemNeeds: "system module needs \'$1\'",
-    errExecutionOfProgramFailed: "execution of an external program failed",
+    errExecutionOfProgramFailed: "execution of an external program failed: '$1'",
     errNotOverloadable: "overloaded \'$1\' leads to ambiguous calls",
     errInvalidArgForX: "invalid argument for \'$1\'",
     errStmtHasNoEffect: "statement has no effect",
@@ -469,10 +469,10 @@ type
     fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
     shortName*: string         # short name of the module
-    quotedName*: Rope         # cached quoted short name for codegen
+    quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
 
-    lines*: seq[Rope]         # the source code of the module
+    lines*: seq[Rope]          # the source code of the module
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
@@ -631,8 +631,11 @@ var
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
-    if isNil(writelnHook): writeLine(stdout, s)
-    else: writelnHook(s)
+    if isNil(writelnHook):
+      writeLine(stdout, s)
+      flushFile(stdout)
+    else:
+      writelnHook(s)
 
 proc msgQuit*(x: int8) = quit x
 proc msgQuit*(x: string) = quit x
@@ -724,21 +727,32 @@ proc `??`* (info: TLineInfo, filename: string): bool =
 
 var gTrackPos*: TLineInfo
 
-proc outWriteln*(s: string) =
-  ## Writes to stdout. Always.
-  if eStdOut in errorOutputs: writeLine(stdout, s)
+type
+  MsgFlag* = enum  ## flags altering msgWriteln behavior
+    msgStdout,     ## force writing to stdout, even stderr is default
+    msgSkipHook    ## skip message hook even if it is present
+  MsgFlags* = set[MsgFlag]
 
-proc msgWriteln*(s: string) =
-  ## Writes to stdout. If --stdout option is given, writes to stderr instead.
+proc msgWriteln*(s: string, flags: MsgFlags = {}) =
+  ## Writes given message string to stderr by default.
+  ## If ``--stdout`` option is given, writes to stdout instead. If message hook
+  ## is present, then it is used to output message rather than stderr/stdout.
+  ## This behavior can be altered by given optional flags.
 
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
-  if not isNil(writelnHook):
+  if not isNil(writelnHook) and msgSkipHook notin flags:
     writelnHook(s)
-  elif optStdout in gGlobalOptions:
-    if eStdErr in errorOutputs: writeLine(stderr, s)
+  elif optStdout in gGlobalOptions or msgStdout in flags:
+    if eStdOut in errorOutputs:
+      writeLine(stdout, s)
+      flushFile(stdout)
   else:
-    if eStdOut in errorOutputs: writeLine(stdout, s)
+    if eStdErr in errorOutputs:
+      writeLine(stderr, s)
+      # On Windows stderr is fully-buffered when piped, regardless of C std.
+      when defined(windows):
+        flushFile(stderr)
 
 macro callIgnoringStyle(theProc: typed, first: typed,
                         args: varargs[expr]): stmt =
@@ -758,8 +772,9 @@ macro callIgnoringStyle(theProc: typed, first: typed,
        typ != typTerminalCmd:
       result.add(arg)
 
-macro callStyledEcho(args: varargs[expr]): stmt =
-  result = newCall(bindSym"styledEcho")
+macro callStyledWriteLineStderr(args: varargs[expr]): stmt =
+  result = newCall(bindSym"styledWriteLine")
+  result.add(bindSym"stderr")
   for arg in children(args[0][1]):
     result.add(arg)
 
@@ -773,13 +788,18 @@ template styledMsgWriteln*(args: varargs[expr]) =
   if not isNil(writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in gGlobalOptions:
-    if eStdErr in errorOutputs: callIgnoringStyle(writeLine, stderr, args)
-  else:
     if eStdOut in errorOutputs:
+      callIgnoringStyle(writeLine, stdout, args)
+      flushFile(stdout)
+  else:
+    if eStdErr in errorOutputs:
       if optUseColors in gGlobalOptions:
-        callStyledEcho(args)
+        callStyledWriteLineStderr(args)
       else:
-        callIgnoringStyle(writeLine, stdout, args)
+        callIgnoringStyle(writeLine, stderr, args)
+      # On Windows stderr is fully-buffered when piped, regardless of C std.
+      when defined(windows):
+        flushFile(stderr)
 
 proc coordToStr(coord: int): string =
   if coord == -1: result = "???"
@@ -873,8 +893,7 @@ proc rawMessage*(msg: TMsgKind, arg: string) =
 
 proc resetAttributes* =
   if {optUseColors, optStdout} * gGlobalOptions == {optUseColors}:
-    terminal.resetAttributes()
-    stdout.flushFile()
+    terminal.resetAttributes(stderr)
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
@@ -1020,5 +1039,5 @@ proc listHints*() =
     ])
 
 # enable colors by default on terminals
-if terminal.isatty(stdout):
+if terminal.isatty(stderr):
   incl(gGlobalOptions, optUseColors)

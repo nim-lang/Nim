@@ -110,6 +110,13 @@ type
     toBind, toMixin, toInject: IntSet
     owner: PSym
     cursorInBody: bool # only for nimsuggest
+    bracketExpr: PNode
+
+template withBracketExpr(ctx, x, body: untyped) =
+  let old = ctx.bracketExpr
+  ctx.bracketExpr = x
+  body
+  ctx.bracketExpr = old
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
@@ -310,6 +317,18 @@ proc wrapInBind(c: var TemplCtx; n: PNode; opr: string): PNode =
   else:
     result = n
 
+proc oprIsRoof(n: PNode): bool =
+  const roof = "^"
+  case n.kind
+  of nkIdent: result = n.ident.s == roof
+  of nkSym: result = n.sym.name.s == roof
+  of nkAccQuoted:
+    if n.len == 1:
+      result = oprIsRoof(n.sons[0])
+  of nkOpenSymChoice, nkClosedSymChoice:
+    result = oprIsRoof(n.sons[0])
+  else: discard
+
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
   semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
@@ -452,10 +471,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
     result = onlyReplaceParams(c, n)
-  of nkBracketExpr, nkCurlyExpr:
+  of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent(if n.kind == nkBracketExpr:"[]" else:"{}"),
-                            n.info)
+    result.add newIdentNode(getIdent("[]"), n.info)
+    for i in 0 ..< n.len: result.add(n[i])
+    let n0 = semTemplBody(c, n.sons[0])
+    withBracketExpr c, n0:
+      result = semTemplBodySons(c, result)
+  of nkCurlyExpr:
+    result = newNodeI(nkCall, n.info)
+    result.add newIdentNode(getIdent("{}"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn:
@@ -465,33 +490,45 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
 
     let k = a.kind
     case k
-    of nkBracketExpr, nkCurlyExpr:
+    of nkBracketExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent(if k == nkBracketExpr:"[]=" else:"{}="),
-                              n.info)
+      result.add newIdentNode(getIdent("[]="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
+      let a0 = semTemplBody(c, a.sons[0])
+      withBracketExpr c, a0:
+        result = semTemplBodySons(c, result)
+    of nkCurlyExpr:
+      result = newNodeI(nkCall, n.info)
+      result.add newIdentNode(getIdent("{}="), n.info)
+      for i in 0 ..< a.len: result.add(a[i])
+      result.add(b)
+      result = semTemplBodySons(c, result)
     else:
-      result = n
-    result = semTemplBodySons(c, result)
-  else:
+      result = semTemplBodySons(c, n)
+  of nkCallKinds-{nkPostfix}:
+    result = semTemplBodySons(c, n)
+    if c.bracketExpr != nil and n.len == 2 and oprIsRoof(n.sons[0]):
+      result.add c.bracketExpr
+  of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
-    if n.kind == nkDotExpr or n.kind == nkAccQuoted:
-      let s = qualifiedLookUp(c.c, n, {})
-      if s != nil:
-        # do not symchoice a quoted template parameter (bug #2390):
-        if s.owner == c.owner and s.kind == skParam and
-            n.kind == nkAccQuoted and n.len == 1:
-          incl(s.flags, sfUsed)
-          styleCheckUse(n.info, s)
-          return newSymNode(s, n.info)
-        elif contains(c.toBind, s.id):
-          return symChoice(c.c, n, s, scClosed)
-        elif contains(c.toMixin, s.name.id):
-          return symChoice(c.c, n, s, scForceOpen)
-        else:
-          return symChoice(c.c, n, s, scOpen)
+    let s = qualifiedLookUp(c.c, n, {})
+    if s != nil:
+      # do not symchoice a quoted template parameter (bug #2390):
+      if s.owner == c.owner and s.kind == skParam and
+          n.kind == nkAccQuoted and n.len == 1:
+        incl(s.flags, sfUsed)
+        styleCheckUse(n.info, s)
+        return newSymNode(s, n.info)
+      elif contains(c.toBind, s.id):
+        return symChoice(c.c, n, s, scClosed)
+      elif contains(c.toMixin, s.name.id):
+        return symChoice(c.c, n, s, scForceOpen)
+      else:
+        return symChoice(c.c, n, s, scOpen)
+    result = semTemplBodySons(c, n)
+  else:
     result = semTemplBodySons(c, n)
 
 proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =

@@ -109,7 +109,7 @@ div.tabContent.hide { display: none; }
 proc td(s: string): string =
   result = "<td>" & s.substr(0, 200).xmlEncode & "</td>"
 
-proc getCommit(db: TDbConn, c: int): string =
+proc getCommit(db: DbConn, c: int): string =
   var commit = c
   for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
     if commit == 0: result = thisCommit[0]

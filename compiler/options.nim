@@ -40,7 +40,7 @@ type                          # please make sure we have under 32 options
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optDeadCodeElim,
     optListCmd, optCompileOnly, optNoLinking,
-    optSafeCode,              # only allow safe code
+    optReportConceptFailures, # report 'compiles' or 'concept' matching failures
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
     optGenStaticLib,          # generate a static library
@@ -86,7 +86,7 @@ type                          # please make sure we have under 32 options
     gcNone, gcBoehm, gcGo, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
 
   IdeCmd* = enum
-    ideNone, ideSug, ideCon, ideDef, ideUse
+    ideNone, ideSug, ideCon, ideDef, ideUse, ideDus
 
 var
   gIdeCmd*: IdeCmd
@@ -173,7 +173,7 @@ proc existsConfigVar*(key: string): bool =
   result = hasKey(gConfigVars, key)
 
 proc getConfigVar*(key: string): string =
-  result = gConfigVars[key]
+  result = gConfigVars.getOrDefault key
 
 proc setConfigVar*(key, val: string) =
   gConfigVars[key] = val
@@ -421,6 +421,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "con": ideCon
   of "def": ideDef
   of "use": ideUse
+  of "dus": ideDus
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -429,4 +430,5 @@ proc `$`*(c: IdeCmd): string =
   of ideCon: "con"
   of ideDef: "def"
   of ideUse: "use"
+  of ideDus: "dus"
   of ideNone: "none"

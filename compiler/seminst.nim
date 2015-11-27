@@ -47,10 +47,11 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                           flags = {ExactTypeDescValues}): return
     result = true
 
-proc genericCacheGet(genericSym: PSym, entry: TInstantiation): PSym =
+proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
+                     id: CompilesId): PSym =
   if genericSym.procInstCache != nil:
     for inst in genericSym.procInstCache:
-      if sameInstantiation(entry, inst[]):
+      if inst.compilesId == id and sameInstantiation(entry, inst[]):
         return inst.sym
 
 proc removeDefaultParamValues(n: PNode) =
@@ -164,7 +165,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   addDecl(c, prc)
 
   pushInfoContext(info)
-  var cl = initTypeVars(c, pt, info)
+  var cl = initTypeVars(c, pt, info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
@@ -238,24 +239,32 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   pushInfoContext(info)
   var entry = TInstantiation.new
   entry.sym = result
-  newSeq(entry.concreteTypes, gp.len)
+  # we need to compare both the generic types and the concrete types:
+  # generic[void](), generic[int]()
+  # see ttypeor.nim test.
   var i = 0
+  newSeq(entry.concreteTypes, fn.typ.len+gp.len-1)
   for s in instantiateGenericParamList(c, gp, pt):
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
   pushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
+  for j in 1 .. result.typ.len-1:
+    entry.concreteTypes[i] = result.typ.sons[j]
+    inc i
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
   n.sons[genericParamsPos] = ast.emptyNode
-  var oldPrc = genericCacheGet(fn, entry[])
+  var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.
     # This means recursive instantiations behave differently when in
     # a ``compiles`` context but this is the lesser evil. See
     # bug #1055 (tevilcompiles).
-    if c.inCompilesContext == 0: fn.procInstCache.safeAdd(entry)
+    #if c.compilesContextId == 0:
+    entry.compilesId = c.compilesContextId
+    fn.procInstCache.safeAdd(entry)
     c.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)

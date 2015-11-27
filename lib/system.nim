@@ -14,14 +14,6 @@
 ## explicitly. Because of this there cannot be a user-defined module named
 ## ``system``.
 ##
-## Exception hierarchy
-## ===================
-##
-## For visual convenience here is the exception inheritance hierarchy
-## represented as a tree:
-##
-## .. include:: ../doc/exception_hierarchy_fragment.txt
-##
 ## Module system
 ## =============
 ##
@@ -151,6 +143,12 @@ proc declaredInScope*(x: expr): bool {.
 proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin 'addr' operator for taking the address of a memory location.
   ## Cannot be overloaded.
+  ##
+  ## .. code-block:: nim
+  ##  var
+  ##    buf: seq[char] = @['a','b','c']
+  ##    p: pointer = buf[1].addr
+  ##  echo cast[ptr char](p)[]    # b
   discard
 
 proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
@@ -221,11 +219,21 @@ proc high*[T](x: T): T {.magic: "High", noSideEffect.}
   ## the highest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  high(arr) #=> 6
+  ##  high(2) #=> 9223372036854775807
 
 proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ## returns the lowest possible index of an array, a sequence, a string or
   ## the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  high(arr) #=> 0
+  ##  high(2) #=> -9223372036854775808
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
@@ -243,7 +251,7 @@ when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
-  proc `[]=`*[I: Ordinal;T,S](a: var T; i: I;
+  proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
@@ -584,6 +592,10 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
+  ##
+  ## .. code-block:: nim
+  ##  sizeof('A') #=> 1
+  ##  sizeof(2) #=> 8
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
@@ -610,11 +622,21 @@ proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.
   ## increments the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = succ(x, y)``.
+  ##
+  ## .. code-block:: nim
+  ##  var i = 2
+  ##  inc(i) #=> 3
+  ##  inc(i, 3) #=> 6
 
 proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
   ## decrements the ordinal ``x`` by ``y``. If such a value does not
   ## exist, ``EOutOfRange`` is raised or a compile time error occurs. This is a
   ## short notation for: ``x = pred(x, y)``.
+  ##
+  ## .. code-block:: nim
+  ##  var i = 2
+  ##  dec(i) #=> 1
+  ##  dec(i, 3) #=> -2
 
 proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ## creates a new sequence of type ``seq[T]`` with length ``len``.
@@ -659,11 +681,22 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
   ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
   ## always an int.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,1,1,1,1]
+  ##  len(arr) #=> 5
+  ##  for i in 0..<arr.len:
+  ##    echo arr[i] #=> 1,1,1,1,1
 
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
   ## ``x = x + {y}``, but it might be more efficient.
+  ##
+  ## .. code-block:: nim
+  ##  var a = initSet[int](4)
+  ##  a.incl(2) #=> {2}
+  ##  a.incl(3) #=> {2, 3}
 
 template incl*[T](s: var set[T], flags: set[T]) =
   ## includes the set of flags to the set ``x``.
@@ -672,6 +705,10 @@ template incl*[T](s: var set[T], flags: set[T]) =
 proc excl*[T](x: var set[T], y: T) {.magic: "Excl", noSideEffect.}
   ## excludes element ``y`` to the set ``x``. This is the same as
   ## ``x = x - {y}``, but it might be more efficient.
+  ##
+  ## .. code-block:: nim
+  ##  var b = {2,3,5,6,12,545}
+  ##  b.excl(5)  #=> {2,3,6,12,545}
 
 template excl*[T](s: var set[T], flags: set[T]) =
   ## excludes the set of flags to ``x``.
@@ -680,12 +717,22 @@ template excl*[T](s: var set[T], flags: set[T]) =
 proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ## returns the cardinality of the set ``x``, i.e. the number of elements
   ## in the set.
+  ##
+  ## .. code-block:: nim
+  ##  var i = {1,2,3,4}
+  ##  card(i) #=> 4
 
 proc ord*[T](x: T): int {.magic: "Ord", noSideEffect.}
   ## returns the internal int value of an ordinal value ``x``.
+  ##
+  ## .. code-block:: nim
+  ##  ord('A') #=> 65
 
 proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
   ## converts an int in the range 0..255 to a character.
+  ##
+  ## .. code-block:: nim
+  ##  chr(65) #=> A
 
 # --------------------------------------------------------------------------
 # built-in operators
@@ -793,6 +840,7 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ##   1 div 2 == 0
   ##   2 div 2 == 1
   ##   3 div 2 == 1
+  ##   7 div 5 == 2
 
 when defined(nimnomagic64):
   proc `div` *(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
@@ -803,8 +851,12 @@ proc `mod` *(x, y: int): int {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int8): int8 {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
 proc `mod` *(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
-  ## computes the integer modulo operation. This is the same as
+  ## computes the integer modulo operation (remainder).
+  ## This is the same as
   ## ``x - (x div y) * y``.
+  ##
+  ## .. code-block:: Nim
+  ##   (7 mod 5) == 2
 
 when defined(nimnomagic64):
   proc `mod` *(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
@@ -816,12 +868,13 @@ proc `shr` *(x, y: int8): int8 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
 proc `shr` *(x, y: int64): int64 {.magic: "ShrI", noSideEffect.}
-  ## computes the `shift right` operation of `x` and `y`.
+  ## computes the `shift right` operation of `x` and `y`, filling
+  ## vacant bit positions with zeros.
   ##
   ## .. code-block:: Nim
-  ##   0b0001_0000'i8 shr 2 == 0b0100_0000'i8
-  ##   0b1000_0000'i8 shr 2 == 0b0000_0000'i8
-  ##   0b0000_0001'i8 shr 9 == 0b0000_0000'i8
+  ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+  ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
+  ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
 
 proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
@@ -829,6 +882,10 @@ proc `shl` *(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
 proc `shl` *(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
   ## computes the `shift left` operation of `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  1'i32 shl 4  == 0x0000_0010
+  ##  1'i64 shl 4  == 0x0000_0000_0000_0010
 
 proc `and` *(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
@@ -836,6 +893,9 @@ proc `and` *(x, y: int16): int16 {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int32): int32 {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int64): int64 {.magic: "BitandI", noSideEffect.}
   ## computes the `bitwise and` of numbers `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  (0xffff'i16 and 0x0010'i16) == 0x0010
 
 proc `or` *(x, y: int): int {.magic: "BitorI", noSideEffect.}
 proc `or` *(x, y: int8): int8 {.magic: "BitorI", noSideEffect.}
@@ -843,6 +903,9 @@ proc `or` *(x, y: int16): int16 {.magic: "BitorI", noSideEffect.}
 proc `or` *(x, y: int32): int32 {.magic: "BitorI", noSideEffect.}
 proc `or` *(x, y: int64): int64 {.magic: "BitorI", noSideEffect.}
   ## computes the `bitwise or` of numbers `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  (0x0005'i16 or 0x0010'i16) == 0x0015
 
 proc `xor` *(x, y: int): int {.magic: "BitxorI", noSideEffect.}
 proc `xor` *(x, y: int8): int8 {.magic: "BitxorI", noSideEffect.}
@@ -850,6 +913,9 @@ proc `xor` *(x, y: int16): int16 {.magic: "BitxorI", noSideEffect.}
 proc `xor` *(x, y: int32): int32 {.magic: "BitxorI", noSideEffect.}
 proc `xor` *(x, y: int64): int64 {.magic: "BitxorI", noSideEffect.}
   ## computes the `bitwise xor` of numbers `x` and `y`.
+  ##
+  ## .. code-block:: Nim
+  ##  (0x1011'i16 xor 0x0101'i16) == 0x1110
 
 proc `==` *(x, y: int): bool {.magic: "EqI", noSideEffect.}
 proc `==` *(x, y: int8): bool {.magic: "EqI", noSideEffect.}
@@ -950,10 +1016,17 @@ proc `*`*[T: SomeUnsignedInt](x, y: T): T {.magic: "MulU", noSideEffect.}
 proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
   ## computes the integer division. This is roughly the same as
   ## ``floor(x/y)``.
+  ##
+  ## .. code-block:: Nim
+  ##  (7 div 5) == 2
 
 proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
-  ## computes the integer modulo operation. This is the same as
+  ## computes the integer modulo operation (remainder).
+  ## This is the same as
   ## ``x - (x div y) * y``.
+  ##
+  ## .. code-block:: Nim
+  ##   (7 mod 5) == 2
 
 proc `<=`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
   ## Returns true iff ``x <= y``.
@@ -1062,6 +1135,10 @@ proc cmp*[T](x, y: T): int {.procvar.} =
   ## and 0 iff x == y. This is useful for writing generic algorithms without
   ## performance loss. This generic implementation uses the `==` and `<`
   ## operators.
+  ##
+  ## .. code-block:: Nim
+  ##  import algorithm
+  ##  echo sorted(@[4,2,6,5,8,7], cmp[int])
   if x == y: return 0
   if x < y: return -1
   return 1
@@ -1089,6 +1166,11 @@ proc setLen*(s: var string, newlen: Natural) {.
   ## If the current length is greater than the new length,
   ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
   ## a size, use ``newString`` instead.
+  ##
+  ## .. code-block:: Nim
+  ##  var myS = "Nim is great!!"
+  ##  myS.setLen(3)
+  ##  echo myS, " is fantastic!!"
 
 proc newString*(len: Natural): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
@@ -1207,9 +1289,18 @@ proc compileOption*(option, arg: string): bool {.
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
 const
-  hasThreadSupport = compileOption("threads")
+  hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
+
+when defined(boehmgc):
+  when defined(windows):
+    const boehmLib = "boehmgc.dll"
+  elif defined(macosx):
+    const boehmLib = "libgc.dylib"
+  else:
+    const boehmLib = "libgc.so.1"
+  {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
 when taintMode:
   type TaintedString* = distinct string ## a distinct string type that
@@ -1290,6 +1381,10 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## containers should also call their adding proc `add` for consistency.
   ## Generic code becomes much easier to write if the Nim naming scheme is
   ## respected.
+  ##
+  ## .. code-block:: nim
+  ##   var s: seq[string] = @["test2","test2"]
+  ##   s.add("test") #=> @[test2, test2, test]
   let xl = x.len
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
@@ -1304,6 +1399,10 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
+  ##
+  ## .. code-block:: nim
+  ##  var i = @[1,2,3,4,5]
+  ##  i.del(2) #=> @[1, 2, 5, 4]
   let xl = x.len - 1
   shallowCopy(x[i], x[xl])
   setLen(x, xl)
@@ -1311,6 +1410,10 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by moving ``x[i+1..]`` by one position.
   ## This is an O(n) operation.
+  ##
+  ## .. code-block:: nim
+  ##  var i = @[1,2,3,4,5]
+  ##  i.delete(2) #=> @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
     for j in i..xl-2: shallowCopy(x[j], x[j+1])
@@ -1326,6 +1429,10 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
 
 proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   ## inserts `item` into `x` at position `i`.
+  ##
+  ## .. code-block:: nim
+  ##  var i = @[1,2,3,4,5]
+  ##  i.insert(2,4) #=> @[1, 2, 3, 4, 2, 5]
   template defaultImpl =
     let xl = x.len
     setLen(x, xl+1)
@@ -1337,7 +1444,8 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
     defaultImpl()
   else:
     when defined(js):
-      {.emit: "`x`[`x`_Idx].splice(`i`, 0, null);".}
+      var it : T
+      {.emit: "`x`[`x`_Idx].splice(`i`, 0, `it`);".}
     else:
       defaultImpl()
   x[i] = item
@@ -1346,6 +1454,12 @@ proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
   ## takes any Nim variable and returns its string representation. It
   ## works even for complex data graphs with cycles. This is a great
   ## debugging tool.
+  ##
+  ## .. code-block:: nim
+  ##  var s: seq[string] = @["test2","test2"]
+  ##  var i = @[1,2,3,4,5]
+  ##  repr(s) #=> 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
+  ##  repr(i) #=> 0x1055ed050[1, 2, 3, 4, 5]
 
 type
   ByteAddress* = int
@@ -1694,10 +1808,10 @@ const
   NimMajor*: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 11
+  NimMinor*: int = 12
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 3
+  NimPatch*: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2089,53 +2203,6 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   result = s[L]
   setLen(s, L)
 
-proc each*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] {.
-  deprecated.} =
-  ## The well-known ``map`` operation from functional programming. Applies
-  ## `op` to every item in `data` and returns the result as a sequence.
-  ##
-  ## **Deprecated since version 0.9:** Use the ``map`` proc instead.
-  newSeq(result, data.len)
-  for i in 0..data.len-1: result[i] = op(data[i])
-
-proc each*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) {.
-  deprecated.} =
-  ## The well-known ``map`` operation from functional programming. Applies
-  ## `op` to every item in `data` modifying it directly.
-  ##
-  ## **Deprecated since version 0.9:** Use the ``map`` proc instead.
-  for i in 0..data.len-1: op(data[i])
-
-proc map*[T, S](data: openArray[T], op: proc (x: T): S {.closure.}): seq[S] =
-  ## Returns a new sequence with the results of `op` applied to every item in
-  ## `data`.
-  ##
-  ## Since the input is not modified you can use this version of ``map`` to
-  ## transform the type of the elements in the input sequence. Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     a = @[1, 2, 3, 4]
-  ##     b = map(a, proc(x: int): string = $x)
-  ##   assert b == @["1", "2", "3", "4"]
-  newSeq(result, data.len)
-  for i in 0..data.len-1: result[i] = op(data[i])
-
-proc map*[T](data: var openArray[T], op: proc (x: var T) {.closure.}) =
-  ## Applies `op` to every item in `data` modifying it directly.
-  ##
-  ## Note that this version of ``map`` requires your input and output types to
-  ## be the same, since they are modified in-place. Example:
-  ##
-  ## .. code-block:: nim
-  ##   var a = @["1", "2", "3", "4"]
-  ##   echo repr(a)
-  ##   # --> ["1", "2", "3", "4"]
-  ##   map(a, proc(x: var string) = x &= "42")
-  ##   echo repr(a)
-  ##   # --> ["142", "242", "342", "442"]
-  for i in 0..data.len-1: op(data[i])
-
 iterator fields*[T: tuple|object](x: T): RootObj {.
   magic: "Fields", noSideEffect.}
   ## iterates over every field of `x`. Warning: This really transforms
@@ -2235,7 +2302,9 @@ proc `$`*[T: tuple|object](x: T): string =
     firstElement = false
   result.add(")")
 
-proc collectionToString[T](x: T, b, e: string): string =
+proc collectionToString[T: set | seq](x: T, b, e: string): string =
+  when x is seq:
+    if x.isNil: return "nil"
   result = b
   var firstElement = true
   for value in items(x):
@@ -3465,6 +3534,7 @@ proc procCall*(x: expr) {.magic: "ProcCall", compileTime.} =
   ##   procCall someMethod(a, b)
   discard
 
+proc `^`*[T](x: int; y: openArray[T]): int {.noSideEffect, magic: "Roof".}
 proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
   ## builtin `roof`:idx: operator that can be used for convenient array access.
   ## ``a[^x]`` is rewritten to ``a[a.len-x]``. However currently the ``a``

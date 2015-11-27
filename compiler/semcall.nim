@@ -95,7 +95,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.inCompilesContext > 0:
+  if c.compilesContextId > 0 and optReportConceptFailures notin gGlobalOptions:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
   if errors.isNil or errors.len == 0:
@@ -133,7 +133,10 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     add(candidates, "\n")
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  localError(n.info, errGenerated, result)
+  if c.compilesContextId > 0 and optReportConceptFailures in gGlobalOptions:
+    globalError(n.info, errGenerated, result)
+  else:
+    localError(n.info, errGenerated, result)
 
 proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
   for scope in walkScopes(c.currentScope):
@@ -235,7 +238,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if c.inCompilesContext > 0:
+    if c.compilesContextId > 0:
       # quick error message for performance of 'compiles' built-in:
       globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:

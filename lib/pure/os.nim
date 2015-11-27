@@ -810,11 +810,12 @@ type
 
 {.deprecated: [TPathComponent: PathComponent].}
 
-iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
+iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
   tags: [ReadDirEffect].} =
   ## walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item is returned.
-  ## Walking is not recursive.
+  ## Walking is not recursive. If ``relative`` is true the resulting path is
+  ## shortened to be relative to ``dir``.
   ## Example: This directory structure::
   ##   dirA / dirB / fileB1.txt
   ##        / dirC
@@ -843,7 +844,9 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
             k = pcDir
           if (f.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
             k = succ(k)
-          yield (k, dir / extractFilename(getFilename(f)))
+          let xx = if relative: extractFilename(getFilename(f))
+                   else: dir / extractFilename(getFilename(f))
+          yield (k, xx)
         if findNextFile(h, f) == 0'i32: break
       findClose(h)
   else:
@@ -855,7 +858,8 @@ iterator walkDir*(dir: string): tuple[kind: PathComponent, path: string] {.
         var y = $x.d_name
         if y != "." and y != "..":
           var s: Stat
-          y = dir / y
+          if not relative:
+            y = dir / y
           var k = pcFile
 
           when defined(linux) or defined(macosx) or defined(bsd):
