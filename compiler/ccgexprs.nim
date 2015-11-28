@@ -959,8 +959,7 @@ proc genEcho(p: BProc, n: PNode) =
       addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeat("%s", n.len) & tnl), args)
-  linefmt(p, cpsStmts, "fflush(stdout);$n",
-          makeCString(repeat("%s", n.len) & tnl))
+  linefmt(p, cpsStmts, "fflush(stdout);$n")
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
