@@ -92,6 +92,10 @@ type
 {.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger,
     PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
 
+var
+  level {.threadvar.}: Level   ## global log filter
+  handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
+
 proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
   ## Format a log message using the ``frmt`` format string, ``level`` and varargs.
   ## See the module documentation for the format string syntax.
@@ -133,13 +137,13 @@ method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
 
 method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
-  if level >= logger.levelThreshold:
+  if level >= logging.level and level >= logger.levelThreshold:
     writeLine(stdout, substituteLog(logger.fmtStr, level, args))
     if level in {lvlError, lvlFatal}: flushFile(stdout)
 
 method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using ``logger`` only.
-  if level >= logger.levelThreshold:
+  if level >= logging.level and level >= logger.levelThreshold:
     writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
     if level in {lvlError, lvlFatal}: flushFile(logger.file)
 
@@ -224,7 +228,7 @@ proc rotate(logger: RollingFileLogger) =
 
 method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`]) =
   ## Logs to a file using rolling ``logger`` only.
-  if level >= logger.levelThreshold:
+  if level >= logging.level and level >= logger.levelThreshold:
     if logger.curLine >= logger.maxLines:
       logger.file.close()
       rotate(logger)
@@ -237,9 +241,6 @@ method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`])
     logger.curLine.inc
 
 # --------
-
-var level {.threadvar.}: Level   ## global log filter
-var handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
 proc logLoop(level: Level, args: varargs[string, `$`]) =
   for logger in items(handlers):
