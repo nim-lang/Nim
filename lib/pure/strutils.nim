@@ -1344,8 +1344,8 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
 
 # floating point formating:
-
-proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
+when not defined(js):
+  proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
                                      importc: "sprintf", varargs, noSideEffect.}
 
 type
@@ -1370,29 +1370,44 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``biggestFloat`` type.
   ##
   ## If ``precision == 0``, it tries to format it nicely.
-  const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
-  var
-    frmtstr {.noinit.}: array[0..5, char]
-    buf {.noinit.}: array[0..2500, char]
-    L: cint
-  frmtstr[0] = '%'
-  if precision > 0:
-    frmtstr[1] = '#'
-    frmtstr[2] = '.'
-    frmtstr[3] = '*'
-    frmtstr[4] = floatFormatToChar[format]
-    frmtstr[5] = '\0'
-    L = c_sprintf(buf, frmtstr, precision, f)
+  when defined(js):
+    var res: cstring
+    case format
+    of ffDefault:
+      {.emit: "`res` = `f`.toString();".}
+    of ffDecimal:
+      {.emit: "`res` = `f`.toFixed(`precision`);".}
+    of ffScientific:
+      {.emit: "`res` = `f`.toExponential(`precision`);".}
+    result = $res
+    for i in 0 ..< result.len:
+      # Depending on the locale either dot or comma is produced,
+      # but nothing else is possible:
+      if result[i] in {'.', ','}: result[i] = decimalsep
   else:
-    frmtstr[1] = floatFormatToChar[format]
-    frmtstr[2] = '\0'
-    L = c_sprintf(buf, frmtstr, f)
-  result = newString(L)
-  for i in 0 ..< L:
-    # Depending on the locale either dot or comma is produced,
-    # but nothing else is possible:
-    if buf[i] in {'.', ','}: result[i] = decimalsep
-    else: result[i] = buf[i]
+    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
+    var
+      frmtstr {.noinit.}: array[0..5, char]
+      buf {.noinit.}: array[0..2500, char]
+      L: cint
+    frmtstr[0] = '%'
+    if precision > 0:
+      frmtstr[1] = '#'
+      frmtstr[2] = '.'
+      frmtstr[3] = '*'
+      frmtstr[4] = floatFormatToChar[format]
+      frmtstr[5] = '\0'
+      L = c_sprintf(buf, frmtstr, precision, f)
+    else:
+      frmtstr[1] = floatFormatToChar[format]
+      frmtstr[2] = '\0'
+      L = c_sprintf(buf, frmtstr, f)
+    result = newString(L)
+    for i in 0 ..< L:
+      # Depending on the locale either dot or comma is produced,
+      # but nothing else is possible:
+      if buf[i] in {'.', ','}: result[i] = decimalsep
+      else: result[i] = buf[i]
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[0..32] = 16; decimalSep = '.'): string {.

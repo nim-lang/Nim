@@ -223,6 +223,9 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "varres/tvartup"]:
     test "tests/" & testfile & ".nim"
 
+  for testfile in ["pure/strutils"]:
+    test "lib/" & testfile & ".nim"
+
 # ------------------------- manyloc -------------------------------------------
 #proc runSpecialTests(r: var TResults, options: string) =
 #  for t in ["lib/packages/docutils/highlite"]:

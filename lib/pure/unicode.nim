@@ -114,6 +114,7 @@ proc validateUtf8*(s: string): int =
     if ord(s[i]) <=% 127:
       inc(i)
     elif ord(s[i]) shr 5 == 0b110:
+      if ord(s[i]) < 0xc2: return i # Catch overlong ascii representations.
       if i+1 < L and ord(s[i+1]) shr 6 == 0b10: inc(i, 2)
       else: return i
     elif ord(s[i]) shr 4 == 0b1110:
