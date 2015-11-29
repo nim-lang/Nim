@@ -1780,7 +1780,24 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
     result.typ = n[1].typ
-  else: result = semDirectOp(c, n, flags)
+  of mPlugin:
+    # semDirectOp with conditional 'afterCallActions':
+    let nOrig = n.copyTree
+    #semLazyOpAux(c, n)
+    result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
+    if result == nil:
+      result = errorNode(c, n)
+    else:
+      let callee = result.sons[0].sym
+      if callee.magic == mNone:
+        semFinishOperands(c, result)
+      activate(c, result)
+      fixAbstractType(c, result)
+      analyseIfAddressTakenInCall(c, result)
+      if callee.magic != mNone:
+        result = magicsAfterOverloadResolution(c, result, flags)
+  else:
+    result = semDirectOp(c, n, flags)
 
 proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # If semCheck is set to false, ``when`` will return the verbatim AST of
