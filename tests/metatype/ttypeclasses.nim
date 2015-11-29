@@ -17,12 +17,12 @@ type
   TFoo[T] = object
     val: T
 
-  T1 = expr
-  T2 = expr
+  T1 = auto
+  T2 = auto
 
   Numeric = int|float
 
-proc takesExpr(x, y) =
+proc takesExpr(x, y: auto) =
   echo x, y
 
 proc same(x, y: T1) =
@@ -31,7 +31,7 @@ proc same(x, y: T1) =
 proc takesFoo(x, y: TFoo) =
   echo x.val, y.val
 
-proc takes2Types(x,y: T1, z: T2) =
+proc takes2Types[T1, T2](x,y: T1, z: T2) =
   echo x, y, z
 
 takesExpr(1, 2)
