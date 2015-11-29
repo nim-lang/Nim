@@ -31,6 +31,12 @@ when withRealTime and not declared(getTicks):
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 
+type
+  ObjectSpaceIter = object
+    state: range[-1..0]
+
+iterToProc(allObjects, ptr ObjectSpaceIter, allObjectsAsProc)
+
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
   rcWhite = 0b000  # cell is colored white
@@ -85,6 +91,7 @@ type
     region: MemRegion        # garbage collected region
     stat: GcStat
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
+    spaceIter: ObjectSpaceIter
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -487,6 +494,8 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
 proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   collectCT(gch)
   var ol = usrToCell(old)
+  gcAssert(isAllocatedPtr(gch.region, ol), "growObj: freed pointer?")
+
   sysAssert(ol.typ != nil, "growObj: 1")
   gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
   sysAssert(allocInv(gch.region), "growObj begin")
@@ -547,6 +556,7 @@ proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
 
 template takeStartTime(workPackageSize) {.dirty.} =
   const workPackage = workPackageSize
+  var debugticker = 1000
   when withRealTime:
     var steps = workPackage
     var t0: Ticks
@@ -554,8 +564,12 @@ template takeStartTime(workPackageSize) {.dirty.} =
 
 template takeTime {.dirty.} =
   when withRealTime: dec steps
+  dec debugticker
 
 template checkTime {.dirty.} =
+  if debugticker <= 0:
+    echo "in loop"
+    debugticker = 1000
   when withRealTime:
     if steps == 0:
       steps = workPackage
@@ -580,35 +594,45 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
     gcAssert(c.typ != nil, "freeCyclicCell")
     zeroMem(c, sizeof(Cell))
 
-proc sweep(gch: var GcHeap) =
-  # XXX make this incremental!
-  for x in allObjects(gch.region):
+proc sweep(gch: var GcHeap): bool =
+  takeStartTime(100)
+  echo "loop start"
+  while true:
+    let x = allObjectsAsProc(gch.region, addr gch.spaceIter)
+    if gch.spaceIter.state < 0: break
+    takeTime()
     if isCell(x):
       # cast to PCell is correct here:
       var c = cast[PCell](x)
       if c.color == rcWhite: freeCyclicCell(gch, c)
       else: c.setColor(rcWhite)
+    checkTime()
+  # prepare for next iteration:
+  echo "loop end"
+  gch.spaceIter = ObjectSpaceIter()
+  result = true
 
 proc markS(gch: var GcHeap, c: PCell) =
-  if x.color != rcGrey:
-    x.setColor(rcGrey)
-    add(gch.greyStack, x)
+  if c.color != rcGrey:
+    c.setColor(rcGrey)
+    add(gch.greyStack, c)
   #forAllChildren(c, waMarkGrey)
   #x.setColor(rcBlack)
 
-proc markIncrementally(gch: var GcHeap): bool =
+proc markIncremental(gch: var GcHeap): bool =
   var L = addr(gch.greyStack.len)
   takeStartTime(100)
   while L[] > 0:
     var c = gch.greyStack.d[0]
-    sysAssert(isAllocatedPtr(gch.region, c), "CollectZCT: isAllocatedPtr")
+    sysAssert(isAllocatedPtr(gch.region, c), "markIncremental: isAllocatedPtr")
     gch.greyStack.d[0] = gch.greyStack.d[L[] - 1]
     dec(L[])
     takeTime()
-    if c.color == clGrey:
+    if c.color == rcGrey:
+      c.setColor(rcBlack)
       forAllChildren(c, waMarkGrey)
-      c.setColor(clBlack)
     checkTime()
+  gcAssert gch.greyStack.len == 0, "markIncremental: greystack not empty "
   result = true
 
 proc markGlobals(gch: var GcHeap) =
@@ -616,7 +640,7 @@ proc markGlobals(gch: var GcHeap) =
 
 proc markLocals(gch: var GcHeap) =
   var d = gch.decStack.d
-  for i in 0..<gch.decStack.len:
+  for i in 0 .. < gch.decStack.len:
     sysAssert isAllocatedPtr(gch.region, d[i]), "markLocals"
     markS(gch, d[i])
 
@@ -666,7 +690,7 @@ proc doOperation(p: pointer, op: WalkOp) =
     else:
       markS(gch, c)
   of waMarkGrey:
-    if x.color != rcGrey:
+    if c.color != rcBlack:
       c.setColor(rcGrey)
       add(gch.greyStack, c)
   #of waDebug: debugGraph(c)
@@ -681,13 +705,16 @@ proc collectCycles(gch: var GcHeap): bool =
   while gch.zct.len > 0: discard collectZCT(gch)
   markGlobals(gch)
   markLocals(gch)
-  if markIncrementally(gch):
-    gch.phase = Phase.Sweeping
-    sweep(gch)
-    gch.phase = Phase.None
-    result = true
-  else:
+  case gch.phase
+  of Phase.None, Phase.Marking:
     gch.phase = Phase.Marking
+    if markIncremental(gch):
+      gch.phase = Phase.Sweeping
+  of Phase.Sweeping:
+    gcAssert gch.greyStack.len == 0, "greystack not empty"
+    if sweep(gch):
+      gch.phase = Phase.None
+      result = true
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
