@@ -40,7 +40,7 @@ when defined(emscripten):
     MAP_PRIVATE = 2'i32        # Changes are private
 
   var MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
-  type 
+  type
     PEmscriptenMMapBlock = ptr EmscriptenMMapBlock
     EmscriptenMMapBlock {.pure, inheritable.} = object
       realSize: int        # size of previous chunk; for coalescing
@@ -398,6 +398,9 @@ iterator allObjects(m: MemRegion): pointer {.inline.} =
         else:
           let c = cast[PBigChunk](c)
           yield addr(c.data)
+
+proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
+                      magic: "Plugin", compileTime.}
 
 proc isCell(p: pointer): bool {.inline.} =
   result = cast[ptr FreeCell](p).zeroField >% 1

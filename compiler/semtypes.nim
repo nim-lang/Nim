@@ -871,11 +871,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
 
-  of tyExpr:
-    if procKind notin {skMacro, skTemplate}:
-      result = addImplicitGeneric(newTypeS(tyAnything, c))
-      #result = addImplicitGenericImpl(newTypeS(tyGenericParam, c), nil)
-
   of tyGenericParam:
     markUsed(info, paramType.sym)
     styleCheckUse(info, paramType.sym)
@@ -1002,7 +997,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           # see tchainediterators
           # in cases like iterator foo(it: iterator): type(it)
           # we don't need to change the return type to iter[T]
-          if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
+          result.flags.incl tfIterator
+          #if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
+          # XXX Would be nice if we could get rid of this
       result.sons[0] = r
       result.n.typ = r
 
