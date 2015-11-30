@@ -604,6 +604,7 @@ proc sweep(gch: var GcHeap): bool =
     if isCell(x):
       # cast to PCell is correct here:
       var c = cast[PCell](x)
+      gcAssert c.color != rcGrey, "cell is still grey?"
       if c.color == rcWhite: freeCyclicCell(gch, c)
       else: c.setColor(rcWhite)
     checkTime()
@@ -613,7 +614,7 @@ proc sweep(gch: var GcHeap): bool =
   result = true
 
 proc markS(gch: var GcHeap, c: PCell) =
-  if c.color != rcGrey:
+  if c.color == rcWhite:
     c.setColor(rcGrey)
     add(gch.greyStack, c)
   #forAllChildren(c, waMarkGrey)
@@ -690,7 +691,7 @@ proc doOperation(p: pointer, op: WalkOp) =
     else:
       markS(gch, c)
   of waMarkGrey:
-    if c.color != rcBlack:
+    if c.color == rcWhite:
       c.setColor(rcGrey)
       add(gch.greyStack, c)
   #of waDebug: debugGraph(c)
@@ -703,10 +704,10 @@ proc collectZCT(gch: var GcHeap): bool {.benign.}
 proc collectCycles(gch: var GcHeap): bool =
   # ensure the ZCT 'color' is not used:
   while gch.zct.len > 0: discard collectZCT(gch)
-  markGlobals(gch)
-  markLocals(gch)
   case gch.phase
   of Phase.None, Phase.Marking:
+    markGlobals(gch)
+    markLocals(gch)
     gch.phase = Phase.Marking
     if markIncremental(gch):
       gch.phase = Phase.Sweeping
