@@ -39,9 +39,9 @@ iterToProc(allObjects, ptr ObjectSpaceIter, allObjectsAsProc)
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
-  rcWhite = 0b000  # cell is colored white
+  rcBlack = 0b000
   rcGrey = 0b001   # traditional color for incremental mark&sweep
-  rcBlack = 0b010  # marked as alive; direct children also have been processed
+  rcWhite = 0b010
   rcUnused = 0b011
   ZctFlag = 0b100  # in ZCT
   rcShift = 3      # shift by rcShift to get the reference counter
@@ -153,7 +153,7 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
 
 template color(c): expr = c.refCount and colorMask
 template setColor(c, col) =
-  when col == rcWhite:
+  when col == rcBlack:
     c.refcount = c.refcount and not colorMask
   else:
     c.refcount = c.refcount and not colorMask or col
@@ -584,6 +584,12 @@ template checkTime {.dirty.} =
 # ---------------- cycle collector -------------------------------------------
 
 proc freeCyclicCell(gch: var GcHeap, c: PCell) =
+  gcAssert(isAllocatedPtr(gch.region, c), "freeCyclicCell: freed pointer?")
+
+  var d = gch.decStack.d
+  for i in 0..gch.decStack.len-1:
+    gcAssert d[i] != c, "wtf man, freeing obviously alive stuff?!!"
+
   prepareDealloc(c)
   gcTrace(c, csCycFreed)
   when logGC: writeCell("cycle collector dealloc cell", c)
@@ -606,7 +612,7 @@ proc sweep(gch: var GcHeap): bool =
       var c = cast[PCell](x)
       gcAssert c.color != rcGrey, "cell is still grey?"
       if c.color == rcWhite: freeCyclicCell(gch, c)
-      else: c.setColor(rcWhite)
+      #else: c.setColor(rcWhite)
     checkTime()
   # prepare for next iteration:
   echo "loop end"
@@ -614,9 +620,20 @@ proc sweep(gch: var GcHeap): bool =
   result = true
 
 proc markS(gch: var GcHeap, c: PCell) =
-  if c.color == rcWhite:
+  # since we start with 'black' cells, we need to mark them here too:
+  if c.color != rcGrey:
     c.setColor(rcGrey)
     add(gch.greyStack, c)
+  when false:
+    # since we start with 'black' cells, we need to mark them unconditionally
+    # here. But this means that we mark too much. Duplicate roots (which can
+    # often happen for stack slots) lead to somewhat duplicate marking.
+    # XXX We could maybe prevent this somehow?
+    if c.color == rcWhite:
+      c.setColor(rcGrey)
+      add(gch.greyStack, c)
+    #elif c.color == rcBlack:
+    #  echo "cell is black?!"
   #forAllChildren(c, waMarkGrey)
   #x.setColor(rcBlack)
 

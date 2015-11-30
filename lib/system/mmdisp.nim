@@ -17,7 +17,7 @@ const
   debugGC = false # we wish to debug the GC...
   logGC = false
   traceGC = false # extensive debugging
-  alwaysCycleGC = false
+  alwaysCycleGC = true
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
   leakDetector = false
