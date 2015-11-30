@@ -39,9 +39,9 @@ iterToProc(allObjects, ptr ObjectSpaceIter, allObjectsAsProc)
 
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
-  rcBlack = 0b000
-  rcGrey = 0b001   # traditional color for incremental mark&sweep
-  rcWhite = 0b010
+  rcBlackOrig = 0b000
+  rcWhiteOrig = 0b001
+  rcGrey = 0b010   # traditional color for incremental mark&sweep
   rcUnused = 0b011
   ZctFlag = 0b100  # in ZCT
   rcShift = 3      # shift by rcShift to get the reference counter
@@ -76,6 +76,7 @@ type
 
   GcHeap = object # this contains the zero count and
                   # non-zero count table
+    black: int    # either 0 or 1.
     stack: ptr GcStack
     stackBottom: pointer
     phase: Phase
@@ -153,10 +154,7 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
 
 template color(c): expr = c.refCount and colorMask
 template setColor(c, col) =
-  when col == rcBlack:
-    c.refcount = c.refcount and not colorMask
-  else:
-    c.refcount = c.refcount and not colorMask or col
+  c.refcount = c.refcount and not colorMask or col
 
 proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
@@ -236,7 +234,7 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
     dec(i)
 
 template markGrey(x: PCell) =
-  if x.color == rcWhite and gch.phase == Phase.Marking:
+  if x.color == 1-gch.black and gch.phase == Phase.Marking:
     x.setColor(rcGrey)
     add(gch.greyStack, x)
 
@@ -425,7 +423,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
   # refcount is zero, color is black, but mark it to be in the ZCT
-  res.refcount = ZctFlag
+  res.refcount = ZctFlag or gch.black
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   # its refcount is zero, so add it to the ZCT:
   addNewObjToZCT(res, gch)
@@ -472,7 +470,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
     if framePtr != nil and framePtr.prev != nil:
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
-  res.refcount = rcIncrement # refcount is 1
+  res.refcount = rcIncrement or gch.black # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   when logGC: writeCell("new cell", res)
   gcTrace(res, csAllocated)
@@ -504,9 +502,9 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   var elemSize = 1
   if ol.typ.kind != tyString: elemSize = ol.typ.base.size
 
-  var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+  let oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
   copyMem(res, ol, oldsize + sizeof(Cell))
-  zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
+  zeroMem(cast[pointer](cast[ByteAddress](res) +% oldsize +% sizeof(Cell)),
           newsize-oldsize)
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
   # This can be wrong for intermediate temps that are nevertheless on the
@@ -536,7 +534,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
       # A better fix would be to emit the location specific write barrier for
       # 'growObj', but this is lots of more work and who knows what new problems
       # this would create.
-      res.refcount = rcIncrement
+      res.refcount = rcIncrement or gch.black
       decRef(ol)
   else:
     sysAssert(ol.typ != nil, "growObj: 5")
@@ -603,6 +601,7 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
 proc sweep(gch: var GcHeap): bool =
   takeStartTime(100)
   echo "loop start"
+  let black = gch.black
   while true:
     let x = allObjectsAsProc(gch.region, addr gch.spaceIter)
     if gch.spaceIter.state < 0: break
@@ -611,31 +610,22 @@ proc sweep(gch: var GcHeap): bool =
       # cast to PCell is correct here:
       var c = cast[PCell](x)
       gcAssert c.color != rcGrey, "cell is still grey?"
-      if c.color == rcWhite: freeCyclicCell(gch, c)
-      #else: c.setColor(rcWhite)
+      if c.color != black: freeCyclicCell(gch, c)
+      # Since this is incremental, we MUST not set the object to 'white' here.
+      # We could set all the remaining objects to white after the 'sweep'
+      # completed but instead we flip the meaning of black/white to save one
+      # traversal over the heap!
     checkTime()
   # prepare for next iteration:
   echo "loop end"
   gch.spaceIter = ObjectSpaceIter()
   result = true
 
-proc markS(gch: var GcHeap, c: PCell) =
+proc markRoot(gch: var GcHeap, c: PCell) =
   # since we start with 'black' cells, we need to mark them here too:
   if c.color != rcGrey:
     c.setColor(rcGrey)
     add(gch.greyStack, c)
-  when false:
-    # since we start with 'black' cells, we need to mark them unconditionally
-    # here. But this means that we mark too much. Duplicate roots (which can
-    # often happen for stack slots) lead to somewhat duplicate marking.
-    # XXX We could maybe prevent this somehow?
-    if c.color == rcWhite:
-      c.setColor(rcGrey)
-      add(gch.greyStack, c)
-    #elif c.color == rcBlack:
-    #  echo "cell is black?!"
-  #forAllChildren(c, waMarkGrey)
-  #x.setColor(rcBlack)
 
 proc markIncremental(gch: var GcHeap): bool =
   var L = addr(gch.greyStack.len)
@@ -647,7 +637,7 @@ proc markIncremental(gch: var GcHeap): bool =
     dec(L[])
     takeTime()
     if c.color == rcGrey:
-      c.setColor(rcBlack)
+      c.setColor(gch.black)
       forAllChildren(c, waMarkGrey)
     checkTime()
   gcAssert gch.greyStack.len == 0, "markIncremental: greystack not empty "
@@ -660,7 +650,7 @@ proc markLocals(gch: var GcHeap) =
   var d = gch.decStack.d
   for i in 0 .. < gch.decStack.len:
     sysAssert isAllocatedPtr(gch.region, d[i]), "markLocals"
-    markS(gch, d[i])
+    markRoot(gch, d[i])
 
 when logGC:
   var
@@ -704,11 +694,11 @@ proc doOperation(p: pointer, op: WalkOp) =
     when hasThreadSupport:
       # could point to a cell which we don't own and don't want to touch/trace
       if isAllocatedPtr(gch.region, c):
-        markS(gch, c)
+        markRoot(gch, c)
     else:
-      markS(gch, c)
+      markRoot(gch, c)
   of waMarkGrey:
-    if c.color == rcWhite:
+    if c.color == 1-gch.black:
       c.setColor(rcGrey)
       add(gch.greyStack, c)
   #of waDebug: debugGraph(c)
@@ -723,15 +713,18 @@ proc collectCycles(gch: var GcHeap): bool =
   while gch.zct.len > 0: discard collectZCT(gch)
   case gch.phase
   of Phase.None, Phase.Marking:
+    #if gch.phase == Phase.None:
+    gch.phase = Phase.Marking
     markGlobals(gch)
     markLocals(gch)
-    gch.phase = Phase.Marking
     if markIncremental(gch):
       gch.phase = Phase.Sweeping
   of Phase.Sweeping:
     gcAssert gch.greyStack.len == 0, "greystack not empty"
     if sweep(gch):
       gch.phase = Phase.None
+      # flip black/white meanings:
+      gch.black = 1 - gch.black
       result = true
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
