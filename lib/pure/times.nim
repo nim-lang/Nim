@@ -1204,3 +1204,6 @@ when isMainModule:
   assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
   assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
   assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
+
+  # Further tests are in tests/stdlib/ttime.nim
+  # koch test c stdlib
