@@ -22,7 +22,7 @@ type
 proc pluginMatches(p: Plugin; s: PSym): bool =
   if s.name.id != p.fn.id:
     return false
-  let module = s.owner.skipGenericOwner
+  let module = s.skipGenericOwner
   if module == nil or module.kind != skModule or
       module.name.id != p.module.id:
     return false
