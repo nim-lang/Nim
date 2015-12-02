@@ -78,21 +78,21 @@ proc add*(monitor: FSMonitor, target: string,
   ## watched paths of ``monitor``.
   ## You can specify the events to report using the ``filters`` parameter.
 
-  var INFilter = -1
+  var INFilter = 0
   for f in filters:
     case f
-    of MonitorAccess: INFilter = INFilter and IN_ACCESS
-    of MonitorAttrib: INFilter = INFilter and IN_ATTRIB
-    of MonitorCloseWrite: INFilter = INFilter and IN_CLOSE_WRITE
-    of MonitorCloseNoWrite: INFilter = INFilter and IN_CLOSE_NO_WRITE
-    of MonitorCreate: INFilter = INFilter and IN_CREATE
-    of MonitorDelete: INFilter = INFilter and IN_DELETE
-    of MonitorDeleteSelf: INFilter = INFilter and IN_DELETE_SELF
-    of MonitorModify: INFilter = INFilter and IN_MODIFY
-    of MonitorMoveSelf: INFilter = INFilter and IN_MOVE_SELF
-    of MonitorMoved: INFilter = INFilter and IN_MOVED_FROM and IN_MOVED_TO
-    of MonitorOpen: INFilter = INFilter and IN_OPEN
-    of MonitorAll: INFilter = INFilter and IN_ALL_EVENTS
+    of MonitorAccess: INFilter = INFilter or IN_ACCESS
+    of MonitorAttrib: INFilter = INFilter or IN_ATTRIB
+    of MonitorCloseWrite: INFilter = INFilter or IN_CLOSE_WRITE
+    of MonitorCloseNoWrite: INFilter = INFilter or IN_CLOSE_NO_WRITE
+    of MonitorCreate: INFilter = INFilter or IN_CREATE
+    of MonitorDelete: INFilter = INFilter or IN_DELETE
+    of MonitorDeleteSelf: INFilter = INFilter or IN_DELETE_SELF
+    of MonitorModify: INFilter = INFilter or IN_MODIFY
+    of MonitorMoveSelf: INFilter = INFilter or IN_MOVE_SELF
+    of MonitorMoved: INFilter = INFilter or IN_MOVED_FROM or IN_MOVED_TO
+    of MonitorOpen: INFilter = INFilter or IN_OPEN
+    of MonitorAll: INFilter = INFilter or IN_ALL_EVENTS
 
   result = inotifyAddWatch(monitor.fd, target, INFilter.uint32)
   if result < 0:
@@ -200,9 +200,18 @@ proc register*(d: Dispatcher, monitor: FSMonitor,
 
 when not defined(testing) and isMainModule:
   proc main =
-    var disp = newDispatcher()
-    var monitor = newMonitor()
-    echo monitor.add("/home/dom/inotifytests/")
+    var
+      disp = newDispatcher()
+      monitor = newMonitor()
+      n = 0
+    n = monitor.add("/tmp")
+    assert n == 1
+    n = monitor.add("/tmp", {MonitorAll})
+    assert n == 1
+    n = monitor.add("/tmp", {MonitorCloseWrite, MonitorCloseNoWrite})
+    assert n == 1
+    n = monitor.add("/tmp", {MonitorMoved, MonitorOpen, MonitorAccess})
+    assert n == 1
     disp.register(monitor,
       proc (m: FSMonitor, ev: MonitorEvent) =
         echo("Got event: ", ev.kind)
