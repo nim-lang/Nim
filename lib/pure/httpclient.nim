@@ -598,7 +598,7 @@ proc generateHeaders(r: Uri, httpMethod: string,
   add(result, "\c\L")
 
 type
-  AsyncHttpClient* = ref object
+  AsyncHttpClient* = ref object of RootObj
     socket: AsyncSocket
     connected: bool
     currentURL: Uri ## Where we are currently connected.
