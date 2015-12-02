@@ -25,7 +25,7 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
-import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils
+import strtabs, asyncnet, asyncdispatch, parseutils, uri, strutils, cgi
 type
   Request* = object
     client*: AsyncSocket # TODO: Separate this into a Response object?
@@ -183,7 +183,9 @@ proc processClient(client: AsyncSocket, address: string,
     for linePart in lineFut.mget.split(' '):
       case i
       of 0: request.reqMethod.shallowCopy(linePart.normalize)
-      of 1: parseUri(linePart, request.url)
+      of 1:
+        parseUri(linePart, request.url)
+        request.url.path = decodeUrl(request.url.path)
       of 2:
         try:
           request.protocol = parseProtocol(linePart)
