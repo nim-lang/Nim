@@ -1361,7 +1361,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   # /proc/<pid>/file
   when defined(windows):
     when useWinUnicode:
-      var buf = cast[WideCString](alloc(256*2))
+      var buf = newWideCString("", 256)
       var len = getModuleFileNameW(0, buf, 256)
       result = buf$len
     else:

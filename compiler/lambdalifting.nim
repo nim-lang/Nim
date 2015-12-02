@@ -126,6 +126,7 @@ type
     fn, closureParam, state, resultSym: PSym # most are only valid if
                                              # fn.kind == skClosureIterator
     obj: PType
+    isIterator: bool
 
   PEnv = ref TEnv
   TEnv {.final.} = object of RootObj
@@ -197,24 +198,29 @@ proc getHiddenParam(routine: PSym): PSym =
   result = hidden.sym
   assert sfFromGeneric in result.flags
 
-proc getEnvParam(routine: PSym): PSym =
+proc getEnvParam*(routine: PSym): PSym =
   let params = routine.ast.sons[paramsPos]
   let hidden = lastSon(params)
   if hidden.kind == nkSym and hidden.sym.name.s == paramName:
     result = hidden.sym
     assert sfFromGeneric in result.flags
 
-proc initIter(iter: PSym): TIter =
+proc initIter(iter: PSym; ptrType: PType = nil): TIter =
   result.fn = iter
-  if iter.kind == skClosureIterator:
+  result.isIterator = ptrType != nil or iter.kind == skClosureIterator
+  #echo "fuck you ", ptrType != nil
+  if result.isIterator:
     var cp = getEnvParam(iter)
     if cp == nil:
-      result.obj = createEnvObj(iter)
+      result.obj = if ptrType != nil: ptrType.lastSon else: createEnvObj(iter)
 
       cp = newSym(skParam, getIdent(paramName), iter, iter.info)
       incl(cp.flags, sfFromGeneric)
-      cp.typ = newType(tyRef, iter)
-      rawAddSon(cp.typ, result.obj)
+      if ptrType != nil:
+        cp.typ = ptrType
+      else:
+        cp.typ = newType(tyRef, iter)
+        rawAddSon(cp.typ, result.obj)
       addHiddenParam(iter, cp)
     else:
       result.obj = cp.typ.sons[0]
@@ -534,6 +540,7 @@ proc searchForInnerProcs(o: POuterContext, n: PNode, env: PEnv) =
     let fn = n.sym
     if isInnerProc(fn, o.fn) and not containsOrIncl(o.processed, fn.id):
       let body = fn.getBody
+      if nfLL in body.flags: return
 
       # handle deeply nested captures:
       let ex = closureCreationPoint(body)
@@ -794,7 +801,7 @@ proc finishEnvironments(o: POuterContext) =
 proc transformOuterProcBody(o: POuterContext, n: PNode; it: TIter): PNode =
   if nfLL in n.flags:
     result = nil
-  elif it.fn.kind == skClosureIterator:
+  elif it.isIterator:
     # unfortunately control flow is still convoluted and we can end up
     # multiple times here for the very same iterator. We shield against this
     # with some rather primitive check for now:
@@ -843,7 +850,7 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
       if newBody != nil:
         local.ast.sons[bodyPos] = newBody
 
-    if it.fn.kind == skClosureIterator and interestingIterVar(local) and
+    if it.isIterator and interestingIterVar(local) and
         it.fn == local.owner:
       # every local goes through the closure:
       #if not containsOrIncl(o.capturedVars, local.id):
@@ -931,7 +938,7 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
     when false:
       if n.sons[1].kind == nkSym:
         var local = n.sons[1].sym
-        if it.fn.kind == skClosureIterator and interestingIterVar(local) and
+        if it.isIterator and interestingIterVar(local) and
             it.fn == local.owner:
           # every local goes through the closure:
           addUniqueField(it.obj, local)
@@ -941,13 +948,24 @@ proc transformOuterProc(o: POuterContext, n: PNode; it: TIter): PNode =
     if x != nil: n.sons[1] = x
     result = transformOuterConv(n)
   of nkYieldStmt:
-    if it.fn.kind == skClosureIterator: result = transformYield(o, n, it)
+    if it.isIterator: result = transformYield(o, n, it)
     else: outerProcSons(o, n, it)
   of nkReturnStmt:
-    if it.fn.kind == skClosureIterator: result = transformReturn(o, n, it)
+    if it.isIterator: result = transformReturn(o, n, it)
     else: outerProcSons(o, n, it)
   else:
     outerProcSons(o, n, it)
+
+proc liftIterToProc*(fn: PSym; body: PNode; ptrType: PType): PNode =
+  var o = newOuterContext(fn)
+  let ex = closureCreationPoint(body)
+  let env = newEnv(o, nil, ex, fn)
+  addParamsToEnv(fn, env)
+  searchForInnerProcs(o, body, env)
+  createEnvironments(o)
+  let it = initIter(fn, ptrType)
+  result = transformOuterProcBody(o, body, it)
+  finishEnvironments(o)
 
 proc liftLambdas*(fn: PSym, body: PNode): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs

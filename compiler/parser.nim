@@ -991,7 +991,7 @@ proc isExprStart(p: TParser): bool =
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf,
      tkProc, tkIterator, tkBind, tkAddr,
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr,
-     tkTuple, tkObject, tkType, tkWhen, tkCase:
+     tkTuple, tkObject, tkType, tkWhen, tkCase, tkOut:
     result = true
   else: result = false
 
@@ -1038,7 +1038,7 @@ proc parseObject(p: var TParser): PNode
 proc parseTypeClass(p: var TParser): PNode
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode =
-  #| typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'tuple'
+  #| typeKeyw = 'var' | 'out' | 'ref' | 'ptr' | 'shared' | 'tuple'
   #|          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
   #| primary = typeKeyw typeDescK
   #|         /  prefixOperator* identOrLiteral primarySuffix*
@@ -1112,6 +1112,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     optInd(p, result)
     addSon(result, primary(p, pmNormal))
   of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
+  of tkOut: result = parseTypeDescKAux(p, nkVarTy, mode)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
   of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, mode)
@@ -1763,7 +1764,7 @@ proc parseObject(p: var TParser): PNode =
   addSon(result, parseObjectPart(p))
 
 proc parseTypeClassParam(p: var TParser): PNode =
-  if p.tok.tokType == tkVar:
+  if p.tok.tokType in {tkOut, tkVar}:
     result = newNodeP(nkVarTy, p)
     getTok(p)
     result.addSon(p.parseSymbol)
@@ -1771,7 +1772,7 @@ proc parseTypeClassParam(p: var TParser): PNode =
     result = p.parseSymbol
 
 proc parseTypeClass(p: var TParser): PNode =
-  #| typeClassParam = ('var')? symbol
+  #| typeClassParam = ('var' | 'out')? symbol
   #| typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)

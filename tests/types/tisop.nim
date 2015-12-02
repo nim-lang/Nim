@@ -32,7 +32,7 @@ static: assert(f.y.type.name == "string")
 when compiles(f.z):
   {.error: "Foo should not have a `z` field".}
 
-proc p(a, b) =
+proc p(a, b: auto) =
   when a.type is int:
     static: assert false
 

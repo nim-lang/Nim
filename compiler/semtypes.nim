@@ -135,13 +135,19 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     checkMinSonsLen(n, 1)
     var base = semTypeNode(c, n.lastSon, nil)
     result = newOrPrevType(kind, prev, c)
+    var isNilable = false
     # check every except the last is an object:
     for i in isCall .. n.len-2:
-      let region = semTypeNode(c, n[i], nil)
-      if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
-        message n[i].info, errGenerated, "region needs to be an object type"
-      addSonSkipIntLit(result, region)
+      let ni = n[i]
+      if ni.kind == nkNilLit:
+        isNilable = true
+      else:
+        let region = semTypeNode(c, ni, nil)
+        if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
+          message n[i].info, errGenerated, "region needs to be an object type"
+        addSonSkipIntLit(result, region)
     addSonSkipIntLit(result, base)
+    #if not isNilable: result.flags.incl tfNotNil
 
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 1:
@@ -865,11 +871,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
 
-  of tyExpr:
-    if procKind notin {skMacro, skTemplate}:
-      result = addImplicitGeneric(newTypeS(tyAnything, c))
-      #result = addImplicitGenericImpl(newTypeS(tyGenericParam, c), nil)
-
   of tyGenericParam:
     markUsed(info, paramType.sym)
     styleCheckUse(info, paramType.sym)
@@ -996,7 +997,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           # see tchainediterators
           # in cases like iterator foo(it: iterator): type(it)
           # we don't need to change the return type to iter[T]
-          if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
+          result.flags.incl tfIterator
+          #if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
+          # XXX Would be nice if we could get rid of this
       result.sons[0] = r
       result.n.typ = r
 
@@ -1169,6 +1172,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeNode(c, b, prev)
     elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)
+    elif n[0].kind == nkNilLit and n.len == 2:
+      result = semTypeNode(c, n.sons[1], prev)
+      if result.skipTypes({tyGenericInst}).kind in NilableTypes+GenericTypes:
+        if tfNotNil in result.flags:
+          result = freshType(result, prev)
+          result.flags.excl(tfNotNil)
+      else:
+        localError(n.info, errGenerated, "invalid type")
     elif n[0].kind notin nkIdentKinds:
       result = semTypeExpr(c, n)
     else:
