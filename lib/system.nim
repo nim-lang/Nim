@@ -232,8 +232,8 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
-  ##  high(arr) #=> 0
-  ##  high(2) #=> -9223372036854775808
+  ##  low(arr) #=> 0
+  ##  low(2) #=> -9223372036854775808
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
