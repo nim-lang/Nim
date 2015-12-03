@@ -385,7 +385,8 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
       result = newIntNode(nkIntLit, ord(t.kind == tyProc and
                                         t.callConv == ccClosure and
                                         tfIterator notin t.flags))
-    else: discard
+    else:
+      result = newIntNode(nkIntLit, 0)
   else:
     var t2 = n[2].typ.skipTypes({tyTypeDesc})
     maybeLiftType(t2, c, n.info)
@@ -1434,20 +1435,15 @@ proc semYield(c: PContext, n: PNode): PNode =
     var iterType = c.p.owner.typ
     let restype = iterType.sons[0]
     if restype != nil:
-      let adjustedRes = if restype.kind == tyIter: restype.base
-                        else: restype
-      if adjustedRes.kind != tyExpr:
-        n.sons[0] = fitNode(c, adjustedRes, n.sons[0])
+      if restype.kind != tyExpr:
+        n.sons[0] = fitNode(c, restype, n.sons[0])
       if n.sons[0].typ == nil: internalError(n.info, "semYield")
 
-      if resultTypeIsInferrable(adjustedRes):
+      if resultTypeIsInferrable(restype):
         let inferred = n.sons[0].typ
-        if restype.kind == tyIter:
-          restype.sons[0] = inferred
-        else:
-          iterType.sons[0] = inferred
+        iterType.sons[0] = inferred
 
-      semYieldVarResult(c, n, adjustedRes)
+      semYieldVarResult(c, n, restype)
     else:
       localError(n.info, errCannotReturnExpr)
   elif c.p.owner.typ.sons[0] != nil:
@@ -2184,7 +2180,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkTupleClassTy, nkRefTy..nkEnumTy, nkStaticTy:
-    var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc, tyIter})
+    var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
     #result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
@@ -2257,7 +2253,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       var tupexp = semTuplePositionsConstr(c, n, flags)
       if isTupleType(tupexp):
         # reinterpret as type
-        var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc, tyIter})
+        var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
         result.typ = makeTypeDesc(c, typ)
       else:
         result = tupexp

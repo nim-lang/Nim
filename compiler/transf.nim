@@ -478,9 +478,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     result[1] = newNode(nkEmpty).PTransNode
     return result
   c.breakSyms.add(labl)
-  if call.typ.kind != tyIter and
-    (call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
-      call.sons[0].sym.kind != skIterator):
+  if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
+      call.sons[0].sym.kind != skIterator:
     n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
     result[1] = lambdalifting.liftForLoop(n).PTransNode
     discard c.breakSyms.pop
@@ -512,7 +511,6 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   for i in countup(1, sonsLen(call) - 1):
     var arg = transform(c, call.sons[i]).PNode
     var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym
-    if arg.typ.kind == tyIter: continue
     case putArgInto(arg, formal.typ)
     of paDirectMapping:
       idNodeTablePut(newC.mapping, formal, arg)

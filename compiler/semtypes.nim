@@ -832,15 +832,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
     result = addImplicitGeneric(result)
 
-  of tyIter:
-    if paramType.callConv == ccInline:
-      if procKind notin {skTemplate, skMacro, skIterator}:
-        localError(info, errInlineIteratorsAsProcParams)
-      if paramType.len == 1:
-        let lifted = liftingWalk(paramType.base)
-        if lifted != nil: paramType.sons[0] = lifted
-      result = addImplicitGeneric(paramType)
-
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
       var cp = copyType(paramType, getCurrOwner(), false)
@@ -998,7 +989,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           # in cases like iterator foo(it: iterator): type(it)
           # we don't need to change the return type to iter[T]
           result.flags.incl tfIterator
-          #if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
           # XXX Would be nice if we could get rid of this
       result.sons[0] = r
       result.n.typ = r
@@ -1154,7 +1144,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
     let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
-    result = typExpr.typ.skipTypes({tyIter})
+    result = typExpr.typ
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
@@ -1220,7 +1210,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2)
         let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
-        result = typExpr.typ.skipTypes({tyIter})
+        result = typExpr.typ
       else:
         result = semTypeExpr(c, n)
   of nkWhenStmt:
@@ -1301,14 +1291,16 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     result.flags.incl tfHasStatic
   of nkIteratorTy:
     if n.sonsLen == 0:
-      result = newConstraint(c, tyIter)
+      result = newTypeS(tyBuiltInTypeClass, c)
+      let child = newTypeS(tyProc, c)
+      child.flags.incl tfIterator
+      result.addSonSkipIntLit(child)
     else:
       result = semProcTypeWithScope(c, n, prev, skClosureIterator)
+      result.flags.incl(tfIterator)
       if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
-        result.kind = tyIter
         result.callConv = ccInline
       else:
-        result.flags.incl(tfIterator)
         result.callConv = ccClosure
   of nkProcTy:
     if n.sonsLen == 0:

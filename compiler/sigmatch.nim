@@ -1256,10 +1256,6 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
 
-proc isInlineIterator*(t: PType): bool =
-  result = t.kind == tyIter or
-          (t.kind == tyBuiltInTypeClass and t.base.kind == tyIter)
-
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
   of isConvertible, isIntConv: inc(m.convMatches, convMatch)
@@ -1322,13 +1318,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       return arg.typ.n
     else:
       return argSemantized # argOrig
-
-  if r != isNone and f.isInlineIterator:
-    var inlined = newTypeS(tyStatic, c)
-    inlined.sons = @[argType]
-    inlined.n = argSemantized
-    put(m.bindings, f, inlined)
-    return argSemantized
 
   # If r == isBothMetaConvertible then we rerun typeRel.
   # bothMetaCounter is for safety to avoid any infinite loop,
