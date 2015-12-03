@@ -174,20 +174,6 @@ template doEachCmdNoResErr(cmd: expr, dbId: DbConnId; query: SqlQuery; args: var
       db_postgres.`cmd`(dbConn, db_postgres.SqlQuery(query), args)
     else: dbError("Error: unknown Db type")
 
-template doEachCmdNoResNoErr(cmd: expr, dbId: DbConnId; query: SqlQuery; args: varargs[string, `$`]): stmt =
-  let db = dbId.getDbId()
-  case theDbObj.dbInfo[db].kind:
-    of Sqlite:
-      let dbConn = cast[db_sqlite.DbConn](theDbObj.dbInfo[db].db)
-      db_sqlite.`cmd`(dbConn, db_sqlite.SqlQuery(query), args)
-    of Mysql:
-      let dbConn = cast[db_mysql.DbConn](theDbObj.dbInfo[db].db)
-      db_mysql.`cmd`(dbConn, db_mysql.SqlQuery(query), args)
-    of Postgres:
-      let dbConn = cast[db_postgres.DbConn](theDbObj.dbInfo[db].db)
-      db_postgres.`cmd`(dbConn, db_postgres.SqlQuery(query), args)
-    else: discard
-
 proc tryExec*(dbId: DbConnId; query: SqlQuery; args: varargs[string, `$`]): bool {.
     tags: [db_sqlite.FReadDb, db_mysql.FReadDb, db_postgres.FReadDb,
       db_sqlite.FWriteDb, db_mysql.FWriteDb, db_postgres.FWriteDb],
