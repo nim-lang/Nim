@@ -34,8 +34,8 @@ type
   MonitorEventType* = enum ## Monitor event type
     MonitorAccess,       ## File was accessed.
     MonitorAttrib,       ## Metadata changed.
-    MonitorCloseWrite,   ## Writtable file was closed.
-    MonitorCloseNoWrite, ## Unwrittable file closed.
+    MonitorCloseWrite,   ## Writable file was closed.
+    MonitorCloseNoWrite, ## Non-writable file closed.
     MonitorCreate,       ## Subfile was created.
     MonitorDelete,       ## Subfile was deleted.
     MonitorDeleteSelf,   ## Watched file/directory was itself deleted.
