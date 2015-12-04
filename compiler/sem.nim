@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings, plugins, plugins.active
+  semparallel, lowerings, pluginsupport, plugins.active
 
 when defined(nimfix):
   import nimfix.prettybase
@@ -485,4 +485,3 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   popProcCon(c)
 
 const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
-

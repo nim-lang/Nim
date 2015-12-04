@@ -9,8 +9,8 @@
 
 ## The builtin 'system.locals' implemented as a plugin.
 
-import compiler/plugins, compiler/ast, compiler/astalgo, compiler/magicsys,
-  compiler/lookups, compiler/semdata, compiler/lowerings
+import compiler/pluginsupport, compiler/ast, compiler/astalgo,
+  compiler/magicsys, compiler/lookups, compiler/semdata, compiler/lowerings
 
 proc semLocals(c: PContext, n: PNode): PNode =
   var counter = 0
