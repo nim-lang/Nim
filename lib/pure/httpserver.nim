@@ -224,13 +224,15 @@ type
     asyncSocket: AsyncSocket
 {.deprecated: [TAsyncHTTPServer: AsyncHTTPServer, TServer: Server].}
 
-proc open*(s: var Server, port = Port(80), reuseAddr = false) =
+proc open*(s: var Server, port = Port(80), reuseAddr = false, reusePort = false) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is
   ## acquired that can be accessed later by the ``port`` proc.
   s.socket = socket(AF_INET)
   if s.socket == invalidSocket: raiseOSError(osLastError())
   if reuseAddr:
     s.socket.setSockOpt(OptReuseAddr, true)
+  if reusePort:
+    s.socket.setSockOpt(OptReusePort, true)
   bindAddr(s.socket, port)
   listen(s.socket)
 
@@ -362,10 +364,10 @@ proc close*(s: Server) =
 
 proc run*(handleRequest: proc (client: Socket,
                                path, query: string): bool {.closure.},
-          port = Port(80)) =
+          port = Port(80), reusePort = false) =
   ## encapsulates the server object and main loop
   var s: Server
-  open(s, port, reuseAddr = true)
+  open(s, port, reuseAddr = true, reusePort = reusePort)
   #echo("httpserver running on port ", s.port)
   while true:
     next(s)

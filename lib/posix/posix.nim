@@ -1566,6 +1566,8 @@ var
     ## Receive timeout.
   SO_REUSEADDR* {.importc, header: "<sys/socket.h>".}: cint
     ## Reuse of local addresses is supported.
+  SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
+    ## Multiple binding: load balancing on incoming TCP connections or UDP packets. (Requires Linux kernel > 3.9)
   SO_SNDBUF* {.importc, header: "<sys/socket.h>".}: cint
     ## Send buffer size.
   SO_SNDLOWAT* {.importc, header: "<sys/socket.h>".}: cint
