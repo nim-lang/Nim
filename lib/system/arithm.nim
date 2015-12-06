@@ -83,47 +83,28 @@ else:
       return result
     raiseOverflow()
 
-  #
-  # This code has been inspired by Python's source code.
-  # The native int product x*y is either exactly right or *way* off, being
-  # just the last n bits of the true product, where n is the number of bits
-  # in an int (the delivered product is the true product plus i*2**n for
-  # some integer i).
-  #
-  # The native float64 product x*y is subject to three
-  # rounding errors: on a sizeof(int)==8 box, each cast to double can lose
-  # info, and even on a sizeof(int)==4 box, the multiplication can lose info.
-  # But, unlike the native int product, it's not in *range* trouble:  even
-  # if sizeof(int)==32 (256-bit ints), the product easily fits in the
-  # dynamic range of a float64. So the leading 50 (or so) bits of the float64
-  # product are correct.
-  #
-  # We check these two ways against each other, and declare victory if they're
-  # approximately the same. Else, because the native int product is the only
-  # one that can lose catastrophic amounts of information, it's the native int
-  # product that must have overflowed.
-  #
   proc mulInt64(a, b: int64): int64 {.compilerproc.} =
-    var
-      resAsFloat, floatProd: float64
+    # This version of abs does not fail on x == low(int),
+    # but may return a negative value in this case.
+    # Hence all arithmetic using the result must be unsigned.
+    template safe_abs(x: int64): int64 =
+      let tmp = int64(x < 0)
+      (x xor -tmp) +% tmp
     result = a *% b
-    floatProd = toBiggestFloat(a) # conversion
-    floatProd = floatProd * toBiggestFloat(b)
-    resAsFloat = toBiggestFloat(result)
-
-    # Fast path for normal case: small multiplicands, and no info
-    # is lost in either method.
-    if resAsFloat == floatProd: return result
-
-    # Somebody somewhere lost info. Close enough, or way off? Note
-    # that a != 0 and b != 0 (else resAsFloat == floatProd == 0).
-    # The difference either is or isn't significant compared to the
-    # true value (of which floatProd is a good approximation).
-
-    # abs(diff)/abs(prod) <= 1/32 iff
-    #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
-    if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
-      return result
+    let a_abs = safe_abs(a)
+    let b_abs = safe_abs(b)
+    # Fast path if we can quickly prove that the arguments
+    # are less than sqrt(high(int64)); the actual bound is even
+    # a bit lower.
+    if (a_abs or b_abs) <% (1 shl (sizeof(int64) * 4 - 1)):
+      return
+    # General overflow check; this employs the equivalence
+    # a * b < c iff a < c / b for b != 0
+    if b == 0 or a_abs <=% high(int64) /% b_abs:
+      return
+    # Special case for result == low(int64)
+    if a == 1 or b == 1:
+      return
     raiseOverflow()
 
 proc negInt64(a: int64): int64 {.compilerProc, inline.} =
@@ -349,47 +330,28 @@ when not declared(modInt):
     return a mod b
 
 when not declared(mulInt):
-  #
-  # This code has been inspired by Python's source code.
-  # The native int product x*y is either exactly right or *way* off, being
-  # just the last n bits of the true product, where n is the number of bits
-  # in an int (the delivered product is the true product plus i*2**n for
-  # some integer i).
-  #
-  # The native float64 product x*y is subject to three
-  # rounding errors: on a sizeof(int)==8 box, each cast to double can lose
-  # info, and even on a sizeof(int)==4 box, the multiplication can lose info.
-  # But, unlike the native int product, it's not in *range* trouble:  even
-  # if sizeof(int)==32 (256-bit ints), the product easily fits in the
-  # dynamic range of a float64. So the leading 50 (or so) bits of the float64
-  # product are correct.
-  #
-  # We check these two ways against each other, and declare victory if
-  # they're approximately the same. Else, because the native int product is
-  # the only one that can lose catastrophic amounts of information, it's the
-  # native int product that must have overflowed.
-  #
   proc mulInt(a, b: int): int {.compilerProc.} =
-    var
-      resAsFloat, floatProd: float
-
+    # This version of abs does not fail on x == low(int),
+    # but may return a negative value in this case.
+    # Hence all arithmetic using the result must be unsigned.
+    template safe_abs(x: int): int =
+      let tmp = int(x < 0)
+      (x xor -tmp) +% tmp
     result = a *% b
-    floatProd = toFloat(a) * toFloat(b)
-    resAsFloat = toFloat(result)
-
-    # Fast path for normal case: small multiplicands, and no info
-    # is lost in either method.
-    if resAsFloat == floatProd: return result
-
-    # Somebody somewhere lost info. Close enough, or way off? Note
-    # that a != 0 and b != 0 (else resAsFloat == floatProd == 0).
-    # The difference either is or isn't significant compared to the
-    # true value (of which floatProd is a good approximation).
-
-    # abs(diff)/abs(prod) <= 1/32 iff
-    #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
-    if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
-      return result
+    let a_abs = safe_abs(a)
+    let b_abs = safe_abs(b)
+    # Fast path if we can quickly prove that the arguments
+    # are less than sqrt(high(int)); the actual bound is even
+    # a bit lower.
+    if (a_abs or b_abs) <% (1 shl (sizeof(int) * 4 - 1)):
+      return
+    # General overflow check; this employs the equivalence
+    # a * b < c iff a < c / b for b != 0
+    if b == 0 or a_abs <=% high(int) /% b_abs:
+      return
+    # Special case for result == low(int)
+    if b == 1 or a == 1:
+      return
     raiseOverflow()
 
 # We avoid setting the FPU control word here for compatibility with libraries
