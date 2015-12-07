@@ -245,13 +245,46 @@ proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
 proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval =
   ## creates a new ``TimeInterval``.
-  result.milliseconds = milliseconds
-  result.seconds = seconds
-  result.minutes = minutes
-  result.hours = hours
-  result.days = days
-  result.months = months
-  result.years = years
+  var carryO = 0
+  result.milliseconds = `mod`(milliseconds, 1000)
+  carryO = `div`(milliseconds, 1000)
+  result.seconds = `mod`(carryO + seconds, 60)
+  carryO = `div`(seconds, 60)
+  result.minutes = `mod`(carryO + minutes, 60)
+  carryO = `div`(minutes, 60)
+  result.hours = `mod`(carryO + hours, 24)
+  carryO = `div`(hours, 24)
+  result.days = carryO + days
+  carryO = 0
+  result.months = `mod`(months, 12)
+  carryO = `div`(months, 12)
+  result.years = carryO + years
+
+proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
+  var carryO = 0
+  result.milliseconds = `mod`(ti1.milliseconds + ti2.milliseconds, 1000)
+  carryO = `div`(ti1.milliseconds + ti2.milliseconds, 1000)
+  result.seconds = `mod`(carryO + ti1.seconds + ti2.seconds, 60)
+  carryO = `div`(ti1.seconds + ti2.seconds, 60)
+  result.minutes = `mod`(carryO + ti1.minutes + ti2.minutes, 60)
+  carryO = `div`(ti1.minutes + ti2.minutes, 60)
+  result.hours = `mod`(carryO + ti1.hours + ti2.hours, 24)
+  carryO = `div`(ti1.hours + ti2.hours, 24)
+  result.days = carryO + ti1.days + ti2.days
+  carryO = 0
+  result.months = `mod`(ti1.months + ti2.months, 12)
+  carryO = `div`(ti1.months + ti2.months, 12)
+  result.years = carryO + ti1.years + ti2.years
+
+proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
+  result = ti1
+  result.milliseconds -= ti2.milliseconds
+  result.seconds -= ti2.seconds
+  result.minutes -= ti2.minutes
+  result.hours -= ti2.hours
+  result.days -= ti2.days
+  result.months -= ti2.months
+  result.years -= ti2.years
 
 proc isLeapYear*(year: int): bool =
   ## returns true if ``year`` is a leap year
@@ -288,13 +321,23 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
 
   newinterv.months += interval.years * 12
   var curMonth = anew.month
-  for mth in 1 .. newinterv.months:
-    result += float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
-    if curMonth == mDec:
-      curMonth = mJan
-      anew.year.inc()
-    else:
-      curMonth.inc()
+  if newinterv.months < 0:   # subtracting
+    for mth in countDown(-1 * newinterv.months, 1):
+      result -= float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
+      if curMonth == mJan:
+        curMonth = mDec
+        anew.year.dec()
+      else:
+        curMonth.dec()
+  else:  # adding
+    for mth in 1 .. newinterv.months:
+      result += float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
+      if curMonth == mDec:
+        curMonth = mJan
+        anew.year.inc()
+      else:
+        curMonth.inc()
+  result += float(newinterv.days * 24 * 60 * 60)
   result += float(newinterv.days * 24 * 60 * 60)
   result += float(newinterv.hours * 60 * 60)
   result += float(newinterv.minutes * 60)
@@ -308,9 +351,6 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## very accurate.
   let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
-  #if a.tzname == "UTC":
-  #  result = getGMTime(fromSeconds(t + secs))
-  #else:
   result = getLocalTime(fromSeconds(t + secs))
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
@@ -319,11 +359,16 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
   let t = toSeconds(timeInfoToTime(a))
-  let secs = toSeconds(a, interval)
-  #if a.tzname == "UTC":
-  #  result = getGMTime(fromSeconds(t - secs))
-  #else:
-  result = getLocalTime(fromSeconds(t - secs))
+  var intval: TimeInterval
+  intval.milliseconds = - interval.milliseconds
+  intval.seconds = - interval.seconds
+  intval.minutes = - interval.minutes
+  intval.hours = - interval.hours
+  intval.days = - interval.days
+  intval.months = - interval.months
+  intval.years = - interval.years
+  let secs = toSeconds(a, intval)
+  result = getLocalTime(fromSeconds(t + secs))
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
@@ -602,6 +647,69 @@ proc `$`*(m: Month): string =
       "April", "May", "June", "July", "August", "September", "October",
       "November", "December"]
   return lookup[m]
+
+proc milliseconds*(ms: int): TimeInterval {.inline.} =
+  ## TimeInterval of `ms` milliseconds
+  ##
+  ## Note: not all time functions have millisecond resolution
+  initInterval(`mod`(ms,1000), `div`(ms,1000))
+
+proc seconds*(s: int): TimeInterval {.inline.} =
+  ## TimeInterval of `s` seconds
+  ##
+  ## ``echo getTime() + 5.second``
+  initInterval(0,`mod`(s,60), `div`(s,60))
+
+proc minutes*(m: int): TimeInterval {.inline.} =
+  ## TimeInterval of `m` minutes
+  ##
+  ## ``echo getTime() + 5.minutes``
+  initInterval(0,0,`mod`(m,60), `div`(m,60))
+
+proc hours*(h: int): TimeInterval {.inline.} =
+  ## TimeInterval of `h` hours
+  ##
+  ## ``echo getTime() + 2.hours``
+  initInterval(0,0,0,`mod`(h,24),`div`(h,24))
+
+proc days*(d: int): TimeInterval {.inline.} =
+  ## TimeInterval of `d` days
+  ##
+  ## ``echo getTime() + 2.days``
+  initInterval(0,0,0,0,d)
+
+proc months*(m: int): TimeInterval {.inline.} =
+  ## TimeInterval of `m` months
+  ##
+  ## ``echo getTime() + 2.months``
+  initInterval(0,0,0,0,0,`mod`(m,12),`div`(m,12))
+
+proc years*(y: int): TimeInterval {.inline.} =
+  ## TimeInterval of `y` years
+  ##
+  ## ``echo getTime() + 2.years``
+  initInterval(0,0,0,0,0,0,y)
+
+proc `+=`*(t: var Time, ti: TimeInterval) =
+  ## modifies `t` by adding the interval `ti`
+  t = timeInfoToTime(getLocalTime(t) + ti)
+
+proc `+`*(t: Time, ti: TimeInterval): Time =
+  ## adds the interval `ti` to Time `t`
+  ## by converting to localTime, adding the interval, and converting back
+  ##
+  ## ``echo getTime() + 1.day``
+  result = timeInfoToTime(getLocalTime(t) + ti)
+
+proc `-=`*(t: var Time, ti: TimeInterval) =
+  ## modifies `t` by subtracting the interval `ti`
+  t = timeInfoToTime(getLocalTime(t) - ti)
+
+proc `-`*(t: Time, ti: TimeInterval): Time =
+  ## adds the interval `ti` to Time `t`
+  ##
+  ## ``echo getTime() - 1.day``
+  result = timeInfoToTime(getLocalTime(t) - ti)
 
 proc formatToken(info: TimeInfo, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
