@@ -1,4 +1,5 @@
 discard """
+  file: "twrong_field_caching.nim"
   output: '''a23: 2x3
 a32: 3x2
 transpose A

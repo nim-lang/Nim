@@ -1,4 +1,5 @@
 discard """
+  file: "tmandelbrot.nim"
   cmd: "nim $target --hints:on -d:release $options $file"
 """
 

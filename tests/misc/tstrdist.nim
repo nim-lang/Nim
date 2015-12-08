@@ -1,3 +1,7 @@
+discard """
+  file: "tstrdist.nim"
+  output: '''3'''
+"""
 # compute the edit distance between two strings
 
 proc editDistance(a, b: string): int =

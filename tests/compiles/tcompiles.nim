@@ -1,13 +1,16 @@
+discard """
+  file: "tcompiles.nim"
+"""
 # test the new 'compiles' feature:
 
 template supports(opr, x: expr): bool {.immediate.} =
   compiles(opr(x)) or compiles(opr(x, x))
 
 template ok(x: expr): stmt =
-  static: assert(x)
+  static: doAssert(x)
 
 template no(x: expr): stmt =
-  static: assert(not x)
+  static: doAssert(not x)
 
 type
   TObj = object

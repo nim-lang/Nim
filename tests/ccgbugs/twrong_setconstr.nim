@@ -1,4 +1,5 @@
 discard """
+  file: "twrong_setconstr.nim"
   output: ""
 """
 

@@ -1,4 +1,5 @@
 discard """
+  file: "tfinalobj.nim"
   output: "abc"
 """
 
@@ -13,4 +14,3 @@ a.x = "abc"
 doAssert TA.sizeof == string.sizeof
 
 echo a.x
-

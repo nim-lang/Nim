@@ -1,6 +1,7 @@
 discard """
+  file: "treturnsempty.nim"
   errormsg: "type mismatch"
-  line: 11
+  line: 12
 """
 # bug #2372
 macro foo(dummy: int): stmt =

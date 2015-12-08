@@ -1,3 +1,6 @@
+discard """
+  file: "bintrees.nim"
+"""
 # -*- nim -*-
 
 import os, strutils
@@ -51,4 +54,3 @@ proc main =
   echo GC_getstatistics()
 
 main()
-

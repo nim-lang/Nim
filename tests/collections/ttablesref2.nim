@@ -1,4 +1,5 @@
 discard """
+  file: "ttablesref2.nim"
   output: '''true'''
 """
 

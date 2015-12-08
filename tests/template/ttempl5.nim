@@ -1,3 +1,6 @@
+discard """
+  file: "ttempl5.nim"
+"""
 
 import mtempl5
 
@@ -26,4 +29,3 @@ template typedef(name: expr, typ: typedesc) {.immediate.} =
 
 typedef(myint, int)
 var x: PMyInt
-

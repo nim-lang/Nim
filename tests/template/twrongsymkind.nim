@@ -1,6 +1,7 @@
 discard """
+  file: "twrongsymkind.nim"
   errormsg: "cannot use symbol of kind 'var' as a 'param'"
-  line: 20
+  line: 21
 """
 
 # bug #3158

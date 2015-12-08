@@ -1,6 +1,7 @@
 discard """
+  file: "trectuples.nim"
   errormsg: "illegal recursion in type 'Node'"
-  line: 6
+  line: 7
 """
 
 type Node = tuple[left: ref Node]
@@ -10,5 +11,3 @@ proc traverse(root: ref Node) =
 
 type A = tuple[B: ptr A]
 proc C(D: ptr A) = C(D.B)
-
-

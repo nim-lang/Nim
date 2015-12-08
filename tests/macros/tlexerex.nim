@@ -1,4 +1,6 @@
-
+discard """
+  file: "tlexerex.nim"
+"""
 import macros
 
 macro match*(s: cstring|string; pos: int; sections: untyped): untyped =

@@ -1,6 +1,7 @@
 discard """
+  file: "tuseafterdef.nim"
   errormsg: "(k)..(k) not disjoint from (k)..(k)"
-  line: 23
+  line: 24
 """
 
 # bug #1597
@@ -21,7 +22,7 @@ proc pi(n: int): float =
   parallel:
     for k in 0..ch.high:
       ch[k] = (spawn term(float(k)))
-      assert ch[k] != nil
+      doAssert ch[k] != nil
   for k in 0..ch.high:
     var temp = ch[k][].value
     result += temp

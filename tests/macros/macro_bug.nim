@@ -1,3 +1,6 @@
+discard """
+  file: "macro_bug.nim"
+"""
 import macros
 
 macro macro_bug*(s: stmt): stmt {.immediate.} =

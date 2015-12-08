@@ -1,3 +1,6 @@
+discard """
+  file: "ttableconstr.nim"
+"""
 # Test if the new table constructor syntax works:
 
 template ignoreExpr(e: expr): stmt {.immediate.} =
@@ -10,7 +13,7 @@ ignoreExpr({:})
 ignoreExpr({2: 3, "key": "value"})
 
 # NEW:
-assert 56 in 50..100
+doAssert 56 in 50..100
 
-assert 56 in ..60
+doAssert 56 in ..60
 

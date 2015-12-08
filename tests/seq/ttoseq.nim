@@ -1,4 +1,5 @@
 discard """
+  file: "ttoseq.nim"
   output: "2345623456"
 """
 
@@ -13,6 +14,3 @@ import strutils
 
 var y: type("a b c".split)
 y = "xzy"
-
-
-

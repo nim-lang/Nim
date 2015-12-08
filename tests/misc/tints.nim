@@ -1,4 +1,5 @@
 discard """
+  file: "tints.nim"
   output: '''
 0 0
 0 0
@@ -19,7 +20,7 @@ template test(opr, a, b, c: expr): stmt {.immediate.} =
     var aa = a
     var bb = b
     var varExpr = opr(aa, bb)
-    assert(varExpr == c)
+    doAssert(varExpr == c)
 
 test(`+`, 12'i8, -13'i16, -1'i16)
 test(`shl`, 0b11, 0b100, 0b110000)

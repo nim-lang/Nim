@@ -1,4 +1,5 @@
 discard """
+  file: "nmain.nim"
   cmd: "nim $target --debuginfo $options $file"
   output: "Done"
 """

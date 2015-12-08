@@ -1,3 +1,6 @@
+discard """
+  file: "tpartialcs.nim"
+"""
 
 # bug #2551
 

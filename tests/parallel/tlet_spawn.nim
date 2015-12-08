@@ -1,3 +1,6 @@
+discard """
+  file: "tlet_spawn.nim"
+"""
 
 import threadpool
 

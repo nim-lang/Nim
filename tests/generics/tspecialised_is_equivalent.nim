@@ -1,3 +1,6 @@
+discard """
+  file: "tspecialised_is_equivalent.nim"
+"""
 ##
 ## specialised_is_equivalent Nim Module
 ##

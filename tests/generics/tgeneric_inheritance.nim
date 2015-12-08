@@ -1,4 +1,5 @@
 discard """
+  file: "tgeneric_inheritance.nim"
   output: "0.0"
 """
 

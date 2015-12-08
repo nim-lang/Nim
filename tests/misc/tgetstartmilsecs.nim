@@ -1,3 +1,6 @@
+discard """
+  file: "tgetstartmilisecs.nim"
+"""
 #
 import times, os
 

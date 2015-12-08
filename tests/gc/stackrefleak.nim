@@ -1,4 +1,5 @@
 discard """
+  file: "stackrefleak.nim"
   outputsub: "no leak: "
 """
 
@@ -28,4 +29,3 @@ proc loop =
     echo "no leak: ", getOccupiedMem()
 
 loop()
-

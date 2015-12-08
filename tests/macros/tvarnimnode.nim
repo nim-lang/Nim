@@ -1,4 +1,5 @@
 discard """
+  file; "tvarnimnode.nim"
   output: 10
 """
 

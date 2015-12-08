@@ -37,7 +37,7 @@ proc catch() {.async.} =
   try:
     await foobar()
   except OSError, EInvalidField:
-    assert false
+    doAssert false
   except EInvalidIndex:
     echo("Multiple except branches")
 
@@ -46,7 +46,7 @@ proc catch() {.async.} =
   except EInvalidIndex:
     echo("Multiple except branches 2")
   except OSError, EInvalidField:
-    assert false
+    doAssert false
 
 asyncCheck catch()
 
@@ -92,13 +92,13 @@ proc test4(): Future[int] {.async.} =
     result = 2
 
 var x = test()
-assert x.read
+doAssert x.read
 
 x = test2()
-assert x.read
+doAssert x.read
 
 var y = test3()
-assert y.read == 2
+doAssert y.read == 2
 
 y = test4()
-assert y.read == 2
+doAssert y.read == 2

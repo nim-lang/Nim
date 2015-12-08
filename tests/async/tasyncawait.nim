@@ -61,5 +61,5 @@ while true:
   poll()
   if clientCount == swarmSize: break
 
-assert msgCount == swarmSize * messagesToSend
+doAssert msgCount == swarmSize * messagesToSend
 echo msgCount

@@ -1,3 +1,6 @@
+discard """
+  file: "tdefault_nil.nim"
+"""
 
 # bug #2629
 import sequtils, os

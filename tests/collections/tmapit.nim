@@ -1,4 +1,5 @@
 discard """
+  file: "tmapit.nim"
   output: '''true
 true'''
 """

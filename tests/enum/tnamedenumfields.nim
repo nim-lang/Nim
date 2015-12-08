@@ -17,7 +17,3 @@ type
 # trick the optimizer with a variable:
 var x = valueD
 echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x
-
-
-
-

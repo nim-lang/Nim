@@ -1,3 +1,6 @@
+discard """
+  file: "tmacro1.nim"
+"""
 import  macros
 
 from uri import `/`

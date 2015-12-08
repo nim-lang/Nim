@@ -1,4 +1,5 @@
 discard """
+  file: "tflowvar.nim"
   output: '''foobarfoobar
 bazbearbazbear
 

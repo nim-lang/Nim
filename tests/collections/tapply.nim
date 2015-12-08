@@ -1,4 +1,5 @@
 discard """
+  file: "tapply.nim"
   output: '''true'''
 """
 

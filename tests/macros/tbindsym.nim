@@ -1,4 +1,5 @@
 discard """
+  file: "tbindsym.nim"
   output: '''TFoo
 TBar'''
 """

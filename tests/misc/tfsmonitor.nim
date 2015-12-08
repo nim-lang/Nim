@@ -1,3 +1,6 @@
+discard """
+  file: "tfsmonitor.nim"
+"""
 #
 # fsmonitor test
 #

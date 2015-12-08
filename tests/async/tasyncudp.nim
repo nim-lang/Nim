@@ -18,21 +18,21 @@ proc serverRead(s: PAsyncSocket) =
   var address = ""
   var port: TPort
   if s.recvFromAsync(data, 9, address, port):
-    assert address == "127.0.0.1"
+    doAssert address == "127.0.0.1"
     msgCount.inc()
 
   discard """
 
   var line = ""
-  assert s.recvLine(line)
+  doAssert s.recvLine(line)
 
   if line == "":
-    assert(false)
+    doAssert(false)
   else:
     if line.startsWith("Message "):
       msgCount.inc()
     else:
-      assert(false)
+      doAssert(false)
   """
 
 proc swarmConnect(s: PAsyncSocket) =
@@ -74,5 +74,5 @@ while true:
   if msgCount == messagesToSend * serverCount * swarmSize:
     break
 
-assert msgCount == messagesToSend * serverCount * swarmSize
+doAssert msgCount == messagesToSend * serverCount * swarmSize
 echo(msgCount)

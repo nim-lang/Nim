@@ -1,4 +1,5 @@
 discard """
+  file: "tvoid.nim"
   output: '''12
 empty
 he, no return type;
@@ -34,4 +35,3 @@ callProc[void](emptyProc)
 ReturnT[void]()
 echo ReturnT[string]("abc")
 nothing()
-

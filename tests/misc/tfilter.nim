@@ -1,4 +1,5 @@
 discard """
+  file: "tfilter.nim"
   output: "02468101214161820\n15"
 """
 

@@ -1,3 +1,6 @@
+discard """
+  file: "tseq2.nim"
+"""
 proc `*` *(a, b: seq[int]): seq[int] =
   # allocate a new sequence:
   newSeq(result, len(a))
@@ -6,6 +9,4 @@ proc `*` *(a, b: seq[int]): seq[int] =
 
 when isMainModule:
   # test the new ``*`` operator for sequences:
-  assert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
-
-
+  doAssert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])

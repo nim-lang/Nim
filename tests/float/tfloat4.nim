@@ -1,3 +1,6 @@
+discard """
+  file: tfloat4.nim
+"""
 import math, strutils
 
 proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", varargs.}
@@ -25,18 +28,18 @@ let testFloats = [
 ]
 
 for num in testFloats:
-  assert num.parseFloat.floatToStr.parseFloat == num.parseFloat
+  doAssert num.parseFloat.floatToStr.parseFloat == num.parseFloat
 
-assert "0".parseFloat == 0.0
-assert "-.1".parseFloat == -0.1
-assert "2.5e1".parseFloat == 25.0
-assert "1e10".parseFloat == 10_000_000_000.0
-assert "0.000_005".parseFloat == 5.000_000e-6
-assert "1.234_567e+2".parseFloat == 123.4567
-assert "1e1_00".parseFloat == "1e100".parseFloat
-assert "3.1415926535897932384626433".parseFloat ==
+doAssert "0".parseFloat == 0.0
+doAssert "-.1".parseFloat == -0.1
+doAssert "2.5e1".parseFloat == 25.0
+doAssert "1e10".parseFloat == 10_000_000_000.0
+doAssert "0.000_005".parseFloat == 5.000_000e-6
+doAssert "1.234_567e+2".parseFloat == 123.4567
+doAssert "1e1_00".parseFloat == "1e100".parseFloat
+doAssert "3.1415926535897932384626433".parseFloat ==
        3.1415926535897932384626433
-assert "2.71828182845904523536028747".parseFloat ==
+doAssert "2.71828182845904523536028747".parseFloat ==
        2.71828182845904523536028747
-assert 0.00097656250000000021684043449710088680149056017398834228515625 ==
+doAssert 0.00097656250000000021684043449710088680149056017398834228515625 ==
      "0.00097656250000000021684043449710088680149056017398834228515625".parseFloat

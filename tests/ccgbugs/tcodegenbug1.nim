@@ -1,3 +1,7 @@
+discard """
+  file: "tcodegenbug1.nim"
+"""
+
 import os
 
 type

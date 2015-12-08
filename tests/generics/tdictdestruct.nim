@@ -1,4 +1,6 @@
-
+discard """
+  file: "tdictdestruct.nim"
+"""
 type
   TDict[TK, TV] = object
     k: TK

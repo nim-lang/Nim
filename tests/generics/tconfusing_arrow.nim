@@ -1,3 +1,6 @@
+discard """
+  file: "tconfusing_arrow.nim"
+"""
 import algorithm, future
 
 type Deck = object

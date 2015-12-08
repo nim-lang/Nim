@@ -1,3 +1,10 @@
+discard """
+  file: "tunsigned64mod.nim"
+  output: '''true
+true
+true
+true'''
+"""
 
 # bug #1638
 

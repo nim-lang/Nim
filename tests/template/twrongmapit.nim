@@ -1,4 +1,5 @@
 discard """
+  file: "twrongmapit.nim"
   output: "####"
 """
 # unfortunately our tester doesn't support multiple lines of compiler

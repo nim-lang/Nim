@@ -1,6 +1,7 @@
 discard """
+  file: "tunresolved_return_type.nim"
   errormsg: "cannot instantiate: 'T'"
-  line: 12
+  line: 13
 """
 
 # bug #2594

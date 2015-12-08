@@ -1,3 +1,6 @@
+discard """
+  file: "typalias.nim"
+"""
 
 type
   TMyObj = TYourObj

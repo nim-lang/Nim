@@ -1,3 +1,6 @@
+discard """
+  file: "tclosurebbug2.nim"
+"""
 import hashes, math
 
 type
@@ -16,7 +19,7 @@ const
   growthFactor = 2
 
 proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
+  doAssert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 proc nextTry(h, maxHash: THash): THash {.inline.} =
@@ -144,7 +147,7 @@ proc add*[A, B](t: var TOrderedTable[A, B], key: A, val: B) =
 proc initOrderedTable*[A, B](initialSize=64): TOrderedTable[A, B] =
   ## creates a new ordered hash table that is empty. `initialSize` needs to be
   ## a power of two.
-  assert isPowerOfTwo(initialSize)
+  doAssert isPowerOfTwo(initialSize)
   result.counter = 0
   result.first = -1
   result.last = -1

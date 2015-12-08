@@ -1,6 +1,7 @@
 discard """
+  file: "trectuple.nim"
   errormsg: "illegal recursion in type 'TNode'"
-  line: 8
+  line: 9
   disabled: true
 """
 
@@ -13,4 +14,3 @@ type
 var node: PNode
 new(node)
 node.self = node
-

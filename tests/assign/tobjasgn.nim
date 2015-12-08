@@ -1,4 +1,5 @@
 discard """
+  file: "tobjasgn.nim"
   output: '''8 5 0 0
 pre test a:test b:1 c:2 haha:3
 assignment test a:test b:1 c:2 haha:3

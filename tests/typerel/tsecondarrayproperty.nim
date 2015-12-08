@@ -1,3 +1,6 @@
+discard """
+  file: "tsecondarrayproperty.nim"
+"""
 
 type
   TFoo = object
@@ -25,4 +28,3 @@ echo f.second[1]
 
 #echo `second[]`(f,1)
 # this is the only way I could use it, but not what I expected
-

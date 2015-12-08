@@ -1,3 +1,7 @@
+discard """
+  file: "main_dirty.nim"
+"""
+
 import imported, strutils
 
 type
@@ -11,4 +15,3 @@ proc main =
   var foo = TFoo(x: 10, y: "test")
   foo.
   echo(t1 +++ t2)
-

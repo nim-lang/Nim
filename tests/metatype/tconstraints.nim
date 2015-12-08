@@ -1,4 +1,6 @@
-
+discard """
+  file: "tconstraints.nim"
+"""
 
 proc myGenericProc[T: object|tuple|int|ptr|ref|distinct](x: T): string =
   result = $x
@@ -9,7 +11,5 @@ type
 var
   x: TMyObj
 
-assert myGenericProc(232) == "232"
-assert myGenericProc(x) == "(x: 0, y: 0)"
-
-
+doAssert myGenericProc(232) == "232"
+doAssert myGenericProc(x) == "(x: 0, y: 0)"

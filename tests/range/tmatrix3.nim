@@ -1,4 +1,5 @@
 discard """
+  file: "tmatrix3.nim"
   output: '''0.0
 0.0
 0
@@ -38,4 +39,3 @@ reject m3(mat2)
 reject m3(matn)
 reject m2(mat3)
 reject m2(matn)
-

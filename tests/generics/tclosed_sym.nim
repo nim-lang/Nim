@@ -1,4 +1,5 @@
 discard """
+  file: "tclosed_sym.nim"
   output: "TEST2"
 """
 

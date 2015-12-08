@@ -1,3 +1,6 @@
+discard """
+  file: "treadln.nim"
+"""
 # test the improved readline handling that does not care whether its
 # Macintosh, Unix or Windows text format.
 

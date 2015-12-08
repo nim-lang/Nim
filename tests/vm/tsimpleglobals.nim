@@ -1,4 +1,5 @@
 discard """
+  file: "tsimpleglobals.nim"
   msg: "abc xyz bb"
 """
 

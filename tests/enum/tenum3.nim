@@ -1,3 +1,6 @@
+discard """
+  file: "tenum3.nim"
+"""
 # Test enum with explicit size
 
 type
@@ -13,4 +16,3 @@ case e
 of eA: echo "A"
 of eB: echo "B"
 of eC: echo "C"
-

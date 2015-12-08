@@ -1,4 +1,5 @@
 discard """
+  file: "tfielditerator2.nim"
   output: '''
 a char: true
 a char: false

@@ -1,4 +1,5 @@
 discard """
+  file: "tinterf.nim"
   output: '''56 66'''
 """
 

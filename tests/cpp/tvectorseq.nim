@@ -1,4 +1,5 @@
 discard """
+  file: "tvectorseq.nim"
   output: '''(x: 1.0)
 (x: 0.0)'''
   cmd: "nim cpp $file"

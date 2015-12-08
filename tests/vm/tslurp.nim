@@ -1,3 +1,6 @@
+discard """
+  file: "tslurp.nim"
+"""
 import os
 
 template getScriptDir(): string =
@@ -9,4 +12,3 @@ const
 
 echo relRes
 echo absRes
-

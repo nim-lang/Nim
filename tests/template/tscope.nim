@@ -1,4 +1,5 @@
 discard """
+  file: "tscope.nim"
   errormsg: "redefinition of 'x'"
 """
 

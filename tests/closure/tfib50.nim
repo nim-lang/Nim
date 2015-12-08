@@ -1,4 +1,5 @@
 discard """
+  file: "tfib50.nim"
   output: "20365011074"
 """
 

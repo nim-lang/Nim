@@ -1,3 +1,6 @@
+discard """
+  file: "tunsignedconv.nim"
+"""
 
 import unsigned
 

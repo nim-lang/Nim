@@ -1,4 +1,5 @@
 discard """
+  file: "tgeneric1.nim"
   output: "100 0"
 """
 

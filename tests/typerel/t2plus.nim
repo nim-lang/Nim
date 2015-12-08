@@ -1,4 +1,5 @@
 discard """
+  file: "t2plus.nim"
   output: "2.0"
 """
 
@@ -19,4 +20,3 @@ proc mean[T: SomeNumber](xs: seq[T]): T =
 when isMainModule:
   let x = mean(@[1.float, 2, 3])
   echo x
-

@@ -1,5 +1,6 @@
 discard """
-msg: '''
+  file: "tswap.nim"
+  msg: '''
 x.data = @[10]
 y = @[11]
 x.data = @[11]

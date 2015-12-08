@@ -1,4 +1,5 @@
 discard """
+  file: "tcan_alias_specialised_generic.nim"
   disabled: false
 """
 

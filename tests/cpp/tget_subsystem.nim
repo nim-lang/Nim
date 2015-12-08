@@ -1,4 +1,5 @@
 discard """
+  file: "tget_subsystem.nim"
   cmd: "nim cpp $file"
 """
 
@@ -20,4 +21,3 @@ proc getSubsystem*[T](): ptr T {.
   importcpp: "SystemManager::getSubsystem<'*0>()", nodecl.}
 
 let input: ptr Input = getSubsystem[Input]()
-

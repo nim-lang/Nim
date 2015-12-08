@@ -19,7 +19,3 @@ proc getValue: TMyEnum = valueD
 # trick the optimizer with a variable:
 var x = getValue()
 echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x
-
-
-
-

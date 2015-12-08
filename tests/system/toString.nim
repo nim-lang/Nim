@@ -1,4 +1,5 @@
 discard """
+  file: "toString.nim"
   output:'''@[23, 45]
 @[, foo, bar]
 {a, b, c}

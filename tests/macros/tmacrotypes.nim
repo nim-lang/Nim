@@ -1,4 +1,5 @@
 discard """
+  file: "tmacrotypes.nim"
   nimout: '''void
 int'''
 """

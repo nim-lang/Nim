@@ -1,4 +1,5 @@
 discard """
+  file: "tvarargs_vs_generic.nim"
   output: "direct\ngeneric\ngeneric"
 """
 

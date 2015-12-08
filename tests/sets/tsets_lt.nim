@@ -1,4 +1,5 @@
 discard """
+  file: "tsets_lt.nim"
   output: '''true
 true
 true'''

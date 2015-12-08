@@ -1,4 +1,5 @@
 discard """
+  file: "ttypetraits.nim"
   msg:    "int\nstring\nTBar[int]"
   output: "int\nstring\nTBar[int]\nint\nrange 0..2(int)\nstring"
   disabled: true
@@ -57,4 +58,3 @@ macro selectType(inType: typedesc): typedesc =
 var xvar: selectType(string)
 xvar = "proba"
 echo xvar.type.name
-

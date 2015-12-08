@@ -1,3 +1,6 @@
+discard """
+  file: "mtempl5.nim"
+"""
 
 var
   gx = 88
@@ -6,5 +9,3 @@ var
 template templ*(): int =
   bind gx, gy
   gx + gy
-
-

@@ -1,4 +1,5 @@
 discard """
+  file: "shared.nim"
   cmd: "nim $target --debuginfo --hints:on --app:lib $options $file"
 """
 

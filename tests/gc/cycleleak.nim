@@ -1,4 +1,5 @@
 discard """
+  file: "cycleleak.nim"
   outputsub: "no leak: "
 """
 
@@ -53,4 +54,3 @@ proc loop =
   echo "no leak: ", getOccupiedMem()
 
 loop()
-

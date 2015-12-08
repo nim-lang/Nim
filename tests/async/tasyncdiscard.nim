@@ -1,4 +1,5 @@
 discard """
+  file: "tasyncdiscard.nim"
   output: '''
 1
 2

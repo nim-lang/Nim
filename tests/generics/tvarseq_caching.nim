@@ -1,4 +1,5 @@
 discard """
+  file: "tvarseq_caching.nim"
   output: '''@[1, 2, 3]
 @[4.0, 5.0, 6.0]
 @[1, 2, 3]

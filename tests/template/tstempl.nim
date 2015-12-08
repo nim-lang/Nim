@@ -1,4 +1,5 @@
 discard """
+  file: "tstempl.nim"
   output: '''global = levB, arg = levA, test = false
 levB'''
 """

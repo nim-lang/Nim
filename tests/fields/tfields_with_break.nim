@@ -1,4 +1,5 @@
 discard """
+  file: "tfields_with_break.nim"
   output: '''(one: 1, two: 2, three: 3)
 1
 2

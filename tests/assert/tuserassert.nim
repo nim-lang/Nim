@@ -1,4 +1,5 @@
 discard """
+  file: "tuserassert.nim"
   output: "x == 45ugh"
 """
 
@@ -10,4 +11,3 @@ template myAssert(cond: expr) =
 
 var x = 454
 myAssert(x == 45)
-

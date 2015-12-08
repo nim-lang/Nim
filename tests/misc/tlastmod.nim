@@ -1,3 +1,6 @@
+discard """
+  file: "tlastmod.nim"
+"""
 # test the new LastModificationTime() proc
 
 import

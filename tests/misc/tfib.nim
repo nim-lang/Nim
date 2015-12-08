@@ -1,4 +1,6 @@
-
+discard """
+  file: "tfib.nim"
+"""
 iterator fibonacci(): int =
   var a = 0
   var b = 1

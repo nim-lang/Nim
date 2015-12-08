@@ -1,4 +1,5 @@
 discard """
+  file: "tbug1081.nim"
   output: '''1
 0
 0

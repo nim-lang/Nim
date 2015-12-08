@@ -1,6 +1,7 @@
 discard """
+  file: "tinvalidarrayaccess.nim"
   errormsg: "index out of bounds"
-  line: 11
+  line: 12
 """
 
 

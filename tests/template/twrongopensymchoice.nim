@@ -1,4 +1,5 @@
 discard """
+  file: "twrongopensymchoice.nim"
   output: '''10'''
 """
 
@@ -9,7 +10,7 @@ type
     b*: int
 
 proc new*(this: var Foo) =
-  assert this != nil
+  doAssert this != nil
   this.b = 10
 
 proc new*(T: typedesc[Foo]): Foo =

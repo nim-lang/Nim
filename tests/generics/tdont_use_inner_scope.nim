@@ -1,4 +1,6 @@
-
+discard """
+  file: "tdont_use_inner_scope.nim"
+"""
 # bug #2752
 
 import future, sequtils

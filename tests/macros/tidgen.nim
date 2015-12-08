@@ -1,4 +1,5 @@
 discard """
+  file: "tidgen.nim"
   output: "3 4"
 """
 

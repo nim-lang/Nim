@@ -1,4 +1,5 @@
 discard """
+  file: "tmanual.nim"
   output: '''1
 2
 3
@@ -15,10 +16,10 @@ t
 """
 
 template accept(e: expr) =
-  static: assert compiles(e)
+  static: doAssert compiles(e)
 
 template reject(e: expr) =
-  static: assert(not compiles(e))
+  static: doAssert(not compiles(e))
 
 type
   Container[T] = concept c

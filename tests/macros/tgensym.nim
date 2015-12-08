@@ -1,3 +1,6 @@
+discard """
+  file: "tgensym.nim"
+"""
 import nativesockets, asyncdispatch, macros
 var p = newDispatcher()
 var sock = newAsyncNativeSocket()

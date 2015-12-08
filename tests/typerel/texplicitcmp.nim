@@ -1,4 +1,5 @@
 discard """
+  file: "texplicitcmp.nim"
   output: '''[1 2 3 ]
 [1 2 3 ]
 [1 2 3 ]'''

@@ -1,3 +1,6 @@
+discard """
+  file: "tsets.nim"
+"""
 import sets
 
 block setEquality:

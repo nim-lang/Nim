@@ -1,4 +1,6 @@
-
+discard """
+  file: "tgenericprop.nim"
+"""
 type
   TProperty[T] = object of TObject
     getProc: proc(property: TProperty[T]): T {.nimcall.}

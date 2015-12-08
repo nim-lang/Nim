@@ -1,3 +1,6 @@
+discard """
+  file: "tgeneric_tuple.nim"
+"""
 # bug #2121
 
 type

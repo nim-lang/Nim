@@ -1,5 +1,6 @@
 discard """
-  disabled: true
+  file: "tsame_name_497.nim"
+  disabled: "true"
 """
 
 import macro_bug

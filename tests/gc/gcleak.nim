@@ -1,4 +1,5 @@
 discard """
+  file: "gcleak.nim"
   outputsub: "no leak: "
 """
 
@@ -20,4 +21,3 @@ for i in 1 .. 1_000_000:
 #  echo GC_getstatistics()
 
 echo "no leak: ", getOccupiedMem()
-

@@ -1,4 +1,5 @@
 discard """
+  file: "tdotlookup.nim"
   output: '''5 5 5
 false'''
 """

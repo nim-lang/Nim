@@ -47,5 +47,3 @@ when nestedFixed:
   nested()
 
 #OUT Hithere, what's your name?Hathere, what's your name?
-
-

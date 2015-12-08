@@ -1,5 +1,6 @@
 discard """
-  line: 16
+  file: "tconstraints.nim"
+  line: 17
   errormsg: "type mismatch: got (int literal(232))"
 """
 
@@ -12,7 +13,5 @@ type
 var
   x: TMyObj
 
-assert myGenericProc(x) == "(x: 0, y: 0)"
-assert myGenericProc(232) == "232"
-
-
+doAssert myGenericProc(x) == "(x: 0, y: 0)"
+doAssert myGenericProc(232) == "232"

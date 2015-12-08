@@ -1,4 +1,6 @@
-
+discard """
+  file: "tnamedparamanonproc.nim"
+"""
 type
   PButton = ref object
   TButtonClicked = proc(button: PButton) {.nimcall.}

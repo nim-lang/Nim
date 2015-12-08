@@ -1,3 +1,6 @@
+discard """
+  file: "tenum.nim"
+"""
 # Test enums
 
 type

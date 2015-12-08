@@ -1,4 +1,5 @@
 discard """
+  file: "js.nim"
   cmd: "nim js --hints:on $options $file"
 """
 

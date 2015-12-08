@@ -1,4 +1,5 @@
 discard """
+  file: "tdebugstmt.nim"
   output: '''a[0]: 42
 a[1]: 45
 x: some string'''

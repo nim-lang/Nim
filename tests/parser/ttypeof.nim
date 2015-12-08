@@ -1,4 +1,5 @@
 discard """
+  file: "ttypeof.nim"
   output: '''12
 int
 int

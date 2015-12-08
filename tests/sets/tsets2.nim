@@ -1,4 +1,5 @@
 discard """
+  file: "tsets2.nim"
   output: '''true'''
 """
 
@@ -22,13 +23,13 @@ block tableTest1:
   var t = initSet[tuple[x, y: int]]()
   t.incl((0,0))
   t.incl((1,0))
-  assert(not t.containsOrIncl((0,1)))
+  doAssert(not t.containsOrIncl((0,1)))
   t.incl((1,1))
 
   for x in 0..1:
     for y in 0..1:
-      assert((x,y) in t)
-  #assert($t ==
+      doAssert((x,y) in t)
+  #doAssert($t ==
   #  "{(x: 0, y: 0), (x: 0, y: 1), (x: 1, y: 0), (x: 1, y: 1)}")
 
 block setTest2:
@@ -41,21 +42,20 @@ block setTest2:
   t.incl("012")
   t.incl("123") # test duplicates
 
-  assert "123" in t
-  assert "111" notin t # deleted
+  doAssert "123" in t
+  doAssert "111" notin t # deleted
 
   for key in items(data): t.incl(key)
-  for key in items(data): assert key in t
+  for key in items(data): doAssert key in t
 
 
 block orderedSetTest1:
   var t = data.toOrderedSet
-  for key in items(data): assert key in t
+  for key in items(data): doAssert key in t
   var i = 0
   # `items` needs to yield in insertion order:
   for key in items(t):
-    assert key == data[i]
+    doAssert key == data[i]
     inc(i)
 
 echo "true"
-

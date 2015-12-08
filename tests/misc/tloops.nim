@@ -1,3 +1,6 @@
+discard """
+  file: "tloops.nim"
+"""
 # Test nested loops and some other things
 
 proc andTest() =

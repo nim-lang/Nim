@@ -1,7 +1,8 @@
 discard """
+  file: "tillegaltyperecursion.nim"
   cmd: "nim $target --threads:on $options $file"
   errormsg: "illegal recursion in type 'TIRC'"
-  line: 16
+  line: 17
 """
 
 import events

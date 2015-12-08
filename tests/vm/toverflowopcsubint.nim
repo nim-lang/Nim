@@ -1,4 +1,5 @@
 discard """
+  file: "toverflowopcsubint.nim"
   errormsg: "over- or underflow"
 """
 
@@ -8,5 +9,5 @@ static:
       x = int64.low
       y = 1
     discard x - y
-    assert false
+    doAssert false
   p()

@@ -1,5 +1,6 @@
 discard """
-  line: 20
+  file: "tsubrange.nim"
+  line: 21
   errormsg: "cannot convert 60 to TRange"
 """
 
@@ -18,4 +19,3 @@ p y
 
 const
   myConst: TRange = 60
-

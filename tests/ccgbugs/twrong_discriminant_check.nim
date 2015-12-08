@@ -1,4 +1,5 @@
 discard """
+  file: "twrong_discriminant_check.nim"
   output: "(kind: None)"
 """
 
@@ -27,4 +28,3 @@ when true:
     int.none
 
   echo test()
-

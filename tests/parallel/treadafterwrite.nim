@@ -1,6 +1,7 @@
 discard """
+  file: "treadafterwrite.nim"
   errormsg: "'foo' not disjoint from 'foo'"
-  line: 23
+  line: 24
   disabled: "true"
 """
 
@@ -22,7 +23,7 @@ proc pi(n: int): float =
   parallel:
     for k in 0..ch.high:
       let foo = (spawn term(float(k)))
-      assert foo != nil
+      doAssert foo != nil
   for k in 0..ch.high:
     var temp = ch[k][].value
     result += temp

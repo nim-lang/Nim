@@ -1,4 +1,5 @@
 discard """
+  file: "toverload_asgn2.nim"
   output: '''i value 88
 2aa'''
 """

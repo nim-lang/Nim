@@ -1,3 +1,6 @@
+discard """
+  file: "ttimeinfo.nim"
+"""
 # bug #2073
 
 import sequtils

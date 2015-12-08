@@ -16,4 +16,3 @@ a = 42  # works, `a` is known here
 
 declareInNewScope(b, int)
 b = 42  #ERROR_MSG undeclared identifier: 'b'
-

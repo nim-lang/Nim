@@ -1,3 +1,6 @@
+discard """
+  file: "tdoc_comments.nim"
+"""
 
 # bug #1799
 

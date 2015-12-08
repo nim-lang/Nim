@@ -1,10 +1,6 @@
 discard """
-  output: '''
-WARNING: false first assertion from bar
-ERROR: false second assertion from bar
--1
-tests/assert/tfailedassert.nim:27 false assertion from foo
-'''
+  file: "tfailedassert.nim"
+  exitcode: "1"
 """
 
 type
@@ -24,20 +20,20 @@ onFailedAssert(msg):
   raise e
 
 proc foo =
-  assert(false, "assertion from foo")
+  doAssert(false, "assertion from foo")
 
 proc bar: int =
   # local overrides that are active only
   # in this proc
   onFailedAssert(msg): echo "WARNING: " & msg
 
-  assert(false, "first assertion from bar")
+  doAssert(false, "first assertion from bar")
 
   onFailedAssert(msg):
     echo "ERROR: " & msg
     return -1
 
-  assert(false, "second assertion from bar")
+  doAssert(false, "second assertion from bar")
   return 10
 
 echo("")
@@ -48,4 +44,3 @@ try:
 except:
   let e = EMyError(getCurrentException())
   echo e.lineinfo.filename, ":", e.lineinfo.line, " ", e.msg
-

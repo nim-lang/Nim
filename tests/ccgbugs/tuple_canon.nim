@@ -1,3 +1,6 @@
+discard """
+  file: "tuple_canon.nim"
+"""
 # bug #2250
 
 import

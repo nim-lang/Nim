@@ -1,6 +1,7 @@
 discard """
+  file: "twrong_generic_object.nim"
   errormsg: "cannot instantiate: 'GenericNodeObj'"
-  line: 21
+  line: 22
 """
 # bug #2509
 type

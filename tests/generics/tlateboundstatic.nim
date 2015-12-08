@@ -1,4 +1,5 @@
 discard """
+  file: "tlateboundstatic.nim"
   msg: "array[0..3, int]"
 """
 

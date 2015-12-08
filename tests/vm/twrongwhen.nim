@@ -1,6 +1,7 @@
 discard """
+  file: "twrongwhen.nim"
   errormsg: "cannot evaluate at compile time: x"
-  line: 7
+  line: 8
 """
 
 proc bla(x:int) =

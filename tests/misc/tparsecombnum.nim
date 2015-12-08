@@ -1,8 +1,9 @@
-import parsecomb
-
 discard """
+  file: "tparsecombnum.nim"
   output: "-289096"
 """
+
+import parsecomb
 
 type Num = int
 

@@ -1,5 +1,6 @@
 discard """
-  line: 9
+  file: "tsysspawnbadarg.nim"
+  # line: 10
   errormsg: "'spawn' takes a call expression"
   cmd: "nim $target --threads:on $options $file"
 """

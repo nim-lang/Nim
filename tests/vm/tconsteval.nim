@@ -1,4 +1,5 @@
 discard """
+  file: "tconsteval.nim"
 """
 
 import strutils
@@ -28,4 +29,3 @@ Possible Commands:
        CompileDate, CompileTime]
 
 echo HelpText
-

@@ -1,4 +1,5 @@
 discard """
+  file: "t5000.nim"
   output: '''50005000'''
   disabled: "true"
 """

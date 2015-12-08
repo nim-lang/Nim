@@ -1,3 +1,6 @@
+discard """
+  file: "ttempl3.nim"
+"""
 
 template withOpenFile(f: expr, filename: string, mode: TFileMode,
                       actions: stmt): stmt {.immediate.} =

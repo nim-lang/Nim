@@ -1,4 +1,5 @@
 discard """
+  file: "tstatic_ones.nim"
   output: "@[2, 2, 2, 2, 2]"
 """
 

@@ -1,8 +1,8 @@
-# bug #1023
-
 discard """
+  file: "tquadplus.nim"
   output: "1 == 1"
 """
+# bug #1023
 
 type Quadruple = tuple[a, b, c, d: int]
 

@@ -1,4 +1,5 @@
 discard """
+  file: "tdeepcopy.nim"
   output: '''13 abc'''
 """
 

@@ -1,3 +1,6 @@
+discard """
+  file: "tenum2.nim"
+"""
 # Test that enum with holes is handled correctly by case statement
 
 type
@@ -13,4 +16,3 @@ case e
 of eA: echo "A"
 of eB: echo "B"
 of eC: echo "C"
-

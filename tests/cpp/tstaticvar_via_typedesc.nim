@@ -1,11 +1,12 @@
 discard """
+  file: "tstaticvar_via_typedesc.nim"
   cmd: "nim cpp $file"
   output: "42"
 """
 
 # bug #2324
 
-static: assert defined(cpp), "compile in cpp mode"
+static: doAssert defined(cpp), "compile in cpp mode"
 
 {.emit: """
 class Foo {

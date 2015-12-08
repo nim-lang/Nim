@@ -1,4 +1,5 @@
 discard """
+  file: "tconsttable2.nim"
   msg: '''61'''
 """
 

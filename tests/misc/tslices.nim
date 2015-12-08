@@ -55,5 +55,5 @@ echo mystr
 
 var s = "abcdef"
 s[1 .. ^2] = "xyz"
-assert s == "axyzf"
+doAssert s == "axyzf"
 

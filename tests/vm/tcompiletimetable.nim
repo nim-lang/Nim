@@ -1,4 +1,5 @@
 discard """
+  file: "tcompiletimetable.nim"
   msg: '''2
 3
 4:2
@@ -46,4 +47,3 @@ macro dump(): stmt =
 addStuff("Hey"): echo "Hey"
 addStuff("Hi"): echo "Hi"
 dump()
-

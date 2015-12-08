@@ -1,3 +1,6 @@
+discard """
+  file: "tsym_as_pragma.nim"
+"""
 
 # bug #3171
 

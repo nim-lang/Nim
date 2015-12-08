@@ -1,4 +1,5 @@
 discard """
+  file: "tgenericmatcher.nim"
   disabled: false
 """
 

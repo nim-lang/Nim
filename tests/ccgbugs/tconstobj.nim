@@ -1,4 +1,5 @@
 discard """
+  file: "tconstobj.nim"
   output: '''(FirstName: James, LastName: Franco)'''
 """
 

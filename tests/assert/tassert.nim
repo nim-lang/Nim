@@ -3,9 +3,9 @@ discard """
   outputsub: "assertion failure!this shall be always written"
   exitcode: "1"
 """
-# test assert and exception handling
+# test assertion and exception handling
 
-proc callB() = assert(false)
+proc callB() = doAssert(false)
 proc callA() = callB()
 proc callC() = callA()
 
@@ -18,6 +18,6 @@ except:
 finally:
   system.write(stdout, "this shall be always written")
 
-assert(false) #OUT assertion failure!this shall be always written
+doAssert(false) #OUT assertion failure!this shall be always written
 
 

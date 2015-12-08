@@ -1,4 +1,5 @@
 discard """
+  file: "tsortdev.nim"
   output: "done"
 """
 

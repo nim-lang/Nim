@@ -1,4 +1,5 @@
 discard """
+  file: "tstaticvector.nim"
   output: '''0
 0
 2
@@ -36,4 +37,3 @@ when isMainModule:
   echo v[1].len
   #let xx = 50
   v[1][50] = 0.0
-

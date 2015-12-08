@@ -1,3 +1,6 @@
+discard """
+  file: "tgeneric3.nim"
+"""
 import strutils
 
 type

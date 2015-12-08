@@ -1,4 +1,5 @@
 discard """
+  file: "tinheritref.nim"
   output: "23"
 """
 
@@ -24,4 +25,3 @@ type
 
 var
   it: TKeysIterator[int, string] = nil
-

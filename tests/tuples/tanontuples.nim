@@ -1,4 +1,5 @@
 discard """
+  file: "tanontuples.nim"
   output: '''61, 125'''
 """
 

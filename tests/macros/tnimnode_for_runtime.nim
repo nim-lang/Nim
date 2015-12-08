@@ -1,4 +1,5 @@
 discard """
+  file: "tnimnode_for_runtime.nim"
   output: "bla"
 """
 

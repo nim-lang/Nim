@@ -51,5 +51,3 @@ var
 newBinHeap(heap, 256)
 add(heap, 1, 100)
 print(heap)
-
-

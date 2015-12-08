@@ -1,3 +1,6 @@
+discard """
+  file: "tsymchoicefield.nim"
+"""
 type Foo = object
   len: int
 
@@ -9,4 +12,3 @@ echo f.getLen
 # This fails, because `len` gets the nkOpenSymChoice
 # treatment inside the template early pass and then
 # it can't be recognized as a field anymore
-

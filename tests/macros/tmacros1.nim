@@ -1,4 +1,5 @@
 discard """
+  file: "tmacros1.nim"
   output: "Got: 'nnkCall' hi"
 """
 

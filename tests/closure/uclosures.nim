@@ -1,3 +1,6 @@
+discard """
+  file: "uclosures.nim"
+"""
 import unittest
 
 test "loop variables are captured by copy":

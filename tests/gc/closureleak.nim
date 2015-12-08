@@ -1,4 +1,5 @@
 discard """
+  file: "closureleak.nim"
   outputsub: "true"
 """
 

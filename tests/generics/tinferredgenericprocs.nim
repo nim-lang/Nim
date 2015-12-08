@@ -1,4 +1,5 @@
 discard """
+  file: "tinferredgenericprocs.nim"
   output: '''123
 1
 2

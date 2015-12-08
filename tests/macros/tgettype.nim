@@ -1,5 +1,6 @@
 discard """
-msg: '''ObjectTy(Sym(Model), RecList(Sym(name), Sym(password)))
+  file: "tgettype.nim"
+  msg: '''ObjectTy(Sym(Model), RecList(Sym(name), Sym(password)))
 BracketExpr(Sym(typeDesc), Sym(User))'''
 """
 import strutils, macros

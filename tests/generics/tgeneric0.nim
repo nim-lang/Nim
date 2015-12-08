@@ -1,3 +1,6 @@
+discard """
+  file: "tgeneric0.nim"
+"""
 import tables
 
 type

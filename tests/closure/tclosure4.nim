@@ -1,4 +1,6 @@
-
+discard """
+  file: "tclosure4.nim"
+"""
 import json, tables, sequtils
 
 proc run(json_params: TTable) =

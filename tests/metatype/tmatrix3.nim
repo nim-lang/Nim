@@ -1,4 +1,5 @@
 discard """
+  file: "tmatrix3.nim"
   output: ""
 """
 
@@ -16,4 +17,3 @@ proc `*`[M,N,M2,N2](a: Matrix[M,N2]; b: Matrix[M2,N]): Matrix[M,N] =
   discard
 
 echo a * a
-

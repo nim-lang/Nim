@@ -1,4 +1,5 @@
 discard """
+  file: "ttypedesc2.nim"
   output: "(x: a)"
 """
 

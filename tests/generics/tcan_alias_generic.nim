@@ -1,3 +1,6 @@
+discard """
+  file: "tcan_alias_generic.nim"
+"""
 ##
 ## can_alias_generic Nim Module
 ##

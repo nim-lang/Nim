@@ -1,6 +1,6 @@
 discard """
-file: "tevents.nim"
-output: '''HandlePrintEvent: Output -> Handled print event
+  file: "tevents.nim"
+  output: '''HandlePrintEvent: Output -> Handled print event
 HandlePrintEvent2: Output -> printing for ME
 HandlePrintEvent2: Output -> printing for ME'''
 """

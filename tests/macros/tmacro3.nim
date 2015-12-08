@@ -1,4 +1,5 @@
 discard """
+  file: "tmacro3.nim"
   output: ""
 """
 

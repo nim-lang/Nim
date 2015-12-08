@@ -1,4 +1,5 @@
 discard """
+  file: "ttryparseexpr.nim"
   outputsub: '''Error: invalid indentation 45'''
 """
 

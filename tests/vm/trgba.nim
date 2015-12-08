@@ -1,4 +1,5 @@
 discard """
+  file: "trgba.nim"
   output: '''[127, 127, 0, 255]
 [127, 127, 0, 255]
 '''

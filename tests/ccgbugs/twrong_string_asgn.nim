@@ -1,4 +1,5 @@
 discard """
+  file: "twrong_string_asgn.nim"
   output: "adf"
 """
 

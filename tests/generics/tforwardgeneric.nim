@@ -1,4 +1,5 @@
 discard """
+  file: "tforwardgeneric.nim"
   output: "1.1000000000000001e+00 11"
   ccodecheck: "!@'ClEnv'"
   disabled: "true"

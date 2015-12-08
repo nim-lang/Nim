@@ -1,4 +1,5 @@
 discard """
+  file: "tgenericprocvar.nim"
   output: "0false12"
 """
 

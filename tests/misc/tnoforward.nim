@@ -1,4 +1,5 @@
 discard """
+  file: "tnoforward.nim"
   disabled: true
 """
 

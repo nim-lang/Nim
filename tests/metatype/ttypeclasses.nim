@@ -1,4 +1,5 @@
 discard """
+  file: "ttypeclasses.nim"
   output: '''12
 1xxx
 true0
@@ -67,4 +68,3 @@ proc takesFooOfNumeric(x: TFoo[Numeric]) =
   echo "foo of numeric"
 
 takesFooOfNumeric(sf[0])
-

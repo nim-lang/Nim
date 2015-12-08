@@ -18,6 +18,3 @@ var p: TProc
 p = foo
 write(stdout, "success!")
 p = wrongfoo  #ERROR_MSG type mismatch
-
-
-

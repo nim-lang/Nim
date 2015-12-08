@@ -1,4 +1,5 @@
 discard """
+  file: "tstaticparamsmacro.nim"
   msg: '''letters
 aa
 bb

@@ -1,4 +1,5 @@
 discard """
+  file: "tconstobj.nim"
   output: '''(name: hello)
 (-1, 0)'''
 """

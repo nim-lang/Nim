@@ -1,3 +1,6 @@
+discard """
+  file: "tdllvar.nim"
+"""
 import os
 
 proc getDllName: string =

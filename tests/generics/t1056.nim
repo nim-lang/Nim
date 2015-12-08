@@ -1,4 +1,5 @@
 discard """
+  file: "t1056.nim"
   output: '''TMatrix[3, 3, system.int]
 3'''
 """

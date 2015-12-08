@@ -1,4 +1,5 @@
 discard """
+  file: "tgenericassigntuples.nim"
   output: '''abc232'''
 """
 
@@ -12,5 +13,3 @@ s = t
 s = ugh()[0]
 
 echo s[0], t[1]
-
-

@@ -1,3 +1,6 @@
+discard """
+  file: "ttypeselectors.nim"
+"""
 import macros
 
 template selectType(x: int): typeDesc =
@@ -36,4 +39,3 @@ proc t6*(x: type(t3(0))): type(t1(0)) =
 
 proc t7*(x: int): type($x) =
   result = "test"
-

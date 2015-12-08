@@ -1,4 +1,5 @@
 discard """
+  file "tswizzle.nim"
   output: '''3
 [1, 3]
 [2, 1, 2]
@@ -9,10 +10,10 @@ discard """
 import macros, strutils
 
 template accept(e: expr) =
-  static: assert(compiles(e))
+  static: doAssert(compiles(e))
 
 template reject(e: expr) =
-  static: assert(not compiles(e))
+  static: doAssert(not compiles(e))
 
 proc swizzleIdx(c: char): int =
   return case c

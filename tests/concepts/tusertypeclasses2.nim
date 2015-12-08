@@ -1,3 +1,6 @@
+discard """
+  file: "tusertypeclasses2.nim"
+"""
 type
   hasFieldX = concept z
     z.x is int
@@ -14,7 +17,7 @@ type
   v_o_x = var obj_x
 
 template check(x) =
-  static: assert(x)
+  static: doAssert(x)
 
 check obj_x is hasFieldX
 check ref_obj_x is hasFieldX

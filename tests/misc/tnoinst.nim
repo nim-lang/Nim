@@ -1,5 +1,6 @@
 discard """
-  line: 12
+  file: "tnoinst.nim"
+  line: 13
   errormsg: "instantiate 'notConcrete' explicitly"
   disabled: "true"
 """

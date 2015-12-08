@@ -1,3 +1,6 @@
+discard """
+  file: "tsizeof.nim"
+"""
 # Test the sizeof proc
 
 type

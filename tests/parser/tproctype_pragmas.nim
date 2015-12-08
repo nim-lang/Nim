@@ -1,4 +1,5 @@
 discard """
+  file: "tproctype_pragmas.nim"
   output: '''39
 40'''
 """

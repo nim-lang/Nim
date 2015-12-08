@@ -1,3 +1,6 @@
+discard """
+  file: "tcan_specialise_generic.nim"
+"""
 ##
 ## can_specialise_generic Nim Module
 ##

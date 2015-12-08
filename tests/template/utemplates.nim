@@ -1,3 +1,6 @@
+discard """
+  file: "utemplates.nim"
+"""
 import unittest
 
 template t(a: int): expr = "int"
@@ -29,4 +32,3 @@ test "templates can be redefined multiple times":
 
   assertion_failed: check msg == "second fail path"
   customAssert false, "second fail path"
-

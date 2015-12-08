@@ -1,5 +1,6 @@
 discard """
-output: '''true
+  file: "tsametype.nim"
+  output: '''true
 false
 true
 false

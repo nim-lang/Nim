@@ -1,3 +1,6 @@
+discard """
+  file: "tcmdline.nim"
+"""
 # Test the command line
 
 import

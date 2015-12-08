@@ -1,3 +1,6 @@
+discard """
+  file: "tmacro_in_template.nim"
+"""
 
 # bug #1944
 import macros

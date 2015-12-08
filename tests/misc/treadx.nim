@@ -1,4 +1,6 @@
-
+discard """
+  file: "treadx.nim"
+"""
 when not defined(windows):
   import posix
 

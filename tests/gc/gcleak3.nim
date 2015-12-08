@@ -1,4 +1,5 @@
 discard """
+  file: "gcleak3.nim"
   outputsub: "no leak: "
 """
 
@@ -27,4 +28,3 @@ proc limit*[t](a: var seq[t]) =
 s.limit()
 
 echo "no leak: ", getOccupiedMem()
-

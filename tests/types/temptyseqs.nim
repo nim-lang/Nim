@@ -1,4 +1,5 @@
 discard """
+  file: "temptyseqs.nim"
   output: '''1
 foo
 bar

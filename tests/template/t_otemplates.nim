@@ -1,4 +1,5 @@
 discard """
+  file: "t_otemplates.nim"
   output: "Success"
 """
 

@@ -1,3 +1,6 @@
+discard """
+  file: "tforwty.nim"
+"""
 # Test 13: forward types
 
 type

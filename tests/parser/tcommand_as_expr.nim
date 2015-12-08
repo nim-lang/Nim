@@ -1,4 +1,5 @@
 discard """
+  file: "tcommand_as_expr.nim"
   output: '''140
 5-120-120
 359

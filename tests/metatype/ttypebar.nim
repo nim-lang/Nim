@@ -1,3 +1,6 @@
+discard """
+  file: "ttypebar.nim"
+"""
 
 # bug #602
 
@@ -11,4 +14,3 @@ proc f(src: ptr TFoo, dst: ptr TFoo) =
 
 var x: TTest
 f(addr x, addr x)
-

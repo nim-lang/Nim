@@ -1,3 +1,6 @@
+discard """
+  file: "tsigtypeop.nim"
+"""
 type
   Vec3[T] = array[3, T]
 

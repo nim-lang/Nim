@@ -1,6 +1,7 @@
 discard """
+  file: "tcannot_pass_empty_seq_to_generic.nim"
   errormsg: "type mismatch: got (seq[empty])"
-  line: 16
+  line: 17
 """
 
 # bug #836

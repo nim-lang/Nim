@@ -1,3 +1,6 @@
+discard """
+  file: "tdumpast2.nim"
+"""
 # Dump the contents of a NimNode
 
 import macros
@@ -13,7 +16,7 @@ proc dumpit(n: NimNode): string {.compileTime.} =
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
   of nnkIdent:                   add(result, $n.ident)
-  of nnkSym, nnkNone:            assert false
+  of nnkSym, nnkNone:            doAssert false
   else:
     add(result, dumpit(n[0]))
     for j in 1..n.len-1:

@@ -26,5 +26,3 @@ nr.intVal = 78
 # s = nr # works
 nr = s # fails!
 echo "came here"
-
-

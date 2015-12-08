@@ -1,6 +1,7 @@
 discard """
+  file: "tgc_unsafe.nim"
   errormsg: "'consumer' is not GC-safe"
-  line: 19
+  line: 20
 """
 
 # bug #2257

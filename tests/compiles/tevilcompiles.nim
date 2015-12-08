@@ -1,3 +1,6 @@
+discard """
+  file: "tevilcompiles.nim"
+"""
 # bug #1055
 import unittest
 type TMatrix*[N,M: static[int], T] = object

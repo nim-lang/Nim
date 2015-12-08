@@ -1,6 +1,7 @@
 discard """
+  file: "twrongarray.nim"
   errormsg: "cannot evaluate at compile time: size"
-  line: 16
+  line: 17
 """
 
 #bug #1343
@@ -14,4 +15,4 @@ when false:
 
 proc two(dummy: int, size: int) =
   var x: array[size * 1, int] # compiles, but shouldn't?
-  #assert(x.len == size) # just for fun
+  #doAssert(x.len == size) # just for fun

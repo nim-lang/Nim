@@ -1,4 +1,5 @@
 discard """
+  file: "tmissingnilcheck.nim"
   disabled: true
 """
 

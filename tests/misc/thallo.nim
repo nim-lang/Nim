@@ -1,3 +1,6 @@
+discard """
+  file: "thallo.nim"
+"""
 # Hallo
 
 import

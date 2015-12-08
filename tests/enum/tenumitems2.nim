@@ -1,4 +1,5 @@
 discard """
+  file: "tenumitems2.nim"
   output: "A\nB\nC"
 """
 
@@ -11,4 +12,3 @@ iterator items(E: typedesc[enum]): E =
 
 for c in TAlphabet:
   echo($c)
-

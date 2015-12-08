@@ -1,4 +1,5 @@
 discard """
+  file: "tnestedclosure.nim"
   output: '''foo88
 23 24foo 88
 foo88

@@ -1,5 +1,6 @@
 discard """
-  line: 12
+  file: "tinvalidclosure.nim"
+  line: 13
   errormsg: "type mismatch: got (proc (x: int){.closure, gcsafe, locks: 0.})"
 """
 

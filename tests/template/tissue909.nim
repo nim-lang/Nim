@@ -1,3 +1,7 @@
+discard """
+  file: "tissue909.nim"
+"""
+
 import macros
 
 template baz() =

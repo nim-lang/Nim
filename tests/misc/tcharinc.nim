@@ -1,4 +1,5 @@
 discard """
+  file: "tcharinc.nim"
   output: "1"
 """
 

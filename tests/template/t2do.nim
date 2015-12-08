@@ -1,4 +1,5 @@
 discard """
+  file: "t2do.nim"
   output: "8.0"
 """
 

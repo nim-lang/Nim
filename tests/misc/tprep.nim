@@ -1,3 +1,6 @@
+discard """
+  file: "tprep.nim"
+"""
 # Test the features that used to belong to the preprocessor
 
 import

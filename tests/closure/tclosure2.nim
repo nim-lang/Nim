@@ -1,4 +1,5 @@
 discard """
+  file: "tclosure2.nim"
   output: '''0
 11
 1

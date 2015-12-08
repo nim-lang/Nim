@@ -1,4 +1,5 @@
 discard """
+  file: "tmissingbracket.nim"
   output: '''Subobject test called
 5'''
 """
@@ -49,4 +50,3 @@ var a: SubObject
 
 a.test()
 echo a.t
-

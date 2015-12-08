@@ -1,5 +1,6 @@
 discard """
-msg: '''StmtList
+  file: "tdumptree.nim"
+  msg: '''StmtList
   VarSection
     IdentDefs
       Ident !"x"

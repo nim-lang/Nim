@@ -1,4 +1,5 @@
 discard """
+  file: "tthread_createthread.nim"
   cmd: "nim cpp --hints:on --threads:on $options $file"
 """
 

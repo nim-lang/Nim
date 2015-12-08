@@ -1,4 +1,5 @@
 discard """
+  file: "gcleak5.nim"
   output: "success"
 """
 

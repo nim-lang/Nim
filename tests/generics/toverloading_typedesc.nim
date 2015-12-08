@@ -1,4 +1,5 @@
 discard """
+  file: "toverloading_typedesc.nim"
   exitcode: 0
 """
 import moverloading_typedesc

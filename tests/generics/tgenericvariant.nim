@@ -1,3 +1,6 @@
+discard """
+  file: "tgenericvariant.nim"
+"""
 type
   TMaybe[T] = object
     case empty: bool

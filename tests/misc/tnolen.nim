@@ -1,5 +1,6 @@
 discard """
-  line: 8
+  file: "tnolen.nim"
+  line: 9
   errormsg: "type mismatch: got (int literal(3))"
 """
 

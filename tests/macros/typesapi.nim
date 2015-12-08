@@ -1,4 +1,5 @@
 discard """
+  file: "typesapi.nim"
   nimout: '''proc (x: int): string => typeDesc[proc[string, int]]
 proc (x: int): void => typeDesc[proc[void, int]]
 proc (x: int) => typeDesc[proc[void, int]]'''

@@ -1,4 +1,5 @@
 discard """
+  file: "tsysspawn.nim"
   output: '''4
 8'''
   cmd: "nim $target --threads:on $options $file"

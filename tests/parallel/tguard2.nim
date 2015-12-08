@@ -1,6 +1,7 @@
 discard """
+  file: "tguard2.nim"
   errormsg: "unguarded access: c.i"
-  line: 25
+  line: 26
 """
 
 type

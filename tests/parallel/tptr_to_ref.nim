@@ -1,3 +1,6 @@
+discard """
+  file: "tptr_to_ref.nim"
+"""
 # bug #2854
 
 # Test case for the compiler correctly detecting if a type used by a shared
@@ -42,7 +45,7 @@ proc launched*(process: foreign ptr Process): int {.gcsafe.} =
         if killer.processes[i] == nil:
           killer.processes[i] = process
           result = i
-      assert(result <= killer.processes.high)
+      doAssert(result <= killer.processes.high)
 
 
 # A process has been finished with - remove the process from death row.

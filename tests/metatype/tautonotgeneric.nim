@@ -1,4 +1,5 @@
 discard """
+  file: "tautonotgeneric.nim"
   output: "wof!"
 """
 

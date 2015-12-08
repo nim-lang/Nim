@@ -1,3 +1,6 @@
+discard """
+  file: "tgeneric4.nim"
+"""
 type
   TIDGen*[A: Ordinal] = object
     next: A

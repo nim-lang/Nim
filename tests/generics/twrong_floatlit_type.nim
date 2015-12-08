@@ -1,6 +1,7 @@
 discard """
+  file: "twrong_floatlit_type.nim"
   errormsg: "type mismatch"
-  line: 116
+  line: 117
 """
 
 # bug #2169

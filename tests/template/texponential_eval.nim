@@ -1,3 +1,7 @@
+discard """
+  file: "texponential_eval.nim"
+"""
+
 # bug #1940
 
 discard """

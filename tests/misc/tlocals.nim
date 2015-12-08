@@ -1,4 +1,5 @@
 discard """
+  file: "tlocals.nim"
   output: "(x: string here, a: 1)"
 """
 

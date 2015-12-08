@@ -1,4 +1,5 @@
 discard """
+  file: "tnestedproc.nim"
   output: "11"
 """
 

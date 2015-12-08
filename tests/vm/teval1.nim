@@ -1,3 +1,6 @@
+discard """
+  file: "teval1.nim"
+"""
 import macros
 
 proc testProc: string {.compileTime.} =
@@ -20,5 +23,3 @@ echo "##", x, "##"
 static:
     var i, j: set[int8] = {}
     var k = i + j
-
-

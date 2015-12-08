@@ -1,4 +1,5 @@
 discard """
+  file: "tfieldindex.nim"
   output: "1"
 """
 

@@ -27,13 +27,13 @@ proc swarmConnect(s: PAsyncSocket) =
 
 proc serverRead(s: PAsyncSocket) =
   var line = ""
-  assert s.readLine(line)
+  doAssert s.readLine(line)
   if line != "":
     #echo(line)
     if line.startsWith("Message "):
       msgCount.inc()
     else:
-      assert(false)
+      doAssert(false)
   else:
     s.close()
 
@@ -88,5 +88,5 @@ while true:
     # we need to therefore break.
     break
 
-assert msgCount == (swarmSize * messagesToSend) * serverCount
+doAssert msgCount == (swarmSize * messagesToSend) * serverCount
 echo(msgCount)

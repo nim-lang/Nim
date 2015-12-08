@@ -1,4 +1,5 @@
 discard """
+  file: "tbindtypedesc.nim"
   msg: '''int int
 float float
 int int
@@ -17,10 +18,10 @@ type
     x, y: int
 
 template accept(e: expr) =
-  static: assert(compiles(e))
+  static: doAssert(compiles(e))
 
 template reject(e: expr) =
-  static: assert(not compiles(e))
+  static: doAssert(not compiles(e))
 
 proc genericParamRepeated[T: typedesc](a: T, b: T) =
   static:

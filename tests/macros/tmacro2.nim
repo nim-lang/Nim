@@ -1,4 +1,5 @@
 discard """
+  file: "tmacro2.nim"
   output: "ta-da Your value sir: 'HE!!!!o Wor!!d'"
 """
 

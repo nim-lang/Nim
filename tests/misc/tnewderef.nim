@@ -1,4 +1,5 @@
 discard """
+  file: "tnewderef.nim"
   output: 3
 
 """

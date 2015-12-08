@@ -1,4 +1,5 @@
 discard """
+  file: "tuple_with_seq.nim"
   output: '''it's nil
 @[1, 2, 3]'''
 """

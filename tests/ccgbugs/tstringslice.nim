@@ -1,4 +1,5 @@
 discard """
+  file: "tstringslice.nim"
   output: '''1
 1234
 1234

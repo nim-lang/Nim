@@ -1,4 +1,5 @@
 discard """
+  file: "gctest.nim"
   outputsub: "finished"
 """
 
@@ -64,7 +65,7 @@ proc caseTree(lvl: int = 0): PCaseNode =
   else: result = newCaseNode(caseTree(lvl+1), caseTree(lvl+1))
 
 proc finalizeNode(n: PNode) =
-  assert(n != nil)
+  doAssert(n != nil)
   write(stdout, "finalizing: ")
   if isNil(n.data): writeLine(stdout, "nil!")
   else: writeLine(stdout, "not nil")

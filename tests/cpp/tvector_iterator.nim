@@ -1,4 +1,5 @@
 discard """
+  file: "tvector_iterator.nim"
   cmd: "nim cpp $file"
 """
 
@@ -16,4 +17,3 @@ type
   VectorIterator {.importcpp: "Vector<'0>::Iterator".} [T] = object
 
 var x: VectorIterator[void]
-

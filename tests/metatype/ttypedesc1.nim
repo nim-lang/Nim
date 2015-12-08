@@ -1,3 +1,6 @@
+discard """
+  file: "ttypedesc1.nim"
+"""
 import unittest, typetraits
 
 type
@@ -39,4 +42,3 @@ test "types can be used as proc params":
 
 when false:
   proc foo(T: typedesc[seq], s: T) = nil
-

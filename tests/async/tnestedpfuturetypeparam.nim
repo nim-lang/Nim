@@ -1,3 +1,6 @@
+discard """
+  file: "tnestedpfuturetypeparam.nim"
+"""
 import asyncdispatch, asyncnet
 
 proc main {.async.} =

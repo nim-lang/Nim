@@ -1,4 +1,5 @@
 discard """
+  file: "tusertypeclasses.nim"
   output: '''Sortable
 Sortable
 Container

@@ -1,6 +1,7 @@
 discard """
+  file: "typeclassinference.nim"
   errormsg: "type mismatch: got (string) but expected 'ptr'"
-  line: 20
+  line: 21
   disabled: true
 """
 
@@ -12,7 +13,7 @@ type
 var x = Vec([1, 2, 3])
 
 static:
-  assert x.type.name == "Vec[static[int](3), int]"
+  doAssert x.type.name == "Vec[static[int](3), int]"
 
 var str1: string = "hello, world!"
 var ptr1: ptr = addr(str1)

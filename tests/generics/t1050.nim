@@ -1,4 +1,5 @@
 discard """
+  file: "t1050.nim"
   msg: "int"
   output: "4"
 """

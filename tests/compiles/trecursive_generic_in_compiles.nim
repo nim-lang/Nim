@@ -1,3 +1,6 @@
+discard """
+  file: "trecursive_generic_in_compiles.nim"
+"""
 # bug #3313
 import unittest, future
 

@@ -1,3 +1,6 @@
+discard """
+  file: "idetools_api.nim"
+"""
 import unicode, sequtils, macros, re
 
 proc test_enums() =
@@ -61,7 +64,7 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
                       body: stmt): NimNode {.dirty.} =
     try:
       body
-      assert false
+      doAssert false
     except errorTypes:
       nil
 

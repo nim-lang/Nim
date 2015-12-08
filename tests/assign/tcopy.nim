@@ -21,5 +21,3 @@ proc main() =
 
 main()
 #OUT TEMP=C:\Programs\xyz\bin
-
-

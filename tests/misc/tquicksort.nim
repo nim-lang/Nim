@@ -1,3 +1,20 @@
+discard """
+  file: "tquicksort.nim"
+  output: '''1
+2
+3
+4
+6
+7
+9
+12
+15
+23
+56
+89
+123
+356'''
+"""
 proc QuickSort(list: seq[int]): seq[int] =
     if len(list) == 0:
         return @[]

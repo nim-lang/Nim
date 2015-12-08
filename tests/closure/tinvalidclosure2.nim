@@ -1,5 +1,6 @@
 discard """
-  line: 10
+  file: "tinvalidclosure2.nim"
+  line: 11
   errormsg: "illegal capture 'A'"
 """
 

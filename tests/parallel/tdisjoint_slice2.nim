@@ -1,4 +1,5 @@
 discard """
+  file: "tdisjoint_slice2.nim"
   output: '''0
 1
 2

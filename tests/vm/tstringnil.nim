@@ -1,3 +1,6 @@
+discard """
+  file: "tstringnil.nim"
+"""
 # bug #1744
 
 import macros
@@ -47,4 +50,4 @@ macro suite(suiteName, suiteDesc: expr, suiteBloc: stmt): stmt {.immediate.} =
 # Test above
 suite basics, "Description of such":
   test(t5, nil):
-    assert false
+    doAssert false

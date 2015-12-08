@@ -1,3 +1,6 @@
+discard """
+  file: "tit.nim"
+"""
 
 # bug #1337
 

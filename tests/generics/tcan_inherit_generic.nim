@@ -1,3 +1,6 @@
+discard """
+  file: "tcan_inherit_generic.nim"
+"""
 ##
 ## can_inherit_generic Nim Module
 ##

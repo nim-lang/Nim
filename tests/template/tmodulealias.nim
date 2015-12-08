@@ -1,4 +1,5 @@
 discard """
+  file: "tmodulealias.nim"
   disabled: true
 """
 
@@ -16,4 +17,3 @@ else:
 
 proc socket(domain, typ, protocol: int): int =
   result = orig.socket(ord(domain), ord(typ), ord(protocol)))
-

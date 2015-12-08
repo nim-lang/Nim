@@ -13,4 +13,3 @@ type
   TIllegal {.final.} = object  #ERROR_MSG illegal recursion in type 'TIllegal'
     y: int
     x: array[0..3, TIllegal]
-

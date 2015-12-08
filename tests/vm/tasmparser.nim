@@ -1,3 +1,6 @@
+discard """
+  file: "tasmparser.nim"
+"""
 
 # bug #1513
 

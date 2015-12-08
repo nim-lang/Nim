@@ -1,4 +1,5 @@
 discard """
+  file: "tgraph.nim"
   output: '''XY is Node
 MyGraph is Graph'''
 """

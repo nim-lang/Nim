@@ -1,3 +1,6 @@
+discard """
+  file: "tdumpast.nim"
+"""
 # Dump the contents of a NimNode
 
 import macros

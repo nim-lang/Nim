@@ -1,3 +1,6 @@
+discard """
+  file: "tparams_gensymed.nim"
+"""
 
 # bug #1915
 

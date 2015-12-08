@@ -1,6 +1,7 @@
 discard """
+  file: "twrongconst.nim"
   errormsg: "cannot evaluate at compile time: x"
-  line: 7
+  line: 8
 """
 
 var x: array[100, char]

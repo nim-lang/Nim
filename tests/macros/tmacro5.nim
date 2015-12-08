@@ -1,3 +1,6 @@
+discard """
+  file: "tmacro5.nim"
+"""
 import macros,json
 
 var decls{.compileTime.}: seq[NimNode] = @[]

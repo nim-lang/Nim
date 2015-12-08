@@ -1,3 +1,6 @@
+discard """
+  file: "tmacroaspragma.nim"
+"""
 import macros
 
 macro foo(x: stmt): stmt =

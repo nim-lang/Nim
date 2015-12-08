@@ -1,4 +1,5 @@
 discard """
+  file: "twhen_gensym.nim"
   output: "hi"
 """
 

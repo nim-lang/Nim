@@ -1,3 +1,6 @@
+discard """
+  file: "trecursive_table.nim"
+"""
 
 # bug #1700
 import tables

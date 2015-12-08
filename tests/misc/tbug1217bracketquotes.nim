@@ -1,4 +1,5 @@
 discard """
+  file: "tbug1217bracketquotes.nim"
   output: "13{(.{}}{*4&*$**()&*@1235"
 """
 

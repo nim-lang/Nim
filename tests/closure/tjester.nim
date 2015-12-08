@@ -1,4 +1,5 @@
 discard """
+  file: "tjester.nim"
   output: '''baro0'''
 """
 
