@@ -1,12 +1,12 @@
 discard """
-  file: "tests/reject/trecincb.nim"
+  file: "trecincb.nim"
+  # Note: file must be "trecinab.nim"
   line: 9
-  errormsg: "recursive dependency: 'tests/modules/trecincb.nim'"
+  errormsg: '''recursive dependency: 'trecincb.nim'
+'''
 """
 # Test recursive includes
 
 include trecincb
 
 echo "trecina"
-
-
