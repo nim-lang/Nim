@@ -1,5 +1,5 @@
 discard """
-  file "tswizzle.nim"
+  file: "tswizzle.nim"
   output: '''3
 [1, 3]
 [2, 1, 2]
