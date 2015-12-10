@@ -117,6 +117,12 @@ const
 
   CREATE_NO_WINDOW* = 0x08000000'i32
 
+# Error Constants
+const
+  ERROR_ACCESS_DENIED* = 5
+  ERROR_HANDLE_EOF* = 38
+  ERROR_BAD_ARGUMENTS* = 165
+
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
 
@@ -189,7 +195,13 @@ proc setStdHandle*(nStdHandle: int32, hHandle: Handle): WINBOOL {.stdcall,
 proc flushFileBuffers*(hFile: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "FlushFileBuffers".}
 
+proc getVersion*(): int32 {.importc: "GetVersion",
+    stdcall, dynlib: "kernel32".}
+
 proc getLastError*(): int32 {.importc: "GetLastError",
+    stdcall, dynlib: "kernel32".}
+
+proc setLastError*(error: int32) {.importc: "SetLastError",
     stdcall, dynlib: "kernel32".}
 
 when useWinUnicode:
@@ -399,6 +411,21 @@ const
   WSAEWOULDBLOCK* = 10035
   WSAEINPROGRESS* = 10036
 
+const
+ IOC_OUT* = 0x40000000
+ IOC_IN*  = 0x80000000
+ IOC_WS2* = 0x08000000
+ IOC_INOUT* = IOC_IN or IOC_OUT
+
+template WSAIORW*(x,y): expr = (IOC_INOUT or x or y)
+
+const
+  SIO_GET_EXTENSION_FUNCTION_POINTER* = WSAIORW(IOC_WS2,6).DWORD
+  SO_UPDATE_ACCEPT_CONTEXT* = 0x700B
+  AI_V4MAPPED* = 0x0008
+  AF_INET* = 2
+  AF_INET6* = 23
+
 proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
 type
@@ -427,17 +454,31 @@ type
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
 
-  In6_addr* {.importc: "IN6_ADDR", header: "winsock2.h".} = object
-    bytes*: array[0..15, char]
+when defined(dropWinXP):
+  type
+    In6_addr* {.importc: "IN6_ADDR", header: "winsock2.h".} = object
+        bytes*: array[0..15, char]
 
-  Sockaddr_in6* {.importc: "SOCKADDR_IN6",
-                   header: "ws2tcpip.h".} = object
-    sin6_family*: int16
-    sin6_port*: int16 # unsigned
-    sin6_flowinfo*: int32 # unsigned
-    sin6_addr*: In6_addr
-    sin6_scope_id*: int32 # unsigned
+    Sockaddr_in6* {.importc: "SOCKADDR_IN6",
+                    header: "ws2tcpip.h".} = object
+        sin6_family*: int16
+        sin6_port*: int16 # unsigned
+        sin6_flowinfo*: int32 # unsigned
+        sin6_addr*: In6_addr
+        sin6_scope_id*: int32 # unsigned
+else:
+  type
+    In6_addr* = object
+        bytes*: array[0..15, char]
 
+    Sockaddr_in6* = object
+        sin6_family*: int16
+        sin6_port*: int16 # unsigned
+        sin6_flowinfo*: int32 # unsigned
+        sin6_addr*: In6_addr
+        sin6_scope_id*: int32 # unsigned
+
+type
   Sockaddr_in6_old* = object
     sin6_family*: int16
     sin6_port*: int16 # unsigned
@@ -597,8 +638,37 @@ proc freeaddrinfo*(ai: ptr AddrInfo) {.
 proc inet_ntoa*(i: InAddr): cstring {.
   stdcall, importc, dynlib: ws2dll.}
 
-proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
-            stringBufSize: int32): cstring {.stdcall, importc, dynlib: ws2dll.}
+when defined(dropWinXP):
+  proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall, importc, dynlib: ws2dll.}
+else:
+  proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
+  proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall.} =
+    case family
+    of AF_INET:
+      var sa: Sockaddr_in
+      sa.sin_family = AF_INET
+      sa.sin_addr = cast[ptr InAddr](paddr)[]
+      var bs = stringBufSize.DWORD
+      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+      if r != 0:
+        result = nil
+      else:
+        result = pStringBuffer
+    of AF_INET6:
+      var sa: Sockaddr_in6
+      sa.sin6_family = AF_INET6
+      sa.sin6_addr = cast[ptr In6_addr](paddr)[]
+      var bs = stringBufSize.DWORD
+      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+      if r != 0:
+        result = nil
+      else:
+        result = pStringBuffer
+    else:
+      setLastError(ERROR_BAD_ARGUMENTS)
+      result = nil
 
 const
   MAXIMUM_WAIT_OBJECTS* = 0x00000040
@@ -640,11 +710,6 @@ const
   DUPLICATE_SAME_ACCESS* = 2
   FILE_READ_DATA* = 0x00000001 # file & pipe
   FILE_WRITE_DATA* = 0x00000002 # file & pipe
-
-# Error Constants
-const
-  ERROR_ACCESS_DENIED* = 5
-  ERROR_HANDLE_EOF* = 38
 
 proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                       hTargetProcessHandle: HANDLE,
@@ -751,21 +816,6 @@ proc getQueuedCompletionStatus*(CompletionPort: Handle,
 proc getOverlappedResult*(hFile: Handle, lpOverlapped: OVERLAPPED,
               lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
-
-const
- IOC_OUT* = 0x40000000
- IOC_IN*  = 0x80000000
- IOC_WS2* = 0x08000000
- IOC_INOUT* = IOC_IN or IOC_OUT
-
-template WSAIORW*(x,y): expr = (IOC_INOUT or x or y)
-
-const
-  SIO_GET_EXTENSION_FUNCTION_POINTER* = WSAIORW(IOC_WS2,6).DWORD
-  SO_UPDATE_ACCEPT_CONTEXT* = 0x700B
-  AI_V4MAPPED* = 0x0008
-  AF_INET* = 2
-  AF_INET6* = 23
 
 var
   WSAID_CONNECTEX*: GUID = GUID(D1: 0x25a207b9, D2: 0xddf3'i16, D3: 0x4660, D4: [
