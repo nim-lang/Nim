@@ -14,7 +14,7 @@
 ## return ``redisNil``, and functions which return a ``RedisList``
 ## may return ``nil``.
 
-import sockets, os, strutils, parseutils
+import net, os, strutils, parseutils
 
 const
   redisNil* = "\0\0"
@@ -31,7 +31,7 @@ type
 
 type
   Redis* = object
-    socket: Socket
+    socket: net.Socket
     connected: bool
     pipeline: Pipeline
 
@@ -55,9 +55,8 @@ proc newPipeline(): Pipeline =
 
 proc open*(host = "localhost", port = 6379.Port): Redis =
   ## Opens a connection to the redis server.
-  result.socket = socket(buffered = false)
-  if result.socket == invalidSocket:
-    raiseOSError(osLastError())
+  result.socket = newSocket(buffered = false)
+
   result.socket.connect(host, port)
   result.pipeline = newPipeline()
 
@@ -923,6 +922,7 @@ proc quit*(r: Redis) =
   ## Close the connection
   r.sendCommand("QUIT")
   raiseNoOK(r.readStatus(), r.pipeline.enabled)
+  r.socket.close()
 
 proc select*(r: Redis, index: int): RedisStatus =
   ## Change the selected database for the current connection
