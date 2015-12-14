@@ -1,7 +1,7 @@
 discard """
   file: "trecincb.nim"
   line: 9
-  errormsg: "recursive dependency: 'tests/modules/trecincb.nim'"
+  errormsgpeg: " 'recursive dependency: \\'' @ 'trecincb.nim\\'' "
 """
 # Test recursive includes
 
@@ -9,5 +9,3 @@ discard """
 include trecincb
 
 echo "trecinb"
-
-

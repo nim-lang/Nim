@@ -185,7 +185,11 @@ proc addResult(r: var TResults, test: TTest,
     close(p)
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
-  if strip(expected.msg) notin strip(given.msg):
+  let msgOk = if expected.msgIsPeg:
+      strip(given.msg).match(peg(expected.msg))
+    else:
+      strip(expected.msg) in strip(given.msg)
+  if not msgOk:
     r.addResult(test, expected.msg, given.msg, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
@@ -327,7 +331,6 @@ proc testSpec(r: var TResults, test: TTest) =
     var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
     let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
                else: strip(buf.string)
-    let expectedOut = strip(expected.outp)
 
     if exitCode != expected.exitCode:
       r.addResult(test, "exitcode: " & $expected.exitCode,
@@ -336,11 +339,18 @@ proc testSpec(r: var TResults, test: TTest) =
                         reExitCodesDiffer)
       return
 
-    if bufB != expectedOut:
-      if not (expected.substr and expectedOut in bufB):
-        given.err = reOutputsDiffer
-        r.addResult(test, expected.outp, bufB, reOutputsDiffer)
-        return
+    let expectedOut = strip(expected.outp)
+    let outputOk = if expected.outIsPeg:
+        bufB.match(peg(expectedOut))
+      elif expected.substr:
+        expectedOut in bufB
+      else:
+        bufB == expectedOut
+
+    if not outputOk:
+      given.err = reOutputsDiffer
+      r.addResult(test, expected.outp, bufB, reOutputsDiffer)
+      return
 
     compilerOutputTests(test, given, expected, r)
     return

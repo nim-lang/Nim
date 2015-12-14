@@ -1,9 +1,9 @@
 discard """
-  output: '''
-WARNING: false first assertion from bar
-ERROR: false second assertion from bar
--1
-tests/assert/tfailedassert.nim:27 false assertion from foo
+  outputpeg: '''
+'WARNING: false first assertion from bar' \n
+'ERROR: false second assertion from bar' \n
+'-1' \n
+@ 'tfailedassert.nim:27 false assertion from foo'
 '''
 """
 
@@ -48,4 +48,3 @@ try:
 except:
   let e = EMyError(getCurrentException())
   echo e.lineinfo.filename, ":", e.lineinfo.line, " ", e.msg
-

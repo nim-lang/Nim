@@ -43,11 +43,13 @@ type
     action*: TTestAction
     file*, cmd*: string
     outp*: string
+    outIsPeg*: bool
     line*, column*: int
     tfile*: string
     tline*, tcolumn*: int
     exitCode*: int
     msg*: string
+    msgIsPeg*: bool
     ccodeCheck*: string
     err*: TResultEnum
     substr*, sortoutput*: bool
@@ -111,7 +113,8 @@ proc parseSpec*(filename: string): TSpec =
   specDefaults(result)
   result.file = filename
   parseSpecAux:
-    case normalize(e.key)
+    let key = normalize(e.key)
+    case key
     of "action":
       case e.value.normalize
       of "compile": result.action = actionCompile
@@ -124,9 +127,10 @@ proc parseSpec*(filename: string): TSpec =
     of "tfile": result.tfile = e.value
     of "tline": discard parseInt(e.value, result.tline)
     of "tcolumn": discard parseInt(e.value, result.tcolumn)
-    of "output":
+    of "output", "outputpeg":
       result.action = actionRun
       result.outp = e.value
+      result.outIsPeg = key == "outputpeg"
     of "outputsub":
       result.action = actionRun
       result.outp = e.value
@@ -135,12 +139,14 @@ proc parseSpec*(filename: string): TSpec =
       result.sortoutput = parseCfgBool(e.value)
     of "exitcode":
       discard parseInt(e.value, result.exitCode)
-    of "msg":
+    of "msg", "msgpeg":
       result.msg = e.value
+      result.msgIsPeg = key == "msgpeg"
       if result.action != actionRun:
         result.action = actionCompile
-    of "errormsg":
+    of "errormsg", "errormsgpeg":
       result.msg = e.value
+      result.msgIsPeg = key == "errormsgpeg"
       result.action = actionReject
     of "nimout":
       result.nimout = e.value

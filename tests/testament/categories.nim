@@ -108,8 +108,9 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
   runBasicDLLTest c, r, cat, options
   runBasicDLLTest c, r, cat, options & " -d:release"
-  runBasicDLLTest c, r, cat, options & " --gc:boehm"
-  runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
+  when not defined(windows):
+    runBasicDLLTest c, r, cat, options & " --gc:boehm"
+    runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
 
 # ------------------------------ GC tests -------------------------------------
 
@@ -246,10 +247,11 @@ proc findMainFile(dir: string): string =
   if nimFiles != 1: result.setlen(0)
 
 proc manyLoc(r: var TResults, cat: Category, options: string) =
+  const testsDisabledOnWindows = ["tests/manyloc\\nake\\nakefile.nim"]
   for kind, dir in os.walkDir("tests/manyloc"):
     if kind == pcDir:
       let mainfile = findMainFile(dir)
-      if mainfile != "":
+      if mainfile != "" and mainfile notin testsDisabledOnWindows:
         testNoSpec r, makeTest(mainfile, options, cat)
 
 proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
