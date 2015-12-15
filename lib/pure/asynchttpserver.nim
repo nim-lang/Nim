@@ -39,6 +39,7 @@ type
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
+    reusePort: bool
 
   HttpCode* = enum
     Http100 = "100 Continue",
@@ -99,10 +100,11 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
 
-proc newAsyncHttpServer*(reuseAddr = true): AsyncHttpServer =
+proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
   result.reuseAddr = reuseAddr
+  result.reusePort = reusePort
 
 proc addHeaders(msg: var string, headers: StringTableRef) =
   for k, v in headers:
@@ -264,6 +266,8 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket = newAsyncSocket()
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
+  if server.reusePort:
+    server.socket.setSockOpt(OptReusePort, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
 
