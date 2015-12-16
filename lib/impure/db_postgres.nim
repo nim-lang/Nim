@@ -68,7 +68,7 @@ export db_common
 type
   DbConn* = PPGconn   ## encapsulates a database connection
   Row* = seq[string]  ## a row of a dataset. NULL database values will be
-                      ## transformed always to the empty string.
+                      ## converted to nil.
   InstantRow* = tuple[res: PPGresult, line: int32]  ## a handle that can be
                                                     ## used to get a row's
                                                     ## column text on demand

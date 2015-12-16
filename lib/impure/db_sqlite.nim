@@ -48,7 +48,7 @@ export db_common
 type
   DbConn* = PSqlite3  ## encapsulates a database connection
   Row* = seq[string]  ## a row of a dataset. NULL database values will be
-                       ## transformed always to the empty string.
+                       ## converted to nil.
   InstantRow* = Pstmt  ## a handle that can be used to get a row's column
                        ## text on demand
 {.deprecated: [TRow: Row, TDbConn: DbConn].}
