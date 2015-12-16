@@ -1,8 +1,12 @@
 #
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Nim Contributors
+#
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-#
+
 ## A higher level `ODBC` database wrapper.
 ##
 ## This is the same interface that is implemented for other databases.
@@ -45,46 +49,32 @@
 
 import strutils, odbcsql
 
+import db_common
+export db_common
+
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
   DbConn* = OdbcConnTyp    ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
-                       ## transformed always to the empty string.
+                       ## converted to nil.
   InstantRow* = tuple[row: seq[string], len: int]  ## a handle that can be
                                                     ## used to get a row's
                                                     ## column text on demand
-  EDb* = object of IOError ## exception that is raised if a database error occurs
 
-  SqlQuery* = distinct string ## an SQL query string
-
-  FDb* = object of IOEffect ## effect that denotes a database operation
-  FReadDb* = object of FDb   ## effect that denotes a read operation
-  FWriteDb* = object of FDb  ## effect that denotes a write operation
-  FReadODBC* = object of FDb   ## effect that denotes a read of ODBC driver
-  FWriteODBC* = object of FDb  ## effect that denotes a write of ODBC driver
 {.deprecated: [TRow: Row, TSqlQuery: SqlQuery, TDbConn: DbConn].}
 
 var
   buf: array[0..4096, char]
 
 proc properFreeResult(hType: int, sqlres: var SqlHandle) {.
-          tags: [FWriteODBC], raises: [].} =
+          tags: [WriteDbEffect], raises: [].} =
   try:
     discard SQLFreeHandle(hType.TSqlSmallInt, sqlres)
     sqlres = nil
   except: discard
 
-proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =
-  ## Constructs a SqlQuery from the string `query`. This is supposed to be
-  ## used as a raw-string-literal modifier:
-  ## ``sql"update user set counter = counter + 1"``
-  ##
-  ## If assertions are turned off, it does nothing. If assertions are turned
-  ## on, later versions will check the string for valid syntax.
-  result = SqlQuery(query)
-
 proc getErrInfo(db: var DbConn): tuple[res: int, ss, ne, msg: string] {.
-          tags: [FReadODBC], raises: [].} =
+          tags: [ReadDbEffect], raises: [].} =
   ## Returns ODBC error information
   var
     sqlState: array[0..512, char]
@@ -106,10 +96,10 @@ proc getErrInfo(db: var DbConn): tuple[res: int, ss, ne, msg: string] {.
   return (res.int, $sqlState, $nativeErr, $errMsg)
 
 proc dbError*(db: var DbConn) {.
-          tags: [FReadODBC,FWriteODBC], raises: [EDb] .} =
-  ## Raises an `[EDb]` exception with ODBC error information
+          tags: [ReadDbEffect, WriteDbEffect], raises: [DbError] .} =
+  ## Raises an `[DbError]` exception with ODBC error information
   var
-    e: ref EDb
+    e: ref DbError
     ss, ne, msg: string = ""
     isAnError = false
     res: int = 0
@@ -137,19 +127,12 @@ proc dbError*(db: var DbConn) {.
     properFreeResult(SQL_HANDLE_ENV, db.env)
     raise e
 
-proc dbError*(msg: string) {.noreturn.} =
-  ## Raises an EDb exception with message `msg`.
-  var e: ref EDb
-  new(e)
-  e.msg = msg
-  raise e
-
-proc SqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [EDb]} =
+proc SqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [DbError]} =
   ## Wrapper that checks if ``resVal`` is not SQL_SUCCESS and if so, raises [EDb]
   if resVal != SQL_SUCCESS: dbError(db)
 
 proc SqlGetDBMS(db: var DbConn): string {.
-        tags: [FReadODBC, FWriteODBC], raises: [] .} =
+        tags: [ReadDbEffect, WriteDbEffect], raises: [] .} =
   ## Returns the ODBC SQL_DBMS_NAME string
   const
     SQL_DBMS_NAME = 17.SqlUSmallInt
@@ -188,7 +171,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
 
 proc prepareFetch(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]) {.
-                tags: [FReadDb, FReadODBC, FWriteODBC], raises: [EDb].} =
+                tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   # Prepare a statement, execute it and fetch the data to the driver
   # ready for retrieval of the data
   # Used internally by iterators and retrieval procs
@@ -203,7 +186,7 @@ proc prepareFetch(db: var DbConn, query: SqlQuery,
 
 proc prepareFetchDirect(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]) {.
-                tags: [FReadDb, FWriteDb, FReadODBC, FWriteODBC], raises: [EDb].} =
+                tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   # Prepare a statement, execute it and fetch the data to the driver
   # ready for retrieval of the data
   # Used internally by iterators and retrieval procs
@@ -216,7 +199,7 @@ proc prepareFetchDirect(db: var DbConn, query: SqlQuery,
   db.SqlCheck(SQLFetch(db.stmt))
 
 proc tryExec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
-  tags: [FReadDB, FWriteDb, FReadODBC, FWriteODBC], raises: [].} =
+  tags: [ReadDbEffect, WriteDbEffect], raises: [].} =
   ## Tries to execute the query and returns true if successful, false otherwise.
   var
     res:TSqlSmallInt = -1
@@ -231,11 +214,11 @@ proc tryExec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]): bool
   return res == SQL_SUCCESS
 
 proc rawExec(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
-            tags: [FReadDb, FWriteDb, FReadODBC, FWriteODBC], raises: [EDb].} =
+            tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   db.prepareFetchDirect(query, args)
 
 proc exec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
-            tags: [FReadDb, FWriteDb, FReadODBC, FWriteODBC], raises: [EDb].} =
+            tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Executes the query and raises EDB if not successful.
   db.prepareFetchDirect(query, args)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -246,7 +229,7 @@ proc newRow(L: int): Row {.noSideEFfect.} =
 
 iterator fastRows*(db: var DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row {.
-                tags: [FReadDB, FReadODBC, FWriteODBC], raises: [EDb].} =
+                tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Executes the query and iterates over the result dataset.
   ##
   ## This is very fast, but potentially dangerous.  Use this iterator only
@@ -278,7 +261,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
 
 iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
-                {.tags: [FReadDb, FReadODBC, FWriteODBC].} =
+                {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the interator body.
   var
@@ -310,7 +293,7 @@ proc len*(row: InstantRow): int {.inline.} =
 
 proc getRow*(db: var DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.
-          tags: [FReadDB, FReadODBC, FWriteODBC], raises: [EDb].} =
+          tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
   var
@@ -331,7 +314,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
 
 proc getAllRows*(db: var DbConn, query: SqlQuery,
                  args: varargs[string, `$`]): seq[Row] {.
-           tags: [FReadDB, FReadODBC, FWriteODBC], raises: [EDb].} =
+           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Executes the query and returns the whole result dataset.
   var
     rowRes: Row
@@ -355,7 +338,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
 
 iterator rows*(db: var DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.
-         tags: [FReadDB, FReadODBC, FWriteODBC], raises: [EDb].} =
+         tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Same as `fastRows`, but slower and safe.
   ##
   ## This retrieves ALL rows into memory before
@@ -365,7 +348,7 @@ iterator rows*(db: var DbConn, query: SqlQuery,
 
 proc getValue*(db: var DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.
-           tags: [FReadDB, FReadODBC, FWriteODBC], raises: [].} =
+           tags: [ReadDbEffect, WriteDbEffect], raises: [].} =
   ## Executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
@@ -376,7 +359,7 @@ proc getValue*(db: var DbConn, query: SqlQuery,
 
 proc tryInsertId*(db: var DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64 {.
-            tags: [FReadDb, FWriteDb, FReadODBC, FWriteODBC], raises: [].} =
+            tags: [ReadDbEffect, WriteDbEffect], raises: [].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   if not tryExec(db, query, args):
@@ -401,7 +384,7 @@ proc tryInsertId*(db: var DbConn, query: SqlQuery,
 
 proc insertId*(db: var DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.
-         tags: [FReadDb, FWriteDb, FReadODBC, FWriteODBC], raises: [EDb].} =
+         tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row.
   result = tryInsertID(db, query, args)
@@ -409,7 +392,7 @@ proc insertId*(db: var DbConn, query: SqlQuery,
 
 proc execAffectedRows*(db: var DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.
-             tags: [FReadDB, FWriteDb, FReadODBC, FWriteODBC], raises: [EDb].} =
+             tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Runs the query (typically "UPDATE") and returns the
   ## number of affected rows
   result = -1
@@ -426,7 +409,7 @@ proc execAffectedRows*(db: var DbConn, query: SqlQuery,
   result = rCnt
 
 proc close*(db: var DbConn) {.
-      tags: [FWriteODBC], raises: [].} =
+      tags: [WriteDbEffect], raises: [].} =
   ## Closes the database connection.
   if db.hDb != nil:
     try:
@@ -440,7 +423,7 @@ proc close*(db: var DbConn) {.
       discard
 
 proc open*(connection, user, password, database: string): DbConn {.
-  tags: [FReadODBC, FWriteODBC], raises: [EDb].} =
+  tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Opens a database connection.
   ##
   ## Raises `EDb` if the connection could not be established.
@@ -471,7 +454,7 @@ proc open*(connection, user, password, database: string): DbConn {.
     result.dbError()
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
-  tags: [FReadODBC, FWriteODBC], raises: [EDb].} =
+  tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Currently not implemented for ODBC.
   ##
   ## Sets the encoding of a database connection, returns true for
