@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -42,45 +42,26 @@
 
 import strutils, sqlite3
 
+import db_common
+export db_common
+
 type
   DbConn* = PSqlite3  ## encapsulates a database connection
   Row* = seq[string]  ## a row of a dataset. NULL database values will be
                        ## transformed always to the empty string.
   InstantRow* = Pstmt  ## a handle that can be used to get a row's column
                        ## text on demand
-  EDb* = object of IOError ## exception that is raised if a database error occurs
+{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
-  SqlQuery* = distinct string ## an SQL query string
-
-  FDb* = object of IOEffect ## effect that denotes a database operation
-  FReadDb* = object of FDb   ## effect that denotes a read operation
-  FWriteDb* = object of FDb  ## effect that denotes a write operation
-{.deprecated: [TRow: Row, TSqlQuery: SqlQuery, TDbConn: DbConn].}
-
-proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =
-  ## constructs a SqlQuery from the string `query`. This is supposed to be
-  ## used as a raw-string-literal modifier:
-  ## ``sql"update user set counter = counter + 1"``
-  ##
-  ## If assertions are turned off, it does nothing. If assertions are turned
-  ## on, later versions will check the string for valid syntax.
-  result = SqlQuery(query)
-
-proc dbError(db: DbConn) {.noreturn.} =
-  ## raises an EDb exception.
-  var e: ref EDb
+proc dbError*(db: DbConn) {.noreturn.} =
+  ## raises a DbError exception.
+  var e: ref DbError
   new(e)
   e.msg = $sqlite3.errmsg(db)
   raise e
 
-proc dbError*(msg: string) {.noreturn.} =
-  ## raises an EDb exception with message `msg`.
-  var e: ref EDb
-  new(e)
-  e.msg = msg
-  raise e
-
-proc dbQuote(s: string): string =
+proc dbQuote*(s: string): string =
+  ## DB quotes the string.
   if s.isNil: return "NULL"
   result = "'"
   for c in items(s):
@@ -99,7 +80,8 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
       add(result, c)
 
 proc tryExec*(db: DbConn, query: SqlQuery,
-              args: varargs[string, `$`]): bool {.tags: [FReadDb, FWriteDb].} =
+              args: varargs[string, `$`]): bool {.
+              tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
@@ -108,8 +90,8 @@ proc tryExec*(db: DbConn, query: SqlQuery,
       result = finalize(stmt) == SQLITE_OK
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
-  tags: [FReadDb, FWriteDb].} =
-  ## executes the query and raises EDB if not successful.
+  tags: [ReadDbEffect, WriteDbEffect].} =
+  ## executes the query and raises DbError if not successful.
   if not tryExec(db, query, args): dbError(db)
 
 proc newRow(L: int): Row =
@@ -129,14 +111,14 @@ proc setRow(stmt: Pstmt, r: var Row, cols: cint) =
     if not isNil(x): add(r[col], x)
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
-                   args: varargs[string, `$`]): Row  {.tags: [FReadDb].} =
+                   args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Executes the query and iterates over the result dataset.
   ##
   ## This is very fast, but potentially dangerous.  Use this iterator only
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
-  ## database query to raise an [EDb] exception ``unable to close due to ...``.
+  ## database query to raise a DbError exception ``unable to close due to ...``.
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   var result = newRow(L)
@@ -147,9 +129,9 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
 
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
-                      {.tags: [FReadDb].} =
+                      {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the interator body.
+  ## on demand using []. Returned handle is valid only within the iterator body.
   var stmt = setupQuery(db, query, args)
   while step(stmt) == SQLITE_ROW:
     yield stmt
@@ -164,7 +146,7 @@ proc len*(row: InstantRow): int32 {.inline.} =
   column_count(row)
 
 proc getRow*(db: DbConn, query: SqlQuery,
-             args: varargs[string, `$`]): Row {.tags: [FReadDb].} =
+             args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
   var stmt = setupQuery(db, query, args)
@@ -175,19 +157,19 @@ proc getRow*(db: DbConn, query: SqlQuery,
   if finalize(stmt) != SQLITE_OK: dbError(db)
 
 proc getAllRows*(db: DbConn, query: SqlQuery,
-                 args: varargs[string, `$`]): seq[Row] {.tags: [FReadDb].} =
+                 args: varargs[string, `$`]): seq[Row] {.tags: [ReadDbEffect].} =
   ## executes the query and returns the whole result dataset.
   result = @[]
   for r in fastRows(db, query, args):
     result.add(r)
 
 iterator rows*(db: DbConn, query: SqlQuery,
-               args: varargs[string, `$`]): Row {.tags: [FReadDb].} =
+               args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## same as `FastRows`, but slower and safe.
   for r in fastRows(db, query, args): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
-               args: varargs[string, `$`]): string {.tags: [FReadDb].} =
+               args: varargs[string, `$`]): string {.tags: [ReadDbEffect].} =
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
@@ -205,7 +187,7 @@ proc getValue*(db: DbConn, query: SqlQuery,
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64
-                  {.tags: [FWriteDb], raises: [].} =
+                  {.tags: [WriteDbEffect], raises: [].} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
@@ -218,7 +200,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
       result = -1
 
 proc insertID*(db: DbConn, query: SqlQuery,
-               args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
+               args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row. For Postgre this adds
   ## ``RETURNING id`` to the query, so it only works if your primary key is
@@ -228,18 +210,18 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.
-                       tags: [FReadDb, FWriteDb].} =
+                       tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query (typically "UPDATE") and returns the
   ## number of affected rows.
   exec(db, query, args)
   result = changes(db)
 
-proc close*(db: DbConn) {.tags: [FDb].} =
+proc close*(db: DbConn) {.tags: [DbEffect].} =
   ## closes the database connection.
   if sqlite3.close(db) != SQLITE_OK: dbError(db)
 
 proc open*(connection, user, password, database: string): DbConn {.
-  tags: [FDb].} =
+  tags: [DbEffect].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established. Only the ``connection`` parameter is used for ``sqlite``.
   var db: DbConn
@@ -249,7 +231,7 @@ proc open*(connection, user, password, database: string): DbConn {.
     dbError(db)
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
-  tags: [FDb].} =
+  tags: [DbEffect].} =
   ## sets the encoding of a database connection, returns true for
   ## success, false for failure.
   ##
