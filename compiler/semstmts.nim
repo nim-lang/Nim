@@ -540,7 +540,7 @@ proc symForVar(c: PContext, n: PNode): PSym =
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
   var length = sonsLen(n)
-  let iterBase = n.sons[length-2].typ.skipTypes({tyIter})
+  let iterBase = n.sons[length-2].typ
   var iter = skipTypes(iterBase, {tyGenericInst})
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
@@ -594,8 +594,7 @@ proc semFor(c: PContext, n: PNode): PNode =
       result.kind = nkParForStmt
     else:
       result = semForFields(c, n, call.sons[0].sym.magic)
-  elif (isCallExpr and call.sons[0].typ.callConv == ccClosure) or
-      call.typ.kind == tyIter:
+  elif isCallExpr and call.sons[0].typ.callConv == ccClosure:
     # first class iterator:
     result = semForVars(c, n)
   elif not isCallExpr or call.sons[0].kind != nkSym or

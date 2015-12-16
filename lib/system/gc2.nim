@@ -13,6 +13,8 @@
 # and sweep GC to free cycles. It is hard realtime in that if you play
 # according to its rules, no deadline will ever be missed.
 
+# XXX Ensure by smart color masking that the object is not in the ZCT.
+
 when defined(nimCoroutines):
   import arch
 

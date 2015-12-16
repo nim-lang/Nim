@@ -77,7 +77,7 @@ proc cacheTypeInst*(inst: PType) =
   #      update the refcount
   let gt = inst.sons[0]
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
-  if t.kind in {tyStatic, tyGenericParam, tyIter} + tyTypeClasses:
+  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     return
   gt.sym.typeInstCache.safeAdd(inst)
 
@@ -390,7 +390,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam, tyIter} + tyTypeClasses:
+  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     let lookup = PType(idTableGet(cl.typeMap, t))
     if lookup != nil: return lookup
 

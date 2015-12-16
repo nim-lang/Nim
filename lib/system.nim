@@ -232,8 +232,8 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
-  ##  high(arr) #=> 0
-  ##  high(2) #=> -9223372036854775808
+  ##  low(arr) #=> 0
+  ##  low(2) #=> -9223372036854775808
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
@@ -840,7 +840,7 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ##   1 div 2 == 0
   ##   2 div 2 == 1
   ##   3 div 2 == 1
-  ##   7 div 5 == 2
+  ##   7 div 5 == 1
 
 when defined(nimnomagic64):
   proc `div` *(x, y: int64): int64 {.magic: "DivI", noSideEffect.}

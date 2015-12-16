@@ -16,6 +16,9 @@ News
     actually work with the bool datatype.
   - when compiling to JS, ``Node``, ``NodeType`` and ``Document`` are no longer
     defined. Use the types defined in ``dom.nim`` instead.
+  - The check ``x is iterator`` (used for instance in concepts) was always a
+    weird special case (you could not use ``x is proc``) and was removed from
+    the language.
 
 
 2015-10-27 Version 0.12.0 released

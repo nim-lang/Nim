@@ -68,7 +68,9 @@ when defined(posix):
 
   proc nimLoadLibrary(path: string): LibHandle =
     result = dlopen(path, RTLD_NOW)
-    #c_fprintf(c_stdout, "%s\n", dlerror())
+    let error = dlerror()
+    if error != nil:
+      c_fprintf(c_stdout, "%s\n", error)
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
