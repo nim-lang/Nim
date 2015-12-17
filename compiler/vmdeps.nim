@@ -127,6 +127,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
       result = atomicType(t.sym.name.s)
   of tyEnum:
     result = newNodeIT(nkEnumTy, info, t)
+    result.add newSymNode(t.sym)
     result.add copyTree(t.n)
   of tyTuple: result = mapTypeToBracket("tuple", t, info)
   of tySet: result = mapTypeToBracket("set", t, info)
