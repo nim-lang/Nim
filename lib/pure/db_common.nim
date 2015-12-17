@@ -36,7 +36,8 @@ type
     dbFloat,          ## some floating point type
     dbDate,           ## a year-month-day description
     dbTime,           ## HH:MM:SS information
-    dbDatetime,       ## year-month-day and HH:MM:SS information
+    dbDatetime,       ## year-month-day and HH:MM:SS information,
+                      ## plus optional time or timezone information
     dbTimestamp,      ## Timestamp values are stored as the number of seconds
                       ## since the epoch ('1970-01-01 00:00:00' UTC).
     dbTimeInterval,   ## an interval [a,b] of times
@@ -48,6 +49,7 @@ type
     dbUuid,           ## a UUID
     dbInet,           ## an IP address
     dbMacAddress,     ## a MAC address
+    dbGeometry,       ## some geometric type
     dbPoint,          ## Point on a plane   (x,y)
     dbLine,           ## Infinite line ((x1,y1),(x2,y2))
     dbLseg,           ## Finite line segment   ((x1,y1),(x2,y2))
@@ -66,6 +68,7 @@ type
     notNull*: bool    ## does the type contain NULL?
     name*: string     ## the name of the type
     size*: Natural    ## the size of the datatype; 0 if of variable size
+    maxReprLen*: Natural ## maximal length required for the representation
     precision*, scale*: Natural ## precision and scale of the number
     min*, max*: BiggestInt ## the minimum and maximum of allowed values
     validValues*: seq[string] ## valid values of an enum or a set
@@ -74,6 +77,8 @@ type
     name*: string      ## name of the column
     tableName*: string ## name of the table the column belongs to (optional)
     typ*: DbType       ## type of the column
+    primaryKey*: bool  ## is this a primary key?
+    foreignKey*: bool  ## is this a foreign key?
   DbColumns* = seq[DbColumn]
 
 {.deprecated: [EDb: DbError, TSqlQuery: SqlQuery, FDb: DbEffect,
