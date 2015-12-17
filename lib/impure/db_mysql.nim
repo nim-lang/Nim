@@ -47,12 +47,13 @@ import db_common
 export db_common
 
 type
-  DbConn* = PMySQL    ## encapsulates a database connection
+  DbConn* = PMySQL     ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
                        ## converted to nil.
-  InstantRow* = tuple[row: cstringArray, len: int]  ## a handle that can be
-                                                    ## used to get a row's
-                                                    ## column text on demand
+  InstantRow* = object ## a handle that can be used to get a row's
+                       ## column text on demand
+    row: cstringArray
+    len: int
 {.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
@@ -158,8 +159,90 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     while true:
       row = mysql.fetchRow(sqlres)
       if row == nil: break
-      yield (row: row, len: L)
+      yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
+
+proc setTypeName(t: var DbType; f: PFIELD) =
+  shallowCopy(t.name, $f.name)
+  t.maxReprLen = Natural(f.max_length)
+  if (NOT_NULL_FLAG and f.flags) != 0: t.notNull = true
+  case f.ftype
+  of TYPE_DECIMAL:
+    t.kind = dbDecimal
+  of TYPE_TINY:
+    t.kind = dbInt
+    t.size = 1
+  of TYPE_SHORT:
+    t.kind = dbInt
+    t.size = 2
+  of TYPE_LONG:
+    t.kind = dbInt
+    t.size = 4
+  of TYPE_FLOAT:
+    t.kind = dbFloat
+    t.size = 4
+  of TYPE_DOUBLE:
+    t.kind = dbFloat
+    t.size = 8
+  of TYPE_NULL:
+    t.kind = dbNull
+  of TYPE_TIMESTAMP:
+    t.kind = dbTimestamp
+  of TYPE_LONGLONG:
+    t.kind = dbInt
+    t.size = 8
+  of TYPE_INT24:
+    t.kind = dbInt
+    t.size = 3
+  of TYPE_DATE:
+    t.kind = dbDate
+  of TYPE_TIME:
+    t.kind = dbTime
+  of TYPE_DATETIME:
+    t.kind = dbDatetime
+  of TYPE_YEAR:
+    t.kind = dbDate
+  of TYPE_NEWDATE:
+    t.kind = dbDate
+  of TYPE_VARCHAR, TYPE_VAR_STRING, TYPE_STRING:
+    t.kind = dbVarchar
+  of TYPE_BIT:
+    t.kind = dbBit
+  of TYPE_NEWDECIMAL:
+    t.kind = dbDecimal
+  of TYPE_ENUM: t.kind = dbEnum
+  of TYPE_SET: t.kind = dbSet
+  of TYPE_TINY_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB,
+     TYPE_BLOB: t.kind = dbBlob
+  of TYPE_GEOMETRY:
+    t.kind = dbGeometry
+
+proc setColumnInfo(columns: var DbColumns; res: PRES; L: int) =
+  setLen(columns, L)
+  for i in 0..<L:
+    let fp = mysql.fetch_field_direct(res, cint(i))
+    setTypeName(columns[i].typ, fp)
+    columns[i].name = $fp.name
+    columns[i].tableName = $fp.table
+    columns[i].primaryKey = (fp.flags and PRI_KEY_FLAG) != 0
+    #columns[i].foreignKey = there is no such thing in mysql
+
+iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
+                      args: varargs[string, `$`]): InstantRow =
+  ## Same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within the iterator body.
+  rawExec(db, query, args)
+  var sqlres = mysql.useResult(db)
+  if sqlres != nil:
+    let L = int(mysql.numFields(sqlres))
+    setColumnInfo(columns, sqlres, L)
+    var row: cstringArray
+    while true:
+      row = mysql.fetchRow(sqlres)
+      if row == nil: break
+      yield InstantRow(row: row, len: L)
+    properFreeResult(sqlres, row)
+
 
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row.
