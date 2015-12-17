@@ -618,7 +618,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       addSon(regs[ra].node, r.copyTree)
     of opcExcl:
       decodeB(rkNode)
-      var b = newNodeIT(nkCurly, regs[rb].node.info, regs[rb].node.typ)
+      var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
       addSon(b, regs[rb].regToNode)
       var r = diffSets(regs[ra].node, b)
       discardSons(regs[ra].node)
