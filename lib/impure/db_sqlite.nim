@@ -137,6 +137,39 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     yield stmt
   if finalize(stmt) != SQLITE_OK: dbError(db)
 
+proc toTypeKind(t: var DbType; x: int32) =
+  case x
+  of SQLITE_INTEGER:
+    t.kind = dbInt
+    t.size = 8
+  of SQLITE_FLOAT:
+    t.kind = dbFloat
+    t.size = 8
+  of SQLITE_BLOB: t.kind = dbBlob
+  of SQLITE_NULL: t.kind = dbNull
+  of SQLITE_TEXT: t.kind = dbVarchar
+  else: t.kind = dbUnknown
+
+proc setColumns(columns: var DbColumns; x: PStmt) =
+  let L = column_count(x)
+  setLen(columns, L)
+  for i in 0'i32 ..< L:
+    columns[i].name = $column_name(x, i)
+    columns[i].typ.name = $column_decltype(x, i)
+    toTypeKind(columns[i].typ, column_type(x, i))
+    columns[i].tableName = $column_table_name(x, i)
+
+iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [ReadDbEffect].} =
+  ## same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within the iterator body.
+  var stmt = setupQuery(db, query, args)
+  setColumns(columns, stmt)
+  while step(stmt) == SQLITE_ROW:
+    yield stmt
+  if finalize(stmt) != SQLITE_OK: dbError(db)
+
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ## returns text for given column of the row
   $column_text(row, col)
