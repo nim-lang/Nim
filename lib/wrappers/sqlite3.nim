@@ -239,6 +239,8 @@ proc column_count*(pStmt: Pstmt): int32{.cdecl, dynlib: Lib,
     importc: "sqlite3_column_count".}
 proc column_name*(para1: Pstmt, para2: int32): cstring{.cdecl, dynlib: Lib,
     importc: "sqlite3_column_name".}
+proc column_table_name*(para1: Pstmt; para2: int32): cstring{.cdecl, dynlib: Lib,
+    importc: "sqlite3_column_table_name".}
 proc column_name16*(para1: Pstmt, para2: int32): pointer{.cdecl, dynlib: Lib,
     importc: "sqlite3_column_name16".}
 proc column_decltype*(para1: Pstmt, i: int32): cstring{.cdecl, dynlib: Lib,
