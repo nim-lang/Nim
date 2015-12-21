@@ -1,5 +1,4 @@
 discard """
-  file: "tconvexhull.nim"
   output: '''true
 true
 true

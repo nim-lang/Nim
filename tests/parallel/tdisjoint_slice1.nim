@@ -1,5 +1,4 @@
 discard """
-  file: "tdisjoint_slice1.nim"
   outputsub: "EVEN 28"
 """
 

@@ -1,6 +1,3 @@
-discard """
-  file: "tmacrostmt.nim"
-"""
 import macros
 macro case_token(n: stmt): stmt {.immediate.} =
   # creates a lexical analyzer from regular expressions

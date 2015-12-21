@@ -12,4 +12,3 @@ proc p(): var int =
 p() = 45
 
 echo g
-

@@ -1,6 +1,5 @@
 discard """
-  file: "tenumitems.nim"
-  line: 8
+  line: 7
   errormsg: "attempting to call undeclared routine: 'items'"
 """
 

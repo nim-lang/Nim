@@ -1,5 +1,4 @@
 discard """
-  file: "ttypeor.nim"
   output: '''Foo
 Bar'''
 """

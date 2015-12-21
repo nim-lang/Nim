@@ -1,5 +1,4 @@
 discard """
-  file: "tmultim2.nim"
   output: '''collide: unit, thing
 collide: unit, thing
 collide: thing, unit

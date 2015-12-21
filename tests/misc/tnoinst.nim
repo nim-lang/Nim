@@ -1,6 +1,5 @@
 discard """
-  file: "tnoinst.nim"
-  line: 13
+  line: 12
   errormsg: "instantiate 'notConcrete' explicitly"
   disabled: "true"
 """
@@ -15,4 +14,3 @@ proc wrap[T]() =
 
 
 wrap[int]()
-

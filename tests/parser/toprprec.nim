@@ -1,5 +1,4 @@
 discard """
-  file: "toprprec.nim"
   output: "done"
 """
 # Test operator precedence:

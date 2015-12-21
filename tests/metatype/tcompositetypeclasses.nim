@@ -1,6 +1,3 @@
-discard """
-  file: "tcompositetypeclasses.nim"
-"""
 template accept(e) =
   static: doAssert(compiles(e))
 

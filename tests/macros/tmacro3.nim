@@ -1,5 +1,4 @@
 discard """
-  file: "tmacro3.nim"
   output: ""
 """
 
@@ -29,4 +28,3 @@ macro test2*(a: stmt): stmt {.immediate.} =
 
 test2:
   "hi"
-

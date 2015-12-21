@@ -1,5 +1,4 @@
 discard """
-  file: "tmultim1.nim"
   output: "7"
 """
 # Test multi methods
@@ -25,5 +24,3 @@ proc newPlus(a, b: Expression): PlusExpr =
   result.b = b
 
 echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4))) #OUT 7
-
-

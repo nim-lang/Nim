@@ -1,5 +1,4 @@
 discard """
-  file: "tgenericassigntuples.nim"
   output: '''abc232'''
 """
 

@@ -1,4 +1,3 @@
-
 type
   Foo = object
     a, b: int
@@ -10,4 +9,3 @@ var bb: ref Bar
 new bb
 bb.a = 90
 bb.s = "abc"
-

@@ -1,6 +1,3 @@
-discard """
-  file: "tenum3.nim"
-"""
 # Test enum with explicit size
 
 type

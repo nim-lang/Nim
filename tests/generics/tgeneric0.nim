@@ -1,6 +1,3 @@
-discard """
-  file: "tgeneric0.nim"
-"""
 import tables
 
 type
@@ -26,5 +23,3 @@ proc reversed(x) =
     echo i
 
 reversed(@[-19, 7, -4, 6])
-
-

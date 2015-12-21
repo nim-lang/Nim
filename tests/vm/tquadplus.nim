@@ -1,5 +1,4 @@
 discard """
-  file: "tquadplus.nim"
   output: "1 == 1"
 """
 # bug #1023

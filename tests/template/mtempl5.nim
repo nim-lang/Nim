@@ -1,7 +1,3 @@
-discard """
-  file: "mtempl5.nim"
-"""
-
 var
   gx = 88
   gy = 44

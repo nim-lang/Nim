@@ -1,5 +1,4 @@
 discard """
-  file: "tunpack_asgn.nim"
   output: '''2 4
 4
 2 0'''

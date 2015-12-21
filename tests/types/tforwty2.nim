@@ -1,6 +1,3 @@
-discard """
-  file: "tforwty2.nim"
-"""
 # Test for a hard to fix internal error
 # occurred in the SDL library
 

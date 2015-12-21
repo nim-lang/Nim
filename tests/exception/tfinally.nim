@@ -1,5 +1,4 @@
 discard """
-  file: "tfinally.nim"
   output: "came\nhere\n3"
 """
 # Test return in try statement:
@@ -16,4 +15,3 @@ proc main: int =
     return 3
 
 echo main() #OUT came here 3
-

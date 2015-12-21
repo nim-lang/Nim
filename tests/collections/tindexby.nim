@@ -1,6 +1,3 @@
-discard """
-  file: "tindexby.nim"
-"""
 import tables
 
 doAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"

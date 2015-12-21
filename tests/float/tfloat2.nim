@@ -1,5 +1,4 @@
 discard """
-  file: "tfloat2.nim"
   outputsub: "Error: unhandled exception: FPU operation caused a NaN result [FloatInvalidOpError]"
   exitcode: "1"
 """
@@ -11,5 +10,3 @@ var x = 0.0
 var y = 0.0
 
 echo x / y #OUT Error: unhandled exception: FPU operation caused a NaN result
-
-

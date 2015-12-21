@@ -1,5 +1,4 @@
 discard """
-  file: "tasynctry.nim"
   exitcode: 0
   output: '''
 Generic except: Test

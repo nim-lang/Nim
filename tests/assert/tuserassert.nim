@@ -1,5 +1,4 @@
 discard """
-  file: "tuserassert.nim"
   output: "x == 45ugh"
 """
 

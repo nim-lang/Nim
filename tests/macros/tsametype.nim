@@ -1,5 +1,4 @@
 discard """
-  file: "tsametype.nim"
   output: '''true
 false
 true

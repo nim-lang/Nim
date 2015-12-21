@@ -1,5 +1,4 @@
 discard """
-  file: "tyaytypedesc.nim"
   output: "ntWhitespace"
 """
 

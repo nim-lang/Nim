@@ -1,6 +1,3 @@
-discard """
-  file: "tcompiles.nim"
-"""
 # test the new 'compiles' feature:
 
 template supports(opr, x: expr): bool {.immediate.} =

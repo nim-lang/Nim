@@ -1,6 +1,3 @@
-discard """
-  file: "annotate.nim"
-"""
 import macros, parseutils
 
 # Generate tags

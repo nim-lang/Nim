@@ -1,6 +1,3 @@
-discard """
-  file: "tdictdestruct.nim"
-"""
 type
   TDict[TK, TV] = object
     k: TK
@@ -18,5 +15,3 @@ proc newDict[TK, TV](a: TK, b: TV): PDict[TK, TV] =
 # Problem: destroyDict is not instantiated when newDict is instantiated!
 
 discard newDict("a", "b")
-
-

@@ -7,4 +7,3 @@ proc main() =
   var i = p(3) # works because B has been parsed completely here
 
 main()
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tgenericprocvar.nim"
   output: "0false12"
 """
 
@@ -34,4 +33,3 @@ proc test(data: seq[int], value: int): seq[int] =
 
 for x in items(test(@[1,2,3], 2)):
   stdout.write(x)
-

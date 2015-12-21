@@ -1,7 +1,3 @@
-discard """
-  file: "tcolors.nim"
-"""
-
 import strutils
 
 type

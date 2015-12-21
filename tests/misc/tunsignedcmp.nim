@@ -1,5 +1,4 @@
 discard """
-  file: "tunsignedcmp.nim"
   output: '''true
 true
 true'''

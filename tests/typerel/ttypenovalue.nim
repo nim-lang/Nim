@@ -1,7 +1,6 @@
 discard """
-  file: "ttypenovalue.nim"
   errormsg: "value expected, but got a type"
-  line: 8
+  line: 7
   disabled: true
 """
 

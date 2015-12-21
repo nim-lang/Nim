@@ -1,7 +1,3 @@
-discard """
-  file: "issue_477_dynamic_dispatch.nim"
-"""
-
 type
   TThing = object of TObject
   TUnit = object of TThing

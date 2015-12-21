@@ -1,5 +1,4 @@
 discard """
-  file: "tgenericshardcases.nim"
   output: "2\n5\n126\n3"
 """
 
@@ -39,4 +38,3 @@ static:
   doAssert high(f2.data3) == 4 # length of int8
 
   doAssert f2.data3[0] is float
-

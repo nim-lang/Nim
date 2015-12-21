@@ -1,6 +1,3 @@
-discard """
-  file: "tuint_tuple.nim"
-"""
 # bug #1986 found by gdmoore
 
 proc test(): int64 =

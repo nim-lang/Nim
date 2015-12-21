@@ -1,6 +1,3 @@
-discard """
-  file: "theaproots.nim"
-"""
 type
   Bar = object
     x: int

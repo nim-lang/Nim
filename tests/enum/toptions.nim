@@ -1,7 +1,3 @@
-discard """
-  file: "toptions.nim"
-"""
-
 type
   # please make sure we have under 32 options (improves code efficiency!)
   TOption = enum

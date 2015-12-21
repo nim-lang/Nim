@@ -1,5 +1,4 @@
 discard """
-  file: "tclosure3.nim"
   output: "success"
 """
 

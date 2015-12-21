@@ -1,5 +1,4 @@
 discard """
-  file: "tunidecode.nim"
   cmd: "nim $target --hints:on -d:embedUnidecodeTable $options $file"
   output: "Ausserst"
 """
@@ -10,4 +9,3 @@ loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
 
 #doAssert unidecode("\x53\x17\x4E\xB0") == "Bei Jing"
 echo unidecode("Äußerst")
-

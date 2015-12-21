@@ -1,5 +1,4 @@
 discard """
-  file: "gcbench.nim"
   outputsub: "Success!"
 """
 

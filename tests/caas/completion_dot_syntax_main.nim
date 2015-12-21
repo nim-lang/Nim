@@ -1,6 +1,3 @@
-discard """
-  file: "completion_dot_syntax_main.nim"
-"""
 import strutils
 
 # Verifies if the --suggestion switch differentiates types for dot notation.

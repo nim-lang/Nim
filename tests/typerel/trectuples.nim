@@ -1,7 +1,6 @@
 discard """
-  file: "trectuples.nim"
   errormsg: "illegal recursion in type 'Node'"
-  line: 7
+  line: 6
 """
 
 type Node = tuple[left: ref Node]

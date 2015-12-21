@@ -1,5 +1,4 @@
 discard """
-  file: "tasync_cpp.nim"
   cmd: "nim cpp $file"
   output: "hello"
 """

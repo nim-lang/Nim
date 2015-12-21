@@ -1,6 +1,3 @@
-discard """
-  file: "tstringnil.nim"
-"""
 # bug #1744
 
 import macros

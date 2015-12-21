@@ -1,5 +1,4 @@
 discard """
-  file: "refarrayleak.nim"
   outputsub: "no leak: "
 """
 

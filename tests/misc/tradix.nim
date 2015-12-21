@@ -1,6 +1,3 @@
-discard """
-  file: "tradix.nim"
-"""
 # implements and tests an efficient radix tree
 
 ## another method to store an efficient array of pointers:

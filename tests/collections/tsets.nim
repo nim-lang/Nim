@@ -1,6 +1,3 @@
-discard """
-  file: "tsets.nim"
-"""
 import sets
 
 block setEquality:
@@ -36,5 +33,3 @@ block setWithSequences:
   s.incl( @[1, 2, 3] )
   doAssert s.contains(@[1, 2, 3])
   doAssert( not s.contains(@[4, 5, 6]) )
-
-

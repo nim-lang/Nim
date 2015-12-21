@@ -10,4 +10,3 @@ from nativesockets import accept
 # B.TMyObject has been imported implicitly here:
 var x: TMyObject
 echo($x, q(0), q"0")
-

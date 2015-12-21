@@ -1,5 +1,4 @@
 discard """
-  file: "tvarargsexpr.nim"
   output: '''success
 true
 true'''

@@ -1,6 +1,3 @@
-discard """
-  file: "trecursive_closure.nim"
-"""
 # bug #2233
 type MalType = object
   fun: proc: MalType

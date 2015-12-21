@@ -1,6 +1,3 @@
-discard """
-  file: "tcan_inherit_generic.nim"
-"""
 ##
 ## can_inherit_generic Nim Module
 ##
@@ -16,4 +13,3 @@ type
 var s: TSpef[float]
 s.x = 0.4
 s.y = 0.6
-

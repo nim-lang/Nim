@@ -1,5 +1,4 @@
 discard """
-  file: "tfieldindex.nim"
   output: "1"
 """
 
@@ -19,4 +18,3 @@ proc indexOf*(t: typedesc, name: string): int =
     astToStr(t))
 
 echo TMyTuple.indexOf("b")
-

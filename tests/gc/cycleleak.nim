@@ -1,5 +1,4 @@
 discard """
-  file: "cycleleak.nim"
   outputsub: "no leak: "
 """
 

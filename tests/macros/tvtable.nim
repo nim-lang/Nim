@@ -1,5 +1,4 @@
 discard """
-  file: "tvtable.nim"
   output: '''
 OBJ 1 foo
 10
@@ -72,4 +71,3 @@ a.baseBar
 
 echo b.baseFoo
 b.baseBar
-

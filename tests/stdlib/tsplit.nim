@@ -1,5 +1,4 @@
 discard """
-  file: "tsplit.nim"
   output: "true"
 """
 import strutils
@@ -15,6 +14,3 @@ else:
   echo "false"
 
 #OUT true
-
-
-

@@ -1,7 +1,3 @@
-discard """
-  file: "tdont_be_stupid.nim"
-"""
-
 import threadpool, os
 
 proc single(time: int) =

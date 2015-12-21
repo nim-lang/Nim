@@ -1,6 +1,3 @@
-discard """
-  file: "utypeclasses.nim"
-"""
 import unittest
 
 proc concat(a, b): string =

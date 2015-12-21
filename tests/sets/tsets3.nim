@@ -1,6 +1,3 @@
-discard """
-  file: "tsets3.nim"
-"""
 include sets
 
 let

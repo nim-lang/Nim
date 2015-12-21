@@ -1,5 +1,4 @@
 discard """
-  file: "tforum.nim"
   output: '''asdas
 processClient end
 false

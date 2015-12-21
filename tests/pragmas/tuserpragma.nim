@@ -1,6 +1,3 @@
-discard """
-  file: "tuserpragma.nim"
-"""
 
 {.pragma: rtl, cdecl, exportc.}
 

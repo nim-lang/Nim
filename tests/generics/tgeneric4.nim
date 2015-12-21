@@ -1,6 +1,3 @@
-discard """
-  file: "tgeneric4.nim"
-"""
 type
   TIDGen*[A: Ordinal] = object
     next: A
@@ -10,4 +7,3 @@ proc newIDGen*[A]: TIDGen[A] =
     newSeq result.free, 0
 
 var x = newIDGen[int]()
-

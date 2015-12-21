@@ -1,5 +1,4 @@
 discard """
-  file: "toverload_asgn1.nim"
   output: '''Concrete '='
 Concrete '='
 Concrete '='

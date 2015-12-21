@@ -8,4 +8,3 @@ discard """
 import mfriends
 
 echo gen[int]()
-

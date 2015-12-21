@@ -7,7 +7,3 @@ try:
   raise newException(ValueError, "")
 except OverflowError:
   echo("Error caught")
-
-
-
-

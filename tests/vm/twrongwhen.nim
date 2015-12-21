@@ -1,7 +1,6 @@
 discard """
-  file: "twrongwhen.nim"
   errormsg: "cannot evaluate at compile time: x"
-  line: 8
+  line: 7
 """
 
 proc bla(x:int) =
@@ -11,4 +10,3 @@ proc bla(x:int) =
     echo "good"
 
 bla(2)  # echos "oops"
-

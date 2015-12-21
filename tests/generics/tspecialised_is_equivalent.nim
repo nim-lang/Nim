@@ -1,6 +1,3 @@
-discard """
-  file: "tspecialised_is_equivalent.nim"
-"""
 ##
 ## specialised_is_equivalent Nim Module
 ##
@@ -14,4 +11,3 @@ var
   a: TGen[string]
   b: TSpef
 a = b
-

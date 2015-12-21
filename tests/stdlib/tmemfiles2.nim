@@ -1,5 +1,4 @@
 discard """
-  file: "tmemfiles2.nim"
   disabled: true
   output: '''Full read size: 20
 Half read size: 10 Data: Hello'''

@@ -1,6 +1,3 @@
-discard """
-  file: "tevilcompiles.nim"
-"""
 # bug #1055
 import unittest
 type TMatrix*[N,M: static[int], T] = object
@@ -12,4 +9,3 @@ test "c":
   var a = TMatrix[2,2,int](data: [1,2,3,4])
   var b = TMatrix[2,2,int](data: [1,2,3,4])
   check(a == b)
-

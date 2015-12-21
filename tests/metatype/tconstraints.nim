@@ -1,6 +1,3 @@
-discard """
-  file: "tconstraints.nim"
-"""
 
 proc myGenericProc[T: object|tuple|int|ptr|ref|distinct](x: T): string =
   result = $x

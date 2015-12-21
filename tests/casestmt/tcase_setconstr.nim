@@ -12,4 +12,3 @@ proc classify(s: string) =
   else: echo "other"
 
 classify("Hurra")
-

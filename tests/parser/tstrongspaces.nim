@@ -1,6 +1,5 @@
 #? strongSpaces
 discard """
-  file: "tstrongspaces.nim"
   output: '''35
 true
 true

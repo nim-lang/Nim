@@ -24,4 +24,3 @@ echo x.s
 var y: ref FooBar = (ref Baz)(n: "n", m: "m")
 
 invoke((ref Baz)(y))
-

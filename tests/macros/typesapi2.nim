@@ -1,6 +1,3 @@
-discard """
-   file: "typesapi2.nim"
-"""
 # tests to see if a symbol returned from macros.getType() can
 # be used as a type
 import macros
@@ -49,4 +46,3 @@ static:
     doAssert(tts2(TestFN2, 1) is string)
     doAssert(tts2(TestFN2, 2) is int)
     doAssert(tts2(TestFN2, 3) is float)
-

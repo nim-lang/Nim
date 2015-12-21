@@ -1,5 +1,4 @@
 discard """
-  file: "tcan_access_hidden_field.nim"
   output: 33
 """
 

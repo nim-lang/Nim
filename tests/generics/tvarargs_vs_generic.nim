@@ -1,5 +1,4 @@
 discard """
-  file: "tvarargs_vs_generic.nim"
   output: "direct\ngeneric\ngeneric"
 """
 
@@ -24,4 +23,3 @@ proc withVarargs[T](arg: T) =
 withDirectType "string"
 withOpenArray "string"
 withVarargs "string"
-

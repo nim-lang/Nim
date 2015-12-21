@@ -1,5 +1,4 @@
 discard """
-  file: "tisopr.nim"
   output: '''true true false yes
 false
 false

@@ -1,5 +1,4 @@
 discard """
-  file: "tlateboundstatic.nim"
   msg: "array[0..3, int]"
 """
 
@@ -14,4 +13,3 @@ var x = foo "test"
 
 import typetraits
 static: echo x.x.type.name
-

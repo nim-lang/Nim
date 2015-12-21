@@ -1,6 +1,3 @@
-discard """
-  file: "tstrace.nim"
-"""
 # Test the new stacktraces (great for debugging!)
 
 {.push stack_trace: on.}

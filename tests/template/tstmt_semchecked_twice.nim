@@ -1,7 +1,3 @@
-discard """
-  file: "tstmt_semchecked_twice.nim"
-"""
-
 # bug #2585
 
 type

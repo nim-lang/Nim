@@ -1,6 +1,3 @@
-discard """
-  file: "tassign.nim"
-"""
 # Test the assignment operator for complex types which need RTTI
 
 type

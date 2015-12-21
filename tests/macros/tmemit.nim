@@ -1,5 +1,4 @@
 discard """
-  file: "tmemit.nim"
   output: '''HELLO WORLD
 c_func'''
 """

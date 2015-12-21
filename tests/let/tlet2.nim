@@ -13,4 +13,3 @@ let
 divmod(8, 5, x, y) # modifies x and y
 echo(x)
 echo(y)
-

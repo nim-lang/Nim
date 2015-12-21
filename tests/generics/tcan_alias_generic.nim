@@ -1,6 +1,3 @@
-discard """
-  file: "tcan_alias_generic.nim"
-"""
 ##
 ## can_alias_generic Nim Module
 ##
@@ -9,5 +6,3 @@ discard """
 type
   TGen[T] = object
   TGen2[T] = TGen[T]
-
-

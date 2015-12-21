@@ -1,5 +1,4 @@
 discard """
-  file: "tbindtypedesc.nim"
   msg: '''int int
 float float
 int int
@@ -86,4 +85,3 @@ reject bindArg(int, string, 10, "test", "test", "nest")
 reject bindArg(int, int, 10, 20, 30, "test")
 reject bindArg(int, string, 10.0, 20, "test", "nest")
 reject bindArg(int, string, "test", "nest", 10, 20)
-

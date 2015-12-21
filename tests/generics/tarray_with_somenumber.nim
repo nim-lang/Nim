@@ -1,5 +1,4 @@
 discard """
-  file: "tarray_with_somenumber.nim"
   output: '''@[0.9, 0.1]'''
 """
 

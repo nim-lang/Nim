@@ -1,5 +1,4 @@
 discard """
-  file: "tswap.nim"
   msg: '''
 x.data = @[10]
 y = @[11]

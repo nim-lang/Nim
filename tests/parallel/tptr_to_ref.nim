@@ -1,6 +1,3 @@
-discard """
-  file: "tptr_to_ref.nim"
-"""
 # bug #2854
 
 # Test case for the compiler correctly detecting if a type used by a shared

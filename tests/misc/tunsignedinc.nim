@@ -1,5 +1,4 @@
 discard """
-  file: "tunsignedinc.nim"
   output: '''253'''
 """
 

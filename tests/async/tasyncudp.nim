@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncudp.nim"
   output: "2000"
 """
 import asyncio, sockets, strutils, times

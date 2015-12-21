@@ -1,5 +1,4 @@
 discard """
-  file: "tsequtils.nim"
   output: '''Zip: [{"Field0": 1, "Field1": 2}, {"Field0": 3, "Field1": 4}, {"Field0": 5, "Field1": 6}]
 Filter Iterator: 3
 Filter Iterator: 5

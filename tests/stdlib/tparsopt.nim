@@ -1,6 +1,3 @@
-discard """
-  file: "tparsopt.nim"
-"""
 # Test the new parseopt module
 
 import

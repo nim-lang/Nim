@@ -1,5 +1,4 @@
 discard """
-  file: "tmetafield.nim"
   cmd: "nim check $options $file"
   errormsg: "'proc' is not a concrete type"
   errormsg: "'Foo' is not a concrete type."

@@ -1,6 +1,3 @@
-discard """
-  file: "tldconst.nim"
-"""
 # Passes if it compiles
 # From issue #1946
 

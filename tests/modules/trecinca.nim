@@ -1,7 +1,7 @@
 discard """
-  file: "trecincb.nim"
+  file: "tests/modules/trecincb.nim"
   # Note: file must be "trecinab.nim"
-  line: 9
+  line: 8
   errormsg: '''recursive dependency: 'trecincb.nim'
 '''
 """

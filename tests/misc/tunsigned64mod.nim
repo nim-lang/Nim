@@ -1,5 +1,4 @@
 discard """
-  file: "tunsigned64mod.nim"
   output: '''true
 true
 true

@@ -1,5 +1,4 @@
 discard """
-  file: "tcompiletimetable.nim"
   msg: '''2
 3
 4:2

@@ -1,5 +1,4 @@
 discard """
-  file: "tnimnode_for_runtime.nim"
   output: "bla"
 """
 
@@ -10,4 +9,3 @@ proc makeMacro: NimNode =
 var p = makeMacro()
 
 echo "bla"
-

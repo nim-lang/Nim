@@ -1,7 +1,6 @@
 discard """
-  file: "tcannot_pass_empty_seq_to_generic.nim"
   errormsg: "type mismatch: got (seq[empty])"
-  line: 17
+  line: 16
 """
 
 # bug #836
@@ -15,4 +14,3 @@ type
 proc some*[T](value: T): TOption[T] = TOption[T](FIsSome: true, FData: value)
 
 echo some(@[]).FIsSome
-

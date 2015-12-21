@@ -1,6 +1,3 @@
-discard """
-  file: "tusertypeclasses2.nim"
-"""
 type
   hasFieldX = concept z
     z.x is int
@@ -24,4 +21,3 @@ check ref_obj_x is hasFieldX
 check ref_to_obj_x is hasFieldX
 check p_o_x is hasFieldX
 check v_o_x is hasFieldX
-

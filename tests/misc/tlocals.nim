@@ -1,5 +1,4 @@
 discard """
-  file: "tlocals.nim"
   output: "(x: string here, a: 1)"
 """
 
@@ -9,4 +8,3 @@ proc simple[T](a: T) =
   echo locals()
 
 simple(1)
-

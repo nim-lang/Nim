@@ -1,5 +1,4 @@
 discard """
-  file: "tisop.nim"
   disabled: true
 """
 

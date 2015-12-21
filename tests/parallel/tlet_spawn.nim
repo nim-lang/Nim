@@ -1,7 +1,3 @@
-discard """
-  file: "tlet_spawn.nim"
-"""
-
 import threadpool
 
 proc foo(): int = 999

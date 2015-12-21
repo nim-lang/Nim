@@ -1,7 +1,3 @@
-discard """
-  file: "tasmparser.nim"
-"""
-
 # bug #1513
 
 import os, parseutils, strutils, ropes, macros

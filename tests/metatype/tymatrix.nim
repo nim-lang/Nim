@@ -1,6 +1,3 @@
-discard """
-  file: "tymatrix.nim"
-"""
 import typetraits
 
 template reject(e: expr) =

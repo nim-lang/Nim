@@ -1,5 +1,4 @@
 discard """
-  file: "tnodecompare.nim"
   output: '''true
 false
 true

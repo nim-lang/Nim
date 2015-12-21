@@ -1,5 +1,4 @@
 discard """
-  file: "tparsecombnum.nim"
   output: "-289096"
 """
 

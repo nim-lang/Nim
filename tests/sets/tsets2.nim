@@ -1,5 +1,4 @@
 discard """
-  file: "tsets2.nim"
   output: '''true'''
 """
 

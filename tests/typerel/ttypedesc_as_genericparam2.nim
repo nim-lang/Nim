@@ -1,6 +1,5 @@
 discard """
-  file: "ttypedesc_as_genericparam2.nim"
-  line: 10
+  line: 9
   errormsg: "'repr' doesn't support 'void' type"
 """
 

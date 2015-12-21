@@ -58,4 +58,3 @@ suite "random float":
     randomize()
     var rand2:float = random(1000000.0)
     check rand1 != rand2
-

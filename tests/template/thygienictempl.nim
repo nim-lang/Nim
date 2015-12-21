@@ -1,7 +1,3 @@
-discard """
-  file: "thygienictempl.nim"
-"""
-
 var
   e = "abc"
 

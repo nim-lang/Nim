@@ -1,6 +1,5 @@
 discard """
-  file: "tconstraints.nim"
-  line: 17
+  line: 16
   errormsg: "type mismatch: got (int literal(232))"
 """
 

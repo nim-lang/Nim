@@ -1,5 +1,4 @@
 discard """
-  file: "tsidee3.nim"
   output: "5"
 """
 
@@ -12,6 +11,3 @@ proc noSideEffect(x, y: int, p: proc (a: int): int {.noSideEffect.}): int {.noSi
   return x + y + dontcare(x)
 
 echo noSideEffect(1, 3, dontcare) #OUT 5
-
-
-

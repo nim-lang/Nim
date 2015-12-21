@@ -1,5 +1,4 @@
 discard """
-  file: "tsimplesort.nim"
   output: '''true'''
 """
 
@@ -306,5 +305,3 @@ proc countTableTest1 =
 
 countTableTest1()
 echo true
-
-

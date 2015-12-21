@@ -1,7 +1,3 @@
-discard """
-  file: "tregionptrs2.nim"
-"""
-
 # bug #2039
 
 type

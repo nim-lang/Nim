@@ -1,5 +1,4 @@
 discard """
-  file: "tstaticvar_via_typedesc.nim"
   cmd: "nim cpp $file"
   output: "42"
 """

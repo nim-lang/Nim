@@ -1,5 +1,4 @@
 discard """
-  file: "ttoseq.nim"
   output: "2345623456"
 """
 

@@ -1,6 +1,5 @@
 discard """
-  file: "tsidee1.nim"
-  line: 12
+  line: 11
   errormsg: "\'SideEffectLyer\' can have side effects"
 """
 
@@ -13,6 +12,3 @@ proc SideEffectLyer(x, y: int): int {.noSideEffect.} = #ERROR_MSG 'SideEffectLye
   return x + y + dontcare(x)
 
 echo SideEffectLyer(1, 3)
-
-
-

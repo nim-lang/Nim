@@ -1,6 +1,5 @@
 discard """
-  file: "tinvwhen.nim"
-  line: 11
+  line: 10
   errormsg: "invalid indentation"
 """
 # This was parsed even though it should not!

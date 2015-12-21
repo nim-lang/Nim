@@ -1,5 +1,4 @@
 discard """
-  file: "tcgbug.nim"
   output: "success"
 """
 

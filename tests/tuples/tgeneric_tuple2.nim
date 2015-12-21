@@ -1,7 +1,3 @@
-discard """
-  file: "tgeneric_tuple2.nim"
-"""
-
 # bug #2369
 
 type HashedElem[T] = tuple[num: int, storedVal: ref T]

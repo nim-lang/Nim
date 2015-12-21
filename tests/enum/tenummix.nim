@@ -1,5 +1,5 @@
 discard """
-  tfile: "tenummix.nim"
+  file: "system.nim"
   tline: 11
   errormsg: "type mismatch"
 """

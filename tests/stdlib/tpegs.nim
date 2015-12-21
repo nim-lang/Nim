@@ -1,5 +1,4 @@
 discard """
-  file: "tpegs.nim"
   output: '''this
 is
 an
@@ -1768,4 +1767,3 @@ when isMainModule:
   block:
     var a = term"key"
     echo($sequence(sequence(a, term"value"), *a))
-

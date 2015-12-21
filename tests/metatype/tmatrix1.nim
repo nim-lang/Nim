@@ -1,5 +1,4 @@
 discard """
-  file: "tmatrix1.nim"
   output: "right proc called"
 """
 

@@ -1,6 +1,3 @@
-discard """
-  file: "tnocodegen_for_compiletime.nim"
-"""
 # bug #1679
 
 import macros, tables, hashes

@@ -1,5 +1,4 @@
 discard """
-  file: "toverl3.nim"
   output: '''m1
 tup1'''
 """

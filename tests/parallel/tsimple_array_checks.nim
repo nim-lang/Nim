@@ -1,6 +1,3 @@
-discard """
-  file: "tsimple_array_checks.nim"
-"""
 # bug #2287
 
 import threadPool

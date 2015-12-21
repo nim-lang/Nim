@@ -1,5 +1,4 @@
 discard """
-  file: "tthread_generic.nim"
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
@@ -37,4 +36,3 @@ when isMainModule:
   echo("test")
   joinThread(thr)
   os.sleep(3000)
-

@@ -1,6 +1,3 @@
-discard """
-  file: "tguard1.nim"
-"""
 
 when false:
   template lock(a, b: ptr TLock; body: stmt) =

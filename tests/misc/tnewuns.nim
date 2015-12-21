@@ -1,6 +1,3 @@
-discard """
-  file: "tnewuns.nim"
-"""
 # test the new unsigned operations:
 
 import

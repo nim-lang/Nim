@@ -1,6 +1,5 @@
 discard """
-  file: "tsubrange.nim"
-  line: 21
+  line: 20
   errormsg: "cannot convert 60 to TRange"
 """
 

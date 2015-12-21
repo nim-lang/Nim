@@ -5,4 +5,3 @@ discard parsePeg(
       filename = "filename",
       line = 1,
       col = 23)
-

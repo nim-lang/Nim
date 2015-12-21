@@ -1,5 +1,4 @@
 discard """
-  file: "t2plus.nim"
   output: "2.0"
 """
 

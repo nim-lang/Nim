@@ -1,6 +1,3 @@
-discard """
-  file: "tseq2.nim"
-"""
 proc `*` *(a, b: seq[int]): seq[int] =
   # allocate a new sequence:
   newSeq(result, len(a))

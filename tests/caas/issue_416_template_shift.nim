@@ -1,6 +1,3 @@
-discard """
-  file: "issue_416_template_shift.nim"
-"""
 import unicode, sequtils
 
 proc test() =

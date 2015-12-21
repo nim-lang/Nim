@@ -1,6 +1,3 @@
-discard """
-  file: "tcan_specialise_generic.nim"
-"""
 ##
 ## can_specialise_generic Nim Module
 ##
@@ -9,5 +6,3 @@ discard """
 type
   TGen[T] = object {.inheritable.}
   TSpef = object of TGen[string]
-
-

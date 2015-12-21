@@ -1,6 +1,3 @@
-discard """
-  file: "tclosurebbug2.nim"
-"""
 import hashes, math
 
 type

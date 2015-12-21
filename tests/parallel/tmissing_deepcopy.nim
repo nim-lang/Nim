@@ -1,5 +1,4 @@
 discard """
-  file: "tmissing_deepcopy.nim"
   ccodeCheck: "\\i @'deepCopy(' .*"
 """
 

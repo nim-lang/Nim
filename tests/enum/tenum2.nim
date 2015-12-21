@@ -1,6 +1,3 @@
-discard """
-  file: "tenum2.nim"
-"""
 # Test that enum with holes is handled correctly by case statement
 
 type

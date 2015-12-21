@@ -1,7 +1,3 @@
-discard """
-  file: "otests.nim"
-"""
-
 # Fields
 const x = 5
 

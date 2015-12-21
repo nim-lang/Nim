@@ -1,5 +1,4 @@
 discard """
-  file: "gcleak.nim"
   outputsub: "no leak: "
 """
 

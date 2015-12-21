@@ -1,5 +1,4 @@
 discard """
-  file: "tmissingbracket.nim"
   output: '''Subobject test called
 5'''
 """

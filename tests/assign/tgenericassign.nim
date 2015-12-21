@@ -1,5 +1,4 @@
 discard """
-  file: "tgenericassign.nim"
   output: '''came here'''
 """
 

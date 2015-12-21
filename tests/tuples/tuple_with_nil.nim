@@ -1,6 +1,3 @@
-discard """
-  file: "tuple_with_nil.nim"
-"""
 import macros
 from strutils import IdentStartChars
 import parseutils

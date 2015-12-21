@@ -1,5 +1,4 @@
 discard """
-  file: "server.nim"
   cmd: "nim $target --debuginfo --hints:on --define:useNimRtl --app:lib $options $file"
 """
 

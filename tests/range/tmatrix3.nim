@@ -1,5 +1,4 @@
 discard """
-  file: "tmatrix3.nim"
   output: '''0.0
 0.0
 0

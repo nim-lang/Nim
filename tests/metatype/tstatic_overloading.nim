@@ -1,6 +1,3 @@
-discard """
-  file: "tstatic_overloading.nim"
-"""
 # bug #2266
 
 import macros

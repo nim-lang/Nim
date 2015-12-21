@@ -1,7 +1,6 @@
 discard """
-  file: "tforwardproc.nim"
   errormsg: "cannot evaluate at compile time: initArray"
-  line: 12
+  line: 11
 """
 
 # bug #3066

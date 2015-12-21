@@ -1,5 +1,4 @@
 discard """
-  file: "ttablesref.nim"
   output: '''true'''
 """
 
@@ -144,4 +143,3 @@ block anonZipTest:
 
 orderedTableSortTest()
 echo "true"
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tclosure.nim"
   output: "1 3 6 11 20"
 """
 # Test the closure implementation
@@ -44,4 +43,3 @@ proc getInterf(): ITest =
 
   return (setter: proc (x: int) = shared = x,
           getter: proc (): int = return shared)
-

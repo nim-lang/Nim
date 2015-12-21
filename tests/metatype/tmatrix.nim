@@ -1,5 +1,4 @@
 discard """
-  file: "tmatrix.nim"
   output: "111"
 """
 # Test overloading of [] with multiple indices

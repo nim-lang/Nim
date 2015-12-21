@@ -16,4 +16,3 @@ proc main =
   echo y, x
 
 main()
-

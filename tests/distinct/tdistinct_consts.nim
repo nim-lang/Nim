@@ -1,4 +1,3 @@
-
 # bug #2641
 
 type MyChar = distinct char

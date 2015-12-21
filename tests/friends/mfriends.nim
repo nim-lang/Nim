@@ -8,4 +8,3 @@ proc gen*[T](): T =
   # access private field here
   d.x = 3
   result = d.x
-

@@ -1,6 +1,3 @@
-discard """
-  file: "tvarious.nim"
-"""
 # Test various aspects
 
 # bug #572

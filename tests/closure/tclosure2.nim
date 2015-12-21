@@ -1,5 +1,4 @@
 discard """
-  file: "tclosure2.nim"
   output: '''0
 11
 1
@@ -99,4 +98,3 @@ when true:
 
 
   outer2()
-

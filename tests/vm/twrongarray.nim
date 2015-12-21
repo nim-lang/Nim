@@ -1,7 +1,6 @@
 discard """
-  file: "twrongarray.nim"
   errormsg: "cannot evaluate at compile time: size"
-  line: 17
+  line: 16
 """
 
 #bug #1343

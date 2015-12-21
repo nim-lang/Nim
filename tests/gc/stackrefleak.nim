@@ -1,5 +1,4 @@
 discard """
-  file: "stackrefleak.nim"
   outputsub: "no leak: "
 """
 

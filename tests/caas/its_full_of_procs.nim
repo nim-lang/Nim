@@ -1,7 +1,3 @@
-discard """
-  file: "its_full_of_procs.nim"
-"""
-
 import unicode, sequtils
 
 # This example shows that idetools returns proc as signature for everything

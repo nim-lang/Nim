@@ -1,7 +1,6 @@
 discard """
-  file: "tno_gcmem_in_shared.nim"
   errormsg: "shared memory may not refer to GC'ed thread local memory"
-  line: 15
+  line: 14
   disabled: true
 """
 

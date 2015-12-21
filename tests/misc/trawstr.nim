@@ -1,6 +1,5 @@
 discard """
-  file: "trawstr.nim"
-  line: 10
+  line: 9
   errormsg: "closing \" expected"
 """
 # Test the new raw strings:
@@ -8,5 +7,3 @@ discard """
 const
   xxx = r"This is a raw string!"
   yyy = "This not\" #ERROR
-
-

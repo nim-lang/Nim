@@ -1,7 +1,3 @@
-discard """
-  file: "ttypebar.nim"
-"""
-
 # bug #602
 
 type

@@ -1,5 +1,4 @@
 discard """
-  file: "tfields_in_template.nim"
   output: '''n
 n'''
 """

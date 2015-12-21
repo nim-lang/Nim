@@ -1,6 +1,3 @@
-discard """
-  file: "tnew.nim"
-"""
 # Test the implementation of the new operator
 # and the code generation for gc walkers
 # (and the garbage collector):

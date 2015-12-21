@@ -1,5 +1,4 @@
 discard """
-  file: "triangle_array.nim"
   output: "56"
 """
 

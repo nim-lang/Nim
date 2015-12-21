@@ -1,5 +1,4 @@
 discard """
-  file: "tprefer_immediate.nim"
   output: '''immediate'''
 """
 

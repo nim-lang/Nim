@@ -1,6 +1,3 @@
-discard """
-  file: "thallo.nim"
-"""
 # Hallo
 
 import
@@ -85,4 +82,3 @@ for i in 2..6:
 
 when isMainModule:
   {.hint: "this is the main file".}
-

@@ -1,5 +1,4 @@
 discard """
-  file: "growobjcrash.nim"
   output: "works"
 """
 

@@ -1,5 +1,4 @@
 discard """
-  file: "ttypetraits.nim"
   msg:    "int\nstring\nTBar[int]"
   output: "int\nstring\nTBar[int]\nint\nrange 0..2(int)\nstring"
   disabled: true

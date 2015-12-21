@@ -1,6 +1,3 @@
-discard """
-  file: "alloc.nim"
-"""
 var x: ptr int
 
 x = cast[ptr int](alloc(7))

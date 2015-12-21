@@ -9,4 +9,3 @@ proc test(x: PTest, y: int) = nil
 
 var buf: PTest
 buf.test()
-

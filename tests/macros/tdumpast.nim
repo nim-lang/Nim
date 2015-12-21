@@ -1,6 +1,3 @@
-discard """
-  file: "tdumpast.nim"
-"""
 # Dump the contents of a NimNode
 
 import macros
@@ -33,4 +30,3 @@ dumpAST:
     return x + y
 
   proc sub(x, y: int): int = return x - y
-

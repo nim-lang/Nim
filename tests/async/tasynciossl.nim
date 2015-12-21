@@ -1,5 +1,4 @@
 discard """
-  file: "tasynciossl.nim"
   cmd: "nim $target --hints:on --define:ssl $options $file"
   output: "20000"
 """

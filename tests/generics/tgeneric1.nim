@@ -1,5 +1,4 @@
 discard """
-  file: "tgeneric1.nim"
   output: "100 0"
 """
 
@@ -50,5 +49,3 @@ var
 newBinHeap(heap, 256)
 add(heap, 1, 100)
 print(heap)
-
-

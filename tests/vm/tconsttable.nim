@@ -1,5 +1,4 @@
 discard """
-  file: "tconsttable.nim"
   output: '''is
 finally
 nice!'''

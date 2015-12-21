@@ -1,5 +1,4 @@
 discard """
-  file: "tnestif.nim"
   output: "i == 2"
 """
 # test nested ifs
@@ -20,5 +19,3 @@ elif x == 2:
 else:
     write(stdout, "looks like Python")
 #OUT i == 2
-
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tfilter.nim"
   output: "02468101214161820\n15"
 """
 
@@ -39,4 +38,3 @@ proc add5(x: int): int = result = x + 5
 
 var test = compose(add5, add5)
 echo test(5)
-

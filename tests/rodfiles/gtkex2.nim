@@ -19,4 +19,3 @@ discard signal_connect(window, "destroy",
 show(button)
 show(window)
 main()
-

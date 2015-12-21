@@ -1,7 +1,6 @@
 discard """
-  file: "tinvalid_array_bounds.nim"
   errormsg: "can prove: i + 1 > 30"
-  line: 22
+  line: 21
 """
 
 import threadpool

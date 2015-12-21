@@ -1,5 +1,4 @@
 discard """
-  file: "tdumptree.nim"
   msg: '''StmtList
   VarSection
     IdentDefs
@@ -24,4 +23,3 @@ import macros
 
 dumpTree:
   var x = foo.create(56)
-

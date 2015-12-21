@@ -1,5 +1,4 @@
 discard """
-  file: "gctest.nim"
   outputsub: "finished"
 """
 

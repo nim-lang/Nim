@@ -1,5 +1,4 @@
 discard """
-  file: "tmissinginit.nim"
   output: '''0
 0
 0

@@ -1,5 +1,4 @@
 discard """
-  file: "tarrayboundeval.nim"
   output: '''7
 8 8
 -2'''

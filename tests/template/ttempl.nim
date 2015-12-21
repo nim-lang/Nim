@@ -1,6 +1,3 @@
-discard """
-  file: "ttempl.nim"
-"""
 # Test the new template file mechanism
 
 import

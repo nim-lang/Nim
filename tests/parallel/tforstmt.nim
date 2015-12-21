@@ -1,5 +1,4 @@
 discard """
-  file: "tforstmt.nim"
   output: '''3
 4
 5

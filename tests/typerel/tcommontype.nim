@@ -1,6 +1,3 @@
-discard """
-  file: "tcommontype.nim"
-"""
 type
   TAnimal=object {.inheritable.}
   PAnimal=ref TAnimal

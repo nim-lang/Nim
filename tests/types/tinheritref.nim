@@ -1,5 +1,4 @@
 discard """
-  file: "tinheritref.nim"
   output: "23"
 """
 

@@ -1,5 +1,4 @@
 discard """
-  file: "tparfind.nim"
   output: "500"
 """
 

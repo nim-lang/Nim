@@ -1,6 +1,3 @@
-discard """
-  file: "teval1.nim"
-"""
 import macros
 
 proc testProc: string {.compileTime.} =

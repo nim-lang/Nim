@@ -1,6 +1,3 @@
-discard """
-  file: "tunittest.nim"
-"""
 import unittest, sequtils
 
 

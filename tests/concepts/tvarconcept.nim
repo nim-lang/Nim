@@ -1,5 +1,4 @@
 discard """
-  file: "tvarconcept.nim"
   output: "5"
 """
 

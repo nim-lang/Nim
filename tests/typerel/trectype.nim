@@ -1,5 +1,4 @@
 discard """
-  file: "trectype.nim"
   errormsg: "internal error: cannot generate C type for: PA"
 """
 # Test recursive type descriptions

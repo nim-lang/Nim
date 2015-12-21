@@ -17,4 +17,3 @@ proc at*(s: var TSpielwiese, x, y: int): var TKachel =
 spielwiese.at(3, 4) = (45, "hallo")
 
 echo spielwiese.at(3,4)[0], " ", spielwiese.at(3,4)[1]
-

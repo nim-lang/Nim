@@ -16,5 +16,3 @@ proc horrible() {.thread.} =
 
 createThread[void](t, horrible)
 joinThread(t)
-
-

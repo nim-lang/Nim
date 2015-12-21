@@ -1,7 +1,3 @@
-discard """
-  file: "tpartialcs.nim"
-"""
-
 # bug #2551
 
 type Tup = tuple

@@ -1,6 +1,3 @@
-discard """
-  file: "tsubtypeconstraint.nim"
-"""
 # bug #1684
 type
   BaseType {.inheritable pure.} = object

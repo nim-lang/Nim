@@ -1,5 +1,4 @@
 discard """
-  file: "twrongopensymchoice.nim"
   output: '''10'''
 """
 

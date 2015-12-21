@@ -1,5 +1,4 @@
 discard """
-  file: "tbugs.nim"
   msg: '''a
 s
 d

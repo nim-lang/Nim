@@ -1,5 +1,4 @@
 discard """
-  file: "tclosuremacro.nim"
   output: '''10
 10
 10

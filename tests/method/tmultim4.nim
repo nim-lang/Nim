@@ -1,5 +1,4 @@
 discard """
-  file: "tmultim4.nim"
   output: "hello"
 """
 type
@@ -41,7 +40,3 @@ for z in 1..4:
 #while true:
 #  s.doProc()
 #  break
-
-
-
-

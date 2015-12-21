@@ -1,5 +1,4 @@
 discard """
-  file: "tquotewords.nim"
   output: "thisanexample"
 """
 # Test an idea I recently had:
@@ -21,6 +20,3 @@ for w in items(myWordList):
   s.add(w)
 
 echo s #OUT thisanexample
-
-
-

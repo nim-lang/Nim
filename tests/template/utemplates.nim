@@ -1,6 +1,3 @@
-discard """
-  file: "utemplates.nim"
-"""
 import unittest
 
 template t(a: int): expr = "int"

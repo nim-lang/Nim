@@ -1,5 +1,4 @@
 discard """
-  file: "tnamedenumfields.nim"
   output: "my value A0my value Bconc1valueCabc3abc"
 """
 

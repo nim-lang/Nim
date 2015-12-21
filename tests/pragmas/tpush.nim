@@ -1,6 +1,3 @@
-discard """
-  file: "tpush.nim"
-"""
 # test the new pragmas
 
 {.push warnings: off, hints: off.}

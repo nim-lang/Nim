@@ -1,6 +1,3 @@
-discard """
-  file: "tstrdesc.nim"
-"""
 var
   x: array [0..2, int]
 
@@ -13,5 +10,3 @@ type
 
 var
   emptyString {.exportc: "emptyString".}: TStringDesc
-
-

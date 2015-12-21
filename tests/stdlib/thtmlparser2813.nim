@@ -1,5 +1,4 @@
 discard """
-  file: "thtmlparser2813.nim"
   output: "@[]"
 """
 import htmlparser

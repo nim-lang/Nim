@@ -1,6 +1,3 @@
-discard """
-  file: "tmap_auto.nim"
-"""
 import future, sequtils
 
 let x = map(@[1, 2, 3], x => x+10)

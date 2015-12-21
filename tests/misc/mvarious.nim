@@ -1,6 +1,3 @@
-discard """
-  file: "mvarious.nim"
-"""
 # Test a submodule
 
 #type

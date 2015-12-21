@@ -1,5 +1,4 @@
 discard """
-  file: "tmacros1.nim"
   output: "Got: 'nnkCall' hi"
 """
 
@@ -28,5 +27,3 @@ var str: string
 outterMacro(str):
   "hellow"
 echo str
-
-

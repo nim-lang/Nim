@@ -1,6 +1,5 @@
 discard """
-  file: "trefs.nim"
-  line: 20
+  line: 19
   errormsg: "type mismatch"
 """
 # test for ref types (including refs to procs)

@@ -1,5 +1,4 @@
 discard """
-  file: "twhen_in_enum.nim"
   errormsg: "identifier expected, but found 'keyword when'"
 """
 

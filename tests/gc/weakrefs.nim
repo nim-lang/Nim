@@ -1,5 +1,4 @@
 discard """
-  file: "weakrefs.nim"
   output: "true"
 """
 

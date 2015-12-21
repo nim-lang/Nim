@@ -1,5 +1,4 @@
 discard """
-  file: "ttempl4.nim"
   output: "4true"
 """
 

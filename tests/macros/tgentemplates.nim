@@ -1,6 +1,3 @@
-discard """
-  file: "tgentemplates.nim"
-"""
 # bug #1140
 
 import parseutils, macros

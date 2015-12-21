@@ -1,6 +1,3 @@
-discard """
-  file: "tsymchoicefield.nim"
-"""
 type Foo = object
   len: int
 

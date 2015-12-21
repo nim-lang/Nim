@@ -1,5 +1,4 @@
 discard """
-  file: "tvariantasgn.nim"
   output: "came here"
 """
 #BUG

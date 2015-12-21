@@ -1,6 +1,3 @@
-discard """
-  file: "ttypedesc3.nim"
-"""
 import typetraits
 
 type

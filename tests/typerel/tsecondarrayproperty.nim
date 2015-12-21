@@ -1,7 +1,3 @@
-discard """
-  file: "tsecondarrayproperty.nim"
-"""
-
 type
   TFoo = object
     data: array[0..100, int]

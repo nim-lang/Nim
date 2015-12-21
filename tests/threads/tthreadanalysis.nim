@@ -50,4 +50,3 @@ proc main =
   joinThreads(thr)
 
 main()
-

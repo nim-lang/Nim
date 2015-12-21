@@ -1,5 +1,4 @@
 discard """
-  file: "tdomulttest.nim"
   output: "555\ntest\nmulti lines\n99999999\nend"
   disabled: true
 """

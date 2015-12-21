@@ -1,5 +1,4 @@
 discard """
-  file: "tgenericlambda.nim"
   output: "10\n10\n1\n2\n3\n15"
 """
 

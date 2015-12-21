@@ -1,5 +1,4 @@
 discard """
-  file: "tarray.nim"
   output: "100124"
 """
 # simple check for one dimensional arrays
@@ -37,4 +36,3 @@ let filesToCreate = ["tempdir/fl1.a", "tempdir/fl2.b",
 var found: array[0..filesToCreate.high, bool]
 
 echo found.len
-

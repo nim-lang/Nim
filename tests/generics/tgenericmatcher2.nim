@@ -1,6 +1,3 @@
-discard """
-  file: "tgenericmatcher2.nim"
-"""
 type
   TMatcherKind = enum
     mkTerminal, mkSequence, mkAlternation, mkRepeat
@@ -16,5 +13,3 @@ type
 
 var
   m: ref TMatcher[int]
-
-

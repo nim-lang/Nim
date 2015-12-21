@@ -14,4 +14,3 @@ proc `$`*(a: TMyObj): string =
 
 var a: TMyObj
 echo toString(a)
-

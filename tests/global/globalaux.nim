@@ -12,4 +12,3 @@ proc makeObj[T](x: T): TObj[T] =
 proc globalInstance*[T]: var TObj[T] =
   var g {.global.} = when T is int: makeObj(10) else: makeObj("hello")
   result = g
-

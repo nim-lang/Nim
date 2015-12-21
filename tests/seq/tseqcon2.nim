@@ -1,6 +1,3 @@
-discard """
-  file: "tseqcon2.nim"
-"""
 import os
 
 proc rec_dir(dir: string): seq[string] =

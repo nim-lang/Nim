@@ -1,5 +1,4 @@
 discard """
-  file: "thashes.nim"
   output: '''true'''
 """
 

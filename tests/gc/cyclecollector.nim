@@ -1,7 +1,3 @@
-discard """
-  file: "cyclecollector.nim"
-"""
-
 # Program to detect bug #1796 reliably
 
 type

@@ -1,4 +1,3 @@
-
 # bug #2229
 
 type Type1 = object

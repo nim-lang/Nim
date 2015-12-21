@@ -1,7 +1,6 @@
 discard """
-  file: "tinvalid_counter_usage.nim"
   errormsg: "invalid usage of counter after increment"
-  line: 22
+  line: 21
 """
 
 import threadpool

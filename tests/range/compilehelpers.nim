@@ -1,6 +1,3 @@
-discard """
-  file: "compilehelpers.nim"
-"""
 template accept(e: expr) =
   static: doAssert(compiles(e))
 

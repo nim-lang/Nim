@@ -1,5 +1,4 @@
 discard """
-  file: "teventemitter.nim"
   output: "pie"
 """
 

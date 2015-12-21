@@ -1,7 +1,3 @@
-discard """
-  file: "ttempl5.nim"
-"""
-
 import mtempl5
 
 echo templ()

@@ -1,6 +1,3 @@
-discard """
-  file: "tmacro1.nim"
-"""
 import  macros
 
 from uri import `/`
@@ -23,4 +20,3 @@ macro test*(a: stmt): stmt {.immediate.} =
 
 test:
   "hi"
-

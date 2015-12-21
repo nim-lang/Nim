@@ -1,7 +1,3 @@
-discard """
-  file: "mcan_access_hidden_field.nim"
-"""
-
 type
   Foo* = object
     fooa, foob: int

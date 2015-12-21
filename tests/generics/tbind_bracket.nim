@@ -1,5 +1,4 @@
 discard """
-  file: "tbind_bracket.nim"
   output: "317"
 """
 

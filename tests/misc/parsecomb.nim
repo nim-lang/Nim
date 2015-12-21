@@ -1,6 +1,3 @@
-discard """
-  file: "parsecomb.nim"
-"""
 type Input[T] = object
   toks: seq[T]
   index: int

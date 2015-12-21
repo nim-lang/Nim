@@ -1,5 +1,4 @@
 discard """
-  file: "tfielditerator.nim"
   output: '''
 a char: true
 a char: false
@@ -44,4 +43,3 @@ doAssert(not (x < x))
 doAssert x <= x
 doAssert y < x
 doAssert y <= x
-

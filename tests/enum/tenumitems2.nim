@@ -1,5 +1,4 @@
 discard """
-  file: "tenumitems2.nim"
   output: "A\nB\nC"
 """
 

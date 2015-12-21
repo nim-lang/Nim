@@ -1,5 +1,4 @@
 discard """
-  file: "tvartup.nim"
   output: "2 3"
 """
 # Test the new tuple unpacking

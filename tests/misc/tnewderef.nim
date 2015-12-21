@@ -1,5 +1,4 @@
 discard """
-  file: "tnewderef.nim"
   output: 3
 
 """
@@ -9,4 +8,3 @@ new(x)
 x[] = 3
 
 echo x[]
-

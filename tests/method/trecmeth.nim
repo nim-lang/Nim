@@ -19,4 +19,3 @@ method beta(x: Obj) =
 
 method gamma(x: Obj) {.base.} =
   gamma(x)
-

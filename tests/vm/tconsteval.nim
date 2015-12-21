@@ -1,7 +1,3 @@
-discard """
-  file: "tconsteval.nim"
-"""
-
 import strutils
 
 const

@@ -1,6 +1,3 @@
-discard """
-  file: "tshadow_magic_type.nim"
-"""
 type
   TListItemType* = enum
     RedisNil, RedisString

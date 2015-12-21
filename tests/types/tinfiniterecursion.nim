@@ -1,7 +1,6 @@
 discard """
-  file: "tinfiniterecursion.nim"
   errormsg: "illegal recursion in type 'XIM'"
-  line: 9
+  line: 8
 """
 
 type

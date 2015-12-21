@@ -1,5 +1,4 @@
 discard """
-  file: "toverflowopcaddint.nim"
   errormsg: "over- or underflow"
 """
 

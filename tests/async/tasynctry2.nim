@@ -1,7 +1,6 @@
 discard """
-  file: "tasynctry2.nim"
   errormsg: "\'yield\' cannot be used within \'try\' in a non-inlined iterator"
-  line: 15
+  line: 14
 """
 import asyncdispatch
 

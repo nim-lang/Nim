@@ -1,5 +1,4 @@
 discard """
-  file: "tidgen.nim"
   output: "3 4"
 """
 
@@ -17,4 +16,3 @@ proc Id1(): int {.compileTime.} = return genId()
 proc Id2(): int {.compileTime.} = return genId()
 
 echo Id1(), " ", Id2()
-

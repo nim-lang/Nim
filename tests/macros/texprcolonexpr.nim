@@ -1,5 +1,4 @@
 discard """
-  file: "texprcolonexpr.nim"
   msg: '''
 Infix
   Ident !"=>"

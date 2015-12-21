@@ -1,5 +1,4 @@
 discard """
-  file: "tbitsize.nim"
   ccodeCheck: "\\i @'unsigned int flag:1;' .*"
 """
 

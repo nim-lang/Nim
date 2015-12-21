@@ -1,7 +1,3 @@
-discard """
-  file: "tauto_canbe_void.nim"
-"""
-
 import future
 
 template tempo(s: expr) =

@@ -1,5 +1,4 @@
 discard """
-  file: "tnestedproc.nim"
   output: "11"
 """
 
@@ -10,4 +9,3 @@ echo p((proc (): int =
           var x = 7
           return x)(),
        (proc (): int = return 4)())
-

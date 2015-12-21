@@ -26,4 +26,3 @@ d = newDerivedClass()
 
 echoAlias d
 echoAlias b
-

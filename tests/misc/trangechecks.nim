@@ -1,5 +1,4 @@
 discard """
-  file: "trangechecks.nim"
   output: '''10
 10
 1

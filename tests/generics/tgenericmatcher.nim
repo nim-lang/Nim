@@ -1,5 +1,4 @@
 discard """
-  file: "tgenericmatcher.nim"
   disabled: false
 """
 
@@ -19,5 +18,3 @@ type
 
 var
   m: PMatcher[int]
-
-

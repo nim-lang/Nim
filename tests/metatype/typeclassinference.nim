@@ -1,7 +1,6 @@
 discard """
-  file: "typeclassinference.nim"
   errormsg: "type mismatch: got (string) but expected 'ptr'"
-  line: 21
+  line: 20
   disabled: true
 """
 
@@ -20,4 +19,3 @@ var ptr1: ptr = addr(str1)
 
 var str2: string = "hello, world!"
 var ptr2: ptr = str2
-

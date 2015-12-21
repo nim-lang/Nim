@@ -1,5 +1,4 @@
 discard """
-  file: "tstr_as_openarray.nim"
   output: '''success'''
 """
 var s = "HI"

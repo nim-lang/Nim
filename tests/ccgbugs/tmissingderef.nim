@@ -1,5 +1,4 @@
 discard """
-  file: "tmissingderef.nim"
   output: '''[10, 0, 0, 0, 0, 0, 0, 0]
 
 255

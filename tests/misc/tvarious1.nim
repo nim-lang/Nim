@@ -1,5 +1,4 @@
 discard """
-  file: "tlenopenarray.nim"
   output: '''1
 0
 Whopie

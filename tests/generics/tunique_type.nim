@@ -1,5 +1,4 @@
 discard """
-  file: "tunique_type.nim"
   output: '''@[97, 45]
 @[true, false]
 @[false, false]'''

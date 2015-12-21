@@ -1,5 +1,4 @@
 discard """
-  file: "twrong_refcounts.nim"
   output: "Success"
 """
 

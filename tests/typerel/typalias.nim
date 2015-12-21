@@ -1,7 +1,3 @@
-discard """
-  file: "typalias.nim"
-"""
-
 type
   TMyObj = TYourObj
   TYourObj = object of RootObj

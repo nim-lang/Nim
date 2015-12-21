@@ -1,5 +1,4 @@
 discard """
-  file: "t1056.nim"
   output: '''TMatrix[3, 3, system.int]
 3'''
 """
@@ -23,4 +22,3 @@ var m = TMatrix[3,3,int](data: [1,2,3,4,5,6,7,8,9])
 
 echoMatrix m
 #echoMat2 m
-

@@ -20,4 +20,3 @@ proc q2(x: string) = nil
 
 q2(nil)
 q(nil)
-

@@ -1,6 +1,5 @@
 discard """
-  file: "tregionptrs.nim"
-  line: 17
+  line: 16
   errormsg: "type mismatch: got (BPtr) but expected 'APtr'"
 """
 

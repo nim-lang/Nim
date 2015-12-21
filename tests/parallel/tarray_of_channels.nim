@@ -1,6 +1,3 @@
-discard """
-  file: "tarray_of_channels.nim"
-"""
 # bug #2257
 import threadpool
 

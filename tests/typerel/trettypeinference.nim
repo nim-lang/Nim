@@ -1,5 +1,4 @@
 discard """
-  file: "trettypeinference.nim"
   msg:    "instantiated for string\ninstantiated for int\ninstantiated for bool"
   output: "int\nseq[string]\nA\nB\n100\ntrue"
 """

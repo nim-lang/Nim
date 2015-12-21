@@ -1,5 +1,4 @@
 discard """
-  file: "tcounttable.nim"
   output: "And we get here"
 """
 

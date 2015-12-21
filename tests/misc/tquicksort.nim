@@ -1,5 +1,4 @@
 discard """
-  file: "tquicksort.nim"
   output: '''1
 2
 3
@@ -39,5 +38,3 @@ var
 
 list = QuickSort(@[89,23,15,23,56,123,356,12,7,1,6,2,9,4,3])
 echoSeq(list)
-
-

@@ -1,6 +1,3 @@
-discard """
-  file: "issue_452_export_shift.nim"
-"""
 const
   VERSION_STR1* = "0.5.0" ## Idetools shifts this one column.
   VERSION_STR2 = "0.5.0" ## This one is ok.

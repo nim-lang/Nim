@@ -1,5 +1,4 @@
 discard """
-  file: "tcvarargs.nim"
   output: '''17
 17
 17

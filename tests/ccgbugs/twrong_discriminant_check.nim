@@ -1,5 +1,4 @@
 discard """
-  file: "twrong_discriminant_check.nim"
   output: "(kind: None)"
 """
 

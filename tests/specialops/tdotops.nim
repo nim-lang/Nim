@@ -1,5 +1,4 @@
 discard """
-  file: "tdotops.nim"
   output: '''
 10
 assigning z = 20

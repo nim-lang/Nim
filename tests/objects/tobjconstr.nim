@@ -38,4 +38,3 @@ proc main() =
     echo d[]
 
 main()
-

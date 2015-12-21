@@ -1,6 +1,3 @@
-discard """
-  file: "tgeneric_closure.nim"
-"""
 # Test to ensure TEventHandler is '.closure'
 
 # bug #1187

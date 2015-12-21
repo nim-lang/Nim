@@ -1,6 +1,3 @@
-discard """
-  file: "tnewsets.nim"
-"""
 # new test for sets:
 
 const elem = ' '

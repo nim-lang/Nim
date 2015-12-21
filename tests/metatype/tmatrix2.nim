@@ -1,5 +1,4 @@
 discard """
-  file: "tmatrix2.nim"
   output: "5.0"
 """
 

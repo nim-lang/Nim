@@ -1,5 +1,4 @@
 discard """
-  file: "t1050.nim"
   msg: "int"
   output: "4"
 """
@@ -14,4 +13,3 @@ proc arrayItem(a: ArrayType): auto =
 
 var arr: ArrayType[int]
 echo arrayItem(arr)
-

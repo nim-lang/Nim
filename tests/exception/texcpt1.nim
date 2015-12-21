@@ -26,5 +26,3 @@ proc blah(): int =
     result = -6
 
 echo blah()
-
-

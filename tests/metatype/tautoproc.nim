@@ -1,5 +1,4 @@
 discard """
-  file: "tautoproc.nim"
   output: "empty"
 """
 

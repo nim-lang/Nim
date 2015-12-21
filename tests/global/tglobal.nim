@@ -13,4 +13,3 @@ echo "int value: ", globalInstance[int]().val
 globalInstance[string]().val = "first"
 globalInstance[string]().val = "second"
 echo "string value: ", globalInstance[string]().val
-

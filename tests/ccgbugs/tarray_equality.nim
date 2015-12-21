@@ -1,5 +1,4 @@
 discard """
-  file: "tarray_equality.nim"
   output: '''true
 true'''
 """

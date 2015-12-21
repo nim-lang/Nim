@@ -1,5 +1,4 @@
 discard """
-  file: "tobjpragma.nim"
   output: '''2
 3
 9

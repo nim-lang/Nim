@@ -26,4 +26,3 @@ for a in items(arr):
   stdout.write(a)
 
 echo ""
-

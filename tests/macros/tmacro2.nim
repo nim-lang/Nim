@@ -1,5 +1,4 @@
 discard """
-  file: "tmacro2.nim"
   output: "ta-da Your value sir: 'HE!!!!o Wor!!d'"
 """
 
@@ -25,5 +24,3 @@ macro mac(n: expr): expr =
 const s = testBlock()
 const t = mac("HEllo World")
 echo s, " ", t
-
-

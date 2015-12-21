@@ -1,5 +1,4 @@
 discard """
-  file: "tcopy.nim"
   output: "TEMP=C:\\Programs\\xyz\\bin"
 """
 # tests the substr proc

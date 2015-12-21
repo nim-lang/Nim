@@ -1,6 +1,3 @@
-discard """
-  file: "bintrees.nim"
-"""
 # -*- nim -*-
 
 import os, strutils

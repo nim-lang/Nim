@@ -1,6 +1,3 @@
-discard """
-  file: "tcolonisproc.nim"
-"""
 proc p(a, b: int, c: proc ()) =
   c()
 

@@ -1,5 +1,4 @@
 discard """
-  file: "tunsafeaddr.nim"
   output: '''12'''
 """
 

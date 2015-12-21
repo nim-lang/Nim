@@ -1,5 +1,4 @@
 discard """
-  file: "tints.nim"
   output: '''
 0 0
 0 0
@@ -52,4 +51,3 @@ echo int(unc(0.5)), " ", int(unc(-0.5))
 echo int(0.5), " ", int(-0.5)
 
 echo("Success") #OUT Success
-

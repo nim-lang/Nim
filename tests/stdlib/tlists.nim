@@ -1,5 +1,4 @@
 discard """
-  file: "tlists.nim"
   output: '''true'''
 """
 
@@ -64,4 +63,3 @@ block DoublyLinkedRingTest1:
 
 
 echo "true"
-

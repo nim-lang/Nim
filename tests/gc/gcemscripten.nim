@@ -1,5 +1,4 @@
 discard """
-  file: "gcemscripten.nim"
   outputsub: "77\n77"
 """
 

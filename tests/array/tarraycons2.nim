@@ -1,5 +1,4 @@
 discard """
-  file: "tarraycons.nim"
   output: "6"
 """
 
@@ -18,6 +17,3 @@ const
   ]
 
 echo myMapping[eC][1]
-
-
-

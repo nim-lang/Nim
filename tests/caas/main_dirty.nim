@@ -1,7 +1,3 @@
-discard """
-  file: "main_dirty.nim"
-"""
-
 import imported, strutils
 
 type

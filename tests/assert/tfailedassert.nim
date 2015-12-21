@@ -1,5 +1,4 @@
 discard """
-  file: "tfailedassert.nim"
   exitcode: "1"
 """
 

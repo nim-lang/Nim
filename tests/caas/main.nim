@@ -1,7 +1,3 @@
-discard """
-  file: "main.nim"
-"""
-
 import imported, strutils
 
 proc main =

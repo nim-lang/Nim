@@ -1,5 +1,4 @@
 discard """
-  file: "tswizzle.nim"
   output: '''3
 [1, 3]
 [2, 1, 2]
@@ -78,4 +77,3 @@ var z = Vec([1, 2, 3])
 #echo z.card
 #echo z.xz
 #echo z.yxy
-

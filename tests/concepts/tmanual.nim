@@ -1,5 +1,4 @@
 discard """
-  file: "tmanual.nim"
   output: '''1
 2
 3
@@ -41,4 +40,3 @@ takesContainer(@[4, 5, 6])
 takesContainer(@["a", "b"])
 takesContainer "test"
 reject takesContainer(10)
-

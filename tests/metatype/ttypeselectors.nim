@@ -1,6 +1,3 @@
-discard """
-  file: "ttypeselectors.nim"
-"""
 import macros
 
 template selectType(x: int): typeDesc =

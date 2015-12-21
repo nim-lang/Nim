@@ -1,6 +1,3 @@
-discard """
-  file: "tslurp.nim"
-"""
 import os
 
 template getScriptDir(): string =

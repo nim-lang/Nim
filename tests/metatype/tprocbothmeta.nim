@@ -1,6 +1,3 @@
-discard """
-  file: "tprocbothmeta.nim"
-"""
 
 proc myFun[A](x: A): auto =
   result = float(x+10)

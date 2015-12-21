@@ -1,7 +1,3 @@
-discard """
-  file: "moverload_asgn2.nim"
-"""
-
 type
   Concrete* = object
     a*, b*: string

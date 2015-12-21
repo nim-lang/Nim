@@ -1,5 +1,4 @@
 discard """
-  file:   "tmemoization.nim"
   msg:    "test 1\ntest 2\ntest 3"
   output: "TEST 1\nTEST 2\nTEST 3"
 """
@@ -15,4 +14,3 @@ proc foo(s: static[string]): string =
 echo foo("test 1")
 echo foo("test 2")
 echo foo("test " & $3)
-

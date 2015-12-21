@@ -1,5 +1,4 @@
 discard """
-  file: "tseqtuple.nim"
   output: "fA13msg1falsefB14msg2truefC15msg3false"
 """
 

@@ -1,5 +1,4 @@
 discard """
-  file: "tvector_iterator.nim"
   cmd: "nim cpp $file"
 """
 

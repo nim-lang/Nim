@@ -1,6 +1,3 @@
-discard """
-  file: "params.nim"
-"""
 import os
 import osproc
 import parseopt2

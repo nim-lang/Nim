@@ -1,5 +1,4 @@
 discard """
-  file: "tunsignedcomp.nim"
   output: ''''''
   disabled: "true"
 """

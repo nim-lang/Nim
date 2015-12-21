@@ -8,4 +8,3 @@ const
 var v = "D" & x & "D"
 
 echo v
-

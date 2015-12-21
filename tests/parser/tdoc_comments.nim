@@ -1,7 +1,3 @@
-discard """
-  file: "tdoc_comments.nim"
-"""
-
 # bug #1799
 
 proc MyProc1*() = ## Comment behind procedure

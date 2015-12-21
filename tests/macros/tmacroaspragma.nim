@@ -1,6 +1,3 @@
-discard """
-  file: "tmacroaspragma.nim"
-"""
 import macros
 
 macro foo(x: stmt): stmt =
@@ -8,4 +5,3 @@ macro foo(x: stmt): stmt =
   result = newNimNode(nnkStmtList)
 
 proc zoo() {.foo.} = echo "hi"
-

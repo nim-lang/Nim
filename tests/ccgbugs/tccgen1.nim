@@ -1,7 +1,3 @@
-discard """
-  file: "tccgen1.nim"
-"""
-
 type
   Feature = tuple[name: string, version: string]
   PDOMImplementation* = ref DOMImplementation

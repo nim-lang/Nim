@@ -17,4 +17,3 @@ proc lier(): int {.raises: [IOError].} =
 
 proc forw: int =
   raise newException(IOError, "arg")
-

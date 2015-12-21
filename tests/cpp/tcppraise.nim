@@ -1,5 +1,4 @@
 discard """
-  file: "tcppraise.nim"
   cmd: "nim cpp $file"
   output: '''foo
 bar

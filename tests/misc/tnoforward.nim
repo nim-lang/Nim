@@ -1,5 +1,4 @@
 discard """
-  file: "tnoforward.nim"
   disabled: true
 """
 
@@ -12,4 +11,3 @@ proc bar(x: int) =
   echo x
 
 foo(10)
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tget_subsystem.nim"
   cmd: "nim cpp $file"
 """
 

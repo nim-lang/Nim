@@ -1,6 +1,5 @@
 discard """
-  file: "tmethod.nim"
-  line: 7
+  line: 6
   errormsg: "\'method\' needs a parameter that has an object type"
 """
 

@@ -1,6 +1,3 @@
-discard """
-  file: "tloops.nim"
-"""
 # Test nested loops and some other things
 
 proc andTest() =
@@ -87,4 +84,3 @@ proc main[T]() =
   echo myType2
 
 main[int]()
-

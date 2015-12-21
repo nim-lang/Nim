@@ -1,5 +1,4 @@
 discard """
-  file: "tprecedence.nim"
   output: '''holla
 true'''
 """

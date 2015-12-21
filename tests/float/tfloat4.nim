@@ -1,6 +1,3 @@
-discard """
-  file: tfloat4.nim
-"""
 import math, strutils
 
 proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", varargs.}

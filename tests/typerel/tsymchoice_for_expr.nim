@@ -1,6 +1,3 @@
-discard """
-  file: "tsymchoice_for_expr.nim"
-"""
 # bug #1988
 
 template t(e: expr) = discard

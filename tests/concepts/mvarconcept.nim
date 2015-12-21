@@ -1,6 +1,3 @@
-discard """
-  file: "mvarconcept.nim"
-"""
 type RNG* = concept var rng
   rng.randomUint32() is uint32
 

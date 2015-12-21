@@ -14,4 +14,3 @@ proc newRegistry*[T](): Registry[T] =
 
 proc register*[T](self: Registry[T], obj: T) =
   self.objects[obj.uuid] = obj
-

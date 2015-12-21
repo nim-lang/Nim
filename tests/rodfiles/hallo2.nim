@@ -14,4 +14,3 @@ proc newNode(data: string): ref TNode =
   result.data = data
 
 echo newNode("Hello World").data
-

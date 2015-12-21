@@ -1,7 +1,6 @@
 discard """
-  file: "tuseafterdef.nim"
   errormsg: "(k)..(k) not disjoint from (k)..(k)"
-  line: 24
+  line: 23
 """
 
 # bug #1597

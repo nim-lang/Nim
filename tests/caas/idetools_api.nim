@@ -1,6 +1,3 @@
-discard """
-  file: "idetools_api.nim"
-"""
 import unicode, sequtils, macros, re
 
 proc test_enums() =

@@ -1,6 +1,5 @@
 discard """
-  file: "treciter.nim"
-  line: 9
+  line: 8
   errormsg: "recursive dependency: \'myrec\'"
 """
 # Test that an error message occurs for a recursive iterator
@@ -10,5 +9,3 @@ iterator myrec(n: int): int =
     yield x
 
 for x in myrec(10): echo x
-
-

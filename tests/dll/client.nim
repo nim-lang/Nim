@@ -1,5 +1,4 @@
 discard """
-  file: "client.nim"
   output: "Done"
   cmd: "nim $target --debuginfo --hints:on --define:useNimRtl $options $file"
 """

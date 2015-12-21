@@ -1,5 +1,4 @@
 discard """
-  file: "typeof_in_template.nim"
   output: '''@[a, c]'''
 """
 

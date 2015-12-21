@@ -1,6 +1,3 @@
-discard """
-  file: "tparscfg.nim"
-"""
 import
   os, parsecfg, strutils, streams
 

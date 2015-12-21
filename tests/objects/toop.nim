@@ -18,4 +18,3 @@ proc p(b: var TB) = echo "b"
 var c: TC
 
 p(c)
-

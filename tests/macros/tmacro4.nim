@@ -1,5 +1,4 @@
 discard """
-  file: "tmacro4.nim"
   output: "after"
 """
 
@@ -17,4 +16,3 @@ when isMainModule:
   test_macro(str):
     var i : integer = 123
   echo str
-

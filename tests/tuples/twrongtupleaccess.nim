@@ -1,6 +1,5 @@
 discard """
-  file: "twrongtupleaccess.nim"
-  line: 9
+  line: 8
   errormsg: "attempting to call undeclared routine: \'setBLAH\'"
 """
 # Bugfix

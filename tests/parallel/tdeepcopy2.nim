@@ -1,5 +1,4 @@
 discard """
-  file: "tdeepcopy2.nim"
   output: '''called deepCopy for int
 called deepCopy for int
 done999 999'''

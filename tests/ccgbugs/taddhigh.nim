@@ -1,5 +1,4 @@
 discard """
-  file: "taddhigh.nim"
   output: '''@[5, 5, 5]'''
 """
 

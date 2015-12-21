@@ -1,5 +1,4 @@
 discard """
-  file: "tsemistatic.nim"
   msg: "static 10\ndynamic\nstatic 20\n"
   output: "s\nd\nd\ns"
 """

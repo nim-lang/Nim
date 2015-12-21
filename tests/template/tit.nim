@@ -1,7 +1,3 @@
-discard """
-  file: "tit.nim"
-"""
-
 # bug #1337
 
 template someIt(a, pred: expr): expr =

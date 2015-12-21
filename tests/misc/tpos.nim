@@ -1,5 +1,4 @@
 discard """
-  file: "tpos.nim"
   output: "6"
 """
 # test this particular function
@@ -31,5 +30,3 @@ var sub = "hello"
 var s = "world hello"
 write(stdout, mypos(sub, s))
 #OUT 6
-
-

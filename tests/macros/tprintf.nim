@@ -1,5 +1,4 @@
 discard """
-  file: "tprintf.nim"
   output: "Andreas Rumpf"
 """
 # Test a printf proc
@@ -12,5 +11,3 @@ proc printf(file: TFile, args: openarray[string]) =
 
 printf(stdout, ["Andreas ", "Rumpf\n"])
 #OUT Andreas Rumpf
-
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tableref_is_nil.nim"
   output: "true"
 """
 

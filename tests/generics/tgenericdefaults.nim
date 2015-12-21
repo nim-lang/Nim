@@ -1,6 +1,3 @@
-discard """
-  file: "tgenericdefaults.nim"
-"""
 type
   TFoo[T, U, R = int] = object
     x: T
@@ -29,4 +26,3 @@ static:
   doAssert type(x3.x) is float
   doAssert type(x3.y) is array[4, float]
   doAssert type(x3.z) is float
-

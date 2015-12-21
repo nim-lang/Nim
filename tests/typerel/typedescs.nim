@@ -1,6 +1,3 @@
-discard """
-  file: "typedescs.nim"
-"""
 # bug #1774
 proc p(T: typedesc) = discard
 

@@ -1,5 +1,4 @@
 discard """
-  file: "tmodulealias.nim"
   disabled: true
 """
 

@@ -1,5 +1,4 @@
 discard """
-  file: "tgetimpl.nim"
   msg: '''"muhaha"
 proc poo(x, y: int) =
   echo ["poo"]'''

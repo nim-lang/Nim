@@ -1,5 +1,4 @@
 discard """
-  file: "tstaticvector.nim"
   output: '''0
 0
 2

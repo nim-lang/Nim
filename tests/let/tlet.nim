@@ -8,4 +8,3 @@ let name = readLine(stdin)
 while name == "":
   echo("Please tell me your name: ")
   name = readLine(stdin)
-

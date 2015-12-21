@@ -1,5 +1,4 @@
 discard """
-  file: "tauto_excessive.nim"
   output: '''10
 10.0
 1.0hiho'''

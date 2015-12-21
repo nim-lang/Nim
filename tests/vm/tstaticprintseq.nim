@@ -1,5 +1,4 @@
 discard """
-  file: "tstaticprintseq.nim"
   msg: '''1
 2
 3

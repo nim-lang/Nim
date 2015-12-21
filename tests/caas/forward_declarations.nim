@@ -1,6 +1,3 @@
-discard """
-  file: "forward_declarations.nim"
-"""
 # This example shows that idetools returns an empty signature for a forward
 # declared proc in proc/symproc runs, but correctly returns the full signature
 # in caas mode.

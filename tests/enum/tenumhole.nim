@@ -1,5 +1,4 @@
 discard """
-  file: "tenumhole.nim"
   output: "my value A1my value Bconc2valueCabc4abc"
 """
 

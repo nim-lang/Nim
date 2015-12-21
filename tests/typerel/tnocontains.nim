@@ -1,6 +1,5 @@
 discard """
-  file: "tnocontains.nim"
-  line: 10
+  line: 9
   errormsg: "type mismatch: got (string, string)"
 """
 

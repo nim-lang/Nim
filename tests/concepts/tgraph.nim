@@ -1,5 +1,4 @@
 discard """
-  file: "tgraph.nim"
   output: '''XY is Node
 MyGraph is Graph'''
 """
@@ -27,4 +26,3 @@ proc distance*( g: MyGraph, a, b: XY): float =
 
 if MyGraph is Graph:
     echo "MyGraph is Graph"
-

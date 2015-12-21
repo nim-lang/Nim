@@ -1,6 +1,3 @@
-discard """
-  file: "tdifferent_instantiations.nim"
-"""
 # bug #1910
 import tables
 

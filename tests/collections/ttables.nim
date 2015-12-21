@@ -1,5 +1,4 @@
 discard """
-  file: "ttables.nim"
   output: '''true'''
 """
 
@@ -156,4 +155,3 @@ proc orderedTableSortTest() =
 
 orderedTableSortTest()
 echo "true"
-

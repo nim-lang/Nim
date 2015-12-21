@@ -1,5 +1,4 @@
 discard """
-  file: "tstringinterp.nim"
   output: "Hello Alice, 64 | Hello Bob, 10$"
 """
 
@@ -71,4 +70,3 @@ var
   s2 = formatStyleInterpolation"Hello ${bob}, ${sum(alice.len, bob.len, 2)}$$"
 
 write(stdout, s1 & " | " & s2)
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tfinalobj.nim"
   output: "abc"
 """
 

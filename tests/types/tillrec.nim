@@ -1,6 +1,5 @@
 discard """
-  file: "tillrec.nim"
-  line: 13
+  line: 12
   errormsg: "illegal recursion in type \'TIllegal\'"
 """
 # test illegal recursive types

@@ -1,7 +1,6 @@
 discard """
-  file: "treadafterwrite.nim"
   errormsg: "'foo' not disjoint from 'foo'"
-  line: 24
+  line: 23
   disabled: "true"
 """
 

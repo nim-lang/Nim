@@ -1,6 +1,3 @@
-discard """
-  file: "treadx.nim"
-"""
 when not defined(windows):
   import posix
 
@@ -13,4 +10,3 @@ when not defined(windows):
 
   echo inp
   #dafkladskölklödsaf ölksdakölfölksfklwe4iojr389wr 89uweokf sdlkf jweklr jweflksdj fioewjfsdlfsd
-

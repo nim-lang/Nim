@@ -1,7 +1,3 @@
-discard """
-  file: "tissue993.nim"
-"""
-
 type PNode* = ref object of RootObj
 
 template litNode (name, ty): stmt  =

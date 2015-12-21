@@ -1,5 +1,4 @@
 discard """
-  file: "tsame_name_497.nim"
   disabled: "true"
 """
 

@@ -1,5 +1,4 @@
 discard """
-  file: "ttypeclasses.nim"
   output: '''12
 1xxx
 true0

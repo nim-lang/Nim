@@ -1,5 +1,4 @@
 discard """
-  file: "t1789.nim"
   output: "3\n0"
 """
 
@@ -42,4 +41,3 @@ proc `[]`*[N, T](f: Bar[N, T], n: range[0..(N - 1)]): T =
 
 var b: Bar[3, int]
 echo b[2]
-

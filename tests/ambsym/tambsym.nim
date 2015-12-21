@@ -1,6 +1,5 @@
 discard """
-  file: "tambsym.nim"
-  line: 11
+  line: 10
   errormsg: "ambiguous identifier"
 """
 # Test ambiguous symbols
@@ -11,5 +10,3 @@ var
   v: TExport #ERROR_MSG ambiguous identifier
 
 v = y
-
-
