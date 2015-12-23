@@ -1,9 +1,8 @@
 discard """
-  file: "tests/modules/trecincb.nim"
+  file: "trecincb.nim"
   # Note: file must be "trecinab.nim"
-  line: 8
-  errormsg: '''recursive dependency: 'trecincb.nim'
-'''
+  line: 7
+  errormsg: "recursive dependency:"
 """
 # Test recursive includes
 

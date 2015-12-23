@@ -1,7 +1,6 @@
 discard """
-  line: 8
-  errormsg: '''recursive dependency: 'trecincb.nim'
-'''
+  line: 7
+  errormsg: "recursive dependency: "
 """
 # Test recursive includes
 
