@@ -41,4 +41,3 @@ const
 
 for i in 0..len(stringArray)-1:
   echo(stringArray[i])
-

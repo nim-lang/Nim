@@ -49,4 +49,3 @@ var a: SubObject
 
 a.test()
 echo a.t
-

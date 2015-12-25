@@ -1,5 +1,4 @@
 discard """
-  file: "tfinally2.nim"
   output: '''A
 B
 C
@@ -25,6 +24,3 @@ proc main: int =
     echo("D")
 
 discard main() #OUT ABCD
-
-
-

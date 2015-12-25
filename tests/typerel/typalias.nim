@@ -1,4 +1,3 @@
-
 type
   TMyObj = TYourObj
   TYourObj = object of RootObj

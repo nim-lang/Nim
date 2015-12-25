@@ -34,5 +34,3 @@ when false:
   type
     PA[T] = ref TA[T]
     TA[T] = object
-
-

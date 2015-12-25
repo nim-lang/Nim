@@ -23,4 +23,3 @@ proc withVarargs[T](arg: T) =
 withDirectType "string"
 withOpenArray "string"
 withVarargs "string"
-

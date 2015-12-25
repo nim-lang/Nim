@@ -1,5 +1,5 @@
 discard """
-msg: '''ObjectTy(Sym(Model), RecList(Sym(name), Sym(password)))
+  msg: '''ObjectTy(Sym(Model), RecList(Sym(name), Sym(password)))
 BracketExpr(Sym(typeDesc), Sym(User))'''
 """
 import strutils, macros

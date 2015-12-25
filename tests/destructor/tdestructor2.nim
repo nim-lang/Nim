@@ -24,4 +24,3 @@ proc foo =
 
 # XXX doesn't trigger this yet:
 #echo open()
-

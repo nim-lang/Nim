@@ -18,4 +18,3 @@ for x in p(): echo x
 proc q(): seq[int] = @[1, 2, 3]
 
 for x in q(): echo x
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tstaticparams.nim"
   output: "abracadabra\ntest\n3\n15\n4\n2\nfloat\n3\nfloat\nyin\nyang"
 """
 
@@ -75,7 +74,7 @@ matrix_3(tmat, ar1)
 matrix_4(tmat, ar2)
 
 template reject(x): stmt =
-  static: assert(not compiles(x))
+  static: doAssert(not compiles(x))
 
 # test with arrays of wrong size
 reject matrix_1(tmat, ar2)
@@ -139,4 +138,3 @@ dontBind1 bb_2
 
 dontBind2 bb_1
 dontBind2 bb_2
-

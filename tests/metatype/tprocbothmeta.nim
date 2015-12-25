@@ -7,4 +7,4 @@ proc myMap[T,S](sIn: seq[T], f: proc (q: T): S): seq[S] =
   for i in 0..<sIn.len:
     result[i] = f(sIn[i])
 
-assert myMap(@[1,2,3], myFun) == @[11.0, 12.0, 13.0]
+doAssert myMap(@[1,2,3], myFun) == @[11.0, 12.0, 13.0]

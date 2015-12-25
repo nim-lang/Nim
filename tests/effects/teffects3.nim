@@ -16,4 +16,3 @@ proc raiser(): int {.tags: [TObj, FWriteIO].} =
 
 var o: TObjB
 o.fn = raiser
-

@@ -67,4 +67,3 @@ proc takesFooOfNumeric(x: TFoo[Numeric]) =
   echo "foo of numeric"
 
 takesFooOfNumeric(sf[0])
-

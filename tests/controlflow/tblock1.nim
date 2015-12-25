@@ -1,6 +1,5 @@
 discard """
-  file: "tblock1.nim"
-  line: 14
+  line: 13
   errormsg: "undeclared identifier: \'ha\'"
 """
 # check for forward label and
@@ -14,5 +13,3 @@ proc main =
   break ha #ERROR
 
 main()
-
-

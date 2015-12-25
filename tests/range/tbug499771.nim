@@ -1,5 +1,4 @@
 discard """
-  file: "tbug499771.nim"
   output: '''TSubRange: 5 from 1 to 10
 true true true'''
 """

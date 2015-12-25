@@ -10,5 +10,3 @@ type
 
 var
   emptyString {.exportc: "emptyString".}: TStringDesc
-
-

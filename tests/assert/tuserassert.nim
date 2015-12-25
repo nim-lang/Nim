@@ -10,4 +10,3 @@ template myAssert(cond: expr) =
 
 var x = 454
 myAssert(x == 45)
-

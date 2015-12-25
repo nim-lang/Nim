@@ -1,4 +1,3 @@
-
 # bug #3171
 
 template newDataWindow(): stmt =

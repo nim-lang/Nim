@@ -1,4 +1,3 @@
-
 # bug #1700
 import tables
 

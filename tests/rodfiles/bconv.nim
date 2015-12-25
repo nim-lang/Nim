@@ -6,4 +6,3 @@ import int2bool
 
 if 4:
   echo "ugly conversion successful 2"
-

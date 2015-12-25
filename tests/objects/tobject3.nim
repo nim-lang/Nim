@@ -56,4 +56,3 @@ var dd = makeDesktop()
 var aa = makeWindow()
 
 thisCausesError(dd, aa)
-

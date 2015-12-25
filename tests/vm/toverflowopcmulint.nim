@@ -7,5 +7,5 @@ static:
     var
       x = 1 shl 62
     discard x * 2
-    assert false
+    doAssert false
   p()

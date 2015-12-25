@@ -1,4 +1,3 @@
-
 proc p(a, b: int, c: proc ()) =
   c()
 

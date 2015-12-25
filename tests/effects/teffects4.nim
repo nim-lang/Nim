@@ -21,4 +21,3 @@ proc raiser(): int =
 
 var o: TObjB
 o.fn = raiser
-

@@ -1,5 +1,4 @@
 discard """
-  file: "tstrlits.nim"
   output: "a\"\"long string\"\"\"\"\"abc\"def"
 """
 # Test the new different string literals
@@ -15,6 +14,3 @@ stdout.write(rawQuote)
 stdout.write(tripleEmpty)
 stdout.write(raw)
 #OUT a""long string"""""abc"def
-
-
-

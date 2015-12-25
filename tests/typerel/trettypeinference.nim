@@ -14,7 +14,7 @@ var i = plus(10, 20)
 var s = plus("A", "B")
 
 var p = makePair("key", 100)
-static: assert p[0].type is string
+static: doAssert p[0].type is string
 
 echo i.type.name
 echo s.type.name
@@ -30,4 +30,3 @@ echo inst(true)
 
 # XXX: [string, tyGenericParam] is cached instead of [string, string]
 # echo inst[string, string]("C")
-

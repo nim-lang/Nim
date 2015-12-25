@@ -18,5 +18,3 @@ type
 
 var
   m: PMatcher[int]
-
-

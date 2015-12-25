@@ -1,5 +1,4 @@
 discard """
-  file: "tofopr.nim"
   output: "falsetrue"
 """
 # Test is operator
@@ -22,5 +21,3 @@ write(stdout, p(m))
 write(stdout, p(n))
 
 #OUT falsetrue
-
-

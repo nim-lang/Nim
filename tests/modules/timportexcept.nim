@@ -7,4 +7,3 @@ import strutils except `%`
 
 # doesn't work
 echo "$1" % "abc"
-

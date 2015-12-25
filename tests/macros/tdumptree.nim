@@ -1,5 +1,5 @@
 discard """
-msg: '''StmtList
+  msg: '''StmtList
   VarSection
     IdentDefs
       Ident !"x"
@@ -23,4 +23,3 @@ import macros
 
 dumpTree:
   var x = foo.create(56)
-

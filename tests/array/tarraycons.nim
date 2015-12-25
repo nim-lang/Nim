@@ -1,6 +1,5 @@
 discard """
-  file: "tarraycons.nim"
-  line: 14
+  line: 13
   errormsg: "invalid order in array constructor"
 """
 
@@ -19,6 +18,3 @@ const
   ]
 
 echo myMapping[eC][1]
-
-
-

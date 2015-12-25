@@ -1,8 +1,8 @@
-import parsecomb
-
 discard """
   output: "-289096"
 """
+
+import parsecomb
 
 type Num = int
 

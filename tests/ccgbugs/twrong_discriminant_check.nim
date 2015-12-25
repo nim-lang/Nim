@@ -27,4 +27,3 @@ when true:
     int.none
 
   echo test()
-

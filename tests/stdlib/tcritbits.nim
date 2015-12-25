@@ -25,4 +25,3 @@ when isMainModule:
 
   for w in r.itemsWithPrefix("de"):
     echo w
-

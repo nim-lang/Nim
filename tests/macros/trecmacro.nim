@@ -1,6 +1,5 @@
 discard """
-  file: "trecmacro.nim"
-  line: 8
+  line: 7
   errormsg: "recursive dependency: 'dump'"
 """
 

@@ -10,5 +10,3 @@ proc traverse(root: ref Node) =
 
 type A = tuple[B: ptr A]
 proc C(D: ptr A) = C(D.B)
-
-

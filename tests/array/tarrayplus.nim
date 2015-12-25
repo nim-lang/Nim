@@ -10,4 +10,3 @@ var
   v1: array[0..2, float] = [3.0, 1.2, 3.0]
   v2: array[0..1, float] = [2.0, 1.0]
   v3 = v1 + v2
-

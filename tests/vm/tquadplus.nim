@@ -1,8 +1,7 @@
-# bug #1023
-
 discard """
   output: "1 == 1"
 """
+# bug #1023
 
 type Quadruple = tuple[a, b, c, d: int]
 

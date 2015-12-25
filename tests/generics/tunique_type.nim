@@ -1,10 +1,9 @@
-# Bug #2022
-
 discard """
   output: '''@[97, 45]
 @[true, false]
 @[false, false]'''
 """
+# Bug #2022
 
 ## The goal of this snippet is to provide and test a construct for general-
 ## purpose, random-access mapping. I use an AST-manipulation-based approach

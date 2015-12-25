@@ -106,13 +106,13 @@ proc termIgnoreStyle*(t: string): TPeg {.
 
 proc term*(t: char): TPeg {.rtl, extern: "npegs$1Char".} =
   ## constructs a PEG from a terminal char
-  assert t != '\0'
+  doAssert t != '\0'
   result.kind = pkChar
   result.ch = t
 
 proc charSet*(s: set[char]): TPeg {.rtl, extern: "npegs$1".} =
   ## constructs a PEG from a character set `s`
-  assert '\0' notin s
+  doAssert '\0' notin s
   result.kind = pkCharChoice
   new(result.charChoice)
   result.charChoice[] = s
@@ -198,7 +198,7 @@ proc `*`*(a: TPeg): TPeg {.rtl, extern: "npegsGreedyRep".} =
   ## constructs a "greedy repetition" for the PEG `a`
   case a.kind
   of pkGreedyRep, pkGreedyRepChar, pkGreedyRepSet, pkGreedyAny, pkOption:
-    assert false
+    doAssert false
     # produces endless loop!
   of pkChar:
     result.kind = pkGreedyRepChar
@@ -334,7 +334,7 @@ proc spaceCost(n: TPeg): int =
 proc nonterminal*(n: PNonTerminal): TPeg {.
   rtl, extern: "npegs$1".} =
   ## constructs a PEG that consists of the nonterminal symbol
-  assert n != nil
+  doAssert n != nil
   if ntDeclared in n.flags and spaceCost(n.rule) < InlineThreshold:
     when false: echo "inlining symbol: ", n.name
     result = n.rule # inlining of rule enables better optimizations
@@ -663,7 +663,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
   of pkSequence:
     var oldMl = c.ml
     result = 0
-    assert(not isNil(p.sons))
+    doAssert(not isNil(p.sons))
     for i in 0..high(p.sons):
       var x = rawMatch(s, p.sons[i], start+result, c)
       if x < 0:
@@ -754,7 +754,7 @@ proc rawMatch*(s: string, p: TPeg, start: int, c: var TCaptures): int {.
   of pkStartAnchor:
     if c.origStart == start: result = 0
     else: result = -1
-  of pkRule, pkList: assert false
+  of pkRule, pkList: doAssert false
 
 proc match*(s: string, pattern: TPeg, matches: var openarray[string],
             start = 0): bool {.rtl, extern: "npegs$1Capture".} =
@@ -1069,14 +1069,14 @@ const
   ]
 
 proc HandleCR(L: var TPegLexer, pos: int): int =
-  assert(L.buf[pos] == '\c')
+  doAssert(L.buf[pos] == '\c')
   inc(L.linenumber)
   result = pos+1
   if L.buf[result] == '\L': inc(result)
   L.lineStart = result
 
 proc HandleLF(L: var TPegLexer, pos: int): int =
-  assert(L.buf[pos] == '\L')
+  doAssert(L.buf[pos] == '\L')
   inc(L.linenumber)
   result = pos+1
   L.lineStart = result
@@ -1767,4 +1767,3 @@ when isMainModule:
   block:
     var a = term"key"
     echo($sequence(sequence(a, term"value"), *a))
-

@@ -1,3 +1,6 @@
+discard """
+  file: "mmaptest.nim"
+"""
 # Small test program to test for mmap() weirdnesses
 
 include "lib/system/ansi_c"
@@ -44,5 +47,3 @@ echo(cast[ptr int](p +!! (pageSize*2))[])
 
 osDeallocPages(p +!! PageSize*2, PageSize)
 osDeallocPages(p +!! PageSize, PageSize)
-
-

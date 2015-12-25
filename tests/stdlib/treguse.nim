@@ -1,5 +1,4 @@
 discard """
-  file: "treguse.nim"
   output: "055this should be the casehugh"
 """
 # Test the register usage of the virtual machine and
@@ -23,5 +22,3 @@ proc main(a, b: int) =
 
 main(45, 1000)
 #OUT 055this should be the casehugh
-
-

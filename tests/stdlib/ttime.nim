@@ -1,8 +1,4 @@
 # test the new time module
-discard """
-  file: "ttime.nim"
-"""
-
 import
   times, strutils
 

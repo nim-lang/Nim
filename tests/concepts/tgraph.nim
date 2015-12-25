@@ -26,4 +26,3 @@ proc distance*( g: MyGraph, a, b: XY): float =
 
 if MyGraph is Graph:
     echo "MyGraph is Graph"
-

@@ -8,5 +8,3 @@ method test123(a : ref TObj) {.base.} =
 
 proc testMyObj*() =
     test123(myObj)
-
-

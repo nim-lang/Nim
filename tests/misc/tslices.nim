@@ -1,5 +1,4 @@
 discard """
-  file: "tslices.nim"
   output: '''456456
 456456
 456456
@@ -55,5 +54,4 @@ echo mystr
 
 var s = "abcdef"
 s[1 .. ^2] = "xyz"
-assert s == "axyzf"
-
+doAssert s == "axyzf"

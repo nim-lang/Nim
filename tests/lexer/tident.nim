@@ -19,4 +19,3 @@ proc myNewString(L: int): string {.inline.} =
       echo("Wrong")
 
 var s = myNewString(8)
-

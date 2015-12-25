@@ -1,4 +1,3 @@
-
 import mtempl5
 
 echo templ()
@@ -26,4 +25,3 @@ template typedef(name: expr, typ: typedesc) {.immediate.} =
 
 typedef(myint, int)
 var x: PMyInt
-

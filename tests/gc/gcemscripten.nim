@@ -54,6 +54,3 @@ echo intToStr(x.value)
 
 var x2 = myResult4("qwe", 77)
 echo intToStr(x2.value)
-
-
-

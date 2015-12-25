@@ -14,4 +14,3 @@ var
   d, e: TAtom
 
 echo( $(d == e) )
-

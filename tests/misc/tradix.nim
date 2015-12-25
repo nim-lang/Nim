@@ -36,7 +36,7 @@ proc searchInner(r: PRadixNode, a: int): PRadixNode =
   of rnFull:
     var x = cast[ptr TRadixNodeFull](r)
     return x.b[a]
-  else: assert(false)
+  else: doAssert(false)
 
 proc testBit(w, i: int): bool {.inline.} =
   result = (w and (1 shl (i %% BitsPerUnit))) != 0
@@ -61,7 +61,7 @@ proc searchLeaf(r: PRadixNode, a: int): bool =
     var x = cast[ptr TRadixNodeLeafLinear](r)
     for i in 0..ze(x.len)-1:
       if ze(x.keys[i]) == a: return true
-  else: assert(false)
+  else: doAssert(false)
 
 proc exclLeaf(r: PRadixNode, a: int) =
   case r.kind
@@ -76,7 +76,7 @@ proc exclLeaf(r: PRadixNode, a: int) =
         x.keys[i] = x.keys[L-1]
         dec(x.len)
         return
-  else: assert(false)
+  else: doAssert(false)
 
 proc contains*(r: PRadixNode, a: ByteAddress): bool =
   if r == nil: return false
@@ -129,7 +129,7 @@ proc addLeaf(r: var PRadixNode, a: int): bool =
       setBit(y.b[a /% BitsPerUnit], a)
       dealloc(r)
       r = y
-  else: assert(false)
+  else: doAssert(false)
 
 proc addInner(r: var PRadixNode, a: int, d: int): bool =
   if d == 0:
@@ -165,7 +165,7 @@ proc addInner(r: var PRadixNode, a: int, d: int): bool =
   of rnFull:
     var x = cast[ptr TRadixNodeFull](r)
     return addInner(x.b[k], a, d-8)
-  else: assert(false)
+  else: doAssert(false)
 
 proc incl*(r: var PRadixNode, a: ByteAddress) {.inline.} =
   discard addInner(r, a, 24)
@@ -185,7 +185,7 @@ iterator innerElements(r: PRadixNode): tuple[prefix: int, n: PRadixNode] =
       var r = cast[ptr TRadixNodeLinear](r)
       for i in 0..ze(r.len)-1:
         yield (ze(r.keys[i]), r.vals[i])
-    else: assert(false)
+    else: doAssert(false)
 
 iterator leafElements(r: PRadixNode): int =
   if r != nil:
@@ -202,7 +202,7 @@ iterator leafElements(r: PRadixNode): int =
       var r = cast[ptr TRadixNodeLeafLinear](r)
       for i in 0..ze(r.len)-1:
         yield ze(r.keys[i])
-    else: assert(false)
+    else: doAssert(false)
 
 iterator elements*(r: PRadixNode): ByteAddress {.inline.} =
   for p1, n1 in innerElements(r):
@@ -228,7 +228,7 @@ when false:
     if r == nil: return
     case r.kind
     of rnLeafBits:
-      assert(d == 0)
+      doAssert(d == 0)
       var x = cast[ptr TRadixNodeLeafBits](r)
       # iterate over any bit:
       for i in 0..high(x.b):
@@ -237,7 +237,7 @@ when false:
             if testBit(x.b[i], j):
               visit(prefix or i*BitsPerUnit+j)
     of rnLeafLinear:
-      assert(d == 0)
+      doAssert(d == 0)
       var x = cast[ptr TRadixNodeLeafLinear](r)
       for i in 0..ze(x.len)-1:
         visit(prefix or ze(x.keys[i]))
@@ -278,7 +278,7 @@ when false:
         i.p = ze(r.keys[i.x])
         result = r.vals[i.x]
         inc(i.x)
-    else: assert(false)
+    else: doAssert(false)
 
   proc nexti(i: var TRadixIter): int =
     result = -1

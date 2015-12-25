@@ -1,6 +1,3 @@
-discard """
-"""
-
 import strutils
 
 const
@@ -28,4 +25,3 @@ Possible Commands:
        CompileDate, CompileTime]
 
 echo HelpText
-

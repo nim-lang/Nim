@@ -24,4 +24,3 @@ type
 
 var
   it: TKeysIterator[int, string] = nil
-

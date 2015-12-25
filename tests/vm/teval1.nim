@@ -20,5 +20,3 @@ echo "##", x, "##"
 static:
     var i, j: set[int8] = {}
     var k = i + j
-
-

@@ -1,6 +1,5 @@
 discard """
-  file: "ttempl2.nim"
-  line: 18
+  line: 17
   errormsg: "undeclared identifier: \'b\'"
 """
 template declareInScope(x: untyped, t: typeDesc): untyped {.immediate.} =
@@ -16,4 +15,3 @@ a = 42  # works, `a` is known here
 
 declareInNewScope(b, int)
 b = 42  #ERROR_MSG undeclared identifier: 'b'
-

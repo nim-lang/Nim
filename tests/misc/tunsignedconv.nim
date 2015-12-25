@@ -1,4 +1,3 @@
-
 import unsigned
 
 # Tests unsigned literals and implicit conversion between uints and ints
@@ -39,5 +38,3 @@ var n8 = ar[v8]
 var n16 = ar[v16]
 var n32 = ar[v32]
 var n64 = ar[v64]
-
-

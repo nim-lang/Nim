@@ -1,5 +1,5 @@
 discard """
-msg: '''a
+  msg: '''a
 s
 d
 f
@@ -14,7 +14,7 @@ nil
 false
 true'''
 
-output: '''test
+  output: '''test
 2'''
 """
 

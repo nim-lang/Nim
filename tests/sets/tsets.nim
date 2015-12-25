@@ -1,5 +1,4 @@
 discard """
-  file: "tsets.nim"
   output: '''Ha ein F ist in s!
 false'''
 """

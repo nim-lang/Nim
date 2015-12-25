@@ -7,4 +7,3 @@ const items = [
   (var1: test(), var2: 100'u32),
   (var1: test(), var2: 192'u32)
 ]
-

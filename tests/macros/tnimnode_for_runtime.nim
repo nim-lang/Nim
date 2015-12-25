@@ -9,4 +9,3 @@ proc makeMacro: NimNode =
 var p = makeMacro()
 
 echo "bla"
-

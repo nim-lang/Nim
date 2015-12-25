@@ -29,4 +29,3 @@ test "templates can be redefined multiple times":
 
   assertion_failed: check msg == "second fail path"
   customAssert false, "second fail path"
-

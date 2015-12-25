@@ -1,6 +1,5 @@
 discard """
-  file: "tambsym3.nim"
-  line: 11
+  line: 10
   errormsg: "ambiguous identifier"
 """
 # Test ambiguous symbols
@@ -11,5 +10,3 @@ var
   v = mDec #ERROR_MSG ambiguous identifier
 
 writeLine(stdout, ord(v))
-
-

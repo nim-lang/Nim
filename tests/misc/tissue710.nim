@@ -1,6 +1,5 @@
 discard """
-  file: "tissue710.nim"
-  line: 8
+  line: 7
   errorMsg: "attempting to call undeclared routine: '||'"
 """
 var sum = 0

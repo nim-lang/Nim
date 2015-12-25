@@ -5,4 +5,3 @@ macro foo(x: stmt): stmt =
   result = newNimNode(nnkStmtList)
 
 proc zoo() {.foo.} = echo "hi"
-

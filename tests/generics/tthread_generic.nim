@@ -36,4 +36,3 @@ when isMainModule:
   echo("test")
   joinThread(thr)
   os.sleep(3000)
-

@@ -15,4 +15,3 @@ task listDirs, "lists every subdirectory":
 task default, "default target":
   --define: definedefine
   setCommand "c"
-

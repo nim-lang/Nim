@@ -1,4 +1,3 @@
-
 import threadpool
 
 proc foo(): int = 999

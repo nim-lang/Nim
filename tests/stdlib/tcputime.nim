@@ -10,4 +10,3 @@ e = epochTime() - e
 c = cpuTime() - c
 
 echo "epochTime: ", e, " cpuTime: ", c
-

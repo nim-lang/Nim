@@ -1,4 +1,3 @@
-
 iterator fibonacci(): int =
   var a = 0
   var b = 1
@@ -7,5 +6,3 @@ iterator fibonacci(): int =
     var c = b
     b = a
     a = a + c
-
-

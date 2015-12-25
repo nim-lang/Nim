@@ -10,4 +10,3 @@ test "if proc param types are not supplied, the params are assumed to be generic
 
 test "explicit param types can still be specified":
   check concat[cstring, cstring]("x", "y") == "xy"
-

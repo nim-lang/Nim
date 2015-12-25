@@ -1,5 +1,4 @@
 discard """
-  file: "tmacrogenerics.nim"
   msg: '''
 instantiation 1 with typedesc and typedesc
 counter: 1

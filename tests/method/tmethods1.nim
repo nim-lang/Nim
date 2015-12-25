@@ -19,4 +19,3 @@ method foo(a: PNodeFoo, b: PSomethingElse) = discard
 
 var o: RootObj
 o.somethin()
-

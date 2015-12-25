@@ -1,5 +1,4 @@
 discard """
-  file: "tcgbug.nim"
   output: "success"
 """
 
@@ -35,4 +34,3 @@ type
     cb: proc (future: PFuture[T]) {.closure.}
 
 var k = PFuture[void]()
-

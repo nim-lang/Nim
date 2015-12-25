@@ -13,4 +13,3 @@ var x = foo "test"
 
 import typetraits
 static: echo x.x.type.name
-

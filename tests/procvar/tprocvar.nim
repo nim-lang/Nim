@@ -1,7 +1,6 @@
 discard """
   errormsg: "type mismatch"
-  line: 17
-  file: "tprocvar.nim"
+  line: 16
 """
 
 type
@@ -15,4 +14,3 @@ proc so(c: TCallback) =
   c(2, 4)
 
 so(huh)
-

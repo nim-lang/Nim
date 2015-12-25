@@ -15,10 +15,10 @@ t
 """
 
 template accept(e: expr) =
-  static: assert compiles(e)
+  static: doAssert compiles(e)
 
 template reject(e: expr) =
-  static: assert(not compiles(e))
+  static: doAssert(not compiles(e))
 
 type
   Container[T] = concept c
@@ -40,4 +40,3 @@ takesContainer(@[4, 5, 6])
 takesContainer(@["a", "b"])
 takesContainer "test"
 reject takesContainer(10)
-

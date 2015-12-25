@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncawait.nim"
   output: "5000"
 """
 import asyncdispatch, nativesockets, net, strutils, os
@@ -61,5 +60,5 @@ while true:
   poll()
   if clientCount == swarmSize: break
 
-assert msgCount == swarmSize * messagesToSend
+doAssert msgCount == swarmSize * messagesToSend
 echo msgCount

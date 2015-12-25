@@ -1,5 +1,4 @@
 discard """
-  file: "topenarrayrepr.nim"
   output: "5 - [1]"
 """
 type
@@ -12,6 +11,3 @@ proc Bar(n: int, m: openarray[int64]) =
   echo($n & " - " & repr(m))
 
 Foo(5, Bar) #OUT 5 - [1]
-
-
-

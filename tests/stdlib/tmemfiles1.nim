@@ -1,6 +1,3 @@
-discard """
-  file: "tmemfiles1.nim"
-"""
 import memfiles, os
 var
   mm: MemFile

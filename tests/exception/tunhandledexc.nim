@@ -1,5 +1,4 @@
 discard """
-  file: "tunhandledexc.nim"
   outputsub: "Error: unhandled exception: bla [ESomeOtherErr]"
   exitcode: "1"
 """
@@ -18,6 +17,3 @@ when true:
     genErrors("errssor!")
   except ESomething:
     echo("Error happened")
-
-
-

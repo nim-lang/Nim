@@ -54,4 +54,3 @@ for y in 0 .. size-1:
         stdout.write (chr (byteAcc))
         bit     = 128
         byteAcc = 0
-

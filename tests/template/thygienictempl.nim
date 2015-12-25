@@ -1,4 +1,3 @@
-
 var
   e = "abc"
 
@@ -15,4 +14,4 @@ template test_in(a, b, c: expr): bool {.immediate, dirty.} =
   false
 
 when isMainModule:
-  assert test_in(ret2, "test", str_val)
+  doAssert test_in(ret2, "test", str_val)

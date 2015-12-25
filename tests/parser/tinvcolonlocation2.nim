@@ -1,6 +1,5 @@
 discard """
-  file: "tinvcolonlocation2.nim"
-  line: 11
+  line: 10
   column: 1
   errormsg: "':' expected"
 """

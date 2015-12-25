@@ -1,4 +1,3 @@
-
 # bug #2481
 import math
 

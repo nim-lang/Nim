@@ -5,4 +5,3 @@ type
 var a: TArray
 
 echo a[0x0012] #OUT 0
-

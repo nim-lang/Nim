@@ -1,5 +1,4 @@
 discard """
-  file: "tenumhole.nim"
   output: "my value A1my value Bconc2valueCabc4abc"
 """
 
@@ -19,7 +18,3 @@ proc getValue: TMyEnum = valueD
 # trick the optimizer with a variable:
 var x = getValue()
 echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x
-
-
-
-

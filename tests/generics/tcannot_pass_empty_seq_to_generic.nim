@@ -14,4 +14,3 @@ type
 proc some*[T](value: T): TOption[T] = TOption[T](FIsSome: true, FData: value)
 
 echo some(@[]).FIsSome
-

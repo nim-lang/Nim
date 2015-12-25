@@ -13,6 +13,3 @@ import strutils
 
 var y: type("a b c".split)
 y = "xzy"
-
-
-

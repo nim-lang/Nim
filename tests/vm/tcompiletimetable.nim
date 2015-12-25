@@ -46,4 +46,3 @@ macro dump(): stmt =
 addStuff("Hey"): echo "Hey"
 addStuff("Hi"): echo "Hi"
 dump()
-

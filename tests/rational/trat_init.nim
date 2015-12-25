@@ -1,5 +1,4 @@
 discard """
-  file: "trat_init.nim"
   exitcode: "1"
 """
 import rationals

@@ -14,4 +14,3 @@ proc wrap[T]() =
 
 
 wrap[int]()
-

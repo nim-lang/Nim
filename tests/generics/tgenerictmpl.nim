@@ -1,4 +1,3 @@
-
 template tmp[T](x: var seq[T]) =
   #var yz: T  # XXX doesn't work yet
   x = @[1, 2, 3]

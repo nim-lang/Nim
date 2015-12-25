@@ -10,4 +10,3 @@ method echoType*(x: ref TBaseClass) =
 
 proc echoAlias*(x: ref TBaseClass) =
   echoType x
-

@@ -13,4 +13,3 @@ a.x = "abc"
 doAssert TA.sizeof == string.sizeof
 
 echo a.x
-

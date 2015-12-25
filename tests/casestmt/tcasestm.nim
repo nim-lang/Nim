@@ -1,5 +1,4 @@
 discard """
-  file: "tcasestm.nim"
   output: "ayyydd"
 """
 # Test the case statement
@@ -35,6 +34,3 @@ var z = case i
 
 echo z
 #OUT ayyy
-
-
-

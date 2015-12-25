@@ -1,5 +1,4 @@
 discard """
-  file: "tstrange.nim"
   output: '''hallo40
 1
 2'''
@@ -25,4 +24,3 @@ write(stdout, ack(5, 4))
 let h=3
 for x in 0.. <h.int:
   echo x
-

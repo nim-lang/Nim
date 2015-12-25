@@ -21,4 +21,3 @@ var i = getInterf()
 i.setter(56)
 
 echo i.getter1(), " ", i.getter2()
-

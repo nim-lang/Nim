@@ -1,5 +1,4 @@
 discard """
-  file: "tasynceverror.nim"
   exitcode: 1
   outputsub: "Error: unhandled exception: Connection reset by peer"
 """

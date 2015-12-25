@@ -1,5 +1,5 @@
 discard """
-  tfile: "tnot.nim"
+  file: "system.nim"
   tline: 14
   errormsg: "type mismatch"
 """

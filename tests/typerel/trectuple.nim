@@ -13,4 +13,3 @@ type
 var node: PNode
 new(node)
 node.self = node
-

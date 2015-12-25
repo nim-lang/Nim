@@ -1,5 +1,4 @@
 discard """
-  file: "toverl2.nim"
   output: "true012innertrue"
 """
 # Test new overloading resolution rules
@@ -30,4 +29,3 @@ block:
 
 stdout.write("\n")
 #OUT true012innertrue
-

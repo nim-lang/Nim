@@ -23,5 +23,3 @@ if 4 == 3:
   echo "bug"
   else:
   echo "no bug"
-
-

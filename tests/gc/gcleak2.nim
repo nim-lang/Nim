@@ -24,5 +24,3 @@ proc inProc() =
 
 inProc()
 echo "no leak: ", getOccupiedMem()
-
-

@@ -18,4 +18,3 @@ proc indexOf*(t: typedesc, name: string): int =
     astToStr(t))
 
 echo TMyTuple.indexOf("b")
-

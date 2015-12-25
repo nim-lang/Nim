@@ -1,6 +1,5 @@
 discard """
-  file: "tadrdisc.nim"
-  line: 20
+  line: 19
   errormsg: "type mismatch: got (TKind)"
 """
 # Test that the address of a dicriminants cannot be taken

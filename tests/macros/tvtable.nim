@@ -71,4 +71,3 @@ a.baseBar
 
 echo b.baseFoo
 b.baseBar
-

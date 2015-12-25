@@ -8,4 +8,3 @@ type num = enum
     NUM_ALL = 1
     when defined(macosx): NUM_OSX = 10 # only this differs for real
     NUM_XTRA = 20
-

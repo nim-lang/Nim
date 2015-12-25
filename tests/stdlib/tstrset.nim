@@ -71,4 +71,3 @@ proc excl*(r: var PRadixNode, s: string) =
 
 var
   root: PRadixNode
-

@@ -1,4 +1,3 @@
-
 import future
 
 template tempo(s: expr) =
@@ -6,4 +5,3 @@ template tempo(s: expr) =
 
 tempo((s: string)->auto => echo(s))
 tempo((s: string) => echo(s))
-

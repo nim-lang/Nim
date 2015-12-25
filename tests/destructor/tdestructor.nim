@@ -127,4 +127,3 @@ proc caseobj =
                       q: TMyGeneric3[TMyObj, int, int](x: open(), y: 1, z: 0))
 
 caseobj()
-

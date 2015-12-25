@@ -1,4 +1,3 @@
-
 var
   gx = 88
   gy = 44
@@ -6,5 +5,3 @@ var
 template templ*(): int =
   bind gx, gy
   gx + gy
-
-

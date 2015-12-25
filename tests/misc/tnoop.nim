@@ -1,6 +1,5 @@
 discard """
-  file: "tnoop.nim"
-  line: 11
+  line: 10
   errormsg: "attempting to call undeclared routine: 'a'"
 """
 

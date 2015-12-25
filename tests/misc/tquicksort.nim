@@ -1,3 +1,19 @@
+discard """
+  output: '''1
+2
+3
+4
+6
+7
+9
+12
+15
+23
+56
+89
+123
+356'''
+"""
 proc QuickSort(list: seq[int]): seq[int] =
     if len(list) == 0:
         return @[]
@@ -22,5 +38,3 @@ var
 
 list = QuickSort(@[89,23,15,23,56,123,356,12,7,1,6,2,9,4,3])
 echoSeq(list)
-
-

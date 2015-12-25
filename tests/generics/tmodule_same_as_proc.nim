@@ -1,4 +1,3 @@
-
 # bug #1965
 
 import mmodule_same_as_proc

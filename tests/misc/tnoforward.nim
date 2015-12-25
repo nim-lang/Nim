@@ -11,4 +11,3 @@ proc bar(x: int) =
   echo x
 
 foo(10)
-

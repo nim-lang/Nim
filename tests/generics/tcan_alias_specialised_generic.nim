@@ -13,4 +13,3 @@ type
 
 var
   s: TSpef
-

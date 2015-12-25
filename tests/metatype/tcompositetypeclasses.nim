@@ -1,8 +1,8 @@
 template accept(e) =
-  static: assert(compiles(e))
+  static: doAssert(compiles(e))
 
 template reject(e) =
-  static: assert(not compiles(e))
+  static: doAssert(not compiles(e))
 
 type
   TFoo[T, U] = tuple

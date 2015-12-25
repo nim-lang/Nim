@@ -1,5 +1,4 @@
 #? strongSpaces
-
 discard """
   output: '''35
 true

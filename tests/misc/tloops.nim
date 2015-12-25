@@ -84,4 +84,3 @@ proc main[T]() =
   echo myType2
 
 main[int]()
-

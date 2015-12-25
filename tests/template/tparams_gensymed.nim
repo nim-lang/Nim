@@ -1,4 +1,3 @@
-
 # bug #1915
 
 import macros

@@ -11,4 +11,3 @@ echo p(0.9, 0.1), " ", p(9, 1)
 proc p[T](a, b: T): T =
   let c = b
   result = a + b + c
-

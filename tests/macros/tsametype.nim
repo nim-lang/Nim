@@ -1,5 +1,5 @@
 discard """
-output: '''true
+  output: '''true
 false
 true
 false

@@ -1,5 +1,4 @@
 discard """
-  file: "thexlit.nim"
   output: "equal"
 """
 
@@ -9,4 +8,3 @@ if t==0x950412DE:
     echo "equal"
 else:
     echo "not equal"
-

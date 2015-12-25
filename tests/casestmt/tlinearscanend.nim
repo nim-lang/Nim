@@ -1,4 +1,3 @@
-
 import strutils
 
 var x = 343
@@ -21,4 +20,3 @@ of 21: echo "21"
 else:
   {.linearScanEnd.}
   echo "default"
-

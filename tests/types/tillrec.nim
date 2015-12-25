@@ -1,6 +1,5 @@
 discard """
-  file: "tillrec.nim"
-  line: 13
+  line: 12
   errormsg: "illegal recursion in type \'TIllegal\'"
 """
 # test illegal recursive types
@@ -13,4 +12,3 @@ type
   TIllegal {.final.} = object  #ERROR_MSG illegal recursion in type 'TIllegal'
     y: int
     x: array[0..3, TIllegal]
-

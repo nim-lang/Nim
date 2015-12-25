@@ -9,4 +9,3 @@ const
 
 echo relRes
 echo absRes
-

@@ -1,4 +1,3 @@
-
 # bug #2629
 import sequtils, os
 

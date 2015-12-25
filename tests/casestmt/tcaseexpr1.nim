@@ -1,10 +1,9 @@
 discard """
-  file: "tcaseexpr1.nim"
 
-  line: 29
+  line: 28
   errormsg: "type mismatch: got (string) but expected 'int'"
 
-  line: 23
+  line: 22
   errormsg: "not all cases are covered"
 """
 
@@ -27,4 +26,3 @@ var t1 = case x:
 var t2 = case x:
   of A: 10
   of B, C: "23"
-

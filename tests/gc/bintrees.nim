@@ -51,4 +51,3 @@ proc main =
   echo GC_getstatistics()
 
 main()
-

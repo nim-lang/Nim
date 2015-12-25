@@ -11,4 +11,3 @@ var
   a: TGen[string]
   b: TSpef
 a = b
-

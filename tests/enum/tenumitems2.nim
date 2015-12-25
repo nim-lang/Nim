@@ -11,4 +11,3 @@ iterator items(E: typedesc[enum]): E =
 
 for c in TAlphabet:
   echo($c)
-

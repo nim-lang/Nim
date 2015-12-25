@@ -6,7 +6,7 @@ true
 true
 true'''
 
-ccodeCheck: "\\i ! @'deepCopy(' .*"
+  ccodeCheck: "\\i ! @'deepCopy(' .*"
 """
 
 # parallel convex hull for Nim bigbreak

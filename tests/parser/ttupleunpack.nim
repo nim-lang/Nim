@@ -1,5 +1,4 @@
 discard """
-  file: "ttupleunpack.nim"
   output: ""
   exitcode: 0
 """

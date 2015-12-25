@@ -1,2 +1,1 @@
 import mnamspc2
-

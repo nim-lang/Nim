@@ -12,5 +12,3 @@ proc myImport2(s: int) {.cdecl, importc, dynlib: getDllName().}
 
 myImport("test2")
 myImport2(12)
-
-

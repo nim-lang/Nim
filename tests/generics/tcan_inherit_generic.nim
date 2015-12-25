@@ -13,4 +13,3 @@ type
 var s: TSpef[float]
 s.x = 0.4
 s.y = 0.6
-

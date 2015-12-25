@@ -38,4 +38,3 @@ for x in s.items.foo:
 # use some complex iterator as an input for another one:
 for x in s.items.baz.foo:
   echo x
-

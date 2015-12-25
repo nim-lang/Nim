@@ -1,5 +1,4 @@
 discard """
-  file: "tromans.nim"
   output: "success"
 """
 import
@@ -66,6 +65,3 @@ for i in items([1238, 1777, 3830, 2401, 379, 33, 940, 3973]):
   if RomanToDecimal(DecimalToRoman(i)) != i: quit "BUG"
 
 echo "success" #OUT success
-
-
-

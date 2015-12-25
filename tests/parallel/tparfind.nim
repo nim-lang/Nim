@@ -22,7 +22,5 @@ proc parFind(a: seq[int]; x: int): int =
       results[3] = spawn linearFind(a[chunk*3 ..< a.len], x, chunk*3)
   result = max(results)
 
-
 let data = toSeq(0..1000)
 echo parFind(data, 500)
-

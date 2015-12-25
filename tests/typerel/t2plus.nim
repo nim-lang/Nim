@@ -19,4 +19,3 @@ proc mean[T: SomeNumber](xs: seq[T]): T =
 when isMainModule:
   let x = mean(@[1.float, 2, 3])
   echo x
-

@@ -1,5 +1,5 @@
 discard """
-  disabled: true
+  disabled: "true"
 """
 
 import macro_bug

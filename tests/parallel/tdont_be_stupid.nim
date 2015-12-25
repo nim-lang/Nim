@@ -1,4 +1,3 @@
-
 import threadpool, os
 
 proc single(time: int) =

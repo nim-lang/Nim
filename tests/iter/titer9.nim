@@ -17,4 +17,3 @@ proc takeProc[T](x: iterator (x: T, skip: bool): int) =
   echo x(4, false)
 
 takeProc(count[int])
-

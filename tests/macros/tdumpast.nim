@@ -30,4 +30,3 @@ dumpAST:
     return x + y
 
   proc sub(x, y: int): int = return x - y
-

@@ -14,4 +14,3 @@ template foo(a, b: bool) = echo "foo bool"
 template foo(a, b: char) = echo "foo char"
 
 foo(undeclaredIdentifier, undeclaredIdentifier2)
-

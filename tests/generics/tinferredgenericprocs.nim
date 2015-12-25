@@ -18,4 +18,3 @@ var f3: IntStringProc = foo
 echo f1(1), f2(2), f3(3)
 
 for x in map([1,2,3], foo): echo x
-

@@ -6,6 +6,4 @@ proc `*` *(a, b: seq[int]): seq[int] =
 
 when isMainModule:
   # test the new ``*`` operator for sequences:
-  assert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
-
-
+  doAssert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])

@@ -7,6 +7,3 @@ const
 
 for i in 0 .. high(myWords):
   write(stdout, myWords[i]) #OUT AngelikaAnneAnnaAnkaAnja
-
-
-

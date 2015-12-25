@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncfile.nim"
   exitcode: 0
 """
 import asyncfile, asyncdispatch, os

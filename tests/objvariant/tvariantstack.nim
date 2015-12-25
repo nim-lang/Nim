@@ -1,5 +1,4 @@
 discard """
-  file: "tvariantstack.nim"
   output: "came here"
 """
 #BUG
@@ -47,6 +46,3 @@ stack.push(nr)
 
 var t = stack.pop()
 echo "came here"
-
-
-

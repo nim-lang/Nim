@@ -13,4 +13,3 @@ proc arrayItem(a: ArrayType): auto =
 
 var arr: ArrayType[int]
 echo arrayItem(arr)
-

@@ -1,6 +1,5 @@
 discard """
-file: "tsequtils.nim"
-output: '''Zip: [{"Field0": 1, "Field1": 2}, {"Field0": 3, "Field1": 4}, {"Field0": 5, "Field1": 6}]
+  output: '''Zip: [{"Field0": 1, "Field1": 2}, {"Field0": 3, "Field1": 4}, {"Field0": 5, "Field1": 6}]
 Filter Iterator: 3
 Filter Iterator: 5
 Filter Iterator: 7
@@ -8,7 +7,6 @@ Filter: [3, 5, 7]
 FilterIt: [1, 3, 7]
 Concat: [1, 3, 5, 7, 2, 4, 6]
 Deduplicate: [1, 2, 3, 4, 5, 7]'''
-
 """
 
 import sequtils, marshal
@@ -52,4 +50,3 @@ echo "Concat: ", $$(concatseq)
 var seq3 = @[1,2,3,4,5,5,5,7]
 var dedupseq = deduplicate(seq3)
 echo "Deduplicate: ", $$(dedupseq)
-

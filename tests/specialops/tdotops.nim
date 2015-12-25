@@ -45,7 +45,7 @@ echo t.y
 echo t.y()
 
 var d = TD(t)
-assert(not compiles(d.y))
+doAssert(not compiles(d.y))
 
 proc `.`(v: T2, f: string): int =
   echo "no params call to ", f
@@ -61,6 +61,5 @@ echo tt.a
 echo tt.b()
 echo tt.c(10)
 
-assert(not compiles(tt.d("x")))
-assert(not compiles(tt.d(1, 2)))
-
+doAssert(not compiles(tt.d("x")))
+doAssert(not compiles(tt.d(1, 2)))

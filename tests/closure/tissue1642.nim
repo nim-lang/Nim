@@ -1,5 +1,4 @@
 discard """
-  file: "tissue1642.nim"
   disabled: true
 """
 block:

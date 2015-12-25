@@ -27,5 +27,3 @@ var str: string
 outterMacro(str):
   "hellow"
 echo str
-
-

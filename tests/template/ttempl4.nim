@@ -1,3 +1,6 @@
+discard """
+  output: "4true"
+"""
 
 template `:=`(name, val: expr): stmt {.immediate.} =
   var name = val
@@ -5,4 +8,3 @@ template `:=`(name, val: expr): stmt {.immediate.} =
 ha := 1 * 4
 hu := "ta-da" == "ta-da"
 echo ha, hu
-

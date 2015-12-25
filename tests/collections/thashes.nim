@@ -10,20 +10,20 @@ block:
   var t = initTable[int,int]()
   t[0] = 42
   t[1] = t[0] + 1
-  assert(t[0] == 42)
-  assert(t[1] == 43)
+  doAssert(t[0] == 42)
+  doAssert(t[1] == 43)
   let t2 = {1: 1, 2: 2}.toTable
-  assert(t2[2] == 2)
+  doAssert(t2[2] == 2)
 
 # Test with char
 block:
   var t = initTable[char,int]()
   t['0'] = 42
   t['1'] = t['0'] + 1
-  assert(t['0'] == 42)
-  assert(t['1'] == 43)
+  doAssert(t['0'] == 42)
+  doAssert(t['1'] == 43)
   let t2 = {'1': 1, '2': 2}.toTable
-  assert(t2['2'] == 2)
+  doAssert(t2['2'] == 2)
 
 # Test with enum
 block:
@@ -32,10 +32,10 @@ block:
   var t = initTable[E,int]()
   t[eA] = 42
   t[eB] = t[eA] + 1
-  assert(t[eA] == 42)
-  assert(t[eB] == 43)
+  doAssert(t[eA] == 42)
+  doAssert(t[eB] == 43)
   let t2 = {eA: 1, eB: 2}.toTable
-  assert(t2[eB] == 2)
+  doAssert(t2[eB] == 2)
 
 # Test with range
 block:
@@ -44,10 +44,10 @@ block:
   var t = initTable[R,int]() # causes warning, why?
   t[1] = 42 # causes warning, why?
   t[2] = t[1] + 1
-  assert(t[1] == 42)
-  assert(t[2] == 43)
+  doAssert(t[1] == 42)
+  doAssert(t[2] == 43)
   let t2 = {1.R: 1, 2.R: 2}.toTable
-  assert(t2[2.R] == 2)
+  doAssert(t2[2.R] == 2)
 
 # Test which combines the generics for tuples + ordinals
 block:
@@ -56,10 +56,10 @@ block:
   var t = initTable[(string, E, int, char), int]()
   t[("a", eA, 0, '0')] = 42
   t[("b", eB, 1, '1')] = t[("a", eA, 0, '0')] + 1
-  assert(t[("a", eA, 0, '0')] == 42)
-  assert(t[("b", eB, 1, '1')] == 43)
+  doAssert(t[("a", eA, 0, '0')] == 42)
+  doAssert(t[("b", eB, 1, '1')] == 43)
   let t2 = {("a", eA, 0, '0'): 1, ("b", eB, 1, '1'): 2}.toTable
-  assert(t2[("b", eB, 1, '1')] == 2)
+  doAssert(t2[("b", eB, 1, '1')] == 2)
 
 # Test to check if overloading is possible
 # Unfortunately, this does not seem to work for int

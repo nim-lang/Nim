@@ -6,5 +6,3 @@ proc p1*(x, y: int): int =
 
 proc p2*(x, y: string): string =
   result = x & y
-
-

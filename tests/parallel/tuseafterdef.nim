@@ -21,7 +21,7 @@ proc pi(n: int): float =
   parallel:
     for k in 0..ch.high:
       ch[k] = (spawn term(float(k)))
-      assert ch[k] != nil
+      doAssert ch[k] != nil
   for k in 0..ch.high:
     var temp = ch[k][].value
     result += temp

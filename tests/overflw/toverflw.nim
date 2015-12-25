@@ -1,5 +1,4 @@
 discard """
-  file: "toverflw.nim"
   output: "the computation overflowed"
 """
 # Tests nim's ability to detect overflows
@@ -17,5 +16,3 @@ except OverflowError:
 
 {.pop.} # overflow check
 #OUT the computation overflowed
-
-

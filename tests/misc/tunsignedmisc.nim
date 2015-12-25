@@ -1,8 +1,7 @@
-import unsigned
-
 discard """
   errormsg: "number 0x123'u8 out of valid range"
 """
+import unsigned
 
 # Bug #1179
 

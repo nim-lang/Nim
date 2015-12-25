@@ -16,4 +16,3 @@ type
   VectorIterator {.importcpp: "Vector<'0>::Iterator".} [T] = object
 
 var x: VectorIterator[void]
-

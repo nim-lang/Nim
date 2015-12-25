@@ -28,4 +28,3 @@ proc loop =
     echo "no leak: ", getOccupiedMem()
 
 loop()
-

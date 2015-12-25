@@ -41,4 +41,3 @@ joinThread(producer)
 
 close(chan)
 echo printedLines
-

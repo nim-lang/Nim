@@ -16,8 +16,8 @@ proc newLit(x: int): PNode {.exportc: "newLit", dynlib.} =
   result.x = x
 
 proc newOp(k: TNodeKind, a, b: PNode): PNode {.exportc: "newOp", dynlib.} =
-  assert a != nil
-  assert b != nil
+  doAssert a != nil
+  doAssert b != nil
   new(result)
   result.k = k
   result.a = a

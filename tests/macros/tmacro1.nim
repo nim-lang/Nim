@@ -20,4 +20,3 @@ macro test*(a: stmt): stmt {.immediate.} =
 
 test:
   "hi"
-

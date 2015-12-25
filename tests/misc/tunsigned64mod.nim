@@ -1,3 +1,9 @@
+discard """
+  output: '''true
+true
+true
+true'''
+"""
 
 # bug #1638
 

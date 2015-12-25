@@ -14,4 +14,3 @@ proc foo(s: static[string]): string =
 echo foo("test 1")
 echo foo("test 2")
 echo foo("test " & $3)
-

@@ -1,4 +1,3 @@
-
 # bug #1799
 
 proc MyProc1*() = ## Comment behind procedure

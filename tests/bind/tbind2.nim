@@ -1,6 +1,5 @@
 discard """
-  file: "tbind2.nim"
-  line: 12
+  line: 11
   errormsg: "ambiguous call"
 """
 # Test the new ``bind`` keyword for templates
@@ -12,6 +11,3 @@ template tempBind(x, y: expr): expr =
   (bind p1(x, y))  #ERROR_MSG ambiguous call
 
 echo tempBind(1'i8, 2'i8)
-
-
-

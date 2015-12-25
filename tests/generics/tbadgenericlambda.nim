@@ -4,4 +4,3 @@ discard """
 """
 
 let x = proc (x, y): auto = x + y
-

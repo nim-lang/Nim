@@ -298,7 +298,7 @@ proc writeformat(o: var Writer; i: SomeInteger; fmt: Format) =
   of ftHex:
     base = 16
     if fmt.baseprefix: len += 2
-  else: assert(false)
+  else: doAssert(false)
 
   if fmt.sign != fsMinus or i < 0: len.inc
 

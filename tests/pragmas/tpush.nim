@@ -12,4 +12,3 @@ proc WarnMe() =
   var
     x: int
   echo(x)
-

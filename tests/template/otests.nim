@@ -1,13 +1,12 @@
 # Fields
 const x = 5
 
-
 # Test substring
 static:
-    assert "test".substring(3)   == "t"
-    assert "test".substring(2,1) == "s"
-    assert "test".substring(3,2) == "t"
-    assert "test".substring(1,2) == "es"
+    doAssert "test".substring(3)   == "t"
+    doAssert "test".substring(2,1) == "s"
+    doAssert "test".substring(3,2) == "t"
+    doAssert "test".substring(1,2) == "es"
 
 
 # Various parsing tests

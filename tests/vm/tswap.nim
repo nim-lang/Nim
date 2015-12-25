@@ -1,5 +1,5 @@
 discard """
-msg: '''
+  msg: '''
 x.data = @[10]
 y = @[11]
 x.data = @[11]

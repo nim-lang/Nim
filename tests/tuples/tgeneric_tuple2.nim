@@ -1,4 +1,3 @@
-
 # bug #2369
 
 type HashedElem[T] = tuple[num: int, storedVal: ref T]

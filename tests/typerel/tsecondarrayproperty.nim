@@ -1,4 +1,3 @@
-
 type
   TFoo = object
     data: array[0..100, int]
@@ -25,4 +24,3 @@ echo f.second[1]
 
 #echo `second[]`(f,1)
 # this is the only way I could use it, but not what I expected
-

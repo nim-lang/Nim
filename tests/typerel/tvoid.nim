@@ -34,4 +34,3 @@ callProc[void](emptyProc)
 ReturnT[void]()
 echo ReturnT[string]("abc")
 nothing()
-

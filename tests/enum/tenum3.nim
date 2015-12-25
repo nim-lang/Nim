@@ -13,4 +13,3 @@ case e
 of eA: echo "A"
 of eB: echo "B"
 of eC: echo "C"
-

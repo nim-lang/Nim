@@ -32,4 +32,3 @@ variable.testNotNil() # Here 'not nil' is proved
 
 when testWithResult:
   discard testNotNilOnResult()
-

@@ -57,4 +57,3 @@ macro selectType(inType: typedesc): typedesc =
 var xvar: selectType(string)
 xvar = "proba"
 echo xvar.type.name
-

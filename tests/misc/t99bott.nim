@@ -1,6 +1,5 @@
 discard """
-  file: "t99bott.nim"
-  line: 26
+  line: 25
   errormsg: "cannot evaluate at compile time: bn"
   disabled: false
 """
@@ -30,7 +29,3 @@ for bn in countdown(99, 1):
 
 echo "No more bottles of beer on the wall, no more bottles of beer."
 echo "Go to the store and buy some more, 99 bottles of beer on the wall."
-
-
-
-

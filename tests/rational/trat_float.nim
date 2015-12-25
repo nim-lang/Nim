@@ -1,6 +1,5 @@
 discard """
-  file: "trat_float.nim"
-  line: "9,19"
+  line: "8,19"
   errormsg: '''type mismatch: got'''
 """
 import rationals

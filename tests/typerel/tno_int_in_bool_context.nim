@@ -5,4 +5,3 @@ discard """
 
 if 1:
   echo "wtf?"
-

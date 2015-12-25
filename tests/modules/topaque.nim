@@ -1,6 +1,5 @@
 discard """
-  file: "topaque.nim"
-  line: 16
+  line: 15
   errormsg: "undeclared field: \'buffer\'"
 """
 # Test the new opaque types
@@ -14,5 +13,3 @@ var
 L.filename = "ha"
 L.line = 34
 L.buffer[0] = '\0' #ERROR_MSG undeclared field: 'buffer'
-
-

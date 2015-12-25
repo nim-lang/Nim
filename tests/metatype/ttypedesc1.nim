@@ -39,4 +39,3 @@ test "types can be used as proc params":
 
 when false:
   proc foo(T: typedesc[seq], s: T) = nil
-

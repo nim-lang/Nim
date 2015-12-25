@@ -11,22 +11,22 @@ block union:
     s1_s3 = s1 + s3
     s2_s3 = s2 + s3
 
-  assert s1_s2.len == 7
-  assert s1_s3.len == 8
-  assert s2_s3.len == 6
+  doAssert s1_s2.len == 7
+  doAssert s1_s3.len == 8
+  doAssert s2_s3.len == 6
 
   for i in s1:
-    assert i in s1_s2
-    assert i in s1_s3
+    doAssert i in s1_s2
+    doAssert i in s1_s3
   for i in s2:
-    assert i in s1_s2
-    assert i in s2_s3
+    doAssert i in s1_s2
+    doAssert i in s2_s3
   for i in s3:
-    assert i in s1_s3
-    assert i in s2_s3
+    doAssert i in s1_s3
+    doAssert i in s2_s3
 
-  assert((s1 + s1) == s1)
-  assert((s2 + s1) == s1_s2)
+  doAssert((s1 + s1) == s1)
+  doAssert((s2 + s1) == s1_s2)
 
 block intersection:
   let
@@ -34,22 +34,22 @@ block intersection:
     s1_s3 = intersection(s1, s3)
     s2_s3 = s2 * s3
 
-  assert s1_s2.len == 3
-  assert s1_s3.len == 0
-  assert s2_s3.len == 2
+  doAssert s1_s2.len == 3
+  doAssert s1_s3.len == 0
+  doAssert s2_s3.len == 2
 
   for i in s1_s2:
-    assert i in s1
-    assert i in s2
+    doAssert i in s1
+    doAssert i in s2
   for i in s1_s3:
-    assert i in s1
-    assert i in s3
+    doAssert i in s1
+    doAssert i in s3
   for i in s2_s3:
-    assert i in s2
-    assert i in s3
+    doAssert i in s2
+    doAssert i in s3
 
-  assert((s2 * s2) == s2)
-  assert((s3 * s2) == s2_s3)
+  doAssert((s2 * s2) == s2)
+  doAssert((s3 * s2) == s2_s3)
 
 block symmetricDifference:
   let
@@ -57,22 +57,22 @@ block symmetricDifference:
     s1_s3 = s1 -+- s3
     s2_s3 = s2 -+- s3
 
-  assert s1_s2.len == 4
-  assert s1_s3.len == 8
-  assert s2_s3.len == 4
+  doAssert s1_s2.len == 4
+  doAssert s1_s3.len == 8
+  doAssert s2_s3.len == 4
 
   for i in s1:
-    assert i in s1_s2 xor i in s2
-    assert i in s1_s3 xor i in s3
+    doAssert i in s1_s2 xor i in s2
+    doAssert i in s1_s3 xor i in s3
   for i in s2:
-    assert i in s1_s2 xor i in s1
-    assert i in s2_s3 xor i in s3
+    doAssert i in s1_s2 xor i in s1
+    doAssert i in s2_s3 xor i in s3
   for i in s3:
-    assert i in s1_s3 xor i in s1
-    assert i in s2_s3 xor i in s2
+    doAssert i in s1_s3 xor i in s1
+    doAssert i in s2_s3 xor i in s2
 
-  assert((s3 -+- s3) == initSet[int]())
-  assert((s3 -+- s1) == s1_s3)
+  doAssert((s3 -+- s3) == initSet[int]())
+  doAssert((s3 -+- s1) == s1_s3)
 
 block difference:
   let
@@ -80,21 +80,21 @@ block difference:
     s1_s3 = difference(s1, s3)
     s2_s3 = s2 - s3
 
-  assert s1_s2.len == 2
-  assert s1_s3.len == 5
-  assert s2_s3.len == 3
+  doAssert s1_s2.len == 2
+  doAssert s1_s3.len == 5
+  doAssert s2_s3.len == 3
 
   for i in s1:
-    assert i in s1_s2 xor i in s2
-    assert i in s1_s3 xor i in s3
+    doAssert i in s1_s2 xor i in s2
+    doAssert i in s1_s3 xor i in s3
   for i in s2:
-    assert i in s2_s3 xor i in s3
+    doAssert i in s2_s3 xor i in s3
 
-  assert((s2 - s2) == initSet[int]())
-  assert((s1 - s3 - s1) == s1 -+- s3)
+  doAssert((s2 - s2) == initSet[int]())
+  doAssert((s1 - s3 - s1) == s1 -+- s3)
 
 block disjoint:
-  assert(not disjoint(s1, s2))
-  assert disjoint(s1, s3)
-  assert(not disjoint(s2, s3))
-  assert(not disjoint(s2, s2))
+  doAssert(not disjoint(s1, s2))
+  doAssert disjoint(s1, s3)
+  doAssert(not disjoint(s2, s3))
+  doAssert(not disjoint(s2, s2))

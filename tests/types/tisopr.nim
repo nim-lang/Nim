@@ -18,10 +18,10 @@ const x = int is int
 echo x, " ", float is float, " ", float is string, " ", IsVoid[void]()
 
 template yes(e: expr): stmt =
-  static: assert e
+  static: doAssert e
 
 template no(e: expr): stmt =
-  static: assert(not e)
+  static: doAssert(not e)
 
 when false:
   var s = @[1, 2, 3]

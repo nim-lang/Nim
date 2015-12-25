@@ -38,4 +38,3 @@ for i in 0..100_000:
   discard eval(buildTree(2))
 
 echo "Done"
-

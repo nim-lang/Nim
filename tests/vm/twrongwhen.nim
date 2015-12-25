@@ -10,4 +10,3 @@ proc bla(x:int) =
     echo "good"
 
 bla(2)  # echos "oops"
-

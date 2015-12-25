@@ -65,4 +65,3 @@ echo x is Matrix[3, 3, int]
 echo x is Matrix[3, 3, float]
 echo x is Matrix[4, 3, int]
 echo x is Matrix[3, 4, int]
-

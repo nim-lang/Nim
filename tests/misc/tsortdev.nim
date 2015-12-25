@@ -56,4 +56,3 @@ for i in 0..1_000:
   main()
 
 echo "done"
-

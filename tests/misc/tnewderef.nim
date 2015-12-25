@@ -8,4 +8,3 @@ new(x)
 x[] = 3
 
 echo x[]
-

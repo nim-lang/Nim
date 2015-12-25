@@ -42,7 +42,7 @@ proc launched*(process: foreign ptr Process): int {.gcsafe.} =
         if killer.processes[i] == nil:
           killer.processes[i] = process
           result = i
-      assert(result <= killer.processes.high)
+      doAssert(result <= killer.processes.high)
 
 
 # A process has been finished with - remove the process from death row.

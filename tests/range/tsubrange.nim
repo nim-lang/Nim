@@ -18,4 +18,3 @@ p y
 
 const
   myConst: TRange = 60
-

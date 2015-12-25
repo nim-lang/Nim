@@ -24,5 +24,3 @@ macro mac(n: expr): expr =
 const s = testBlock()
 const t = mac("HEllo World")
 echo s, " ", t
-
-

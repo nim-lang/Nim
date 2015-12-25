@@ -1,5 +1,4 @@
 discard """
-  file: "tusingstatement.nim"
   output: "Using test.Closing test."
 """
 
@@ -85,5 +84,3 @@ proc use(r: var TResource) =
 
 autoClose(r = openResource("test")):
   use r
-
-

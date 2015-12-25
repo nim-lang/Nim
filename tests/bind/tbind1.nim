@@ -1,5 +1,4 @@
 discard """
-  file: "tbind1.nim"
   output: "3"
 """
 # Test the new ``bind`` keyword for templates
@@ -16,6 +15,3 @@ proc p1(x: int, y: int8): int = return x - y
 # because it is not ambiguous there. But it is ambiguous after line 8.
 
 echo tempBind(1'i8, 2'i8) #OUT 3
-
-
-

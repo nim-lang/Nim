@@ -9,4 +9,3 @@ macro foo(dummy: int): stmt =
 proc takeStr(s: string) = echo s
 
 takeStr foo(12)
-

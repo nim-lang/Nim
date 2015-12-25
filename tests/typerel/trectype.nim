@@ -21,6 +21,3 @@ var
   x: PA
 new(x)
 #ERROR_MSG internal error: cannot generate C type for: PA
-
-
-

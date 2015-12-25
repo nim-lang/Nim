@@ -1,5 +1,4 @@
 discard """
-  file: "tfinally4.nim"
   output: "B1\nA1\n1\nB1\nB2\ncatch\nA1\n1\nB1\nA1\nA2\n2\nB1\nB2\ncatch\nA1\nA2\n0\nB1\nA1\n1\nB1\nB2\nA1\n1\nB1\nA1\nA2\n2\nB1\nB2\nA1\nA2\n3"
 """
 

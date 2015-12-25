@@ -15,5 +15,3 @@ proc task(i: int) {.thread.} =
 # count from 9 till 0 and check 0 is somewhere in the output
 a.spawn(9, task)
 a.join()
-
-

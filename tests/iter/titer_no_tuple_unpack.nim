@@ -10,4 +10,3 @@ for a, b in xrange(3, 7):
 
 for tup in xrange(3, 7):
   echo tup
-

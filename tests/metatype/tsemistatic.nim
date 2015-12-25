@@ -28,4 +28,3 @@ foo x
 foo y
 
 foo 20
-

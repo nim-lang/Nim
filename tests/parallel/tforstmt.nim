@@ -21,5 +21,3 @@ proc testFor(a, b: int; foo: var openArray[int]) =
 var arr = [0, 1, 2, 3, 4, 5, 6, 7]
 
 testFor(3, 10, arr)
-
-

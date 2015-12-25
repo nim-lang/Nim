@@ -26,4 +26,3 @@ for x in map(s1.items, proc (a:int): int = a*2):
 var s2 = toSeq(map(s1.items, proc (a:int): int = a*4))
 for x in s2:
   echo x
-

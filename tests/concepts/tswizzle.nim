@@ -9,10 +9,10 @@ discard """
 import macros, strutils
 
 template accept(e: expr) =
-  static: assert(compiles(e))
+  static: doAssert(compiles(e))
 
 template reject(e: expr) =
-  static: assert(not compiles(e))
+  static: doAssert(not compiles(e))
 
 proc swizzleIdx(c: char): int =
   return case c
@@ -77,4 +77,3 @@ var z = Vec([1, 2, 3])
 #echo z.card
 #echo z.xz
 #echo z.yxy
-

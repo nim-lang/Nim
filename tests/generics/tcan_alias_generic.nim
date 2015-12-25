@@ -6,5 +6,3 @@
 type
   TGen[T] = object
   TGen2[T] = TGen[T]
-
-

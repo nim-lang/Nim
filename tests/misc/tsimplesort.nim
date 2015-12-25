@@ -37,7 +37,7 @@ const
   growthFactor = 2
 
 proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
+  doAssert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 proc nextTry(h, maxHash: THash): THash {.inline.} =
@@ -108,7 +108,7 @@ proc del*[A, B](t: var TTable[A, B], key: A) =
 proc initTable*[A, B](initialSize=64): TTable[A, B] =
   ## creates a new hash table that is empty. `initialSize` needs to be
   ## a power of two.
-  assert isPowerOfTwo(initialSize)
+  doAssert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)
 
@@ -195,13 +195,13 @@ proc enlarge[A](t: var TCountTable[A]) =
 
 proc `[]=`*[A](t: var TCountTable[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`. `val` has to be positive.
-  assert val > 0
+  doAssert val > 0
   putImpl()
 
 proc initCountTable*[A](initialSize=64): TCountTable[A] =
   ## creates a new count table that is empty. `initialSize` needs to be
   ## a power of two.
-  assert isPowerOfTwo(initialSize)
+  doAssert isPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, initialSize)
 
@@ -226,7 +226,7 @@ proc inc*[A](t: var TCountTable[A], key: A, val = 1) =
 
 proc smallest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   ## returns the largest (key,val)-pair. Efficiency: O(n)
-  assert t.len > 0
+  doAssert t.len > 0
   var minIdx = 0
   for h in 1..high(t.data):
     if t.data[h].val > 0 and t.data[minIdx].val > t.data[h].val: minIdx = h
@@ -235,7 +235,7 @@ proc smallest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
 
 proc largest*[A](t: TCountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the largest `val`. Efficiency: O(n)
-  assert t.len > 0
+  doAssert t.len > 0
   var maxIdx = 0
   for h in 1..high(t.data):
     if t.data[maxIdx].val < t.data[h].val: maxIdx = h
@@ -287,23 +287,21 @@ proc countTableTest1 =
 
   var t = initCountTable[string]()
   for k, v in items(data): t.inc(k)
-  for k in t.keys: assert t[k] == 1
+  for k in t.keys: doAssert t[k] == 1
   t.inc("90", 3)
   t.inc("12", 2)
   t.inc("34", 1)
-  assert t.largest()[0] == "90"
+  doAssert t.largest()[0] == "90"
   t.sort()
 
   var i = 0
   for k, v in t.pairs:
     case i
-    of 0: assert k == "90" and v == 4
-    of 1: assert k == "12" and v == 3
-    of 2: assert k == "34" and v == 2
+    of 0: doAssert k == "90" and v == 4
+    of 1: doAssert k == "12" and v == 3
+    of 2: doAssert k == "34" and v == 2
     else: break
     inc i
 
 countTableTest1()
 echo true
-
-

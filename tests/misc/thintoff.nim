@@ -1,5 +1,4 @@
 discard """
-  file: "thintoff.nim"
   output: "0"
 """
 
@@ -8,5 +7,3 @@ var
   x: int
 
 echo x #OUT 0
-
-

@@ -8,4 +8,3 @@ proc simple[T](a: T) =
   echo locals()
 
 simple(1)
-

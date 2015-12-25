@@ -5,5 +5,3 @@ discard """
 
 type a = enum b,c,d
 a.items()
-
-

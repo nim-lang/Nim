@@ -1,4 +1,3 @@
-
 type PNode* = ref object of RootObj
 
 template litNode (name, ty): stmt  =
@@ -18,4 +17,3 @@ template withKey*(j: JsonNode; key: string; varname: expr;
 var j = parsejson("{\"zzz\":1}")
 withkey(j, "foo", x):
   echo(x)
-

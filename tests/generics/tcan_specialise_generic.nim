@@ -6,5 +6,3 @@
 type
   TGen[T] = object {.inheritable.}
   TSpef = object of TGen[string]
-
-

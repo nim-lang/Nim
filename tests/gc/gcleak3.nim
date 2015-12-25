@@ -27,4 +27,3 @@ proc limit*[t](a: var seq[t]) =
 s.limit()
 
 echo "no leak: ", getOccupiedMem()
-

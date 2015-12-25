@@ -28,4 +28,3 @@ echo myconst, " ", int((KeyMax + 31) / 32)
 const constArray: array [-3..2, int] = [-3, -2, -1, 0, 1, 2]
 
 echo constArray[-2]
-

@@ -17,10 +17,10 @@ type
     x, y: int
 
 template accept(e: expr) =
-  static: assert(compiles(e))
+  static: doAssert(compiles(e))
 
 template reject(e: expr) =
-  static: assert(not compiles(e))
+  static: doAssert(not compiles(e))
 
 proc genericParamRepeated[T: typedesc](a: T, b: T) =
   static:
@@ -85,4 +85,3 @@ reject bindArg(int, string, 10, "test", "test", "nest")
 reject bindArg(int, int, 10, 20, 30, "test")
 reject bindArg(int, string, 10.0, 20, "test", "nest")
 reject bindArg(int, string, "test", "nest", 10, 20)
-

@@ -42,4 +42,4 @@ for n in tree.findAll("table"):
   n.findAll("tr", rows)  # len = 2
   break
 
-assert tree.findAll("tr").len == rows.len
+doAssert tree.findAll("tr").len == rows.len

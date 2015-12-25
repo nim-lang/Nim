@@ -1,6 +1,5 @@
 discard """
-  file: "tsimtych.nim"
-  line: 10
+  line: 9
   errormsg: "type mismatch: got (bool) but expected \'string\'"
 """
 # Test 2
@@ -8,5 +7,3 @@ discard """
 
 var a: string
 a = false #ERROR
-
-

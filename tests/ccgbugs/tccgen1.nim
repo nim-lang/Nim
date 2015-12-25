@@ -1,5 +1,3 @@
-
-
 type
   Feature = tuple[name: string, version: string]
   PDOMImplementation* = ref DOMImplementation
