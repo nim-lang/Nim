@@ -1442,7 +1442,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     z.calleeSym = m.calleeSym
     var best = -1
     for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}+skIterators:
+      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         z.calleeSym = arg.sons[i].sym

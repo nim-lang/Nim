@@ -931,7 +931,7 @@ proc isIndirect(v: PSym): bool =
   result = {sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
     {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
-    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator,
+    v.kind notin {skProc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet}
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =

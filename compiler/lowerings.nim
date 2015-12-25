@@ -585,7 +585,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     objType.addField(field)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[0])
     fn = indirectAccess(castExpr, field, n.info)
-  elif fn.kind == nkSym and fn.sym.kind in {skClosureIterator, skIterator}:
+  elif fn.kind == nkSym and fn.sym.kind == skIterator:
     localError(n.info, "iterator in spawn environment is not allowed")
   elif fn.typ.callConv == ccClosure:
     localError(n.info, "closure in spawn environment is not allowed")

@@ -1965,7 +1965,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
-    of skProc, skConverter, skIterators:
+    of skProc, skConverter, skIterator:
       if sfCompileTime in sym.flags:
         localError(n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)

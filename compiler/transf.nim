@@ -348,6 +348,20 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       # addr ( deref ( x )) --> x
       result = PTransNode(n.sons[0].sons[0])
 
+proc generateThunk(prc: PNode, dest: PType): PNode =
+  ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
+  ## a closure.
+
+  # we cannot generate a proper thunk here for GC-safety reasons
+  # (see internal documentation):
+  if gCmd == cmdCompileToJS: return prc
+  result = newNodeIT(nkClosure, prc.info, dest)
+  var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
+  conv.add(emptyNode)
+  conv.add(prc)
+  result.add(conv)
+  result.add(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
+
 proc transformConv(c: PTransf, n: PNode): PTransNode =
   # numeric types need range checks:
   var dest = skipTypes(n.typ, abstractVarRange)
@@ -428,6 +442,10 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
   of tyGenericParam, tyOrdinal:
     result = transform(c, n.sons[1])
     # happens sometimes for generated assignments, etc.
+  of tyProc:
+    result = transformSons(c, n)
+    if dest.callConv == ccClosure and source.callConv == ccDefault:
+      result = generateThunk(result[1].PNode, dest).PTransNode
   else:
     result = transformSons(c, n)
 

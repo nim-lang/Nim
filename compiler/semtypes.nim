@@ -1296,7 +1296,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       child.flags.incl tfIterator
       result.addSonSkipIntLit(child)
     else:
-      result = semProcTypeWithScope(c, n, prev, skClosureIterator)
+      result = semProcTypeWithScope(c, n, prev, skIterator)
       result.flags.incl(tfIterator)
       if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
         result.callConv = ccInline

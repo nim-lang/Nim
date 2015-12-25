@@ -456,9 +456,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMethodDef:
     result = semRoutineInTemplBody(c, n, skMethod)
   of nkIteratorDef:
-    let kind = if hasPragma(n[pragmasPos], wClosure): skClosureIterator
-               else: skIterator
-    result = semRoutineInTemplBody(c, n, kind)
+    result = semRoutineInTemplBody(c, n, skIterator)
   of nkTemplateDef:
     result = semRoutineInTemplBody(c, n, skTemplate)
   of nkMacroDef:
