@@ -340,8 +340,6 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         # inner() takes a closure too!
       """
 
-      echo "came here for ", n.sym.name.s, " proc ", owner.name.s
-
       # mark 'owner' as taking a closure:
       c.somethingToDo = true
       markAsClosure(owner, n)
@@ -351,9 +349,9 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         let obj = getHiddenParam(owner).typ.lastSon
         addField(obj, s)
       # create required upFields:
-      var w = ow
-      if false: # XXX rethink this w != owner:
-        var up = w
+      var w = ow.skipGenericOwner
+      if w != owner:
+        var up = ow
         while w != nil and w.kind != skModule:
           w = w.skipGenericOwner
           markAsClosure(w, n)
