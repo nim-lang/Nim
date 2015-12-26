@@ -169,7 +169,7 @@ proc addHiddenParam(routine: PSym, param: PSym) =
 proc getHiddenParam(routine: PSym): PSym =
   let params = routine.ast.sons[paramsPos]
   let hidden = lastSon(params)
-  if hidden.kind == nkSym and hidden.sym.kind == skParam:
+  if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
     result = hidden.sym
     assert sfFromGeneric in result.flags
   else:
@@ -194,7 +194,7 @@ proc illegalCapture(s: PSym): bool {.inline.} =
       s.kind == skResult
 
 proc isInnerProc(s: PSym): bool =
-  if s.kind in {skProc, skMethod, skConverter, skIterator}:
+  if s.kind in {skProc, skMethod, skConverter, skIterator} and s.magic == mNone:
     result = s.skipGenericOwner.kind in routineKinds
 
 proc createUpField(obj, fieldType: PType): PSym =
@@ -327,7 +327,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       # ow != owner:
       return
     # direct or indirect dependency:
-    if innerProc or interestingVar(s):
+    if (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
       discard """
         proc outer() =
           var x: int
@@ -371,8 +371,11 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure,
      nkTemplateDef, nkTypeSection:
     discard
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef:
+  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
     discard
+  of nkLambdaKinds, nkIteratorDef:
+    if n.typ != nil:
+      detectCapturedVars(n[namePos], owner, c)
   else:
     for i in 0..<n.len:
       detectCapturedVars(n[i], owner, c)
@@ -599,8 +602,11 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure,
      nkTemplateDef, nkTypeSection:
     discard
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef, nkMacroDef:
+  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
     discard
+  of nkLambdaKinds, nkIteratorDef:
+    if n.typ != nil:
+      discard liftCapturedVars(n[namePos], owner, d, c)
   else:
     if owner.isIterator and n.kind == nkYieldStmt:
       result = transformYield(n, owner, d, c)
@@ -660,8 +666,8 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
       result = wrapIterBody(newBody, fn)
     else:
       result = body
-    if fn.name.s == "outer":
-      echo renderTree(result, {renderIds})
+    #if fn.name.s == "outer":
+    #  echo renderTree(result, {renderIds})
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
   if body.kind == nkEmpty or gCmd == cmdCompileToJS:
