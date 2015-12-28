@@ -165,9 +165,10 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
+  let bb = getIdent(b)
   while true:
     assert t.kind == tyObject
-    field = getSymFromList(t.n, getIdent(b))
+    field = getSymFromList(t.n, bb)
     if field != nil: break
     t = t.sons[0]
     if t == nil: break
