@@ -197,15 +197,6 @@ proc isInnerProc(s: PSym): bool =
   if s.kind in {skProc, skMethod, skConverter, skIterator} and s.magic == mNone:
     result = s.skipGenericOwner.kind in routineKinds
 
-proc createUpField(obj, fieldType: PType): PSym =
-  let pos = obj.n.len
-  result = newSym(skField, getIdent(upName), obj.owner, obj.owner.info)
-  result.typ = newType(tyRef, obj.owner)
-  result.position = pos
-  rawAddSon(result.typ, fieldType)
-  #rawAddField(obj, result)
-  addField(obj, result)
-
 proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   # Bugfix: unfortunately we cannot use 'nkFastAsgn' here as that would
   # mean to be able to capture string literals which have no GC header.
@@ -254,15 +245,6 @@ proc liftIterSym(n: PNode; owner: PSym): PNode =
 
 # ------------------ new stuff -------------------------------------------
 
-proc createUpField(dest, dep: PSym) =
-  let obj = getHiddenParam(dest).typ.lastSon
-  let fieldType = getHiddenParam(dep).typ
-  let pos = obj.n.len
-  let result = newSym(skField, getIdent(upName), obj.owner, obj.owner.info)
-  result.typ = fieldType
-  result.position = pos
-  addField(obj, result)
-
 proc markAsClosure(owner: PSym; n: PNode) =
   owner.typ.callConv = ccClosure
   incl(owner.typ.flags, tfCapturesEnv)
@@ -300,13 +282,34 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym): PType =
     rawAddSon(result, obj)
     c.ownerToType[owner.id] = result
 
-proc addClosureParam(c: var DetectionPass; fn, owner: PSym) =
+proc createUpField(c: var DetectionPass; dest, dep: PSym) =
+  let refObj = c.getEnvTypeForOwner(dest) # getHiddenParam(dest).typ
+  let obj = refObj.lastSon
+  let fieldType = c.getEnvTypeForOwner(dep) #getHiddenParam(dep).typ
+  if refObj == fieldType:
+    localError(dep.info, "internal error: invald up reference computed")
+
+  let upIdent = getIdent(upName)
+  let upField = lookupInRecord(obj.n, upIdent)
+  if upField != nil:
+    if upField.typ != fieldType:
+      localError(dep.info, "internal error: up references do not agree")
+  else:
+    let result = newSym(skField, upIdent, obj.owner, obj.owner.info)
+    result.typ = fieldType
+    rawAddField(obj, result)
+
+proc addClosureParam(c: var DetectionPass; fn: PSym) =
   var cp = getEnvParam(fn)
+  let owner = fn.skipGenericOwner
+  let t = c.getEnvTypeForOwner(owner)
   if cp == nil:
     cp = newSym(skParam, getIdent(paramName), fn, fn.info)
     incl(cp.flags, sfFromGeneric)
-    cp.typ = c.getEnvTypeForOwner(owner)
+    cp.typ = t
     addHiddenParam(fn, cp)
+  elif cp.typ != t:
+    localError(fn.info, "internal error: inconsistent environment type")
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
@@ -322,6 +325,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         c.somethingToDo = true
         if not c.capturedVars.containsOrIncl(s.id):
           let obj = getHiddenParam(owner).typ.lastSon
+          #let obj = c.getEnvTypeForOwner(s.owner).lastSon
           addField(obj, s)
       # but always return because the rest of the proc is only relevant when
       # ow != owner:
@@ -336,25 +340,21 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
               echo x
             innerInner()
           inner()
-
         # inner() takes a closure too!
       """
-
       # mark 'owner' as taking a closure:
       c.somethingToDo = true
       markAsClosure(owner, n)
-      addClosureParam(c, owner, ow)
+      addClosureParam(c, owner)
       # variable 's' is actually captured:
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
-        let obj = getHiddenParam(owner).typ.lastSon
+        let obj = c.getEnvTypeForOwner(ow).lastSon
+        #getHiddenParam(owner).typ.lastSon
         addField(obj, s)
       # create required upFields:
-      var w = ow.skipGenericOwner
-      if w != owner:
-        var up = ow
-        while w != nil and w.kind != skModule:
-          w = w.skipGenericOwner
-          markAsClosure(w, n)
+      var w = owner.skipGenericOwner
+      if isInnerProc(w):
+        while w != nil and w.kind != skModule and ow != w:
           discard """
           proc outer =
             var a, b: int
@@ -364,10 +364,12 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           # --> make outerB of calling convention .closure and
           # give it the same env type that outer's env var gets:
           """
-          addClosureParam(c, w, ow)
-          createUpField(w, up)
-          if w == owner: break
-          up = w
+          let up = w.skipGenericOwner
+          #echo "up for ", w.name.s, " up ", up.name.s
+          markAsClosure(w, n)
+          addClosureParam(c, w) # , ow
+          createUpField(c, w, up)
+          w = up
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure,
      nkTemplateDef, nkTypeSection:
     discard
@@ -398,6 +400,7 @@ proc accessViaEnvParam(n: PNode; owner: PSym): PNode =
     var access = newSymNode(envParam)
     while true:
       let obj = access.typ.sons[0]
+      assert obj.kind == tyObject
       let field = getFieldFromObj(obj, s)
       if field != nil:
         return rawIndirectAccess(access, field, n.info)
@@ -429,7 +432,7 @@ proc rawClosureCreation(env: PNode; owner: PSym;
   if upField != nil:
     let param = getHiddenParam(owner)
     if upField.typ == param.typ:
-      result.add(newAsgnStmt(indirectAccess(env, upField, env.info),
+      result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  newSymNode(param), env.info))
     else:
       localError(env.info, "internal error: cannot create up reference")
