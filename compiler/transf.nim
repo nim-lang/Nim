@@ -883,12 +883,12 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate}:
     result = n
   else:
+    result = liftLambdas(prc, n)
+    #result = n
     var c = openTransf(module, "")
-    result = processTransf(c, n, prc)
+    result = processTransf(c, result, prc)
     liftDefer(c, result)
-    result = liftLambdas(prc, result)
-    #if prc.kind == skClosureIterator:
-    #  result = lambdalifting.liftIterator(prc, result)
+    #result = liftLambdas(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
     #if prc.name.s == "testbody":
@@ -901,7 +901,7 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     var c = openTransf(module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
-    result = liftLambdasForTopLevel(module, result)
+    #result = liftLambdasForTopLevel(module, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackTopLevelStmt(module, result)
 
