@@ -2,12 +2,17 @@
 mode = ScriptMode.Verbose
 
 var id = 0
-while dirExists("nimble" & $id):
+while dirExists("nimble" & $id) and not dirExists("nimble" & $id & "/.git"):
   inc id
 
-exec "git clone https://github.com/nim-lang/nimble.git nimble" & $id
+let repoDir = "nimble" & $id
 
-withDir "nimble" & $id & "/src":
-  exec "nim c nimble"
+if dirExists(repoDir):
+  withDir repoDir:
+    exec "git pull origin master"
+else:
+  exec "git clone https://github.com/nim-lang/nimble.git " & repoDir
 
-mvFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
+withDir repoDir:
+  exec "nim c -o:" & "nimble1".toExe & " src/nimble"
+  exec "src/nimble1 install -y"
