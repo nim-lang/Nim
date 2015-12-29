@@ -40,6 +40,8 @@
 ##
 ##  theDb.close()
 
+{.deadCodeElim:on.}
+
 import strutils, sqlite3
 
 import db_common

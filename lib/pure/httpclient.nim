@@ -110,7 +110,7 @@ type
   EInvalidProtocol: ProtocolError, EHttpRequestErr: HttpRequestError
 ].}
 
-const defUserAgent* = "Nim httpclient/0.1"
+const defUserAgent* = "Nim httpclient/" & NimVersion
 
 proc httpError(msg: string) =
   var e: ref ProtocolError
@@ -389,6 +389,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
+  var hostUrl = if proxy == nil: r else: parseUri(url)
   var headers = substr(httpMethod, len("http"))
   # TODO: Use generateHeaders further down once it supports proxies.
   if proxy == nil:
@@ -402,10 +403,10 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
   headers.add(" HTTP/1.1\c\L")
 
-  if r.port == "":
-    add(headers, "Host: " & r.hostname & "\c\L")
+  if hostUrl.port == "":
+    add(headers, "Host: " & hostUrl.hostname & "\c\L")
   else:
-    add(headers, "Host: " & r.hostname & ":" & r.port & "\c\L")
+    add(headers, "Host: " & hostUrl.hostname & ":" & hostUrl.port & "\c\L")
 
   if userAgent != "":
     add(headers, "User-Agent: " & userAgent & "\c\L")
@@ -414,7 +415,6 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
     add(headers, "Proxy-Authorization: basic " & auth & "\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
-
   var s = newSocket()
   if s == nil: raiseOSError(osLastError())
   var port = net.Port(80)
