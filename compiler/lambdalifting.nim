@@ -608,8 +608,10 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
     discard
   of nkLambdaKinds, nkIteratorDef:
-    if n.typ != nil:
-      discard liftCapturedVars(n[namePos], owner, d, c)
+    if n.typ != nil and n[namePos].kind == nkSym:
+      let m = newSymNode(n[namePos].sym)
+      m.typ = n.typ
+      result = liftCapturedVars(m, owner, d, c)
   else:
     if owner.isIterator and n.kind == nkYieldStmt:
       result = transformYield(n, owner, d, c)
