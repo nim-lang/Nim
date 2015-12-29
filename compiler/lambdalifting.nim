@@ -246,11 +246,11 @@ proc liftIterSym(n: PNode; owner: PSym): PNode =
 # ------------------ new stuff -------------------------------------------
 
 proc markAsClosure(owner: PSym; n: PNode) =
-  owner.typ.callConv = ccClosure
-  incl(owner.typ.flags, tfCapturesEnv)
   let s = n.sym
   if illegalCapture(s) or owner.typ.callConv notin {ccClosure, ccDefault}:
     localError(n.info, errIllegalCaptureX, s.name.s)
+  incl(owner.typ.flags, tfCapturesEnv)
+  owner.typ.callConv = ccClosure
 
 type
   DetectionPass = object
