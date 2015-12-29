@@ -1061,7 +1061,8 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       else:
         for i in countup(0, sonsLen(n) - 1):
           let it = n.sons[i]
-          if it.kind == nkRecCase and kind == skConst: return n.typ
+          if it.kind == nkRecCase and kind in {skProc, skConst}:
+            return n.typ
           result = typeAllowedNode(marker, it, kind, flags)
           if result != nil: break
 
@@ -1076,7 +1077,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
 
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): PType =
-  assert(kind in {skVar, skLet, skConst, skParam, skResult})
+  assert(kind in {skVar, skLet, skConst, skProc, skParam, skResult})
   # if we have already checked the type, return true, because we stop the
   # evaluation if something is wrong:
   result = nil
@@ -1085,7 +1086,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   case t.kind
   of tyVar:
-    if kind == skConst: return t
+    if kind in {skProc, skConst}: return t
     var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
     of tyVar:
@@ -1097,6 +1098,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if kind notin {skParam, skResult}: result = t
       else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
+    if kind == skConst and t.callConv == ccClosure: return t
     for i in countup(1, sonsLen(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], skParam, flags)
       if result != nil: break
@@ -1144,7 +1146,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if result != nil: break
   of tyObject, tyTuple:
-    if kind == skConst and t.kind == tyObject and t.sons[0] != nil: return t
+    if kind in {skProc, skConst} and
+        t.kind == tyObject and t.sons[0] != nil: return t
     let flags = flags+{taField}
     for i in countup(0, sonsLen(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)

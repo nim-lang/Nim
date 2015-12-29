@@ -202,7 +202,7 @@ proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
                            "' in this context: '" & typeToString(typ) & "'")
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
-  typeAllowedCheck(typ.n.info, typ, skConst)
+  typeAllowedCheck(typ.n.info, typ, skProc)
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
