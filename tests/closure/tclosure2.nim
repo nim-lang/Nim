@@ -87,7 +87,7 @@ when true:
     proc py() {.closure.} =
       echo "py"
 
-    const
+    let
       mapping = {
         "abc": px,
         "xyz": py
