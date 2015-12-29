@@ -387,6 +387,7 @@ type
     processed: IntSet
     envCreation: PNode
     envVar: PNode
+    owner: PSym # the owner of the 'envVar'
 
 proc initLiftingPass(fn: PSym): LiftingPass =
   result.processed = initIntSet()
@@ -448,16 +449,20 @@ proc newEnvVar(owner: PSym; typ: PType): PNode =
   else:
     result = newSymNode(v)
 
-proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
-                     c: var LiftingPass): PNode =
-  if c.envVar.isNil:
-    assert c.envCreation.isNil
+proc setupEnvVar(owner: PSym; d: DetectionPass;
+                 c: var LiftingPass) =
+  if c.owner != owner or c.envVar.isNil:
     let envVarType = d.ownerToType.getOrDefault(owner.id)
     if envVarType.isNil:
-      localError n.info, "internal error: could not determine closure type"
+      localError owner.info, "internal error: could not determine closure type"
     c.envVar = newEnvVar(owner, envVarType)
     c.envCreation = rawClosureCreation(c.envVar, owner, d,
                                        envVarType.sons[0])
+    c.owner = owner
+
+proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
+                     c: var LiftingPass): PNode =
+  setupEnvVar(owner, d, c)
   let access = c.envVar
   let obj = access.typ.sons[0]
   let field = getFieldFromObj(obj, n.sym)
@@ -545,10 +550,16 @@ proc wrapIterBody(n: PNode; owner: PSym): PNode =
   result.add(stateAsgnStmt)
   result.flags.incl nfLL
 
-proc symToClosure(n: PNode; owner: PSym; c: LiftingPass): PNode =
+proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
+                  c: var LiftingPass): PNode =
   let s = n.sym
   # direct dependency, so use the outer's env variable:
   if s.skipGenericOwner == owner:
+    if c.owner != owner:
+      setupEnvVar(owner, d, c)
+    if c.owner != owner or c.envVar.isNil:
+      localError(n.info, "internal error: no environment var found")
+      return n
     result = makeClosure(s, c.envVar, n.info)
   elif s == owner:
     # recursive calls go through (lambda, hiddenParam):
@@ -566,7 +577,7 @@ proc symToClosure(n: PNode; owner: PSym; c: LiftingPass): PNode =
       let upField = lookupInRecord(obj.n, getIdent(upName))
       if upField == nil:
         localError(n.info, "internal error: no environment found")
-        break
+        return n
       access = rawIndirectAccess(access, upField, n.info)
 
 proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
@@ -584,8 +595,10 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       if not c.processed.containsOrIncl(s.id):
         let oldEnvVar = c.envVar
         let oldEnvCreation = c.envCreation
+        let oldOwner = c.owner
         c.envVar = nil
         c.envCreation = nil
+        c.owner = s
         let body = wrapIterBody(liftCapturedVars(s.getBody, s, d, c), s)
         if c.envCreation.isNil:
           s.ast.sons[bodyPos] = body
@@ -594,7 +607,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
           c.envCreation = nil
         c.envVar = oldEnvVar
         c.envCreation = oldEnvCreation
-      result = symToClosure(n, owner, c)
+        c.owner = oldOwner
+      result = symToClosure(n, owner, d, c)
     elif s.id in d.capturedVars:
       if s.owner != owner:
         result = accessViaEnvParam(n, owner)
@@ -672,6 +686,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
     else:
       result = body
     #if fn.name.s == "outer":
+    #  echo "had something to do ", d.somethingToDo
     #  echo renderTree(result, {renderIds})
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
