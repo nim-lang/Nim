@@ -315,6 +315,11 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
   of nkSym:
     let s = n.sym
+    if s.kind in {skProc, skMethod, skConverter, skIterator} and s.typ != nil and s.typ.callConv == ccClosure and tfCapturesEnv notin s.typ.flags:
+      # this handles the case that the inner proc was declared as
+      # .closure but does not actually capture anything:
+      addClosureParam(c, s)
+
     let innerProc = isInnerProc(s)
     if innerProc:
       if not c.processed.containsOrIncl(s.id):
@@ -555,7 +560,7 @@ proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
   let s = n.sym
   # direct dependency, so use the outer's env variable:
   if s.skipGenericOwner == owner:
-    if c.owner != owner:
+    if c.owner != owner or c.envVar.isNil:
       setupEnvVar(owner, d, c)
     if c.owner != owner or c.envVar.isNil:
       localError(n.info, "internal error: no environment var found")
@@ -591,7 +596,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     # with the captured owning variables, we need to generate the
     # closure generation code again: XXX think about this more,
     # closure iterators are really strange in this regard.
-    if isInnerProc(s) and s.typ.callConv == ccClosure:
+    if isInnerProc(s):
       if not c.processed.containsOrIncl(s.id):
         let oldEnvVar = c.envVar
         let oldEnvCreation = c.envCreation
@@ -608,7 +613,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         c.envVar = oldEnvVar
         c.envCreation = oldEnvCreation
         c.owner = oldOwner
-      result = symToClosure(n, owner, d, c)
+      if s.typ.callConv == ccClosure:
+        result = symToClosure(n, owner, d, c)
     elif s.id in d.capturedVars:
       if s.owner != owner:
         result = accessViaEnvParam(n, owner)
