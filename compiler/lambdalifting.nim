@@ -359,7 +359,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       # create required upFields:
       var w = owner.skipGenericOwner
       if isInnerProc(w):
-        while w != nil and w.kind != skModule and ow != w:
+        let last = if ow.isIterator: ow.skipGenericOwner else: ow
+        while w != nil and w.kind != skModule and last != w:
           discard """
           proc outer =
             var a, b: int
@@ -413,7 +414,7 @@ proc accessViaEnvParam(n: PNode; owner: PSym): PNode =
       let upField = lookupInRecord(obj.n, getIdent(upName))
       if upField == nil: break
       access = rawIndirectAccess(access, upField, n.info)
-  localError(n.info, "internal error: no environment parameter set")
+  localError(n.info, "internal error: environment misses: " & s.name.s)
   result = n
 
 proc rawClosureCreation(env: PNode; owner: PSym;
