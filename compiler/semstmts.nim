@@ -1006,7 +1006,8 @@ proc activate(c: PContext, n: PNode) =
       discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
-  if s.typ.sons[0] != nil and s.kind != skIterator:
+  if s.typ.sons[0] != nil and not
+      (s.kind == skIterator and s.typ.callConv != ccClosure):
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
