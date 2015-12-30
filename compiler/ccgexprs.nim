@@ -2004,9 +2004,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       putLocIntoDest(p, d, sym.loc)
     of skParam:
       if sym.loc.r == nil or sym.loc.t == nil:
-        #echo "FAILED FOR PRCO ", p.prc.name.s
-        #debug p.prc.typ.n
-        #echo renderTree(p.prc.ast, {renderIds})
+        # echo "FAILED FOR PRCO ", p.prc.name.s
+        # debug p.prc.typ.n
+        # echo renderTree(p.prc.ast, {renderIds})
         internalError(n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     else: internalError(n.info, "expr(" & $sym.kind & "); unknown symbol")

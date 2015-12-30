@@ -174,7 +174,7 @@ proc getHiddenParam(routine: PSym): PSym =
     assert sfFromGeneric in result.flags
   else:
     # writeStackTrace()
-    localError(routine.info, "internal error: could not find env param " & routine.name.s)
+    localError(routine.info, "internal error: could not find env param for " & routine.name.s)
     result = routine
 
 proc getEnvParam*(routine: PSym): PSym =
@@ -224,7 +224,7 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
 template isIterator(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
 
-proc liftIterSym(n: PNode; owner: PSym): PNode =
+proc liftIterSym*(n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   let iter = n.sym
   assert iter.isIterator
@@ -326,12 +326,14 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         detectCapturedVars(s.getBody, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
-      if owner.isIterator and interestingIterVar(s):
+      if owner.isIterator:
         c.somethingToDo = true
-        if not c.capturedVars.containsOrIncl(s.id):
-          let obj = getHiddenParam(owner).typ.lastSon
-          #let obj = c.getEnvTypeForOwner(s.owner).lastSon
-          addField(obj, s)
+        addClosureParam(c, owner)
+        if interestingIterVar(s):
+          if not c.capturedVars.containsOrIncl(s.id):
+            let obj = getHiddenParam(owner).typ.lastSon
+            #let obj = c.getEnvTypeForOwner(s.owner).lastSon
+            addField(obj, s)
       # but always return because the rest of the proc is only relevant when
       # ow != owner:
       return
@@ -479,7 +481,7 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
     result = n
 
 proc getStateField(owner: PSym): PSym =
-  getEnvParam(owner).typ.sons[0].n.sons[0].sym
+  getHiddenParam(owner).typ.sons[0].n.sons[0].sym
 
 proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
                       c: var LiftingPass): PNode
@@ -684,6 +686,9 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
     var d = initDetectionPass(fn)
     var c = initLiftingPass(fn)
     detectCapturedVars(body, fn, d)
+    if not d.somethingToDo and fn.isIterator:
+      addClosureParam(d, fn)
+      d.somethingToDo = true
     if d.somethingToDo:
       var newBody = liftCapturedVars(body, fn, d, c)
       if not c.envCreation.isNil:
@@ -692,7 +697,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
       result = wrapIterBody(newBody, fn)
     else:
       result = body
-    #if fn.name.s == "outer":
+    #if fn.name.s == "tokenize2":
     #  echo "had something to do ", d.somethingToDo
     #  echo renderTree(result, {renderIds})
 
@@ -705,7 +710,7 @@ proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
 
 # ------------------- iterator transformation --------------------------------
 
-proc liftForLoop*(body: PNode): PNode =
+proc liftForLoop*(body: PNode; owner: PSym): PNode =
   # problem ahead: the iterator could be invoked indirectly, but then
   # we don't know what environment to create here:
   #
@@ -746,8 +751,11 @@ proc liftForLoop*(body: PNode): PNode =
   if call[0].kind == nkSym and call[0].sym.isIterator:
     # createClosure()
     let iter = call[0].sym
-    assert iter.isIterator
-    env = copySym(getHiddenParam(iter))
+
+    let hp = getHiddenParam(iter)
+    env = newSym(skLet, iter.name, owner, body.info)
+    env.typ = hp.typ
+    env.flags = hp.flags
 
     var v = newNodeI(nkVarSection, body.info)
     addVar(v, newSymNode(env))

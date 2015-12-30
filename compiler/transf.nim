@@ -111,8 +111,8 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
-  #if n.sym.kind == skClosureIterator:
-  #  return liftIterSym(n)
+  if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
+    return liftIterSym(n, getCurrOwner(c))
   var b: PNode
   var tc = c.transCon
   if sfBorrow in n.sym.flags and n.sym.kind in routineKinds:
@@ -497,9 +497,9 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     return result
   c.breakSyms.add(labl)
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
-      call.sons[0].sym.kind != skIterator:
+      call.sons[0].typ.callConv == ccClosure:
     n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
-    result[1] = lambdalifting.liftForLoop(n).PTransNode
+    result[1] = lambdalifting.liftForLoop(n, getCurrOwner(c)).PTransNode
     discard c.breakSyms.pop
     return result
 
@@ -904,6 +904,8 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     #result = liftLambdasForTopLevel(module, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackTopLevelStmt(module, result)
+    #if n.info ?? "temp.nim":
+    #  echo renderTree(result, {renderIds})
 
 proc transformExpr*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

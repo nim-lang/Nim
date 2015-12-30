@@ -1330,6 +1330,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     initContext c
     putWithSpace g, tkSymbol, if n.kind == nkState: "state" else: "goto"
     gsons(g, n, c)
+  of nkBreakState:
+    put(g, tkTuple, "breakstate")
   of nkTypeClassTy:
     gTypeClassTy(g, n)
   else:

@@ -19,6 +19,9 @@ News
   - The check ``x is iterator`` (used for instance in concepts) was always a
     weird special case (you could not use ``x is proc``) and was removed from
     the language.
+  - Implicit return type for iterators have been removed from the language.
+  - Top level routines cannot have the calling convention ``closure``
+    anymore.
 
 
 2015-10-27 Version 0.12.0 released

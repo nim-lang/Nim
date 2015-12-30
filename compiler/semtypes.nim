@@ -960,10 +960,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var r: PType
   if n.sons[0].kind != nkEmpty:
     r = semTypeNode(c, n.sons[0], nil)
-  elif kind == skIterator:
-    # XXX This is special magic we should likely get rid of
-    r = newTypeS(tyExpr, c)
-    message(n.info, warnDeprecated, "implicit return type for 'iterator'")
 
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
