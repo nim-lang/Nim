@@ -50,10 +50,15 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
     inc(i)
     b = b.prev
 
+var
+  profilingRequestedHook*: proc (): bool {.nimcall, benign.}
+    ## set this variable to provide a procedure that implements a profiler in
+    ## user space. See the `nimprof` module for a reference implementation.
+
 when defined(memProfiler):
   type
     MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, benign.}
-  {.deprecated: [TMemProfilerHook: MemProfilerHook].}
+
   var
     profilerHook*: MemProfilerHook
       ## set this variable to provide a procedure that implements a profiler in
@@ -65,17 +70,13 @@ when defined(memProfiler):
     hook(st, requestedSize)
 
   proc nimProfile(requestedSize: int) =
-    if not isNil(profilerHook):
+    if not isNil(profilingRequestedHook) and profilingRequestedHook():
       callProfilerHook(profilerHook, requestedSize)
 else:
-  const
-    SamplingInterval = 50_000
-      # set this to change the default sampling interval
   var
     profilerHook*: ProfilerHook
       ## set this variable to provide a procedure that implements a profiler in
       ## user space. See the `nimprof` module for a reference implementation.
-    gTicker {.threadvar.}: int
 
   proc callProfilerHook(hook: ProfilerHook) {.noinline.} =
     # 'noinline' so that 'nimProfile' does not perform the stack allocation
@@ -86,16 +87,7 @@ else:
 
   proc nimProfile() =
     ## This is invoked by the compiler in every loop and on every proc entry!
-    if gTicker == 0:
-      gTicker = -1
-      if not isNil(profilerHook):
-        # disable recursive calls: XXX should use try..finally,
-        # but that's too expensive!
-        let oldHook = profilerHook
-        profilerHook = nil
-        callProfilerHook(oldHook)
-        profilerHook = oldHook
-      gTicker = SamplingInterval
-    dec gTicker
+    if not isNil(profilingRequestedHook) and profilingRequestedHook():
+      callProfilerHook(profilerHook)
 
 {.pop.}

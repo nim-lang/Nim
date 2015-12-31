@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2015 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -43,43 +43,24 @@
 
 import strutils, mysql
 
+import db_common
+export db_common
+
 type
-  DbConn* = PMySQL    ## encapsulates a database connection
+  DbConn* = PMySQL     ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
-                       ## transformed always to the empty string.
-  InstantRow* = tuple[row: cstringArray, len: int]  ## a handle that can be
-                                                    ## used to get a row's
-                                                    ## column text on demand
-  EDb* = object of IOError ## exception that is raised if a database error occurs
+                       ## converted to nil.
+  InstantRow* = object ## a handle that can be used to get a row's
+                       ## column text on demand
+    row: cstringArray
+    len: int
+{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
-  SqlQuery* = distinct string ## an SQL query string
-
-  FDb* = object of IOEffect ## effect that denotes a database operation
-  FReadDb* = object of FDb   ## effect that denotes a read operation
-  FWriteDb* = object of FDb  ## effect that denotes a write operation
-{.deprecated: [TRow: Row, TSqlQuery: SqlQuery, TDbConn: DbConn].}
-
-proc sql*(query: string): SqlQuery {.noSideEffect, inline.} =
-  ## constructs a SqlQuery from the string `query`. This is supposed to be
-  ## used as a raw-string-literal modifier:
-  ## ``sql"update user set counter = counter + 1"``
-  ##
-  ## If assertions are turned off, it does nothing. If assertions are turned
-  ## on, later versions will check the string for valid syntax.
-  result = SqlQuery(query)
-
-proc dbError(db: DbConn) {.noreturn.} =
-  ## raises an EDb exception.
-  var e: ref EDb
+proc dbError*(db: DbConn) {.noreturn.} =
+  ## raises a DbError exception.
+  var e: ref DbError
   new(e)
   e.msg = $mysql.error(db)
-  raise e
-
-proc dbError*(msg: string) {.noreturn.} =
-  ## raises an EDb exception with message `msg`.
-  var e: ref EDb
-  new(e)
-  e.msg = msg
   raise e
 
 when false:
@@ -114,7 +95,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
       add(result, c)
 
 proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
-  tags: [FReadDB, FWriteDb].} =
+  tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
   return mysql.realQuery(db, q, q.len) == 0'i32
@@ -124,7 +105,7 @@ proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
-  tags: [FReadDB, FWriteDb].} =
+  tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
   if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
@@ -139,7 +120,7 @@ proc properFreeResult(sqlres: mysql.PRES, row: cstringArray) =
   mysql.freeResult(sqlres)
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
-                   args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
+                   args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## executes the query and iterates over the result dataset.
   ##
   ## This is very fast, but potentially dangerous.  Use this iterator only
@@ -167,9 +148,9 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
 
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
-                      {.tags: [FReadDb].} =
-  ## same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the interator body.
+                      {.tags: [ReadDbEffect].} =
+  ## Same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within the iterator body.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(db)
   if sqlres != nil:
@@ -178,20 +159,102 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     while true:
       row = mysql.fetchRow(sqlres)
       if row == nil: break
-      yield (row: row, len: L)
+      yield InstantRow(row: row, len: L)
     properFreeResult(sqlres, row)
 
+proc setTypeName(t: var DbType; f: PFIELD) =
+  shallowCopy(t.name, $f.name)
+  t.maxReprLen = Natural(f.max_length)
+  if (NOT_NULL_FLAG and f.flags) != 0: t.notNull = true
+  case f.ftype
+  of TYPE_DECIMAL:
+    t.kind = dbDecimal
+  of TYPE_TINY:
+    t.kind = dbInt
+    t.size = 1
+  of TYPE_SHORT:
+    t.kind = dbInt
+    t.size = 2
+  of TYPE_LONG:
+    t.kind = dbInt
+    t.size = 4
+  of TYPE_FLOAT:
+    t.kind = dbFloat
+    t.size = 4
+  of TYPE_DOUBLE:
+    t.kind = dbFloat
+    t.size = 8
+  of TYPE_NULL:
+    t.kind = dbNull
+  of TYPE_TIMESTAMP:
+    t.kind = dbTimestamp
+  of TYPE_LONGLONG:
+    t.kind = dbInt
+    t.size = 8
+  of TYPE_INT24:
+    t.kind = dbInt
+    t.size = 3
+  of TYPE_DATE:
+    t.kind = dbDate
+  of TYPE_TIME:
+    t.kind = dbTime
+  of TYPE_DATETIME:
+    t.kind = dbDatetime
+  of TYPE_YEAR:
+    t.kind = dbDate
+  of TYPE_NEWDATE:
+    t.kind = dbDate
+  of TYPE_VARCHAR, TYPE_VAR_STRING, TYPE_STRING:
+    t.kind = dbVarchar
+  of TYPE_BIT:
+    t.kind = dbBit
+  of TYPE_NEWDECIMAL:
+    t.kind = dbDecimal
+  of TYPE_ENUM: t.kind = dbEnum
+  of TYPE_SET: t.kind = dbSet
+  of TYPE_TINY_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB,
+     TYPE_BLOB: t.kind = dbBlob
+  of TYPE_GEOMETRY:
+    t.kind = dbGeometry
+
+proc setColumnInfo(columns: var DbColumns; res: PRES; L: int) =
+  setLen(columns, L)
+  for i in 0..<L:
+    let fp = mysql.fetch_field_direct(res, cint(i))
+    setTypeName(columns[i].typ, fp)
+    columns[i].name = $fp.name
+    columns[i].tableName = $fp.table
+    columns[i].primaryKey = (fp.flags and PRI_KEY_FLAG) != 0
+    #columns[i].foreignKey = there is no such thing in mysql
+
+iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
+                      args: varargs[string, `$`]): InstantRow =
+  ## Same as fastRows but returns a handle that can be used to get column text
+  ## on demand using []. Returned handle is valid only within the iterator body.
+  rawExec(db, query, args)
+  var sqlres = mysql.useResult(db)
+  if sqlres != nil:
+    let L = int(mysql.numFields(sqlres))
+    setColumnInfo(columns, sqlres, L)
+    var row: cstringArray
+    while true:
+      row = mysql.fetchRow(sqlres)
+      if row == nil: break
+      yield InstantRow(row: row, len: L)
+    properFreeResult(sqlres, row)
+
+
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
-  ## returns text for given column of the row
+  ## Returns text for given column of the row.
   $row.row[col]
 
 proc len*(row: InstantRow): int {.inline.} =
-  ## returns number of columns in the row
+  ## Returns number of columns in the row.
   row.len
 
 proc getRow*(db: DbConn, query: SqlQuery,
-             args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
-  ## retrieves a single row. If the query doesn't return any rows, this proc
+             args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
+  ## Retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(db)
@@ -209,7 +272,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
     properFreeResult(sqlres, row)
 
 proc getAllRows*(db: DbConn, query: SqlQuery,
-                 args: varargs[string, `$`]): seq[Row] {.tags: [FReadDB].} =
+                 args: varargs[string, `$`]): seq[Row] {.tags: [ReadDbEffect].} =
   ## executes the query and returns the whole result dataset.
   result = @[]
   rawExec(db, query, args)
@@ -232,19 +295,19 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
     mysql.freeResult(sqlres)
 
 iterator rows*(db: DbConn, query: SqlQuery,
-               args: varargs[string, `$`]): Row {.tags: [FReadDB].} =
+               args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## same as `fastRows`, but slower and safe.
   for r in items(getAllRows(db, query, args)): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
-               args: varargs[string, `$`]): string {.tags: [FReadDB].} =
+               args: varargs[string, `$`]): string {.tags: [ReadDbEffect].} =
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
   result = getRow(db, query, args)[0]
 
 proc tryInsertId*(db: DbConn, query: SqlQuery,
-                  args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
+                  args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
@@ -254,7 +317,7 @@ proc tryInsertId*(db: DbConn, query: SqlQuery,
     result = mysql.insertId(db)
 
 proc insertId*(db: DbConn, query: SqlQuery,
-               args: varargs[string, `$`]): int64 {.tags: [FWriteDb].} =
+               args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row.
   result = tryInsertID(db, query, args)
@@ -262,18 +325,18 @@ proc insertId*(db: DbConn, query: SqlQuery,
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.
-                       tags: [FReadDB, FWriteDb].} =
+                       tags: [ReadDbEffect, WriteDbEffect].} =
   ## runs the query (typically "UPDATE") and returns the
   ## number of affected rows
   rawExec(db, query, args)
   result = mysql.affectedRows(db)
 
-proc close*(db: DbConn) {.tags: [FDb].} =
+proc close*(db: DbConn) {.tags: [DbEffect].} =
   ## closes the database connection.
   if db != nil: mysql.close(db)
 
 proc open*(connection, user, password, database: string): DbConn {.
-  tags: [FDb].} =
+  tags: [DbEffect].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
   result = mysql.init(nil)
@@ -291,7 +354,7 @@ proc open*(connection, user, password, database: string): DbConn {.
     dbError(errmsg)
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
-  tags: [FDb].} =
+  tags: [DbEffect].} =
   ## sets the encoding of a database connection, returns true for
   ## success, false for failure.
   result = mysql.set_character_set(connection, encoding) == 0
