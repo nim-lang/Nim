@@ -334,7 +334,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym) =
     incl(cp.flags, sfFromGeneric)
     cp.typ = t
     addHiddenParam(fn, cp)
-  elif cp.typ != t:
+  elif cp.typ != t and fn.kind != skIterator:
     localError(fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
@@ -342,7 +342,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
   of nkSym:
     let s = n.sym
-    if s.kind in {skProc, skMethod, skConverter, skIterator} and s.typ != nil and s.typ.callConv == ccClosure and tfCapturesEnv notin s.typ.flags:
+    if s.kind in {skProc, skMethod, skConverter, skIterator} and s.typ != nil and s.typ.callConv == ccClosure:
       # this handles the case that the inner proc was declared as
       # .closure but does not actually capture anything:
       addClosureParam(c, s)
@@ -524,11 +524,16 @@ proc closureCreationForIter(iter: PNode;
   var v = newSym(skVar, getIdent(envName), owner, iter.info)
   incl(v.flags, sfShadowed)
   v.typ = getHiddenParam(iter.sym).typ
-  let vnode = v.newSymNode
-
-  var vs = newNodeI(nkVarSection, iter.info)
-  addVar(vs, vnode)
-  result.add(vs)
+  var vnode: PNode
+  if owner.isIterator:
+    let it = getHiddenParam(owner)
+    addUniqueField(it.typ.sons[0], v)
+    vnode = indirectAccess(newSymNode(it), v, v.info)
+  else:
+    vnode = v.newSymNode
+    var vs = newNodeI(nkVarSection, iter.info)
+    addVar(vs, vnode)
+    result.add(vs)
   result.add(newCall(getSysSym"internalNew", vnode))
 
   let upField = lookupInRecord(v.typ.lastSon.n, getIdent(upName))
