@@ -451,15 +451,19 @@ proc newEnvVar(owner: PSym; typ: PType): PNode =
   var v = newSym(skVar, getIdent(envName), owner, owner.info)
   incl(v.flags, sfShadowed)
   v.typ = typ
-  if owner.kind == skIterator and owner.typ.callConv == ccClosure:
-    let it = getHiddenParam(owner)
-    addUniqueField(it.typ.sons[0], v)
-    result = indirectAccess(newSymNode(it), v, v.info)
-  else:
-    result = newSymNode(v)
+  result = newSymNode(v)
+  when false:
+    if owner.kind == skIterator and owner.typ.callConv == ccClosure:
+      let it = getHiddenParam(owner)
+      addUniqueField(it.typ.sons[0], v)
+      result = indirectAccess(newSymNode(it), v, v.info)
+    else:
+      result = newSymNode(v)
 
 proc setupEnvVar(owner: PSym; d: DetectionPass;
                  c: var LiftingPass): PNode =
+  if owner.isIterator:
+    return getHiddenParam(owner).newSymNode
   result = c.envvars.getOrDefault(owner.id)
   if result.isNil:
     let envVarType = d.ownerToType.getOrDefault(owner.id)
@@ -482,20 +486,24 @@ proc rawClosureCreation(owner: PSym;
                         d: DetectionPass; c: var LiftingPass): PNode =
   result = newNodeI(nkStmtList, owner.info)
 
-  let env = setupEnvVar(owner, d, c)
-  if env.kind == nkSym:
-    var v = newNodeI(nkVarSection, env.info)
-    addVar(v, env)
-    result.add(v)
-  # add 'new' statement:
-  result.add(newCall(getSysSym"internalNew", env))
-  # add assignment statements for captured parameters:
-  for i in 1..<owner.typ.n.len:
-    let local = owner.typ.n[i].sym
-    if local.id in d.capturedVars:
-      let fieldAccess = indirectAccess(env, local, env.info)
-      # add ``env.param = param``
-      result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
+  var env: PNode
+  if owner.isIterator:
+    env = getHiddenParam(owner).newSymNode
+  else:
+    env = setupEnvVar(owner, d, c)
+    if env.kind == nkSym:
+      var v = newNodeI(nkVarSection, env.info)
+      addVar(v, env)
+      result.add(v)
+    # add 'new' statement:
+    result.add(newCall(getSysSym"internalNew", env))
+    # add assignment statements for captured parameters:
+    for i in 1..<owner.typ.n.len:
+      let local = owner.typ.n[i].sym
+      if local.id in d.capturedVars:
+        let fieldAccess = indirectAccess(env, local, env.info)
+        # add ``env.param = param``
+        result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
 
   let upField = lookupInRecord(env.typ.lastSon.n, getIdent(upName))
   if upField != nil:
