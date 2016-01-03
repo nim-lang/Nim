@@ -238,6 +238,8 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   var v = newNodeI(nkVarSection, n.info)
   addVar(v, newSymNode(env))
   result.add(v)
+  # leave room for optional up reference setup:
+  result.add(ast.emptyNode)
   # add 'new' statement:
   let envAsNode = env.newSymNode
   result.add newCall(getSysSym"internalNew", envAsNode)
@@ -299,9 +301,35 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym) =
     result.typ = fieldType
     rawAddField(obj, result)
 
+discard """
+There are a couple of possibilities of how to implement closure
+iterators that capture outer variables in a traditional sense
+(aka closure closure iterators).
+
+1. Transform iter() to  iter(state, capturedEnv). So use 2 hidden
+   parameters.
+2. Add the captured vars directly to 'state'.
+3. Make capturedEnv an up-reference of 'state'.
+
+We do (3) here because (2) is obviously wrong and (1) is wrong too.
+Consider:
+
+  proc outer =
+    var xx = 9
+
+    iterator foo() =
+      var someState = 3
+
+      proc bar = echo someState
+      proc baz = someState = 0
+      baz()
+      bar()
+
+"""
+
 proc addClosureParam(c: var DetectionPass; fn: PSym) =
   var cp = getEnvParam(fn)
-  let owner = fn.skipGenericOwner
+  let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
   let t = c.getEnvTypeForOwner(owner)
   if cp == nil:
     cp = newSym(skParam, getIdent(paramName), fn, fn.info)
@@ -310,6 +338,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym) =
     addHiddenParam(fn, cp)
   elif cp.typ != t:
     localError(fn.info, "internal error: inconsistent environment type")
+  echo "adding closure to ", fn.name.s
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
@@ -360,7 +389,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         addField(obj, s)
       # create required upFields:
       var w = owner.skipGenericOwner
-      if isInnerProc(w):
+      if isInnerProc(w) or owner.isIterator:
+        if owner.isIterator: w = owner
         let last = if ow.isIterator: ow.skipGenericOwner else: ow
         while w != nil and w.kind != skModule and last != w:
           discard """
@@ -373,7 +403,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           # give it the same env type that outer's env var gets:
           """
           let up = w.skipGenericOwner
-          #echo "up for ", w.name.s, " up ", up.name.s
+          echo "up for ", w.name.s, " up ", up.name.s
           markAsClosure(w, n)
           addClosureParam(c, w) # , ow
           createUpField(c, w, up)
@@ -393,13 +423,12 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
 type
   LiftingPass = object
     processed: IntSet
-    envCreation: PNode
-    envVar: PNode
-    owner: PSym # the owner of the 'envVar'
+    envVars: Table[int, PNode]
 
 proc initLiftingPass(fn: PSym): LiftingPass =
   result.processed = initIntSet()
   result.processed.incl(fn.id)
+  result.envVars = initTable[int, PNode]()
 
 proc accessViaEnvParam(n: PNode; owner: PSym): PNode =
   let s = n.sym
@@ -419,10 +448,33 @@ proc accessViaEnvParam(n: PNode; owner: PSym): PNode =
   localError(n.info, "internal error: environment misses: " & s.name.s)
   result = n
 
-proc rawClosureCreation(env: PNode; owner: PSym;
-                        d: DetectionPass;
-                        obj: PType): PNode =
-  result = newNodeI(nkStmtList, env.info)
+proc newEnvVar(owner: PSym; typ: PType): PNode =
+  var v = newSym(skVar, getIdent(envName), owner, owner.info)
+  incl(v.flags, sfShadowed)
+  v.typ = typ
+  if owner.kind == skIterator and owner.typ.callConv == ccClosure:
+    let it = getHiddenParam(owner)
+    addUniqueField(it.typ.sons[0], v)
+    result = indirectAccess(newSymNode(it), v, v.info)
+  else:
+    result = newSymNode(v)
+
+proc setupEnvVar(owner: PSym; d: DetectionPass;
+                 c: var LiftingPass): PNode =
+  result = c.envvars.getOrDefault(owner.id)
+  if result.isNil:
+    let envVarType = d.ownerToType.getOrDefault(owner.id)
+    if envVarType.isNil:
+      localError owner.info, "internal error: could not determine closure type"
+    result = newEnvVar(owner, envVarType)
+    c.envVars[owner.id] = result
+
+proc rawClosureCreation(owner: PSym;
+                        d: DetectionPass; c: var LiftingPass): PNode =
+  result = newNodeI(nkStmtList, owner.info)
+  #if owner.isIterator: return result
+
+  let env = setupEnvVar(owner, d, c)
   if env.kind == nkSym:
     var v = newNodeI(nkVarSection, env.info)
     addVar(v, env)
@@ -437,41 +489,46 @@ proc rawClosureCreation(env: PNode; owner: PSym;
       # add ``env.param = param``
       result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
 
-  let upField = lookupInRecord(obj.n, getIdent(upName))
+  let upField = lookupInRecord(env.typ.lastSon.n, getIdent(upName))
   if upField != nil:
-    let param = getHiddenParam(owner)
-    if upField.typ == param.typ:
+    let param = getEnvParam(owner)
+    if param != nil and upField.typ == param.typ:
       result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  newSymNode(param), env.info))
+    #elif oldenv != nil and oldenv.typ == upField.typ:
+    #  result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
+    #             oldenv, env.info))
     else:
+      echo owner.name.s
       localError(env.info, "internal error: cannot create up reference")
 
-proc newEnvVar(owner: PSym; typ: PType): PNode =
-  var v = newSym(skVar, getIdent(envName), owner, owner.info)
+proc closureCreationForIter(iter: PNode;
+                            d: DetectionPass; c: var LiftingPass): PNode =
+  result = newNodeI(nkStmtListExpr, iter.info)
+  let owner = iter.sym.skipGenericOwner
+  var v = newSym(skVar, getIdent(envName), owner, iter.info)
   incl(v.flags, sfShadowed)
-  v.typ = typ
-  if owner.kind == skIterator and owner.typ.callConv == ccClosure:
-    let it = getHiddenParam(owner)
-    addUniqueField(it.typ.sons[0], v)
-    result = indirectAccess(newSymNode(it), v, v.info)
-  else:
-    result = newSymNode(v)
+  v.typ = getHiddenParam(iter.sym).typ
+  let vnode = v.newSymNode
 
-proc setupEnvVar(owner: PSym; d: DetectionPass;
-                 c: var LiftingPass) =
-  if c.owner != owner or c.envVar.isNil:
-    let envVarType = d.ownerToType.getOrDefault(owner.id)
-    if envVarType.isNil:
-      localError owner.info, "internal error: could not determine closure type"
-    c.envVar = newEnvVar(owner, envVarType)
-    c.envCreation = rawClosureCreation(c.envVar, owner, d,
-                                       envVarType.sons[0])
-    c.owner = owner
+  var vs = newNodeI(nkVarSection, iter.info)
+  addVar(vs, vnode)
+  result.add(vs)
+  result.add(newCall(getSysSym"internalNew", vnode))
+
+  let upField = lookupInRecord(v.typ.lastSon.n, getIdent(upName))
+  if upField != nil:
+    let u = setupEnvVar(owner, d, c)
+    if u.typ == upField.typ:
+      result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
+                 u, iter.info))
+    else:
+      localError(iter.info, "internal error: cannot create up reference for iter")
+  result.add makeClosure(iter.sym, vnode, iter.info)
 
 proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
                      c: var LiftingPass): PNode =
-  setupEnvVar(owner, d, c)
-  let access = c.envVar
+  let access = setupEnvVar(owner, d, c)
   let obj = access.typ.sons[0]
   let field = getFieldFromObj(obj, n.sym)
   if field != nil:
@@ -561,18 +618,16 @@ proc wrapIterBody(n: PNode; owner: PSym): PNode =
 proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
                   c: var LiftingPass): PNode =
   let s = n.sym
-  # direct dependency, so use the outer's env variable:
-  if s.skipGenericOwner == owner:
-    if c.owner != owner or c.envVar.isNil:
-      setupEnvVar(owner, d, c)
-    if c.owner != owner or c.envVar.isNil:
-      localError(n.info, "internal error: no environment var found")
-      return n
-    result = makeClosure(s, c.envVar, n.info)
-  elif s == owner:
+
+  if s == owner:
     # recursive calls go through (lambda, hiddenParam):
     let available = getHiddenParam(owner)
     result = makeClosure(s, available.newSymNode, n.info)
+  elif s.isIterator:
+    result = closureCreationForIter(n, d, c)
+  elif s.skipGenericOwner == owner:
+    # direct dependency, so use the outer's env variable:
+    result = makeClosure(s, setupEnvVar(owner, d, c), n.info)
   else:
     let available = getHiddenParam(owner)
     let wanted = getHiddenParam(s).typ
@@ -594,28 +649,13 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
   case n.kind
   of nkSym:
     let s = n.sym
-    # if s.kind == skIterator and s.typ.callConv == ccClosure:
-    # consider: [i1, i2, i1]  Since we merged the iterator's closure
-    # with the captured owning variables, we need to generate the
-    # closure generation code again: XXX think about this more,
-    # closure iterators are really strange in this regard.
     if isInnerProc(s):
       if not c.processed.containsOrIncl(s.id):
-        let oldEnvVar = c.envVar
-        let oldEnvCreation = c.envCreation
-        let oldOwner = c.owner
-        c.envVar = nil
-        c.envCreation = nil
-        c.owner = s
         let body = wrapIterBody(liftCapturedVars(s.getBody, s, d, c), s)
-        if c.envCreation.isNil:
+        if c.envvars.getOrDefault(s.id).isNil:
           s.ast.sons[bodyPos] = body
         else:
-          s.ast.sons[bodyPos] = newTree(nkStmtList, c.envCreation, body)
-          c.envCreation = nil
-        c.envVar = oldEnvVar
-        c.envCreation = oldEnvCreation
-        c.owner = oldOwner
+          s.ast.sons[bodyPos] = newTree(nkStmtList, rawClosureCreation(s, d, c), body)
       if s.typ.callConv == ccClosure:
         result = symToClosure(n, owner, d, c)
     elif s.id in d.capturedVars:
@@ -671,7 +711,7 @@ proc liftIterToProc*(fn: PSym; body: PNode; ptrType: PType): PNode =
   fn.kind = oldKind
   fn.typ.callConv = oldCC
 
-proc liftLambdas*(fn: PSym, body: PNode): PNode =
+proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -682,6 +722,7 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body
+    tooEarly = true
   else:
     var d = initDetectionPass(fn)
     var c = initLiftingPass(fn)
@@ -691,9 +732,8 @@ proc liftLambdas*(fn: PSym, body: PNode): PNode =
       d.somethingToDo = true
     if d.somethingToDo:
       var newBody = liftCapturedVars(body, fn, d, c)
-      if not c.envCreation.isNil:
-        newBody = newTree(nkStmtList, c.envCreation, newBody)
-        c.envCreation = nil
+      if c.envvars.getOrDefault(fn.id) != nil:
+        newBody = newTree(nkStmtList, rawClosureCreation(fn, d, c), newBody)
       result = wrapIterBody(newBody, fn)
     else:
       result = body

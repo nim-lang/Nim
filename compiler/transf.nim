@@ -45,7 +45,7 @@ type
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
-    deferDetected: bool
+    deferDetected, tooEarly: bool
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} =
@@ -112,7 +112,8 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
-    return liftIterSym(n, getCurrOwner(c))
+    if c.tooEarly: return n
+    else: return liftIterSym(n, getCurrOwner(c))
   var b: PNode
   var tc = c.transCon
   if sfBorrow in n.sym.flags and n.sym.kind in routineKinds:
@@ -883,9 +884,9 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate}:
     result = n
   else:
-    result = liftLambdas(prc, n)
-    #result = n
     var c = openTransf(module, "")
+    result = liftLambdas(prc, n, c.tooEarly)
+    #result = n
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     #result = liftLambdas(prc, result)

@@ -1966,6 +1966,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
     of skProc, skConverter, skIterator:
+      #if sym.kind == skIterator:
+      #  echo renderTree(sym.getBody, {renderIds})
       if sfCompileTime in sym.flags:
         localError(n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
