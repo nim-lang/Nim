@@ -238,8 +238,6 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   var v = newNodeI(nkVarSection, n.info)
   addVar(v, newSymNode(env))
   result.add(v)
-  # leave room for optional up reference setup:
-  result.add(ast.emptyNode)
   # add 'new' statement:
   let envAsNode = env.newSymNode
   result.add newCall(getSysSym"internalNew", envAsNode)
@@ -289,7 +287,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym) =
   let obj = refObj.lastSon
   let fieldType = c.getEnvTypeForOwner(dep) #getHiddenParam(dep).typ
   if refObj == fieldType:
-    localError(dep.info, "internal error: invald up reference computed")
+    localError(dep.info, "internal error: invalid up reference computed")
 
   let upIdent = getIdent(upName)
   let upField = lookupInRecord(obj.n, upIdent)
@@ -338,7 +336,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym) =
     addHiddenParam(fn, cp)
   elif cp.typ != t:
     localError(fn.info, "internal error: inconsistent environment type")
-  echo "adding closure to ", fn.name.s
+  #echo "adding closure to ", fn.name.s
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
@@ -382,6 +380,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       c.somethingToDo = true
       markAsClosure(owner, n)
       addClosureParam(c, owner)
+      #echo "captureing ", n.info
       # variable 's' is actually captured:
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
         let obj = c.getEnvTypeForOwner(ow).lastSon
@@ -403,7 +402,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           # give it the same env type that outer's env var gets:
           """
           let up = w.skipGenericOwner
-          echo "up for ", w.name.s, " up ", up.name.s
+          #echo "up for ", w.name.s, " up ", up.name.s
           markAsClosure(w, n)
           addClosureParam(c, w) # , ow
           createUpField(c, w, up)
@@ -469,10 +468,19 @@ proc setupEnvVar(owner: PSym; d: DetectionPass;
     result = newEnvVar(owner, envVarType)
     c.envVars[owner.id] = result
 
+proc getUpViaParam(owner: PSym): PNode =
+  let p = getHiddenParam(owner)
+  result = p.newSymNode
+  if owner.isIterator:
+    let upField = lookupInRecord(p.typ.lastSon.n, getIdent(upName))
+    if upField == nil:
+      localError(owner.info, "could not find up reference for closure iter")
+    else:
+      result = rawIndirectAccess(result, upField, p.info)
+
 proc rawClosureCreation(owner: PSym;
                         d: DetectionPass; c: var LiftingPass): PNode =
   result = newNodeI(nkStmtList, owner.info)
-  #if owner.isIterator: return result
 
   let env = setupEnvVar(owner, d, c)
   if env.kind == nkSym:
@@ -491,20 +499,19 @@ proc rawClosureCreation(owner: PSym;
 
   let upField = lookupInRecord(env.typ.lastSon.n, getIdent(upName))
   if upField != nil:
-    let param = getEnvParam(owner)
-    if param != nil and upField.typ == param.typ:
+    let up = getUpViaParam(owner)
+    if up != nil and upField.typ == up.typ:
       result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
-                 newSymNode(param), env.info))
+                 up, env.info))
     #elif oldenv != nil and oldenv.typ == upField.typ:
     #  result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
     #             oldenv, env.info))
     else:
-      echo owner.name.s
       localError(env.info, "internal error: cannot create up reference")
 
 proc closureCreationForIter(iter: PNode;
                             d: DetectionPass; c: var LiftingPass): PNode =
-  result = newNodeI(nkStmtListExpr, iter.info)
+  result = newNodeIT(nkStmtListExpr, iter.info, iter.sym.typ)
   let owner = iter.sym.skipGenericOwner
   var v = newSym(skVar, getIdent(envName), owner, iter.info)
   incl(v.flags, sfShadowed)
@@ -788,9 +795,10 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
 
   # static binding?
   var env: PSym
-  if call[0].kind == nkSym and call[0].sym.isIterator:
+  let op = call[0]
+  if op.kind == nkSym and op.sym.isIterator:
     # createClosure()
-    let iter = call[0].sym
+    let iter = op.sym
 
     let hp = getHiddenParam(iter)
     env = newSym(skLet, iter.name, owner, body.info)
@@ -802,6 +810,12 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
     result.add(v)
     # add 'new' statement:
     result.add(newCall(getSysSym"internalNew", env.newSymNode))
+  elif op.kind == nkStmtListExpr:
+    let closure = op.lastSon
+    if closure.kind == nkClosure:
+      call.sons[0] = closure
+      for i in 0 .. op.len-2:
+        result.add op[i]
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
@@ -814,8 +828,8 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
   var v2 = newNodeI(nkLetSection, body.info)
   var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
   for i in 0 .. L-3:
-    assert body[i].kind == nkSym
-    body[i].sym.kind = skLet
+    if body[i].kind == nkSym:
+      body[i].sym.kind = skLet
     addSon(vpart, body[i])
 
   addSon(vpart, ast.emptyNode) # no explicit type
