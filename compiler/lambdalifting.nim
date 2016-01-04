@@ -207,7 +207,7 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result.sons[0] = le
   result.sons[1] = ri
 
-proc makeClosure(prc: PSym; env: PNode; info: TLineInfo): PNode =
+proc makeClosure*(prc: PSym; env: PNode; info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
   result.add(newSymNode(prc))
   if env == nil:

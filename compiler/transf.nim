@@ -114,6 +114,9 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
     if c.tooEarly: return n
     else: return liftIterSym(n, getCurrOwner(c))
+  #elif n.sym.kind in {skVar, skLet} and n.sym.typ.callConv == ccClosure:
+  #  echo n.info, " come heer for ", c.tooEarly
+  #  if not c.tooEarly: return makeClosure(n.sym, nil, n.info)
   var b: PNode
   var tc = c.transCon
   if sfBorrow in n.sym.flags and n.sym.kind in routineKinds:
