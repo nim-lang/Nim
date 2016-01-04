@@ -381,7 +381,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       c.somethingToDo = true
       markAsClosure(owner, n)
       addClosureParam(c, owner)
-      #echo "captureing ", n.info
+      #echo "capturing ", n.info
       # variable 's' is actually captured:
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
         let obj = c.getEnvTypeForOwner(ow).lastSon
@@ -433,7 +433,7 @@ proc initLiftingPass(fn: PSym): LiftingPass =
 proc accessViaEnvParam(n: PNode; owner: PSym): PNode =
   let s = n.sym
   # Type based expression construction for simplicity:
-  let envParam = getEnvParam(owner)
+  let envParam = getHiddenParam(owner)
   if not envParam.isNil:
     var access = newSymNode(envParam)
     while true:
@@ -683,7 +683,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     elif s.id in d.capturedVars:
       if s.owner != owner:
         result = accessViaEnvParam(n, owner)
-      elif owner.kind == skIterator and interestingIterVar(s):
+      elif owner.isIterator and interestingIterVar(s):
         result = accessViaEnvParam(n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
