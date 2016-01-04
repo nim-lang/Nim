@@ -1817,6 +1817,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       whenNimvm = lookUp(c, exprNode).magic == mNimvm
     elif exprNode.kind == nkSym:
       whenNimvm = exprNode.sym.magic == mNimvm
+    if whenNimvm: n.flags.incl nfLL
 
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]

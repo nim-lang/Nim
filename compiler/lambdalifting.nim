@@ -633,7 +633,6 @@ proc wrapIterBody(n: PNode; owner: PSym): PNode =
                     getStateField(owner), info))
   stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
   result.add(stateAsgnStmt)
-  result.flags.incl nfLL
 
 proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
                   c: var LiftingPass): PNode =
@@ -671,6 +670,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     let s = n.sym
     if isInnerProc(s):
       if not c.processed.containsOrIncl(s.id):
+        #if s.name.s == "temp":
+        #  echo renderTree(s.getBody, {renderIds})
         let body = wrapIterBody(liftCapturedVars(s.getBody, s, d, c), s)
         if c.envvars.getOrDefault(s.id).isNil:
           s.ast.sons[bodyPos] = body
@@ -696,13 +697,17 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       m.typ = n.typ
       result = liftCapturedVars(m, owner, d, c)
   else:
-    if owner.isIterator and n.kind == nkYieldStmt:
-      result = transformYield(n, owner, d, c)
-    elif owner.isIterator and n.kind == nkReturnStmt:
-      result = transformReturn(n, owner, d, c)
-    else:
-      for i in 0..<n.len:
-        n.sons[i] = liftCapturedVars(n[i], owner, d, c)
+    if owner.isIterator:
+      if n.kind == nkYieldStmt:
+        return transformYield(n, owner, d, c)
+      elif n.kind == nkReturnStmt:
+        return transformReturn(n, owner, d, c)
+      elif nfLL in n.flags:
+        # special case 'when nimVm' due to bug #3636:
+        n.sons[1] = liftCapturedVars(n[1], owner, d, c)
+        return
+    for i in 0..<n.len:
+      n.sons[i] = liftCapturedVars(n[i], owner, d, c)
 
 # ------------------ old stuff -------------------------------------------
 
