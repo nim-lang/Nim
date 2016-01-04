@@ -503,6 +503,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     if not c.tooEarly:
       n.sons[length-2] = transform(c, n.sons[length-2]).PNode
       result[1] = lambdalifting.liftForLoop(n, getCurrOwner(c)).PTransNode
+    else:
+      result[1] = newNode(nkEmpty).PTransNode
     discard c.breakSyms.pop
     return result
 
