@@ -349,6 +349,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
 
     let innerProc = isInnerProc(s)
     if innerProc:
+      if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
         detectCapturedVars(s.getBody, s, c)
     let ow = s.skipGenericOwner
@@ -762,7 +763,7 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
       result = wrapIterBody(newBody, fn)
     else:
       result = body
-    #if fn.name.s == "tokenize2":
+    #if fn.name.s == "get2":
     #  echo "had something to do ", d.somethingToDo
     #  echo renderTree(result, {renderIds})
 
