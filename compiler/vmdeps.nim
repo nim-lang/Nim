@@ -83,6 +83,8 @@ proc mapTypeToBracket(name: string; t: PType; info: TLineInfo): PNode =
 proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   template atomicType(name): expr = atomicTypeX(name, t, info)
 
+
+
   case t.kind
   of tyNone: result = atomicType("none")
   of tyBool: result = atomicType("bool")
@@ -181,3 +183,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAst(t, info, true)
+
+proc opMapTypeToAst2*(t: PType; info: TLineInfo): PNode =
+  result = atomicTypeX("cstring", t, info)
+

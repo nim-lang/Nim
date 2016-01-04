@@ -84,6 +84,7 @@ type
     opcNSymbol,
     opcNIdent,
     opcNGetType,
+    opcNGetType2,
     opcNStrVal,
 
     opcNSetIntVal,
