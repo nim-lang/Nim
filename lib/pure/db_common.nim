@@ -7,7 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-## Common datatypes and definitions for all db_*.nim modules.
+## Common datatypes and definitions for all ``db_*.nim`` (
+## `db_mysql <db_mysql.html>`_, `db_postgres <db_postgres.html>`_,
+## and `db_sqlite <db_sqlite.html>`_) modules.
 
 type
   DbError* = object of IOError ## exception that is raised if a database error occurs
