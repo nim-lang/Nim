@@ -326,6 +326,8 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     incl(result.flags, sfGlobal)
   else:
     result = semIdentWithPragma(c, kind, n, {})
+    if result.owner.kind == skModule:
+      incl(result.flags, sfGlobal)
   suggestSym(n.info, result)
   styleCheckDef(result)
 
