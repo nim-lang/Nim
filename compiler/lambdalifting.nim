@@ -162,9 +162,9 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   # some nkEffect node:
   param.position = routine.typ.n.len-1
   addSon(params, newSymNode(param))
-  incl(routine.typ.flags, tfCapturesEnv)
+  #incl(routine.typ.flags, tfCapturesEnv)
   assert sfFromGeneric in param.flags
-  #echo "produced environment: ", param.id, " for ", routine.name.s
+  #echo "produced environment: ", param.id, " for ", routine.id
 
 proc getHiddenParam(routine: PSym): PSym =
   let params = routine.ast.sons[paramsPos]

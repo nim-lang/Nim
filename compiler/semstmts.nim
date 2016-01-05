@@ -958,15 +958,17 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
 
   let original = n.sons[namePos].sym
-  let s = copySym(original, false)
-  incl(s.flags, sfFromGeneric)
+  let s = original #copySym(original, false)
+  #incl(s.flags, sfFromGeneric)
+  #s.owner = original
 
   n = replaceTypesInBody(c, pt, n, original)
   result = n
   s.ast = result
   n.sons[namePos].sym = s
   n.sons[genericParamsPos] = emptyNode
-  let params = n.typ.n
+  # for LL we need to avoid wrong aliasing
+  let params = copyTree n.typ.n
   n.sons[paramsPos] = params
   s.typ = n.typ
   for i in 1..<params.len:
@@ -974,6 +976,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
                               tyFromExpr, tyFieldAccessor}+tyTypeClasses:
       localError(params[i].info, "cannot infer type of parameter: " &
                  params[i].sym.name.s)
+    #params[i].sym.owner = s
   openScope(c)
   pushOwner(s)
   addParams(c, params, skProc)
