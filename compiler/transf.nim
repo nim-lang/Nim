@@ -161,8 +161,9 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         newVar.ast = defs[2].PNode
         result[i] = defs
       else:
-        # has been transformed into 'param.x' for closure iterators, so keep it:
-        result[i] = PTransNode(it)
+        # has been transformed into 'param.x' for closure iterators, so just
+        # transform it:
+        result[i] = transform(c, it)
     else:
       if it.kind != nkVarTuple:
         internalError(it.info, "transformVarSection: not nkVarTuple")
@@ -820,7 +821,14 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # XXX comment handling really sucks:
     if importantComments():
       PNode(result).comment = n.comment
-  of nkClosure: return PTransNode(n)
+  of nkClosure:
+    # it can happen that for-loop-inlining produced a fresh
+    # set of variables, including some computed environment
+    # (bug #2604). We need to patch this environment here too:
+    let a = n[1]
+    if a.kind == nkSym:
+      n.sons[1] = transformSymAux(c, a)
+    return PTransNode(n)
   else:
     result = transformSons(c, n)
   when false:
