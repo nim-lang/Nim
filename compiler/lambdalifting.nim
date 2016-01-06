@@ -751,12 +751,12 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
     tooEarly = true
   else:
     var d = initDetectionPass(fn)
-    var c = initLiftingPass(fn)
     detectCapturedVars(body, fn, d)
     if not d.somethingToDo and fn.isIterator:
       addClosureParam(d, fn)
       d.somethingToDo = true
     if d.somethingToDo:
+      var c = initLiftingPass(fn)
       var newBody = liftCapturedVars(body, fn, d, c)
       if c.envvars.getOrDefault(fn.id) != nil:
         newBody = newTree(nkStmtList, rawClosureCreation(fn, d, c), newBody)

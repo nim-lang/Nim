@@ -186,7 +186,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result.owner = getCurrOwner()
   else:
     result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
-  #if kind in {skForVar} and result.owner.kind == skModule:
+  #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,

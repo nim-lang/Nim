@@ -111,17 +111,22 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
   result[1] = ri
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
-  if n.sym.kind == skIterator and n.sym.typ.callConv == ccClosure:
-    if c.tooEarly: return n
-    else: return liftIterSym(n, getCurrOwner(c))
+  let s = n.sym
+  if s.typ != nil and s.typ.callConv == ccClosure:
+    if s.kind == skIterator:
+      if c.tooEarly: return n
+      else: return liftIterSym(n, getCurrOwner(c))
+    elif s.kind in {skProc, skConverter, skMethod} and not c.tooEarly:
+      # top level .closure procs are still somewhat supported for 'Nake':
+      return makeClosure(s, nil, n.info)
   #elif n.sym.kind in {skVar, skLet} and n.sym.typ.callConv == ccClosure:
   #  echo n.info, " come heer for ", c.tooEarly
-  #  if not c.tooEarly: return makeClosure(n.sym, nil, n.info)
+  #  if not c.tooEarly:
   var b: PNode
   var tc = c.transCon
-  if sfBorrow in n.sym.flags and n.sym.kind in routineKinds:
+  if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
-    b = n.sym.getBody
+    b = s.getBody
     if b.kind != nkSym: internalError(n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym)
     b.info = n.info
@@ -727,18 +732,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = PTransNode(n)
   of nkBracketExpr: result = transformArrayAccess(c, n)
   of procDefs:
-    when false:
-      if n.sons[genericParamsPos].kind == nkEmpty:
-        var s = n.sons[namePos].sym
-        n.sons[bodyPos] = PNode(transform(c, s.getBody))
-        if s.ast.sons[bodyPos] != n.sons[bodyPos]:
-          # somehow this can happen ... :-/
-          s.ast.sons[bodyPos] = n.sons[bodyPos]
-        #n.sons[bodyPos] = liftLambdas(s, n)
-        #if n.kind == nkMethodDef: methodDef(s, false)
-    #if n.kind == nkIteratorDef and n.typ != nil:
-    #  return liftIterSym(n.sons[namePos]).PTransNode
-    result = PTransNode(n)
+    var s = n.sons[namePos].sym
+    if n.typ != nil and s.typ.callConv == ccClosure:
+      result = transformSym(c, n.sons[namePos])
+    else:
+      result = PTransNode(n)
   of nkMacroDef:
     # XXX no proper closure support yet:
     when false:
