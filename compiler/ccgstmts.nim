@@ -21,8 +21,8 @@ proc registerGcRoot(p: BProc, v: PSym) =
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v)
-    linefmt(p.module.initProc, cpsStmts,
-      "#nimRegisterGlobalMarker($1);$n", prc)
+    appcg(p.module, p.module.initProc.procSec(cpsStmts),
+      "#nimRegisterGlobalMarker($1);$n", [prc])
 
 proc isAssignedImmediately(n: PNode): bool {.inline.} =
   if n.kind == nkEmpty: return false
