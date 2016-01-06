@@ -513,6 +513,24 @@ when defined(ssl):
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
 
+  proc wrapAcceptedSocket*(ctx: SslContext, socket: AsyncSocket) {.async.} =
+    ## Wraps a socket in an SSL context. This function effectively turns
+    ## ``socket`` into an SSL socket.
+    ##
+    ## **Disclaimer**: This code is not well tested, may be very unsafe and
+    ## prone to security vulnerabilities.
+    socket.isSsl = true
+    socket.sslContext = ctx
+    socket.sslHandle = SSLNew(SSLCTX(socket.sslContext))
+    if socket.sslHandle == nil:
+      raiseSslError()
+    socket.bioIn = bioNew(bio_s_mem())
+    socket.bioOut = bioNew(bio_s_mem())
+    sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
+    let flags = {SocketFlag.SafeDisconn}
+    sslSetAcceptState(socket.sslHandle)
+    sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
+
 proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
   ## Retrieves option ``opt`` as a boolean value.
