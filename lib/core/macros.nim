@@ -175,6 +175,11 @@ proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
 
 proc getType2*(n: NimNode): NimNode {.magic: "NGetType2", noSideEffect.}
+  ## The successor of 'getType'. It returns a symbol AST to the type of n.
+  ## It tries to have the same result as 'typetraits.name' but in an ast form.
+  ## The result may not be transformed, otherwise undefined hehavior.
+
+#proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetTypeImpl", noSideEffect.}
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
