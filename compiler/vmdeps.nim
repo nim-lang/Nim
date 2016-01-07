@@ -196,12 +196,6 @@ proc mapTypeToBracket2(name: string; t: PType; info: TLineInfo): PNode =
       result.add opMapTypeToAst2(t.sons[i], info)
 
 proc opMapTypeToAst2(t: PType; info: TLineInfo; getImpl: bool): PNode =
-  echo "opMapTypeToAst2"
-  debug(t)
-  if t.sym == nil:
-    echo "t.sym: nil"
-  else:
-    echo "t.sym: ", t.sym.name.s
 
   proc name(tk : TTypeKind): string =
     if tk == tySequence:
