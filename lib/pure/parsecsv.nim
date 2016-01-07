@@ -77,6 +77,15 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   my.row = @[]
   my.currRow = 0
 
+proc open*(my: var CsvParser, filename: string,
+           separator = ',', quote = '"', escape = '\0',
+           skipInitialSpace = false) =
+  ## Opens an input file stream by opening `filename`.
+  ## Initializes the parser by calling the other stream-based `open()`.
+  var s = newFileStream(filename, fmRead)
+  if s == nil: my.error(0,"cannot open the file " & filename)
+  my.open(s, filename, separator, quote, escape, skipInitialSpace)
+
 proc parseField(my: var CsvParser, a: var string) =
   var pos = my.bufpos
   var buf = my.buf
@@ -131,6 +140,8 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   ## reads the next row; if `columns` > 0, it expects the row to have
   ## exactly this many columns. Returns false if the end of the file
   ## has been encountered else true.
+  ##
+  ## Blank lines are skipped.
   var col = 0 # current column
   var oldpos = my.bufpos
   while my.buf[my.bufpos] != '\0':
@@ -162,9 +173,52 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
           $col & " columns")
   inc(my.currRow)
 
+proc tryReadRow*(my: var CsvParser, columns = 0): bool =
+  ## reads the next row without raising `CsvError`;
+  ## Returns false if the end of the file
+  ## has been encountered else true.
+  ##
+  ## Blank lines are skipped.
+  var col = 0 # current column
+  var oldpos = my.bufpos
+  while my.buf[my.bufpos] != '\0':
+    var oldlen = my.row.len
+    if oldlen < col+1:
+      setLen(my.row, col+1)
+      my.row[col] = ""
+    parseField(my, my.row[col])
+    inc(col)
+    if my.buf[my.bufpos] == my.sep:
+      inc(my.bufpos)
+    else:
+      case my.buf[my.bufpos]
+      of '\c', '\l':
+        # skip empty lines:
+        while true:
+          case my.buf[my.bufpos]
+          of '\c': my.bufpos = handleCR(my, my.bufpos)
+          of '\l': my.bufpos = handleLF(my, my.bufpos)
+          else: break
+      of '\0': discard
+      else: discard  # no delimeter - ignore
+      break
+
+  setLen(my.row, col)
+  result = col > 0
+  inc(my.currRow)
+
+proc readRow*(my: var CsvParser, filename: string,
+           separator = ',', quote = '"', escape = '\0',
+           skipInitialSpace = false, columns = 0): bool =
+  ## Opens the file, then call the generic `tryReadRow()`
+  if my.filename.isNil:
+    my.open(filename, separator, quote, escape, skipInitialSpace)
+  result = my.tryReadRow(columns = columns)
+
 proc close*(my: var CsvParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
+  my.filename = nil
 
 when not defined(testing) and isMainModule:
   import os
@@ -178,3 +232,13 @@ when not defined(testing) and isMainModule:
       echo "##", val, "##"
   close(x)
 
+  echo "############### Open by filename (inherent stream)"
+  open(x, paramStr(1))
+  while readRow(x):
+    echo x.row
+  close(x)
+
+  echo "############### Open by readRow()"
+  while readRow(x, filename = paramStr(1), separator='\0', quote='\0'):
+    echo x.row
+  close(x)
