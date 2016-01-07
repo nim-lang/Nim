@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, osproc, streams, options, idents, securehash, astalgo
+import ast, types, msgs, osproc, streams, options, idents, securehash, astalgo, strutils
 
 proc readOutput(p: Process): string =
   result = ""
@@ -182,7 +182,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAst(t, info, true)
 
-proc opMapTypeToAst2*(t: PType; info: TLineInfo): PNode
+proc opMapTypeToAst2*(t: PType; info: TLineInfo; getImpl: bool = false): PNode
 
 proc mapTypeToBracket2(name: string; t: PType; info: TLineInfo): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
@@ -195,76 +195,57 @@ proc mapTypeToBracket2(name: string; t: PType; info: TLineInfo): PNode =
     else:
       result.add opMapTypeToAst2(t.sons[i], info)
 
-proc opMapTypeToAst2(t: PType; info: TLineInfo): PNode =
+proc opMapTypeToAst2(t: PType; info: TLineInfo; getImpl: bool): PNode =
+  echo "opMapTypeToAst2"
   debug(t)
-
-  template atomicType(name): expr = atomicTypeX(name, t, info)
-
-  case t.kind
-  of tyGenericInst:
-    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    result.add(atomicTypeX(typeToString(t.sons[0]), t, info))
-    for i in 1 .. < t.len-1:
-      if t.sons[i] == nil:
-        let void = atomicTypeX("void", t, info)
-        void.typ = newType(tyEmpty, t.owner)
-        result.add void
-      else:
-        result.add opMapTypeToAst2(t.sons[i], info)
-  of tyDistinct:
-    if t.sym == nil:
-      result = mapTypeToBracket2("distinct", t, info)
-    else:
-      result = atomicTypeX(t.sym.name.s, t, info)
-  of tyTuple:
-    result = mapTypeToBracket2("tuple", t, info)
-  of tySet:
-    result = mapTypeToBracket2("set", t, info)
-  of tyPtr:
-    result = mapTypeToBracket2("ptr", t, info)
-  of tyRef:
-    result = mapTypeToBracket2("ref", t, info)
-  of tyVar:
-    result = mapTypeToBracket2("var", t, info)
-  of tySequence:
-    result = mapTypeToBracket2("seq", t, info)
-  of tyProc:
-    result = mapTypeToBracket2("proc", t, info)
-  of tyOpenArray:
-    result = mapTypeToBracket2("openArray", t, info)
-  of tyTypeDesc:
-    result = mapTypeToBracket2("typeDesc", t, info)
-  of tyConst:
-    result = mapTypeToBracket2("const", t, info)
-  of tyMutable:
-    result = mapTypeToBracket2("mutable", t, info)
-  of tyVarargs:
-    result = mapTypeToBracket2("varargs", t, info)
-  of tyIter:
-    result = mapTypeToBracket2("iter", t, info)
-  of tyBuiltInTypeClass:
-    result = mapTypeToBracket2("builtinTypeClass", t, info)
-  of tyUserTypeClass:
-    result = mapTypeToBracket2("concept", t, info)
-    result.add t.n.copyTree
-  of tyCompositeTypeClass:
-    result = mapTypeToBracket2("compositeTypeClass", t, info)
-  of tyAnd:
-    result = mapTypeToBracket2("and", t, info)
-  of tyOr:
-    result = mapTypeToBracket2("or", t, info)
-  of tyNot:
-    result = mapTypeToBracket2("not", t, info)
+  if t.sym == nil:
+    echo "t.sym: nil"
   else:
+    echo "t.sym: ", t.sym.name.s
+
+  proc name(tk : TTypeKind): string =
+    if tk == tySequence:
+      result = "seq"
+    else:
+      result = $t.kind
+      result.delete(0,1)
+      result[0] = result[0].toLower
+
+  if t.sym != nil and not getImpl:
     result = atomicTypeX(t.sym.name.s, t, info)
 
+  else:
+    case t.kind
+    of tyGenericInst:
+      if getImpl:
+        if t.sym != nil:
+          result = opMapTypeToAst2(t.lastSon, info, false)
+        else:
+          result = opMapTypeToAst2(t.lastSon, info, false)
+      else:
+        result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
+
+        result.add(atomicTypeX(typeToString(t.sons[0]), t, info))
+        for i in 1 .. < t.len-1:
+          if t.sons[i] == nil:
+            let void = atomicTypeX("void", t, info)
+            void.typ = newType(tyEmpty, t.owner)
+            result.add void
+          else:
+            result.add opMapTypeToAst2(t.sons[i], info)
+
+    of tyRange:
+      result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
+      result.add atomicTypeX("range", t, info)
+      result.add t.n.sons[0].copyTree
+      result.add t.n.sons[1].copyTree
+
+    of tyUserTypeClass:
+      result = mapTypeToBracket2("concept", t, info)
+      result.add t.n.copyTree
+
+    else:
+      result = mapTypeToBracket2(t.kind.name, t, info)
 
 
-
-
-  #if t.kind == tyGenericInst:
-  #  result = mapTypeToAst(t.lastSon, info)
-  #  result = mapTypeToBracket(t.owner.name.s & "." & t.sym.name.s, t, info)
-  #else:
-  #  result = atomicTypeX($t.kind, t, info)
 

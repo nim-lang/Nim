@@ -85,6 +85,7 @@ type
     opcNIdent,
     opcNGetType,
     opcNGetType2,
+    opcNGetTypeImpl,
     opcNStrVal,
 
     opcNSetIntVal,
