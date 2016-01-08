@@ -171,11 +171,6 @@ type
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
 
-proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
-
-proc `miliseconds=`*(t:var TimeInterval, milliseconds: int) {.deprecated.} =
-  t.milliseconds = milliseconds
-
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
@@ -351,7 +346,6 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
       else:
         curMonth.inc()
   result += float(newinterv.days * 24 * 60 * 60)
-  result += float(newinterv.days * 24 * 60 * 60)
   result += float(newinterv.hours * 60 * 60)
   result += float(newinterv.minutes * 60)
   result += float(newinterv.seconds)
@@ -382,6 +376,15 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   intval.years = - interval.years
   let secs = toSeconds(a, intval)
   result = getLocalTime(fromSeconds(t + secs))
+
+proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
+
+proc `miliseconds=`*(t: var TimeInterval, milliseconds: int) {.deprecated.} =
+  ## An alias for a misspelled field in ``TimeInterval``.
+  ##
+  ## **Warning:** This should not be used! It will be removed in the next
+  ## version.
+  t.milliseconds = milliseconds
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}

@@ -142,3 +142,8 @@ doAssert initInterval(milliseconds = 25000) == initInterval(seconds = 25)
 doAssert initInterval(seconds = 65) == initInterval(seconds = 5, minutes = 1)
 doAssert initInterval(hours = 25) == initInterval(hours = 1, days = 1)
 doAssert initInterval(months = 13) == initInterval(months = 1, years = 1)
+
+# Bug with adding a day to a Time
+let day = 24.hours
+let tomorrow = getTime() + day
+doAssert tomorrow - getTime() == 60*60*24
