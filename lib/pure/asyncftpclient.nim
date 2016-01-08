@@ -288,7 +288,7 @@ proc defaultOnProgressChanged*(total, progress: BiggestInt,
   result.complete()
 
 proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
-               onProgressChanged = defaultOnProgressChanged) {.async.} =
+               onProgressChanged: ProgressChangedProc = defaultOnProgressChanged) {.async.} =
   ## Downloads ``file`` and saves it to ``dest``.
   ## The ``EvRetr`` event is passed to the specified ``handleEvent`` function
   ## when the download is finished. The event's ``filename`` field will be equal
@@ -339,7 +339,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
     await countdownFut or sendFut
 
 proc store*(ftp: AsyncFtpClient, file, dest: string,
-            onProgressChanged = defaultOnProgressChanged) {.async.} =
+            onProgressChanged: ProgressChangedProc = defaultOnProgressChanged) {.async.} =
   ## Uploads ``file`` to ``dest`` on the remote FTP server. Usage of this
   ## function asynchronously is recommended to view the progress of
   ## the download.
