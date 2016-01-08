@@ -6,7 +6,6 @@ discard """
 import
   times, strutils
 
-doAssert( $getTime() == getLocalTime(getTime()).format("ddd MMM dd HH:mm:ss yyyy"))
 # $ date --date='@2147483647'
 # Tue 19 Jan 03:14:07 GMT 2038
 

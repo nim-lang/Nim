@@ -29,7 +29,7 @@
 ##  echo "epochTime() float value: ", epochTime()
 ##  echo "getTime()   float value: ", toSeconds(getTime())
 ##  echo "cpuTime()   float value: ", cpuTime()
-##  echo "An hour from now      : ", getLocalTime(getTime()) + initInterval(0,0,0,1)
+##  echo "An hour from now      : ", getLocalTime(getTime()) + 1.hours
 ##  echo "An hour from (UTC) now: ", getGmTime(getTime()) + initInterval(0,0,0,1)
 
 {.push debugger:off.} # the user does not want to trace a part
@@ -245,6 +245,17 @@ proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
 proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval =
   ## creates a new ``TimeInterval``.
+  ##
+  ## You can also use the convenience procedures called ``milliseconds``,
+  ## ``seconds``, ``minutes``, ``hours``, ``days``, ``months``, and ``years``.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##     let day = initInterval(hours=24)
+  ##     let tomorrow = getTime() + day
+  ##     echo(tomorrow)
   var carryO = 0
   result.milliseconds = `mod`(milliseconds, 1000)
   carryO = `div`(milliseconds, 1000)
@@ -261,6 +272,7 @@ proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
   result.years = carryO + years
 
 proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
+  ## Adds two ``TimeInterval`` objects together.
   var carryO = 0
   result.milliseconds = `mod`(ti1.milliseconds + ti2.milliseconds, 1000)
   carryO = `div`(ti1.milliseconds + ti2.milliseconds, 1000)
@@ -277,6 +289,7 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
   result.years = carryO + ti1.years + ti2.years
 
 proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
+  ## Subtracts TimeInterval ``ti1`` from ``ti2``.
   result = ti1
   result.milliseconds -= ti2.milliseconds
   result.seconds -= ti2.seconds
@@ -345,7 +358,7 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
   result += newinterv.milliseconds / 1000
 
 proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
-  ## adds ``interval`` time.
+  ## adds ``interval`` time from TimeInfo ``a``.
   ##
   ## **Note:** This has been only briefly tested and it may not be
   ## very accurate.
@@ -354,7 +367,7 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   result = getLocalTime(fromSeconds(t + secs))
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
-  ## subtracts ``interval`` time.
+  ## subtracts ``interval`` time from TimeInfo ``a``.
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
