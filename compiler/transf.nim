@@ -735,6 +735,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     var s = n.sons[namePos].sym
     if n.typ != nil and s.typ.callConv == ccClosure:
       result = transformSym(c, n.sons[namePos])
+      # use the same node as before if still a symbol:
+      if result.PNode.kind == nkSym: result = PTransNode(n)
     else:
       result = PTransNode(n)
   of nkMacroDef:

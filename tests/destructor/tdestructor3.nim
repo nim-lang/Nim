@@ -19,10 +19,11 @@ proc `=`(lhs: var T, rhs: T) =
 proc `=destroy`(v: var T) =
     echo "destroy"
 
-block:
+proc usedToBeBlock =
     var v1 : T
     var v2 : T = v1
 
+usedToBeBlock()
 
 # bug #1632
 
