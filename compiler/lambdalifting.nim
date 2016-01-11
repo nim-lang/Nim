@@ -408,7 +408,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           addClosureParam(c, w) # , ow
           createUpField(c, w, up)
           w = up
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure,
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection:
     discard
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
@@ -687,11 +687,14 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         result = accessViaEnvParam(n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkClosure,
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection:
     discard
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
     discard
+  of nkClosure:
+    if n[1].kind == nkNilLit:
+      n.sons[0] = liftCapturedVars(n[0], owner, d, c)
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let m = newSymNode(n[namePos].sym)
