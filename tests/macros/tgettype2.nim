@@ -1,17 +1,63 @@
 discard """
-msg: '''a: object RootObj
-b: object Model
-  name
-  password
-c: ref[Tree:ObjectType]
-d: enum enum valueA
-  valueB, valueC
-e: tuple[int, float]
-f: tuple[int, int, int]
-g: tuple[float, float, float]
-h: distinct[int]
-i: distinct[int]'''
+g:
+  tuple[int, float]
+  tuple[int, float]
+h:
+  SimplePair
+  tuple[int, float]
+i:
+  MyPair[int, float]
+  tuple[int, float]
+j:
+  WithFloat[int]
+  MyPair[int, float]
+k:
+  IntWithFloat
+  WithFloat[int]
+m:
+  MyIntA
+  distinct[int]
+n:
+  MyIntB
+  distinct[int]
+o:
+  distinct[int]
+  distinct[int]
+p:
+  MyIntC[SimplePair]
+  distinct[int]
+q:
+  IntAlias
+  int
+r:
+  seq[int]
+  seq[int]
+s:
+  seq[float]
+  seq[float]
+t:
+  seq[WithFloat[int]]
+  seq[WithFloat[int]]
+u:
+  MySet
+  set[MyEnum]
+v:
+  MySeq
+  seq[int]
+w:
+  MyIntPtr
+  ptr[int]
+x:
+  MyIntRef
+  ref[int]
+foo:
+  proc[float, int16, int32]
+  proc[float, int16, int32]
+set[MyEnum]:
+  typeDesc[set[MyEnum]]
+  typeDesc[set[MyEnum]]'''
 """
+
 import macros
 
 type
@@ -97,17 +143,15 @@ echo testGetType2(k) # IntWithFloat     = WithFloat[int]
 echo testGetType2(m) # MyIntA = distinct int
 echo testGetType2(n) # MyIntB = distinct int
 echo testGetType2(o) # distinct int
-echo testGetType2(p) # MyIntC[TupleType] = distinct int
+echo testGetType2(p) # MyIntC[SimplePair] = distinct int
 echo testGetType2(q) # IntAlias = int
 echo testGetType2(r) # seq[int]
 echo testGetType2(s) # seq[float]
 echo testGetType2(t) # seq[GenericTriple[int]]
-#echo testGetType2(u) # MySet
+echo testGetType2(u) # MySet
 echo testGetType2(v) # MySeq = seq[int]
 echo testGetType2(w) # MyIntPtr = ptr int
 echo testGetType2(x) # MyIntRef = ref int
 echo testGetType2(foo)
-#echo testGetType2(set[MyEnum])
-
-
+echo testGetType2(set[MyEnum])
 
