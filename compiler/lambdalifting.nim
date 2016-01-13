@@ -730,13 +730,17 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
 # ------------------ old stuff -------------------------------------------
 
 proc semCaptureSym*(s, owner: PSym) =
-  if interestingVar(s) and owner.id != s.owner.id and s.kind != skResult:
+  if interestingVar(s) and s.kind != skResult:
     if owner.typ != nil and not isGenericRoutine(owner):
       # XXX: is this really safe?
       # if we capture a var from another generic routine,
       # it won't be consider captured.
-      owner.typ.callConv = ccClosure
-    #echo "semCaptureSym ", owner.name.s, owner.id, " ", s.name.s, s.id
+      var o = owner.skipGenericOwner
+      while o.kind != skModule and o != nil:
+        if s.owner == o:
+          owner.typ.callConv = ccClosure
+          #echo "computing .closure for ", owner.name.s, " ", owner.info, " because of ", s.name.s
+        o = o.skipGenericOwner
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'
     # here
 
