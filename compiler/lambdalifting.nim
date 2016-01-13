@@ -221,7 +221,7 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
   # closure iterators quite a bit.
   result = s.kind in {skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
 
-template isIterator(owner: PSym): bool =
+template isIterator*(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
 
 proc liftIterSym*(n: PNode; owner: PSym): PNode =
@@ -242,6 +242,20 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   let envAsNode = env.newSymNode
   result.add newCall(getSysSym"internalNew", envAsNode)
   result.add makeClosure(iter, envAsNode, n.info)
+
+proc freshVarForClosureIter*(s, owner: PSym): PNode =
+  let envParam = getHiddenParam(owner)
+  let obj = envParam.typ.lastSon
+  addField(obj, s)
+
+  var access = newSymNode(envParam)
+  assert obj.kind == tyObject
+  let field = getFieldFromObj(obj, s)
+  if field != nil:
+    result = rawIndirectAccess(access, field, s.info)
+  else:
+    localError(s.info, "internal error: cannot generate fresh variable")
+    result = access
 
 # ------------------ new stuff -------------------------------------------
 
