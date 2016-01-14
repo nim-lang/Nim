@@ -38,7 +38,8 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     if s.owner.id == c.owner.id:
       if s.kind == skParam and sfGenSym notin s.flags:
         handleParam actual.sons[s.position]
-      elif s.kind == skGenericParam:
+      elif s.kind == skGenericParam or
+           s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam:
         handleParam actual.sons[s.owner.typ.len + s.position - 1]
       else:
         internalAssert sfGenSym in s.flags
