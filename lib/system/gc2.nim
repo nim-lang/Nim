@@ -568,7 +568,6 @@ template takeTime {.dirty.} =
 
 template checkTime {.dirty.} =
   if debugticker <= 0:
-    echo "in loop"
     debugticker = 1000
   when withRealTime:
     if steps == 0:
@@ -602,7 +601,6 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
 
 proc sweep(gch: var GcHeap): bool =
   takeStartTime(100)
-  echo "loop start"
   let black = gch.black
   while true:
     let x = allObjectsAsProc(gch.region, addr gch.spaceIter)
@@ -619,7 +617,6 @@ proc sweep(gch: var GcHeap): bool =
       # traversal over the heap!
     checkTime()
   # prepare for next iteration:
-  echo "loop end"
   gch.spaceIter = ObjectSpaceIter()
   result = true
 
