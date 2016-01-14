@@ -118,6 +118,14 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
         result = "$1->data, $1->$2" % [a.rdLoc, lenField(p)]
     of tyArray, tyArrayConstr:
       result = "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))]
+    of tyPtr, tyRef:
+      case lastSon(a.t).kind
+      of tyString, tySequence:
+        result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
+      of tyArray, tyArrayConstr:
+        result = "$1, $2" % [rdLoc(a), rope(lengthOrd(lastSon(a.t)))]
+      else: 
+        internalError("openArrayLoc: " & typeToString(a.t))
     else: internalError("openArrayLoc: " & typeToString(a.t))
 
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =

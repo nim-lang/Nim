@@ -23,27 +23,27 @@ General FAQ
   shared memory heap is also provided for the increased efficiency that results
   from that model.
 
-..
-
-  .. container:: standout
-
-    Why should I use Nim?
-    ---------------------
-
-    It's a conservative language in a sense that we stick to features that have
-    proven themselves for larger scale programming. But it's revolutionary by
-    the features which have been laid on top.
-
-    One of Nim's goals is to increase developer productivity without sacrificing
-    the produced software's stability. The way that this is done is by providing
-
-    Depending on your use case.
-
-    Nim is one of the few programming languages in the world which allows you to
 
 
-    The language inventor describes it as the ultimate programming language
-    with features which make it perfect for just about any problem.
+..  .. container:: standout
+
+..    Why should I use Nim?
+..    ---------------------
+
+..    It's a conservative language in a sense that we stick to features that have
+..    proven themselves for larger scale programming. But it's revolutionary by
+..    the features which have been laid on top.
+
+..    One of Nim's goals is to increase developer productivity without sacrificing
+..    the produced software's stability. The way that this is done is by providing
+
+..    Depending on your use case.
+
+..    Nim is one of the few programming languages in the world which allows you to
+
+
+..    The language inventor describes it as the ultimate programming language
+..    with features which make it perfect for just about any problem.
 
 .. container:: standout
 

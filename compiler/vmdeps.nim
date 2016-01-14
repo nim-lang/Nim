@@ -70,7 +70,7 @@ proc atomicTypeX(name: string; t: PType; info: TLineInfo): PNode =
 proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode
 
 proc mapTypeToBracket(name: string; t: PType; info: TLineInfo): PNode =
-  result = newNodeIT(nkBracketExpr, info, t)
+  result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(name, t, info)
   for i in 0 .. < t.len:
     if t.sons[i] == nil:
@@ -92,19 +92,19 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   of tyStmt: result = atomicType("stmt")
   of tyEmpty: result = atomicType"void"
   of tyArrayConstr, tyArray:
-    result = newNodeIT(nkBracketExpr, info, t)
+    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array")
     result.add mapTypeToAst(t.sons[0], info)
     result.add mapTypeToAst(t.sons[1], info)
   of tyTypeDesc:
     if t.base != nil:
-      result = newNodeIT(nkBracketExpr, info, t)
+      result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
       result.add atomicType("typeDesc")
       result.add mapTypeToAst(t.base, info)
     else:
       result = atomicType"typeDesc"
   of tyGenericInvocation:
-    result = newNodeIT(nkBracketExpr, info, t)
+    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     for i in 0 .. < t.len:
       result.add mapTypeToAst(t.sons[i], info)
   of tyGenericInst, tyGenericBody, tyOrdinal, tyUserTypeClassInst:
@@ -117,7 +117,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   of tyGenericParam, tyForward: result = atomicType(t.sym.name.s)
   of tyObject:
     if allowRecursion:
-      result = newNodeIT(nkObjectTy, info, t)
+      result = newNodeIT(nkObjectTy, if t.n.isNil: info else: t.n.info, t)
       if t.sons[0] == nil:
         result.add ast.emptyNode
       else:
@@ -126,7 +126,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
     else:
       result = atomicType(t.sym.name.s)
   of tyEnum:
-    result = newNodeIT(nkEnumTy, info, t)
+    result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
     result.add copyTree(t.n)
   of tyTuple: result = mapTypeToBracket("tuple", t, info)
   of tySet: result = mapTypeToBracket("set", t, info)
@@ -137,7 +137,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   of tyProc: result = mapTypeToBracket("proc", t, info)
   of tyOpenArray: result = mapTypeToBracket("openArray", t, info)
   of tyRange:
-    result = newNodeIT(nkBracketExpr, info, t)
+    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("range")
     result.add t.n.sons[0].copyTree
     result.add t.n.sons[1].copyTree
@@ -174,7 +174,7 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   of tyNot: result = mapTypeToBracket("not", t, info)
   of tyAnything: result = atomicType"anything"
   of tyStatic, tyFromExpr, tyFieldAccessor:
-    result = newNodeIT(nkBracketExpr, info, t)
+    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("static")
     if t.n != nil:
       result.add t.n.copyTree

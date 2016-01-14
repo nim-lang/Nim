@@ -534,7 +534,7 @@ proc generateDocumentationJumps(docs: IndexedDocs): string =
   for title in titles:
     chunks.add("<a href=\"" & title.link & "\">" & title.keyword & "</a>")
 
-  result.add(chunks.join(", ") & ".<br>")
+  result.add(chunks.join(", ") & ".<br/>")
 
 proc generateModuleJumps(modules: seq[string]): string =
   ## Returns a plain list of hyperlinks to the list of modules.
@@ -544,7 +544,7 @@ proc generateModuleJumps(modules: seq[string]): string =
   for name in modules:
     chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
 
-  result.add(chunks.join(", ") & ".<br>")
+  result.add(chunks.join(", ") & ".<br/>")
 
 proc readIndexDir(dir: string):
     tuple[modules: seq[string], symbols: seq[IndexEntry], docs: IndexedDocs] =

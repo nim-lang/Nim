@@ -1,6 +1,14 @@
 # Nim Compiler
 
-[![Join the chat at https://gitter.im/nim-lang/Nim](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nim-lang/Nim?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the Chat at irc.freenode.net#nim](https://img.shields.io/badge/IRC-join_chat_in_%23nim-blue.svg)](https://webchat.freenode.net/?channels=nim)
+[![Get help](https://img.shields.io/badge/Forum-get%20help-4eb899.svg)](http://forum.nim-lang.org)
+[![Stackoverflow](https://img.shields.io/badge/stackoverflow-use_%23nim_tag-yellow.svg)](http://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15)
+[![Follow @nim_lang!](https://img.shields.io/twitter/follow/nim_lang.svg?style=social)](https://twitter.com/nim_lang)
+
+[![Travis](https://img.shields.io/travis/nim-lang/Nim.svg)](https://travis-ci.org/nim-lang/Nim)
+
+[![Contribute to Nim via Gratipay!](https://img.shields.io/gratipay/team/nim.svg)](https://gratipay.com/nim/)
+[![Bountysource](https://img.shields.io/bountysource/team/nim/activity.svg)](https://www.bountysource.com/teams/nim)
 
 
 This repo contains the Nim compiler, Nim's stdlib, tools and
