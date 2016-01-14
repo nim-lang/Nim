@@ -213,6 +213,8 @@ proc makeClosure*(prc: PSym; env: PNode; info: TLineInfo): PNode =
   if env == nil:
     result.add(newNodeIT(nkNilLit, info, getSysType(tyNil)))
   else:
+    if env.kind == nkClosure:
+      localError(info, "internal error: taking closure of closure")
     result.add(env)
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
@@ -709,6 +711,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
   of nkClosure:
     if n[1].kind == nkNilLit:
       n.sons[0] = liftCapturedVars(n[0], owner, d, c)
+      #if n.sons[0].kind == nkClosure: result = n.sons[0]
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let m = newSymNode(n[namePos].sym)

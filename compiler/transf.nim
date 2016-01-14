@@ -313,10 +313,18 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
     result = PTransNode(n)
   of nkVarSection, nkLetSection:
     result = transformVarSection(c, n)
+  of nkClosure:
+    # it can happen that for-loop-inlining produced a fresh
+    # set of variables, including some computed environment
+    # (bug #2604). We need to patch this environment here too:
+    let a = n[1]
+    if a.kind == nkSym:
+      n.sons[1] = transformSymAux(c, a)
+    return PTransNode(n)
   else:
     result = newTransNode(n)
     for i in countup(0, sonsLen(n)-1):
-      result[i] =  introduceNewLocalVars(c, n.sons[i])
+      result[i] = introduceNewLocalVars(c, n.sons[i])
 
 proc transformYield(c: PTransf, n: PNode): PTransNode =
   result = newTransNode(nkStmtList, n.info, 0)
