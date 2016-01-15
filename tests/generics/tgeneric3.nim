@@ -69,7 +69,7 @@ proc cmp[T:int8|int16|int32|int64|int] (a,b: T): T {.inline.} =
 template binSearchImpl *(docmp: expr) {.immediate.} =
   var bFound = false
   result = 0
-  var H = haystack.len -1
+  var H = haystack.len - 1
   while result <= H :
     var I {.inject.} = (result + H) shr 1
     var SW = docmp
@@ -90,7 +90,7 @@ proc DeleteItem[T,D] (n: PNode[T,D], x: int): PNode[T,D] {.inline.} =
     return n
   dec(n.count)
   if n.count > 0 :
-    for i in countup(x, n.count -1) : n.slots[i] = n.slots[i + 1]
+    for i in countup(x, n.count - 1) : n.slots[i] = n.slots[i + 1]
     n.slots[n.count] = nil
     case n.count
     of cLen1 : setLen(n.slots, cLen1)
@@ -121,7 +121,7 @@ proc internalDelete[T,D] (ANode: PNode[T,D], key: T, Avalue: var D): PNode[T,D] 
       if x == 0 :
         n = n.left
       else :
-        x = (-x) -1
+        x = (-x) - 1
         if x < n.count :
           n = n.slots[x].node
         else :
@@ -132,10 +132,10 @@ proc internalDelete[T,D] (ANode: PNode[T,D], key: T, Avalue: var D): PNode[T,D] 
       Avalue = n.slots[x].value
       var n2 = DeleteItem(n, x)
       dec(h)
-      while (n2 != n) and (h >=0) :
+      while (n2 != n) and (h >= 0) :
         n = n2
         var w = addr Path[h]
-        x  = w.Xi -1
+        x  = w.Xi - 1
         if x >= 0 :
           if (n == nil) and isClean(w.Nd, x) :
             n = w.Nd
@@ -160,7 +160,7 @@ proc internalFind[T,D] (n: PNode[T,D], key: T): ref TItem[T,D] {.inline.} =
       if x == 0 :
         wn = wn.left
       else :
-        x = (-x) -1
+        x = (-x) - 1
         if x < wn.count :
           wn = wn.slots[x].node
         else :
@@ -199,7 +199,7 @@ proc traceTree[T,D](root: PNode[T,D]) =
     if n.left != nil:
       traceln(space)
       write stdout, "left: "
-      doTrace(n.left, level +1)
+      doTrace(n.left, level+1)
     for i, el in n.slots :
       if el != nil and not isClean(el):
         traceln(space)
@@ -208,7 +208,7 @@ proc traceTree[T,D](root: PNode[T,D]) =
           write stdout, "error "
         else:
           traceEl(el)
-          if el.node != nil: doTrace(el.node, level +1)
+          if el.node != nil: doTrace(el.node, level+1)
           else : write stdout, " empty "
       elif i < n.count :
         traceln(space)
@@ -217,7 +217,7 @@ proc traceTree[T,D](root: PNode[T,D]) =
         when T is string :
           if el.key != nil: write stdout, el.key
         else : write stdout, el.key
-        if el.node != nil: doTrace(el.node, level +1)
+        if el.node != nil: doTrace(el.node, level+1)
         else : write stdout, " empty "
     writeLine stdout,""
 
@@ -245,25 +245,25 @@ proc SplitPage[T,D](n, left: PNode[T,D], xi: int, Akey:var T, Avalue:var D): PNo
   result.slots.newSeq(cLenCenter)
   result.count = cCenter
   if x == cCenter:
-    for i in 0..cCenter -1: shallowCopy(it1[i], left.slots[i])
-    for i in 0..cCenter -1: shallowCopy(result.slots[i], left.slots[cCenter + i])
+    for i in 0..cCenter-1: shallowCopy(it1[i], left.slots[i])
+    for i in 0..cCenter-1: shallowCopy(result.slots[i], left.slots[cCenter + i])
     result.left = n
   else :
     if x < cCenter :
       for i in 0..x-1: shallowCopy(it1[i], left.slots[i])
       it1[x] = setItem(Akey, Avalue, n)
-      for i in x+1 .. cCenter -1: shallowCopy(it1[i], left.slots[i-1])
-      var w = left.slots[cCenter -1]
+      for i in x+1 .. cCenter-1: shallowCopy(it1[i], left.slots[i-1])
+      var w = left.slots[cCenter-1]
       Akey = w.key
       Avalue = w.value
       result.left = w.node
-      for i in 0..cCenter -1: shallowCopy(result.slots[i], left.slots[cCenter + i])
+      for i in 0..cCenter-1: shallowCopy(result.slots[i], left.slots[cCenter + i])
     else :
-      for i in 0..cCenter -1: shallowCopy(it1[i], left.slots[i])
+      for i in 0..cCenter-1: shallowCopy(it1[i], left.slots[i])
       x = x - (cCenter + 1)
       for i in 0..x-1: shallowCopy(result.slots[i], left.slots[cCenter + i + 1])
       result.slots[x] = setItem(Akey, Avalue, n)
-      for i in x+1 .. cCenter -1: shallowCopy(result.slots[i], left.slots[cCenter + i])
+      for i in x+1 .. cCenter-1: shallowCopy(result.slots[i], left.slots[cCenter + i])
       var w = left.slots[cCenter]
       Akey = w.key
       Avalue = w.value
@@ -290,7 +290,7 @@ proc internalPut[T,D](ANode: ref TNode[T,D], Akey: T, Avalue: D, Oldvalue: var D
       if x == 0 :
         n = n.left
       else :
-        x = (-x) -1
+        x = (-x)-1
         if x < n.count :
           n = n.slots[x].node
         else :

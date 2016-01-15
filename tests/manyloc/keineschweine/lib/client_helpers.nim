@@ -66,7 +66,7 @@ proc handlePackets*(server: PServer; buf: PBuffer) =
 proc updateFileProgress*() =
   let progress = currentFileTransfer.pos / currentFileTransfer.fullLen
   downloadProgress.bg.setSize(vec2f(progress * 100, 20))
-  downloadProgress.setString($currentFileTransfer.pos &'/'& $currentFileTransfer.fullLen)
+  downloadProgress.setString($currentFileTransfer.pos & '/' & $currentFileTransfer.fullLen)
 
 ## HFileTransfer
 proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) {.procvar.} =

@@ -277,7 +277,7 @@ when isMainModule:
   s.flush
 
   defPacket(Y, tuple[z: int8])
-  proc `$`(z: Y): string = result = "Y("& $z.z &")"
+  proc `$`(z: Y): string = result = "Y(" & $z.z & ")"
   defPacket(TestPkt, tuple[x: seq[Y]])
   var test = newTestPkt()
   test.x.add([newY(5), newY(4), newY(3), newY(2), newY(1)])

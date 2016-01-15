@@ -143,7 +143,7 @@ proc main() =
   # Create long-lived array, filling half of it
   echo(" Creating a long-lived array of " & $kArraySize & " doubles")
   newSeq(myarray, kArraySize)
-  for i in 0..kArraySize div 2 -1:
+  for i in 0..kArraySize div 2 - 1:
     myarray[i] = 1.0 / toFloat(i)
 
   PrintDiagnostics()

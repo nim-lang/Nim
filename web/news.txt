@@ -33,6 +33,10 @@ News
 
   ``echo $ foo`` continues to be parsed as ``(echo) $ (foo)``.
 
+  This also means that ``-1`` is always parsed as prefix operator so
+  code like ``0..kArraySize div 2 -1`` needs to be changed to
+  ``0..kArraySize div 2 - 1``.
+
 
   Iterator changes
   ~~~~~~~~~~~~~~~~
