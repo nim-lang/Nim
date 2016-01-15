@@ -250,12 +250,14 @@ proc isUnary(p: TParser): bool =
   if p.tok.tokType in {tkOpr, tkDotDot} and
      p.tok.strongSpaceB == 0 and
      p.tok.strongSpaceA > 0:
-    # XXX change this after 0.10.4 is out
-    if p.strongSpaces:
       result = true
-    else:
-      parMessage(p, warnDeprecated,
-        "will be parsed as unary operator; inconsistent spacing")
+      # versions prior to 0.13.0 used to do this:
+      when false:
+        if p.strongSpaces:
+          result = true
+        else:
+          parMessage(p, warnDeprecated,
+            "will be parsed as unary operator; inconsistent spacing")
 
 proc checkBinary(p: TParser) {.inline.} =
   ## Check if the current parser token is a binary operator.

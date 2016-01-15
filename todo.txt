@@ -2,8 +2,10 @@ essential for 1.0
 =================
 
 - introduce newSeqOfCap(10)
-- The remaining bugs of the lambda lifting pass that is responsible to enable
-  closures and closure iterators need to be fixed.
+- annotation support for getType()
+- overloading of `()` needs to be in .experimental
+- do notation needs to be documented properly
+
 - ``concept`` needs to be refined, a nice name for the feature is not enough.
 - Destructors need to be refined.
 - make '--implicitStatic:on' the default; then we can also clean up the
@@ -12,7 +14,6 @@ essential for 1.0
 - add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
 - document NimMain and check whether it works for threading
-- remove   echo $foo  gotcha
 - ``not`` or ``~`` for the effects system
 
 
