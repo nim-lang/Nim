@@ -1839,7 +1839,7 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
 
   if isConstClosure(n):
     inc(p.module.labels)
-    var tmp = "LOC" & rope(p.module.labels)
+    var tmp = "CNSTCLOSURE" & rope(p.module.labels)
     addf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(p.module, n.typ), tmp, genConstExpr(p, n)])
     putIntoDest(p, d, n.typ, tmp, OnStatic)
