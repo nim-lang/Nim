@@ -236,8 +236,6 @@ executable code.
 Do notation
 -----------
 
-**Note:** The future of the ``do`` notation is uncertain.
-
 As a special more convenient notation, proc expressions involved in procedure
 calls can use the ``do`` keyword:
 
@@ -251,10 +249,12 @@ calls can use the ``do`` keyword:
 ``do`` is written after the parentheses enclosing the regular proc params.
 The proc expression represented by the do block is appended to them.
 
-More than one ``do`` block can appear in a single call:
+``do`` with parentheses is an anonymous ``proc``; however a ``do`` without
+parentheses is just a block of code. The ``do`` notation can be used to
+pass multiple blocks to a macro:
 
 .. code-block:: nim
-  proc performWithUndo(task: proc(), undo: proc()) = ...
+  macro performWithUndo(task, undo: untyped) = ...
 
   performWithUndo do:
     # multiple-line block of code
