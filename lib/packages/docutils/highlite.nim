@@ -173,7 +173,22 @@ proc nimNextToken(g: var GeneralTokenizer) =
       while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
     of '#':
       g.kind = gtComment
-      while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}): inc(pos)
+      inc(pos)
+      if g.buf[pos] == '#': inc(pos)
+      if g.buf[pos] == '[':
+        g.kind = gtLongComment
+        var brackets = 0
+        while g.buf[pos] == '[':
+          inc(pos)
+          inc(brackets)
+        while g.buf[pos] != '\0':
+          if g.buf[pos] == ']':
+            var q = pos
+            while g.buf[pos] == ']': inc(pos)
+            if pos-q == brackets: break
+          inc(pos)
+      else:
+        while g.buf[pos] notin {'\0', '\x0A', '\x0D'}: inc(pos)
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF':
       var id = ""
       while g.buf[pos] in SymChars + {'_'}:

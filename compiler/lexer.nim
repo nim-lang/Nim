@@ -769,24 +769,78 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
+proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
+                          isDoc: bool) =
+  var pos = start
+  var buf = L.buf
+  while buf[pos] == '[':
+    inc pos
+  let brackets = pos - start
+  var toStrip = 0
+  # detect the amount of indentation:
+  if isDoc:
+    toStrip = getColNumber(L, pos)
+    while buf[pos] == ' ': inc pos
+    if buf[pos] in {CR, LF}:
+      pos = handleCRLF(L, pos)
+      buf = L.buf
+      toStrip = 0
+      while buf[pos] == ' ':
+        inc pos
+        inc toStrip
+  while true:
+    case buf[pos]
+    of ']':
+      var p = pos
+      while buf[p] == ']':
+        inc p
+      if p-pos == brackets:
+        pos = p
+        break
+      else:
+        if isDoc: tok.literal.add ']'
+        inc pos
+    of '\t':
+      lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
+      inc(pos)
+      if isDoc: tok.literal.add '\t'
+    of CR, LF:
+      pos = handleCRLF(L, pos)
+      buf = L.buf
+      # strip leading whitespace:
+      if isDoc:
+        tok.literal.add "\n"
+        inc tok.iNumber
+        var c = toStrip
+        while buf[pos] == ' ' and c > 0:
+          inc pos
+          dec c
+    of nimlexbase.EndOfFile:
+      lexMessagePos(L, errGenerated, pos, "end of multiline comment expected")
+      break
+    else:
+      if isDoc: tok.literal.add buf[pos]
+      inc(pos)
+  L.bufpos = pos
+
 proc scanComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
-  when not defined(nimfix):
-    assert buf[pos+1] == '#'
-    if buf[pos+2] == '[':
-      if buf[pos+3] == ']':
-        #  ##[] is the (rather complex) "cursor token" for idetools
-        tok.tokType = tkComment
-        tok.literal = "[]"
-        inc(L.bufpos, 4)
-        return
-      else:
-        lexMessagePos(L, warnDeprecated, pos, "use '## [' instead; '##['")
-
   tok.tokType = tkComment
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
+  when not defined(nimfix):
+    assert buf[pos+1] == '#'
+    if buf[pos+2] == '[':
+      skipMultiLineComment(L, tok, pos+2, true)
+      return
+    inc(pos, 2)
+
+  var toStrip = 0
+  while buf[pos] == ' ':
+    inc pos
+    inc toStrip
+
   when defined(nimfix):
     var col = getColNumber(L, pos)
   while true:
@@ -820,6 +874,12 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     if doContinue():
       tok.literal.add "\n"
       when defined(nimfix): col = indent
+      else:
+        inc(pos, 2)
+        var c = toStrip
+        while buf[pos] == ' ' and c > 0:
+          inc pos
+          dec c
       inc tok.iNumber
     else:
       if buf[pos] > ' ':
@@ -863,7 +923,8 @@ proc skip(L: var TLexer, tok: var TToken) =
         # do not skip documentation comment:
         if buf[pos+1] == '#': break
         if buf[pos+1] == '[':
-          lexMessagePos(L, warnDeprecated, pos, "use '# [' instead; '#['")
+          skipMultiLineComment(L, tok, pos+1, false)
+          return
         while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
     else:
       break                   # EndOfFile also leaves the loop

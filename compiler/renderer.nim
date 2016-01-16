@@ -167,33 +167,24 @@ proc makeNimString(s: string): string =
 proc putComment(g: var TSrcGen, s: string) =
   if s.isNil: return
   var i = 0
-  var comIndent = 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
-  var com = ""
+  var com = "## "
   while true:
     case s[i]
     of '\0':
       break
     of '\x0D':
       put(g, tkComment, com)
-      com = ""
+      com = "## "
       inc(i)
       if s[i] == '\x0A': inc(i)
       optNL(g, ind)
     of '\x0A':
       put(g, tkComment, com)
-      com = ""
+      com = "## "
       inc(i)
       optNL(g, ind)
-    of '#':
-      add(com, s[i])
-      inc(i)
-      comIndent = 0
-      while s[i] == ' ':
-        add(com, s[i])
-        inc(i)
-        inc(comIndent)
     of ' ', '\x09':
       add(com, s[i])
       inc(i)
@@ -206,7 +197,7 @@ proc putComment(g: var TSrcGen, s: string) =
       if not isCode and (g.lineLen + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
-        com = '#' & spaces(comIndent)
+        com = "## "
       while s[i] > ' ':
         add(com, s[i])
         inc(i)
@@ -283,7 +274,7 @@ proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
   result = false
   if n.comment != nil:
     result = (renderNoComments notin g.flags) or
-        (renderDocComments in g.flags) and startsWith(n.comment, "##")
+        (renderDocComments in g.flags)
 
 proc gcom(g: var TSrcGen, n: PNode) =
   assert(n != nil)
