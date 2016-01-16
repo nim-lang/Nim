@@ -5,7 +5,7 @@ essential for 1.0
 - annotation support for getType()
 - overloading of `()` needs to be in .experimental
 - do notation needs to be documented properly
-
+- find a solution for the  x.f[T](y)  gotcha
 - ``concept`` needs to be refined, a nice name for the feature is not enough.
 - Destructors need to be refined.
 - make '--implicitStatic:on' the default; then we can also clean up the
