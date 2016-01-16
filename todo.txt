@@ -4,6 +4,7 @@ essential for 1.0
 - introduce newSeqOfCap(10)
 - The remaining bugs of the lambda lifting pass that is responsible to enable
   closures and closure iterators need to be fixed.
+- find a solution for the  x.f[T](y)  gotcha
 - ``concept`` needs to be refined, a nice name for the feature is not enough.
 - Destructors need to be refined.
 - make '--implicitStatic:on' the default; then we can also clean up the
