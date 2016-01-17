@@ -112,12 +112,7 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       if node.comment == nil: node.comment = ""
-      if p.tok.literal == "[]":
-        node.flags.incl nfIsCursor
-        #echo "parser: "
-        #debug node
-      else:
-        add(node.comment, p.tok.literal)
+      add(node.comment, p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)

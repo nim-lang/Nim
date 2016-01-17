@@ -149,10 +149,10 @@ proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
-  if n.comment != nil and startsWith(n.comment, "##"):
+  if n.comment != nil:
     renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
                                toLinenumber(n.info), toColumn(n.info),
-                               dummyHasToc, d.options + {roSkipPounds}), result)
+                               dummyHasToc, d.options), result)
 
 proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil

@@ -131,10 +131,10 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
           emptyNode())),
       emptyNode(),
       emptyNode(),
-      newNimNode(nnkStmtList).und(#[6]
+      newNimNode(nnkStmtList).und(# [6]
         newNimNode(nnkAsgn).und(
           ^"result",                  ## result =
-          newNimNode(nnkCall).und(#[6][0][1]
+          newNimNode(nnkCall).und(# [6][0][1]
             ^"format",  ## format
             emptyNode()))))  ## "[TypeName   $1   $2]"
     formatStr = "["& $typeName.ident
