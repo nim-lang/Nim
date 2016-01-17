@@ -208,6 +208,34 @@ Changes affecting backwards compatibility
   is renamed to ``apply``.
 - The template ``mapIt`` now doesn't require the result's type parameter.
   Also the inplace ``mapIt`` is renamed to ``apply``.
+- The compiler is now stricter with what is allowed as a case object
+  discriminator. The following code used to compile but was not supported
+  completely and so now fails:
+
+.. code-block:: nim
+    type
+        DataType* {.pure.} = enum
+            Char = 1,
+            Int8 = 2,
+            Int16 = 3,
+            Int32 = 4,
+            Int64 = 5,
+            Float32 = 6,
+            Float64 = 7
+
+        DataSeq* = object
+            case kind* : DataType
+            of DataType.Char: charSeq* : seq[char]
+            of DataType.Int8: int8Seq* : seq[int8]
+            of DataType.Int16: int16Seq* : seq[int16]
+            of DataType.Int32: int32Seq* : seq[int32]
+            of DataType.Int64: int64Seq* : seq[int64]
+            of DataType.Float32: float32Seq* : seq[float32]
+            of DataType.Float64: float64Seq* : seq[float64]
+
+            length* : int
+
+
 
 Library Additions
 -----------------
