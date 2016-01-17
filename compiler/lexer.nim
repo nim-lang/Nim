@@ -913,9 +913,16 @@ proc skip(L: var TLexer, tok: var TToken) =
       pos = handleCRLF(L, pos)
       buf = L.buf
       var indent = 0
-      while buf[pos] == ' ':
-        inc(pos)
-        inc(indent)
+      while true:
+        if buf[pos] == ' ':
+          inc(pos)
+          inc(indent)
+        elif buf[pos] == '#' and buf[pos+1] == '[':
+          skipMultiLineComment(L, tok, pos+2, false)
+          pos = L.bufpos
+          buf = L.buf
+        else:
+          break
       tok.strongSpaceA = 0
       when defined(nimfix):
         template doBreak(): expr = buf[pos] > ' '
