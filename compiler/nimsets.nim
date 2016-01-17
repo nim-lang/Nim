@@ -106,13 +106,17 @@ proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
         inc(b)
         if (b >= len(s) * ElemSize) or not bitSetIn(s, b): break
       dec(b)
+      let aa = newIntTypeNode(nkIntLit, a + first, elemType)
+      aa.info = info
       if a == b:
-        addSon(result, newIntTypeNode(nkIntLit, a + first, elemType))
+        addSon(result, aa)
       else:
         n = newNodeI(nkRange, info)
         n.typ = elemType
-        addSon(n, newIntTypeNode(nkIntLit, a + first, elemType))
-        addSon(n, newIntTypeNode(nkIntLit, b + first, elemType))
+        addSon(n, aa)
+        let bb = newIntTypeNode(nkIntLit, b + first, elemType)
+        bb.info = info
+        addSon(n, bb)
         addSon(result, n)
       e = b
     inc(e)
