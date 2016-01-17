@@ -83,7 +83,6 @@ They look like:
 Multiline comments support nesting:
 
 .. code-block:: nim
-  # Does not comment out 'p' properly:
   #[  #[ Multiline comment in already
      commented out code. ]#
   proc p[T](x: T) = discard
