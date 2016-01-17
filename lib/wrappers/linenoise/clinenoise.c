@@ -139,7 +139,7 @@ struct linenoiseState {
     int ofd;            /* Terminal stdout file descriptor. */
     char *buf;          /* Edited line buffer. */
     size_t buflen;      /* Edited line buffer size. */
-    const char *prompt; /* Prompt to display. */
+    char *prompt; /* Prompt to display. */
     size_t plen;        /* Prompt length. */
     size_t pos;         /* Current cursor position. */
     size_t oldpos;      /* Previous refresh cursor position. */
@@ -172,7 +172,7 @@ enum KEY_ACTION{
 };
 
 static void linenoiseAtExit(void);
-int linenoiseHistoryAdd(const char *line);
+int linenoiseHistoryAdd(char *line);
 static void refreshLine(struct linenoiseState *l);
 
 /* Debugging macro. */
@@ -413,7 +413,7 @@ void linenoiseSetCompletionCallback(linenoiseCompletionCallback *fn) {
  * in order to add completion options given the input string when the
  * user typed <tab>. See the example.c source code for a very easy to
  * understand example. */
-void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str) {
+void linenoiseAddCompletion(linenoiseCompletions *lc, char *str) {
     size_t len = strlen(str);
     char *copy, **cvec;
 
@@ -445,7 +445,7 @@ static void abInit(struct abuf *ab) {
     ab->len = 0;
 }
 
-static void abAppend(struct abuf *ab, const char *s, int len) {
+static void abAppend(struct abuf *ab, char *s, int len) {
     char *neww = (char*)realloc(ab->b,ab->len+len);
 
     if (neww == NULL) return;
@@ -723,7 +723,7 @@ void linenoiseEditDeletePrevWord(struct linenoiseState *l) {
  * when ctrl+d is typed.
  *
  * The function returns the length of the current buffer. */
-static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, const char *prompt)
+static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, char *prompt)
 {
     struct linenoiseState l;
 
@@ -929,7 +929,7 @@ void linenoisePrintKeyCodes(void) {
 
 /* This function calls the line editing function linenoiseEdit() using
  * the STDIN file descriptor set in raw mode. */
-static int linenoiseRaw(char *buf, size_t buflen, const char *prompt) {
+static int linenoiseRaw(char *buf, size_t buflen, char *prompt) {
     int count;
 
     if (buflen == 0) {
@@ -959,7 +959,7 @@ static int linenoiseRaw(char *buf, size_t buflen, const char *prompt) {
  * for a blacklist of stupid terminals, and later either calls the line
  * editing function or uses dummy fgets() so that you will be able to type
  * something even in the most desperate of the conditions. */
-char *linenoise(const char *prompt) {
+char *linenoise(char *prompt) {
     char buf[LINENOISE_MAX_LINE];
     int count;
 
@@ -1009,7 +1009,7 @@ static void linenoiseAtExit(void) {
  * histories, but will work well for a few hundred of entries.
  *
  * Using a circular buffer is smarter, but a bit more complex to handle. */
-int linenoiseHistoryAdd(const char *line) {
+int linenoiseHistoryAdd(char *line) {
     char *linecopy;
 
     if (history_max_len == 0) return 0;
@@ -1072,7 +1072,7 @@ int linenoiseHistorySetMaxLen(int len) {
 
 /* Save the history in the specified file. On success 0 is returned
  * otherwise -1 is returned. */
-int linenoiseHistorySave(const char *filename) {
+int linenoiseHistorySave(char *filename) {
     FILE *fp = fopen(filename,"w");
     int j;
 
@@ -1088,7 +1088,7 @@ int linenoiseHistorySave(const char *filename) {
  *
  * If the file exists and the operation succeeded 0 is returned, otherwise
  * on error -1 is returned. */
-int linenoiseHistoryLoad(const char *filename) {
+int linenoiseHistoryLoad(char *filename) {
     FILE *fp = fopen(filename,"r");
     char buf[LINENOISE_MAX_LINE];
 
