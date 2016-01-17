@@ -1221,11 +1221,9 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     of '\\':
       case s[i+1]:
       of 'x':
-        inc i
         var c: int
-        i += parseutils.parseHex(s, c, i)
+        i += parseutils.parseHex(s[i+2..i+3], c, 0)
         result.add(chr(c))
-        inc(i, 2)
       of '\\':
         result.add('\\')
       of '\'':
@@ -1721,3 +1719,6 @@ when isMainModule:
   doAssert isUpper("ABC")
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
+
+  doAssert(escape("\xD2v\"") == "\"\\xD2v\\\"\"")
+  doAssert(unescape("\"\\xD2v\\\"\"") == "\xD2v\"")
