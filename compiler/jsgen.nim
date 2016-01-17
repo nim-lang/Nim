@@ -1636,7 +1636,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkSym:
     genSym(p, n, r)
   of nkCharLit..nkInt64Lit:
-    r.res = rope(n.intVal)
+    if n.typ.kind == tyBool:
+      r.res = if n.intVal == 0: rope"false" else: rope"true"
+    else:
+      r.res = rope(n.intVal)
     r.kind = resExpr
   of nkNilLit:
     if isEmptyType(n.typ):
