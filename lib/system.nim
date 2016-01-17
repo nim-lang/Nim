@@ -2694,6 +2694,11 @@ when not defined(JS): #and not defined(nimscript):
     proc endOfFile*(f: File): bool {.tags: [], benign.}
       ## Returns true iff `f` is at the end.
 
+    proc ioctl*(f: FileHandle, device: uint): int {.importc: "ioctl",
+      header: "<sys/ioctl.h>", varargs, tags: [WriteIOEffect].}
+      ## A system call for device-specific input/output operations and other
+      ## operations which cannot be expressed by regular system calls
+
     proc readChar*(f: File): char {.
       importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
       ## Reads a single character from the stream `f`.
