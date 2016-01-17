@@ -934,8 +934,10 @@ proc skip(L: var TLexer, tok: var TToken) =
         if buf[pos+1] == '#': break
         if buf[pos+1] == '[':
           skipMultiLineComment(L, tok, pos+2, false)
-          return
-        while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
+          pos = L.bufpos
+          buf = L.buf
+        else:
+          while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
     else:
       break                   # EndOfFile also leaves the loop
   L.bufpos = pos
