@@ -21,6 +21,9 @@ News
     the language.
   - Top level routines cannot have the calling convention ``closure``
     anymore.
+  - The ``redis`` module has been moved out of the standard library. It can
+    now be installed via Nimble and is located here:
+    https://github.com/nim-lang/redis
 
 
   Syntax changes
