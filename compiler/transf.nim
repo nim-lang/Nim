@@ -792,7 +792,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         result = newTransNode(nkCommentStmt, n.info, 0)
       tryStmt.addSon(deferPart)
       # disable the original 'defer' statement:
-      n.kind = nkCommentStmt
+      n.kind = nkEmpty
   of nkContinueStmt:
     result = PTransNode(newNodeI(nkBreakStmt, n.info))
     var labl = c.contSyms[c.contSyms.high]
