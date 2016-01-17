@@ -773,9 +773,6 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
                           isDoc: bool) =
   var pos = start
   var buf = L.buf
-  while buf[pos] == '[':
-    inc pos
-  let brackets = pos - start
   var toStrip = 0
   # detect the amount of indentation:
   if isDoc:
@@ -788,18 +785,31 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
       while buf[pos] == ' ':
         inc pos
         inc toStrip
+  var nesting = 0
   while true:
     case buf[pos]
+    of '#':
+      if isDoc:
+        if buf[pos+1] == '#' and buf[pos+2] == '[':
+          inc nesting
+        tok.literal.add '#'
+      elif buf[pos+1] == '[':
+        inc nesting
+      inc pos
     of ']':
-      var p = pos
-      while buf[p] == ']':
-        inc p
-      if p-pos == brackets:
-        pos = p
-        break
-      else:
-        if isDoc: tok.literal.add ']'
-        inc pos
+      if isDoc:
+        if buf[pos+1] == '#' and buf[pos+2] == '#':
+          if nesting == 0:
+            inc(pos, 3)
+            break
+          dec nesting
+        tok.literal.add ']'
+      elif buf[pos+1] == '#':
+        if nesting == 0:
+          inc(pos, 2)
+          break
+        dec nesting
+      inc pos
     of '\t':
       lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
       inc(pos)
@@ -832,7 +842,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   when not defined(nimfix):
     assert buf[pos+1] == '#'
     if buf[pos+2] == '[':
-      skipMultiLineComment(L, tok, pos+2, true)
+      skipMultiLineComment(L, tok, pos+3, true)
       return
     inc(pos, 2)
 
@@ -923,7 +933,7 @@ proc skip(L: var TLexer, tok: var TToken) =
         # do not skip documentation comment:
         if buf[pos+1] == '#': break
         if buf[pos+1] == '[':
-          skipMultiLineComment(L, tok, pos+1, false)
+          skipMultiLineComment(L, tok, pos+2, false)
           return
         while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
     else:

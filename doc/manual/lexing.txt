@@ -78,33 +78,24 @@ They look like:
 .. code-block:: nim
   #[Comment here.
   Multiple lines
-  are not a problem.]
+  are not a problem.]#
 
-.. code-block:: nim
-  #[[comment here]]
-
-.. code-block:: nim
-  #[[[comment here]]]
-
-.. code-block:: nim
-  #[[[[comment here]]]]
-
-The number of opening brackets must match the number of closing brackets
-but they do not nest in the traditional sense:
+Multiline comments support nesting:
 
 .. code-block:: nim
   # Does not comment out 'p' properly:
-  #[
+  #[  #[ Multiline comment in already
+     commented out code. ]#
   proc p[T](x: T) = discard
-  ]
+  ]#
 
-Multiline documentation comments look like:
+Multiline documentation comments look like and support nesting too:
 
 .. code-block:: nim
   proc foo =
     ##[Long documentation comment
     here.
-    ]
+    ]##
 
 
 Identifiers & Keywords
