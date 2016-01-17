@@ -2165,6 +2165,10 @@ proc pwrite*(a1: cint, a2: pointer, a3: int, a4: Off): int {.
   importc, header: "<unistd.h>".}
 proc read*(a1: cint, a2: pointer, a3: int): int {.importc, header: "<unistd.h>".}
 proc readlink*(a1, a2: cstring, a3: int): int {.importc, header: "<unistd.h>".}
+proc ioctl*(f: FileHandle, device: uint): int {.importc: "ioctl",
+      header: "<sys/ioctl.h>", varargs, tags: [WriteIOEffect].}
+  ## A system call for device-specific input/output operations and other
+  ## operations which cannot be expressed by regular system calls
 
 proc rmdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
 proc setegid*(a1: Gid): cint {.importc, header: "<unistd.h>".}
