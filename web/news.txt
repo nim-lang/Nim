@@ -6,9 +6,6 @@ News
   2016-01-XX Version 0.13.0 released
   ==================================
 
-  This release implements no new features. Instead existing features have
-  been fleshed out as we're heading to version 1.
-
   Changes affecting backwards compatibility
   -----------------------------------------
 
@@ -24,6 +21,8 @@ News
   - The ``redis`` module has been moved out of the standard library. It can
     now be installed via Nimble and is located here:
     https://github.com/nim-lang/redis
+  - ``math.RunningStat`` and its associated procs have been moved from
+    the ``math`` module to a new ``stats`` module.
 
 
   Syntax changes
@@ -39,6 +38,10 @@ News
   This also means that ``-1`` is always parsed as prefix operator so
   code like ``0..kArraySize div 2 -1`` needs to be changed to
   ``0..kArraySize div 2 - 1``.
+
+  This release also adds multi-line comments to Nim. They look
+  like ``#[ comment here ]#``. For more details read the section of
+  the `manual <manual#multiline-comments>`_.
 
 
   Iterator changes
