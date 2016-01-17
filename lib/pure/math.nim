@@ -118,26 +118,6 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-template toFloat(f: float): float = f
-
-proc mean*[T](x: openArray[T]): float {.noSideEffect.} =
-  ## Computes the mean of the elements in `x`, which are first converted to floats.
-  ## If `x` is empty, NaN is returned.
-  ## ``toFloat(x: T): float`` must be defined.
-  for i in items(x): result = result + toFloat(i)
-  result = result / toFloat(len(x))
-
-proc variance*[T](x: openArray[T]): float {.noSideEffect.} =
-  ## Computes the variance of the elements in `x`.
-  ## If `x` is empty, NaN is returned.
-  ## ``toFloat(x: T): float`` must be defined.
-  result = 0.0
-  var m = mean(x)
-  for i in items(x):
-    var diff = toFloat(i) - m
-    result = result + diff*diff
-  result = result / toFloat(len(x))
-
 proc random*(max: int): int {.benign.}
   ## Returns a random number in the range 0..max-1. The sequence of
   ## random number is always the same, unless `randomize` is called
@@ -375,48 +355,6 @@ proc random*[T](x: Slice[T]): T =
 proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
-
-type
-  RunningStat* = object                 ## an accumulator for statistical data
-    n*: int                             ## number of pushed data
-    sum*, min*, max*, mean*: float      ## self-explaining
-    oldM, oldS, newS: float
-
-{.deprecated: [TFloatClass: FloatClass, TRunningStat: RunningStat].}
-
-proc push*(s: var RunningStat, x: float) =
-  ## pushes a value `x` for processing
-  inc(s.n)
-  # See Knuth TAOCP vol 2, 3rd edition, page 232
-  if s.n == 1:
-    s.min = x
-    s.max = x
-    s.oldM = x
-    s.mean = x
-    s.oldS = 0.0
-  else:
-    if s.min > x: s.min = x
-    if s.max < x: s.max = x
-    s.mean = s.oldM + (x - s.oldM)/toFloat(s.n)
-    s.newS = s.oldS + (x - s.oldM)*(x - s.mean)
-
-    # set up for next iteration:
-    s.oldM = s.mean
-    s.oldS = s.newS
-  s.sum = s.sum + x
-
-proc push*(s: var RunningStat, x: int) =
-  ## pushes a value `x` for processing. `x` is simply converted to ``float``
-  ## and the other push operation is called.
-  push(s, toFloat(x))
-
-proc variance*(s: RunningStat): float =
-  ## computes the current variance of `s`
-  if s.n > 1: result = s.newS / (toFloat(s.n - 1))
-
-proc standardDeviation*(s: RunningStat): float =
-  ## computes the current standard deviation of `s`
-  result = sqrt(variance(s))
 
 {.pop.}
 {.pop.}
