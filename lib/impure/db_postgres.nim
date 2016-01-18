@@ -10,6 +10,9 @@
 ## A higher level `PostgreSQL`:idx: database wrapper. This interface
 ## is implemented for other databases also.
 ##
+## See also: `db_odbc <db_odbc.html>`_, `db_sqlite <db_sqlite.html>`_,
+## `db_mysql <db_mysql.html>`_.
+##
 ## Parameter substitution
 ## ----------------------
 ##
@@ -27,7 +30,7 @@
 ##
 ## 2. ``SqlPrepared`` using ``$1, $2, $3, ...``
 ##
-##  .. code-block:: Nim
+## .. code-block:: Nim
 ##   prepare(db, "myExampleInsert",
 ##           sql"""INSERT INTO myTable
 ##                 (colA, colB, colC)

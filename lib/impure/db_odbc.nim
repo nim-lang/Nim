@@ -11,12 +11,54 @@
 ##
 ## This is the same interface that is implemented for other databases.
 ##
-## This has NOT yet been (extensively) tested agains ODBC drivers for
-## Teradata, Oracle, Sybase, MSSqlvSvr, et. al.  databases
+## This has NOT yet been (extensively) tested against ODBC drivers for
+## Teradata, Oracle, Sybase, MSSqlvSvr, et. al.  databases.
 ##
 ## Currently all queries are ANSI calls, not Unicode.
 ##
-## Example:
+## See also: `db_postgres <db_postgres.html>`_, `db_sqlite <db_sqlite.html>`_,
+## `db_mysql <db_mysql.html>`_.
+##
+## Parameter substitution
+## ----------------------
+##
+## All ``db_*`` modules support the same form of parameter substitution.
+## That is, using the ``?`` (question mark) to signify the place where a
+## value should be placed. For example:
+##
+## .. code-block:: Nim
+##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##
+##
+## Examples
+## --------
+##
+## Opening a connection to a database
+## ==================================
+##
+## .. code-block:: Nim
+##     import db_odbc
+##     let db = open("localhost", "user", "password", "dbname")
+##     db.close()
+##
+## Creating a table
+## ================
+##
+## .. code-block:: Nim
+##      db.exec(sql"DROP TABLE IF EXISTS myTable")
+##      db.exec(sql("""CREATE TABLE myTable (
+##                       id integer,
+##                       name varchar(50) not null)"""))
+##
+## Inserting data
+## ==============
+##
+## .. code-block:: Nim
+##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
+##             "Andreas")
+##
+## Large example
+## =============
 ##
 ## .. code-block:: Nim
 ##
