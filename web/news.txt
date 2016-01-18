@@ -129,6 +129,8 @@ News
   via a commit, for a full list see
   `this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222015-10-27+..+2016-01-19%22+>`_.
 
+  - Added missing modules to the documentation including ``coro``,
+    ``securehash``, ``asyncftpclient``, ``mersenne`` and more.
   - Fixed "Generic arguments cannot be used in templates (raising undeclared identifier)"
     (`#3498 <https://github.com/nim-lang/Nim/issues/3498>`_)
   - Fixed "multimethods: Error: internal error: cgmeth.genConv"

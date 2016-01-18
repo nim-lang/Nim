@@ -10,6 +10,9 @@
 ## This module allows you to monitor files or directories for changes using
 ## asyncio.
 ##
+## **Warning**: This module will likely disappear soon and be moved into a
+## new Nimble package.
+##
 ## Windows support is not yet implemented.
 ##
 ## **Note:** This module uses ``inotify`` on Linux (Other Unixes are not yet
