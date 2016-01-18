@@ -1541,17 +1541,18 @@ template isVarargsUntyped(x): expr =
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =
   template checkConstraint(n: expr) {.immediate, dirty.} =
-    if not formal.constraint.isNil:
-      if matchNodeKinds(formal.constraint, n):
-        # better match over other routines with no such restriction:
-        inc(m.genericMatches, 100)
-      else:
-        m.state = csNoMatch
-        return
-    if formal.typ.kind == tyVar:
-      if not n.isLValue:
-        m.state = csNoMatch
-        return
+    if formal != nil:
+      if not formal.constraint.isNil:
+        if matchNodeKinds(formal.constraint, n):
+          # better match over other routines with no such restriction:
+          inc(m.genericMatches, 100)
+        else:
+          m.state = csNoMatch
+          return
+      if formal.typ.kind == tyVar:
+        if not n.isLValue:
+          m.state = csNoMatch
+          return
 
   var
     # iterates over formal parameters
@@ -1675,7 +1676,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           setSon(m.call, formal.position + 1, arg)
           inc(f)
           container = nil
-      checkConstraint(n.sons[a])
+        checkConstraint(n.sons[a])
     inc(a)
 
 proc semFinishOperands*(c: PContext, n: PNode) =
