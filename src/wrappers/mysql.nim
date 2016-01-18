@@ -418,6 +418,7 @@ type
     decimals*: cuint          # Number of decimals in field
     charsetnr*: cuint         # Character set
     ftype*: Enum_field_types  # Type of field. See mysql_com.h for types
+    extension*: pointer
 
   FIELD* = St_mysql_field
   PFIELD* = ptr FIELD
