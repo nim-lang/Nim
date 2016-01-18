@@ -840,7 +840,7 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ##   1 div 2 == 0
   ##   2 div 2 == 1
   ##   3 div 2 == 1
-  ##   7 div 5 == 2
+  ##   7 div 5 == 1
 
 when defined(nimnomagic64):
   proc `div` *(x, y: int64): int64 {.magic: "DivI", noSideEffect.}

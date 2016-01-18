@@ -764,7 +764,7 @@ proc match*(s: string, pattern: TPeg, matches: var openarray[string],
   ## returned.
   var c: TCaptures
   c.origStart = start
-  result = rawMatch(s, pattern, start, c) == len(s) -start
+  result = rawMatch(s, pattern, start, c) == len(s)-start
   if result:
     for i in 0..c.ml-1:
       matches[i] = substr(s, c.matches[i][0], c.matches[i][1])

@@ -1210,22 +1210,21 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## If `s` does not begin with ``prefix`` and end with ``suffix`` a
   ## ValueError exception will be raised.
   result = newStringOfCap(s.len)
-  var i = 0
+  var i = prefix.len
   if not s.startsWith(prefix):
     raise newException(ValueError,
                        "String does not start with a prefix of: " & prefix)
-  inc(i)
   while true:
     if i == s.len-suffix.len: break
     case s[i]
     of '\\':
       case s[i+1]:
       of 'x':
-        inc i
+        inc i, 2
         var c: int
-        i += parseutils.parseHex(s, c, i)
+        i += parseutils.parseHex(s, c, i, maxLen=2)
         result.add(chr(c))
-        inc(i, 2)
+        dec i, 2
       of '\\':
         result.add('\\')
       of '\'':
@@ -1721,3 +1720,4 @@ when isMainModule:
   doAssert isUpper("ABC")
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
+  doAssert(unescape(r"\x013", "", "") == "\x013")

@@ -960,10 +960,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var r: PType
   if n.sons[0].kind != nkEmpty:
     r = semTypeNode(c, n.sons[0], nil)
-  elif kind == skIterator:
-    # XXX This is special magic we should likely get rid of
-    r = newTypeS(tyExpr, c)
-    message(n.info, warnDeprecated, "implicit return type for 'iterator'")
 
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
@@ -1296,7 +1292,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       child.flags.incl tfIterator
       result.addSonSkipIntLit(child)
     else:
-      result = semProcTypeWithScope(c, n, prev, skClosureIterator)
+      result = semProcTypeWithScope(c, n, prev, skIterator)
       result.flags.incl(tfIterator)
       if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
         result.callConv = ccInline

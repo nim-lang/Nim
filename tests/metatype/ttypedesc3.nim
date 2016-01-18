@@ -6,7 +6,7 @@ type
 
 proc pr(T: typedesc[Base]) = echo "proc " & T.name
 method me(T: typedesc[Base]) = echo "method " & T.name
-iterator it(T: typedesc[Base]) = yield "yield " & T.name
+iterator it(T: typedesc[Base]): auto = yield "yield " & T.name
 
 Base.pr
 Child.pr

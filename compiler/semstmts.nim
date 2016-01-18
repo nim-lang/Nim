@@ -84,7 +84,7 @@ proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
 proc semProcvarCheck(c: PContext, n: PNode) =
   let n = n.skipConv
   if n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
-                                        skIterator, skClosureIterator}:
+                                        skIterator}:
     performProcvarCheck(c, n, n.sym)
 
 proc semProc(c: PContext, n: PNode): PNode
@@ -326,6 +326,8 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     incl(result.flags, sfGlobal)
   else:
     result = semIdentWithPragma(c, kind, n, {})
+    if result.owner.kind == skModule:
+      incl(result.flags, sfGlobal)
   suggestSym(n.info, result)
   styleCheckDef(result)
 
@@ -598,7 +600,7 @@ proc semFor(c: PContext, n: PNode): PNode =
     # first class iterator:
     result = semForVars(c, n)
   elif not isCallExpr or call.sons[0].kind != nkSym or
-      call.sons[0].sym.kind notin skIterators:
+      call.sons[0].sym.kind != skIterator:
     if length == 3:
       n.sons[length-2] = implicitIterator(c, "items", n.sons[length-2])
     elif length == 4:
@@ -958,15 +960,17 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
 
   let original = n.sons[namePos].sym
-  let s = copySym(original, false)
-  incl(s.flags, sfFromGeneric)
+  let s = original #copySym(original, false)
+  #incl(s.flags, sfFromGeneric)
+  #s.owner = original
 
   n = replaceTypesInBody(c, pt, n, original)
   result = n
   s.ast = result
   n.sons[namePos].sym = s
   n.sons[genericParamsPos] = emptyNode
-  let params = n.typ.n
+  # for LL we need to avoid wrong aliasing
+  let params = copyTree n.typ.n
   n.sons[paramsPos] = params
   s.typ = n.typ
   for i in 1..<params.len:
@@ -974,6 +978,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
                               tyFromExpr, tyFieldAccessor}+tyTypeClasses:
       localError(params[i].info, "cannot infer type of parameter: " &
                  params[i].sym.name.s)
+    #params[i].sym.owner = s
   openScope(c)
   pushOwner(s)
   addParams(c, params, skProc)
@@ -1006,7 +1011,8 @@ proc activate(c: PContext, n: PNode) =
       discard
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
-  if s.typ.sons[0] != nil and s.kind != skIterator:
+  if s.typ.sons[0] != nil and not
+      (s.kind == skIterator and s.typ.callConv != ccClosure):
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
@@ -1143,13 +1149,15 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
-  if s.kind in skIterators:
+  if s.kind == skIterator:
     s.typ.flags.incl(tfIterator)
 
   var proto = searchForProc(c, oldScope, s)
   if proto == nil:
-    if s.kind == skClosureIterator: s.typ.callConv = ccClosure
-    else: s.typ.callConv = lastOptionEntry(c).defaultCC
+    if s.kind == skIterator and s.typ.callConv == ccClosure:
+      discard
+    else:
+      s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
     if sfGenSym in s.flags: discard
     elif kind in OverloadableSyms:
@@ -1209,7 +1217,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
       popProcCon(c)
     else:
-      if s.typ.sons[0] != nil and kind notin skIterators:
+      if s.typ.sons[0] != nil and kind != skIterator:
         addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
       openScope(c)
       n.sons[bodyPos] = semGenericStmt(c, n.sons[bodyPos])
@@ -1230,9 +1238,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
   if isAnon: result.typ = s.typ
-  if isTopLevel(c) and s.kind != skClosureIterator and
+  if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
-    message(s.info, warnDeprecated, "top level '.closure' calling convention")
+    localError(s.info, "'.closure' calling convention for top level routines is invalid")
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
@@ -1240,15 +1248,12 @@ proc determineType(c: PContext, s: PSym) =
   discard semProcAux(c, s.ast, s.kind, {}, stepDetermineType)
 
 proc semIterator(c: PContext, n: PNode): PNode =
-  let kind = if hasPragma(n[pragmasPos], wClosure) or
-                n[namePos].kind == nkEmpty: skClosureIterator
-             else: skIterator
   # gensym'ed iterator?
   if n[namePos].kind == nkSym:
     # gensym'ed iterators might need to become closure iterators:
     n[namePos].sym.owner = getCurrOwner()
-    n[namePos].sym.kind = kind
-  result = semProcAux(c, n, kind, iteratorPragmas)
+    n[namePos].sym.kind = skIterator
+  result = semProcAux(c, n, skIterator, iteratorPragmas)
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:

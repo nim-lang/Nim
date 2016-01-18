@@ -61,7 +61,10 @@ type
                           ## wrapped value and **must not** live longer than
                           ## its wrapped value.
     value: pointer
-    rawType: PNimType
+    when defined(js):
+      rawType: PNimType
+    else:
+      rawTypePtr: pointer
 
   ppointer = ptr pointer
   pbyteArray = ptr array[0.. 0xffff, int8]
@@ -71,6 +74,14 @@ type
     when defined(gogc):
       elemSize: int
   PGenSeq = ptr TGenericSeq
+
+when not defined(js):
+  template rawType(x: Any): PNimType =
+    cast[PNimType](x.rawTypePtr)
+
+  template `rawType=`(x: var Any, p: PNimType) =
+    x.rawTypePtr = cast[pointer](p)
+
 {.deprecated: [TAny: Any, TAnyKind: AnyKind].}
 
 when defined(gogc):
@@ -108,7 +119,7 @@ proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
   else:
     result = n.sons[n.len]
 
-proc newAny(value: pointer, rawType: PNimType): Any =
+proc newAny(value: pointer, rawType: PNimType): Any {.inline.} =
   result.value = value
   result.rawType = rawType
 
@@ -126,8 +137,7 @@ proc toAny*[T](x: var T): Any {.inline.} =
   ## constructs a ``Any`` object from `x`. This captures `x`'s address, so
   ## `x` can be modified with its ``Any`` wrapper! The client needs to ensure
   ## that the wrapper **does not** live longer than `x`!
-  result.value = addr(x)
-  result.rawType = cast[PNimType](getTypeInfo(x))
+  newAny(addr(x), cast[PNimType](getTypeInfo(x)))
 
 proc kind*(x: Any): AnyKind {.inline.} =
   ## get the type kind
@@ -345,7 +355,7 @@ proc `[]`*(x: Any, fieldName: string): Any =
     result.value = x.value +!! n.offset
     result.rawType = n.typ
   elif x.rawType.kind == tyObject and x.rawType.base != nil:
-    return `[]`(Any(value: x.value, rawType: x.rawType.base), fieldName)
+    return `[]`(newAny(x.value, x.rawType.base), fieldName)
   else:
     raise newException(ValueError, "invalid field name: " & fieldName)
 

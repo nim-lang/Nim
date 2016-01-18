@@ -8,8 +8,9 @@ proc main =
   for iterations in 0..50_000:
     var s: seq[proc(): string {.closure.}] = @[]
     for i in 0 .. n-1:
-      let ii = i
-      s.add(proc(): string = return $(ii*ii))
+      (proc () =
+        let ii = i
+        s.add(proc(): string = return $(ii*ii)))()
     for i in 0 .. n-1:
       let val = s[i]()
       if val != $(i*i): echo "bug  ", val

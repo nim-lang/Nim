@@ -21,13 +21,13 @@ proc main(param: int) =
 # test simple closure within dummy 'main':
 proc dummy =
   proc main2(param: int) =
-    var foo = 23
+    var fooB = 23
     proc outer(outerParam: string) =
       var outerVar = 88
       echo outerParam, outerVar
       proc inner() =
         block Test:
-          echo foo, " ", param, outerParam, " ", outerVar
+          echo fooB, " ", param, outerParam, " ", outerVar
       inner()
     outer("foo")
   main2(24)

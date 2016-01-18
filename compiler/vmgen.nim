@@ -1209,7 +1209,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     cannotEval(n)
   elif s.kind in {skProc, skConverter, skMethod,
-                  skIterator, skClosureIterator} and sfForward in s.flags:
+                  skIterator} and sfForward in s.flags:
     cannotEval(n)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
@@ -1638,7 +1638,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     case s.kind
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
       genRdVar(c, n, dest, flags)
-    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterators:
+    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if procIsCallback(c, s): discard
       elif sfImportc in s.flags: c.importcSym(n.info, s)

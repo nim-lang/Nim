@@ -7,7 +7,7 @@ type
     data: T
     callback: proc () {.closure.}
 
-proc cbOuter(response: string) {.closure, discardable.} =
+proc cbOuter(response: string) {.discardable.} =
   iterator cbIter(): Future[int] {.closure.} =
     for i in 0..7:
       proc foo(): int =

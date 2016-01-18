@@ -533,15 +533,20 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     nimCopyAux(result, src, ti.node)
   of tySequence, tyArrayConstr, tyOpenArray, tyArray:
     asm """
-      if (`dest` === null || `dest` === undefined) {
-        `dest` = new Array(`src`.length);
+      if (`src` === null) {
+        `result` = null;
       }
       else {
-        `dest`.length = `src`.length;
-      }
-      `result` = `dest`;
-      for (var i = 0; i < `src`.length; ++i) {
-        `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+        if (`dest` === null || `dest` === undefined) {
+          `dest` = new Array(`src`.length);
+        }
+        else {
+          `dest`.length = `src`.length;
+        }
+        `result` = `dest`;
+        for (var i = 0; i < `src`.length; ++i) {
+          `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+        }
       }
     """
   of tyString:

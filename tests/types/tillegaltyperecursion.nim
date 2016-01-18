@@ -10,14 +10,14 @@ import strutils
 import os
 
 type
-    TMessageReceivedEventArgs = object of TEventArgs
+    TMessageReceivedEventArgs = object of EventArgs
         Nick*: string
         Message*: string
     TIRC = object
-        EventEmitter: TEventEmitter
-        MessageReceivedHandler*: TEventHandler
-        Socket: TSocket
-        Thread: TThread[TIRC]
+        EventEmitter: EventEmitter
+        MessageReceivedHandler*: EventHandler
+        Socket: Socket
+        Thread: Thread[TIRC]
 
 proc initIRC*(): TIRC =
     result.Socket = socket()
@@ -49,8 +49,8 @@ proc handleData(irc: TIRC) {.thread.} =
             return
 
 proc Connect*(irc: var TIRC, nick: string, host: string, port: int = 6667) =
-    connect(irc.Socket ,host ,TPort(port),TDomain.AF_INET)
-    send(irc.Socket,"USER " & nick & " " & nick & " " & nick & " " & nick &"\r\L")
+    connect(irc.Socket, host, TPort(port), TDomain.AF_INET)
+    send(irc.Socket,"USER " & nick & " " & nick & " " & nick & " " & nick & "\r\L")
     send(irc.Socket,"NICK " & nick & "\r\L")
     var thread: TThread[TIRC]
     createThread(thread, handleData, irc)

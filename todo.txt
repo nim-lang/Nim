@@ -2,23 +2,23 @@ essential for 1.0
 =================
 
 - introduce newSeqOfCap(10)
-- The remaining bugs of the lambda lifting pass that is responsible to enable
-  closures and closure iterators need to be fixed.
+- annotation support for getType()
+- overloading of `()` needs to be in .experimental
+- find a solution for the  x.f[T](y)  gotcha
 - ``concept`` needs to be refined, a nice name for the feature is not enough.
 - Destructors need to be refined.
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
 
-- add "all threads are blocked" detection to 'spawn'
 - Deprecate ``immediate`` for templates and macros
 - document NimMain and check whether it works for threading
-- remove   echo $foo  gotcha
 - ``not`` or ``~`` for the effects system
 
 
 Not critical for 1.0
 ====================
 
+- add "all threads are blocked" detection to 'spawn'
 - figure out why C++ bootstrapping is so much slower
 - The bitwise 'not' operator cold be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!

@@ -167,12 +167,12 @@ proc sumGeneric(t: PType): int =
       t = t.lastSon
       if t.kind == tyEmpty: break
       inc result
-    of tyGenericInvocation, tyTuple:
+    of tyGenericInvocation, tyTuple, tyProc:
       result += ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyGenericParam, tyExpr, tyStatic, tyStmt: break
-    of tyBool, tyChar, tyEnum, tyObject, tyProc, tyPointer,
+    of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
       return isvar
@@ -1442,7 +1442,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     z.calleeSym = m.calleeSym
     var best = -1
     for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}+skIterators:
+      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         z.calleeSym = arg.sons[i].sym

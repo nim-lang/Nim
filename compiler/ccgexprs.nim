@@ -1502,7 +1502,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   else:
     case op
     of mIncl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] |=(1U<<($2&7U));$n")
-    of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3]] &= ~(1U<<($2&7U));$n")
+    of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
     of mCard: unaryExprChar(p, e, d, "#cardSet($1, " & $size & ')')
     of mLtSet, mLeSet:
       getTemp(p, getSysType(tyInt), i) # our counter
@@ -1838,9 +1838,9 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
   assert n.kind == nkClosure
 
   if isConstClosure(n):
-    inc(p.labels)
-    var tmp = "LOC" & rope(p.labels)
-    addf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
+    inc(p.module.labels)
+    var tmp = "CNSTCLOSURE" & rope(p.module.labels)
+    addf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(p.module, n.typ), tmp, genConstExpr(p, n)])
     putIntoDest(p, d, n.typ, tmp, OnStatic)
   else:
@@ -1965,7 +1965,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
-    of skProc, skConverter, skIterators:
+    of skProc, skConverter, skIterator:
+      #if sym.kind == skIterator:
+      #  echo renderTree(sym.getBody, {renderIds})
       if sfCompileTime in sym.flags:
         localError(n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
@@ -1987,6 +1989,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
+        #echo renderTree(p.prc.ast, {renderIds})
         internalError n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
@@ -2004,9 +2007,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       putLocIntoDest(p, d, sym.loc)
     of skParam:
       if sym.loc.r == nil or sym.loc.t == nil:
-        #echo "FAILED FOR PRCO ", p.prc.name.s
-        #debug p.prc.typ.n
-        #echo renderTree(p.prc.ast, {renderIds})
+        # echo "FAILED FOR PRCO ", p.prc.name.s
+        # debug p.prc.typ.n
+        # echo renderTree(p.prc.ast, {renderIds})
         internalError(n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     else: internalError(n.info, "expr(" & $sym.kind & "); unknown symbol")
