@@ -468,7 +468,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rc].intVal > high(int):
         stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
-      let src = regs[rb].node
+      let src = if regs[rb].kind == rkNodeAddr: regs[rb].nodeAddr[] else: regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
       else:
@@ -494,7 +494,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
-      let src = regs[rb].node
+      let src = if regs[rb].kind == rkNodeAddr: regs[rb].nodeAddr[] else: regs[rb].node
       if src.kind notin {nkEmpty..nkNilLit}:
         let n = src.sons[rc + ord(src.kind == nkObjConstr)].skipColon
         regs[ra].node = n
