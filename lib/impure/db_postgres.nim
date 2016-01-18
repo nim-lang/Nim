@@ -162,8 +162,10 @@ proc setupQuery(db: DbConn, stmtName: SqlPrepared,
 
 proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
               nParams: int): SqlPrepared =
+  ## Creates a new ``SqlPrepared`` statement. Parameter substitution is done
+  ## via ``$1``, ``$2``, ``$3``, etc.
   if nParams > 0 and not string(query).contains("$1"):
-    dbError("""parameter substitution expects "$1" """)
+    dbError("parameter substitution expects \"$1\"")
   var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
   if pqResultStatus(res) != PGRES_COMMAND_OK: dbError(db)
   return SqlPrepared(stmtName)
@@ -280,6 +282,15 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
   var x = pqgetvalue(setupQuery(db, query, args), 0, 0)
+  result = if isNil(x): "" else: $x
+
+proc getValue*(db: DbConn, stmtName: SqlPrepared,
+               args: varargs[string, `$`]): string {.
+               tags: [ReadDbEffect].} =
+  ## executes the query and returns the first column of the first row of the
+  ## result dataset. Returns "" if the dataset contains no rows or the database
+  ## value is NULL.
+  var x = pqgetvalue(setupQuery(db, stmtName, args), 0, 0)
   result = if isNil(x): "" else: $x
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
