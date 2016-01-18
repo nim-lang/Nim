@@ -1847,6 +1847,8 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
     var tmp, a, b: TLoc
     initLocExpr(p, n.sons[0], a)
     initLocExpr(p, n.sons[1], b)
+    if n.sons[0].skipConv.kind == nkClosure:
+      internalError(n.info, "closure to closure created")
     getTemp(p, n.typ, tmp)
     linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
             tmp.rdLoc, a.rdLoc, b.rdLoc)

@@ -383,9 +383,11 @@ proc generateThunk(prc: PNode, dest: PType): PNode =
   # (see internal documentation):
   if gCmd == cmdCompileToJS: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
-  var conv = newNodeIT(nkHiddenStdConv, prc.info, dest)
+  var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
   conv.add(emptyNode)
   conv.add(prc)
+  if prc.kind == nkClosure:
+    internalError(prc.info, "closure to closure created")
   result.add(conv)
   result.add(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
 
