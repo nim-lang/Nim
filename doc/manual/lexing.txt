@@ -88,7 +88,7 @@ Multiline comments support nesting:
   proc p[T](x: T) = discard
   ]#
 
-Multiline documentation comments look like and support nesting too:
+Multiline documentation comments also exist and support nesting too:
 
 .. code-block:: nim
   proc foo =
