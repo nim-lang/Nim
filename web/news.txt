@@ -92,6 +92,68 @@ News
   2. Is easier to implement and we are at a point in Nim's development process where simple+stable wins over perfect-in-theory+unstable-in-practice.
   3. Implies programmers are more in control of where memory is allocated which is benefitical for a systems programming language.
 
+  Bugfixes
+  --------
+
+  The list below has been generated based on the commits in Nim's git
+  repository. As such it lists only the issues which have been closed
+  via a commit, for a full list see
+  `this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222015-10-27+..+2016-01-19%22+>`_.
+
+  - Fixed "Generic arguments cannot be used in templates (raising undeclared identifier)"
+    (`#3498 <https://github.com/nim-lang/Nim/issues/3498>`_)
+  - Fixed "multimethods: Error: internal error: cgmeth.genConv"
+    (`#3550 <https://github.com/nim-lang/Nim/issues/3550>`_)
+  - Fixed "multimethods: Error: internal error: cgmeth.genConv"
+    (`#3550 <https://github.com/nim-lang/Nim/issues/3550>`_)
+  - Fixed "nimscript - SIGSEGV in except block"
+    (`#3546 <https://github.com/nim-lang/Nim/issues/3546>`_)
+  - Fixed "Bool literals in macros do not work."
+    (`#3541 <https://github.com/nim-lang/Nim/issues/3541>`_)
+  - Fixed "Docs: nativesocket.html - 404"
+    (`#3582 <https://github.com/nim-lang/Nim/issues/3582>`_)
+  - Fixed ""not nil" return types never trigger an error or warning"
+    (`#2285 <https://github.com/nim-lang/Nim/issues/2285>`_)
+  - Fixed "No warning or error is raised even if not nil is specified "
+    (`#3222 <https://github.com/nim-lang/Nim/issues/3222>`_)
+  - Fixed "Incorrect fsmonitor add() filter logic"
+    (`#3611 <https://github.com/nim-lang/Nim/issues/3611>`_)
+  - Fixed ""nimble install nimsuggest" failed"
+    (`#3622 <https://github.com/nim-lang/Nim/issues/3622>`_)
+  - Fixed "compile time `excl ` cause SIGSEGV"
+    (`#3639 <https://github.com/nim-lang/Nim/issues/3639>`_)
+  - Fixed "Unable to echo unsigned ints at compile-time"
+    (`#2514 <https://github.com/nim-lang/Nim/issues/2514>`_)
+  - Fixed "Nested closure iterator produces internal error"
+    (`#1725 <https://github.com/nim-lang/Nim/issues/1725>`_)
+  - Fixed "C Error on walkDirRec closure"
+    (`#3636 <https://github.com/nim-lang/Nim/issues/3636>`_)
+  - Fixed "Error in generated c code"
+    (`#3201 <https://github.com/nim-lang/Nim/issues/3201>`_)
+  - Fixed "C Compile-time error with generic proc type."
+    (`#2659 <https://github.com/nim-lang/Nim/issues/2659>`_)
+  - Fixed "ICE dereferencing array pointer"
+    (`#2240 <https://github.com/nim-lang/Nim/issues/2240>`_)
+  - Fixed "Lambda lifting crash"
+    (`#2007 <https://github.com/nim-lang/Nim/issues/2007>`_)
+  - Fixed "Can't reference outer variables from a closure in an iterator"
+    (`#2604 <https://github.com/nim-lang/Nim/issues/2604>`_)
+  - Fixed "M&S collector breaks with nested for loops."
+    (`#603 <https://github.com/nim-lang/Nim/issues/603>`_)
+  - Fixed "Regression: bad C codegen"
+    (`#3723 <https://github.com/nim-lang/Nim/issues/3723>`_)
+  - Fixed "JS backend - handle bool type in case statement"
+    (`#3722 <https://github.com/nim-lang/Nim/issues/3722>`_)
+  - Fixed "linenoise compilation with cpp"
+    (`#3720 <https://github.com/nim-lang/Nim/issues/3720>`_)
+  - Fixed "(???,???) duplicate case label"
+    (`#3665 <https://github.com/nim-lang/Nim/issues/3665>`_)
+  - Fixed "linenoise compilation with cpp"
+    (`#3720 <https://github.com/nim-lang/Nim/issues/3720>`_)
+  - Fixed "Update list of backward incompatibilities for Nim 0.12.0 in the main site"
+    (`#3689 <https://github.com/nim-lang/Nim/issues/3689>`_)
+  - Fixed "Can't compile nimble with latest devel - codegen bug"
+    (`#3730 <https://github.com/nim-lang/Nim/issues/3730>`_)
 
 2015-10-27 Version 0.12.0 released
 ==================================
