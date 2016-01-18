@@ -112,7 +112,7 @@ Example:
     Sym = object       # a symbol
       name: string     # the symbol's name
       line: int        # the line the symbol was declared in
-      code: PNode      # the symbol's abstract syntax tree
+      code: Node      # the symbol's abstract syntax tree
 
 
 Type conversions
@@ -162,11 +162,11 @@ An example:
       of nkFloat: floatVal: float
       of nkString: strVal: string
       of nkAdd, nkSub:
-        leftOp, rightOp: PNode
+        leftOp, rightOp: Node
       of nkIf:
-        condition, thenPart, elsePart: PNode
+        condition, thenPart, elsePart: Node
 
-  var n = PNode(kind: nkFloat, floatVal: 1.0)
+  var n = Node(kind: nkFloat, floatVal: 1.0)
   # the following statement raises an `FieldError` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
