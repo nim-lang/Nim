@@ -186,6 +186,16 @@ News
   - Fixed "Can't compile nimble with latest devel - codegen bug"
     (`#3730 <https://github.com/nim-lang/Nim/issues/3730>`_)
 
+2016-01-18 Andreas Rumpf's talk at OSCON Amsterdam
+==================================================
+
+In case you have missed it, here is Andreas' Nim: An Overview talk at
+OSCON Amsterdam.
+
+.. raw:: html
+
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/4rJEBs_Nnaw" frameborder="0" allowfullscreen></iframe>
+
 2015-10-27 Version 0.12.0 released
 ==================================
 
