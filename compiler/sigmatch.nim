@@ -1635,6 +1635,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           if arg != nil and m.baseTypeMatch and container != nil:
             addSon(container, arg)
             incrIndexType(container.typ)
+            checkConstraint(n.sons[a])
           else:
             m.state = csNoMatch
             return
@@ -1675,7 +1676,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           setSon(m.call, formal.position + 1, arg)
           inc(f)
           container = nil
-      checkConstraint(n.sons[a])
+        checkConstraint(n.sons[a])
     inc(a)
 
 proc semFinishOperands*(c: PContext, n: PNode) =
