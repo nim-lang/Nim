@@ -1808,10 +1808,10 @@ const
   NimMajor*: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 12
+  NimMinor*: int = 13
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 1
+  NimPatch*: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
