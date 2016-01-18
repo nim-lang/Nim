@@ -84,7 +84,7 @@ Collections and algorithms
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
-
+  
 
 String handling
 ---------------
@@ -165,6 +165,8 @@ Generic Operating System Services
   This module implements the ability to monitor a directory/file for changes
   using Posix's inotify API.
 
+  **Warning:** This module will likely be moved out to a Nimble package soon.
+
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
@@ -191,6 +193,11 @@ Math libraries
 * `basic3d <basic3d.html>`_
   Basic 3d support with vectors, points, matrices and some basic utilities.
 
+* `mersenne <mersenne.html>`_
+  Mersenne twister random number generator.
+
+* `stats <stats.html>`_
+  Statistical analysis
 
 Internet Protocols and Support
 ------------------------------
@@ -209,7 +216,8 @@ Internet Protocols and Support
   This module implements a simple HTTP server.
 
 * `httpclient <httpclient.html>`_
-  This module implements a simple HTTP client.
+  This module implements a simple HTTP client which supports both synchronous
+  and asynchronous retrieval of web pages.
 
 * `smtp <smtp.html>`_
   This module implement a simple SMTP client.
@@ -226,19 +234,17 @@ Internet Protocols and Support
 * `asyncdispatch <asyncdispatch.html>`_
   This module implements an asynchronous dispatcher for IO operations.
 
-  **Note:** This module is still largely experimental.
-
 * `asyncnet <asyncnet.html>`_
   This module implements asynchronous sockets based on the ``asyncdispatch``
   module.
-
-  **Note:** This module is still largely experimental.
 
 * `asynchttpserver <asynchttpserver.html>`_
   This module implements an asynchronous HTTP server using the ``asyncnet``
   module.
 
-  **Note:** This module is still largely experimental.
+* `asyncftpclient <asyncftpclient.html>`_
+  This module implements an asynchronous FTP client using the ``asyncnet``
+  module.
 
 * `net <net.html>`_
   This module implements a high-level sockets API. It will replace the
@@ -346,6 +352,8 @@ Cryptography and Hashing
 * `base64 <base64.html>`_
   This module implements a base64 encoder and decoder.
 
+* `securehash <securehash.html>`_
+  This module implements a sha1 encoder and decoder.
 
 Multimedia support
 ------------------
@@ -381,6 +389,11 @@ Miscellaneous
   This module implements new experimental features. Currently the syntax
   sugar for anonymous procedures.
 
+* `coro <coro.html>`_
+  This module implements experimental coroutines in Nim.
+
+* `unittest <unittest.html>`_
+  Implements a Unit testing DSL.
 
 Modules for JS backend
 ---------------------------
