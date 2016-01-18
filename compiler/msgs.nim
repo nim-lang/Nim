@@ -828,7 +828,7 @@ proc quit(msg: TMsgKind) =
 proc log*(s: string) {.procvar.} =
   var f: File
   if open(f, "nimsuggest.log", fmAppend):
-    f.writeln(s)
+    f.writeLine(s)
     close(f)
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =

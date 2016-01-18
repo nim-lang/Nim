@@ -15,7 +15,7 @@ const debugEchoCode = false
 import ast except getstr
 
 import
-  strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
+  strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal
 
