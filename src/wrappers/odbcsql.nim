@@ -641,11 +641,42 @@ const
   ODBC_CONFIG_SYS_DSN* = 5
   ODBC_REMOVE_SYS_DSN* = 6
 
+  SQL_ACTIVE_CONNECTIONS* = 0   # SQLGetInfo
+  SQL_DATA_SOURCE_NAME* = 2
+  SQL_DATA_SOURCE_READ_ONLY* = 25
+  SQL_DATABASE_NAME* = 2
+  SQL_DBMS_NAME* = 17
+  SQL_DBMS_VERSION* = 18
+  SQL_DRIVER_HDBC* = 3
+  SQL_DRIVER_HENV* = 4
+  SQL_DRIVER_HSTMT* = 5
+  SQL_DRIVER_NAME* = 6
+  SQL_DRIVER_VER* = 7
+  SQL_FETCH_DIRECTION* = 8
+  SQL_ODBC_VER* = 10
+  SQL_DRIVER_ODBC_VER* = 77
+  SQL_SERVER_NAME* = 13
+  SQL_ACTIVE_ENVIRONMENTS* = 116
+  SQL_ACTIVE_STATEMENTS* = 1
+  SQL_SQL_CONFORMANCE* = 118
+  SQL_DATETIME_LITERALS* = 119
+  SQL_ASYNC_MODE* = 10021
+  SQL_BATCH_ROW_COUNT* = 120
+  SQL_BATCH_SUPPORT* = 121
+  SQL_CATALOG_LOCATION* = 114
+  #SQL_CATALOG_NAME* = 10003
+  SQL_CATALOG_NAME_SEPARATOR* = 41
+  SQL_CATALOG_TERM* = 42
+  SQL_CATALOG_USAGE* = 92
+  #SQL_COLLATION_SEQ* = 10004
+  SQL_COLUMN_ALIAS* = 87
+  #SQL_USER_NAME* = 47
+
 proc SQLAllocHandle*(HandleType: TSqlSmallInt, InputHandle: SqlHandle,
                      OutputHandlePtr: var SqlHandle): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLSetEnvAttr*(EnvironmentHandle: SqlHEnv, Attribute: TSqlInteger,
-                    Value: SqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.
+                    Value: TSqlInteger, StringLength: TSqlInteger): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLGetEnvAttr*(EnvironmentHandle: SqlHEnv, Attribute: TSqlInteger,
                     Value: SqlPointer, BufferLength: TSqlInteger,
@@ -807,5 +838,10 @@ proc SQLStatistics*(hstmt: SqlHStmt, CatalogName: PSQLCHAR,
                     NameLength3: TSqlSmallInt, Unique: SqlUSmallInt,
                     Reserved: SqlUSmallInt): TSqlSmallInt {.
                     dynlib: odbclib, importc.}
+proc SQLErr*(henv: SqlHEnv, hdbc: SqlHDBC, hstmt: SqlHStmt,
+              szSqlState, pfNativeError, szErrorMsg: PSQLCHAR,
+              cbErrorMsgMax: TSqlSmallInt,
+              pcbErrorMsg: PSQLINTEGER): TSqlSmallInt {.
+                    dynlib: odbclib, importc: "SQLError".}
 
 {.pop.}
