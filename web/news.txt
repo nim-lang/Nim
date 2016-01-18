@@ -121,6 +121,11 @@ changes are also documented in this forum
 
 Changes affecting backwards compatibility
 -----------------------------------------
+- The regular expression modules, ``re`` and ``nre`` now depend on version
+  8.36 of PCRE. If you have an older version you may see a message similar
+  to ``could not import: pcre_free_study`` output when you start your
+  program. See `this issue <https://github.com/docopt/docopt.nim/issues/13>`_
+  for more information.
 - ``tables.[]``, ``strtabs.[]``, ``critbits.[]`` **now raise**
   the ``KeyError`` **exception when the key does not exist**! Use the
   new ``getOrDefault`` instead to get the old behaviour. Compile all your
