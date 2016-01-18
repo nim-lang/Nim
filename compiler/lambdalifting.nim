@@ -362,6 +362,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       # this handles the case that the inner proc was declared as
       # .closure but does not actually capture anything:
       addClosureParam(c, s)
+      c.somethingToDo = true
 
     let innerProc = isInnerProc(s)
     if innerProc:
@@ -654,7 +655,6 @@ proc wrapIterBody(n: PNode; owner: PSym): PNode =
 proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
                   c: var LiftingPass): PNode =
   let s = n.sym
-
   if s == owner:
     # recursive calls go through (lambda, hiddenParam):
     let available = getHiddenParam(owner)
