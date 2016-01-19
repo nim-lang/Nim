@@ -27,7 +27,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists,
-  wordrecg, parseutils, nimblecmd, idents, parseopt
+  wordrecg, parseutils, nimblecmd, idents, parseopt, times
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -51,9 +51,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
 
 # implementation
 
-const
+var
   HelpMessage = "Nim Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
-      "Copyright (c) 2006-2015 by Andreas Rumpf\n"
+      "Copyright (c) 2006-" & getTime().timeToTimeInfo().format("yyyy") &
+      " by Andreas Rumpf\n"
 
 const
   Usage = slurp"doc/basicopt.txt".replace("//", "")
