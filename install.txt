@@ -9,7 +9,7 @@ should be in your ``$PATH`` (most likely the case). Note that some few Linux
 distributions do not ship with a GCC compiler preinstalled - then you have to
 install it.
 
-Install Nim by downloading the appropriate ``.zip`` file and extracting it
+Install Nim by downloading the appropriate ``.tar.xz`` file and extracting it
 to a directory of your choice. The Nim Compiler will stay in this
 directory (unless you copy it somewhere else). The compiler does not need
 write access to its directory, so copying the nim folder to ``/opt``
