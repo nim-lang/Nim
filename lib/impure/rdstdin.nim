@@ -100,7 +100,7 @@ when defined(Windows):
     stdout.write "\n"
 
 else:
-  import linenoise, termios, unsigned
+  import linenoise, termios
 
   proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [ReadIOEffect, WriteIOEffect].} =

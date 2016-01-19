@@ -7,8 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import
-  strutils, unsigned
+import strutils
 
 const Sha1DigestSize = 20
 

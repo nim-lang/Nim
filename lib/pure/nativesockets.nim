@@ -12,7 +12,7 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import unsigned, os
+import os
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}

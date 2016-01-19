@@ -88,6 +88,13 @@ Nim's Community
 
 .. container:: standout
 
+  Meetup
+  ------
+  
+  The `Nim BR Meetup <http://www.meetup.com/pt-BR/nim-br>`_ is a brazilian user group about Nim where they are having discussions, talks or workshops about Nim programming language.
+
+.. container:: standout
+
   How to help
   -----------
 
