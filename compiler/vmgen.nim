@@ -28,7 +28,7 @@
 # this copy depends on the involved types.
 
 import
-  unsigned, strutils, ast, astalgo, types, msgs, renderer, vmdef,
+  strutils, ast, astalgo, types, msgs, renderer, vmdef,
   trees, intsets, rodread, magicsys, options, lowerings
 
 from os import splitFile

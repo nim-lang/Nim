@@ -10,7 +10,7 @@
 ## This module implements a high-level cross-platform sockets interface.
 
 {.deadCodeElim: on.}
-import nativesockets, os, strutils, unsigned, parseutils, times
+import nativesockets, os, strutils, parseutils, times
 export Port, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
