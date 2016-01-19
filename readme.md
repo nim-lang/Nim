@@ -81,7 +81,7 @@ allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
-Copyright (c) 2006-2015 Andreas Rumpf.
+Copyright (c) 2006-2016 Andreas Rumpf.
 All rights reserved.
 
 # Build Status

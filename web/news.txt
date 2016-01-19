@@ -101,7 +101,7 @@ The following used to work as the environment creation used to be attached to th
     var s: seq[proc(): int {.closure.}] = @[]
     for i in 0 ..< 30:
       let ii = i
-      s.add(proc(): string = return ii*ii))
+      s.add(proc(): int = return ii*ii))
 
 This behaviour has changed in 0.13.0 and now needs to be written as:
 
@@ -119,7 +119,7 @@ per proc call. This change is subtle and unfortunate, but:
 
 1. Affects almost no code out there.
 2. Is easier to implement and we are at a point in Nim's development process where simple+stable wins over perfect-in-theory+unstable-in-practice.
-3. Implies programmers are more in control of where memory is allocated which is benefitical for a systems programming language.
+3. Implies programmers are more in control of where memory is allocated which is beneficial for a systems programming language.
 
 Bugfixes
 --------
