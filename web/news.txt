@@ -70,7 +70,7 @@ code like ``0..kArraySize div 2 -1`` needs to be changed to
 
 This release also adds multi-line comments to Nim. The syntax for them is:
 ``#[ comment here ]#``. For more details read the section of
-the `manual <manual#multiline-comments>`_.
+the `manual <docs/manual.html#lexical-analysis-multiline-comments>`_.
 
 Iterator changes
 ~~~~~~~~~~~~~~~~
