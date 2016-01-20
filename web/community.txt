@@ -88,6 +88,13 @@ Nim's Community
 
 .. container:: standout
 
+  Gitter
+  ------
+
+  The `Gitter Chatroom for Nim <https://gitter.im/nim-lang/Nim>`_ is the persistent logged "natural" chatroom for GitHub repositories and very easy to access for GitHub users. This does not need additional software and can send notifications about messages by email.
+
+.. container:: standout
+
   Meetup
   ------
   
