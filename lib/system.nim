@@ -232,8 +232,8 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
-  ##  high(arr) #=> 0
-  ##  high(2) #=> -9223372036854775808
+  ##  low(arr) #=> 0
+  ##  low(2) #=> -9223372036854775808
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
@@ -840,7 +840,7 @@ proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ##   1 div 2 == 0
   ##   2 div 2 == 1
   ##   3 div 2 == 1
-  ##   7 div 5 == 2
+  ##   7 div 5 == 1
 
 when defined(nimnomagic64):
   proc `div` *(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
@@ -1808,10 +1808,10 @@ const
   NimMajor*: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 12
+  NimMinor*: int = 13
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 1
+  NimPatch*: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2584,11 +2584,7 @@ when not defined(JS): #and not defined(nimscript):
 
   when hasAlloc:
     var
-      strDesc: TNimType
-
-    strDesc.size = sizeof(string)
-    strDesc.kind = tyString
-    strDesc.flags = {ntfAcyclic}
+      strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
 
   when not defined(nimscript):
     include "system/ansi_c"

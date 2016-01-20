@@ -573,13 +573,13 @@ proc importItem(data: PJsonNode; errors: var seq[string]): PItemRecord =
     elif data[2]["bullet"].kind == JObject:
       result.bullet = importBullet(data[2]["bullet"], errors)
     else:
-      errors.add "UNKNOWN BULLET TYPE for item "& result.name
+      errors.add "UNKNOWN BULLET TYPE for item " & result.name
   of "ammo":
     result.kind = Ammo
   of "utility":
     nil
   else:
-    errors.add "Invalid item type \""& data[1].str &"\" for item "& result.name
+    errors.add "Invalid item type \""&data[1].str&"\" for item "&result.name
 
 proc importBullet(data: PJsonNode; errors: var seq[string]): PBulletRecord =
   new(result)

@@ -558,7 +558,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
       # we split the old refcount in 2 parts. XXX This is still not entirely
       # correct if the pointer that receives growObj's result is on the stack.
       # A better fix would be to emit the location specific write barrier for
-      # 'growObj', but this is lost of more work and who knows what new problems
+      # 'growObj', but this is lots of more work and who knows what new problems
       # this would create.
       res.refcount = rcIncrement
       decRef(ol)

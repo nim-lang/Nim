@@ -55,9 +55,16 @@ template getX(k, field) {.immediate, dirty.} =
   result = s[i+a.rb+1].field
 
 proc getInt*(a: VmArgs; i: Natural): BiggestInt = getX(rkInt, intVal)
+proc getBool*(a: VmArgs; i: Natural): bool = getInt(a, i) != 0
 proc getFloat*(a: VmArgs; i: Natural): BiggestFloat = getX(rkFloat, floatVal)
 proc getString*(a: VmArgs; i: Natural): string =
   doAssert i < a.rc-1
   let s = cast[seq[TFullReg]](a.slots)
   doAssert s[i+a.rb+1].kind == rkNode
   result = s[i+a.rb+1].node.strVal
+
+proc getNode*(a: VmArgs; i: Natural): PNode =
+  doAssert i < a.rc-1
+  let s = cast[seq[TFullReg]](a.slots)
+  doAssert s[i+a.rb+1].kind == rkNode
+  result = s[i+a.rb+1].node

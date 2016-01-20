@@ -255,9 +255,12 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
       nextExceptOrFinally = pc2 + c.code[pc2].regBx - wordExcess
       inc pc2
     while c.code[pc2].opcode == opcExcept:
-      let exceptType = c.types[c.code[pc2].regBx-wordExcess].skipTypes(
+      let excIndex = c.code[pc2].regBx-wordExcess
+      let exceptType = if excIndex > 0: c.types[excIndex].skipTypes(
                           abstractPtrs)
-      if inheritanceDiff(exceptType, raisedType) <= 0:
+                       else: nil
+      #echo typeToString(exceptType), " ", typeToString(raisedType)
+      if exceptType.isNil or inheritanceDiff(exceptType, raisedType) <= 0:
         # mark exception as handled but keep it in B for
         # the getCurrentException() builtin:
         c.currentExceptionB = c.currentExceptionA
@@ -356,7 +359,14 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
       else:
-        dest.intVal = src.intVal and ((1 shl (desttyp.size*8))-1)
+        let srcDist = (sizeof(src.intVal) - srctyp.size) * 8
+        let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
+        when system.cpuEndian == bigEndian:
+          dest.intVal = (src.intVal shr srcDist) shl srcDist
+          dest.intVal = (dest.intVal shr destDist) shl destDist
+        else:
+          dest.intVal = (src.intVal shl srcDist) shr srcDist
+          dest.intVal = (dest.intVal shl destDist) shr destDist
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
         myreset(dest); dest.kind = rkFloat
@@ -608,7 +618,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       addSon(regs[ra].node, r.copyTree)
     of opcExcl:
       decodeB(rkNode)
-      var b = newNodeIT(nkCurly, regs[rb].node.info, regs[rb].node.typ)
+      var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
       addSon(b, regs[rb].regToNode)
       var r = diffSets(regs[ra].node, b)
       discardSons(regs[ra].node)
@@ -1190,6 +1200,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       let a = regs[rb].node
       if a.kind in {nkStrLit..nkTripleStrLit}: regs[ra].node.strVal = a.strVal
+      elif a.kind == nkCommentStmt: regs[ra].node.strVal = a.comment
       else: stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcSlurp:
       decodeB(rkNode)

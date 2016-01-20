@@ -242,7 +242,7 @@ template task*(name: untyped; description: string; body: untyped): untyped =
   ## .. code-block:: nim
   ##  task build, "default build is via the C backend":
   ##    setCommand "c"
-  proc `name Task`() = body
+  proc `name Task`*() = body
 
   let cmd = getCommand()
   if cmd.len == 0 or cmd ==? "help":

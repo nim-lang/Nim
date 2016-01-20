@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings, plugins, plugins.active
+  semparallel, lowerings, pluginsupport, plugins.active
 
 when defined(nimfix):
   import nimfix.prettybase
@@ -186,6 +186,8 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result.owner = getCurrOwner()
   else:
     result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
+  #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
+  #  incl(result.flags, sfGlobal)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
@@ -202,7 +204,7 @@ proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
                            "' in this context: '" & typeToString(typ) & "'")
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
-  typeAllowedCheck(typ.n.info, typ, skConst)
+  typeAllowedCheck(typ.n.info, typ, skProc)
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
@@ -485,4 +487,3 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   popProcCon(c)
 
 const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
-

@@ -28,7 +28,10 @@ type
   BaseLexer* = object of RootObj ## the base lexer. Inherit your lexer from
                                  ## this object.
     bufpos*: int              ## the current position within the buffer
-    buf*: cstring             ## the buffer itself
+    when defined(js):         ## the buffer itself
+      buf*: string
+    else:
+      buf*: cstring
     bufLen*: int              ## length of buffer in characters
     input: Stream            ## the input stream
     lineNumber*: int          ## the current line number
@@ -43,7 +46,8 @@ const
 
 proc close*(L: var BaseLexer) =
   ## closes the base lexer. This closes `L`'s associated stream too.
-  dealloc(L.buf)
+  when not defined(js):
+    dealloc(L.buf)
   close(L.input)
 
 proc fillBuffer(L: var BaseLexer) =
@@ -58,8 +62,11 @@ proc fillBuffer(L: var BaseLexer) =
   toCopy = L.bufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0:
-    moveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize)
-    # "moveMem" handles overlapping regions
+    when defined(js):
+      for i in 0 ..< toCopy: L.buf[i] = L.buf[L.sentinel + 1 + i]
+    else:
+      # "moveMem" handles overlapping regions
+      moveMem(L.buf, addr L.buf[L.sentinel + 1], toCopy * chrSize)
   charsRead = readData(L.input, addr(L.buf[toCopy]),
                        (L.sentinel + 1) * chrSize) div chrSize
   s = toCopy + charsRead
@@ -81,7 +88,10 @@ proc fillBuffer(L: var BaseLexer) =
         # double the buffer's size and try again:
         oldBufLen = L.bufLen
         L.bufLen = L.bufLen * 2
-        L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
+        when defined(js):
+          L.buf.setLen(L.bufLen)
+        else:
+          L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
         assert(L.bufLen - oldBufLen == oldBufLen)
         charsRead = readData(L.input, addr(L.buf[oldBufLen]),
                              oldBufLen * chrSize) div chrSize
@@ -139,7 +149,10 @@ proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
   L.bufpos = 0
   L.bufLen = bufLen
   L.refillChars = refillChars
-  L.buf = cast[cstring](alloc(bufLen * chrSize))
+  when defined(js):
+    L.buf = newString(bufLen)
+  else:
+    L.buf = cast[cstring](alloc(bufLen * chrSize))
   L.sentinel = bufLen - 1
   L.lineStart = 0
   L.lineNumber = 1            # lines start at 1

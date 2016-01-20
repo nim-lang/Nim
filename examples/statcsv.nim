@@ -3,7 +3,7 @@
 # the standard deviation of its columns.
 # The CSV file can have a header which is then used for the output.
 
-import os, streams, parsecsv, strutils, math
+import os, streams, parsecsv, strutils, math, stats
 
 if paramCount() < 1:
   quit("Usage: statcsv filename[.csv]")

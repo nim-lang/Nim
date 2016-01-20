@@ -68,7 +68,10 @@ when defined(posix):
 
   proc nimLoadLibrary(path: string): LibHandle =
     result = dlopen(path, RTLD_NOW)
-    #c_fprintf(c_stdout, "%s\n", dlerror())
+    when defined(nimDebugDlOpen):
+      let error = dlerror()
+      if error != nil:
+        c_fprintf(c_stdout, "%s\n", error)
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
@@ -105,7 +108,12 @@ elif defined(windows) or defined(dos):
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
-    if result == nil: procAddrError(name)
+    if result != nil: return
+    for i in countup(0, 50):
+      var decorated = "_" & $name & "@" & $(i * 4)
+      result = getProcAddress(cast[THINSTANCE](lib), cstring(decorated))
+      if result != nil: return
+    procAddrError(name)
 
 else:
   {.error: "no implementation for dyncalls".}

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Plugin support for the Nim compiler. Right now there are no plugins and they
+## Plugin support for the Nim compiler. Right now they
 ## need to be build with the compiler, no DLL support.
 
 import ast, semdata, idents
@@ -20,13 +20,16 @@ type
     next: Plugin
 
 proc pluginMatches(p: Plugin; s: PSym): bool =
-  if s.name.id != p.fn.id: return false
-  let module = s.owner
+  if s.name.id != p.fn.id:
+    return false
+  let module = s.skipGenericOwner
   if module == nil or module.kind != skModule or
-      module.name.id != p.module.id: return false
+      module.name.id != p.module.id:
+    return false
   let package = module.owner
   if package == nil or package.kind != skPackage or
-      package.name.id != p.package.id: return false
+      package.name.id != p.package.id:
+    return false
   return true
 
 var head: Plugin

@@ -23,7 +23,7 @@ template reject(e: expr) =
 type
   Container[T] = concept c
     c.len is Ordinal
-    items(c) is iterator
+    items(c) is T
     for value in c:
       type(value) is T
 

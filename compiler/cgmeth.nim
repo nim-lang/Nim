@@ -18,8 +18,10 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   var source = skipTypes(n.typ, abstractPtrs)
   if (source.kind == tyObject) and (dest.kind == tyObject):
     var diff = inheritanceDiff(dest, source)
-    if diff == high(int): internalError(n.info, "cgmeth.genConv")
-    if diff < 0:
+    if diff == high(int):
+      # no subtype relation, nothing to do
+      result = n
+    elif diff < 0:
       result = newNodeIT(nkObjUpConv, n.info, d)
       addSon(result, n)
       if downcast: internalError(n.info, "cgmeth.genConv: no upcast allowed")

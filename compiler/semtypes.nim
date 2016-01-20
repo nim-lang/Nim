@@ -135,13 +135,19 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     checkMinSonsLen(n, 1)
     var base = semTypeNode(c, n.lastSon, nil)
     result = newOrPrevType(kind, prev, c)
+    var isNilable = false
     # check every except the last is an object:
     for i in isCall .. n.len-2:
-      let region = semTypeNode(c, n[i], nil)
-      if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
-        message n[i].info, errGenerated, "region needs to be an object type"
-      addSonSkipIntLit(result, region)
+      let ni = n[i]
+      if ni.kind == nkNilLit:
+        isNilable = true
+      else:
+        let region = semTypeNode(c, ni, nil)
+        if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
+          message n[i].info, errGenerated, "region needs to be an object type"
+        addSonSkipIntLit(result, region)
     addSonSkipIntLit(result, base)
+    #if not isNilable: result.flags.incl tfNotNil
 
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 1:
@@ -826,15 +832,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
     result = addImplicitGeneric(result)
 
-  of tyIter:
-    if paramType.callConv == ccInline:
-      if procKind notin {skTemplate, skMacro, skIterator}:
-        localError(info, errInlineIteratorsAsProcParams)
-      if paramType.len == 1:
-        let lifted = liftingWalk(paramType.base)
-        if lifted != nil: paramType.sons[0] = lifted
-      result = addImplicitGeneric(paramType)
-
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
       var cp = copyType(paramType, getCurrOwner(), false)
@@ -864,11 +861,6 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
-
-  of tyExpr:
-    if procKind notin {skMacro, skTemplate}:
-      result = addImplicitGeneric(newTypeS(tyAnything, c))
-      #result = addImplicitGenericImpl(newTypeS(tyGenericParam, c), nil)
 
   of tyGenericParam:
     markUsed(info, paramType.sym)
@@ -968,10 +960,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   var r: PType
   if n.sons[0].kind != nkEmpty:
     r = semTypeNode(c, n.sons[0], nil)
-  elif kind == skIterator:
-    # XXX This is special magic we should likely get rid of
-    r = newTypeS(tyExpr, c)
-    message(n.info, warnDeprecated, "implicit return type for 'iterator'")
 
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
@@ -996,7 +984,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           # see tchainediterators
           # in cases like iterator foo(it: iterator): type(it)
           # we don't need to change the return type to iter[T]
-          if not r.isInlineIterator: r = newTypeWithSons(c, tyIter, @[r])
+          result.flags.incl tfIterator
+          # XXX Would be nice if we could get rid of this
       result.sons[0] = r
       result.n.typ = r
 
@@ -1151,7 +1140,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
     let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
-    result = typExpr.typ.skipTypes({tyIter})
+    result = typExpr.typ
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
@@ -1169,6 +1158,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semTypeNode(c, b, prev)
     elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)
+    elif n[0].kind == nkNilLit and n.len == 2:
+      result = semTypeNode(c, n.sons[1], prev)
+      if result.skipTypes({tyGenericInst}).kind in NilableTypes+GenericTypes:
+        if tfNotNil in result.flags:
+          result = freshType(result, prev)
+          result.flags.excl(tfNotNil)
+      else:
+        localError(n.info, errGenerated, "invalid type")
     elif n[0].kind notin nkIdentKinds:
       result = semTypeExpr(c, n)
     else:
@@ -1209,7 +1206,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2)
         let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
-        result = typExpr.typ.skipTypes({tyIter})
+        result = typExpr.typ
       else:
         result = semTypeExpr(c, n)
   of nkWhenStmt:
@@ -1290,14 +1287,16 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     result.flags.incl tfHasStatic
   of nkIteratorTy:
     if n.sonsLen == 0:
-      result = newConstraint(c, tyIter)
+      result = newTypeS(tyBuiltInTypeClass, c)
+      let child = newTypeS(tyProc, c)
+      child.flags.incl tfIterator
+      result.addSonSkipIntLit(child)
     else:
-      result = semProcTypeWithScope(c, n, prev, skClosureIterator)
+      result = semProcTypeWithScope(c, n, prev, skIterator)
+      result.flags.incl(tfIterator)
       if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
-        result.kind = tyIter
         result.callConv = ccInline
       else:
-        result.flags.incl(tfIterator)
         result.callConv = ccClosure
   of nkProcTy:
     if n.sonsLen == 0:

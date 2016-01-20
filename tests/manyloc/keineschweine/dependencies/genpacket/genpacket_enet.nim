@@ -131,10 +131,10 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
           emptyNode())),
       emptyNode(),
       emptyNode(),
-      newNimNode(nnkStmtList).und(#[6]
+      newNimNode(nnkStmtList).und(# [6]
         newNimNode(nnkAsgn).und(
           ^"result",                  ## result =
-          newNimNode(nnkCall).und(#[6][0][1]
+          newNimNode(nnkCall).und(# [6][0][1]
             ^"format",  ## format
             emptyNode()))))  ## "[TypeName   $1   $2]"
     formatStr = "["& $typeName.ident
@@ -277,7 +277,7 @@ when isMainModule:
   s.flush
 
   defPacket(Y, tuple[z: int8])
-  proc `$`(z: Y): string = result = "Y("& $z.z &")"
+  proc `$`(z: Y): string = result = "Y(" & $z.z & ")"
   defPacket(TestPkt, tuple[x: seq[Y]])
   var test = newTestPkt()
   test.x.add([newY(5), newY(4), newY(3), newY(2), newY(1)])

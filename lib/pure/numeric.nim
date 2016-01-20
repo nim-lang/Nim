@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+## **Warning:** This module will be moved out of the stdlib and into a
+## Nimble package, don't use it.
+
 type OneVarFunction* = proc (x: float): float
 
 {.deprecated: [TOneVarFunction: OneVarFunction].}

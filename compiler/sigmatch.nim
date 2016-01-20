@@ -167,12 +167,12 @@ proc sumGeneric(t: PType): int =
       t = t.lastSon
       if t.kind == tyEmpty: break
       inc result
-    of tyGenericInvocation, tyTuple:
+    of tyGenericInvocation, tyTuple, tyProc:
       result += ord(t.kind == tyGenericInvocation)
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyGenericParam, tyExpr, tyStatic, tyStmt: break
-    of tyBool, tyChar, tyEnum, tyObject, tyProc, tyPointer,
+    of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
       return isvar
@@ -1256,10 +1256,6 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
 
-proc isInlineIterator*(t: PType): bool =
-  result = t.kind == tyIter or
-          (t.kind == tyBuiltInTypeClass and t.base.kind == tyIter)
-
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
   of isConvertible, isIntConv: inc(m.convMatches, convMatch)
@@ -1322,13 +1318,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       return arg.typ.n
     else:
       return argSemantized # argOrig
-
-  if r != isNone and f.isInlineIterator:
-    var inlined = newTypeS(tyStatic, c)
-    inlined.sons = @[argType]
-    inlined.n = argSemantized
-    put(m.bindings, f, inlined)
-    return argSemantized
 
   # If r == isBothMetaConvertible then we rerun typeRel.
   # bothMetaCounter is for safety to avoid any infinite loop,
@@ -1453,7 +1442,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     z.calleeSym = m.calleeSym
     var best = -1
     for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter}+skIterators:
+      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         z.calleeSym = arg.sons[i].sym
@@ -1646,6 +1635,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           if arg != nil and m.baseTypeMatch and container != nil:
             addSon(container, arg)
             incrIndexType(container.typ)
+            checkConstraint(n.sons[a])
           else:
             m.state = csNoMatch
             return
@@ -1686,7 +1676,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           setSon(m.call, formal.position + 1, arg)
           inc(f)
           container = nil
-      checkConstraint(n.sons[a])
+        checkConstraint(n.sons[a])
     inc(a)
 
 proc semFinishOperands*(c: PContext, n: PNode) =

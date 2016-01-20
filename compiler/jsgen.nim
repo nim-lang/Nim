@@ -931,7 +931,7 @@ proc isIndirect(v: PSym): bool =
   result = {sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
     {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
-    v.kind notin {skProc, skConverter, skMethod, skIterator, skClosureIterator,
+    v.kind notin {skProc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet}
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1636,7 +1636,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkSym:
     genSym(p, n, r)
   of nkCharLit..nkInt64Lit:
-    r.res = rope(n.intVal)
+    if n.typ.kind == tyBool:
+      r.res = if n.intVal == 0: rope"false" else: rope"true"
+    else:
+      r.res = rope(n.intVal)
     r.kind = resExpr
   of nkNilLit:
     if isEmptyType(n.typ):

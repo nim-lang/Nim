@@ -149,10 +149,10 @@ proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
-  if n.comment != nil and startsWith(n.comment, "##"):
+  if n.comment != nil:
     renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
                                toLinenumber(n.info), toColumn(n.info),
-                               dummyHasToc, d.options + {roSkipPounds}), result)
+                               dummyHasToc, d.options), result)
 
 proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -537,7 +537,7 @@ proc generateJson(d: PDoc, n: PNode, jArray: JsonNode = nil): JsonNode =
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Methods",
-    "Iterators", "Iterators", "Converters", "Macros", "Templates"
+    "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].rope

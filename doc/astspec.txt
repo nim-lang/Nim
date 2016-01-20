@@ -924,9 +924,11 @@ AST:
 
 .. code-block:: nim
   nnkLetSection(
-    nnkIdentDefs(!"v"),
-    nnkEmpty(), # for the type
-    nnkIntLit(3)
+    nnkIdentDefs(
+      nnkIdent(!"a"),
+      nnkEmpty(), # or nnkIdent(...) for the type
+      nnkIntLit(3),
+    )
   )
 
 Const section

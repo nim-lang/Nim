@@ -3,6 +3,16 @@ Nim's Documentation
 
 .. container:: standout
 
+  Search Options
+  --------------
+
+  .. container:: internals
+
+  `Documentation Index <docs/theindex.html>`_ - The generated
+  index. **Index + (Ctrl+F) == Joy**
+
+.. container:: standout
+
   Standards & Guides
   ------------------
 
@@ -58,10 +68,3 @@ Nim's Documentation
     - | `Internal Documentation <docs/intern.html>`_
       | The internal documentation describes how the compiler is implemented.
         Read this if you want to hack the compiler.
-
-
-Search Options
---------------
-
-`Documentation Index <docs/theindex.html>`_ - The generated
-index. **Index + (Ctrl+F) == Joy**

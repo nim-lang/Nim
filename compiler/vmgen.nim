@@ -1209,7 +1209,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     cannotEval(n)
   elif s.kind in {skProc, skConverter, skMethod,
-                  skIterator, skClosureIterator} and sfForward in s.flags:
+                  skIterator} and sfForward in s.flags:
     cannotEval(n)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
@@ -1604,7 +1604,8 @@ proc matches(s: PSym; x: string): bool =
   var s = s
   var L = y.len-1
   while L >= 0:
-    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+      return false
     s = s.owner
     dec L
   result = true
@@ -1613,7 +1614,8 @@ proc matches(s: PSym; y: varargs[string]): bool =
   var s = s
   var L = y.len-1
   while L >= 0:
-    if s == nil or y[L].cmpIgnoreStyle(s.name.s) != 0: return false
+    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+      return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
     dec L
   result = true
@@ -1636,7 +1638,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     case s.kind
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
       genRdVar(c, n, dest, flags)
-    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterators:
+    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if procIsCallback(c, s): discard
       elif sfImportc in s.flags: c.importcSym(n.info, s)

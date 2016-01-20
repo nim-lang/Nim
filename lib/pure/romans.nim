@@ -9,6 +9,9 @@
 
 ## Module for converting an integer to a Roman numeral.
 ## See http://en.wikipedia.org/wiki/Roman_numerals for reference.
+##
+## **Warning:** This module will be moved out of the stdlib and into a
+## Nimble package, don't use it.
 
 const
   RomanNumeralDigits* = {'I', 'i', 'V', 'v', 'X', 'x', 'L', 'l', 'C', 'c',

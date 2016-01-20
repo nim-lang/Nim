@@ -29,7 +29,7 @@
 ##  echo "epochTime() float value: ", epochTime()
 ##  echo "getTime()   float value: ", toSeconds(getTime())
 ##  echo "cpuTime()   float value: ", cpuTime()
-##  echo "An hour from now      : ", getLocalTime(getTime()) + initInterval(0,0,0,1)
+##  echo "An hour from now      : ", getLocalTime(getTime()) + 1.hours
 ##  echo "An hour from (UTC) now: ", getGmTime(getTime()) + initInterval(0,0,0,1)
 
 {.push debugger:off.} # the user does not want to trace a part
@@ -171,11 +171,6 @@ type
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
 
-proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
-
-proc `miliseconds=`*(t:var TimeInterval, milliseconds: int) {.deprecated.} =
-  t.milliseconds = milliseconds
-
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
@@ -245,13 +240,59 @@ proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
 proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval =
   ## creates a new ``TimeInterval``.
-  result.milliseconds = milliseconds
-  result.seconds = seconds
-  result.minutes = minutes
-  result.hours = hours
-  result.days = days
-  result.months = months
-  result.years = years
+  ##
+  ## You can also use the convenience procedures called ``milliseconds``,
+  ## ``seconds``, ``minutes``, ``hours``, ``days``, ``months``, and ``years``.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##     let day = initInterval(hours=24)
+  ##     let tomorrow = getTime() + day
+  ##     echo(tomorrow)
+  var carryO = 0
+  result.milliseconds = `mod`(milliseconds, 1000)
+  carryO = `div`(milliseconds, 1000)
+  result.seconds = `mod`(carryO + seconds, 60)
+  carryO = `div`(seconds, 60)
+  result.minutes = `mod`(carryO + minutes, 60)
+  carryO = `div`(minutes, 60)
+  result.hours = `mod`(carryO + hours, 24)
+  carryO = `div`(hours, 24)
+  result.days = carryO + days
+  carryO = 0
+  result.months = `mod`(months, 12)
+  carryO = `div`(months, 12)
+  result.years = carryO + years
+
+proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
+  ## Adds two ``TimeInterval`` objects together.
+  var carryO = 0
+  result.milliseconds = `mod`(ti1.milliseconds + ti2.milliseconds, 1000)
+  carryO = `div`(ti1.milliseconds + ti2.milliseconds, 1000)
+  result.seconds = `mod`(carryO + ti1.seconds + ti2.seconds, 60)
+  carryO = `div`(ti1.seconds + ti2.seconds, 60)
+  result.minutes = `mod`(carryO + ti1.minutes + ti2.minutes, 60)
+  carryO = `div`(ti1.minutes + ti2.minutes, 60)
+  result.hours = `mod`(carryO + ti1.hours + ti2.hours, 24)
+  carryO = `div`(ti1.hours + ti2.hours, 24)
+  result.days = carryO + ti1.days + ti2.days
+  carryO = 0
+  result.months = `mod`(ti1.months + ti2.months, 12)
+  carryO = `div`(ti1.months + ti2.months, 12)
+  result.years = carryO + ti1.years + ti2.years
+
+proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
+  ## Subtracts TimeInterval ``ti1`` from ``ti2``.
+  result = ti1
+  result.milliseconds -= ti2.milliseconds
+  result.seconds -= ti2.seconds
+  result.minutes -= ti2.minutes
+  result.hours -= ti2.hours
+  result.days -= ti2.days
+  result.months -= ti2.months
+  result.years -= ti2.years
 
 proc isLeapYear*(year: int): bool =
   ## returns true if ``year`` is a leap year
@@ -288,13 +329,22 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
 
   newinterv.months += interval.years * 12
   var curMonth = anew.month
-  for mth in 1 .. newinterv.months:
-    result += float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
-    if curMonth == mDec:
-      curMonth = mJan
-      anew.year.inc()
-    else:
-      curMonth.inc()
+  if newinterv.months < 0:   # subtracting
+    for mth in countDown(-1 * newinterv.months, 1):
+      result -= float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
+      if curMonth == mJan:
+        curMonth = mDec
+        anew.year.dec()
+      else:
+        curMonth.dec()
+  else:  # adding
+    for mth in 1 .. newinterv.months:
+      result += float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
+      if curMonth == mDec:
+        curMonth = mJan
+        anew.year.inc()
+      else:
+        curMonth.inc()
   result += float(newinterv.days * 24 * 60 * 60)
   result += float(newinterv.hours * 60 * 60)
   result += float(newinterv.minutes * 60)
@@ -302,28 +352,39 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
   result += newinterv.milliseconds / 1000
 
 proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
-  ## adds ``interval`` time.
+  ## adds ``interval`` time from TimeInfo ``a``.
   ##
   ## **Note:** This has been only briefly tested and it may not be
   ## very accurate.
   let t = toSeconds(timeInfoToTime(a))
   let secs = toSeconds(a, interval)
-  #if a.tzname == "UTC":
-  #  result = getGMTime(fromSeconds(t + secs))
-  #else:
   result = getLocalTime(fromSeconds(t + secs))
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
-  ## subtracts ``interval`` time.
+  ## subtracts ``interval`` time from TimeInfo ``a``.
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
   let t = toSeconds(timeInfoToTime(a))
-  let secs = toSeconds(a, interval)
-  #if a.tzname == "UTC":
-  #  result = getGMTime(fromSeconds(t - secs))
-  #else:
-  result = getLocalTime(fromSeconds(t - secs))
+  var intval: TimeInterval
+  intval.milliseconds = - interval.milliseconds
+  intval.seconds = - interval.seconds
+  intval.minutes = - interval.minutes
+  intval.hours = - interval.hours
+  intval.days = - interval.days
+  intval.months = - interval.months
+  intval.years = - interval.years
+  let secs = toSeconds(a, intval)
+  result = getLocalTime(fromSeconds(t + secs))
+
+proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
+
+proc `miliseconds=`*(t: var TimeInterval, milliseconds: int) {.deprecated.} =
+  ## An alias for a misspelled field in ``TimeInterval``.
+  ##
+  ## **Warning:** This should not be used! It will be removed in the next
+  ## version.
+  t.milliseconds = milliseconds
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
@@ -602,6 +663,69 @@ proc `$`*(m: Month): string =
       "April", "May", "June", "July", "August", "September", "October",
       "November", "December"]
   return lookup[m]
+
+proc milliseconds*(ms: int): TimeInterval {.inline.} =
+  ## TimeInterval of `ms` milliseconds
+  ##
+  ## Note: not all time functions have millisecond resolution
+  initInterval(`mod`(ms,1000), `div`(ms,1000))
+
+proc seconds*(s: int): TimeInterval {.inline.} =
+  ## TimeInterval of `s` seconds
+  ##
+  ## ``echo getTime() + 5.second``
+  initInterval(0,`mod`(s,60), `div`(s,60))
+
+proc minutes*(m: int): TimeInterval {.inline.} =
+  ## TimeInterval of `m` minutes
+  ##
+  ## ``echo getTime() + 5.minutes``
+  initInterval(0,0,`mod`(m,60), `div`(m,60))
+
+proc hours*(h: int): TimeInterval {.inline.} =
+  ## TimeInterval of `h` hours
+  ##
+  ## ``echo getTime() + 2.hours``
+  initInterval(0,0,0,`mod`(h,24),`div`(h,24))
+
+proc days*(d: int): TimeInterval {.inline.} =
+  ## TimeInterval of `d` days
+  ##
+  ## ``echo getTime() + 2.days``
+  initInterval(0,0,0,0,d)
+
+proc months*(m: int): TimeInterval {.inline.} =
+  ## TimeInterval of `m` months
+  ##
+  ## ``echo getTime() + 2.months``
+  initInterval(0,0,0,0,0,`mod`(m,12),`div`(m,12))
+
+proc years*(y: int): TimeInterval {.inline.} =
+  ## TimeInterval of `y` years
+  ##
+  ## ``echo getTime() + 2.years``
+  initInterval(0,0,0,0,0,0,y)
+
+proc `+=`*(t: var Time, ti: TimeInterval) =
+  ## modifies `t` by adding the interval `ti`
+  t = timeInfoToTime(getLocalTime(t) + ti)
+
+proc `+`*(t: Time, ti: TimeInterval): Time =
+  ## adds the interval `ti` to Time `t`
+  ## by converting to localTime, adding the interval, and converting back
+  ##
+  ## ``echo getTime() + 1.day``
+  result = timeInfoToTime(getLocalTime(t) + ti)
+
+proc `-=`*(t: var Time, ti: TimeInterval) =
+  ## modifies `t` by subtracting the interval `ti`
+  t = timeInfoToTime(getLocalTime(t) - ti)
+
+proc `-`*(t: Time, ti: TimeInterval): Time =
+  ## adds the interval `ti` to Time `t`
+  ##
+  ## ``echo getTime() - 1.day``
+  result = timeInfoToTime(getLocalTime(t) - ti)
 
 proc formatToken(info: TimeInfo, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
@@ -1192,112 +1316,10 @@ proc timeToTimeInterval*(t: Time): TimeInterval =
   # Milliseconds not available from Time
 
 when isMainModule:
-  # $ date --date='@2147483647'
-  # Tue 19 Jan 03:14:07 GMT 2038
-
-  var t = getGMTime(fromSeconds(2147483647))
-  assert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
-  assert t.format("ddd ddMMMhh:mm:ssZZZyyyy") == "Tue 19Jan03:14:07UTC2038"
-
-  assert t.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-    " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-    "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 0 00 00:00 UTC"
-
-  assert t.format("yyyyMMddhhmmss") == "20380119031407"
-
-  var t2 = getGMTime(fromSeconds(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
-  assert t2.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-    " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-    "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00 UTC"
-
-  when not defined(JS):
-    when sizeof(Time) == 8:
-      var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
-      assert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-        " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-        "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
-      assert t3.format(":,[]()-/") == ":,[]()-/"
-
-  var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
-  assert t4.format("M MM MMM MMMM") == "10 10 Oct October"
-
-  # Interval tests
-  assert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
-  assert((t4 - initInterval(years = 7, minutes = 34, seconds = 24)).format("yyyy mm ss") == "1990 24 10")
-
-  var s = "Tuesday at 09:04am on Dec 15, 2015"
-  var f = "dddd at hh:mmtt on MMM d, yyyy"
-  assert($s.parse(f) == "Tue Dec 15 09:04:00 2015")
-  # ANSIC       = "Mon Jan _2 15:04:05 2006"
-  s = "Thu Jan 12 15:04:05 2006"
-  f = "ddd MMM dd HH:mm:ss yyyy"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-  s = "Thu Jan 12 15:04:05 MST 2006"
-  f = "ddd MMM dd HH:mm:ss ZZZ yyyy"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
-  s = "Thu Jan 12 15:04:05 -07:00 2006"
-  f = "ddd MMM dd HH:mm:ss zzz yyyy"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # RFC822      = "02 Jan 06 15:04 MST"
-  s = "12 Jan 16 15:04 MST"
-  f = "dd MMM yy HH:mm ZZZ"
-  assert($s.parse(f) == "Tue Jan 12 15:04:00 2016")
-  # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
-  s = "12 Jan 16 15:04 -07:00"
-  f = "dd MMM yy HH:mm zzz"
-  assert($s.parse(f) == "Tue Jan 12 15:04:00 2016")
-  # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
-  s = "Monday, 12-Jan-06 15:04:05 MST"
-  f = "dddd, dd-MMM-yy HH:mm:ss ZZZ"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
-  s = "Thu, 12 Jan 2006 15:04:05 MST"
-  f = "ddd, dd MMM yyyy HH:mm:ss ZZZ"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
-  s = "Thu, 12 Jan 2006 15:04:05 -07:00"
-  f = "ddd, dd MMM yyyy HH:mm:ss zzz"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # RFC3339     = "2006-01-02T15:04:05Z07:00"
-  s = "2006-01-12T15:04:05Z-07:00"
-  f = "yyyy-MM-ddTHH:mm:ssZzzz"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  f = "yyyy-MM-dd'T'HH:mm:ss'Z'zzz"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
-  s = "2006-01-12T15:04:05.999999999Z-07:00"
-  f = "yyyy-MM-ddTHH:mm:ss.999999999Zzzz"
-  assert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-  # Kitchen     = "3:04PM"
-  s = "3:04PM"
-  f = "h:mmtt"
-  assert "15:04:00" in $s.parse(f)
-  when not defined(testing):
-    echo "Kitchen: " & $s.parse(f)
-    var ti = timeToTimeInfo(getTime())
-    echo "Todays date after decoding: ", ti
-    var tint = timeToTimeInterval(getTime())
-    echo "Todays date after decoding to interval: ", tint
-  # checking dayOfWeek matches known days
-  assert getDayOfWeek(21, 9, 1900) == dFri
-  assert getDayOfWeek(1, 1, 1970) == dThu
-  assert getDayOfWeek(21, 9, 1970) == dMon
-  assert getDayOfWeek(1, 1, 2000) == dSat
-  assert getDayOfWeek(1, 1, 2021) == dFri
-  # Julian tests
-  assert getDayOfWeekJulian(21, 9, 1900) == dFri
-  assert getDayOfWeekJulian(21, 9, 1970) == dMon
-  assert getDayOfWeekJulian(1, 1, 2000) == dSat
-  assert getDayOfWeekJulian(1, 1, 2021) == dFri
-
-  # toSeconds tests with GM and Local timezones
-  #var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
-  var t4L = getLocalTime(fromSeconds(876124714))
-  assert toSeconds(timeInfoToTime(t4L)) == 876124714    # fromSeconds is effectively "localTime"
-  assert toSeconds(timeInfoToTime(t4L)) + t4L.timezone.float == toSeconds(timeInfoToTime(t4))
-
+  # this is testing non-exported function
+  var
+    t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
+    t4L = getLocalTime(fromSeconds(876124714))
   assert toSeconds(t4, initInterval(seconds=0)) == 0.0
   assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
   assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))
@@ -1307,12 +1329,5 @@ when isMainModule:
   assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
   assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
 
-  # adding intervals
-  var
-    a1L = toSeconds(timeInfoToTime(t4L + initInterval(hours = 1))) + t4L.timezone.float
-    a1G = toSeconds(timeInfoToTime(t4)) + 60.0 * 60.0
-  assert a1L == a1G
-  # subtracting intervals
-  a1L = toSeconds(timeInfoToTime(t4L - initInterval(hours = 1))) + t4L.timezone.float
-  a1G = toSeconds(timeInfoToTime(t4)) - (60.0 * 60.0)
-  assert a1L == a1G
+  # Further tests are in tests/stdlib/ttime.nim
+  # koch test c stdlib

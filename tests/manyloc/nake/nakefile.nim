@@ -146,7 +146,7 @@ task "download", "download game assets":
 
 task "zip-lib", "zip up the libs dir":
   var z: TZipArchive
-  if not z.open("libs-"& getDateStr() &".zip", fmReadWrite):
+  if not z.open("libs-" & getDateStr() & ".zip", fmReadWrite):
     quit "Could not open zip"
   for file in walkDirRec("libs", {pcFile, pcDir}):
     echo "adding file ", file

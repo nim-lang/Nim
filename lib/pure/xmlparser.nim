@@ -96,7 +96,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     next(x)
   of xmlEntity:
     ## &entity;
-    errors.add(errorMsg(x, "unknown entity: " & x.entityName))
+    result = newEntity(x.entityName)
     next(x)
   of xmlEof: discard
 
@@ -143,17 +143,24 @@ proc loadXml*(path: string): XmlNode =
   result = loadXml(path, errors)
   if errors.len > 0: raiseInvalidXml(errors)
 
-when not defined(testing) and isMainModule:
-  import os
+when isMainModule:
+  when not defined(testing):
+    import os
 
-  var errors: seq[string] = @[]
-  var x = loadXml(paramStr(1), errors)
-  for e in items(errors): echo e
+    var errors: seq[string] = @[]
+    var x = loadXml(paramStr(1), errors)
+    for e in items(errors): echo e
 
-  var f: File
-  if open(f, "xmltest.txt", fmWrite):
-    f.write($x)
-    f.close()
+    var f: File
+    if open(f, "xmltest.txt", fmWrite):
+      f.write($x)
+      f.close()
+    else:
+      quit("cannot write test.txt")
   else:
-    quit("cannot write test.txt")
+    block: # correctly parse ../../tests/testdata/doc1.xml
+      let filePath = "tests/testdata/doc1.xml"
+      var errors: seq[string] = @[]
+      var xml = loadXml(filePath, errors)
+      assert(errors.len == 0, "The file tests/testdata/doc1.xml should be parsed without errors.")
 

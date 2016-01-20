@@ -886,7 +886,7 @@ elif not defined(useNimRtl):
     discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
     exitnow(1)
 
-  when defined(macosx) or defined(freebsd):
+  when defined(macosx) or defined(freebsd) or defined(netbsd) or defined(android):
     var environ {.importc.}: cstringArray
 
   proc startProcessAfterFork(data: ptr StartProcessData) =
@@ -916,7 +916,7 @@ elif not defined(useNimRtl):
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
     if data.optionPoUsePath:
-      when defined(macosx) or defined(freebsd):
+      when defined(macosx) or defined(freebsd) or defined(netbsd) or defined(android):
         # MacOSX doesn't have execvpe, so we need workaround.
         # On MacOSX we can arrive here only from fork, so this is safe:
         environ = data.sysEnv
@@ -937,9 +937,10 @@ elif not defined(useNimRtl):
     if p.inStream != nil: close(p.inStream)
     if p.outStream != nil: close(p.outStream)
     if p.errStream != nil: close(p.errStream)
-    discard close(p.inHandle)
-    discard close(p.outHandle)
-    discard close(p.errHandle)
+    if poParentStreams notin p.options:
+      discard close(p.inHandle)
+      discard close(p.outHandle)
+      discard close(p.errHandle)
 
   proc suspend(p: Process) =
     if kill(p.id, SIGSTOP) != 0'i32: raiseOsError(osLastError())

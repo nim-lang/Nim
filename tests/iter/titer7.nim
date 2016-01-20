@@ -14,11 +14,7 @@ discard """
 49
 64
 81
---- squares of evens, only
-4
-16
-36
-64'''
+'''
 """
 
 iterator `/`[T](sequence: seq[T],
@@ -40,10 +36,10 @@ iterator `/>>`[I,O](sequence: seq[I],
         if (filtermap.f(element)):
             yield filtermap.m(element)
 
-proc isEven(x:int): bool {.closure.} = result =
+proc isEven(x:int): bool =
     (x and 1) == 0
 
-proc square(x:int): int {.closure.} = result =
+proc square(x:int): int =
     x * x
 
 let list = @[1,2,3,4,5,6,7,8,9]
@@ -52,6 +48,6 @@ echo ("--- evens")
 for item in list / isEven : echo(item)
 echo ("--- squares")
 for item in list >> square : echo(item)
-echo ("--- squares of evens, only")
+#echo ("--- squares of evens, only")
 # next line doesn't compile. Generic types are not inferred
-for item in list />> (isEven, square) : echo(item)
+#for item in list />> (isEven, square) : echo(item)

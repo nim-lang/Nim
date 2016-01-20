@@ -70,7 +70,7 @@ when not defined(createNimRtl):
     ## Initializes option parser from current command line arguments.
     return initOptParser(commandLineParams())
 
-proc next*(p: var OptParser) {.rtl, extern: "npo$1".}
+proc next*(p: var OptParser) {.rtl, extern: "npo2$1".}
 
 proc nextOption(p: var OptParser, token: string, allowEmpty: bool) =
   for splitchar in [':', '=']:
@@ -113,7 +113,7 @@ proc next(p: var OptParser) =
     p.key = token
     p.val = ""
 
-proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1", deprecated.} =
+proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo2$1", deprecated.} =
   ## Returns part of command line string that has not been parsed yet.
   ## Do not use - does not correctly handle whitespace.
   return p.cmd[p.pos..p.cmd.len-1].join(" ")

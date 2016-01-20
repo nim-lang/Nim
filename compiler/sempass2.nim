@@ -504,7 +504,8 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
-    elif (n.kind == nkSym and n.sym.kind in routineKinds) or n.kind in procDefs:
+    elif (n.kind == nkSym and n.sym.kind in routineKinds) or
+         n.kind in procDefs+{nkObjConstr}:
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
@@ -704,7 +705,15 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
-      initVarViaNew(tracked, n.sons[1])
+      let arg = n.sons[1]
+      initVarViaNew(tracked, arg)
+      if {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+        if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
+            n[2].intVal == 0:
+          # var s: seq[notnil];  newSeq(s, 0)  is a special case!
+          discard
+        else:
+          message(arg.info, warnProveInit, $arg)
     for i in 0 .. <safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:
@@ -875,7 +884,8 @@ proc trackProc*(s: PSym, body: PNode) =
   var t: TEffects
   initEffects(effects, s, t)
   track(t, body)
-  if not isEmptyType(s.typ.sons[0]) and tfNeedsInit in s.typ.sons[0].flags and
+  if not isEmptyType(s.typ.sons[0]) and
+      {tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} and
       s.kind in {skProc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:

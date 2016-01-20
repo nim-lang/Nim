@@ -112,12 +112,7 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       if node.comment == nil: node.comment = ""
-      if p.tok.literal == "[]":
-        node.flags.incl nfIsCursor
-        #echo "parser: "
-        #debug node
-      else:
-        add(node.comment, p.tok.literal)
+      add(node.comment, p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -250,12 +245,14 @@ proc isUnary(p: TParser): bool =
   if p.tok.tokType in {tkOpr, tkDotDot} and
      p.tok.strongSpaceB == 0 and
      p.tok.strongSpaceA > 0:
-    # XXX change this after 0.10.4 is out
-    if p.strongSpaces:
       result = true
-    else:
-      parMessage(p, warnDeprecated,
-        "will be parsed as unary operator; inconsistent spacing")
+      # versions prior to 0.13.0 used to do this:
+      when false:
+        if p.strongSpaces:
+          result = true
+        else:
+          parMessage(p, warnDeprecated,
+            "will be parsed as unary operator; inconsistent spacing")
 
 proc checkBinary(p: TParser) {.inline.} =
   ## Check if the current parser token is a binary operator.
@@ -991,7 +988,7 @@ proc isExprStart(p: TParser): bool =
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf,
      tkProc, tkIterator, tkBind, tkAddr,
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr,
-     tkTuple, tkObject, tkType, tkWhen, tkCase:
+     tkTuple, tkObject, tkType, tkWhen, tkCase, tkOut:
     result = true
   else: result = false
 
@@ -1038,7 +1035,7 @@ proc parseObject(p: var TParser): PNode
 proc parseTypeClass(p: var TParser): PNode
 
 proc primary(p: var TParser, mode: TPrimaryMode): PNode =
-  #| typeKeyw = 'var' | 'ref' | 'ptr' | 'shared' | 'tuple'
+  #| typeKeyw = 'var' | 'out' | 'ref' | 'ptr' | 'shared' | 'tuple'
   #|          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
   #| primary = typeKeyw typeDescK
   #|         /  prefixOperator* identOrLiteral primarySuffix*
@@ -1112,6 +1109,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     optInd(p, result)
     addSon(result, primary(p, pmNormal))
   of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
+  of tkOut: result = parseTypeDescKAux(p, nkVarTy, mode)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
   of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, mode)
@@ -1763,7 +1761,7 @@ proc parseObject(p: var TParser): PNode =
   addSon(result, parseObjectPart(p))
 
 proc parseTypeClassParam(p: var TParser): PNode =
-  if p.tok.tokType == tkVar:
+  if p.tok.tokType in {tkOut, tkVar}:
     result = newNodeP(nkVarTy, p)
     getTok(p)
     result.addSon(p.parseSymbol)
@@ -1771,7 +1769,7 @@ proc parseTypeClassParam(p: var TParser): PNode =
     result = p.parseSymbol
 
 proc parseTypeClass(p: var TParser): PNode =
-  #| typeClassParam = ('var')? symbol
+  #| typeClassParam = ('var' | 'out')? symbol
   #| typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)

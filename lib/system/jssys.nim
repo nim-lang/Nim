@@ -33,6 +33,9 @@ type
     lineNumber {.importc.}: int
     message {.importc.}: cstring
     stack {.importc.}: cstring
+
+  JSRef = ref RootObj # Fake type.
+
 {.deprecated: [TSafePoint: SafePoint, TCallFrame: CallFrame].}
 
 var
@@ -282,61 +285,6 @@ proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
     return true;
   """
 
-type
-  Document {.importc.} = object of RootObj
-    write: proc (text: cstring) {.nimcall.}
-    writeln: proc (text: cstring) {.nimcall.}
-    createAttribute: proc (identifier: cstring): ref Node {.nimcall.}
-    createElement: proc (identifier: cstring): ref Node {.nimcall.}
-    createTextNode: proc (identifier: cstring): ref Node {.nimcall.}
-    getElementById: proc (id: cstring): ref Node {.nimcall.}
-    getElementsByName: proc (name: cstring): seq[ref Node] {.nimcall.}
-    getElementsByTagName: proc (name: cstring): seq[ref Node] {.nimcall.}
-
-  NodeType* = enum
-    ElementNode = 1,
-    AttributeNode,
-    TextNode,
-    CDATANode,
-    EntityRefNode,
-    EntityNode,
-    ProcessingInstructionNode,
-    CommentNode,
-    DocumentNode,
-    DocumentTypeNode,
-    DocumentFragmentNode,
-    NotationNode
-  Node* {.importc.} = object of RootObj
-    attributes*: seq[ref Node]
-    childNodes*: seq[ref Node]
-    data*: cstring
-    firstChild*: ref Node
-    lastChild*: ref Node
-    nextSibling*: ref Node
-    nodeName*: cstring
-    nodeType*: NodeType
-    nodeValue*: cstring
-    parentNode*: ref Node
-    previousSibling*: ref Node
-    appendChild*: proc (child: ref Node) {.nimcall.}
-    appendData*: proc (data: cstring) {.nimcall.}
-    cloneNode*: proc (copyContent: bool) {.nimcall.}
-    deleteData*: proc (start, len: int) {.nimcall.}
-    getAttribute*: proc (attr: cstring): cstring {.nimcall.}
-    getAttributeNode*: proc (attr: cstring): ref Node {.nimcall.}
-    getElementsByTagName*: proc (): seq[ref Node] {.nimcall.}
-    hasChildNodes*: proc (): bool {.nimcall.}
-    insertBefore*: proc (newNode, before: ref Node) {.nimcall.}
-    insertData*: proc (position: int, data: cstring) {.nimcall.}
-    removeAttribute*: proc (attr: cstring) {.nimcall.}
-    removeAttributeNode*: proc (attr: ref Node) {.nimcall.}
-    removeChild*: proc (child: ref Node) {.nimcall.}
-    replaceChild*: proc (newNode, oldNode: ref Node) {.nimcall.}
-    replaceData*: proc (start, len: int, text: cstring) {.nimcall.}
-    setAttribute*: proc (name, value: cstring) {.nimcall.}
-    setAttributeNode*: proc (attr: ref Node) {.nimcall.}
-{.deprecated: [TNode: Node, TNodeType: NodeType, TDocument: Document].}
-
 when defined(kwin):
   proc rawEcho {.compilerproc, asmNoStackFrame.} =
     asm """
@@ -360,28 +308,28 @@ elif defined(nodejs):
     """
 
 else:
-  var
-    document {.importc, nodecl.}: ref Document
-
   proc ewriteln(x: cstring) =
-    var node = document.getElementsByTagName("body")[0]
-    if node != nil:
-      node.appendChild(document.createTextNode(x))
-      node.appendChild(document.createElement("br"))
-    else:
+    var node : JSRef
+    {.emit: "`node` = document.getElementsByTagName('body')[0];".}
+    if node.isNil:
       raise newException(ValueError, "<body> element does not exist yet!")
+    {.emit: """
+    `node`.appendChild(document.createTextNode(`x`));
+    `node`.appendChild(document.createElement("br"));
+    """.}
 
   proc rawEcho {.compilerproc.} =
-    var node = document.getElementsByTagName("body")[0]
-    if node == nil:
+    var node : JSRef
+    {.emit: "`node` = document.getElementsByTagName('body')[0];".}
+    if node.isNil:
       raise newException(IOError, "<body> element does not exist yet!")
-    asm """
-      for (var i = 0; i < arguments.length; ++i) {
-        var x = `toJSStr`(arguments[i]);
-        `node`.appendChild(document.createTextNode(x))
-      }
-    """
-    node.appendChild(document.createElement("br"))
+    {.emit: """
+    for (var i = 0; i < arguments.length; ++i) {
+      var x = `toJSStr`(arguments[i]);
+      `node`.appendChild(document.createTextNode(x));
+    }
+    `node`.appendChild(document.createElement("br"));
+    """.}
 
 # Arithmetic:
 proc addInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
@@ -532,8 +480,6 @@ proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 type NimString = string # hack for hti.nim
 include "system/hti"
 
-type JSRef = ref RootObj # Fake type.
-
 proc isFatPointer(ti: PNimType): bool =
   # This has to be consistent with the code generator!
   return ti.base.kind notin {tyObject,
@@ -587,15 +533,20 @@ proc nimCopy(dest, src: JSRef, ti: PNimType): JSRef =
     nimCopyAux(result, src, ti.node)
   of tySequence, tyArrayConstr, tyOpenArray, tyArray:
     asm """
-      if (`dest` === null || `dest` === undefined) {
-        `dest` = new Array(`src`.length);
+      if (`src` === null) {
+        `result` = null;
       }
       else {
-        `dest`.length = `src`.length;
-      }
-      `result` = `dest`;
-      for (var i = 0; i < `src`.length; ++i) {
-        `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+        if (`dest` === null || `dest` === undefined) {
+          `dest` = new Array(`src`.length);
+        }
+        else {
+          `dest`.length = `src`.length;
+        }
+        `result` = `dest`;
+        for (var i = 0; i < `src`.length; ++i) {
+          `result`[i] = nimCopy(`result`[i], `src`[i], `ti`.base);
+        }
       }
     """
   of tyString:

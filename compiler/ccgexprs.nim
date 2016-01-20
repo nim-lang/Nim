@@ -959,6 +959,7 @@ proc genEcho(p: BProc, n: PNode) =
       addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   linefmt(p, cpsStmts, "printf($1$2);$n",
           makeCString(repeat("%s", n.len) & tnl), args)
+  linefmt(p, cpsStmts, "fflush(stdout);$n")
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
@@ -1415,11 +1416,11 @@ proc binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc) =
   case int(getSize(skipTypes(e.sons[1].typ, abstractVar)))
-  of 1: binaryExprIn(p, e, a, b, d, "(($1 &(1<<(($2)&7)))!=0)")
-  of 2: binaryExprIn(p, e, a, b, d, "(($1 &(1<<(($2)&15)))!=0)")
-  of 4: binaryExprIn(p, e, a, b, d, "(($1 &(1<<(($2)&31)))!=0)")
-  of 8: binaryExprIn(p, e, a, b, d, "(($1 &(IL64(1)<<(($2)&IL64(63))))!=0)")
-  else: binaryExprIn(p, e, a, b, d, "(($1[$2/8] &(1<<($2%8)))!=0)")
+  of 1: binaryExprIn(p, e, a, b, d, "(($1 &(1U<<((NU)($2)&7U)))!=0)")
+  of 2: binaryExprIn(p, e, a, b, d, "(($1 &(1U<<((NU)($2)&15U)))!=0)")
+  of 4: binaryExprIn(p, e, a, b, d, "(($1 &(1U<<((NU)($2)&31U)))!=0)")
+  of 8: binaryExprIn(p, e, a, b, d, "(($1 &((NU64)1<<((NU)($2)&63U)))!=0)")
+  else: binaryExprIn(p, e, a, b, d, "(($1[(NU)($2)>>3] &(1U<<((NU)($2)&7U)))!=0)")
 
 proc binaryStmtInExcl(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a, b: TLoc
@@ -1500,8 +1501,8 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: internalError(e.info, "genSetOp()")
   else:
     case op
-    of mIncl: binaryStmtInExcl(p, e, d, "$1[$2/8] |=(1<<($2%8));$n")
-    of mExcl: binaryStmtInExcl(p, e, d, "$1[$2/8] &= ~(1<<($2%8));$n")
+    of mIncl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] |=(1U<<($2&7U));$n")
+    of mExcl: binaryStmtInExcl(p, e, d, "$1[(NU)($2)>>3] &= ~(1U<<($2&7U));$n")
     of mCard: unaryExprChar(p, e, d, "#cardSet($1, " & $size & ')')
     of mLtSet, mLeSet:
       getTemp(p, getSysType(tyInt), i) # our counter
@@ -1733,8 +1734,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
-    echo "from here ", p.prc.name.s, " ", p.prc.info
-    writestacktrace()
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   of mSpawn:
     let n = lowerings.wrapProcForSpawn(p.module.module, e, e.typ, nil, nil)
@@ -1788,11 +1787,11 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
           initLocExpr(p, e.sons[i].sons[0], a)
           initLocExpr(p, e.sons[i].sons[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
-              "$2[$1/8] |=(1<<($1%8));$n", [rdLoc(idx), rdLoc(d),
+              "$2[(NU)($1)>>3] |=(1U<<((NU)($1)&7U));$n", [rdLoc(idx), rdLoc(d),
               rdSetElemLoc(a, e.typ), rdSetElemLoc(b, e.typ)])
         else:
           initLocExpr(p, e.sons[i], a)
-          lineF(p, cpsStmts, "$1[$2/8] |=(1<<($2%8));$n",
+          lineF(p, cpsStmts, "$1[(NU)($2)>>3] |=(1U<<((NU)($2)&7U));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
     else:
       # small set
@@ -1839,15 +1838,17 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
   assert n.kind == nkClosure
 
   if isConstClosure(n):
-    inc(p.labels)
-    var tmp = "LOC" & rope(p.labels)
-    addf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
+    inc(p.module.labels)
+    var tmp = "CNSTCLOSURE" & rope(p.module.labels)
+    addf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(p.module, n.typ), tmp, genConstExpr(p, n)])
     putIntoDest(p, d, n.typ, tmp, OnStatic)
   else:
     var tmp, a, b: TLoc
     initLocExpr(p, n.sons[0], a)
     initLocExpr(p, n.sons[1], b)
+    if n.sons[0].skipConv.kind == nkClosure:
+      internalError(n.info, "closure to closure created")
     getTemp(p, n.typ, tmp)
     linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
             tmp.rdLoc, a.rdLoc, b.rdLoc)
@@ -1966,7 +1967,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
-    of skProc, skConverter, skIterators:
+    of skProc, skConverter, skIterator:
+      #if sym.kind == skIterator:
+      #  echo renderTree(sym.getBody, {renderIds})
       if sfCompileTime in sym.flags:
         localError(n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
@@ -1988,6 +1991,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
+        #echo renderTree(p.prc.ast, {renderIds})
         internalError n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
@@ -2005,9 +2009,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       putLocIntoDest(p, d, sym.loc)
     of skParam:
       if sym.loc.r == nil or sym.loc.t == nil:
-        #echo "FAILED FOR PRCO ", p.prc.name.s
-        #debug p.prc.typ.n
-        #echo renderTree(p.prc.ast, {renderIds})
+        # echo "FAILED FOR PRCO ", p.prc.name.s
+        # debug p.prc.typ.n
+        # echo renderTree(p.prc.ast, {renderIds})
         internalError(n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     else: internalError(n.info, "expr(" & $sym.kind & "); unknown symbol")

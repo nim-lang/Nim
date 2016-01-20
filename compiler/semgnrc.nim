@@ -58,7 +58,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of skProc, skMethod, skIterators, skConverter, skModule:
+  of skProc, skMethod, skIterator, skConverter, skModule:
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
     if macroToExpand(s):
@@ -226,7 +226,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skUnknown, skParam:
         # Leave it as an identifier.
         discard
-      of skProc, skMethod, skIterators, skConverter, skModule:
+      of skProc, skMethod, skIterator, skConverter, skModule:
         result.sons[0] = symChoice(c, fn, s, scOption)
         # do not check of 's.magic==mRoof' here because it might be some
         # other '^' but after overload resolution the proper one:

@@ -1,9 +1,9 @@
 discard """
   line: 12
-  errormsg: "type mismatch: got (proc (x: int){.closure, gcsafe, locks: 0.})"
+  errormsg: "type mismatch: got (proc (x: int){.gcsafe, locks: 0.})"
 """
 
-proc ugh[T](x: T) {.closure.} =
+proc ugh[T](x: T) {.nimcall.} =
   echo "ugha"
 
 
