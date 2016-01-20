@@ -417,42 +417,6 @@ proc absInt(a: int): int {.compilerproc.} =
 proc absInt64(a: int64): int64 {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
 
-proc leU(a, b: int): bool {.compilerproc.} =
-  result = abs(a) <= abs(b)
-
-proc ltU(a, b: int): bool {.compilerproc.} =
-  result = abs(a) < abs(b)
-
-proc leU64(a, b: int64): bool {.compilerproc.} =
-  result = abs(a) <= abs(b)
-proc ltU64(a, b: int64): bool {.compilerproc.} =
-  result = abs(a) < abs(b)
-
-proc addU(a, b: int): int {.compilerproc.} =
-  result = abs(a) + abs(b)
-proc addU64(a, b: int64): int64 {.compilerproc.} =
-  result = abs(a) + abs(b)
-
-proc subU(a, b: int): int {.compilerproc.} =
-  result = abs(a) - abs(b)
-proc subU64(a, b: int64): int64 {.compilerproc.} =
-  result = abs(a) - abs(b)
-
-proc mulU(a, b: int): int {.compilerproc.} =
-  result = abs(a) * abs(b)
-proc mulU64(a, b: int64): int64 {.compilerproc.} =
-  result = abs(a) * abs(b)
-
-proc divU(a, b: int): int {.compilerproc.} =
-  result = abs(a) div abs(b)
-proc divU64(a, b: int64): int64 {.compilerproc.} =
-  result = abs(a) div abs(b)
-
-proc modU(a, b: int): int {.compilerproc.} =
-  result = abs(a) mod abs(b)
-proc modU64(a, b: int64): int64 {.compilerproc.} =
-  result = abs(a) mod abs(b)
-
 proc ze*(a: int): int {.compilerproc.} =
   result = a
 
