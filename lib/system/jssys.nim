@@ -166,33 +166,14 @@ proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   """
 
 proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
-  {.emit: """
-  var ln = `c`.length;
-  var result = new Array(ln);
-  var r = 0;
-  for (var i = 0; i < ln; ++i) {
-    var ch = `c`.charCodeAt(i);
-
-    if (ch < 128) {
-      result[r] = ch;
+  asm """
+    var result = [];
+    for (var i = 0; i < `c`.length; ++i) {
+      result[i] = `c`.charCodeAt(i);
     }
-    else if((ch > 127) && (ch < 2048)) {
-      result[r] = (ch >> 6) | 192;
-      ++r;
-      result[r] = (ch & 63) | 128;
-    }
-    else {
-      result[r] = (ch >> 12) | 224;
-      ++r;
-      result[r] = ((ch >> 6) & 63) | 128;
-      ++r;
-      result[r] = (ch & 63) | 128;
-    }
-    ++r;
-  }
-  result[r] = 0; // terminating zero
-  return result;
-  """.}
+    result[result.length] = 0; // terminating zero
+    return result;
+  """
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
