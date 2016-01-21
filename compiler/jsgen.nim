@@ -163,8 +163,26 @@ proc mangleName(s: PSym): Rope =
     add(result, rope(s.id))
     s.loc.r = result
 
+proc escapeJSString(s: string): string =
+  result = newStringOfCap(s.len + s.len shr 2)
+  result.add("\"")
+  for c in items(s):
+    case c
+    of '\l': result.add("\\n")
+    of '\r': result.add("\\r")
+    of '\t': result.add("\\t")
+    of '\b': result.add("\\b")
+    of '\a': result.add("\\a")
+    of '\e': result.add("\\e")
+    of '\v': result.add("\\v")
+    of '\\': result.add("\\\\")
+    of '\'': result.add("\\'")
+    of '\"': result.add("\\\"")
+    else: add(result, c)
+  result.add("\"")
+
 proc makeJSString(s: string): Rope =
-  (if s.isNil: "null".rope else: strutils.escape(s).rope)
+  (if s.isNil: "null".rope else: escapeJSString(s).rope)
 
 include jstypes
 
