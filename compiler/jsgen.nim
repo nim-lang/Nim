@@ -163,8 +163,31 @@ proc mangleName(s: PSym): Rope =
     add(result, rope(s.id))
     s.loc.r = result
 
-proc makeJSString(s: string): Rope =
-  (if s.isNil: "null".rope else: strutils.escape(s).rope)
+proc escapeJSString(s: string): string =
+   result = newStringOfCap(s.len + s.len shr 2)
+   result.add("\"")
+   for c in items(s):
+     case c
+     of '\l': result.add("\\n")
+     of '\r': result.add("\\r")
+     of '\t': result.add("\\t")
+     of '\b': result.add("\\b")
+     of '\a': result.add("\\a")
+     of '\e': result.add("\\e")
+     of '\v': result.add("\\v")
+     of '\\': result.add("\\\\")
+     of '\'': result.add("\\'")
+     of '\"': result.add("\\\"")
+     else: add(result, c)
+   result.add("\"")
+
+proc makeJSString(s: string, escapeNonAscii = true): Rope =
+  if s.isNil:
+    result = "null".rope
+  elif escapeNonAscii:
+    result = strutils.escape(s).rope
+  else:
+    result = escapeJSString(s).rope
 
 include jstypes
 
@@ -577,7 +600,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
           if stringSwitch:
             case e.kind
             of nkStrLit..nkTripleStrLit: addf(p.body, "case $1: ",
-                [makeJSString(e.strVal)])
+                [makeJSString(e.strVal, false)])
             else: internalError(e.info, "jsgen.genCaseStmt: 2")
           else:
             gen(p, e, cond)
@@ -1636,10 +1659,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      useMagic(p, "cstrToNimstr")
-      r.res = "cstrToNimstr($1)" % [makeJSString(n.strVal)]
+      useMagic(p, "makeNimstrLit")
+      r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
     else:
-      r.res = makeJSString(n.strVal)
+      r.res = makeJSString(n.strVal, false)
     r.kind = resExpr
   of nkFloatLit..nkFloat64Lit:
     let f = n.floatVal

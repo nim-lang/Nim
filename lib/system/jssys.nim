@@ -165,15 +165,46 @@ proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
     return result;
   """
 
+proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
+  {.emit: """
+  var ln = `c`.length;
+  var result = new Array(ln + 1);
+  var i = 0;
+  for (; i < ln; ++i) {
+    result[i] = `c`.charCodeAt(i);
+  }
+  result[i] = 0; // terminating zero
+  return result;
+  """.}
+
 proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
-  asm """
-    var result = [];
-    for (var i = 0; i < `c`.length; ++i) {
-      result[i] = `c`.charCodeAt(i);
+  {.emit: """
+  var ln = `c`.length;
+  var result = new Array(ln);
+  var r = 0;
+  for (var i = 0; i < ln; ++i) {
+    var ch = `c`.charCodeAt(i);
+
+    if (ch < 128) {
+      result[r] = ch;
     }
-    result[result.length] = 0; // terminating zero
-    return result;
-  """
+    else if((ch > 127) && (ch < 2048)) {
+      result[r] = (ch >> 6) | 192;
+      ++r;
+      result[r] = (ch & 63) | 128;
+    }
+    else {
+      result[r] = (ch >> 12) | 224;
+      ++r;
+      result[r] = ((ch >> 6) & 63) | 128;
+      ++r;
+      result[r] = (ch & 63) | 128;
+    }
+    ++r;
+  }
+  result[r] = 0; // terminating zero
+  return result;
+  """.}
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
