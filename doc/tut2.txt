@@ -1000,7 +1000,9 @@ JavaScript-compatible code you should remember the following:
 - ``addr`` and ``ptr`` have slightly different semantic meaning in JavaScript.
   It is recommended to avoid those if you're not sure how they are translated
   to JavaScript.
-- ``cast[T](x)`` in JavaScript is translated to ``(x)``.
+- ``cast[T](x)`` in JavaScript is translated to ``(x)``, except for casting
+  between signed/unsigned ints, in which case it behaves as static cast in
+  C language.
 - ``cstring`` in JavaScript means JavaScript string. It is a good practice to
   use ``cstring`` only when it is semantically appropriate. E.g. don't use
   ``cstring`` as a binary data buffer.
