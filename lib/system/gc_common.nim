@@ -131,9 +131,9 @@ when defined(sparc): # For SPARC architecture.
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
     stackTop = addr(stackTop)
-    var b = cast[TAddress](gch.stackBottom)
-    var a = cast[TAddress](stackTop)
-    var x = cast[TAddress](p)
+    var b = cast[ByteAddress](gch.stackBottom)
+    var a = cast[ByteAddress](stackTop)
+    var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
@@ -150,7 +150,7 @@ when defined(sparc): # For SPARC architecture.
     # Addresses decrease as the stack grows.
     while sp <= max:
       gcMark(gch, sp[])
-      sp = cast[PPointer](cast[TAddress](sp) +% sizeof(pointer))
+      sp = cast[PPointer](cast[ByteAddress](sp) +% sizeof(pointer))
 
 elif defined(ELATE):
   {.error: "stack marking code is to be written for this architecture".}
