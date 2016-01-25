@@ -88,7 +88,6 @@
 ##
 ##  theDb.close()
 
-
 import strutils, odbcsql
 
 import db_common
