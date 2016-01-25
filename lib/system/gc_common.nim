@@ -7,6 +7,31 @@
 #    distribution, for details about the copyright.
 #
 
+type
+  ForeignCell* = object
+    data*: pointer
+    owner: ptr GcHeap
+
+proc protect*(x: pointer): ForeignCell =
+  nimGCref(x)
+  result.data = x
+  result.owner = addr(gch)
+
+proc dispose*(x: ForeignCell) =
+  when hasThreadSupport:
+    # if we own it we can free it directly:
+    if x.owner == addr(gch):
+      nimGCunref(x.data)
+    else:
+      x.owner.toDispose.add(x.data)
+  else:
+    nimGCunref(x.data)
+
+proc isNotForeign*(x: ForeignCell): bool =
+  ## returns true if 'x' belongs to the calling thread.
+  ## No deep copy has to be performed then.
+  x.owner == addr(gch)
+
 proc len(stack: ptr GcStack): int =
   if stack == nil:
     return 0
