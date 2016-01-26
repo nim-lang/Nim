@@ -1,4 +1,5 @@
 discard """
+  cmd: "nim $target --hints:on --threads:on $options $file"
   action: run
 """
 
@@ -9,7 +10,7 @@ elif defined(posix):
 else:
   {.error: "Unsupported OS".}
 
-import unittest, strutils
+import unittest, strutils, threadpool
 
 suite "inet_ntop tests":
 
@@ -17,6 +18,15 @@ suite "inet_ntop tests":
     when defined(windows):
       var wsa: WSAData
       discard wsaStartup(0x101'i16, wsa.addr)
+
+  test "Multithreading":
+    proc run() =
+      var ip4 = 0x10111213
+      var buff: array[0..255, char]
+      discard inet_ntop(AF_INET, ip4.addr, buff[0].addr, buff.sizeof.int32)
+    for r in 0..<100: 
+      spawn run()
+    sync()
   
   test "IP V4":
     var ip4 = 0x10111213

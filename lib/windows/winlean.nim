@@ -12,7 +12,7 @@
 
 {.deadCodeElim:on.}
 
-import dynlib
+import dynlib, locks
 
 const
   useWinUnicode* = not defined(useWinAnsi)
@@ -825,15 +825,6 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
-type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
-                      stringBufSize: int32): cstring {.stdcall.}
-
-var inet_ntop_real: inet_ntop_proc = nil
-
-let l = loadLib(ws2dll)
-if l != nil:
-  inet_ntop_real = cast[inet_ntop_proc](symAddr(l, "inet_ntop"))
-
 proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
 proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
@@ -862,16 +853,36 @@ proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
       setLastError(ERROR_BAD_ARGUMENTS)
       result = nil
 
+type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
+                      stringBufSize: int32): cstring {.stdcall.}
+
+var inet_ntop_init_guard: Lock
+initLock(inet_ntop_init_guard)
+var inet_ntop_inited {.volatile.} = false
+var inet_ntop_real: pointer = nil
+
 proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
-                  stringBufSize: int32): cstring {.stdcall.} =
-  var ver: OSVERSIONINFO
-  ver.dwOSVersionInfoSize = sizeof(ver).DWORD
-  let res = when useWinUnicode: getVersionExW(ver.addr) else: getVersionExA(ver.addr)
-  if res == 0:
-    result = nil
-  elif ver.dwMajorVersion >= 6:
-    if inet_ntop_real == nil:
-      quit("Can't load inet_ntop proc from " & ws2dll)
-    result = inet_ntop_real(family, paddr, pStringBuffer, stringBufSize)
+                  stringBufSize: int32): cstring {.stdcall, gcsafe.} =
+  if not inet_ntop_inited:
+    inet_ntop_init_guard.acquire
+    defer: inet_ntop_init_guard.release
+    if not inet_ntop_inited:
+      var inet_ntop_os_ver: OSVERSIONINFO
+      inet_ntop_os_ver.dwOSVersionInfoSize = sizeof(OSVERSIONINFO).DWORD
+      let res = when useWinUnicode: getVersionExW(inet_ntop_os_ver.addr) else: getVersionExA(inet_ntop_os_ver.addr)
+      if res == 0:
+        quit("Can't get OS version, win32 error: " & $getLastError())
+      if inet_ntop_os_ver.dwMajorVersion >= 6:
+        let l = loadLib(ws2dll)
+        if l != nil:
+          inet_ntop_real = symAddr(l, "inet_ntop")
+          if inet_ntop_real == nil:
+            quit("Can't get inet_ntop address, win32 error: " & $getLastError())
+        else:
+          quit("Can't load " & ws2dll & ", win32 error: " & $getLastError())
+      inet_ntop_inited = true
+        
+  if inet_ntop_real != nil:
+    result = cast[inet_ntop_proc](inet_ntop_real)(family, paddr, pStringBuffer, stringBufSize)
   else:
     result = inet_ntop_emulated(family, paddr, pStringBuffer, stringBufSize)
