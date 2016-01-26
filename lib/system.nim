@@ -688,6 +688,9 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ##  for i in 0..<arr.len:
   ##    echo arr[i] #=> 1,1,1,1,1
 
+proc clear*[T](s: var seq[T]) = s.setLen(0)
+proc isEmpty*[T](s: seq[T]): bool = s.len == 0
+
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
