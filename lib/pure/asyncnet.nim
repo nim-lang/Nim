@@ -456,7 +456,7 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     of AF_INET6: realaddr = "::"
     of AF_INET:  realaddr = "0.0.0.0"
     else:
-      raise newException(OSError,
+      raise newException(ValueError,
         "Unknown socket address family and no address specified to bindAddr")
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
