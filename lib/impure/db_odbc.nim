@@ -88,6 +88,7 @@
 ##
 ##  theDb.close()
 
+
 import strutils, odbcsql
 
 import db_common
@@ -211,7 +212,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
       add(result, c)
 
 proc prepareFetch(db: var DbConn, query: SqlQuery,
-                args: varargs[string, `$`]) {.
+                args: varargs[string, `$`]) : TSqlSmallInt {.
                 tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   # Prepare a statement, execute it and fetch the data to the driver
   # ready for retrieval of the data
@@ -223,7 +224,9 @@ proc prepareFetch(db: var DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   db.sqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
   db.sqlCheck(SQLExecute(db.stmt))
-  db.sqlCheck(SQLFetch(db.stmt))
+  var retcode = SQLFetch(db.stmt)
+  db.sqlCheck(retcode)
+  result=retcode
 
 proc prepareFetchDirect(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]) {.
@@ -285,18 +288,21 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
-  db.prepareFetch(query, args)
-  res = SQLNumResultCols(db.stmt, cCnt)
-  rowRes = newRow(cCnt)
-  rowRes.setLen(max(cCnt,0))
-  while res == SQL_SUCCESS:
-    for colId in 1..cCnt:
-      buf[0] = '\0'
-      db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
-      rowRes[colId-1] = $buf.cstring
-    yield rowRes
-    res = SQLFetch(db.stmt)
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    discard
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
+    rowRes.setLen(max(cCnt,0))
+    while res == SQL_SUCCESS:
+      for colId in 1..cCnt:
+        buf[0] = '\0'
+        db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+        rowRes[colId-1] = $buf.cstring
+      yield rowRes
+      res = SQLFetch(db.stmt)
   db.sqlCheck(res)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
 
@@ -310,17 +316,20 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
-  db.prepareFetch(query, args)
-  res = SQLNumResultCols(db.stmt, cCnt)
-  rowRes.setLen(max(cCnt,0))
-  while res == SQL_SUCCESS:
-    for colId in 1..cCnt:
-      buf[0] = '\0'
-      db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
-      rowRes[colId-1] = $buf.cstring
-    yield (row: rowRes, len: cCnt.int)
-    res = SQLFetch(db.stmt)
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    discard
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes.setLen(max(cCnt,0))
+    while res == SQL_SUCCESS:
+      for colId in 1..cCnt:
+        buf[0] = '\0'
+        db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+        rowRes[colId-1] = $buf.cstring
+      yield (row: rowRes, len: cCnt.int)
+      res = SQLFetch(db.stmt)
   db.sqlCheck(res)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
 
@@ -342,18 +351,20 @@ proc getRow*(db: var DbConn, query: SqlQuery,
     sz: TSqlSmallInt = 0.TSqlSmallInt
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
-  db.prepareFetch(query, args)
-  res = SQLNumResultCols(db.stmt, cCnt)
-  rowRes = newRow(cCnt)
-  rowRes.setLen(max(cCnt,0))
-  if res == SQL_SUCCESS:
-    buf[0] = '\0'
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    result = @[]
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
+    rowRes.setLen(max(cCnt,0))
     for colId in 1..cCnt:
+      buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
       rowRes[colId-1] = $buf.cstring
     res = SQLFetch(db.stmt)
-  result = rowRes
+    result = rowRes
   db.sqlCheck(res)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
 
@@ -362,24 +373,28 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
            tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   ## Executes the query and returns the whole result dataset.
   var
+    rows: seq[Row] = @[]
     rowRes: Row
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
-  db.prepareFetch(query, args)
-  res = SQLNumResultCols(db.stmt, cCnt)
-  result = @[]
-  rowRes = newRow(cCnt)
-  rowRes.setLen(cCnt)
-  while res == SQL_SUCCESS:
-    buf[0] = '\0'
-    for colId in 1..cCnt:
-      db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[SqlPointer](buf.addr), 4095.TSqlSmallInt, sz.addr))
-      rowRes[colId-1] = $buf.cstring
-    result.add(rowRes)
-    res = SQLFetch(db.stmt)
-  db.sqlCheck(res)
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    result = @[]
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
+    rowRes.setLen(max(cCnt,0))
+    while res == SQL_SUCCESS:
+      for colId in 1..cCnt:
+        buf[0] = '\0'
+        db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+        rowRes[colId-1] = $buf.cstring
+      rows.add(rowRes)
+      res = SQLFetch(db.stmt)
+    result = rows
+    db.sqlCheck(res)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
 
 iterator rows*(db: var DbConn, query: SqlQuery,
@@ -501,5 +516,5 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   ##
   ## Sets the encoding of a database connection, returns true for
   ## success, false for failure.
-  #result = set_character_set(connection, encoding) == 0
+  ##result = set_character_set(connection, encoding) == 0
   dbError("setEncoding() is currently not implemented by the db_odbc module")
