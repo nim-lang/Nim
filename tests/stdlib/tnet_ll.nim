@@ -26,7 +26,7 @@ suite "inet_ntop tests":
       discard inet_ntop(AF_INET, ip4.addr, buff[0].addr, buff.sizeof.int32)
     for r in 0..<100: 
       spawn run()
-    sync()
+    threadpool.sync()
   
   test "IP V4":
     var ip4 = 0x10111213
