@@ -25,8 +25,6 @@
 ## .. include:: ../doc/regexprs.txt
 ##
 
-{.deprecated.}
-
 import
   pcre, strutils, rtarrays
 
