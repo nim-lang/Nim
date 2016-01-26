@@ -688,8 +688,13 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ##  for i in 0..<arr.len:
   ##    echo arr[i] #=> 1,1,1,1,1
 
-proc clear*[T](s: var seq[T]) = s.setLen(0)
-proc isEmpty*[T](s: seq[T]): bool = s.len == 0
+proc clear*[T](s: var seq[T]) =
+  ## Sets the sequence to zero length.
+  s.setLen(0)
+
+proc isEmpty*[T](s: seq[T]): bool =
+  ## Returns true if the sequence has elements.
+  s.len == 0
 
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
