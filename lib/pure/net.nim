@@ -1206,7 +1206,7 @@ proc parseIPv6Address(address_str: string): IpAddress =
       "Invalid IP Address. The address consists of too many groups")
 
 
-proc parseIpAddress(address_str: string): IpAddress =
+proc parseIpAddress*(address_str: string): IpAddress =
   ## Parses an IP address
   ## Raises EInvalidValue on error
   if address_str == nil:
