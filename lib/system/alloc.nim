@@ -688,7 +688,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 3")
     var f = cast[ptr FreeCell](p)
-    #echo("setting to nil: ", $cast[TAddress](addr(f.zeroField)))
+    #echo("setting to nil: ", $cast[ByteAddress](addr(f.zeroField)))
     sysAssert(f.zeroField != 0, "rawDealloc 1")
     f.zeroField = 0
     f.next = c.freeList

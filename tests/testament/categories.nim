@@ -220,7 +220,7 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "actiontable/tactiontable", "method/tmultim1",
                    "method/tmultim3", "method/tmultim4",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup"]:
+                   "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
     test "tests/" & testfile & ".nim"
 
   for testfile in ["pure/strutils"]:

@@ -496,13 +496,12 @@ type
     data: array[MD5_LBLOCK, MD5_LONG]
     num: cuint
 
-{.pragma: ic, importc: "$1".}
 {.push callconv:cdecl, dynlib:DLLUtilName.}
-proc md5_Init*(c: var MD5_CTX): cint{.ic.}
-proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.ic.}
-proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.ic.}
-proc md5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.ic.}
-proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.ic.}
+proc md5_Init*(c: var MD5_CTX): cint{.importc: "MD5_Init".}
+proc md5_Update*(c: var MD5_CTX; data: pointer; len: csize): cint{.importc: "MD5_Update".}
+proc md5_Final*(md: cstring; c: var MD5_CTX): cint{.importc: "MD5_Final".}
+proc md5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.importc: "MD5".}
+proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
 {.pop.}
 
 from strutils import toHex,toLower

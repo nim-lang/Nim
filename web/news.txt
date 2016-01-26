@@ -101,7 +101,7 @@ The following used to work as the environment creation used to be attached to th
     var s: seq[proc(): int {.closure.}] = @[]
     for i in 0 ..< 30:
       let ii = i
-      s.add(proc(): int = return ii*ii))
+      s.add(proc(): int = return ii*ii)
 
 This behaviour has changed in 0.13.0 and now needs to be written as:
 
@@ -131,8 +131,6 @@ via a commit, for a full list see
 
 - Fixed "Generic arguments cannot be used in templates (raising undeclared identifier)"
   (`#3498 <https://github.com/nim-lang/Nim/issues/3498>`_)
-- Fixed "multimethods: Error: internal error: cgmeth.genConv"
-  (`#3550 <https://github.com/nim-lang/Nim/issues/3550>`_)
 - Fixed "multimethods: Error: internal error: cgmeth.genConv"
   (`#3550 <https://github.com/nim-lang/Nim/issues/3550>`_)
 - Fixed "nimscript - SIGSEGV in except block"
