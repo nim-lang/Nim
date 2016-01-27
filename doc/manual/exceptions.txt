@@ -15,7 +15,7 @@ Example:
     try:
       var a = readLine(f)
       var b = readLine(f)
-      echo "sum: " & $(parseInt(a + parseInt(b)))
+      echo "sum: " & $(parseInt(a) + parseInt(b))
     except OverflowError:
       echo "overflow!"
     except ValueError:
