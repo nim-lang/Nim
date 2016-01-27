@@ -31,9 +31,9 @@ We start the tour with a modified "hello world" program:
 
 .. code-block:: Nim
   # This is a comment
-  echo("What's your name? ")
+  echo "What's your name? "
   var name: string = readLine(stdin)
-  echo("Hi, ", name, "!")
+  echo "Hi, ", name, "!"
 
 
 Save this code to the file "greetings.nim". Now compile and run it::
@@ -250,11 +250,11 @@ The if statement is one way to branch the control flow:
 .. code-block:: nim
   let name = readLine(stdin)
   if name == "":
-    echo("Poor soul, you lost your name?")
+    echo "Poor soul, you lost your name?"
   elif name == "name":
-    echo("Very funny, your name is name.")
+    echo "Very funny, your name is name."
   else:
-    echo("Hi, ", name, "!")
+    echo "Hi, ", name, "!"
 
 There can be zero or more ``elif`` parts, and the ``else`` part is optional.
 The keyword ``elif`` is short for ``else if``, and is useful to avoid
@@ -272,13 +272,13 @@ a multi-branch:
   let name = readLine(stdin)
   case name
   of "":
-    echo("Poor soul, you lost your name?")
+    echo "Poor soul, you lost your name?"
   of "name":
-    echo("Very funny, your name is name.")
+    echo "Very funny, your name is name."
   of "Dave", "Frank":
-    echo("Cool name!")
+    echo "Cool name!"
   else:
-    echo("Hi, ", name, "!")
+    echo "Hi, ", name, "!"
 
 As it can be seen, for an ``of`` branch a comma separated list of values is also
 allowed.
@@ -291,11 +291,11 @@ For integers or other ordinal types value ranges are also possible:
   # this statement will be explained later:
   from strutils import parseInt
 
-  echo("A number please: ")
+  echo "A number please: "
   let n = parseInt(readLine(stdin))
   case n
-  of 0..2, 4..7: echo("The number is in the set: {0, 1, 2, 4, 5, 6, 7}")
-  of 3, 8: echo("The number is 3 or 8")
+  of 0..2, 4..7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
+  of 3, 8: echo "The number is 3 or 8"
 
 However, the above code does not compile: the reason is that you have to cover
 every value that ``n`` may contain, but the code only handles the values
@@ -306,8 +306,8 @@ the compiler that for every other value nothing should be done:
 .. code-block:: nim
   ...
   case n
-  of 0..2, 4..7: echo("The number is in the set: {0, 1, 2, 4, 5, 6, 7}")
-  of 3, 8: echo("The number is 3 or 8")
+  of 0..2, 4..7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
+  of 3, 8: echo "The number is 3 or 8"
   else: discard
 
 The empty `discard statement`_ is a *do nothing* statement. The compiler knows
@@ -327,10 +327,10 @@ The while statement is a simple looping construct:
 
 .. code-block:: nim
 
-  echo("What's your name? ")
+  echo "What's your name? "
   var name = readLine(stdin)
   while name == "":
-    echo("Please tell me your name: ")
+    echo "Please tell me your name: "
     name = readLine(stdin)
     # no ``var``, because we do not declare a new variable here
 
@@ -346,9 +346,9 @@ provides. The example uses the built-in `countup <system.html#countup>`_
 iterator:
 
 .. code-block:: nim
-  echo("Counting to ten: ")
+  echo "Counting to ten: "
   for i in countup(1, 10):
-    echo($i)
+    echo $i
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 The built-in `$ <system.html#$>`_ operator turns an integer (``int``) and many
@@ -358,19 +358,19 @@ other types into a string. The variable ``i`` is implicitly declared by the
 Each value is ``echo``-ed. This code does the same:
 
 .. code-block:: nim
-  echo("Counting to 10: ")
+  echo "Counting to 10: "
   var i = 1
   while i <= 10:
-    echo($i)
+    echo $i
     inc(i) # increment i by 1
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 Counting down can be achieved as easily (but is less often needed):
 
 .. code-block:: nim
-  echo("Counting down from 10 to 1: ")
+  echo "Counting down from 10 to 1: "
   for i in countdown(10, 1):
-    echo($i)
+    echo $i
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
 Since counting up occurs so often in programs, Nim also has a `..
@@ -390,7 +390,7 @@ outside the loop:
 .. code-block:: nim
   while false:
     var x = "hi"
-  echo(x) # does not work
+  echo x # does not work
 
 A while (for) statement introduces an implicit block. Identifiers
 are only visible within the block they have been declared. The ``block``
@@ -399,7 +399,7 @@ statement can be used to open a new block explicitly:
 .. code-block:: nim
   block myblock:
     var x = "hi"
-  echo(x) # does not work either
+  echo x # does not work either
 
 The block's *label* (``myblock`` in the example) is optional.
 
@@ -412,18 +412,18 @@ innermost construct, unless a label of a block is given:
 
 .. code-block:: nim
   block myblock:
-    echo("entering block")
+    echo "entering block"
     while true:
-      echo("looping")
+      echo "looping"
       break # leaves the loop, but not the block
-    echo("still in block")
+    echo "still in block"
 
   block myblock2:
-    echo("entering block")
+    echo "entering block"
     while true:
-      echo("looping")
+      echo "looping"
       break myblock2 # leaves the block (and the loop)
-    echo("still in block")
+    echo "still in block"
 
 
 Continue statement
@@ -435,7 +435,7 @@ the next iteration immediately:
   while true:
     let x = readLine(stdin)
     if x == "": continue
-    echo(x)
+    echo x
 
 
 When statement
@@ -446,13 +446,13 @@ Example:
 .. code-block:: nim
 
   when system.hostOS == "windows":
-    echo("running on Windows!")
+    echo "running on Windows!"
   elif system.hostOS == "linux":
-    echo("running on Linux!")
+    echo "running on Linux!"
   elif system.hostOS == "macosx":
-    echo("running on Mac OS X!")
+    echo "running on Mac OS X!"
   else:
-    echo("unknown operating system")
+    echo "unknown operating system"
 
 The ``when`` statement is almost identical to the ``if`` statement with some
 differences:
@@ -533,17 +533,17 @@ procedures are defined with the ``proc`` keyword:
 
 .. code-block:: nim
   proc yes(question: string): bool =
-    echo(question, " (y/n)")
+    echo question, " (y/n)"
     while true:
       case readLine(stdin)
       of "y", "Y", "yes", "Yes": return true
       of "n", "N", "no", "No": return false
-      else: echo("Please be clear: yes or no")
+      else: echo "Please be clear: yes or no"
 
   if yes("Should I delete all your important files?"):
-    echo("I'm sorry Dave, I'm afraid I can't do that.")
+    echo "I'm sorry Dave, I'm afraid I can't do that."
   else:
-    echo("I think you know what the problem is just as well as I do.")
+    echo "I think you know what the problem is just as well as I do."
 
 This example shows a procedure named ``yes`` that asks the user a ``question``
 and returns true if they answered "yes" (or something similar) and returns
@@ -611,8 +611,8 @@ caller, a ``var`` parameter can be used:
   var
     x, y: int
   divmod(8, 5, x, y) # modifies x and y
-  echo(x)
-  echo(y)
+  echo x
+  echo y
 
 In the example, ``res`` and ``remainder`` are `var parameters`.
 Var parameters can be modified by the procedure and the changes are
@@ -701,8 +701,8 @@ Nim provides the ability to overload procedures similar to C++:
     if x: result = "true"
     else: result = "false"
 
-  echo(toString(13))   # calls the toString(x: int) proc
-  echo(toString(true)) # calls the toString(x: bool) proc
+  echo toString(13)   # calls the toString(x: int) proc
+  echo toString(true) # calls the toString(x: bool) proc
 
 (Note that ``toString`` is usually the `$ <system.html#$>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the ``toString``
@@ -743,7 +743,7 @@ The "``" notation can also be used to call an operator just like any other
 procedure:
 
 .. code-block:: nim
-  if `==`( `+`(3, 4), 7): echo("True")
+  if `==`( `+`(3, 4), 7): echo "True"
 
 
 Forward declarations
@@ -790,9 +790,9 @@ Iterators
 Let's return to the boring counting example:
 
 .. code-block:: nim
-  echo("Counting to ten: ")
+  echo "Counting to ten: "
   for i in countup(1, 10):
-    echo($i)
+    echo $i
 
 Can a `countup <system.html#countup>`_ proc be written that supports this
 loop? Lets try:
@@ -1000,15 +1000,15 @@ there is a difference between the ``$`` and ``repr`` outputs:
     myString = "nim"
     myInteger = 42
     myFloat = 3.14
-  echo($myBool, ":", repr(myBool))
+  echo $myBool, ":", repr(myBool)
   # --> true:true
-  echo($myCharacter, ":", repr(myCharacter))
+  echo $myCharacter, ":", repr(myCharacter)
   # --> n:'n'
-  echo($myString, ":", repr(myString))
+  echo $myString, ":", repr(myString)
   # --> nim:0x10fa8c050"nim"
-  echo($myInteger, ":", repr(myInteger))
+  echo $myInteger, ":", repr(myInteger)
   # --> 42:42
-  echo($myFloat, ":", repr(myFloat))
+  echo $myFloat, ":", repr(myFloat)
   # --> 3.1400000000000001e+00:3.1400000000000001e+00
 
 
@@ -1040,7 +1040,7 @@ at runtime by 0, the second by 1 and so on. Example:
       north, east, south, west
 
   var x = south      # `x` is of type `Direction`; its value is `south`
-  echo($x)           # writes "south" to `stdout`
+  echo $x           # writes "south" to `stdout`
 
 All comparison operators can be used with enumeration types.
 
@@ -1133,7 +1133,7 @@ Arrays can be constructed via ``[]``:
     x: IntArray
   x = [1, 2, 3, 4, 5, 6]
   for i in low(x)..high(x):
-    echo(x[i])
+    echo x[i]
 
 The notation ``x[i]`` is used to access the i-th element of ``x``.
 Array access is always bounds checked (at compile-time or at runtime). These
@@ -1208,7 +1208,7 @@ to specify a range from zero to the specified index minus one:
   x = [1, 2, 3, 4, 5, 6]
   y = x
   for i in low(x)..high(x):
-    echo(x[i], y[i])
+    echo x[i], y[i]
 
 
 Sequences
@@ -1254,13 +1254,13 @@ value. Here the ``for`` statement is looping over the results from the
 
 .. code-block:: nim
   for i in @[3, 4, 5]:
-    echo($i)
+    echo $i
   # --> 3
   # --> 4
   # --> 5
 
   for i, value in @[3, 4, 5]:
-    echo("index: ", $i, ", value:", $value)
+    echo "index: ", $i, ", value:", $value
   # --> index: 0, value:3
   # --> index: 1, value:4
   # --> index: 2, value:5
@@ -1386,16 +1386,16 @@ integer.
   # the same, but less readable:
   person = ("Peter", 30)
 
-  echo(person.name) # "Peter"
-  echo(person.age)  # 30
+  echo person.name # "Peter"
+  echo person.age  # 30
 
-  echo(person[0]) # "Peter"
-  echo(person[1]) # 30
+  echo person[0] # "Peter"
+  echo person[1] # 30
 
   # You don't need to declare tuples in a separate type section.
   var building: tuple[street: string, number: int]
   building = ("Rue del Percebe", 13)
-  echo(building.street)
+  echo building.street
 
   # The following line does not compile, they are different tuples!
   #person = building
@@ -1503,7 +1503,7 @@ techniques.
 Example:
 
 .. code-block:: nim
-  proc echoItem(x: int) = echo(x)
+  proc echoItem(x: int) = echo x
 
   proc forEach(action: proc (x: int)) =
     const

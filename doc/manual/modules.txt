@@ -144,7 +144,7 @@ modules don't need to import a module's dependencies:
 
   # B.MyObject has been imported implicitly here:
   var x: MyObject
-  echo($x)
+  echo $x
 
 Note on paths
 -----------
