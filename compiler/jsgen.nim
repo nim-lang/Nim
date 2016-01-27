@@ -163,8 +163,31 @@ proc mangleName(s: PSym): Rope =
     add(result, rope(s.id))
     s.loc.r = result
 
-proc makeJSString(s: string): Rope =
-  (if s.isNil: "null".rope else: strutils.escape(s).rope)
+proc escapeJSString(s: string): string =
+   result = newStringOfCap(s.len + s.len shr 2)
+   result.add("\"")
+   for c in items(s):
+     case c
+     of '\l': result.add("\\n")
+     of '\r': result.add("\\r")
+     of '\t': result.add("\\t")
+     of '\b': result.add("\\b")
+     of '\a': result.add("\\a")
+     of '\e': result.add("\\e")
+     of '\v': result.add("\\v")
+     of '\\': result.add("\\\\")
+     of '\'': result.add("\\'")
+     of '\"': result.add("\\\"")
+     else: add(result, c)
+   result.add("\"")
+
+proc makeJSString(s: string, escapeNonAscii = true): Rope =
+  if s.isNil:
+    result = "null".rope
+  elif escapeNonAscii:
+    result = strutils.escape(s).rope
+  else:
+    result = escapeJSString(s).rope
 
 include jstypes
 
@@ -264,7 +287,7 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 - $2)", "($1 - $2)"], # SubF64
     ["", "", "($1 * $2)", "($1 * $2)"], # MulF64
     ["", "", "($1 / $2)", "($1 / $2)"], # DivF64
-    ["", "", "($1 >>> $2)", "($1 >>> $2)"], # ShrI
+    ["", "", "", ""], # ShrI
     ["", "", "($1 << $2)", "($1 << $2)"], # ShlI
     ["", "", "($1 & $2)", "($1 & $2)"], # BitandI
     ["", "", "($1 | $2)", "($1 | $2)"], # BitorI
@@ -344,19 +367,22 @@ proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = frmt % [x.rdLoc, y.rdLoc]
   r.kind = resExpr
 
+proc unsignedTrimmer(size: BiggestInt): Rope =
+  case size
+    of 1: rope"& 0xff"
+    of 2: rope"& 0xffff"
+    of 4: rope">>> 0"
+    else: rope""
+
 proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string, reassign: bool = false) =
   var x, y: TCompRes
   gen(p, n.sons[1], x)
   gen(p, n.sons[2], y)
-  let trimmer = case n[1].typ.skipTypes(abstractRange).size
-    of 1: "& 0xff"
-    of 2: "& 0xffff"
-    of 4: ">>> 0"
-    else: ""
+  let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
   if reassign:
-    r.res = "$1 = (($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, rope trimmer]
+    r.res = "$1 = (($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
   else:
-    r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, rope trimmer]
+    r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
 
 proc ternaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   var x, y, z: TCompRes
@@ -392,6 +418,12 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mSubU: binaryUintExpr(p, n, r, "-")
   of mMulU: binaryUintExpr(p, n, r, "*")
   of mDivU: binaryUintExpr(p, n, r, "/")
+  of mShrI:
+    var x, y: TCompRes
+    gen(p, n.sons[1], x)
+    gen(p, n.sons[2], y)
+    let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
+    r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
   else:
     arithAux(p, n, r, op, jsOps)
   r.kind = resExpr
@@ -568,7 +600,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
           if stringSwitch:
             case e.kind
             of nkStrLit..nkTripleStrLit: addf(p.body, "case $1: ",
-                [makeJSString(e.strVal)])
+                [makeJSString(e.strVal, false)])
             else: internalError(e.info, "jsgen.genCaseStmt: 2")
           else:
             gen(p, e, cond)
@@ -1324,7 +1356,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mEqStr: binaryExpr(p, n, r, "eqStrings", "eqStrings($1, $2)")
   of mLeStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) <= 0)")
   of mLtStr: binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) < 0)")
-  of mIsNil: unaryExpr(p, n, r, "", "$1 == null")
+  of mIsNil: unaryExpr(p, n, r, "", "($1 === null)")
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
   of mSizeOf: r.res = rope(getSize(n.sons[1].typ))
@@ -1569,6 +1601,37 @@ proc genPragma(p: PProc, n: PNode) =
     of wEmit: genAsmOrEmitStmt(p, it.sons[1])
     else: discard
 
+proc genCast(p: PProc, n: PNode, r: var TCompRes) =
+  var dest = skipTypes(n.typ, abstractVarRange)
+  var src = skipTypes(n.sons[1].typ, abstractVarRange)
+  gen(p, n.sons[1], r)
+  if dest.kind == src.kind:
+    # no-op conversion
+    return
+  let toInt = (dest.kind in tyInt .. tyInt32)
+  let toUint = (dest.kind in tyUInt .. tyUInt32)
+  let fromInt = (src.kind in tyInt .. tyInt32)
+  let fromUint = (src.kind in tyUInt .. tyUInt32)
+
+  if toUint and (fromInt or fromUint):
+    let trimmer = unsignedTrimmer(dest.size)
+    r.res = "($1 $2)" % [r.res, trimmer]
+  elif toInt:
+    if fromInt:
+      let trimmer = unsignedTrimmer(dest.size)
+      r.res = "($1 $2)" % [r.res, trimmer]
+    elif fromUint:
+      if src.size == 4 and dest.size == 4:
+        r.res = "($1|0)" % [r.res]
+      else:
+        let trimmer = unsignedTrimmer(dest.size)
+        let minuend = case dest.size
+          of 1: "0xfe"
+          of 2: "0xfffe"
+          of 4: "0xfffffffe"
+          else: ""
+        r.res = "($1 - ($2 $3))" % [rope minuend, r.res, trimmer]
+
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyNone
   r.kind = resNone
@@ -1596,10 +1659,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      useMagic(p, "cstrToNimstr")
-      r.res = "cstrToNimstr($1)" % [makeJSString(n.strVal)]
+      useMagic(p, "makeNimstrLit")
+      r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
     else:
-      r.res = makeJSString(n.strVal)
+      r.res = makeJSString(n.strVal, false)
     r.kind = resExpr
   of nkFloatLit..nkFloat64Lit:
     let f = n.floatVal
@@ -1630,7 +1693,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkCheckedFieldExpr: genCheckedFieldAccess(p, n, r)
   of nkObjDownConv: gen(p, n.sons[0], r)
   of nkObjUpConv: upConv(p, n, r)
-  of nkCast: gen(p, n.sons[1], r)
+  of nkCast: genCast(p, n, r)
   of nkChckRangeF: genRangeChck(p, n, r, "chckRangeF")
   of nkChckRange64: genRangeChck(p, n, r, "chckRange64")
   of nkChckRange: genRangeChck(p, n, r, "chckRange")

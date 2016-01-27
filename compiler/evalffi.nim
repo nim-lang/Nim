@@ -50,10 +50,10 @@ proc importcSymbol*(sym: PSym): PNode =
   # that contains the address instead:
   result = newNodeIT(nkPtrLit, sym.info, sym.typ)
   case name
-  of "stdin":  result.intVal = cast[TAddress](system.stdin)
-  of "stdout": result.intVal = cast[TAddress](system.stdout)
-  of "stderr": result.intVal = cast[TAddress](system.stderr)
-  of "vmErrnoWrapper": result.intVal = cast[TAddress](myerrno)
+  of "stdin":  result.intVal = cast[ByteAddress](system.stdin)
+  of "stdout": result.intVal = cast[ByteAddress](system.stdout)
+  of "stderr": result.intVal = cast[ByteAddress](system.stderr)
+  of "vmErrnoWrapper": result.intVal = cast[ByteAddress](myerrno)
   else:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
@@ -71,7 +71,7 @@ proc importcSymbol*(sym: PSym): PNode =
                                        else: lib.path.strVal, sym.info)
       theAddr = dllhandle.symAddr(name)
     if theAddr.isNil: globalError(sym.info, "cannot import: " & sym.name.s)
-    result.intVal = cast[TAddress](theAddr)
+    result.intVal = cast[ByteAddress](theAddr)
 
 proc mapType(t: ast.PType): ptr libffi.TType =
   if t == nil: return addr libffi.type_void
@@ -107,7 +107,7 @@ proc mapCallConv(cc: TCallingConvention, info: TLineInfo): TABI =
 template rd(T, p: expr): expr {.immediate.} = (cast[ptr T](p))[]
 template wr(T, p, v: expr) {.immediate.} = (cast[ptr T](p))[] = v
 template `+!`(x, y: expr): expr {.immediate.} =
-  cast[pointer](cast[TAddress](x) + y)
+  cast[pointer](cast[ByteAddress](x) + y)
 
 proc packSize(v: PNode, typ: PType): int =
   ## computes the size of the blob
@@ -363,13 +363,13 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       # in their unboxed representation so nothing it to be unpacked:
       result = n
     else:
-      awi(nkPtrLit, cast[TAddress](p))
+      awi(nkPtrLit, cast[ByteAddress](p))
   of tyPtr, tyRef, tyVar:
     let p = rd(pointer, x)
     if p.isNil:
       setNil()
     elif n == nil or n.kind == nkPtrLit:
-      awi(nkPtrLit, cast[TAddress](p))
+      awi(nkPtrLit, cast[ByteAddress](p))
     elif n != nil and n.len == 1:
       internalAssert n.kind == nkRefTy
       n.sons[0] = unpack(p, typ.lastSon, n.sons[0])

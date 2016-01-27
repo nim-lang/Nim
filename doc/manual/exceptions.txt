@@ -15,15 +15,15 @@ Example:
     try:
       var a = readLine(f)
       var b = readLine(f)
-      echo("sum: " & $(parseInt(a) + parseInt(b)))
+      echo "sum: " & $(parseInt(a) + parseInt(b))
     except OverflowError:
-      echo("overflow!")
+      echo "overflow!"
     except ValueError:
-      echo("could not convert string to integer")
+      echo "could not convert string to integer"
     except IOError:
-      echo("IO error!")
+      echo "IO error!"
     except:
-      echo("Unknown exception!")
+      echo "Unknown exception!"
     finally:
       close(f)
 
