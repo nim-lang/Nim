@@ -12,8 +12,17 @@
 
 {.deadCodeElim:on.}
 
+import dynlib, locks
+
 const
   useWinUnicode* = not defined(useWinAnsi)
+
+when useWinUnicode:
+  type WinChar* = Utf16Char
+  {.deprecated: [TWinChar: WinChar].}
+else:
+  type WinChar* = char
+  {.deprecated: [TWinChar: WinChar].}
 
 type
   Handle* = int
@@ -74,16 +83,17 @@ type
     nFileIndexHigh*: DWORD
     nFileIndexLow*: DWORD
 
+  OSVERSIONINFO* {.final, pure.} = object
+    dwOSVersionInfoSize*: DWORD
+    dwMajorVersion*: DWORD
+    dwMinorVersion*: DWORD
+    dwBuildNumber*: DWORD
+    dwPlatformId*: DWORD
+    szCSDVersion*: array[0..127, WinChar];
+
 {.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
     TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
     TFILETIME: FILETIME, TBY_HANDLE_FILE_INFORMATION: BY_HANDLE_FILE_INFORMATION].}
-
-when useWinUnicode:
-  type WinChar* = Utf16Char
-  {.deprecated: [TWinChar: WinChar].}
-else:
-  type WinChar* = char
-  {.deprecated: [TWinChar: WinChar].}
 
 const
   STARTF_USESHOWWINDOW* = 1'i32
@@ -116,6 +126,13 @@ const
   FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
   CREATE_NO_WINDOW* = 0x08000000'i32
+
+when useWinUnicode:
+  proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExW".}
+else:
+  proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExA".}
+
+proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion".}
 
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
@@ -190,6 +207,9 @@ proc flushFileBuffers*(hFile: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "FlushFileBuffers".}
 
 proc getLastError*(): int32 {.importc: "GetLastError",
+    stdcall, dynlib: "kernel32".}
+
+proc setLastError*(error: int32) {.importc: "SetLastError",
     stdcall, dynlib: "kernel32".}
 
 when useWinUnicode:
@@ -597,9 +617,6 @@ proc freeaddrinfo*(ai: ptr AddrInfo) {.
 proc inet_ntoa*(i: InAddr): cstring {.
   stdcall, importc, dynlib: ws2dll.}
 
-proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
-            stringBufSize: int32): cstring {.stdcall, importc, dynlib: ws2dll.}
-
 const
   MAXIMUM_WAIT_OBJECTS* = 0x00000040
 
@@ -645,6 +662,7 @@ const
 const
   ERROR_ACCESS_DENIED* = 5
   ERROR_HANDLE_EOF* = 38
+  ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                       hTargetProcessHandle: HANDLE,
@@ -806,3 +824,65 @@ proc getSystemTimes*(lpIdleTime, lpKernelTime,
 proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
+
+proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
+proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall.} =
+    case family
+    of AF_INET:
+      var sa: Sockaddr_in
+      sa.sin_family = AF_INET
+      sa.sin_addr = cast[ptr InAddr](paddr)[]
+      var bs = stringBufSize.DWORD
+      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+      if r != 0:
+        result = nil
+      else:
+        result = pStringBuffer
+    of AF_INET6:
+      var sa: Sockaddr_in6
+      sa.sin6_family = AF_INET6
+      sa.sin6_addr = cast[ptr In6_addr](paddr)[]
+      var bs = stringBufSize.DWORD
+      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+      if r != 0:
+        result = nil
+      else:
+        result = pStringBuffer
+    else:
+      setLastError(ERROR_BAD_ARGUMENTS)
+      result = nil
+
+type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
+                      stringBufSize: int32): cstring {.stdcall.}
+
+var inet_ntop_init_guard: Lock
+initLock(inet_ntop_init_guard)
+var inet_ntop_inited {.volatile.} = false
+var inet_ntop_real: pointer = nil
+
+proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall, gcsafe.} =
+  if not inet_ntop_inited:
+    inet_ntop_init_guard.acquire
+    defer: inet_ntop_init_guard.release
+    if not inet_ntop_inited:
+      var inet_ntop_os_ver: OSVERSIONINFO
+      inet_ntop_os_ver.dwOSVersionInfoSize = sizeof(OSVERSIONINFO).DWORD
+      let res = when useWinUnicode: getVersionExW(inet_ntop_os_ver.addr) else: getVersionExA(inet_ntop_os_ver.addr)
+      if res == 0:
+        quit("Can't get OS version, win32 error: " & $getLastError())
+      if inet_ntop_os_ver.dwMajorVersion >= 6:
+        let l = loadLib(ws2dll)
+        if l != nil:
+          inet_ntop_real = symAddr(l, "inet_ntop")
+          if inet_ntop_real == nil:
+            quit("Can't get inet_ntop address, win32 error: " & $getLastError())
+        else:
+          quit("Can't load " & ws2dll & ", win32 error: " & $getLastError())
+      inet_ntop_inited = true
+        
+  if inet_ntop_real != nil:
+    result = cast[inet_ntop_proc](inet_ntop_real)(family, paddr, pStringBuffer, stringBufSize)
+  else:
+    result = inet_ntop_emulated(family, paddr, pStringBuffer, stringBufSize)
