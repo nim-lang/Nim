@@ -1101,6 +1101,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
     if n[namePos].kind == nkEmpty:
       s = newSym(kind, idAnon, getCurrOwner(), n.info)
+      incl(s.flags, sfUsed)
       isAnon = true
     else:
       s = semIdentDef(c, n.sons[0], kind)
@@ -1153,9 +1154,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.typ.flags.incl(tfIterator)
 
   var proto = searchForProc(c, oldScope, s)
-  if proto == nil:
-    if s.kind == skIterator and s.typ.callConv == ccClosure:
-      discard
+  if proto == nil or isAnon:
+    if s.kind == skIterator:
+      if s.typ.callConv != ccClosure:
+        s.typ.callConv = if isAnon: ccClosure else: ccInline
     else:
       s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
