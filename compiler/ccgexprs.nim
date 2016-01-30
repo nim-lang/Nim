@@ -1056,12 +1056,15 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   var a, b, dest: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
+  let bt = skipTypes(e.sons[2].typ, abstractVar)
   lineCg(p, cpsStmts, seqAppendPattern, [
       rdLoc(a),
       getTypeDesc(p.module, skipTypes(e.sons[1].typ, abstractVar)),
-      getTypeDesc(p.module, skipTypes(e.sons[2].typ, abstractVar))])
+      getTypeDesc(p.module, bt)])
   keepAlive(p, a)
-  initLoc(dest, locExpr, b.t, OnHeap)
+  #if bt != b.t:
+  #  echo "YES ", e.info, " new: ", typeToString(bt), " old: ", typeToString(b.t)
+  initLoc(dest, locExpr, bt, OnHeap)
   dest.r = rfmt(nil, "$1->data[$1->$2]", rdLoc(a), lenField(p))
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
   lineCg(p, cpsStmts, "++$1->$2;$n", rdLoc(a), lenField(p))
