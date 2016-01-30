@@ -325,6 +325,8 @@ proc cellsetReset(s: var CellSet) =
   deinit(s)
   init(s)
 
+{.push stacktrace:off.}
+
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
   case n.kind
@@ -459,7 +461,8 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "rawNewObj end")
 
-{.pop.}
+{.pop.} # .stackTrace off
+{.pop.} # .profiler off
 
 proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
@@ -576,7 +579,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(old, newsize, gch)
 
-{.push profiler:off.}
+{.push profiler:off, stackTrace:off.}
 
 # ---------------- cycle collector -------------------------------------------
 
@@ -1018,4 +1021,4 @@ when not defined(useNimRtl):
       result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
     GC_enable()
 
-{.pop.}
+{.pop.} # profiler: off, stackTrace: off
