@@ -255,12 +255,13 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
-  if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym and
-      isGenericRoutine(a.sons[0].sym):
-    let finalCallee = generateInstance(c, a.sons[0].sym, x.bindings, a.info)
-    a.sons[0].sym = finalCallee
-    a.sons[0].typ = finalCallee.typ
-    #a.typ = finalCallee.typ.sons[0]
+  if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym:
+    let s = a.sons[0].sym
+    if s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty:
+      let finalCallee = generateInstance(c, s, x.bindings, a.info)
+      a.sons[0].sym = finalCallee
+      a.sons[0].typ = finalCallee.typ
+      #a.typ = finalCallee.typ.sons[0]
 
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
   assert n.kind in nkCallKinds
