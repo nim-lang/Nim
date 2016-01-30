@@ -151,7 +151,7 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo cast[ptr char](p)[]    # b
   discard
 
-proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin 'addr' operator for taking the address of a memory location.
   ## This works even for ``let`` variables or parameters for better interop
   ## with C and so it is considered even more unsafe than the ordinary ``addr``.
