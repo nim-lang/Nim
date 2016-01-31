@@ -829,7 +829,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
   template addNLIfEmpty(): stmt =
     if line.len == 0:
-      line.add("\c\L")
+      line.string.add("\c\L")
 
   template raiseSockError(): stmt {.dirty, immediate.} =
     let lastError = getSocketError(socket)
