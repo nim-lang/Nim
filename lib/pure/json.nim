@@ -617,7 +617,7 @@ proc newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
   new(result)
   result.kind = JObject
-  result.fields = initTable[string, JsonNode]()
+  result.fields = initTable[string, JsonNode](4)
 
 proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
@@ -657,7 +657,7 @@ proc getBVal*(n: JsonNode, default: bool = false): bool =
   else: return n.bval
 
 proc getFields*(n: JsonNode,
-    default = initTable[string, JsonNode]()):
+    default = initTable[string, JsonNode](4)):
         Table[string, JsonNode] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
   ##
@@ -700,7 +700,7 @@ proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   new(result)
   result.kind = JObject
-  result.fields = initTable[string, JsonNode]()
+  result.fields = initTable[string, JsonNode](4)
   for key, val in items(keyVals): result.fields[key] = val
 
 proc `%`*(elements: openArray[JsonNode]): JsonNode =
