@@ -415,8 +415,6 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
     add(headers, "Proxy-Authorization: basic " & auth & "\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
-  var s = newSocket()
-  if s == nil: raiseOSError(osLastError())
   var port = net.Port(80)
   if r.scheme == "https":
     when defined(ssl):
@@ -427,6 +425,8 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
                 "SSL support is not available. Cannot connect over SSL.")
   if r.port != "":
     port = net.Port(r.port.parseInt)
+  var s = newSocket()
+  if s == nil: raiseOSError(osLastError())
 
   if timeout == -1:
     s.connect(r.hostname, port)
