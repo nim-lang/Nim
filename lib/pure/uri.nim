@@ -50,16 +50,24 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
+  var inV6 = false
   while true:
     case authority[i]
+    of '[':
+      inV6 = true
     of '@':
       swap result.password, result.port
       result.port.setLen(0)
       swap result.username, result.hostname
       result.hostname.setLen(0)
       inPort = false
-    of ':':
+    of ']':
       inPort = true
+    of ':':
+      if inV6:
+        result.hostname.add(authority[i])
+      else:
+        inPort = true
     of '\0': break
     else:
       if inPort:
