@@ -1,3 +1,6 @@
+
+nim c --gc:v2 -r -d:useSysAssert -d:useGcAssert -d:smokeCycles -d:useRealtimeGc tests/gc/gcbench
+
 essential for 1.0
 =================
 

@@ -104,8 +104,6 @@ when not defined(useNimRtl):
 
 proc initGC() =
   when not defined(useNimRtl):
-    when traceGC:
-      for i in low(CellState)..high(CellState): init(states[i])
     gch.cycleThreshold = InitialCycleThreshold
     gch.stat.stackScans = 0
     gch.stat.cycleCollections = 0
@@ -168,8 +166,10 @@ proc writeCell(msg: cstring, c: PCell) =
     c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
               msg, c, kind, c.refcount shr rcShift, c.color)
 
+proc myastToStr[T](x: T): string {.magic: "AstToStr", noSideEffect.}
+
 template gcTrace(cell, state: expr): stmt {.immediate.} =
-  when traceGC: traceCell(cell, state)
+  when traceGC: writeCell(myastToStr(state), cell)
 
 # forward declarations:
 proc collectCT(gch: var GcHeap) {.benign.}
@@ -568,7 +568,7 @@ template takeTime {.dirty.} =
 
 template checkTime {.dirty.} =
   if debugticker <= 0:
-    echo "in loop"
+    #echo "in loop"
     debugticker = 1000
   when withRealTime:
     if steps == 0:
@@ -602,8 +602,9 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
 
 proc sweep(gch: var GcHeap): bool =
   takeStartTime(100)
-  echo "loop start"
+  #echo "loop start"
   let black = gch.black
+  cfprintf(cstdout, "black is %d\n", black)
   while true:
     let x = allObjectsAsProc(gch.region, addr gch.spaceIter)
     if gch.spaceIter.state < 0: break
@@ -619,7 +620,7 @@ proc sweep(gch: var GcHeap): bool =
       # traversal over the heap!
     checkTime()
   # prepare for next iteration:
-  echo "loop end"
+  #echo "loop end"
   gch.spaceIter = ObjectSpaceIter()
   result = true
 
@@ -634,6 +635,9 @@ proc markIncremental(gch: var GcHeap): bool =
   takeStartTime(100)
   while L[] > 0:
     var c = gch.greyStack.d[0]
+    if not isAllocatedPtr(gch.region, c):
+      c_fprintf(c_stdout, "[GC] not allocated anymore: %p\n", c)
+
     sysAssert(isAllocatedPtr(gch.region, c), "markIncremental: isAllocatedPtr")
     gch.greyStack.d[0] = gch.greyStack.d[L[] - 1]
     dec(L[])
