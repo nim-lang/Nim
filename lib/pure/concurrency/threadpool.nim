@@ -328,10 +328,10 @@ proc distinguishedSlave(w: ptr Worker) {.thread.} =
     if w.q.len != 0: w.cleanFlowVars
 
 var
-  workers: array[MaxThreadPoolSize, TThread[ptr Worker]]
+  workers: array[MaxThreadPoolSize, Thread[ptr Worker]]
   workersData: array[MaxThreadPoolSize, Worker]
 
-  distinguished: array[MaxDistinguishedThread, TThread[ptr Worker]]
+  distinguished: array[MaxDistinguishedThread, Thread[ptr Worker]]
   distinguishedData: array[MaxDistinguishedThread, Worker]
 
 when defined(nimPinToCpu):
@@ -468,7 +468,7 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
       await(gSomeReady)
 
 var
-  distinguishedLock: TLock
+  distinguishedLock: Lock
 
 initLock distinguishedLock
 
