@@ -84,6 +84,14 @@ proc handleCmdLine() =
             ex = quoteShell(
               completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
           execExternalProgram(findNodeJs() & " " & ex & ' ' & commands.arguments)
+        elif gCmd == cmdCompileToPHP:
+          var ex: string
+          if options.outFile.len > 0:
+            ex = options.outFile.prependCurDir.quoteShell
+          else:
+            ex = quoteShell(
+              completeCFilePath(changeFileExt(gProjectFull, "php").prependCurDir))
+          execExternalProgram("php " & ex & ' ' & commands.arguments)
         else:
           var binPath: string
           if options.outFile.len > 0:
