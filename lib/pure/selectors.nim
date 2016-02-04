@@ -9,7 +9,7 @@
 
 # TODO: Docs.
 
-import os, unsigned, hashes
+import os, hashes
 
 when defined(linux):
   import posix, epoll
@@ -229,7 +229,7 @@ elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
         modifyKQueue(s.kqFD, fd, event, EV_ADD)
       for event in previousEvents-events:
         modifyKQueue(s.kqFD, fd, event, EV_DELETE)
-      s.fds.mget(fd).events = events
+      s.fds[fd].events = events
 
   proc unregister*(s: var Selector, fd: SocketHandle) =
     for event in s.fds[fd].events:
