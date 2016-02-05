@@ -156,16 +156,16 @@ proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
     asm """
       $args = func_get_args();
       $result = array();
-      foreach ($args as $key=>$x) {
-        if (is_array(($val)) {
+      foreach ($args as $x) {
+        if (is_array($x)) {
           for ($j = $x[0]; $j <= $x[1]; $j++) {
-            result[$j] = true;
+            $result[$j] = true;
           }
         } else {
-          result[$x] = true;
+          $result[$x] = true;
         }
       }
-      return result;
+      return $result;
     """
   else:
     asm """

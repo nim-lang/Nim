@@ -74,6 +74,7 @@ type
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
+    classes: seq[(PType, Rope)]
 
   PGlobals = ref TGlobals
   PProc = ref TProc
@@ -99,6 +100,7 @@ proc newGlobals(): PGlobals =
   result.forwarded = @[]
   result.generatedSyms = initIntSet()
   result.typeInfoGenerated = initIntSet()
+  result.classes = @[]
 
 proc initCompRes(r: var TCompRes) =
   r.address = nil
@@ -126,6 +128,10 @@ proc newProc(globals: PGlobals, module: BModule, procDef: PNode,
   if procDef != nil: result.prc = procDef.sons[namePos].sym
   if result.target == targetPHP:
     result.declaredGlobals = initIntSet()
+
+proc declareGlobal(p: PProc; id: int; r: Rope) =
+  if p.prc != nil and not p.declaredGlobals.containsOrIncl(id):
+    p.locals.addf("global $1;$n", [r])
 
 const
   MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray,
@@ -164,10 +170,24 @@ proc mapType(p: PProc; typ: PType): TJSTypeKind =
   if p.target == targetPHP: result = etyObject
   else: result = mapType(typ)
 
-proc mangleName(s: PSym): Rope =
+proc mangleName(s: PSym; target: TTarget): Rope =
   result = s.loc.r
   if result == nil:
-    result = rope(mangle(s.name.s))
+    if target == targetJS or s.kind == skTemp:
+      result = rope(mangle(s.name.s))
+    else:
+      var x = newStringOfCap(s.name.s.len)
+      var i = 0
+      while i < s.name.s.len:
+        let c = s.name.s[i]
+        if c in {'A'..'Z'}:
+          if i > 0 and s.name.s[i-1] in {'a'..'z'}:
+            x.add '_'
+          x.add(chr(c.ord - 'A'.ord + 'a'.ord))
+        else:
+          x.add c
+        inc i
+      result = rope(x)
     add(result, "_")
     add(result, rope(s.id))
     s.loc.r = result
@@ -211,7 +231,8 @@ proc useMagic(p: PProc, name: string) =
   if s != nil:
     internalAssert s.kind in {skProc, skMethod, skConverter}
     if not p.g.generatedSyms.containsOrIncl(s.id):
-      add(p.g.code, genProc(p, s))
+      let code = genProc(p, s)
+      add(p.g.code, code)
   else:
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
@@ -433,6 +454,17 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     gen(p, n.sons[2], y)
     let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
     r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
+  of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
+      mCStrToStr, mStrToStr, mEnumToStr:
+    if p.target == targetPHP:
+      if op == mEnumToStr:
+        var x: TCompRes
+        gen(p, n.sons[1], x)
+        r.res = "$#[$#]" % [genEnumInfoPHP(p, n.sons[1].typ), x.rdLoc]
+      else:
+        gen(p, n.sons[1], r)
+    else:
+      arithAux(p, n, r, op, jsOps)
   else:
     arithAux(p, n, r, op, jsOps)
   r.kind = resExpr
@@ -449,7 +481,7 @@ proc genLineDir(p: PProc, n: PNode) =
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       ((p.prc == nil) or not (sfPure in p.prc.flags)):
-    addf(p.body, "F.line = $1;$n", [rope(line)])
+    addf(p.body, "F.line = $1;$n" | "$$F['line'] = $1;$n", [rope(line)])
 
 proc genWhileStmt(p: PProc, n: PNode) =
   var
@@ -666,7 +698,7 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
       let v = n.sons[i].sym
       if p.target == targetPHP and v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
         add(p.body, "$")
-      add(p.body, mangleName(v))
+      add(p.body, mangleName(v, p.target))
     else: internalError(n.sons[i].info, "jsgen: genAsmOrEmitStmt()")
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
@@ -699,14 +731,14 @@ proc generateHeader(p: PProc, typ: PType): Rope =
     var param = typ.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if result != nil: add(result, ", ")
-    var name = mangleName(param)
+    var name = mangleName(param, p.target)
     if p.target == targetJS:
       add(result, name)
       if mapType(param.typ) == etyBaseIndex:
         add(result, ", ")
         add(result, name)
         add(result, "_Idx")
-    else:
+    elif not (i == 1 and param.name.s == "this"):
       if param.typ.skipTypes({tyGenericInst}).kind == tyVar:
         add(result, "&")
       add(result, "$")
@@ -807,7 +839,7 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f)
+    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     r.res = makeJSString($f.loc.r)
   internalAssert a.typ != etyBaseIndex
   r.address = a.res
@@ -816,13 +848,14 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
 proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyNone
   gen(p, n.sons[0], r)
-  if skipTypes(n.sons[0].typ, abstractVarRange).kind == tyTuple:
+  let otyp = skipTypes(n.sons[0].typ, abstractVarRange)
+  if otyp.kind == tyTuple:
     r.res = ("$1.Field$2" | "$1[$2]") %
         [r.res, getFieldPosition(n.sons[1]).rope]
   else:
     if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAccess")
     var f = n.sons[1].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f)
+    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     r.res = ("$1.$2" | "$1['$2']") % [r.res, f.loc.r]
   r.kind = resExpr
 
@@ -937,6 +970,32 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[0], r)
   else: internalError(n.sons[0].info, "genAddr: " & $n.sons[0].kind)
 
+proc thisParam(p: PProc; typ: PType): PType =
+  if p.target == targetPHP:
+    # XXX Might be very useful for the JS backend too?
+    let typ = skipTypes(typ, abstractInst)
+    assert(typ.kind == tyProc)
+    if 1 < sonsLen(typ.n):
+      assert(typ.n.sons[1].kind == nkSym)
+      let param = typ.n.sons[1].sym
+      if param.name.s == "this":
+        result = param.typ.skipTypes(abstractVar)
+
+proc attachProc(p: PProc; content: Rope; s: PSym) =
+  let otyp = thisParam(p, s.typ)
+  if otyp != nil:
+    for i, cls in p.g.classes:
+      if sameType(cls[0], otyp):
+        add(p.g.classes[i][1], content)
+        return
+    p.g.classes.add((otyp, content))
+  else:
+    add(p.g.code, content)
+
+proc attachProc(p: PProc; s: PSym) =
+  let newp = genProc(p, s)
+  attachProc(p, newp, s)
+
 proc genProcForSymIfNeeded(p: PProc, s: PSym) =
   if not p.g.generatedSyms.containsOrIncl(s.id):
     let newp = genProc(p, s)
@@ -944,7 +1003,7 @@ proc genProcForSymIfNeeded(p: PProc, s: PSym) =
     while owner != nil and owner.prc != s.owner:
       owner = owner.up
     if owner != nil: add(owner.locals, newp)
-    else: add(p.g.code, newp)
+    else: attachProc(p, newp, s)
 
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
@@ -968,9 +1027,8 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
         r.res = s.loc.r
     else:
       r.res = "$" & s.loc.r
-      if sfGlobal in s.flags and p.prc != nil and
-          not p.declaredGlobals.containsOrIncl(s.id):
-        p.locals.addf("global $1;$n", [r.res])
+      if sfGlobal in s.flags:
+        p.declareGlobal(s.id, r.res)
   of skConst:
     genConstant(p, s)
     if s.loc.r == nil:
@@ -979,8 +1037,9 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       r.res = s.loc.r
     else:
       r.res = "$" & s.loc.r
+      p.declareGlobal(s.id, r.res)
   of skProc, skConverter, skMethod:
-    discard mangleName(s)
+    discard mangleName(s, p.target)
     r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone or
        {sfImportc, sfInfixCall} * s.flags != {}:
@@ -1035,8 +1094,7 @@ proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes) =
   else:
     add(r.res, a.res)
 
-
-proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
+proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
   add(r.res, "(")
   var hasArgs = false
 
@@ -1044,7 +1102,7 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
   assert(typ.kind == tyProc)
   assert(sonsLen(typ) == sonsLen(typ.n))
 
-  for i in countup(1, sonsLen(n) - 1):
+  for i in countup(start, sonsLen(n) - 1):
     let it = n.sons[i]
     var paramType: PNode = nil
     if i < sonsLen(typ):
@@ -1061,11 +1119,53 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes) =
   add(r.res, ")")
   r.kind = resExpr
 
-proc genCall(p: PProc, n: PNode, r: var TCompRes) =
-  gen(p, n.sons[0], r)
-  genArgs(p, n, r)
+proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
+                 generated: var int; r: var TCompRes) =
+  let it = n[i]
+  var paramType: PNode = nil
+  if i < sonsLen(typ):
+    assert(typ.n.sons[i].kind == nkSym)
+    paramType = typ.n.sons[i]
+    if paramType.typ.isCompileTimeOnly: return
+  if paramType.isNil:
+    genArgNoParam(p, it, r)
+  else:
+    genArg(p, it, paramType.sym, r)
+
+proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
+                    r: var TCompRes) =
+  var i = 0
+  var j = 1
+  while i < pat.len:
+    case pat[i]
+    of '@':
+      var generated = 0
+      for k in j .. < n.len:
+        if generated > 0: add(r.res, ", ")
+        genOtherArg(p, n, k, typ, generated, r)
+      inc i
+    of '#':
+      var generated = 0
+      genOtherArg(p, n, j, typ, generated, r)
+      inc j
+      inc i
+    else:
+      let start = i
+      while i < pat.len:
+        if pat[i] notin {'@', '#'}: inc(i)
+        else: break
+      if i - 1 >= start:
+        add(r.res, substr(pat, start, i - 1))
 
 proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
+  # don't call '$' here for efficiency:
+  let pat = n.sons[0].sym.loc.r.data
+  internalAssert pat != nil
+  if pat.contains({'#', '(', '@'}):
+    var typ = skipTypes(n.sons[0].typ, abstractInst)
+    assert(typ.kind == tyProc)
+    genPatternCall(p, n, pat, typ, r)
+    return
   gen(p, n.sons[1], r)
   if r.typ == etyBaseIndex:
     if r.address == nil:
@@ -1077,13 +1177,14 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   var op: TCompRes
   gen(p, n.sons[0], op)
   add(r.res, op.res)
+  genArgs(p, n, r, 2)
 
-  add(r.res, "(")
-  for i in countup(2, sonsLen(n) - 1):
-    if i > 2: add(r.res, ", ")
-    genArgNoParam(p, n.sons[i], r)
-  add(r.res, ")")
-  r.kind = resExpr
+proc genCall(p: PProc, n: PNode, r: var TCompRes) =
+  if thisParam(p, n.sons[0].typ) != nil:
+    genInfixCall(p, n, r)
+    return
+  gen(p, n.sons[0], r)
+  genArgs(p, n, r)
 
 proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
   let n = n[1].skipConv
@@ -1093,15 +1194,15 @@ proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
     useMagic(p, "rawEcho")
   elif n.len == 0:
     r.kind = resExpr
-    add(r.res, """echo "\n"""")
+    add(r.res, """print("\n")""")
     return
-  add(r.res, "rawEcho(" | "echo ")
+  add(r.res, "rawEcho(" | "print(")
   for i in countup(0, sonsLen(n) - 1):
     let it = n.sons[i]
     if it.typ.isCompileTimeOnly: continue
-    if i > 0: add(r.res, ", ")
+    if i > 0: add(r.res, ", " | ".")
     genArgNoParam(p, it, r)
-  add(r.res, ")" | ""","\n"""")
+  add(r.res, ")" | """."\n")""")
   r.kind = resExpr
 
 proc putToSeq(s: string, indirect: bool): Rope =
@@ -1122,10 +1223,10 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       if p.target == targetJS:
-        output.add(mangleName(rec.sym))
+        output.add(mangleName(rec.sym, p.target))
         output.add(": ")
       else:
-        output.addf("'$#' => ", [mangleName(rec.sym)])
+        output.addf("'$#' => ", [mangleName(rec.sym, p.target)])
       output.add(createVar(p, rec.sym.typ, false))
   else: internalError(rec.info, "createRecordVarAux")
 
@@ -1221,9 +1322,9 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     s: Rope
   if n.kind == nkEmpty:
     addf(p.body, "var $1 = $2;$n" | "$$$1 = $2;$n",
-         [mangleName(v), createVar(p, v.typ, isIndirect(v))])
+         [mangleName(v, p.target), createVar(p, v.typ, isIndirect(v))])
   else:
-    discard mangleName(v)
+    discard mangleName(v, p.target)
     gen(p, n, a)
     case mapType(p, v.typ)
     of etyObject:
@@ -1336,9 +1437,29 @@ proc genConStrStrPHP(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetPHP:
-    localError(n.info, "'repr' not available for PHP backend")
+    if n.sons[0].sym.name.s == "repr":
+      localError(n.info, "'repr' not available for PHP backend")
+    else:
+      # we map mRepr to PHP's array constructor, a mild hack:
+      var a, b: TCompRes
+      r.kind = resExpr
+      r.res = rope("array(")
+      let x = skipConv(n[1])
+      if x.kind == nkBracket:
+        for i in countup(0, x.len - 1):
+          let it = x[i]
+          if it.kind == nkPar and it.len == 2:
+            if i > 0: r.res.add(", ")
+            gen(p, it[0], a)
+            gen(p, it[1], b)
+            r.res.add("$# => $#" % [a.rdLoc, b.rdLoc])
+          else:
+            localError(it.info, "'toArray' needs tuple constructors")
+      else:
+        localError(x.info, "'toArray' needs an array literal")
+      r.res.add(")")
     return
-  var t = skipTypes(n.sons[1].typ, abstractVarRange)
+  let t = skipTypes(n.sons[1].typ, abstractVarRange)
   case t.kind
   of tyInt..tyUInt64:
     unaryExpr(p, n, r, "", "(\"\"+ ($1))")
@@ -1390,7 +1511,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
           "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
     else:
       binaryExpr(p, n, r, "",
-          "if ($1 != null) { $1 .= chr($2); } else { $1 = chr($2); }")
+          "$1 .= chr($2)")
   of mAppendStrStr:
     if p.target == targetJS:
       if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
@@ -1401,14 +1522,14 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       # XXX: make a copy of $2, because of Javascript's sucking semantics
     else:
       binaryExpr(p, n, r, "",
-          "if ($1 != null) { $1 .= $2; } else { $1 = $2; }")
+          "$1 .= $2;")
   of mAppendSeqElem:
     if p.target == targetJS:
       binaryExpr(p, n, r, "",
           "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }")
     else:
       binaryExpr(p, n, r, "",
-          "if ($1 != null) { $1[] = $2; } else { $1 = array($2); }")
+          "$1[] = $2")
   of mConStrStr:
     if p.target == targetJS:
       genConStrStr(p, n, r)
@@ -1555,7 +1676,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     internalAssert it.kind == nkExprColonExpr
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f)
+    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     fieldIDs.incl(f.id)
     addf(initList, "$#: $#" | "'$#' => $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
@@ -1655,20 +1776,19 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
 proc genProc(oldProc: PProc, prc: PSym): Rope =
   var
     resultSym: PSym
-    name, returnStmt, resultAsgn, header: Rope
     a: TCompRes
   #if gVerbosity >= 3:
   #  echo "BEGIN generating code for: " & prc.name.s
   var p = newProc(oldProc.g, oldProc.module, prc.ast, prc.options)
   p.up = oldProc
-  returnStmt = nil
-  resultAsgn = nil
-  name = mangleName(prc)
-  header = generateHeader(p, prc.typ)
+  var returnStmt: Rope = nil
+  var resultAsgn: Rope = nil
+  let name = mangleName(prc, p.target)
+  let header = generateHeader(p, prc.typ)
   if prc.typ.sons[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast.sons[resultPos].sym
     resultAsgn = ("var $# = $#;$n" | "$$$# = $#;$n") % [
-        mangleName(resultSym),
+        mangleName(resultSym, p.target),
         createVar(p, resultSym.typ, isIndirect(resultSym))]
     gen(p, prc.ast.sons[resultPos], a)
     if mapType(p, resultSym.typ) == etyBaseIndex:
@@ -1799,7 +1919,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkEmpty: discard
   of nkLambdaKinds:
     let s = n.sons[namePos].sym
-    discard mangleName(s)
+    discard mangleName(s, p.target)
     r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
@@ -1854,7 +1974,8 @@ var globals: PGlobals
 proc newModule(module: PSym): BModule =
   new(result)
   result.module = module
-  if globals == nil: globals = newGlobals()
+  if globals == nil:
+    globals = newGlobals()
 
 proc genHeader(target: TTarget): Rope =
   if target == targetJS:
@@ -1905,31 +2026,56 @@ proc wholeCode*(m: BModule): Rope =
   for prc in globals.forwarded:
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newProc(globals, m, nil, m.module.options)
-      add(p.g.code, genProc(p, prc))
+      attachProc(p, prc)
 
   var disp = generateMethodDispatchers()
   for i in 0..sonsLen(disp)-1:
     let prc = disp.sons[i].sym
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newProc(globals, m, nil, m.module.options)
-      add(p.g.code, genProc(p, prc))
+      attachProc(p, prc)
 
   result = globals.typeInfo & globals.code
+
+proc getClassName(t: PType): Rope =
+  var s = t.sym
+  if s.isNil or sfAnon in s.flags:
+    s = skipTypes(t, abstractPtrs).sym
+  if s.isNil or sfAnon in s.flags:
+    internalError("cannot retrieve class name")
+  result = mangleName(s, targetPHP)
+
+proc genClass(obj: PType; content: Rope; ext: string) =
+  let cls = getClassName(obj)
+  let t = skipTypes(obj, abstractPtrs)
+  let extends = if t.kind == tyObject and t.sons[0] != nil:
+      " extends " & getClassName(t.sons[0])
+    else: nil
+  let result = ("<?php$n" &
+            "/* Generated by the Nim Compiler v$# */$n" &
+            "/*   (c) 2016 Andreas Rumpf */$n$n" &
+            "class $#$# {$n$#$n}$n") %
+           [rope(VersionAsString), cls, extends, content]
+
+  let outfile = changeFileExt(completeCFilePath($cls), ext)
+  discard writeRopeIfNotEqual(result, outfile)
 
 proc myClose(b: PPassContext, n: PNode): PNode =
   if passes.skipCodegen(n): return n
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags:
+    let ext = if m.target == targetJS: "js" else: "php"
     let code = wholeCode(m)
     let outfile =
       if options.outFile.len > 0:
         if options.outFile.isAbsolute: options.outFile
         else: getCurrentDir() / options.outFile
       else:
-        changeFileExt(completeCFilePath(m.module.filename),
-            if m.target == targetJS: "js" else: "php")
+        changeFileExt(completeCFilePath(m.module.filename), ext)
     discard writeRopeIfNotEqual(genHeader(m.target) & code, outfile)
+    for obj, content in items(globals.classes):
+      genClass(obj, content, ext)
 
 proc myOpenCached(s: PSym, rd: PRodReader): PPassContext =
   internalError("symbol files are not possible with the JS code generator")
