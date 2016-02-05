@@ -757,10 +757,15 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   template valid(s): expr =
     s.len > 0 and allCharsInSet(s, {'.','/',':','%','_','\\','\128'..'\xFF'} +
                                    Digits + Letters + WhiteSpace)
-
-  var options = ""
+  let
+    arg = getArgument(n)
+    isObject = arg.toLower().endsWith(".svg")
+  var
+    options = ""
+    content = ""
   var s = getFieldValue(n, "scale")
-  if s.valid: dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, if isObject: "" else: " scale=\"$1\"",
+                    " scale=$1", [strip(s)])
 
   s = getFieldValue(n, "height")
   if s.valid: dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
@@ -769,16 +774,21 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if s.valid: dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
 
   s = getFieldValue(n, "alt")
-  if s.valid: dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
+  if s.valid:
+    # <object> displays its content if it cannot render the image
+    if isObject: dispA(d.target, content, "$1", "", [strip(s)])
+    else: dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
 
   s = getFieldValue(n, "align")
   if s.valid: dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
 
   if options.len > 0: options = dispF(d.target, "$1", "[$1]", [options])
-
-  let arg = getArgument(n)
+  
   if arg.valid:
-    dispA(d.target, result, "<img src=\"$1\"$2 />", "\\includegraphics$2{$1}",
+    let htmlOut = if isObject:
+        "<object data=\"$1\" type=\"image/svg+xml\"$2 >" & content & "</object>"
+        else: "<img src=\"$1\"$2 />"
+    dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
           [arg, options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
