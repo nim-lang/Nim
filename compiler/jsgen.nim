@@ -1435,29 +1435,29 @@ proc genConStrStrPHP(p: PProc, n: PNode, r: var TCompRes) =
     else:
       r.res.add(".$1" % [a.res])
 
+proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
+  # we map mArray to PHP's array constructor, a mild hack:
+  var a, b: TCompRes
+  r.kind = resExpr
+  r.res = rope("array(")
+  let x = skipConv(n[1])
+  if x.kind == nkBracket:
+    for i in countup(0, x.len - 1):
+      let it = x[i]
+      if it.kind == nkPar and it.len == 2:
+        if i > 0: r.res.add(", ")
+        gen(p, it[0], a)
+        gen(p, it[1], b)
+        r.res.add("$# => $#" % [a.rdLoc, b.rdLoc])
+      else:
+        localError(it.info, "'toArray' needs tuple constructors")
+  else:
+    localError(x.info, "'toArray' needs an array literal")
+  r.res.add(")")
+
 proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetPHP:
-    if n.sons[0].sym.name.s == "repr":
-      localError(n.info, "'repr' not available for PHP backend")
-    else:
-      # we map mRepr to PHP's array constructor, a mild hack:
-      var a, b: TCompRes
-      r.kind = resExpr
-      r.res = rope("array(")
-      let x = skipConv(n[1])
-      if x.kind == nkBracket:
-        for i in countup(0, x.len - 1):
-          let it = x[i]
-          if it.kind == nkPar and it.len == 2:
-            if i > 0: r.res.add(", ")
-            gen(p, it[0], a)
-            gen(p, it[1], b)
-            r.res.add("$# => $#" % [a.rdLoc, b.rdLoc])
-          else:
-            localError(it.info, "'toArray' needs tuple constructors")
-      else:
-        localError(x.info, "'toArray' needs an array literal")
-      r.res.add(")")
+    localError(n.info, "'repr' not available for PHP backend")
     return
   let t = skipTypes(n.sons[1].typ, abstractVarRange)
   case t.kind
@@ -1621,6 +1621,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mParseBiggestFloat:
     useMagic(p, "nimParseBiggestFloat")
     genCall(p, n, r)
+  of mArray:
+    if p.target == targetPHP: genToArray(p, n, r)
+    else: genCall(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(e.info, 'genMagic: ' + magicToStr[op]);

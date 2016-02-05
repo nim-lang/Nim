@@ -31,7 +31,7 @@ proc strtr*(s: string, replacePairs: PhpArray[string, string]): string {.importc
 proc strtr*(s, fromm, to: string): string {.importc.}
 
 proc toArray*[K,V](pairs: openarray[(K,V)]): PhpArray[K,V] {.magic:
-  "Repr".}
+  "Array".}
 template strtr*(s: string, replacePairs: openarray[(string, string)]): string =
   strtr(toArray(replacePairs))
 
