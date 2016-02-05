@@ -1518,7 +1518,7 @@ proc dirInclude(p: var RstParser): PRstNode =
       #  InternalError("Too many binary zeros in include file")
       result = parseDoc(q)
 
-proc dirCodeBlock(p: var RstParser, nimrodExtension = false): PRstNode =
+proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## Parses a code block.
   ##
   ## Code blocks are rnDirective trees with a `kind` of rnCodeBlock. See the
@@ -1526,8 +1526,8 @@ proc dirCodeBlock(p: var RstParser, nimrodExtension = false): PRstNode =
   ##
   ## Code blocks can come in two forms, the standard `code directive
   ## <http://docutils.sourceforge.net/docs/ref/rst/directives.html#code>`_ and
-  ## the nimrod extension ``.. code-block::``. If the block is an extension, we
-  ## want the default language syntax highlighting to be Nimrod, so we create a
+  ## the nim extension ``.. code-block::``. If the block is an extension, we
+  ## want the default language syntax highlighting to be Nim, so we create a
   ## fake internal field to comminicate with the generator. The field is named
   ## ``default-language``, which is unlikely to collide with a field specified
   ## by any random rst input file.
@@ -1545,16 +1545,16 @@ proc dirCodeBlock(p: var RstParser, nimrodExtension = false): PRstNode =
     result.sons[2] = n
 
   # Extend the field block if we are using our custom extension.
-  if nimrodExtension:
+  if nimExtension:
     # Create a field block if the input block didn't have any.
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
     assert result.sons[1].kind == rnFieldList
-    # Hook the extra field and specify the Nimrod language as value.
+    # Hook the extra field and specify the Nim language as value.
     var extraNode = newRstNode(rnField)
     extraNode.add(newRstNode(rnFieldName))
     extraNode.add(newRstNode(rnFieldBody))
     extraNode.sons[0].add(newRstNode(rnLeaf, "default-language"))
-    extraNode.sons[1].add(newRstNode(rnLeaf, "Nimrod"))
+    extraNode.sons[1].add(newRstNode(rnLeaf, "Nim"))
     result.sons[1].add(extraNode)
 
   result.kind = rnCodeBlock
@@ -1641,7 +1641,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
       else:
         rstMessage(p, meInvalidDirective, d)
     of dkCode: result = dirCodeBlock(p)
-    of dkCodeBlock: result = dirCodeBlock(p, nimrodExtension = true)
+    of dkCodeBlock: result = dirCodeBlock(p, nimExtension = true)
     of dkIndex: result = dirIndex(p)
     else: rstMessage(p, meInvalidDirective, d)
     popInd(p)

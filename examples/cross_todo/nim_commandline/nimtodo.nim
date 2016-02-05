@@ -3,7 +3,7 @@
 import backend, db_sqlite, os, parseopt, parseutils, strutils, times
 
 const
-  USAGE = """nimtodo - Nimrod cross platform todo manager
+  USAGE = """nimtodo - Nim cross platform todo manager
 
 Usage:
   nimtodo [command] [list options]
@@ -195,7 +195,7 @@ proc generateDatabaseRows(conn: TDbConn) =
   ## Adds some rows to the database ignoring errors.
   discard conn.addTodo(1, "Watch another random youtube video")
   discard conn.addTodo(2, "Train some starcraft moves for the league")
-  discard conn.addTodo(3, "Spread the word about Nimrod")
+  discard conn.addTodo(3, "Spread the word about Nim")
   discard conn.addTodo(4, "Give fruit superavit to neighbours")
   var todo = conn.addTodo(4, "Send tax form through snail mail")
   todo.isDone = true
