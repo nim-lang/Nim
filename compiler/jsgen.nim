@@ -1750,9 +1750,8 @@ proc genReturnStmt(p: PProc, n: PNode) =
   addf(p.body, "break BeforeRet;$n" | "goto BeforeRet;$n", [])
 
 proc frameCreate(p: PProc; procname, filename: Rope): Rope =
-  result = (("var F={procname:$1,prev:framePtr,filename:$2,line:0};$n" |
-             "global $$framePtr; $$F=array('procname'=>$#,'prev'=>$$framePtr,'filename'=>$#,'line'=>0);$n") &
-            "$$framePtr = &$$F;$n") % [
+  result = (("var F={procname:$1,prev:framePtr,filename:$2,line:0};$nframePtr = F;$n" |
+             "global $$framePtr; $$F=array('procname'=>$#,'prev'=>$$framePtr,'filename'=>$#,'line'=>0);$n$$framePtr = &$$F;$n")) % [
             procname, filename]
 
 proc frameDestroy(p: PProc): Rope =
