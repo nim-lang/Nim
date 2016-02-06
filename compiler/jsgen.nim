@@ -548,7 +548,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   gen(p, n.sons[0], a)
   moveInto(p, a, r)
   var generalCatchBranchExists = false
-  let dollar = rope(if p.target == targetJS: "$" else: "")
+  let dollar = rope(if p.target == targetJS: "" else: "$")
   if p.target == targetJS and catchBranchesExist:
     addf(p.body, "} catch (EXC) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXC;$n --excHandler;$n", [])
