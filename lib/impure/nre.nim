@@ -10,7 +10,6 @@
 from pcre import nil
 import nre.private.util
 import tables
-import unsigned
 from strutils import toLower, `%`
 from math import ceil
 import options

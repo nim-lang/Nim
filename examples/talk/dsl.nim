@@ -28,6 +28,6 @@ html mainPage:
     title "now look at this"
   body:
     ul:
-      li "Nimrod is quite capable"
+      li "Nim is quite capable"
 
 echo mainPage()

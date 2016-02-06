@@ -1,6 +1,4 @@
 
-import unsigned
-
 # Tests unsigned literals and implicit conversion between uints and ints
 # Passes if it compiles
 

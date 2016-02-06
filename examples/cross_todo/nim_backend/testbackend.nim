@@ -3,7 +3,7 @@
 import backend, db_sqlite, strutils, times
 
 
-proc showPagedResults(conn: TDbConn; params: TPagedParams) =
+proc showPagedResults(conn: DbConn; params: TPagedParams) =
   ## Shows the contents of the database in pages of specified size.
   ##
   ## Hmm... I guess this is more of a debug proc which should be moved outside,

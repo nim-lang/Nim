@@ -44,7 +44,7 @@ proc toGid(f: string): string =
   # we used to use ``f.addFileExt("gid")`` (aka ``$project.gid``), but this
   # will cause strange bugs if multiple projects are in the same folder, so
   # we simply use a project independent name:
-  result = options.completeGeneratedFilePath("nimrod.gid")
+  result = options.completeGeneratedFilePath("nim.gid")
 
 proc saveMaxIds*(project: string) =
   var f = open(project.toGid, fmWrite)

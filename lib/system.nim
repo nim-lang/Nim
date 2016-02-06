@@ -2960,9 +2960,9 @@ when not defined(JS): #and not defined(nimscript):
       ##       buffer.add(line.replace("a", "0") & '\x0A')
       ##     writeFile(filename, buffer)
       var f = open(filename, bufSize=8000)
+      defer: close(f)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
-      close(f)
 
     iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterate over any line in the file `f`.

@@ -951,7 +951,7 @@ when isMainModule and not defined(release):
       var b = initOrderedSet[int]()
       for x in [2, 4, 5]: b.incl(x)
       assert($a == $b)
-      assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
+      assert(a == b) # https://github.com/Araq/Nim/issues/1413
 
     block initBlocks:
       var a: OrderedSet[int]
