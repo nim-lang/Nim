@@ -891,7 +891,10 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   else: first = 0
   if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
-    r.res = "chckIndx($1, $2, $3.length)-$2" % [b.res, rope(first), a.res]
+    if p.target == targetPHP:
+      r.res = "chckIndx($1, $2, count($3))-$2" % [b.res, rope(first), a.res]
+    else:
+      r.res = "chckIndx($1, $2, $3.length)-$2" % [b.res, rope(first), a.res]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:
