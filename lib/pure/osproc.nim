@@ -875,8 +875,7 @@ elif not defined(useNimRtl):
       var error: cint
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
-        raise newException(OSError,
-          "Could not find command: '$1'. OS error: $2" %
+        raiseOSError("Could not find command: '$1'. OS error: $2" %
           [$data.sysCommand, $strerror(error)])
 
       return pid
