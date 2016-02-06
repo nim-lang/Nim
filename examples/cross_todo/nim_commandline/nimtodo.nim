@@ -191,7 +191,7 @@ proc parseCmdLine(): TParamConfig =
     abort("Used list options, but didn't specify the list command.", 10)
 
 
-proc generateDatabaseRows(conn: TDbConn) =
+proc generateDatabaseRows(conn: DbConn) =
   ## Adds some rows to the database ignoring errors.
   discard conn.addTodo(1, "Watch another random youtube video")
   discard conn.addTodo(2, "Train some starcraft moves for the league")
@@ -209,7 +209,7 @@ proc generateDatabaseRows(conn: TDbConn) =
   echo("Generated some entries, they were added to your database.")
 
 
-proc listDatabaseContents(conn: TDbConn; listParams: TPagedParams) =
+proc listDatabaseContents(conn: DbConn; listParams: TPagedParams) =
   ## Dumps the database contents formatted to the standard output.
   ##
   ## Pass the list/filter parameters parsed from the commandline.
@@ -239,7 +239,7 @@ proc listDatabaseContents(conn: TDbConn; listParams: TPagedParams) =
       todo.text])
 
 
-proc deleteOneTodo(conn: TDbConn; todoId: int64) =
+proc deleteOneTodo(conn: DbConn; todoId: int64) =
   ## Deletes a single todo entry from the database.
   let numDeleted = conn.deleteTodo(todoId)
   if numDeleted > 0:
@@ -248,7 +248,7 @@ proc deleteOneTodo(conn: TDbConn; todoId: int64) =
     quit("Couldn't delete todo id " & $todoId, 11)
 
 
-proc deleteAllTodos(conn: TDbConn) =
+proc deleteAllTodos(conn: DbConn) =
   ## Deletes all the contents from the database.
   ##
   ## Note that it would be more optimal to issue a direct DELETE sql statement
@@ -273,7 +273,7 @@ proc deleteAllTodos(conn: TDbConn) =
   echo("Deleted $1 todo entries from database." % $counter)
 
 
-proc setTodoCheck(conn: TDbConn; todoId: int64; value: bool) =
+proc setTodoCheck(conn: DbConn; todoId: int64; value: bool) =
   ## Changes the check state of a todo entry to the specified value.
   let
     newState = if value: "checked" else: "unchecked"
@@ -293,7 +293,7 @@ proc setTodoCheck(conn: TDbConn; todoId: int64; value: bool) =
     quit("Error updating todo id $1 to $2." % [$todoId, newState])
 
 
-proc addTodo(conn: TDbConn; priority: int; tokens: seq[string]) =
+proc addTodo(conn: DbConn; priority: int; tokens: seq[string]) =
   ## Adds to the database a todo with the specified priority.
   ##
   ## The tokens are joined as a single string using the space character. The

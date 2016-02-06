@@ -1,6 +1,6 @@
 #nim c -t:-march=i686 --cpu:amd64 --threads:on -d:release lockfreehash.nim
 
-import unsigned, math, hashes
+import math, hashes
 
 #------------------------------------------------------------------------------
 ## Memory Utility Functions
