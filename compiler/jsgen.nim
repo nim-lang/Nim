@@ -1138,6 +1138,18 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     createRecordVarAux(p, t.n, excludedFieldIDs, output)
     t = t.sons[0]
 
+proc arrayTypeForElemType(typ: PType): string =
+  case typ.kind
+  of tyInt, tyInt32: "Int32Array"
+  of tyInt16: "Int16Array"
+  of tyInt8: "Int8Array"
+  of tyUint, tyUint32: "Uint32Array"
+  of tyUint16: "Uint16Array"
+  of tyUint8: "Uint8Array"
+  of tyFloat32: "Float32Array"
+  of tyFloat64, tyFloat: "Float64Array"
+  else: nil
+
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
   case t.kind
@@ -1152,9 +1164,12 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyBool:
     result = putToSeq("false", indirect)
   of tyArray, tyArrayConstr:
-    var length = int(lengthOrd(t))
-    var e = elemType(t)
-    if length > 32:
+    let length = int(lengthOrd(t))
+    let e = elemType(t)
+    let jsTyp = arrayTypeForElemType(e)
+    if not jsTyp.isNil:
+      result = "new $1($2)" % [rope(jsTyp), rope(length)]
+    elif length > 32:
       useMagic(p, "arrayConstr")
       # XXX: arrayConstr depends on nimCopy. This line shouldn't be necessary.
       useMagic(p, "nimCopy")
@@ -1766,7 +1781,15 @@ proc genHeader(): Rope =
             "/*   (c) 2015 Andreas Rumpf */$n$n" &
             "var framePtr = null;$n" &
             "var excHandler = 0;$n" &
-            "var lastJSError = null;$n") %
+            "var lastJSError = null;$n" &
+            "if (typeof Int8Array === 'undefined') Int8Array = Array;$n" &
+            "if (typeof Int16Array === 'undefined') Int16Array = Array;$n" &
+            "if (typeof Int32Array === 'undefined') Int32Array = Array;$n" &
+            "if (typeof Uint8Array === 'undefined') Uint8Array = Array;$n" &
+            "if (typeof Uint16Array === 'undefined') Uint16Array = Array;$n" &
+            "if (typeof Uint32Array === 'undefined') Uint32Array = Array;$n" &
+            "if (typeof Float32Array === 'undefined') Float32Array = Array;$n" &
+            "if (typeof Float64Array === 'undefined') Float64Array = Array;$n") %
            [rope(VersionAsString)]
 
 proc genModule(p: PProc, n: PNode) =
