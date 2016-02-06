@@ -844,7 +844,10 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   let b = if n.kind == nkHiddenAddr: n.sons[0] else: n
   gen(p, b.sons[0], a)
   if skipTypes(b.sons[0].typ, abstractVarRange).kind == tyTuple:
-    r.res = makeJSString("Field" & $getFieldPosition(b.sons[1]))
+    if p.target == targetJS:
+      r.res = makeJSString( "Field" & $getFieldPosition(b.sons[1]) )
+    else:
+      r.res = makeJSString( $getFieldPosition(b.sons[1]) )
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
