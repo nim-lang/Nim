@@ -812,7 +812,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     if parseInt(n.getFieldValue, number) > 0:
       params.startLine = number
   of "file":
-    # The ``file`` option is a Nimrod extension to the official spec, it acts
+    # The ``file`` option is a Nim extension to the official spec, it acts
     # like it would for other directives like ``raw`` or ``cvs-table``. This
     # field is dealt with in ``rst.nim`` which replaces the existing block with
     # the referenced file, so we only need to ignore it here to avoid incorrect
@@ -881,7 +881,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   ## second the code block itself. The code block can use syntax highlighting,
   ## which depends on the directive argument specified by the rst input, and
   ## may also come from the parser through the internal ``default-language``
-  ## option to differentiate between a plain code block and nimrod's code block
+  ## option to differentiate between a plain code block and Nim's code block
   ## extension.
   assert n.kind == rnCodeBlock
   if n.sons[2] == nil: return

@@ -10,7 +10,7 @@
 # This module contains data about the different processors
 # and operating systems.
 # Note: Unfortunately if an OS or CPU is listed here this does not mean that
-# Nimrod has been tested on this platform or that the RTL has been ported.
+# Nim has been tested on this platform or that the RTL has been ported.
 # Feel free to test for your excentric platform!
 
 import

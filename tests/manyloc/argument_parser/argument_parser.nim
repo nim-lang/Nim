@@ -1,4 +1,4 @@
-## Command line parsing module for Nimrod.
+## Command line parsing module for Nim.
 ##
 ## `Nim <http://nim-lang.org>`_ provides the `parseopt module
 ## <http://nim-lang.org/parseopt.html>`_ to parse options from the

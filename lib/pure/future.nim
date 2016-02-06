@@ -134,7 +134,7 @@ macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
   ## the type that will be stored inside the result seq.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   echo lc[x | (x <- 1..10, x mod 2 == 0), int]
   ##
