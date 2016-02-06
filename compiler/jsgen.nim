@@ -452,11 +452,17 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulU: binaryUintExpr(p, n, r, "*")
   of mDivU: binaryUintExpr(p, n, r, "/")
   of mShrI:
-    var x, y: TCompRes
-    gen(p, n.sons[1], x)
-    gen(p, n.sons[2], y)
-    let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
-    r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
+    if p.target == targetPHP:
+      var x, y: TCompRes
+      gen(p, n.sons[1], x)
+      gen(p, n.sons[2], y)
+      r.res = "$1 >> $2" % [x.rdLoc, y.rdLoc]
+    else:
+      var x, y: TCompRes
+      gen(p, n.sons[1], x)
+      gen(p, n.sons[2], y)
+      let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
+      r.res = "(($1 $2) >> $3)" % [x.rdLoc, trimmer, y.rdLoc]
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
     if p.target == targetPHP:
