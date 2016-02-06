@@ -180,12 +180,15 @@ proc mangleName(s: PSym; target: TTarget): Rope =
       var i = 0
       while i < s.name.s.len:
         let c = s.name.s[i]
-        if c in {'A'..'Z'}:
+        case c
+        of 'A'..'Z':
           if i > 0 and s.name.s[i-1] in {'a'..'z'}:
             x.add '_'
           x.add(chr(c.ord - 'A'.ord + 'a'.ord))
-        else:
+        of 'a'..'z', '_', '0'..'9':
           x.add c
+        else:
+          x.add("HEX" & toHex(ord(c), 2))
         inc i
       result = rope(x)
     add(result, "_")
@@ -1571,7 +1574,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
                              "(strlen($1)-1)")
     else:
       unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)" |
-                             "(count($1.length)-1)")
+                             "(count($1)-1)")
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
       binaryUintExpr(p, n, r, "+", true)
@@ -1614,7 +1617,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     if p.target == targetJS:
       unaryExpr(p, n, r, "mnewString", "mnewString(0)")
     else:
-      unaryExpr(p, n, r, "", "$# = ''")
+      unaryExpr(p, n, r, "", "''")
   of mDotDot:
     genProcForSymIfNeeded(p, n.sons[0].sym)
     genCall(p, n, r)

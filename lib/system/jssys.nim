@@ -275,6 +275,11 @@ proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
       return result;
     """
 
+when defined(nimphp):
+  proc nimSubstr(s: string; a, b: int): string {.
+      asmNoStackFrame, compilerproc.} =
+    asm """return substr(`s`,`a`,`b`-`a`+1);"""
+
 proc SetCard(a: int): int {.compilerproc, asmNoStackFrame.} =
   # argument type is a fake
   when defined(nimphp):
