@@ -411,6 +411,7 @@ proc unsignedTrimmerPHP(size: BiggestInt): Rope =
   case size
     of 1: rope"& 0xff"
     of 2: rope"& 0xffff"
+    of 4: rope"& 0xffffffff"
     else: rope""
 
 template unsignedTrimmer(size: BiggestInt): Rope =
@@ -466,6 +467,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     gen(p, n.sons[2], y)
     let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
     if p.target == targetPHP:
+      # XXX prevent multi evaluations
       r.res = "(($1 $2) >= 0) ? (($1 $2) >> $3) : ((($1 $2) & 0x7fffffff) >> $3) | (0x40000000 >> ($3 - 1))" % [x.rdLoc, trimmer, y.rdLoc]
     else:
       r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
@@ -1864,7 +1866,9 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "($1 $2)" % [r.res, trimmer]
     elif fromUint:
       if src.size == 4 and dest.size == 4:
-        r.res = "($1|0)" % [r.res]
+        # XXX prevent multi evaluations
+        r.res = "($1|0)" % [r.res] |
+          "($1>(float)2147483647?(int)$1-4294967296:$1)" % [r.res]
       else:
         let trimmer = unsignedTrimmer(dest.size)
         let minuend = case dest.size
