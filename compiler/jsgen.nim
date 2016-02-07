@@ -400,12 +400,21 @@ proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = frmt % [x.rdLoc, y.rdLoc]
   r.kind = resExpr
 
-proc unsignedTrimmer(size: BiggestInt): Rope =
+proc unsignedTrimmerJS(size: BiggestInt): Rope =
   case size
     of 1: rope"& 0xff"
     of 2: rope"& 0xffff"
     of 4: rope">>> 0"
     else: rope""
+
+proc unsignedTrimmerPHP(size: BiggestInt): Rope =
+  case size
+    of 1: rope"& 0xff"
+    of 2: rope"& 0xffff"
+    else: rope""
+
+template unsignedTrimmer(size: BiggestInt): Rope =
+  size.unsignedTrimmerJS | size.unsignedTrimmerPHP
 
 proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string, reassign: bool = false) =
   var x, y: TCompRes
@@ -455,10 +464,10 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     var x, y: TCompRes
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
+    let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
     if p.target == targetPHP:
-      r.res = "$1 >> $2" % [x.rdLoc, y.rdLoc]
+      r.res = "(($1 $2) >= 0) ? (($1 $2) >> $3) : ((($1 $2) & 0x7fffffff) >> $3) | (0x40000000 >> ($3 - 1))" % [x.rdLoc, trimmer, y.rdLoc]
     else:
-      let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
       r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
