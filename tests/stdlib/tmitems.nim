@@ -11,7 +11,7 @@ fpqeew
 [11, 12, 13]
 [11, 12, 13]
 [11, 12, 13]
-{"key3":13,"key2":12,"key1":11}
+11 12 13
 [11,12,13]
 <Students>
   <Student Name="Aprilfoo" />
@@ -115,7 +115,7 @@ block:
   var j = parseJson """{"key1": 1, "key2": 2, "key3": 3}"""
   for key,val in j.pairs:
     val.num += 10
-  echo j
+  echo j["key1"], " ", j["key2"], " ", j["key3"]
 
 block:
   var j = parseJson """[1, 2, 3]"""
