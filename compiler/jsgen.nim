@@ -400,12 +400,22 @@ proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = frmt % [x.rdLoc, y.rdLoc]
   r.kind = resExpr
 
-proc unsignedTrimmer(size: BiggestInt): Rope =
+proc unsignedTrimmerJS(size: BiggestInt): Rope =
   case size
     of 1: rope"& 0xff"
     of 2: rope"& 0xffff"
     of 4: rope">>> 0"
     else: rope""
+
+proc unsignedTrimmerPHP(size: BiggestInt): Rope =
+  case size
+    of 1: rope"& 0xff"
+    of 2: rope"& 0xffff"
+    of 4: rope"& 0xffffffff"
+    else: rope""
+
+template unsignedTrimmer(size: BiggestInt): Rope =
+  size.unsignedTrimmerJS | size.unsignedTrimmerPHP
 
 proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string, reassign: bool = false) =
   var x, y: TCompRes
@@ -456,7 +466,11 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
     let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
-    r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
+    if p.target == targetPHP:
+      # XXX prevent multi evaluations
+      r.res = "(($1 $2) >= 0) ? (($1 $2) >> $3) : ((($1 $2) & 0x7fffffff) >> $3) | (0x40000000 >> ($3 - 1))" % [x.rdLoc, trimmer, y.rdLoc]
+    else:
+      r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
     if p.target == targetPHP:
@@ -464,6 +478,10 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
         var x: TCompRes
         gen(p, n.sons[1], x)
         r.res = "$#[$#]" % [genEnumInfoPHP(p, n.sons[1].typ), x.rdLoc]
+      elif op == mCharToStr:
+        var x: TCompRes
+        gen(p, n.sons[1], x)
+        r.res = "chr($#)" % [x.rdLoc]
       else:
         gen(p, n.sons[1], r)
     else:
@@ -838,7 +856,10 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   let b = if n.kind == nkHiddenAddr: n.sons[0] else: n
   gen(p, b.sons[0], a)
   if skipTypes(b.sons[0].typ, abstractVarRange).kind == tyTuple:
-    r.res = makeJSString("Field" & $getFieldPosition(b.sons[1]))
+    if p.target == targetJS:
+      r.res = makeJSString( "Field" & $getFieldPosition(b.sons[1]) )
+    else:
+      r.res = getFieldPosition(b.sons[1]).rope
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
@@ -885,7 +906,13 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   else: first = 0
   if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
-    r.res = "chckIndx($1, $2, $3.length)-$2" % [b.res, rope(first), a.res]
+    if p.target == targetPHP:
+      if typ.kind != tyString:
+        r.res = "chckIndx($1, $2, count($3))-$2" % [b.res, rope(first), a.res]
+      else:
+        r.res = "chckIndx($1, $2, strlen($3))-$2" % [b.res, rope(first), a.res]
+    else:
+      r.res = "chckIndx($1, $2, $3.length)-$2" % [b.res, rope(first), a.res]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:
@@ -1839,7 +1866,9 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "($1 $2)" % [r.res, trimmer]
     elif fromUint:
       if src.size == 4 and dest.size == 4:
-        r.res = "($1|0)" % [r.res]
+        # XXX prevent multi evaluations
+        r.res = "($1|0)" % [r.res] |
+          "($1>(float)2147483647?(int)$1-4294967296:$1)" % [r.res]
       else:
         let trimmer = unsignedTrimmer(dest.size)
         let minuend = case dest.size
