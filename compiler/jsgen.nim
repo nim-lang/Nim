@@ -470,6 +470,10 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
         var x: TCompRes
         gen(p, n.sons[1], x)
         r.res = "$#[$#]" % [genEnumInfoPHP(p, n.sons[1].typ), x.rdLoc]
+      elif op == mCharToStr:
+        var x: TCompRes
+        gen(p, n.sons[1], x)
+        r.res = "chr($#)" % [x.rdLoc]
       else:
         gen(p, n.sons[1], r)
     else:
