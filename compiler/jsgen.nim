@@ -452,17 +452,14 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulU: binaryUintExpr(p, n, r, "*")
   of mDivU: binaryUintExpr(p, n, r, "/")
   of mShrI:
+    var x, y: TCompRes
+    gen(p, n.sons[1], x)
+    gen(p, n.sons[2], y)
     if p.target == targetPHP:
-      var x, y: TCompRes
-      gen(p, n.sons[1], x)
-      gen(p, n.sons[2], y)
       r.res = "$1 >> $2" % [x.rdLoc, y.rdLoc]
     else:
-      var x, y: TCompRes
-      gen(p, n.sons[1], x)
-      gen(p, n.sons[2], y)
       let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
-      r.res = "(($1 $2) >> $3)" % [x.rdLoc, trimmer, y.rdLoc]
+      r.res = "(($1 $2) >>> $3)" % [x.rdLoc, trimmer, y.rdLoc]
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
     if p.target == targetPHP:
@@ -851,7 +848,7 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
     if p.target == targetJS:
       r.res = makeJSString( "Field" & $getFieldPosition(b.sons[1]) )
     else:
-      r.res = makeJSString( $getFieldPosition(b.sons[1]) )
+      r.res = getFieldPosition(b.sons[1]).rope
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
@@ -899,7 +896,10 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
     if p.target == targetPHP:
-      r.res = "chckIndx($1, $2, count($3))-$2" % [b.res, rope(first), a.res]
+      if typ.kind != tyString:
+        r.res = "chckIndx($1, $2, count($3))-$2" % [b.res, rope(first), a.res]
+      else:
+        r.res = "chckIndx($1, $2, strlen($3))-$2" % [b.res, rope(first), a.res]
     else:
       r.res = "chckIndx($1, $2, $3.length)-$2" % [b.res, rope(first), a.res]
   elif first != 0:
