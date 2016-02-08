@@ -881,7 +881,13 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
     if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAccess")
     var f = n.sons[1].sym
     if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
-    r.res = ("$1.$2" | "$1['$2']") % [r.res, f.loc.r]
+    if p.target == targetJS:
+      r.res = "$1.$2" % [r.res, f.loc.r]
+    else:
+      if {sfImportc, sfExportc} * f.flags != {}:
+        r.res = "$1->$2" % [r.res, f.loc.r]
+      else:
+        r.res = "$1['$2']" % [r.res, f.loc.r]
   r.kind = resExpr
 
 proc genCheckedFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
@@ -928,6 +934,9 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
      tyVarargs:
     genArrayAddr(p, n, r)
   of tyTuple:
+    if p.target == targetPHP:
+      genFieldAccess(p, n, r)
+      return
     genFieldAddr(p, n, r)
   else: internalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   r.typ = etyNone
