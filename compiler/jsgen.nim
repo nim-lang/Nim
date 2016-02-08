@@ -75,6 +75,7 @@ type
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
     classes: seq[(PType, Rope)]
+    unique: int    # for temp identifier generation
 
   PGlobals = ref TGlobals
   PProc = ref TProc
@@ -2052,9 +2053,11 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   var m = BModule(b)
   if m.module == nil: internalError(n.info, "myProcess")
   var p = newProc(globals, m, nil, m.module.options)
+  p.unique = globals.unique
   genModule(p, n)
   add(p.g.code, p.locals)
   add(p.g.code, p.body)
+  globals.unique = p.unique
 
 proc wholeCode*(m: BModule): Rope =
   for prc in globals.forwarded:
