@@ -761,7 +761,7 @@ proc `==`* (a,b: JsonNode): bool =
     of JObject:
       a.fields == b.fields
 
-proc hash*(n: Table[string, JsonNode]): Hash
+proc hash*(n: Table[string, JsonNode]): Hash {.noSideEffect.}
 
 proc hash*(n: JsonNode): Hash =
   ## Compute the hash for a JSON node
