@@ -1254,7 +1254,7 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
 
-proc timeToTimeInfo*(t: Time): TimeInfo {.depreciated.} =
+proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
   ## Converts a Time to TimeInfo.
   ## **Warning:** This procedure is deprecated since Nim 0.12.4, use getLocalTime or getGMTime.
   let
