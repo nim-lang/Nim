@@ -10,6 +10,11 @@ Changes affecting backwards compatibility
 
 - ``--out`` and ``--nimcache`` command line arguments are now relative to
   current directory. Previously they were relative to project directory.
+- The json module now stores the name/value pairs in objects internally as a
+  hash table of type ``fields*: Table[string, JsonNode]`` instead of a
+  sequence. This means that order is no longer preserved. When using the
+  ``table.mpairs`` iterator only the returned values can be modified, no
+  longer the keys.
 
 Library Additions
 -----------------
@@ -23,7 +28,6 @@ Compiler Additions
 - Added a new ``--noCppExceptions`` switch that allows to use default exception
   handling (no ``throw`` or ``try``/``catch`` generated) when compiling to C++
   code
-
 
 2016-01-27 Nim in Action is now available!
 ==========================================
