@@ -309,9 +309,9 @@ when useWinUnicode:
       stdcall, dynlib: "kernel32", importc: "FindNextFileW".}
 else:
   proc findFirstFileA*(lpFileName: cstring,
-                      lpFindFileData: var WIN32_FIND_DATA): THANDLE {.
+                      lpFindFileData: var WIN32_FIND_DATA): Handle {.
       stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}
-  proc findNextFileA*(hFindFile: THANDLE,
+  proc findNextFileA*(hFindFile: Handle,
                      lpFindFileData: var WIN32_FIND_DATA): int32 {.
       stdcall, dynlib: "kernel32", importc: "FindNextFileA".}
 
@@ -685,7 +685,7 @@ else:
   proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
                     lpSecurityAttributes: pointer,
                     dwCreationDisposition, dwFlagsAndAttributes: DWORD,
-                    hTemplateFile: THANDLE): THANDLE {.
+                    hTemplateFile: Handle): Handle {.
       stdcall, dynlib: "kernel32", importc: "CreateFileA".}
   proc deleteFileA*(pathName: cstring): int32 {.
     importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
@@ -715,10 +715,10 @@ proc createFileMappingW*(hFile: Handle,
   stdcall, dynlib: "kernel32", importc: "CreateFileMappingW".}
 
 when not useWinUnicode:
-  proc createFileMappingA*(hFile: THANDLE,
+  proc createFileMappingA*(hFile: Handle,
                            lpFileMappingAttributes: pointer,
                            flProtect, dwMaximumSizeHigh: DWORD,
-                           dwMaximumSizeLow: DWORD, lpName: cstring): THANDLE {.
+                           dwMaximumSizeLow: DWORD, lpName: cstring): Handle {.
       stdcall, dynlib: "kernel32", importc: "CreateFileMappingA".}
 
 proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
