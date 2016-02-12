@@ -127,7 +127,7 @@ Produces roughly this C code:
   } MySeq;
 
 The bounds checking done at compile time is not disabled for now, so to access
-``s.data[C]`` (where ``C`` is a constant) the array's index needs needs to
+``s.data[C]`` (where ``C`` is a constant) the array's index needs to
 include ``C``.
 
 The base type of the unchecked array may not contain any GC'ed memory but this
