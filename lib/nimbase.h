@@ -25,6 +25,7 @@ __clang__
 
 /* ------------ ignore typical warnings in Nim-generated files ------------- */
 #if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wpragmas"
 #  pragma GCC diagnostic ignored "-Wwritable-strings"
 #  pragma GCC diagnostic ignored "-Winvalid-noreturn"
 #  pragma GCC diagnostic ignored "-Wformat"
