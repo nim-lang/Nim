@@ -325,6 +325,8 @@ proc cellsetReset(s: var CellSet) =
   deinit(s)
   init(s)
 
+{.push stacktrace:off.}
+
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
   case n.kind
@@ -459,7 +461,8 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "rawNewObj end")
 
-{.pop.}
+{.pop.} # .stackTrace off
+{.pop.} # .profiler off
 
 proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
@@ -576,7 +579,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(old, newsize, gch)
 
-{.push profiler:off.}
+{.push profiler:off, stackTrace:off.}
 
 # ---------------- cycle collector -------------------------------------------
 
@@ -659,7 +662,7 @@ when useMarkForDebug or useBackupGc:
   proc stackMarkS(gch: var GcHeap, p: pointer) {.inline.} =
     # the addresses are not as cells on the stack, so turn them to cells:
     var cell = usrToCell(p)
-    var c = cast[TAddress](cell)
+    var c = cast[ByteAddress](cell)
     if c >% PageSize:
       # fast check: does it look like a cell?
       var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
@@ -805,8 +808,8 @@ proc markThreadStacks(gch: var GcHeap) =
     while it != nil:
       # mark registers:
       for i in 0 .. high(it.registers): gcMark(gch, it.registers[i])
-      var sp = cast[TAddress](it.stackBottom)
-      var max = cast[TAddress](it.stackTop)
+      var sp = cast[ByteAddress](it.stackBottom)
+      var max = cast[ByteAddress](it.stackTop)
       # XXX stack direction?
       # XXX unroll this loop:
       while sp <=% max:
@@ -1018,4 +1021,4 @@ when not defined(useNimRtl):
       result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
     GC_enable()
 
-{.pop.}
+{.pop.} # profiler: off, stackTrace: off

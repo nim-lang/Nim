@@ -39,9 +39,9 @@ To build from source you will need:
 If you are on a fairly modern *nix system, the following steps should work:
 
 ```
-$ git clone git://github.com/nim-lang/Nim.git
+$ git clone https://github.com/nim-lang/Nim.git
 $ cd Nim
-$ git clone --depth 1 git://github.com/nim-lang/csources
+$ git clone --depth 1 https://github.com/nim-lang/csources
 $ cd csources && sh build.sh
 $ cd ..
 $ bin/nim c koch
@@ -81,7 +81,7 @@ allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
-Copyright (c) 2006-2015 Andreas Rumpf.
+Copyright (c) 2006-2016 Andreas Rumpf.
 All rights reserved.
 
 # Build Status

@@ -64,6 +64,14 @@ Precedence level    Operators                                      First charact
 ================  ===============================================  ==================  ===============
 
 
+Whether an operator is used a prefix operator is also affected by preceeding whitespace (this parsing change was introduced with version 0.13.0):
+
+.. code-block:: nim
+  echo $foo
+  # is parsed as
+  echo($foo)
+
+
 Strong spaces
 -------------
 

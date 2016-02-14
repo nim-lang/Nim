@@ -47,7 +47,7 @@ proc mangleName(s: PSym): Rope =
       # I need to study where these come from.
       #
       # about sfShadowed:
-      # consider the following nimrod code:
+      # consider the following Nim code:
       #   var x = 10
       #   block:
       #     var x = something(x)
@@ -64,7 +64,7 @@ proc mangleName(s: PSym): Rope =
       # use that in the inner scope.
       #
       # about isCKeyword:
-      # nimrod variable names can be C keywords.
+      # Nim variable names can be C keywords.
       # We need to avoid such names in the generated code.
       # XXX: Study whether mangleName is called just once per variable.
       # Otherwise, there might be better place to do this.

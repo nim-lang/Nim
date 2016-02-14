@@ -876,7 +876,7 @@ elif not defined(useNimRtl):
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
         raiseOSError("Could not find command: '$1'. OS error: $2" %
-            [$data.sysCommand, $strerror(error)])
+          [$data.sysCommand, $strerror(error)])
 
       return pid
 
@@ -886,7 +886,7 @@ elif not defined(useNimRtl):
     discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
     exitnow(1)
 
-  when defined(macosx) or defined(freebsd) or defined(netbsd) or defined(android):
+  when not defined(uClibc) and (not defined(linux) or defined(android)):
     var environ {.importc.}: cstringArray
 
   proc startProcessAfterFork(data: ptr StartProcessData) =
@@ -916,17 +916,16 @@ elif not defined(useNimRtl):
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
     if data.optionPoUsePath:
-      when defined(macosx) or defined(freebsd) or defined(netbsd) or defined(android):
+      when defined(uClibc):
+        # uClibc environment (OpenWrt included) doesn't have the full execvpe
+        discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
+      elif defined(linux) and not defined(android):
+        discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
+      else:
         # MacOSX doesn't have execvpe, so we need workaround.
         # On MacOSX we can arrive here only from fork, so this is safe:
         environ = data.sysEnv
         discard execvp(data.sysCommand, data.sysArgs)
-      else:
-        when defined(uClibc):
-          # uClibc environment (OpenWrt included) doesn't have the full execvpe
-          discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
-        else:
-          discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
     else:
       discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 

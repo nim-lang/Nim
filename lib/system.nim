@@ -151,7 +151,7 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo cast[ptr char](p)[]    # b
   discard
 
-proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin 'addr' operator for taking the address of a memory location.
   ## This works even for ``let`` variables or parameters for better interop
   ## with C and so it is considered even more unsafe than the ordinary ``addr``.
@@ -1808,7 +1808,7 @@ const
   NimMajor*: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 12
+  NimMinor*: int = 13
     ## is the minor number of Nim's version.
 
   NimPatch*: int = 1
@@ -2452,14 +2452,17 @@ type
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
-    asm """
-      var len = `x`[0].length-1;
-      for (var i = 0; i < `y`.length; ++i) {
-        `x`[0][len] = `y`.charCodeAt(i);
-        ++len;
-      }
-      `x`[0][len] = 0
-    """
+    when defined(nimphp):
+      asm """`x` .= `y`;"""
+    else:
+      asm """
+        var len = `x`[0].length-1;
+        for (var i = 0; i < `y`.length; ++i) {
+          `x`[0][len] = `y`.charCodeAt(i);
+          ++len;
+        }
+        `x`[0][len] = 0
+      """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
@@ -2960,9 +2963,9 @@ when not defined(JS): #and not defined(nimscript):
       ##       buffer.add(line.replace("a", "0") & '\x0A')
       ##     writeFile(filename, buffer)
       var f = open(filename, bufSize=8000)
+      defer: close(f)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
-      close(f)
 
     iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterate over any line in the file `f`.

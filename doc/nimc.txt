@@ -333,21 +333,21 @@ Nim provides language integration with external IDEs through the
 idetools command. See the documentation of `idetools <idetools.html>`_
 for further information.
 
+..
+  Nim interactive mode
+  ====================
 
-Nim interactive mode
-====================
+  The Nim compiler supports an interactive mode. This is also known as
+  a `REPL`:idx: (*read eval print loop*). If Nim has been built with the
+  ``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
+  input management. To start Nim in interactive mode use the command
+  ``nim secret``. To quit use the ``quit()`` command. To determine whether an input
+  line is an incomplete statement to be continued these rules are used:
 
-The Nim compiler supports an interactive mode. This is also known as
-a `REPL`:idx: (*read eval print loop*). If Nim has been built with the
-``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
-input management. To start Nim in interactive mode use the command
-``nim i``. To quit use the ``quit()`` command. To determine whether an input
-line is an incomplete statement to be continued these rules are used:
-
-1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol followed by optional whitespace).
-2. The line starts with a space (indentation).
-3. The line is within a triple quoted string literal. However, the detection
-   does not work if the line contains more than one ``"""``.
+  1. The line ends with ``[-+*/\\<>!\?\|%&$@~,;:=#^]\s*$`` (operator symbol followed by optional whitespace).
+  2. The line starts with a space (indentation).
+  3. The line is within a triple quoted string literal. However, the detection
+     does not work if the line contains more than one ``"""``.
 
 
 Nim for embedded systems

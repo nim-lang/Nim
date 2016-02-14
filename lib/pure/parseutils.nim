@@ -25,7 +25,7 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-proc parseHex*(s: string, number: var int, start = 0): int {.
+proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
   rtl, extern: "npuParseHex", noSideEffect.}  =
   ## Parses a hexadecimal number and stores its value in ``number``.
   ##
@@ -45,11 +45,14 @@ proc parseHex*(s: string, number: var int, start = 0): int {.
   ##   discard parseHex("0x38", value)
   ##   assert value == -200
   ##
+  ## If 'maxLen==0' the length of the hexadecimal number has no
+  ## upper bound. Not more than ```maxLen`` characters are parsed.
   var i = start
   var foundDigit = false
   if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
   elif s[i] == '#': inc(i)
-  while true:
+  let last = if maxLen == 0: s.len else: i+maxLen
+  while i < last:
     case s[i]
     of '_': discard
     of '0'..'9':

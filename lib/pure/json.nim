@@ -712,16 +712,20 @@ proc `%`*(elements: openArray[JsonNode]): JsonNode =
 
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
-  of nnkBracket:
+  of nnkBracket: # array
     result = newNimNode(nnkBracket)
     for i in 0 .. <x.len:
       result.add(toJson(x[i]))
 
-  of nnkTableConstr:
+  of nnkTableConstr: # object
     result = newNimNode(nnkTableConstr)
     for i in 0 .. <x.len:
-      assert x[i].kind == nnkExprColonExpr
+      x[i].expectKind nnkExprColonExpr
       result.add(newNimNode(nnkExprColonExpr).add(x[i][0]).add(toJson(x[i][1])))
+
+  of nnkCurly: # empty object
+    result = newNimNode(nnkTableConstr)
+    x.expectLen(0)
 
   else:
     result = x

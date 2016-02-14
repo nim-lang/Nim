@@ -137,7 +137,7 @@ proc sameValue*(a, b: PNode): bool =
   of nkStrLit..nkTripleStrLit:
     if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal == b.strVal
   else:
-    # don't raise an internal error for 'nimrod check':
+    # don't raise an internal error for 'nim check':
     #InternalError(a.info, "SameValue")
     discard
 
@@ -152,7 +152,7 @@ proc leValue*(a, b: PNode): bool =
   of nkStrLit..nkTripleStrLit:
     if b.kind in {nkStrLit..nkTripleStrLit}: result = a.strVal <= b.strVal
   else:
-    # don't raise an internal error for 'nimrod check':
+    # don't raise an internal error for 'nim check':
     #InternalError(a.info, "leValue")
     discard
 

@@ -10,7 +10,49 @@
 ## A higher level `mySQL`:idx: database wrapper. The same interface is
 ## implemented for other databases too.
 ##
-## Example:
+## See also: `db_odbc <db_odbc.html>`_, `db_sqlite <db_sqlite.html>`_,
+## `db_postgres <db_postgres.html>`_.
+##
+## Parameter substitution
+## ----------------------
+##
+## All ``db_*`` modules support the same form of parameter substitution.
+## That is, using the ``?`` (question mark) to signify the place where a
+## value should be placed. For example:
+##
+## .. code-block:: Nim
+##     sql"INSERT INTO myTable (colA, colB, colC) VALUES (?, ?, ?)"
+##
+##
+## Examples
+## --------
+##
+## Opening a connection to a database
+## ==================================
+##
+## .. code-block:: Nim
+##     import db_mysql
+##     let db = open("localhost", "user", "password", "dbname")
+##     db.close()
+##
+## Creating a table
+## ================
+##
+## .. code-block:: Nim
+##      db.exec(sql"DROP TABLE IF EXISTS myTable")
+##      db.exec(sql("""CREATE TABLE myTable (
+##                       id integer,
+##                       name varchar(50) not null)"""))
+##
+## Inserting data
+## ==============
+##
+## .. code-block:: Nim
+##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
+##             "Dominik")
+##
+## Larger example
+## ==============
 ##
 ## .. code-block:: Nim
 ##

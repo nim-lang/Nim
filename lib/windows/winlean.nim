@@ -12,8 +12,17 @@
 
 {.deadCodeElim:on.}
 
+import dynlib
+
 const
   useWinUnicode* = not defined(useWinAnsi)
+
+when useWinUnicode:
+  type WinChar* = Utf16Char
+  {.deprecated: [TWinChar: WinChar].}
+else:
+  type WinChar* = char
+  {.deprecated: [TWinChar: WinChar].}
 
 type
   Handle* = int
@@ -74,16 +83,17 @@ type
     nFileIndexHigh*: DWORD
     nFileIndexLow*: DWORD
 
+  OSVERSIONINFO* {.final, pure.} = object
+    dwOSVersionInfoSize*: DWORD
+    dwMajorVersion*: DWORD
+    dwMinorVersion*: DWORD
+    dwBuildNumber*: DWORD
+    dwPlatformId*: DWORD
+    szCSDVersion*: array[0..127, WinChar];
+
 {.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
     TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
     TFILETIME: FILETIME, TBY_HANDLE_FILE_INFORMATION: BY_HANDLE_FILE_INFORMATION].}
-
-when useWinUnicode:
-  type WinChar* = Utf16Char
-  {.deprecated: [TWinChar: WinChar].}
-else:
-  type WinChar* = char
-  {.deprecated: [TWinChar: WinChar].}
 
 const
   STARTF_USESHOWWINDOW* = 1'i32
@@ -116,6 +126,13 @@ const
   FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
   CREATE_NO_WINDOW* = 0x08000000'i32
+
+when useWinUnicode:
+  proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExW".}
+else:
+  proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExA".}
+
+proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion".}
 
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
@@ -190,6 +207,9 @@ proc flushFileBuffers*(hFile: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "FlushFileBuffers".}
 
 proc getLastError*(): int32 {.importc: "GetLastError",
+    stdcall, dynlib: "kernel32".}
+
+proc setLastError*(error: int32) {.importc: "SetLastError",
     stdcall, dynlib: "kernel32".}
 
 when useWinUnicode:
@@ -289,9 +309,9 @@ when useWinUnicode:
       stdcall, dynlib: "kernel32", importc: "FindNextFileW".}
 else:
   proc findFirstFileA*(lpFileName: cstring,
-                      lpFindFileData: var WIN32_FIND_DATA): THANDLE {.
+                      lpFindFileData: var WIN32_FIND_DATA): Handle {.
       stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}
-  proc findNextFileA*(hFindFile: THANDLE,
+  proc findNextFileA*(hFindFile: Handle,
                      lpFindFileData: var WIN32_FIND_DATA): int32 {.
       stdcall, dynlib: "kernel32", importc: "FindNextFileA".}
 
@@ -597,9 +617,6 @@ proc freeaddrinfo*(ai: ptr AddrInfo) {.
 proc inet_ntoa*(i: InAddr): cstring {.
   stdcall, importc, dynlib: ws2dll.}
 
-proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
-            stringBufSize: int32): cstring {.stdcall, importc, dynlib: ws2dll.}
-
 const
   MAXIMUM_WAIT_OBJECTS* = 0x00000040
 
@@ -645,6 +662,7 @@ const
 const
   ERROR_ACCESS_DENIED* = 5
   ERROR_HANDLE_EOF* = 38
+  ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                       hTargetProcessHandle: HANDLE,
@@ -667,7 +685,7 @@ else:
   proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
                     lpSecurityAttributes: pointer,
                     dwCreationDisposition, dwFlagsAndAttributes: DWORD,
-                    hTemplateFile: THANDLE): THANDLE {.
+                    hTemplateFile: Handle): Handle {.
       stdcall, dynlib: "kernel32", importc: "CreateFileA".}
   proc deleteFileA*(pathName: cstring): int32 {.
     importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
@@ -697,10 +715,10 @@ proc createFileMappingW*(hFile: Handle,
   stdcall, dynlib: "kernel32", importc: "CreateFileMappingW".}
 
 when not useWinUnicode:
-  proc createFileMappingA*(hFile: THANDLE,
+  proc createFileMappingA*(hFile: Handle,
                            lpFileMappingAttributes: pointer,
                            flProtect, dwMaximumSizeHigh: DWORD,
-                           dwMaximumSizeLow: DWORD, lpName: cstring): THANDLE {.
+                           dwMaximumSizeLow: DWORD, lpName: cstring): Handle {.
       stdcall, dynlib: "kernel32", importc: "CreateFileMappingA".}
 
 proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
@@ -806,3 +824,54 @@ proc getSystemTimes*(lpIdleTime, lpKernelTime,
 proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
+
+type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
+                      stringBufSize: int32): cstring {.stdcall.}
+
+var inet_ntop_real: inet_ntop_proc = nil
+
+let l = loadLib(ws2dll)
+if l != nil:
+  inet_ntop_real = cast[inet_ntop_proc](symAddr(l, "inet_ntop"))
+
+proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
+proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall.} =
+    case family
+    of AF_INET:
+      var sa: Sockaddr_in
+      sa.sin_family = AF_INET
+      sa.sin_addr = cast[ptr InAddr](paddr)[]
+      var bs = stringBufSize.DWORD
+      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+      if r != 0:
+        result = nil
+      else:
+        result = pStringBuffer
+    of AF_INET6:
+      var sa: Sockaddr_in6
+      sa.sin6_family = AF_INET6
+      sa.sin6_addr = cast[ptr In6_addr](paddr)[]
+      var bs = stringBufSize.DWORD
+      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+      if r != 0:
+        result = nil
+      else:
+        result = pStringBuffer
+    else:
+      setLastError(ERROR_BAD_ARGUMENTS)
+      result = nil
+
+proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall.} =
+  var ver: OSVERSIONINFO
+  ver.dwOSVersionInfoSize = sizeof(ver).DWORD
+  let res = when useWinUnicode: getVersionExW(ver.addr) else: getVersionExA(ver.addr)
+  if res == 0:
+    result = nil
+  elif ver.dwMajorVersion >= 6:
+    if inet_ntop_real == nil:
+      quit("Can't load inet_ntop proc from " & ws2dll)
+    result = inet_ntop_real(family, paddr, pStringBuffer, stringBufSize)
+  else:
+    result = inet_ntop_emulated(family, paddr, pStringBuffer, stringBufSize)

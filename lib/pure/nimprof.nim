@@ -12,7 +12,7 @@
 ## report at program exit.
 
 when not defined(profiler) and not defined(memProfiler):
-  {.warning: "Profiling support is turned off!".}
+  {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
 
 # We don't want to profile the profiling code ...
 {.push profiler: off.}

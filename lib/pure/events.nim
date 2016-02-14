@@ -57,7 +57,7 @@ proc addHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}) 
 
 proc removeHandler*(handler: var EventHandler, fn: proc(e: EventArgs) {.closure.}) =
   ## Removes the callback from the specified event handler.
-  for i in countup(0, len(handler.handlers) -1):
+  for i in countup(0, len(handler.handlers)-1):
     if fn == handler.handlers[i]:
       handler.handlers.del(i)
       break

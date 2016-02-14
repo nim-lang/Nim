@@ -167,33 +167,24 @@ proc makeNimString(s: string): string =
 proc putComment(g: var TSrcGen, s: string) =
   if s.isNil: return
   var i = 0
-  var comIndent = 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
-  var com = ""
+  var com = "## "
   while true:
     case s[i]
     of '\0':
       break
     of '\x0D':
       put(g, tkComment, com)
-      com = ""
+      com = "## "
       inc(i)
       if s[i] == '\x0A': inc(i)
       optNL(g, ind)
     of '\x0A':
       put(g, tkComment, com)
-      com = ""
+      com = "## "
       inc(i)
       optNL(g, ind)
-    of '#':
-      add(com, s[i])
-      inc(i)
-      comIndent = 0
-      while s[i] == ' ':
-        add(com, s[i])
-        inc(i)
-        inc(comIndent)
     of ' ', '\x09':
       add(com, s[i])
       inc(i)
@@ -206,7 +197,7 @@ proc putComment(g: var TSrcGen, s: string) =
       if not isCode and (g.lineLen + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
-        com = '#' & spaces(comIndent)
+        com = "## "
       while s[i] > ' ':
         add(com, s[i])
         inc(i)
@@ -283,7 +274,7 @@ proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
   result = false
   if n.comment != nil:
     result = (renderNoComments notin g.flags) or
-        (renderDocComments in g.flags) and startsWith(n.comment, "##")
+        (renderDocComments in g.flags)
 
 proc gcom(g: var TSrcGen, n: PNode) =
   assert(n != nil)
@@ -447,7 +438,7 @@ proc lsub(n: PNode): int =
         len("if_:_")
   of nkElifExpr: result = lsons(n) + len("_elif_:_")
   of nkElseExpr: result = lsub(n.sons[0]) + len("_else:_") # type descriptions
-  of nkTypeOfExpr: result = (if n.len > 0: lsub(n.sons[0]) else: 0)+len("type_")
+  of nkTypeOfExpr: result = (if n.len > 0: lsub(n.sons[0]) else: 0)+len("type()")
   of nkRefTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("ptr")
   of nkVarTy: result = (if n.len > 0: lsub(n.sons[0])+1 else: 0) + len("var")
@@ -1039,8 +1030,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n.sons[0])
   of nkTypeOfExpr:
-    putWithSpace(g, tkType, "type")
+    put(g, tkType, "type")
+    put(g, tkParLe, "(")
     if n.len > 0: gsub(g, n.sons[0])
+    put(g, tkParRi, ")")
   of nkRefTy:
     if sonsLen(n) > 0:
       putWithSpace(g, tkRef, "ref")
@@ -1330,6 +1323,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     initContext c
     putWithSpace g, tkSymbol, if n.kind == nkState: "state" else: "goto"
     gsons(g, n, c)
+  of nkBreakState:
+    put(g, tkTuple, "breakstate")
   of nkTypeClassTy:
     gTypeClassTy(g, n)
   else:

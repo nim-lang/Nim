@@ -165,9 +165,10 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
+  let bb = getIdent(b)
   while true:
     assert t.kind == tyObject
-    field = getSymFromList(t.n, getIdent(b))
+    field = getSymFromList(t.n, bb)
     if field != nil: break
     t = t.sons[0]
     if t == nil: break
@@ -585,7 +586,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
     objType.addField(field)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[0])
     fn = indirectAccess(castExpr, field, n.info)
-  elif fn.kind == nkSym and fn.sym.kind in {skClosureIterator, skIterator}:
+  elif fn.kind == nkSym and fn.sym.kind == skIterator:
     localError(n.info, "iterator in spawn environment is not allowed")
   elif fn.typ.callConv == ccClosure:
     localError(n.info, "closure in spawn environment is not allowed")

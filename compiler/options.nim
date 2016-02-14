@@ -70,7 +70,9 @@ type                          # please make sure we have under 32 options
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-    cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
+    cmdCompileToJS,
+    cmdCompileToPHP,
+    cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
@@ -147,8 +149,8 @@ var
   gDllOverrides = newStringTable(modeCaseInsensitive)
   gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
   libpath* = ""
-  gProjectName* = "" # holds a name like 'nimrod'
-  gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
+  gProjectName* = "" # holds a name like 'nim'
+  gProjectPath* = "" # holds a path like /home/alice/projects/nim/compiler/
   gProjectFull* = "" # projectPath/projectName
   gProjectIsStdin* = false # whether we're compiling from stdin
   gProjectMainIdx*: int32 # the canonical path id of the main module

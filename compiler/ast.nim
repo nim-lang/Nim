@@ -500,8 +500,7 @@ type
     skResult,             # special 'result' variable
     skProc,               # a proc
     skMethod,             # a method
-    skIterator,           # an inline iterator
-    skClosureIterator,    # a resumable closure iterator
+    skIterator,           # an iterator
     skConverter,          # a type converter
     skMacro,              # a macro
     skTemplate,           # a template; currently also misused for user-defined
@@ -518,7 +517,7 @@ type
   TSymKinds* = set[TSymKind]
 
 const
-  routineKinds* = {skProc, skMethod, skIterator, skClosureIterator,
+  routineKinds* = {skProc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
   tfUncheckedArray* = tfVarargs
@@ -905,7 +904,7 @@ type
 # the poor naming choices in the standard library.
 
 const
-  OverloadableSyms* = {skProc, skMethod, skIterator, skClosureIterator,
+  OverloadableSyms* = {skProc, skMethod, skIterator,
     skConverter, skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
@@ -929,11 +928,11 @@ const
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
-    skIterator, skClosureIterator,
+    skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfIsRef, nfIsCursor}
+                                      nfIsRef, nfIsCursor, nfLL}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -958,10 +957,8 @@ const
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
-  skProcKinds* = {skProc, skTemplate, skMacro, skIterator, skClosureIterator,
+  skProcKinds* = {skProc, skTemplate, skMacro, skIterator,
                   skMethod, skConverter}
-
-  skIterators* = {skIterator, skClosureIterator}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 
@@ -1558,12 +1555,13 @@ proc isGenericRoutine*(s: PSym): bool =
   else: discard
 
 proc skipGenericOwner*(s: PSym): PSym =
-  internalAssert s.kind in skProcKinds
   ## Generic instantiations are owned by their originating generic
   ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
-  result = if sfFromGeneric in s.flags: s.owner.owner
-           else: s.owner
+  result = if s.kind in skProcKinds and sfFromGeneric in s.flags:
+             s.owner.owner
+           else:
+             s.owner
 
 proc originatingModule*(s: PSym): PSym =
   result = s.owner

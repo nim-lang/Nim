@@ -1056,12 +1056,15 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   var a, b, dest: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
+  let bt = skipTypes(e.sons[2].typ, abstractVar)
   lineCg(p, cpsStmts, seqAppendPattern, [
       rdLoc(a),
       getTypeDesc(p.module, skipTypes(e.sons[1].typ, abstractVar)),
-      getTypeDesc(p.module, skipTypes(e.sons[2].typ, abstractVar))])
+      getTypeDesc(p.module, bt)])
   keepAlive(p, a)
-  initLoc(dest, locExpr, b.t, OnHeap)
+  #if bt != b.t:
+  #  echo "YES ", e.info, " new: ", typeToString(bt), " old: ", typeToString(b.t)
+  initLoc(dest, locExpr, bt, OnHeap)
   dest.r = rfmt(nil, "$1->data[$1->$2]", rdLoc(a), lenField(p))
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
   lineCg(p, cpsStmts, "++$1->$2;$n", rdLoc(a), lenField(p))
@@ -1838,15 +1841,17 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
   assert n.kind == nkClosure
 
   if isConstClosure(n):
-    inc(p.labels)
-    var tmp = "LOC" & rope(p.labels)
-    addf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
+    inc(p.module.labels)
+    var tmp = "CNSTCLOSURE" & rope(p.module.labels)
+    addf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(p.module, n.typ), tmp, genConstExpr(p, n)])
     putIntoDest(p, d, n.typ, tmp, OnStatic)
   else:
     var tmp, a, b: TLoc
     initLocExpr(p, n.sons[0], a)
     initLocExpr(p, n.sons[1], b)
+    if n.sons[0].skipConv.kind == nkClosure:
+      internalError(n.info, "closure to closure created")
     getTemp(p, n.typ, tmp)
     linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
             tmp.rdLoc, a.rdLoc, b.rdLoc)
@@ -1965,7 +1970,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
-    of skProc, skConverter, skIterators:
+    of skProc, skConverter, skIterator:
+      #if sym.kind == skIterator:
+      #  echo renderTree(sym.getBody, {renderIds})
       if sfCompileTime in sym.flags:
         localError(n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
@@ -1987,6 +1994,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
+        #echo renderTree(p.prc.ast, {renderIds})
         internalError n.info, "expr: var not init " & sym.name.s & "_" & $sym.id
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
@@ -2004,9 +2012,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       putLocIntoDest(p, d, sym.loc)
     of skParam:
       if sym.loc.r == nil or sym.loc.t == nil:
-        #echo "FAILED FOR PRCO ", p.prc.name.s
-        #debug p.prc.typ.n
-        #echo renderTree(p.prc.ast, {renderIds})
+        # echo "FAILED FOR PRCO ", p.prc.name.s
+        # debug p.prc.typ.n
+        # echo renderTree(p.prc.ast, {renderIds})
         internalError(n.info, "expr: param not init " & sym.name.s & "_" & $sym.id)
       putLocIntoDest(p, d, sym.loc)
     else: internalError(n.info, "expr(" & $sym.kind & "); unknown symbol")

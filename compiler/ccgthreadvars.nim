@@ -24,7 +24,7 @@ proc accessThreadLocalVar(p: BProc, s: PSym) =
       ropecg(p.module, "\tNimTV = (NimThreadVars*) #GetThreadLocalVars();$n"))
 
 var
-  nimtv: Rope                 # nimrod thread vars; the struct body
+  nimtv: Rope                 # Nim thread vars; the struct body
   nimtvDeps: seq[PType] = @[]  # type deps: every module needs whole struct
   nimtvDeclared = initIntSet() # so that every var/field exists only once
                                # in the struct

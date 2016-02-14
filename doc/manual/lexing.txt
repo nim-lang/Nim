@@ -69,6 +69,34 @@ Documentation comments are tokens; they are only allowed at certain places in
 the input file as they belong to the syntax tree!
 
 
+Multiline comments
+------------------
+
+Starting with version 0.13.0 of the language Nim supports multiline comments.
+They look like:
+
+.. code-block:: nim
+  #[Comment here.
+  Multiple lines
+  are not a problem.]#
+
+Multiline comments support nesting:
+
+.. code-block:: nim
+  #[  #[ Multiline comment in already
+     commented out code. ]#
+  proc p[T](x: T) = discard
+  ]#
+
+Multiline documentation comments also exist and support nesting too:
+
+.. code-block:: nim
+  proc foo =
+    ##[Long documentation comment
+    here.
+    ]##
+
+
 Identifiers & Keywords
 ----------------------
 

@@ -11,6 +11,8 @@
 ## key-value mapping. The keys are required to be strings, but the values
 ## may be any Nim or user defined type. This module supports matching
 ## of keys in case-sensitive, case-insensitive and style-insensitive modes.
+##
+## **Warning:** This module is deprecated, new code shouldn't use it!
 
 {.deprecated.}
 

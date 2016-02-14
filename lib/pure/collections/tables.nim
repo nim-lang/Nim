@@ -887,7 +887,7 @@ proc mget*[A](t: CountTableRef[A], key: A): var int {.deprecated.} =
   result = t[][key]
 
 proc getOrDefault*[A](t: CountTableRef[A], key: A): int =
-  getOrDefaultImpl(t, key)
+  result = t[].getOrDefault(key)
 
 proc hasKey*[A](t: CountTableRef[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -1028,3 +1028,15 @@ when isMainModule:
   assert(merged["foo"] == 5)
   assert(merged["bar"] == 3)
   assert(merged["baz"] == 14)
+
+  block:
+    const testKey = "TESTKEY"
+    let t: CountTableRef[string] = newCountTable[string]()
+
+    # Before, does not compile with error message:
+    #test_counttable.nim(7, 43) template/generic instantiation from here
+    #lib/pure/collections/tables.nim(117, 21) template/generic instantiation from here
+    #lib/pure/collections/tableimpl.nim(32, 27) Error: undeclared field: 'hcode
+    doAssert 0 == t.getOrDefault(testKey)
+    t.inc(testKey,3)
+    doAssert 3 == t.getOrDefault(testKey)

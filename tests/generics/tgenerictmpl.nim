@@ -1,12 +1,21 @@
+discard """
+  output: '''0
+123'''
+"""
 
-template tmp[T](x: var seq[T]) =
-  #var yz: T  # XXX doesn't work yet
+# bug #3498
+
+template defaultOf[T](t: T): expr = (var d: T; d)
+
+echo defaultOf(1) #<- excpected 0
+
+# assignment using template
+
+template tassign[T](x: var seq[T]) =
   x = @[1, 2, 3]
 
-macro tmp2[T](x: var seq[T]): stmt =
-  nil
-
 var y: seq[int]
-tmp(y)
-tmp(y)
-echo y.repr
+tassign(y) #<- x is expected = @[1, 2, 3]
+tassign(y)
+
+echo y[0], y[1], y[2]

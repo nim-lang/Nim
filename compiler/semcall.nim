@@ -75,7 +75,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           errors.add(err)
     if z.state == csMatch:
       # little hack so that iterators are preferred over everything else:
-      if sym.kind in skIterators: inc(z.exactMatches, 200)
+      if sym.kind == skIterator: inc(z.exactMatches, 200)
       case best.state
       of csEmpty, csNoMatch: best = z
       of csMatch:
@@ -255,12 +255,13 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
-  if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym and
-      isGenericRoutine(a.sons[0].sym):
-    let finalCallee = generateInstance(c, a.sons[0].sym, x.bindings, a.info)
-    a.sons[0].sym = finalCallee
-    a.sons[0].typ = finalCallee.typ
-    #a.typ = finalCallee.typ.sons[0]
+  if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym:
+    let s = a.sons[0].sym
+    if s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty:
+      let finalCallee = generateInstance(c, s, x.bindings, a.info)
+      a.sons[0].sym = finalCallee
+      a.sons[0].typ = finalCallee.typ
+      #a.typ = finalCallee.typ.sons[0]
 
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
   assert n.kind in nkCallKinds
@@ -395,7 +396,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     for i in countup(0, len(a)-1):
       var candidate = a.sons[i].sym
       if candidate.kind in {skProc, skMethod, skConverter,
-                            skIterator, skClosureIterator}:
+                            skIterator}:
         # it suffices that the candidate has the proper number of generic
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
@@ -419,7 +420,13 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     let param = fn.typ.n.sons[i]
     let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
-    call.add(newNodeIT(nkEmpty, fn.info, t.baseOfDistinct))
+    var x: PType
+    if param.typ.kind == tyVar:
+      x = newTypeS(tyVar, c)
+      x.addSonSkipIntLit t.baseOfDistinct
+    else:
+      x = t.baseOfDistinct
+    call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
     var resolved = semOverloadedCall(c, call, call, {fn.kind})
     if resolved != nil:

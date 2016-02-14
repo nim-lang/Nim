@@ -17,6 +17,20 @@ Learning Nim
 
 .. container:: standout
 
+  Books
+  ---------
+
+  .. container:: books
+
+    - | `Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_
+      | *Nim in Action* teaches
+        you all you need to know to begin writing powerful, portable
+        and efficient applications in Nim. It includes a handful of practical
+        and fun hands-on examples which teach you Nim.
+
+
+.. container:: standout
+
   Examples
   --------
 

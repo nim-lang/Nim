@@ -21,8 +21,8 @@ proc registerGcRoot(p: BProc, v: PSym) =
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v)
-    linefmt(p.module.initProc, cpsStmts,
-      "#nimRegisterGlobalMarker($1);$n", prc)
+    appcg(p.module, p.module.initProc.procSec(cpsStmts),
+      "#nimRegisterGlobalMarker($1);$n", [prc])
 
 proc isAssignedImmediately(n: PNode): bool {.inline.} =
   if n.kind == nkEmpty: return false
@@ -955,7 +955,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
       res.add(t.sons[i].strVal)
     of nkSym:
       var sym = t.sons[i].sym
-      if sym.kind in {skProc, skIterator, skClosureIterator, skMethod}:
+      if sym.kind in {skProc, skIterator, skMethod}:
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
         res.add($rdLoc(a))

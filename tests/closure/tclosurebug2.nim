@@ -19,11 +19,11 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 template rawGetImpl() {.dirty.} =
-  var h: THash = hash(key) and high(t.data) # start with real hash value
+  var h: Hash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].slot != seEmpty:
     if t.data[h].key == key and t.data[h].slot == seFilled:
       return h
@@ -31,7 +31,7 @@ template rawGetImpl() {.dirty.} =
   result = -1
 
 template rawInsertImpl() {.dirty.} =
-  var h: THash = hash(key) and high(data)
+  var h: Hash = hash(key) and high(data)
   while data[h].slot == seFilled:
     h = nextTry(h, high(data))
   data[h].key = key
