@@ -90,7 +90,6 @@
 
 
 import strutils, odbcsql
-import asyncdispatch
 import db_common
 export db_common
 
