@@ -90,7 +90,7 @@
 
 
 import strutils, odbcsql
-
+import asyncdispatch
 import db_common
 export db_common
 
@@ -288,6 +288,11 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt:TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    # tempcCnt,A field to store the number of temporary variables, for unknown reasons, 
+    # after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    # so the values of the temporary variable to store the cCnt. 
+    # After every cycle and specified to cCnt. To ensure the traversal of all fields.
   res = db.prepareFetch(query, args)
   if res == SQL_NO_DATA:
     discard
@@ -295,12 +300,14 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
     res = SQLNumResultCols(db.stmt, cCnt)
     rowRes = newRow(cCnt)
     rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
     while res == SQL_SUCCESS:
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
         rowRes[colId-1] = $buf.cstring
+        cCnt = tempcCnt
       yield rowRes
       res = SQLFetch(db.stmt)
   db.sqlCheck(res)
@@ -312,22 +319,30 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
   ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the interator body.
   var
-    rowRes: Row = @[]
+    rowRes: Row
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt:TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    # tempcCnt,A field to store the number of temporary variables, for unknown reasons, 
+    # after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    # so the values of the temporary variable to store the cCnt. 
+    # After every cycle and specified to cCnt. To ensure the traversal of all fields.
   res = db.prepareFetch(query, args)
   if res == SQL_NO_DATA:
     discard
   elif res == SQL_SUCCESS:
     res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
     rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
     while res == SQL_SUCCESS:
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
         rowRes[colId-1] = $buf.cstring
+        cCnt = tempcCnt
       yield (row: rowRes, len: cCnt.int)
       res = SQLFetch(db.stmt)
   db.sqlCheck(res)
@@ -351,6 +366,11 @@ proc getRow*(db: var DbConn, query: SqlQuery,
     sz: TSqlSmallInt = 0.TSqlSmallInt
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt:TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    ## tempcCnt,A field to store the number of temporary variables, for unknown reasons, 
+    ## after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    ## so the values of the temporary variable to store the cCnt. 
+    ## After every cycle and specified to cCnt. To ensure the traversal of all fields.
   res = db.prepareFetch(query, args)
   if res == SQL_NO_DATA:
     result = @[]
@@ -358,11 +378,13 @@ proc getRow*(db: var DbConn, query: SqlQuery,
     res = SQLNumResultCols(db.stmt, cCnt)
     rowRes = newRow(cCnt)
     rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
     for colId in 1..cCnt:
       buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
       rowRes[colId-1] = $buf.cstring
+      cCnt = tempcCnt
     res = SQLFetch(db.stmt)
     result = rowRes
   db.sqlCheck(res)
@@ -370,7 +392,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
 
 proc getAllRows*(db: var DbConn, query: SqlQuery,
                  args: varargs[string, `$`]): seq[Row] {.
-           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
+           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError] .} =
   ## Executes the query and returns the whole result dataset.
   var
     rows: seq[Row] = @[]
@@ -378,6 +400,11 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
     res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt:TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    ## tempcCnt,A field to store the number of temporary variables, for unknown reasons, 
+    ## after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    ## so the values of the temporary variable to store the cCnt. 
+    ## After every cycle and specified to cCnt. To ensure the traversal of all fields.
   res = db.prepareFetch(query, args)
   if res == SQL_NO_DATA:
     result = @[]
@@ -385,12 +412,14 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
     res = SQLNumResultCols(db.stmt, cCnt)
     rowRes = newRow(cCnt)
     rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
     while res == SQL_SUCCESS:
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
         rowRes[colId-1] = $buf.cstring
+        cCnt = tempcCnt
       rows.add(rowRes)
       res = SQLFetch(db.stmt)
     result = rows
