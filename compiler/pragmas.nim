@@ -443,6 +443,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(sub))
         if e != nil:
           if e.kind == skStub: loadStub(e)
+          incl(e.flags, sfUsed)
           addSon(result, newSymNode(e))
         else:
           addSon(result, newStrNode(nkStrLit, sub))
