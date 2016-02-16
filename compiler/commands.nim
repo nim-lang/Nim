@@ -327,7 +327,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       lists.excludePath(options.lazyPaths, strippedPath)
   of "nimcache":
     expectArg(switch, arg, pass, info)
-    options.nimcacheDir = processPath(arg)
+    options.nimcacheDir = processPath(arg, true)
   of "out", "o":
     expectArg(switch, arg, pass, info)
     options.outFile = arg
