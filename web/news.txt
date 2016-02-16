@@ -2,6 +2,16 @@
 News
 ====
 
+2016-XX-XX Version 0.13.1 released
+==================================
+
+Changes affecting backwards compatibility
+-----------------------------------------
+
+- ``--out`` and ``--nimcache`` command line arguments are now relative to
+  current directory. Previously they were relative to project directory.
+
+
 2016-01-27 Nim in Action is now available!
 ==========================================
 
