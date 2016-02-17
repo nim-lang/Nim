@@ -2589,35 +2589,6 @@ when not defined(JS): #and not defined(nimscript):
     var
       strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
 
-  when not defined(nimscript):
-    include "system/ansi_c"
-
-    proc cmp(x, y: string): int =
-      result = int(c_strcmp(x, y))
-  else:
-    proc cmp(x, y: string): int =
-      if x < y: result = -1
-      elif x > y: result = 1
-      else: result = 0
-
-  const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
-  when not defined(nimscript):
-    when defined(windows):
-      # work-around C's sucking abstraction:
-      # BUGFIX: stdin and stdout should be binary files!
-      proc setmode(handle, mode: int) {.importc: pccHack & "setmode",
-                                        header: "<io.h>".}
-      proc fileno(f: C_TextFileStar): int {.importc: pccHack & "fileno",
-                                            header: "<fcntl.h>".}
-      var
-        O_BINARY {.importc: pccHack & "O_BINARY", nodecl.}: int
-
-      # we use binary mode in Windows:
-      setmode(fileno(c_stdin), O_BINARY)
-      setmode(fileno(c_stdout), O_BINARY)
-
-    when defined(endb):
-      proc endbStep()
 
   # ----------------- IO Part ------------------------------------------------
   when hostOS != "standalone":
@@ -2643,15 +2614,43 @@ when not defined(JS): #and not defined(nimscript):
 
     {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
 
-    when not defined(nimscript):
-      # text file handling:
+  when not defined(nimscript):
+    include "system/ansi_c"
+
+    proc cmp(x, y: string): int =
+      result = int(c_strcmp(x, y))
+  else:
+    proc cmp(x, y: string): int =
+      if x < y: result = -1
+      elif x > y: result = 1
+      else: result = 0
+
+  when not defined(nimscript):
+    when defined(windows):
+      # work-around C's sucking abstraction:
+      # BUGFIX: stdin and stdout should be binary files!
+      proc setmode(handle, mode: int) {.importc: "setmode",
+                                        header: "<io.h>".}
+      proc fileno(f: C_TextFileStar): int {.importc: "fileno",
+                                            header: "<fcntl.h>".}
       var
-        stdin* {.importc: "stdin", header: "<stdio.h>".}: File
-          ## The standard input stream.
-        stdout* {.importc: "stdout", header: "<stdio.h>".}: File
-          ## The standard output stream.
-        stderr* {.importc: "stderr", header: "<stdio.h>".}: File
-          ## The standard error stream.
+        O_BINARY {.importc: "O_BINARY", nodecl.}: int
+
+      # we use binary mode on Windows:
+      setmode(fileno(c_stdin), O_BINARY)
+      setmode(fileno(c_stdout), O_BINARY)
+
+    when defined(endb):
+      proc endbStep()
+
+    # text file handling:
+    var
+      stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+        ## The standard input stream.
+      stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+        ## The standard output stream.
+      stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+        ## The standard error stream.
 
     when defined(useStdoutAsStdmsg):
       template stdmsg*: File = stdout
@@ -2947,7 +2946,7 @@ when not defined(JS): #and not defined(nimscript):
   else:
     include "system/sysio"
 
-  when declared(open) and declared(close) and declared(readline):
+  when not defined(nimscript):
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##

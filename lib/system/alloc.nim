@@ -592,16 +592,16 @@ proc allocInv(a: MemRegion): bool =
   ## checks some (not all yet) invariants of the allocator's data structures.
   for s in low(a.freeSmallChunks)..high(a.freeSmallChunks):
     var c = a.freeSmallChunks[s]
-    while c != nil:
+    while not (c == nil):
       if c.next == c:
         echo "[SYSASSERT] c.next == c"
         return false
-      if c.size != s * MemAlign:
+      if not (c.size == s * MemAlign):
         echo "[SYSASSERT] c.size != s * MemAlign"
         return false
       var it = c.freeList
-      while it != nil:
-        if it.zeroField != 0:
+      while not (it == nil):
+        if not (it.zeroField == 0):
           echo "[SYSASSERT] it.zeroField != 0"
           c_printf("%ld %p\n", it.zeroField, it)
           return false

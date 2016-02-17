@@ -514,7 +514,7 @@ else:
   include "system/alloc"
 
   include "system/cellsets"
-  when not leakDetector:
+  when not leakDetector and not useCellIds:
     sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
