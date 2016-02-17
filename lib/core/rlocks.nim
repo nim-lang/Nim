@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2015 Andreas Rumpf
+#        (c) Copyright 2015 Anatoly Galiulin
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -40,7 +40,7 @@ proc release*(lock: var RLock) =
   ## Releases the given lock.
   releaseSys(lock)
 
-template withRLock*(lock: var RLock, code: stmt): stmt =
+template withRLock*(lock: var RLock, code: untyped): untyped =
   ## Acquires the given lock and then executes the code
   block:
     acquire(lock)
