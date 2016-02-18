@@ -17,6 +17,13 @@ Library Additions
 - The rlocks module has been added providing reentrant lock synchronization
   primitive
 
+Compiler Additions
+------------------
+
+- Added a new ``--noCppExceptions`` switch that allows to use default exception
+  handling (no ``throw`` or ``try``/``catch`` generated) when compiling to C++
+  code
+
 
 2016-01-27 Nim in Action is now available!
 ==========================================

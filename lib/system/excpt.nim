@@ -216,7 +216,7 @@ proc raiseExceptionAux(e: ref Exception) =
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
-  when defined(cpp):
+  when defined(cpp) and not defined(noCppExceptions):
     if e[] of OutOfMemError:
       showErrorMessage(e.name)
       quitOrDebug()
