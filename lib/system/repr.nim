@@ -76,6 +76,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   # we read an 'int' but this may have been too large, so mask the other bits:
   let e = if typ.size == 1: e and 0xff
           elif typ.size == 2: e and 0xffff
+          elif typ.size == 4: e and 0xffffffff
           else: e
   # XXX we need a proper narrowing based on signedness here
   #e and ((1 shl (typ.size*8)) - 1)
