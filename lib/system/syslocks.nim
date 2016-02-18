@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Low level system locks and condition vars.
+# Low level system locks and condition vars.
 
 when defined(Windows):
   type

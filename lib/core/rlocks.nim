@@ -1,13 +1,13 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2015 Anatoly Galiulin
+#        (c) Copyright 2016 Anatoly Galiulin
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-## This module contains Nim's support for reentrant locks
+## This module contains Nim's support for reentrant locks.
 
 include "system/syslocks"
 
@@ -41,7 +41,7 @@ proc release*(lock: var RLock) =
   releaseSys(lock)
 
 template withRLock*(lock: var RLock, code: untyped): untyped =
-  ## Acquires the given lock and then executes the code
+  ## Acquires the given lock and then executes the code.
   block:
     acquire(lock)
     defer:
