@@ -11,6 +11,12 @@ Changes affecting backwards compatibility
 - ``--out`` and ``--nimcache`` command line arguments are now relative to
   current directory. Previously they were relative to project directory.
 
+Library Additions
+-----------------
+
+- The rlocks module has been added providing reentrant lock synchronization
+  primitive
+
 
 2016-01-27 Nim in Action is now available!
 ==========================================
