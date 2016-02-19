@@ -55,7 +55,7 @@ when defined(Windows):
       event*: KEY_EVENT_RECORD
       safetyBuffer: array[0..5, DWORD]
 
-  proc readConsoleInputW*(hConsoleInput: THANDLE, lpBuffer: var INPUTRECORD,
+  proc readConsoleInputW*(hConsoleInput: HANDLE, lpBuffer: var INPUTRECORD,
                           nLength: uint32,
                           lpNumberOfEventsRead: var uint32): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}

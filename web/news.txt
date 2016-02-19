@@ -2,6 +2,29 @@
 News
 ====
 
+2016-XX-XX Version 0.13.1 released
+==================================
+
+Changes affecting backwards compatibility
+-----------------------------------------
+
+- ``--out`` and ``--nimcache`` command line arguments are now relative to
+  current directory. Previously they were relative to project directory.
+
+Library Additions
+-----------------
+
+- The rlocks module has been added providing reentrant lock synchronization
+  primitive
+
+Compiler Additions
+------------------
+
+- Added a new ``--noCppExceptions`` switch that allows to use default exception
+  handling (no ``throw`` or ``try``/``catch`` generated) when compiling to C++
+  code
+
+
 2016-01-27 Nim in Action is now available!
 ==========================================
 
@@ -10,7 +33,6 @@ News
   <a href="https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81">
     <img src="assets/niminaction/banner.jpg" alt="New in Manning Early Access Program: Nim in Action!" width="682"/>
   </a>
-
 
 We are proud to announce that *Nim in Action*, a book about the Nim programming
 language, is now available!

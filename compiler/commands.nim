@@ -327,7 +327,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       lists.excludePath(options.lazyPaths, strippedPath)
   of "nimcache":
     expectArg(switch, arg, pass, info)
-    options.nimcacheDir = processPath(arg)
+    options.nimcacheDir = processPath(arg, true)
   of "out", "o":
     expectArg(switch, arg, pass, info)
     options.outFile = arg
@@ -619,6 +619,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     cAssembler = nameToCC(arg)
     if cAssembler notin cValidAssemblers:
       localError(info, errGenerated, "'$1' is not a valid assembler." % [arg])
+  of "nocppexceptions":
+    expectNoArg(switch, arg, pass, info)
+    incl(gGlobalOptions, optNoCppExceptions)
+    defineSymbol("noCppExceptions")
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)
