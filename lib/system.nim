@@ -2591,28 +2591,27 @@ when not defined(JS): #and not defined(nimscript):
 
 
   # ----------------- IO Part ------------------------------------------------
-  when hostOS != "standalone":
-    type
-      CFile {.importc: "FILE", header: "<stdio.h>",
-              final, incompletestruct.} = object
-      File* = ptr CFile ## The type representing a file handle.
+  type
+    CFile {.importc: "FILE", header: "<stdio.h>",
+            final, incompletestruct.} = object
+    File* = ptr CFile ## The type representing a file handle.
 
-      FileMode* = enum           ## The file mode when opening a file.
-        fmRead,                   ## Open the file for read access only.
-        fmWrite,                  ## Open the file for write access only.
-        fmReadWrite,              ## Open the file for read and write access.
-                                  ## If the file does not exist, it will be
-                                  ## created.
-        fmReadWriteExisting,      ## Open the file for read and write access.
-                                  ## If the file does not exist, it will not be
-                                  ## created.
-        fmAppend                  ## Open the file for writing only; append data
-                                  ## at the end.
+    FileMode* = enum           ## The file mode when opening a file.
+      fmRead,                   ## Open the file for read access only.
+      fmWrite,                  ## Open the file for write access only.
+      fmReadWrite,              ## Open the file for read and write access.
+                                ## If the file does not exist, it will be
+                                ## created.
+      fmReadWriteExisting,      ## Open the file for read and write access.
+                                ## If the file does not exist, it will not be
+                                ## created.
+      fmAppend                  ## Open the file for writing only; append data
+                                ## at the end.
 
-      FileHandle* = cint ## type that represents an OS file handle; this is
-                         ## useful for low-level file access
+    FileHandle* = cint ## type that represents an OS file handle; this is
+                       ## useful for low-level file access
 
-    {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
+  {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
 
   when not defined(nimscript):
     include "system/ansi_c"
@@ -2625,7 +2624,7 @@ when not defined(JS): #and not defined(nimscript):
       elif x > y: result = 1
       else: result = 0
 
-  when not defined(nimscript):
+  when not defined(nimscript) and hostOS != "standalone":
     when defined(windows):
       # work-around C's sucking abstraction:
       # BUGFIX: stdin and stdout should be binary files!
@@ -2946,7 +2945,7 @@ when not defined(JS): #and not defined(nimscript):
   else:
     include "system/sysio"
 
-  when not defined(nimscript):
+  when not defined(nimscript) and hostOS != "standalone":
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
