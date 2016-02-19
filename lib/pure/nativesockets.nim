@@ -90,9 +90,12 @@ when useWinVersion:
 
   const
     IOCPARM_MASK* = 127
-    IOC_IN* = int(-2147483648)
+    IOC_IN* = int(0x80000000'i32)
+    IOC_OUT* = int32(0x40000000'i32)
     FIONBIO* = IOC_IN.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or
                              (102 shl 8) or 126
+    FIONREAD* = IOC_OUT.int32 or ((sizeof(int32) and IOCPARM_MASK) shl 16) or 
+                             (102 shl 8) or 127
     nativeAfInet = winlean.AF_INET
     nativeAfInet6 = winlean.AF_INET6
 
@@ -100,6 +103,7 @@ when useWinVersion:
                    argptr: ptr clong): cint {.
                    stdcall, importc: "ioctlsocket", dynlib: "ws2_32.dll".}
 else:
+  var FIONREAD* {.importc, header: "<sys/ioctl.h>".}: cint
   let
     osInvalidSocket* = posix.INVALID_SOCKET
     nativeAfInet = posix.AF_INET
@@ -483,6 +487,21 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
       var mode = if blocking: x and not O_NONBLOCK else: x or O_NONBLOCK
       if fcntl(s, F_SETFL, mode) == -1:
         raiseOSError(osLastError())
+
+proc getAvailable*(s: SocketHandle) : int =
+  ## Get the number of bytes that are immediately available for reading
+  ## 
+  ## Raises EOS on error.
+  when useWinVersion:
+    var size = clong(0)
+    if ioctlsocket(s, FIONREAD, addr(size)) == -1:
+      raiseOSError(osLastError())
+    result = int(size)
+  else:
+    var size = cint(0)
+    if ioctl(cast[FileHandle](s), cast[uint32](FIONREAD), addr(size)) != 0:
+      raiseOSError(osLastError())
+    result = int(size)
 
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
