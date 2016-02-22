@@ -178,10 +178,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-    # disallow negative indexing for now:
-    if not c.p.bracketExpr.isNil:
-      if isNegative(n.sons[1]) or (n.len > 2 and isNegative(n.sons[2])):
-        localError(n.info, "use '^' instead of '-'; negative indexing is obsolete")
   of mRoof:
     let bracketExpr = if n.len == 3: n.sons[2] else: c.p.bracketExpr
     if bracketExpr.isNil:
