@@ -455,14 +455,15 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return true
 
-proc getNewLocation(lastUrl: string, headers: StringTableRef): string =
+proc getNewLocation(lastURL: string, headers: StringTableRef): string =
   result = headers.getOrDefault"Location"
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
   let r = parseUri(result)
   if r.hostname == "" and r.path != "":
-    let origParsed = parseUri(lastUrl)
-    result = origParsed.hostname & "/" & r.path
+    var parsed = parseUri(lastURL)
+    parsed.path = r.path
+    result = $parsed
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
           sslContext: SSLContext = defaultSSLContext,
@@ -481,7 +482,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = request(redirectTo, httpGET, extraHeaders, "", sslContext,
                        timeout, userAgent, proxy)
-      lastUrl = redirectTo
+      lastURL = redirectTo
 
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
                  sslContext: SSLContext = defaultSSLContext,
@@ -528,14 +529,15 @@ proc post*(url: string, extraHeaders = "", body = "",
 
   result = request(url, httpPOST, xh, xb, sslContext, timeout, userAgent,
                    proxy)
-  var lastUrl = ""
+  var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
+      echo "lastURL: ", lastURL
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": httpGet else: httpPost
       result = request(redirectTo, meth, xh, xb, sslContext, timeout,
                        userAgent, proxy)
-      lastUrl = redirectTo
+      lastURL = redirectTo
 
 proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
@@ -827,7 +829,7 @@ proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = await client.request(redirectTo, httpGET)
-      lastUrl = redirectTo
+      lastURL = redirectTo
 
 proc post*(client: AsyncHttpClient, url: string, body = "", multipart: MultipartData = nil): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a POST request.
