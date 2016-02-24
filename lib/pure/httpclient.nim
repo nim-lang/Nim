@@ -532,7 +532,6 @@ proc post*(url: string, extraHeaders = "", body = "",
   var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
-      echo "lastURL: ", lastURL
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": httpGet else: httpPost
       result = request(redirectTo, meth, xh, xb, sslContext, timeout,
