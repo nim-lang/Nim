@@ -7,7 +7,7 @@ discard """
 from math import random
 from os import sleep
 
-type PComm = ptr TChannel[int]
+type PComm = ptr Channel[int]
 
 proc doAction(outC: PComm) {.thread.} =
   for i in 0.. <5:
@@ -16,7 +16,7 @@ proc doAction(outC: PComm) {.thread.} =
 
 var
   thr: Thread[PComm]
-  chan: TChannel[int]
+  chan: Channel[int]
 
 open(chan)
 createThread[PComm](thr, doAction, addr(chan))
