@@ -62,6 +62,17 @@ when defined(windows):
                      lpThreadId: var int32): SysThread {.
     stdcall, dynlib: "kernel32", importc: "CreateThread".}
 
+  proc beginThreadEx(security: pointer,
+                     stackSize: int32,
+                     startAddress: WinThreadProc,
+                     argList: pointer,
+                     initFlag: int32,
+                     threadId: var int32): SysThread {.
+    cdecl, importc: "_beginthreadex", header: "<process.h>".}
+
+  proc endThreadEx(retVal: int32) {.
+    cdecl, importc: "_endthreadex", header: "<process.h>".}
+
   proc winSuspendThread(hThread: SysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "SuspendThread".}
 
@@ -419,7 +430,7 @@ when hostOS == "windows":
     t.dataFn = tp
     when hasSharedHeap: t.stackSize = ThreadStackSize
     var dummyThreadId: int32
-    t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
+    t.sys = beginThreadEx(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
     if t.sys <= 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
