@@ -60,7 +60,7 @@ proc searchInstTypes*(key: PType): PType =
     if inst.id == key.id: return inst
     if inst.sons.len < key.sons.len:
       # XXX: This happens for prematurely cached
-      # types such as TChannel[empty]. Why?
+      # types such as Channel[empty]. Why?
       # See the notes for PActor in handleGenericInvocation
       return
     block matchType:

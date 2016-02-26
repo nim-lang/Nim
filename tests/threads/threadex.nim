@@ -12,7 +12,7 @@ type
 
 var
   producer, consumer: Thread[void]
-  chan: TChannel[TMsg]
+  chan: Channel[TMsg]
   printedLines = 0
 
 proc consume() {.thread.} =
