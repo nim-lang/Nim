@@ -2624,6 +2624,12 @@ when not defined(JS): #and not defined(nimscript):
       elif x > y: result = 1
       else: result = 0
 
+  when defined(nimscript):
+    proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
+      ## Opens a file named `filename` for writing. Then writes the
+      ## `content` completely to the file and closes the file afterwards.
+      ## Raises an IO exception in case of an error.
+
   when not defined(nimscript) and hostOS != "standalone":
     when defined(windows):
       # work-around C's sucking abstraction:
