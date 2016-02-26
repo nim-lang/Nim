@@ -192,8 +192,9 @@ proc mangleName(s: PSym; target: TTarget): Rope =
           x.add("HEX" & toHex(ord(c), 2))
         inc i
       result = rope(x)
-    add(result, "_")
-    add(result, rope(s.id))
+    if s.name.s != "this":
+      add(result, "_")
+      add(result, rope(s.id))
     s.loc.r = result
 
 proc escapeJSString(s: string): string =
