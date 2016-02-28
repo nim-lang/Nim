@@ -316,7 +316,7 @@ when defined(endb):
     dbgAborting: bool # whether the debugger wants to abort
 
 when not defined(noSignalHandler):
-  proc signalHandler(sig: cint) {.exportc: "signalHandler", noconv.} =
+  proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: expr) {.immediate,  dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
       elif s == SIGSEGV:
@@ -342,13 +342,13 @@ when not defined(noSignalHandler):
       GC_disable()
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
-      processSignal(sig, buf.add) # nice hu? currying a la Nim :-)
+      processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
       showErrorMessage(buf)
       GC_enable()
     else:
       var msg: cstring
       template asgn(y: expr) = msg = y
-      processSignal(sig, asgn)
+      processSignal(sign, asgn)
       showErrorMessage(msg)
     when defined(endb): dbgAborting = true
     quit(1) # always quit when SIGABRT
@@ -367,6 +367,6 @@ when not defined(noSignalHandler):
 
 proc setControlCHook(hook: proc () {.noconv.} not nil) =
   # ugly cast, but should work on all architectures:
-  type SignalHandler = proc (sig: cint) {.noconv, benign.}
+  type SignalHandler = proc (sign: cint) {.noconv, benign.}
   {.deprecated: [TSignalHandler: SignalHandler].}
   c_signal(SIGINT, cast[SignalHandler](hook))

@@ -279,11 +279,6 @@ when not defined(niminheritable):
 when not defined(nimunion):
   {.pragma: unchecked.}
 
-when defined(nimNewShared):
-  type
-    `shared`* {.magic: "Shared".}
-    guarded* {.magic: "Guarded".}
-
 # comparison operators:
 proc `==` *[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
   ## Checks whether values within the *same enum* have the same underlying value

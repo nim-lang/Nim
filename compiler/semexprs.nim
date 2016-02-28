@@ -2354,6 +2354,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
       localError(n.info, errGenerated, "'defer' takes a 'void' expression")
     #localError(n.info, errGenerated, "'defer' not allowed in this context")
+  of nkSigSection: result = semSigSection(c, n)
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))

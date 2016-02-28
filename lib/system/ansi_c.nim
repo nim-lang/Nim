@@ -103,9 +103,9 @@ else:
   proc c_setjmp(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "setjmp".}
 
-proc c_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.
+proc c_signal(sign: cint, handler: proc (a: cint) {.noconv.}) {.
   importc: "signal", header: "<signal.h>".}
-proc c_raise(sig: cint) {.importc: "raise", header: "<signal.h>".}
+proc c_raise(sign: cint) {.importc: "raise", header: "<signal.h>".}
 
 proc c_fputs(c: cstring, f: C_TextFileStar) {.importc: "fputs",
   header: "<stdio.h>".}

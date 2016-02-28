@@ -1938,6 +1938,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkLet: result = parseSection(p, nkLetSection, parseVariable)
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
+  of tkSig: result = parseSection(p, nkSigSection, parseVariable)
   of tkBind: result = parseBind(p, nkBindStmt)
   of tkMixin: result = parseBind(p, nkMixinStmt)
   of tkUsing: result = parseBind(p, nkUsingStmt)

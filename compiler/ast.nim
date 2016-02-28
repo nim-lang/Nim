@@ -221,6 +221,7 @@ type
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
+    nkSigSection
   TNodeKinds* = set[TNodeKind]
 
 type
@@ -459,7 +460,7 @@ type
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
     tfIterator,       # type is really an iterator, not a tyProc
-    tfShared,         # type is 'shared'
+    tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
 
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
@@ -534,7 +535,7 @@ const
   skError* = skUnknown
 
   # type flags that are essential for type equality:
-  eqTypeFlags* = {tfIterator, tfShared, tfNotNil, tfVarIsPtr}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr}
 
 type
   TMagic* = enum # symbols that require compiler magic:

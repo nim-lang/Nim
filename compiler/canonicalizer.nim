@@ -158,7 +158,6 @@ proc hashType(c: var MD5Context, t: PType) =
     if tfThread in t.flags: c &= ".thread"
   else:
     for i in 0.. <t.len: c.hashType(t.sons[i])
-  if tfShared in t.flags: c &= "shared"
   if tfNotNil in t.flags: c &= "not nil"
 
 proc canonConst(n: PNode): TUid =

@@ -460,7 +460,7 @@ proc lsub(n: PNode): int =
     else:
       result = len("enum")
   of nkEnumFieldDef: result = lsons(n) + 3
-  of nkVarSection, nkLetSection:
+  of nkVarSection, nkLetSection, nkSigSection:
     if sonsLen(n) > 1: result = MaxLineLen + 1
     else: result = lsons(n) + len("var_")
   of nkReturnStmt: result = lsub(n.sons[0]) + len("return_")
@@ -1173,11 +1173,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     initContext(a)
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
-  of nkVarSection, nkLetSection:
+  of nkVarSection, nkLetSection, nkSigSection:
     var L = sonsLen(n)
     if L == 0: return
     if n.kind == nkVarSection: putWithSpace(g, tkVar, "var")
-    else: putWithSpace(g, tkLet, "let")
+    elif n.kind == nkLetSection: putWithSpace(g, tkLet, "let")
+    else: putWithSpace(g, tkSig, "sig")
     if L > 1:
       gcoms(g)
       indentNL(g)

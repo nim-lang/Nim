@@ -386,6 +386,27 @@ proc isDiscardUnderscore(v: PSym): bool =
     v.flags.incl(sfGenSym)
     result = true
 
+proc semSigSection(c: PContext; n: PNode): PNode =
+  result = ast.emptyNode
+  for i in countup(0, sonsLen(n)-1):
+    var a = n.sons[i]
+    if gCmd == cmdIdeTools: suggestStmt(c, a)
+    if a.kind == nkCommentStmt: continue
+    if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a)
+    checkMinSonsLen(a, 3)
+    var length = sonsLen(a)
+    if a.sons[length-2].kind != nkEmpty:
+      let typ = semTypeNode(c, a.sons[length-2], nil)
+      for j in countup(0, length-3):
+        let v = semIdentDef(c, a.sons[j], skParam)
+        v.typ = typ
+        strTableIncl(c.signatures, v)
+    else:
+      localError(a.info, "'sig' section must have a type")
+    var def: PNode
+    if a.sons[length-1].kind != nkEmpty:
+      localError(a.info, "'sig' sections cannot contain assignments")
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)

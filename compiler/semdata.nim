@@ -105,6 +105,7 @@ type
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
                             op: TTypeAttachedOp): PSym {.nimcall.}
     selfName*: PIdent
+    signatures*: TStrTable
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -178,6 +179,8 @@ proc newContext(module: PSym): PContext =
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
+  initStrTable(result.signatures)
+
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
