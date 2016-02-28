@@ -665,8 +665,6 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     var s: PSym
     if name.kind == nkDotExpr:
       s = qualifiedLookUp(c, name)
-      debug s
-      debug s.typ.skipTypes(abstractPtrs)
       if s.kind != skType or s.typ.skipTypes(abstractPtrs).kind != tyObject or tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
         localError(name.info, "only .partial objects can be extended")
     else:
