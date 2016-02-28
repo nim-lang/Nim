@@ -635,7 +635,7 @@ proc reallySameIdent(a, b: string): bool {.inline.} =
   else:
     result = true
 
-proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
+proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.discardable.} =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
@@ -654,7 +654,8 @@ proc strTableIncl*(t: var TStrTable, n: PSym): bool {.discardable.} =
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
-    t.data[replaceSlot] = n # overwrite it with newer definition!
+    if not onConflictKeepOld:
+      t.data[replaceSlot] = n # overwrite it with newer definition!
     return true             # found it
   elif mustRehash(len(t.data), t.counter):
     strTableEnlarge(t)

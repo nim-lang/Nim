@@ -39,7 +39,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        initialBinding: PNode,
                        filter: TSymKinds,
                        best, alt: var TCandidate,
-                       errors: var CandidateErrors) =
+                       errors: var CandidateErrors;
+                       fromUsingStmt: bool) =
   var o: TOverloadIter
   # thanks to the lazy semchecking for operands, we need to iterate over the
   # symbol table *before* any call to 'initCandidate' which might invoke
@@ -50,7 +51,12 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
   var syms: seq[tuple[a: PSym, b: int]] = @[]
   while symx != nil:
-    if symx.kind in filter: syms.add((symx, o.lastOverloadScope))
+    if symx.kind in filter:
+      if fromUsingStmt and (symx.typ.n.len <= 1 or
+          sfIsSelf notin symx.typ.n[1].sym.flags):
+        discard "only consider procs that have a 'self' too"
+      else:
+        syms.add((symx, o.lastOverloadScope))
     symx = nextOverloadIter(o, c, headSymbol)
   if syms.len == 0: return
 
@@ -63,7 +69,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     let sym = syms[i][0]
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, syms[i][1])
-    z.calleeSym = sym
 
     #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
     #  gDebug = true
@@ -156,28 +161,27 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   else:
     initialBinding = nil
 
-  var usedSyms: seq[PNode]
-
-  template pickBest(headSymbol: expr) =
+  template pickBest(headSymbol, fromUsingStmt) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
-                      filter, result, alt, errors)
+                      filter, result, alt, errors, fromUsingStmt)
 
-  gatherUsedSyms(c, usedSyms)
-  if usedSyms != nil:
-    var hiddenArg = if usedSyms.len > 1: newNode(nkClosedSymChoice, n.info, usedSyms)
-                    else: usedSyms[0]
-
+  #gatherUsedSyms(c, usedSyms)
+  if c.p != nil and c.p.selfSym != nil:
+    # we need to enforce semchecking of selfSym again because it
+    # might need auto-deref:
+    var hiddenArg = newSymNode(c.p.selfSym)
+    hiddenArg.typ = nil
     n.sons.insert(hiddenArg, 1)
     orig.sons.insert(hiddenArg, 1)
 
-    pickBest(f)
+    pickBest(f, true)
 
     if result.state != csMatch:
       n.sons.delete(1)
       orig.sons.delete(1)
     else: return
 
-  pickBest(f)
+  pickBest(f, false)
 
   let overloadsState = result.state
   if overloadsState != csMatch:
@@ -194,7 +198,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         let op = newIdentNode(getIdent(x), n.info)
         n.sons[0] = op
         orig.sons[0] = op
-        pickBest(op)
+        pickBest(op, false)
 
       if nfExplicitCall in n.flags:
         tryOp ".()"
@@ -209,7 +213,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       let callOp = newIdentNode(getIdent".=", n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
-      pickBest(callOp)
+      pickBest(callOp, false)
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if nfDotField in n.flags and nfExplicitCall notin n.flags:
@@ -228,7 +232,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
           n.sons[0] = f
 
         errors = @[]
-        pickBest(f)
+        pickBest(f, false)
         #notFoundError(c, n, errors)
 
       return

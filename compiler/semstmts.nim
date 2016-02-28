@@ -1206,9 +1206,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # Macros and Templates can have generic parameters, but they are
     # only used for overload resolution (there is no instantiation of
     # the symbol, so we must process the body now)
+    pushProcCon(c, s)
     if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
       if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
-      pushProcCon(c, s)
+
       c.p.wasForwarded = proto != nil
       maybeAddResult(c, s, n)
       if sfImportc notin s.flags:
@@ -1217,7 +1218,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      popProcCon(c)
     else:
       if s.typ.sons[0] != nil and kind != skIterator:
         addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
@@ -1228,6 +1228,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfImportc in s.flags:
       # so we just ignore the body after semantic checking for importc:
       n.sons[bodyPos] = ast.emptyNode
+    popProcCon(c)
   else:
     if proto != nil: localError(n.info, errImplOfXexpected, proto.name.s)
     if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone:

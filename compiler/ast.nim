@@ -298,6 +298,7 @@ const
   sfWrittenTo* = sfBorrow             # param is assigned to
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
+  sfIsSelf* = sfOverriden             # param is 'self'
 
 const
   # getting ready for the future expr/stmt merge
