@@ -754,7 +754,6 @@ type
   TScope* = object
     depthLevel*: int
     symbols*: TStrTable
-    usingSyms*: seq[PNode]
     parent*: PScope
 
   PScope* = ref TScope

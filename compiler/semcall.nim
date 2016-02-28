@@ -143,11 +143,6 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   else:
     localError(n.info, errGenerated, result)
 
-proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
-  for scope in walkScopes(c.currentScope):
-    if scope.usingSyms != nil:
-      for s in scope.usingSyms: usedSyms.safeAdd(s)
-
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds;
                       errors: var CandidateErrors): TCandidate =

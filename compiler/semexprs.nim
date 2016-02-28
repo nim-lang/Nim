@@ -1558,21 +1558,7 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
 
 proc semUsing(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
-  if not experimentalMode(c):
-    localError(n.info, "use the {.experimental.} pragma to enable 'using'")
-  for e in n.sons:
-    let usedSym = semExpr(c, e)
-    if usedSym.kind == nkSym:
-      case usedSym.sym.kind
-      of skLocalVars + {skConst}:
-        c.currentScope.usingSyms.safeAdd(usedSym)
-        continue
-      of skProcKinds:
-        addDeclAt(c.currentScope, usedSym.sym)
-        continue
-      else: discard
-
-    localError(e.info, errUsingNoSymbol, e.renderTree)
+  localError(n.info, "'using' statement is obsolete")
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   var macroCall = n[1]
