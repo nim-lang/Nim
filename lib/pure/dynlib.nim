@@ -78,9 +78,13 @@ elif defined(windows) or defined(dos):
   # Native Windows Implementation
   # =======================================================================
   #
-  type
-    THINSTANCE {.importc: "HINSTANCE".} = object
-      x: pointer
+  when defined(cpp):
+    type
+      THINSTANCE {.importc: "HINSTANCE".} = object
+        x: pointer
+  else:
+    type
+      THINSTANCE {.importc: "HINSTANCE".} = pointer
 
   proc FreeLibrary(lib: THINSTANCE) {.importc, header: "<windows.h>", stdcall.}
   proc winLoadLibrary(path: cstring): THINSTANCE {.
