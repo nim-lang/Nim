@@ -661,13 +661,22 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue
     if a.kind != nkTypeDef: illFormedAst(a)
     checkSonsLen(a, 3)
-    var s = semIdentDef(c, a.sons[0], skType)
-    s.typ = newTypeS(tyForward, c)
-    s.typ.sym = s             # process pragmas:
-    if a.sons[0].kind == nkPragmaExpr:
-      pragma(c, s, a.sons[0].sons[1], typePragmas)
-    # add it here, so that recursive types are possible:
-    if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+    let name = a.sons[0]
+    var s: PSym
+    if name.kind == nkDotExpr:
+      s = qualifiedLookUp(c, name)
+      debug s
+      debug s.typ.skipTypes(abstractPtrs)
+      if s.kind != skType or s.typ.skipTypes(abstractPtrs).kind != tyObject or tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
+        localError(name.info, "only .partial objects can be extended")
+    else:
+      s = semIdentDef(c, name, skType)
+      s.typ = newTypeS(tyForward, c)
+      s.typ.sym = s             # process pragmas:
+      if name.kind == nkPragmaExpr:
+        pragma(c, s, name.sons[1], typePragmas)
+      # add it here, so that recursive types are possible:
+      if sfGenSym notin s.flags: addInterfaceDecl(c, s)
     a.sons[0] = newSymNode(s)
 
 proc typeSectionRightSidePass(c: PContext, n: PNode) =
@@ -676,8 +685,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkTypeDef): illFormedAst(a)
     checkSonsLen(a, 3)
-    if (a.sons[0].kind != nkSym): illFormedAst(a)
-    var s = a.sons[0].sym
+    let name = a.sons[0]
+    if (name.kind != nkSym): illFormedAst(a)
+    var s = name.sym
     if s.magic == mNone and a.sons[2].kind == nkEmpty:
       localError(a.info, errImplOfXexpected, s.name.s)
     if s.magic != mNone: processMagicType(c, s)

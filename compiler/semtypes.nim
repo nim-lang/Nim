@@ -673,7 +673,11 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, base)
-  result.n = newNodeI(nkRecList, n.info)
+  if result.n.isNil:
+    result.n = newNodeI(nkRecList, n.info)
+  else:
+    # partial object so add things to the check
+    addInheritedFields(c, check, pos, result)
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result)
   if n.sons[0].kind != nkEmpty:
     # dummy symbol for `pragma`:

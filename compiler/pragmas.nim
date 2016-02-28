@@ -55,7 +55,7 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims}
+    wBorrow, wGcSafe, wExportNims, wPartial}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
@@ -835,6 +835,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym.kind != skType or sym.typ == nil: invalidPragma(it)
         else: incl(sym.typ.flags, tfByCopy)
+      of wPartial:
+        noVal(it)
+        if sym.kind != skType or sym.typ == nil: invalidPragma(it)
+        else:
+          incl(sym.typ.flags, tfPartial)
+          # .partial types can only work with dead code elimination
+          # to prevent the codegen from doing anything before we compiled
+          # the whole program:
+          incl gGlobalOptions, optDeadCodeElim
       of wInject, wGensym:
         # We check for errors, but do nothing with these pragmas otherwise
         # as they are handled directly in 'evalTemplate'.
