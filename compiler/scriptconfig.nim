@@ -115,7 +115,7 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
   cbconf getCommand:
     setResult(a, options.command)
   cbconf switch:
-    processSwitch(a.getString 0, a.getString 1, passPP, unknownLineInfo())
+    processCommand(a.getString(0) & ":" & a.getString(1), passPP)
 
 
 proc runNimScript*(scriptName: string) =
