@@ -635,7 +635,7 @@ elif defined(JS):
 
   proc toSeconds(time: Time): float = result = time.getTime() / 1000
 
-  proc getTimezone(): int = result = newDate().getTimezoneOffset()
+  proc getTimezone(): int = result = newDate().getTimezoneOffset() * 60
 
   proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
 

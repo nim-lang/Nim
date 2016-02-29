@@ -53,6 +53,9 @@
 import
   hashes, tables, strutils, lexbase, streams, unicode, macros
 
+export
+  tables.`$`
+
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
     jsonError,           ## an error occurred during parsing
