@@ -192,7 +192,7 @@ proc mangleName(s: PSym; target: TTarget): Rope =
           x.add("HEX" & toHex(ord(c), 2))
         inc i
       result = rope(x)
-    if s.name.s != "this":
+    if s.name.s != "this" and s.kind != skField:
       add(result, "_")
       add(result, rope(s.id))
     s.loc.r = result
