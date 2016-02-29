@@ -56,7 +56,7 @@ const
     "generic", "if", "import", "in", "include",
     "interface", "is", "isnot", "iterator", "let", "macro", "method",
     "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
-    "ptr", "raise", "ref", "return", "shl", "shr", "sig", "static",
+    "ptr", "raise", "ref", "return", "shl", "shr", "static",
     "template", "try", "tuple", "type", "using", "var", "when", "while", "with",
     "without", "xor", "yield"]
 

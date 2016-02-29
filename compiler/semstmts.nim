@@ -386,8 +386,11 @@ proc isDiscardUnderscore(v: PSym): bool =
     v.flags.incl(sfGenSym)
     result = true
 
-proc semSigSection(c: PContext; n: PNode): PNode =
+proc semUsing(c: PContext; n: PNode): PNode =
   result = ast.emptyNode
+  if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "using")
+  if not experimentalMode(c):
+    localError(n.info, "use the {.experimental.} pragma to enable 'using'")
   for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
@@ -402,10 +405,10 @@ proc semSigSection(c: PContext; n: PNode): PNode =
         v.typ = typ
         strTableIncl(c.signatures, v)
     else:
-      localError(a.info, "'sig' section must have a type")
+      localError(a.info, "'using' section must have a type")
     var def: PNode
     if a.sons[length-1].kind != nkEmpty:
-      localError(a.info, "'sig' sections cannot contain assignments")
+      localError(a.info, "'using' sections cannot contain assignments")
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode

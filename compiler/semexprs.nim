@@ -1556,10 +1556,6 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
   result = newSym(kind, idAnon, owner, info)
   result.flags = {sfGenSym}
 
-proc semUsing(c: PContext, n: PNode): PNode =
-  result = newNodeI(nkEmpty, n.info)
-  localError(n.info, "'using' statement is obsolete")
-
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   var macroCall = n[1]
   var expandedSym = expectMacroOrTemplateCall(c, macroCall)
@@ -2354,7 +2350,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
       localError(n.info, errGenerated, "'defer' takes a 'void' expression")
     #localError(n.info, errGenerated, "'defer' not allowed in this context")
-  of nkSigSection: result = semSigSection(c, n)
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))

@@ -75,8 +75,7 @@ type
     nnkClosure,
     nnkGotoState,
     nnkState,
-    nnkBreakState,
-    nnkSigSection
+    nnkBreakState
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum

@@ -1908,7 +1908,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   #|                     | 'converter' routine
   #|                     | 'type' section(typeDef)
   #|                     | 'const' section(constant)
-  #|                     | ('let' | 'var') section(variable)
+  #|                     | ('let' | 'var' | 'using') section(variable)
   #|                     | bindStmt | mixinStmt)
   #|                     / simpleStmt
   case p.tok.tokType
@@ -1943,10 +1943,9 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkLet: result = parseSection(p, nkLetSection, parseVariable)
   of tkWhen: result = parseIfOrWhen(p, nkWhenStmt)
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
-  of tkSig: result = parseSection(p, nkSigSection, parseVariable)
   of tkBind: result = parseBind(p, nkBindStmt)
   of tkMixin: result = parseBind(p, nkMixinStmt)
-  of tkUsing: result = parseBind(p, nkUsingStmt)
+  of tkUsing: result = parseSection(p, nkUsingStmt, parseVariable)
   else: result = simpleStmt(p)
 
 proc parseStmt(p: var TParser): PNode =
