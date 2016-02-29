@@ -1,6 +1,6 @@
 discard """
   output: '''0 -2 0
-  0 -2'''
+0 -2'''
 """
 
 {.this: self.}
