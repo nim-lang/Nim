@@ -189,7 +189,7 @@ proc readBool*(s: Stream): bool =
   read(s, result)
 
 proc peekBool*(s: Stream): bool =
-  ## peeks a bool from the stream `s`. Raises `EIO` if an error occured.
+  ## peeks a bool from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
 proc readInt8*(s: Stream): int8 =

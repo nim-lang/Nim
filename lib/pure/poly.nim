@@ -344,7 +344,7 @@ proc roots*(p:Poly,tol=1.0e-9,zerotol=1.0e-6,mergetol=1.0e-12,maxiter=1000):seq[
   ## `tol` is the tolerance used to break searching for each root when reached.
   ## `zerotol` is the tolerance, which is 'close enough' to zero to be considered a root
   ## and is used to find roots for curves that only 'touch' the x-axis.
-  ## `mergetol` is the tolerance, of which two x-values are considered beeing the same root.
+  ## `mergetol` is the tolerance, of which two x-values are considered being the same root.
   ## `maxiter` can be used to limit the number of iterations for each root.
   ## Returns a (possibly empty) sorted sequence with the solutions.
   var deg=p.degree

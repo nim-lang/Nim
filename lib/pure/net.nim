@@ -616,7 +616,7 @@ proc readIntoBuf(socket: Socket, flags: int32): int =
   else:
     result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
   if result < 0:
-    # Save it in case it gets reset (the Nim codegen occassionally may call
+    # Save it in case it gets reset (the Nim codegen occasionally may call
     # Win API functions which reset it).
     socket.lastError = osLastError()
   if result <= 0:
