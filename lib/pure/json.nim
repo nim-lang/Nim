@@ -1123,9 +1123,9 @@ else:
 
   proc parseNativeJson(x: cstring): JSObject {.importc: "JSON.parse".}
 
-  proc getVarType(x): JsonNodeKind =
+  proc getVarType(x: JSObject): JsonNodeKind =
     result = JNull
-    proc getProtoName(y): cstring
+    proc getProtoName(y: JSObject): cstring
       {.importc: "Object.prototype.toString.call".}
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
@@ -1216,23 +1216,27 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
-  var parsed = parseFile("tests/testdata/jsontest.json")
-  var parsed2 = parseFile("tests/testdata/jsontest2.json")
+  when not defined(js):
+    var parsed = parseFile("tests/testdata/jsontest.json")
 
-  try:
-    discard parsed["key2"][12123]
-    assert(false)
-  except IndexError: assert(true)
+    try:
+      discard parsed["key2"][12123]
+      doAssert(false)
+    except IndexError: doAssert(true)
+
+    var parsed2 = parseFile("tests/testdata/jsontest2.json")
+    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
-  assert(testJson{"doesnt_exist"}{"anything"}.isNil)
+  doAssert(testJson{"doesnt_exist"}{"anything"}.isNil)
   testJson{["e", "f"]} = %true
-  assert(testJson["e"]["f"].bval)
+  doAssert(testJson["e"]["f"].bval)
 
   # make sure UTF-16 decoding works.
-  assert(testJson["c"].str == "🎃")
-  assert(testJson["d"].str == "æ")
+  when not defined(js): # TODO: The following line asserts in JS
+    doAssert(testJson["c"].str == "🎃")
+  doAssert(testJson["d"].str == "æ")
 
   # make sure no memory leek when parsing invalid string
   let startMemory = getOccupiedMem()
@@ -1242,41 +1246,43 @@ when isMainModule:
     except:
       discard
   # memory diff should less than 2M
-  assert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
+  doAssert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
 
 
   # test `$`
   let stringified = $testJson
   let parsedAgain = parseJson(stringified)
-  assert(parsedAgain["b"].str == "asd")
+  doAssert(parsedAgain["b"].str == "asd")
+
+  parsedAgain["abc"] = %5
+  doAssert parsedAgain["abc"].num == 5
 
   # Bounds checking
   try:
     let a = testJson["a"][9]
-    assert(false, "EInvalidIndex not thrown")
+    doAssert(false, "EInvalidIndex not thrown")
   except IndexError:
     discard
   try:
     let a = testJson["a"][-1]
-    assert(false, "EInvalidIndex not thrown")
+    doAssert(false, "EInvalidIndex not thrown")
   except IndexError:
     discard
   try:
-    assert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
+    doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
   except:
-    assert(false, "EInvalidIndex thrown for valid index")
+    doAssert(false, "EInvalidIndex thrown for valid index")
 
-  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
-  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
-  assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
-  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
-  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
-  assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
-  assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
+  doAssert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
+  doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
+  doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  doAssert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
+  doAssert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
 
   # Generator:
   var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  doAssert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
   var j2 = %*
     [
@@ -1289,7 +1295,7 @@ when isMainModule:
         "age": 31
       }
     ]
-  assert j2 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  doAssert j2 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
   var name = "John"
   let herAge = 30
@@ -1303,4 +1309,4 @@ when isMainModule:
       , "age": hisAge
       }
     ]
-  assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  doAssert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
