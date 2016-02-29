@@ -12,7 +12,7 @@
 #
 # * inlines iterators
 # * inlines constants
-# * performes constant folding
+# * performs constant folding
 # * converts "continue" to "break"; disambiguates "break"
 # * introduces method dispatchers
 # * performs lambda lifting for closure support

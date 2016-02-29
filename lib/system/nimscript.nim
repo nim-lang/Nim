@@ -74,7 +74,7 @@ proc getEnv*(key: string): string {.tags: [ReadIOEffect].} =
   builtin
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
-  ## Checks for the existance of an environment variable named `key`.
+  ## Checks for the existence of an environment variable named `key`.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
@@ -189,7 +189,7 @@ proc get*(key: string): string =
   builtin
 
 proc exists*(key: string): bool =
-  ## Checks for the existance of a configuration 'key'
+  ## Checks for the existence of a configuration 'key'
   ## like 'gcc.options.always'.
   builtin
 
