@@ -448,20 +448,20 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
 
 proc debug(n: PSym) =
   if n == nil:
-    msgWriteln("null")
+    echo("null")
   elif n.kind == skUnknown:
-    msgWriteln("skUnknown")
+    echo("skUnknown")
   else:
     #writeLine(stdout, $symToYaml(n, 0, 1))
-    msgWriteln("$1_$2: $3, $4, $5, $6" % [
+    echo("$1_$2: $3, $4, $5, $6" % [
       n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
       $lineInfoToStr(n.info), $n.kind])
 
 proc debug(n: PType) =
-  msgWriteln($debugType(n))
+  echo($debugType(n))
 
 proc debug(n: PNode) =
-  msgWriteln($debugTree(n, 0, 100))
+  echo($debugTree(n, 0, 100))
 
 const
   EmptySeq = @[]
