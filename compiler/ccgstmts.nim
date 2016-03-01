@@ -928,8 +928,10 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
       for j in countup(0, blen - 2):
         assert(t.sons[i].sons[j].kind == nkType)
         if orExpr != nil: add(orExpr, "||")
-        appcg(p.module, orExpr,
-              "#isObj(#getCurrentException()->Sup.m_type, $1)",
+        let isObjFormat = if not p.module.compileToCpp:
+          "#isObj(#getCurrentException()->Sup.m_type, $1)"
+          else: "#isObj(#getCurrentException()->m_type, $1)"
+        appcg(p.module, orExpr, isObjFormat,
               [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])

@@ -891,10 +891,12 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
         r.res = "$1['$2']" % [r.res, f.loc.r]
   r.kind = resExpr
 
+proc genAddr(p: PProc, n: PNode, r: var TCompRes)
+
 proc genCheckedFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
   internalAssert m.kind == nkCheckedFieldExpr
-  genFieldAddr(p, m.sons[0], r) # XXX
+  genAddr(p, m, r) # XXX
 
 proc genCheckedFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   genFieldAccess(p, n.sons[0], r) # XXX
