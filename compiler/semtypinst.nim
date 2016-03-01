@@ -203,14 +203,14 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   # symbol is not our business:
   if cl.owner != nil and s.owner != cl.owner:
     return s
-  result = PSym(idTableGet(cl.symMap, s))
-  if result == nil:
-    result = copySym(s, false)
-    incl(result.flags, sfFromGeneric)
-    idTablePut(cl.symMap, s, result)
-    result.owner = s.owner
-    result.typ = replaceTypeVarsT(cl, s.typ)
-    result.ast = replaceTypeVarsN(cl, s.ast)
+  #result = PSym(idTableGet(cl.symMap, s))
+  #if result == nil:
+  result = copySym(s, false)
+  incl(result.flags, sfFromGeneric)
+  #idTablePut(cl.symMap, s, result)
+  result.owner = s.owner
+  result.typ = replaceTypeVarsT(cl, s.typ)
+  result.ast = replaceTypeVarsN(cl, s.ast)
 
 proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = PType(idTableGet(cl.typeMap, t))
