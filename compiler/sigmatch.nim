@@ -1301,11 +1301,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         arg.typ.n = evaluated
         argType = arg.typ
 
-  var
-    a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc, tyFieldAccessor})
-        else: argType
-
-    r = typeRel(m, f, a)
+  var a = argType
+  var r = typeRel(m, f, a)
 
   if r != isNone and m.calleeSym != nil and
      m.calleeSym.kind in {skMacro, skTemplate}:
