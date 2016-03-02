@@ -49,12 +49,12 @@ const
 type
   KEvent* {.importc: "struct kevent",
             header: "<sys/event.h>", pure, final.} = object
-    ident*: cuint    ## identifier for this event  (uintptr_t)
+    ident*: uint     ## identifier for this event  (uintptr_t)
     filter*: cshort  ## filter for event
     flags*: cushort  ## general flags
     fflags*: cuint   ## filter-specific flags
-    data*: cuint     ## filter-specific data  (intptr_t)
-    #udata*: ptr void ## opaque user data identifier
+    data*: int       ## filter-specific data  (intptr_t)
+    udata*: pointer ## opaque user data identifier
 
 proc kqueue*(): cint {.importc: "kqueue", header: "<sys/event.h>".}
   ## Creates new queue and returns its descriptor.
@@ -65,7 +65,7 @@ proc kevent*(kqFD: cint,
      {.importc: "kevent", header: "<sys/event.h>".}
   ## Manipulates queue for given ``kqFD`` descriptor.
 
-proc EV_SET*(event: ptr KEvent, ident: cuint, filter: cshort, flags: cushort,
-             fflags: cuint, data: cuint, udata: ptr void)
+proc EV_SET*(event: ptr KEvent, ident: uint, filter: cshort, flags: cushort,
+             fflags: cuint, data: int, udata: pointer)
      {.importc: "EV_SET", header: "<sys/event.h>".}
   ## Fills event with given data.
