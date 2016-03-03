@@ -255,13 +255,13 @@ proc `/`*(x: Uri, path: string): Uri =
   ## Examples:
   ##
   ## .. code-block::
-  ##   let foo = parseUri("http://example.com/foo/bar") / parseUri("/baz")
+  ##   let foo = parseUri("http://example.com/foo/bar") / "/baz"
   ##   assert foo.path == "/foo/bar/baz"
   ##
-  ##   let bar = parseUri("http://example.com/foo/bar") / parseUri("baz")
+  ##   let bar = parseUri("http://example.com/foo/bar") / "baz"
   ##   assert bar.path == "/foo/bar/baz"
   ##
-  ##   let bar = parseUri("http://example.com/foo/bar/") / parseUri("baz")
+  ##   let bar = parseUri("http://example.com/foo/bar/") / "baz"
   ##   assert bar.path == "/foo/bar/baz"
   result = x
   if result.path[result.path.len-1] == '/':
