@@ -74,11 +74,14 @@ when defined(Windows):
 else:
   type
     SysLock {.importc: "pthread_mutex_t", pure, final,
-               header: "<sys/types.h>".} = object
+               header: """#include <sys/types.h>
+                          #include <pthread.h>""".} = object
     SysLockAttr {.importc: "pthread_mutexattr_t", pure, final
-               header: "<sys/types.h>".} = object
+               header: """#include <sys/types.h>
+                          #include <pthread.h>""".} = object
     SysCond {.importc: "pthread_cond_t", pure, final,
-               header: "<sys/types.h>".} = object
+               header: """#include <sys/types.h>
+                          #include <pthread.h>""".} = object
     SysLockType = distinct cint
 
   proc SysLockType_Reentrant: SysLockType =
@@ -92,7 +95,7 @@ else:
 
   proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
     importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
-  
+
   proc acquireSys(L: var SysLock) {.noSideEffect,
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
   proc tryAcquireSysAux(L: var SysLock): cint {.noSideEffect,
@@ -115,4 +118,3 @@ else:
 
   proc deinitSysCond(cond: var SysCond) {.noSideEffect,
     importc: "pthread_cond_destroy", header: "<pthread.h>".}
-
