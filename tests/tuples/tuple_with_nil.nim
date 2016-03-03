@@ -345,7 +345,7 @@ proc writeformat(o: var Writer; p: pointer; fmt: Format) =
   ## Write pointer `i` according to format `fmt` using output object
   ## `o` and output function `add`.
   ##
-  ## Pointers are casted to unsigned int and formated as hexadecimal
+  ## Pointers are casted to unsigned int and formatted as hexadecimal
   ## with prefix unless specified otherwise.
   var f = fmt
   if f.typ == 0.char:
@@ -584,7 +584,7 @@ proc splitfmt(s: string): seq[Part] {.compiletime, nosideeffect.} =
   ## Each part is either a literal string or a format specification. A
   ## format specification is a substring of the form
   ## "{[arg][:format]}" where `arg` is either empty or a number
-  ## refering to the arg-th argument and an additional field or array
+  ## referring to the arg-th argument and an additional field or array
   ## index. The format string is a string accepted by `parse`.
   let subpeg = sequence(capture(digits()),
                           capture(?sequence(charSet({'.'}), *pegs.identStartChars(), *identChars())),

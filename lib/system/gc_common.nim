@@ -91,7 +91,7 @@ when allowForeignThreadGc:
     ## this thread will only be initialized once per thread, no matter how often
     ## it is called.
     ##
-    ## This function is availble only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
     if not localGcInitialized:
       localGcInitialized = true
@@ -100,7 +100,7 @@ when allowForeignThreadGc:
       initGC()
 else:
   template setupForeignThreadGc*(): stmt =
-    {.error: "setupForeignThreadGc is availble only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel

@@ -463,6 +463,9 @@ proc lsub(n: PNode): int =
   of nkVarSection, nkLetSection:
     if sonsLen(n) > 1: result = MaxLineLen + 1
     else: result = lsons(n) + len("var_")
+  of nkUsingStmt:
+    if sonsLen(n) > 1: result = MaxLineLen + 1
+    else: result = lsons(n) + len("using_")
   of nkReturnStmt: result = lsub(n.sons[0]) + len("return_")
   of nkRaiseStmt: result = lsub(n.sons[0]) + len("raise_")
   of nkYieldStmt: result = lsub(n.sons[0]) + len("yield_")
@@ -1173,11 +1176,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     initContext(a)
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
-  of nkVarSection, nkLetSection:
+  of nkVarSection, nkLetSection, nkUsingStmt:
     var L = sonsLen(n)
     if L == 0: return
     if n.kind == nkVarSection: putWithSpace(g, tkVar, "var")
-    else: putWithSpace(g, tkLet, "let")
+    elif n.kind == nkLetSection: putWithSpace(g, tkLet, "let")
+    else: putWithSpace(g, tkUsing, "using")
     if L > 1:
       gcoms(g)
       indentNL(g)

@@ -50,7 +50,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
   var syms: seq[tuple[a: PSym, b: int]] = @[]
   while symx != nil:
-    if symx.kind in filter: syms.add((symx, o.lastOverloadScope))
+    if symx.kind in filter:
+      syms.add((symx, o.lastOverloadScope))
     symx = nextOverloadIter(o, c, headSymbol)
   if syms.len == 0: return
 
@@ -63,7 +64,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     let sym = syms[i][0]
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, syms[i][1])
-    z.calleeSym = sym
 
     #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
     #  gDebug = true
@@ -138,11 +138,6 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   else:
     localError(n.info, errGenerated, result)
 
-proc gatherUsedSyms(c: PContext, usedSyms: var seq[PNode]) =
-  for scope in walkScopes(c.currentScope):
-    if scope.usingSyms != nil:
-      for s in scope.usingSyms: usedSyms.safeAdd(s)
-
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds;
                       errors: var CandidateErrors): TCandidate =
@@ -156,31 +151,30 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   else:
     initialBinding = nil
 
-  var usedSyms: seq[PNode]
-
-  template pickBest(headSymbol: expr) =
+  template pickBest(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, errors)
 
-  gatherUsedSyms(c, usedSyms)
-  if usedSyms != nil:
-    var hiddenArg = if usedSyms.len > 1: newNode(nkClosedSymChoice, n.info, usedSyms)
-                    else: usedSyms[0]
-
-    n.sons.insert(hiddenArg, 1)
-    orig.sons.insert(hiddenArg, 1)
-
-    pickBest(f)
-
-    if result.state != csMatch:
-      n.sons.delete(1)
-      orig.sons.delete(1)
-    else: return
 
   pickBest(f)
 
   let overloadsState = result.state
   if overloadsState != csMatch:
+    if c.p != nil and c.p.selfSym != nil:
+      # we need to enforce semchecking of selfSym again because it
+      # might need auto-deref:
+      var hiddenArg = newSymNode(c.p.selfSym)
+      hiddenArg.typ = nil
+      n.sons.insert(hiddenArg, 1)
+      orig.sons.insert(hiddenArg, 1)
+
+      pickBest(f)
+
+      if result.state != csMatch:
+        n.sons.delete(1)
+        orig.sons.delete(1)
+      else: return
+
     if nfDotField in n.flags:
       internalAssert f.kind == nkIdent and n.sonsLen >= 2
       let calleeName = newStrNode(nkStrLit, f.ident.s).withInfo(n.info)

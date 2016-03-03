@@ -163,7 +163,11 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
-  else: raise newException(KeyError, "key not found: " & $key)
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
 proc mget*[A](s: var HashSet[A], key: A): var A {.deprecated.} =
   ## returns the element that is actually stored in 's' which has the same

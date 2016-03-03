@@ -77,88 +77,6 @@ proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
   result.typ = s.typ
   result.info = n.info
 
-proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
-  case s.kind
-  of skConst:
-    markUsed(n.info, s)
-    styleCheckUse(n.info, s)
-    case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
-    of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
-        tyTuple, tySet, tyUInt..tyUInt64:
-      if s.magic == mNone: result = inlineConst(n, s)
-      else: result = newSymNode(s, n.info)
-    of tyArrayConstr, tySequence:
-      # Consider::
-      #     const x = []
-      #     proc p(a: openarray[int])
-      #     proc q(a: openarray[char])
-      #     p(x)
-      #     q(x)
-      #
-      # It is clear that ``[]`` means two totally different things. Thus, we
-      # copy `x`'s AST into each context, so that the type fixup phase can
-      # deal with two different ``[]``.
-      if s.ast.len == 0: result = inlineConst(n, s)
-      else: result = newSymNode(s, n.info)
-    else:
-      result = newSymNode(s, n.info)
-  of skMacro: result = semMacroExpr(c, n, n, s, flags)
-  of skTemplate: result = semTemplateExpr(c, n, s, flags)
-  of skParam:
-    markUsed(n.info, s)
-    styleCheckUse(n.info, s)
-    if s.typ.kind == tyStatic and s.typ.n != nil:
-      # XXX see the hack in sigmatch.nim ...
-      return s.typ.n
-    elif sfGenSym in s.flags:
-      if c.p.wasForwarded:
-        # gensym'ed parameters that nevertheless have been forward declared
-        # need a special fixup:
-        let realParam = c.p.owner.typ.n[s.position+1]
-        internalAssert realParam.kind == nkSym and realParam.sym.kind == skParam
-        return newSymNode(c.p.owner.typ.n[s.position+1].sym, n.info)
-      elif c.p.owner.kind == skMacro:
-        # gensym'ed macro parameters need a similar hack (see bug #1944):
-        var u = searchInScopes(c, s.name)
-        internalAssert u != nil and u.kind == skParam and u.owner == s.owner
-        return newSymNode(u, n.info)
-    result = newSymNode(s, n.info)
-  of skVar, skLet, skResult, skForVar:
-    if s.magic == mNimvm:
-      localError(n.info, "illegal context for 'nimvm' magic")
-
-    markUsed(n.info, s)
-    styleCheckUse(n.info, s)
-    # if a proc accesses a global variable, it is not side effect free:
-    if sfGlobal in s.flags:
-      incl(c.p.owner.flags, sfSideEffect)
-    result = newSymNode(s, n.info)
-    # We cannot check for access to outer vars for example because it's still
-    # not sure the symbol really ends up being used:
-    # var len = 0 # but won't be called
-    # genericThatUsesLen(x) # marked as taking a closure?
-  of skGenericParam:
-    styleCheckUse(n.info, s)
-    if s.typ.kind == tyStatic:
-      result = newSymNode(s, n.info)
-      result.typ = s.typ
-    elif s.ast != nil:
-      result = semExpr(c, s.ast)
-    else:
-      n.typ = s.typ
-      return n
-  of skType:
-    markUsed(n.info, s)
-    styleCheckUse(n.info, s)
-    if s.typ.kind == tyStatic and s.typ.n != nil:
-      return s.typ.n
-    result = newSymNode(s, n.info)
-    result.typ = makeTypeDesc(c, s.typ)
-  else:
-    markUsed(n.info, s)
-    styleCheckUse(n.info, s)
-    result = newSymNode(s, n.info)
-
 type
   TConvStatus = enum
     convOK,
@@ -1015,6 +933,116 @@ proc readTypeParameter(c: PContext, typ: PType,
         return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
   #echo "came here: returned nil"
 
+proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
+  case s.kind
+  of skConst:
+    markUsed(n.info, s)
+    styleCheckUse(n.info, s)
+    case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
+    of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+        tyTuple, tySet, tyUInt..tyUInt64:
+      if s.magic == mNone: result = inlineConst(n, s)
+      else: result = newSymNode(s, n.info)
+    of tyArrayConstr, tySequence:
+      # Consider::
+      #     const x = []
+      #     proc p(a: openarray[int])
+      #     proc q(a: openarray[char])
+      #     p(x)
+      #     q(x)
+      #
+      # It is clear that ``[]`` means two totally different things. Thus, we
+      # copy `x`'s AST into each context, so that the type fixup phase can
+      # deal with two different ``[]``.
+      if s.ast.len == 0: result = inlineConst(n, s)
+      else: result = newSymNode(s, n.info)
+    else:
+      result = newSymNode(s, n.info)
+  of skMacro: result = semMacroExpr(c, n, n, s, flags)
+  of skTemplate: result = semTemplateExpr(c, n, s, flags)
+  of skParam:
+    markUsed(n.info, s)
+    styleCheckUse(n.info, s)
+    if s.typ.kind == tyStatic and s.typ.n != nil:
+      # XXX see the hack in sigmatch.nim ...
+      return s.typ.n
+    elif sfGenSym in s.flags:
+      if c.p.wasForwarded:
+        # gensym'ed parameters that nevertheless have been forward declared
+        # need a special fixup:
+        let realParam = c.p.owner.typ.n[s.position+1]
+        internalAssert realParam.kind == nkSym and realParam.sym.kind == skParam
+        return newSymNode(c.p.owner.typ.n[s.position+1].sym, n.info)
+      elif c.p.owner.kind == skMacro:
+        # gensym'ed macro parameters need a similar hack (see bug #1944):
+        var u = searchInScopes(c, s.name)
+        internalAssert u != nil and u.kind == skParam and u.owner == s.owner
+        return newSymNode(u, n.info)
+    result = newSymNode(s, n.info)
+  of skVar, skLet, skResult, skForVar:
+    if s.magic == mNimvm:
+      localError(n.info, "illegal context for 'nimvm' magic")
+
+    markUsed(n.info, s)
+    styleCheckUse(n.info, s)
+    # if a proc accesses a global variable, it is not side effect free:
+    if sfGlobal in s.flags:
+      incl(c.p.owner.flags, sfSideEffect)
+    result = newSymNode(s, n.info)
+    # We cannot check for access to outer vars for example because it's still
+    # not sure the symbol really ends up being used:
+    # var len = 0 # but won't be called
+    # genericThatUsesLen(x) # marked as taking a closure?
+  of skGenericParam:
+    styleCheckUse(n.info, s)
+    if s.typ.kind == tyStatic:
+      result = newSymNode(s, n.info)
+      result.typ = s.typ
+    elif s.ast != nil:
+      result = semExpr(c, s.ast)
+    else:
+      n.typ = s.typ
+      return n
+  of skType:
+    markUsed(n.info, s)
+    styleCheckUse(n.info, s)
+    if s.typ.kind == tyStatic and s.typ.n != nil:
+      return s.typ.n
+    result = newSymNode(s, n.info)
+    result.typ = makeTypeDesc(c, s.typ)
+  of skField:
+    if c.p != nil and c.p.selfSym != nil:
+      var ty = skipTypes(c.p.selfSym.typ, {tyGenericInst, tyVar, tyPtr, tyRef})
+      while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
+      var check: PNode = nil
+      if ty.kind == tyObject:
+        while true:
+          check = nil
+          let f = lookupInRecordAndBuildCheck(c, n, ty.n, s.name, check)
+          if f != nil and fieldVisible(c, f):
+            # is the access to a public field or in the same module or in a friend?
+            doAssert f == s
+            markUsed(n.info, f)
+            styleCheckUse(n.info, f)
+            result = newNodeIT(nkDotExpr, n.info, f.typ)
+            result.add makeDeref(newSymNode(c.p.selfSym))
+            result.add newSymNode(f) # we now have the correct field
+            if check != nil:
+              check.sons[0] = result
+              check.typ = result.typ
+              result = check
+            return result
+          if ty.sons[0] == nil: break
+          ty = skipTypes(ty.sons[0], {tyGenericInst})
+    # old code, not sure if it's live code:
+    markUsed(n.info, s)
+    styleCheckUse(n.info, s)
+    result = newSymNode(s, n.info)
+  else:
+    markUsed(n.info, s)
+    styleCheckUse(n.info, s)
+    result = newSymNode(s, n.info)
+
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
   checkSonsLen(n, 2)
@@ -1527,24 +1555,6 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
                 owner = getCurrOwner()): PSym =
   result = newSym(kind, idAnon, owner, info)
   result.flags = {sfGenSym}
-
-proc semUsing(c: PContext, n: PNode): PNode =
-  result = newNodeI(nkEmpty, n.info)
-  if not experimentalMode(c):
-    localError(n.info, "use the {.experimental.} pragma to enable 'using'")
-  for e in n.sons:
-    let usedSym = semExpr(c, e)
-    if usedSym.kind == nkSym:
-      case usedSym.sym.kind
-      of skLocalVars + {skConst}:
-        c.currentScope.usingSyms.safeAdd(usedSym)
-        continue
-      of skProcKinds:
-        addDeclAt(c.currentScope, usedSym.sym)
-        continue
-      else: discard
-
-    localError(e.info, errUsingNoSymbol, e.renderTree)
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   var macroCall = n[1]

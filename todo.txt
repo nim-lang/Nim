@@ -1,6 +1,9 @@
 
 nim c --gc:v2 -r -d:useSysAssert -d:useGcAssert -d:smokeCycles -d:useRealtimeGc tests/gc/gcbench
 
+- document ``this`` pragma
+- document and stress test ``.partial`` object declarations
+
 essential for 1.0
 =================
 

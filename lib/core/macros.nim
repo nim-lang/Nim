@@ -71,7 +71,12 @@ type
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
-    nnkReturnToken
+    nnkReturnToken,
+    nnkClosure,
+    nnkGotoState,
+    nnkState,
+    nnkBreakState
+
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty,

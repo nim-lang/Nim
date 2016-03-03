@@ -288,19 +288,19 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
   else: getSymbol(c, tok)
 
 proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
-  ## returns a properly formated error message containing current line and
+  ## returns a properly formatted error message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Error: $4",
                [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
-  ## returns a properly formated warning message containing current line and
+  ## returns a properly formatted warning message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Warning: $4",
                [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
-  ## returns a properly formated warning message containing that
+  ## returns a properly formatted warning message containing that
   ## an entry is ignored.
   case e.kind
   of cfgSectionStart: result = c.warningStr("section ignored: " & e.section)

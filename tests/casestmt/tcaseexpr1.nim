@@ -11,7 +11,7 @@ discard """
 type
   E = enum A, B, C
 
-proc foo(x): auto =
+proc foo(x: int): auto =
   return case x
     of 1..9: "digit"
     else: "number"

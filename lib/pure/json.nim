@@ -51,7 +51,10 @@
 ##     ]
 
 import
-  hashes, strutils, lexbase, streams, unicode, macros
+  hashes, tables, strutils, lexbase, streams, unicode, macros
+
+export
+  tables.`$`
 
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
@@ -567,7 +570,7 @@ type
     of JNull:
       nil
     of JObject:
-      fields*: seq[tuple[key: string, val: JsonNode]]
+      fields*: Table[string, JsonNode]
     of JArray:
       elems*: seq[JsonNode]
 
@@ -617,7 +620,7 @@ proc newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
   new(result)
   result.kind = JObject
-  result.fields = @[]
+  result.fields = initTable[string, JsonNode](4)
 
 proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
@@ -657,8 +660,8 @@ proc getBVal*(n: JsonNode, default: bool = false): bool =
   else: return n.bval
 
 proc getFields*(n: JsonNode,
-    default: seq[tuple[key: string, val: JsonNode]] = @[]):
-        seq[tuple[key: string, val: JsonNode]] =
+    default = initTable[string, JsonNode](4)):
+        Table[string, JsonNode] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JObject``, or if ``n`` is nil.
@@ -700,8 +703,8 @@ proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   new(result)
   result.kind = JObject
-  newSeq(result.fields, keyVals.len)
-  for i, p in pairs(keyVals): result.fields[i] = p
+  result.fields = initTable[string, JsonNode](4)
+  for key, val in items(keyVals): result.fields[key] = val
 
 proc `%`*(elements: openArray[JsonNode]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
@@ -761,7 +764,9 @@ proc `==`* (a,b: JsonNode): bool =
     of JObject:
       a.fields == b.fields
 
-proc hash* (n:JsonNode): Hash =
+proc hash*(n: Table[string, JsonNode]): Hash {.noSideEffect.}
+
+proc hash*(n: JsonNode): Hash =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
@@ -779,6 +784,11 @@ proc hash* (n:JsonNode): Hash =
   of JNull:
     result = hash(0)
 
+proc hash*(n: Table[string, JsonNode]): Hash =
+  for key, val in n:
+    result = result !& hash(key) !& hash(val)
+  result = !$result
+
 proc len*(n: JsonNode): int =
   ## If `n` is a `JArray`, it returns the number of elements.
   ## If `n` is a `JObject`, it returns the number of pairs.
@@ -793,10 +803,7 @@ proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## If the value at `name` does not exist, returns nil
   assert(not isNil(node))
   assert(node.kind == JObject)
-  for key, item in items(node.fields):
-    if key == name:
-      return item
-  return nil
+  result = node.fields.getOrDefault(name)
 
 proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
@@ -808,8 +815,7 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
-  for k, item in items(node.fields):
-    if k == key: return true
+  result = node.fields.hasKey(key)
 
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
@@ -820,20 +826,14 @@ proc add*(father, child: JsonNode) =
   father.elems.add(child)
 
 proc add*(obj: JsonNode, key: string, val: JsonNode) =
-  ## Adds ``(key, val)`` pair to the JObject node `obj`. For speed
-  ## reasons no check for duplicate keys is performed!
-  ## But ``[]=`` performs the check.
+  ## Sets a field from a `JObject`.
   assert obj.kind == JObject
-  obj.fields.add((key, val))
+  obj.fields[key] = val
 
 proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
-  ## Sets a field from a `JObject`. Performs a check for duplicate keys.
+  ## Sets a field from a `JObject`.
   assert(obj.kind == JObject)
-  for i in 0..obj.fields.len-1:
-    if obj.fields[i].key == key:
-      obj.fields[i].val = val
-      return
-  obj.fields.add((key, val))
+  obj.fields[key] = val
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
@@ -856,13 +856,11 @@ proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   node[keys[keys.len-1]] = value
 
 proc delete*(obj: JsonNode, key: string) =
-  ## Deletes ``obj[key]`` preserving the order of the other (key, value)-pairs.
+  ## Deletes ``obj[key]``.
   assert(obj.kind == JObject)
-  for i in 0..obj.fields.len-1:
-    if obj.fields[i].key == key:
-      obj.fields.delete(i)
-      return
-  raise newException(IndexError, "key not in object")
+  if not obj.fields.hasKey(key):
+    raise newException(IndexError, "key not in object")
+  obj.fields.del(key)
 
 proc copy*(p: JsonNode): JsonNode =
   ## Performs a deep copy of `a`.
@@ -879,8 +877,8 @@ proc copy*(p: JsonNode): JsonNode =
     result = newJNull()
   of JObject:
     result = newJObject()
-    for key, field in items(p.fields):
-      result.fields.add((key, copy(field)))
+    for key, val in pairs(p.fields):
+      result.fields[key] = copy(val)
   of JArray:
     result = newJArray()
     for i in items(p.elems):
@@ -924,15 +922,17 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if node.fields.len > 0:
       result.add("{")
       result.nl(ml) # New line
-      for i in 0..len(node.fields)-1:
+      var i = 0
+      for key, val in pairs(node.fields):
         if i > 0:
           result.add(", ")
           result.nl(ml) # New Line
+        inc i
         # Need to indent more than {
         result.indent(newIndent(currIndent, indent, ml))
-        result.add(escapeJson(node.fields[i].key))
+        result.add(escapeJson(key))
         result.add(": ")
-        toPretty(result, node.fields[i].val, indent, ml, false,
+        toPretty(result, val, indent, ml, false,
                  newIndent(currIndent, indent, ml))
       result.nl(ml)
       result.indent(currIndent) # indent the same as {
@@ -994,7 +994,7 @@ proc toUgly*(result: var string, node: JsonNode) =
     result.add "]"
   of JObject:
     result.add "{"
-    for key, value in items(node.fields):
+    for key, value in pairs(node.fields):
       if comma: result.add ","
       else:     comma = true
       result.add key.escapeJson()
@@ -1033,15 +1033,15 @@ iterator mitems*(node: var JsonNode): var JsonNode =
 iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   assert node.kind == JObject
-  for key, val in items(node.fields):
+  for key, val in pairs(node.fields):
     yield (key, val)
 
-iterator mpairs*(node: var JsonNode): var tuple[key: string, val: JsonNode] =
+iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
-  ## Items can be modified
+  ## Values can be modified
   assert node.kind == JObject
-  for keyVal in mitems(node.fields):
-    yield keyVal
+  for key, val in mpairs(node.fields):
+    yield (key, val)
 
 proc eat(p: var JsonParser, tok: TokKind) =
   if p.tok == tok: discard getTok(p)
@@ -1123,9 +1123,9 @@ else:
 
   proc parseNativeJson(x: cstring): JSObject {.importc: "JSON.parse".}
 
-  proc getVarType(x): JsonNodeKind =
+  proc getVarType(x: JSObject): JsonNodeKind =
     result = JNull
-    proc getProtoName(y): cstring
+    proc getProtoName(y: JSObject): cstring
       {.importc: "Object.prototype.toString.call".}
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
@@ -1216,23 +1216,27 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
-  var parsed = parseFile("tests/testdata/jsontest.json")
-  var parsed2 = parseFile("tests/testdata/jsontest2.json")
+  when not defined(js):
+    var parsed = parseFile("tests/testdata/jsontest.json")
 
-  try:
-    discard parsed["key2"][12123]
-    assert(false)
-  except IndexError: assert(true)
+    try:
+      discard parsed["key2"][12123]
+      doAssert(false)
+    except IndexError: doAssert(true)
+
+    var parsed2 = parseFile("tests/testdata/jsontest2.json")
+    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
-  assert(testJson{"doesnt_exist"}{"anything"}.isNil)
+  doAssert(testJson{"doesnt_exist"}{"anything"}.isNil)
   testJson{["e", "f"]} = %true
-  assert(testJson["e"]["f"].bval)
+  doAssert(testJson["e"]["f"].bval)
 
   # make sure UTF-16 decoding works.
-  assert(testJson["c"].str == "🎃")
-  assert(testJson["d"].str == "æ")
+  when not defined(js): # TODO: The following line asserts in JS
+    doAssert(testJson["c"].str == "🎃")
+  doAssert(testJson["d"].str == "æ")
 
   # make sure no memory leek when parsing invalid string
   let startMemory = getOccupiedMem()
@@ -1242,41 +1246,43 @@ when isMainModule:
     except:
       discard
   # memory diff should less than 2M
-  assert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
+  doAssert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
 
 
   # test `$`
   let stringified = $testJson
   let parsedAgain = parseJson(stringified)
-  assert(parsedAgain["b"].str == "asd")
+  doAssert(parsedAgain["b"].str == "asd")
+
+  parsedAgain["abc"] = %5
+  doAssert parsedAgain["abc"].num == 5
 
   # Bounds checking
   try:
     let a = testJson["a"][9]
-    assert(false, "EInvalidIndex not thrown")
+    doAssert(false, "EInvalidIndex not thrown")
   except IndexError:
     discard
   try:
     let a = testJson["a"][-1]
-    assert(false, "EInvalidIndex not thrown")
+    doAssert(false, "EInvalidIndex not thrown")
   except IndexError:
     discard
   try:
-    assert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
+    doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
   except:
-    assert(false, "EInvalidIndex thrown for valid index")
+    doAssert(false, "EInvalidIndex thrown for valid index")
 
-  assert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
-  assert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
-  assert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
-  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
-  assert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
-  assert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
-  assert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
+  doAssert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
+  doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
+  doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
+  doAssert(testJson{"a"}==parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
+  doAssert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
 
   # Generator:
   var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  assert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  doAssert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
   var j2 = %*
     [
@@ -1289,7 +1295,7 @@ when isMainModule:
         "age": 31
       }
     ]
-  assert j2 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  doAssert j2 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
 
   var name = "John"
   let herAge = 30
@@ -1303,4 +1309,4 @@ when isMainModule:
       , "age": hisAge
       }
     ]
-  assert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+  doAssert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]

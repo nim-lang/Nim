@@ -298,6 +298,7 @@ const
   sfWrittenTo* = sfBorrow             # param is assigned to
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
+  sfIsSelf* = sfOverriden             # param is 'self'
 
 const
   # getting ready for the future expr/stmt merge
@@ -458,11 +459,11 @@ type
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
     tfIterator,       # type is really an iterator, not a tyProc
-    tfShared,         # type is 'shared'
+    tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
 
     tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
-                      # other type so that it requires initalization
+                      # other type so that it requires initialization
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
@@ -533,7 +534,7 @@ const
   skError* = skUnknown
 
   # type flags that are essential for type equality:
-  eqTypeFlags* = {tfIterator, tfShared, tfNotNil, tfVarIsPtr}
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr}
 
 type
   TMagic* = enum # symbols that require compiler magic:
@@ -753,7 +754,6 @@ type
   TScope* = object
     depthLevel*: int
     symbols*: TStrTable
-    usingSyms*: seq[PNode]
     parent*: PScope
 
   PScope* = ref TScope

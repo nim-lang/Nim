@@ -10,19 +10,39 @@ Changes affecting backwards compatibility
 
 - ``--out`` and ``--nimcache`` command line arguments are now relative to
   current directory. Previously they were relative to project directory.
+- The json module now stores the name/value pairs in objects internally as a
+  hash table of type ``fields*: Table[string, JsonNode]`` instead of a
+  sequence. This means that order is no longer preserved. When using the
+  ``table.mpairs`` iterator only the returned values can be modified, no
+  longer the keys.
+- The deprecated Nim shebang notation ``#!`` was removed from the language. Use ``#?`` instead.
+- The ``using`` statement now means something completely different. You can use the
+  new experimental ``this`` pragma to achieve a similar effect to what the old ``using`` statement tried to achieve.
+- Typeless parameters have been removed from the language since it would
+  clash with ``using``.
+
 
 Library Additions
 -----------------
 
 - The rlocks module has been added providing reentrant lock synchronization
-  primitive
+  primitive.
 
 Compiler Additions
 ------------------
 
 - Added a new ``--noCppExceptions`` switch that allows to use default exception
   handling (no ``throw`` or ``try``/``catch`` generated) when compiling to C++
-  code
+  code.
+
+Language Additions
+------------------
+
+- Nim now supports a ``.this`` pragma for more notational convenience.
+- Nim now supports a different ``using`` statement for more convenience.
+- Nim now supports ``partial`` object declarations to mitigate the problems
+  that arise when types are mutually dependent and yet should be kept in
+  different modules.
 
 
 2016-01-27 Nim in Action is now available!
