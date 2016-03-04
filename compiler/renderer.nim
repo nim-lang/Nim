@@ -812,6 +812,13 @@ proc gsub(g: var TSrcGen; n: PNode; i: int) =
   else:
     put(g, tkOpr, "<<" & $i & "th child missing for " & $n.kind & " >>")
 
+proc isBracket*(n: PNode): bool =
+  case n.kind
+  of nkClosedSymChoice, nkOpenSymChoice:
+    if n.len > 0: result = isBracket(n[0])
+  of nkSym: result = n.sym.name.s == "[]"
+  else: result = false
+
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
@@ -841,10 +848,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCharLit: put(g, tkCharLit, atom(n))
   of nkNilLit: put(g, tkNil, atom(n))    # complex expressions
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
-    if sonsLen(n) >= 1: gsub(g, n.sons[0])
-    put(g, tkParLe, "(")
-    gcomma(g, n, 1)
-    put(g, tkParRi, ")")
+    if n.len > 0 and isBracket(n[0]):
+      gsub(g, n, 1)
+      put(g, tkBracketLe, "[")
+      gcomma(g, n, 2)
+      put(g, tkBracketRi, "]")
+    else:
+      if sonsLen(n) >= 1: gsub(g, n.sons[0])
+      put(g, tkParLe, "(")
+      gcomma(g, n, 1)
+      put(g, tkParRi, ")")
   of nkCallStrLit:
     gsub(g, n, 0)
     if n.len > 1 and n.sons[1].kind == nkRStrLit:
@@ -913,18 +926,21 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, 1)
     put(g, tkParRi, ")")
   of nkClosedSymChoice, nkOpenSymChoice:
-    put(g, tkParLe, "(")
-    for i in countup(0, sonsLen(n) - 1):
-      if i > 0: put(g, tkOpr, "|")
-      if n.sons[i].kind == nkSym:
-        let s = n[i].sym
-        if s.owner != nil:
-          put g, tkSymbol, n[i].sym.owner.name.s
-          put g, tkOpr, "."
-        put g, tkSymbol, n[i].sym.name.s
-      else:
-        gsub(g, n.sons[i], c)
-    put(g, tkParRi, if n.kind == nkOpenSymChoice: "|...)" else: ")")
+    if renderIds in g.flags:
+      put(g, tkParLe, "(")
+      for i in countup(0, sonsLen(n) - 1):
+        if i > 0: put(g, tkOpr, "|")
+        if n.sons[i].kind == nkSym:
+          let s = n[i].sym
+          if s.owner != nil:
+            put g, tkSymbol, n[i].sym.owner.name.s
+            put g, tkOpr, "."
+          put g, tkSymbol, n[i].sym.name.s
+        else:
+          gsub(g, n.sons[i], c)
+      put(g, tkParRi, if n.kind == nkOpenSymChoice: "|...)" else: ")")
+    else:
+      gsub(g, n, 0)
   of nkPar, nkClosure:
     put(g, tkParLe, "(")
     gcomma(g, n, c)
