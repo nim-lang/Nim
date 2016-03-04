@@ -82,7 +82,7 @@ type
   TProc = object
     procDef: PNode
     prc: PSym
-    locals, body: Rope
+    globals, locals, body: Rope
     options: TOptions
     module: BModule
     g: PGlobals
@@ -567,6 +567,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   var safePoint = "Tmp$1" % [rope(p.unique)]
   if optStackTrace in p.options: add(p.body, "framePtr = F;" & tnl)
   addf(p.body, "try {$n", [])
+  if p.target == targetPHP and p.globals == nil:
+      p.globals = "global $lastJSError; global $prevJSError;".rope
   var a: TCompRes
   gen(p, n.sons[0], a)
   moveInto(p, a, r)
@@ -609,14 +611,16 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
   if p.target == targetJS:
     add(p.body, "} finally {" & tnl)
+  if p.target == targetPHP:
+    # XXX ugly hack for PHP codegen
+    add(p.body, "}" & tnl)
   if i < length and n.sons[i].kind == nkFinally:
     genStmt(p, n.sons[i].sons[0])
+  if p.target == targetPHP:
+    # XXX ugly hack for PHP codegen
+    add(p.body, "if($lastJSError) throw($lastJSError);" & tnl)
   if p.target == targetJS:
     add(p.body, "}" & tnl)
-  if p.target == targetPHP:
-    # we need to repeat the finally block for PHP ...
-    if i < length and n.sons[i].kind == nkFinally:
-      genStmt(p, n.sons[i].sons[0])
 
 proc genRaiseStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
@@ -1850,8 +1854,9 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
   genStmt(p, prc.getBody)
-  result = "function $#($#) {$n$#$#$#$#}$n" %
-            [name, header, p.locals, resultAsgn,
+
+  result = "function $#($#) {$n$#$n$#$#$#$#}$n" %
+            [name, header, p.globals, p.locals, resultAsgn,
              genProcBody(p, prc), returnStmt]
   #if gVerbosity >= 3:
   #  echo "END   generated code for: " & prc.name.s
