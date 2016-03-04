@@ -628,6 +628,9 @@ proc newJArray*(): JsonNode =
   result.kind = JArray
   result.elems = @[]
 
+const
+  null*: string = nil ## alias for ``nil``
+
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
   ##
@@ -678,6 +681,7 @@ proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
+  if s.isNil: return
   result.kind = JString
   result.str = s
 
@@ -1310,3 +1314,6 @@ when isMainModule:
       }
     ]
   doAssert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+
+  var j4 = %*{"test": null}
+  doAssert j4 == %{"test": newJNull()}
