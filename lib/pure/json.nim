@@ -678,6 +678,7 @@ proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
+  if s.isNil: return
   result.kind = JString
   result.str = s
 
@@ -1310,3 +1311,6 @@ when isMainModule:
       }
     ]
   doAssert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
+
+  var j4 = %*{"test": nil}
+  doAssert j4 == %{"test": newJNull()}
