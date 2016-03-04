@@ -18,7 +18,7 @@
 ## that ``=`` performs a copy of the set.
 
 import
-  os, hashes, math
+  hashes, math
 
 {.pragma: myShallow.}
 when not defined(nimhygiene):
