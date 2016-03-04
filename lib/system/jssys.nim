@@ -276,6 +276,12 @@ proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
     """
 
 when defined(nimphp):
+  proc nimAt(x: string; i: int): string {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `x`[`i`];
+    """
+
+when defined(nimphp):
   proc nimSubstr(s: string; a, b: int): string {.
       asmNoStackFrame, compilerproc.} =
     asm """return substr(`s`,`a`,`b`-`a`+1);"""

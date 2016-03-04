@@ -944,8 +944,17 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   else: internalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   r.typ = etyNone
   if r.res == nil: internalError(n.info, "genArrayAccess")
-  if p.target == targetPHP and ty.kind in {tyString, tyCString}:
-    r.res = "ord($1[$2])" % [r.address, r.res]
+  if p.target == targetPHP:
+    if n.sons[0].kind in nkCallKinds+{nkStrLit..nkTripleStrLit}:
+      useMagic(p, "nimAt")
+      if ty.kind in {tyString, tyCString}:
+        r.res = "ord(nimAt($1, $2))" % [r.address, r.res]
+      else:
+        r.res = "nimAt($1, $2)" % [r.address, r.res]
+    elif ty.kind in {tyString, tyCString}:
+      r.res = "ord($1[$2])" % [r.address, r.res]
+    else:
+      r.res = "$1[$2]" % [r.address, r.res]
   else:
     r.res = "$1[$2]" % [r.address, r.res]
   r.address = nil
