@@ -1589,8 +1589,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
       if containsOrIncl(marker, formal.position):
-        # already in namedParams:
-        localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+        # already in namedParams, so no match
+        # we used to produce 'errCannotBindXTwice' here but see
+        # bug #3836 of why that is not sound (other overload with
+        # different parameter names could match later on):
+        when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
         m.state = csNoMatch
         return
       m.baseTypeMatch = false
@@ -1647,8 +1650,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           return
         formal = m.callee.n.sons[f].sym
         if containsOrIncl(marker, formal.position) and container.isNil:
-          # already in namedParams:
-          localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+          # already in namedParams: (see above remark)
+          when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
           return
         m.baseTypeMatch = false
