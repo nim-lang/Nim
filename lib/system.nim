@@ -3541,15 +3541,21 @@ proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
   ## overloaded ``[]`` or ``[]=`` accessors.
   discard
 
-template `..^`*(a, b: expr): expr =
+template `..^`*(a, b: untyped): untyped =
   ## a shortcut for '.. ^' to avoid the common gotcha that a space between
   ## '..' and '^' is required.
   a .. ^b
 
-template `..<`*(a, b: expr): expr =
+template `..<`*(a, b: untyped): untyped {.dirty.} =
   ## a shortcut for '.. <' to avoid the common gotcha that a space between
   ## '..' and '<' is required.
   a .. <b
+
+iterator `..<`*[S,T](a: S, b: T): T =
+  var i = T(a)
+  while i < b:
+    yield i
+    inc i
 
 proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
 proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
