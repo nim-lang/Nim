@@ -56,7 +56,8 @@ type
   TResKind = enum
     resNone,                  # not set
     resExpr,                  # is some complex expression
-    resVal                    # is a temporary/value/l-value
+    resVal,                   # is a temporary/value/l-value
+    resCallee                 # expression is callee
   TCompRes = object
     kind: TResKind
     typ: TJSTypeKind
@@ -1096,7 +1097,10 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       p.declareGlobal(s.id, r.res)
   of skProc, skConverter, skMethod:
     discard mangleName(s, p.target)
-    r.res = s.loc.r
+    if p.target == targetPHP and r.kind != resCallee:
+      r.res = makeJsString($s.loc.r)
+    else:
+      r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone or
        {sfImportc, sfInfixCall} * s.flags != {}:
       discard
@@ -1231,6 +1235,8 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
     r.typ = etyNone
   add(r.res, "." | "->")
   var op: TCompRes
+  if p.target == targetPHP:
+    op.kind = resCallee
   gen(p, n.sons[0], op)
   add(r.res, op.res)
   genArgs(p, n, r, 2)
@@ -1239,6 +1245,8 @@ proc genCall(p: PProc, n: PNode, r: var TCompRes) =
   if thisParam(p, n.sons[0].typ) != nil:
     genInfixCall(p, n, r)
     return
+  if p.target == targetPHP:
+    r.kind = resCallee
   gen(p, n.sons[0], r)
   genArgs(p, n, r)
 
@@ -1907,7 +1915,7 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
 
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyNone
-  r.kind = resNone
+  if r.kind != resCallee: r.kind = resNone
   #r.address = nil
   r.res = nil
   case n.kind
