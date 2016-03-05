@@ -3286,10 +3286,12 @@ proc `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
   x = x / y
 
 proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
-template `&=`*(x, y: typed) = add(x, y)
-template `&=`*(f: File, x: typed) = write(f, x)
+template `&=`*(x, y: typed) =
   ## generic 'sink' operator for Nim. For files an alias for ``write``.
   ## If not specialized further an alias for ``add``.
+  add(x, y)
+when declared(File):
+  template `&=`*(f: File, x: typed) = write(f, x)
 
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
