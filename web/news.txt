@@ -27,6 +27,8 @@ Library Additions
 
 - The rlocks module has been added providing reentrant lock synchronization
   primitive.
+- A generic "sink operator" written as ``&=`` has been added to the ``system`` and the ``net`` modules.
+
 
 Compiler Additions
 ------------------

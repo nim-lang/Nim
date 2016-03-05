@@ -895,6 +895,10 @@ proc send*(socket: Socket, data: string,
   if sent != data.len:
     raiseOSError(osLastError(), "Could not send all data.")
 
+template `&=`*(socket: Socket; data: typed) =
+  ## an alias for 'send'.
+  send(socket, data)
+
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
   ## Safe alternative to ``send``. Does not raise an EOS when an error occurs,
   ## and instead returns ``false`` on failure.
