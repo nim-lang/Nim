@@ -464,6 +464,14 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mSubU: binaryUintExpr(p, n, r, "-")
   of mMulU: binaryUintExpr(p, n, r, "*")
   of mDivU: binaryUintExpr(p, n, r, "/")
+  of mDivI:
+    if p.target == targetPHP:
+      var x, y: TCompRes
+      gen(p, n.sons[1], x)
+      gen(p, n.sons[2], y)
+      r.res = "intval($1 / $2)" % [x.rdLoc, y.rdLoc]
+    else:
+      arithAux(p, n, r, op, jsOps)
   of mShrI:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
