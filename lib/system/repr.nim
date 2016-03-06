@@ -260,6 +260,7 @@ when not defined(useNimRtl):
     of tyInt16: add result, $int(cast[ptr int16](p)[])
     of tyInt32: add result, $int(cast[ptr int32](p)[])
     of tyInt64: add result, $(cast[ptr int64](p)[])
+    of tyUInt: add result, $(cast[ptr uint](p)[])
     of tyUInt8: add result, $(cast[ptr uint8](p)[])
     of tyUInt16: add result, $(cast[ptr uint16](p)[])
     of tyUInt32: add result, $(cast[ptr uint32](p)[])
