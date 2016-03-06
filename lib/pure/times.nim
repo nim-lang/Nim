@@ -635,7 +635,7 @@ elif defined(JS):
 
   proc toSeconds(time: Time): float = result = time.getTime() / 1000
 
-  proc getTimezone(): int = result = newDate().getTimezoneOffset()
+  proc getTimezone(): int = result = newDate().getTimezoneOffset() * 60
 
   proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
 
@@ -1245,7 +1245,7 @@ proc getDayOfWeek*(day, month, year: int): WeekDay =
   result = (d-1).WeekDay
 
 proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
-  ## Returns the day of the week enum from day, month and year, according to the Julian calender.
+  ## Returns the day of the week enum from day, month and year, according to the Julian calendar.
   # Day & month start from one.
   let
     a = (14 - month) div 12

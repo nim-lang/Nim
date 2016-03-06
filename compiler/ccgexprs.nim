@@ -2111,8 +2111,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       initLocExpr(p, n.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
-    if p.module.compileToCpp: genTryCpp(p, n, d)
-    else: genTry(p, n, d)
+    if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions:
+      genTryCpp(p, n, d)
+    else:
+      genTry(p, n, d)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection:
     # we have to emit the type information for object types here to support

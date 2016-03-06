@@ -76,6 +76,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   # we read an 'int' but this may have been too large, so mask the other bits:
   let e = if typ.size == 1: e and 0xff
           elif typ.size == 2: e and 0xffff
+          elif typ.size == 4: e and 0xffffffff
           else: e
   # XXX we need a proper narrowing based on signedness here
   #e and ((1 shl (typ.size*8)) - 1)
@@ -259,6 +260,7 @@ when not defined(useNimRtl):
     of tyInt16: add result, $int(cast[ptr int16](p)[])
     of tyInt32: add result, $int(cast[ptr int32](p)[])
     of tyInt64: add result, $(cast[ptr int64](p)[])
+    of tyUInt: add result, $(cast[ptr uint](p)[])
     of tyUInt8: add result, $(cast[ptr uint8](p)[])
     of tyUInt16: add result, $(cast[ptr uint16](p)[])
     of tyUInt32: add result, $(cast[ptr uint32](p)[])

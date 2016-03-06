@@ -1,7 +1,7 @@
 # bug #2257
 import threadpool
 
-type StringChannel = TChannel[string]
+type StringChannel = Channel[string]
 var channels: array[1..3, StringChannel]
 
 type

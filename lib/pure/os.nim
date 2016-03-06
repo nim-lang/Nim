@@ -671,7 +671,7 @@ when defined(windows):
 
 else:
   const
-    useNSGetEnviron = defined(macosx)
+    useNSGetEnviron = defined(macosx) and not defined(ios)
 
   when useNSGetEnviron:
     # From the manual:

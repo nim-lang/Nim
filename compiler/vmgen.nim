@@ -108,8 +108,8 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
 proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
   # Takes the `b` register and the immediate `imm`, appies the operation `opc`,
   # and stores the output value into `a`.
-  # `imm` is signed and must be within [-127, 128]
-  if imm >= -127 and imm <= 128:
+  # `imm` is signed and must be within [-128, 127]
+  if imm >= -128 and imm <= 127:
     let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
                              (b.uint32 shl 16'u32) or
                              (imm+byteExcess).uint32 shl 24'u32).TInstr
@@ -121,8 +121,8 @@ proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
 
 proc gABx(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0; bx: int) =
   # Applies `opc` to `bx` and stores it into register `a`
-  # `bx` must be signed and in the range [-32767, 32768]
-  if bx >= -32767 and bx <= 32768:
+  # `bx` must be signed and in the range [-32768, 32767]
+  if bx >= -32768 and bx <= 32767:
     let ins = (opc.uint32 or a.uint32 shl 8'u32 or
               (bx+wordExcess).uint32 shl 16'u32).TInstr
     c.code.add(ins)

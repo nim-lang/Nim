@@ -1590,12 +1590,13 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   for i in 1.. <sym.typ.len:
     tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
 
-  if sfImmediate notin sym.flags:
-    let gp = sym.ast[genericParamsPos]
-    for i in 0 .. <gp.len:
+  let gp = sym.ast[genericParamsPos]
+  for i in 0 .. <gp.len:
+    if sfImmediate notin sym.flags:
       let idx = sym.typ.len + i
       tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
-
+    elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
+      globalError(n.info, "static[T] or typedesc nor supported for .immediate macros")
   # temporary storage:
   #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode

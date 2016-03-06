@@ -223,7 +223,7 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
     test "tests/" & testfile & ".nim"
 
-  for testfile in ["pure/strutils"]:
+  for testfile in ["pure/strutils", "pure/json"]:
     test "lib/" & testfile & ".nim"
 
 # ------------------------- manyloc -------------------------------------------

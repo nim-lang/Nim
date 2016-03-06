@@ -23,14 +23,20 @@ proc c_strlen(a: cstring): int {.header: "<string.h>",
 proc c_memset(p: pointer, value: cint, size: int) {.
   header: "<string.h>", importc: "memset".}
 
-type
-  C_TextFile {.importc: "FILE", header: "<stdio.h>",
-               final, incompleteStruct.} = object
-  C_BinaryFile {.importc: "FILE", header: "<stdio.h>",
+when not declared(File):
+  type
+    C_TextFile {.importc: "FILE", header: "<stdio.h>",
                  final, incompleteStruct.} = object
-  C_TextFileStar = ptr C_TextFile
-  C_BinaryFileStar = ptr C_BinaryFile
+    C_BinaryFile {.importc: "FILE", header: "<stdio.h>",
+                   final, incompleteStruct.} = object
+    C_TextFileStar = ptr C_TextFile
+    C_BinaryFileStar = ptr C_BinaryFile
+else:
+  type
+    C_TextFileStar = File
+    C_BinaryFileStar = File
 
+type
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
 when not defined(vm):
@@ -97,9 +103,9 @@ else:
   proc c_setjmp(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "setjmp".}
 
-proc c_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.
+proc c_signal(sign: cint, handler: proc (a: cint) {.noconv.}) {.
   importc: "signal", header: "<signal.h>".}
-proc c_raise(sig: cint) {.importc: "raise", header: "<signal.h>".}
+proc c_raise(sign: cint) {.importc: "raise", header: "<signal.h>".}
 
 proc c_fputs(c: cstring, f: C_TextFileStar) {.importc: "fputs",
   header: "<stdio.h>".}

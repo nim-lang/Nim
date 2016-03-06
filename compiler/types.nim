@@ -412,7 +412,6 @@ const
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
 
 proc addTypeFlags(name: var string, typ: PType) {.inline.} =
-  if tfShared in typ.flags: name = "shared " & name
   if tfNotNil in typ.flags: name.add(" not nil")
 
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =

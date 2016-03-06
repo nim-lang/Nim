@@ -5,8 +5,8 @@ discard """
 
 import typetraits
 
-proc plus(a, b): auto = a + b
-proc makePair(a, b): auto = (first: a, second: b)
+proc plus(a, b: auto): auto = a + b
+proc makePair(a, b: auto): auto = (first: a, second: b)
 
 proc `+`(a, b: string): seq[string] = @[a, b]
 
@@ -19,7 +19,7 @@ static: assert p[0].type is string
 echo i.type.name
 echo s.type.name
 
-proc inst(a): auto =
+proc inst(a: auto): auto =
   static: echo "instantiated for ", a.type.name
   result = a
 

@@ -14,6 +14,9 @@
 
 import dynlib
 
+when defined(vcc):
+  {.passC: "-DWIN32_LEAN_AND_MEAN".}
+
 const
   useWinUnicode* = not defined(useWinAnsi)
 

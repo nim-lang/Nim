@@ -263,9 +263,7 @@ proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
-      $result = array();
-      for($i = 0; $i < `len`; $i++) $result[] = chr(0);
-      return $result;
+      return str_repeat(chr(0),`len`);
     """
   else:
     asm """
@@ -273,6 +271,12 @@ proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
       result[0] = 0;
       result[`len`] = 0;
       return result;
+    """
+
+when defined(nimphp):
+  proc nimAt(x: string; i: int): string {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `x`[`i`];
     """
 
 when defined(nimphp):

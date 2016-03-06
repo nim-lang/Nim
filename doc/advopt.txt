@@ -69,6 +69,7 @@ Advanced options:
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
+  --noCppExceptions         use default exception handling with C++ backend
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;

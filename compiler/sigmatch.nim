@@ -37,6 +37,7 @@ type
                              # is this a top-level symbol or a nested proc?
     call*: PNode             # modified call
     bindings*: TIdTable      # maps types to types
+    magic*: TMagic           # magic of operation
     baseTypeMatch: bool      # needed for conversions from T to openarray[T]
                              # for example
     fauxMatch*: TTypeKind    # the match was successful only due to the use
@@ -114,6 +115,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
       c.calleeScope = 1
   else:
     c.calleeScope = calleeScope
+  c.magic = c.calleeSym.magic
   initIdTable(c.bindings)
   c.errors = nil
   if binding != nil and callee.kind in routineKinds:
@@ -1299,11 +1301,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         arg.typ.n = evaluated
         argType = arg.typ
 
-  var
-    a = if c.inTypeClass > 0: argType.skipTypes({tyTypeDesc, tyFieldAccessor})
-        else: argType
-
-    r = typeRel(m, f, a)
+  var a = argType
+  var r = typeRel(m, f, a)
 
   if r != isNone and m.calleeSym != nil and
      m.calleeSym.kind in {skMacro, skTemplate}:
@@ -1590,8 +1589,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
       if containsOrIncl(marker, formal.position):
-        # already in namedParams:
-        localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+        # already in namedParams, so no match
+        # we used to produce 'errCannotBindXTwice' here but see
+        # bug #3836 of why that is not sound (other overload with
+        # different parameter names could match later on):
+        when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
         m.state = csNoMatch
         return
       m.baseTypeMatch = false
@@ -1648,8 +1650,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           return
         formal = m.callee.n.sons[f].sym
         if containsOrIncl(marker, formal.position) and container.isNil:
-          # already in namedParams:
-          localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
+          # already in namedParams: (see above remark)
+          when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
           return
         m.baseTypeMatch = false
@@ -1691,7 +1693,7 @@ proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   matchesAux(c, n, nOrig, m, marker)
 
 proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
-  if m.calleeSym != nil and m.calleeSym.magic in {mArrGet, mArrPut}:
+  if m.magic in {mArrGet, mArrPut}:
     m.state = csMatch
     m.call = n
     return

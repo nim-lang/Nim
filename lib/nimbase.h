@@ -25,6 +25,7 @@ __clang__
 
 /* ------------ ignore typical warnings in Nim-generated files ------------- */
 #if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wpragmas"
 #  pragma GCC diagnostic ignored "-Wwritable-strings"
 #  pragma GCC diagnostic ignored "-Winvalid-noreturn"
 #  pragma GCC diagnostic ignored "-Wformat"
@@ -90,10 +91,25 @@ __clang__
 #  define NIM_CONST  const
 #endif
 
-#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-#  define NIM_THREADVAR __declspec(thread)
-#else
+/*
+  NIM_THREADVAR declaration based on
+  http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
+*/
+#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#  define NIM_THREADVAR _Thread_local
+#elif defined _WIN32 && ( \
+       defined _MSC_VER || \
+       defined __ICL || \
+       defined __DMC__ || \
+       defined __BORLANDC__ )
+#  define NIM_THREADVAR __declspec(thread) 
+/* note that ICC (linux) and Clang are covered by __GNUC__ */
+#elif defined __GNUC__ || \
+       defined __SUNPRO_C || \
+       defined __xlC__
 #  define NIM_THREADVAR __thread
+#else
+#  error "Cannot define NIM_THREADVAR"
 #endif
 
 /* --------------- how int64 constants should be declared: ----------- */
