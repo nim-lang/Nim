@@ -1963,6 +1963,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genInfixCall(p, n, r)
     else:
       genCall(p, n, r)
+  of nkClosure: gen(p, n[0], r)
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
   of nkPar: genTupleConstr(p, n, r)
