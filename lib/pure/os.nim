@@ -1374,7 +1374,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     if result.len > 0:
       result = result.expandFilename
   else:
-    when defined(linux) or defined(aix):
+    when defined(linux) or defined(aix) or defined(netbsd):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
