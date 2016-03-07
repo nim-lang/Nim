@@ -1350,15 +1350,12 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
   ## This procedure will resolve symlinks.
-  ##
-  ## **Note**: This does not work reliably on BSD.
 
   # Linux: /proc/<pid>/exe
   # Solaris:
   # /proc/<pid>/object/a.out (filename only)
   # /proc/<pid>/path/a.out (complete pathname)
-  # *BSD (and maybe Darwin too):
-  # /proc/<pid>/file
+  # FreeBSD: /proc/<pid>/file
   when defined(windows):
     when useWinUnicode:
       var buf = newWideCString("", 256)
@@ -1368,15 +1365,6 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = newString(256)
       var len = getModuleFileNameA(0, result, 256)
       setlen(result, int(len))
-  elif defined(linux) or defined(aix):
-    result = getApplAux("/proc/self/exe")
-    if result.len == 0: result = getApplHeuristic()
-  elif defined(solaris):
-    result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    if result.len == 0: result = getApplHeuristic()
-  elif defined(freebsd):
-    result = getApplAux("/proc/" & $getpid() & "/file")
-    if result.len == 0: result = getApplHeuristic()
   elif defined(macosx):
     var size: cuint32
     getExecPath1(nil, size)
@@ -1386,9 +1374,15 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     if result.len > 0:
       result = result.expandFilename
   else:
+    when defined(linux) or defined(aix):
+      result = getApplAux("/proc/self/exe")
+    elif defined(solaris):
+      result = getApplAux("/proc/" & $getpid() & "/path/a.out")
+    elif defined(freebsd):
+      result = getApplAux("/proc/" & $getpid() & "/file")
     # little heuristic that may work on other POSIX-like systems:
-    result = string(getEnv("_"))
-    if result.len == 0: result = getApplHeuristic()
+    if result.len == 0:
+      result = getApplHeuristic()
 
 proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Returns the filename of the application's executable.
@@ -1404,7 +1398,6 @@ proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the directory of the application's executable.
-  ## **Note**: This does not work reliably on BSD.
   result = splitFile(getAppFilename()).dir
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
