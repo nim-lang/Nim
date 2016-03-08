@@ -472,6 +472,14 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       r.res = "intval($1 / $2)" % [x.rdLoc, y.rdLoc]
     else:
       arithAux(p, n, r, op, jsOps)
+  of mModI:
+    if p.target == targetPHP:
+      var x, y: TCompRes
+      gen(p, n.sons[1], x)
+      gen(p, n.sons[2], y)
+      r.res = "($1 % $2)" % [x.rdLoc, y.rdLoc]
+    else:
+      arithAux(p, n, r, op, jsOps)
   of mShrI:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
