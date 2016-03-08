@@ -508,13 +508,39 @@ template foldl*(sequence, operation: expr): expr =
   ##   assert subtraction == -15, "Subtraction is (((5)-9)-11)"
   ##   assert multiplication == 495, "Multiplication is (((5)*9)*11)"
   ##   assert concatenation == "nimiscool"
-  assert sequence.len > 0, "Can't fold empty sequences"
-  var result {.gensym.}: type(sequence[0])
-  result = sequence[0]
-  for i in 1..<sequence.len:
+  let s = sequence
+  assert s.len > 0, "Can't fold empty sequences"
+  var result {.gensym.}: type(s[0])
+  result = s[0]
+  for i in 1..<s.len:
     let
       a {.inject.} = result
-      b {.inject.} = sequence[i]
+      b {.inject.} = s[i]
+    result = operation
+  result
+
+template foldl*(sequence, operation: expr, first): expr =
+  ## Template to fold a sequence from left to right, returning the accumulation.
+  ##
+  ## This version of ``foldl`` gets a starting parameter. This makes it possible
+  ## to accumulate the sequence into a different type than the sequence elements.
+  ##
+  ## The ``operation`` parameter should be an expression which uses the variables
+  ## ``a`` and ``b`` for each step of the fold. The ``first`` parameter is the
+  ## start value (the first ``a``) and therefor defines the type of the result.
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let
+  ##     numbers = @[0, 8, 1, 5]
+  ##     digits = foldl(numbers, a & (chr(b + ord('0'))), "")
+  ##   assert digits == "0815"
+  var result {.gensym.}: type(first)
+  result = first
+  for x in items(sequence):
+    let
+      a {.inject.} = result
+      b {.inject.} = x
     result = operation
   result
 
@@ -544,12 +570,13 @@ template foldr*(sequence, operation: expr): expr =
   ##   assert subtraction == 7, "Subtraction is (5-(9-(11)))"
   ##   assert multiplication == 495, "Multiplication is (5*(9*(11)))"
   ##   assert concatenation == "nimiscool"
-  assert sequence.len > 0, "Can't fold empty sequences"
-  var result {.gensym.}: type(sequence[0])
-  result = sequence[sequence.len - 1]
-  for i in countdown(sequence.len - 2, 0):
+  let s = sequence
+  assert s.len > 0, "Can't fold empty sequences"
+  var result {.gensym.}: type(s[0])
+  result = sequence[s.len - 1]
+  for i in countdown(s.len - 2, 0):
     let
-      a {.inject.} = sequence[i]
+      a {.inject.} = s[i]
       b {.inject.} = result
     result = operation
   result
