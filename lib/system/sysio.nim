@@ -82,12 +82,11 @@ when NoFakeVars:
     const
       IOFBF = cint(0)
       IONBF = cint(4)
-  elif defined(macosx) or defined(linux):
+  else:
+    # On all systems I could find, including Linux, Mac OS X, and the BSDs
     const
       IOFBF = cint(0)
       IONBF = cint(2)
-  else:
-    {.error: "IOFBF not ported to your platform".}
 else:
   var
     IOFBF {.importc: "_IOFBF", nodecl.}: cint
