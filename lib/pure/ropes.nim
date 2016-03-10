@@ -134,11 +134,16 @@ proc rope*(s: string): Rope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope.
   if s.len == 0:
     result = nil
-  elif cacheEnabled:
-    result = insertInCache(s, cache)
-    cache = result
   else:
-    result = newRope(s)
+    when nimvm:
+      # No caching in VM context
+      result = newRope(s)
+    else:
+      if cacheEnabled:
+        result = insertInCache(s, cache)
+        cache = result
+      else:
+        result = newRope(s)
 
 proc rope*(i: BiggestInt): Rope {.rtl, extern: "nro$1BiggestInt".} =
   ## Converts an int to a rope.
