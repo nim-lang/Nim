@@ -783,10 +783,17 @@ proc generateHeader(p: PProc, typ: PType): Rope =
         add(result, name)
         add(result, "_Idx")
     elif not (i == 1 and param.name.s == "this"):
-      if param.typ.skipTypes({tyGenericInst}).kind == tyVar:
+      let k = param.typ.skipTypes({tyGenericInst}).kind
+      if k in { tyVar, tyRef, tyPtr, tyPointer }:
         add(result, "&")
       add(result, "$")
       add(result, name)
+      # XXX I think something like this is needed for PHP to really support
+      # ptr "inside" strings and seq
+      #if mapType(param.typ) == etyBaseIndex:
+      #  add(result, ", $")
+      #  add(result, name)
+      #  add(result, "_Idx")
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
@@ -969,10 +976,12 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
     if n.sons[0].kind in nkCallKinds+{nkStrLit..nkTripleStrLit}:
       useMagic(p, "nimAt")
       if ty.kind in {tyString, tyCString}:
+        # XXX this needs to be more like substr($1,$2)
         r.res = "ord(nimAt($1, $2))" % [r.address, r.res]
       else:
         r.res = "nimAt($1, $2)" % [r.address, r.res]
     elif ty.kind in {tyString, tyCString}:
+      # XXX this needs to be more like substr($1,$2)
       r.res = "ord($1[$2])" % [r.address, r.res]
     else:
       r.res = "$1[$2]" % [r.address, r.res]
