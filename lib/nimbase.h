@@ -108,6 +108,8 @@ __clang__
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
+#elif defined __TINYC__
+#  defined NIM_THREADVAR
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif
