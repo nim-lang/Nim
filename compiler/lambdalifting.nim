@@ -772,7 +772,8 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
   # However we can do lifting for the stuff which is *only* compiletime.
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
 
-  if body.kind == nkEmpty or (gCmd == cmdCompileToJS and not isCompileTime) or
+  if body.kind == nkEmpty or (
+      gCmd in {cmdCompileToPHP, cmdCompileToJS} and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body

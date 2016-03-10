@@ -67,7 +67,7 @@ proc parseLine(p: var TTmplParser) =
     keyw: string
   j = 0
   while p.x[j] == ' ': inc(j)
-  if p.x[0] == p.nimDirective and p.x[1] in {'?', '!'}:
+  if p.x[0] == p.nimDirective and p.x[1] == '?':
     newLine(p)
   elif p.x[j] == p.nimDirective:
     newLine(p)
@@ -213,6 +213,9 @@ proc filterTmpl(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   p.conc = strArg(call, "conc", 4, " & ")
   p.toStr = strArg(call, "tostring", 5, "$")
   p.x = newStringOfCap(120)
+  # do not process the first line which contains the directive:
+  if llStreamReadLine(p.inp, p.x):
+    p.info.line = p.info.line + int16(1)
   while llStreamReadLine(p.inp, p.x):
     p.info.line = p.info.line + int16(1)
     parseLine(p)

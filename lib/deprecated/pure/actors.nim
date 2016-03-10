@@ -40,7 +40,7 @@ type
 
   Actor[In, Out] = object{.pure, final.}
     i: Channel[Task[In, Out]]
-    t: TThread[ptr Actor[In, Out]]
+    t: Thread[ptr Actor[In, Out]]
 
   PActor*[In, Out] = ptr Actor[In, Out] ## an actor
 {.deprecated: [TTask: Task, TActor: Actor].}

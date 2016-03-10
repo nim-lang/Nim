@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Low level system locks and condition vars.
+# Low level system locks and condition vars.
 
 when defined(Windows):
   type
@@ -74,12 +74,27 @@ when defined(Windows):
 else:
   type
     SysLock {.importc: "pthread_mutex_t", pure, final,
-               header: "<sys/types.h>".} = object
+               header: """#include <sys/types.h>
+                          #include <pthread.h>""".} = object
+    SysLockAttr {.importc: "pthread_mutexattr_t", pure, final
+               header: """#include <sys/types.h>
+                          #include <pthread.h>""".} = object
     SysCond {.importc: "pthread_cond_t", pure, final,
-               header: "<sys/types.h>".} = object
+               header: """#include <sys/types.h>
+                          #include <pthread.h>""".} = object
+    SysLockType = distinct cint
 
-  proc initSysLock(L: var SysLock, attr: pointer = nil) {.
+  proc SysLockType_Reentrant: SysLockType =
+    {.emit: "`result` = PTHREAD_MUTEX_RECURSIVE;".}
+
+  proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
+
+  proc initSysLockAttr(a: var SysLockAttr) {.
+    importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
+
+  proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
+    importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
 
   proc acquireSys(L: var SysLock) {.noSideEffect,
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
@@ -103,4 +118,3 @@ else:
 
   proc deinitSysCond(cond: var SysCond) {.noSideEffect,
     importc: "pthread_cond_destroy", header: "<pthread.h>".}
-

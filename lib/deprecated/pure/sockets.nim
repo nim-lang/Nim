@@ -39,7 +39,6 @@ when hostOS == "solaris":
 
 import os, parseutils
 from times import epochTime
-import unsigned
 
 when defined(ssl):
   import openssl

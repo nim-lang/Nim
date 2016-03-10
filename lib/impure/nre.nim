@@ -1,6 +1,6 @@
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2015 Nim Contributers
+#        (c) Copyright 2015 Nim Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,7 +10,6 @@
 from pcre import nil
 import nre.private.util
 import tables
-import unsigned
 from strutils import toLower, `%`
 from math import ceil
 import options
@@ -509,7 +508,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   ## Variants:
   ##
   ## -  ``proc findAll(...)`` returns a ``seq[string]``
-  # see pcredemo for explaination
+  # see pcredemo for explanation
   let matchesCrLf = pattern.matchesCrLf()
   let unicode = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS) and
     pcre.UTF8) > 0u32

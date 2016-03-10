@@ -78,19 +78,29 @@ iterator items(stack: ptr GcStack): ptr GcStack =
     yield s
     s = s.next
 
-var
-  localGcInitialized {.rtlThreadVar.}: bool
+# There will be problems with GC in foreign threads if `threads` option is off or TLS emulation is enabled
+const allowForeignThreadGc = compileOption("threads") and not compileOption("tlsEmulation")
 
-proc setupForeignThreadGc*() =
-  ## call this if you registered a callback that will be run from a thread not
-  ## under your control. This has a cheap thread-local guard, so the GC for
-  ## this thread will only be initialized once per thread, no matter how often
-  ## it is called.
-  if not localGcInitialized:
-    localGcInitialized = true
-    var stackTop {.volatile.}: pointer
-    setStackBottom(addr(stackTop))
-    initGC()
+when allowForeignThreadGc:
+  var
+    localGcInitialized {.rtlThreadVar.}: bool
+
+  proc setupForeignThreadGc*() =
+    ## Call this if you registered a callback that will be run from a thread not
+    ## under your control. This has a cheap thread-local guard, so the GC for
+    ## this thread will only be initialized once per thread, no matter how often
+    ## it is called.
+    ##
+    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## switches are used
+    if not localGcInitialized:
+      localGcInitialized = true
+      var stackTop {.volatile.}: pointer
+      setStackBottom(addr(stackTop))
+      initGC()
+else:
+  template setupForeignThreadGc*(): stmt =
+    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel

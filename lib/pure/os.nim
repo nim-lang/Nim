@@ -671,7 +671,7 @@ when defined(windows):
 
 else:
   const
-    useNSGetEnviron = defined(macosx)
+    useNSGetEnviron = defined(macosx) and not defined(ios)
 
   when useNSGetEnviron:
     # From the manual:
@@ -774,6 +774,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
       res: int
     res = findFirstFile(pattern, f)
     if res != -1:
+      defer: findClose(res)
       while true:
         if not skipFindData(f) and
             (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) == 0'i32:
@@ -786,7 +787,6 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
               pattern[dotPos+1] == '*':
             yield splitFile(pattern).dir / extractFilename(ff)
         if findNextFile(res, f) == 0'i32: break
-      findClose(res)
   else: # here we use glob
     var
       f: Glob
@@ -795,11 +795,11 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
     f.gl_pathc = 0
     f.gl_pathv = nil
     res = glob(pattern, 0, nil, addr(f))
+    defer: globfree(addr(f))
     if res == 0:
       for i in 0.. f.gl_pathc - 1:
         assert(f.gl_pathv[i] != nil)
         yield $f.gl_pathv[i]
-    globfree(addr(f))
 
 type
   PathComponent* = enum   ## Enumeration specifying a path component.
@@ -845,6 +845,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
       var f: WIN32_FIND_DATA
       var h = findFirstFile(dir / "*", f)
       if h != -1:
+        defer: findClose(h)
         while true:
           var k = pcFile
           if not skipFindData(f):
@@ -856,10 +857,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
                      else: dir / extractFilename(getFilename(f))
             yield (k, xx)
           if findNextFile(h, f) == 0'i32: break
-        findClose(h)
     else:
       var d = opendir(dir)
       if d != nil:
+        defer: discard closedir(d)
         while true:
           var x = readdir(d)
           if x == nil: break
@@ -883,7 +884,6 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             if S_ISDIR(s.st_mode): k = pcDir
             if S_ISLNK(s.st_mode): k = succ(k)
             yield (k, y)
-        discard closedir(d)
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [ReadDirEffect].} =
@@ -1350,15 +1350,12 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
   ## This procedure will resolve symlinks.
-  ##
-  ## **Note**: This does not work reliably on BSD.
 
   # Linux: /proc/<pid>/exe
   # Solaris:
   # /proc/<pid>/object/a.out (filename only)
   # /proc/<pid>/path/a.out (complete pathname)
-  # *BSD (and maybe Darwin too):
-  # /proc/<pid>/file
+  # FreeBSD: /proc/<pid>/file
   when defined(windows):
     when useWinUnicode:
       var buf = newWideCString("", 256)
@@ -1368,15 +1365,6 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = newString(256)
       var len = getModuleFileNameA(0, result, 256)
       setlen(result, int(len))
-  elif defined(linux) or defined(aix):
-    result = getApplAux("/proc/self/exe")
-    if result.len == 0: result = getApplHeuristic()
-  elif defined(solaris):
-    result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    if result.len == 0: result = getApplHeuristic()
-  elif defined(freebsd):
-    result = getApplAux("/proc/" & $getpid() & "/file")
-    if result.len == 0: result = getApplHeuristic()
   elif defined(macosx):
     var size: cuint32
     getExecPath1(nil, size)
@@ -1386,9 +1374,15 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     if result.len > 0:
       result = result.expandFilename
   else:
+    when defined(linux) or defined(aix) or defined(netbsd):
+      result = getApplAux("/proc/self/exe")
+    elif defined(solaris):
+      result = getApplAux("/proc/" & $getpid() & "/path/a.out")
+    elif defined(freebsd):
+      result = getApplAux("/proc/" & $getpid() & "/file")
     # little heuristic that may work on other POSIX-like systems:
-    result = string(getEnv("_"))
-    if result.len == 0: result = getApplHeuristic()
+    if result.len == 0:
+      result = getApplHeuristic()
 
 proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Returns the filename of the application's executable.
@@ -1404,7 +1398,6 @@ proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the directory of the application's executable.
-  ## **Note**: This does not work reliably on BSD.
   result = splitFile(getAppFilename()).dir
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =

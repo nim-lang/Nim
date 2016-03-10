@@ -46,7 +46,7 @@ const
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
-    wInjectStmt, wDeprecated, wExperimental}
+    wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
@@ -55,7 +55,7 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims}
+    wBorrow, wGcSafe, wExportNims, wPartial}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
@@ -443,6 +443,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(sub))
         if e != nil:
           if e.kind == skStub: loadStub(e)
+          incl(e.flags, sfUsed)
           addSon(result, newSymNode(e))
         else:
           addSon(result, newStrNode(nkStrLit, sub))
@@ -834,6 +835,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym.kind != skType or sym.typ == nil: invalidPragma(it)
         else: incl(sym.typ.flags, tfByCopy)
+      of wPartial:
+        noVal(it)
+        if sym.kind != skType or sym.typ == nil: invalidPragma(it)
+        else:
+          incl(sym.typ.flags, tfPartial)
+          # .partial types can only work with dead code elimination
+          # to prevent the codegen from doing anything before we compiled
+          # the whole program:
+          incl gGlobalOptions, optDeadCodeElim
       of wInject, wGensym:
         # We check for errors, but do nothing with these pragmas otherwise
         # as they are handled directly in 'evalTemplate'.
@@ -874,6 +884,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           c.module.flags.incl sfExperimental
         else:
           localError(it.info, "'experimental' pragma only valid as toplevel statement")
+      of wThis:
+        if it.kind == nkExprColonExpr:
+          c.selfName = considerQuotedIdent(it[1])
+        else:
+          c.selfName = getIdent("self")
       of wNoRewrite:
         noVal(it)
       of wBase:

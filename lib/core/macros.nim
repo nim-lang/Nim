@@ -71,7 +71,12 @@ type
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
-    nnkReturnToken
+    nnkReturnToken,
+    nnkClosure,
+    nnkGotoState,
+    nnkState,
+    nnkBreakState
+
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty,
@@ -601,7 +606,7 @@ proc last*(node: NimNode): NimNode {.compileTime.} = node[<node.len]
 
 
 const
-  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef}
+  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}

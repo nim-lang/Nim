@@ -102,8 +102,7 @@ type
                                       ## case of IPv4
 {.deprecated: [TIpAddress: IpAddress].}
 
-proc isIpAddress*(address_str: string): bool {.tags: [].}
-proc parseIpAddress*(address_str: string): IpAddress
+
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode): void
 
@@ -548,40 +547,6 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-proc connect*(socket: Socket, address: string,
-    port = Port(0)) {.tags: [ReadIOEffect].} =
-  ## Connects socket to ``address``:``port``. ``Address`` can be an IP address or a
-  ## host name. If ``address`` is a host name, this function will try each IP
-  ## of that host name. ``htons`` is already performed on ``port`` so you must
-  ## not do it.
-  ##
-  ## If ``socket`` is an SSL socket a handshake will be automatically performed.
-  var aiList = getAddrInfo(address, port, socket.domain)
-  # try all possibilities:
-  var success = false
-  var lastError: OSErrorCode
-  var it = aiList
-  while it != nil:
-    if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
-      success = true
-      break
-    else: lastError = osLastError()
-    it = it.ai_next
-
-  dealloc(aiList)
-  if not success: raiseOSError(lastError)
-
-  when defined(ssl):
-    if socket.isSSL:
-      # RFC3546 for SNI specifies that IP addresses are not allowed.
-      if not isIpAddress(address):
-        # Discard result in case OpenSSL version doesn't support SNI, or we're
-        # not using TLSv1+
-        discard SSL_set_tlsext_host_name(socket.sslHandle, address)
-
-      let ret = SSLConnect(socket.sslHandle)
-      socketError(socket, ret)
-
 when defined(ssl):
   proc handshake*(socket: Socket): bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## This proc needs to be called on a socket after it connects. This is
@@ -651,7 +616,7 @@ proc readIntoBuf(socket: Socket, flags: int32): int =
   else:
     result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
   if result < 0:
-    # Save it in case it gets reset (the Nim codegen occassionally may call
+    # Save it in case it gets reset (the Nim codegen occasionally may call
     # Win API functions which reset it).
     socket.lastError = osLastError()
   if result <= 0:
@@ -829,7 +794,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
   template addNLIfEmpty(): stmt =
     if line.len == 0:
-      line.add("\c\L")
+      line.string.add("\c\L")
 
   template raiseSockError(): stmt {.dirty, immediate.} =
     let lastError = getSocketError(socket)
@@ -930,6 +895,10 @@ proc send*(socket: Socket, data: string,
   if sent != data.len:
     raiseOSError(osLastError(), "Could not send all data.")
 
+template `&=`*(socket: Socket; data: typed) =
+  ## an alias for 'send'.
+  send(socket, data)
+
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
   ## Safe alternative to ``send``. Does not raise an EOS when an error occurs,
   ## and instead returns ``false`` on failure.
@@ -971,61 +940,6 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   ## This is the high-level version of the above ``sendTo`` function.
   result = socket.sendTo(address, port, cstring(data), data.len)
 
-proc connectAsync(socket: Socket, name: string, port = Port(0),
-                  af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
-  ## A variant of ``connect`` for non-blocking sockets.
-  ##
-  ## This procedure will immediately return, it will not block until a connection
-  ## is made. It is up to the caller to make sure the connection has been established
-  ## by checking (using ``select``) whether the socket is writeable.
-  ##
-  ## **Note**: For SSL sockets, the ``handshake`` procedure must be called
-  ## whenever the socket successfully connects to a server.
-  var aiList = getAddrInfo(name, port, af)
-  # try all possibilities:
-  var success = false
-  var lastError: OSErrorCode
-  var it = aiList
-  while it != nil:
-    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
-    if ret == 0'i32:
-      success = true
-      break
-    else:
-      lastError = osLastError()
-      when useWinVersion:
-        # Windows EINTR doesn't behave same as POSIX.
-        if lastError.int32 == WSAEWOULDBLOCK:
-          success = true
-          break
-      else:
-        if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
-          success = true
-          break
-
-    it = it.ai_next
-
-  dealloc(aiList)
-  if not success: raiseOSError(lastError)
-
-proc connect*(socket: Socket, address: string, port = Port(0),
-    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Connects to server as specified by ``address`` on port specified by ``port``.
-  ##
-  ## The ``timeout`` paremeter specifies the time in milliseconds to allow for
-  ## the connection to the server to be made.
-  socket.fd.setBlocking(false)
-
-  socket.connectAsync(address, port, socket.domain)
-  var s = @[socket.fd]
-  if selectWrite(s, timeout) != 1:
-    raise newException(TimeoutError, "Call to 'connect' timed out.")
-  else:
-    when defined(ssl):
-      if socket.isSSL:
-        socket.fd.setBlocking(true)
-        doAssert socket.handshake()
-  socket.fd.setBlocking(true)
 
 proc isSsl*(socket: Socket): bool =
   ## Determines whether ``socket`` is a SSL socket.
@@ -1295,7 +1209,8 @@ proc parseIPv6Address(address_str: string): IpAddress =
     raise newException(ValueError,
       "Invalid IP Address. The address consists of too many groups")
 
-proc parseIpAddress(address_str: string): IpAddress =
+
+proc parseIpAddress*(address_str: string): IpAddress =
   ## Parses an IP address
   ## Raises EInvalidValue on error
   if address_str == nil:
@@ -1305,8 +1220,7 @@ proc parseIpAddress(address_str: string): IpAddress =
   else:
     return parseIPv4Address(address_str)
 
-
-proc isIpAddress(address_str: string): bool =
+proc isIpAddress*(address_str: string): bool {.tags: [].} =
   ## Checks if a string is an IP address
   ## Returns true if it is, false otherwise
   try:
@@ -1314,3 +1228,94 @@ proc isIpAddress(address_str: string): bool =
   except ValueError:
     return false
   return true
+
+
+proc connect*(socket: Socket, address: string,
+    port = Port(0)) {.tags: [ReadIOEffect].} =
+  ## Connects socket to ``address``:``port``. ``Address`` can be an IP address or a
+  ## host name. If ``address`` is a host name, this function will try each IP
+  ## of that host name. ``htons`` is already performed on ``port`` so you must
+  ## not do it.
+  ##
+  ## If ``socket`` is an SSL socket a handshake will be automatically performed.
+  var aiList = getAddrInfo(address, port, socket.domain)
+  # try all possibilities:
+  var success = false
+  var lastError: OSErrorCode
+  var it = aiList
+  while it != nil:
+    if connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
+      success = true
+      break
+    else: lastError = osLastError()
+    it = it.ai_next
+
+  dealloc(aiList)
+  if not success: raiseOSError(lastError)
+
+  when defined(ssl):
+    if socket.isSSL:
+      # RFC3546 for SNI specifies that IP addresses are not allowed.
+      if not isIpAddress(address):
+        # Discard result in case OpenSSL version doesn't support SNI, or we're
+        # not using TLSv1+
+        discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
+      let ret = SSLConnect(socket.sslHandle)
+      socketError(socket, ret)
+
+proc connectAsync(socket: Socket, name: string, port = Port(0),
+                  af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
+  ## A variant of ``connect`` for non-blocking sockets.
+  ##
+  ## This procedure will immediately return, it will not block until a connection
+  ## is made. It is up to the caller to make sure the connection has been established
+  ## by checking (using ``select``) whether the socket is writeable.
+  ##
+  ## **Note**: For SSL sockets, the ``handshake`` procedure must be called
+  ## whenever the socket successfully connects to a server.
+  var aiList = getAddrInfo(name, port, af)
+  # try all possibilities:
+  var success = false
+  var lastError: OSErrorCode
+  var it = aiList
+  while it != nil:
+    var ret = connect(socket.fd, it.ai_addr, it.ai_addrlen.SockLen)
+    if ret == 0'i32:
+      success = true
+      break
+    else:
+      lastError = osLastError()
+      when useWinVersion:
+        # Windows EINTR doesn't behave same as POSIX.
+        if lastError.int32 == WSAEWOULDBLOCK:
+          success = true
+          break
+      else:
+        if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
+          success = true
+          break
+
+    it = it.ai_next
+
+  dealloc(aiList)
+  if not success: raiseOSError(lastError)
+
+proc connect*(socket: Socket, address: string, port = Port(0),
+    timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Connects to server as specified by ``address`` on port specified by ``port``.
+  ##
+  ## The ``timeout`` paremeter specifies the time in milliseconds to allow for
+  ## the connection to the server to be made.
+  socket.fd.setBlocking(false)
+
+  socket.connectAsync(address, port, socket.domain)
+  var s = @[socket.fd]
+  if selectWrite(s, timeout) != 1:
+    raise newException(TimeoutError, "Call to 'connect' timed out.")
+  else:
+    when defined(ssl):
+      if socket.isSSL:
+        socket.fd.setBlocking(true)
+        doAssert socket.handshake()
+  socket.fd.setBlocking(true)

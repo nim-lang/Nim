@@ -129,9 +129,9 @@ to supply any type of first argument for procedures:
 
 .. code-block:: nim
 
-  echo("abc".len) # is the same as echo(len("abc"))
-  echo("abc".toUpper())
-  echo({'a', 'b', 'c'}.card)
+  echo "abc".len # is the same as echo len "abc"
+  echo "abc".toUpper()
+  echo {'a', 'b', 'c'}.card
   stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
 
 Another way to look at the method call syntax is that it provides the missing
@@ -486,7 +486,7 @@ state are automatically saved between calls. Example:
       inc(i)
 
   for ch in items("hello world"): # `ch` is an iteration variable
-    echo(ch)
+    echo ch
 
 The compiler generates code as if the programmer would have written this:
 
@@ -494,7 +494,7 @@ The compiler generates code as if the programmer would have written this:
   var i = 0
   while i < len(a):
     var ch = a[i]
-    echo(ch)
+    echo ch
     inc(i)
 
 If the iterator yields a tuple, there can be as many iteration variables

@@ -127,9 +127,13 @@ Nim's Community
   Gittip
     .. raw:: html
 
-      <iframe style="border: 0; margin: 0; padding: 0;"
-               src="https://www.gittip.com/nim-lang/widget.html"
-               width="64pt" height="22pt"></iframe>
+      <img src="http://img.shields.io/gratipay/nim.svg">
+
+  BountySource
+
+    .. raw:: html
+      
+      <img src="https://img.shields.io/bountysource/team/mozilla-core/activity.svg">
 
   Paypal
     .. raw:: html

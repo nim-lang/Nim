@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-when not defined(nimCoroutines):
+when not defined(nimCoroutines) and not defined(nimdoc):
   {.error: "Coroutines require -d:nimCoroutines".}
 
 import os, times

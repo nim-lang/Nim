@@ -26,7 +26,7 @@ proc noReturn(x: () -> void) =
 proc doWithOneAndTwo(f: (int, int) -> int): int =
   f(1,2)
 
-echo twoParams(proc (a, b): auto = a + b)
+echo twoParams(proc (a, b: auto): auto = a + b)
 echo twoParams((x, y) => x + y)
 
 echo oneParam(x => x+5)

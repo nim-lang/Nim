@@ -130,10 +130,12 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 	#slideshow-nav > div:hover { background-image:url("images/slideshow-nav_active.png"); opacity:0.5; }
 	#slideshow-nav > div.active { background-image:url("images/slideshow-nav_active.png"); opacity:1; }
 
-                .zeoslide img {
-                  box-shadow: 1px 2px 16px rgba(28, 180, 236, 0.4);
-                  width: 705px;
-                }
+    .niaslide a img {
+      width: 542px;
+      box-shadow: 1px 2px 16px rgba(28, 180, 236, 0.4);
+      margin-left: 4em;
+      margin-top: -1em;
+    }
 
 		.codeslide1 { float:left; width:680px; font:10pt monospace; }
 		.codeslide1 > div:first-child { margin:0 40px 0 0; }

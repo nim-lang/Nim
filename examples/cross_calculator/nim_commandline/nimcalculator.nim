@@ -3,7 +3,7 @@
 import backend, parseopt, strutils
 
 const
-  USAGE = """nimcalculator - Nimrod cross platform calculator
+  USAGE = """nimcalculator - Nim cross platform calculator
   (beta version, only integer addition is supported!)
 
 Usage:

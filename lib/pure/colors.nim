@@ -6,7 +6,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements color handling for Nimrod. It is used by
+## This module implements color handling for Nim. It is used by
 ## the ``graphics`` module.
 
 import strutils

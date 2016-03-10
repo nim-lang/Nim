@@ -22,9 +22,9 @@ type
     L: Lock
     counter: int
 
-proc createSemaphore(): Semaphore =
-  initCond(result.c)
-  initLock(result.L)
+proc initSemaphore(cv: var Semaphore) =
+  initCond(cv.c)
+  initLock(cv.L)
 
 proc destroySemaphore(cv: var Semaphore) {.inline.} =
   deinitCond(cv.c)
@@ -77,7 +77,7 @@ proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
 proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
   fence()
   if b.left != b.entered:
-    b.cv = createSemaphore()
+    b.cv.initSemaphore()
     fence()
     b.interest = true
     fence()
@@ -195,7 +195,7 @@ proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
   new(result, fvFinalizer)
 
 proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
-  fv.cv = createSemaphore()
+  fv.cv.initSemaphore()
   fv.usesSemaphore = true
 
 proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
@@ -251,7 +251,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
   ## **Note**: This results in non-deterministic behaviour and so should be
   ## avoided.
   var ai: AwaitInfo
-  ai.cv = createSemaphore()
+  ai.cv.initSemaphore()
   var conflicts = 0
   for i in 0 .. flowVars.high:
     if cas(addr flowVars[i].ai, nil, addr ai):
@@ -294,8 +294,10 @@ var
   currentPoolSize: int
   maxPoolSize = MaxThreadPoolSize
   minPoolSize = 4
-  gSomeReady = createSemaphore()
+  gSomeReady : Semaphore
   readyWorker: ptr Worker
+
+gSomeReady.initSemaphore()
 
 proc slave(w: ptr Worker) {.thread.} =
   while true:
@@ -328,10 +330,10 @@ proc distinguishedSlave(w: ptr Worker) {.thread.} =
     if w.q.len != 0: w.cleanFlowVars
 
 var
-  workers: array[MaxThreadPoolSize, TThread[ptr Worker]]
+  workers: array[MaxThreadPoolSize, Thread[ptr Worker]]
   workersData: array[MaxThreadPoolSize, Worker]
 
-  distinguished: array[MaxDistinguishedThread, TThread[ptr Worker]]
+  distinguished: array[MaxDistinguishedThread, Thread[ptr Worker]]
   distinguishedData: array[MaxDistinguishedThread, Worker]
 
 when defined(nimPinToCpu):
@@ -354,10 +356,10 @@ when defined(nimRecursiveSpawn):
   var localThreadId {.threadvar.}: int
 
 proc activateWorkerThread(i: int) {.noinline.} =
-  workersData[i].taskArrived = createSemaphore()
-  workersData[i].taskStarted = createSemaphore()
+  workersData[i].taskArrived.initSemaphore()
+  workersData[i].taskStarted.initSemaphore()
   workersData[i].initialized = true
-  workersData[i].q.empty = createSemaphore()
+  workersData[i].q.empty.initSemaphore()
   initLock(workersData[i].q.lock)
   createThread(workers[i], slave, addr(workersData[i]))
   when defined(nimRecursiveSpawn):
@@ -366,12 +368,12 @@ proc activateWorkerThread(i: int) {.noinline.} =
     if gCpus > 0: pinToCpu(workers[i], i mod gCpus)
 
 proc activateDistinguishedThread(i: int) {.noinline.} =
-  distinguishedData[i].taskArrived = createSemaphore()
-  distinguishedData[i].taskStarted = createSemaphore()
+  distinguishedData[i].taskArrived.initSemaphore()
+  distinguishedData[i].taskStarted.initSemaphore()
   distinguishedData[i].initialized = true
-  distinguishedData[i].q.empty = createSemaphore()
+  distinguishedData[i].q.empty.initSemaphore()
   initLock(distinguishedData[i].q.lock)
-  distinguishedData[i].readyForTask = createSemaphore()
+  distinguishedData[i].readyForTask.initSemaphore()
   createThread(distinguished[i], distinguishedSlave, addr(distinguishedData[i]))
 
 proc setup() =
@@ -468,7 +470,7 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
       await(gSomeReady)
 
 var
-  distinguishedLock: TLock
+  distinguishedLock: Lock
 
 initLock distinguishedLock
 

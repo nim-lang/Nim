@@ -191,7 +191,7 @@ Overloading resolution
 In a call ``p(args)`` the routine ``p`` that matches best is selected. If
 multiple routines match equally well, the ambiguity is reported at compiletime.
 
-Every arg in args needs to match. There are multiple different category how an
+Every arg in args needs to match. There are multiple different categories how an
 argument can match. Let ``f`` be the formal parameter's type and ``a`` the type
 of the argument.
 

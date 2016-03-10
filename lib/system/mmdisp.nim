@@ -16,8 +16,8 @@
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
-  traceGC = false # extensive debugging
-  alwaysCycleGC = false
+  traceGC = defined(smokeCycles) # extensive debugging
+  alwaysCycleGC = defined(smokeCycles)
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
   leakDetector = false
@@ -427,7 +427,7 @@ elif defined(nogc) and defined(useMalloc):
   proc initGC() = discard
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
-    result = alloc(size)
+    result = alloc0(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
@@ -514,7 +514,7 @@ else:
   include "system/alloc"
 
   include "system/cellsets"
-  when not leakDetector:
+  when not leakDetector and not useCellIds:
     sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"

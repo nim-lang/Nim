@@ -46,6 +46,9 @@ Core
 * `locks <locks.html>`_
   Locks and condition variables for Nim.
 
+* `rlocks <rlocks.html>`_
+  Reentrant locks for Nim.
+
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nim for writing macros.
 

@@ -9,7 +9,7 @@
 
 ## Implementation of a `queue`:idx:. The underlying implementation uses a ``seq``.
 ## Note: For inter thread communication use
-## a `TChannel <channels.html>`_ instead.
+## a `Channel <channels.html>`_ instead.
 
 import math
 

@@ -1,3 +1,8 @@
+<a class="news" href="news.html#Z2016-01-27-nim-in-action-is-now-available">
+  <h4>January 27, 2016</h4>
+  <p>Nim in Action is now available!</p>
+</a>
+
 <a class="news" href="news.html#Z2016-01-18-version-0-13-0-released">
   <h4>January 18, 2016</h4>
   <p>Nim version 0.13.0 has been released!</p>

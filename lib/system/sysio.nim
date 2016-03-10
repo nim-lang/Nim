@@ -44,9 +44,37 @@ proc memchr(s: pointer, c: cint, n: csize): pointer {.
   importc: "memchr", header: "<string.h>", tags: [].}
 proc memset(s: pointer, c: cint, n: csize) {.
   header: "<string.h>", importc: "memset", tags: [].}
+proc fwrite(buf: pointer, size, n: int, f: File): int {.
+  importc: "fwrite", noDecl.}
+
+proc raiseEIO(msg: string) {.noinline, noreturn.} =
+  sysFatal(IOError, msg)
 
 {.push stackTrace:off, profiler:off.}
+proc readBuffer(f: File, buffer: pointer, len: Natural): int =
+  result = fread(buffer, 1, len, f)
+
+proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
+  result = readBuffer(f, addr(a[start]), len)
+
+proc readChars(f: File, a: var openArray[char], start, len: Natural): int =
+  result = readBuffer(f, addr(a[start]), len)
+
 proc write(f: File, c: cstring) = fputs(c, f)
+
+proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
+  result = fwrite(buffer, 1, len, f)
+
+proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
+  var x = cast[ptr array[0..1000_000_000, int8]](a)
+  result = writeBuffer(f, addr(x[start]), len)
+proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
+  var x = cast[ptr array[0..1000_000_000, int8]](a)
+  result = writeBuffer(f, addr(x[start]), len)
+
+proc write(f: File, s: string) =
+  if writeBuffer(f, cstring(s), s.len) != s.len:
+    raiseEIO("cannot write string to file")
 {.pop.}
 
 when NoFakeVars:
@@ -54,12 +82,11 @@ when NoFakeVars:
     const
       IOFBF = cint(0)
       IONBF = cint(4)
-  elif defined(macosx) or defined(linux):
+  else:
+    # On all systems I could find, including Linux, Mac OS X, and the BSDs
     const
       IOFBF = cint(0)
       IONBF = cint(2)
-  else:
-    {.error: "IOFBF not ported to your platform".}
 else:
   var
     IOFBF {.importc: "_IOFBF", nodecl.}: cint
@@ -67,9 +94,6 @@ else:
 
 const
   BufSize = 4000
-
-proc raiseEIO(msg: string) {.noinline, noreturn.} =
-  sysFatal(IOError, msg)
 
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
@@ -157,6 +181,12 @@ proc rawFileSize(file: File): int =
   result = ftell(file)
   discard fseek(file, clong(oldPos), 0)
 
+proc endOfFile(f: File): bool =
+  # do not blame me; blame the ANSI C standard this is so brain-damaged
+  var c = fgetc(f)
+  ungetc(c, f)
+  return c < 0'i32
+
 proc readAllFile(file: File, len: int): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
@@ -187,26 +217,6 @@ proc readAll(file: File): TaintedString =
     result = readAllFile(file, len).TaintedString
   else:
     result = readAllBuffer(file).TaintedString
-
-proc readFile(filename: string): TaintedString =
-  var f = open(filename)
-  try:
-    result = readAll(f).TaintedString
-  finally:
-    close(f)
-
-proc writeFile(filename, content: string) =
-  var f = open(filename, fmWrite)
-  try:
-    f.write(content)
-  finally:
-    close(f)
-
-proc endOfFile(f: File): bool =
-  # do not blame me; blame the ANSI C standard this is so brain-damaged
-  var c = fgetc(f)
-  ungetc(c, f)
-  return c < 0'i32
 
 proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x):
@@ -278,38 +288,11 @@ proc reopen(f: File, filename: string, mode: FileMode = fmRead): bool =
   result = p != nil
 
 proc fdopen(filehandle: FileHandle, mode: cstring): File {.
-  importc: pccHack & "fdopen", header: "<stdio.h>".}
+  importc: "fdopen", header: "<stdio.h>".}
 
 proc open(f: var File, filehandle: FileHandle, mode: FileMode): bool =
   f = fdopen(filehandle, FormatOpen[mode])
   result = f != nil
-
-proc fwrite(buf: pointer, size, n: int, f: File): int {.
-  importc: "fwrite", noDecl.}
-
-proc readBuffer(f: File, buffer: pointer, len: Natural): int =
-  result = fread(buffer, 1, len, f)
-
-proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
-  result = readBuffer(f, addr(a[start]), len)
-
-proc readChars(f: File, a: var openArray[char], start, len: Natural): int =
-  result = readBuffer(f, addr(a[start]), len)
-
-{.push stackTrace:off, profiler:off.}
-proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
-proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
-proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
-  result = fwrite(buffer, 1, len, f)
-
-proc write(f: File, s: string) =
-  if writeBuffer(f, cstring(s), s.len) != s.len:
-    raiseEIO("cannot write string to file")
-{.pop.}
 
 proc setFilePos(f: File, pos: int64) =
   if fseek(f, clong(pos), 0) != 0:
@@ -324,5 +307,29 @@ proc getFileSize(f: File): int64 =
   discard fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
+
+when not declared(close):
+  proc close(f: File) {.
+    importc: "fclose", header: "<stdio.h>", tags: [].}
+
+proc readFile(filename: string): TaintedString =
+  var f: File
+  if open(f, filename):
+    try:
+      result = readAll(f).TaintedString
+    finally:
+      close(f)
+  else:
+    sysFatal(IOError, "cannot open: ", filename)
+
+proc writeFile(filename, content: string) =
+  var f: File
+  if open(f, filename, fmWrite):
+    try:
+      f.write(content)
+    finally:
+      close(f)
+  else:
+    sysFatal(IOError, "cannot open: ", filename)
 
 {.pop.}

@@ -386,6 +386,30 @@ proc isDiscardUnderscore(v: PSym): bool =
     v.flags.incl(sfGenSym)
     result = true
 
+proc semUsing(c: PContext; n: PNode): PNode =
+  result = ast.emptyNode
+  if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "using")
+  if not experimentalMode(c):
+    localError(n.info, "use the {.experimental.} pragma to enable 'using'")
+  for i in countup(0, sonsLen(n)-1):
+    var a = n.sons[i]
+    if gCmd == cmdIdeTools: suggestStmt(c, a)
+    if a.kind == nkCommentStmt: continue
+    if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a)
+    checkMinSonsLen(a, 3)
+    var length = sonsLen(a)
+    if a.sons[length-2].kind != nkEmpty:
+      let typ = semTypeNode(c, a.sons[length-2], nil)
+      for j in countup(0, length-3):
+        let v = semIdentDef(c, a.sons[j], skParam)
+        v.typ = typ
+        strTableIncl(c.signatures, v)
+    else:
+      localError(a.info, "'using' section must have a type")
+    var def: PNode
+    if a.sons[length-1].kind != nkEmpty:
+      localError(a.info, "'using' sections cannot contain assignments")
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -640,13 +664,20 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue
     if a.kind != nkTypeDef: illFormedAst(a)
     checkSonsLen(a, 3)
-    var s = semIdentDef(c, a.sons[0], skType)
-    s.typ = newTypeS(tyForward, c)
-    s.typ.sym = s             # process pragmas:
-    if a.sons[0].kind == nkPragmaExpr:
-      pragma(c, s, a.sons[0].sons[1], typePragmas)
-    # add it here, so that recursive types are possible:
-    if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+    let name = a.sons[0]
+    var s: PSym
+    if name.kind == nkDotExpr:
+      s = qualifiedLookUp(c, name)
+      if s.kind != skType or s.typ.skipTypes(abstractPtrs).kind != tyObject or tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
+        localError(name.info, "only .partial objects can be extended")
+    else:
+      s = semIdentDef(c, name, skType)
+      s.typ = newTypeS(tyForward, c)
+      s.typ.sym = s             # process pragmas:
+      if name.kind == nkPragmaExpr:
+        pragma(c, s, name.sons[1], typePragmas)
+      # add it here, so that recursive types are possible:
+      if sfGenSym notin s.flags: addInterfaceDecl(c, s)
     a.sons[0] = newSymNode(s)
 
 proc typeSectionRightSidePass(c: PContext, n: PNode) =
@@ -655,8 +686,9 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkTypeDef): illFormedAst(a)
     checkSonsLen(a, 3)
-    if (a.sons[0].kind != nkSym): illFormedAst(a)
-    var s = a.sons[0].sym
+    let name = a.sons[0]
+    if (name.kind != nkSym): illFormedAst(a)
+    var s = name.sym
     if s.magic == mNone and a.sons[2].kind == nkEmpty:
       localError(a.info, errImplOfXexpected, s.name.s)
     if s.magic != mNone: processMagicType(c, s)
@@ -1101,6 +1133,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
     if n[namePos].kind == nkEmpty:
       s = newSym(kind, idAnon, getCurrOwner(), n.info)
+      incl(s.flags, sfUsed)
       isAnon = true
     else:
       s = semIdentDef(c, n.sons[0], kind)
@@ -1153,9 +1186,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.typ.flags.incl(tfIterator)
 
   var proto = searchForProc(c, oldScope, s)
-  if proto == nil:
-    if s.kind == skIterator and s.typ.callConv == ccClosure:
-      discard
+  if proto == nil or isAnon:
+    if s.kind == skIterator:
+      if s.typ.callConv != ccClosure:
+        s.typ.callConv = if isAnon: ccClosure else: ccInline
     else:
       s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
@@ -1204,9 +1238,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # Macros and Templates can have generic parameters, but they are
     # only used for overload resolution (there is no instantiation of
     # the symbol, so we must process the body now)
+    pushProcCon(c, s)
     if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
       if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
-      pushProcCon(c, s)
+
       c.p.wasForwarded = proto != nil
       maybeAddResult(c, s, n)
       if sfImportc notin s.flags:
@@ -1215,7 +1250,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         n.sons[bodyPos] = transformBody(c.module, semBody, s)
-      popProcCon(c)
     else:
       if s.typ.sons[0] != nil and kind != skIterator:
         addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
@@ -1226,6 +1260,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfImportc in s.flags:
       # so we just ignore the body after semantic checking for importc:
       n.sons[bodyPos] = ast.emptyNode
+    popProcCon(c)
   else:
     if proto != nil: localError(n.info, errImplOfXexpected, proto.name.s)
     if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone:

@@ -1,5 +1,3 @@
-import unsigned
-
 type
   MersenneTwister* = object
     mt: array[0..623, uint32]

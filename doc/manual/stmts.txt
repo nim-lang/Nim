@@ -234,11 +234,11 @@ Example:
   var name = readLine(stdin)
 
   if name == "Andreas":
-    echo("What a nice name!")
+    echo "What a nice name!"
   elif name == "":
-    echo("Don't you have a name?")
+    echo "Don't you have a name?"
   else:
-    echo("Boring name...")
+    echo "Boring name..."
 
 The ``if`` statement is a simple way to make a branch in the control flow:
 The expression after the keyword ``if`` is evaluated, if it is true
@@ -269,17 +269,17 @@ Example:
 
   case readline(stdin)
   of "delete-everything", "restart-computer":
-    echo("permission denied")
-  of "go-for-a-walk":     echo("please yourself")
-  else:                   echo("unknown command")
+    echo "permission denied"
+  of "go-for-a-walk":     echo "please yourself"
+  else:                   echo "unknown command"
 
   # indentation of the branches is also allowed; and so is an optional colon
   # after the selecting expression:
   case readline(stdin):
     of "delete-everything", "restart-computer":
-      echo("permission denied")
-    of "go-for-a-walk":     echo("please yourself")
-    else:                   echo("unknown command")
+      echo "permission denied"
+    of "go-for-a-walk":     echo "please yourself"
+    else:                   echo "unknown command"
 
 
 The ``case`` statement is similar to the if statement, but it represents
@@ -326,13 +326,13 @@ Example:
 .. code-block:: nim
 
   when sizeof(int) == 2:
-    echo("running on a 16 bit system!")
+    echo "running on a 16 bit system!"
   elif sizeof(int) == 4:
-    echo("running on a 32 bit system!")
+    echo "running on a 32 bit system!"
   elif sizeof(int) == 8:
-    echo("running on a 64 bit system!")
+    echo "running on a 64 bit system!"
   else:
-    echo("cannot happen!")
+    echo "cannot happen!"
 
 The ``when`` statement is almost identical to the ``if`` statement with some
 exceptions:
@@ -435,7 +435,7 @@ Example:
         if a[j][i] == 7:
           found = true
           break myblock # leave the block, in this case both for-loops
-  echo(found)
+  echo found
 
 The block statement is a means to group statements to a (named) ``block``.
 Inside the block, the ``break`` statement is allowed to leave the block
@@ -462,10 +462,10 @@ While statement
 Example:
 
 .. code-block:: nim
-  echo("Please tell me your password: \n")
+  echo "Please tell me your password: \n"
   var pw = readLine(stdin)
   while pw != "12345":
-    echo("Wrong password! Next try: \n")
+    echo "Wrong password! Next try: \n"
     pw = readLine(stdin)
 
 
@@ -547,55 +547,36 @@ Instead of:
 Using statement
 ---------------
 
-**Warning**: The ``using`` statement is highly experimental and has to be
+**Warning**: The ``using`` statement is experimental and has to be
 explicitly enabled with the `experimental`:idx: pragma or command line option!
 
-The using statement provides syntactic convenience for procs that
-heavily use a single contextual parameter. When applied to a variable or a
-constant, it will instruct Nim to automatically consider the used symbol as
-a hidden leading parameter for any procedure calls, following the using
-statement in the current scope. Thus, it behaves much like the hidden `this`
-parameter available in some object-oriented programming languages.
+The using statement provides syntactic convenience in modules where
+the same parameter names and types are used over and over. Instead of:
 
 .. code-block:: nim
+  proc foo(c: Context; n: Node) = ...
+  proc bar(c: Context; n: Node, counter: int) = ...
+  proc baz(c: Context; n: Node) = ...
 
-  var s = socket()
-  using s
-
-  connect(host, port)
-  send(data)
-
-  while true:
-    let line = readLine(timeout)
-    ...
-
-
-When applied to a callable symbol, it brings the designated symbol in the
-current scope. Thus, it can be used to disambiguate between imported symbols
-from different modules having the same name.
+One can tell the compiler about the convention that a parameter of
+name ``c`` should default to type ``Context``, ``n`` should default to
+``Node`` etc.:
 
 .. code-block:: nim
-  import windows, sdl
-  using sdl.SetTimer
+  {.experimental.}
+  using
+    c: Context
+    n: Node
+    counter: int
 
-Note that ``using`` only *adds* to the current context, it doesn't remove or
-replace, **neither** does it create a new scope. What this means is that if one
-applies this to multiple variables the compiler will find conflicts in what
-variable to use:
+  proc foo(c, n) = ...
+  proc bar(c, n, counter) = ...
+  proc baz(c, n) = ...
 
-.. code-block:: nim
-  var a, b = "kill it"
-  using a
-  add(" with fire")
-  using b
-  add(" with water")
-  echo a
-  echo b
 
-When the compiler reaches the second ``add`` call, both ``a`` and ``b`` could
-be used with the proc, so one gets ``Error: expression '(a|b)' has no type (or
-is ambiguous)``. To solve this one would need to nest ``using`` with a
-``block`` statement so as to control the reach of the ``using`` statement.
+The ``using`` section uses the same indentation based grouping syntax as
+a ``var`` or ``let``` section.
+
 
 If expression
 -------------

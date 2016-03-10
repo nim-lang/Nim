@@ -138,6 +138,13 @@ proc initIntSet*: IntSet =
   result.counter = 0
   result.head = nil
 
+proc clear*(result: var IntSet) =
+  setLen(result.data, InitIntSetSize)
+  for i in 0..InitIntSetSize-1: result.data[i] = nil
+  result.max = InitIntSetSize-1
+  result.counter = 0
+  result.head = nil
+
 proc isNil*(x: IntSet): bool {.inline.} = x.head.isNil
 
 proc assign*(dest: var IntSet, src: IntSet) =

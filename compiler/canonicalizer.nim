@@ -11,7 +11,7 @@
 
 import strutils, db_sqlite, md5
 
-var db: TDbConn
+var db: DbConn
 
 # We *hash* the relevant information into 128 bit hashes. This should be good
 # enough to prevent any collisions.
@@ -33,7 +33,7 @@ type
 const
   cb64 = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
-    "O", "P", "Q", "R", "S", "T" "U", "V", "W", "X", "Y", "Z",
+    "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
     "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -158,7 +158,6 @@ proc hashType(c: var MD5Context, t: PType) =
     if tfThread in t.flags: c &= ".thread"
   else:
     for i in 0.. <t.len: c.hashType(t.sons[i])
-  if tfShared in t.flags: c &= "shared"
   if tfNotNil in t.flags: c &= "not nil"
 
 proc canonConst(n: PNode): TUid =
@@ -276,7 +275,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     return
   # we need no surrounding [] here because the type is in a line of its own
   if t.kind == tyForward: internalError("encodeType: tyForward")
-  # for the new rodfile viewer we use a preceeding [ so that the data section
+  # for the new rodfile viewer we use a preceding [ so that the data section
   # can easily be disambiguated:
   add(result, '[')
   encodeVInt(ord(t.kind), result)

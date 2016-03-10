@@ -126,7 +126,7 @@ General FAQ
   --------------------------
 
   - Nim IDE: https://github.com/nim-lang/Aporia
-  - Emacs: https://github.com/reactormonk/nim-mode
+  - Emacs: https://github.com/nim-lang/nim-mode
   - Vim: https://github.com/zah/nimrod.vim/
   - Scite: Included
   - Gedit: The `Aporia .lang file <https://github.com/nim-lang/Aporia/blob/master/share/gtksourceview-2.0/language-specs/nim.lang>`_
@@ -135,7 +135,8 @@ General FAQ
   - Sublime Text: Available via Package Control (`Repository <https://github.com/Varriount/NimLime>`_)
   - LiClipse: http://www.liclipse.com/ (Eclipse based plugin)
   - Howl: Included
-
+  - Notepad++: Available via `plugin <https://github.com/jangko/nppnim/releases>`_
+  
 
 .. container:: standout
 

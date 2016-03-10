@@ -108,6 +108,7 @@ proc commandCompileToJS =
   defineSymbol("nimrod") # 'nimrod' is always defined
   defineSymbol("ecmascript") # For backward compatibility
   defineSymbol("js")
+  if gCmd == cmdCompileToPHP: defineSymbol("nimphp")
   semanticPasses()
   registerPass(JSgenPass)
   compileProject()
@@ -266,6 +267,9 @@ proc mainCommand* =
       rawMessage(errInvalidCommandX, command)
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
+    commandCompileToJS()
+  of "php":
+    gCmd = cmdCompileToPHP
     commandCompileToJS()
   of "doc":
     wantMainModule()

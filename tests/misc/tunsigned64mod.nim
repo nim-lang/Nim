@@ -1,8 +1,6 @@
 
 # bug #1638
 
-import unsigned
-
 let v1 = 7
 let v2 = 7'u64
 

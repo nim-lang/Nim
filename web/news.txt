@@ -2,6 +2,80 @@
 News
 ====
 
+2016-XX-XX Version 0.13.1 released
+==================================
+
+Changes affecting backwards compatibility
+-----------------------------------------
+
+- ``--out`` and ``--nimcache`` command line arguments are now relative to
+  current directory. Previously they were relative to project directory.
+- The json module now stores the name/value pairs in objects internally as a
+  hash table of type ``fields*: Table[string, JsonNode]`` instead of a
+  sequence. This means that order is no longer preserved. When using the
+  ``table.mpairs`` iterator only the returned values can be modified, no
+  longer the keys.
+- The deprecated Nim shebang notation ``#!`` was removed from the language. Use ``#?`` instead.
+- The ``using`` statement now means something completely different. You can use the
+  new experimental ``this`` pragma to achieve a similar effect to what the old ``using`` statement tried to achieve.
+- Typeless parameters have been removed from the language since it would
+  clash with ``using``.
+
+
+Library Additions
+-----------------
+
+- The rlocks module has been added providing reentrant lock synchronization
+  primitive.
+- A generic "sink operator" written as ``&=`` has been added to the ``system`` and the ``net`` modules.
+
+
+Compiler Additions
+------------------
+
+- Added a new ``--noCppExceptions`` switch that allows to use default exception
+  handling (no ``throw`` or ``try``/``catch`` generated) when compiling to C++
+  code.
+
+Language Additions
+------------------
+
+- Nim now supports a ``.this`` pragma for more notational convenience.
+- Nim now supports a different ``using`` statement for more convenience.
+- Nim now supports ``partial`` object declarations to mitigate the problems
+  that arise when types are mutually dependent and yet should be kept in
+  different modules.
+
+
+2016-01-27 Nim in Action is now available!
+==========================================
+
+.. raw::html
+
+  <a href="https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81">
+    <img src="assets/niminaction/banner.jpg" alt="New in Manning Early Access Program: Nim in Action!" width="682"/>
+  </a>
+
+We are proud to announce that *Nim in Action*, a book about the Nim programming
+language, is now available!
+
+The book is available at this URL:
+`https://www.manning.com/books/nim-in-action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_
+
+The first three chapters are available for download
+as an eBook through Manning's Early Access program. You can download a free
+sample of the book containing the first chapter as well!
+
+*Nim in Action* is currently being written and is expected to be completed by
+Summer 2016. If you purchase the eBook you will start receiving new chapters
+as they become available. You can also purchase the printed book together with
+the eBook for a slightly higher price.
+
+If you do read the book, even if it's just the first chapter, then please share
+any comments, suggestions and questions on the
+`Nim forum <http://forum.nim-lang.org/t/1978>`_ or in
+Manning's own `Author Online forum! <https://forums.manning.com/forums/nim-in-action>`_
+
 
 2016-01-18 Version 0.13.0 released
 ==================================

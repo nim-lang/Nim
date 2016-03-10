@@ -23,6 +23,31 @@ __clang__
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
+/* ------------ ignore typical warnings in Nim-generated files ------------- */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wpragmas"
+#  pragma GCC diagnostic ignored "-Wwritable-strings"
+#  pragma GCC diagnostic ignored "-Winvalid-noreturn"
+#  pragma GCC diagnostic ignored "-Wformat"
+#  pragma GCC diagnostic ignored "-Wlogical-not-parentheses"
+#  pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
+#  pragma GCC diagnostic ignored "-Wshadow"
+#  pragma GCC diagnostic ignored "-Wunused-function"
+#  pragma GCC diagnostic ignored "-Wunused-variable"
+#  pragma GCC diagnostic ignored "-Winvalid-offsetof"
+#  pragma GCC diagnostic ignored "-Wtautological-compare"
+#  pragma GCC diagnostic ignored "-Wswitch-bool"
+#  pragma GCC diagnostic ignored "-Wmacro-redefined"
+#  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
+#endif
+
+#if defined(_MSC_VER)
+#  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
+#  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
+#  pragma warning(disable: 4710 4711 4774 4800 4820 4996)
+#endif
+/* ------------------------------------------------------------------------- */
+
 #if defined(__GNUC__)
 #  define _GNU_SOURCE 1
 #endif
@@ -66,10 +91,27 @@ __clang__
 #  define NIM_CONST  const
 #endif
 
-#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__))
-#  define NIM_THREADVAR __declspec(thread)
-#else
+/*
+  NIM_THREADVAR declaration based on
+  http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
+*/
+#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#  define NIM_THREADVAR _Thread_local
+#elif defined _WIN32 && ( \
+       defined _MSC_VER || \
+       defined __ICL || \
+       defined __DMC__ || \
+       defined __BORLANDC__ )
+#  define NIM_THREADVAR __declspec(thread) 
+/* note that ICC (linux) and Clang are covered by __GNUC__ */
+#elif defined __GNUC__ || \
+       defined __SUNPRO_C || \
+       defined __xlC__
 #  define NIM_THREADVAR __thread
+#elif defined __TINYC__
+#  defined NIM_THREADVAR
+#else
+#  error "Cannot define NIM_THREADVAR"
 #endif
 
 /* --------------- how int64 constants should be declared: ----------- */

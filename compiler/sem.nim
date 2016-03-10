@@ -191,7 +191,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
-  # identifier with visability
+  # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 proc semStmtScope(c: PContext, n: PNode): PNode

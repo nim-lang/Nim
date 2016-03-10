@@ -47,8 +47,9 @@ const
   EV_ERROR*    = 0x4000 ## Error, data contains errno
 
 type
-  KEvent* {.importc: "struct kevent",
-            header: "<sys/event.h>", pure, final.} = object
+  KEvent* {.importc: "struct kevent", pure, final
+            header: """#include <sys/types.h>
+                       #include <sys/event.h>""".} = object
     ident*: cuint    ## identifier for this event  (uintptr_t)
     filter*: cshort  ## filter for event
     flags*: cushort  ## general flags

@@ -151,7 +151,7 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo cast[ptr char](p)[]    # b
   discard
 
-proc unsafeAddr*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin 'addr' operator for taking the address of a memory location.
   ## This works even for ``let`` variables or parameters for better interop
   ## with C and so it is considered even more unsafe than the ordinary ``addr``.
@@ -278,11 +278,6 @@ when not defined(niminheritable):
   {.pragma: inheritable.}
 when not defined(nimunion):
   {.pragma: unchecked.}
-
-when defined(nimNewShared):
-  type
-    `shared`* {.magic: "Shared".}
-    guarded* {.magic: "Guarded".}
 
 # comparison operators:
 proc `==` *[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
@@ -1293,6 +1288,10 @@ const
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
 
+when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
+  # tcc doesn't support TLS
+  {.error: "``--tlsEmulation:on`` must be used when using threads with tcc backend".}
+  
 when defined(boehmgc):
   when defined(windows):
     const boehmLib = "boehmgc.dll"
@@ -1811,7 +1810,7 @@ const
   NimMinor*: int = 13
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 0
+  NimPatch*: int = 1
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2452,14 +2451,17 @@ type
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
-    asm """
-      var len = `x`[0].length-1;
-      for (var i = 0; i < `y`.length; ++i) {
-        `x`[0][len] = `y`.charCodeAt(i);
-        ++len;
-      }
-      `x`[0][len] = 0
-    """
+    when defined(nimphp):
+      asm """`x` .= `y`;"""
+    else:
+      asm """
+        var len = `x`[0].length-1;
+        for (var i = 0; i < `y`.length; ++i) {
+          `x`[0][len] = `y`.charCodeAt(i);
+          ++len;
+        }
+        `x`[0][len] = 0
+      """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
@@ -2586,6 +2588,30 @@ when not defined(JS): #and not defined(nimscript):
     var
       strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
 
+
+  # ----------------- IO Part ------------------------------------------------
+  type
+    CFile {.importc: "FILE", header: "<stdio.h>",
+            final, incompletestruct.} = object
+    File* = ptr CFile ## The type representing a file handle.
+
+    FileMode* = enum           ## The file mode when opening a file.
+      fmRead,                   ## Open the file for read access only.
+      fmWrite,                  ## Open the file for write access only.
+      fmReadWrite,              ## Open the file for read and write access.
+                                ## If the file does not exist, it will be
+                                ## created.
+      fmReadWriteExisting,      ## Open the file for read and write access.
+                                ## If the file does not exist, it will not be
+                                ## created.
+      fmAppend                  ## Open the file for writing only; append data
+                                ## at the end.
+
+    FileHandle* = cint ## type that represents an OS file handle; this is
+                       ## useful for low-level file access
+
+  {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
+
   when not defined(nimscript):
     include "system/ansi_c"
 
@@ -2597,58 +2623,38 @@ when not defined(JS): #and not defined(nimscript):
       elif x > y: result = 1
       else: result = 0
 
-  const pccHack = if defined(pcc): "_" else: "" # Hack for PCC
-  when not defined(nimscript):
+  when defined(nimscript):
+    proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
+      ## Opens a file named `filename` for writing. Then writes the
+      ## `content` completely to the file and closes the file afterwards.
+      ## Raises an IO exception in case of an error.
+
+  when not defined(nimscript) and hostOS != "standalone":
     when defined(windows):
       # work-around C's sucking abstraction:
       # BUGFIX: stdin and stdout should be binary files!
-      proc setmode(handle, mode: int) {.importc: pccHack & "setmode",
+      proc setmode(handle, mode: int) {.importc: "setmode",
                                         header: "<io.h>".}
-      proc fileno(f: C_TextFileStar): int {.importc: pccHack & "fileno",
+      proc fileno(f: C_TextFileStar): int {.importc: "fileno",
                                             header: "<fcntl.h>".}
       var
-        O_BINARY {.importc: pccHack & "O_BINARY", nodecl.}: int
+        O_BINARY {.importc: "O_BINARY", nodecl.}: int
 
-      # we use binary mode in Windows:
+      # we use binary mode on Windows:
       setmode(fileno(c_stdin), O_BINARY)
       setmode(fileno(c_stdout), O_BINARY)
 
     when defined(endb):
       proc endbStep()
 
-  # ----------------- IO Part ------------------------------------------------
-  when hostOS != "standalone":
-    type
-      CFile {.importc: "FILE", header: "<stdio.h>",
-              final, incompletestruct.} = object
-      File* = ptr CFile ## The type representing a file handle.
-
-      FileMode* = enum           ## The file mode when opening a file.
-        fmRead,                   ## Open the file for read access only.
-        fmWrite,                  ## Open the file for write access only.
-        fmReadWrite,              ## Open the file for read and write access.
-                                  ## If the file does not exist, it will be
-                                  ## created.
-        fmReadWriteExisting,      ## Open the file for read and write access.
-                                  ## If the file does not exist, it will not be
-                                  ## created.
-        fmAppend                  ## Open the file for writing only; append data
-                                  ## at the end.
-
-      FileHandle* = cint ## type that represents an OS file handle; this is
-                         ## useful for low-level file access
-
-    {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
-
-    when not defined(nimscript):
-      # text file handling:
-      var
-        stdin* {.importc: "stdin", header: "<stdio.h>".}: File
-          ## The standard input stream.
-        stdout* {.importc: "stdout", header: "<stdio.h>".}: File
-          ## The standard output stream.
-        stderr* {.importc: "stderr", header: "<stdio.h>".}: File
-          ## The standard error stream.
+    # text file handling:
+    var
+      stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+        ## The standard input stream.
+      stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+        ## The standard output stream.
+      stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+        ## The standard error stream.
 
     when defined(useStdoutAsStdmsg):
       template stdmsg*: File = stdout
@@ -2944,7 +2950,7 @@ when not defined(JS): #and not defined(nimscript):
   else:
     include "system/sysio"
 
-  when declared(open) and declared(close) and declared(readline):
+  when not defined(nimscript) and hostOS != "standalone":
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
@@ -2960,9 +2966,9 @@ when not defined(JS): #and not defined(nimscript):
       ##       buffer.add(line.replace("a", "0") & '\x0A')
       ##     writeFile(filename, buffer)
       var f = open(filename, bufSize=8000)
+      defer: close(f)
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
-      close(f)
 
     iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterate over any line in the file `f`.
@@ -3284,6 +3290,12 @@ proc `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
   x = x / y
 
 proc `&=`* (x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+template `&=`*(x, y: typed) =
+  ## generic 'sink' operator for Nim. For files an alias for ``write``.
+  ## If not specialized further an alias for ``add``.
+  add(x, y)
+when declared(File):
+  template `&=`*(f: File, x: typed) = write(f, x)
 
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
@@ -3539,15 +3551,21 @@ proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
   ## overloaded ``[]`` or ``[]=`` accessors.
   discard
 
-template `..^`*(a, b: expr): expr =
+template `..^`*(a, b: untyped): untyped =
   ## a shortcut for '.. ^' to avoid the common gotcha that a space between
   ## '..' and '^' is required.
   a .. ^b
 
-template `..<`*(a, b: expr): expr =
+template `..<`*(a, b: untyped): untyped {.dirty.} =
   ## a shortcut for '.. <' to avoid the common gotcha that a space between
   ## '..' and '<' is required.
   a .. <b
+
+iterator `..<`*[S,T](a: S, b: T): T =
+  var i = T(a)
+  while i < b:
+    yield i
+    inc i
 
 proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
 proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =

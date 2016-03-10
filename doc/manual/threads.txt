@@ -130,7 +130,7 @@ that ``spawn`` takes is restricted:
   programmer to be careful.
 * ``ref`` parameters are deeply copied which is a subtle semantic change and
   can cause performance problems but ensures memory safety. This deep copy
-  is performed via ``system.deepCopy`` and so can be overriden.
+  is performed via ``system.deepCopy`` and so can be overridden.
 * For *safe* data exchange between ``f`` and the caller a global ``TChannel``
   needs to be used. However, since spawn can return a result, often no further
   communication is required.
