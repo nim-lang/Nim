@@ -518,6 +518,9 @@ else:
     sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
+  elif defined(gcStack):
+    # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
+    include "system/gc_stack"
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"
