@@ -211,7 +211,6 @@ proc escapeJSString(s: string): string =
     of '\e': result.add("\\e")
     of '\v': result.add("\\v")
     of '\\': result.add("\\\\")
-    of '\'': result.add("\\'")
     of '\"': result.add("\\\"")
     else: add(result, c)
   result.add("\"")
