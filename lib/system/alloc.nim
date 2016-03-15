@@ -49,7 +49,7 @@ when defined(emscripten):
   proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
             off: int): pointer {.header: "<sys/mman.h>".}
 
-  proc munmap(adr: pointer, len: int) {.header: "<sys/mman.h>".}
+  proc munmap(adr: pointer, len: int): cint {.header: "<sys/mman.h>".}
 
   proc osAllocPages(block_size: int): pointer {.inline.} =
     let realSize = block_size + sizeof(EmscriptenMMapBlock) + PageSize + 1
@@ -78,7 +78,7 @@ when defined(emscripten):
   proc osDeallocPages(p: pointer, size: int) {.inline} =
     var mmapDescrPos = cast[ByteAddress](p) -% sizeof(EmscriptenMMapBlock)
     var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
-    munmap(mmapDescr.realPointer, mmapDescr.realSize)
+    discard munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
 elif defined(posix):
   const
@@ -90,6 +90,8 @@ elif defined(posix):
     const MAP_ANONYMOUS = 0x1000
   elif defined(solaris):
     const MAP_ANONYMOUS = 0x100
+  elif defined(linux):
+    const MAP_ANONYMOUS = 0x20'i32
   else:
     var
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
@@ -97,7 +99,7 @@ elif defined(posix):
   proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
             off: int): pointer {.header: "<sys/mman.h>".}
 
-  proc munmap(adr: pointer, len: int) {.header: "<sys/mman.h>".}
+  proc munmap(adr: pointer, len: int): cint {.header: "<sys/mman.h>".}
 
   proc osAllocPages(size: int): pointer {.inline.} =
     result = mmap(nil, size, PROT_READ or PROT_WRITE,
@@ -106,7 +108,7 @@ elif defined(posix):
       raiseOutOfMem()
 
   proc osDeallocPages(p: pointer, size: int) {.inline} =
-    when reallyOsDealloc: munmap(p, size)
+    when reallyOsDealloc: discard munmap(p, size)
 
 elif defined(windows):
   const
