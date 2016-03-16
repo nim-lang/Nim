@@ -270,7 +270,7 @@ const
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
 
-when defined(posix):
+when defined(posix) and not defined(nimscript):
   type
     Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
 
@@ -288,7 +288,7 @@ proc open(f: var File, filename: string,
           bufSize: int = -1): bool =
   var p: pointer = fopen(filename, FormatOpen[mode])
   if p != nil:
-    when defined(posix):
+    when defined(posix) and not defined(nimscript):
       var f2 = cast[File](p)
       var res: Stat
       if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
