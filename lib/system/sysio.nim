@@ -289,6 +289,9 @@ proc open(f: var File, filename: string,
   var p: pointer = fopen(filename, FormatOpen[mode])
   if p != nil:
     when defined(posix) and not defined(nimscript):
+      # How `fopen` handles opening a directory is not specified in ISO C and
+      # POSIX. We do not want to handle directories as regular files that can
+      # be opened.
       var f2 = cast[File](p)
       var res: Stat
       if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
