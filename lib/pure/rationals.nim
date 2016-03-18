@@ -164,7 +164,7 @@ proc `-` *[T](x: Rational[T], y: T): Rational[T] =
 
 proc `-` *[T](x: T, y: Rational[T]): Rational[T] =
   ## Subtract rational `y` from int `x`.
-  result.num = - x * y.den + y.num
+  result.num = x * y.den - y.num
   result.den = y.den
 
 proc `-=` *[T](x: var Rational[T], y: Rational[T]) =
