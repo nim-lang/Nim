@@ -382,7 +382,8 @@ proc format(p: MultipartData): tuple[header, body: string] =
 
 proc request*(url: string, httpMethod: string, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
-              userAgent = defUserAgent, proxy: Proxy = nil): Response =
+              userAgent = defUserAgent, proxy: Proxy = nil,
+              domain: int = -1): Response =
   ## | Requests ``url`` with the custom method string specified by the
   ## | ``httpMethod`` parameter.
   ## | Extra headers can be specified and must be separated by ``\c\L``
@@ -415,8 +416,6 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
     add(headers, "Proxy-Authorization: basic " & auth & "\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
-  var s = newSocket()
-  if s == nil: raiseOSError(osLastError())
   var port = net.Port(80)
   if r.scheme == "https":
     when defined(ssl):
@@ -427,11 +426,27 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
                 "SSL support is not available. Cannot connect over SSL.")
   if r.port != "":
     port = net.Port(r.port.parseInt)
-
-  if timeout == -1:
-    s.connect(r.hostname, port)
+  proc doconnect(domain: Domain): Socket =
+    result = newSocket(domain=domain)
+    if result == nil:
+      raiseOSError(osLastError())
+    if timeout == -1:
+      result.connect(r.hostname, port)
+    else:
+      result.connect(r.hostname, port, timeout)
+  var s: Socket
+  if domain == -1:
+    var lastError: ref Exception = nil
+    for domain in [AF_INET,AF_INET6]:
+      lastError = nil
+      try:
+        s = doconnect(domain)
+      except OSError:
+        lastError = getCurrentException()
+    if lastError != nil:
+      raise lastError
   else:
-    s.connect(r.hostname, port, timeout)
+    s = doconnect(Domain(domain))
   s.send(headers)
   if body != "":
     s.send(body)
