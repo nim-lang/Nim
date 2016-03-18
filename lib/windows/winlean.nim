@@ -833,9 +833,9 @@ type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
 
 var inet_ntop_real: inet_ntop_proc = nil
 
-let l = loadLib(ws2dll)
-if l != nil:
-  inet_ntop_real = cast[inet_ntop_proc](symAddr(l, "inet_ntop"))
+let L = loadLib(ws2dll)
+if L != nil:
+  inet_ntop_real = cast[inet_ntop_proc](symAddr(L, "inet_ntop"))
 
 proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
 proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
