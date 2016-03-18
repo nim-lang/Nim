@@ -840,30 +840,30 @@ if L != nil:
 proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
 proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
-    case family
-    of AF_INET:
-      var sa: Sockaddr_in
-      sa.sin_family = AF_INET
-      sa.sin_addr = cast[ptr InAddr](paddr)[]
-      var bs = stringBufSize.DWORD
-      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
-      if r != 0:
-        result = nil
-      else:
-        result = pStringBuffer
-    of AF_INET6:
-      var sa: Sockaddr_in6
-      sa.sin6_family = AF_INET6
-      sa.sin6_addr = cast[ptr In6_addr](paddr)[]
-      var bs = stringBufSize.DWORD
-      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
-      if r != 0:
-        result = nil
-      else:
-        result = pStringBuffer
-    else:
-      setLastError(ERROR_BAD_ARGUMENTS)
+  case family
+  of AF_INET:
+    var sa: Sockaddr_in
+    sa.sin_family = AF_INET
+    sa.sin_addr = cast[ptr InAddr](paddr)[]
+    var bs = stringBufSize.DWORD
+    let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+    if r != 0:
       result = nil
+    else:
+      result = pStringBuffer
+  of AF_INET6:
+    var sa: Sockaddr_in6
+    sa.sin6_family = AF_INET6
+    sa.sin6_addr = cast[ptr In6_addr](paddr)[]
+    var bs = stringBufSize.DWORD
+    let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+    if r != 0:
+      result = nil
+    else:
+      result = pStringBuffer
+  else:
+    setLastError(ERROR_BAD_ARGUMENTS)
+    result = nil
 
 proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
