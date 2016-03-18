@@ -54,3 +54,11 @@ proc wait*(cond: var Cond, lock: var Lock) {.inline.} =
 proc signal*(cond: var Cond) {.inline.} =
   ## sends a signal to the condition variable `cond`.
   signalSysCond(cond)
+
+template lock*(a: Lock, body: stmt) =
+  a.acquire()
+  {.locks: [a].}:
+    try:
+      body
+    finally:
+      a.release()
