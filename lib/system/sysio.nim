@@ -296,7 +296,7 @@ proc open(f: var File, filename: string,
       var res: Stat
       if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
         close(f2)
-        return
+        return false
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
