@@ -383,6 +383,13 @@ when not declared(getEnv) or defined(nimscript):
     else:
       result = splitPath(path).tail
 
+  proc extractExt*(path: string): string {.
+    noSideEffect, rtl, extern: "nos$1".} =
+    ## Extracts the extension of a given `path`. 
+    ## the extension will be without a dot
+    var extPos = searchExtPos(path)
+    result = substr(path, 0, extPos-1)
+
 
   proc changeFileExt*(filename, ext: string): string {.
     noSideEffect, rtl, extern: "nos$1".} =
