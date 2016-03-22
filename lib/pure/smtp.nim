@@ -378,7 +378,7 @@ when not defined(testing) and isMainModule:
     # echo msg.attachements.len()
 
     echo(msg)
-    quit(0)
+    # quit(0)
     # await client.sendMail("mymail@server.de", @["friend@otherserver.nl"], $msg)
 
     # await client.close()
