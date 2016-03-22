@@ -51,8 +51,8 @@ type
     msgSubject: string
     msgOtherHeaders: StringTableRef
     msgBody: string
-    attachements : seq[Attachment]  ## these are the attachements we would like to send with our messages
-    boundary : string  ## this is a (random?) generated string wich will be used to distinguish between the msg parts
+    attachements : seq[Attachment] 
+    boundary : string  ## this is a (randomly) generated string
 
 
   ReplyError* = object of IOError
@@ -186,7 +186,8 @@ proc composeAttachement(attachement:Attachment,boundary:string) : string=
   result.add("--" & boundary )
 
 
-proc attach*(msg:var Message,pathToFile:string,myFilename:string,description:string="") =
+proc attach*(msg:var Message,pathToFile:string,
+              myFilename:string,description:string="") =
   ## this will attach a file to the message
   var attachement = Attachment()
   attachement.mimeType    = getMimeTypeOfFile(pathToFile)
@@ -198,11 +199,12 @@ proc attach*(msg:var Message,pathToFile:string,myFilename:string,description:str
 
 
 proc getRandomBoundary():string = 
-  var mt = newMersenneTwister( int( epochTime() )  ) # we dont need stong random
+  var mt = newMersenneTwister( int( epochTime() )  ) #we dont need stong random
   return $mt.getNum()
 
 
-proc createMessage*(mSubject, mBody: string, mFrom:string, mTo, mCc: seq[string],
+proc createMessage*(mSubject, mBody: string, mFrom:string, 
+                mTo, mCc: seq[string],
                 otherHeaders: openarray[tuple[name, value: string]]): Message =
   ## Creates a new MIME compliant message.
   result.msgFrom = mFrom
@@ -226,14 +228,14 @@ proc createMessage*(mSubject, mBody: string, mFrom:string , mTo,
   result.msgBody = mBody
   result.attachements = newSeq[Attachment]()
   result.msgOtherHeaders = newStringTable()
-  # result.boundary = "ThisShouldBeARandomString" # TODO make this a random string on creation
   result.boundary = getRandomBoundary()
 
 proc `$`*(msg: Message): string =
   ## stringify for ``Message``.
   result = ""
   if msg.attachements.len() > 0:
-    result.add("""Content-Type: multipart/mixed; boundary="""" & msg.boundary  & "\"\c\L" )
+    result.add(
+      "Content-Type: multipart/mixed; boundary=" & msg.boundary & "\"\c\L" )
   result.add("FROM: "& msg.msgFrom & "\c\L")
   if msg.msgTo.len() > 0:
     result.add("TO: " & msg.msgTo.join(", ") & "\c\L")
@@ -259,7 +261,7 @@ proc `$`*(msg: Message): string =
       result.add(composeAttachement(attachement,msg.boundary)) 
       # result.add("\c\L")
   result.add("\c\L")
-  result.add("--" & msg.boundary & "--" & "\c\L\c\L" ) # last msg also has "--" suffix!
+  result.add("--" & msg.boundary & "--" & "\c\L\c\L" ) #last msg has -- suffix!
   
 
 proc newAsyncSmtp*(address: string, port: Port, useSsl = false,
@@ -307,13 +309,16 @@ proc auth*(smtp: AsyncSmtp, username, password: string) {.async.} =
   ## May fail with ReplyError.
 
   await smtp.sock.send("AUTH LOGIN\c\L")
-  await smtp.checkReply("334") # TODO: Check whether it's asking for the "Username:"
+  await smtp.checkReply("334") # TODO: Check whether it's asking for the 
+                               # "Username:"
                                # i.e "334 VXNlcm5hbWU6"
   await smtp.sock.send(encode(username) & "\c\L")
-  await smtp.checkReply("334") # TODO: Same as above, only "Password:" (I think?)
+  await smtp.checkReply("334") # TODO: Same as above, only 
+                               # "Password:" (I think?)
 
   await smtp.sock.send(encode(password) & "\c\L")
-  await smtp.checkReply("235") # Check whether the authentification was successful.
+  await smtp.checkReply("235") # Check whether the authentification 
+                               # was successful.
 
 proc sendMail*(smtp: AsyncSmtp, fromAddr: string,
                toAddrs: seq[string], msg: string) {.async.} =
@@ -339,25 +344,28 @@ proc close*(smtp: AsyncSmtp) {.async.} =
   smtp.sock.close()
 
 when not defined(testing) and isMainModule:
-  #var msg = createMessage("Test subject!",
-  #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
-  #echo(msg)
-
-  #var smtp = connect("localhost", 25, False, True)
-  #smtp.sendmail("root@localhost", @["dominik@localhost"], $msg)
-
-  #echo(decode("a17sm3701420wbe.12"))
+  
   proc main() {.async.} =
+
+    #var msg = createMessage("Test subject!",
+    #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
+    #echo(msg)
+
+    #var smtp = connect("localhost", 25, False, True)
+    #smtp.sendmail("root@localhost", @["dominik@localhost"], $msg)
+
+    #echo(decode("a17sm3701420wbe.12"))
+
     # var client = newAsyncSmtp("smtp.gmail.com", Port(465), true)
     # await client.connect()
     # await client.auth("johndoe", "foo")
 
-    # var client = newAsyncSmtp("mail.server.de", Port(587), false)
-    # await client.connect()
-    # await client.auth("mymail@server.de", "xxx")
+    var client = newAsyncSmtp("mail.server.de", Port(587), false)
+    await client.connect()
+    await client.auth("mymail@server.de", "xxx")
 
     var msg = createMessage("Hello from Nim's SMTP!",
-                            "Hello!!!!.\n Is this awesome or what? \n\nGreetings from Germany!\nenthus1ast",
+                            "Hello!!!!.\nIs this awesome or what?\n\n",
                             "mymail@server.de",
                             @["friend@otherserver.nl"])
 
@@ -374,12 +382,11 @@ when not defined(testing) and isMainModule:
               )
 
     # echo msg.attachements.len()
+    # echo msg.attachements[0].filename
 
     echo(msg)
-    # quit(0)
-    # await client.sendMail("mymail@server.de", @["friend@otherserver.nl"], $msg)
-
-    # await client.close()
+    await client.sendMail("mymail@server.de", @["friend@otherserver.nl"], $msg)
+    await client.close()
 
   waitFor main()
 
