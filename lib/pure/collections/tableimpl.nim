@@ -129,4 +129,7 @@ template delImpl() {.dirty, immediate.} =
           r = t.data[i].hcode and msk    # "home" location of key@i
           if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
             break
-        shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
+        when defined(js):
+          t.data[j] = t.data[i]
+        else:
+          shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
