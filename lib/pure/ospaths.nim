@@ -389,6 +389,7 @@ when not declared(getEnv) or defined(nimscript):
     ## the extension will be without a dot
     var extPos = searchExtPos(path)
     result = substr(path, 0, extPos-1)
+    
 
 
   proc changeFileExt*(filename, ext: string): string {.
