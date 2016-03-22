@@ -387,10 +387,9 @@ when not declared(getEnv) or defined(nimscript):
     noSideEffect, rtl, extern: "nos$1".} =
     ## Extracts the extension of a given `path`. 
     ## the extension will be without a dot
+    result = ""
     var extPos = searchExtPos(path)
-    result = substr(path, 0, extPos-1)
-    
-
+    result = substr(path, extPos+1, path.len())
 
   proc changeFileExt*(filename, ext: string): string {.
     noSideEffect, rtl, extern: "nos$1".} =
@@ -575,9 +574,7 @@ when declared(getEnv) or defined(nimscript):
     var path = string(getEnv("PATH"))
     for candidate in split(path, PathSep):
       when defined(windows):
-        var x = (if candidate[0] == '"' and candidate[^1] == '"':
-                  substr(candidate, 1, candidate.len-2) else: candidate) /
-               result
+        var x = candidate / result
       else:
         var x = expandTilde(candidate) / result
       if existsFile(x): return x
