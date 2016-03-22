@@ -157,7 +157,6 @@ proc close*(smtp: Smtp) =
 proc getMimeTypeOfFile(pathToFile:string): string =
   ## This will return the mimetype
   var mimeDB = newMimetypes()
-  # var (dir, name, ext) = splitFile(pathToFile)
   var ext = extractExt(pathToFile) # 
 
   ## we choose "application/octet-stream" 
@@ -213,7 +212,6 @@ proc createMessage*(mSubject, mBody: string, mFrom:string, mTo, mCc: seq[string]
   result.msgBody = mBody
   result.attachements = newSeq[Attachment]()
   result.msgOtherHeaders = newStringTable()
-  # result.boundary = "ThisShouldBeARandomString" # TODO make this a random string on creation
   result.boundary = getRandomBoundary()
   for n, v in items(otherHeaders):
     result.msgOtherHeaders[n] = v
