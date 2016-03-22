@@ -574,7 +574,9 @@ when declared(getEnv) or defined(nimscript):
     var path = string(getEnv("PATH"))
     for candidate in split(path, PathSep):
       when defined(windows):
-        var x = candidate / result
+        var x = (if candidate[0] == '"' and candidate[^1] == '"':
+                  substr(candidate, 1, candidate.len-2) else: candidate) /
+               result
       else:
         var x = expandTilde(candidate) / result
       if existsFile(x): return x
