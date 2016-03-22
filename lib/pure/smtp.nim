@@ -41,7 +41,7 @@ type
     mimeType: string ## the mime type of our attachement
     filename: string ## the user spezified name of the attached file
     contentB64 : string ## the actual content of the file base 64ed
-    description : string ## a description of this attachement
+    #description : string ## a description of this attachement
 
 
   Message* = object
@@ -187,14 +187,14 @@ proc composeAttachement(attachement:Attachment,boundary:string) : string=
 
 
 proc attach*(msg:var Message,pathToFile:string,
-              myFilename:string,description:string="") =
+              myFilename:string) =
   ## this will attach a file to the message
   var attachement = Attachment()
   attachement.mimeType    = getMimeTypeOfFile(pathToFile)
   let content             = readFile(pathToFile)
   attachement.contentB64  = encode(content)
   attachement.filename    = myFilename
-  attachement.description = description
+  #attachement.description = description
   add(msg.attachements,attachement)
 
 
