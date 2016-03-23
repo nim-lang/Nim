@@ -56,6 +56,8 @@ proc signal*(cond: var Cond) {.inline.} =
   signalSysCond(cond)
 
 template withLock*(a: Lock, body: untyped) =
+  ## Acquires the given lock, executes the statements in body and
+  ## releases the lock after the statements finish executing.
   a.acquire()
   {.locks: [a].}:
     try:
