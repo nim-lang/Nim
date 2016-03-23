@@ -383,7 +383,6 @@ when not declared(getEnv) or defined(nimscript):
     else:
       result = splitPath(path).tail
 
-
   proc changeFileExt*(filename, ext: string): string {.
     noSideEffect, rtl, extern: "nos$1".} =
     ## Changes the file extension to `ext`.
