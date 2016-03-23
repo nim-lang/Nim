@@ -29,8 +29,7 @@
 ## enable SSL, compile with ``-d:ssl``.
 
 import net, strutils, strtabs, base64, os, mimetypes, sequtils
-import asyncnet, asyncdispatch
-import mersenne , times ## we need randomness for the boundary
+import asyncnet, asyncdispatch, math, times
 
 type
   Smtp* = object
@@ -39,9 +38,8 @@ type
 
   Attachment* = object ## this is a mail attachment
     mimeType: string ## the mime type of our attachement
-    filename: string ## the user spezified name of the attached file
+    filename: string ## the user specified name of the attached file
     contentB64 : string ## the actual content of the file base 64ed
-    #description : string ## a description of this attachement
 
 
   Message* = object
@@ -157,12 +155,13 @@ proc close*(smtp: Smtp) =
 proc getMimeTypeOfFile(pathToFile:string): string =
   ## This will return the mimetype
   var mimeDB = newMimetypes()
-  var ext = extractExt(pathToFile) # 
+
+  var (dir, name, ext) = splitFile(pathToFile) 
+  ext = ext[1..^1] # splitFile is returning ext with a dot,
+                   # get rid of it!
 
   ## we choose "application/octet-stream" 
   ## if no extension is given
-  ## TODO what about linux? or files without extension.
-  ## Do we have to have something like `file` magic?
   return mimeDB.getMimetype(ext,"bin") 
 
 
@@ -171,13 +170,13 @@ proc composeAttachement(attachement:Attachment,boundary:string) : string=
   ## this generates an attachement
   result =""
 
-  var ContentDisposition :string = "Content-Disposition: attachment;"
+  var contentDisposition :string = "Content-Disposition: attachment;"
   if attachement.filename != nil:
-    ContentDisposition &= " filename=" & attachement.filename & ";"
+    contentDisposition &= " filename=" & attachement.filename & ";"
 
   result.add("\c\L")
   result.add("Content-Type: " & attachement.mimeType & "\c\L")
-  result.add( ContentDisposition & "\c\L")
+  result.add(contentDisposition & "\c\L")
   result.add("MIME-Version: 1.0\c\L")
   result.add("Content-Transfer-Encoding: base64 \c\L")
   result.add("" & "\c\L")
@@ -187,20 +186,27 @@ proc composeAttachement(attachement:Attachment,boundary:string) : string=
 
 
 proc attach*(msg:var Message,pathToFile:string,
-              myFilename:string) =
+              msgFilename:string, mimetype:string) = 
   ## this will attach a file to the message
+  ## mimetype is not automatically detected.
   var attachement = Attachment()
-  attachement.mimeType    = getMimeTypeOfFile(pathToFile)
+  attachement.mimeType    = mimetype
   let content             = readFile(pathToFile)
   attachement.contentB64  = encode(content)
-  attachement.filename    = myFilename
-  #attachement.description = description
+  attachement.filename    = msgFilename
   add(msg.attachements,attachement)
+  
 
+proc attach*(msg:var Message,pathToFile:string,
+              msgFilename:string) =
+  let mimetype = getMimeTypeOfFile(pathToFile)
+  attach(msg,pathToFile,msgFilename,mimetype)
+  
 
 proc getRandomBoundary():string = 
-  var mt = newMersenneTwister( int( epochTime() )  ) #we dont need stong random
-  return $mt.getNum()
+  math.randomize(int(epochTime()))
+  return $(math.random(10000000) * 10000 + math.random(10000000))
+
 
 
 proc createMessage*(mSubject, mBody: string, mFrom:string, 
@@ -230,13 +236,29 @@ proc createMessage*(mSubject, mBody: string, mFrom:string , mTo,
   result.msgOtherHeaders = newStringTable()
   result.boundary = getRandomBoundary()
 
+proc createMessage*(mSubject, mBody: string, mTo,
+                    mCc: seq[string] = @[]): Message {.deprecated.} =
+  ## smtp servers are going to reject messages without a `from` field
+  ## so we have to specify one.
+  ## Please use createMessage with the `mFrom` param. 
+  return createMessage(mSubject,mBody,mFrom="",mTo,mCc)
+
+proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
+                otherHeaders: openarray[tuple[name, value: string]]): Message {.deprecated.} =
+  ## smtp servers are going to reject messages without a `from` field
+  ## so we have to specify one.
+  ## Please use createMessage with the `mFrom` param.   
+  return createMessage(mSubject, mBody, mFrom="", mTo, mCc,otherHeaders)
+
+
 proc `$`*(msg: Message): string =
   ## stringify for ``Message``.
   result = ""
   if msg.attachements.len() > 0:
     result.add(
       "Content-Type: multipart/mixed; boundary=" & msg.boundary & "\"\c\L" )
-  result.add("FROM: "& msg.msgFrom & "\c\L")
+  if msg.msgFrom != "":
+    result.add("FROM: "& msg.msgFrom & "\c\L")
   if msg.msgTo.len() > 0:
     result.add("TO: " & msg.msgTo.join(", ") & "\c\L")
   if msg.msgCc.len() > 0:
@@ -257,9 +279,8 @@ proc `$`*(msg: Message): string =
     result.add("--" & msg.boundary) # we start with a boundary
 
     for attachement in msg.attachements:
-      # echo "FOOOOO"
       result.add(composeAttachement(attachement,msg.boundary)) 
-      # result.add("\c\L")
+
   result.add("\c\L")
   result.add("--" & msg.boundary & "--" & "\c\L\c\L" ) #last msg has -- suffix!
   
