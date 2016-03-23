@@ -264,19 +264,23 @@ proc `$`*(msg: Message): string =
   for key, value in pairs(msg.msgOtherHeaders):
     result.add(key & ": " & value & "\c\L")
 
-  result.add("\c\L")
-  result.add("--" & msg.boundary & "\c\L") # boundary before the txt message
-  result.add("Content-Type: text/plain")
-  result.add("\c\L")
-  result.add("\c\L")
-  result.add(msg.msgBody)
-  result.add("\c\L")
-  result.add("\c\L")
-
-  for attachment in msg.attachments:
-    result.add(composeAttachement(attachment,msg.boundary)) 
-  result.add("--" & msg.boundary & "--" & "\c\L\c\L" ) #last msg has -- suffix!
-  
+  if msg.attachments.len() > 0:
+    result.add("\c\L")
+    result.add("--" & msg.boundary & "\c\L") # boundary before the txt message
+    result.add("Content-Type: text/plain")
+    result.add("\c\L")
+    result.add("\c\L")
+    result.add(msg.msgBody)
+    result.add("\c\L")
+    result.add("\c\L")
+    for attachment in msg.attachments:
+        result.add(composeAttachement(attachment,msg.boundary)) 
+    result.add("--" & msg.boundary & "--" & "\c\L\c\L" ) # last msg has -- suffix!    
+  else:
+    result.add("\c\L")
+    result.add(msg.msgBody)
+    result.add("\c\L")
+    result.add("\c\L")    
 
 proc newAsyncSmtp*(address: string, port: Port, useSsl = false,
                    sslContext = defaultSslContext): AsyncSmtp =
