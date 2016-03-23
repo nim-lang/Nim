@@ -152,12 +152,12 @@ proc close*(smtp: Smtp) =
   smtp.sock.close()
 
 
-proc getMimeTypeOfFile(pathToFile:string): string =
+proc getMimeTypeOfFile(filepath:string): string =
   ## This will return the mimetype
   ## we choose "application/octet-stream" 
   ## if the extension is unknown
   var mimeDB = newMimetypes()
-  var (dir, name, ext) = splitFile(pathToFile) 
+  var (dir, name, ext) = splitFile(filepath) 
   ext = ext[1..^1] # splitFile is returning ext with a dot,
                    # get rid of it!
   return mimeDB.getMimetype(ext,"bin") 
@@ -172,6 +172,7 @@ proc composeAttachement(attachment:Attachment,boundary:string) : string=
     contentDisposition &= " filename=" & attachment.filename & ";"
 
   # TODO move MIME creation code in an dedicated module
+  result.add("--" & boundary)
   result.add("\c\L")
   result.add("Content-Type: " & attachment.mimeType & "\c\L")
   result.add(contentDisposition & "\c\L")
@@ -180,23 +181,23 @@ proc composeAttachement(attachment:Attachment,boundary:string) : string=
   result.add("" & "\c\L")
   result.add(attachment.contentB64 & "\c\L")
   result.add("\c\L")
-  result.add("--" & boundary)
+  
 
 
-proc attach*(msg:var Message, pathToFile:string, msgFilename:string, mimetype:string) = 
+proc attach*(msg:var Message, filepath:string, msgFilename:string, mimetype:string) = 
   ## this will attach a file to the message
   ## mimetype is not automatically detected.
   var attachment = Attachment()
   attachment.mimeType = mimetype
-  let content = readFile(pathToFile)
+  let content = readFile(filepath)
   attachment.contentB64 = encode(content)
   attachment.filename = msgFilename
   add(msg.attachments,attachment)
   
 
-proc attach*(msg:var Message, pathToFile:string, msgFilename:string) =
-  var mimetype = getMimeTypeOfFile(pathToFile)
-  attach(msg,pathToFile,msgFilename,mimetype)
+proc attach*(msg:var Message, filepath:string, msgFilename:string) =
+  var mimetype = getMimeTypeOfFile(filepath)
+  attach(msg,filepath,msgFilename,mimetype)
   
 
 proc getRandomBoundary():string = 
@@ -236,14 +237,14 @@ proc createMessage*(mSubject, mBody: string, mTo,
   ## smtp servers are going to reject messages without a `from` field
   ## so we have to specify one.
   ## Please use createMessage with the `mFrom` param. 
-  return createMessage(mSubject,mBody,mFrom="",mTo,mCc)
+  return createMessage(mSubject,mBody,mFrom = "",mTo,mCc)
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openarray[tuple[name, value: string]]): Message {.deprecated.} =
   ## smtp servers are going to reject messages without a `from` field
   ## so we have to specify one.
   ## Please use createMessage with the `mFrom` param.   
-  return createMessage(mSubject, mBody, mFrom="", mTo, mCc, otherHeaders)
+  return createMessage(mSubject, mBody, mFrom = "", mTo, mCc, otherHeaders)
 
 
 proc `$`*(msg: Message): string =
@@ -264,19 +265,16 @@ proc `$`*(msg: Message): string =
     result.add(key & ": " & value & "\c\L")
 
   result.add("\c\L")
-  result.add("--" & msg.boundary & "\c\L") #boundary before the txt message
+  result.add("--" & msg.boundary & "\c\L") # boundary before the txt message
+  result.add("Content-Type: text/plain")
+  result.add("\c\L")
   result.add("\c\L")
   result.add(msg.msgBody)
   result.add("\c\L")
-
-  if msg.attachments.len() > 0: # if we have some attachments
-    result.add("\c\L")
-    result.add("--" & msg.boundary) # we start with a boundary
-
-    for attachment in msg.attachments:
-      result.add(composeAttachement(attachment,msg.boundary)) 
-
   result.add("\c\L")
+
+  for attachment in msg.attachments:
+    result.add(composeAttachement(attachment,msg.boundary)) 
   result.add("--" & msg.boundary & "--" & "\c\L\c\L" ) #last msg has -- suffix!
   
 
