@@ -37,7 +37,7 @@ type
     debug: bool
 
   Attachment* = object ## this is a mail attachment
-    mimeType: string ## the mime type of our attachement
+    mimeType: string ## the mime type of our attachment
     filename: string ## the user specified name of the attached file
     contentB64 : string ## the actual content of the file base 64ed
 
@@ -49,7 +49,7 @@ type
     msgSubject: string
     msgOtherHeaders: StringTableRef
     msgBody: string
-    attachements : seq[Attachment] 
+    attachments : seq[Attachment] 
     boundary : string  ## this is a (randomly) generated string
 
 
@@ -154,59 +154,54 @@ proc close*(smtp: Smtp) =
 
 proc getMimeTypeOfFile(pathToFile:string): string =
   ## This will return the mimetype
+  ## we choose "application/octet-stream" 
+  ## if the extension is unknown
   var mimeDB = newMimetypes()
-
   var (dir, name, ext) = splitFile(pathToFile) 
   ext = ext[1..^1] # splitFile is returning ext with a dot,
                    # get rid of it!
-
-  ## we choose "application/octet-stream" 
-  ## if no extension is given
   return mimeDB.getMimetype(ext,"bin") 
 
 
-
-proc composeAttachement(attachement:Attachment,boundary:string) : string=
-  ## this generates an attachement
+proc composeAttachement(attachment:Attachment,boundary:string) : string=
+  ## this generates an attachment
   result =""
 
   var contentDisposition :string = "Content-Disposition: attachment;"
-  if attachement.filename != nil:
-    contentDisposition &= " filename=" & attachement.filename & ";"
+  if attachment.filename != nil:
+    contentDisposition &= " filename=" & attachment.filename & ";"
 
+  # TODO move MIME creation code in an dedicated module
   result.add("\c\L")
-  result.add("Content-Type: " & attachement.mimeType & "\c\L")
+  result.add("Content-Type: " & attachment.mimeType & "\c\L")
   result.add(contentDisposition & "\c\L")
   result.add("MIME-Version: 1.0\c\L")
   result.add("Content-Transfer-Encoding: base64 \c\L")
   result.add("" & "\c\L")
-  result.add(attachement.contentB64 & "\c\L")
+  result.add(attachment.contentB64 & "\c\L")
   result.add("\c\L")
-  result.add("--" & boundary )
+  result.add("--" & boundary)
 
 
-proc attach*(msg:var Message,pathToFile:string,
-              msgFilename:string, mimetype:string) = 
+proc attach*(msg:var Message, pathToFile:string, msgFilename:string, mimetype:string) = 
   ## this will attach a file to the message
   ## mimetype is not automatically detected.
-  var attachement = Attachment()
-  attachement.mimeType    = mimetype
-  let content             = readFile(pathToFile)
-  attachement.contentB64  = encode(content)
-  attachement.filename    = msgFilename
-  add(msg.attachements,attachement)
+  var attachment = Attachment()
+  attachment.mimeType = mimetype
+  let content = readFile(pathToFile)
+  attachment.contentB64 = encode(content)
+  attachment.filename = msgFilename
+  add(msg.attachments,attachment)
   
 
-proc attach*(msg:var Message,pathToFile:string,
-              msgFilename:string) =
-  let mimetype = getMimeTypeOfFile(pathToFile)
+proc attach*(msg:var Message, pathToFile:string, msgFilename:string) =
+  var mimetype = getMimeTypeOfFile(pathToFile)
   attach(msg,pathToFile,msgFilename,mimetype)
   
 
 proc getRandomBoundary():string = 
   math.randomize(int(epochTime()))
-  return $(math.random(10000000) * 10000 + math.random(10000000))
-
+  return "======" & $(math.random(10000000) * 10000 + math.random(10000000))
 
 
 proc createMessage*(mSubject, mBody: string, mFrom:string, 
@@ -218,7 +213,7 @@ proc createMessage*(mSubject, mBody: string, mFrom:string,
   result.msgCc = mCc
   result.msgSubject = mSubject
   result.msgBody = mBody
-  result.attachements = newSeq[Attachment]()
+  result.attachments = newSeq[Attachment]()
   result.msgOtherHeaders = newStringTable()
   result.boundary = getRandomBoundary()
   for n, v in items(otherHeaders):
@@ -232,7 +227,7 @@ proc createMessage*(mSubject, mBody: string, mFrom:string , mTo,
   result.msgCc = mCc
   result.msgSubject = mSubject
   result.msgBody = mBody
-  result.attachements = newSeq[Attachment]()
+  result.attachments = newSeq[Attachment]()
   result.msgOtherHeaders = newStringTable()
   result.boundary = getRandomBoundary()
 
@@ -248,15 +243,15 @@ proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
   ## smtp servers are going to reject messages without a `from` field
   ## so we have to specify one.
   ## Please use createMessage with the `mFrom` param.   
-  return createMessage(mSubject, mBody, mFrom="", mTo, mCc,otherHeaders)
+  return createMessage(mSubject, mBody, mFrom="", mTo, mCc, otherHeaders)
 
 
 proc `$`*(msg: Message): string =
   ## stringify for ``Message``.
   result = ""
-  if msg.attachements.len() > 0:
+  if msg.attachments.len() > 0:
     result.add(
-      "Content-Type: multipart/mixed; boundary=" & msg.boundary & "\"\c\L" )
+      "Content-Type: multipart/mixed; boundary=\"" & msg.boundary & "\"\c\L" )
   if msg.msgFrom != "":
     result.add("FROM: "& msg.msgFrom & "\c\L")
   if msg.msgTo.len() > 0:
@@ -274,12 +269,12 @@ proc `$`*(msg: Message): string =
   result.add(msg.msgBody)
   result.add("\c\L")
 
-  if msg.attachements.len() > 0: # if we have some attachements
+  if msg.attachments.len() > 0: # if we have some attachments
     result.add("\c\L")
     result.add("--" & msg.boundary) # we start with a boundary
 
-    for attachement in msg.attachements:
-      result.add(composeAttachement(attachement,msg.boundary)) 
+    for attachment in msg.attachments:
+      result.add(composeAttachement(attachment,msg.boundary)) 
 
   result.add("\c\L")
   result.add("--" & msg.boundary & "--" & "\c\L\c\L" ) #last msg has -- suffix!
@@ -385,25 +380,30 @@ when not defined(testing) and isMainModule:
     await client.connect()
     await client.auth("mymail@server.de", "xxx")
 
-    var msg = createMessage("Hello from Nim's SMTP!",
-                            "Hello!!!!.\nIs this awesome or what?\n\n",
-                            "mymail@server.de",
-                            @["friend@otherserver.nl"])
+    var msg = createMessage("Hello from Nim's SMTP!", # subject
+                            "Hello!!!!.\nIs this awesome or what?\n\n", # message body
+                            "mymail@server.de", # from
+                            @["friend@otherserver.nl"]) # to
 
     # png test
-    msg.attach(r"C:\tmp\test1.png",
-               r"test1.png",
-              "fooobaabaz"
+    msg.attach(r"C:\tmp\test1.png", # path on filesystem.
+               r"test1.png", # user supplied name
               )
 
     # pdf test
     msg.attach(r"C:\tmp\wget-man.pdf",
                r"wget-man.pdf",
-              "fooobaabaz"
               )
 
-    # echo msg.attachements.len()
-    # echo msg.attachements[0].filename
+    # if we have no extension, one could specify the mimetype
+    var mimeDB = newMimetypes()
+    msg.attach(r"C:\tmp\withoutExtension",
+               r"test2.png",
+               mimeDB.getMimetype("png")
+              )
+
+    # echo msg.attachments.len()
+    # echo msg.attachments[0].filename
 
     echo(msg)
     await client.sendMail("mymail@server.de", @["friend@otherserver.nl"], $msg)
