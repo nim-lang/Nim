@@ -55,7 +55,7 @@ proc signal*(cond: var Cond) {.inline.} =
   ## sends a signal to the condition variable `cond`.
   signalSysCond(cond)
 
-template lock*(a: Lock, body: stmt) =
+template withLock*(a: Lock, body: untyped) =
   a.acquire()
   {.locks: [a].}:
     try:
