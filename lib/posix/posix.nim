@@ -486,11 +486,11 @@ type
     l_onoff*: cint  ## Indicates whether linger option is enabled.
     l_linger*: cint ## Linger time, in seconds.
 
-  InPort* = int16 ## unsigned!
-  InAddrScalar* = int32 ## unsigned!
+  InPort* = uint16
+  InAddrScalar* = uint32
 
   InAddrT* {.importc: "in_addr_t", pure, final,
-             header: "<netinet/in.h>".} = int32 ## unsigned!
+             header: "<netinet/in.h>".} = uint32
 
   InAddr* {.importc: "struct in_addr", pure, final,
              header: "<netinet/in.h>".} = object ## struct in_addr

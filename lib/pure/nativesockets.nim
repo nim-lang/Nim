@@ -219,31 +219,67 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
 proc dealloc*(ai: ptr AddrInfo) =
   freeaddrinfo(ai)
 
-proc ntohl*(x: int32): int32 =
-  ## Converts 32-bit integers from network to host byte order.
+proc ntohl*(x: uint32): uint32 =
+  ## Converts 32-bit unsigned integers from network to host byte order.
   ## On machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
   when cpuEndian == bigEndian: result = x
-  else: result = (x shr 24'i32) or
-                 (x shr 8'i32 and 0xff00'i32) or
-                 (x shl 8'i32 and 0xff0000'i32) or
-                 (x shl 24'i32)
+  else: result = (x shr 24'u32) or
+                 (x shr 8'u32 and 0xff00'u32) or
+                 (x shl 8'u32 and 0xff0000'u32) or
+                 (x shl 24'u32)
 
-proc ntohs*(x: int16): int16 =
-  ## Converts 16-bit integers from network to host byte order. On machines
-  ## where the host byte order is the same as network byte order, this is
-  ## a no-op; otherwise, it performs a 2-byte swap operation.
+template ntohl*(x: int32): expr {.deprecated.} =
+  ## Converts 32-bit integers from network to host byte order.
+  ## On machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 4-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, IPv4
+  ## addresses are now treated as unsigned integers. Please use the unsigned
+  ## version of this template.
+  cast[int32](ntohl(cast[uint32](x)))
+
+proc ntohs*(x: uint16): uint16 =
+  ## Converts 16-bit unsigned integers from network to host byte order. On
+  ## machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 2-byte swap operation.
   when cpuEndian == bigEndian: result = x
-  else: result = (x shr 8'i16) or (x shl 8'i16)
+  else: result = (x shr 8'u16) or (x shl 8'u16)
 
-template htonl*(x: int32): expr =
+template ntohs*(x: int16): expr {.deprecated.} =
+  ## Converts 16-bit integers from network to host byte order. On
+  ## machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 2-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, where port
+  ## numbers became unsigned integers. Please use the unsigned version of
+  ## this template.
+  cast[int16](ntohs(cast[uint16](x)))
+
+template htonl*(x: int32): expr {.deprecated.} =
   ## Converts 32-bit integers from host to network byte order. On machines
   ## where the host byte order is the same as network byte order, this is
   ## a no-op; otherwise, it performs a 4-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, IPv4
+  ## addresses are now treated as unsigned integers. Please use the unsigned
+  ## version of this template.
   nativesockets.ntohl(x)
 
-template htons*(x: int16): expr =
-  ## Converts 16-bit positive integers from host to network byte order.
+template htonl*(x: uint32): expr =
+  ## Converts 32-bit unsigned integers from host to network byte order. On
+  ## machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 4-byte swap operation.
+  nativesockets.ntohl(x)
+
+template htons*(x: int16): expr {.deprecated.} =
+  ## Converts 16-bit integers from host to network byte order.
+  ## On machines where the host byte order is the same as network byte
+  ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, where port
+  ## numbers became unsigned integers. Please use the unsigned version of
+  ## this template.
+  nativesockets.ntohs(x)
+
+template htons*(x: uint16): expr =
+  ## Converts 16-bit unsigned integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   nativesockets.ntohs(x)
