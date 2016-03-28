@@ -620,7 +620,8 @@ proc semFor(c: PContext, n: PNode): PNode =
       result.kind = nkParForStmt
     else:
       result = semForFields(c, n, call.sons[0].sym.magic)
-  elif isCallExpr and call.sons[0].typ.callConv == ccClosure:
+  elif isCallExpr and call.sons[0].typ.callConv == ccClosure and
+      tfIterator in call.sons[0].typ.flags:
     # first class iterator:
     result = semForVars(c, n)
   elif not isCallExpr or call.sons[0].kind != nkSym or
