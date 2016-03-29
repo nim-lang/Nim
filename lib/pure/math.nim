@@ -44,6 +44,7 @@ when not defined(js) and not defined(nimscript):
 
 const
   PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)
+  TAU* = 2.0 * PI ## the circle constant TAU (= 2 * PI)
   E* = 2.71828182845904523536028747 ## Euler's number
 
   MaxFloat64Precision* = 16 ## maximum number of meaningful digits

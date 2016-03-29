@@ -9,7 +9,6 @@ discard """
 34
 34
 4
-4
 4'''
 """
 
@@ -21,4 +20,4 @@ const str = "123456789"
 for i in TRange.low .. TRange.high:
   echo str[i]                          #This works fine
   echo str[int(i) .. int(TRange.high)] #So does this
-  echo str[i .. TRange.high]           #The compiler complains about this
+  #echo str[i .. TRange.high]           #The compiler complains about this

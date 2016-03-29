@@ -427,7 +427,7 @@ elif defined(nogc) and defined(useMalloc):
   proc initGC() = discard
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
-    result = alloc(size)
+    result = alloc0(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len

@@ -263,9 +263,7 @@ proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
-      $result = array();
-      for($i = 0; $i < `len`; $i++) $result[] = chr(0);
-      return $result;
+      return str_repeat(chr(0),`len`);
     """
   else:
     asm """

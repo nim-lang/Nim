@@ -1288,6 +1288,10 @@ const
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
 
+when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
+  # tcc doesn't support TLS
+  {.error: "``--tlsEmulation:on`` must be used when using threads with tcc backend".}
+  
 when defined(boehmgc):
   when defined(windows):
     const boehmLib = "boehmgc.dll"

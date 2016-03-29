@@ -23,16 +23,16 @@ proc rawWrite(f: File, s: string) =
 
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
-  stdout.rawWrite("could not load: ")
-  stdout.rawWrite(path)
-  stdout.rawWrite("\n")
+  stderr.rawWrite("could not load: ")
+  stderr.rawWrite(path)
+  stderr.rawWrite("\n")
   quit(1)
 
 proc procAddrError(name: cstring) {.noinline.} =
   # carefully written to avoid memory allocation:
-  stdout.rawWrite("could not import: ")
-  stdout.write(name)
-  stdout.rawWrite("\n")
+  stderr.rawWrite("could not import: ")
+  stderr.write(name)
+  stderr.rawWrite("\n")
   quit(1)
 
 # this code was inspired from Lua's source code:
@@ -71,7 +71,7 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        c_fprintf(c_stdout, "%s\n", error)
+        c_fprintf(c_stderr, "%s\n", error)
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)

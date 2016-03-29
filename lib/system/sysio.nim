@@ -82,12 +82,11 @@ when NoFakeVars:
     const
       IOFBF = cint(0)
       IONBF = cint(4)
-  elif defined(macosx) or defined(linux):
+  else:
+    # On all systems I could find, including Linux, Mac OS X, and the BSDs
     const
       IOFBF = cint(0)
       IONBF = cint(2)
-  else:
-    {.error: "IOFBF not ported to your platform".}
 else:
   var
     IOFBF {.importc: "_IOFBF", nodecl.}: cint
@@ -271,12 +270,33 @@ const
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
 
+when defined(posix) and not defined(nimscript):
+  type
+    Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+
+    Stat {.importc: "struct stat",
+             header: "<sys/stat.h>", final, pure.} = object ## struct stat
+      st_mode: Mode        ## Mode of file
+
+  proc S_ISDIR(m: Mode): bool {.importc, header: "<sys/stat.h>".}
+    ## Test for a directory.
+
+  proc fstat(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
 
 proc open(f: var File, filename: string,
           mode: FileMode = fmRead,
           bufSize: int = -1): bool =
   var p: pointer = fopen(filename, FormatOpen[mode])
   if p != nil:
+    when defined(posix) and not defined(nimscript):
+      # How `fopen` handles opening a directory is not specified in ISO C and
+      # POSIX. We do not want to handle directories as regular files that can
+      # be opened.
+      var f2 = cast[File](p)
+      var res: Stat
+      if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
+        close(f2)
+        return false
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:

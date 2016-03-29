@@ -575,7 +575,7 @@ name ``c`` should default to type ``Context``, ``n`` should default to
 
 
 The ``using`` section uses the same indentation based grouping syntax as
-a ``var`` or ``let``` section.
+a ``var`` or ``let`` section.
 
 
 If expression

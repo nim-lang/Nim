@@ -94,7 +94,7 @@ elif defined(posix):
   proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
             off: int): pointer {.header: "<sys/mman.h>".}
 
-  proc munmap(adr: pointer, len: int) {.header: "<sys/mman.h>".}
+  proc munmap(adr: pointer, len: int): cint {.header: "<sys/mman.h>".}
 
   proc osAllocPages(size: int): pointer {.inline.} =
     result = mmap(nil, size, PROT_READ or PROT_WRITE,
@@ -108,7 +108,7 @@ elif defined(posix):
     if result == cast[pointer](-1): result = nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline} =
-    when reallyOsDealloc: munmap(p, size)
+    when reallyOsDealloc: discard munmap(p, size)
 
 elif defined(windows):
   const

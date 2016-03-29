@@ -263,7 +263,7 @@ template eatChar(L: var TLexer, t: var TToken) =
   add(t.literal, L.buf[L.bufpos])
   inc(L.bufpos)
 
-proc getNumber(L: var TLexer): TToken =
+proc getNumber(L: var TLexer, result: var TToken) =
   proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) =
     var pos = L.bufpos              # use registers for pos, buf
     var buf = L.buf
@@ -1061,7 +1061,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       getCharacter(L, tok)
       tok.tokType = tkCharLit
     of '0'..'9':
-      tok = getNumber(L)
+      getNumber(L, tok)
     else:
       if c in OpChars:
         getOperator(L, tok)
