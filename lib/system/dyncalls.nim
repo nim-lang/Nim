@@ -109,9 +109,10 @@ elif defined(windows) or defined(dos):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result != nil: return
+    var decorated: array[250, char]
     for i in countup(0, 50):
-      var decorated = "_" & $name & "@" & $(i * 4)
-      result = getProcAddress(cast[THINSTANCE](lib), cstring(decorated))
+      discard csprintf(decorated, "_%s@%ld", name, i*4)
+      result = getProcAddress(cast[THINSTANCE](lib), decorated)
       if result != nil: return
     procAddrError(name)
 
