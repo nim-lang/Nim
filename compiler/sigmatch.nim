@@ -1027,7 +1027,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyCompositeTypeClass:
     considerPreviousT:
       let roota = a.skipGenericAlias
-      let rootf = f.lastSon
+      let rootf = f.lastSon.skipGenericAlias
       if a.kind == tyGenericInst and roota.base == rootf.base:
         for i in 1 .. rootf.sonsLen-2:
           let ff = rootf.sons[i]
