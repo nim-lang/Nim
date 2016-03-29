@@ -787,7 +787,7 @@ proc hash*(n: JsonNode): Hash =
 
 proc hash*(n: Table[string, JsonNode]): Hash =
   for key, val in n:
-    result = result !& hash(key) !& hash(val)
+    result = result xor (hash(key) !& hash(val))
   result = !$result
 
 proc len*(n: JsonNode): int =
