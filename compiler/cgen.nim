@@ -707,9 +707,11 @@ proc genProcAux(m: BModule, prc: PSym) =
   add(m.s[cfsProcs], generatedProc)
 
 proc crossesCppBoundary(m: BModule; sym: PSym): bool {.inline.} =
-  result = sfCompileToCpp in m.module.flags and
-           sfCompileToCpp notin sym.getModule().flags and
-           gCmd != cmdCompileToCpp
+  result = (sfCompileToCpp in m.module.flags and
+            sfCompileToCpp notin sym.getModule().flags and
+            gCmd != cmdCompileToCpp) or
+           (gCmd == cmdCompileToCpp and
+            sfImportc in sym.flags and sym.magic == mNone)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
