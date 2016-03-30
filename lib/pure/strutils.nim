@@ -560,6 +560,24 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
+proc parseUInt*(s: string): uint {.noSideEffect, procvar,
+  rtl, extern: "nsuParseUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
+
+proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+  rtl, extern: "nsuParseBiggestUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseBiggestUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
+
 proc parseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`. If `s` is not
