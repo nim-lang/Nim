@@ -2564,10 +2564,14 @@ else:
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
+  when not (
+      defined(boehmgc) or
+      defined(gogc) or
+      (defined(nogc) and defined(useMalloc))):
+    proc initAllocator() {.inline.}
+
   when not defined(nimscript) and not defined(nogc):
     proc initGC()
-    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc):
-      proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
