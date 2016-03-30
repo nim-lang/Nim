@@ -14,39 +14,41 @@
 when defined(Windows):
   type
     Handle = int
-    SysLock {.final, pure.} = object # CRITICAL_SECTION in WinApi
+
+    SysLock {.importc: "CRITICAL_SECTION",
+              header: "<windows.h>", final, pure.} = object # CRITICAL_SECTION in WinApi
       DebugInfo: pointer
       LockCount: int32
       RecursionCount: int32
       OwningThread: int
       LockSemaphore: int
-      Reserved: int32
+      SpinCount: int
 
     SysCond = Handle
 
   {.deprecated: [THandle: Handle, TSysLock: SysLock, TSysCond: SysCond].}
 
-  proc initSysLock(L: var SysLock) {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "InitializeCriticalSection".}
+  proc initSysLock(L: var SysLock) {.importc: "InitializeCriticalSection",
+                                     header: "<windows.h>".}
     ## Initializes the lock `L`.
 
-  proc tryAcquireSysAux(L: var SysLock): int32 {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "TryEnterCriticalSection".}
+  proc tryAcquireSysAux(L: var SysLock): int32 {.importc: "TryEnterCriticalSection",
+                                                 header: "<windows.h>".}
     ## Tries to acquire the lock `L`.
 
   proc tryAcquireSys(L: var SysLock): bool {.inline.} =
     result = tryAcquireSysAux(L) != 0'i32
 
-  proc acquireSys(L: var SysLock) {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "EnterCriticalSection".}
+  proc acquireSys(L: var SysLock) {.importc: "EnterCriticalSection",
+                                    header: "<windows.h>".}
     ## Acquires the lock `L`.
 
-  proc releaseSys(L: var SysLock) {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "LeaveCriticalSection".}
+  proc releaseSys(L: var SysLock) {.importc: "LeaveCriticalSection",
+                                    header: "<windows.h>".}
     ## Releases the lock `L`.
 
-  proc deinitSys(L: var SysLock) {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "DeleteCriticalSection".}
+  proc deinitSys(L: var SysLock) {.importc: "DeleteCriticalSection",
+                                   header: "<windows.h>".}
 
   proc createEvent(lpEventAttributes: pointer,
                    bManualReset, bInitialState: int32,
