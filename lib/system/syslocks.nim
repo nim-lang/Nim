@@ -91,7 +91,7 @@ else:
   proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
 
-  when compiles(insideRLocksModule):
+  when insideRLocksModule:
     proc SysLockType_Reentrant: SysLockType =
       {.emit: "`result` = PTHREAD_MUTEX_RECURSIVE;".}
     proc initSysLockAttr(a: var SysLockAttr) {.
@@ -112,7 +112,7 @@ else:
   proc deinitSys(L: var SysLock) {.noSideEffect,
     importc: "pthread_mutex_destroy", header: "<pthread.h>".}
 
-  when not compiles(insideRLocksModule):
+  when not insideRLocksModule:
     proc initSysCond(cond: var SysCond, cond_attr: pointer = nil) {.
       importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
     proc waitSysCond(cond: var SysCond, lock: var SysLock) {.
