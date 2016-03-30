@@ -714,6 +714,12 @@ proc `%`*(elements: openArray[JsonNode]): JsonNode =
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
+proc `%`*[T](elements: openArray[T]): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
+  result = newJArray()
+  for elem in elements:
+    result.add(%elem)
+
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
