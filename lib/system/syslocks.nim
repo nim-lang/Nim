@@ -88,17 +88,16 @@ else:
                           #include <pthread.h>""".} = object
     SysLockType = distinct cint
 
-  proc SysLockType_Reentrant: SysLockType =
-    {.emit: "`result` = PTHREAD_MUTEX_RECURSIVE;".}
-
   proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
 
-  proc initSysLockAttr(a: var SysLockAttr) {.
-    importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
-
-  proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
-    importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
+  when insideRLocksModule:
+    proc SysLockType_Reentrant: SysLockType =
+      {.emit: "`result` = PTHREAD_MUTEX_RECURSIVE;".}
+    proc initSysLockAttr(a: var SysLockAttr) {.
+      importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
+    proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
+      importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
 
   proc acquireSys(L: var SysLock) {.noSideEffect,
     importc: "pthread_mutex_lock", header: "<pthread.h>".}
@@ -113,14 +112,12 @@ else:
   proc deinitSys(L: var SysLock) {.noSideEffect,
     importc: "pthread_mutex_destroy", header: "<pthread.h>".}
 
-  proc initSysCond(cond: var SysCond, cond_attr: pointer = nil) {.
-    importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
-  proc waitSysCond(cond: var SysCond, lock: var SysLock) {.
-    importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
-  proc signalSysCond(cond: var SysCond) {.
-    importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
-
-  proc deinitSysCond(cond: var SysCond) {.noSideEffect,
-    importc: "pthread_cond_destroy", header: "<pthread.h>".}
-
-{.pop.}
+  when not insideRLocksModule:
+    proc initSysCond(cond: var SysCond, cond_attr: pointer = nil) {.
+      importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
+    proc waitSysCond(cond: var SysCond, lock: var SysLock) {.
+      importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
+    proc signalSysCond(cond: var SysCond) {.
+      importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
+    proc deinitSysCond(cond: var SysCond) {.noSideEffect,
+      importc: "pthread_cond_destroy", header: "<pthread.h>".}
