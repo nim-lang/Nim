@@ -2561,16 +2561,6 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
-proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect, compileTime.} =
-  ## Special compile-time procedure that checks whether `x` can be compiled
-  ## without any semantic error.
-  ## This can be used to check whether a type supports some operation:
-  ##
-  ## .. code-block:: Nim
-  ##   when not compiles(3 + 4):
-  ##     echo "'+' for integers is available"
-  discard
-
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
@@ -3479,6 +3469,16 @@ when hasAlloc:
     while j < item.len:
       x[j+i] = item[j]
       inc(j)
+
+proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect, compileTime.} =
+  ## Special compile-time procedure that checks whether `x` can be compiled
+  ## without any semantic error.
+  ## This can be used to check whether a type supports some operation:
+  ##
+  ## .. code-block:: Nim
+  ##   when not compiles(3 + 4):
+  ##     echo "'+' for integers is available"
+  discard
 
 when declared(initDebugger):
   initDebugger()
