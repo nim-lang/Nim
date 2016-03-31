@@ -368,7 +368,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
       name.sin_family = toInt(AF_INET).int16
     else:
       name.sin_family = toInt(AF_INET)
-    name.sin_port = htons(int16(port))
+    name.sin_port = htons(port.uint16)
     name.sin_addr.s_addr = htonl(INADDR_ANY)
     if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
                   sizeof(name).SockLen) < 0'i32:

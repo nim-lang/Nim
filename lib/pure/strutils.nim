@@ -882,7 +882,7 @@ proc abbrev*(s: string, possibilities: openArray[string]): int =
 
 # ---------------------------------------------------------------------------
 
-proc join*(a: openArray[string], sep: string): string {.
+proc join*(a: openArray[string], sep: string = ""): string {.
   noSideEffect, rtl, extern: "nsuJoinSep".} =
   ## Concatenates all strings in `a` separating them with `sep`.
   if len(a) > 0:
@@ -896,16 +896,15 @@ proc join*(a: openArray[string], sep: string): string {.
   else:
     result = ""
 
-proc join*(a: openArray[string]): string {.
-  noSideEffect, rtl, extern: "nsuJoin".} =
-  ## Concatenates all strings in `a`.
-  if len(a) > 0:
-    var L = 0
-    for i in 0..high(a): inc(L, a[i].len)
-    result = newStringOfCap(L)
-    for i in 0..high(a): add(result, a[i])
-  else:
-    result = ""
+proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
+  noSideEffect, rtl.} =
+  ## Converts all elements in `a` to strings using `$` and concatenates them
+  ## with `sep`.
+  result = ""
+  for i, x in a:
+    if i > 0:
+      add(result, sep)
+    add(result, $x)
 
 type
   SkipTable = array[char, int]
@@ -1721,3 +1720,8 @@ when isMainModule:
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
   doAssert(unescape(r"\x013", "", "") == "\x013")
+
+  doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
+  doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
+  doAssert join([1, 2, 3]) == "123"
+  doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"

@@ -1059,9 +1059,8 @@ proc genModule(m: BModule, cfile: string): Rope =
   result = getFileHeader(cfile)
   result.add(genMergeInfo(m))
 
-  generateHeaders(m)
-
   generateThreadLocalStorage(m)
+  generateHeaders(m)
   for i in countup(cfsHeaders, cfsProcs):
     add(result, genSectionStart(i))
     add(result, m.s[i])

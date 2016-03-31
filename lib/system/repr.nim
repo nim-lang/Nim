@@ -74,22 +74,22 @@ proc reprChar(x: char): string {.compilerRtl.} =
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   # we read an 'int' but this may have been too large, so mask the other bits:
-  let e = if typ.size == 1: e and 0xff
-          elif typ.size == 2: e and 0xffff
-          elif typ.size == 4: e and 0xffffffff
-          else: e
+  let b = (sizeof(int)-typ.size)*8 # bits
+  let m = 1 shl (b-1) # mask
+  var o = e and ((1 shl b)-1) # clear upper bits
+  o = (o xor m) - m # sign extend
   # XXX we need a proper narrowing based on signedness here
   #e and ((1 shl (typ.size*8)) - 1)
   if ntfEnumHole notin typ.flags:
-    if e <% typ.node.len:
-      return $typ.node.sons[e].name
+    if o <% typ.node.len:
+      return $typ.node.sons[o].name
   else:
     # ugh we need a slow linear search:
     var n = typ.node
     var s = n.sons
     for i in 0 .. n.len-1:
-      if s[i].offset == e: return $s[i].name
-  result = $e & " (invalid data!)"
+      if s[i].offset == o: return $s[i].name
+  result = $o & " (invalid data!)"
 
 type
   PByteArray = ptr array[0.. 0xffff, int8]

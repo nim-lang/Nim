@@ -39,6 +39,9 @@ when withRealTime and not declared(getTicks):
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 
+when hasThreadSupport:
+  import sharedlist
+
 const
   rcIncrement = 0b1000 # so that lowest 3 bits are not touched
   rcBlack = 0b000  # cell is colored black; in use or free
@@ -93,6 +96,9 @@ type
     stat: GcStat
     when useMarkForDebug or useBackupGc:
       marked: CellSet
+    when hasThreadSupport:
+      toDispose: SharedList[pointer]
+
 {.deprecated: [TWalkOp: WalkOp, TFinalizer: Finalizer, TGcHeap: GcHeap,
               TGcStat: GcStat].}
 var
@@ -304,6 +310,8 @@ proc initGC() =
     init(gch.decStack)
     when useMarkForDebug or useBackupGc:
       init(gch.marked)
+    when hasThreadSupport:
+      gch.toDispose = initSharedList[pointer]()
 
 when useMarkForDebug or useBackupGc:
   type
@@ -749,6 +757,9 @@ proc collectRoots(gch: var GcHeap) =
     collectWhite(s)
 
 proc collectCycles(gch: var GcHeap) =
+  when hasThreadSupport:
+    for c in gch.toDispose:
+      nimGCunref(c)
   # ensure the ZCT 'color' is not used:
   while gch.zct.len > 0: discard collectZCT(gch)
   when useBackupGc:

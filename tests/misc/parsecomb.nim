@@ -13,15 +13,15 @@ type
       nil
 
 type
-  Parser*[T, O] = distinct proc (input: Input[T]): Result[T, O]
+  Parser*[T, O] = proc (input: Input[T]): Result[T, O]
 
 proc unit*[T, O](v: O): Parser[T, O] =
-  Parser(proc (inp: Input[T]): Result[T, O] =
-    Result[T, O](kind: rkSuccess, output: v, input: inp))
+  result = proc (inp: Input[T]): Result[T, O] =
+    Result[T, O](kind: rkSuccess, output: v, input: inp)
 
 proc fail*[T, O](): Parser[T, O] =
-  Parser(proc (inp: Input[T]): Result[T, O] =
-    Result(kind: rkFailure))
+  result = proc (inp: Input[T]): Result[T, O] =
+    Result(kind: rkFailure)
 
 method runInput[T, O](self: Parser[T, O], inp: Input[T]): Result[T, O] =
   # hmmm ..
@@ -33,39 +33,39 @@ method run*[T, O](self: Parser[T, O], toks: seq[T]): Result[T, O] =
   self.runInput(Input[T](toks: toks, index: 0))
 
 method chain*[T, O1, O2](self: Parser[T, O1], nextp: proc (v: O1): Parser[T, O2]): Parser[T, O2] =
-  Parser(proc (inp: Input[T]): Result[T, O2] =
+  result = proc (inp: Input[T]): Result[T, O2] =
     let r = self.runInput(inp)
     case r.kind:
     of rkSuccess:
       nextp(r.output).runInput(r.input)
     of rkFailure:
-      Result[T, O2](kind: rkFailure))
+      Result[T, O2](kind: rkFailure)
 
 method skip[T](self: Input[T], n: int): Input[T] =
   Input[T](toks: self.toks, index: self.index + n)
 
 proc pskip*[T](n: int): Parser[T, tuple[]] =
-  Parser(proc (inp: Input[T]): Result[T, tuple[]] =
+  result = proc (inp: Input[T]): Result[T, tuple[]] =
     if inp.index + n <= inp.toks.len:
       Result[T, tuple[]](kind: rkSuccess, output: (), input: inp.skip(n))
     else:
-      Result[T, tuple[]](kind: rkFailure))
+      Result[T, tuple[]](kind: rkFailure)
 
 proc tok*[T](t: T): Parser[T, T] =
-  Parser(proc (inp: Input[T]): Result[T, T] =
+  result = proc (inp: Input[T]): Result[T, T] =
     if inp.index < inp.toks.len and inp.toks[inp.index] == t:
       pskip[T](1).then(unit[T, T](t)).runInput(inp)
     else:
-      Result[T, T](kind: rkFailure))
+      Result[T, T](kind: rkFailure)
 
 proc `+`*[T, O](first: Parser[T, O], second: Parser[T, O]): Parser[T, O] =
-  Parser(proc (inp: Input[T]): Result[T, O] =
+  result = proc (inp: Input[T]): Result[T, O] =
     let r = first.runInput(inp)
     case r.kind
     of rkSuccess:
       r
     else:
-      second.runInput(inp))
+      second.runInput(inp)
 
 # end of primitives (definitions involving Parser(..))
 
