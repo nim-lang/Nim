@@ -263,24 +263,14 @@ proc parseBiggestUInt*(s: string, number: var uint64, start = 0): int {.
   result = rawParseUInt(s, res, start)
   number = res
 
-# Workaround for high(uint)
-proc highUInt(): uint64 =
-  when sizeof(uint) == 4:
-    0xFFFFFFFF'u64
-  elif sizeof(uint) == 8:
-    0xFFFFFFFFFFFFFFFF'u64
-  else:
-    {.fatal: "Unknoun uint size: " & $sizeof(uint).}
-
 proc parseUInt*(s: string, number: var uint, start = 0): int {.
   rtl, extern: "npuParseUInt", noSideEffect.} =
   ## parses an unsigned integer starting at `start` and stores the value into `number`.
-  ## Result is the number of processed chars or 0 if there is no integer.
   ## Result is the number of processed chars or 0 if there is no integer or overflow detected.
   var res: uint64
   result = parseBiggestUInt(s, res, start)
   if (sizeof(uint) <= 4) and
-      (res > highUInt()):
+      (res > 0xFFFF_FFFF'u64):
     raise newException(OverflowError, "overflow")
   elif result != 0:
     number = uint(res)
