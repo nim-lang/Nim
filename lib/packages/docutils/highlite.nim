@@ -590,20 +590,21 @@ proc yamlPlainStrLit(g: var GeneralTokenizer, pos: var int) =
 proc yamlPossibleNumber(g: var GeneralTokenizer, pos: var int) =
   g.kind = gtNone
   if g.buf[pos] == '-': inc(pos)
-  if g.buf[pos] == '0':
-    inc(pos)
+  if g.buf[pos] == '0': inc(pos)
   elif g.buf[pos] in '1'..'9':
     inc(pos)
     while g.buf[pos] in {'0'..'9'}: inc(pos)
   else: yamlPlainStrLit(g, pos)
   if g.kind == gtNone:
-    if g.buf[pos] in {'\0', '\x09'..'\x0D', ' '}: g.kind = gtDecNumber
+    if g.buf[pos] in {'\0', '\x09'..'\x0D', ' ', ',', ']', '}'}:
+      g.kind = gtDecNumber
     elif g.buf[pos] == '.':
       inc(pos)
       if g.buf[pos] notin {'0'..'9'}: yamlPlainStrLit(g, pos)
       else:
         while g.buf[pos] in {'0'..'9'}: inc(pos)
-        if g.buf[pos] in {'\0', '\x09'..'\x0D', ' '}: g.kind = gtFloatNumber
+        if g.buf[pos] in {'\0', '\x09'..'\x0D', ' ', ',', ']', '}'}:
+          g.kind = gtFloatNumber
     if g.kind == gtNone:
       if g.buf[pos] in {'e', 'E'}:
         inc(pos)
@@ -611,9 +612,19 @@ proc yamlPossibleNumber(g: var GeneralTokenizer, pos: var int) =
         if g.buf[pos] notin {'0'..'9'}: yamlPlainStrLit(g, pos)
         else:
           while g.buf[pos] in {'0'..'9'}: inc(pos)
-          if g.buf[pos] in {'\0', '\x09'..'\x0D', ' '}: g.kind = gtFloatNumber
+          if g.buf[pos] in {'\0', '\x09'..'\x0D', ' ', ',', ']', '}'}:
+            g.kind = gtFloatNumber
           else: yamlPlainStrLit(g, pos)
       else: yamlPlainStrLit(g, pos)
+  while g.buf[pos] notin {'\0', ',', ']', '}', '\x0A', '\x0D'}:
+    inc(pos)
+    if g.buf[pos] notin {'\x09'..'\x0D', ' ', ',', ']', '}'}:
+      yamlPlainStrLit(g, pos)
+      break
+  # theoretically, we would need to parse indentation (like with block scalars)
+  # because of possible multiline flow scalars that start with number-like
+  # content, but that is far too troublesome. I think it is fine that the
+  # highlighter is sloppy here.
 
 proc yamlNextToken(g: var GeneralTokenizer) =
   const
@@ -660,6 +671,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
   elif g.state == gtCharLit:
     # abusing gtCharLit as single-quoted string lit
     g.kind = gtStringLit
+    inc(pos) # skip the starting '
     while true:
       case g.buf[pos]
       of '\'':
@@ -807,9 +819,8 @@ proc yamlNextToken(g: var GeneralTokenizer) =
     of '\"':
       inc(pos)
       g.state = gtStringLit
-      g.kind = gtNone
+      g.kind = gtStringLit
     of '\'':
-      inc(pos)
       g.state = gtCharLit
       g.kind = gtNone
     of '!':
