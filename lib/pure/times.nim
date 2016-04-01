@@ -1254,7 +1254,7 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
 
-proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
+proc toTimeInfo*(t: Time): TimeInfo {.deprecated.} =
   ## Converts a Time to TimeInfo.
   ## **Warning:** This procedure is deprecated since Nim 0.12.4, use getLocalTime or getGMTime.
   let
@@ -1287,21 +1287,11 @@ proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
     s = daySeconds mod secondsInMin
   result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
 
-proc timeToTimeInterval*(t: Time): TimeInterval =
+proc toTimeInterval*(t: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
   # Milliseconds not available from Time
   var tInfo = t.getLocalTime()
   initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
-  
-proc initTime*(s: string, layout: string = "yyyy-MM-dd hh:mm:ss"): Time =
-  ## Converts a string to Time.
-  ## Default layout is ISO 8601
-  result = s.parse(layout).timeInfoToTime
-
-proc initTimeFromStr*(s: string): Time =
-  ## Converts a string to Time.
-  ## Default layout is compatible with $Time or $TimeInfo
-  result = s.parse("ddd MMM dd hh:mm:ss yyyy").timeInfoToTime
 
 
 when isMainModule:
@@ -1317,13 +1307,6 @@ when isMainModule:
   assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
   assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
   assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
-  
-  var t = initTime("2016-01-06 10:25:00", "yyyy-MM-dd hh:mm:ss")
-  assert($t == "Wed Jan 06 10:25:00 2016")
-  t = initTime("20160106 102500", "yyyyMMdd hhmmss")
-  assert($t == "Wed Jan 06 10:25:00 2016")
-  t = initTimeFromStr("Thu Dec 31 12:04:40 2015")
-  assert($t == "Thu Dec 31 12:04:40 2015")
   
   # Further tests are in tests/stdlib/ttime.nim
   # koch test c stdlib
