@@ -20,7 +20,11 @@ Changes affecting backwards compatibility
   new experimental ``this`` pragma to achieve a similar effect to what the old ``using`` statement tried to achieve.
 - Typeless parameters have been removed from the language since it would
   clash with ``using``.
-
+- When using ``useMalloc``, an additional header containing the size of the
+  allocation will be allocated, to support zeroing memory on realloc as expected
+  by the language. With this change, ``alloc`` and ``dealloc`` are no longer
+  aliases for ``malloc`` and ``free`` - use ``c_malloc`` and ``c_free`` if
+  you need that.
 
 Library Additions
 -----------------
