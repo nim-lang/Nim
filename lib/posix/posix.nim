@@ -2309,9 +2309,9 @@ proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Tm): int {.importc, header: "<time.h>".}
 proc strptime*(a1, a2: cstring, a3: var Tm): cstring {.importc, header: "<time.h>".}
 proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
-proc timer_create*(a1: var ClockId, a2: var SigEvent,
+proc timer_create*(a1: ClockId, a2: var SigEvent,
                a3: var Timer): cint {.importc, header: "<time.h>".}
-proc timer_delete*(a1: var Timer): cint {.importc, header: "<time.h>".}
+proc timer_delete*(a1: Timer): cint {.importc, header: "<time.h>".}
 proc timer_gettime*(a1: Timer, a2: var Itimerspec): cint {.
   importc, header: "<time.h>".}
 proc timer_getoverrun*(a1: Timer): cint {.importc, header: "<time.h>".}
