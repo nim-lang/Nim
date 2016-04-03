@@ -224,7 +224,7 @@ when defined(ssl):
     of protSSLv2:
       raiseSslError("SSLv2 is no longer secure and has been deprecated, use protSSLv3")
     of protSSLv3:
-      newCTX = SSL_CTX_new(SSLv3_method())
+      raiseSslError("SSLv3 is no longer secure and has been deprecated, use protSSLv3")
     of protTLSv1:
       newCTX = SSL_CTX_new(TLSv1_method())
 
