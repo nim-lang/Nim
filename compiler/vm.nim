@@ -10,7 +10,9 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-const debugEchoCode = false
+const
+  debugEchoCode = false
+  traceCode = debugEchoCode
 
 import ast except getstr
 
@@ -404,7 +406,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     let instr = c.code[pc]
     let ra = instr.regA
     #if c.traceActive:
-    #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
+    when traceCode:
+      echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
     #  message(c.debug[pc], warnUser, "Trace")
 
     case instr.opcode

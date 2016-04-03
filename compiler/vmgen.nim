@@ -1447,12 +1447,12 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyObject:
     result = newNodeIT(nkObjConstr, info, t)
     result.add(newNodeIT(nkEmpty, info, t))
-    getNullValueAux(t.n, result)
     # initialize inherited fields:
     var base = t.sons[0]
     while base != nil:
       getNullValueAux(skipTypes(base, skipPtrs).n, result)
       base = base.sons[0]
+    getNullValueAux(t.n, result)
   of tyArray, tyArrayConstr:
     result = newNodeIT(nkBracket, info, t)
     for i in countup(0, int(lengthOrd(t)) - 1):
