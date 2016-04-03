@@ -35,6 +35,15 @@ const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
+when defined(linux):
+  # On Linux:
+  # timer_{create,delete,settime,gettime},
+  # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
+  {.passL: "-lrt".}
+when defined(solaris):
+  # On Solaris hstrerror lives in libresolv
+  {.passL: "-lresolv".}
+
 when false:
   const
     C_IRUSR = 0c000400 ## Read by owner.
