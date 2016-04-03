@@ -102,6 +102,10 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
                            (b.uint32 shl 16'u32) or
                            (c.uint32 shl 24'u32)).TInstr
+  when false:
+    if ctx.code.len == 72:
+      writeStackTrace()
+      echo "generating ", opc
   ctx.code.add(ins)
   ctx.debug.add(n.info)
 
