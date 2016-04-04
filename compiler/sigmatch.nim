@@ -513,7 +513,7 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                          ff, a: PType): TTypeRelation =
   var body = ff.skipTypes({tyUserTypeClassInst})
-  if c.inTypeClass > 20:
+  if c.inTypeClass > 4:
     localError(body.n[3].info, $body.n[3] & " too nested for type matching")
     return isNone
 
