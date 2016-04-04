@@ -23,6 +23,9 @@ Changes affecting backwards compatibility
 - Procedures in ``mersenne.nim`` (Mersenne Twister implementation) no longer
   accept and produce ``int`` values which have platform-dependent size -
   they use ``uint32`` instead.
+- The ``strutils.unindent`` procedure has been rewritten. Its parameters now
+  match the parameters of ``strutils.indent``. See issue [#4037](https://github.com/nim-lang/Nim/issues/4037)
+  for more details.
 
 
 Library Additions
