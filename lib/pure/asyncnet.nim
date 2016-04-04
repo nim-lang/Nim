@@ -11,7 +11,7 @@
 ## asynchronous dispatcher defined in the ``asyncdispatch`` module.
 ##
 ## SSL
-## ---
+## ----
 ##
 ## SSL can be enabled by compiling with the ``-d:ssl`` flag.
 ##
@@ -62,7 +62,9 @@ import os
 
 export SOBool
 
-when defined(ssl):
+const defineSsl = defined(ssl) or defined(nimdoc)
+
+when defineSsl:
   import openssl
 
 type
@@ -79,7 +81,7 @@ type
     of false: nil
     case isSsl: bool
     of true:
-      when defined(ssl):
+      when defineSsl:
         sslHandle: SslPtr
         sslContext: SslContext
         bioIn: BIO
@@ -125,7 +127,7 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
                           Domain(domain), SockType(sockType),
                           Protocol(protocol), buffered)
 
-when defined(ssl):
+when defineSsl:
   proc getSslError(handle: SslPtr, err: cint): cint =
     assert err < 0
     var ret = SSLGetError(handle, err.cint)
@@ -186,7 +188,7 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   ## or an error occurs.
   await connect(socket.fd.AsyncFD, address, port, socket.domain)
   if socket.isSsl:
-    when defined(ssl):
+    when defineSsl:
       let flags = {SocketFlag.SafeDisconn}
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
@@ -197,7 +199,7 @@ template readInto(buf: cstring, size: int, socket: AsyncSocket,
   ## this is a template and not a proc.
   var res = 0
   if socket.isSsl:
-    when defined(ssl):
+    when defineSsl:
       # SSL mode.
       sslLoop(socket, flags,
         sslRead(socket.sslHandle, buf, size.cint))
@@ -274,7 +276,7 @@ proc send*(socket: AsyncSocket, data: string,
   ## data has been sent.
   assert socket != nil
   if socket.isSsl:
-    when defined(ssl):
+    when defineSsl:
       var copy = data
       sslLoop(socket, flags,
         sslWrite(socket.sslHandle, addr copy[0], copy.len.cint))
@@ -468,7 +470,7 @@ proc close*(socket: AsyncSocket) =
   ## Closes the socket.
   defer:
     socket.fd.AsyncFD.closeSocket()
-  when defined(ssl):
+  when defineSsl:
     if socket.isSSL:
       let res = SslShutdown(socket.sslHandle)
       SSLFree(socket.sslHandle)
@@ -478,7 +480,7 @@ proc close*(socket: AsyncSocket) =
         raiseSslError()
   socket.closed = true # TODO: Add extra debugging checks for this.
 
-when defined(ssl):
+when defineSsl:
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## ``socket`` into an SSL socket.

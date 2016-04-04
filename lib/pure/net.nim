@@ -605,7 +605,8 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
 when defineSsl:
-  proc handshake*(socket: Socket): bool {.tags: [ReadIOEffect, WriteIOEffect].} =
+  proc handshake*(socket: Socket): bool
+      {.tags: [ReadIOEffect, WriteIOEffect, deprecated].} =
     ## This proc needs to be called on a socket after it connects. This is
     ## only applicable when using ``connectAsync``.
     ## This proc performs the SSL handshake.
@@ -614,6 +615,8 @@ when defineSsl:
     ## ``True`` whenever handshake completed successfully.
     ##
     ## A ESSL error is raised on any other errors.
+    ##
+    ## **Note:** This procedure is deprecated since version 0.14.0.
     result = true
     if socket.isSSL:
       var ret = SSLConnect(socket.sslHandle)
