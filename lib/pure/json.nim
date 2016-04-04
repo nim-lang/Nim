@@ -804,7 +804,7 @@ proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## If the value at `name` does not exist, returns nil
   assert(not isNil(node))
   assert(node.kind == JObject)
-  result = node.fields.getOrDefault(name)
+  result = node.fields[name]
 
 proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
@@ -838,20 +838,20 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
-  ## keys do not exist, returns nil. Also returns nil if one of the
-  ## intermediate data structures is not an object
+  ## keys do not exist, returns ``nil``. Also returns ``nil`` if one of the
+  ## intermediate data structures is not an object.
   result = node
   for key in keys:
-    if isNil(result) or result.kind!=JObject:
+    if isNil(result) or result.kind != JObject:
       return nil
-    result=result[key]
+    result = result.fields.getOrDefault(key)
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
-  ## to `value` If any of the keys are missing, they are added
+  ## to ``value``. If any of the keys are missing, they are added.
   var node = node
   for i in 0..(keys.len-2):
-    if isNil(node[keys[i]]):
+    if not node.hasKey(keys[i]):
       node[keys[i]] = newJObject()
     node = node[keys[i]]
   node[keys[keys.len-1]] = value
@@ -1217,16 +1217,6 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
-  when not defined(js):
-    var parsed = parseFile("tests/testdata/jsontest.json")
-
-    try:
-      discard parsed["key2"][12123]
-      doAssert(false)
-    except IndexError: doAssert(true)
-
-    var parsed2 = parseFile("tests/testdata/jsontest2.json")
-    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
@@ -1314,3 +1304,19 @@ when isMainModule:
 
   var j4 = %*{"test": nil}
   doAssert j4 == %{"test": newJNull()}
+
+  echo("99% of tests finished. Going to try loading file.")
+
+  # Test loading of file.
+  when not defined(js):
+    var parsed = parseFile("tests/testdata/jsontest.json")
+
+    try:
+      discard parsed["key2"][12123]
+      doAssert(false)
+    except IndexError: doAssert(true)
+
+    var parsed2 = parseFile("tests/testdata/jsontest2.json")
+    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+
+  echo("Tests succeeded!")
