@@ -606,7 +606,7 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
 
 when defineSsl:
   proc handshake*(socket: Socket): bool
-      {.tags: [ReadIOEffect, WriteIOEffect, deprecated].} =
+      {.tags: [ReadIOEffect, WriteIOEffect], deprecated.} =
     ## This proc needs to be called on a socket after it connects. This is
     ## only applicable when using ``connectAsync``.
     ## This proc performs the SSL handshake.
