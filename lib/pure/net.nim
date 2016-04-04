@@ -1377,5 +1377,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
     when defineSsl:
       if socket.isSSL:
         socket.fd.setBlocking(true)
+        {.warning[Deprecated]: off.}
         doAssert socket.handshake()
+        {.warning[Deprecated]: on.}
   socket.fd.setBlocking(true)
