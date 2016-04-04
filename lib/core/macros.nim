@@ -796,17 +796,17 @@ proc infix*(a: NimNode; op: string;
 proc unpackPostfix*(node: NimNode): tuple[node: NimNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPostfix
-  result = (node[0], $node[1])
+  result = (node[1], $node[0])
 
 proc unpackPrefix*(node: NimNode): tuple[node: NimNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPrefix
-  result = (node[0], $node[1])
+  result = (node[1], $node[0])
 
 proc unpackInfix*(node: NimNode): tuple[left: NimNode; op: string;
                                         right: NimNode] {.compileTime.} =
   assert node.kind == nnkInfix
-  result = (node[0], $node[1], node[2])
+  result = (node[1], $node[0], node[2])
 
 proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for copyNimTree().
