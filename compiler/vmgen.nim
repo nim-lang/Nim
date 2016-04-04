@@ -708,6 +708,10 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.genNarrow(n, dest)
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
+  if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
+    # don't do anything for lambda lifting conversions:
+    gen(c, arg, dest)
+    return
   let tmp = c.genx(arg)
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
@@ -1740,9 +1744,9 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of declarativeDefs:
     unused(n, dest)
   of nkLambdaKinds:
-    let s = n.sons[namePos].sym
-    discard genProc(c, s)
-    genLit(c, n.sons[namePos], dest)
+    #let s = n.sons[namePos].sym
+    #discard genProc(c, s)
+    genLit(c, newSymNode(n.sons[namePos].sym), dest)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     let
       tmp0 = c.genx(n.sons[0])
