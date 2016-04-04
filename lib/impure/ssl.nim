@@ -9,6 +9,9 @@
 
 ## This module provides an easy to use sockets-style
 ## nim interface to the OpenSSL library.
+##
+## **Warning:** This module is deprecated, use the SSL procedures defined in
+## the ``net`` module instead.
 
 {.deprecated.}
 
