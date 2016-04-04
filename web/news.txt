@@ -26,6 +26,8 @@ Changes affecting backwards compatibility
 - The ``strutils.unindent`` procedure has been rewritten. Its parameters now
   match the parameters of ``strutils.indent``. See issue [#4037](https://github.com/nim-lang/Nim/issues/4037)
   for more details.
+- The ``matchers`` module has been deprecated. See issue [#2446](https://github.com/nim-lang/Nim/issues/2446)
+  for more details.
 
 
 Library Additions
