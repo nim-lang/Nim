@@ -260,7 +260,7 @@ proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSS
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-when not useWinVersion:
+when not useWinVersion and not defined(macosx):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
@@ -532,7 +532,7 @@ proc md5_File* (file: string): string {.raises: [IOError,Exception].} =
 
   result = hexStr(buf)
 
-proc md5_Str* (str:string): string {.raises:[IOError].} =
+proc md5_Str*(str:string): string =
   ##Generate MD5 hash for a string. Result is a 32 character
   #hex string with lowercase characters
   var

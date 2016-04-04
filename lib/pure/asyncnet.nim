@@ -428,9 +428,6 @@ proc recvLine*(socket: AsyncSocket,
   ##
   ## **Warning**: ``recvLine`` on unbuffered sockets assumes that the protocol
   ## uses ``\r\L`` to delimit a new line.
-  template addNLIfEmpty(): stmt =
-    if result.len == 0:
-      result.add("\c\L")
   assert SocketFlag.Peek notin flags ## TODO:
 
   # TODO: Optimise this
@@ -458,7 +455,8 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     of AF_INET6: realaddr = "::"
     of AF_INET:  realaddr = "0.0.0.0"
     else:
-      raiseOSError("Unknown socket address family and no address specified to bindAddr")
+      raise newException(ValueError,
+        "Unknown socket address family and no address specified to bindAddr")
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
