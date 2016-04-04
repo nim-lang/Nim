@@ -20,6 +20,9 @@ Changes affecting backwards compatibility
   new experimental ``this`` pragma to achieve a similar effect to what the old ``using`` statement tried to achieve.
 - Typeless parameters have been removed from the language since it would
   clash with ``using``.
+- Procedures in ``mersenne.nim`` (Mersenne Twister implementation) no longer
+  accept and produce ``int`` values which have platform-dependent size -
+  they use ``uint32`` instead.
 
 
 Library Additions

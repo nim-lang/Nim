@@ -10,7 +10,9 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-const debugEchoCode = false
+const
+  debugEchoCode = false
+  traceCode = debugEchoCode
 
 import ast except getstr
 
@@ -121,7 +123,7 @@ template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
 proc createStrKeepNode(x: var TFullReg; keepNode=true) =
-  if x.node.isNil:
+  if x.node.isNil or not keepNode:
     x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit and keepNode:
     when defined(useNodeIds):
@@ -404,7 +406,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     let instr = c.code[pc]
     let ra = instr.regA
     #if c.traceActive:
-    #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
+    when traceCode:
+      echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
     #  message(c.debug[pc], warnUser, "Trace")
 
     case instr.opcode
@@ -542,7 +545,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node.sons[0]
         else:
-          stackTrace(c, tos, pc, errGenerated, "limited VM support for 'ref'")
+          stackTrace(c, tos, pc, errGenerated, "limited VM support for pointers")
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:

@@ -2877,6 +2877,7 @@ when not defined(JS): #and not defined(nimscript):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
+    const insideRLocksModule = false
     include "system/syslocks"
     when hostOS != "standalone": include "system/threads"
   elif not defined(nogc) and not defined(nimscript):

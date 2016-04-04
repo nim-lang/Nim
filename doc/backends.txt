@@ -420,7 +420,7 @@ function directly will be able to use it since Nim's garbage collector has
 not had a chance to run *yet*. This gives you enough time to make a copy for
 the C side of the program, as calling any further Nim procs *might* trigger
 garbage collection making the previously returned string garbage. Or maybe you
-are `triggering yourself the collection <gc.html>`_.
+are `yourself triggering the collection <gc.html>`_.
 
 
 Custom data types
