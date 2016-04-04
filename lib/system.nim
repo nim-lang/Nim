@@ -2774,6 +2774,9 @@ when not defined(JS): #and not defined(nimscript):
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
+      ##
+      ## **Warning:** The buffer `a` must be pre-allocated. This can be done
+      ## using, for example, ``newString``.
 
     proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
       tags: [ReadIOEffect], benign.}
