@@ -107,6 +107,15 @@ proc specDefaults*(result: var TSpec) =
   result.tline = 0
   result.tcolumn = 0
 
+proc parseTargets*(value: string): set[TTarget] =
+  for v in value.normalize.split:
+    case v
+    of "c": result.incl(targetC)
+    of "cpp", "c++": result.incl(targetCpp)
+    of "objc": result.incl(targetObjC)
+    of "js": result.incl(targetJS)
+    else: echo "target ignored: " & v
+
 proc parseSpec*(filename: string): TSpec =
   specDefaults(result)
   result.file = filename
