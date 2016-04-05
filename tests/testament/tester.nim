@@ -410,7 +410,7 @@ proc main() =
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
     of "pedantic": optPedantic = true
-    of "targets": targets = parseTargets(p.val)
+    of "targets": targets = parseTargets(p.val.string)
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
