@@ -804,7 +804,7 @@ proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## If the value at `name` does not exist, returns nil
   assert(not isNil(node))
   assert(node.kind == JObject)
-  result = node.fields[name]
+  result = node.fields.getOrDefault(name)
 
 proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
@@ -1304,6 +1304,8 @@ when isMainModule:
 
   var j4 = %*{"test": nil}
   doAssert j4 == %{"test": newJNull()}
+
+  doAssert j4["notExistingField"] == nil
 
   echo("99% of tests finished. Going to try loading file.")
 
