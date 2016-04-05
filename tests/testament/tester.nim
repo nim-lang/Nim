@@ -336,7 +336,7 @@ proc testSpec(r: var TResults, test: TTest) =
                         reExitCodesDiffer)
       return
 
-    if bufB != expectedOut:
+    if bufB != expectedOut and expected.action != actionRunNoSpec:
       if not (expected.substr and expectedOut in bufB):
         given.err = reOutputsDiffer
         r.addResult(test, expected.outp, bufB, reOutputsDiffer)
