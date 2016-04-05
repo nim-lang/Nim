@@ -28,6 +28,10 @@ Changes affecting backwards compatibility
   for more details.
 - The ``matchers`` module has been deprecated. See issue [#2446](https://github.com/nim-lang/Nim/issues/2446)
   for more details.
+- The ``json.[]`` no longer returns ``nil`` when a key is not found. Instead it
+  raises a ``KeyError`` exception. You can compile with the ``-d:nimJsonGet``
+  flag to get a list of usages of ``[]``, as well as to restore the operator's
+  previous behaviour.
 
 
 Library Additions

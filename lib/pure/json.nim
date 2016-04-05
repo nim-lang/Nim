@@ -56,6 +56,11 @@ import
 export
   tables.`$`
 
+when defined(nimJsonGet):
+  {.pragma: deprecatedGet, deprecated.}
+else:
+  {.pragma: deprecatedGet.}
+
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
     jsonError,           ## an error occurred during parsing
@@ -799,16 +804,23 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
+proc `[]`*(node: JsonNode, name: string): JsonNode {.inline, deprecatedGet.} =
   ## Gets a field from a `JObject`, which must not be nil.
-  ## If the value at `name` does not exist, returns nil
+  ## If the value at `name` does not exist, raises KeyError.
+  ##
+  ## **Note:** The behaviour of this procedure changed in version 0.14.0. To
+  ## get a list of usages and to restore the old behaviour of this procedure,
+  ## compile with the ``-d:nimJsonGet`` flag.
   assert(not isNil(node))
   assert(node.kind == JObject)
+  when defined(nimJsonGet):
+    if not node.fields.hasKey(name): return nil
   result = node.fields[name]
 
 proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
-  ## is out of bounds
+  ## is out of bounds, but as long as array bound checks are enabled it will
+  ## result in an exception.
   assert(not isNil(node))
   assert(node.kind == JArray)
   return node.elems[index]
