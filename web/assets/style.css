@@ -563,3 +563,14 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
     border-collapse: collapse;
     text-align: left;
     border-spacing: 0px; }
+
+#bountysource {
+    width: 100%;
+    height: 30px;
+    background-color: #19975d;
+}
+
+#bountysource a, #bountysource a:visited, #bountysource a:hover {
+  color: #1a1a1a;
+
+}
