@@ -1452,7 +1452,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
-    template toTime(e): expr = winTimeToUnixTime(rdFileTime(e))
+    template toTime(e: FILETIME): expr {.gensym.} = winTimeToUnixTime(rdFileTime(e)) # local templates default to bind semantics
     template merge(a, b): expr = a or (b shl 32)
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)

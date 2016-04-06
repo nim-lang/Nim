@@ -182,7 +182,14 @@ proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], benign.}
+proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], benign, deprecated.}
+  ## converts a broken-down time structure to
+  ## calendar time representation. The function ignores the specified
+  ## contents of the structure members `weekday` and `yearday` and recomputes
+  ## them from the other information in the broken-down time structure.
+  ## **Warning:** This procedure is deprecated. Use toTime instead.
+
+proc toTime*(timeInfo: TimeInfo): Time {.tags: [], benign.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -356,7 +363,7 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ##
   ## **Note:** This has been only briefly tested and it may not be
   ## very accurate.
-  let t = toSeconds(timeInfoToTime(a))
+  let t = toSeconds(toTime(a))
   let secs = toSeconds(a, interval)
   result = getLocalTime(fromSeconds(t + secs))
 
@@ -365,7 +372,7 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
-  let t = toSeconds(timeInfoToTime(a))
+  let t = toSeconds(toTime(a))
   var intval: TimeInterval
   intval.milliseconds = - interval.milliseconds
   intval.seconds = - interval.seconds
@@ -517,6 +524,11 @@ when not defined(JS):
     # because the header of mktime is broken in my version of libc
     return mktime(timeInfoToTM(cTimeInfo))
 
+  proc toTime(timeInfo: TimeInfo): Time =
+    var cTimeInfo = timeInfo # for C++ we have to make a copy,
+    # because the header of mktime is broken in my version of libc
+    return mktime(timeInfoToTM(cTimeInfo))
+
   proc toStringTillNL(p: cstring): string =
     result = ""
     var i = 0
@@ -618,7 +630,16 @@ elif defined(JS):
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
 
-  proc `$`(timeInfo: TimeInfo): string = return $(timeInfoToTime(timeInfo))
+  proc toTime*(timeInfo: TimeInfo): Time =
+    result = internGetTime()
+    result.setSeconds(timeInfo.second)
+    result.setMinutes(timeInfo.minute)
+    result.setHours(timeInfo.hour)
+    result.setMonth(ord(timeInfo.month))
+    result.setFullYear(timeInfo.year)
+    result.setDate(timeInfo.monthday)
+
+  proc `$`(timeInfo: TimeInfo): string = return $(toTime(timeInfo))
   proc `$`(time: Time): string = return $time.toLocaleString()
 
   proc `-` (a, b: Time): int64 =
@@ -708,24 +729,24 @@ proc years*(y: int): TimeInterval {.inline.} =
 
 proc `+=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by adding the interval `ti`
-  t = timeInfoToTime(getLocalTime(t) + ti)
+  t = toTime(getLocalTime(t) + ti)
 
 proc `+`*(t: Time, ti: TimeInterval): Time =
   ## adds the interval `ti` to Time `t`
   ## by converting to localTime, adding the interval, and converting back
   ##
   ## ``echo getTime() + 1.day``
-  result = timeInfoToTime(getLocalTime(t) + ti)
+  result = toTime(getLocalTime(t) + ti)
 
 proc `-=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by subtracting the interval `ti`
-  t = timeInfoToTime(getLocalTime(t) - ti)
+  t = toTime(getLocalTime(t) - ti)
 
 proc `-`*(t: Time, ti: TimeInterval): Time =
   ## adds the interval `ti` to Time `t`
   ##
   ## ``echo getTime() - 1.day``
-  result = timeInfoToTime(getLocalTime(t) - ti)
+  result = toTime(getLocalTime(t) - ti)
 
 proc formatToken(info: TimeInfo, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
@@ -1193,7 +1214,7 @@ proc parse*(value, layout: string): TimeInfo =
         parseToken(info, token, value, j)
         token = ""
   # Reset weekday as it might not have been provided and the default may be wrong
-  info.weekday = getLocalTime(timeInfoToTime(info)).weekday
+  info.weekday = getLocalTime(toTime(info)).weekday
   return info
 
 # Leap year calculations are adapted from:
@@ -1254,8 +1275,9 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
 
-proc timeToTimeInfo*(t: Time): TimeInfo =
+proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
   ## Converts a Time to TimeInfo.
+  ## **Warning:** This procedure is deprecated. Use getLocalTime or getGMTime instead.
   let
     secs = t.toSeconds().int
     daysSinceEpoch = secs div secondsInDay
@@ -1286,34 +1308,19 @@ proc timeToTimeInfo*(t: Time): TimeInfo =
     s = daySeconds mod secondsInMin
   result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
 
-proc timeToTimeInterval*(t: Time): TimeInterval =
+proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
   ## Converts a Time to a TimeInterval.
-
-  let
-    secs = t.toSeconds().int
-    daysSinceEpoch = secs div secondsInDay
-    (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
-    daySeconds = secs mod secondsInDay
-
-  result.years = yearsSinceEpoch + epochStartYear
-
-  var
-    mon = mJan
-    days = daysRemaining
-    daysInMonth = getDaysInMonth(mon, result.years)
-
-  # calculate month and day remainder
-  while days > daysInMonth and mon <= mDec:
-    days -= daysInMonth
-    mon.inc
-    daysInMonth = getDaysInMonth(mon, result.years)
-
-  result.months = mon.int + 1 # month is 1 indexed int
-  result.days = days
-  result.hours = daySeconds div secondsInHour + 1
-  result.minutes = (daySeconds mod secondsInHour) div secondsInMin
-  result.seconds = daySeconds mod secondsInMin
+  ## **Warning:** This procedure is deprecated. Use toTimeInterval instead.
   # Milliseconds not available from Time
+  var tInfo = t.getLocalTime()
+  initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
+
+proc toTimeInterval*(t: Time): TimeInterval =
+  ## Converts a Time to a TimeInterval.
+  # Milliseconds not available from Time
+  var tInfo = t.getLocalTime()
+  initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
+
 
 when isMainModule:
   # this is testing non-exported function
@@ -1328,6 +1335,6 @@ when isMainModule:
   assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
   assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
   assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
-
+  
   # Further tests are in tests/stdlib/ttime.nim
   # koch test c stdlib
