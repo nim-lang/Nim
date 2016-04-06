@@ -1316,6 +1316,23 @@ proc generateExceptionCheck(futSym,
     )
     result.add elseNode
 
+template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
+                rootReceiver: expr, fromNode: NimNode) =
+  ## Params:
+  ##    futureVarNode: The NimNode which is a symbol identifying the Future[T]
+  ##                   variable to yield.
+  ##    fromNode: Used for better debug information (to give context).
+  ##    valueReceiver: The node which defines an expression that retrieves the
+  ##                   future's value.
+  ##
+  ##    rootReceiver: ??? TODO
+  # -> yield future<x>
+  result.add newNimNode(nnkYieldStmt, fromNode).add(futureVarNode)
+  # -> future<x>.read
+  valueReceiver = newDotExpr(futureVarNode, newIdentNode("read"))
+  result.add generateExceptionCheck(futureVarNode, tryStmt, rootReceiver,
+      fromNode)
+
 template createVar(result: var NimNode, futSymName: string,
                    asyncProc: NimNode,
                    valueReceiver, rootReceiver: expr,
@@ -1323,9 +1340,7 @@ template createVar(result: var NimNode, futSymName: string,
   result = newNimNode(nnkStmtList, fromNode)
   var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
-  result.add newNimNode(nnkYieldStmt, fromNode).add(futSym) # -> yield future<x>
-  valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
-  result.add generateExceptionCheck(futSym, tryStmt, rootReceiver, fromNode)
+  useVar(result, futSym, valueReceiver, rootReceiver, fromNode)
 
 proc processBody(node, retFutureSym: NimNode,
                  subTypeIsVoid: bool,
@@ -1352,7 +1367,11 @@ proc processBody(node, retFutureSym: NimNode,
       case node[1].kind
       of nnkIdent, nnkInfix:
         # await x
-        result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
+        result = newNimNode(nnkStmtList, node)
+        var futureValue: NimNode
+        result.useVar(node[1], futureValue, futureValue, node)
+        # -> yield x
+        # -> x.read()
       of nnkCall, nnkCommand:
         # await foo(p, x)
         var futureValue: NimNode
@@ -1550,6 +1569,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   for i in 0 .. <result[4].len:
     if result[4][i].kind == nnkIdent and result[4][i].ident == !"async":
       result[4].del(i)
+  result[4] = newEmptyNode()
   if subtypeIsVoid:
     # Add discardable pragma.
     if returnType.kind == nnkEmpty:
@@ -1559,7 +1579,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "hubConnectionLoop":
+  #if prc[0].getName == "g":
   #  echo(toStrLit(result))
 
 macro async*(prc: stmt): stmt {.immediate.} =

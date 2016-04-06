@@ -721,6 +721,10 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       let m = newSymNode(n[namePos].sym)
       m.typ = n.typ
       result = liftCapturedVars(m, owner, d, c)
+  of nkHiddenStdConv:
+    if n.len == 2:
+      n.sons[1] = liftCapturedVars(n[1], owner, d, c)
+      if n[1].kind == nkClosure: result = n[1]
   else:
     if owner.isIterator:
       if n.kind == nkYieldStmt:

@@ -77,38 +77,6 @@ Once bound, typedesc params can appear in the rest of the proc signature:
 
   declareVariableWithType int, 42
 
-When used with macros and .compileTime. procs on the other hand, the compiler
-does not need to instantiate the code multiple times, because types then can be
-manipulated using the unified internal symbol representation. In such context
-typedesc acts as any other type. One can create variables, store typedesc
-values inside containers and so on. For example, here is how one can create
-a type-safe wrapper for the unsafe `printf` function from C:
-
-.. code-block:: nim
-  macro safePrintF(formatString: string{lit}, args: varargs[expr]): expr =
-    var i = 0
-    for c in formatChars(formatString):
-      var expectedType = case c
-        of 'c': char
-        of 'd', 'i', 'x', 'X': int
-        of 'f', 'e', 'E', 'g', 'G': float
-        of 's': string
-        of 'p': pointer
-        else: EOutOfRange
-
-      var actualType = args[i].getType
-      inc i
-
-      if expectedType == EOutOfRange:
-        error c & " is not a valid format character"
-      elif expectedType != actualType:
-        error "type mismatch for argument ", i, ". expected type: ",
-              expectedType.name, ", actual type: ", actualType.name
-
-    # keep the original callsite, but use cprintf instead
-    result = callsite()
-    result[0] = newIdentNode(!"cprintf")
-
 
 Overload resolution can be further influenced by constraining the set of
 types that will match the typedesc param:

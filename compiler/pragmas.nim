@@ -256,8 +256,9 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
 
 proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
-    POptionEntry(c.optionStack.tail).dynlib = getLib(c, libDynamic,
-        expectDynlibNode(c, n))
+    let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
+    if not lib.isOverriden:
+      POptionEntry(c.optionStack.tail).dynlib = lib
   else:
     if n.kind == nkExprColonExpr:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))

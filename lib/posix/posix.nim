@@ -35,6 +35,15 @@ const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
+when defined(linux):
+  # On Linux:
+  # timer_{create,delete,settime,gettime},
+  # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
+  {.passL: "-lrt".}
+when defined(solaris):
+  # On Solaris hstrerror lives in libresolv
+  {.passL: "-lresolv".}
+
 when false:
   const
     C_IRUSR = 0c000400 ## Read by owner.
@@ -2309,9 +2318,9 @@ proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Tm): int {.importc, header: "<time.h>".}
 proc strptime*(a1, a2: cstring, a3: var Tm): cstring {.importc, header: "<time.h>".}
 proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
-proc timer_create*(a1: var ClockId, a2: var SigEvent,
+proc timer_create*(a1: ClockId, a2: var SigEvent,
                a3: var Timer): cint {.importc, header: "<time.h>".}
-proc timer_delete*(a1: var Timer): cint {.importc, header: "<time.h>".}
+proc timer_delete*(a1: Timer): cint {.importc, header: "<time.h>".}
 proc timer_gettime*(a1: Timer, a2: var Itimerspec): cint {.
   importc, header: "<time.h>".}
 proc timer_getoverrun*(a1: Timer): cint {.importc, header: "<time.h>".}

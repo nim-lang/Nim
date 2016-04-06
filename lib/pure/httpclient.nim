@@ -335,7 +335,7 @@ proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
   var m = newMimetypes()
   for name, file in xs.items:
     var contentType: string
-    let (dir, fName, ext) = splitFile(file)
+    let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = m.getMimetype(ext[1..ext.high], nil)
     p.add(name, readFile(file), fName & ext, contentType)
@@ -627,7 +627,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.userAgent = defUserAgent
   result.maxRedirects = maxRedirects
   when defined(ssl):
-    result.sslContext = net.SslContext(sslContext)
+    result.sslContext = sslContext
 
 proc close*(client: AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.

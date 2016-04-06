@@ -58,6 +58,8 @@ proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int 
   result = readBuffer(f, addr(a[start]), len)
 
 proc readChars(f: File, a: var openArray[char], start, len: Natural): int =
+  if (start + len) > len(a):
+    raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)
 
 proc write(f: File, c: cstring) = fputs(c, f)

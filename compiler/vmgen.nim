@@ -102,6 +102,10 @@ proc gABC(ctx: PCtx; n: PNode; opc: TOpcode; a, b, c: TRegister = 0) =
   let ins = (opc.uint32 or (a.uint32 shl 8'u32) or
                            (b.uint32 shl 16'u32) or
                            (c.uint32 shl 24'u32)).TInstr
+  when false:
+    if ctx.code.len == 43:
+      writeStackTrace()
+      echo "generating ", opc
   ctx.code.add(ins)
   ctx.debug.add(n.info)
 
@@ -122,6 +126,11 @@ proc gABI(c: PCtx; n: PNode; opc: TOpcode; a, b: TRegister; imm: BiggestInt) =
 proc gABx(c: PCtx; n: PNode; opc: TOpcode; a: TRegister = 0; bx: int) =
   # Applies `opc` to `bx` and stores it into register `a`
   # `bx` must be signed and in the range [-32768, 32767]
+  when false:
+    if c.code.len == 43:
+      writeStackTrace()
+      echo "generating ", opc
+
   if bx >= -32768 and bx <= 32767:
     let ins = (opc.uint32 or a.uint32 shl 8'u32 or
               (bx+wordExcess).uint32 shl 16'u32).TInstr
@@ -704,6 +713,10 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.genNarrow(n, dest)
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
+  if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
+    # don't do anything for lambda lifting conversions:
+    gen(c, arg, dest)
+    return
   let tmp = c.genx(arg)
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
@@ -1117,7 +1130,10 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   if isAddr and (let m = canElimAddr(n); m != nil):
     gen(c, m, dest, flags)
     return
-  let newflags = if isAddr: flags+{gfAddrOf} else: flags
+
+  let af = if n[0].kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr}: {gfAddrOf, gfFieldAccess}
+           else: {gfAddrOf}
+  let newflags = if isAddr: flags+af else: flags
   # consider:
   # proc foo(f: var ref int) =
   #   f = new(int)
@@ -1132,7 +1148,7 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     if gfAddrOf notin flags and fitsRegister(n.typ):
       c.gABC(n, opcNodeToReg, dest, dest)
   elif isAddr and isGlobal(n.sons[0]):
-    gen(c, n.sons[0], dest, flags+{gfAddrOf})
+    gen(c, n.sons[0], dest, flags+af)
   else:
     let tmp = c.genx(n.sons[0], newflags)
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1447,12 +1463,12 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyObject:
     result = newNodeIT(nkObjConstr, info, t)
     result.add(newNodeIT(nkEmpty, info, t))
-    getNullValueAux(t.n, result)
     # initialize inherited fields:
     var base = t.sons[0]
     while base != nil:
       getNullValueAux(skipTypes(base, skipPtrs).n, result)
       base = base.sons[0]
+    getNullValueAux(t.n, result)
   of tyArray, tyArrayConstr:
     result = newNodeIT(nkBracket, info, t)
     for i in countup(0, int(lengthOrd(t)) - 1):
@@ -1736,9 +1752,9 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of declarativeDefs:
     unused(n, dest)
   of nkLambdaKinds:
-    let s = n.sons[namePos].sym
-    discard genProc(c, s)
-    genLit(c, n.sons[namePos], dest)
+    #let s = n.sons[namePos].sym
+    #discard genProc(c, s)
+    genLit(c, newSymNode(n.sons[namePos].sym), dest)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     let
       tmp0 = c.genx(n.sons[0])

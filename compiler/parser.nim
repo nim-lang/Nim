@@ -326,6 +326,7 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
         getTok(p)
       else:
         parMessage(p, errIdentifierExpected, p.tok)
+        break
     eat(p, tkAccent)
   else:
     if allowNil and p.tok.tokType == tkNil:
