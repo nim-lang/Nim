@@ -187,7 +187,9 @@ proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], benign, deprecated.}
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
-  ## **Warning:** This procedure is deprecated. Use toTime instead.
+  ##
+  ## **Warning:** This procedure is deprecated since version 0.14.0.
+  ## Use ``toTime`` instead.
 
 proc toTime*(timeInfo: TimeInfo): Time {.tags: [], benign.}
   ## converts a broken-down time structure to
@@ -1225,7 +1227,7 @@ proc parse*(value, layout: string): TimeInfo =
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
   ##
-  ## Note: for leap years, start date is assumed to be 1 AD.
+  ## **Note:** For leap years, start date is assumed to be 1 AD.
   ## counts the number of leap years up to January 1st of a given year.
   ## Keep in mind that if specified year is a leap year, the leap day
   ## has not happened before January 1st of that year.
@@ -1260,13 +1262,14 @@ proc getDayOfWeek*(day, month, year: int): WeekDay =
     y = year - a
     m = month + (12*a) - 2
     d = (day + y + (y div 4) - (y div 100) + (y div 400) + (31*m) div 12) mod 7
-  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc. so we must correct
-  # for the WeekDay type.
+  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
+  # so we must correct for the WeekDay type.
   if d == 0: return dSun
   result = (d-1).WeekDay
 
 proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
-  ## Returns the day of the week enum from day, month and year, according to the Julian calendar.
+  ## Returns the day of the week enum from day, month and year,
+  ## according to the Julian calendar.
   # Day & month start from one.
   let
     a = (14 - month) div 12
@@ -1277,7 +1280,9 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
 
 proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
   ## Converts a Time to TimeInfo.
-  ## **Warning:** This procedure is deprecated. Use getLocalTime or getGMTime instead.
+  ##
+  ## **Warning:** This procedure is deprecated since version 0.14.0.
+  ## Use ``getLocalTime`` or ``getGMTime`` instead.
   let
     secs = t.toSeconds().int
     daysSinceEpoch = secs div secondsInDay
@@ -1310,7 +1315,9 @@ proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
 
 proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
   ## Converts a Time to a TimeInterval.
-  ## **Warning:** This procedure is deprecated. Use toTimeInterval instead.
+  ##
+  ## **Warning:** This procedure is deprecated since version 0.14.0.
+  ## Use ``toTimeInterval`` instead.
   # Milliseconds not available from Time
   var tInfo = t.getLocalTime()
   initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
@@ -1335,6 +1342,6 @@ when isMainModule:
   assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
   assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
   assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
-  
+
   # Further tests are in tests/stdlib/ttime.nim
   # koch test c stdlib
