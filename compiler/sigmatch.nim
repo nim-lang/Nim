@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
-  nimfix.pretty
+  msgs, nimfix.pretty
 
 when not defined(noDocgen):
   import docgen
@@ -71,6 +71,7 @@ type
 
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
+  recursionGuardLimit = 100
 
 proc markUsed*(info: TLineInfo, s: PSym)
 
@@ -152,7 +153,7 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.baseTypeMatch = b.baseTypeMatch
   copyIdTable(a.bindings, b.bindings)
 
-proc sumGeneric(t: PType): int =
+proc sumGeneric(t: PType, recursionCount : int = 0): int =
   var t = t
   var isvar = 1
   while true:
@@ -170,8 +171,10 @@ proc sumGeneric(t: PType): int =
       if t.kind == tyEmpty: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc:
+      if recursionCount > recursionGuardLimit:
+         localError(t.n.info,errRecursiveTupleTypesNotSupported)
       result += ord(t.kind == tyGenericInvocation)
-      for i in 0 .. <t.len: result += t.sons[i].sumGeneric
+      for i in 0 .. <t.len: result += t.sons[i].sumGeneric(recursionCount+1)
       break
     of tyGenericParam, tyExpr, tyStatic, tyStmt: break
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
