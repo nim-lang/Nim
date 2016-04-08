@@ -365,9 +365,7 @@ proc getSectionKey*(filename, section, key: string): string =
   var sectionFind = false
   var p: CfgParser
   var fileStream = newFileStream(filename, fmRead)
-  if fileStream == nil:
-    echo("cannot open: " & filename)
-  else:
+  if fileStream != nil:
     open(p, fileStream, filename)
     while true:
       var e = next(p)
@@ -388,4 +386,3 @@ proc getSectionKey*(filename, section, key: string): string =
       of cfgError:
         break
     close(p)
-    close(fileStream)
