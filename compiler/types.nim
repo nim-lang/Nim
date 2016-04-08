@@ -1455,6 +1455,7 @@ proc skipHidden*(n: PNode): PNode =
     of nkHiddenStdConv, nkHiddenSubConv:
       if result.sons[1].typ.classify == result.typ.classify:
         result = result.sons[1]
+      else: break
     of nkHiddenDeref, nkHiddenAddr:
       result = result.sons[0]
     else: break
