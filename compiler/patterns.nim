@@ -129,7 +129,7 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       result = bindOrCheck(c, p.sons[2].sym, arglist)
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
-  # hidden conversions (?)
+  let n = skipHidden(n)
   if nfNoRewrite in n.flags:
     result = false
   elif isPatternParam(c, p):
