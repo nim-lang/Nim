@@ -2627,3 +2627,17 @@ proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
   ## Returns zero on success.
   ##
   ## For more information read http://www.unix.com/man-page/posix/3/utimes/.
+
+proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".} 
+ 
+template onSignal*(signals: varargs[cint], body: stmt): stmt {.immediate.} = 
+  ## Setup code to be executed when Unix signals are received. Example: 
+  ## from posix import SIGINT, SIGTERM 
+  ## onSignal([SIGINT, SIGTERM]): 
+  ##   echo "bye" 
+ 
+  for s in signals: 
+    handle_signal(s, 
+      proc (sig: cint) {.noconv.} = 
+        body 
+    )
