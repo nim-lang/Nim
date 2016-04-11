@@ -359,3 +359,31 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     result.kind = cfgError
     result.msg = errorStr(c, "invalid token: " & c.tok.literal)
     rawGetTok(c, c.tok)
+
+proc getSectionKey*(filename, section, key: string): string =
+  ## This function is not optimized, performance oriented words with caution.
+  ## Gets the Key value of the specified Section for a given file
+  var sectionFind = false
+  var p: CfgParser
+  var fileStream = newFileStream(filename, fmRead)
+  if fileStream != nil:
+    open(p, fileStream, filename)
+    while true:
+      var e = next(p)
+      case e.kind
+      of cfgEof:
+        break
+      of cfgSectionStart: # Only look for the first time the Section
+        if sectionFind:
+          break
+        if e.section == section:
+          sectionFind = true
+      of cfgKeyValuePair:
+        if sectionFind and e.key == key:
+          result = e.value
+          break
+      of cfgOption:
+        continue
+      of cfgError:
+        break
+    close(p)
