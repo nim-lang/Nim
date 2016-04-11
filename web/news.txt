@@ -37,6 +37,8 @@ Changes affecting backwards compatibility
   by the language. With this change, ``alloc`` and ``dealloc`` are no longer
   aliases for ``malloc`` and ``free`` - use ``c_malloc`` and ``c_free`` if
   you need that.
+- The ``json.%`` operator is now overloaded for ``object``, ``ref object`` and
+  ``openarray[T]``.
 
 
 Library Additions
