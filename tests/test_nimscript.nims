@@ -13,7 +13,7 @@ import ospaths
 # import parsecfg
 # import parseopt
 import parseutils
-import pegs
+# import pegs
 import queues
 import sequtils
 import strutils
