@@ -361,6 +361,7 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     rawGetTok(c, c.tok)
 
 proc getSectionKey*(filename, section, key: string): string =
+  ## This function is not optimized, performance oriented words with caution.
   ## Gets the Key value of the specified Section for a given file
   var sectionFind = false
   var p: CfgParser
