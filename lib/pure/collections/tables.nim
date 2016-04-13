@@ -663,6 +663,27 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   ## contrast to the `sort` for count tables).
   t[].sort(cmp)
 
+proc del*[A, B](t: var OrderedTable[A, B], key: A) =
+  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  var prev = -1
+  let hc = hash(key)
+  forAllOrderedPairs:
+    if t.data[h].hcode == hc:
+      if t.first == h:
+        t.first = t.data[h].next
+      else:
+        t.data[prev].next = t.data[h].next
+      var zeroValue : type(t.data[h])
+      t.data[h] = zeroValue
+      dec t.counter
+      break
+    else:
+      prev = h
+
+proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
+  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  t[].del(key)
+
 # ------------------------------ count tables -------------------------------
 
 type
@@ -983,6 +1004,26 @@ when isMainModule:
   s2[p2] = 45_000
   s3[p1] = 30_000
   s3[p2] = 45_000
+
+  block: # Ordered table should preserve order after deletion
+    var
+      s4 = initOrderedTable[int, int]()
+    s4[1] = 1
+    s4[2] = 2
+    s4[3] = 3
+
+    var prev = 0
+    for i in s4.values:
+      doAssert(prev < i)
+      prev = i
+
+    s4.del(2)
+    doAssert(2 notin s4)
+    doAssert(s4.len == 2)
+    prev = 0
+    for i in s4.values:
+      doAssert(prev < i)
+      prev = i
 
   var
     t1 = initCountTable[string]()
