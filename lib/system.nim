@@ -2624,6 +2624,14 @@ when not defined(JS): #and not defined(nimscript):
       else: result = 0
 
   when defined(nimscript):
+    proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
+      ## Opens a file named `filename` for reading.
+      ##
+      ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
+      ## Returns the string.  Raises an IO exception in case of an error. If
+      ## you need to call this inside a compile time macro you can use
+      ## `staticRead <#staticRead>`_.
+
     proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
       ## Opens a file named `filename` for writing. Then writes the
       ## `content` completely to the file and closes the file afterwards.
