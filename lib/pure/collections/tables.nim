@@ -372,6 +372,14 @@ type
 
 {.deprecated: [TOrderedTable: OrderedTable, POrderedTable: OrderedTableRef].}
 
+proc del*[A, B](t: var OrderedTable[A, B], key: A) =
+  ## deletes `key` from hash table `t`.
+  delImpl()
+  
+proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
+  ## deletes `key` from hash table `t`.
+  t[].del(key)
+
 proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
