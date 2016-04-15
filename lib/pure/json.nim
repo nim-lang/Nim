@@ -858,6 +858,14 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
       return nil
     result = result.fields.getOrDefault(key)
 
+proc getOrDefault*(node: JsonNode, key: string): JsonNode =
+  ## Gets a field from a `node`. If `node` is nil or not an object or
+  ## value at `key` does not exist, returns nil
+  if not isNil(node) and node.kind == JObject:
+    result = node.fields.getOrDefault(key)
+
+template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode, key: string): JsonNode = node.getOrDefault(key)
+
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
   ## to ``value``. If any of the keys are missing, they are added.

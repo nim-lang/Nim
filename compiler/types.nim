@@ -1448,6 +1448,18 @@ proc skipConv*(n: PNode): PNode =
       result = n.sons[1]
   else: discard
 
+proc skipHidden*(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkHiddenStdConv, nkHiddenSubConv:
+      if result.sons[1].typ.classify == result.typ.classify:
+        result = result.sons[1]
+      else: break
+    of nkHiddenDeref, nkHiddenAddr:
+      result = result.sons[0]
+    else: break
+
 proc skipConvTakeType*(n: PNode): PNode =
   result = n.skipConv
   result.typ = n.typ
