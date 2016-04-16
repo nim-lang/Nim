@@ -67,9 +67,11 @@ proc atomicTypeX(name: string; t: PType; info: TLineInfo): PNode =
   result = newSymNode(sym)
   result.typ = t
 
-proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode
+proc mapTypeToAstImpl(t: PType; info: TLineInfo;
+                      inst=false; allowRecursion=false): PNode
 
-proc mapTypeToBracket(name: string; t: PType; info: TLineInfo): PNode =
+proc mapTypeToBracketImpl(name: string; t: PType; info: TLineInfo;
+                          inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(name, t, info)
   for i in 0 .. < t.len:
@@ -78,10 +80,14 @@ proc mapTypeToBracket(name: string; t: PType; info: TLineInfo): PNode =
       void.typ = newType(tyEmpty, t.owner)
       result.add void
     else:
-      result.add mapTypeToAst(t.sons[i], info)
+      result.add mapTypeToAstImpl(t.sons[i], info, inst)
 
-proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
+proc mapTypeToAstImpl(t: PType; info: TLineInfo;
+                      inst=false; allowRecursion=false): PNode =
   template atomicType(name): expr = atomicTypeX(name, t, info)
+  template mapTypeToAst(t,info): expr = mapTypeToAstImpl(t, info, inst)
+  template mapTypeToBracket(name,t,info): expr =
+    mapTypeToBracketImpl(name, t, info, inst)
 
   case t.kind
   of tyNone: result = atomicType("none")
@@ -107,7 +113,14 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     for i in 0 .. < t.len:
       result.add mapTypeToAst(t.sons[i], info)
-  of tyGenericInst, tyGenericBody, tyOrdinal, tyUserTypeClassInst:
+  of tyGenericInst:
+    if inst:
+      result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
+      for i in 0 .. < t.len-1:
+        result.add mapTypeToAst(t.sons[i], info)
+    else:
+      result = mapTypeToAst(t.lastSon, info)
+  of tyGenericBody, tyOrdinal, tyUserTypeClassInst:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:
     if allowRecursion:
@@ -174,10 +187,17 @@ proc mapTypeToAst(t: PType, info: TLineInfo; allowRecursion=false): PNode =
   of tyNot: result = mapTypeToBracket("not", t, info)
   of tyAnything: result = atomicType"anything"
   of tyStatic, tyFromExpr, tyFieldAccessor:
-    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    result.add atomicType("static")
-    if t.n != nil:
-      result.add t.n.copyTree
+    if inst:
+      if t.n != nil: result = t.n.copyTree
+      else: result = atomicType "void"
+    else:
+      result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
+      result.add atomicType("static")
+      if t.n != nil:
+        result.add t.n.copyTree
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
-  result = mapTypeToAst(t, info, true)
+  result = mapTypeToAstImpl(t, info, false, true)
+
+proc opMapTypeInstToAst*(t: PType; info: TLineInfo): PNode =
+  result = mapTypeToAstImpl(t, info, true, true)

@@ -197,6 +197,12 @@ proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
   ## means the node should have been obtained via `getType`.
 
+proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for a specific instance
+
+proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for a specific instance
+
 proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
