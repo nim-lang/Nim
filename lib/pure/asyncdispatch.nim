@@ -565,15 +565,10 @@ when defined(windows) or defined(nimdoc):
       var ret = connectEx(socket.SocketHandle, it.ai_addr,
                           sizeof(Sockaddr_in).cint, nil, 0, nil,
                           cast[POVERLAPPED](ol))
-      if ret:
-        # Request to connect completed immediately.
-        success = true
-        retFuture.complete()
-        # We don't deallocate ``ol`` here because even though this completed
-        # immediately poll will still be notified about its completion and it will
-        # free ``ol``.
-        break
-      else:
+      # Processing of "immediate completion" operations was removed, because under
+      # heavy load it can lead to deep recursion and stack overflow.
+      # This change also dont affect speed.
+      if not ret:
         lastError = osLastError()
         if lastError.int32 == ERROR_IO_PENDING:
           # In this case ``ol`` will be deallocated in ``poll``.
@@ -640,45 +635,15 @@ when defined(windows) or defined(nimdoc):
 
     let ret = WSARecv(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
                       addr flagsio, cast[POVERLAPPED](ol), nil)
-    if ret == -1:
+    # Processing of "immediate completion" operations was removed, because under
+    # heavy load it can lead to deep recursion and stack overflow.
+    # This change also dont affect speed.
+    if ret != 0:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
-        if dataBuf.buf != nil:
-          dealloc dataBuf.buf
-          dataBuf.buf = nil
+        dealloc dataBuf.buf
         GC_unref(ol)
-        if flags.isDisconnectionError(err):
-          retFuture.complete("")
-        else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete("")
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      var data = newString(realSize)
-      assert realSize <= size
-      copyMem(addr data[0], addr dataBuf.buf[0], realSize)
-      #dealloc dataBuf.buf
-      retFuture.complete($data)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+        retFuture.fail(newException(OSError, osErrorMsg(err)))
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: cstring, size: int,
@@ -731,41 +696,17 @@ when defined(windows) or defined(nimdoc):
 
     let ret = WSARecv(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
                       addr flagsio, cast[POVERLAPPED](ol), nil)
-    if ret == -1:
+    # Processing of "immediate completion" operations was removed, because under
+    # heavy load it can lead to deep recursion and stack overflow.
+    # This change also dont affect speed.
+    if ret != 0:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         if dataBuf.buf != nil:
           dataBuf.buf = nil
         GC_unref(ol)
-        if flags.isDisconnectionError(err):
-          retFuture.complete(0)
-        else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete(0)
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      assert realSize <= size
-      retFuture.complete(realSize)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+        retFuture.fail(newException(OSError, osErrorMsg(err)))
+
     return retFuture
 
   proc send*(socket: AsyncFD, data: string,
@@ -796,19 +737,15 @@ when defined(windows) or defined(nimdoc):
 
     let ret = WSASend(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
                       lowFlags, cast[POVERLAPPED](ol), nil)
-    if ret == -1:
+    # Processing of "immediate completion" operations was removed, because under
+    # heavy load it can lead to deep recursion and stack overflow.
+    # This change also dont affect speed.
+    if ret != 0:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
-        if flags.isDisconnectionError(err):
-          retFuture.complete()
-        else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
-    else:
-      retFuture.complete()
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+        retFuture.fail(newException(OSError, osErrorMsg(err)))
+
     return retFuture
 
   proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn}):
@@ -886,17 +823,14 @@ when defined(windows) or defined(nimdoc):
                        dwLocalAddressLength,
                        dwRemoteAddressLength,
                        addr dwBytesReceived, cast[POVERLAPPED](ol))
-
+    # Processing of "immediate completion" operations was removed, because under
+    # heavy load it can lead to deep recursion and stack overflow.
+    # This change also dont affect speed.
     if not ret:
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
-        failAccept(err)
         GC_unref(ol)
-    else:
-      completeAccept()
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+        retFuture.fail(newException(OSError, osErrorMsg(err)))
 
     return retFuture
 
