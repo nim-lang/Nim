@@ -28,6 +28,9 @@ template mulThreshold(x): expr {.immediate.} = x * 2
 
 when defined(memProfiler):
   proc nimProfile(requestedSize: int)
+  
+when hasThreadSupport:
+  import sharedlist
 
 type
   WalkOp = enum

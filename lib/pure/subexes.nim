@@ -390,11 +390,11 @@ when isMainModule:
 
   doAssert(("type MyEnum* = enum\n  $', '2i'\n  '{..}" % ["fieldA",
     "fieldB", "FiledClkad", "fieldD", "fieldE", "longishFieldName"]).replace(" \n", "\n") ==
-    strutils.unindent """
+    strutils.unindent("""
       type MyEnum* = enum
         fieldA, fieldB,
         FiledClkad, fieldD,
-        fieldE, longishFieldName""")
+        fieldE, longishFieldName""", 6))
 
   doAssert subex"$1($', '{2..})" % ["f", "a", "b", "c"] == "f(a, b, c)"
 
@@ -404,8 +404,8 @@ when isMainModule:
 
   doAssert((subex("type\n  Enum = enum\n    $', '40c'\n    '{..}") % [
     "fieldNameA", "fieldNameB", "fieldNameC", "fieldNameD"]).replace(" \n", "\n") ==
-    strutils.unindent """
+    strutils.unindent("""
       type
         Enum = enum
           fieldNameA, fieldNameB, fieldNameC,
-          fieldNameD""")
+          fieldNameD""", 6))

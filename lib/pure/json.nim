@@ -56,6 +56,11 @@ import
 export
   tables.`$`
 
+when defined(nimJsonGet):
+  {.pragma: deprecatedGet, deprecated.}
+else:
+  {.pragma: deprecatedGet.}
+
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
     jsonError,           ## an error occurred during parsing
@@ -799,16 +804,23 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
+proc `[]`*(node: JsonNode, name: string): JsonNode {.inline, deprecatedGet.} =
   ## Gets a field from a `JObject`, which must not be nil.
-  ## If the value at `name` does not exist, returns nil
+  ## If the value at `name` does not exist, raises KeyError.
+  ##
+  ## **Note:** The behaviour of this procedure changed in version 0.14.0. To
+  ## get a list of usages and to restore the old behaviour of this procedure,
+  ## compile with the ``-d:nimJsonGet`` flag.
   assert(not isNil(node))
   assert(node.kind == JObject)
-  result = node.fields.getOrDefault(name)
+  when defined(nimJsonGet):
+    if not node.fields.hasKey(name): return nil
+  result = node.fields[name]
 
 proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
-  ## is out of bounds
+  ## is out of bounds, but as long as array bound checks are enabled it will
+  ## result in an exception.
   assert(not isNil(node))
   assert(node.kind == JArray)
   return node.elems[index]
@@ -838,20 +850,28 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
-  ## keys do not exist, returns nil. Also returns nil if one of the
-  ## intermediate data structures is not an object
+  ## keys do not exist, returns ``nil``. Also returns ``nil`` if one of the
+  ## intermediate data structures is not an object.
   result = node
   for key in keys:
-    if isNil(result) or result.kind!=JObject:
+    if isNil(result) or result.kind != JObject:
       return nil
-    result=result[key]
+    result = result.fields.getOrDefault(key)
+
+proc getOrDefault*(node: JsonNode, key: string): JsonNode =
+  ## Gets a field from a `node`. If `node` is nil or not an object or
+  ## value at `key` does not exist, returns nil
+  if not isNil(node) and node.kind == JObject:
+    result = node.fields.getOrDefault(key)
+
+template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode, key: string): JsonNode = node.getOrDefault(key)
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
-  ## to `value` If any of the keys are missing, they are added
+  ## to ``value``. If any of the keys are missing, they are added.
   var node = node
   for i in 0..(keys.len-2):
-    if isNil(node[keys[i]]):
+    if not node.hasKey(keys[i]):
       node[keys[i]] = newJObject()
     node = node[keys[i]]
   node[keys[keys.len-1]] = value
@@ -1217,16 +1237,6 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
-  when not defined(js):
-    var parsed = parseFile("tests/testdata/jsontest.json")
-
-    try:
-      discard parsed["key2"][12123]
-      doAssert(false)
-    except IndexError: doAssert(true)
-
-    var parsed2 = parseFile("tests/testdata/jsontest2.json")
-    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
@@ -1314,3 +1324,19 @@ when isMainModule:
 
   var j4 = %*{"test": nil}
   doAssert j4 == %{"test": newJNull()}
+
+  echo("99% of tests finished. Going to try loading file.")
+
+  # Test loading of file.
+  when not defined(js):
+    var parsed = parseFile("tests/testdata/jsontest.json")
+
+    try:
+      discard parsed["key2"][12123]
+      doAssert(false)
+    except IndexError: doAssert(true)
+
+    var parsed2 = parseFile("tests/testdata/jsontest2.json")
+    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+
+  echo("Tests succeeded!")

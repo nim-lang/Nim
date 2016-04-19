@@ -8,19 +8,76 @@
 #
 
 ## This module implements a high-level cross-platform sockets interface.
+## The procedures implemented in this module are primarily for blocking sockets.
+## For asynchronous non-blocking sockets use the ``asyncnet`` module together
+## with the ``asyncdispatch`` module.
+##
+## The first thing you will always need to do in order to start using sockets,
+## is to create a new instance of the ``Socket`` type using the ``newSocket``
+## procedure.
+##
+## SSL
+## ====
+##
+## In order to use the SSL procedures defined in this module, you will need to
+## compile your application with the ``-d:ssl`` flag.
+##
+## Examples
+## ========
+##
+## Connecting to a server
+## ----------------------
+##
+## After you create a socket with the ``newSocket`` procedure, you can easily
+## connect it to a server running at a known hostname (or IP address) and port.
+## To do so over TCP, use the example below.
+##
+## .. code-block:: Nim
+##   var socket = newSocket()
+##   socket.connect("google.com", Port(80))
+##
+## UDP is a connectionless protocol, so UDP sockets don't have to explicitly
+## call the ``connect`` procedure. They can simply start sending data
+## immediately.
+##
+## .. code-block:: Nim
+##   var socket = newSocket()
+##   socket.sendTo("192.168.0.1", Port(27960), "status\n")
+##
+## Creating a server
+## -----------------
+##
+## After you create a socket with the ``newSocket`` procedure, you can create a
+## TCP server by calling the ``bindAddr`` and ``listen`` procedures.
+##
+## .. code-block:: Nim
+##   var socket = newSocket()
+##   socket.bindAddr(Port(1234))
+##   socket.listen()
+##
+## You can then begin accepting connections using the ``accept`` procedure.
+##
+## .. code-block:: Nim
+##   var client = newSocket()
+##   var address = ""
+##   while true:
+##     socket.acceptAddr(client, address)
+##     echo("Client connected from: ", address)
+##
 
 {.deadCodeElim: on.}
 import nativesockets, os, strutils, parseutils, times
 export Port, `$`, `==`
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
+const defineSsl = defined(ssl) or defined(nimdoc)
 
-when defined(ssl):
+when defineSsl:
   import openssl
 
 # Note: The enumerations are mapped to Window's constants.
 
-when defined(ssl):
+when defineSsl:
   type
     SslError* = object of Exception
 
@@ -54,7 +111,7 @@ type
       currPos: int # current index in buffer
       bufLen: int # current length of buffer
     of false: nil
-    when defined(ssl):
+    when defineSsl:
       case isSsl: bool
       of true:
         sslHandle: SSLPtr
@@ -160,7 +217,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
     raiseOSError(osLastError())
   result = newSocket(fd, domain, sockType, protocol, buffered)
 
-when defined(ssl):
+when defineSsl:
   CRYPTO_malloc_init()
   SslLibraryInit()
   SslLoadErrorStrings()
@@ -301,7 +358,7 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
   ## error was caused by no data being available to be read.
   ##
   ## If ``err`` is not lower than 0 no exception will be raised.
-  when defined(ssl):
+  when defineSsl:
     if socket.isSSL:
       if err <= 0:
         var ret = SSLGetError(socket.sslHandle, err.cint)
@@ -334,7 +391,7 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
 
-  if err == -1 and not (when defined(ssl): socket.isSSL else: false):
+  if err == -1 and not (when defineSsl: socket.isSSL else: false):
     var lastE = if lastError.int == -1: getSocketError(socket) else: lastError
     if async:
       when useWinVersion:
@@ -414,7 +471,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
     client.isBuffered = server.isBuffered
 
     # Handle SSL.
-    when defined(ssl):
+    when defineSsl:
       if server.isSSL:
         # We must wrap the client sock in a ssl context.
 
@@ -425,7 +482,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
     # Client socket is set above.
     address = $inet_ntoa(sockAddress.sin_addr)
 
-when false: #defined(ssl):
+when false: #defineSsl:
   proc acceptAddrSSL*(server: Socket, client: var Socket,
                       address: var string): SSLAcceptResult {.
                       tags: [ReadIOEffect].} =
@@ -444,7 +501,7 @@ when false: #defined(ssl):
     ## ``AcceptNoClient`` will be returned when no client is currently attempting
     ## to connect.
     template doHandshake(): stmt =
-      when defined(ssl):
+      when defineSsl:
         if server.isSSL:
           client.setBlocking(false)
           # We must wrap the client sock in a ssl context.
@@ -495,7 +552,7 @@ proc accept*(server: Socket, client: var Socket,
 proc close*(socket: Socket) =
   ## Closes a socket.
   try:
-    when defined(ssl):
+    when defineSsl:
       if socket.isSSL:
         ErrClearError()
         # As we are closing the underlying socket immediately afterwards,
@@ -547,8 +604,9 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-when defined(ssl):
-  proc handshake*(socket: Socket): bool {.tags: [ReadIOEffect, WriteIOEffect].} =
+when defineSsl:
+  proc handshake*(socket: Socket): bool
+      {.tags: [ReadIOEffect, WriteIOEffect], deprecated.} =
     ## This proc needs to be called on a socket after it connects. This is
     ## only applicable when using ``connectAsync``.
     ## This proc performs the SSL handshake.
@@ -557,6 +615,8 @@ when defined(ssl):
     ## ``True`` whenever handshake completed successfully.
     ##
     ## A ESSL error is raised on any other errors.
+    ##
+    ## **Note:** This procedure is deprecated since version 0.14.0.
     result = true
     if socket.isSSL:
       var ret = SSLConnect(socket.sslHandle)
@@ -594,7 +654,7 @@ proc hasDataBuffered*(s: Socket): bool =
   if s.isBuffered:
     result = s.bufLen > 0 and s.currPos != s.bufLen
 
-  when defined(ssl):
+  when defineSsl:
     if s.isSSL and not result:
       result = s.sslHasPeekChar
 
@@ -608,7 +668,7 @@ proc select(readfd: Socket, timeout = 500): int =
 
 proc readIntoBuf(socket: Socket, flags: int32): int =
   result = 0
-  when defined(ssl):
+  when defineSsl:
     if socket.isSSL:
       result = SSLRead(socket.sslHandle, addr(socket.buffer), int(socket.buffer.high))
     else:
@@ -658,7 +718,7 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [ReadIOEffect]
 
     result = read
   else:
-    when defined(ssl):
+    when defineSsl:
       if socket.isSSL:
         if socket.sslHasPeekChar:
           copyMem(data, addr(socket.sslPeekChar), 1)
@@ -696,7 +756,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
     if timeout - int(waited * 1000.0) < 1:
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
 
-    when defined(ssl):
+    when defineSsl:
       if socket.isSSL:
         if socket.hasDataBuffered:
           # sslPeekChar is present.
@@ -764,7 +824,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
 
     c = socket.buffer[socket.currPos]
   else:
-    when defined(ssl):
+    when defineSsl:
       if socket.isSSL:
         if not socket.sslHasPeekChar:
           result = SSLRead(socket.sslHandle, addr(socket.sslPeekChar), 1)
@@ -872,7 +932,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   ##
   ## **Note**: This is a low-level version of ``send``. You likely should use
   ## the version below.
-  when defined(ssl):
+  when defineSsl:
     if socket.isSSL:
       return SSLWrite(socket.sslHandle, cast[cstring](data), size)
 
@@ -943,7 +1003,7 @@ proc sendTo*(socket: Socket, address: string, port: Port,
 
 proc isSsl*(socket: Socket): bool =
   ## Determines whether ``socket`` is a SSL socket.
-  when defined(ssl):
+  when defineSsl:
     result = socket.isSSL
   else:
     result = false
@@ -1253,7 +1313,7 @@ proc connect*(socket: Socket, address: string,
   dealloc(aiList)
   if not success: raiseOSError(lastError)
 
-  when defined(ssl):
+  when defineSsl:
     if socket.isSSL:
       # RFC3546 for SNI specifies that IP addresses are not allowed.
       if not isIpAddress(address):
@@ -1314,8 +1374,10 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   if selectWrite(s, timeout) != 1:
     raise newException(TimeoutError, "Call to 'connect' timed out.")
   else:
-    when defined(ssl):
+    when defineSsl:
       if socket.isSSL:
         socket.fd.setBlocking(true)
+        {.warning[Deprecated]: off.}
         doAssert socket.handshake()
+        {.warning[Deprecated]: on.}
   socket.fd.setBlocking(true)
