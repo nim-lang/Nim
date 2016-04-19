@@ -22,10 +22,65 @@
 ##
 ## .. code-block:: nim
 ##     :file: examples/parsecfgex.nim
-
+## 
+## Examples
+## --------
+##
+## This is an example of how a configuration file
+## 
+## .. include:: config.ini
+## 
+##     [Package]
+##     name = "hello"
+##     [Author]
+##     name = "lihf8515"
+##     qq = "10214028"
+##     email = "lihaifeng@wxm.com"
+## 
+## Create configuration file
+## =========================
+## .. code-block:: nim
+## 
+##     import parsecfg
+##     var dict=newCfg()
+##     dict.setSectionKey("Package","name","hello")
+##     dict.setSectionKey("Author","name","lihf8515")
+##     dict.setSectionKey("Author","qq","10214028")
+##     dict.setSectionKey("Author","email","lihaifeng@wxm.com")
+##     dict.writeCfgFile("config.ini")
+## 
+## Read configuration file
+## =======================
+## .. code-block:: nim
+##
+##     import parsecfg
+##     var dict = loadCfgFile("config.ini")
+##     var pname = dict.getSectionKey("Package","name")
+##     var name = dict.getSectionKey("Author","name")
+##     var qq = dict.getSectionKey("Author","qq")
+##     var email = dict.getSectionKey("Author","email")
+##     echo pname & "\n" & name & "\n" & qq & "\n" & email
+## 
+## Modify configuration file
+## =========================
+## .. code-block:: nim
+## 
+##     import parsecfg
+##     var dict = loadCfgFile("config.ini")
+##     dict.setSectionKey("Author","name","lhf")
+##     dict.writeCfgFile("config.ini")
+##
+## Delete the key in the configuration file
+## ========================================
+## .. code-block:: nim
+## 
+##     import parsecfg
+##     var dict = loadCfgFile("config.ini")
+##     dict.delSectionKey("Author","email")
+##     dict.writeCfgFile("config.ini")
 
 import
-  hashes, strutils, lexbase, streams
+  hashes, strutils, lexbase, streams, tables
 
 include "system/inclrtl"
 
@@ -359,3 +414,78 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     result.kind = cfgError
     result.msg = errorStr(c, "invalid token: " & c.tok.literal)
     rawGetTok(c, c.tok)
+
+# --------------------- Configuration file related operations ---------------------
+
+proc newCfg*(): OrderedTable[string, OrderedTable[string, string]] =
+  ## Create Cfg table.
+  ## When you create a new configuration file, you need to use it first.
+  result = initOrderedTable[string, OrderedTable[string, string]]()
+
+proc loadCfgFile*(filename: string): OrderedTable[string, OrderedTable[string, string]] =
+  ## Load the specified configuration file into table.
+  ## When you need to read, modify, and delete operations, you need to use it first.
+  var dict = initOrderedTable[string, OrderedTable[string, string]]()
+  var curSection:string
+  var p: CfgParser
+  var fileStream = newFileStream(filename, fmRead)
+  if fileStream != nil:
+    open(p, fileStream, filename)
+    while true:
+      var e = next(p)
+      case e.kind
+      of cfgEof:
+        break
+      of cfgSectionStart: # Only look for the first time the Section
+        curSection = e.section
+      of cfgKeyValuePair:
+        var t = initOrderedTable[string, string]()
+        if dict.hasKey(curSection):
+          t = dict[curSection]
+        t[e.key] = e.value
+        dict[curSection] = t
+      of cfgOption:
+        continue
+      of cfgError:
+        break
+    close(p)
+  result = dict
+
+proc writeCfgFile*(dict: OrderedTable[string, OrderedTable[string, string]], filename: string) =
+  ## Writes the contents of the table to the specified configuration file.
+  var fileStream = newFileStream(filename, fmWrite)
+  for pair in dict.pairs():
+    fileStream.writeLine("[" & pair[0] & "]")
+    for pair2 in pair[1].pairs():
+      fileStream.writeLine(pair2[0] & " = \"" & pair2[1] & "\"")
+  fileStream.close()
+
+proc getSectionKey*(dict: OrderedTable[string, OrderedTable[string, string]], section, key: string): string =
+  ## Gets the Key value of the specified Section for a given table.
+  ## Before using it to call the loadCfgFile function.
+  result = ""
+  if dict.haskey(section):
+    if dict[section].hasKey(key):
+      result = dict[section][key]
+
+proc setSectionKey*(dict: var OrderedTable[string, OrderedTable[string, string]], section, key, value: string) =
+  ## Sets the Key value of the specified Section for a given dictionaries.
+  ## Before using it to call the loadCfgFile or newCfg function.
+  var t = initOrderedTable[string, string]()
+  if dict.hasKey(section):
+    t = dict[section]
+  t[key] = value
+  dict[section] = t
+
+proc delSection*(dict: var OrderedTable[string, OrderedTable[string, string]], section: string) =
+  ## Deletes the specified section of the table and all of its sub keys.
+  dict.del(section)
+
+proc delSectionKey*(dict: var OrderedTable[string, OrderedTable[string, string]], section, key: string) =
+  ## Delete the key of the specified section in the table.
+  if dict.haskey(section):
+    if dict[section].hasKey(key):
+      if dict[section].len() == 1:
+        dict.del(section)
+      else:
+        dict[section].del(key)
