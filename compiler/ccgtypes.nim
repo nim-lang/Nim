@@ -576,7 +576,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
       result = getTypeDescAux(m, et, check) & star
       idTablePut(m.typeCache, t, result)
   of tyOpenArray, tyVarargs:
-    result = getTypeDescAux(m, t.sons[0], check) & "*"
+    result = getTypeDescWeak(m, t.sons[0], check) & "*"
     idTablePut(m.typeCache, t, result)
   of tyProc:
     result = getTypeName(t)
