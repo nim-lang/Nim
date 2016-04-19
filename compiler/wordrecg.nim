@@ -81,6 +81,7 @@ type
     wThread_local, wStatic_assert, wChar16_t, wChar32_t,
 
     wStdIn, wStdOut, wStdErr,
+    wFar, wNear,
 
     wInOut, wByCopy, wByRef, wOneWay,
     wBitsize,
@@ -169,6 +170,7 @@ const
     "thread_local", "static_assert", "char16_t", "char32_t",
 
     "stdin", "stdout", "stderr",
+    "far", "near",
 
     "inout", "bycopy", "byref", "oneway",
     "bitsize",
