@@ -511,11 +511,12 @@ elif defined(nogc):
   include "system/cellsets"
 
 else:
-  include "system/alloc"
+  when not defined(gcStack):
+    include "system/alloc"
 
-  include "system/cellsets"
-  when not leakDetector and not useCellIds:
-    sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
+    include "system/cellsets"
+    when not leakDetector and not useCellIds:
+      sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
   elif defined(gcStack):

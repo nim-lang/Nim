@@ -1291,7 +1291,7 @@ const
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
   {.error: "``--tlsEmulation:on`` must be used when using threads with tcc backend".}
-  
+
 when defined(boehmgc):
   when defined(windows):
     const boehmLib = "boehmgc.dll"
@@ -2565,8 +2565,9 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when not defined(nimscript) and not defined(nogc):
-    proc initGC()
-    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc):
+    when not defined(gcStack):
+      proc initGC()
+    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc) and not defined(gcStack):
       proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =

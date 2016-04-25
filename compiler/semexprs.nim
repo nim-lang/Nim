@@ -74,8 +74,12 @@ proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
 
 proc inlineConst(n: PNode, s: PSym): PNode {.inline.} =
   result = copyTree(s.ast)
-  result.typ = s.typ
-  result.info = n.info
+  if result.isNil:
+    localError(n.info, "constant of type '" & typeToString(s.typ) & "' has no value")
+    result = newSymNode(s)
+  else:
+    result.typ = s.typ
+    result.info = n.info
 
 type
   TConvStatus = enum
