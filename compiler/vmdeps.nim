@@ -88,6 +88,8 @@ proc mapTypeToAstImpl(t: PType; info: TLineInfo;
   template mapTypeToAst(t,info): expr = mapTypeToAstImpl(t, info, inst)
   template mapTypeToBracket(name,t,info): expr =
     mapTypeToBracketImpl(name, t, info, inst)
+  template newNode(kind):expr =
+    newNodeIT(kind, if t.n.isNil: info else: t.n.info, t)
 
   case t.kind
   of tyNone: result = atomicType("none")
@@ -116,17 +118,23 @@ proc mapTypeToAstImpl(t: PType; info: TLineInfo;
   of tyGenericInst:
     if inst:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-      for i in 0 .. < t.len-1:
+      #result.add mapTypeToAst(t.sons[0], info)
+      result.add mapTypeToAst(t.lastSon, info)
+      for i in 1 .. < t.len-1:
         result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAst(t.lastSon, info)
   of tyGenericBody, tyOrdinal, tyUserTypeClassInst:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:
-    if allowRecursion:
-      result = mapTypeToBracket("distinct", t, info)
+    if inst:
+      result = newNode(nkDistinctTy)
+      result.add mapTypeToAst(t.sons[0], info)
     else:
-      result = atomicType(t.sym.name.s)
+      if allowRecursion or t.sym==nil:
+        result = mapTypeToBracket("distinct", t, info)
+      else:
+        result = atomicType(t.sym.name.s)
   of tyGenericParam, tyForward: result = atomicType(t.sym.name.s)
   of tyObject:
     if allowRecursion:
@@ -192,12 +200,14 @@ proc mapTypeToAstImpl(t: PType; info: TLineInfo;
       else: result = atomicType "void"
     else:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-      result.add atomicType("static")
+      result.add atomicType "static"
       if t.n != nil:
         result.add t.n.copyTree
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstImpl(t, info, false, true)
 
+# the "Inst" version includes generic parameters in the resulting type tree
+# and also tries to look like the corresponding Nim type declaration
 proc opMapTypeInstToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstImpl(t, info, true, true)
