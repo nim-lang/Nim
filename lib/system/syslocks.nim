@@ -121,3 +121,5 @@ else:
       importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
     proc deinitSysCond(cond: var SysCond) {.noSideEffect,
       importc: "pthread_cond_destroy", header: "<pthread.h>".}
+
+{.pop.}
