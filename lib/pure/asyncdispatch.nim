@@ -368,7 +368,7 @@ proc processTimers(p: PDispatcherBase) =
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
   type
-    CompletionKey = Dword
+    CompletionKey = ULONG_PTR
 
     CompletionData* = object
       fd*: AsyncFD # TODO: Rename this.
@@ -431,7 +431,7 @@ when defined(windows) or defined(nimdoc):
       if timeout ==  -1: winlean.INFINITE
       else: timeout.int32
     var lpNumberOfBytesTransferred: Dword
-    var lpCompletionKey: ULONG
+    var lpCompletionKey: ULONG_PTR
     var customOverlapped: PCustomOverlapped
     let res = getQueuedCompletionStatus(p.ioPort,
         addr lpNumberOfBytesTransferred, addr lpCompletionKey,
