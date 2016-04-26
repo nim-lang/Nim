@@ -1291,7 +1291,7 @@ const
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
   {.error: "``--tlsEmulation:on`` must be used when using threads with tcc backend".}
-  
+
 when defined(boehmgc):
   when defined(windows):
     const boehmLib = "boehmgc.dll"
@@ -2565,8 +2565,9 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when not defined(nimscript) and not defined(nogc):
-    proc initGC()
-    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc):
+    when not defined(gcStack):
+      proc initGC()
+    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc) and not defined(gcStack):
       proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
@@ -2774,6 +2775,9 @@ when not defined(JS): #and not defined(nimscript):
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
       ## the actual number of bytes that have been read which may be less than
       ## `len` (if not as many bytes are remaining), but not greater.
+      ##
+      ## **Warning:** The buffer `a` must be pre-allocated. This can be done
+      ## using, for example, ``newString``.
 
     proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
       tags: [ReadIOEffect], benign.}
@@ -2874,6 +2878,7 @@ when not defined(JS): #and not defined(nimscript):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
+    const insideRLocksModule = false
     include "system/syslocks"
     when hostOS != "standalone": include "system/threads"
   elif not defined(nogc) and not defined(nimscript):

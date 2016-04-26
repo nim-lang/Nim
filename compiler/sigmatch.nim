@@ -513,7 +513,7 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                          ff, a: PType): TTypeRelation =
   var body = ff.skipTypes({tyUserTypeClassInst})
-  if c.inTypeClass > 20:
+  if c.inTypeClass > 4:
     localError(body.n[3].info, $body.n[3] & " too nested for type matching")
     return isNone
 
@@ -847,7 +847,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           inc(c.inheritancePenalty, depth)
           result = isSubtype
   of tyDistinct:
-    if a.kind == tyDistinct and sameDistinctTypes(f, a): result = isEqual
+    if a.kind == tyDistinct:
+      if sameDistinctTypes(f, a): result = isEqual
+      elif f.base.kind == tyAnything: result = isGeneric
+      elif c.coerceDistincts: result = typeRel(c, f.base, a)
     elif c.coerceDistincts: result = typeRel(c, f.base, a)
   of tySet:
     if a.kind == tySet:
@@ -922,19 +925,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if a.kind == tyEmpty: result = isEqual
 
   of tyGenericInst:
-    let roota = a.skipGenericAlias
-    let rootf = f.skipGenericAlias
-    if a.kind == tyGenericInst and roota.base == rootf.base:
-      for i in 1 .. rootf.sonsLen-2:
-        let ff = rootf.sons[i]
-        let aa = roota.sons[i]
-        result = typeRel(c, ff, aa)
-        if result == isNone: return
-        if ff.kind == tyRange and result != isEqual: return isNone
-      #result = isGeneric
-      # XXX See bug #2220. A[int] should match A[int] better than some generic X
-    else:
-      result = typeRel(c, lastSon(f), a)
+    result = typeRel(c, lastSon(f), a)
 
   of tyGenericBody:
     considerPreviousT:
@@ -1035,12 +1026,20 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyCompositeTypeClass:
     considerPreviousT:
-      if typeRel(c, f.sons[1], a) != isNone:
-        put(c.bindings, f, a)
-        return isGeneric
+      let roota = a.skipGenericAlias
+      let rootf = f.lastSon.skipGenericAlias
+      if a.kind == tyGenericInst and roota.base == rootf.base:
+        for i in 1 .. rootf.sonsLen-2:
+          let ff = rootf.sons[i]
+          let aa = roota.sons[i]
+          result = typeRel(c, ff, aa)
+          if result == isNone: return
+          if ff.kind == tyRange and result != isEqual: return isNone
       else:
-        return isNone
-
+        result = typeRel(c, rootf.lastSon, a)
+      if result != isNone:
+        put(c.bindings, f, a)
+        result = isGeneric
   of tyGenericParam:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:

@@ -802,7 +802,7 @@ proc doParamsAux(g: var TSrcGen, params: PNode) =
     gsemicolon(g, params, 1)
     put(g, tkParRi, ")")
 
-  if params.sons[0].kind != nkEmpty:
+  if params.len > 0 and params.sons[0].kind != nkEmpty:
     putWithSpace(g, tkOpr, "->")
     gsub(g, params.sons[0])
 

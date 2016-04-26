@@ -560,6 +560,24 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
+proc parseUInt*(s: string): uint {.noSideEffect, procvar,
+  rtl, extern: "nsuParseUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
+
+proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+  rtl, extern: "nsuParseBiggestUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseBiggestUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
+
 proc parseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`. If `s` is not
@@ -766,8 +784,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuIndent".} =
   ## Indents each line in ``s`` by ``count`` amount of ``padding``.
   ##
-  ## **Note:** This currently does not preserve the specific new line characters
-  ## used.
+  ## **Note:** This does not preserve the new line characters used in ``s``.
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -778,32 +795,39 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, eatAllIndent = false): string {.
-               noSideEffect, rtl, extern: "nsuUnindent".} =
-  ## Unindents `s`.
-  result = newStringOfCap(s.len)
+proc unindent*(s: string, count: Natural, padding: string = " "): string
+    {.noSideEffect, rtl, extern: "nsuUnindent".} =
+  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ##
+  ## **Note:** This does not preserve the new line characters used in ``s``.
+  result = ""
   var i = 0
-  var pattern = true
-  var indent = 0
-  while s[i] == ' ': inc i
-  var level = if i == 0: -1 else: i
-  while i < s.len:
-    if s[i] == ' ':
-      if i > 0 and s[i-1] in {'\l', '\c'}:
-        pattern = true
-        indent = 0
-      if pattern:
-        inc(indent)
-        if indent > level and not eatAllIndent:
-          result.add(s[i])
-        if level < 0: level = indent
-      else:
-        # a space somewhere: do not delete
-        result.add(s[i])
-    else:
-      pattern = false
-      result.add(s[i])
-    inc i
+  for line in s.splitLines():
+    if i != 0:
+      result.add("\n")
+    var indentCount = 0
+    for j in 0..<count.int:
+      indentCount.inc
+      if line[j .. j + <padding.len] != padding:
+        indentCount = j
+        break
+    result.add(line[indentCount*padding.len .. ^1])
+    i.inc
+
+proc unindent*(s: string): string
+    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
+  ## Removes all indentation composed of whitespace from each line in ``s``.
+  ##
+  ## For example:
+  ##
+  ## .. code-block:: nim
+  ##   const x = """
+  ##     Hello
+  ##     There
+  ##   """.unindent()
+  ##
+  ##   doAssert x == "Hello\nThere\n"
+  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
 
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
@@ -1725,3 +1749,33 @@ when isMainModule:
   doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
   doAssert join([1, 2, 3]) == "123"
   doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
+
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
+
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
+  doAssert """~~foo
+~~  bar
+~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
+  doAssert """foo
+bar
+    baz
+  """.unindent(4) == "foo\nbar\nbaz\n"
+  doAssert """foo
+    bar
+    baz
+  """.unindent(2) == "foo\n  bar\n  baz\n"
+  doAssert """foo
+    bar
+    baz
+  """.unindent(100) == "foo\nbar\nbaz\n"
+
+  doAssert """foo
+    foo
+    bar
+  """.unindent() == "foo\nfoo\nbar\n"
+
+  echo("strutils tests passed")

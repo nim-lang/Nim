@@ -67,9 +67,12 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 
 proc typeMismatch(n: PNode, formal, actual: PType) =
   if formal.kind != tyError and actual.kind != tyError:
+    let named = typeToString(formal)
+    let desc = typeToString(formal, preferDesc)
+    let x = if named == desc: named else: named & " = " & desc
     localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
         typeToString(actual) & ") " &
-        `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
+        `%`(msgKindToString(errButExpectedX), [x]))
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
   if arg.typ.isNil:

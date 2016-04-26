@@ -672,9 +672,13 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     expr(p, e.sons[0], d)
   else:
     var a: TLoc
-    initLocExprSingleUse(p, e.sons[0], a)
+    let typ = skipTypes(e.sons[0].typ, abstractInst)
+    if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
+      initLocExprSingleUse(p, e[0][0], d)
+      return
+    else:
+      initLocExprSingleUse(p, e.sons[0], a)
     if d.k == locNone:
-      let typ = skipTypes(a.t, abstractInst)
       # dest = *a;  <-- We do not know that 'dest' is on the heap!
       # It is completely wrong to set 'd.s' here, unless it's not yet
       # been assigned to.
@@ -689,9 +693,9 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
           return
       of tyPtr:
         d.s = OnUnknown         # BUGFIX!
-      else: internalError(e.info, "genDeref " & $a.t.kind)
+      else:
+        internalError(e.info, "genDeref " & $typ.kind)
     elif p.module.compileToCpp:
-      let typ = skipTypes(a.t, abstractInst)
       if typ.kind == tyVar and tfVarIsPtr notin typ.flags and
            e.kind == nkHiddenDeref:
         putIntoDest(p, d, e.typ, rdLoc(a), a.s)
@@ -1852,10 +1856,16 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
     initLocExpr(p, n.sons[1], b)
     if n.sons[0].skipConv.kind == nkClosure:
       internalError(n.info, "closure to closure created")
-    getTemp(p, n.typ, tmp)
-    linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
-            tmp.rdLoc, a.rdLoc, b.rdLoc)
-    putLocIntoDest(p, d, tmp)
+    # tasyncawait.nim breaks with this optimization:
+    when false:
+      if d.k != locNone:
+        linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
+                d.rdLoc, a.rdLoc, b.rdLoc)
+    else:
+      getTemp(p, n.typ, tmp)
+      linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
+              tmp.rdLoc, a.rdLoc, b.rdLoc)
+      putLocIntoDest(p, d, tmp)
 
 proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc

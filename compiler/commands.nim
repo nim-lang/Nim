@@ -205,6 +205,7 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "generational": result = gSelectedGC == gcGenerational
     of "go":           result = gSelectedGC == gcGo
     of "none":         result = gSelectedGC == gcNone
+    of "stack":        result = gSelectedGC == gcStack
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "opt":
     case arg.normalize
@@ -394,6 +395,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     of "none":
       gSelectedGC = gcNone
       defineSymbol("nogc")
+    of "stack":
+      gSelectedGC= gcStack
+      defineSymbol("gcstack")
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "warnings", "w":
     if processOnOffSwitchOrList({optWarns}, arg, pass, info): listWarnings()

@@ -20,11 +20,24 @@ Changes affecting backwards compatibility
   new experimental ``this`` pragma to achieve a similar effect to what the old ``using`` statement tried to achieve.
 - Typeless parameters have been removed from the language since it would
   clash with ``using``.
+- Procedures in ``mersenne.nim`` (Mersenne Twister implementation) no longer
+  accept and produce ``int`` values which have platform-dependent size -
+  they use ``uint32`` instead.
+- The ``strutils.unindent`` procedure has been rewritten. Its parameters now
+  match the parameters of ``strutils.indent``. See issue [#4037](https://github.com/nim-lang/Nim/issues/4037)
+  for more details.
+- The ``matchers`` module has been deprecated. See issue [#2446](https://github.com/nim-lang/Nim/issues/2446)
+  for more details.
+- The ``json.[]`` no longer returns ``nil`` when a key is not found. Instead it
+  raises a ``KeyError`` exception. You can compile with the ``-d:nimJsonGet``
+  flag to get a list of usages of ``[]``, as well as to restore the operator's
+  previous behaviour.
 - When using ``useMalloc``, an additional header containing the size of the
   allocation will be allocated, to support zeroing memory on realloc as expected
   by the language. With this change, ``alloc`` and ``dealloc`` are no longer
   aliases for ``malloc`` and ``free`` - use ``c_malloc`` and ``c_free`` if
   you need that.
+
 
 Library Additions
 -----------------

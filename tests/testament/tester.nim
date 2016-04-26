@@ -33,6 +33,7 @@ Options:
   --print                   also print results to the console
   --failing                 only show failing/ignored tests
   --pedantic                return non-zero status code if there are failures
+  --targets:"c c++ js objc" run tests for specified targets (default: all)
 """ % resultsFile
 
 type
@@ -59,6 +60,8 @@ let
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
+
+var targets = {low(TTarget)..high(TTarget)}
 
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
@@ -275,6 +278,11 @@ proc analyzeAndConsolidateOutput(s: string): string =
 
 proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
+  if test.target notin targets:
+    r.addResult(test, "", "", reIgnored)
+    inc(r.skipped)
+    return
+
   let tname = test.name.addFileExt(".nim")
   inc(r.total)
   var expected: TSpec
@@ -336,7 +344,7 @@ proc testSpec(r: var TResults, test: TTest) =
                         reExitCodesDiffer)
       return
 
-    if bufB != expectedOut:
+    if bufB != expectedOut and expected.action != actionRunNoSpec:
       if not (expected.substr and expectedOut in bufB):
         given.err = reOutputsDiffer
         r.addResult(test, expected.outp, bufB, reOutputsDiffer)
@@ -394,6 +402,7 @@ proc main() =
   var optPrintResults = false
   var optFailing = false
   var optPedantic = false
+
   var p = initOptParser()
   p.next()
   while p.kind == cmdLongoption:
@@ -401,6 +410,7 @@ proc main() =
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
     of "pedantic": optPedantic = true
+    of "targets": targets = parseTargets(p.val.string)
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage

@@ -412,7 +412,7 @@ const
   FD_SETSIZE* = 64
   MSG_PEEK* = 2
 
-  INADDR_ANY* = 0
+  INADDR_ANY* = 0'u32
   INADDR_LOOPBACK* = 0x7F000001
   INADDR_BROADCAST* = -1
   INADDR_NONE* = -1
@@ -441,12 +441,12 @@ type
     sa_data: array[0..13, char]
 
   InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
-    s_addr*: int32  # IP address
+    s_addr*: uint32  # IP address
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
                   header: "winsock2.h".} = object
     sin_family*: int16
-    sin_port*: int16 # unsigned
+    sin_port*: uint16
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
 
@@ -456,7 +456,7 @@ type
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
                    header: "ws2tcpip.h".} = object
     sin6_family*: int16
-    sin6_port*: int16 # unsigned
+    sin6_port*: uint16
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
     sin6_scope_id*: int32 # unsigned
@@ -590,7 +590,7 @@ proc getnameinfo*(a1: ptr SockAddr, a2: SockLen,
                   a6: SockLen, a7: cint): cint {.
   stdcall, importc: "getnameinfo", dynlib: ws2dll.}
 
-proc inet_addr*(cp: cstring): int32 {.
+proc inet_addr*(cp: cstring): uint32 {.
   stdcall, importc: "inet_addr", dynlib: ws2dll.}
 
 proc WSAFDIsSet(s: SocketHandle, set: var TFdSet): bool {.
@@ -769,7 +769,7 @@ proc getQueuedCompletionStatus*(CompletionPort: Handle,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
 
-proc getOverlappedResult*(hFile: Handle, lpOverlapped: OVERLAPPED,
+proc getOverlappedResult*(hFile: Handle, lpOverlapped: POVERLAPPED,
               lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
 
@@ -840,30 +840,30 @@ if ws2 != nil:
 proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
 proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
-    case family
-    of AF_INET:
-      var sa: Sockaddr_in
-      sa.sin_family = AF_INET
-      sa.sin_addr = cast[ptr InAddr](paddr)[]
-      var bs = stringBufSize.DWORD
-      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
-      if r != 0:
-        result = nil
-      else:
-        result = pStringBuffer
-    of AF_INET6:
-      var sa: Sockaddr_in6
-      sa.sin6_family = AF_INET6
-      sa.sin6_addr = cast[ptr In6_addr](paddr)[]
-      var bs = stringBufSize.DWORD
-      let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
-      if r != 0:
-        result = nil
-      else:
-        result = pStringBuffer
-    else:
-      setLastError(ERROR_BAD_ARGUMENTS)
+  case family
+  of AF_INET:
+    var sa: Sockaddr_in
+    sa.sin_family = AF_INET
+    sa.sin_addr = cast[ptr InAddr](paddr)[]
+    var bs = stringBufSize.DWORD
+    let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+    if r != 0:
       result = nil
+    else:
+      result = pStringBuffer
+  of AF_INET6:
+    var sa: Sockaddr_in6
+    sa.sin6_family = AF_INET6
+    sa.sin6_addr = cast[ptr In6_addr](paddr)[]
+    var bs = stringBufSize.DWORD
+    let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+    if r != 0:
+      result = nil
+    else:
+      result = pStringBuffer
+  else:
+    setLastError(ERROR_BAD_ARGUMENTS)
+    result = nil
 
 proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
                   stringBufSize: int32): cstring {.stdcall.} =
