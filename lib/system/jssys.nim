@@ -97,6 +97,8 @@ proc rawWriteStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
+proc getStackTrace*(): string = rawWriteStackTrace()
+
 proc unhandledException(e: ref Exception) {.
     compilerproc, asmNoStackFrame.} =
   when NimStackTrace:
