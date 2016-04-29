@@ -87,8 +87,9 @@ type
     convNotNeedeed,
     convNotLegal
 
-proc checkConversionBetweenObjects(castDest, src: PType): TConvStatus =
-  return if inheritanceDiff(castDest, src) == high(int):
+proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvStatus =
+  let diff = inheritanceDiff(castDest, src)
+  return if diff == high(int) or (pointers > 1 and diff != 0):
       convNotLegal
     else:
       convOK
@@ -105,13 +106,15 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     return
   var d = skipTypes(castDest, abstractVar)
   var s = skipTypes(src, abstractVar-{tyTypeDesc})
+  var pointers = 0
   while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
     d = d.lastSon
     s = s.lastSon
+    inc pointers
   if d == nil:
     result = convNotLegal
   elif d.kind == tyObject and s.kind == tyObject:
-    result = checkConversionBetweenObjects(d, s)
+    result = checkConversionBetweenObjects(d, s, pointers)
   elif (skipTypes(castDest, abstractVarRange).kind in IntegralTypes) and
       (skipTypes(src, abstractVarRange-{tyTypeDesc}).kind in IntegralTypes):
     # accept conversion between integral types
