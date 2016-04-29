@@ -1243,13 +1243,16 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
 
 proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   # don't call '$' here for efficiency:
-  let pat = n.sons[0].sym.loc.r.data
-  internalAssert pat != nil
-  if pat.contains({'#', '(', '@'}):
-    var typ = skipTypes(n.sons[0].typ, abstractInst)
-    assert(typ.kind == tyProc)
-    genPatternCall(p, n, pat, typ, r)
-    return
+  let f = n[0].sym
+  if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+  if sfInfixCall in f.flags:
+    let pat = n.sons[0].sym.loc.r.data
+    internalAssert pat != nil
+    if pat.contains({'#', '(', '@'}):
+      var typ = skipTypes(n.sons[0].typ, abstractInst)
+      assert(typ.kind == tyProc)
+      genPatternCall(p, n, pat, typ, r)
+      return
   gen(p, n.sons[1], r)
   if r.typ == etyBaseIndex:
     if r.address == nil:
@@ -1266,7 +1269,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   genArgs(p, n, r, 2)
 
 proc genCall(p: PProc, n: PNode, r: var TCompRes) =
-  if thisParam(p, n.sons[0].typ) != nil:
+  if n.sons[0].kind == nkSym and thisParam(p, n.sons[0].typ) != nil:
     genInfixCall(p, n, r)
     return
   if p.target == targetPHP:
