@@ -240,7 +240,7 @@ proc rawParseUInt(s: string, b: var uint64, start = 0): int =
     res = 0'u64
     prev = 0'u64
     i = start
-  if s[i] == '+': inc(i) # Allow 
+  if s[i] == '+': inc(i) # Allow
   if s[i] in {'0'..'9'}:
     b = 0
     while s[i] in {'0'..'9'}:
@@ -255,8 +255,10 @@ proc rawParseUInt(s: string, b: var uint64, start = 0): int =
 
 proc parseBiggestUInt*(s: string, number: var uint64, start = 0): int {.
   rtl, extern: "npuParseBiggestUInt", noSideEffect.} =
-  ## parses an unsigned integer starting at `start` and stores the value into `number`.
-  ## Result is the number of processed chars or 0 if there is no integer or overflow detected.
+  ## parses an unsigned integer starting at `start` and stores the value
+  ## into `number`.
+  ## Result is the number of processed chars or 0 if there is no integer
+  ## or overflow detected.
   var res: uint64
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
@@ -265,8 +267,10 @@ proc parseBiggestUInt*(s: string, number: var uint64, start = 0): int {.
 
 proc parseUInt*(s: string, number: var uint, start = 0): int {.
   rtl, extern: "npuParseUInt", noSideEffect.} =
-  ## parses an unsigned integer starting at `start` and stores the value into `number`.
-  ## Result is the number of processed chars or 0 if there is no integer or overflow detected.
+  ## parses an unsigned integer starting at `start` and stores the value
+  ## into `number`.
+  ## Result is the number of processed chars or 0 if there is no integer or
+  ## overflow detected.
   var res: uint64
   result = parseBiggestUInt(s, res, start)
   if (sizeof(uint) <= 4) and
