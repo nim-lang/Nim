@@ -242,18 +242,6 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   case typ.kind
   of tyPointer:
     result = typeNameOrLiteral(typ, "void*")
-  of tyEnum:
-    if firstOrd(typ) < 0:
-      result = typeNameOrLiteral(typ, "NI32")
-    else:
-      case int(getSize(typ))
-      of 1: result = typeNameOrLiteral(typ, "NU8")
-      of 2: result = typeNameOrLiteral(typ, "NU16")
-      of 4: result = typeNameOrLiteral(typ, "NI32")
-      of 8: result = typeNameOrLiteral(typ, "NI64")
-      else:
-        internalError(typ.sym.info, "getSimpleTypeDesc: " & $(getSize(typ)))
-        result = nil
   of tyString:
     discard cgsym(m, "NimStringDesc")
     result = typeNameOrLiteral(typ, "NimStringDesc*")
@@ -578,6 +566,19 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   of tyOpenArray, tyVarargs:
     result = getTypeDescWeak(m, t.sons[0], check) & "*"
     idTablePut(m.typeCache, t, result)
+  of tyRange, tyEnum:
+    let t = if t.kind == tyRange: t.lastSon else: t
+    result = getTypeName(t)
+    idTablePut(m.typeCache, t, result)
+    if firstOrd(t) < 0:
+      addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
+    else:
+      case int(getSize(typ))
+      of 1: addf(m.s[cfsTypes], "typedef NU8 $1;$n", [result])
+      of 2: addf(m.s[cfsTypes], "typedef NU16 $1;$n", [result])
+      of 4: addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
+      of 8: addf(m.s[cfsTypes], "typedef NI64 $1;$n", [result])
+      else: internalError(t.sym.info, "getTypeDescAux: " & $getSize(t))
   of tyProc:
     result = getTypeName(t)
     idTablePut(m.typeCache, t, result)
