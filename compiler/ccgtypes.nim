@@ -674,16 +674,13 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
                     else: getTupleDesc(m, t, result, check)
       if not isImportedType(t): add(m.s[cfsTypes], recdesc)
   of tySet:
-    case int(getSize(t))
-    of 1: result = rope("NU8")
-    of 2: result = rope("NU16")
-    of 4: result = rope("NU32")
-    of 8: result = rope("NU64")
-    else:
-      result = getTypeName(t)
-      idTablePut(m.typeCache, t, result)
-      if not isImportedType(t):
-        addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
+    result = getTypeName(t.lastSon) & "Set"
+    idTablePut(m.typeCache, t, result)
+    if not isImportedType(t):
+      let s = int(getSize(t))
+      case s
+      of 1, 2, 4, 8: addf(m.s[cfsTypes], "typedef NU$2 $1;$n", [result, rope(s*8)])
+      else: addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
              [result, rope(getSize(t))])
   of tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable,
       tyIter, tyTypeDesc:
