@@ -2343,7 +2343,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "from")
     result = evalFrom(c, n)
   of nkIncludeStmt:
-    if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "include")
+    #if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "include")
     result = evalInclude(c, n)
   of nkExportStmt, nkExportExceptStmt:
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "export")
