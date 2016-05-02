@@ -16,8 +16,10 @@ if f != nil:
       echo("new section: " & e.section)
     of cfgKeyValuePair:
       echo("key-value-pair: " & e.key & ": " & e.value)
-    of cfgOption:
-      echo("command: " & e.key & ": " & e.value)
+    of cfgLongOption:
+      echo("command: --" & e.key & ": " & e.value)
+    of cfgShortOption:
+      echo("command: -" & e.key & ": " & e.value)
     of cfgError:
       echo(e.msg)
   close(p)
