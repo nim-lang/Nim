@@ -173,6 +173,22 @@ proc parseUntil*(s: string, token: var string, until: char,
   result = i-start
   token = substr(s, start, i-1)
 
+proc parseUntil*(s: string, token: var string, until: string,
+                 start = 0): int {.inline.} =
+  ## parses a token and stores it in ``token``. Returns
+  ## the number of the parsed characters or 0 in case of an error. A token
+  ## consists of any character that comes before the `until`  token.
+  var i = start
+  while i < s.len:
+    if s[i] == until[0]:
+      var u = 1
+      while i+u < s.len and u < until.len and s[i+u] == until[u]:
+        inc u
+      if u >= until.len: break
+    inc(i)
+  result = i-start
+  token = substr(s, start, i-1)
+
 proc parseWhile*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns

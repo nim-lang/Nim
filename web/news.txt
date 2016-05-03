@@ -45,6 +45,9 @@ Library Additions
 - The rlocks module has been added providing reentrant lock synchronization
   primitive.
 - A generic "sink operator" written as ``&=`` has been added to the ``system`` and the ``net`` modules.
+- Added ``strscans`` module that implements a ``scanf`` for easy input extraction.
+- Added a version of ``parseutils.parseUntil`` that can deal with a string ``until`` token. The other
+  versions are for ``char`` and ``set[char]``.
 
 
 Compiler Additions
@@ -62,6 +65,7 @@ Language Additions
 - Nim now supports ``partial`` object declarations to mitigate the problems
   that arise when types are mutually dependent and yet should be kept in
   different modules.
+- ``include`` statements are not restricted to top level statements anymore.
 
 
 2016-01-27 Nim in Action is now available!
