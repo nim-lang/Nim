@@ -1648,8 +1648,11 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr:
-    unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)" |
-                           "strlen($1)")
+    if p.target == targetJS and n.sons[1].typ.skipTypes(abstractInst).kind == tyCString:
+      unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
+    else:
+      unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)" |
+                             "strlen($1)")
   of mXLenStr: unaryExpr(p, n, r, "", "$1.length-1" | "strlen($1)")
   of mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)" |

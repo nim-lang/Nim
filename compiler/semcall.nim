@@ -361,7 +361,19 @@ proc explicitGenericInstError(n: PNode): PNode =
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var m: TCandidate
-  initCandidate(c, m, s, n)
+  # binding has to stay 'nil' for this to work!
+  initCandidate(c, m, s, nil)
+
+  for i in 1..sonsLen(n)-1:
+    let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
+    let arg = n[i].typ
+    let tm = typeRel(m, formal, arg, true)
+    if tm in {isNone, isConvertible}:
+      if formal.sonsLen > 0 and formal.sons[0].kind != tyNone:
+        typeMismatch(n, formal.sons[0], arg)
+      else:
+        typeMismatch(n, formal, arg)
+      break
   var newInst = generateInstance(c, s, m.bindings, n.info)
   markUsed(n.info, s)
   styleCheckUse(n.info, s)

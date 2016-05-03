@@ -778,11 +778,16 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     var s = a.sons[0].sym
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty:
-      if a.sons[2].kind in {nkSym, nkIdent, nkAccQuoted}:
+      var x = a[2]
+      while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
+        x = x.lastSon
+      if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty}:
         # type aliases are hard:
         #MessageOut('for type ' + typeToString(s.typ));
-        var t = semTypeNode(c, a.sons[2], nil)
-        if t.kind in {tyObject, tyEnum}:
+        var t = semTypeNode(c, x, nil)
+        assert t != nil
+        if t.kind in {tyObject, tyEnum, tyDistinct}:
+          assert s.typ != nil
           assignType(s.typ, t)
           s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
