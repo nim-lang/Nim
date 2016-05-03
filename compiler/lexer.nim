@@ -811,10 +811,6 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
           break
         dec nesting
       inc pos
-    of '\t':
-      lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
-      inc(pos)
-      if isDoc: tok.literal.add '\t'
     of CR, LF:
       pos = handleCRLF(L, pos)
       buf = L.buf
