@@ -203,6 +203,12 @@ proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Like getType except it includes generic parameters for a specific instance
 
+proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for the implementation
+
+proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for the implementation
+
 proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}

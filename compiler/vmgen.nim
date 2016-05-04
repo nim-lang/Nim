@@ -986,7 +986,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let rc = case n[0].sym.name.s:
       of "getType": 0
       of "typeKind": 1
-      else: 2  # "getTypeInst"
+      of "getTypeInst": 2
+      else: 3  # "getTypeImpl"
     c.gABC(n, opcNGetType, dest, tmp, rc)
     c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)

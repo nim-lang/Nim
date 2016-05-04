@@ -1200,11 +1200,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             regs[ra].intVal = ord(regs[rb].node.typ.kind)
           #else:
           #  stackTrace(c, tos, pc, errGenerated, "node has no type")
-        else:
+        of 2:
           # getTypeInst opcode:
           ensureKind(rkNode)
           if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
             regs[ra].node = opMapTypeInstToAst(regs[rb].node.typ, c.debug[pc])
+          else:
+            stackTrace(c, tos, pc, errGenerated, "node has no type")
+        else:
+          # getTypeImpl opcode:
+          ensureKind(rkNode)
+          if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+            regs[ra].node = opMapTypeImplToAst(regs[rb].node.typ, c.debug[pc])
           else:
             stackTrace(c, tos, pc, errGenerated, "node has no type")
     of opcNStrVal:
