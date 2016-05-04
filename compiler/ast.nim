@@ -1543,6 +1543,10 @@ proc getStrOrChar*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
+  of nkBracket:
+    result = ""
+    for b in a.sons:
+      result.add b.getStrOrChar
   else:
     internalError(a.info, "getStrOrChar")
     result = ""
