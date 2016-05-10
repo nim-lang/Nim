@@ -669,7 +669,7 @@ proc repeat*(s: string, n: Natural): string {.noSideEffect,
   result = newStringOfCap(n * s.len)
   for i in 1..n: result.add(s)
 
-template spaces*(n: Natural): string =  repeat(' ',n)
+template spaces*(n: Natural): string = repeat(' ', n)
   ## Returns a String with `n` space characters. You can use this proc
   ## to left align strings. Example:
   ##
