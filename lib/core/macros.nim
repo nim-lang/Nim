@@ -818,6 +818,8 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     else: result = c
   var i = 0
   var j = 0
+  # first char is case sensitive
+  if a[0] != b[0]: return 1
   while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
@@ -828,8 +830,22 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     inc(i)
     inc(j)
 
-proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   ## Check if two idents are identical.
+
+proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
+  ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
+  ## is the same as ``s``. Note that this is the preferred way to check! Most
+  ## other ways like ``node.ident`` are much more error-prone, unfortunately.
+  case node.kind
+  of nnkIdent:
+    result = node.ident == !s
+  of nnkSym:
+    result = eqIdent($node.symbol, s)
+  of nnkOpenSymChoice, nnkClosedSymChoice:
+    result = eqIdent($node[0], s)
+  else:
+    result = false
 
 proc hasArgOfName* (params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
