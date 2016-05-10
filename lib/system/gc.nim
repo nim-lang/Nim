@@ -905,19 +905,19 @@ proc unmarkStackAndRegisters(gch: var GcHeap) =
     #sysAssert c.typ != nil, "unmarkStackAndRegisters 2"
   gch.decStack.len = 0
 
-proc collectCTBody(gch: var GcHeap) =
+proc collectCTBody(gch: var GcHeap, ignoreStackAndRegisters = false) =
   when withRealTime:
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
-
-  when not defined(nimCoroutines):
-    gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
   sysAssert(gch.decStack.len == 0, "collectCT")
   prepareForInteriorPointerChecking(gch.region)
-  markStackAndRegisters(gch)
-  markThreadStacks(gch)
-  gch.stat.maxStackCells = max(gch.stat.maxStackCells, gch.decStack.len)
-  inc(gch.stat.stackScans)
+  if not ignoreStackAndRegisters:
+    when not defined(nimCoroutines):
+      gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
+    markStackAndRegisters(gch)
+    markThreadStacks(gch)
+    gch.stat.maxStackCells = max(gch.stat.maxStackCells, gch.decStack.len)
+    inc(gch.stat.stackScans)
   if collectZCT(gch):
     when cycleGC:
       if getOccupiedMem(gch.region) >= gch.cycleThreshold or alwaysCycleGC:
@@ -927,7 +927,8 @@ proc collectCTBody(gch: var GcHeap) =
         gch.cycleThreshold = max(InitialCycleThreshold, getOccupiedMem() *
                                  CycleIncrease)
         gch.stat.maxThreshold = max(gch.stat.maxThreshold, gch.cycleThreshold)
-  unmarkStackAndRegisters(gch)
+  if not ignoreStackAndRegisters:
+    unmarkStackAndRegisters(gch)
   sysAssert(allocInv(gch.region), "collectCT: end")
 
   when withRealTime:
@@ -971,16 +972,17 @@ when withRealTime:
   proc GC_setMaxPause*(MaxPauseInUs: int) =
     gch.maxPause = MaxPauseInUs.toNano
 
-  proc GC_step(gch: var GcHeap, us: int, strongAdvice: bool) =
+  proc GC_step(gch: var GcHeap, us: int, strongAdvice: bool, ignoreStackAndRegisters: bool) =
     acquire(gch)
     gch.maxPause = us.toNano
     if (gch.zct.len >= ZctThreshold or (cycleGC and
         getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) or
         strongAdvice:
-      collectCTBody(gch)
+      collectCTBody(gch, ignoreStackAndRegisters)
     release(gch)
 
-  proc GC_step*(us: int, strongAdvice = false) = GC_step(gch, us, strongAdvice)
+  proc GC_step*(us: int, strongAdvice, ignoreStackAndRegisters = false) =
+    GC_step(gch, us, strongAdvice, ignoreStackAndRegisters)
 
 when not defined(useNimRtl):
   proc GC_disable() =
