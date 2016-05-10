@@ -513,7 +513,7 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                          ff, a: PType): TTypeRelation =
   var body = ff.skipTypes({tyUserTypeClassInst})
-  if c.inTypeClass > 20:
+  if c.inTypeClass > 4:
     localError(body.n[3].info, $body.n[3] & " too nested for type matching")
     return isNone
 
@@ -597,6 +597,10 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode): PNode =
   # This proc is used to evaluate such static expressions.
   let instantiated = replaceTypesInBody(c.c, c.bindings, n, nil)
   result = c.c.semExpr(c.c, instantiated)
+
+template subtypeCheck() =
+  if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar}:
+    result = isNone
 
 proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -737,6 +741,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyVar:
     if aOrig.kind == tyVar: result = typeRel(c, f.base, aOrig.base)
     else: result = typeRel(c, f.base, aOrig)
+    subtypeCheck()
   of tyArray, tyArrayConstr:
     # tyArrayConstr cannot happen really, but
     # we wanna be safe here
@@ -867,6 +872,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       for i in 0..f.len-2:
         if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
       result = typeRel(c, f.lastSon, a.lastSon)
+      subtypeCheck()
       if result <= isConvertible: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion

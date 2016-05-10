@@ -576,7 +576,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
       result = getTypeDescAux(m, et, check) & star
       idTablePut(m.typeCache, t, result)
   of tyOpenArray, tyVarargs:
-    result = getTypeDescAux(m, t.sons[0], check) & "*"
+    result = getTypeDescWeak(m, t.sons[0], check) & "*"
     idTablePut(m.typeCache, t, result)
   of tyProc:
     result = getTypeName(t)
@@ -654,7 +654,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
       else:
         result = cppName & "<"
         for i in 1 .. typ.len-2:
-          if i > 1: result.add(", ")
+          if i > 1: result.add(" COMMA ")
           result.add(getTypeDescAux(m, typ.sons[i], check))
         result.add("> ")
       # always call for sideeffects:

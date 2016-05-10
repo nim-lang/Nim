@@ -389,15 +389,30 @@ elif defined(nogc) and defined(useMalloc):
 
   when not defined(useNimRtl):
     proc alloc(size: Natural): pointer =
-      result = cmalloc(size)
-      if result == nil: raiseOutOfMem()
+      var x = cmalloc(size + sizeof(size))
+      if x == nil: raiseOutOfMem()
+
+      cast[ptr int](x)[] = size
+      result = cast[pointer](cast[int](x) + sizeof(size))
+
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
     proc realloc(p: pointer, newsize: Natural): pointer =
-      result = crealloc(p, newsize)
-      if result == nil: raiseOutOfMem()
-    proc dealloc(p: pointer) = cfree(p)
+      var x = cast[pointer](cast[int](p) - sizeof(newsize))
+      let oldsize = cast[ptr int](x)[]
+
+      x = crealloc(x, newsize + sizeof(newsize))
+
+      if x == nil: raiseOutOfMem()
+
+      cast[ptr int](x)[] = newsize
+      result = cast[pointer](cast[int](x) + sizeof(newsize))
+
+      if newsize > oldsize:
+        zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+
+    proc dealloc(p: pointer) = cfree(cast[pointer](cast[int](p) - sizeof(int)))
 
     proc allocShared(size: Natural): pointer =
       result = cmalloc(size)
@@ -511,11 +526,12 @@ elif defined(nogc):
   include "system/cellsets"
 
 else:
-  include "system/alloc"
+  when not defined(gcStack):
+    include "system/alloc"
 
-  include "system/cellsets"
-  when not leakDetector and not useCellIds:
-    sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
+    include "system/cellsets"
+    when not leakDetector and not useCellIds:
+      sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
   elif defined(gcStack):

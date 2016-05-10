@@ -1243,13 +1243,16 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
 
 proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   # don't call '$' here for efficiency:
-  let pat = n.sons[0].sym.loc.r.data
-  internalAssert pat != nil
-  if pat.contains({'#', '(', '@'}):
-    var typ = skipTypes(n.sons[0].typ, abstractInst)
-    assert(typ.kind == tyProc)
-    genPatternCall(p, n, pat, typ, r)
-    return
+  let f = n[0].sym
+  if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+  if sfInfixCall in f.flags:
+    let pat = n.sons[0].sym.loc.r.data
+    internalAssert pat != nil
+    if pat.contains({'#', '(', '@'}):
+      var typ = skipTypes(n.sons[0].typ, abstractInst)
+      assert(typ.kind == tyProc)
+      genPatternCall(p, n, pat, typ, r)
+      return
   gen(p, n.sons[1], r)
   if r.typ == etyBaseIndex:
     if r.address == nil:
@@ -1266,7 +1269,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   genArgs(p, n, r, 2)
 
 proc genCall(p: PProc, n: PNode, r: var TCompRes) =
-  if thisParam(p, n.sons[0].typ) != nil:
+  if n.sons[0].kind == nkSym and thisParam(p, n.sons[0].typ) != nil:
     genInfixCall(p, n, r)
     return
   if p.target == targetPHP:
@@ -1645,8 +1648,11 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr:
-    unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)" |
-                           "strlen($1)")
+    if p.target == targetJS and n.sons[1].typ.skipTypes(abstractInst).kind == tyCString:
+      unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
+    else:
+      unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)" |
+                             "strlen($1)")
   of mXLenStr: unaryExpr(p, n, r, "", "$1.length-1" | "strlen($1)")
   of mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)" |

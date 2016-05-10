@@ -1505,3 +1505,12 @@ proc skipHiddenSubConv*(n: PNode): PNode =
       result.typ = dest
   else:
     result = n
+
+proc typeMismatch*(n: PNode, formal, actual: PType) =
+  if formal.kind != tyError and actual.kind != tyError:
+    let named = typeToString(formal)
+    let desc = typeToString(formal, preferDesc)
+    let x = if named == desc: named else: named & " = " & desc
+    localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
+        typeToString(actual) & ") " &
+        `%`(msgKindToString(errButExpectedX), [x]))

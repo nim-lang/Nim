@@ -49,7 +49,7 @@ proc makeDesktop(): PDesktop = new(TDesktop)
 
 proc makeWindow(): PWindow = new(TWindow)
 
-proc thisCausesError(a: var PView, b: PView) =
+proc thisCausesError(a: PView, b: PView) =
   discard
 
 var dd = makeDesktop()

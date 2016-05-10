@@ -36,6 +36,8 @@ type
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
+  ULONG_PTR* = uint
+  PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
 
@@ -759,17 +761,17 @@ const
   ERROR_NETNAME_DELETED* = 64
 
 proc createIoCompletionPort*(FileHandle: Handle, ExistingCompletionPort: Handle,
-                             CompletionKey: DWORD,
+                             CompletionKey: ULONG_PTR,
                              NumberOfConcurrentThreads: DWORD): Handle{.stdcall,
     dynlib: "kernel32", importc: "CreateIoCompletionPort".}
 
 proc getQueuedCompletionStatus*(CompletionPort: Handle,
-    lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG,
+    lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG_PTR,
                                 lpOverlapped: ptr POVERLAPPED,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
 
-proc getOverlappedResult*(hFile: Handle, lpOverlapped: OVERLAPPED,
+proc getOverlappedResult*(hFile: Handle, lpOverlapped: POVERLAPPED,
               lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
 
