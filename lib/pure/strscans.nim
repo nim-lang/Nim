@@ -16,7 +16,7 @@ Some examples as an apetizer:
   # check if input string matches a triple of integers:
   const input = "(1,2,4)"
   var x, y, z: int
-  if scanf("($i,$i,$i)", input, x, y, z):
+  if scanf(input, "($i,$i,$i)", x, y, z):
     echo "matches and x is ", x, " y is ", y, " z is ", z
 
   # check if input string matches an ISO date followed by an identifier followed
@@ -24,7 +24,7 @@ Some examples as an apetizer:
   var year, month, day: int
   var identifier: string
   var myfloat: float
-  if scanf("$i-$i-$i $w$s$f", input, year, month, day, identifier, myfloat):
+  if scanf(input, "$i-$i-$i $w$s$f", year, month, day, identifier, myfloat):
     echo "yes, we have a match!"
 
 As can be seen from the examples, strings are matched verbatim except for
@@ -86,7 +86,7 @@ which we then use in our scanf pattern to help us in the matching process:
     result = 0
     while input[start+result] in seps: inc result
 
-  if scanf("$w${someSep}$w", input, key, value):
+  if scanf(input, "$w${someSep}$w", key, value):
     ...
 
 It also possible to pass arguments to a user definable matcher:
@@ -109,7 +109,7 @@ It also possible to pass arguments to a user definable matcher:
   # match an ISO date extracting year, month, day at the same time.
   # Also ensure the input ends after the ISO date:
   var year, month, day: int
-  if scanf("${ndigits(4)}-${ndigits(2)}-${ndigits(2)}$.", "2013-01-03", year, month, day):
+  if scanf("2013-01-03", "${ndigits(4)}-${ndigits(2)}-${ndigits(2)}$.", year, month, day):
     ...
 
 ]##
@@ -140,7 +140,7 @@ proc buildUserCall(x: string; args: varargs[NimNode]): NimNode =
   if y.kind in nnkCallKinds:
     for i in 1..<y.len: result.add y[i]
 
-macro scanf*(pattern: static[string]; input: string; results: varargs[typed]): bool =
+macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): bool =
   ## See top level documentation of his module of how ``scanf`` works.
   template matchBind(parser) {.dirty.} =
     var resLen = genSym(nskLet, "resLen")
@@ -262,6 +262,176 @@ macro scanf*(pattern: static[string]; input: string; results: varargs[typed]): b
   else:
     result.add res
 
+template atom*(input: string; idx: int; c: char): bool =
+  ## Used in scanp for the matching of atoms (usually chars).
+  input[idx] == c
+
+template atom*(input: string; idx: int; s: set[char]): bool =
+  input[idx] in s
+
+#template prepare*(input: string): int = 0
+template success*(x: int): bool = x != 0
+
+template nxt*(input: string; idx, step: int = 1) = inc(idx, step)
+
+macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
+  ## See top level documentation of his module of how ``scanp`` works.
+  type StmtTriple = tuple[init, cond, action: NimNode]
+
+  template interf(x): untyped = bindSym(x, brForceOpen)
+
+  proc toIfChain(n: seq[StmtTriple]; idx, res: NimNode; start: int): NimNode =
+    if start >= n.len: return newAssignment(res, newLit true)
+    var ifs: NimNode = nil
+    if n[start].cond.kind == nnkEmpty:
+      ifs = toIfChain(n, idx, res, start+1)
+    else:
+      ifs = newIfStmt((n[start].cond,
+                      newTree(nnkStmtList, n[start].action,
+                              toIfChain(n, idx, res, start+1))))
+    result = newTree(nnkStmtList, n[start].init, ifs)
+
+  proc attach(x, attached: NimNode): NimNode =
+    if attached == nil: x
+    else: newStmtList(attached, x)
+
+  proc placeholder(n, x, j: NimNode): NimNode =
+    if n.kind == nnkPrefix and n[0].eqIdent("$"):
+      let n1 = n[1]
+      if n1.eqIdent"_" or n1.eqIdent"current":
+        result = newTree(nnkBracketExpr, x, j)
+      elif n1.eqIdent"input":
+        result = x
+      elif n1.eqIdent"i" or n1.eqIdent"index":
+        result = j
+      else:
+        error("unknown pattern " & repr(n))
+    else:
+      result = copyNimNode(n)
+      for i in 0 ..< n.len:
+        result.add placeholder(n[i], x, j)
+
+  proc atm(it, input, idx, attached: NimNode): StmtTriple =
+    template `!!`(x): untyped = attach(x, attached)
+    case it.kind
+    of nnkIdent:
+      var resLen = genSym(nskLet, "resLen")
+      result = (newLetStmt(resLen, newCall(it, input, idx)),
+                newCall(interf"success", resLen),
+                !!newCall(interf"nxt", input, idx, resLen))
+    of nnkCallKinds:
+      # *{'A'..'Z'} !! s.add(!_)
+      template buildWhile(init, cond, action): untyped =
+        while true:
+          init
+          if not cond: break
+          action
+
+      # (x) a  # bind action a to (x)
+      if it[0].kind == nnkPar and it.len == 2:
+        result = atm(it[0], input, idx, placeholder(it[1], input, idx))
+      elif it.kind == nnkInfix and it[0].eqIdent"->":
+        # bind matching to some action:
+        result = atm(it[1], input, idx, placeholder(it[2], input, idx))
+      elif it.kind == nnkInfix and it[0].eqIdent"as":
+        let cond = if it[1].kind in nnkCallKinds: placeholder(it[1], input, idx)
+                   else: newCall(it[1], input, idx)
+        result = (newLetStmt(it[2], cond),
+                  newCall(interf"success", it[2]),
+                  !!newCall(interf"nxt", input, idx, it[2]))
+      elif it.kind == nnkPrefix and it[0].eqIdent"*":
+        let (init, cond, action) = atm(it[1], input, idx, attached)
+        result = (getAst(buildWhile(init, cond, action)),
+                  newEmptyNode(), newEmptyNode())
+      elif it.kind == nnkPrefix and it[0].eqIdent"+":
+        # x+  is the same as  xx*
+        result = atm(newTree(nnkPar, it[1], newTree(nnkPrefix, ident"*", it[1])),
+                      input, idx, attached)
+      elif it.kind == nnkPrefix and it[0].eqIdent"?":
+        # optional.
+        let (init, cond, action) = atm(it[1], input, idx, attached)
+        if cond.kind == nnkEmpty:
+          error("'?' operator applied to a non-condition")
+        else:
+          result = (newTree(nnkStmtList, init, newIfStmt((cond, action))),
+                    newEmptyNode(), newEmptyNode())
+      elif it.kind == nnkPrefix and it[0].eqIdent"~":
+        # not operator
+        let (init, cond, action) = atm(it[1], input, idx, attached)
+        if cond.kind == nnkEmpty:
+          error("'~' operator applied to a non-condition")
+        else:
+          result = (init, newCall(bindSym"not", cond), action)
+      elif it.kind == nnkInfix and it[0].eqIdent"|":
+        let a = atm(it[1], input, idx, attached)
+        let b = atm(it[2], input, idx, attached)
+        if a.cond.kind == nnkEmpty or b.cond.kind == nnkEmpty:
+          error("'|' operator applied to a non-condition")
+        else:
+          result = (newStmtList(a.init,
+                newIfStmt((a.cond, a.action), (newTree(nnkStmtListExpr, b.init, b.cond), b.action))),
+              newEmptyNode(), newEmptyNode())
+      elif it.kind == nnkInfix and it[0].eqIdent"^*":
+        # a ^* b  is rewritten to:  (a *(b a))?
+        #exprList = expr ^+ comma
+        template tmp(a, b): untyped = ?(a, *(b, a))
+        result = atm(getAst(tmp(it[1], it[2])), input, idx, attached)
+
+      elif it.kind == nnkInfix and it[0].eqIdent"^+":
+        # a ^* b  is rewritten to:  (a +(b a))?
+        template tmp(a, b): untyped = (a, *(b, a))
+        result = atm(getAst(tmp(it[1], it[2])), input, idx, attached)
+      elif it.kind == nnkCommand and it.len == 2 and it[0].eqIdent"pred":
+        # enforce that the wrapped call is interpreted as a predicate, not a non-terminal:
+        result = (newEmptyNode(), placeholder(it[1], input, idx), newEmptyNode())
+      else:
+        var resLen = genSym(nskLet, "resLen")
+        result = (newLetStmt(resLen, placeholder(it, input, idx)),
+                  newCall(interf"success", resLen), !!newCall(interf"nxt", input, idx, resLen))
+    of nnkStrLit..nnkTripleStrLit:
+      var resLen = genSym(nskLet, "resLen")
+      result = (newLetStmt(resLen, newCall(interf"skip", input, it, idx)),
+                newCall(interf"success", resLen), !!newCall(interf"nxt", input, idx, resLen))
+    of nnkCurly, nnkAccQuoted, nnkCharLit:
+      result = (newEmptyNode(), newCall(interf"atom", input, idx, it), !!newCall(interf"nxt", input, idx))
+    of nnkCurlyExpr:
+      if it.len == 3 and it[1].kind == nnkIntLit and it[2].kind == nnkIntLit:
+        var h = newTree(nnkPar, it[0])
+        for count in 2..it[1].intVal: h.add(it[0])
+        for count in it[1].intVal .. it[2].intVal-1: h.add(newTree(nnkPrefix, ident"?", it[0]))
+        result = atm(h, input, idx, attached)
+      elif it.len == 2 and it[1].kind == nnkIntLit:
+        var h = newTree(nnkPar, it[0])
+        for count in 2..it[1].intVal: h.add(it[0])
+        result = atm(h, input, idx, attached)
+      else:
+        error("invalid pattern")
+    of nnkPar:
+      if it.len == 1:
+        result = atm(it[0], input, idx, attached)
+      else:
+        # concatenation:
+        var conds: seq[StmtTriple] = @[]
+        for x in it: conds.add atm(x, input, idx, attached)
+        var res = genSym(nskVar, "res")
+        result = (newStmtList(newVarStmt(res, newLit false),
+            toIfChain(conds, idx, res, 0)), res, newEmptyNode())
+    else:
+      error("invalid pattern")
+
+  #var idx = genSym(nskVar, "idx")
+  var res = genSym(nskVar, "res")
+  result = newTree(nnkStmtListExpr, #newVarStmt(idx, newCall(interf"prepare", input)),
+                                    newVarStmt(res, newLit false))
+  var conds: seq[StmtTriple] = @[]
+  for it in pattern:
+    conds.add atm(it, input, idx, nil)
+  result.add toIfChain(conds, idx, res, 0)
+  result.add res
+  when defined(debugScanp):
+    echo repr result
+
+
 when isMainModule:
   proc twoDigits(input: string; x: var int; start: int): int =
     if input[start] == '0' and input[start+1] == '0':
@@ -274,23 +444,78 @@ when isMainModule:
     result = 0
     while input[start+result] in seps: inc result
 
+  proc demangle(s: string; res: var string; start: int): int =
+    while s[result+start] in {'_', '@'}: inc result
+    res = ""
+    while result+start < s.len and s[result+start] > ' ' and s[result+start] != '_':
+      res.add s[result+start]
+      inc result
+    while result+start < s.len and s[result+start] > ' ':
+      inc result
+
+  proc parseGDB(resp: string): seq[string] =
+    const
+      digits = {'0'..'9'}
+      hexdigits = digits + {'a'..'f', 'A'..'F'}
+      whites = {' ', '\t', '\C', '\L'}
+    result = @[]
+    var idx = 0
+    while true:
+      var prc = ""
+      var info = ""
+      if scanp(resp, idx, *`whites`, '#', *`digits`, +`whites`, ?("0x", *`hexdigits`, " in "),
+               demangle($input, prc, $index), *`whites`, '(', * ~ ')', ')',
+                *`whites`, "at ", +(~{'\C', '\L', '\0'} -> info.add($_)) ):
+        result.add prc & " " & info
+      else:
+        break
+
   var key, val: string
   var intval: int
   var floatval: float
-  doAssert scanf("$w$s::$s$w$s$i  $f", "abc:: xyz 89  33.25", key, val, intval, floatVal)
+  doAssert scanf("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f", key, val, intval, floatVal)
   doAssert key == "abc"
   doAssert val == "xyz"
   doAssert intval == 89
   doAssert floatVal == 33.25
 
-  let xx = scanf("$$$i", "$abc", intval)
+  let xx = scanf("$abc", "$$$i", intval)
   doAssert xx == false
 
 
-  let xx2 = scanf("$$$i", "$1234", intval)
+  let xx2 = scanf("$1234", "$$$i", intval)
   doAssert xx2
 
-  let yy = scanf("$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.", ";.--Breakpoint00 [output]", intVal, key)
+  let yy = scanf(";.--Breakpoint00 [output]", "$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.", intVal, key)
   doAssert yy
   doAssert key == "output"
   doAssert intVal == 13
+
+  var ident = ""
+  var idx = 0
+  let zz = scanp("foobar x x  x   xWZ", idx, +{'a'..'z'} -> add(ident, $_), *(*{' ', '\t'}, "x"), ~'U', "Z")
+  doAssert zz
+  doAssert ident == "foobar"
+
+  const digits = {'0'..'9'}
+  var year = 0
+  var idx2 = 0
+  if scanp("201655-8-9", idx2, `digits`{4,6} -> (year = year * 10 + ord($_) - ord('0')), "-8", "-9"):
+    doAssert year == 201655
+
+  const gdbOut = """
+      #0  @foo_96013_1208911747@8 (x0=...)
+          at c:/users/anwender/projects/nim/temp.nim:11
+      #1  0x00417754 in tempInit000 () at c:/users/anwender/projects/nim/temp.nim:13
+      #2  0x0041768d in NimMainInner ()
+          at c:/users/anwender/projects/nim/lib/system.nim:2605
+      #3  0x004176b1 in NimMain ()
+          at c:/users/anwender/projects/nim/lib/system.nim:2613
+      #4  0x004176db in main (argc=1, args=0x712cc8, env=0x711ca8)
+          at c:/users/anwender/projects/nim/lib/system.nim:2620"""
+  const result = @["foo c:/users/anwender/projects/nim/temp.nim:11",
+          "tempInit000 c:/users/anwender/projects/nim/temp.nim:13",
+          "NimMainInner c:/users/anwender/projects/nim/lib/system.nim:2605",
+          "NimMain c:/users/anwender/projects/nim/lib/system.nim:2613",
+          "main c:/users/anwender/projects/nim/lib/system.nim:2620"]
+  doAssert parseGDB(gdbOut) == result
