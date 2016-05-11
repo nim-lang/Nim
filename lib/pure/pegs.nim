@@ -962,6 +962,50 @@ proc parallelReplace*(s: string, subs: varargs[
   # copy the rest:
   add(result, substr(s, i))
 
+proc replace*(s: string, sub: Peg, cb: proc(
+              match: int, cnt: int, caps: openArray[string]): string): string {.
+              rtl, extern: "npegs$1cb".}=
+  ## Replaces `sub` in `s` by the resulting strings from the callback.
+  ## The callback proc receives the index of the current match (starting with 0),
+  ## the count of captures and an open array with the captures of each match. Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc handleMatches*(m: int, n: int, c: openArray[string]): string =
+  ##     result = ""
+  ##     if m > 0:
+  ##       result.add ", "
+  ##     result.add case n:
+  ##       of 2: c[0].toLower & ": '" & c[1] & "'"
+  ##       of 1: c[0].toLower & ": ''"
+  ##       else: ""
+  ##
+  ##   let s = "Var1=key1;var2=Key2;   VAR3"
+  ##   echo s.replace(peg"{\ident}('='{\ident})* ';'* \s*", handleMatches)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   "var1: 'key1', var2: 'Key2', var3: ''"
+  result = ""
+  var i = 0
+  var caps: array[0..MaxSubpatterns-1, string]
+  var c: Captures
+  var m = 0
+  while i < s.len:
+    c.ml = 0
+    var x = rawMatch(s, sub, i, c)
+    if x <= 0:
+      add(result, s[i])
+      inc(i)
+    else:
+      fillMatches(s, caps, c)
+      add(result, cb(m, c.ml, caps))
+      inc(i, x)
+      inc(m)
+  add(result, substr(s, i))
+
 proc transformFile*(infile, outfile: string,
                     subs: varargs[tuple[pattern: Peg, repl: string]]) {.
                     rtl, extern: "npegs$1".} =
@@ -1789,3 +1833,18 @@ when isMainModule:
 
   assert(str.find(empty_test) == 0)
   assert(str.match(empty_test))
+
+  proc handleMatches*(m: int, n: int, c: openArray[string]): string =
+    result = ""
+
+    if m > 0:
+      result.add ", "
+
+    result.add case n:
+      of 2: c[0].toLower & ": '" & c[1] & "'"
+      of 1: c[0].toLower & ": ''"
+      else: ""
+
+  assert("Var1=key1;var2=Key2;   VAR3".
+         replace(peg"{\ident}('='{\ident})* ';'* \s*",
+         handleMatches)=="var1: 'key1', var2: 'Key2', var3: ''")
