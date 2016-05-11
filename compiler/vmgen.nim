@@ -1337,10 +1337,11 @@ proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
   #   var decls{.compileTime.}: seq[NimNode] = @[]
   let dest = c.getTemp(s.typ)
   c.gABx(n, opcLdGlobal, dest, s.position)
-  let tmp = c.genx(s.ast)
-  c.preventFalseAlias(n, opcWrDeref, dest, 0, tmp)
-  c.freeTemp(dest)
-  c.freeTemp(tmp)
+  if s.ast != nil:
+    let tmp = c.genx(s.ast)
+    c.preventFalseAlias(n, opcWrDeref, dest, 0, tmp)
+    c.freeTemp(dest)
+    c.freeTemp(tmp)
 
 proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let s = n.sym
