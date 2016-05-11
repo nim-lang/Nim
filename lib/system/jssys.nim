@@ -731,16 +731,19 @@ proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
   else:
     discard
 
-proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
-                 asmNoStackFrame, compilerproc.} =
-  # types are fake
-  when defined(nimphp):
+when defined(nimphp):
+  proc arrayConstr(len: int, value: string, typ: string): JSRef {.
+                  asmNoStackFrame, compilerproc.} =
+    # types are fake
     asm """
       $result = array();
       for ($i = 0; $i < `len`; $i++) $result[] = `value`;
       return $result;
     """
-  else:
+else:
+  proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
+                  asmNoStackFrame, compilerproc.} =
+  # types are fake
     asm """
       var result = new Array(`len`);
       for (var i = 0; i < `len`; ++i) result[i] = nimCopy(null, `value`, `typ`);
