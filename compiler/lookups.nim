@@ -221,6 +221,19 @@ when defined(nimfix):
 else:
   template fixSpelling(n: PNode; ident: PIdent; op: expr) = discard
 
+proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
+  var err = "Error: ambiguous identifier: '" & s.name.s & "'"
+  var ti: TIdentIter
+  var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
+  var i = 0
+  while candidate != nil:
+    if i == 0: err.add " --use "
+    else: err.add " or "
+    err.add candidate.owner.name.s & "." & candidate.name.s
+    candidate = nextIdentIter(ti, c.importTable.symbols)
+    inc i
+  localError(info, errGenerated, err)
+
 proc lookUp*(c: PContext, n: PNode): PSym =
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
@@ -243,7 +256,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     internalError(n.info, "lookUp")
     return
   if contains(c.ambiguousSymbols, result.id):
-    localError(n.info, errUseQualifier, result.name.s)
+    errorUseQualifier(c, n.info, result)
   if result.kind == skStub: loadStub(result)
 
 type
@@ -261,11 +274,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
       result = errorSym(c, n)
     elif checkAmbiguity in flags and result != nil and
         contains(c.ambiguousSymbols, result.id):
-      localError(n.info, errUseQualifier, ident.s)
+      errorUseQualifier(c, n.info, result)
   of nkSym:
     result = n.sym
     if checkAmbiguity in flags and contains(c.ambiguousSymbols, result.id):
-      localError(n.info, errUseQualifier, n.sym.name.s)
+      errorUseQualifier(c, n.info, n.sym)
   of nkDotExpr:
     result = nil
     var m = qualifiedLookUp(c, n.sons[0], flags*{checkUndeclared})

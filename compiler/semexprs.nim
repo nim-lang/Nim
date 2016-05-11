@@ -213,7 +213,7 @@ proc semConv(c: PContext, n: PNode): PNode =
         styleCheckUse(n.info, it.sym)
         markIndirect(c, it.sym)
         return it
-    localError(n.info, errUseQualifier, op.sons[0].sym.name.s)
+    errorUseQualifier(c, n.info, op.sons[0].sym)
 
 proc semCast(c: PContext, n: PNode): PNode =
   ## Semantically analyze a casting ("cast[type](param)")
@@ -2227,7 +2227,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
         elif contains(c.ambiguousSymbols, s.id):
-          localError(n.info, errUseQualifier, s.name.s)
+          errorUseQualifier(c, n.info, s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skMethod, skConverter, skIterator:
