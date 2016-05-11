@@ -56,7 +56,7 @@ file as well). With this switch the GC supports the following operations:
 
 .. code-block:: nim
   proc GC_setMaxPause*(MaxPauseInUs: int)
-  proc GC_step*(us: int, strongAdvice, ignoreStackAndRegisters = false)
+  proc GC_step*(us: int, strongAdvice = false, stackSize = -1)
 
 The unit of the parameters ``MaxPauseInUs`` and ``us`` is microseconds.
 
@@ -75,11 +75,13 @@ These two procs are the two modus operandi of the realtime GC:
     This allows the GC to perform some work for up to ``us`` time. This is
     useful to call in a main loop to ensure the GC can do its work. To
     bind all GC activity to a ``GC_step`` call, deactivate the GC with
-    ``GC_disable`` at program startup. Notice that you may ask GC to not
-    scan stack and registers for references via ``ignoreStackAndRegisters``
-    parameter. This may reduce the step time depending on the stack depth,
-    but use it only when you are sure that neither the stack nor the registers
-    contain unique references to objects that must be preserved.
+    ``GC_disable`` at program startup. If ``strongAdvice`` is set to ``true``,
+    GC will be forced to perform collection cycle. Otherwise, GC may decide not
+    to do anything, if there is not much garbage to collect.
+    You may also specify the current stack size via ``stackSize`` parameter.
+    It can improve performance, when you know that there are no unique Nim
+    references below certain point on the stack. Make sure the size you specify
+    is greater than the potential worst case size.
 
 These procs provide a "best effort" realtime guarantee; in particular the
 cycle collector is not aware of deadlines yet. Deactivate it to get more
