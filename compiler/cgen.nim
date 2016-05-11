@@ -331,7 +331,8 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   #result.a = - 1
-  result.t = getUniqueType(t)
+  result.t = t
+  #result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)

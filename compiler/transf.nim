@@ -95,7 +95,7 @@ proc getCurrOwner(c: PTransf): PSym =
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
-  r.typ = skipTypes(typ, {tyGenericInst})
+  r.typ = typ #skipTypes(typ, {tyGenericInst})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
