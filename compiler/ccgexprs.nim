@@ -1293,7 +1293,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprChar($1)", [rdLoc(a)]), a.s)
   of tyEnum, tyOrdinal:
     putIntoDest(p, d, e.typ,
-                ropecg(p.module, "#reprEnum($1, $2)", [
+                ropecg(p.module, "#reprEnum((NI)$1, $2)", [
                 rdLoc(a), genTypeInfo(p.module, t)]), a.s)
   of tyString:
     putIntoDest(p, d, e.typ, ropecg(p.module, "#reprStr($1)", [rdLoc(a)]), a.s)
