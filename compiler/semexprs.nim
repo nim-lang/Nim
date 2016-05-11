@@ -24,10 +24,10 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
-  if result.kind == nkEmpty and result.typ.isNil:
+  #if result.kind == nkEmpty and result.typ.isNil:
     # do not produce another redundant error message:
     #raiseRecoverableError("")
-    result = errorNode(c, n)
+  #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind == tyVar: result = newDeref(result)
