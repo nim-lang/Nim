@@ -525,8 +525,8 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   result = getTypePre(m, t)
   if result != nil: return
   if containsOrIncl(check, t.id):
-    if isImportedCppType(typ) or isImportedCppType(t): return
-    internalError("cannot generate C type for: " & typeToString(typ))
+    if not (isImportedCppType(typ) or isImportedCppType(t)):
+      internalError("cannot generate C type for: " & typeToString(typ))
     # XXX: this BUG is hard to fix -> we need to introduce helper structs,
     # but determining when this needs to be done is hard. We should split
     # C type generation into an analysis and a code generation phase somehow.
