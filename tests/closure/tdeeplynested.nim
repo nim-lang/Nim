@@ -1,5 +1,5 @@
 discard """
-  output: '''108'''
+  output: '''int: 108'''
 """
 
 # bug #4070
