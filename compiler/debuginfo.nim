@@ -28,18 +28,10 @@ type
     enums*: seq[EnumDesc]
     conflicts*: bool
 
-{.experimental.}
-
-using
-  self: var DebugInfo
-  package, file: string
-
-{.this: self.}
-
 proc sdbmHash(hash: FilenameHash, c: char): FilenameHash {.inline.} =
   return FilenameHash(c) + (hash shl 6) + (hash shl 16) - hash
 
-proc sdbmHash(package, file): FilenameHash =
+proc sdbmHash(package, file: string): FilenameHash =
   template `&=`(x, c) = x = sdbmHash(x, c)
   result = 0
   for i in 0..<package.len:
@@ -48,42 +40,42 @@ proc sdbmHash(package, file): FilenameHash =
   for i in 0..<file.len:
     result &= file[i]
 
-proc register*(self; package, file): FilenameHash =
+proc register*(self: var DebugInfo; package, file: string): FilenameHash =
   result = sdbmHash(package, file)
-  for f in files:
+  for f in self.files:
     if f.mangled == result:
       if f.package == package and f.file == file: return
-      conflicts = true
+      self.conflicts = true
       break
-  files.add(FilenameMapping(package: package, file: file, mangled: result))
+  self.files.add(FilenameMapping(package: package, file: file, mangled: result))
 
 proc hasEnum*(self: DebugInfo; ename: string; id: int; owner: FilenameHash): bool =
-  for en in enums:
+  for en in self.enums:
     if en.owner == owner and en.name == ename and en.id == id: return true
 
-proc registerEnum*(self; ed: EnumDesc) =
-  enums.add ed
+proc registerEnum*(self: var DebugInfo; ed: EnumDesc) =
+  self.enums.add ed
 
-proc init*(self) =
-  version = 1
-  files = @[]
-  enums = @[]
+proc init*(self: var DebugInfo) =
+  self.version = 1
+  self.files = @[]
+  self.enums = @[]
 
 var gDebugInfo*: DebugInfo
 debuginfo.init gDebugInfo
 
 import marshal, streams
 
-proc writeDebugInfo*(self; file) =
+proc writeDebugInfo*(self: var DebugInfo; file: string) =
   let s = newFileStream(file, fmWrite)
   store(s, self)
   s.close
 
-proc writeDebugInfo*(file) = writeDebugInfo(gDebugInfo, file)
+proc writeDebugInfo*(file: string) = writeDebugInfo(gDebugInfo, file)
 
-proc loadDebugInfo*(self; file) =
+proc loadDebugInfo*(self: var DebugInfo; file: string) =
   let s = newFileStream(file, fmRead)
   load(s, self)
   s.close
 
-proc loadDebugInfo*(file) = loadDebugInfo(gDebugInfo, file)
+proc loadDebugInfo*(file: string) = loadDebugInfo(gDebugInfo, file)
