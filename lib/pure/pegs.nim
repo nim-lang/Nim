@@ -659,7 +659,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   of pkSearch:
     var oldMl = c.ml
     result = 0
-    while start+result < s.len:
+    while start+result <= s.len:
       var x = rawMatch(s, p.sons[0], start+result, c)
       if x >= 0:
         inc(result, x)
@@ -671,7 +671,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     var idx = c.ml # reserve a slot for the subpattern
     inc(c.ml)
     result = 0
-    while start+result < s.len:
+    while start+result <= s.len:
       var x = rawMatch(s, p.sons[0], start+result, c)
       if x >= 0:
         if idx < MaxSubpatterns:
@@ -1848,3 +1848,7 @@ when isMainModule:
   assert("Var1=key1;var2=Key2;   VAR3".
          replace(peg"{\ident}('='{\ident})* ';'* \s*",
          handleMatches)=="var1: 'key1', var2: 'Key2', var3: ''")
+
+
+  doAssert "test1".match(peg"""{@}$""")
+  doAssert "test2".match(peg"""{(!$ .)*} $""")
