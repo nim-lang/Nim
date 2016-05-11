@@ -301,7 +301,8 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = skipTypes(loc.t, abstractRange)
   if not isComplexValueType(typ):
-    linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
+    linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
+      getTypeDesc(p.module, typ))
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
       # don't use memset for temporary values for performance if we can

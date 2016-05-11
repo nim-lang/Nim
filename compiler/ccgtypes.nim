@@ -570,6 +570,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   of tyRange, tyEnum:
     let t = if t.kind == tyRange: t.lastSon else: t
     result = getTypeName(t)
+    if isImportedCppType(t): return
     idTablePut(m.typeCache, t, result)
     var size: int
     if firstOrd(t) < 0:
