@@ -659,34 +659,14 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete("")
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete("")
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      var data = newString(realSize)
-      assert realSize <= size
-      copyMem(addr data[0], addr dataBuf.buf[0], realSize)
-      #dealloc dataBuf.buf
-      retFuture.complete($data)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+    elif ret == 0:
+      if bytesReceived != 0:
+        var data = newString(bytesReceived)
+        copyMem(addr data[0], addr dataBuf.buf[0], bytesReceived)
+        retFuture.complete($data)
+      else:
+        if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
+          retFuture.complete("")
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: cstring, size: int,
@@ -749,31 +729,12 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete(0)
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete(0)
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      assert realSize <= size
-      retFuture.complete(realSize)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+    elif ret == 0:
+      if bytesReceived != 0:
+        retFuture.complete(bytesReceived)
+      else:
+        if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
+          retFuture.complete(bytesReceived)
     return retFuture
 
   proc send*(socket: AsyncFD, data: string,
