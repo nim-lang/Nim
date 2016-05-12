@@ -2163,7 +2163,7 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
     result[i+1] = y[i]
 
 when not defined(nimscript):
-  when not defined(JS):
+  when not defined(JS) or defined(nimphp):
     proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
       result = cast[pointer](x)
   else:

@@ -981,7 +981,7 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
         r.res = "nimAt($1, $2)" % [r.address, r.res]
     elif ty.kind in {tyString, tyCString}:
       # XXX this needs to be more like substr($1,$2)
-      r.res = "ord($1[$2])" % [r.address, r.res]
+      r.res = "ord(@$1[$2])" % [r.address, r.res]
     else:
       r.res = "$1[$2]" % [r.address, r.res]
   else:

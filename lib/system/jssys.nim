@@ -121,7 +121,10 @@ proc raiseException(e: ref Exception, ename: cstring) {.
   when not defined(noUnhandledHandler):
     if excHandler == 0:
       unhandledException(e)
-  asm "throw `e`;"
+  when defined(nimphp):
+    asm """throw new Exception($`e`["message"]);"""
+  else:
+    asm "throw `e`;"
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if lastJSError == nil:
