@@ -956,7 +956,19 @@ when withRealTime:
         strongAdvice:
       collectCTBody(gch)
 
-  proc GC_step*(us: int, strongAdvice = false) = GC_step(gch, us, strongAdvice)
+  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+    var stackTop {.volatile.}: pointer
+    let prevStackBottom = gch.stackBottom
+    if stackSize >= 0:
+      stackTop = addr(stackTop)
+      when stackIncreases:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
+      else:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
+    GC_step(gch, us, strongAdvice)
+    gch.stackBottom = prevStackBottom
 
 when not defined(useNimRtl):
   proc GC_disable() =
