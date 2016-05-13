@@ -74,7 +74,7 @@ type
     copyDone: int
     next: PConcTable[K,V]
     data: EntryArr
-{.deprecated: [TEntry: Entry, TEntryArr: EntryArr.}
+{.deprecated: [TEntry: Entry, TEntryArr: EntryArr].}
 
 proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
   expVal: int, match: bool): int
