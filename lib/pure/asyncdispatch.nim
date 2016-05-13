@@ -660,8 +660,10 @@ when defined(windows) or defined(nimdoc):
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
     elif ret == 0:
+      # Request completed immediately.
       if bytesReceived != 0:
         var data = newString(bytesReceived)
+        assert bytesReceived <= size
         copyMem(addr data[0], addr dataBuf.buf[0], bytesReceived)
         retFuture.complete($data)
       else:
@@ -730,7 +732,9 @@ when defined(windows) or defined(nimdoc):
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
     elif ret == 0:
+      # Request completed immediately.
       if bytesReceived != 0:
+        assert bytesReceived <= size
         retFuture.complete(bytesReceived)
       else:
         if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
