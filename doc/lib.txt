@@ -443,6 +443,10 @@ Regular expressions
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
+* `nre <nre.html>`_
+  Another implementation of procedures for using regular expressions. Also uses
+  PCRE.
+
 
 Database support
 ----------------
