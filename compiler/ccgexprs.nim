@@ -1235,7 +1235,7 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope): Rope =
   # unfortunately 'genTypeInfo' sets tfObjHasKids as a side effect, so we
   # have to call it here first:
   let ti = genTypeInfo(p.module, dest)
-  if tfFinal in dest.flags or (p.module.objHasKidsValid and
+  if tfFinal in dest.flags or (objHasKidsValid in p.module.flags and
                                tfObjHasKids notin dest.flags):
     result = "$1.m_type == $2" % [a, ti]
   else:

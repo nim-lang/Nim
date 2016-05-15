@@ -92,17 +92,20 @@ type
     gcFrameType*: Rope       # the struct {} we put the GC markers into
 
   TTypeSeq* = seq[PType]
+
+  Codegenflag* = enum
+    preventStackTrace,  # true if stack traces need to be prevented
+    usesThreadVars,     # true if the module uses a thread var
+    frameDeclared,      # hack for ROD support so that we don't declare
+                        # a frame var twice in an init proc
+    isHeaderFile,       # C source file is the header file
+    includesStringh,    # C source file already includes ``<string.h>``
+    objHasKidsValid     # whether we can rely on tfObjHasKids
   TCGen = object of TPassContext # represents a C source file
     module*: PSym
     filename*: string
     s*: TCFileSections        # sections of the C file
-    preventStackTrace*: bool  # true if stack traces need to be prevented
-    usesThreadVars*: bool     # true if the module uses a thread var
-    frameDeclared*: bool      # hack for ROD support so that we don't declare
-                              # a frame var twice in an init proc
-    isHeaderFile*: bool       # C source file is the header file
-    includesStringh*: bool    # C source file already includes ``<string.h>``
-    objHasKidsValid*: bool    # whether we can rely on tfObjHasKids
+    flags*: set[Codegenflag]
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     typeCache*: TIdTable      # cache the generated types

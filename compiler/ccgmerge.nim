@@ -107,8 +107,8 @@ proc genMergeInfo*(m: BModule): Rope =
   writeIntSet(m.typeInfoMarker, s)
   s.add("labels:")
   encodeVInt(m.labels, s)
-  s.add(" hasframe:")
-  encodeVInt(ord(m.frameDeclared), s)
+  s.add(" flags:")
+  encodeVInt(cast[int](m.flags), s)
   s.add(tnl)
   s.add("*/")
   result = s.rope
@@ -222,7 +222,8 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "declared":  readIntSet(L, m.declaredThings)
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
-    of "hasframe":  m.frameDeclared = decodeVInt(L.buf, L.bufpos) != 0
+    of "flags":
+      m.flags = cast[set[CodegenFlag]](decodeVInt(L.buf, L.bufpos) != 0)
     else: internalError("ccgmerge: unknown key: " & k)
 
 when not defined(nimhygiene):
