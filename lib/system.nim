@@ -588,6 +588,9 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
   ##
+  ## Limitations: If used within nim VM context ``sizeof`` will only work
+  ## for simple types.
+  ##
   ## .. code-block:: nim
   ##  sizeof('A') #=> 1
   ##  sizeof(2) #=> 8
