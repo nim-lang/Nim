@@ -707,17 +707,27 @@ proc `%`*(b: bool): JsonNode =
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
-  new(result)
-  result.kind = JObject
-  result.fields = initTable[string, JsonNode](4)
+  result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
 
-proc `%`*(elements: openArray[JsonNode]): JsonNode =
+template `%`*(j: JsonNode): JsonNode = j
+
+proc `%`*[T](elements: openArray[T]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
-  new(result)
-  result.kind = JArray
-  newSeq(result.elems, elements.len)
-  for i, p in pairs(elements): result.elems[i] = p
+  result = newJArray()
+  for elem in elements: result.add(%elem)
+
+proc `%`*(o: object): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  result = newJObject()
+  for k, v in o.fieldPairs: result[k] = %v
+
+proc `%`*(o: ref object): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  if o.isNil:
+    result = newJNull()
+  else:
+    result = %(o[])
 
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
@@ -735,6 +745,9 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
   of nnkCurly: # empty object
     result = newNimNode(nnkTableConstr)
     x.expectLen(0)
+
+  of nnkNilLit:
+    result = newCall("newJNull")
 
   else:
     result = x
@@ -1325,10 +1338,26 @@ when isMainModule:
   var j4 = %*{"test": nil}
   doAssert j4 == %{"test": newJNull()}
 
-  echo("99% of tests finished. Going to try loading file.")
+  let seqOfNodes = @[%1, %2]
+  let jSeqOfNodes = %seqOfNodes
+  doAssert(jSeqOfNodes[1].num == 2)
+
+  type MyObj = object
+    a, b: int
+    s: string
+    f32: float32
+    f64: float64
+    next: ref MyObj
+  var m: MyObj
+  m.s = "hi"
+  m.a = 5
+  let jMyObj = %m
+  doAssert(jMyObj["a"].num == 5)
+  doAssert(jMyObj["s"].str == "hi")
 
   # Test loading of file.
   when not defined(js):
+    echo("99% of tests finished. Going to try loading file.")
     var parsed = parseFile("tests/testdata/jsontest.json")
 
     try:
