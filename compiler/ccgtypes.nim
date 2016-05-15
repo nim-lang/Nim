@@ -752,7 +752,7 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
   genCLineDir(result, prc.info)
   # using static is needed for inline procs
   if lfExportLib in prc.loc.flags:
-    if m.isHeaderFile:
+    if isHeaderFile in m.flags:
       result.add "N_LIB_IMPORT "
     else:
       result.add "N_LIB_EXPORT "
