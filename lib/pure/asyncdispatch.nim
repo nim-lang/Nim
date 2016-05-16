@@ -439,7 +439,7 @@ when defined(windows) or defined(nimdoc):
   proc poll*(timeout = 500) =
     ## Waits for completion events and processes them.
     let p = getGlobalDispatcher()
-    if p.handles.len == 0 and p.timers.len == 0:
+    if p.handles.len == 0 and p.timers.len == 0 and p.dQueue.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
