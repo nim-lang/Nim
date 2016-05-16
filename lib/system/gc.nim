@@ -909,7 +909,7 @@ when not defined(useNimRtl):
              "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
              "[GC] zct capacity: " & $gch.zct.cap & "\n" &
              "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
-             "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000)
+             "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000) & "\n"
     when defined(nimCoroutines):
       result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
       for stack in items(gch.stack):
