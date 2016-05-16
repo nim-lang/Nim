@@ -61,7 +61,7 @@ elif defined(posixRealtime):
                final, pure.} = object ## struct timespec
       tv_sec: int  ## Seconds.
       tv_nsec: int ## Nanoseconds.
-  {.deprecated: [TClockid: Clickid, TTimeSpec: TimeSpec].}
+  {.deprecated: [TClockid: Clockid, TTimeSpec: TimeSpec].}
 
   var
     CLOCK_REALTIME {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
