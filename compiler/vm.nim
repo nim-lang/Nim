@@ -1198,6 +1198,38 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].intVal = ord(regs[rb].node.typ.kind)
         #else:
         #  stackTrace(c, tos, pc, errGenerated, "node has no type")
+    of opcNGetType2:
+      let rb = instr.regB
+      let rc = instr.regC
+      if rc == 0:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeToAst2(regs[rb].node.typ, c.debug[pc], false)
+        else:
+          stackTrace(c, tos, pc, errGenerated, "node has no type")
+      else:
+        # typeKind opcode:
+        ensureKind(rkInt)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].intVal = ord(regs[rb].node.typ.kind)
+        #else:
+        #  stackTrace(c, tos, pc, errGenerated, "node has no type")
+    of opcNGetTypeImpl:
+      let rb = instr.regB
+      let rc = instr.regC
+      if rc == 0:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeToAst2(regs[rb].node.typ, c.debug[pc], true)
+        else:
+          stackTrace(c, tos, pc, errGenerated, "node has no type")
+      else:
+        # typeKind opcode:
+        ensureKind(rkInt)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].intVal = ord(regs[rb].node.typ.kind)
+        #else:
+        #  stackTrace(c, tos, pc, errGenerated, "node has no type")
     of opcNStrVal:
       decodeB(rkNode)
       createStr regs[ra]
