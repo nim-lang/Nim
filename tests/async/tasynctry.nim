@@ -48,7 +48,7 @@ proc catch() {.async.} =
   except OSError, EInvalidField:
     assert false
 
-asyncCheck catch()
+waitFor catch()
 
 proc test(): Future[bool] {.async.} =
   result = false
@@ -92,13 +92,13 @@ proc test4(): Future[int] {.async.} =
     result = 2
 
 var x = test()
-assert x.read
+assert x.waitFor()
 
 x = test2()
-assert x.read
+assert x.waitFor()
 
 var y = test3()
-assert y.read == 2
+assert y.waitFor() == 2
 
 y = test4()
-assert y.read == 2
+assert y.waitFor() == 2
