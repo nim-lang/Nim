@@ -1094,10 +1094,14 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
 
-proc semTypeExpr(c: PContext, n: PNode): PType =
+proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
   if n.typ.kind == tyTypeDesc:
     result = n.typ.base
+    # fix types constructed by macros:
+    if prev != nil and prev.sym != nil and result.sym.isNil:
+      result.sym = prev.sym
+      result.sym.typ = result
   else:
     localError(n.info, errTypeExpected, n.renderTree)
     result = errorType(c)
@@ -1177,7 +1181,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         localError(n.info, errGenerated, "invalid type")
     elif n[0].kind notin nkIdentKinds:
-      result = semTypeExpr(c, n)
+      result = semTypeExpr(c, n, prev)
     else:
       let op = considerQuotedIdent(n.sons[0])
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
@@ -1218,7 +1222,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
         result = typExpr.typ
       else:
-        result = semTypeExpr(c, n)
+        result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
