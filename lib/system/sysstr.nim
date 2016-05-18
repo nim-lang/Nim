@@ -329,9 +329,11 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     frac_exponent= 0
     exp_sign = 1
     first_digit = 0
+    has_sign = false
 
   # Sign?
   if s[i] == '+' or s[i] == '-':
+    has_sign = true
     if s[i] == '-':
       sign = -1.0
     inc(i)
@@ -387,8 +389,9 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
       while s[i] == '_': inc(i)
 
   # if has no digits: return error
-  # test for special case 0.0'f
-  if kdigits + fdigits <= 0 and i == start:
+  if kdigits + fdigits <= 0 and
+     (i == start or # was only zero
+      has_sign) :   # or only '+' or '-
     return 0
 
   if s[i] in {'e', 'E'}:
