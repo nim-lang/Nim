@@ -1762,6 +1762,11 @@ when isMainModule:
   doAssert join([1, 2, 3]) == "123"
   doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
 
+  doAssert isEmpty("")
+  doAssert isEmpty(nil)
+  doAssert isEmpty(" ")
+  doAssert(not isEmpty("a "))
+
   doAssert """~~!!foo
 ~~!!bar
 ~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
