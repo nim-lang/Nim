@@ -325,7 +325,7 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     val = val div 8
 
 proc isEmpty*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsEmpty".}=
-  ## Checks whether or not the `s` is empty or not.
+  ## Checks whether the string `s` is empty or not.
   ##
   ## In this function whitespaces are stripped from `s`
   if s.len() == 0:
