@@ -782,7 +782,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
         x = x.lastSon
       if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
-          s.typ.kind notin {tyObject, tyEnum, tyDistinct}:
+          s.typ.kind notin {tyObject, tyEnum}:
         # type aliases are hard:
         var t = semTypeNode(c, x, nil)
         assert t != nil
