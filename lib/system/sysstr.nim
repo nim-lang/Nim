@@ -328,7 +328,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     fraction: uint64
     frac_exponent= 0
     exp_sign = 1
-    first_digit = 0
+    first_digit = -1
     has_sign = false
 
   # Sign?
@@ -359,6 +359,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   # Skip leading zero
   while s[i] == '0':
     inc(i)
+    while s[i] == '_': inc(i)
 
   if s[i] in {'0'..'9'}:
       first_digit = (s[i].ord - '0'.ord)
@@ -366,7 +367,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   while s[i] in {'0'..'9'}:
     inc(kdigits)
     integer = integer * 10'u64 + (s[i].ord - '0'.ord).uint64
-    inc(i);
+    inc(i)
     while s[i] == '_': inc(i)
 
   # Fractional part?
@@ -374,11 +375,12 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     inc(i)
     # if no integer part, Skip leading zeros
     if kdigits <= 0:
-      while s[i] in {'_','0'}:
-        inc(i)
+      while s[i] == '0':
         inc(frac_exponent)
+        inc(i)
+        while s[i] == '_': inc(i)
 
-    if s[i] in {'0'..'9'}:
+    if first_digit == -1 and s[i] in {'0'..'9'}:
       first_digit = (s[i].ord - '0'.ord)
     # get fractional part
     while s[i] in {'0'..'9'}:
