@@ -94,7 +94,7 @@ type
     dwMinorVersion*: DWORD
     dwBuildNumber*: DWORD
     dwPlatformId*: DWORD
-    szCSDVersion*: array[0..127, WinChar];
+    szCSDVersion*: array[0..127, WinChar]
 
 {.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
     TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
