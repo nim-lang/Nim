@@ -248,8 +248,12 @@ proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
     for (var i = 0; i < len; ++i) {
       if (nonAsciiPart !== null) {
         var offset = (i - nonAsciiOffset) * 2;
+        var code = `s`[i].toString(16);
+        if (code.length == 1) {
+          code = "0"+code;
+        }
         nonAsciiPart[offset] = "%";
-        nonAsciiPart[offset + 1] = `s`[i].toString(16);
+        nonAsciiPart[offset + 1] = code;
       }
       else if (`s`[i] < 128)
         asciiPart[i] = fcc(`s`[i]);
