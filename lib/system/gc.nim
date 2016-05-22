@@ -190,6 +190,12 @@ proc prepareDealloc(cell: PCell) =
     (cast[Finalizer](cell.typ.finalizer))(cellToUsr(cell))
     dec(gch.recGcLock)
 
+template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
+  when false:
+    for i in 0..gch.decStack.len-1:
+      if gch.decStack.d[i] == c:
+        sysAssert(false, msg)
+
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   when hasThreadSupport and hasSharedHeap:
@@ -541,6 +547,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
             d[j] = res
             break
           dec(j)
+      beforeDealloc(gch, ol, "growObj stack trash")
       rawDealloc(gch.region, ol)
     else:
       # we split the old refcount in 2 parts. XXX This is still not entirely
@@ -574,6 +581,7 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
   when logGC: writeCell("cycle collector dealloc cell", c)
   when reallyDealloc:
     sysAssert(allocInv(gch.region), "free cyclic cell")
+    beforeDealloc(gch, c, "freeCyclicCell: stack trash")
     rawDealloc(gch.region, c)
   else:
     gcAssert(c.typ != nil, "freeCyclicCell")
@@ -600,16 +608,6 @@ when useMarkForDebug or useBackupGc:
 
   proc markGlobals(gch: var GcHeap) =
     for i in 0 .. < globalMarkersLen: globalMarkers[i]()
-
-  proc stackMarkS(gch: var GcHeap, p: pointer) {.inline.} =
-    # the addresses are not as cells on the stack, so turn them to cells:
-    var cell = usrToCell(p)
-    var c = cast[ByteAddress](cell)
-    if c >% PageSize:
-      # fast check: does it look like a cell?
-      var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
-      if objStart != nil:
-        markS(gch, objStart)
 
 when logGC:
   var
@@ -669,10 +667,6 @@ proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
 
 proc collectZCT(gch: var GcHeap): bool {.benign.}
 
-when useMarkForDebug or useBackupGc:
-  proc markStackAndRegistersForSweep(gch: var GcHeap) {.noinline, cdecl,
-                                                         benign.}
-
 proc collectCycles(gch: var GcHeap) =
   when hasThreadSupport:
     for c in gch.toDispose:
@@ -681,7 +675,10 @@ proc collectCycles(gch: var GcHeap) =
   while gch.zct.len > 0: discard collectZCT(gch)
   when useBackupGc:
     cellsetReset(gch.marked)
-    markStackAndRegistersForSweep(gch)
+    var d = gch.decStack.d
+    for i in 0..gch.decStack.len-1:
+      sysAssert isAllocatedPtr(gch.region, d[i]), "collectCycles"
+      markS(gch, d[i])
     markGlobals(gch)
     sweep(gch)
 
@@ -709,10 +706,6 @@ include gc_common
 
 proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
   forEachStackSlot(gch, gcMark)
-
-when useMarkForDebug or useBackupGc:
-  proc markStackAndRegistersForSweep(gch: var GcHeap) =
-    forEachStackSlot(gch, stackMarkS)
 
 proc collectZCT(gch: var GcHeap): bool =
   # Note: Freeing may add child objects to the ZCT! So essentially we do
@@ -752,6 +745,7 @@ proc collectZCT(gch: var GcHeap): bool =
       forAllChildren(c, waZctDecRef)
       when reallyDealloc:
         sysAssert(allocInv(gch.region), "collectZCT: rawDealloc")
+        beforeDealloc(gch, c, "collectZCT: stack trash")
         rawDealloc(gch.region, c)
       else:
         sysAssert(c.typ != nil, "collectZCT 2")
@@ -810,11 +804,6 @@ proc collectCTBody(gch: var GcHeap) =
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
         c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
-
-when useMarkForDebug or useBackupGc:
-  proc markForDebug(gch: var GcHeap) =
-    markStackAndRegistersForSweep(gch)
-    markGlobals(gch)
 
 when defined(nimCoroutines):
   proc currentStackSizes(): int =

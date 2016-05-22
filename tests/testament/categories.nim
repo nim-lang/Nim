@@ -153,6 +153,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   testWithoutMs "refarrayleak"
 
   testWithoutBoehm "tlists"
+  testWithoutBoehm "thavlak"
 
   test "stackrefleak"
   test "cyclecollector"
