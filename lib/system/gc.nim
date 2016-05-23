@@ -89,6 +89,7 @@ type
     stat: GcStat
     when useMarkForDebug or useBackupGc:
       marked: CellSet
+      additionalRoots: CellSeq # dummy roots for GC_ref/unref
     when hasThreadSupport:
       toDispose: SharedList[pointer]
 
@@ -223,8 +224,23 @@ proc incRef(c: PCell) {.inline.} =
   # and not colorMask
   #writeCell("incRef", c)
 
-proc nimGCref(p: pointer) {.compilerProc, inline.} = incRef(usrToCell(p))
-proc nimGCunref(p: pointer) {.compilerProc, inline.} = decRef(usrToCell(p))
+proc nimGCref(p: pointer) {.compilerProc.} =
+  # we keep it from being collected by pretending it's not even allocated:
+  add(gch.additionalRoots, usrToCell(p))
+  incRef(usrToCell(p))
+
+proc nimGCunref(p: pointer) {.compilerProc.} =
+  let cell = usrToCell(p)
+  var L = gch.additionalRoots.len-1
+  var i = L
+  let d = gch.additionalRoots.d
+  while i >= 0:
+    if d[i] == cell:
+      d[i] = d[L]
+      dec gch.additionalRoots.len
+      break
+    dec(i)
+  decRef(usrToCell(p))
 
 proc GC_addCycleRoot*[T](p: ref T) {.inline.} =
   ## adds 'p' to the cycle candidate set for the cycle collector. It is
@@ -294,6 +310,7 @@ proc initGC() =
     init(gch.decStack)
     when useMarkForDebug or useBackupGc:
       init(gch.marked)
+      init(gch.additionalRoots)
     when hasThreadSupport:
       gch.toDispose = initSharedList[pointer]()
 
@@ -608,6 +625,8 @@ when useMarkForDebug or useBackupGc:
 
   proc markGlobals(gch: var GcHeap) =
     for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+    let d = gch.additionalRoots.d
+    for i in 0 .. < gch.additionalRoots.len: markS(gch, d[i])
 
 when logGC:
   var
