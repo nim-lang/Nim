@@ -875,8 +875,9 @@ elif not defined(useNimRtl):
       var error: cint
       let sizeRead = read(data.pErrorPipe[readIdx], addr error, sizeof(error))
       if sizeRead == sizeof(error):
-        raiseOSError("Could not find command: '$1'. OS error: $2" %
-          [$data.sysCommand, $strerror(error)])
+        raiseOSError(osLastError(),
+                     "Could not find command: '$1'. OS error: $2" %
+                     [$data.sysCommand, $strerror(error)])
 
       return pid
 
@@ -966,17 +967,169 @@ elif not defined(useNimRtl):
   proc kill(p: Process) =
     if kill(p.id, SIGKILL) != 0'i32:
       raiseOsError(osLastError())
+  
+  when defined(macosx) or defined(freebsd) or defined(netbsd) or
+       defined(openbsd):
+    import kqueue
 
-  proc waitForExit(p: Process, timeout: int = -1): int =
-    #if waitPid(p.id, p.exitCode, 0) == int(p.id):
-    # ``waitPid`` fails if the process is not running anymore. But then
-    # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is
-    # initialized with -3, wrong success exit codes are prevented.
-    if p.exitCode != -3: return p.exitCode
-    if waitpid(p.id, p.exitCode, 0) < 0:
-      p.exitCode = -3
-      raiseOSError(osLastError())
-    result = int(p.exitCode) shr 8
+    proc waitForExit(p: Process, timeout: int = -1): int =
+      if p.exitCode != -3: return p.exitCode
+      if timeout == -1:
+        if waitpid(p.id, p.exitCode, 0) < 0:
+          p.exitCode = -3
+          raiseOSError(osLastError())
+      else:
+        var kqFD = kqueue()
+        if kqFD == -1:
+          raiseOSError(osLastError())
+
+        var kevIn = KEvent(ident: p.id.uint, filter: EVFILT_PROC,
+                         flags: EV_ADD, fflags: NOTE_EXIT)
+        var kevOut: KEvent
+        var tmspec: Timespec
+
+        if timeout >= 1000:
+          tmspec.tv_sec = (timeout div 1_000).Time
+          tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
+        else:
+          tmspec.tv_sec = 0.Time
+          tmspec.tv_nsec = (timeout * 1_000_000)
+
+        try:
+          while true:
+            var count = kevent(kqFD, addr(kevIn), 1, addr(kevOut), 1,
+                               addr(tmspec))
+            if count < 0:
+              let err = osLastError()
+              if err.cint != EINTR:
+                raiseOSError(osLastError())
+            elif count == 0:
+              # timeout expired, so we trying to kill process
+              if posix.kill(p.id, SIGKILL) == -1:
+                raiseOSError(osLastError())
+              if waitpid(p.id, p.exitCode, 0) < 0:
+                p.exitCode = -3
+                raiseOSError(osLastError())
+              break
+            else:
+              if kevOut.ident == p.id.uint and kevOut.filter == EVFILT_PROC:
+                if waitpid(p.id, p.exitCode, 0) < 0:
+                  p.exitCode = -3
+                  raiseOSError(osLastError())
+                break
+              else:
+                raiseOSError(osLastError())
+        finally:
+          discard posix.close(kqFD)
+
+      result = int(p.exitCode) shr 8
+  else:
+    import times
+    
+    const
+      hasThreadSupport = compileOption("threads") and not defined(nimscript)
+
+    proc waitForExit(p: Process, timeout: int = -1): int =
+      template adjustTimeout(t, s, e: Timespec) =
+        var diff: int
+        var b: Timespec
+        b.tv_sec = e.tv_sec
+        b.tv_nsec = e.tv_nsec
+        e.tv_sec = (e.tv_sec - s.tv_sec).Time
+        if e.tv_nsec >= s.tv_nsec:
+          e.tv_nsec -= s.tv_nsec
+        else:
+          if e.tv_sec == 0.Time:
+            raise newException(ValueError, "System time was modified")
+          else:
+            diff = s.tv_nsec - e.tv_nsec
+            e.tv_nsec = 1_000_000_000 - diff
+        t.tv_sec = (t.tv_sec - e.tv_sec).Time
+        if t.tv_nsec >= e.tv_nsec:
+          t.tv_nsec -= e.tv_nsec
+        else:
+          t.tv_sec = (int(t.tv_sec) - 1).Time
+          diff = e.tv_nsec - t.tv_nsec
+          t.tv_nsec = 1_000_000_000 - diff
+        s.tv_sec = b.tv_sec
+        s.tv_nsec = b.tv_nsec
+
+      #if waitPid(p.id, p.exitCode, 0) == int(p.id):
+      # ``waitPid`` fails if the process is not running anymore. But then
+      # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is
+      # initialized with -3, wrong success exit codes are prevented.
+      if p.exitCode != -3: return p.exitCode
+      if timeout == -1:
+        if waitpid(p.id, p.exitCode, 0) < 0:
+          p.exitCode = -3
+          raiseOSError(osLastError())
+      else:
+        var nmask, omask: Sigset
+        var sinfo: SigInfo
+        var stspec, enspec, tmspec: Timespec
+
+        discard sigemptyset(nmask)
+        discard sigemptyset(omask)
+        discard sigaddset(nmask, SIGCHLD)
+
+        when hasThreadSupport:
+          if pthread_sigmask(SIG_BLOCK, nmask, omask) == -1:
+            raiseOSError(osLastError())
+        else:
+          if sigprocmask(SIG_BLOCK, nmask, omask) == -1:
+            raiseOSError(osLastError())
+
+        if timeout >= 1000:
+          tmspec.tv_sec = (timeout div 1_000).Time
+          tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
+        else:
+          tmspec.tv_sec = 0.Time
+          tmspec.tv_nsec = (timeout * 1_000_000)
+
+        try:
+          if clock_gettime(CLOCK_REALTIME, stspec) == -1:
+            raiseOSError(osLastError())
+          while true:
+            let res = sigtimedwait(nmask, sinfo, tmspec)
+            if res == SIGCHLD:
+              if sinfo.si_pid == p.id:
+                if waitpid(p.id, p.exitCode, 0) < 0:
+                  p.exitCode = -3
+                  raiseOSError(osLastError())
+                break
+              else:
+                # we have SIGCHLD, but not for process we are waiting,
+                # so we need to adjust timeout value and continue
+                if clock_gettime(CLOCK_REALTIME, enspec) == -1:
+                  raiseOSError(osLastError())
+                adjustTimeout(tmspec, stspec, enspec)
+            elif res < 0:
+              let err = osLastError()
+              if err.cint == EINTR:
+                # we have received another signal, so we need to
+                # adjust timeout and continue
+                if clock_gettime(CLOCK_REALTIME, enspec) == -1:
+                  raiseOSError(osLastError())
+                adjustTimeout(tmspec, stspec, enspec)
+              elif err.cint == EAGAIN:
+                # timeout expired, so we trying to kill process
+                if posix.kill(p.id, SIGKILL) == -1:
+                  raiseOSError(osLastError())
+                if waitpid(p.id, p.exitCode, 0) < 0:
+                  p.exitCode = -3
+                  raiseOSError(osLastError())
+                break
+              else:
+                raiseOSError(err)
+        finally:
+          when hasThreadSupport:
+            if pthread_sigmask(SIG_UNBLOCK, nmask, omask) == -1:
+              raiseOSError(osLastError())
+          else:
+            if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
+              raiseOSError(osLastError())
+
+      result = int(p.exitCode) shr 8
 
   proc peekExitCode(p: Process): int =
     if p.exitCode != -3: return p.exitCode
