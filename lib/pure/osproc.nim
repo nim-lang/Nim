@@ -970,7 +970,7 @@ elif not defined(useNimRtl):
   
   when defined(macosx) or defined(freebsd) or defined(netbsd) or
        defined(openbsd):
-    import kqueue
+    import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitCode != -3: return p.exitCode
@@ -1025,7 +1025,7 @@ elif not defined(useNimRtl):
       result = int(p.exitCode) shr 8
   else:
     import times
-    
+
     const
       hasThreadSupport = compileOption("threads") and not defined(nimscript)
 
