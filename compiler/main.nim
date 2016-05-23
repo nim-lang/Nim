@@ -41,6 +41,7 @@ proc commandGenDepend =
 
 proc commandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
+  defineSymbol("nimcheck")
   semanticPasses()            # use an empty backend for semantic checking only
   rodPass()
   compileProject()
