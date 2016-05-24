@@ -159,16 +159,8 @@ when not defined(JS):
   proc exp*(x: float): float {.importc: "exp", header: "<math.h>".}
     ## Computes the exponential function of `x` (pow(E, x))
 
-  proc frexp*(x: float, exponent: var int): float {.
-    importc: "frexp", header: "<math.h>".}
-    ## Split a number into mantissa and exponent.
-    ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
-    ## and less than 1) and the integer value n such that `x` (the original
-    ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
-    ## m.
-
-  proc round*(x: float): int {.importc: "lrint", header: "<math.h>".}
-    ## Converts a float to an int by rounding.
+  proc round0(x: float): float {.importc: "round", header: "<math.h>".}
+    ## Rounds a float to 0 decimal places
 
   proc arccos*(x: float): float {.importc: "acos", header: "<math.h>".}
     ## Computes the arc cosine of `x`
@@ -301,19 +293,8 @@ else:
   proc log2*(x: float): float = return ln(x) / ln(2.0)
 
   proc exp*(x: float): float {.importc: "Math.exp", nodecl.}
-  proc round*(x: float): int {.importc: "Math.round", nodecl.}
+  proc round0(x: float): float {.importc: "Math.round", nodecl.}
   proc pow*(x, y: float): float {.importc: "Math.pow", nodecl.}
-
-  proc frexp*(x: float, exponent: var int): float =
-    if x == 0.0:
-      exponent = 0
-      result = 0.0
-    elif x < 0.0:
-      result = -frexp(-x, exponent)
-    else:
-      var ex = floor(log2(x))
-      exponent = round(ex)
-      result = x / pow(2.0, ex)
 
   proc arccos*(x: float): float {.importc: "Math.acos", nodecl.}
   proc arcsin*(x: float): float {.importc: "Math.asin", nodecl.}
@@ -329,6 +310,40 @@ else:
   proc tanh*(x: float): float =
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
+
+proc round*(x: float, places: int = 0): float =
+  ## Round a floating point number.
+  ##
+  ## If `places` is 0 (or omitted), round to the nearest integral value
+  ## following normal mathematical rounding rules (e.g. `round(54.5) -> 55.0`).
+  ## If `places` is greater than 0, round to the given number of decimal
+  ## places, e.g. `round(54.346, 2) -> 54.35`.
+  ## If `places` is negative, round to the left of the decimal place, e.g.
+  ## `round(537.345, -1) -> 540.0`
+  if places == 0:
+    result = round0(x)
+  else:
+    var mult = pow(10.0, places.float)
+    result = round0(x*mult)/mult
+
+when not defined(JS):
+  proc frexp*(x: float, exponent: var int): float {.
+    importc: "frexp", header: "<math.h>".}
+    ## Split a number into mantissa and exponent.
+    ## `frexp` calculates the mantissa m (a float with 0.5 <= abs(m) < 1) and
+    ## the integer value n such that `x` (the original float value) equals
+    ## m * 2**n. frexp stores n in `exponent` and returns m.
+else:
+  proc frexp*(x: float, exponent: var int): float =
+    if x == 0.0:
+      exponent = 0
+      result = 0.0
+    elif x < 0.0:
+      result = -frexp(-x, exponent)
+    else:
+      var ex = floor(log2(x))
+      exponent = round(ex)
+      result = x / pow(2.0, ex)
 
 {.pop.}
 
@@ -418,3 +433,28 @@ when isMainModule and not defined(JS):
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
+when isMainModule:
+  # Function for approximate comparison of floats
+  proc floatIsEqual(x, y: float): bool = (abs(x-y) < 1e-9)
+
+  block: # round() tests
+    # Round to 0 decimal places
+    doAssert floatIsEqual(round(54.652), 55.0)
+    doAssert floatIsEqual(round(54.352), 54.0)
+    doAssert floatIsEqual(round(-54.652), -55.0)
+    doAssert floatIsEqual(round(-54.352), -54.0)
+    doAssert floatIsEqual(round(0.0), 0.0)
+    # Round to positive decimal places
+    doAssert floatIsEqual(round(-547.652, 1), -547.7)
+    doAssert floatIsEqual(round(547.652, 1), 547.7)
+    doAssert floatIsEqual(round(-547.652, 2), -547.65)
+    doAssert floatIsEqual(round(547.652, 2), 547.65)
+    # Round to negative decimal places
+    doAssert floatIsEqual(round(547.652, -1), 550.0)
+    doAssert floatIsEqual(round(547.652, -2), 500.0)
+    doAssert floatIsEqual(round(547.652, -3), 1000.0)
+    doAssert floatIsEqual(round(547.652, -4), 0.0)
+    doAssert floatIsEqual(round(-547.652, -1), -550.0)
+    doAssert floatIsEqual(round(-547.652, -2), -500.0)
+    doAssert floatIsEqual(round(-547.652, -3), -1000.0)
+    doAssert floatIsEqual(round(-547.652, -4), 0.0)
