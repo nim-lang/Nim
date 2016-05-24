@@ -14,6 +14,7 @@
 ## <backends.html#the-javascript-target>`_.
 
 import parseutils
+import math
 
 {.deadCodeElim: on.}
 
@@ -1370,6 +1371,53 @@ when not defined(js):
   proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
                                      importc: "sprintf", varargs, noSideEffect.}
 
+proc formatEng*(f: BiggestFloat,
+                precision: range[0..32] = 10,
+                decimalSep = '.',
+                trim: bool = true,
+                siPrefix: bool = false,
+                unit: string = nil): string {.
+                noSideEffect, rtl, extern: "nsu$1".}
+  ## Converts a floating point value `f` to a string using engineering notation.
+  ##
+  ## Numbers in of the range -1000.0 < x < 1000.0 will be formatted without an
+  ## exponent.  Numbers outside of this range will be formatted as a
+  ## significand in the range 0 <= x < 1000.0 and an exponent that will always
+  ## be an integer multiple of 3, corresponding with the SI prefix scale k, M,
+  ## G, T etc for numbers with an absolute value greater than 1 and m, u, n, p
+  ## etc for numbers with an absolute value less than 1.
+  ##
+  ## `precision` is the number of digits to be shown after the decimal point.
+  ##
+  ## If `trim` is set to true, trailing zeros will be removed.
+  ## `decimalSep` is used as the decimal separator
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(0, 2, trim=false) == "0.00"
+  ##    formatEng(0, 2) == "0"
+  ##    formatEng(0.053, 0) == "53e-3"
+  ##    formatEng(52731234, 2) == "52.73e6"
+  ##    formatEng(-52731234, 2) == "-52.73e6"
+  ##
+  ## If `siPrefix` is set to true, the number will be displayed with the SI
+  ## prefix corresponding to the exponent.  For example 4100 will be displayed
+  ## as "4.1 k" instead of "4.1e3".
+  ##
+  ## If `unit` is not nil, the provided unit will be appended to the string
+  ## (with a space as required by the SI standard).  This behaviour is slightly
+  ## different to appending the unit to the result as the location of the space
+  ## is altered depending on whether there is an exponent.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+  ##    formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+  ##    formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+  ##    formatEng(4100, siPrefix=true) == "4.1 k"
+  ##    formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Space with unit=""
+  ##    formatEng(4100, siPrefix=true, unit="") == "4.1 k"
+
 type
   FloatFormatMode* = enum ## the different modes of floating point formating
     ffDefault,         ## use the shorter floating point notation
@@ -1443,6 +1491,88 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
   result = formatBiggestFloat(f, format, precision, decimalSep)
+proc formatEng*(f: BiggestFloat,
+                precision: range[0..32] = 10,
+                decimalSep = '.',
+                trim: bool = true,
+                siPrefix: bool = false,
+                unit: string = nil): string =
+  ## See documentation under forward declaration (above)
+  var
+    absolute: BiggestFloat
+    significand: BiggestFloat
+    fexponent: BiggestFloat
+    exponent: int
+    splitResult: seq[string]
+    suffix: string = ""
+  proc getPrefix(exp: int): char =
+    ## Get the SI prefix for a given exponent
+    ##
+    ## Assumes exponent is a multiple of 3; returns ' ' if no prefix found
+    let siPrefixes = ['a','f','p','n','u','m',' ','k','M','G','T','P','E']
+    var index: int = (exp div 3) + 6
+    result = ' '
+    if index in low(siPrefixes)..high(siPrefixes):
+      result = siPrefixes[index]
+
+  # Most of the work is done with the sign ignored, so get the absolute value
+  absolute = abs(f)
+  significand = f
+
+  if absolute == 0.0:
+    # Simple case: just format it and force the exponent to 0
+    exponent = 0
+    result = significand.formatBiggestFloat(ffDecimal, precision)
+  else:
+    # Find the best exponent that's a multiple of 3
+    fexponent = round(floor(log10(absolute)))
+    fexponent = 3.0 * round(floor(fexponent / 3.0))
+    # Adjust the significand for the new exponent
+    significand /= pow(10.0, fexponent)
+
+    # Round the significand and check whether it has affected
+    # the exponent
+    significand = round(significand, precision)
+    absolute = abs(significand)
+    if absolute >= 1000.0:
+      significand /= 1000.0
+      fexponent += 3
+    # Components of the result:
+    result = significand.formatBiggestFloat(ffDecimal, precision)
+    exponent = fexponent.int()
+
+  let decimalCharacters = {'.', ','}
+  splitResult = result.split(decimalCharacters)
+  result = splitResult[0]
+  # result should have at most one decimal character
+  if splitResult.len() > 1:
+    # If trim is set, we get rid of trailing zeros
+    if trim:
+        while splitResult[1].endsWith("0"):
+          # Trim last character (ugly version of python's `x = x[:-1]`)
+          splitResult[1] = splitResult[1].substr(0, splitResult[1].len()-2)
+        if splitResult[1].len() > 0:
+          result &= decimalSep & splitResult[1]
+    else:
+      result &= decimalSep & splitResult[1]
+
+  # Combine the results accordingly
+  if exponent == 0:
+    if unit != nil:
+      suffix = " " & unit
+  else:
+    if siPrefix:
+      var p = getPrefix(exponent)
+      if p != ' ':
+        suffix = " " & p
+    if suffix == "":
+      suffix = "e" & $exponent
+    if unit != nil:
+      suffix &= unit
+  result &= suffix
+
+  for c in decimalCharacters:
+    result = result.replace(c, decimalSep)
 
 type
   BinaryPrefixMode* = enum ## the different names for binary prefixes
@@ -1818,5 +1948,27 @@ bar
     foo
     bar
   """.unindent() == "foo\nfoo\nbar\n"
+
+  block: # formatEng tests
+    doAssert formatEng(0, 2, trim=false) == "0.00"
+    doAssert formatEng(0, 2) == "0"
+    doAssert formatEng(53, 2, trim=false) == "53.00"
+    doAssert formatEng(0.053, 2, trim=false) == "53.00e-3"
+    doAssert formatEng(0.053, 4, trim=false) == "53.0000e-3"
+    doAssert formatEng(0.053, 4, trim=true) == "53e-3"
+    doAssert formatEng(0.053, 0) == "53e-3"
+    doAssert formatEng(52731234) == "52.731234e6"
+    doAssert formatEng(-52731234) == "-52.731234e6"
+    doAssert formatEng(52731234, 1) == "52.7e6"
+    doAssert formatEng(-52731234, 1) == "-52.7e6"
+    doAssert formatEng(52731234, 1, ',') == "52,7e6"
+    doAssert formatEng(-52731234, 1, ',') == "-52,7e6"
+
+    doAssert formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+    doAssert formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+    doAssert formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+    doAssert formatEng(4100, siPrefix=true) == "4.1 k"
+    doAssert formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Includes space
+    doAssert formatEng(4100, siPrefix=true, unit="") == "4.1 k"
 
   echo("strutils tests passed")
