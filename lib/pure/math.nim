@@ -260,6 +260,23 @@ else:
       exponent = round(ex)
       result = x / pow(2.0, ex)
 
+proc split*(x: BiggestFloat): tuple[intpart: BiggestFloat, floatpart: BiggestFloat] =
+  ## Breaks `x` into an integral and a fractional part.
+  ##
+  ## Returns a tuple containing intpart and floatpart representing
+  ## the integer part and the fractional part respectively.
+  ##
+  ## Both parts have the same sign as `x`.  Analogous to the `modf`
+  ## function in C.
+  var
+    absolute: BiggestFloat
+  absolute = abs(x)
+  result.intpart = floor(absolute)
+  result.floatpart = absolute - result.intpart
+  if x < 0:
+    result.intpart = -result.intpart
+    result.floatpart = -result.floatpart
+
 {.pop.}
 
 proc degToRad*[T: float32|float64](d: T): T {.inline.} =
@@ -348,3 +365,11 @@ when isMainModule:
     doAssert floatIsEqual(round(-547.652, -2), -500.0)
     doAssert floatIsEqual(round(-547.652, -3), -1000.0)
     doAssert floatIsEqual(round(-547.652, -4), 0.0)
+
+  block: # split() tests
+    doAssert floatIsEqual(split(54.674).intpart, 54.0)
+    doAssert floatIsEqual(split(54.674).floatpart, 0.674)
+    doAssert floatIsEqual(split(-693.4356).intpart, -693.0)
+    doAssert floatIsEqual(split(-693.4356).floatpart, -0.4356)
+    doAssert floatIsEqual(split(0.0).intpart, 0.0)
+    doAssert floatIsEqual(split(0.0).floatpart, 0.0)
