@@ -1444,28 +1444,65 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``float`` type.
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
-proc formatSize*(bytes: BiggestInt, decimalSep = '.'): string =
-  ## Rounds and formats `bytes`. Examples:
+type
+  BinaryPrefixMode* = enum ## the different names for binary prefixes
+    bpIEC, # use the IEC/ISO standard prefixes such as kibi
+    bpColloquial # use the colloquial kilo, mega etc
+
+proc formatSize*(bytes: int64,
+                 decimalSep = '.',
+                 prefix = bpIEC,
+                 includeSpace = true): string =
+  ## Rounds and formats `bytes`.
+  ##
+  ## By default, uses the IEC/ISO standard binary prefixes, so 1024 will be
+  ## formatted as 1 KiB.  Set prefix to `bpColloquial` to use the colloquial
+  ## names from the SI standard (e.g. k for 1000 being reused as 1024).
+  ##
+  ## `includeSpace` can be set to false to remove the (SI preferred) space
+  ## between the number and the unit.
+  ##
+  ## Examples:
   ##
   ## .. code-block:: nim
   ##
-  ##    formatSize(1'i64 shl 31 + 300'i64) == "2.204GB"
-  ##    formatSize(4096) == "4KB"
+  ##    formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293 GiB"
+  ##    formatSize(4096) == "4 KiB"
+  ##    formatSize(4096, prefix=bpColloquial) == "4 kB"
+  ##    formatSize(4096, includeSpace=false) == "4KiB"
+  ##    formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13 MB"
   ##
-  template frmt(a, b, c: expr): expr =
-    let bs = $b
-    insertSep($a) & decimalSep & bs.substr(0, 2) & c
-  let gigabytes = bytes shr 30
-  let megabytes = bytes shr 20
-  let kilobytes = bytes shr 10
-  if gigabytes != 0:
-    result = frmt(gigabytes, megabytes, "GB")
-  elif megabytes != 0:
-    result = frmt(megabytes, kilobytes, "MB")
-  elif kilobytes != 0:
-    result = frmt(kilobytes, bytes, "KB")
+  let iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
+  let collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
+  var
+    xb: int64 = bytes
+    fbytes: float
+    last_xb: int64 = bytes
+    matchedIndex: int
+    prefixes: array[9, string]
+  if prefix == bpColloquial:
+    prefixes = collPrefixes
   else:
-    result = insertSep($bytes) & "B"
+    prefixes = iecPrefixes
+
+  # Iterate through prefixes seeing if value will be greater than
+  # 0 in each case
+  for index in 1..<prefixes.len:
+    last_xb = xb
+    xb = bytes div (1'i64 shl (index*10))
+    matchedIndex = index
+    if xb == 0:
+      xb = last_xb
+      matchedIndex = index - 1
+      break
+  # xb has the integer number for the latest value; index should be correct
+  fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
+  result = formatFloat(fbytes, format=ffDecimal, precision=3,
+    decimalSep=decimalSep, trim=true)
+  if includeSpace:
+    result &= " "
+  result &= prefixes[matchedIndex]
+  result &= "B"
 
 proc findNormalized(x: string, inArray: openArray[string]): int =
   var i = 0
@@ -1661,9 +1698,13 @@ when isMainModule:
                                                    ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-  when not defined(testing):
-    echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
-    echo formatSize(1'i64 shl 31)
+
+  block: # formatSize tests
+    doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293 GiB"
+    doAssert formatSize(4096) == "4 KiB"
+    doAssert formatSize(4096, prefix=bpColloquial) == "4 kB"
+    doAssert formatSize(4096, includeSpace=false) == "4KiB"
+    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13 MB"
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
