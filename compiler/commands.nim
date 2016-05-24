@@ -213,6 +213,7 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "size": result = contains(gOptions, optOptimizeSize)
     of "none": result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
     else: localError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+  of "verbosity": result = $gVerbosity == arg
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool =
