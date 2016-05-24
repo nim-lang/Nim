@@ -356,11 +356,6 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
           return i+3 - start
     return 0
 
-  # Skip leading zero
-  while s[i] == '0':
-    inc(i)
-    while s[i] == '_': inc(i)
-
   if s[i] in {'0'..'9'}:
       first_digit = (s[i].ord - '0'.ord)
   # Integer part?
