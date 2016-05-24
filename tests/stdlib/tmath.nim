@@ -1,6 +1,7 @@
 import math
 import unittest
 import sets
+import random
 
 suite "random int":
   test "there might be some randomness":
