@@ -1371,6 +1371,7 @@ when not defined(js):
   proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
                                      importc: "sprintf", varargs, noSideEffect.}
 
+# Forward declaration due to formatEng's use of ffDecimal formatting
 proc formatEng*(f: BiggestFloat,
                 precision: range[0..32] = 10,
                 decimalSep = '.',
@@ -1422,13 +1423,17 @@ type
   FloatFormatMode* = enum ## the different modes of floating point formating
     ffDefault,         ## use the shorter floating point notation
     ffDecimal,         ## use decimal floating point notation
-    ffScientific       ## use scientific notation (using ``e`` character)
+    ffScientific,      ## use scientific notation (using ``e`` character)
+    ffEngineering,     ## use engineering notation (using ``e`` character with
+                       ## exponents that are a multiple of 3
+    ffSIPrefixed       ## use engineering notation with SI prefixes (k, M, G etc)
 
 {.deprecated: [TFloatFormat: FloatFormatMode].}
 
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
                          precision: range[0..32] = 16;
-                         decimalSep = '.'): string {.
+                         decimalSep = '.',
+                         trim = false): string {.
                          noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1438,8 +1443,16 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``biggestFloat`` type.
+  ## `trim` can be used to remove trailing zeros.
   ##
   ## If ``precision == 0``, it tries to format it nicely.
+
+  # Handle engineering / SI formatting
+  if format == ffEngineering:
+    return formatEng(f, precision, decimalSep, trim)
+  elif format == ffSIPrefixed:
+    return formatEng(f, precision, decimalSep, trim, siPrefix=true)
+
   when defined(js):
     var res: cstring
     case format
@@ -1455,7 +1468,9 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if result[i] in {'.', ','}: result[i] = decimalsep
   else:
-    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
+    # Last two entries included to ensure length is correct but will never be
+    # used due to handling of engineering / SI formatting above.
+    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e', ' ', ' ']
     var
       frmtstr {.noinit.}: array[0..5, char]
       buf {.noinit.}: array[0..2500, char]
@@ -1478,9 +1493,16 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
+    if trim:
+      if result.contains(decimalsep):
+        while result.endsWith("0"):
+          result = result.substr(0, result.len()-2)
+        if result.endsWith("."):
+          result = result.substr(0, result.len()-2)
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
-                  precision: range[0..32] = 16; decimalSep = '.'): string {.
+                  precision: range[0..32] = 16; decimalSep = '.',
+                  trim = false): string {.
                   noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1490,7 +1512,9 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
-  result = formatBiggestFloat(f, format, precision, decimalSep)
+  ## `trim` can be used to remove trailing zeros.
+  result = formatBiggestFloat(f, format, precision, decimalSep, trim)
+
 proc formatEng*(f: BiggestFloat,
                 precision: range[0..32] = 10,
                 decimalSep = '.',
