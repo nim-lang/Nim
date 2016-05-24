@@ -56,12 +56,12 @@ proc handleCmdLine() =
     loadConfigs(DefaultConfig) # load all config files
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(scriptFile)
+      runNimScript(scriptFile, freshDefines=false)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == gProjectFull: return
     elif fileExists(gProjectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(gProjectPath / "config.nims")
+      runNimScript(gProjectPath / "config.nims", freshDefines=false)
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
