@@ -324,6 +324,18 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
+proc isEmpty*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsEmpty".}=
+  ## Checks whether the string `s` is empty or not.
+  ##
+  ## In this function whitespaces are stripped from `s`
+  if s.len() == 0:
+    return true
+
+  if s == nil or s == "" or s.strip() == "":
+    return true
+
+  return false
+
 iterator split*(s: string, seps: set[char] = Whitespace): string =
   ## Splits the string `s` into substrings using a group of separators.
   ##
@@ -1749,6 +1761,11 @@ when isMainModule:
   doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
   doAssert join([1, 2, 3]) == "123"
   doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
+
+  doAssert isEmpty("")
+  doAssert isEmpty(nil)
+  doAssert isEmpty(" ")
+  doAssert(not isEmpty("a "))
 
   doAssert """~~!!foo
 ~~!!bar
