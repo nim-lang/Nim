@@ -211,7 +211,7 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   if x == nil: return
   while true:
     if not isConc(x):
-      if x.data.len <% j: return x.data[j]
+      if x.data.len >% j: return x.data[j]
       return '\0'
     else:
       if x.left.len >% j:
