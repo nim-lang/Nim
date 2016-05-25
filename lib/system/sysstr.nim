@@ -387,8 +387,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # if has no digits: return error
   if kdigits + fdigits <= 0 and
-     (i == start or # was only zero
-      has_sign) :   # or only '+' or '-
+     (i == start or # no char consumed (empty string).
+     (i == start + 1 and has_sign)): # or only '+' or '-
     return 0
 
   if s[i] in {'e', 'E'}:
