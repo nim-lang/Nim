@@ -242,6 +242,8 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
     for i in 1 .. <arg.len:
       result.add(" | ")
       result.add typeToString(arg[i].typ, prefer)
+  elif arg.typ == nil:
+    result = "void"
   else:
     result = arg.typ.typeToString(prefer)
 
@@ -253,15 +255,15 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
     if n.sons[i].kind == nkExprEqExpr:
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
-      if arg.typ.isNil:
+      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
         arg = c.semOperand(c, n.sons[i].sons[1])
         n.sons[i].typ = arg.typ
         n.sons[i].sons[1] = arg
     else:
-      if arg.typ.isNil:
+      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
         arg = c.semOperand(c, n.sons[i])
         n.sons[i] = arg
-    if arg.typ.kind == tyError: return
+    if arg.typ != nil and arg.typ.kind == tyError: return
     add(result, argTypeToString(arg, prefer))
     if i != sonsLen(n) - 1: add(result, ", ")
 
