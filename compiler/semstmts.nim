@@ -1250,7 +1250,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
       c.p.wasForwarded = proto != nil
       maybeAddResult(c, s, n)
-      if sfImportc notin s.flags:
+      if lfDynamicLib notin s.loc.flags:
         # no semantic checking for importc:
         let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
         # unfortunately we cannot skip this step when in 'system.compiles'
