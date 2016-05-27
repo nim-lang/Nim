@@ -92,7 +92,6 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   for i in givenRegularParams+1 .. expectedRegularParams:
     let default = s.typ.n.sons[i].sym.ast
     if default.isNil or default.kind == nkEmpty:
-      echo "fuck you ", genericParams
       localError(n.info, errWrongNumberOfArguments)
       addSon(result, ast.emptyNode)
     else:
