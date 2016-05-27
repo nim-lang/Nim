@@ -15,7 +15,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   markUsed(n.info, s)
   styleCheckUse(n.info, s)
   pushInfoContext(n.info)
-  result = evalTemplate(n, s, getCurrOwner())
+  result = evalTemplate(n, s, getCurrOwner(), efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
   popInfoContext()
 
