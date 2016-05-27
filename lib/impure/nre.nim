@@ -15,6 +15,8 @@ from math import ceil
 import options
 from unicode import runeLenAt
 
+export options
+
 
 ## What is NRE?
 ## ============
