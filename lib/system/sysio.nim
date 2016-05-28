@@ -236,8 +236,7 @@ when declared(stdout):
 
 # interface to the C procs:
 
-when (defined(windows) and not defined(useWinAnsi)) or defined(nimdoc):
-  include "system/widestrs"
+include "system/widestrs"
 
 when defined(windows) and not defined(useWinAnsi):
   when defined(cpp):
