@@ -324,7 +324,7 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-iterator split*(s: string, seps: set[char] = Whitespace): string =
+iterator split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a group of separators.
   ##
   ## Substrings are separated by a substring containing only `seps`. Note
@@ -369,15 +369,19 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   "08.398990"
   ##
   var last = 0
+  var splits = maxsplit
   assert(not ('\0' in seps))
   while last < len(s):
     while s[last] in seps: inc(last)
     var first = last
     while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
     if first <= last-1:
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
 
-iterator split*(s: string, sep: char): string =
+iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
@@ -404,26 +408,34 @@ iterator split*(s: string, sep: char): string =
   ##   ""
   ##
   var last = 0
+  var splits = maxsplit
   assert('\0' != sep)
   if len(s) > 0:
     # `<=` is correct here for the edge cases!
     while last <= len(s):
       var first = last
       while last < len(s) and s[last] != sep: inc(last)
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
       inc(last)
 
-iterator split*(s: string, sep: string): string =
+iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`.
   var last = 0
+  var splits = maxsplit
   if len(s) > 0:
     while last <= len(s):
       var first = last
       while last < len(s) and s.substr(last, last + <sep.len) != sep:
         inc(last)
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
       inc(last, sep.len)
 
 iterator splitLines*(s: string): string =
@@ -493,25 +505,25 @@ proc countLines*(s: string): int {.noSideEffect,
     else: discard
     inc i
 
-proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
+proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char]>`_, but is a
   ## proc that returns a sequence of substrings.
-  accumulateResult(split(s, seps))
+  accumulateResult(split(s, seps, maxsplit))
 
-proc split*(s: string, sep: char): seq[string] {.noSideEffect,
+proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char>`_, but is a proc
   ## that returns a sequence of substrings.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxsplit))
 
-proc split*(s: string, sep: string): seq[string] {.noSideEffect,
+proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitString".} =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxsplit))
 
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
@@ -1743,6 +1755,7 @@ when isMainModule:
   doAssert isUpper("ABC")
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
+
   doAssert(unescape(r"\x013", "", "") == "\x013")
 
   doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
@@ -1778,4 +1791,10 @@ bar
     bar
   """.unindent() == "foo\nfoo\nbar\n"
 
-  echo("strutils tests passed")
+  let s = " this   is     an example   "
+  doAssert s.split() == @["this", "is", "an", "example"]
+  doAssert s.split(maxsplit=4) == @["this", "is", "an", "example"]
+  doAssert s.split(' ', maxsplit=4) == @["", "this", "", "", "is     an example   "]
+  doAssert s.split(" ", maxsplit=4) == @["", "this", "", "", "is     an example   "]
+
+  #echo("strutils tests passed")
