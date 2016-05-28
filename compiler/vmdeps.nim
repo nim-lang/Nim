@@ -88,7 +88,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   template atomicType(name): expr = atomicTypeX(name, t, info)
   template mapTypeToAst(t,info): expr = mapTypeToAstX(t, info, inst)
   template mapTypeToAstR(t,info): expr = mapTypeToAstX(t, info, inst, true)
-  template mapTypeToAst(t,i,info): expr = 
+  template mapTypeToAst(t,i,info): expr =
     if i<t.len and t.sons[i]!=nil: mapTypeToAstX(t.sons[i], info, inst)
     else: ast.emptyNode
   template mapTypeToBracket(name,t,info): expr =
@@ -112,7 +112,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       if allowRecursion:  # getTypeImpl behavior: turn off recursion
         allowRecursion = false
       else:  # getTypeInst behavior: return symbol
-        return atomicType(t.sym.name.s) 
+        return atomicType(t.sym.name.s)
 
   case t.kind
   of tyNone: result = atomicType("none")
@@ -125,7 +125,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyArrayConstr, tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array")
-    if inst:
+    if inst and t.sons[0].kind == tyRange:
       var rng = newNodeX(nkInfix)
       rng.add newIdentNode(getIdent(".."), info)
       rng.add t.sons[0].n.sons[0].copyTree
