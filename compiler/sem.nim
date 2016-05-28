@@ -413,6 +413,12 @@ proc myOpen(module: PSym): PPassContext =
     c.importTable.addSym magicsys.systemModule # import the "System" identifier
     importAllSymbols(c, magicsys.systemModule)
   c.topLevelScope = openScope(c)
+  # don't be verbose unless the module belongs to the main package:
+  if module.owner.id == gMainPackageId:
+    gNotes = gMainPackageNotes
+  else:
+    if gMainPackageNotes == {}: gMainPackageNotes = gNotes
+    gNotes = ForeignPackageNotes
   result = c
 
 proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
