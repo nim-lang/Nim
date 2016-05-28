@@ -1185,19 +1185,35 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetType:
       let rb = instr.regB
       let rc = instr.regC
-      if rc == 0:
-        ensureKind(rkNode)
-        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].node = opMapTypeToAst(regs[rb].node.typ, c.debug[pc])
+      case rc:
+        of 0:
+          # getType opcode:
+          ensureKind(rkNode)
+          if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+            regs[ra].node = opMapTypeToAst(regs[rb].node.typ, c.debug[pc])
+          else:
+            stackTrace(c, tos, pc, errGenerated, "node has no type")
+        of 1:
+          # typeKind opcode:
+          ensureKind(rkInt)
+          if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+            regs[ra].intVal = ord(regs[rb].node.typ.kind)
+          #else:
+          #  stackTrace(c, tos, pc, errGenerated, "node has no type")
+        of 2:
+          # getTypeInst opcode:
+          ensureKind(rkNode)
+          if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+            regs[ra].node = opMapTypeInstToAst(regs[rb].node.typ, c.debug[pc])
+          else:
+            stackTrace(c, tos, pc, errGenerated, "node has no type")
         else:
-          stackTrace(c, tos, pc, errGenerated, "node has no type")
-      else:
-        # typeKind opcode:
-        ensureKind(rkInt)
-        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].intVal = ord(regs[rb].node.typ.kind)
-        #else:
-        #  stackTrace(c, tos, pc, errGenerated, "node has no type")
+          # getTypeImpl opcode:
+          ensureKind(rkNode)
+          if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+            regs[ra].node = opMapTypeImplToAst(regs[rb].node.typ, c.debug[pc])
+          else:
+            stackTrace(c, tos, pc, errGenerated, "node has no type")
     of opcNStrVal:
       decodeB(rkNode)
       createStr regs[ra]
