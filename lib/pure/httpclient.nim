@@ -82,6 +82,7 @@
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
 import asyncnet, asyncdispatch
 import nativesockets
+import random
 
 export strtabs
 

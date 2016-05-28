@@ -11,7 +11,7 @@
 ## creating a thread is a good idea.
 
 when defined(windows):
-  import winlean, os, strutils, math
+  import winlean, os, strutils, math, random
 
   proc `-`(a, b: FILETIME): int64 = a.rdFileTime - b.rdFileTime
 elif defined(linux):

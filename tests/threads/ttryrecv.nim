@@ -4,7 +4,7 @@ discard """
 
 # bug #1816
 
-from math import random
+from random import random
 from os import sleep
 
 type PComm = ptr Channel[int]

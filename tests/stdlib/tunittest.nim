@@ -27,6 +27,7 @@ test "unittest multiple requires":
 
 
 import math
+import random
 from strutils import parseInt
 proc defectiveRobot() =
   randomize()

@@ -14,6 +14,7 @@
 ## <backends.html#the-javascript-target>`_.
 
 import parseutils
+import math
 
 {.deadCodeElim: on.}
 
@@ -1370,17 +1371,69 @@ when not defined(js):
   proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
                                      importc: "sprintf", varargs, noSideEffect.}
 
+# Forward declaration due to formatEng's use of ffDecimal formatting
+proc formatEng*(f: BiggestFloat,
+                precision: range[0..32] = 10,
+                decimalSep = '.',
+                trim: bool = true,
+                siPrefix: bool = false,
+                unit: string = nil): string {.
+                noSideEffect, rtl, extern: "nsu$1".}
+  ## Converts a floating point value `f` to a string using engineering notation.
+  ##
+  ## Numbers in of the range -1000.0 < x < 1000.0 will be formatted without an
+  ## exponent.  Numbers outside of this range will be formatted as a
+  ## significand in the range 0 <= x < 1000.0 and an exponent that will always
+  ## be an integer multiple of 3, corresponding with the SI prefix scale k, M,
+  ## G, T etc for numbers with an absolute value greater than 1 and m, u, n, p
+  ## etc for numbers with an absolute value less than 1.
+  ##
+  ## `precision` is the number of digits to be shown after the decimal point.
+  ##
+  ## If `trim` is set to true, trailing zeros will be removed.
+  ## `decimalSep` is used as the decimal separator
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(0, 2, trim=false) == "0.00"
+  ##    formatEng(0, 2) == "0"
+  ##    formatEng(0.053, 0) == "53e-3"
+  ##    formatEng(52731234, 2) == "52.73e6"
+  ##    formatEng(-52731234, 2) == "-52.73e6"
+  ##
+  ## If `siPrefix` is set to true, the number will be displayed with the SI
+  ## prefix corresponding to the exponent.  For example 4100 will be displayed
+  ## as "4.1 k" instead of "4.1e3".
+  ##
+  ## If `unit` is not nil, the provided unit will be appended to the string
+  ## (with a space as required by the SI standard).  This behaviour is slightly
+  ## different to appending the unit to the result as the location of the space
+  ## is altered depending on whether there is an exponent.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+  ##    formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+  ##    formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+  ##    formatEng(4100, siPrefix=true) == "4.1 k"
+  ##    formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Space with unit=""
+  ##    formatEng(4100, siPrefix=true, unit="") == "4.1 k"
+
 type
   FloatFormatMode* = enum ## the different modes of floating point formating
     ffDefault,         ## use the shorter floating point notation
     ffDecimal,         ## use decimal floating point notation
-    ffScientific       ## use scientific notation (using ``e`` character)
+    ffScientific,      ## use scientific notation (using ``e`` character)
+    ffEngineering,     ## use engineering notation (using ``e`` character with
+                       ## exponents that are a multiple of 3
+    ffSIPrefixed       ## use engineering notation with SI prefixes (k, M, G etc)
 
 {.deprecated: [TFloatFormat: FloatFormatMode].}
 
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
                          precision: range[0..32] = 16;
-                         decimalSep = '.'): string {.
+                         decimalSep = '.',
+                         trim = false): string {.
                          noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1390,8 +1443,16 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``biggestFloat`` type.
+  ## `trim` can be used to remove trailing zeros.
   ##
   ## If ``precision == 0``, it tries to format it nicely.
+
+  # Handle engineering / SI formatting
+  if format == ffEngineering:
+    return formatEng(f, precision, decimalSep, trim)
+  elif format == ffSIPrefixed:
+    return formatEng(f, precision, decimalSep, trim, siPrefix=true)
+
   when defined(js):
     var res: cstring
     case format
@@ -1407,7 +1468,9 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if result[i] in {'.', ','}: result[i] = decimalsep
   else:
-    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e']
+    # Last two entries included to ensure length is correct but will never be
+    # used due to handling of engineering / SI formatting above.
+    const floatFormatToChar: array[FloatFormatMode, char] = ['g', 'f', 'e', ' ', ' ']
     var
       frmtstr {.noinit.}: array[0..5, char]
       buf {.noinit.}: array[0..2500, char]
@@ -1430,9 +1493,16 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
+    if trim:
+      if result.contains(decimalsep):
+        while result.endsWith("0"):
+          result = result.substr(0, result.len()-2)
+        if result.endsWith("."):
+          result = result.substr(0, result.len()-2)
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
-                  precision: range[0..32] = 16; decimalSep = '.'): string {.
+                  precision: range[0..32] = 16; decimalSep = '.',
+                  trim = false): string {.
                   noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1442,30 +1512,151 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
-  result = formatBiggestFloat(f, format, precision, decimalSep)
+  ## `trim` can be used to remove trailing zeros.
+  result = formatBiggestFloat(f, format, precision, decimalSep, trim)
 
-proc formatSize*(bytes: BiggestInt, decimalSep = '.'): string =
-  ## Rounds and formats `bytes`. Examples:
+proc formatEng*(f: BiggestFloat,
+                precision: range[0..32] = 10,
+                decimalSep = '.',
+                trim: bool = true,
+                siPrefix: bool = false,
+                unit: string = nil): string =
+  ## See documentation under forward declaration (above)
+  var
+    absolute: BiggestFloat
+    significand: BiggestFloat
+    fexponent: BiggestFloat
+    exponent: int
+    splitResult: seq[string]
+    suffix: string = ""
+  proc getPrefix(exp: int): char =
+    ## Get the SI prefix for a given exponent
+    ##
+    ## Assumes exponent is a multiple of 3; returns ' ' if no prefix found
+    let siPrefixes = ['a','f','p','n','u','m',' ','k','M','G','T','P','E']
+    var index: int = (exp div 3) + 6
+    result = ' '
+    if index in low(siPrefixes)..high(siPrefixes):
+      result = siPrefixes[index]
+
+  # Most of the work is done with the sign ignored, so get the absolute value
+  absolute = abs(f)
+  significand = f
+
+  if absolute == 0.0:
+    # Simple case: just format it and force the exponent to 0
+    exponent = 0
+    result = significand.formatBiggestFloat(ffDecimal, precision)
+  else:
+    # Find the best exponent that's a multiple of 3
+    fexponent = round(floor(log10(absolute)))
+    fexponent = 3.0 * round(floor(fexponent / 3.0))
+    # Adjust the significand for the new exponent
+    significand /= pow(10.0, fexponent)
+
+    # Round the significand and check whether it has affected
+    # the exponent
+    significand = round(significand, precision)
+    absolute = abs(significand)
+    if absolute >= 1000.0:
+      significand /= 1000.0
+      fexponent += 3
+    # Components of the result:
+    result = significand.formatBiggestFloat(ffDecimal, precision)
+    exponent = fexponent.int()
+
+  let decimalCharacters = {'.', ','}
+  splitResult = result.split(decimalCharacters)
+  result = splitResult[0]
+  # result should have at most one decimal character
+  if splitResult.len() > 1:
+    # If trim is set, we get rid of trailing zeros
+    if trim:
+        while splitResult[1].endsWith("0"):
+          # Trim last character (ugly version of python's `x = x[:-1]`)
+          splitResult[1] = splitResult[1].substr(0, splitResult[1].len()-2)
+        if splitResult[1].len() > 0:
+          result &= decimalSep & splitResult[1]
+    else:
+      result &= decimalSep & splitResult[1]
+
+  # Combine the results accordingly
+  if exponent == 0:
+    if unit != nil:
+      suffix = " " & unit
+  else:
+    if siPrefix:
+      var p = getPrefix(exponent)
+      if p != ' ':
+        suffix = " " & p
+    if suffix == "":
+      suffix = "e" & $exponent
+    if unit != nil:
+      suffix &= unit
+  result &= suffix
+
+  for c in decimalCharacters:
+    result = result.replace(c, decimalSep)
+
+type
+  BinaryPrefixMode* = enum ## the different names for binary prefixes
+    bpIEC, # use the IEC/ISO standard prefixes such as kibi
+    bpColloquial # use the colloquial kilo, mega etc
+
+proc formatSize*(bytes: int64,
+                 decimalSep = '.',
+                 prefix = bpIEC,
+                 includeSpace = true): string =
+  ## Rounds and formats `bytes`.
+  ##
+  ## By default, uses the IEC/ISO standard binary prefixes, so 1024 will be
+  ## formatted as 1 KiB.  Set prefix to `bpColloquial` to use the colloquial
+  ## names from the SI standard (e.g. k for 1000 being reused as 1024).
+  ##
+  ## `includeSpace` can be set to false to remove the (SI preferred) space
+  ## between the number and the unit.
+  ##
+  ## Examples:
   ##
   ## .. code-block:: nim
   ##
-  ##    formatSize(1'i64 shl 31 + 300'i64) == "2.204GB"
-  ##    formatSize(4096) == "4KB"
+  ##    formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293 GiB"
+  ##    formatSize(4096) == "4 KiB"
+  ##    formatSize(4096, prefix=bpColloquial) == "4 kB"
+  ##    formatSize(4096, includeSpace=false) == "4KiB"
+  ##    formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13 MB"
   ##
-  template frmt(a, b, c: expr): expr =
-    let bs = $b
-    insertSep($a) & decimalSep & bs.substr(0, 2) & c
-  let gigabytes = bytes shr 30
-  let megabytes = bytes shr 20
-  let kilobytes = bytes shr 10
-  if gigabytes != 0:
-    result = frmt(gigabytes, megabytes, "GB")
-  elif megabytes != 0:
-    result = frmt(megabytes, kilobytes, "MB")
-  elif kilobytes != 0:
-    result = frmt(kilobytes, bytes, "KB")
+  let iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
+  let collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
+  var
+    xb: int64 = bytes
+    fbytes: float
+    last_xb: int64 = bytes
+    matchedIndex: int
+    prefixes: array[9, string]
+  if prefix == bpColloquial:
+    prefixes = collPrefixes
   else:
-    result = insertSep($bytes) & "B"
+    prefixes = iecPrefixes
+
+  # Iterate through prefixes seeing if value will be greater than
+  # 0 in each case
+  for index in 1..<prefixes.len:
+    last_xb = xb
+    xb = bytes div (1'i64 shl (index*10))
+    matchedIndex = index
+    if xb == 0:
+      xb = last_xb
+      matchedIndex = index - 1
+      break
+  # xb has the integer number for the latest value; index should be correct
+  fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
+  result = formatFloat(fbytes, format=ffDecimal, precision=3,
+    decimalSep=decimalSep, trim=true)
+  if includeSpace:
+    result &= " "
+  result &= prefixes[matchedIndex]
+  result &= "B"
 
 proc findNormalized(x: string, inArray: openArray[string]): int =
   var i = 0
@@ -1661,9 +1852,13 @@ when isMainModule:
                                                    ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-  when not defined(testing):
-    echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
-    echo formatSize(1'i64 shl 31)
+
+  block: # formatSize tests
+    doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293 GiB"
+    doAssert formatSize(4096) == "4 KiB"
+    doAssert formatSize(4096, prefix=bpColloquial) == "4 kB"
+    doAssert formatSize(4096, includeSpace=false) == "4KiB"
+    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13 MB"
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
@@ -1777,5 +1972,27 @@ bar
     foo
     bar
   """.unindent() == "foo\nfoo\nbar\n"
+
+  block: # formatEng tests
+    doAssert formatEng(0, 2, trim=false) == "0.00"
+    doAssert formatEng(0, 2) == "0"
+    doAssert formatEng(53, 2, trim=false) == "53.00"
+    doAssert formatEng(0.053, 2, trim=false) == "53.00e-3"
+    doAssert formatEng(0.053, 4, trim=false) == "53.0000e-3"
+    doAssert formatEng(0.053, 4, trim=true) == "53e-3"
+    doAssert formatEng(0.053, 0) == "53e-3"
+    doAssert formatEng(52731234) == "52.731234e6"
+    doAssert formatEng(-52731234) == "-52.731234e6"
+    doAssert formatEng(52731234, 1) == "52.7e6"
+    doAssert formatEng(-52731234, 1) == "-52.7e6"
+    doAssert formatEng(52731234, 1, ',') == "52,7e6"
+    doAssert formatEng(-52731234, 1, ',') == "-52,7e6"
+
+    doAssert formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+    doAssert formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+    doAssert formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+    doAssert formatEng(4100, siPrefix=true) == "4.1 k"
+    doAssert formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Includes space
+    doAssert formatEng(4100, siPrefix=true, unit="") == "4.1 k"
 
   echo("strutils tests passed")

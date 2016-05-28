@@ -39,8 +39,6 @@ proc fac*(n: int): int {.noSideEffect.} =
 
 when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
-when not defined(js) and not defined(nimscript):
-  import times
 
 const
   PI* = 3.1415926535897932384626433 ## the circle constant PI (Ludolph's number)
@@ -119,30 +117,6 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
-proc random*(max: int): int {.benign.}
-  ## Returns a random number in the range 0..max-1. The sequence of
-  ## random number is always the same, unless `randomize` is called
-  ## which initializes the random number generator with a "random"
-  ## number, i.e. a tickcount.
-
-proc random*(max: float): float {.benign.}
-  ## Returns a random number in the range 0..<max. The sequence of
-  ## random number is always the same, unless `randomize` is called
-  ## which initializes the random number generator with a "random"
-  ## number, i.e. a tickcount. This has a 16-bit resolution on windows
-  ## and a 48-bit resolution on other platforms.
-
-when not defined(nimscript):
-  proc randomize*() {.benign.}
-    ## Initializes the random number generator with a "random"
-    ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
-    ## as JavaScript does not support this. Nor does it work for NimScript.
-
-proc randomize*(seed: int) {.benign.}
-  ## Initializes the random number generator with a specific seed.
-  ## Note: Does nothing for the JavaScript target,
-  ## as JavaScript does not support this.
-
 {.push noSideEffect.}
 when not defined(JS):
   proc sqrt*(x: float): float {.importc: "sqrt", header: "<math.h>".}
@@ -159,16 +133,8 @@ when not defined(JS):
   proc exp*(x: float): float {.importc: "exp", header: "<math.h>".}
     ## Computes the exponential function of `x` (pow(E, x))
 
-  proc frexp*(x: float, exponent: var int): float {.
-    importc: "frexp", header: "<math.h>".}
-    ## Split a number into mantissa and exponent.
-    ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
-    ## and less than 1) and the integer value n such that `x` (the original
-    ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
-    ## m.
-
-  proc round*(x: float): int {.importc: "lrint", header: "<math.h>".}
-    ## Converts a float to an int by rounding.
+  proc round0(x: float): float {.importc: "round", header: "<math.h>".}
+    ## Rounds a float to 0 decimal places
 
   proc arccos*(x: float): float {.importc: "acos", header: "<math.h>".}
     ## Computes the arc cosine of `x`
@@ -211,57 +177,6 @@ when not defined(JS):
   proc tgamma*(x: float): float {.importc: "tgamma", header: "<math.h>".}
     ## The gamma function
 
-  # C procs:
-  when defined(vcc) and false:
-    # The "secure" random, available from Windows XP
-    # https://msdn.microsoft.com/en-us/library/sxtz2fa8.aspx
-    # Present in some variants of MinGW but not enough to justify
-    # `when defined(windows)` yet
-    proc rand_s(val: var cuint) {.importc: "rand_s", header: "<stdlib.h>".}
-    # To behave like the normal version
-    proc rand(): cuint = rand_s(result)
-  else:
-    proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>".}
-    proc rand(): cint {.importc: "rand", header: "<stdlib.h>".}
-
-  when not defined(windows):
-    proc srand48(seed: clong) {.importc: "srand48", header: "<stdlib.h>".}
-    proc drand48(): float {.importc: "drand48", header: "<stdlib.h>".}
-    proc random(max: float): float =
-      result = drand48() * max
-  else:
-    when defined(vcc): # Windows with Visual C
-      proc random(max: float): float =
-        # we are hardcoding this because
-        # importc-ing macros is extremely problematic
-        # and because the value is publicly documented
-        # on MSDN and very unlikely to change
-        # See https://msdn.microsoft.com/en-us/library/296az74e.aspx
-        const rand_max = 4294967295 # UINT_MAX
-        result = (float(rand()) / float(rand_max)) * max
-      proc randomize() = discard
-      proc randomize(seed: int) = discard
-    else: # Windows with another compiler
-      proc random(max: float): float =
-        # we are hardcoding this because
-        # importc-ing macros is extremely problematic
-        # and because the value is publicly documented
-        # on MSDN and very unlikely to change
-        const rand_max = 32767
-        result = (float(rand()) / float(rand_max)) * max
-
-  when not defined(vcc): # the above code for vcc uses `discard` instead
-    # this is either not Windows or is Windows without vcc
-    when not defined(nimscript):
-      proc randomize() =
-        randomize(cast[int](epochTime()))
-    proc randomize(seed: int) =
-      srand(cint(seed)) # rand_s doesn't use srand
-      when declared(srand48): srand48(seed)
-
-  proc random(max: int): int =
-    result = int(rand()) mod max
-
   proc trunc*(x: float): float {.importc: "trunc", header: "<math.h>".}
     ## Truncates `x` to the decimal point
     ##
@@ -285,35 +200,16 @@ when not defined(JS):
     ##  echo fmod(-2.5, 0.3) ## -0.1
 
 else:
-  proc mathrandom(): float {.importc: "Math.random", nodecl.}
   proc floor*(x: float): float {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float): float {.importc: "Math.ceil", nodecl.}
-  proc random(max: int): int =
-    result = int(floor(mathrandom() * float(max)))
-  proc random(max: float): float =
-    result = float(mathrandom() * float(max))
-  proc randomize() = discard
-  proc randomize(seed: int) = discard
-
   proc sqrt*(x: float): float {.importc: "Math.sqrt", nodecl.}
   proc ln*(x: float): float {.importc: "Math.log", nodecl.}
   proc log10*(x: float): float = return ln(x) / ln(10.0)
   proc log2*(x: float): float = return ln(x) / ln(2.0)
 
   proc exp*(x: float): float {.importc: "Math.exp", nodecl.}
-  proc round*(x: float): int {.importc: "Math.round", nodecl.}
+  proc round0(x: float): float {.importc: "Math.round", nodecl.}
   proc pow*(x, y: float): float {.importc: "Math.pow", nodecl.}
-
-  proc frexp*(x: float, exponent: var int): float =
-    if x == 0.0:
-      exponent = 0
-      result = 0.0
-    elif x < 0.0:
-      result = -frexp(-x, exponent)
-    else:
-      var ex = floor(log2(x))
-      exponent = round(ex)
-      result = x / pow(2.0, ex)
 
   proc arccos*(x: float): float {.importc: "Math.acos", nodecl.}
   proc arcsin*(x: float): float {.importc: "Math.asin", nodecl.}
@@ -329,6 +225,57 @@ else:
   proc tanh*(x: float): float =
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
+
+proc round*(x: float, places: int = 0): float =
+  ## Round a floating point number.
+  ##
+  ## If `places` is 0 (or omitted), round to the nearest integral value
+  ## following normal mathematical rounding rules (e.g. `round(54.5) -> 55.0`).
+  ## If `places` is greater than 0, round to the given number of decimal
+  ## places, e.g. `round(54.346, 2) -> 54.35`.
+  ## If `places` is negative, round to the left of the decimal place, e.g.
+  ## `round(537.345, -1) -> 540.0`
+  if places == 0:
+    result = round0(x)
+  else:
+    var mult = pow(10.0, places.float)
+    result = round0(x*mult)/mult
+
+when not defined(JS):
+  proc frexp*(x: float, exponent: var int): float {.
+    importc: "frexp", header: "<math.h>".}
+    ## Split a number into mantissa and exponent.
+    ## `frexp` calculates the mantissa m (a float with 0.5 <= abs(m) < 1) and
+    ## the integer value n such that `x` (the original float value) equals
+    ## m * 2**n. frexp stores n in `exponent` and returns m.
+else:
+  proc frexp*(x: float, exponent: var int): float =
+    if x == 0.0:
+      exponent = 0
+      result = 0.0
+    elif x < 0.0:
+      result = -frexp(-x, exponent)
+    else:
+      var ex = floor(log2(x))
+      exponent = round(ex)
+      result = x / pow(2.0, ex)
+
+proc split*(x: BiggestFloat): tuple[intpart: BiggestFloat, floatpart: BiggestFloat] =
+  ## Breaks `x` into an integral and a fractional part.
+  ##
+  ## Returns a tuple containing intpart and floatpart representing
+  ## the integer part and the fractional part respectively.
+  ##
+  ## Both parts have the same sign as `x`.  Analogous to the `modf`
+  ## function in C.
+  var
+    absolute: BiggestFloat
+  absolute = abs(x)
+  result.intpart = floor(absolute)
+  result.floatpart = absolute - result.intpart
+  if x < 0:
+    result.intpart = -result.intpart
+    result.floatpart = -result.floatpart
 
 {.pop.}
 
@@ -348,14 +295,6 @@ proc `mod`*(x, y: float): float =
   ## .. code-block:: nim
   ##  echo (4.0 mod -3.1) # -2.2
   result = if y == 0.0: x else: x - y * (x/y).floor
-
-proc random*[T](x: Slice[T]): T =
-  ## For a slice `a .. b` returns a value in the range `a .. b-1`.
-  result = random(x.b - x.a) + x.a
-
-proc random*[T](a: openArray[T]): T =
-  ## returns a random element from the openarray `a`.
-  result = a[random(a.low..a.len)]
 
 {.pop.}
 {.pop.}
@@ -391,24 +330,6 @@ proc lcm*[T](x, y: T): T =
   x div gcd(x, y) * y
 
 when isMainModule and not defined(JS):
-  proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
-
-  # Verifies random seed initialization.
-  let seed = gettime(nil)
-  randomize(seed)
-  const SIZE = 10
-  var buf : array[0..SIZE, int]
-  # Fill the buffer with random values
-  for i in 0..SIZE-1:
-    buf[i] = random(high(int))
-  # Check that the second random calls are the same for each position.
-  randomize(seed)
-  for i in 0..SIZE-1:
-    assert buf[i] == random(high(int)), "non deterministic random seeding"
-
-  when not defined(testing):
-    echo "random values equal after reseeding"
-
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
     return sqrt(num)
@@ -418,3 +339,37 @@ when isMainModule and not defined(JS):
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
+
+when isMainModule:
+  # Function for approximate comparison of floats
+  proc floatIsEqual(x, y: float): bool = (abs(x-y) < 1e-9)
+
+  block: # round() tests
+    # Round to 0 decimal places
+    doAssert floatIsEqual(round(54.652), 55.0)
+    doAssert floatIsEqual(round(54.352), 54.0)
+    doAssert floatIsEqual(round(-54.652), -55.0)
+    doAssert floatIsEqual(round(-54.352), -54.0)
+    doAssert floatIsEqual(round(0.0), 0.0)
+    # Round to positive decimal places
+    doAssert floatIsEqual(round(-547.652, 1), -547.7)
+    doAssert floatIsEqual(round(547.652, 1), 547.7)
+    doAssert floatIsEqual(round(-547.652, 2), -547.65)
+    doAssert floatIsEqual(round(547.652, 2), 547.65)
+    # Round to negative decimal places
+    doAssert floatIsEqual(round(547.652, -1), 550.0)
+    doAssert floatIsEqual(round(547.652, -2), 500.0)
+    doAssert floatIsEqual(round(547.652, -3), 1000.0)
+    doAssert floatIsEqual(round(547.652, -4), 0.0)
+    doAssert floatIsEqual(round(-547.652, -1), -550.0)
+    doAssert floatIsEqual(round(-547.652, -2), -500.0)
+    doAssert floatIsEqual(round(-547.652, -3), -1000.0)
+    doAssert floatIsEqual(round(-547.652, -4), 0.0)
+
+  block: # split() tests
+    doAssert floatIsEqual(split(54.674).intpart, 54.0)
+    doAssert floatIsEqual(split(54.674).floatpart, 0.674)
+    doAssert floatIsEqual(split(-693.4356).intpart, -693.0)
+    doAssert floatIsEqual(split(-693.4356).floatpart, -0.4356)
+    doAssert floatIsEqual(split(0.0).intpart, 0.0)
+    doAssert floatIsEqual(split(0.0).floatpart, 0.0)
