@@ -49,6 +49,10 @@
 ##         "age": herAge
 ##       }
 ##     ]
+##
+##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
+##    j2["details"] = %* {"age":35, "pi":3.1415}
+##    echo j2
 
 import
   hashes, tables, strutils, lexbase, streams, unicode, macros
