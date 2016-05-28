@@ -964,8 +964,9 @@ proc parseDoBlock(p: var TParser): PNode =
 proc parseDoBlocks(p: var TParser, call: PNode) =
   #| doBlocks = doBlock ^* IND{=}
   if p.tok.tokType == tkDo:
-    addSon(call, parseDoBlock(p))
-    while sameInd(p) and p.tok.tokType == tkDo:
+    #withInd(p):
+    #  addSon(call, parseDoBlock(p))
+    while sameOrNoInd(p) and p.tok.tokType == tkDo:
       addSon(call, parseDoBlock(p))
 
 proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
