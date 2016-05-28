@@ -43,9 +43,11 @@ proc rawHandleSelf(c: PContext; owner: PSym) =
       if arg.name.id == c.selfName.id:
         c.p.selfSym = arg
         arg.flags.incl sfIsSelf
-        let t = c.p.selfSym.typ.skipTypes(abstractPtrs)
-        if t.kind == tyObject:
+        var t = c.p.selfSym.typ.skipTypes(abstractPtrs)
+        while t.kind == tyObject:
           addObjFieldsToLocalScope(c, t.n)
+          if t.sons[0] == nil: break
+          t = t.sons[0].skipTypes(abstractPtrs)
 
 proc pushProcCon*(c: PContext; owner: PSym) =
   rawPushProcCon(c, owner)
