@@ -62,7 +62,6 @@ Bugs
 GC
 ==
 
-- hybrid GC
 - use big blocks in the allocator
 - provide tool/API to track leaks/object counts
 - resizing of strings/sequences could take into account the memory that
