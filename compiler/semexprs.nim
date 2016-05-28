@@ -1818,7 +1818,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   result = nil
 
   template setResult(e: expr) =
-    if semCheck: result = semStmt(c, e) # do not open a new scope!
+    if semCheck: result = semExpr(c, e) # do not open a new scope!
     else: result = e
 
   # Check if the node is "when nimvm"
@@ -1827,6 +1827,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # else:
   #   ...
   var whenNimvm = false
+  var typ = commonTypeBegin
   if n.sons.len == 2 and n.sons[0].kind == nkElifBranch and
       n.sons[1].kind == nkElse:
     let exprNode = n.sons[0].sons[0]
@@ -1843,7 +1844,8 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 2)
       if whenNimvm:
         if semCheck:
-          it.sons[1] = semStmt(c, it.sons[1])
+          it.sons[1] = semExpr(c, it.sons[1])
+          typ = commonType(typ, it.sons[1].typ)
         result = n # when nimvm is not elimited until codegen
       else:
         var e = semConstExpr(c, it.sons[0])
@@ -1857,12 +1859,14 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 1)
       if result == nil or whenNimvm:
         if semCheck:
-          it.sons[0] = semStmt(c, it.sons[0])
+          it.sons[0] = semExpr(c, it.sons[0])
+          typ = commonType(typ, it.sons[0].typ)
         if result == nil:
           result = it.sons[0]
     else: illFormedAst(n)
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
+  if whenNimvm: result.typ = typ
   # The ``when`` statement implements the mechanism for platform dependent
   # code. Thus we try to ensure here consistent ID allocation after the
   # ``when`` statement.

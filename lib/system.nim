@@ -3042,34 +3042,6 @@ when not defined(JS): #and not defined(nimscript):
   {.pop.} # stacktrace
 
   when not defined(nimscript):
-    proc likely*(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-      ## Hints the optimizer that `val` is likely going to be true.
-      ##
-      ## You can use this proc to decorate a branch condition. On certain
-      ## platforms this can help the processor predict better which branch is
-      ## going to be run. Example:
-      ##
-      ## .. code-block:: nim
-      ##   for value in inputValues:
-      ##     if likely(value <= 100):
-      ##       process(value)
-      ##     else:
-      ##       echo "Value too big!"
-
-    proc unlikely*(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
-      ## Hints the optimizer that `val` is likely going to be false.
-      ##
-      ## You can use this proc to decorate a branch condition. On certain
-      ## platforms this can help the processor predict better which branch is
-      ## going to be run. Example:
-      ##
-      ## .. code-block:: nim
-      ##   for value in inputValues:
-      ##     if unlikely(value > 100):
-      ##       echo "Value too big!"
-      ##     else:
-      ##       process(value)
-
     proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
       ## retrieves the raw proc pointer of the closure `x`. This is
       ## useful for interfacing closures with C.
@@ -3136,6 +3108,58 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
 
 {.pop.} # checks
 {.pop.} # hints
+
+when not defined(JS):
+  proc likely_proc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
+  proc unlikely_proc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+
+template likely*(val: bool): bool =
+  ## Hints the optimizer that `val` is likely going to be true.
+  ##
+  ## You can use this template to decorate a branch condition. On certain
+  ## platforms this can help the processor predict better which branch is
+  ## going to be run. Example:
+  ##
+  ## .. code-block:: nim
+  ##   for value in inputValues:
+  ##     if likely(value <= 100):
+  ##       process(value)
+  ##     else:
+  ##       echo "Value too big!"
+  ##
+  ## On backends without branch prediction (JS and the nimscript VM), this
+  ## template will not affect code execution.
+  when nimvm:
+    val
+  else:
+    when defined(JS):
+      val
+    else:
+      likely_proc(val)
+
+template unlikely*(val: bool): bool =
+  ## Hints the optimizer that `val` is likely going to be false.
+  ##
+  ## You can use this proc to decorate a branch condition. On certain
+  ## platforms this can help the processor predict better which branch is
+  ## going to be run. Example:
+  ##
+  ## .. code-block:: nim
+  ##   for value in inputValues:
+  ##     if unlikely(value > 100):
+  ##       echo "Value too big!"
+  ##     else:
+  ##       process(value)
+  ##
+  ## On backends without branch prediction (JS and the nimscript VM), this
+  ## template will not affect code execution.
+  when nimvm:
+    val
+  else:
+    when defined(JS):
+      val
+    else:
+      unlikely_proc(val)
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
