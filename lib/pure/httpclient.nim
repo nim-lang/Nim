@@ -83,6 +83,8 @@ import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
 import asyncnet, asyncdispatch
 import nativesockets
 
+export strtabs
+
 type
   Response* = tuple[
     version: string,
