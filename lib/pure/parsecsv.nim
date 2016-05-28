@@ -77,6 +77,15 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   my.row = @[]
   my.currRow = 0
 
+proc open*(my: var CsvParser, filename: string,
+           separator = ',', quote = '"', escape = '\0',
+           skipInitialSpace = false) =
+  ## same as the other `open` but creates the file stream for you.
+  var s = newFileStream(filename, fmRead)
+  if s == nil: my.error(0, "cannot open: " & filename)
+  open(my, s, filename, separator,
+       quote, escape, skipInitialSpace)
+
 proc parseField(my: var CsvParser, a: var string) =
   var pos = my.bufpos
   var buf = my.buf
@@ -131,6 +140,8 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   ## reads the next row; if `columns` > 0, it expects the row to have
   ## exactly this many columns. Returns false if the end of the file
   ## has been encountered else true.
+  ##
+  ## Blank lines are skipped.
   var col = 0 # current column
   var oldpos = my.bufpos
   while my.buf[my.bufpos] != '\0':
