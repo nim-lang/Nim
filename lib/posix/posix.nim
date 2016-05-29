@@ -1575,8 +1575,6 @@ var
     ## Receive timeout.
   SO_REUSEADDR* {.importc, header: "<sys/socket.h>".}: cint
     ## Reuse of local addresses is supported.
-  SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
-    ## Multiple binding: load balancing on incoming TCP connections or UDP packets. (Requires Linux kernel > 3.9)
   SO_SNDBUF* {.importc, header: "<sys/socket.h>".}: cint
     ## Send buffer size.
   SO_SNDLOWAT* {.importc, header: "<sys/socket.h>".}: cint
@@ -1615,6 +1613,16 @@ else:
   var
     MAP_POPULATE*: cint = 0
 
+when defined(linux) or defined(nimdoc):
+  when defined(alpha) or defined(mips) or defined(parisc) or
+      defined(sparc) or defined(nimdoc):
+    const SO_REUSEPORT* = cint(0x0200)
+      ## Multiple binding: load balancing on incoming TCP connections
+      ## or UDP packets. (Requires Linux kernel > 3.9)
+  else:
+    const SO_REUSEPORT* = cint(15)
+else:
+  var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
@@ -2634,16 +2642,16 @@ proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
   ##
   ## For more information read http://www.unix.com/man-page/posix/3/utimes/.
 
-proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".} 
- 
-template onSignal*(signals: varargs[cint], body: untyped): stmt = 
-  ## Setup code to be executed when Unix signals are received. Example: 
-  ## from posix import SIGINT, SIGTERM 
-  ## onSignal(SIGINT, SIGTERM): 
-  ##   echo "bye" 
- 
-  for s in signals: 
-    handle_signal(s, 
-      proc (sig: cint) {.noconv.} = 
-        body 
+proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
+
+template onSignal*(signals: varargs[cint], body: untyped): stmt =
+  ## Setup code to be executed when Unix signals are received. Example:
+  ## from posix import SIGINT, SIGTERM
+  ## onSignal(SIGINT, SIGTERM):
+  ##   echo "bye"
+
+  for s in signals:
+    handle_signal(s,
+      proc (sig: cint) {.noconv.} =
+        body
     )
