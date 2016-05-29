@@ -1621,6 +1621,10 @@ when defined(macosx):
     MSG_NOSIGNAL* = 0'i32
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
+elif defined(solaris):
+  # Solaris dont have MSG_NOSIGNAL
+  const
+    MSG_NOSIGNAL* = 0'i32
 else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
