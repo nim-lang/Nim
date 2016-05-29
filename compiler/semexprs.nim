@@ -717,6 +717,34 @@ proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
       initCandidate(c, result, t)
       matches(c, n, nOrig, result)
 
+proc bracketedMacro(n: PNode): PSym =
+  if n.len >= 1 and n[0].kind == nkSym:
+    result = n[0].sym
+    if result.kind notin {skMacro, skTemplate}:
+      result = nil
+
+proc semBracketedMacro(c: PContext; outer, inner: PNode; s: PSym;
+                       flags: TExprFlags): PNode =
+  # We received untransformed bracket expression coming from macroOrTmpl[].
+  # Transform it to macro or template call, where first come normal
+  # arguments, next come generic template arguments.
+  var sons = newSeq[PNode]()
+  sons.add inner.sons[0]
+  # Normal arguments:
+  for i in 1..<outer.len:
+    sons.add outer.sons[i]
+  # Generic template arguments from bracket expression:
+  for i in 1..<inner.len:
+    sons.add inner.sons[i]
+  shallowCopy(outer.sons, sons)
+  # FIXME: Shouldn't we check sfImmediate and call semDirectOp?
+  # However passing to semDirectOp doesn't work here.
+  case s.kind
+  of skMacro: result = semMacroExpr(c, outer, outer, s, flags)
+  of skTemplate: result = semTemplateExpr(c, outer, s, flags)
+  else: assert(false)
+  return
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   checkMinSonsLen(n, 1)
@@ -737,29 +765,10 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if t != nil and t.kind == tyVar:
       n.sons[0] = newDeref(n.sons[0])
     elif n.sons[0].kind == nkBracketExpr:
-      checkMinSonsLen(n.sons[0], 2)
-      # We received untransformed bracket expression coming from macroOrTmpl[].
-      # Transform it to macro or template call, where first come normal
-      # arguments, next come generic template arguments.
-      if n.sons[0].sons[0].kind == nkSym:
-        let s = n.sons[0].sons[0].sym
-        if s.kind in {skMacro, skTemplate}:
-          var sons = newSeq[PNode]()
-          sons.add n.sons[0].sons[0]
-          # Normal arguments:
-          for i in 1..<n.len:
-            sons.add n.sons[i]
-          # Generic template arguments from bracket expression:
-          for i in 1..<n.sons[0].len:
-            sons.add n.sons[0].sons[i]
-          n.sons = sons
-          # FIXME: Shouldn't we check sfImmediate and call semDirectOp?
-          # However passing to semDirectOp doesn't work here.
-          case s.kind
-          of skMacro: result = semMacroExpr(c, n, n, s, flags)
-          of skTemplate: result = semTemplateExpr(c, n, s, flags)
-          else: discard
-          return
+      let s = bracketedMacro(n.sons[0])
+      if s != nil:
+        return semBracketedMacro(c, n, n.sons[0], s, flags)
+
   let nOrig = n.copyTree
   semOpAux(c, n)
   var t: PType = nil
@@ -1274,26 +1283,30 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let s = if n.sons[0].kind == nkSym: n.sons[0].sym
             elif n[0].kind in nkSymChoices: n.sons[0][0].sym
             else: nil
-    if s != nil and s.kind in {skProc, skMethod, skConverter, skIterator}:
-      # type parameters: partial generic specialization
-      n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
-      result = explicitGenericInstantiation(c, n, s)
-    elif s != nil and s.kind in {skMacro, skTemplate}:
-      if efInCall in flags:
-        # We are processing macroOrTmpl[] in macroOrTmpl[](...) call.
-        # Return as is, so it can be transformed into complete macro or
-        # template call in semIndirectOp caller.
-        result = n
+    if s != nil:
+      case s.kind
+      of skProc, skMethod, skConverter, skIterator:
+        # type parameters: partial generic specialization
+        n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
+        result = explicitGenericInstantiation(c, n, s)
+      of skMacro, skTemplate:
+        if efInCall in flags:
+          # We are processing macroOrTmpl[] in macroOrTmpl[](...) call.
+          # Return as is, so it can be transformed into complete macro or
+          # template call in semIndirectOp caller.
+          result = n
+        else:
+          # We are processing macroOrTmpl[] not in call. Transform it to the
+          # macro or template call with generic arguments here.
+          n.kind = nkCall
+          case s.kind
+          of skMacro: result = semMacroExpr(c, n, n, s, flags)
+          of skTemplate: result = semTemplateExpr(c, n, s, flags)
+          else: discard
+      of skType:
+        result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
       else:
-        # We are processing macroOrTmpl[] not in call. Transform it to the
-        # macro or template call with generic arguments here.
-        n.kind = nkCall
-        case s.kind
-        of skMacro: result = semMacroExpr(c, n, n, s, flags)
-        of skTemplate: result = semTemplateExpr(c, n, s, flags)
-        else: discard
-    elif s != nil and s.kind == skType:
-      result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
+        c.p.bracketExpr = n.sons[0]
     else:
       c.p.bracketExpr = n.sons[0]
 
