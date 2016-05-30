@@ -26,7 +26,7 @@ test "unittest multiple requires":
   require(true)
 
 
-import math
+import math, random
 from strutils import parseInt
 proc defectiveRobot() =
   randomize()

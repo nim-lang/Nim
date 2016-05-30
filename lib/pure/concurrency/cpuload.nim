@@ -79,6 +79,8 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
   inc s.calls
 
 when not defined(testing) and isMainModule:
+  import random
+
   proc busyLoop() =
     while true:
       discard random(80)

@@ -310,7 +310,7 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
   ##
   ## .. code-block:: nim
   ##
-  ##  import math
+  ##  import math, random
   ##  proc defectiveRobot() =
   ##    randomize()
   ##    case random(1..4)

@@ -69,6 +69,14 @@ proc random*(max: float): float {.benign.} =
   let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
   result = (cast[float](u) - 1.0) * max
 
+proc random*[T](x: Slice[T]): T =
+  ## For a slice `a .. b` returns a value in the range `a .. b-1`.
+  result = random(x.b - x.a) + x.a
+
+proc random*[T](a: openArray[T]): T =
+  ## returns a random element from the openarray `a`.
+  result = a[random(a.low..a.len)]
+
 proc randomize*(seed: int) {.benign.} =
   ## Initializes the random number generator with a specific seed.
   state.a0 = uint64(seed shr 16)
@@ -84,3 +92,18 @@ when not defined(nimscript):
     randomize(int times.getTime())
 
 {.pop.}
+
+when isMainModule:
+  proc main =
+    var occur: array[1000, int]
+
+    var x = 8234
+    for i in 0..100_000:
+      x = random(len(occur)) # myrand(x)
+      inc occur[x]
+    for i, oc in occur:
+      if oc < 69:
+        doAssert false, "too few occurances of " & $i
+      elif oc > 130:
+        doAssert false, "too many occurances of " & $i
+  main()
