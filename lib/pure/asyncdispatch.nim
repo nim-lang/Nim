@@ -355,6 +355,28 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
   return retFuture
 
+proc all*[A](futs: seq[Future[A]]): Future[seq[A]] =
+  ## Returns a future which will complete once all futures in ``futs``
+  ## complete.
+  ##
+  ## The resulting future will hold the values of all awaited futures,
+  ## in the order they are passed.
+
+  var
+    retFuture = newFuture[seq[A]]("asyncdispatch.all")
+    retValues = newSeq[A](len(futs))
+    completedFutures = 0
+
+  for i, fut in futs:
+    fut.callback = proc(f: Future[A]) =
+      retValues[i] = f.read()
+      inc(completedFutures)
+
+      if completedFutures == len(futs):
+        retFuture.complete(retValues)
+
+  return retFuture
+
 type
   PDispatcherBase = ref object of RootRef
     timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
@@ -1620,7 +1642,7 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
       return
     add(result, c)
 
-proc callSoon*(cbproc: proc ()) = 
+proc callSoon*(cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
   getGlobalDispatcher().callbacks.enqueue(cbproc)
