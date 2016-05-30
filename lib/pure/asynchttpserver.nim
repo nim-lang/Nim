@@ -219,20 +219,20 @@ proc processClient(client: AsyncSocket, address: string,
         else:
           await client.sendStatus("417 Expectation Failed")
 
-      # Read the body
-      # - Check for Content-length header
-      if request.headers.hasKey("Content-Length"):
-        var contentLength = 0
-        if parseInt(request.headers.getOrDefault("Content-Length"),
-                    contentLength) == 0:
-          await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-          continue
-        else:
-          request.body = await client.recv(contentLength)
-          assert request.body.len == contentLength
-      else:
-        await request.respond(Http400, "Bad Request. No Content-Length.")
+    # Read the body
+    # - Check for Content-length header
+    if request.headers.hasKey("Content-Length"):
+      var contentLength = 0
+      if parseInt(request.headers.getOrDefault("Content-Length"),
+                  contentLength) == 0:
+        await request.respond(Http400, "Bad Request. Invalid Content-Length.")
         continue
+      else:
+        request.body = await client.recv(contentLength)
+        assert request.body.len == contentLength
+    else:
+      await request.respond(Http400, "Bad Request. No Content-Length.")
+      continue
 
     case request.reqMethod
     of "get", "post", "head", "put", "delete", "trace", "options",
