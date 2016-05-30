@@ -269,6 +269,8 @@ proc processPath(path: string, info: TLineInfo,
       "config", info.toFullPath().splitFile().dir,
       "projectname", options.gProjectName,
       "projectpath", options.gProjectPath])
+    if '~' in result:
+      result = result.replace("~", os.getHomeDir())
   except ValueError:
     localError(info, "invalid path: " & p)
     result = p
