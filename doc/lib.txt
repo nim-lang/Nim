@@ -202,6 +202,9 @@ Math libraries
 * `mersenne <mersenne.html>`_
   Mersenne twister random number generator.
 
+* `random <random.html>`_
+  Fast and tiny random number generator.
+
 * `stats <stats.html>`_
   Statistical analysis
 
