@@ -29,21 +29,17 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
       of nnkExprColonExpr:
         identDefs.add ident[0]
         identDefs.add ident[1]
-      of nnkIdent:
+      else:
         identDefs.add newIdentNode("i" & $i)
         identDefs.add(ident)
-      else:
-        error("Incorrect type list in proc type declaration.")
       identDefs.add newEmptyNode()
       formalParams.add identDefs
-  of nnkIdent:
+  else:
     var identDefs = newNimNode(nnkIdentDefs)
     identDefs.add newIdentNode("i0")
     identDefs.add(p)
     identDefs.add newEmptyNode()
     formalParams.add identDefs
-  else:
-    error("Incorrect type list in proc type declaration.")
 
   result.add formalParams
   result.add newEmptyNode()
