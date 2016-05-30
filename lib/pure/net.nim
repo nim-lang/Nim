@@ -583,7 +583,7 @@ proc connect*(socket: Socket, address: string,
       let ret = SSLConnect(socket.sslHandle)
       socketError(socket, ret)
 
-when defined(posix):
+when defined(posix) or defined(nimdoc):
   proc makeUnixAddr(path: string): Sockaddr_un =
     result.sun_family = AF_UNIX.toInt
     if path.len >= Sockaddr_un_path_length:
@@ -592,6 +592,7 @@ when defined(posix):
 
   proc connectUnix*(socket: Socket, path: string) =
     ## Connects to Unix socket on `path`.
+    ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     var socketAddr = makeUnixAddr(path)
     if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
                       sizeof(socketAddr).Socklen) != 0'i32:
@@ -599,6 +600,7 @@ when defined(posix):
 
   proc bindUnix*(socket: Socket, path: string) =
     ## Binds Unix socket to `path`.
+    ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     var socketAddr = makeUnixAddr(path)
     if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
                           sizeof(socketAddr).Socklen) != 0'i32:
