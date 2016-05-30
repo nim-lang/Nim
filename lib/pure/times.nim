@@ -64,7 +64,7 @@ when defined(posix) and not defined(JS):
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
-  when not defined(freebsd) and not defined(netbsd):
+  when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
   var  
     tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
@@ -417,7 +417,7 @@ when not defined(JS):
 
 when not defined(JS):
   # C wrapper:
-  when defined(freebsd) or defined(netbsd):
+  when defined(freebsd) or defined(netbsd) or defined(openbsd):
     type
       StructTM {.importc: "struct tm", final.} = object
         second {.importc: "tm_sec".},
@@ -472,7 +472,7 @@ when not defined(JS):
     const
       weekDays: array [0..6, WeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-    when defined(freebsd) or defined(netbsd):
+    when defined(freebsd) or defined(netbsd) or defined(openbsd):
       TimeInfo(second: int(tm.second),
         minute: int(tm.minute),
         hour: int(tm.hour),
@@ -602,7 +602,7 @@ when not defined(JS):
     return ($tzname[0], $tzname[1])
 
   proc getTimezone(): int =
-    when defined(freebsd) or defined(netbsd):
+    when defined(freebsd) or defined(netbsd) or defined(openbsd):
       var a = timec(nil)
       let lt = localtime(addr(a))
       # BSD stores in `gmtoff` offset east of UTC in seconds,
