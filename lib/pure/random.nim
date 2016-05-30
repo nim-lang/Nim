@@ -12,21 +12,30 @@
 ## | http://xoroshiro.di.unimi.it/xoroshiro128plus.c
 
 include "system/inclrtl"
-{.push debugger:off .} # the user does not want to trace a part
-                       # of the standard library!
+{.push debugger:off.}
 
 # XXX Expose RandomGenState
+when defined(JS):
+  type ui = uint32
+else:
+  type ui = uint64
+
 type
   RandomGenState = object
-    a0, a1: uint64
+    a0, a1: ui
 
-# racy for multi-threading but good enough for now:
-var state = RandomGenState(
-  a0: 0x69B4C98CB8530805u64,
-  a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
+when defined(JS):
+  var state = RandomGenState(
+    a0: 0x69B4C98Cu32,
+    a1: 0xFED1DD30u32) # global for backwards compatibility
+else:
+  # racy for multi-threading but good enough for now:
+  var state = RandomGenState(
+    a0: 0x69B4C98CB8530805u64,
+    a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
 
-proc rotl(x: uint64, k: uint64): uint64 =
-  result = (x shl k) or (x shr (64u64 - k))
+proc rotl(x, k: ui): ui =
+  result = (x shl k) or (x shr (ui(64) - k))
 
 proc next(s: var RandomGenState): uint64 =
   let s0 = s.a0
@@ -40,13 +49,16 @@ proc skipRandomNumbers(s: var RandomGenState) =
   ## This is the jump function for the generator. It is equivalent
   ## to 2^64 calls to next(); it can be used to generate 2^64
   ## non-overlapping subsequences for parallel computations.
-  const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
+  when defined(JS):
+    const helper = [0xbeac0467u32, 0xd86b048bu32]
+  else:
+    const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
   var
-    s0 = 0u64
-    s1 = 0u64
+    s0 = ui 0
+    s1 = ui 0
   for i in 0..high(helper):
     for b in 0..< 64:
-      if (helper[i] and (1u64 shl uint64(b))) != 0:
+      if (helper[i] and (ui(1) shl ui(b))) != 0:
         s0 = s0 xor s.a0
         s1 = s1 xor s.a1
       discard next(s)
@@ -66,8 +78,11 @@ proc random*(max: float): float {.benign.} =
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
   let x = next(state)
-  let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
-  result = (cast[float](u) - 1.0) * max
+  when defined(JS):
+    result = (float(x) / float(high(uint32))) * max
+  else:
+    let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
+    result = (cast[float](u) - 1.0) * max
 
 proc random*[T](x: Slice[T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
@@ -79,17 +94,20 @@ proc random*[T](a: openArray[T]): T =
 
 proc randomize*(seed: int) {.benign.} =
   ## Initializes the random number generator with a specific seed.
-  state.a0 = uint64(seed shr 16)
-  state.a1 = uint64(seed and 0xffff)
+  state.a0 = ui(seed shr 16)
+  state.a1 = ui(seed and 0xffff)
 
 when not defined(nimscript):
   import times
 
   proc randomize*() {.benign.} =
     ## Initializes the random number generator with a "random"
-    ## number, i.e. a tickcount. Note: Does nothing for the JavaScript target,
-    ## as JavaScript does not support this. Nor does it work for NimScript.
-    randomize(int times.getTime())
+    ## number, i.e. a tickcount. Note: Does not work for NimScript.
+    when defined(JS):
+      proc getMil(t: Time): int {.importcpp: "getTime", nodecl.}
+      randomize(getMil times.getTime())
+    else:
+      randomize(int times.getTime())
 
 {.pop.}
 
