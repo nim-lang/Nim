@@ -64,8 +64,9 @@ when defined(posix) and not defined(JS):
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
-  var
-    timezone {.importc, header: "<time.h>".}: int
+  when not defined(freebsd) and not defined(netbsd):
+    var timezone {.importc, header: "<time.h>".}: int
+  var  
     tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
   # we also need tzset() to make sure that tzname is initialized
   proc tzset() {.importc, header: "<time.h>".}
@@ -416,18 +417,32 @@ when not defined(JS):
 
 when not defined(JS):
   # C wrapper:
+  when defined(freebsd) or defined(netbsd):
+    type
+      StructTM {.importc: "struct tm", final.} = object
+        second {.importc: "tm_sec".},
+          minute {.importc: "tm_min".},
+          hour {.importc: "tm_hour".},
+          monthday {.importc: "tm_mday".},
+          month {.importc: "tm_mon".},
+          year {.importc: "tm_year".},
+          weekday {.importc: "tm_wday".},
+          yearday {.importc: "tm_yday".},
+          isdst {.importc: "tm_isdst".}: cint
+        gmtoff {.importc: "tm_gmtoff".}: clong
+  else:
+    type
+      StructTM {.importc: "struct tm", final.} = object
+        second {.importc: "tm_sec".},
+          minute {.importc: "tm_min".},
+          hour {.importc: "tm_hour".},
+          monthday {.importc: "tm_mday".},
+          month {.importc: "tm_mon".},
+          year {.importc: "tm_year".},
+          weekday {.importc: "tm_wday".},
+          yearday {.importc: "tm_yday".},
+          isdst {.importc: "tm_isdst".}: cint
   type
-    StructTM {.importc: "struct tm", final.} = object
-      second {.importc: "tm_sec".},
-        minute {.importc: "tm_min".},
-        hour {.importc: "tm_hour".},
-        monthday {.importc: "tm_mday".},
-        month {.importc: "tm_mon".},
-        year {.importc: "tm_year".},
-        weekday {.importc: "tm_wday".},
-        yearday {.importc: "tm_yday".},
-        isdst {.importc: "tm_isdst".}: cint
-
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
 
@@ -457,24 +472,47 @@ when not defined(JS):
     const
       weekDays: array [0..6, WeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-    TimeInfo(second: int(tm.second),
-      minute: int(tm.minute),
-      hour: int(tm.hour),
-      monthday: int(tm.monthday),
-      month: Month(tm.month),
-      year: tm.year + 1900'i32,
-      weekday: weekDays[int(tm.weekday)],
-      yearday: int(tm.yearday),
-      isDST: tm.isdst > 0,
-      tzname: if local:
-          if tm.isdst > 0:
-            getTzname().DST
+    when defined(freebsd) or defined(netbsd):
+      TimeInfo(second: int(tm.second),
+        minute: int(tm.minute),
+        hour: int(tm.hour),
+        monthday: int(tm.monthday),
+        month: Month(tm.month),
+        year: tm.year + 1900'i32,
+        weekday: weekDays[int(tm.weekday)],
+        yearday: int(tm.yearday),
+        isDST: tm.isdst > 0,
+        tzname: if local:
+            if tm.isdst > 0:
+              getTzname().DST
+            else:
+              getTzname().nonDST
           else:
-            getTzname().nonDST
-        else:
-          "UTC",
-      timezone: if local: getTimezone() else: 0
-    )
+            "UTC",
+        # BSD stores in `gmtoff` offset east of UTC in seconds,
+        # but posix systems using west of UTC in seconds
+        timezone: if local: -(tm.gmtoff) else: 0
+      )
+    else:
+      TimeInfo(second: int(tm.second),
+        minute: int(tm.minute),
+        hour: int(tm.hour),
+        monthday: int(tm.monthday),
+        month: Month(tm.month),
+        year: tm.year + 1900'i32,
+        weekday: weekDays[int(tm.weekday)],
+        yearday: int(tm.yearday),
+        isDST: tm.isdst > 0,
+        tzname: if local:
+            if tm.isdst > 0:
+              getTzname().DST
+            else:
+              getTzname().nonDST
+          else:
+            "UTC",
+        timezone: if local: getTimezone() else: 0
+      )
+
 
   proc timeInfoToTM(t: TimeInfo): StructTM =
     const
@@ -564,7 +602,14 @@ when not defined(JS):
     return ($tzname[0], $tzname[1])
 
   proc getTimezone(): int =
-    return timezone
+    when defined(freebsd) or defined(netbsd):
+      var a = timec(nil)
+      let lt = localtime(addr(a))
+      # BSD stores in `gmtoff` offset east of UTC in seconds,
+      # but posix systems using west of UTC in seconds
+      return -(lt.gmtoff)
+    else:
+      return timezone
 
   proc fromSeconds(since1970: float): Time = Time(since1970)
 
