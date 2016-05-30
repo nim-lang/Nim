@@ -694,7 +694,7 @@ branch switch ``system.reset`` has to be used.
 Set type
 --------
 
-.. include:: sets_fragment.txt
+.. include:: ../sets_fragment.txt
 
 Reference and pointer types
 ---------------------------

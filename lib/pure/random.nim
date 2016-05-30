@@ -7,9 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## | Nim's standard random number generator. Based on
-## | http://xoroshiro.di.unimi.it/
-## | http://xoroshiro.di.unimi.it/xoroshiro128plus.c
+##[Nim's standard random number generator. Based on
+
+| `http://xoroshiro.di.unimi.it/`_
+| `http://xoroshiro.di.unimi.it/xoroshiro128plus.c`_
+]##
 
 include "system/inclrtl"
 {.push debugger:off.}

@@ -34,7 +34,7 @@
 ## document.
 ##
 ## .. code-block:: nim
-##     :file: examples/htmltitle.nim
+##     :file: ../../examples/htmltitle.nim
 ##
 ##
 ## Example 2: Retrieve all HTML links
@@ -45,7 +45,7 @@
 ## an HTML document contains.
 ##
 ## .. code-block:: nim
-##     :file: examples/htmlrefs.nim
+##     :file: ../../examples/htmlrefs.nim
 ##
 
 import

@@ -119,6 +119,6 @@ Grammar
 
 The grammar's start symbol is ``module``.
 
-.. include:: grammar.txt
+.. include:: ../grammar.txt
    :literal:
 

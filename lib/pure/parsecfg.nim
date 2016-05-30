@@ -15,21 +15,21 @@
 
 ## This is an example of how a configuration file may look like:
 ##
-## .. include:: doc/mytest.cfg
+## .. include:: ../../doc/mytest.cfg
 ##     :literal:
 ## The file ``examples/parsecfgex.nim`` demonstrates how to use the
 ## configuration file parser:
 ##
 ## .. code-block:: nim
-##     :file: examples/parsecfgex.nim
-## 
+##     :file: ../../examples/parsecfgex.nim
+##
 ## Examples
 ## --------
 ##
 ## This is an example of a configuration file.
-## 
-## .. include:: config.ini
-## 
+##
+## ::
+##
 ##     charset = "utf-8"
 ##     [Package]
 ##     name = "hello"
@@ -38,11 +38,11 @@
 ##     name = "lihf8515"
 ##     qq = "10214028"
 ##     email = "lihaifeng@wxm.com"
-## 
+##
 ## Creating a configuration file.
 ## ==============================
 ## .. code-block:: nim
-## 
+##
 ##     import parsecfg
 ##     var dict=newConfig()
 ##     dict.setSectionKey("","charset","utf-8")
@@ -52,7 +52,7 @@
 ##     dict.setSectionKey("Author","qq","10214028")
 ##     dict.setSectionKey("Author","email","lihaifeng@wxm.com")
 ##     dict.writeConfig("config.ini")
-## 
+##
 ## Reading a configuration file.
 ## =============================
 ## .. code-block:: nim
@@ -66,11 +66,11 @@
 ##     var qq = dict.getSectionValue("Author","qq")
 ##     var email = dict.getSectionValue("Author","email")
 ##     echo pname & "\n" & name & "\n" & qq & "\n" & email
-## 
+##
 ## Modifying a configuration file.
 ## ===============================
 ## .. code-block:: nim
-## 
+##
 ##     import parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     dict.setSectionKey("Author","name","lhf")
@@ -79,7 +79,7 @@
 ## Deleting a section key in a configuration file.
 ## ===============================================
 ## .. code-block:: nim
-## 
+##
 ##     import parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     dict.delSectionKey("Author","email")
@@ -434,7 +434,7 @@ proc loadConfig*(filename: string): Config =
   ## Load the specified configuration file into a new Config instance.
   var dict = newOrderedTable[string, OrderedTableRef[string, string]]()
   var curSection = "" ## Current section,
-                      ## the default value of the current section is "", 
+                      ## the default value of the current section is "",
                       ## which means that the current section is a common
   var p: CfgParser
   var fileStream = newFileStream(filename, fmRead)
