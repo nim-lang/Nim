@@ -363,7 +363,7 @@ proc all*[T](futs: varargs[Future[T]]): Future[seq[T]] =
   ## in the order they are passed.
 
   var
-    retFuture = newFuture[seq[A]]("asyncdispatch.all")
+    retFuture = newFuture[seq[T]]("asyncdispatch.all")
     retValues = newSeq[T](len(futs))
     completedFutures = 0
 
