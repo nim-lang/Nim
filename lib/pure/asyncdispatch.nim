@@ -9,7 +9,7 @@
 
 include "system/inclrtl"
 
-import os, oids, tables, strutils, macros, times, heapqueue, sequtils
+import os, oids, tables, strutils, macros, times, heapqueue
 
 import nativesockets, net, queues
 
@@ -363,7 +363,23 @@ proc all*[T](futs: varargs[Future[T]]): auto =
   ## in the order they are passed.
 
   when T is void:
-    return foldl(futs, a and b)
+    var
+      retFuture = newFuture[void]("asyncdispatch.all")
+      completedFutures = 0
+
+    let totalFutures = len(futs)
+
+    for i, fut in futs:
+      proc setCallback(i: int) =
+        fut.callback = proc(f: Future[T]) =
+          inc(completedFutures)
+
+          if completedFutures == totalFutures:
+            retFuture.complete()
+
+      setCallback(i)
+
+    return retFuture
 
   else:
     var
