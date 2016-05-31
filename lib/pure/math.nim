@@ -247,7 +247,7 @@ else:
 
   proc exp*(x: float32): float32 {.importc: "Math.exp", nodecl.}
   proc exp*(x: float64): float64 {.importc: "Math.exp", nodecl.}
-  proc round0*(x: float): float {.importc: "Math.round", nodecl.}
+  proc round0(x: float): float {.importc: "Math.round", nodecl.}
 
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
   proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
