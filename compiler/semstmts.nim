@@ -1339,7 +1339,8 @@ proc finishMethod(c: PContext, s: PSym) =
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
-
+  # macros can transform methods to nothing:
+  if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   if not isGenericRoutine(s):
     # why check for the body? bug #2400 has none. Checking for sfForward makes
@@ -1354,6 +1355,8 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "converter")
   checkSonsLen(n, bodyPos + 1)
   result = semProcAux(c, n, skConverter, converterPragmas)
+  # macros can transform converters to nothing:
+  if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "converter")
@@ -1363,6 +1366,8 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
 proc semMacroDef(c: PContext, n: PNode): PNode =
   checkSonsLen(n, bodyPos + 1)
   result = semProcAux(c, n, skMacro, macroPragmas)
+  # macros can transform macros to nothing:
+  if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "macro")
