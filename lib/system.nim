@@ -2296,12 +2296,15 @@ proc `$`*[T: tuple|object](x: T): string =
     if not firstElement: result.add(", ")
     result.add(name)
     result.add(": ")
-    when compiles(value.isNil):
-      if value.isNil: result.add "nil"
-      else: result.add($value)
+    when compiles($value):
+      when compiles(value.isNil):
+        if value.isNil: result.add "nil"
+        else: result.add($value)
+      else:
+        result.add($value)
+      firstElement = false
     else:
-      result.add($value)
-    firstElement = false
+      result.add("...")
   result.add(")")
 
 proc collectionToString[T: set | seq](x: T, b, e: string): string =
