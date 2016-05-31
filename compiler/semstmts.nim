@@ -536,7 +536,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       localError(a.sons[2].info, errConstExprExpected)
       continue
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
-      localError(a.info, errXisNoType, typeToString(typ))
+      localError(a.info, "invalid type for const: " & typeToString(typ))
       continue
     v.typ = typ
     v.ast = def               # no need to copy
