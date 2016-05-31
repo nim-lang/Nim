@@ -712,7 +712,11 @@ proc gproc(g: var TSrcGen, n: PNode) =
     gpattern(g, n.sons[patternPos])
   let oldCheckAnon = g.checkAnon
   g.checkAnon = true
-  gsub(g, n.sons[genericParamsPos])
+  if renderNoBody in g.flags and n[miscPos].kind != nkEmpty and
+      n[miscPos][1].kind != nkEmpty:
+    gsub(g, n[miscPos][1])
+  else:
+    gsub(g, n.sons[genericParamsPos])
   g.checkAnon = oldCheckAnon
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])

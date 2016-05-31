@@ -2514,7 +2514,7 @@ template newException*(exceptn: typedesc, message: string): expr =
   e
 
 when hostOS == "standalone":
-  include panicoverride
+  include "$projectpath/panicoverride"
 
 when not declared(sysFatal):
   when hostOS == "standalone":

@@ -657,7 +657,7 @@ template newSeqWith*(len: int, init: expr): expr =
   ##   seq2D[1][0] = true
   ##   seq2D[0][1] = true
   ##
-  ##   import math
+  ##   import random
   ##   var seqRand = newSeqWith(20, random(10))
   ##   echo seqRand
   var result {.gensym.} = newSeq[type(init)](len)

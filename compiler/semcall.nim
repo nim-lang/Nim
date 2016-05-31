@@ -129,7 +129,11 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   add(result, ')')
   var candidates = ""
   for err in errors:
-    add(candidates, err.getProcHeader(prefer))
+    if err.kind in routineKinds and err.ast != nil:
+      add(candidates, renderTree(err.ast,
+            {renderNoBody, renderNoComments,renderNoPragmas}))
+    else:
+      add(candidates, err.getProcHeader(prefer))
     add(candidates, "\n")
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)

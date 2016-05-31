@@ -262,13 +262,7 @@ proc processPath(path: string, info: TLineInfo,
           else:
             options.gProjectPath / path
   try:
-    result = unixToNativePath(p % ["nimrod", getPrefixDir(),
-      "nim", getPrefixDir(),
-      "lib", libpath,
-      "home", removeTrailingDirSep(os.getHomeDir()),
-      "config", info.toFullPath().splitFile().dir,
-      "projectname", options.gProjectName,
-      "projectpath", options.gProjectPath])
+    result = pathSubs(p, info.toFullPath().splitFile().dir)
   except ValueError:
     localError(info, "invalid path: " & p)
     result = p
@@ -322,6 +316,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)
     options.gNoNimblePath = true
+    options.lazyPaths.head = nil
+    options.lazyPaths.tail = nil
+    options.lazyPaths.counter = 0
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg, info)

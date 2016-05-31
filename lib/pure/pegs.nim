@@ -12,7 +12,7 @@
 ## Matching performance is hopefully competitive with optimized regular
 ## expression engines.
 ##
-## .. include:: ../doc/pegdocs.txt
+## .. include:: ../../doc/pegdocs.txt
 ##
 
 include "system/inclrtl"

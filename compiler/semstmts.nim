@@ -929,6 +929,17 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
     return
 
+proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
+  let orig = n.sons[genericParamsPos]
+  # we keep the original params around for better error messages, see
+  # issue https://github.com/nim-lang/Nim/issues/1713
+  result = semGenericParamList(c, orig)
+  if n.sons[miscPos].kind == nkEmpty:
+    n.sons[miscPos] = newTree(nkBracket, ast.emptyNode, orig)
+  else:
+    n.sons[miscPos].sons[1] = orig
+  n.sons[genericParamsPos] = result
+
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # XXX semProcAux should be good enough for this now, we will eventually
   # remove semLambda
@@ -947,8 +958,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   openScope(c)
   var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty:
-    n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
-    gp = n.sons[genericParamsPos]
+    gp = setGenericParamsMisc(c, n)
   else:
     gp = newNodeI(nkGenericParams, n.info)
 
@@ -1170,8 +1180,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   openScope(c)
   var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty:
-    n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
-    gp = n.sons[genericParamsPos]
+    gp = setGenericParamsMisc(c, n)
   else:
     gp = newNodeI(nkGenericParams, n.info)
   # process parameters:

@@ -12,7 +12,7 @@ include "system/inclrtl"
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
 
-## .. include:: ../doc/astspec.txt
+## .. include:: ../../doc/astspec.txt
 
 type
   NimNodeKind* = enum

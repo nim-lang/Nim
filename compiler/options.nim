@@ -242,6 +242,21 @@ proc getNimcacheDir*: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
 
+
+proc pathSubs*(p, config: string): string =
+  let home = removeTrailingDirSep(os.getHomeDir())
+  result = unixToNativePath(p % [
+    "nim", getPrefixDir(),
+    "lib", libpath,
+    "home", home,
+    "config", config,
+    "projectname", options.gProjectName,
+    "projectpath", options.gProjectPath,
+    "projectdir", options.gProjectPath,
+    "nimcache", getNimcacheDir()])
+  if '~' in result:
+    result = result.replace("~", home)
+
 template newPackageCache(): expr =
   newStringTable(when FileSystemCaseSensitive:
                    modeCaseInsensitive

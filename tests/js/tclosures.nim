@@ -2,7 +2,7 @@ discard """
   action: run
 """
 
-import math, strutils
+import math, random, strutils
 const consolePrefix = "jsCallbacks"
 
 asm """

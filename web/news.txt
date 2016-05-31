@@ -2,7 +2,7 @@
 News
 ====
 
-2016-XX-XX Version 0.13.1 released
+2016-XX-XX Version 0.14.0 released
 ==================================
 
 Changes affecting backwards compatibility
@@ -39,6 +39,12 @@ Changes affecting backwards compatibility
   you need that.
 - The ``json.%`` operator is now overloaded for ``object``, ``ref object`` and
   ``openarray[T]``.
+- The procs related to ``random`` number generation in ``math.nim`` have
+  been moved to its own ``random`` module and been reimplemented in pure
+  Nim.
+- The path handling changed. The project directory is not added to the
+  search path automatically anymore. Add this line to your project's
+  config to get back the old behaviour: ``--path:"$projectdir"``.
 
 
 Library Additions
@@ -64,10 +70,12 @@ Language Additions
 
 - Nim now supports a ``.this`` pragma for more notational convenience.
 - Nim now supports a different ``using`` statement for more convenience.
-- Nim now supports ``partial`` object declarations to mitigate the problems
-  that arise when types are mutually dependent and yet should be kept in
-  different modules.
 - ``include`` statements are not restricted to top level statements anymore.
+
+..
+  - Nim now supports ``partial`` object declarations to mitigate the problems
+    that arise when types are mutually dependent and yet should be kept in
+    different modules.
 
 
 2016-01-27 Nim in Action is now available!

@@ -242,7 +242,7 @@ proc mainCommand* =
   clearPasses()
   gLastCmdTime = epochTime()
   appendStr(searchPaths, options.libpath)
-  if gProjectFull.len != 0:
+  when false: # gProjectFull.len != 0:
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
   setId(100)

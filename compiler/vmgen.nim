@@ -1887,8 +1887,8 @@ proc optimizeJumps(c: PCtx; start: int) =
     else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
-  let x = s.ast.sons[optimizedCodePos]
-  if x.kind == nkEmpty:
+  var x = s.ast.sons[miscPos]
+  if x.kind == nkEmpty or x[0].kind == nkEmpty:
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
@@ -1899,7 +1899,11 @@ proc genProc(c: PCtx; s: PSym): int =
       c.debug.setLen(last)
     #c.removeLastEof
     result = c.code.len+1 # skip the jump instruction
-    s.ast.sons[optimizedCodePos] = newIntNode(nkIntLit, result)
+    if x.kind == nkEmpty:
+      x = newTree(nkBracket, newIntNode(nkIntLit, result), ast.emptyNode)
+    else:
+      x.sons[0] = newIntNode(nkIntLit, result)
+    s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
     let body = s.getBody
@@ -1934,4 +1938,4 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
-    result = x.intVal.int
+    result = x[0].intVal.int
