@@ -316,6 +316,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)
     options.gNoNimblePath = true
+    options.lazyPaths.head = nil
+    options.lazyPaths.tail = nil
+    options.lazyPaths.counter = 0
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg, info)
