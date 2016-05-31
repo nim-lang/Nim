@@ -489,7 +489,7 @@ proc leValueConv(a, b: PNode): bool =
   of nkCharLit..nkUInt64Lit:
     case b.kind
     of nkCharLit..nkUInt64Lit: result = a.intVal <= b.intVal
-    of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal)
+    of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal).int
     else: internalError(a.info, "leValueConv")
   of nkFloatLit..nkFloat128Lit:
     case b.kind
