@@ -355,7 +355,7 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
   return retFuture
 
-proc all*[A](futs: openarray[Future[A]]): Future[seq[A]] =
+proc all*[T](futs: varargs[Future[T]]): Future[seq[T]] =
   ## Returns a future which will complete once all futures in ``futs``
   ## complete.
   ##
@@ -364,12 +364,12 @@ proc all*[A](futs: openarray[Future[A]]): Future[seq[A]] =
 
   var
     retFuture = newFuture[seq[A]]("asyncdispatch.all")
-    retValues = newSeq[A](len(futs))
+    retValues = newSeq[T](len(futs))
     completedFutures = 0
 
   for i, fut in futs:
     proc setCallback(i: int) =
-      fut.callback = proc(f: Future[A]) =
+      fut.callback = proc(f: Future[T]) =
         retValues[i] = f.read()
         inc(completedFutures)
 
@@ -379,9 +379,6 @@ proc all*[A](futs: openarray[Future[A]]): Future[seq[A]] =
     setCallback(i)
 
   return retFuture
-
-proc all*[A](futs: varargs[Future[A]]): Future[seq[A]] =
-  return all(@futs)
 
 type
   PDispatcherBase = ref object of RootRef
