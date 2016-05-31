@@ -9,7 +9,7 @@
 
 include "system/inclrtl"
 
-import os, oids, tables, strutils, macros, times, heapqueue
+import os, oids, tables, strutils, macros, times, heapqueue, sequtils
 
 import nativesockets, net, queues
 
@@ -355,30 +355,34 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
   return retFuture
 
-proc all*[T](futs: varargs[Future[T]]): Future[seq[T]] =
+proc all*[T](futs: varargs[Future[T]]): auto =
   ## Returns a future which will complete once all futures in ``futs``
   ## complete.
   ##
   ## The resulting future will hold the values of all awaited futures,
   ## in the order they are passed.
 
-  var
-    retFuture = newFuture[seq[T]]("asyncdispatch.all")
-    retValues = newSeq[T](len(futs))
-    completedFutures = 0
+  when T is void:
+    return foldl(futs, a and b)
 
-  for i, fut in futs:
-    proc setCallback(i: int) =
-      fut.callback = proc(f: Future[T]) =
-        retValues[i] = f.read()
-        inc(completedFutures)
+  else:
+    var
+      retFuture = newFuture[seq[T]]("asyncdispatch.all")
+      retValues = newSeq[T](len(futs))
+      completedFutures = 0
 
-        if completedFutures == len(retValues):
-          retFuture.complete(retValues)
+    for i, fut in futs:
+      proc setCallback(i: int) =
+        fut.callback = proc(f: Future[T]) =
+          retValues[i] = f.read()
+          inc(completedFutures)
 
-    setCallback(i)
+          if completedFutures == len(retValues):
+            retFuture.complete(retValues)
 
-  return retFuture
+      setCallback(i)
+
+    return retFuture
 
 type
   PDispatcherBase = ref object of RootRef
