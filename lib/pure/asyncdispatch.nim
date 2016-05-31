@@ -355,7 +355,7 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
   return retFuture
 
-proc all*[A](futs: seq[Future[A]]): Future[seq[A]] =
+proc all*[A](futs: openarray[Future[A]]): Future[seq[A]] =
   ## Returns a future which will complete once all futures in ``futs``
   ## complete.
   ##
