@@ -368,12 +368,15 @@ proc all*[A](futs: openarray[Future[A]]): Future[seq[A]] =
     completedFutures = 0
 
   for i, fut in futs:
-    fut.callback = proc(f: Future[A]) =
-      retValues[i] = f.read()
-      inc(completedFutures)
+    proc setCallback(i: int) =
+      fut.callback = proc(f: Future[A]) =
+        retValues[i] = f.read()
+        inc(completedFutures)
 
-      if completedFutures == len(futs):
-        retFuture.complete(retValues)
+        if completedFutures == len(retValues):
+          retFuture.complete(retValues)
+
+    setCallback(i)
 
   return retFuture
 
