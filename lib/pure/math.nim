@@ -393,34 +393,34 @@ when isMainModule and not defined(JS):
   assert(erfc(6.0) < erfc(5.0))
 when isMainModule:
   # Function for approximate comparison of floats
-  proc floatIsEqual(x, y: float): bool = (abs(x-y) < 1e-9)
+  proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
 
   block: # round() tests
     # Round to 0 decimal places
-    doAssert floatIsEqual(round(54.652), 55.0)
-    doAssert floatIsEqual(round(54.352), 54.0)
-    doAssert floatIsEqual(round(-54.652), -55.0)
-    doAssert floatIsEqual(round(-54.352), -54.0)
-    doAssert floatIsEqual(round(0.0), 0.0)
+    doAssert round(54.652) ==~ 55.0
+    doAssert round(54.352) ==~ 54.0
+    doAssert round(-54.652) ==~ -55.0
+    doAssert round(-54.352) ==~ -54.0
+    doAssert round(0.0) ==~ 0.0
     # Round to positive decimal places
-    doAssert floatIsEqual(round(-547.652, 1), -547.7)
-    doAssert floatIsEqual(round(547.652, 1), 547.7)
-    doAssert floatIsEqual(round(-547.652, 2), -547.65)
-    doAssert floatIsEqual(round(547.652, 2), 547.65)
+    doAssert round(-547.652, 1) ==~ -547.7
+    doAssert round(547.652, 1) ==~ 547.7
+    doAssert round(-547.652, 2) ==~ -547.65
+    doAssert round(547.652, 2) ==~ 547.65
     # Round to negative decimal places
-    doAssert floatIsEqual(round(547.652, -1), 550.0)
-    doAssert floatIsEqual(round(547.652, -2), 500.0)
-    doAssert floatIsEqual(round(547.652, -3), 1000.0)
-    doAssert floatIsEqual(round(547.652, -4), 0.0)
-    doAssert floatIsEqual(round(-547.652, -1), -550.0)
-    doAssert floatIsEqual(round(-547.652, -2), -500.0)
-    doAssert floatIsEqual(round(-547.652, -3), -1000.0)
-    doAssert floatIsEqual(round(-547.652, -4), 0.0)
+    doAssert round(547.652, -1) ==~ 550.0
+    doAssert round(547.652, -2) ==~ 500.0
+    doAssert round(547.652, -3) ==~ 1000.0
+    doAssert round(547.652, -4) ==~ 0.0
+    doAssert round(-547.652, -1) ==~ -550.0
+    doAssert round(-547.652, -2) ==~ -500.0
+    doAssert round(-547.652, -3) ==~ -1000.0
+    doAssert round(-547.652, -4) ==~ 0.0
 
   block: # splitDecimal() tests
-    doAssert floatIsEqual(splitDecimal(54.674).intpart, 54.0)
-    doAssert floatIsEqual(splitDecimal(54.674).floatpart, 0.674)
-    doAssert floatIsEqual(splitDecimal(-693.4356).intpart, -693.0)
-    doAssert floatIsEqual(splitDecimal(-693.4356).floatpart, -0.4356)
-    doAssert floatIsEqual(splitDecimal(0.0).intpart, 0.0)
-    doAssert floatIsEqual(splitDecimal(0.0).floatpart, 0.0)
+    doAssert splitDecimal(54.674).intpart ==~ 54.0
+    doAssert splitDecimal(54.674).floatpart ==~ 0.674
+    doAssert splitDecimal(-693.4356).intpart ==~ -693.0
+    doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
+    doAssert splitDecimal(0.0).intpart ==~ 0.0
+    doAssert splitDecimal(0.0).floatpart ==~ 0.0
