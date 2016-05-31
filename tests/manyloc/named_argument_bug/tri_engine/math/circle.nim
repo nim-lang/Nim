@@ -1,6 +1,6 @@
 import
-  tri_engine/config,
-  tri_engine/math/vec
+  ../config,
+  vec
 
 type
   TCircle* = tuple[p: TV2[TR], r: TR]

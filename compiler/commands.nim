@@ -262,15 +262,7 @@ proc processPath(path: string, info: TLineInfo,
           else:
             options.gProjectPath / path
   try:
-    result = unixToNativePath(p % ["nimrod", getPrefixDir(),
-      "nim", getPrefixDir(),
-      "lib", libpath,
-      "home", removeTrailingDirSep(os.getHomeDir()),
-      "config", info.toFullPath().splitFile().dir,
-      "projectname", options.gProjectName,
-      "projectpath", options.gProjectPath])
-    if '~' in result:
-      result = result.replace("~", os.getHomeDir())
+    result = pathSubs(p, info.toFullPath().splitFile().dir)
   except ValueError:
     localError(info, "invalid path: " & p)
     result = p

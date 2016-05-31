@@ -42,6 +42,9 @@ Changes affecting backwards compatibility
 - The procs related to ``random`` number generation in ``math.nim`` have
   been moved to its own ``random`` module and been reimplemented in pure
   Nim.
+- The path handling changed. The project directory is not added to the
+  search path automatically anymore. Add this line to your project's
+  config to get back the old behaviour: ``--path:"$projectdir"``.
 
 
 Library Additions
