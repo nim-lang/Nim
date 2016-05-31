@@ -116,7 +116,7 @@ operator characters instead.
 The following keywords are reserved and cannot be used as identifiers:
 
 .. code-block:: nim
-   :file: keywords.txt
+   :file: ../keywords.txt
 
 Some keywords are unused; they are reserved for future developments of the
 language.

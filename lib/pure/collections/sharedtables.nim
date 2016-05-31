@@ -45,6 +45,59 @@ template withLock(t, x: untyped) =
   x
   release(t.lock)
 
+template withValue*[A, B](t: var SharedTable[A, B], key: A,
+                          value, body: untyped) =
+  ## retrieves the value at ``t[key]``. 
+  ## `value` can be modified in the scope of the ``withValue`` call.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   sharedTable.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     # value is threadsafe in block
+  ##     value.name = "username" 
+  ##     value.uid = 1000
+  ##
+  acquire(t.lock)
+  try:
+    var hc: Hash
+    var index = rawGet(t, key, hc)
+    let hasKey = index >= 0
+    if hasKey:
+      var value {.inject.} = addr(t.data[index].val)
+      body
+  finally:
+    release(t.lock)
+
+template withValue*[A, B](t: var SharedTable[A, B], key: A,
+                          value, body1, body2: untyped) =
+  ## retrieves the value at ``t[key]``. 
+  ## `value` can be modified in the scope of the ``withValue`` call.
+  ## 
+  ## .. code-block:: nim
+  ##
+  ##   sharedTable.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     # value is threadsafe in block
+  ##     value.name = "username" 
+  ##     value.uid = 1000
+  ##   do:
+  ##     # block is executed when ``key`` not in ``t``
+  ##     raise newException(KeyError, "Key not found")
+  ##
+  acquire(t.lock)
+  try:
+    var hc: Hash
+    var index = rawGet(t, key, hc)
+    let hasKey = index >= 0
+    if hasKey:
+      var value {.inject.} = addr(t.data[index].val)
+      body1
+    else:
+      body2
+  finally:
+    release(t.lock)
+
 proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.

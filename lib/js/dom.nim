@@ -402,7 +402,9 @@ proc routeEvent*(w: Window, event: Event)
 proc scrollBy*(w: Window, x, y: int)
 proc scrollTo*(w: Window, x, y: int)
 proc setInterval*(w: Window, code: cstring, pause: int): ref TInterval
+proc setInterval*(w: Window, function: proc (), pause: int): ref TInterval
 proc setTimeout*(w: Window, code: cstring, pause: int): ref TTimeOut
+proc setTimeout*(w: Window, function: proc (), pause: int): ref TInterval
 proc stop*(w: Window)
 
 # Node "methods"
@@ -480,6 +482,9 @@ proc toggle*(c: ClassList, class: cstring)
 proc getAttribute*(s: Style, attr: cstring, caseSensitive=false): cstring
 proc removeAttribute*(s: Style, attr: cstring, caseSensitive=false)
 proc setAttribute*(s: Style, attr, value: cstring, caseSensitive=false)
+
+# Event "methods"
+proc preventDefault*(ev: Event)
 
 {.pop.}
 

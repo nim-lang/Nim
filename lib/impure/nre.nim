@@ -15,6 +15,8 @@ from math import ceil
 import options
 from unicode import runeLenAt
 
+export options
+
 
 ## What is NRE?
 ## ============
@@ -565,6 +567,16 @@ proc findAll*(str: string, pattern: Regex, start = 0, endpos = int.high): seq[st
   result = @[]
   for match in str.findIter(pattern, start, endpos):
     result.add(match.match)
+
+proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool =
+  ## Determine if the string contains the given pattern between the end and
+  ## start positions:
+  ## -  "abc".contains(re"bc") == true
+  ## -  "abc".contains(re"cd") == false
+  ## -  "abc".contains(re"a", start = 1) == false
+  ##
+  ## Same as ``isSome(str.find(pattern, start, endpos))``.
+  return isSome(str.find(pattern, start, endpos))
 
 proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] =
   ## Splits the string with the given regex. This works according to the

@@ -9,7 +9,7 @@
 
 ## Nim support for `substitution expressions`:idx: (`subex`:idx:).
 ##
-## .. include:: ../doc/subexes.txt
+## .. include:: ../../doc/subexes.txt
 ##
 
 {.push debugger:off .} # the user does not want to trace a part

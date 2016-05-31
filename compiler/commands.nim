@@ -213,6 +213,7 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "size": result = contains(gOptions, optOptimizeSize)
     of "none": result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
     else: localError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
+  of "verbosity": result = $gVerbosity == arg
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool =
@@ -253,20 +254,18 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "experimental": result = gExperimentalMode
   else: invalidCmdLineOption(passCmd1, switch, info)
 
-proc processPath(path: string, notRelativeToProj = false,
-                               cfginfo = unknownLineInfo()): string =
+proc processPath(path: string, info: TLineInfo,
+                 notRelativeToProj = false): string =
   let p = if notRelativeToProj or os.isAbsolute(path) or
               '$' in path or path[0] == '.':
             path
           else:
             options.gProjectPath / path
-  result = unixToNativePath(p % ["nimrod", getPrefixDir(),
-    "nim", getPrefixDir(),
-    "lib", libpath,
-    "home", removeTrailingDirSep(os.getHomeDir()),
-    "config", cfginfo.toFullPath().splitFile().dir,
-    "projectname", options.gProjectName,
-    "projectpath", options.gProjectPath])
+  try:
+    result = pathSubs(p, info.toFullPath().splitFile().dir)
+  except ValueError:
+    localError(info, "invalid path: " & p)
+    result = p
 
 proc trackDirty(arg: string, info: TLineInfo) =
   var a = arg.split(',')
@@ -307,19 +306,19 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   case switch.normalize
   of "path", "p":
     expectArg(switch, arg, pass, info)
-    addPath(processPath(arg, cfginfo=info), info)
+    addPath(processPath(arg, info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and not options.gNoNimblePath:
       expectArg(switch, arg, pass, info)
-      let path = processPath(arg, notRelativeToProj=true)
+      let path = processPath(arg, info, notRelativeToProj=true)
       nimblePath(path, info)
   of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)
     options.gNoNimblePath = true
   of "excludepath":
     expectArg(switch, arg, pass, info)
-    let path = processPath(arg)
+    let path = processPath(arg, info)
     lists.excludePath(options.searchPaths, path)
     lists.excludePath(options.lazyPaths, path)
     if (len(path) > 0) and (path[len(path) - 1] == DirSep):
@@ -328,7 +327,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       lists.excludePath(options.lazyPaths, strippedPath)
   of "nimcache":
     expectArg(switch, arg, pass, info)
-    options.nimcacheDir = processPath(arg, true)
+    options.nimcacheDir = processPath(arg, info, true)
   of "out", "o":
     expectArg(switch, arg, pass, info)
     options.outFile = arg
@@ -493,13 +492,13 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     if pass in {passCmd2, passPP}: extccomp.addLinkOption(arg)
   of "cincludes":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cIncludes.add arg.processPath
+    if pass in {passCmd2, passPP}: cIncludes.add arg.processPath(info)
   of "clibdir":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cLibs.add arg.processPath
+    if pass in {passCmd2, passPP}: cLibs.add arg.processPath(info)
   of "clib":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cLinkedLibs.add arg.processPath
+    if pass in {passCmd2, passPP}: cLinkedLibs.add arg.processPath(info)
   of "header":
     headerFile = arg
     incl(gGlobalOptions, optGenIndex)
@@ -572,7 +571,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "colors": processOnOffSwitchG({optUseColors}, arg, pass, info)
   of "lib":
     expectArg(switch, arg, pass, info)
-    libpath = processPath(arg, notRelativeToProj=true)
+    libpath = processPath(arg, info, notRelativeToProj=true)
   of "putenv":
     expectArg(switch, arg, pass, info)
     splitSwitch(arg, key, val, pass, info)

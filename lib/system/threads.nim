@@ -301,7 +301,7 @@ type
                                        ## a pointer as a thread ID.
 {.deprecated: [TThread: Thread, TThreadId: ThreadId].}
 
-when not defined(boehmgc) and not hasSharedHeap and not defined(gogc):
+when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
   proc deallocOsPages()
 
 when defined(boehmgc):
@@ -331,7 +331,7 @@ else:
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc):
+  elif not defined(nogc) and not defined(gogc) and not defined(gcstack):
     var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:

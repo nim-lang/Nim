@@ -87,7 +87,7 @@ Collections and algorithms
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
-  
+
 
 String handling
 ---------------
@@ -99,6 +99,9 @@ String handling
 
 * `parseutils <parseutils.html>`_
   This module contains helpers for parsing tokens, numbers, identifiers, etc.
+
+* `strscans <strscans.html>`_
+  This module contains a ``scanf`` macro for convenient parsing of mini languages.
 
 * `strtabs <strtabs.html>`_
   The ``strtabs`` module implements an efficient hash table that is a mapping
@@ -198,6 +201,9 @@ Math libraries
 
 * `mersenne <mersenne.html>`_
   Mersenne twister random number generator.
+
+* `random <random.html>`_
+  Fast and tiny random number generator.
 
 * `stats <stats.html>`_
   Statistical analysis

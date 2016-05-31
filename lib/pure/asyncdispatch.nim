@@ -11,7 +11,7 @@ include "system/inclrtl"
 
 import os, oids, tables, strutils, macros, times, heapqueue
 
-import nativesockets, net
+import nativesockets, net, queues
 
 export Port, SocketFlag
 
@@ -155,6 +155,9 @@ type
 
 when not defined(release):
   var currentID = 0
+
+proc callSoon*(cbproc: proc ()) {.gcsafe.}
+
 proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   ## Creates a new future.
   ##
@@ -257,7 +260,7 @@ proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
   ## passes ``future`` as a param to the callback.
   future.cb = cb
   if future.finished:
-    future.cb()
+    callSoon(future.cb)
 
 proc `callback=`*[T](future: Future[T],
     cb: proc (future: Future[T]) {.closure,gcsafe.}) =
@@ -352,13 +355,41 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
   return retFuture
 
+proc all*[A](futs: seq[Future[A]]): Future[seq[A]] =
+  ## Returns a future which will complete once all futures in ``futs``
+  ## complete.
+  ##
+  ## The resulting future will hold the values of all awaited futures,
+  ## in the order they are passed.
+
+  var
+    retFuture = newFuture[seq[A]]("asyncdispatch.all")
+    retValues = newSeq[A](len(futs))
+    completedFutures = 0
+
+  for i, fut in futs:
+    fut.callback = proc(f: Future[A]) =
+      retValues[i] = f.read()
+      inc(completedFutures)
+
+      if completedFutures == len(futs):
+        retFuture.complete(retValues)
+
+  return retFuture
+
 type
   PDispatcherBase = ref object of RootRef
     timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
+    callbacks: Queue[proc ()]
 
 proc processTimers(p: PDispatcherBase) {.inline.} =
   while p.timers.len > 0 and epochTime() >= p.timers[0].finishAt:
     p.timers.pop().fut.complete()
+
+proc processPendingCallbacks(p: PDispatcherBase) =
+  while p.callbacks.len > 0:
+    var cb = p.callbacks.dequeue()
+    cb()
 
 proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
   # If dispatcher has active timers this proc returns the timeout
@@ -403,6 +434,7 @@ when defined(windows) or defined(nimdoc):
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[AsyncFD]()
     result.timers.newHeapQueue()
+    result.callbacks = initQueue[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -429,7 +461,7 @@ when defined(windows) or defined(nimdoc):
   proc poll*(timeout = 500) =
     ## Waits for completion events and processes them.
     let p = getGlobalDispatcher()
-    if p.handles.len == 0 and p.timers.len == 0:
+    if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
@@ -469,6 +501,8 @@ when defined(windows) or defined(nimdoc):
 
     # Timer processing.
     processTimers(p)
+    # Callback queue processing
+    processPendingCallbacks(p)
 
   var connectExPtr: pointer = nil
   var acceptExPtr: pointer = nil
@@ -659,34 +693,16 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete("")
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete("")
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      var data = newString(realSize)
-      assert realSize <= size
-      copyMem(addr data[0], addr dataBuf.buf[0], realSize)
-      #dealloc dataBuf.buf
-      retFuture.complete($data)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+    elif ret == 0:
+      # Request completed immediately.
+      if bytesReceived != 0:
+        var data = newString(bytesReceived)
+        assert bytesReceived <= size
+        copyMem(addr data[0], addr dataBuf.buf[0], bytesReceived)
+        retFuture.complete($data)
+      else:
+        if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
+          retFuture.complete("")
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: cstring, size: int,
@@ -749,31 +765,14 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete(0)
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete(0)
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      assert realSize <= size
-      retFuture.complete(realSize)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+    elif ret == 0:
+      # Request completed immediately.
+      if bytesReceived != 0:
+        assert bytesReceived <= size
+        retFuture.complete(bytesReceived)
+      else:
+        if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
+          retFuture.complete(bytesReceived)
     return retFuture
 
   proc send*(socket: AsyncFD, data: string,
@@ -965,6 +964,7 @@ else:
     new result
     result.selector = newSelector()
     result.timers.newHeapQueue()
+    result.callbacks = initQueue[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -1060,7 +1060,10 @@ else:
         # (e.g. socket disconnected).
         discard
 
+    # Timer processing.
     processTimers(p)
+    # Callback queue processing
+    processPendingCallbacks(p)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
     domain = AF_INET): Future[void] =
@@ -1638,6 +1641,11 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
       addNLIfEmpty()
       return
     add(result, c)
+
+proc callSoon*(cbproc: proc ()) =
+  ## Schedule `cbproc` to be called as soon as possible.
+  ## The callback is called when control returns to the event loop.
+  getGlobalDispatcher().callbacks.enqueue(cbproc)
 
 proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.

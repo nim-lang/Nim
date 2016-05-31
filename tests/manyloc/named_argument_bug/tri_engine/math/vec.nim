@@ -1,6 +1,6 @@
 import
   macros,
-  tri_engine/config
+  "../config"
 
 type
   TV2*[T:SomeNumber=TR] = array[0..1, T]

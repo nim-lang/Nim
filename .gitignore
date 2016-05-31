@@ -10,6 +10,7 @@ nimcache/
 *.dylib
 *.zip
 *.iss
+*.log
 
 mapping.txt
 tags
@@ -42,3 +43,7 @@ xcuserdata/
 /testresults.json
 testament.db
 /csources
+
+# Private directories and files (IDEs)
+.*/
+~*

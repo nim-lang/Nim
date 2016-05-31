@@ -22,7 +22,11 @@ proc getModuleName*(n: PNode): string =
   # The proc won't perform any checks that the path is actually valid
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
-    result = unixToNativePath(n.strVal)
+    try:
+      result = pathSubs(n.strVal, n.info.toFullPath().splitFile().dir)
+    except ValueError:
+      localError(n.info, "invalid path: " & n.strVal)
+      result = n.strVal
   of nkIdent:
     result = n.ident.s
   of nkSym:

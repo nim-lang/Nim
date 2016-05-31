@@ -448,6 +448,14 @@ when hasSpawnH:
     Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
                                  header: "<spawn.h>", final, pure.} = object
 
+when defined(linux):
+  # from sys/un.h
+  const Sockaddr_un_path_length* = 108
+else:
+  # according to http://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
+  # this is >=92
+  const Sockaddr_un_path_length* = 92
+
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
@@ -456,6 +464,11 @@ type
               pure, final.} = object ## struct sockaddr
     sa_family*: TSa_Family         ## Address family.
     sa_data*: array [0..255, char] ## Socket address (variable-length data).
+
+  Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
+              pure, final.} = object ## struct sockaddr_un
+    sun_family*: TSa_Family         ## Address family.
+    sun_path*: array [0..Sockaddr_un_path_length-1, char] ## Socket path
 
   Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",
@@ -1613,6 +1626,16 @@ else:
   var
     MAP_POPULATE*: cint = 0
 
+when defined(linux) or defined(nimdoc):
+  when defined(alpha) or defined(mips) or defined(parisc) or
+      defined(sparc) or defined(nimdoc):
+    const SO_REUSEPORT* = cint(0x0200)
+      ## Multiple binding: load balancing on incoming TCP connections
+      ## or UDP packets. (Requires Linux kernel > 3.9)
+  else:
+    const SO_REUSEPORT* = cint(15)
+else:
+  var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
@@ -1621,6 +1644,10 @@ when defined(macosx):
     MSG_NOSIGNAL* = 0'i32
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
+elif defined(solaris):
+  # Solaris dont have MSG_NOSIGNAL
+  const
+    MSG_NOSIGNAL* = 0'i32
 else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
@@ -2628,16 +2655,16 @@ proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
   ##
   ## For more information read http://www.unix.com/man-page/posix/3/utimes/.
 
-proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".} 
- 
-template onSignal*(signals: varargs[cint], body: untyped): stmt = 
-  ## Setup code to be executed when Unix signals are received. Example: 
-  ## from posix import SIGINT, SIGTERM 
-  ## onSignal(SIGINT, SIGTERM): 
-  ##   echo "bye" 
- 
-  for s in signals: 
-    handle_signal(s, 
-      proc (sig: cint) {.noconv.} = 
-        body 
+proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
+
+template onSignal*(signals: varargs[cint], body: untyped): stmt =
+  ## Setup code to be executed when Unix signals are received. Example:
+  ## from posix import SIGINT, SIGTERM
+  ## onSignal(SIGINT, SIGTERM):
+  ##   echo "bye"
+
+  for s in signals:
+    handle_signal(s,
+      proc (sig: cint) {.noconv.} =
+        body
     )

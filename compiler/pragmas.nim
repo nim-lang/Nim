@@ -277,6 +277,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
 proc processNote(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (sonsLen(n) == 2) and
       (n.sons[0].kind == nkBracketExpr) and
+      (n.sons[0].sons.len == 2) and
       (n.sons[0].sons[1].kind == nkIdent) and
       (n.sons[0].sons[0].kind == nkIdent):
       #and (n.sons[1].kind == nkIdent):
@@ -392,21 +393,23 @@ type
   TLinkFeature = enum
     linkNormal, linkSys
 
-proc processCompile(c: PContext, n: PNode) =
+proc relativeFile(c: PContext; n: PNode; ext=""): string =
   var s = expectStrLit(c, n)
-  var found = findFile(s)
-  if found == "": found = s
-  var trunc = changeFileExt(found, "")
-  if not isAbsolute(found):
-    found = parentDir(n.info.toFullPath) / found
+  if ext.len > 0 and splitFile(s).ext == "":
+    s = addFileExt(s, ext)
+  result = parentDir(n.info.toFullPath) / s
+  if not fileExists(result):
+    if isAbsolute(s): result = s
+    else: result = findFile(s)
+
+proc processCompile(c: PContext, n: PNode) =
+  let found = relativeFile(c, n)
+  let trunc = found.changeFileExt("")
   extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
-  var f = expectStrLit(c, n)
-  if splitFile(f).ext == "": f = addFileExt(f, CC[cCompiler].objExt)
-  var found = findFile(f)
-  if found == "": found = f # use the default
+  let found = relativeFile(c, n, CC[cCompiler].objExt)
   case feature
   of linkNormal: extccomp.addFileToLink(found)
   of linkSys:

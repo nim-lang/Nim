@@ -94,7 +94,7 @@ type
     dwMinorVersion*: DWORD
     dwBuildNumber*: DWORD
     dwPlatformId*: DWORD
-    szCSDVersion*: array[0..127, WinChar];
+    szCSDVersion*: array[0..127, WinChar]
 
 {.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
     TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
@@ -518,6 +518,8 @@ var
   SO_DEBUG* {.importc, header: "winsock2.h".}: cint ## turn on debugging info recording
   SO_ACCEPTCONN* {.importc, header: "winsock2.h".}: cint # socket has had listen()
   SO_REUSEADDR* {.importc, header: "winsock2.h".}: cint # allow local address reuse
+  SO_REUSEPORT* {.importc: "SO_REUSEADDR", header: "winsock2.h".}: cint # allow port reuse. Since Windows does not really support it, mapped to SO_REUSEADDR. This shouldn't cause problems.
+
   SO_KEEPALIVE* {.importc, header: "winsock2.h".}: cint # keep connections alive
   SO_DONTROUTE* {.importc, header: "winsock2.h".}: cint # just use interface addresses
   SO_BROADCAST* {.importc, header: "winsock2.h".}: cint # permit sending of broadcast msgs
@@ -759,6 +761,7 @@ const
   WSAENETRESET* = 10052
   WSAETIMEDOUT* = 10060
   ERROR_NETNAME_DELETED* = 64
+  STATUS_PENDING* = 0x103
 
 proc createIoCompletionPort*(FileHandle: Handle, ExistingCompletionPort: Handle,
                              CompletionKey: ULONG_PTR,
@@ -774,6 +777,12 @@ proc getQueuedCompletionStatus*(CompletionPort: Handle,
 proc getOverlappedResult*(hFile: Handle, lpOverlapped: POVERLAPPED,
               lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
+
+# this is copy of HasOverlappedIoCompleted() macro from <winbase.h>
+# because we have declared own OVERLAPPED structure with member names not
+# compatible with original names.
+template hasOverlappedIoCompleted*(lpOverlapped): bool =
+  (cast[uint](lpOverlapped.internal) != STATUS_PENDING)
 
 const
  IOC_OUT* = 0x40000000

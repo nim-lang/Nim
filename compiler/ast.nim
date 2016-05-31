@@ -938,7 +938,7 @@ const
   genericParamsPos* = 2
   paramsPos* = 3
   pragmasPos* = 4
-  optimizedCodePos* = 5  # will be used for exception tracking
+  miscPos* = 5  # used for undocumented and hacky stuff
   bodyPos* = 6       # position of body; use rodread.getBody() instead!
   resultPos* = 7
   dispatcherPos* = 8 # caution: if method has no 'result' it can be position 7!
@@ -961,6 +961,9 @@ const
                   skMethod, skConverter}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
+var
+  gMainPackageId*: int
+  gMainPackageNotes*: TNoteKinds
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds

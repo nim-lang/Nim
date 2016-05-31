@@ -15,7 +15,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   markUsed(n.info, s)
   styleCheckUse(n.info, s)
   pushInfoContext(n.info)
-  result = evalTemplate(n, s, getCurrOwner())
+  result = evalTemplate(n, s, getCurrOwner(), efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
   popInfoContext()
 
@@ -24,10 +24,10 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
-  if result.kind == nkEmpty and result.typ.isNil:
+  #if result.kind == nkEmpty and result.typ.isNil:
     # do not produce another redundant error message:
     #raiseRecoverableError("")
-    result = errorNode(c, n)
+  #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind == tyVar: result = newDeref(result)
@@ -213,7 +213,7 @@ proc semConv(c: PContext, n: PNode): PNode =
         styleCheckUse(n.info, it.sym)
         markIndirect(c, it.sym)
         return it
-    localError(n.info, errUseQualifier, op.sons[0].sym.name.s)
+    errorUseQualifier(c, n.info, op.sons[0].sym)
 
 proc semCast(c: PContext, n: PNode): PNode =
   ## Semantically analyze a casting ("cast[type](param)")
@@ -717,6 +717,34 @@ proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
       initCandidate(c, result, t)
       matches(c, n, nOrig, result)
 
+proc bracketedMacro(n: PNode): PSym =
+  if n.len >= 1 and n[0].kind == nkSym:
+    result = n[0].sym
+    if result.kind notin {skMacro, skTemplate}:
+      result = nil
+
+proc semBracketedMacro(c: PContext; outer, inner: PNode; s: PSym;
+                       flags: TExprFlags): PNode =
+  # We received untransformed bracket expression coming from macroOrTmpl[].
+  # Transform it to macro or template call, where first come normal
+  # arguments, next come generic template arguments.
+  var sons = newSeq[PNode]()
+  sons.add inner.sons[0]
+  # Normal arguments:
+  for i in 1..<outer.len:
+    sons.add outer.sons[i]
+  # Generic template arguments from bracket expression:
+  for i in 1..<inner.len:
+    sons.add inner.sons[i]
+  shallowCopy(outer.sons, sons)
+  # FIXME: Shouldn't we check sfImmediate and call semDirectOp?
+  # However passing to semDirectOp doesn't work here.
+  case s.kind
+  of skMacro: result = semMacroExpr(c, outer, outer, s, flags)
+  of skTemplate: result = semTemplateExpr(c, outer, s, flags)
+  else: assert(false)
+  return
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   checkMinSonsLen(n, 1)
@@ -732,10 +760,15 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       for i in countup(1, sonsLen(n) - 1): addSon(result, n.sons[i])
       return semExpr(c, result, flags)
   else:
-    n.sons[0] = semExpr(c, n.sons[0])
+    n.sons[0] = semExpr(c, n.sons[0], {efInCall})
     let t = n.sons[0].typ
     if t != nil and t.kind == tyVar:
       n.sons[0] = newDeref(n.sons[0])
+    elif n.sons[0].kind == nkBracketExpr:
+      let s = bracketedMacro(n.sons[0])
+      if s != nil:
+        return semBracketedMacro(c, n, n.sons[0], s, flags)
+
   let nOrig = n.copyTree
   semOpAux(c, n)
   var t: PType = nil
@@ -965,8 +998,20 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       else: result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
-  of skMacro: result = semMacroExpr(c, n, n, s, flags)
-  of skTemplate: result = semTemplateExpr(c, n, s, flags)
+  of skMacro:
+    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0:
+      markUsed(n.info, s)
+      styleCheckUse(n.info, s)
+      result = newSymNode(s, n.info)
+    else:
+      result = semMacroExpr(c, n, n, s, flags)
+  of skTemplate:
+    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0:
+      markUsed(n.info, s)
+      styleCheckUse(n.info, s)
+      result = newSymNode(s, n.info)
+    else:
+      result = semTemplateExpr(c, n, s, flags)
   of skParam:
     markUsed(n.info, s)
     styleCheckUse(n.info, s)
@@ -1193,7 +1238,9 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result.add(x[0])
     return
   checkMinSonsLen(n, 2)
-  n.sons[0] = semExprWithType(c, n.sons[0], {efNoProcvarCheck})
+  # make sure we don't evaluate generic macros/templates
+  n.sons[0] = semExprWithType(c, n.sons[0],
+                              {efNoProcvarCheck, efNoEvaluateGeneric})
   let arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyPtr, tyRef})
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tyArrayConstr, tySequence, tyString,
@@ -1236,12 +1283,30 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let s = if n.sons[0].kind == nkSym: n.sons[0].sym
             elif n[0].kind in nkSymChoices: n.sons[0][0].sym
             else: nil
-    if s != nil and s.kind in {skProc, skMethod, skConverter, skIterator}:
-      # type parameters: partial generic specialization
-      n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
-      result = explicitGenericInstantiation(c, n, s)
-    elif s != nil and s.kind == skType:
-      result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
+    if s != nil:
+      case s.kind
+      of skProc, skMethod, skConverter, skIterator:
+        # type parameters: partial generic specialization
+        n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
+        result = explicitGenericInstantiation(c, n, s)
+      of skMacro, skTemplate:
+        if efInCall in flags:
+          # We are processing macroOrTmpl[] in macroOrTmpl[](...) call.
+          # Return as is, so it can be transformed into complete macro or
+          # template call in semIndirectOp caller.
+          result = n
+        else:
+          # We are processing macroOrTmpl[] not in call. Transform it to the
+          # macro or template call with generic arguments here.
+          n.kind = nkCall
+          case s.kind
+          of skMacro: result = semMacroExpr(c, n, n, s, flags)
+          of skTemplate: result = semTemplateExpr(c, n, s, flags)
+          else: discard
+      of skType:
+        result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
+      else:
+        c.p.bracketExpr = n.sons[0]
     else:
       c.p.bracketExpr = n.sons[0]
 
@@ -1818,7 +1883,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   result = nil
 
   template setResult(e: expr) =
-    if semCheck: result = semStmt(c, e) # do not open a new scope!
+    if semCheck: result = semExpr(c, e) # do not open a new scope!
     else: result = e
 
   # Check if the node is "when nimvm"
@@ -1827,6 +1892,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # else:
   #   ...
   var whenNimvm = false
+  var typ = commonTypeBegin
   if n.sons.len == 2 and n.sons[0].kind == nkElifBranch and
       n.sons[1].kind == nkElse:
     let exprNode = n.sons[0].sons[0]
@@ -1843,7 +1909,8 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 2)
       if whenNimvm:
         if semCheck:
-          it.sons[1] = semStmt(c, it.sons[1])
+          it.sons[1] = semExpr(c, it.sons[1])
+          typ = commonType(typ, it.sons[1].typ)
         result = n # when nimvm is not elimited until codegen
       else:
         var e = semConstExpr(c, it.sons[0])
@@ -1857,12 +1924,14 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       checkSonsLen(it, 1)
       if result == nil or whenNimvm:
         if semCheck:
-          it.sons[0] = semStmt(c, it.sons[0])
+          it.sons[0] = semExpr(c, it.sons[0])
+          typ = commonType(typ, it.sons[0].typ)
         if result == nil:
           result = it.sons[0]
     else: illFormedAst(n)
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
+  if whenNimvm: result.typ = typ
   # The ``when`` statement implements the mechanism for platform dependent
   # code. Thus we try to ensure here consistent ID allocation after the
   # ``when`` statement.
@@ -2227,7 +2296,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
         elif contains(c.ambiguousSymbols, s.id):
-          localError(n.info, errUseQualifier, s.name.s)
+          errorUseQualifier(c, n.info, s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skMethod, skConverter, skIterator:
@@ -2343,7 +2412,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "from")
     result = evalFrom(c, n)
   of nkIncludeStmt:
-    if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "include")
+    #if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "include")
     result = evalInclude(c, n)
   of nkExportStmt, nkExportExceptStmt:
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "export")

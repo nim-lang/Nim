@@ -79,9 +79,12 @@
 ## constructor should be used for this purpose. However,
 ## currently only basic authentication is supported.
 
-import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
+import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
+  math, random
 import asyncnet, asyncdispatch
 import nativesockets
+
+export strtabs
 
 type
   Response* = tuple[

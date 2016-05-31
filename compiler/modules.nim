@@ -156,6 +156,9 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
     #var rd = handleSymbolFile(result)
     var rd: PRodReader
     result.flags = result.flags + flags
+    if sfMainModule in result.flags:
+      gMainPackageId = result.owner.id
+
     if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
       rd = handleSymbolFile(result)
       if result.id < 0:
@@ -183,6 +186,9 @@ proc importModule*(s: PSym, fileIdx: int32): PSym {.procvar.} =
   if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
   if sfSystemModule in result.flags:
     localError(result.info, errAttemptToRedefine, result.name.s)
+  # restore the notes for outer module:
+  gNotes = if s.owner.id == gMainPackageId: gMainPackageNotes
+           else: ForeignPackageNotes
 
 proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
   result = syntaxes.parseFile(fileIdx)

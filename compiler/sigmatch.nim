@@ -242,6 +242,8 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
     for i in 1 .. <arg.len:
       result.add(" | ")
       result.add typeToString(arg[i].typ, prefer)
+  elif arg.typ == nil:
+    result = "void"
   else:
     result = arg.typ.typeToString(prefer)
 
@@ -253,15 +255,15 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
     if n.sons[i].kind == nkExprEqExpr:
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
-      if arg.typ.isNil:
+      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
         arg = c.semOperand(c, n.sons[i].sons[1])
         n.sons[i].typ = arg.typ
         n.sons[i].sons[1] = arg
     else:
-      if arg.typ.isNil:
+      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
         arg = c.semOperand(c, n.sons[i])
         n.sons[i] = arg
-    if arg.typ.kind == tyError: return
+    if arg.typ != nil and arg.typ.kind == tyError: return
     add(result, argTypeToString(arg, prefer))
     if i != sonsLen(n) - 1: add(result, ", ")
 
@@ -1659,30 +1661,39 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           when false: localError(n.sons[a].info, errCannotBindXTwice, formal.name.s)
           m.state = csNoMatch
           return
-        m.baseTypeMatch = false
-        n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
-        var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
-                                  n.sons[a], nOrig.sons[a])
-        if arg == nil:
-          m.state = csNoMatch
-          return
-        if m.baseTypeMatch:
-          #assert(container == nil)
+
+        if formal.typ.isVarargsUntyped:
           if container.isNil:
-            container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+            container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
+            setSon(m.call, formal.position + 1, container)
           else:
             incrIndexType(container.typ)
-          addSon(container, arg)
-          setSon(m.call, formal.position + 1,
-                 implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
-          #if f != formalLen - 1: container = nil
-
-          # pick the formal from the end, so that 'x, y, varargs, z' works:
-          f = max(f, formalLen - n.len + a + 1)
+          addSon(container, n.sons[a])
         else:
-          setSon(m.call, formal.position + 1, arg)
-          inc(f)
-          container = nil
+          m.baseTypeMatch = false
+          n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
+          var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
+                                    n.sons[a], nOrig.sons[a])
+          if arg == nil:
+            m.state = csNoMatch
+            return
+          if m.baseTypeMatch:
+            #assert(container == nil)
+            if container.isNil:
+              container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+            else:
+              incrIndexType(container.typ)
+            addSon(container, arg)
+            setSon(m.call, formal.position + 1,
+                   implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+            #if f != formalLen - 1: container = nil
+
+            # pick the formal from the end, so that 'x, y, varargs, z' works:
+            f = max(f, formalLen - n.len + a + 1)
+          else:
+            setSon(m.call, formal.position + 1, arg)
+            inc(f)
+            container = nil
         checkConstraint(n.sons[a])
     inc(a)
 

@@ -983,7 +983,12 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNGetType:
     let tmp = c.genx(n.sons[1])
     if dest < 0: dest = c.getTemp(n.typ)
-    c.gABC(n, opcNGetType, dest, tmp, if n[0].sym.name.s == "typeKind": 1 else: 0)
+    let rc = case n[0].sym.name.s:
+      of "getType": 0
+      of "typeKind": 1
+      of "getTypeInst": 2
+      else: 3  # "getTypeImpl"
+    c.gABC(n, opcNGetType, dest, tmp, rc)
     c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
   of mNStrVal: genUnaryABC(c, n, dest, opcNStrVal)
@@ -1337,10 +1342,11 @@ proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
   #   var decls{.compileTime.}: seq[NimNode] = @[]
   let dest = c.getTemp(s.typ)
   c.gABx(n, opcLdGlobal, dest, s.position)
-  let tmp = c.genx(s.ast)
-  c.preventFalseAlias(n, opcWrDeref, dest, 0, tmp)
-  c.freeTemp(dest)
-  c.freeTemp(tmp)
+  if s.ast != nil:
+    let tmp = c.genx(s.ast)
+    c.preventFalseAlias(n, opcWrDeref, dest, 0, tmp)
+    c.freeTemp(dest)
+    c.freeTemp(tmp)
 
 proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let s = n.sym
@@ -1881,8 +1887,8 @@ proc optimizeJumps(c: PCtx; start: int) =
     else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
-  let x = s.ast.sons[optimizedCodePos]
-  if x.kind == nkEmpty:
+  var x = s.ast.sons[miscPos]
+  if x.kind == nkEmpty or x[0].kind == nkEmpty:
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
@@ -1893,7 +1899,11 @@ proc genProc(c: PCtx; s: PSym): int =
       c.debug.setLen(last)
     #c.removeLastEof
     result = c.code.len+1 # skip the jump instruction
-    s.ast.sons[optimizedCodePos] = newIntNode(nkIntLit, result)
+    if x.kind == nkEmpty:
+      x = newTree(nkBracket, newIntNode(nkIntLit, result), ast.emptyNode)
+    else:
+      x.sons[0] = newIntNode(nkIntLit, result)
+    s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
     let body = s.getBody
@@ -1928,4 +1938,4 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
-    result = x.intVal.int
+    result = x[0].intVal.int

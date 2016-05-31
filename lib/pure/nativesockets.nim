@@ -27,7 +27,7 @@ else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
     EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET
-  export Sockaddr_storage
+  export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
   Sockaddr_in6,
@@ -38,7 +38,7 @@ export
   SOL_SOCKET,
   SOMAXCONN,
   SO_ACCEPTCONN, SO_BROADCAST, SO_DEBUG, SO_DONTROUTE,
-  SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR,
+  SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR, SO_REUSEPORT,
   MSG_PEEK
 
 when defined(macosx) and not defined(nimdoc):

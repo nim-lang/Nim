@@ -64,8 +64,8 @@ proc isSimpleConst(typ: PType): bool =
       (t.kind == tyProc and t.callConv == ccClosure)
 
 proc useStringh(m: BModule) =
-  if not m.includesStringh:
-    m.includesStringh = true
+  if includesStringh notin m.flags:
+    incl m.flags, includesStringh
     discard lists.includeStr(m.headerFiles, "<string.h>")
 
 proc useHeader(m: BModule, sym: PSym) =
@@ -301,7 +301,8 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = skipTypes(loc.t, abstractRange)
   if not isComplexValueType(typ):
-    linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
+    linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
+      getTypeDesc(p.module, typ))
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
       # don't use memset for temporary values for performance if we can
@@ -330,7 +331,8 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   #result.a = - 1
-  result.t = getUniqueType(t)
+  result.t = t
+  #result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
@@ -1009,11 +1011,11 @@ proc genInitCode(m: BModule) =
   add(prc, m.postInitProc.s(cpsLocals))
   add(prc, genSectionEnd(cpsLocals))
 
-  if optStackTrace in m.initProc.options and not m.frameDeclared:
+  if optStackTrace in m.initProc.options and frameDeclared notin m.flags:
     # BUT: the generated init code might depend on a current frame, so
     # declare it nevertheless:
-    m.frameDeclared = true
-    if not m.preventStackTrace:
+    incl m.flags, frameDeclared
+    if preventStackTrace notin m.flags:
       var procname = makeCString(m.module.name.s)
       add(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
@@ -1030,7 +1032,7 @@ proc genInitCode(m: BModule) =
   add(prc, m.initProc.s(cpsStmts))
   add(prc, m.postInitProc.s(cpsStmts))
   add(prc, genSectionEnd(cpsStmts))
-  if optStackTrace in m.initProc.options and not m.preventStackTrace:
+  if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
     add(prc, deinitFrame(m.initProc))
   add(prc, deinitGCFrame(m.initProc))
   addf(prc, "}$N$N", [])
@@ -1103,7 +1105,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
-    result.preventStackTrace = true
+    incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
     excl(result.postInitProc.options, optStackTrace)
 
@@ -1126,9 +1128,11 @@ proc resetModule*(m: BModule) =
   m.forwardedProcs = @[]
   m.typeNodesName = getTempName()
   m.nimTypesName = getTempName()
-  m.preventStackTrace = sfSystemModule in m.module.flags
+  if sfSystemModule in m.module.flags:
+    incl m.flags, preventStackTrace
+  else:
+    excl m.flags, preventStackTrace
   nullify m.s
-  m.usesThreadVars = false
   m.typeNodes = 0
   m.nimTypes = 0
   nullify m.extensionLoaders
@@ -1173,7 +1177,7 @@ proc myOpen(module: PSym): PPassContext =
     let f = if headerFile.len > 0: headerFile else: gProjectFull
     generatedHeader = rawNewModule(module,
       changeFileExt(completeCFilePath(f), hExt))
-    generatedHeader.isHeaderFile = true
+    incl generatedHeader.flags, isHeaderFile
 
 proc writeHeader(m: BModule) =
   var result = getCopyright(m.filename)
@@ -1305,7 +1309,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   registerModuleToMain(m.module)
 
   if sfMainModule in m.module.flags:
-    m.objHasKidsValid = true
+    incl m.flags, objHasKidsValid
     var disp = generateMethodDispatchers()
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)

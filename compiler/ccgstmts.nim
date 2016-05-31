@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if gSelectedGC in {gcMarkAndSweep, gcGenerational, gcV2} and
+  if gSelectedGC in {gcMarkAndSweep, gcGenerational, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -961,6 +961,8 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
         res.add($rdLoc(a))
+      elif sym.kind == skType:
+        res.add($getTypeDesc(p.module, sym.typ))
       else:
         var r = sym.loc.r
         if r == nil:

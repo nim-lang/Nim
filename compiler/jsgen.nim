@@ -71,7 +71,7 @@ type
     isLoop: bool             # whether it's a 'block' or 'while'
 
   TGlobals = object
-    typeInfo, code: Rope
+    typeInfo, constants, code: Rope
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
@@ -237,7 +237,7 @@ proc useMagic(p: PProc, name: string) =
     internalAssert s.kind in {skProc, skMethod, skConverter}
     if not p.g.generatedSyms.containsOrIncl(s.id):
       let code = genProc(p, s)
-      add(p.g.code, code)
+      add(p.g.constants, code)
   else:
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
@@ -981,7 +981,7 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
         r.res = "nimAt($1, $2)" % [r.address, r.res]
     elif ty.kind in {tyString, tyCString}:
       # XXX this needs to be more like substr($1,$2)
-      r.res = "ord($1[$2])" % [r.address, r.res]
+      r.res = "ord(@$1[$2])" % [r.address, r.res]
     else:
       r.res = "$1[$2]" % [r.address, r.res]
   else:
@@ -1461,7 +1461,7 @@ proc genConstant(p: PProc, c: PSym) =
     p.body = nil
     #genLineDir(p, c.ast)
     genVarInit(p, c, c.ast)
-    add(p.g.code, p.body)
+    add(p.g.constants, p.body)
     p.body = oldBody
 
 proc genNew(p: PProc, n: PNode) =
@@ -2137,7 +2137,7 @@ proc wholeCode*(m: BModule): Rope =
       var p = newProc(globals, m, nil, m.module.options)
       attachProc(p, prc)
 
-  result = globals.typeInfo & globals.code
+  result = globals.typeInfo & globals.constants & globals.code
 
 proc getClassName(t: PType): Rope =
   var s = t.sym

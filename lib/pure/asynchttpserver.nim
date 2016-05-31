@@ -39,6 +39,7 @@ type
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
+    reusePort: bool
 
   HttpCode* = enum
     Http100 = "100 Continue",
@@ -99,10 +100,11 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
 
-proc newAsyncHttpServer*(reuseAddr = true): AsyncHttpServer =
+proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
   result.reuseAddr = reuseAddr
+  result.reusePort = reusePort
 
 proc addHeaders(msg: var string, headers: StringTableRef) =
   for k, v in headers:
@@ -217,20 +219,20 @@ proc processClient(client: AsyncSocket, address: string,
         else:
           await client.sendStatus("417 Expectation Failed")
 
-      # Read the body
-      # - Check for Content-length header
-      if request.headers.hasKey("Content-Length"):
-        var contentLength = 0
-        if parseInt(request.headers.getOrDefault("Content-Length"),
-                    contentLength) == 0:
-          await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-          continue
-        else:
-          request.body = await client.recv(contentLength)
-          assert request.body.len == contentLength
-      else:
-        await request.respond(Http400, "Bad Request. No Content-Length.")
+    # Read the body
+    # - Check for Content-length header
+    if request.headers.hasKey("Content-Length"):
+      var contentLength = 0
+      if parseInt(request.headers.getOrDefault("Content-Length"),
+                  contentLength) == 0:
+        await request.respond(Http400, "Bad Request. Invalid Content-Length.")
         continue
+      else:
+        request.body = await client.recv(contentLength)
+        assert request.body.len == contentLength
+    else:
+      await request.respond(Http400, "Bad Request. No Content-Length.")
+      continue
 
     case request.reqMethod
     of "get", "post", "head", "put", "delete", "trace", "options",
@@ -264,6 +266,8 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket = newAsyncSocket()
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
+  if server.reusePort:
+    server.socket.setSockOpt(OptReusePort, true)
   server.socket.bindAddr(port, address)
   server.socket.listen()
 

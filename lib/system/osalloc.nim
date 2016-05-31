@@ -72,7 +72,7 @@ when defined(emscripten):
 
   proc osTryAllocPages(size: int): pointer = osAllocPages(size)
 
-  proc osDeallocPages(p: pointer, size: int) {.inline} =
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
     var mmapDescrPos = cast[ByteAddress](p) -% sizeof(EmscriptenMMapBlock)
     var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
@@ -107,7 +107,7 @@ elif defined(posix):
                              MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
     if result == cast[pointer](-1): result = nil
 
-  proc osDeallocPages(p: pointer, size: int) {.inline} =
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
     when reallyOsDealloc: discard munmap(p, size)
 
 elif defined(windows):

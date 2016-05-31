@@ -121,7 +121,10 @@ proc raiseException(e: ref Exception, ename: cstring) {.
   when not defined(noUnhandledHandler):
     if excHandler == 0:
       unhandledException(e)
-  asm "throw `e`;"
+  when defined(nimphp):
+    asm """throw new Exception($`e`["message"]);"""
+  else:
+    asm "throw `e`;"
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if lastJSError == nil:
@@ -245,8 +248,12 @@ proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
     for (var i = 0; i < len; ++i) {
       if (nonAsciiPart !== null) {
         var offset = (i - nonAsciiOffset) * 2;
+        var code = `s`[i].toString(16);
+        if (code.length == 1) {
+          code = "0"+code;
+        }
         nonAsciiPart[offset] = "%";
-        nonAsciiPart[offset + 1] = `s`[i].toString(16);
+        nonAsciiPart[offset + 1] = code;
       }
       else if (`s`[i] < 128)
         asciiPart[i] = fcc(`s`[i]);
@@ -731,16 +738,19 @@ proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
   else:
     discard
 
-proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
-                 asmNoStackFrame, compilerproc.} =
-  # types are fake
-  when defined(nimphp):
+when defined(nimphp):
+  proc arrayConstr(len: int, value: string, typ: string): JSRef {.
+                  asmNoStackFrame, compilerproc.} =
+    # types are fake
     asm """
       $result = array();
       for ($i = 0; $i < `len`; $i++) $result[] = `value`;
       return $result;
     """
-  else:
+else:
+  proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
+                  asmNoStackFrame, compilerproc.} =
+  # types are fake
     asm """
       var result = new Array(`len`);
       for (var i = 0; i < `len`; ++i) result[i] = nimCopy(null, `value`, `typ`);

@@ -716,6 +716,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #localError(n.info, "internal error: closure to closure created")
         # now we know better, so patch it:
         n.sons[0] = x.sons[0]
+        n.sons[1] = x.sons[1]
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let m = newSymNode(n[namePos].sym)

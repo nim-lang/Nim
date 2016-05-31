@@ -781,9 +781,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       var x = a[2]
       while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
         x = x.lastSon
-      if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty}:
+      if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
+          s.typ.kind notin {tyObject, tyEnum}:
         # type aliases are hard:
-        #MessageOut('for type ' + typeToString(s.typ));
         var t = semTypeNode(c, x, nil)
         assert t != nil
         if t.kind in {tyObject, tyEnum, tyDistinct}:
@@ -929,6 +929,17 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
     return
 
+proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
+  let orig = n.sons[genericParamsPos]
+  # we keep the original params around for better error messages, see
+  # issue https://github.com/nim-lang/Nim/issues/1713
+  result = semGenericParamList(c, orig)
+  if n.sons[miscPos].kind == nkEmpty:
+    n.sons[miscPos] = newTree(nkBracket, ast.emptyNode, orig)
+  else:
+    n.sons[miscPos].sons[1] = orig
+  n.sons[genericParamsPos] = result
+
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # XXX semProcAux should be good enough for this now, we will eventually
   # remove semLambda
@@ -947,8 +958,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   openScope(c)
   var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty:
-    n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
-    gp = n.sons[genericParamsPos]
+    gp = setGenericParamsMisc(c, n)
   else:
     gp = newNodeI(nkGenericParams, n.info)
 
@@ -1170,8 +1180,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   openScope(c)
   var gp: PNode
   if n.sons[genericParamsPos].kind != nkEmpty:
-    n.sons[genericParamsPos] = semGenericParamList(c, n.sons[genericParamsPos])
-    gp = n.sons[genericParamsPos]
+    gp = setGenericParamsMisc(c, n)
   else:
     gp = newNodeI(nkGenericParams, n.info)
   # process parameters:
@@ -1250,7 +1259,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
       c.p.wasForwarded = proto != nil
       maybeAddResult(c, s, n)
-      if sfImportc notin s.flags:
+      if lfDynamicLib notin s.loc.flags:
         # no semantic checking for importc:
         let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
         # unfortunately we cannot skip this step when in 'system.compiles'

@@ -8,7 +8,23 @@
 
 # "Stack GC" for embedded devices or ultra performance requirements.
 
-include osalloc
+when defined(nimphpext):
+  proc roundup(x, v: int): int {.inline.} =
+    result = (x + (v-1)) and not (v-1)
+  proc emalloc(size: int): pointer {.importc: "_emalloc".}
+  proc efree(mem: pointer) {.importc: "_efree".}
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    emalloc(size)
+
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    emalloc(size)
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    efree(p)
+
+else:
+  include osalloc
 
 # We manage memory as a thread local stack. Since the allocation pointer
 # is detached from the control flow pointer, this model is vastly more
@@ -100,6 +116,7 @@ proc allocSlowPath(r: var MemRegion; size: int) =
   fresh.size = s
   fresh.head = nil
   fresh.tail = nil
+  fresh.next = nil
   inc r.totalSize, s
   let old = r.tail
   if old == nil:
@@ -127,11 +144,12 @@ proc runFinalizers(c: Chunk) =
       (cast[Finalizer](it.typ.finalizer))(it+!sizeof(ObjHeader))
     it = it.nextFinal
 
-proc dealloc(r: var MemRegion; p: pointer) =
-  let it = cast[ptr ObjHeader](p-!sizeof(ObjHeader))
-  if it.typ != nil and it.typ.finalizer != nil:
-    (cast[Finalizer](it.typ.finalizer))(p)
-  it.typ = nil
+when false:
+  proc dealloc(r: var MemRegion; p: pointer) =
+    let it = cast[ptr ObjHeader](p-!sizeof(ObjHeader))
+    if it.typ != nil and it.typ.finalizer != nil:
+      (cast[Finalizer](it.typ.finalizer))(p)
+    it.typ = nil
 
 proc deallocAll(r: var MemRegion; head: Chunk) =
   var it = head
@@ -168,6 +186,9 @@ proc setObstackPtr*(r: var MemRegion; sp: StackPtr) =
 
 proc obstackPtr*(): StackPtr = tlRegion.obstackPtr()
 proc setObstackPtr*(sp: StackPtr) = tlRegion.setObstackPtr(sp)
+proc deallocAll*() = tlRegion.deallocAll()
+
+proc deallocOsPages(r: var MemRegion) = r.deallocAll()
 
 proc joinRegion*(dest: var MemRegion; src: MemRegion) =
   # merging is not hard.
@@ -405,6 +426,13 @@ proc realloc(p: pointer, newsize: Natural): pointer =
   result = crealloc(p, newsize)
   if result == nil: raiseOutOfMem()
 proc dealloc(p: pointer) = cfree(p)
+
+proc alloc0(r: var MemRegion; size: Natural): pointer =
+  # ignore the region. That is correct for the channels module
+  # but incorrect in general. XXX
+  result = alloc0(size)
+
+proc dealloc(r: var MemRegion; p: pointer) = dealloc(p)
 
 proc allocShared(size: Natural): pointer =
   result = cmalloc(size)

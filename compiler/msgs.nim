@@ -500,12 +500,14 @@ type
   ESuggestDone* = object of Exception
 
 const
+  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
+    hintQuitCalled}
   NotesVerbosity*: array[0..3, TNoteKinds] = [
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
                                          hintSuccessX, hintPath, hintConf,
-                                         hintProcessing,
+                                         hintProcessing, hintPattern,
                                          hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,

@@ -97,6 +97,8 @@ type
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
     spaceIter: ObjectSpaceIter
     dumpHeapFile: File # File that is used for GC_dumpHeap
+    when hasThreadSupport:
+      toDispose: SharedList[pointer]
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -119,6 +121,8 @@ proc initGC() =
     init(gch.decStack)
     init(gch.additionalRoots)
     init(gch.greyStack)
+    when hasThreadSupport:
+      gch.toDispose = initSharedList[pointer]()
 
 # Which color to use for new objects is tricky: When we're marking,
 # they have to be *white* so that everything is marked that is only
@@ -800,6 +804,10 @@ proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
 proc collectZCT(gch: var GcHeap): bool {.benign.}
 
 proc collectCycles(gch: var GcHeap): bool =
+  when hasThreadSupport:
+    for c in gch.toDispose:
+      nimGCunref(c)
+
   # ensure the ZCT 'color' is not used:
   while gch.zct.len > 0: discard collectZCT(gch)
 
@@ -956,7 +964,19 @@ when withRealTime:
         strongAdvice:
       collectCTBody(gch)
 
-  proc GC_step*(us: int, strongAdvice = false) = GC_step(gch, us, strongAdvice)
+  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+    var stackTop {.volatile.}: pointer
+    let prevStackBottom = gch.stackBottom
+    if stackSize >= 0:
+      stackTop = addr(stackTop)
+      when stackIncreases:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
+      else:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
+    GC_step(gch, us, strongAdvice)
+    gch.stackBottom = prevStackBottom
 
 when not defined(useNimRtl):
   proc GC_disable() =
