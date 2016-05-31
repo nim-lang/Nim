@@ -377,6 +377,9 @@ proc all*[A](futs: seq[Future[A]]): Future[seq[A]] =
 
   return retFuture
 
+proc all*[A](futs: varargs[Future[A]]): Future[seq[A]] =
+  return all(@futs)
+
 type
   PDispatcherBase = ref object of RootRef
     timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
