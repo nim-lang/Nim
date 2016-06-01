@@ -406,7 +406,10 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
       if sfExported in allowed and v.id == ord(wStar):
         incl(result.flags, sfExported)
       else:
-        localError(n.sons[0].info, errInvalidVisibilityX, renderTree(n[0]))
+        if not (sfExported in allowed):
+          localError(n.sons[0].info, errXOnlyAtModuleScope, "export")
+        else:
+          localError(n.sons[0].info, errInvalidVisibilityX, renderTree(n[0]))
     else:
       illFormedAst(n)
   else:
