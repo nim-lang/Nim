@@ -542,6 +542,34 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     # handle negative overflow
     if n == 0 and x < 0: n = -1
 
+proc toHex*(x: BiggestInt): string =
+  ## Converts `x` to its hexadecimal representation.
+  ##
+  ## No prefix like ``0x`` is generated. `x` is treated as an unsigned value.
+  const 
+    HexChars = "0123456789ABCDEF"
+  var 
+    n = cast[int64](x)
+    mx = sizeof(int) * 2
+    shift = sizeof(int) * 8 - 4
+    mask = 0x0F shl shift    
+    i = 0
+    ll = 0
+  while i < mx:
+    if (n and mask.int) != 0:
+      break
+    mask = mask shr 4
+    inc(i)
+  ll = mx - i
+  if ll == 0:
+    result = "0"
+  else:
+    result = newString(ll)
+    for j in countdown(ll - 1, 0):
+      result[j] = HexChars[n and 0xF]
+      n = n shr 4
+      if n == 0 and x < 0: n = -1
+
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation.
