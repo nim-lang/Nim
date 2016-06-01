@@ -95,7 +95,8 @@ elif defined(windows):
 
 elif defined(JS):
   type
-    Time* {.importc.} = object
+    Time* = ref TimeObj
+    TimeObj {.importc.} = object
       getDay: proc (): int {.tags: [], raises: [], benign.}
       getFullYear: proc (): int {.tags: [], raises: [], benign.}
       getHours: proc (): int {.tags: [], raises: [], benign.}
