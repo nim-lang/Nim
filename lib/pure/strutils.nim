@@ -1456,21 +1456,20 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``float`` type.
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
-proc trimZeros*(x: string): string {.noSideEffect.} =
+proc trimZeros*(x: var string) {.noSideEffect.} =
   ## Trim trailing zeros from a formatted floating point
-  ## value (`x`).
-  var splResult: seq[string]
-  result = x
-  if result.contains('.') or result.contains(','):
-    if result.contains('e'):
-      splResult = result.split('e')
-      result = splResult[0]
-    while result[result.high] == '0':
-      result.setLen(result.len-1)
-    if result[result.high] in [',', '.']:
-      result.setLen(result.len-1)
-    if splResult.len > 0:
-      result &= "e" & splResult[1]
+  ## value (`x`).  Modifies the passed value.
+  var spl: seq[string]
+  if x.contains('.') or x.contains(','):
+    if x.contains('e'):
+      spl= x.split('e')
+      x = spl[0]
+    while x[x.high] == '0':
+      x.setLen(x.len-1)
+    if x[x.high] in [',', '.']:
+      x.setLen(x.len-1)
+    if spl.len > 0:
+      x &= "e" & spl[1]
 
 type
   BinaryPrefixMode* = enum ## the different names for binary prefixes
@@ -1527,7 +1526,7 @@ proc formatSize*(bytes: int64,
   # xb has the integer number for the latest value; index should be correct
   fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
   result = formatFloat(fbytes, format=ffDecimal, precision=3, decimalSep=decimalSep)
-  result = trimZeros(result)
+  result.trimZeros()
   if includeSpace:
     result &= " "
   result &= prefixes[matchedIndex]
