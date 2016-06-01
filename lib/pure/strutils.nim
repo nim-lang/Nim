@@ -542,6 +542,10 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     # handle negative overflow
     if n == 0 and x < 0: n = -1
 
+proc toHex*[T](x: T): string =
+  ## Shortcut for ``toHex(x, T.sizeOf * 2)``
+  toHex(x, T.sizeOf * 2)
+
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation.
