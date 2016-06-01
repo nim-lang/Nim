@@ -421,6 +421,11 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
       dec(splits)
       inc(last)
 
+proc substrEq(s: string, a, L: int, x: string): bool =
+  var i = 0
+  while i < L and s[a+i] == x[i]: inc i
+  result = i == L
+
 iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a string separator.
   ##
@@ -430,7 +435,7 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   if len(s) > 0:
     while last <= len(s):
       var first = last
-      while last < len(s) and s.substr(last, last + <sep.len) != sep:
+      while last < len(s) and not s.substrEq(last, sep.len, sep):
         inc(last)
       if splits == 0: last = len(s)
       yield substr(s, first, last-1)
