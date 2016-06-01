@@ -230,7 +230,7 @@ proc processClient(client: AsyncSocket, address: string,
       else:
         request.body = await client.recv(contentLength)
         assert request.body.len == contentLength
-    else:
+    elif request.reqMethod == "post":
       await request.respond(Http400, "Bad Request. No Content-Length.")
       continue
 
