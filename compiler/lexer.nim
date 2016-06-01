@@ -138,6 +138,8 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
 proc isKeyword*(kind: TTokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
+template ones(n: expr): expr = ((1 shl n)-1) # for utf-8 conversion
+
 proc isNimIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
     var i = 1
@@ -589,12 +591,29 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   of '\\':
     add(tok.literal, '\\')
     inc(L.bufpos)
-  of 'x', 'X':
+  of 'x', 'X', 'u', 'U':
+    var tp = L.buf[L.bufpos]
     inc(L.bufpos)
     var xi = 0
     handleHexChar(L, xi)
     handleHexChar(L, xi)
-    add(tok.literal, chr(xi))
+    if tp in {'u', 'U'}:
+      handleHexChar(L, xi)
+      handleHexChar(L, xi)
+      # inlined toUTF-8 to avoid unicode and strutils dependencies.
+      if xi <=% 127:
+        add(tok.literal, xi.char )
+      elif xi <=% 0x07FF:
+        add(tok.literal, ((xi shr 6) or 0b110_00000).char )
+        add(tok.literal, ((xi and ones(6)) or 0b10_0000_00).char )
+      elif xi <=% 0xFFFF:
+        add(tok.literal, (xi shr 12 or 0b1110_0000).char )
+        add(tok.literal, (xi shr 6 and ones(6) or 0b10_0000_00).char )
+        add(tok.literal, (xi and ones(6) or 0b10_0000_00).char )
+      else: # value is 0xFFFF
+        add(tok.literal, "\xef\xbf\xbf" )
+    else:
+      add(tok.literal, chr(xi))
   of '0'..'9':
     if matchTwoChars(L, '0', {'0'..'9'}):
       lexMessage(L, warnOctalEscape)
