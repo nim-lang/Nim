@@ -23,27 +23,14 @@ proc c_strlen(a: cstring): int {.header: "<string.h>",
 proc c_memset(p: pointer, value: cint, size: int) {.
   header: "<string.h>", importc: "memset".}
 
-when not declared(File):
-  type
-    C_TextFile {.importc: "FILE", header: "<stdio.h>",
-                 final, incompleteStruct.} = object
-    C_BinaryFile {.importc: "FILE", header: "<stdio.h>",
-                   final, incompleteStruct.} = object
-    C_TextFileStar = ptr C_TextFile
-    C_BinaryFileStar = ptr C_BinaryFile
-else:
-  type
-    C_TextFileStar = File
-    C_BinaryFileStar = File
-
 type
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
 when not defined(vm):
   var
-    c_stdin {.importc: "stdin", nodecl.}: C_TextFileStar
-    c_stdout {.importc: "stdout", nodecl.}: C_TextFileStar
-    c_stderr {.importc: "stderr", nodecl.}: C_TextFileStar
+    c_stdin {.importc: "stdin", nodecl.}: File
+    c_stdout {.importc: "stdout", nodecl.}: File
+    c_stderr {.importc: "stderr", nodecl.}: File
 
 # constants faked as variables:
 when not declared(SIGINT):
@@ -107,43 +94,43 @@ proc c_signal(sign: cint, handler: proc (a: cint) {.noconv.}) {.
   importc: "signal", header: "<signal.h>".}
 proc c_raise(sign: cint) {.importc: "raise", header: "<signal.h>".}
 
-proc c_fputs(c: cstring, f: C_TextFileStar) {.importc: "fputs",
+proc c_fputs(c: cstring, f: File) {.importc: "fputs",
   header: "<stdio.h>".}
-proc c_fgets(c: cstring, n: int, f: C_TextFileStar): cstring  {.
+proc c_fgets(c: cstring, n: int, f: File): cstring  {.
   importc: "fgets", header: "<stdio.h>".}
-proc c_fgetc(stream: C_TextFileStar): int {.importc: "fgetc",
+proc c_fgetc(stream: File): int {.importc: "fgetc",
   header: "<stdio.h>".}
-proc c_ungetc(c: int, f: C_TextFileStar) {.importc: "ungetc",
+proc c_ungetc(c: int, f: File) {.importc: "ungetc",
   header: "<stdio.h>".}
-proc c_putc(c: char, stream: C_TextFileStar) {.importc: "putc",
+proc c_putc(c: char, stream: File) {.importc: "putc",
   header: "<stdio.h>".}
-proc c_fprintf(f: C_TextFileStar, frmt: cstring) {.
+proc c_fprintf(f: File, frmt: cstring) {.
   importc: "fprintf", header: "<stdio.h>", varargs.}
 proc c_printf(frmt: cstring) {.
   importc: "printf", header: "<stdio.h>", varargs.}
 
-proc c_fopen(filename, mode: cstring): C_TextFileStar {.
+proc c_fopen(filename, mode: cstring): File {.
   importc: "fopen", header: "<stdio.h>".}
-proc c_fclose(f: C_TextFileStar) {.importc: "fclose", header: "<stdio.h>".}
+proc c_fclose(f: File) {.importc: "fclose", header: "<stdio.h>".}
 
 proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
   importc: "sprintf", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-proc c_fread(buf: pointer, size, n: int, f: C_BinaryFileStar): int {.
+proc c_fread(buf: pointer, size, n: int, f: File): int {.
   importc: "fread", header: "<stdio.h>".}
-proc c_fseek(f: C_BinaryFileStar, offset: clong, whence: int): int {.
+proc c_fseek(f: File, offset: clong, whence: int): int {.
   importc: "fseek", header: "<stdio.h>".}
 
-proc c_fwrite(buf: pointer, size, n: int, f: C_BinaryFileStar): int {.
+proc c_fwrite(buf: pointer, size, n: int, f: File): int {.
   importc: "fwrite", header: "<stdio.h>".}
 
 proc c_exit(errorcode: cint) {.importc: "exit", header: "<stdlib.h>".}
-proc c_ferror(stream: C_TextFileStar): bool {.
+proc c_ferror(stream: File): bool {.
   importc: "ferror", header: "<stdio.h>".}
-proc c_fflush(stream: C_TextFileStar) {.importc: "fflush", header: "<stdio.h>".}
+proc c_fflush(stream: File) {.importc: "fflush", header: "<stdio.h>".}
 proc c_abort() {.importc: "abort", header: "<stdlib.h>".}
-proc c_feof(stream: C_TextFileStar): bool {.
+proc c_feof(stream: File): bool {.
   importc: "feof", header: "<stdio.h>".}
 
 proc c_malloc(size: int): pointer {.importc: "malloc", header: "<stdlib.h>".}
