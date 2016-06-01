@@ -14,7 +14,7 @@
 include "system/inclrtl"
 
 type
-  RuneImpl = int # underlying type of Rune
+  RuneImpl = int32 # underlying type of Rune
   Rune* = distinct RuneImpl   ## type that can hold any Unicode character
   Rune16* = distinct int16 ## 16 bit Unicode character
 
@@ -1148,7 +1148,7 @@ const
     0x01f1, 501,  #
     0x01f3, 499]  #
 
-proc binarySearch(c: RuneImpl, tab: openArray[RuneImpl], len, stride: int): int =
+proc binarySearch(c: RuneImpl, tab: openArray[int], len, stride: int): int =
   var n = len
   var t = 0
   while n > 1:
