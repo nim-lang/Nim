@@ -68,8 +68,8 @@ Library Additions
   versions are for ``char`` and ``set[char]``.
 - Added ``splitDecimal`` to ``math.nim`` to split a floating point value
   into an integer part and a floating part (in the range -1<x<1).
-- Added ``trim`` argument to ``formatFloat`` in ``strutils.nim`` to trim
-  trailing zeros.
+- Added ``trimZeros`` to ```strutils.nim`` to trim trailing zeros in a
+  floating point number.
 
 
 Compiler Additions

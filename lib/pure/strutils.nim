@@ -1392,7 +1392,7 @@ type
 
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
                          precision: range[0..32] = 16;
-                         decimalSep = '.', trim = false): string {.
+                         decimalSep = '.'): string {.
                          noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1404,8 +1404,6 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``biggestFloat`` type.
   ##
   ## If ``precision == 0``, it tries to format it nicely.
-  ##
-  ## If ``trim == true``, trailing zeros will be removed.
   when defined(js):
     var res: cstring
     case format
@@ -1425,7 +1423,6 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     var
       frmtstr {.noinit.}: array[0..5, char]
       buf {.noinit.}: array[0..2500, char]
-      splResult: seq[string]
       L: cint
     frmtstr[0] = '%'
     if precision > 0:
@@ -1446,21 +1443,8 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
 
-    # Trim trailing zeros if required (used by formatSize)
-    if trim and result.contains(decimalSep):
-      if result.contains('e'):
-        splResult = result.split('e')
-        result = splResult[0]
-      while result[result.high] == '0':
-        result.setLen(result.len-1)
-      if result[result.high] == decimalSep:
-        result.setLen(result.len-1)
-      if splResult.len > 0:
-        result &= "e" & splResult[1]
-
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
-                  precision: range[0..32] = 16; decimalSep = '.',
-                  trim = false): string {.
+                  precision: range[0..32] = 16; decimalSep = '.'): string {.
                   noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1470,8 +1454,23 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
-  ## If `trim` is set to true, trailing zeros will be removed.
-  result = formatBiggestFloat(f, format, precision, decimalSep, trim)
+  result = formatBiggestFloat(f, format, precision, decimalSep)
+
+proc trimZeros*(x: string): string {.noSideEffect.} =
+  ## Trim trailing zeros from a formatted floating point
+  ## value (`x`).
+  var splResult: seq[string]
+  result = x
+  if result.contains('.') or result.contains(','):
+    if result.contains('e'):
+      splResult = result.split('e')
+      result = splResult[0]
+    while result[result.high] == '0':
+      result.setLen(result.len-1)
+    if result[result.high] in [',', '.']:
+      result.setLen(result.len-1)
+    if splResult.len > 0:
+      result &= "e" & splResult[1]
 
 type
   BinaryPrefixMode* = enum ## the different names for binary prefixes
@@ -1527,8 +1526,8 @@ proc formatSize*(bytes: int64,
       break
   # xb has the integer number for the latest value; index should be correct
   fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
-  result = formatFloat(fbytes, format=ffDecimal, precision=3,
-    decimalSep=decimalSep, trim=true)
+  result = formatFloat(fbytes, format=ffDecimal, precision=3, decimalSep=decimalSep)
+  result = trimZeros(result)
   if includeSpace:
     result &= " "
   result &= prefixes[matchedIndex]
@@ -1728,11 +1727,6 @@ when isMainModule:
                                                    ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-
-  block: # formatFloat trim tests
-    doAssert formatFloat(2.33, trim=true) == "2.33"
-    doAssert formatFloat(2.34e50, ffScientific, precision=8, trim=true) in
-             ["2.34e+50", "2.34e+050"]
 
   block: # formatSize tests
     doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
