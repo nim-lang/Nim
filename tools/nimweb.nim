@@ -165,10 +165,10 @@ proc walkDirRecursively(s: var seq[string], root, ext: string) =
 
 proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
   for p in items(patterns):
+    if existsFile(dir / addFileExt(p, ext)):
+      s.add(dir / addFileExt(p, ext))
     if existsDir(dir / p):
       walkDirRecursively(s, dir / p, ext)
-    else:
-      add(s, dir / addFileExt(p, ext))
 
 proc parseIniFile(c: var TConfigData) =
   var
@@ -276,18 +276,18 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
@@ -319,8 +319,8 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, doc.pathPart,
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$# -o:$# $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
 
