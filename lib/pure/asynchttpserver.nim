@@ -153,6 +153,11 @@ proc processClient(client: AsyncSocket, address: string,
       if lineFut.mget == "\c\L": break
       let (key, value) = parseHeader(lineFut.mget)
       request.headers[key] = value
+      # Ensure the client isn't trying to DoS us.
+      if request.headers.len > headerLimit:
+        await client.sendStatus("400 Bad Request")
+        request.client.close()
+        return
 
     if request.reqMethod == "post":
       # Check for Expect header

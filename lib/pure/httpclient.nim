@@ -242,6 +242,10 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       inc(linei) # Skip :
 
       result.headers[name] = line[linei.. ^1].strip()
+      # Ensure the server isn't trying to DoS us.
+      if result.headers.len > headerLimit:
+        httpError("too many headers")
+
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
@@ -751,6 +755,9 @@ proc parseResponse(client: AsyncHttpClient,
       inc(linei) # Skip :
 
       result.headers[name] = line[linei.. ^1].strip()
+      if result.headers.len > headerLimit:
+        httpError("too many headers")
+
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
