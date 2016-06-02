@@ -55,6 +55,10 @@ Changes affecting backwards compatibility
   than meaning 2.285 GB as in the previous implementation).  By default it
   also uses IEC prefixes (KiB, MiB) etc and optionally uses colloquial names
   (kB, MB etc) and the (SI-preferred) space.
+- The ``==`` operator for ``cstring`` now implements a value comparision
+  for the C backend (using ``strcmp``), not reference comparisons anymore.
+  Convert the cstrings to pointers if you really want reference equality
+  for speed.
 
 
 Library Additions
