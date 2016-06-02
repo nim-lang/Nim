@@ -817,7 +817,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLtF64: genBinaryABC(c, n, dest, opcLtFloat)
   of mLePtr, mLeU, mLeU64: genBinaryABC(c, n, dest, opcLeu)
   of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
-  of mEqProc, mEqRef, mEqUntracedRef, mEqCString:
+  of mEqProc, mEqRef, mEqUntracedRef:
     genBinaryABC(c, n, dest, opcEqRef)
   of mXor: genBinaryABCnarrowU(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
@@ -834,7 +834,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
     genConv(c, n, n.sons[1], dest)
-  of mEqStr: genBinaryABC(c, n, dest, opcEqStr)
+  of mEqStr, mEqCString: genBinaryABC(c, n, dest, opcEqStr)
   of mLeStr: genBinaryABC(c, n, dest, opcLeStr)
   of mLtStr: genBinaryABC(c, n, dest, opcLtStr)
   of mEqSet: genBinarySet(c, n, dest, opcEqSet)
