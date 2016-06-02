@@ -138,6 +138,9 @@ proc mapType(typ: PType): TCTypeKind =
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctPtrToArray
+    of tySet:
+      if mapSetType(base) == ctArray: result = ctPtrToArray
+      else: result = ctPtr
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
@@ -149,8 +152,9 @@ proc mapType(typ: PType): TCTypeKind =
   else: internalError("mapType")
 
 proc mapReturnType(typ: PType): TCTypeKind =
-  if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
-  else: result = mapType(typ)
+  #if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
+  #else:
+  result = mapType(typ)
 
 proc isImportedType(t: PType): bool =
   result = t.sym != nil and sfImportc in t.sym.flags
@@ -224,7 +228,7 @@ proc ccgIntroducedPtr(s: PSym): bool =
 proc fillResult(param: PSym) =
   fillLoc(param.loc, locParam, param.typ, ~"Result",
           OnStack)
-  if (mapReturnType(param.typ) != ctArray) and isInvalidReturnType(param.typ):
+  if mapReturnType(param.typ) != ctArray and isInvalidReturnType(param.typ):
     incl(param.loc.flags, lfIndirect)
     param.loc.s = OnUnknown
 
@@ -306,7 +310,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
     result = getTypeDescAux(m, t, check)
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {tyArray, tyOpenArray}:
+  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {tyArray, tyOpenArray, tyVarargs, tyArrayConstr}:
     result = OnStack
   else:
     result = OnUnknown
@@ -315,7 +319,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
   params = nil
-  if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]):
+  if t.sons[0] == nil or isInvalidReturnType(t.sons[0]):
     rettype = ~"void"
   else:
     rettype = getTypeDescAux(m, t.sons[0], check)
@@ -348,10 +352,10 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       addf(params, ", NI $1Len$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr.sons[0]
-  if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]):
+  if t.sons[0] != nil and isInvalidReturnType(t.sons[0]):
     var arr = t.sons[0]
     if params != nil: add(params, ", ")
-    if (mapReturnType(t.sons[0]) != ctArray):
+    if mapReturnType(t.sons[0]) != ctArray:
       add(params, getTypeDescWeak(m, arr, check))
       add(params, "*")
     else:
