@@ -28,8 +28,7 @@
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 
-export HttpHeaders, httpcore.`[]`, httpcore.`[]=`, httpcore.add, httpcore.`==`,
-  httpcore.HttpCode, httpcore.HttpVersion, httpcore.toString
+export httpcore except parseHeader
 
 # TODO: If it turns out that the decisions that asynchttpserver makes
 # explicitly, about whether to close the client sockets or upgrade them are
@@ -185,6 +184,9 @@ proc processClient(client: AsyncSocket, address: string,
     else:
       await request.respond(Http400, "Invalid request method. Got: " &
         request.reqMethod)
+
+    if "upgrade" in request.headers.getOrDefault("connection"):
+      return
 
     # Persistent connections
     if (request.protocol == HttpVer11 and
