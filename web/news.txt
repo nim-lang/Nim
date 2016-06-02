@@ -59,6 +59,10 @@ Changes affecting backwards compatibility
   for the C backend (using ``strcmp``), not reference comparisons anymore.
   Convert the cstrings to pointers if you really want reference equality
   for speed.
+- HTTP headers are now stored in a ``HttpHeaders`` object instead of a
+  ``StringTableRef``. This object allows multiple values to be associated with
+  a single key. A new ``httpcore`` module implements it and it is used by
+  both ``asynchttpserver`` and ``httpclient``.
 
 
 Library Additions
