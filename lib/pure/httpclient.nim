@@ -80,17 +80,17 @@
 ## currently only basic authentication is supported.
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
-  math, random
+  math, random, httpcore
 import asyncnet, asyncdispatch
 import nativesockets
 
-export strtabs
+export httpcore except parseHeader # TODO: The ``except`` doesn't work
 
 type
   Response* = tuple[
     version: string,
     status: string,
-    headers: StringTableRef,
+    headers: HttpHeaders,
     body: string]
 
   Proxy* = ref object
@@ -167,7 +167,7 @@ proc parseChunks(s: Socket, timeout: int): string =
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
+proc parseBody(s: Socket, headers: HttpHeaders, timeout: int): string =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = parseChunks(s, timeout)
@@ -207,7 +207,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
   var linei = 0
   var fullyRead = false
   var line = ""
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   while true:
     line = ""
     linei = 0
@@ -458,7 +458,7 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return true
 
-proc getNewLocation(lastURL: string, headers: StringTableRef): string =
+proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
   result = headers.getOrDefault"Location"
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
@@ -681,7 +681,7 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
 proc parseBody(client: AsyncHttpClient,
-               headers: StringTableRef): Future[string] {.async.} =
+               headers: HttpHeaders): Future[string] {.async.} =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = await parseChunks(client)
@@ -716,7 +716,7 @@ proc parseResponse(client: AsyncHttpClient,
   var linei = 0
   var fullyRead = false
   var line = ""
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   while true:
     linei = 0
     line = await client.socket.recvLine()
