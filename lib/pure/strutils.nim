@@ -1488,7 +1488,7 @@ type
 proc formatSize*(bytes: int64,
                  decimalSep = '.',
                  prefix = bpIEC,
-                 includeSpace = false): string =
+                 includeSpace = false): string {.noSideEffect.} =
   ## Rounds and formats `bytes`.
   ##
   ## By default, uses the IEC/ISO standard binary prefixes, so 1024 will be
