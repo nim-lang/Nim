@@ -369,15 +369,12 @@ proc all*[T](futs: varargs[Future[T]]): auto =
 
     let totalFutures = len(futs)
 
-    for i, fut in futs:
-      proc setCallback(i: int) =
-        fut.callback = proc(f: Future[T]) =
-          inc(completedFutures)
+    for fut in futs:
+      fut.callback = proc(f: Future[T]) =
+        inc(completedFutures)
 
-          if completedFutures == totalFutures:
-            retFuture.complete()
-
-      setCallback(i)
+        if completedFutures == totalFutures:
+          retFuture.complete()
 
     return retFuture
 
