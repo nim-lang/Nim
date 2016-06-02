@@ -133,3 +133,8 @@ template delImpl() {.dirty, immediate.} =
           t.data[j] = t.data[i]
         else:
           shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
+
+template clearImpl() {.dirty, immediate.} =
+  for i in 0 .. <t.data.len:
+    t.data[i].hcode = 0
+  t.counter = 0
