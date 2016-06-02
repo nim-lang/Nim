@@ -356,11 +356,14 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   return retFuture
 
 proc all*[T](futs: varargs[Future[T]]): auto =
-  ## Returns a future which will complete once all futures in ``futs``
-  ## complete.
+  ## Returns a future which will complete once
+  ## all futures in ``futs`` complete.
   ##
-  ## The resulting future will hold the values of all awaited futures,
-  ## in the order they are passed.
+  ## If the awaited futures are not ``Future[void]``, the returned future
+  ## will hold the values of all awaited futures in a sequence.
+  ##
+  ## If the awaited futures *are* ``Future[void]``,
+  ## this proc returns ``Future[void]``.
 
   when T is void:
     var
