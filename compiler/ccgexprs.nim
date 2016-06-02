@@ -611,7 +611,7 @@ proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  if a.t.callConv == ccClosure:
+  if a.t.skipTypes(abstractInst).callConv == ccClosure:
     putIntoDest(p, d, e.typ,
       "($1.ClPrc == $2.ClPrc && $1.ClEnv == $2.ClEnv)" % [rdLoc(a), rdLoc(b)])
   else:
