@@ -487,7 +487,7 @@ when defineSsl:
     ## prone to security vulnerabilities.
     socket.isSsl = true
     socket.sslContext = ctx
-    socket.sslHandle = SSLNew(SSLCTX(socket.sslContext))
+    socket.sslHandle = SSLNew(socket.sslContext.context)
     if socket.sslHandle == nil:
       raiseSslError()
 

@@ -66,7 +66,7 @@
 ##
 
 {.deadCodeElim: on.}
-import nativesockets, os, strutils, parseutils, times
+import nativesockets, os, strutils, parseutils, times, sets
 export Port, `$`, `==`
 export Domain, SockType, Protocol
 
@@ -88,13 +88,20 @@ when defineSsl:
     SslProtVersion* = enum
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
 
-    SslContext* = distinct SslCtx
+    SslContext* = ref object
+      context*: SslCtx
+      extraInternalIndex: int
+      referencedData: HashSet[int]
 
     SslAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
     SslHandshakeType* = enum
       handshakeAsClient, handshakeAsServer
+
+    SslClientGetPskFunc* = proc(hint: string): tuple[identity: string, psk: string]
+
+    SslServerGetPskFunc* = proc(identity: string): string
 
   {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
     TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
@@ -225,6 +232,11 @@ when defineSsl:
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
 
+  type
+    SslContextExtraInternal = ref object of RootRef
+      serverGetPskFunc: SslServerGetPskFunc
+      clientGetPskFunc: SslClientGetPskFunc
+
   proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.
     if s != "":
@@ -236,6 +248,34 @@ when defineSsl:
       raiseOSError(osLastError())
     var errStr = ErrErrorString(err, nil)
     raise newException(SSLError, $errStr)
+
+  proc getExtraDataIndex*(ctx: SSLContext): int =
+    ## Retrieves unique index for storing extra data in SSLContext.
+    result = SSL_CTX_get_ex_new_index(0, nil, nil, nil, nil).int
+    if result < 0:
+      raiseSSLError()
+
+  proc getExtraData*(ctx: SSLContext, index: int): RootRef =
+    ## Retrieves arbitrary data stored inside SSLContext.
+    if index notin ctx.referencedData:
+      raise newException(IndexError, "No data with that index.")
+    let res = ctx.context.SSL_CTX_get_ex_data(index.cint)
+    if cast[int](res) == 0:
+      raiseSSLError()
+    return cast[RootRef](res)
+
+  proc setExtraData*(ctx: SSLContext, index: int, data: RootRef) =
+    ## Stores arbitrary data inside SSLContext. The unique `index`
+    ## should be retrieved using getSslContextExtraDataIndex.
+    if index in ctx.referencedData:
+      GC_unref(getExtraData(ctx, index))
+
+    if ctx.context.SSL_CTX_set_ex_data(index.cint, cast[pointer](data)) == -1:
+      raiseSSLError()
+
+    if index notin ctx.referencedData:
+      ctx.referencedData.incl(index)
+    GC_ref(data)
 
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
   proc loadCertificates(ctx: SSL_CTX, certFile, keyFile: string) =
@@ -259,7 +299,7 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = ""): SSLContext =
+                   certFile = "", keyFile = "", cipherList = "ALL"): SSLContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
@@ -286,7 +326,7 @@ when defineSsl:
     of protTLSv1:
       newCTX = SSL_CTX_new(TLSv1_method())
 
-    if newCTX.SSLCTXSetCipherList("ALL") != 1:
+    if newCTX.SSLCTXSetCipherList(cipherList) != 1:
       raiseSSLError()
     case verifyMode
     of CVerifyPeer:
@@ -298,7 +338,87 @@ when defineSsl:
 
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
-    return SSLContext(newCTX)
+
+    result = SSLContext(context: newCTX, extraInternalIndex: 0,
+        referencedData: initSet[int]())
+    result.extraInternalIndex = getExtraDataIndex(result)
+    # The PSK callback functions assume the internal index is 0.
+    assert result.extraInternalIndex == 0
+
+    let extraInternal = new(SslContextExtraInternal)
+    result.setExtraData(result.extraInternalIndex, extraInternal)
+
+  proc getExtraInternal(ctx: SSLContext): SslContextExtraInternal =
+    return SslContextExtraInternal(ctx.getExtraData(ctx.extraInternalIndex))
+
+  proc destroyContext*(ctx: SSLContext) =
+    ## Free memory referenced by SSLContext.
+
+    # We assume here that OpenSSL's internal indexes increase by 1 each time.
+    # That means we can assume that the next internal index is the length of
+    # extra data indexes.
+    for i in ctx.referencedData:
+      GC_unref(getExtraData(ctx, i).RootRef)
+    ctx.context.SSL_CTX_free()
+
+  proc `pskIdentityHint=`*(ctx: SSLContext, hint: string) =
+    ## Sets the identity hint passed to server.
+    ##
+    ## Only used in PSK ciphersuites.
+    if ctx.context.SSL_CTX_use_psk_identity_hint(hint) <= 0:
+      raiseSSLError()
+
+  proc clientGetPskFunc*(ctx: SSLContext): SslClientGetPskFunc =
+    return ctx.getExtraInternal().clientGetPskFunc
+
+  proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr cuchar;
+    max_psk_len: cuint): cuint {.cdecl.} =
+    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX, extraInternalIndex: 0)
+    let hintString = if hint == nil: nil else: $hint
+    let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
+    if psk.len.cuint > max_psk_len:
+      return 0
+    if identityString.len.cuint >= max_identity_len:
+      return 0
+
+    copyMem(identity, identityString.cstring, pskString.len + 1) # with the last zero byte
+    copyMem(psk, pskString.cstring, pskString.len)
+
+    return pskString.len.cuint
+
+  proc `clientGetPskFunc=`*(ctx: SSLContext, fun: SslClientGetPskFunc) =
+    ## Sets function that returns the client identity and the PSK based on identity
+    ## hint from the server.
+    ##
+    ## Only used in PSK ciphersuites.
+    ctx.getExtraInternal().clientGetPskFunc = fun
+    ctx.context.SSL_CTX_set_psk_client_callback(
+        if fun == nil: nil else: pskClientCallback)
+
+  proc serverGetPskFunc*(ctx: SSLContext): SslServerGetPskFunc =
+    return ctx.getExtraInternal().serverGetPskFunc
+
+  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar; max_psk_len: cint): cuint {.cdecl.} =
+    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX, extraInternalIndex: 0)
+    let pskString = (ctx.serverGetPskFunc)($identity)
+    if psk.len.cint > max_psk_len:
+      return 0
+    copyMem(psk, pskString.cstring, pskString.len)
+
+    return pskString.len.cuint
+
+  proc `serverGetPskFunc=`*(ctx: SSLContext, fun: SslServerGetPskFunc) =
+    ## Sets function that returns PSK based on the client identity.
+    ##
+    ## Only used in PSK ciphersuites.
+    ctx.getExtraInternal().serverGetPskFunc = fun
+    ctx.context.SSL_CTX_set_psk_server_callback(if fun == nil: nil
+                                                else: pskServerCallback)
+
+  proc getPskIdentity*(socket: Socket): string =
+    ## Gets the PSK identity provided by the client.
+    assert socket.isSSL
+    return $(socket.sslHandle.SSL_get_psk_identity)
 
   proc wrapSocket*(ctx: SSLContext, socket: Socket) =
     ## Wraps a socket in an SSL context. This function effectively turns
@@ -313,7 +433,7 @@ when defineSsl:
     assert (not socket.isSSL)
     socket.isSSL = true
     socket.sslContext = ctx
-    socket.sslHandle = SSLNew(SSLCTX(socket.sslContext))
+    socket.sslHandle = SSLNew(socket.sslContext.context)
     socket.sslNoHandshake = false
     socket.sslHasPeekChar = false
     if socket.sslHandle == nil:

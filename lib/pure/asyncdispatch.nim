@@ -355,27 +355,50 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
   return retFuture
 
-proc all*[A](futs: seq[Future[A]]): Future[seq[A]] =
-  ## Returns a future which will complete once all futures in ``futs``
-  ## complete.
+proc all*[T](futs: varargs[Future[T]]): auto =
+  ## Returns a future which will complete once
+  ## all futures in ``futs`` complete.
   ##
-  ## The resulting future will hold the values of all awaited futures,
-  ## in the order they are passed.
+  ## If the awaited futures are not ``Future[void]``, the returned future
+  ## will hold the values of all awaited futures in a sequence.
+  ##
+  ## If the awaited futures *are* ``Future[void]``,
+  ## this proc returns ``Future[void]``.
 
-  var
-    retFuture = newFuture[seq[A]]("asyncdispatch.all")
-    retValues = newSeq[A](len(futs))
-    completedFutures = 0
+  when T is void:
+    var
+      retFuture = newFuture[void]("asyncdispatch.all")
+      completedFutures = 0
 
-  for i, fut in futs:
-    fut.callback = proc(f: Future[A]) =
-      retValues[i] = f.read()
-      inc(completedFutures)
+    let totalFutures = len(futs)
 
-      if completedFutures == len(futs):
-        retFuture.complete(retValues)
+    for fut in futs:
+      fut.callback = proc(f: Future[T]) =
+        inc(completedFutures)
 
-  return retFuture
+        if completedFutures == totalFutures:
+          retFuture.complete()
+
+    return retFuture
+
+  else:
+    var
+      retFuture = newFuture[seq[T]]("asyncdispatch.all")
+      retValues = newSeq[T](len(futs))
+      completedFutures = 0
+
+    for i, fut in futs:
+      proc setCallback(i: int) =
+        fut.callback = proc(f: Future[T]) =
+          retValues[i] = f.read()
+          inc(completedFutures)
+
+          if completedFutures == len(retValues):
+            retFuture.complete(retValues)
+
+      setCallback(i)
+
+    return retFuture
 
 type
   PDispatcherBase = ref object of RootRef

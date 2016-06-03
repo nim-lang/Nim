@@ -41,7 +41,11 @@ when not defined(ECMAScript):
   import terminal
 
 type
-  TestStatus* = enum OK, FAILED ## The status of a test when it is done.
+  TestStatus* = enum ## The status of a test when it is done.
+    OK,
+    FAILED,
+    SKIPPED
+
   OutputLevel* = enum  ## The output verbosity of the tests.
     PRINT_ALL,         ## Print as much as possible.
     PRINT_FAILURES,    ## Print only the failed tests.
@@ -120,7 +124,11 @@ proc testDone(name: string, s: TestStatus) =
     template rawPrint() = echo("[", $s, "] ", name)
     when not defined(ECMAScript):
       if colorOutput and not defined(ECMAScript):
-        var color = (if s == OK: fgGreen else: fgRed)
+        var color = case s
+                    of OK: fgGreen
+                    of FAILED: fgRed
+                    of SKIPPED: fgYellow
+                    else: fgWhite
         styledEcho styleBright, color, "[", $s, "] ", fgWhite, name
       else:
         rawPrint()
@@ -201,6 +209,21 @@ template fail* =
   else:
     programResult += 1
 
+  checkpoints = @[]
+
+template skip* =
+  ## Makes test to be skipped. Should be used directly
+  ## in case when it is not possible to perform test
+  ## for reasons depending on outer environment,
+  ## or certain application logic conditions or configurations.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  if not isGLConextCreated():
+  ##    skip()
+  bind checkpoints
+
+  testStatusIMPL = SKIPPED
   checkpoints = @[]
 
 macro check*(conditions: stmt): stmt {.immediate.} =
