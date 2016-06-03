@@ -32,6 +32,14 @@ proc testFuturesWithoutValues() =
 
   waitFor all(tasks)
 
+proc testVarargs(x, y, z: int): seq[int] =
+  let
+    a = futureWithValue(x)
+    b = futureWithValue(y)
+    c = futureWithValue(z)
+
+  result = waitFor all(a, b, c)
+
 block:
   let
     startTime = cpuTime()
@@ -48,3 +56,13 @@ block:
   let execTime = cpuTime() - startTime
 
   doAssert execTime * 1000 < taskCount * sleepDuration
+
+block:
+  let
+    startTime = cpuTime()
+    results = testVarargs(1, 2, 3)
+    expected = @[1, 2, 3]
+    execTime = cpuTime() - startTime
+
+  doAssert execTime * 100 < taskCount * sleepDuration
+  doAssert results == expected
