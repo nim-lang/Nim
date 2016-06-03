@@ -2,6 +2,7 @@
 nim c --gc:v2 -r -d:useSysAssert -d:useGcAssert -d:smokeCycles -d:useRealtimeGc tests/gc/gctest
 
 - document ``this`` pragma
+- https://github.com/nim-lang/Nim/issues/3898
 
 essential for 1.0
 =================

@@ -17,7 +17,8 @@ proc semDiscard(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
-    if isEmptyType(n.sons[0].typ): localError(n.info, errInvalidDiscard)
+    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone:
+      localError(n.info, errInvalidDiscard)
 
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   result = n
@@ -535,7 +536,7 @@ proc semConst(c: PContext, n: PNode): PNode =
       localError(a.sons[2].info, errConstExprExpected)
       continue
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
-      localError(a.info, errXisNoType, typeToString(typ))
+      localError(a.info, "invalid type for const: " & typeToString(typ))
       continue
     v.typ = typ
     v.ast = def               # no need to copy
@@ -1339,7 +1340,8 @@ proc finishMethod(c: PContext, s: PSym) =
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
-
+  # macros can transform methods to nothing:
+  if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   if not isGenericRoutine(s):
     # why check for the body? bug #2400 has none. Checking for sfForward makes
@@ -1354,6 +1356,8 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "converter")
   checkSonsLen(n, bodyPos + 1)
   result = semProcAux(c, n, skConverter, converterPragmas)
+  # macros can transform converters to nothing:
+  if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "converter")
@@ -1363,6 +1367,8 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
 proc semMacroDef(c: PContext, n: PNode): PNode =
   checkSonsLen(n, bodyPos + 1)
   result = semProcAux(c, n, skMacro, macroPragmas)
+  # macros can transform macros to nothing:
+  if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "macro")

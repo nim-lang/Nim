@@ -668,7 +668,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       fillResult(res)
       assignParam(p, res)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
-        incl(res.loc.flags, lfIndirect)
+        #incl(res.loc.flags, lfIndirect)
         res.loc.s = OnUnknown
 
   for i in countup(1, sonsLen(prc.typ.n) - 1):

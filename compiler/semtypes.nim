@@ -398,15 +398,18 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
   # identifier with visibility
   if n.kind == nkPostfix:
-    if sonsLen(n) == 2 and n.sons[0].kind == nkIdent:
+    if sonsLen(n) == 2:
       # for gensym'ed identifiers the identifier may already have been
       # transformed to a symbol and we need to use that here:
       result = newSymG(kind, n.sons[1], c)
-      var v = n.sons[0].ident
+      var v = considerQuotedIdent(n.sons[0])
       if sfExported in allowed and v.id == ord(wStar):
         incl(result.flags, sfExported)
       else:
-        localError(n.sons[0].info, errInvalidVisibilityX, v.s)
+        if not (sfExported in allowed):
+          localError(n.sons[0].info, errXOnlyAtModuleScope, "export")
+        else:
+          localError(n.sons[0].info, errInvalidVisibilityX, renderTree(n[0]))
     else:
       illFormedAst(n)
   else:

@@ -359,8 +359,8 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 == $2)", "($1 == $2)"], # EqUntracedRef
     ["", "", "($1 <= $2)", "($1 <= $2)"], # LePtr
     ["", "", "($1 < $2)", "($1 < $2)"], # LtPtr
-    ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
     ["", "", "($1 != $2)", "($1 != $2)"], # Xor
+    ["", "", "($1 == $2)", "($1 == $2)"], # EqCString
     ["", "", "($1 == $2)", "($1 == $2)"], # EqProc
     ["negInt", "", "negInt($1)", "-($1)"], # UnaryMinusI
     ["negInt64", "", "negInt64($1)", "-($1)"], # UnaryMinusI64

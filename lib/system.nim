@@ -302,8 +302,7 @@ proc `==` *(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
   ##  echo (a == b) # true due to the special meaning of `nil`/0 as a pointer
 proc `==` *(x, y: string): bool {.magic: "EqStr", noSideEffect.}
   ## Checks for equality between two `string` variables
-proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect.}
-  ## Checks for equality between two `cstring` variables
+
 proc `==` *(x, y: char): bool {.magic: "EqCh", noSideEffect.}
   ## Checks for equality between two `char` variables
 proc `==` *(x, y: bool): bool {.magic: "EqB", noSideEffect.}
@@ -2296,12 +2295,15 @@ proc `$`*[T: tuple|object](x: T): string =
     if not firstElement: result.add(", ")
     result.add(name)
     result.add(": ")
-    when compiles(value.isNil):
-      if value.isNil: result.add "nil"
-      else: result.add($value)
+    when compiles($value):
+      when compiles(value.isNil):
+        if value.isNil: result.add "nil"
+        else: result.add($value)
+      else:
+        result.add($value)
+      firstElement = false
     else:
-      result.add($value)
-    firstElement = false
+      result.add("...")
   result.add(")")
 
 proc collectionToString[T: set | seq](x: T, b, e: string): string =
@@ -3612,6 +3614,16 @@ proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
   ## returns the length of a sequence or a string without testing for 'nil'.
   ## This is an optimization that rarely makes sense.
   discard
+
+
+proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
+                                   inline.} =
+  ## Checks for equality between two `cstring` variables.
+  proc strcmp(a, b: cstring): cint {.noSideEffect,
+    importc, header: "<string.h>".}
+  if pointer(x) == pointer(y): result = true
+  elif x.isNil or y.isNil: result = false
+  else: result = strcmp(x, y) == 0
 
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 

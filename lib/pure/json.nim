@@ -1009,7 +1009,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     result.add("null")
 
 proc pretty*(node: JsonNode, indent = 2): string =
-  ## Converts `node` to its JSON Representation, with indentation and
+  ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
   result = ""
   toPretty(result, node, indent)
@@ -1019,7 +1019,9 @@ proc toUgly*(result: var string, node: JsonNode) =
   ## regard for human readability. Meant to improve ``$`` string
   ## conversion performance.
   ##
-  ## This provides higher efficiency than the ``toPretty`` procedure as it
+  ## JSON representation is stored in the passed `result`
+  ##
+  ## This provides higher efficiency than the ``pretty`` procedure as it
   ## does **not** attempt to format the resulting JSON to make it human readable.
   var comma = false
   case node.kind:

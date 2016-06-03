@@ -45,6 +45,24 @@ Changes affecting backwards compatibility
 - The path handling changed. The project directory is not added to the
   search path automatically anymore. Add this line to your project's
   config to get back the old behaviour: ``--path:"$projectdir"``.
+- The ``round`` function in ``math.nim`` now returns a float and has been
+  corrected such that the C implementation always rounds up from .5 rather
+  than changing the operation for even and odd numbers.
+- The ``round`` function now accepts a ``places`` argument to round to a
+  given number of places (e.g. round 4.35 to 4.4 if ``places`` is 1).
+- In ``strutils.nim``, ``formatSize`` now returns a number representing the
+  size in conventional decimal format (e.g. 2.234GB meaning 2.234 GB rather
+  than meaning 2.285 GB as in the previous implementation).  By default it
+  also uses IEC prefixes (KiB, MiB) etc and optionally uses colloquial names
+  (kB, MB etc) and the (SI-preferred) space.
+- The ``==`` operator for ``cstring`` now implements a value comparision
+  for the C backend (using ``strcmp``), not reference comparisons anymore.
+  Convert the cstrings to pointers if you really want reference equality
+  for speed.
+- HTTP headers are now stored in a ``HttpHeaders`` object instead of a
+  ``StringTableRef``. This object allows multiple values to be associated with
+  a single key. A new ``httpcore`` module implements it and it is used by
+  both ``asynchttpserver`` and ``httpclient``.
 
 
 Library Additions
@@ -56,6 +74,12 @@ Library Additions
 - Added ``strscans`` module that implements a ``scanf`` for easy input extraction.
 - Added a version of ``parseutils.parseUntil`` that can deal with a string ``until`` token. The other
   versions are for ``char`` and ``set[char]``.
+- Added ``splitDecimal`` to ``math.nim`` to split a floating point value
+  into an integer part and a floating part (in the range -1<x<1).
+- Added ``trimZeros`` to ```strutils.nim`` to trim trailing zeros in a
+  floating point number.
+- Added ``formatEng`` to ``strutils.nim`` to format numbers using engineering
+  notation.
 
 
 Compiler Additions
