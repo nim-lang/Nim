@@ -1,14 +1,26 @@
 # Stores extra data inside the SSL context.
 import net
 
+let ctx = newContext()
+
 # Our unique index for storing foos
-let fooIndex = getSslContextExtraDataIndex()
+let fooIndex = ctx.getExtraDataIndex()
 # And another unique index for storing foos
-let barIndex = getSslContextExtraDataIndex()
+let barIndex = ctx.getExtraDataIndex()
 echo "got indexes ", fooIndex, " ", barIndex
 
-let ctx = newContext()
-assert ctx.getExtraData(fooIndex) == nil
-let foo: int = 5
-ctx.setExtraData(fooIndex, cast[pointer](foo))
-assert cast[int](ctx.getExtraData(fooIndex)) == foo
+try:
+  discard ctx.getExtraData(fooIndex)
+  assert false
+except IndexError:
+  echo("Success")
+
+type
+  FooRef = ref object of RootRef
+    foo: int
+
+let foo = FooRef(foo: 5)
+ctx.setExtraData(fooIndex, foo)
+doAssert ctx.getExtraData(fooIndex).FooRef == foo
+
+ctx.destroyContext()
