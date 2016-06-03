@@ -89,7 +89,7 @@ when defineSsl:
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
 
     SslContext* = ref object
-      context: SslCtx
+      context*: SslCtx
       extraInternalIndex: int
       referencedData: HashSet[int]
 
