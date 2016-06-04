@@ -436,7 +436,7 @@ proc buildSponsors(c: var TConfigData, sponsorsFile: string, outputDir: string) 
   let outFile = outputDir / "sponsors.html"
   var f: File
   if open(f, outFile, fmWrite):
-    writeLine(f, generateHtmlPage(c, "Our Sponsors", sponsors, ""))
+    writeLine(f, generateHtmlPage(c, "", "Our Sponsors", sponsors, ""))
     close(f)
   else:
     quit("[Error] Cannot write file: " & outFile)
@@ -444,7 +444,7 @@ proc buildSponsors(c: var TConfigData, sponsorsFile: string, outputDir: string) 
 const
   cmdRst2Html = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.rst"
 
-proc buildPage(c: var TConfigData, file, rss: string, assetDir = "") =
+proc buildPage(c: var TConfigData, file, title, rss: string, assetDir = "") =
   exec(cmdRst2Html % [c.nimArgs, file])
   var temp = "web" / changeFileExt(file, "temp")
   var content: string
@@ -457,7 +457,7 @@ proc buildPage(c: var TConfigData, file, rss: string, assetDir = "") =
   if not existsDir(outfile.splitFile.dir):
     createDir(outfile.splitFile.dir)
   if open(f, outfile, fmWrite):
-    writeLine(f, generateHTMLPage(c, file, content, rss, assetDir))
+    writeLine(f, generateHTMLPage(c, file, title, content, rss, assetDir))
     close(f)
   else:
     quit("[Error] cannot write file: " & outfile)
@@ -467,7 +467,8 @@ proc buildNews(c: var TConfigData, newsDir: string, outputDir: string) =
   for kind, path in walkDir(newsDir):
     let (dir, name, ext) = path.splitFile
     if ext == ".rst":
-      buildPage(c, tailDir(dir) / name, "", "../")
+      let title = readFile(path).splitLines()[0]
+      buildPage(c, tailDir(dir) / name, title, "", "../")
     else:
       echo("Skipping file in news directory: ", path)
 
@@ -482,7 +483,7 @@ proc buildWebsite(c: var TConfigData) =
     var file = c.tabs[i].val
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
     if '.' in file: continue
-    buildPage(c, file, rss)
+    buildPage(c, file, if file == "question": "FAQ" else: file, rss)
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
   buildSponsors(c, sponsors, "web/upload")
