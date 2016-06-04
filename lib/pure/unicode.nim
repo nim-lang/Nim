@@ -135,44 +135,61 @@ proc runeAt*(s: string, i: Natural): Rune =
   ## Returns the unicode character in ``s`` at byte index ``i``
   fastRuneAt(s, i, result, false)
 
-proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
-  ## Converts a rune into its UTF-8 representation
+template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
+  ## Copies UTF-8 representation of `c` into the preallocated string `s`
+  ## starting at position `pos`. If `doInc == true`, `pos` is incremented
+  ## by the number of bytes that have been processed.
+  ##
+  ## To be the most efficient, make sure `s` is preallocated
+  ## with an additional amount equal to the byte length of
+  ## `c`.
   var i = RuneImpl(c)
   if i <=% 127:
-    result = newString(1)
-    result[0] = chr(i)
+    s.setLen(pos+1)
+    s[pos+0] = chr(i)
+    when doInc: inc(pos)
   elif i <=% 0x07FF:
-    result = newString(2)
-    result[0] = chr((i shr 6) or 0b110_00000)
-    result[1] = chr((i and ones(6)) or 0b10_0000_00)
+    s.setLen(pos+2)
+    s[pos+0] = chr((i shr 6) or 0b110_00000)
+    s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
+    when doInc: inc(pos, 2)
   elif i <=% 0xFFFF:
-    result = newString(3)
-    result[0] = chr(i shr 12 or 0b1110_0000)
-    result[1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    result[2] = chr(i and ones(6) or 0b10_0000_00)
+    s.setLen(pos+3)
+    s[pos+0] = chr(i shr 12 or 0b1110_0000)
+    s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
+    when doInc: inc(pos, 3)
   elif i <=% 0x001FFFFF:
-    result = newString(4)
-    result[0] = chr(i shr 18 or 0b1111_0000)
-    result[1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    result[2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    result[3] = chr(i and ones(6) or 0b10_0000_00)
+    s.setLen(pos+4)
+    s[pos+0] = chr(i shr 18 or 0b1111_0000)
+    s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
+    when doInc: inc(pos, 4)
   elif i <=% 0x03FFFFFF:
-    result = newString(5)
-    result[0] = chr(i shr 24 or 0b111110_00)
-    result[1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
-    result[2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    result[3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    result[4] = chr(i and ones(6) or 0b10_0000_00)
+    s.setLen(pos+5)
+    s[pos+0] = chr(i shr 24 or 0b111110_00)
+    s[pos+1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+4] = chr(i and ones(6) or 0b10_0000_00)
+    when doInc: inc(pos, 5)
   elif i <=% 0x7FFFFFFF:
-    result = newString(6)
-    result[0] = chr(i shr 30 or 0b1111110_0)
-    result[1] = chr(i shr 24 and ones(6) or 0b10_0000_00)
-    result[2] = chr(i shr 18 and ones(6) or 0b10_0000_00)
-    result[3] = chr(i shr 12 and ones(6) or 0b10_0000_00)
-    result[4] = chr(i shr 6 and ones(6) or 0b10_0000_00)
-    result[5] = chr(i and ones(6) or 0b10_0000_00)
+    s.setLen(pos+6)
+    s[pos+0] = chr(i shr 30 or 0b1111110_0)
+    s[pos+1] = chr(i shr 24 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 18 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+4] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+5] = chr(i and ones(6) or 0b10_0000_00)
+    when doInc: inc(pos, 6)
   else:
     discard # error, exception?
+
+proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
+  ## Converts a rune into its UTF-8 representation
+  result = ""
+  fastToUTF8Copy(c, result, 0, false)
 
 proc `$`*(rune: Rune): string =
   ## Converts a Rune to a string
@@ -1352,6 +1369,136 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     (c >= 0x20d0 and c <= 0x20ff) or
     (c >= 0xfe20 and c <= 0xfe2f))
 
+proc swapCase*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nuc$1".} =
+  ## Swaps the case of unicode characters in `s`
+  ##
+  ## Returns a new string such that the cases of all unicode characters
+  ## are swapped if possible
+
+  var
+    i = 0
+    lastIndex = 0
+    rune: Rune
+
+  result = newString(len(s))
+
+  while i < len(s):
+    lastIndex = i
+
+    fastRuneAt(s, i, rune)
+
+    if rune.isUpper():
+      rune = rune.toLower()
+    elif rune.isLower():
+      rune = rune.toUpper()
+
+    rune.fastToUTF8Copy(result, lastIndex)
+
+proc translate*(s: string, replacements: proc(key: string): string): string {.
+  rtl, extern: "nuc$1".} =
+  ## Translates words in a string using the `replacements` proc to substitute
+  ## words inside `s` with their replacements
+  ##
+  ## `replacements` is any proc that takes a word and returns
+  ## a new word to fill it's place.
+
+  # Allocate memory for the new string based on the old one.
+  # If the new string length is less than the old, no allocations
+  # will be needed. If the new string length is greater than the
+  # old, then maybe only one allocation is needed
+  result = newStringOfCap(s.len)
+
+  var
+    index = 0
+    lastIndex = 0
+    wordStart = 0
+    inWord = false
+    rune: Rune
+
+  while index < len(s):
+    lastIndex = index
+
+    fastRuneAt(s, index, rune)
+
+    let whiteSpace = rune.isWhiteSpace()
+
+    if whiteSpace and inWord:
+      # If we've reached the end of a word
+      let word = s[wordStart ..< lastIndex]
+      result.add(replacements(word))
+      result.add($rune)
+
+      inWord = false
+    elif not whiteSpace and not inWord:
+      # If we've hit a non space character and
+      # are not currently in a word, track
+      # the starting index of the word
+      inWord = true
+      wordStart = lastIndex
+    elif whiteSpace:
+      result.add($rune)
+
+  if wordStart < len(s) and inWord:
+    # Get the trailing word at the end
+    let word = s[wordStart .. ^1]
+    result.add(replacements(word))
+
+proc title*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nuc$1".} =
+  ## Converts `s` to a unicode title.
+  ##
+  ## Returns a new string such that the first character
+  ## in each word inside `s` is capitalized
+
+  var
+    i = 0
+    lastIndex = 0
+    rune: Rune
+
+  result = newString(len(s))
+
+  var firstRune = true
+
+  while i < len(s):
+    lastIndex = i
+
+    fastRuneAt(s, i, rune)
+
+    if not rune.isWhiteSpace() and firstRune:
+      rune = rune.toUpper()
+      firstRune = false
+    elif rune.isWhiteSpace():
+      firstRune = true
+
+    rune.fastToUTF8Copy(result, lastIndex)
+
+proc isTitle*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".}=
+  ## Checks whether or not `s` is a unicode title.
+  ##
+  ## Returns true if the first character in each word inside `s`
+  ## are upper case and there is at least one character in `s`.
+  if s.len() == 0:
+    return false
+
+  result = true
+
+  var
+    i = 0
+    rune: Rune
+
+  var firstRune = true
+
+  while i < len(s) and result:
+    fastRuneAt(s, i, rune, doInc=true)
+
+    if not rune.isWhiteSpace() and firstRune:
+      result = rune.isUpper() and result
+      firstRune = false
+    elif rune.isWhiteSpace():
+      firstRune = true
+
 iterator runes*(s: string): Rune =
   ## Iterates over any unicode character of the string ``s``
   var
@@ -1450,6 +1597,39 @@ when isMainModule:
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
     compared = (someString == $someRunes)
   doAssert compared == true
+
+  proc test_replacements(word: string): string =
+    case word
+    of "two":
+      return "2"
+    of "foo":
+      return "BAR"
+    of "βeta":
+      return "beta"
+    of "alpha":
+      return "αlpha"
+    else:
+      return "12345"
+
+  doAssert translate("two not alpha foo βeta", test_replacements) == "2 12345 αlpha BAR beta"
+  doAssert translate("  two not foo βeta  ", test_replacements) == "  2 12345 BAR beta  "
+
+  doAssert title("foo bar") == "Foo Bar"
+  doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
+  doAssert title("") == ""
+
+  doAssert isTitle("Foo")
+  doAssert(not isTitle("Foo bar"))
+  doAssert(not isTitle("αlpha Βeta"))
+  doAssert(isTitle("Αlpha Βeta Γamma"))
+  doAssert(not isTitle("fFoo"))
+
+  doAssert swapCase("FooBar") == "fOObAR"
+  doAssert swapCase(" ") == " "
+  doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
+  doAssert swapCase("a✓B") == "A✓b"
+  doAssert swapCase("") == ""
+
 
   doAssert reversed("Reverse this!") == "!siht esreveR"
   doAssert reversed("先秦兩漢") == "漢兩秦先"
