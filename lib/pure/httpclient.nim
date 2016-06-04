@@ -623,7 +623,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
   new result
   result.headers = newStringTable(modeCaseInsensitive)
-  result.userAgent = defUserAgent
+  result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   when defined(ssl):
     result.sslContext = net.SslContext(sslContext)
