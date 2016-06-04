@@ -2,6 +2,9 @@
 News
 ====
 
+`2016-06-04 Meet our BountySource sponsors <news/2016_06_04_meet_our_bountysource_sponsors.html>`_
+===================================
+
 `2016-01-27 Nim in Action is now available! <news/2016_01_27_nim_in_action_is_now_available.html>`_
 ==================================
 
