@@ -9,7 +9,7 @@
 
 import
   os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
-  re, htmlgen, macros, md5, osproc
+  re, htmlgen, macros, md5, osproc, parsecsv
 
 type
   TKeyValPair = tuple[key, id, val: string]
@@ -28,6 +28,15 @@ type
     year, month, day, title: string
   TAction = enum
     actAll, actOnlyWebsite, actPdf
+
+  Sponsor = object
+    logo: string
+    name: string
+    url: string
+    thisMonth: int
+    allTime: int
+    since: string
+    level: int
 
 var action: TAction
 
@@ -83,6 +92,7 @@ Compile_options:
   rYearMonthDayTitle = r"(\d{4})-(\d{2})-(\d{2})\s+(.*)"
   rssUrl = "http://nim-lang.org/news.xml"
   rssNewsUrl = "http://nim-lang.org/news.html"
+  sponsors = "web/sponsors.csv"
   validAnchorCharacters = Letters + Digits
 
 
@@ -407,6 +417,30 @@ proc buildJS(destPath: string) =
   exec("nim js -d:release --out:$1 web/nimblepkglist.nim" %
       [destPath / "nimblepkglist.js"])
 
+proc readSponsors(sponsorsFile: string): seq[Sponsor] =
+  result = @[]
+  var fileStream = newFileStream(sponsorsFile, fmRead)
+  if fileStream == nil: quit("Cannot open sponsors.csv file: " & sponsorsFile)
+  var parser: CsvParser
+  open(parser, fileStream, sponsorsFile)
+  discard readRow(parser) # Skip the header row.
+  while readRow(parser):
+    result.add(Sponsor(logo: parser.row[0], name: parser.row[1],
+        url: parser.row[2], thisMonth: parser.row[3].parseInt,
+        allTime: parser.row[4].parseInt,
+        since: parser.row[5], level: parser.row[6].parseInt))
+  parser.close()
+
+proc buildSponsors(c: var TConfigData, sponsorsFile: string, outputDir: string) =
+  let sponsors = generateSponsors(readSponsors(sponsorsFile))
+  let outFile = outputDir / "sponsors.html"
+  var f: File
+  if open(f, outFile, fmWrite):
+    writeLine(f, generateHtmlPage(c, "Our Sponsors", sponsors, ""))
+    close(f)
+  else:
+    quit("[Error] Cannot write file: " & outFile)
+
 proc buildWebsite(c: var TConfigData) =
   const
     cmd = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
@@ -438,6 +472,7 @@ proc buildWebsite(c: var TConfigData) =
     removeFile(temp)
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
+  buildSponsors(c, sponsors, "web/upload")
 
 proc main(c: var TConfigData) =
   buildWebsite(c)

@@ -209,3 +209,37 @@ runForever()
 #  end if
 </body>
 </html>
+#end proc
+#
+#proc generateSponsors(sponsors: seq[Sponsor]): string =
+#result = ""
+<h1 id="our-current-sponsors">Our Current Sponsors</h1>
+<p>This page lists the companies and individuals that are, very kindly, contributing a
+monthly amount to help sustain Nim's development. For more details take a
+look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
+<dl>
+#for sponsor in sponsors:
+  <dt class="level-${sponsor.level}">
+    #if sponsor.url.len > 0:
+      <a href="${sponsor.url}" target="_blank">${sponsor.name}</a>
+    #else:
+      ${sponsor.name}
+    #end if
+  </dt>
+  <dd class="logo">
+    #if sponsor.logo.len > 0:
+    <a href="${sponsor.url}" target="_blank">
+      <img alt="${sponsor.name}'s logo" src="${sponsor.logo}"/>
+    </a>
+    #end if
+  </dd>
+  <dd class="this_month">
+    Donated <b>$$${sponsor.thisMonth}</b> this month
+  </dd>
+  <dd class="legend">
+    Donated $$${sponsor.allTime} in total since ${sponsor.since}
+  </dd>
+#end for
+</dl>
+#
+#end proc

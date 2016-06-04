@@ -572,5 +572,36 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 
 #bountysource a, #bountysource a:visited, #bountysource a:hover {
   color: #1a1a1a;
+}
 
+/* Current sponsors page */
+
+dt {
+  font-size: 20pt;
+  clear: both;
+  margin-bottom: 10pt;
+}
+
+dd.logo {
+  width: 200px;
+  min-height: 50px;
+  margin-bottom: 10pt;
+  margin-right: 20pt;
+  float: left;
+}
+
+dd.logo img {
+  max-height: 200px;
+}
+
+dd.this_month {
+  font-size: 20pt;
+}
+
+dt a, dt a:visited, dt a:hover {
+  color: #1d1d1d !important;
+}
+
+dt.level-1 {
+  color: #2f2f2f !important;
 }
