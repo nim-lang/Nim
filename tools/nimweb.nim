@@ -9,7 +9,9 @@
 
 import
   os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
-  re, htmlgen, macros, md5, osproc, parsecsv
+  re, htmlgen, macros, md5, osproc, parsecsv, algorithm
+
+from xmltree import escape
 
 type
   TKeyValPair = tuple[key, id, val: string]
@@ -25,7 +27,7 @@ type
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
     gaId: string  # google analytics ID, nil means analytics are disabled
   TRssItem = object
-    year, month, day, title: string
+    year, month, day, title, url, content: string
   TAction = enum
     actAll, actOnlyWebsite, actPdf
 
@@ -89,7 +91,7 @@ Compile_options:
   will be passed to the Nim compiler
 """
 
-  rYearMonthDayTitle = r"(\d{4})-(\d{2})-(\d{2})\s+(.*)"
+  rYearMonthDay = r"(\d{4})_(\d{2})_(\d{2})"
   rssUrl = "http://nim-lang.org/news.xml"
   rssNewsUrl = "http://nim-lang.org/news.html"
   sponsors = "web/sponsors.csv"
@@ -335,20 +337,20 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   mexec(commands, c.numProcessors)
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
-  # parses the file for titles and returns them as TRssItem blocks.
-  let reYearMonthDayTitle = re(rYearMonthDayTitle)
-  var
-    input: File
-    line = ""
-
+  # Goes through each news file, returns its date/title.
   result = @[]
-  if not open(input, inputFilename):
-    quit("Could not read $1 for rss generation" % [inputFilename])
-  defer: input.close()
-  while input.readLine(line):
-    if line =~ reYearMonthDayTitle:
-      result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
-        title: matches[3]))
+  let reYearMonthDay = re(rYearMonthDay)
+  for kind, path in walkDir(inputFilename):
+    let (dir, name, ext) = path.splitFile
+    if ext == ".rst":
+      let content = readFile(path)
+      let title = content.splitLines()[0]
+      let urlPath = "news/" & name & ".html"
+      if name =~ reYearMonthDay:
+        result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
+          title: title, url: "http://nim-lang.org/" & urlPath,
+          content: content))
+  result.reverse()
 
 proc genUUID(text: string): string =
   # Returns a valid RSS uuid, which is basically md5 with dashes and a prefix.
@@ -392,15 +394,14 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   output.write(updatedDate($now.year, $(int(now.month) + 1), $now.monthday))
 
   for rss in news:
-    let joinedTitle = "$1-$2-$3 $4" % [rss.year, rss.month, rss.day, rss.title]
     output.write(entry(
-        title(joinedTitle),
-        id(genUUID(joinedTitle)),
+        title(xmltree.escape(rss.title)),
+        id(genUUID(rss.title)),
         link(`type` = "text/html", rel = "alternate",
-          href = genNewsLink(joinedTitle)),
+          href = rss.url),
         updatedDate(rss.year, rss.month, rss.day),
         "<author><name>Nim</name></author>",
-        content(joinedTitle, `type` = "text"),
+        content(xmltree.escape(rss.content), `type` = "text"),
       ))
 
   output.write("""</feed>""")
@@ -408,7 +409,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
 proc buildNewsRss(c: var TConfigData, destPath: string) =
   # generates an xml feed from the web/news.rst file
   let
-    srcFilename = "web" / "news.rst"
+    srcFilename = "web" / "news"
     destFilename = destPath / changeFileExt(splitFile(srcFilename).name, "xml")
 
   generateRss(destFilename, parseNewsTitles(srcFilename))
