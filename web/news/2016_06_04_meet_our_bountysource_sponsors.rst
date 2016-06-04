@@ -3,7 +3,7 @@ Meet our BountySource sponsors
 
 .. container:: metadata
 
-  Posted by Dominik Picheta on 27/01/2016
+  Posted by Dominik Picheta on 04/06/2016
 
 
 .. raw::html
