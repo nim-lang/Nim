@@ -1,13 +1,14 @@
 #? stdtmpl | standard
-#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string =
+#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss,
+#   rootDir = ""): string =
 #  result = ""
 <!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <title>${currentTab} - $c.projectTitle</title>
-    <link rel="stylesheet" type="text/css" href="assets/style.css?t=2221" />
-    <link rel="shortcut icon" href="assets/images/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="${rootDir}assets/style.css?t=2221" />
+    <link rel="shortcut icon" href="${rootDir}assets/images/favicon.ico">
   #if len(rss) > 0:
     <link href="$rss" title="Recent changes" type="application/atom+xml" rel="alternate">
   #end if
@@ -16,7 +17,7 @@
     <div id="bountysource">
       <a href="https://salt.bountysource.com/teams/nim">
       <div class="page-layout" style="padding: 2pt 2pt 2pt 30pt">
-  	<img src="assets/bountysource/bountysource.png" style="width: 20px; float: left;">
+  	<img src="${rootDir}assets/bountysource/bountysource.png" style="width: 20px; float: left;">
         <span style="margin-left: 10pt; float: left; margin-top: 2pt;">Fund Nim and help us develop it further!</span>
         <img src="https://api.bountysource.com/badge/team?team_id=19072&style=raised" style="margin-top: 2pt; margin-left: 10pt"/>
       </div>
@@ -26,7 +27,7 @@
     <header id="head">
       <div class="page-layout tall">
         <div id="head-logo"></div>
-        <a id="head-logo-link" href="index.html"></a>
+        <a id="head-logo-link" href="${rootDir}index.html"></a>
         <nav id="head-links">
       #for i in 0.. c.tabs.len-1:
       # let t = c.tabs[i].val
@@ -40,7 +41,7 @@
       #   if t.contains('.'):
             href="${t}" title = "$c.projectName - $name">$name</a>
       #   else:
-            href="${t}.html" title = "$c.projectName - $name">$name</a>
+            href="${rootDir}${t}.html" title = "$c.projectName - $name">$name</a>
       #   end if
       # end if
       #end for
@@ -61,12 +62,12 @@
           <!-- slides -->
           <div id="slide0" class="active niaslide">
             <a href="sponsors.html">
-              <img src="assets/bountysource/meet_sponsors.png" alt="Meet our BountySource sponsors!"/>
+              <img src="${rootDir}assets/bountysource/meet_sponsors.png" alt="Meet our BountySource sponsors!"/>
             </a>
           </div>
           <div id="slide1" class="niaslide">
             <a href="news.html#Z2016-01-27-nim-in-action-is-now-available">
-              <img src="assets/niminaction/banner.jpg" alt="New in Manning Early Access Program: Nim in Action!"/>
+              <img src="${rootDir}assets/niminaction/banner.jpg" alt="New in Manning Early Access Program: Nim in Action!"/>
             </a>
           </div>
           <div id="slide2" class="codeslide2">
@@ -156,7 +157,7 @@ runForever()
 #  if len(c.ticker) > 0:
 					<h3 class="blue">Latest News</h3>
 					<div id="sidebar-news">
-          $c.ticker
+          ${c.ticker % rootDir}
 					</div>
 #  end if
 				</aside>
@@ -200,7 +201,7 @@ runForever()
 		</footer>
 
 #  if currentTab == "index":
-  <script src="assets/index.js"></script>
+  <script src="${rootDir}assets/index.js"></script>
 # end if
 #  if c.gaId != nil:
   <script>

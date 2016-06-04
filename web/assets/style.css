@@ -316,7 +316,7 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
 		background:url("images/glow-line2.png") no-repeat right; }
 
 	#content { padding:40px 0; line-height:150%; }
-	#content.page { width:680px; min-height:800px; padding-left:20px; }
+	#content.page { width:680px; min-height:1220px; padding-left:20px; }
 	#content h1 { font-size:20pt; letter-spacing:1px; color:rgba(0,0,0,.75); }
 	#content h2 { font-size:16pt; letter-spacing:1px; color:rgba(0,0,0,.7); margin-top:40px; }
 	#content p { text-align:justify; }
@@ -604,4 +604,13 @@ dt a, dt a:visited, dt a:hover {
 
 dt.level-1 {
   color: #2f2f2f !important;
+}
+
+/* News articles */
+
+.metadata {
+  font-size: 12pt;
+  margin-bottom: 20pt;
+  margin-top: -16pt;
+  color: #4f4f4f;
 }

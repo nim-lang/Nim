@@ -217,8 +217,8 @@ proc parseIniFile(c: var TConfigData) =
       of "ticker": c.ticker = v
       of "documentation":
         case normalize(k.key)
-        of "doc": addFiles(c.doc, "doc", ".txt", split(v, {';'}))
-        of "pdf": addFiles(c.pdf, "doc", ".txt", split(v, {';'}))
+        of "doc": addFiles(c.doc, "doc", ".rst", split(v, {';'}))
+        of "pdf": addFiles(c.pdf, "doc", ".rst", split(v, {';'}))
         of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
         of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
         of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
@@ -406,9 +406,9 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   output.write("""</feed>""")
 
 proc buildNewsRss(c: var TConfigData, destPath: string) =
-  # generates an xml feed from the web/news.txt file
+  # generates an xml feed from the web/news.rst file
   let
-    srcFilename = "web" / "news.txt"
+    srcFilename = "web" / "news.rst"
     destFilename = destPath / changeFileExt(splitFile(srcFilename).name, "xml")
 
   generateRss(destFilename, parseNewsTitles(srcFilename))
@@ -441,9 +441,38 @@ proc buildSponsors(c: var TConfigData, sponsorsFile: string, outputDir: string) 
   else:
     quit("[Error] Cannot write file: " & outFile)
 
+const
+  cmdRst2Html = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.rst"
+
+proc buildPage(c: var TConfigData, file, rss: string, assetDir = "") =
+  exec(cmdRst2Html % [c.nimArgs, file])
+  var temp = "web" / changeFileExt(file, "temp")
+  var content: string
+  try:
+    content = readFile(temp)
+  except IOError:
+    quit("[Error] cannot open: " & temp)
+  var f: File
+  var outfile = "web/upload/$#.html" % file
+  if not existsDir(outfile.splitFile.dir):
+    createDir(outfile.splitFile.dir)
+  if open(f, outfile, fmWrite):
+    writeLine(f, generateHTMLPage(c, file, content, rss, assetDir))
+    close(f)
+  else:
+    quit("[Error] cannot write file: " & outfile)
+  removeFile(temp)
+
+proc buildNews(c: var TConfigData, newsDir: string, outputDir: string) =
+  for kind, path in walkDir(newsDir):
+    let (dir, name, ext) = path.splitFile
+    if ext == ".rst":
+      buildPage(c, tailDir(dir) / name, "", "../")
+    else:
+      echo("Skipping file in news directory: ", path)
+
 proc buildWebsite(c: var TConfigData) =
-  const
-    cmd = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
+
   if c.ticker.len > 0:
     try:
       c.ticker = readFile("web" / c.ticker)
@@ -453,26 +482,11 @@ proc buildWebsite(c: var TConfigData) =
     var file = c.tabs[i].val
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
     if '.' in file: continue
-    exec(cmd % [c.nimArgs, file])
-    var temp = "web" / changeFileExt(file, "temp")
-    var content: string
-    try:
-      content = readFile(temp)
-    except IOError:
-      quit("[Error] cannot open: " & temp)
-    var f: File
-    var outfile = "web/upload/$#.html" % file
-    if not existsDir("web/upload"):
-      createDir("web/upload")
-    if open(f, outfile, fmWrite):
-      writeLine(f, generateHTMLPage(c, file, content, rss))
-      close(f)
-    else:
-      quit("[Error] cannot write file: " & outfile)
-    removeFile(temp)
+    buildPage(c, file, rss)
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
   buildSponsors(c, sponsors, "web/upload")
+  buildNews(c, "web/news", "web/upload/news")
 
 proc main(c: var TConfigData) =
   buildWebsite(c)
