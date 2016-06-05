@@ -244,7 +244,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     NumericalTypeToStr: array[tyInt..tyUInt64, string] = [
       "NI", "NI8", "NI16", "NI32", "NI64",
       "NF", "NF32", "NF64", "NF128",
-      "NU", "NU8", "NU16", "NU32", "NU64",]
+      "NU", "NU8", "NU16", "NU32", "NU64"]
   case typ.kind
   of tyPointer:
     result = typeNameOrLiteral(typ, "void*")
@@ -477,7 +477,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   else:
     addf(result, " {$n", [name])
 
-  var desc = getRecordFields(m, typ, check)
+  let desc = getRecordFields(m, typ, check)
   if desc == nil and not hasField:
     addf(result, "char dummy;$n", [])
   else:
@@ -573,11 +573,13 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     result = getTypeDescWeak(m, t.sons[0], check) & "*"
     idTablePut(m.typeCache, t, result)
   of tyRange, tyEnum:
+    let orig = t
     let t = if t.kind == tyRange: t.lastSon else: t
     result = getTypeName(t)
     if not (isImportedCppType(t) or
         (sfImportc in t.sym.flags and t.sym.magic == mNone)):
       idTablePut(m.typeCache, t, result)
+      if t != orig: idTablePut(m.typeCache, orig, result)
       var size: int
       if firstOrd(t) < 0:
         addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
