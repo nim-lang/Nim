@@ -12,18 +12,17 @@ essential for 1.0
 - overloading of `()` needs to be in .experimental
 - find a solution for the  x.f[T](y)  gotcha
 - ``concept`` needs to be refined, a nice name for the feature is not enough.
-- Destructors need to be refined.
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
-
 - Deprecate ``immediate`` for templates and macros
 - document NimMain and check whether it works for threading
-- ``not`` or ``~`` for the effects system
 
 
 Not critical for 1.0
 ====================
 
+- Destructors need to be refined.
+- ``not`` or ``~`` for the effects system
 - document and stress test ``.partial`` object declarations
 - add "all threads are blocked" detection to 'spawn'
 - figure out why C++ bootstrapping is so much slower
