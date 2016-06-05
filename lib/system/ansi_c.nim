@@ -13,24 +13,23 @@
 
 {.push hints:off}
 
-proc c_strcmp(a, b: cstring): cint {.header: "<string.h>",
-  noSideEffect, importc: "strcmp".}
-proc c_memcmp(a, b: cstring, size: int): cint {.header: "<string.h>",
-  noSideEffect, importc: "memcmp".}
-proc c_memcpy(a, b: cstring, size: int) {.header: "<string.h>", importc: "memcpy".}
-proc c_strlen(a: cstring): int {.header: "<string.h>",
-  noSideEffect, importc: "strlen".}
-proc c_memset(p: pointer, value: cint, size: int) {.
-  header: "<string.h>", importc: "memset".}
+proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
+  importc: "memchr", header: "<string.h>".}
+proc c_memcmp(a, b: pointer, size: csize): cint {.
+  importc: "memcmp", header: "<string.h>", noSideEffect.}
+proc c_memcpy(a, b: pointer, size: csize): pointer {.
+  importc: "memcpy", header: "<string.h>", discardable.}
+proc c_memmove(a, b: pointer, size: csize): pointer {.
+  importc: "memmove", header: "<string.h>",discardable.}
+proc c_memset(p: pointer, value: cint, size: csize): pointer {.
+  importc: "memset", header: "<string.h>", discardable.}
+proc c_strcmp(a, b: cstring): cint {.
+  importc: "strcmp", header: "<string.h>", noSideEffect.}
+proc c_strlen(a: cstring): cint {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
 
 type
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
-
-when not defined(vm):
-  var
-    c_stdin {.importc: "stdin", nodecl.}: File
-    c_stdout {.importc: "stdout", nodecl.}: File
-    c_stderr {.importc: "stderr", nodecl.}: File
 
 # constants faked as variables:
 when not declared(SIGINT):
@@ -90,52 +89,27 @@ else:
   proc c_setjmp(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "setjmp".}
 
-proc c_signal(sign: cint, handler: proc (a: cint) {.noconv.}) {.
-  importc: "signal", header: "<signal.h>".}
-proc c_raise(sign: cint) {.importc: "raise", header: "<signal.h>".}
+type c_sighandler_t = proc (a: cint) {.noconv.}
+proc c_signal(sign: cint, handler: proc (a: cint) {.noconv.}): c_sighandler_t {.
+  importc: "signal", header: "<signal.h>", discardable.}
 
-proc c_fputs(c: cstring, f: File) {.importc: "fputs",
-  header: "<stdio.h>".}
-proc c_fgets(c: cstring, n: int, f: File): cstring  {.
-  importc: "fgets", header: "<stdio.h>".}
-proc c_fgetc(stream: File): int {.importc: "fgetc",
-  header: "<stdio.h>".}
-proc c_ungetc(c: int, f: File) {.importc: "ungetc",
-  header: "<stdio.h>".}
-proc c_putc(c: char, stream: File) {.importc: "putc",
-  header: "<stdio.h>".}
-proc c_fprintf(f: File, frmt: cstring) {.
-  importc: "fprintf", header: "<stdio.h>", varargs.}
-proc c_printf(frmt: cstring) {.
-  importc: "printf", header: "<stdio.h>", varargs.}
+proc c_fprintf(f: File, frmt: cstring): cint {.
+  importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
+proc c_printf(frmt: cstring): cint {.
+  importc: "printf", header: "<stdio.h>", varargs, discardable.}
 
-proc c_fopen(filename, mode: cstring): File {.
-  importc: "fopen", header: "<stdio.h>".}
-proc c_fclose(f: File) {.importc: "fclose", header: "<stdio.h>".}
-
-proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-  importc: "sprintf", varargs, noSideEffect.}
+proc c_sprintf(buf, frmt: cstring): cint {.
+  importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-proc c_fread(buf: pointer, size, n: int, f: File): int {.
-  importc: "fread", header: "<stdio.h>".}
-proc c_fseek(f: File, offset: clong, whence: int): int {.
-  importc: "fseek", header: "<stdio.h>".}
+proc c_fileno(f: File): cint {.
+  importc: "fileno", header: "<fcntl.h>".}
 
-proc c_fwrite(buf: pointer, size, n: int, f: File): int {.
-  importc: "fwrite", header: "<stdio.h>".}
-
-proc c_exit(errorcode: cint) {.importc: "exit", header: "<stdlib.h>".}
-proc c_ferror(stream: File): bool {.
-  importc: "ferror", header: "<stdio.h>".}
-proc c_fflush(stream: File) {.importc: "fflush", header: "<stdio.h>".}
-proc c_abort() {.importc: "abort", header: "<stdlib.h>".}
-proc c_feof(stream: File): bool {.
-  importc: "feof", header: "<stdio.h>".}
-
-proc c_malloc(size: int): pointer {.importc: "malloc", header: "<stdlib.h>".}
-proc c_free(p: pointer) {.importc: "free", header: "<stdlib.h>".}
-proc c_realloc(p: pointer, newsize: int): pointer {.
+proc c_malloc(size: csize): pointer {.
+  importc: "malloc", header: "<stdlib.h>".}
+proc c_free(p: pointer) {.
+  importc: "free", header: "<stdlib.h>".}
+proc c_realloc(p: pointer, newsize: csize): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
 when hostOS != "standalone":
@@ -147,15 +121,19 @@ when hostOS != "standalone":
         vmErrnoWrapper[]
     else:
       var errno {.importc, header: "<errno.h>".}: cint ## error variable
-proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
+proc c_strerror(errnum: cint): cstring {.
+  importc: "strerror", header: "<string.h>".}
 
 proc c_remove(filename: cstring): cint {.
   importc: "remove", header: "<stdio.h>".}
 proc c_rename(oldname, newname: cstring): cint {.
   importc: "rename", header: "<stdio.h>".}
 
-proc c_system(cmd: cstring): cint {.importc: "system", header: "<stdlib.h>".}
-proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
-proc c_putenv(env: cstring): cint {.importc: "putenv", header: "<stdlib.h>".}
+proc c_system(cmd: cstring): cint {.
+  importc: "system", header: "<stdlib.h>".}
+proc c_getenv(env: cstring): cstring {.
+  importc: "getenv", header: "<stdlib.h>".}
+proc c_putenv(env: cstring): cint {.
+  importc: "putenv", header: "<stdlib.h>".}
 
 {.pop}

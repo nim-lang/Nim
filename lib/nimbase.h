@@ -347,9 +347,6 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
 
 #define float64ToInt64(x) ((NI64) (x))
 
-#define zeroMem(a, size) memset(a, 0, size)
-#define equalMem(a, b, size) (memcmp(a, b, size) == 0)
-
 #define STRING_LITERAL(name, str, length) \
   static const struct {                   \
     TGenericSeq Sup;                      \

@@ -30,7 +30,7 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
   if a == nil or b == nil: return false
   return a.len == b.len and
-    c_memcmp(a.data, b.data, a.len) == 0'i32
+    equalMem(addr(a.data), addr(b.data), a.len)
 
 when declared(allocAtomic):
   template allocStr(size: expr): expr =
@@ -71,7 +71,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   if len > 0:
     result = rawNewStringNoInit(len)
     result.len = len
-    c_memcpy(result.data, addr(s.data[start]), len)
+    copyMem(addr(result.data), addr(s.data[start]), len)
     result.data[len] = '\0'
   else:
     result = rawNewString(len)
@@ -82,7 +82,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewStringNoInit(len)
   result.len = len
-  c_memcpy(result.data, str, len + 1)
+  copyMem(addr(result.data), str, len + 1)
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   result = toNimStr(str, c_strlen(str))
@@ -94,7 +94,7 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
       result.len = src.len
-      c_memcpy(result.data, src.data, src.len + 1)
+      copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -107,7 +107,7 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
     result.len = src.len
-    c_memcpy(result.data, src.data, src.len + 1)
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 
 proc hashString(s: string): int {.compilerproc.} =
@@ -177,7 +177,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  c_memcpy(addr(dest.data[dest.len]), src.data, src.len + 1)
+  copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
   inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
@@ -301,8 +301,8 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
   else:
     result = $buf
 
-proc strtod(buf: cstring, endptr: ptr cstring): float64 {.importc,
-  header: "<stdlib.h>", noSideEffect.}
+proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
+  importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
@@ -460,7 +460,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + abs_exponent mod 10).char; abs_exponent = abs_exponent div 10
   t[ti-3] = ('0'.ord + abs_exponent mod 10).char
 
-  number = strtod(t, nil)
+  number = c_strtod(t, nil)
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)

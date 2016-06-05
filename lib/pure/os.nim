@@ -61,7 +61,7 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)
   if errno != 0'i32:
-    result = $os.strerror(errno)
+    result = $os.c_strerror(errno)
 
 {.push warning[deprecated]: off.}
 proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
@@ -114,7 +114,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
           if msgbuf != nil: localFree(msgbuf)
   else:
     if errorCode != OSErrorCode(0'i32):
-      result = $os.strerror(errorCode.int32)
+      result = $os.c_strerror(errorCode.int32)
 
 proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
