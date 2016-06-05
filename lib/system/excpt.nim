@@ -255,7 +255,7 @@ proc raiseExceptionAux(e: ref Exception) =
         add(buf, "Error: unhandled exception: ")
         if not isNil(e.msg): add(buf, e.msg)
         add(buf, " [")
-        xadd(buf, e.name, c_strlen(e.name))
+        xadd(buf, e.name, e.name.len)
         add(buf, "]\n")
         showErrorMessage(buf)
       quitOrDebug()

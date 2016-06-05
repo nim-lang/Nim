@@ -108,8 +108,8 @@ proc fileMatches(c, bp: cstring): bool =
   # and the character for the suffix does not exist or
   # is one of: \  /  :
   # depending on the OS case does not matter!
-  var blen: int = c_strlen(bp)
-  var clen: int = c_strlen(c)
+  var blen: int = bp.len
+  var clen: int = c.len
   if blen > clen: return false
   # check for \ /  :
   if clen-blen-1 >= 0 and c[clen-blen-1] notin {'\\', '/', ':'}:

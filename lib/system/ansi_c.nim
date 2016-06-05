@@ -25,8 +25,6 @@ proc c_memset(p: pointer, value: cint, size: csize): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
 proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
-proc c_strlen(a: cstring): cint {.
-  importc: "strlen", header: "<string.h>", noSideEffect.}
 
 type
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
@@ -111,29 +109,5 @@ proc c_free(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 proc c_realloc(p: pointer, newsize: csize): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
-
-when hostOS != "standalone":
-  when not declared(errno):
-    when defined(NimrodVM):
-      var vmErrnoWrapper {.importc.}: ptr cint
-      template errno: expr =
-        bind vmErrnoWrapper
-        vmErrnoWrapper[]
-    else:
-      var errno {.importc, header: "<errno.h>".}: cint ## error variable
-proc c_strerror(errnum: cint): cstring {.
-  importc: "strerror", header: "<string.h>".}
-
-proc c_remove(filename: cstring): cint {.
-  importc: "remove", header: "<stdio.h>".}
-proc c_rename(oldname, newname: cstring): cint {.
-  importc: "rename", header: "<stdio.h>".}
-
-proc c_system(cmd: cstring): cint {.
-  importc: "system", header: "<stdlib.h>".}
-proc c_getenv(env: cstring): cstring {.
-  importc: "getenv", header: "<stdlib.h>".}
-proc c_putenv(env: cstring): cint {.
-  importc: "putenv", header: "<stdlib.h>".}
 
 {.pop}
