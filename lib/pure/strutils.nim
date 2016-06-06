@@ -862,6 +862,10 @@ proc startsWith*(s, prefix: string): bool {.noSideEffect,
     if s[i] != prefix[i]: return false
     inc(i)
 
+proc startsWith*(s: string, prefix: char): bool {.noSideEffect.} =
+  ## Returns true iff ``s`` starts with ``prefix``.
+  result = s[0] == prefix
+
 proc endsWith*(s, suffix: string): bool {.noSideEffect,
   rtl, extern: "nsuEndsWith".} =
   ## Returns true iff ``s`` ends with ``suffix``.
@@ -873,6 +877,10 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
     if s[i+j] != suffix[i]: return false
     inc(i)
   if suffix[i] == '\0': return true
+
+proc endsWith*(s: string, suffix: char): bool {.noSideEffect.} =
+  ## Returns true iff ``s`` ends with ``suffix``.
+  result = s[s.high] == suffix
 
 proc continuesWith*(s, substr: string, start: Natural): bool {.noSideEffect,
   rtl, extern: "nsuContinuesWith".} =
@@ -2028,5 +2036,13 @@ bar
     doAssert formatEng(3.1e22, siPrefix=true, unit="a") == "31e21 a"
     # Don't use SI prefix as number is too small
     doAssert formatEng(3.1e-25, siPrefix=true, unit="A") == "310e-27 A"
+
+  block: # startsWith / endsWith char tests
+    var s = "abcdef"
+    doAssert s.startsWith('a')
+    doAssert s.startsWith('b') == false
+    doAssert s.endsWith('f')
+    doAssert s.endsWith('a') == false
+    doAssert s.endsWith('\0') == false
 
   #echo("strutils tests passed")
