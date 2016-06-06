@@ -337,7 +337,7 @@ proc checkNilable(v: PSym) =
       {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
     if v.ast.isNil:
       message(v.info, warnProveInit, v.name.s)
-    elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
+    elif tfNeedsInit in v.typ.flags and tfNotNil notin v.ast.typ.flags:
       message(v.info, warnProveInit, v.name.s)
 
 include semasgn

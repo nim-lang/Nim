@@ -573,34 +573,34 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     result = getTypeDescWeak(m, t.sons[0], check) & "*"
     idTablePut(m.typeCache, t, result)
   of tyRange, tyEnum:
-    let orig = t
     let t = if t.kind == tyRange: t.lastSon else: t
-    result = getTypeName(t)
-    if not (isImportedCppType(t) or
-        (sfImportc in t.sym.flags and t.sym.magic == mNone)):
-      idTablePut(m.typeCache, t, result)
-      if t != orig: idTablePut(m.typeCache, orig, result)
-      var size: int
-      if firstOrd(t) < 0:
-        addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
-        size = 4
-      else:
-        size = int(getSize(t))
-        case size
-        of 1: addf(m.s[cfsTypes], "typedef NU8 $1;$n", [result])
-        of 2: addf(m.s[cfsTypes], "typedef NU16 $1;$n", [result])
-        of 4: addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
-        of 8: addf(m.s[cfsTypes], "typedef NI64 $1;$n", [result])
-        else: internalError(t.sym.info, "getTypeDescAux: enum")
-      let owner = hashOwner(t.sym)
-      if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
-        var vals: seq[(string, int)] = @[]
-        for i in countup(0, t.n.len - 1):
-          assert(t.n.sons[i].kind == nkSym)
-          let field = t.n.sons[i].sym
-          vals.add((field.name.s, field.position.int))
-        gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
-          name: t.sym.name.s, values: vals))
+    result = cacheGetType(m.typeCache, t)
+    if result == nil:
+      result = getTypeName(t)
+      if not (isImportedCppType(t) or
+          (sfImportc in t.sym.flags and t.sym.magic == mNone)):
+        idTablePut(m.typeCache, t, result)
+        var size: int
+        if firstOrd(t) < 0:
+          addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
+          size = 4
+        else:
+          size = int(getSize(t))
+          case size
+          of 1: addf(m.s[cfsTypes], "typedef NU8 $1;$n", [result])
+          of 2: addf(m.s[cfsTypes], "typedef NU16 $1;$n", [result])
+          of 4: addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
+          of 8: addf(m.s[cfsTypes], "typedef NI64 $1;$n", [result])
+          else: internalError(t.sym.info, "getTypeDescAux: enum")
+        let owner = hashOwner(t.sym)
+        if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
+          var vals: seq[(string, int)] = @[]
+          for i in countup(0, t.n.len - 1):
+            assert(t.n.sons[i].kind == nkSym)
+            let field = t.n.sons[i].sym
+            vals.add((field.name.s, field.position.int))
+          gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
+            name: t.sym.name.s, values: vals))
   of tyProc:
     result = getTypeName(t)
     idTablePut(m.typeCache, t, result)
