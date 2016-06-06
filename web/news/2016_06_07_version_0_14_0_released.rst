@@ -1,5 +1,54 @@
-2016-XX-XX Version 0.14.0 released
-==================================
+Version 0.14.0 released
+=======================
+
+.. container:: metadata
+
+  Posted by Dominik Picheta on 07/06/2016
+
+It's been a while since the last release, but we've been very busy in the
+meantime. In
+addition to working on Nim we have started a
+`BountySource campaign <https://salt.bountysource.com/teams/nim>`_ and
+announced the pre-release of a new Nim book titled
+`Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_.
+Our BountySource campaign has already been very successful, helping us raise
+enough funds to surpass 4 of our monthly goals. The companies and individuals
+that made this possible are listed on our brand new
+`sponsors page <http://nim-lang.org/sponsors.html>`_.
+
+This release includes over 260 bug fixes. As mentioned in the previous release
+announcement, one of the focuses of this release was going to be improvements
+to the GC. Indeed, the most prominent fixes are related to the GC not collecting
+cycles properly. This was a major problem that was triggered typically when
+applications using asynchronous I/O were left running for long periods of time.
+
+There have also been many fixes to the way that the compiler sources are
+installed. Some applications such as Nimble depend on these sources and they
+are now included in the release tarballs. This should fix many of the problems
+that users experienced trying to compile the Nimble package manager.
+
+Finally, you will find multiple changes in the standard library. Some of which
+unfortunately affects backwards compatibility. This includes the `random`
+procedures being moved to a new `random` module, HTTP headers being stored
+in a new `HttpHeaders` object and the `round` procedure in the `math` module
+being changed to return a `float` instead of an `int`. You can find a full
+list of such changes below.
+
+Together with the new release of Nim, we are also releasing a new version of
+Nimble. The release notes for it are available on
+`GitHub <https://github.com/nim-lang/nimble/blob/master/changelog.markdown#074---06062016>`_.
+
+As always you can download the latest version of Nim from the
+`download <http://nim-lang.org/download.html>`_ page.
+
+We hope that you will like this new release. Let us know if you run into
+any trouble, have any questions or want to give some feedback. You can get
+in touch with us on the `Forum <http://forum.nim-lang.org/>`_,
+`IRC <http://webchat.freenode.net/?channels=nim>`_,
+`Twitter <http://twitter.com/nim_lang>`_,
+or via email contact@nim-lang.org.
+
+Happy coding!
 
 Changes affecting backwards compatibility
 -----------------------------------------
