@@ -78,11 +78,16 @@ elif defined(posixRealtime):
 
 else:
   # fallback Posix implementation:
+  when defined(linux):
+    type Time = clong
+  else:
+    type Time = int
+
   type
     Timeval {.importc: "struct timeval", header: "<sys/select.h>",
                final, pure.} = object ## struct timeval
-      tv_sec: int  ## Seconds.
-      tv_usec: int ## Microseconds.
+      tv_sec: Time  ## Seconds.
+      tv_usec: clong ## Microseconds.
   {.deprecated: [Ttimeval: Timeval].}
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}

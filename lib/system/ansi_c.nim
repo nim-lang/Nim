@@ -29,28 +29,26 @@ proc c_strcmp(a, b: cstring): cint {.
 type
   C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
-# constants faked as variables:
-when not declared(SIGINT):
+when defined(windows):
+  const
+    SIGABRT = cint(22)
+    SIGFPE = cint(8)
+    SIGILL = cint(4)
+    SIGINT = cint(2)
+    SIGSEGV = cint(11)
+    SIGTERM = cint(15)
+elif defined(macosx) or defined(linux):
+  const
+    SIGABRT = cint(6)
+    SIGFPE = cint(8)
+    SIGILL = cint(4)
+    SIGINT = cint(2)
+    SIGSEGV = cint(11)
+    SIGTERM = cint(15)
+    SIGPIPE = cint(13)
+else:
   when NoFakeVars:
-    when defined(windows):
-      const
-        SIGABRT = cint(22)
-        SIGFPE = cint(8)
-        SIGILL = cint(4)
-        SIGINT = cint(2)
-        SIGSEGV = cint(11)
-        SIGTERM = cint(15)
-    elif defined(macosx) or defined(linux):
-      const
-        SIGABRT = cint(6)
-        SIGFPE = cint(8)
-        SIGILL = cint(4)
-        SIGINT = cint(2)
-        SIGSEGV = cint(11)
-        SIGTERM = cint(15)
-        SIGPIPE = cint(13)
-    else:
-      {.error: "SIGABRT not ported to your platform".}
+    {.error: "SIGABRT not ported to your platform".}
   else:
     var
       SIGINT {.importc: "SIGINT", nodecl.}: cint
@@ -62,10 +60,7 @@ when not declared(SIGINT):
       var SIGPIPE {.importc: "SIGPIPE", nodecl.}: cint
 
 when defined(macosx):
-  when NoFakeVars:
-    const SIGBUS = cint(10)
-  else:
-    var SIGBUS {.importc: "SIGBUS", nodecl.}: cint
+  const SIGBUS = cint(10)
 else:
   template SIGBUS: expr = SIGSEGV
 

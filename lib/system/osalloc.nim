@@ -87,6 +87,8 @@ elif defined(posix):
     const MAP_ANONYMOUS = 0x1000
   elif defined(solaris):
     const MAP_ANONYMOUS = 0x100
+  elif defined(linux):
+    const MAP_ANONYMOUS = 0x20
   else:
     var
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint

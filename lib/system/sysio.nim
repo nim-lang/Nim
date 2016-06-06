@@ -277,15 +277,31 @@ const
     # should not be translated.
 
 when defined(posix) and not defined(nimscript):
-  type
-    Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+  when defined(linux) and defined(amd64):
+    type
+      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
 
-    Stat {.importc: "struct stat",
-             header: "<sys/stat.h>", final, pure.} = object ## struct stat
-      st_mode: Mode        ## Mode of file
+      # fillers ensure correct size & offsets
+      Stat {.importc: "struct stat",
+              header: "<sys/stat.h>", final, pure.} = object ## struct stat
+        filler_1: array[24, char]
+        st_mode: Mode        ## Mode of file
+        filler_2: array[144 - 24 - 4, char]
 
-  proc S_ISDIR(m: Mode): bool {.importc, header: "<sys/stat.h>".}
-    ## Test for a directory.
+    proc S_ISDIR(m: Mode): bool =
+      ## Test for a directory.
+      (m and 0o170000) == 0o40000
+
+  else:
+    type
+      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+
+      Stat {.importc: "struct stat",
+               header: "<sys/stat.h>", final, pure.} = object ## struct stat
+        st_mode: Mode        ## Mode of file
+
+    proc S_ISDIR(m: Mode): bool {.importc, header: "<sys/stat.h>".}
+      ## Test for a directory.
 
   proc c_fstat(a1: cint, a2: var Stat): cint {.
     importc: "fstat", header: "<sys/stat.h>".}

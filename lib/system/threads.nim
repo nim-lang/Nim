@@ -117,6 +117,11 @@ else:
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
+  when defined(linux):
+    type Time = clong
+  else:
+    type Time = int
+
   type
     SysThread {.importc: "pthread_t", header: "<sys/types.h>",
                  final, pure.} = object
@@ -125,8 +130,8 @@ else:
 
     Timespec {.importc: "struct timespec",
                 header: "<time.h>", final, pure.} = object
-      tv_sec: int
-      tv_nsec: int
+      tv_sec: Time
+      tv_nsec: clong
   {.deprecated: [TSysThread: SysThread, Tpthread_attr: PThreadAttr,
                 Ttimespec: Timespec].}
 
