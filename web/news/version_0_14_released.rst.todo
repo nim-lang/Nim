@@ -40,7 +40,8 @@ Changes affecting backwards compatibility
   Nim.
 - The path handling changed. The project directory is not added to the
   search path automatically anymore. Add this line to your project's
-  config to get back the old behaviour: ``--path:"$projectdir"``.
+  config to get back the old behaviour: ``--path:"$projectdir"``. (Do
+  not replace ``$projectdir`` by the project's directory!
 - The ``round`` function in ``math.nim`` now returns a float and has been
   corrected such that the C implementation always rounds up from .5 rather
   than changing the operation for even and odd numbers.
@@ -51,7 +52,7 @@ Changes affecting backwards compatibility
   than meaning 2.285 GB as in the previous implementation).  By default it
   also uses IEC prefixes (KiB, MiB) etc and optionally uses colloquial names
   (kB, MB etc) and the (SI-preferred) space.
-- The ``==`` operator for ``cstring`` now implements a value comparision
+- The ``==`` operator for ``cstring`` now implements a value comparison
   for the C backend (using ``strcmp``), not reference comparisons anymore.
   Convert the cstrings to pointers if you really want reference equality
   for speed.
@@ -61,10 +62,37 @@ Changes affecting backwards compatibility
   both ``asynchttpserver`` and ``httpclient``.
 
 
+Generic type classes
+~~~~~~~~~~~~~~~~~~~~
+
+Generic type classes are now handled properly in the compiler, but this
+means code like the following does not compile any longer:
+
+.. code-block:: nim
+  type
+    Vec3[T] = distinct array[3, T]
+
+  proc vec3*[T](a, b, c: T): Vec3[T] = Vec3([a, b, c])
+
+While every ``Vec3[T]`` is part of the ``Vec3`` type class, the reverse
+is not true, not every ``Vec3`` is a ``Vec3[T]``. Otherwise there would
+be a subtype relation between ``Vec3[int]`` and ``Vec3[float]`` and there
+is none for Nim. The fix is to write this instead:
+
+.. code-block:: nim
+  type
+    Vec3[T] = distinct array[3, T]
+
+  proc vec3*[T](a, b, c: T): Vec3[T] = Vec3[T]([a, b, c])
+
+Note that in general we don't advise to use ``distinct array``,
+use ``object`` instead.
+
+
 Library Additions
 -----------------
 
-- The rlocks module has been added providing reentrant lock synchronization
+- The rlocks module has been added providing a reentrant lock synchronization
   primitive.
 - A generic "sink operator" written as ``&=`` has been added to the ``system`` and the ``net`` modules.
 - Added ``strscans`` module that implements a ``scanf`` for easy input extraction.
@@ -89,7 +117,9 @@ Language Additions
 ------------------
 
 - Nim now supports a ``.this`` pragma for more notational convenience.
+  See `manual.html#overloading-resolution-automatic-self-insertions`_ for more information.
 - Nim now supports a different ``using`` statement for more convenience.
+  Consult `manual.html#statements-and-expressions-using-statement`_ for more information.
 - ``include`` statements are not restricted to top level statements anymore.
 
 ..
@@ -108,8 +138,6 @@ via a commit, for a full list see
 
   - Fixed "Calling generic templates with explicit generic arguments crashes compiler"
     (`#3496 <https://github.com/nim-lang/Nim/issues/3496>`_)
-  - Fixed "JS backend - strange utf-8 handling"
-    (`#3714 <https://github.com/nim-lang/Nim/issues/3714>`_)
   - Fixed "JS backend - strange utf-8 handling"
     (`#3714 <https://github.com/nim-lang/Nim/issues/3714>`_)
   - Fixed "execvpe is glibc specific"
