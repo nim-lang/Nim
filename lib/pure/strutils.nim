@@ -862,7 +862,7 @@ proc startsWith*(s, prefix: string): bool {.noSideEffect,
     if s[i] != prefix[i]: return false
     inc(i)
 
-proc startsWith*(s: string, prefix: char): bool {.noSideEffect.} =
+proc startsWith*(s: string, prefix: char): bool {.noSideEffect, inline.} =
   ## Returns true iff ``s`` starts with ``prefix``.
   result = s[0] == prefix
 
@@ -878,7 +878,7 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
     inc(i)
   if suffix[i] == '\0': return true
 
-proc endsWith*(s: string, suffix: char): bool {.noSideEffect.} =
+proc endsWith*(s: string, suffix: char): bool {.noSideEffect, inline.} =
   ## Returns true iff ``s`` ends with ``suffix``.
   result = s[s.high] == suffix
 
