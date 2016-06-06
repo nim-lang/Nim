@@ -18,9 +18,9 @@ spelled*:
 
 Note that this pragma is somewhat of a misnomer: Other backends will provide
 the same feature under the same name. Also, if one is interfacing with C++
-the `ImportCpp pragma <nimc.html#importcpp-pragma>`_ and
+the `ImportCpp pragma <manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
 interfacing with Objective-C the `ImportObjC pragma
-<nimc.html#importobjc-pragma>`_ can be used.
+<manual.html#implementation-specific-pragmas-importobjc-pragma>`_ can be used.
 
 
 Exportc pragma
