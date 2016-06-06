@@ -79,9 +79,17 @@ proc findNim(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-proc exec(cmd: string, errorcode: int = QuitFailure) =
+proc exec(cmd: string, errorcode: int = QuitFailure, additionalPATH = "") =
+  let prevPATH = getEnv("PATH")
+  if additionalPATH.len > 0:
+    var absolute = additionalPATH
+    if not absolute.isAbsolute:
+      absolute = getCurrentDir() / absolute
+    echo("Adding to $PATH: ", absolute)
+    putEnv("PATH", prevPATH & PathSep & absolute)
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
+  putEnv("PATH", prevPATH)
 
 proc tryExec(cmd: string): bool =
   echo(cmd)
@@ -146,7 +154,7 @@ proc website(args: string) =
 
 proc pdf(args="") =
   exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-       [findNim(), args, VersionAsString])
+       [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
 
 # -------------- boot ---------------------------------------------------------
 

@@ -94,8 +94,8 @@ converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
 
 proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
-  ## Returns the ``i``th value associated with the given key. If there are
-  ## no values associated with the key or the ``i``th value doesn't exist,
+  ## Returns the ``i``'th value associated with the given key. If there are
+  ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
   return headers.table[key.toLower][i]
 

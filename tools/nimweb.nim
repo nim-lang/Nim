@@ -9,7 +9,9 @@
 
 import
   os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
-  re, htmlgen, macros, md5, osproc
+  re, htmlgen, macros, md5, osproc, parsecsv, algorithm
+
+from xmltree import escape
 
 type
   TKeyValPair = tuple[key, id, val: string]
@@ -25,9 +27,18 @@ type
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
     gaId: string  # google analytics ID, nil means analytics are disabled
   TRssItem = object
-    year, month, day, title: string
+    year, month, day, title, url, content: string
   TAction = enum
     actAll, actOnlyWebsite, actPdf
+
+  Sponsor = object
+    logo: string
+    name: string
+    url: string
+    thisMonth: int
+    allTime: int
+    since: string
+    level: int
 
 var action: TAction
 
@@ -80,9 +91,10 @@ Compile_options:
   will be passed to the Nim compiler
 """
 
-  rYearMonthDayTitle = r"(\d{4})-(\d{2})-(\d{2})\s+(.*)"
+  rYearMonthDay = r"(\d{4})_(\d{2})_(\d{2})"
   rssUrl = "http://nim-lang.org/news.xml"
   rssNewsUrl = "http://nim-lang.org/news.html"
+  sponsors = "web/sponsors.csv"
   validAnchorCharacters = Letters + Digits
 
 
@@ -207,8 +219,8 @@ proc parseIniFile(c: var TConfigData) =
       of "ticker": c.ticker = v
       of "documentation":
         case normalize(k.key)
-        of "doc": addFiles(c.doc, "doc", ".txt", split(v, {';'}))
-        of "pdf": addFiles(c.pdf, "doc", ".txt", split(v, {';'}))
+        of "doc": addFiles(c.doc, "doc", ".rst", split(v, {';'}))
+        of "pdf": addFiles(c.pdf, "doc", ".rst", split(v, {';'}))
         of "srcdoc": addFiles(c.srcdoc, "lib", ".nim", split(v, {';'}))
         of "srcdoc2": addFiles(c.srcdoc2, "lib", ".nim", split(v, {';'}))
         of "webdoc": addFiles(c.webdoc, "lib", ".nim", split(v, {';'}))
@@ -325,20 +337,20 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   mexec(commands, c.numProcessors)
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
-  # parses the file for titles and returns them as TRssItem blocks.
-  let reYearMonthDayTitle = re(rYearMonthDayTitle)
-  var
-    input: File
-    line = ""
-
+  # Goes through each news file, returns its date/title.
   result = @[]
-  if not open(input, inputFilename):
-    quit("Could not read $1 for rss generation" % [inputFilename])
-  defer: input.close()
-  while input.readLine(line):
-    if line =~ reYearMonthDayTitle:
-      result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
-        title: matches[3]))
+  let reYearMonthDay = re(rYearMonthDay)
+  for kind, path in walkDir(inputFilename):
+    let (dir, name, ext) = path.splitFile
+    if ext == ".rst":
+      let content = readFile(path)
+      let title = content.splitLines()[0]
+      let urlPath = "news/" & name & ".html"
+      if name =~ reYearMonthDay:
+        result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
+          title: title, url: "http://nim-lang.org/" & urlPath,
+          content: content))
+  result.reverse()
 
 proc genUUID(text: string): string =
   # Returns a valid RSS uuid, which is basically md5 with dashes and a prefix.
@@ -382,23 +394,22 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   output.write(updatedDate($now.year, $(int(now.month) + 1), $now.monthday))
 
   for rss in news:
-    let joinedTitle = "$1-$2-$3 $4" % [rss.year, rss.month, rss.day, rss.title]
     output.write(entry(
-        title(joinedTitle),
-        id(genUUID(joinedTitle)),
+        title(xmltree.escape(rss.title)),
+        id(genUUID(rss.title)),
         link(`type` = "text/html", rel = "alternate",
-          href = genNewsLink(joinedTitle)),
+          href = rss.url),
         updatedDate(rss.year, rss.month, rss.day),
         "<author><name>Nim</name></author>",
-        content(joinedTitle, `type` = "text"),
+        content(xmltree.escape(rss.content), `type` = "text"),
       ))
 
   output.write("""</feed>""")
 
 proc buildNewsRss(c: var TConfigData, destPath: string) =
-  # generates an xml feed from the web/news.txt file
+  # generates an xml feed from the web/news.rst file
   let
-    srcFilename = "web" / "news.txt"
+    srcFilename = "web" / "news"
     destFilename = destPath / changeFileExt(splitFile(srcFilename).name, "xml")
 
   generateRss(destFilename, parseNewsTitles(srcFilename))
@@ -407,9 +418,63 @@ proc buildJS(destPath: string) =
   exec("nim js -d:release --out:$1 web/nimblepkglist.nim" %
       [destPath / "nimblepkglist.js"])
 
+proc readSponsors(sponsorsFile: string): seq[Sponsor] =
+  result = @[]
+  var fileStream = newFileStream(sponsorsFile, fmRead)
+  if fileStream == nil: quit("Cannot open sponsors.csv file: " & sponsorsFile)
+  var parser: CsvParser
+  open(parser, fileStream, sponsorsFile)
+  discard readRow(parser) # Skip the header row.
+  while readRow(parser):
+    result.add(Sponsor(logo: parser.row[0], name: parser.row[1],
+        url: parser.row[2], thisMonth: parser.row[3].parseInt,
+        allTime: parser.row[4].parseInt,
+        since: parser.row[5], level: parser.row[6].parseInt))
+  parser.close()
+
+proc buildSponsors(c: var TConfigData, sponsorsFile: string, outputDir: string) =
+  let sponsors = generateSponsors(readSponsors(sponsorsFile))
+  let outFile = outputDir / "sponsors.html"
+  var f: File
+  if open(f, outFile, fmWrite):
+    writeLine(f, generateHtmlPage(c, "", "Our Sponsors", sponsors, ""))
+    close(f)
+  else:
+    quit("[Error] Cannot write file: " & outFile)
+
+const
+  cmdRst2Html = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.rst"
+
+proc buildPage(c: var TConfigData, file, title, rss: string, assetDir = "") =
+  exec(cmdRst2Html % [c.nimArgs, file])
+  var temp = "web" / changeFileExt(file, "temp")
+  var content: string
+  try:
+    content = readFile(temp)
+  except IOError:
+    quit("[Error] cannot open: " & temp)
+  var f: File
+  var outfile = "web/upload/$#.html" % file
+  if not existsDir(outfile.splitFile.dir):
+    createDir(outfile.splitFile.dir)
+  if open(f, outfile, fmWrite):
+    writeLine(f, generateHTMLPage(c, file, title, content, rss, assetDir))
+    close(f)
+  else:
+    quit("[Error] cannot write file: " & outfile)
+  removeFile(temp)
+
+proc buildNews(c: var TConfigData, newsDir: string, outputDir: string) =
+  for kind, path in walkDir(newsDir):
+    let (dir, name, ext) = path.splitFile
+    if ext == ".rst":
+      let title = readFile(path).splitLines()[0]
+      buildPage(c, tailDir(dir) / name, title, "", "../")
+    else:
+      echo("Skipping file in news directory: ", path)
+
 proc buildWebsite(c: var TConfigData) =
-  const
-    cmd = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.txt"
+
   if c.ticker.len > 0:
     try:
       c.ticker = readFile("web" / c.ticker)
@@ -419,25 +484,11 @@ proc buildWebsite(c: var TConfigData) =
     var file = c.tabs[i].val
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
     if '.' in file: continue
-    exec(cmd % [c.nimArgs, file])
-    var temp = "web" / changeFileExt(file, "temp")
-    var content: string
-    try:
-      content = readFile(temp)
-    except IOError:
-      quit("[Error] cannot open: " & temp)
-    var f: File
-    var outfile = "web/upload/$#.html" % file
-    if not existsDir("web/upload"):
-      createDir("web/upload")
-    if open(f, outfile, fmWrite):
-      writeLine(f, generateHTMLPage(c, file, content, rss))
-      close(f)
-    else:
-      quit("[Error] cannot write file: " & outfile)
-    removeFile(temp)
+    buildPage(c, file, if file == "question": "FAQ" else: file, rss)
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
+  buildSponsors(c, sponsors, "web/upload")
+  buildNews(c, "web/news", "web/upload/news")
 
 proc main(c: var TConfigData) =
   buildWebsite(c)

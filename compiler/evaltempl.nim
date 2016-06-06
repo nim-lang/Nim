@@ -79,7 +79,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
                     else: s.ast[genericParamsPos].len
     expectedRegularParams = <s.typ.len
     givenRegularParams = totalParams - genericParams
-
+  if givenRegularParams < 0: givenRegularParams = 0
   if totalParams > expectedRegularParams + genericParams:
     globalError(n.info, errWrongNumberOfArguments)
 

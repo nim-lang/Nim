@@ -2,7 +2,7 @@
 
 var timer;
 var prevIndex = 0;
-var slideCount = 2;
+var slideCount = 4;
 
 function modifyActive(el, add) {
   var element = document.getElementById(el);

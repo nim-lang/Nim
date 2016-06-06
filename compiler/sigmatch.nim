@@ -256,6 +256,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
       add(result, renderTree(n.sons[i].sons[0]))
       add(result, ": ")
       if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
+        # XXX we really need to 'tryExpr' here!
         arg = c.semOperand(c, n.sons[i].sons[1])
         n.sons[i].typ = arg.typ
         n.sons[i].sons[1] = arg
