@@ -76,6 +76,8 @@ Library Additions
   floating point number.
 - Added ``formatEng`` to ``strutils.nim`` to format numbers using engineering
   notation.
+- Added ``readHeaderRow`` and ``rowEntry`` to ``parsecsv.nim`` to provide
+  a lightweight alternative to python's ``csv.DictReader``.
 
 
 Compiler Additions
