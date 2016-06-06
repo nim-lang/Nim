@@ -317,38 +317,74 @@ If the `experimental mode <experimental pragma>`_ is active and no other match
 is found, the first argument ``a`` is dereferenced automatically if it's a
 pointer type and overloading resolution is tried with ``a[]`` instead.
 
+Automatic self insertions
+-------------------------
 
-Lazy type resolution for expr
------------------------------
+Starting with version 0.14 of the language, Nim supports ``field`` as a
+shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
+or C++. This feature has to be explicitly enabled via a ``{.this: self.}``
+statement pragma. This pragma is active for the rest of the module:
+
+.. code-block:: nim
+  type
+    Parent = object of RootObj
+      parentField: int
+    Child = object of Parent
+      childField: int
+
+  {.this: self.}
+  proc sumFields(self: Child): int =
+    result = parentField + childField
+    # is rewritten to:
+    # result = self.parentField + self.childField
+
+Instead of ``self`` any other identifier can be used too, but
+``{.this: self.}`` will become the default directive for the whole language
+eventually.
+
+In addition to fields, routine applications are also rewritten, but only
+if no other interpretation of the call is possible:
+
+.. code-block:: nim
+  proc test(self: Child) =
+    echo childField, " ", sumFields()
+    # is rewritten to:
+    echo self.childField, " ", sumFields(self)
+    # but NOT rewritten to:
+    echo self, self.childField, " ", sumFields(self)
+
+
+Lazy type resolution for untyped
+--------------------------------
 
 **Note**: An `unresolved`:idx: expression is an expression for which no symbol
 lookups and no type checking have been performed.
 
 Since templates and macros that are not declared as ``immediate`` participate
 in overloading resolution it's essential to have a way to pass unresolved
-expressions to a template or macro. This is what the meta-type ``expr``
+expressions to a template or macro. This is what the meta-type ``untyped``
 accomplishes:
 
 .. code-block:: nim
-  template rem(x: expr) = discard
+  template rem(x: untyped) = discard
 
   rem unresolvedExpression(undeclaredIdentifier)
 
-A parameter of type ``expr`` always matches any argument (as long as there is
+A parameter of type ``untyped`` always matches any argument (as long as there is
 any argument passed to it).
 
 But one has to watch out because other overloads might trigger the
 argument's resolution:
 
 .. code-block:: nim
-  template rem(x: expr) = discard
+  template rem(x: untyped) = discard
   proc rem[T](x: T) = discard
 
   # undeclared identifier: 'unresolvedExpression'
   rem unresolvedExpression(undeclaredIdentifier)
 
-``expr`` is the only metatype that is lazy in this sense, the other
-metatypes ``stmt`` and ``typedesc`` are not lazy.
+``untyped`` and ``varargs[untyped]`` are the only metatype that are lazy in this sense, the other
+metatypes ``typed`` and ``typedesc`` are not lazy.
 
 
 Varargs matching

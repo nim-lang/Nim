@@ -55,7 +55,7 @@ destructor pragma
 -----------------
 
 The ``destructor`` pragma is used to mark a proc to act as a type destructor.
-Its usage is deprecated, See `type bound operations`_ instead.
+Its usage is deprecated, see `type bound operations`_ instead.
 
 override pragma
 ---------------
@@ -518,11 +518,16 @@ Example:
 
 .. code-block:: nim
   {.experimental.}
+  type
+    FooId = distinct int
+    BarId = distinct int
+  using
+    foo: FooId
+    bar: BarId
 
-  proc useUsing(dest: var string) =
-    using dest
-    add "foo"
-    add "bar"
+  proc useUsing(bar, foo) =
+    echo "bar is of type BarId"
+    echo "foo is of type FooId"
 
 
 Implementation Specific Pragmas
