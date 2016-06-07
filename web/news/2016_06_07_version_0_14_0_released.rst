@@ -166,9 +166,9 @@ Language Additions
 ------------------
 
 - Nim now supports a ``.this`` pragma for more notational convenience.
-  See `manual.html#overloading-resolution-automatic-self-insertions`_ for more information.
+  See `automatic-self-insertions <../docs/manual.html#overloading-resolution-automatic-self-insertions>`_ for more information.
 - Nim now supports a different ``using`` statement for more convenience.
-  Consult `manual.html#statements-and-expressions-using-statement`_ for more information.
+  Consult `using-statement <../docs/manual.html#statements-and-expressions-using-statement>`_ for more information.
 - ``include`` statements are not restricted to top level statements anymore.
 
 ..
