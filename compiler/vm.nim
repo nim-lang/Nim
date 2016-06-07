@@ -10,12 +10,14 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-const debugEchoCode = false
+const
+  debugEchoCode = false
+  traceCode = debugEchoCode
 
 import ast except getstr
 
 import
-  strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes, unsigned,
+  strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal
 
@@ -121,7 +123,7 @@ template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
 proc createStrKeepNode(x: var TFullReg; keepNode=true) =
-  if x.node.isNil:
+  if x.node.isNil or not keepNode:
     x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit and keepNode:
     when defined(useNodeIds):
@@ -404,7 +406,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     let instr = c.code[pc]
     let ra = instr.regA
     #if c.traceActive:
-    #echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
+    when traceCode:
+      echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
     #  message(c.debug[pc], warnUser, "Trace")
 
     case instr.opcode
@@ -542,7 +545,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node.sons[0]
         else:
-          stackTrace(c, tos, pc, errGenerated, "limited VM support for 'ref'")
+          stackTrace(c, tos, pc, errGenerated, "limited VM support for pointers")
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
@@ -1182,19 +1185,35 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetType:
       let rb = instr.regB
       let rc = instr.regC
-      if rc == 0:
+      case rc:
+      of 0:
+        # getType opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
           regs[ra].node = opMapTypeToAst(regs[rb].node.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, errGenerated, "node has no type")
-      else:
+      of 1:
         # typeKind opcode:
         ensureKind(rkInt)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
           regs[ra].intVal = ord(regs[rb].node.typ.kind)
         #else:
         #  stackTrace(c, tos, pc, errGenerated, "node has no type")
+      of 2:
+        # getTypeInst opcode:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeInstToAst(regs[rb].node.typ, c.debug[pc])
+        else:
+          stackTrace(c, tos, pc, errGenerated, "node has no type")
+      else:
+        # getTypeImpl opcode:
+        ensureKind(rkNode)
+        if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
+          regs[ra].node = opMapTypeImplToAst(regs[rb].node.typ, c.debug[pc])
+        else:
+          stackTrace(c, tos, pc, errGenerated, "node has no type")
     of opcNStrVal:
       decodeB(rkNode)
       createStr regs[ra]
@@ -1590,12 +1609,13 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   for i in 1.. <sym.typ.len:
     tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
 
-  if sfImmediate notin sym.flags:
-    let gp = sym.ast[genericParamsPos]
-    for i in 0 .. <gp.len:
+  let gp = sym.ast[genericParamsPos]
+  for i in 0 .. <gp.len:
+    if sfImmediate notin sym.flags:
       let idx = sym.typ.len + i
       tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
-
+    elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
+      globalError(n.info, "static[T] or typedesc nor supported for .immediate macros")
   # temporary storage:
   #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode

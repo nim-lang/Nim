@@ -18,7 +18,7 @@
 ## that ``=`` performs a copy of the set.
 
 import
-  os, hashes, math
+  hashes, math
 
 {.pragma: myShallow.}
 when not defined(nimhygiene):
@@ -163,7 +163,11 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
-  else: raise newException(KeyError, "key not found: " & $key)
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
 
 proc mget*[A](s: var HashSet[A], key: A): var A {.deprecated.} =
   ## returns the element that is actually stored in 's' which has the same
@@ -951,7 +955,7 @@ when isMainModule and not defined(release):
       var b = initOrderedSet[int]()
       for x in [2, 4, 5]: b.incl(x)
       assert($a == $b)
-      assert(a == b) # https://github.com/Araq/Nimrod/issues/1413
+      assert(a == b) # https://github.com/Araq/Nim/issues/1413
 
     block initBlocks:
       var a: OrderedSet[int]

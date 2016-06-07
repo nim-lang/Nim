@@ -79,15 +79,18 @@
 ## constructor should be used for this purpose. However,
 ## currently only basic authentication is supported.
 
-import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
+import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
+  math, random, httpcore
 import asyncnet, asyncdispatch
 import nativesockets
+
+export httpcore except parseHeader # TODO: The ``except`` doesn't work
 
 type
   Response* = tuple[
     version: string,
     status: string,
-    headers: StringTableRef,
+    headers: HttpHeaders,
     body: string]
 
   Proxy* = ref object
@@ -164,7 +167,7 @@ proc parseChunks(s: Socket, timeout: int): string =
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
+proc parseBody(s: Socket, headers: HttpHeaders, timeout: int): string =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = parseChunks(s, timeout)
@@ -204,7 +207,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
   var linei = 0
   var fullyRead = false
   var line = ""
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   while true:
     line = ""
     linei = 0
@@ -239,6 +242,10 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       inc(linei) # Skip :
 
       result.headers[name] = line[linei.. ^1].strip()
+      # Ensure the server isn't trying to DoS us.
+      if result.headers.len > headerLimit:
+        httpError("too many headers")
+
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
@@ -335,7 +342,7 @@ proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
   var m = newMimetypes()
   for name, file in xs.items:
     var contentType: string
-    let (dir, fName, ext) = splitFile(file)
+    let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = m.getMimetype(ext[1..ext.high], nil)
     p.add(name, readFile(file), fName & ext, contentType)
@@ -455,14 +462,15 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return true
 
-proc getNewLocation(lastUrl: string, headers: StringTableRef): string =
+proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
   result = headers.getOrDefault"Location"
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
   let r = parseUri(result)
   if r.hostname == "" and r.path != "":
-    let origParsed = parseUri(lastUrl)
-    result = origParsed.hostname & "/" & r.path
+    var parsed = parseUri(lastURL)
+    parsed.path = r.path
+    result = $parsed
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
           sslContext: SSLContext = defaultSSLContext,
@@ -481,7 +489,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = request(redirectTo, httpGET, extraHeaders, "", sslContext,
                        timeout, userAgent, proxy)
-      lastUrl = redirectTo
+      lastURL = redirectTo
 
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
                  sslContext: SSLContext = defaultSSLContext,
@@ -528,14 +536,14 @@ proc post*(url: string, extraHeaders = "", body = "",
 
   result = request(url, httpPOST, xh, xb, sslContext, timeout, userAgent,
                    proxy)
-  var lastUrl = ""
+  var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": httpGet else: httpPost
       result = request(redirectTo, meth, xh, xb, sslContext, timeout,
                        userAgent, proxy)
-      lastUrl = redirectTo
+      lastURL = redirectTo
 
 proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
@@ -623,10 +631,10 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
   new result
   result.headers = newStringTable(modeCaseInsensitive)
-  result.userAgent = defUserAgent
+  result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   when defined(ssl):
-    result.sslContext = net.SslContext(sslContext)
+    result.sslContext = sslContext
 
 proc close*(client: AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
@@ -677,7 +685,7 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
 proc parseBody(client: AsyncHttpClient,
-               headers: StringTableRef): Future[string] {.async.} =
+               headers: HttpHeaders): Future[string] {.async.} =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = await parseChunks(client)
@@ -712,7 +720,7 @@ proc parseResponse(client: AsyncHttpClient,
   var linei = 0
   var fullyRead = false
   var line = ""
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   while true:
     linei = 0
     line = await client.socket.recvLine()
@@ -747,6 +755,9 @@ proc parseResponse(client: AsyncHttpClient,
       inc(linei) # Skip :
 
       result.headers[name] = line[linei.. ^1].strip()
+      if result.headers.len > headerLimit:
+        httpError("too many headers")
+
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
@@ -827,7 +838,7 @@ proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = await client.request(redirectTo, httpGET)
-      lastUrl = redirectTo
+      lastURL = redirectTo
 
 proc post*(client: AsyncHttpClient, url: string, body = "", multipart: MultipartData = nil): Future[Response] {.async.} =
   ## Connects to the hostname specified by the URL and performs a POST request.

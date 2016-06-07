@@ -1,6 +1,6 @@
 #nim c -t:-march=i686 --cpu:amd64 --threads:on -d:release lockfreehash.nim
 
-import unsigned, math, hashes
+import math, hashes
 
 #------------------------------------------------------------------------------
 ## Memory Utility Functions
@@ -52,7 +52,7 @@ when sizeof(int) == 4: # 32bit
   {.deprecated: [TRaw: Raw].}
 elif sizeof(int) == 8: # 64bit
   type
-    Raw = range[0..4611686018427387903]
+    Raw = range[0'i64..4611686018427387903'i64]
     ## The range of uint values that can be stored directly in a value slot
     ## when on a 64 bit platform
   {.deprecated: [TRaw: Raw].}
@@ -74,7 +74,7 @@ type
     copyDone: int
     next: PConcTable[K,V]
     data: EntryArr
-{.deprecated: [TEntry: Entry, TEntryArr: EntryArr.}
+{.deprecated: [TEntry: Entry, TEntryArr: EntryArr].}
 
 proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
   expVal: int, match: bool): int
@@ -244,9 +244,9 @@ proc copySlot[K,V](idx: int, oldTbl: var PConcTable[K,V], newTbl: var PConcTable
     echo("oldVal is Tomb!!!, should not happen")
   if pop(oldVal) != 0:
     result = setVal(newTbl, pop(oldKey), pop(oldVal), 0, true) == 0
-  if result:
+  #if result:
     #echo("Copied a Slot! idx= " & $idx & " key= " & $oldKey & " val= " & $oldVal)
-  else:
+  #else:
     #echo("copy slot failed")
   # Our copy is done so we disable the old slot
   while not ok:

@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if gSelectedGC in {gcMarkAndSweep, gcGenerational, gcV2} and
+  if gSelectedGC in {gcMarkAndSweep, gcGenerational, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -928,8 +928,10 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
       for j in countup(0, blen - 2):
         assert(t.sons[i].sons[j].kind == nkType)
         if orExpr != nil: add(orExpr, "||")
-        appcg(p.module, orExpr,
-              "#isObj(#getCurrentException()->Sup.m_type, $1)",
+        let isObjFormat = if not p.module.compileToCpp:
+          "#isObj(#getCurrentException()->Sup.m_type, $1)"
+          else: "#isObj(#getCurrentException()->m_type, $1)"
+        appcg(p.module, orExpr, isObjFormat,
               [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
@@ -959,6 +961,8 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
         res.add($rdLoc(a))
+      elif sym.kind == skType:
+        res.add($getTypeDesc(p.module, sym.typ))
       else:
         var r = sym.loc.r
         if r == nil:

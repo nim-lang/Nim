@@ -5,8 +5,6 @@ true'''
 """
 
 # bug 1420
-import unsigned
-
 var x = 40'u32
 var y = 30'u32
 echo x > y # works

@@ -22,7 +22,7 @@
 ## though.
 ## PRCE's licence follows:
 ##
-## .. include:: ../doc/regexprs.txt
+## .. include:: ../../doc/regexprs.txt
 ##
 
 import

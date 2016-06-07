@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2016 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -10,6 +10,8 @@
 # included from cgen.nim
 
 # ------------------------- Name Mangling --------------------------------
+
+import debuginfo
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -26,67 +28,66 @@ proc mangleField(name: PIdent): string =
     result[0] = result[0].toUpper # Mangling makes everything lowercase,
                                   # but some identifiers are C keywords
 
+proc hashOwner(s: PSym): FilenameHash =
+  var m = s
+  while m.kind != skModule: m = m.owner
+  let p = m.owner
+  assert p.kind == skPackage
+  result = gDebugInfo.register(p.name.s, m.name.s)
+
 proc mangleName(s: PSym): Rope =
   result = s.loc.r
   if result == nil:
-    when oKeepVariableNames:
-      let keepOrigName = s.kind in skLocalVars - {skForVar} and
-        {sfFromGeneric, sfGlobal, sfShadowed, sfGenSym} * s.flags == {} and
-        not isKeyword(s.name)
-      # XXX: This is still very experimental
-      #
-      # Even with all these inefficient checks, the bootstrap
-      # time is actually improved. This is probably because so many
-      # rope concatenations are now eliminated.
-      #
-      # Future notes:
-      # sfFromGeneric seems to be needed in order to avoid multiple
-      # definitions of certain variables generated in transf with
-      # names such as:
-      # `r`, `res`
-      # I need to study where these come from.
-      #
-      # about sfShadowed:
-      # consider the following nimrod code:
-      #   var x = 10
-      #   block:
-      #     var x = something(x)
-      # The generated C code will be:
-      #   NI x;
-      #   x = 10;
-      #   {
-      #     NI x;
-      #     x = something(x); // Oops, x is already shadowed here
-      #   }
-      # Right now, we work-around by not keeping the original name
-      # of the shadowed variable, but we can do better - we can
-      # create an alternative reference to it in the outer scope and
-      # use that in the inner scope.
-      #
-      # about isCKeyword:
-      # nimrod variable names can be C keywords.
-      # We need to avoid such names in the generated code.
-      # XXX: Study whether mangleName is called just once per variable.
-      # Otherwise, there might be better place to do this.
-      #
-      # about sfGlobal:
-      # This seems to be harder - a top level extern variable from
-      # another modules can have the same name as a local one.
-      # Maybe we should just implement sfShadowed for them too.
-      #
-      # about skForVar:
-      # These are not properly scoped now - we need to add blocks
-      # around for loops in transf
-      if keepOrigName:
-        result = s.name.s.mangle.rope
-      else:
-        add(result, rope(mangle(s.name.s)))
-        add(result, ~"_")
-        add(result, rope(s.id))
+    let keepOrigName = s.kind in skLocalVars - {skForVar} and
+      {sfFromGeneric, sfGlobal, sfShadowed, sfGenSym} * s.flags == {} and
+      not isKeyword(s.name)
+    # Even with all these inefficient checks, the bootstrap
+    # time is actually improved. This is probably because so many
+    # rope concatenations are now eliminated.
+    #
+    # sfFromGeneric is needed in order to avoid multiple
+    # definitions of certain variables generated in transf with
+    # names such as:
+    # `r`, `res`
+    # I need to study where these come from.
+    #
+    # about sfShadowed:
+    # consider the following Nim code:
+    #   var x = 10
+    #   block:
+    #     var x = something(x)
+    # The generated C code will be:
+    #   NI x;
+    #   x = 10;
+    #   {
+    #     NI x;
+    #     x = something(x); // Oops, x is already shadowed here
+    #   }
+    # Right now, we work-around by not keeping the original name
+    # of the shadowed variable, but we can do better - we can
+    # create an alternative reference to it in the outer scope and
+    # use that in the inner scope.
+    #
+    # about isCKeyword:
+    # Nim variable names can be C keywords.
+    # We need to avoid such names in the generated code.
+    #
+    # about sfGlobal:
+    # This seems to be harder - a top level extern variable from
+    # another modules can have the same name as a local one.
+    # Maybe we should just implement sfShadowed for them too.
+    #
+    # about skForVar:
+    # These are not properly scoped now - we need to add blocks
+    # around for loops in transf
+    result = s.name.s.mangle.rope
+    if keepOrigName:
+      result.add "0"
     else:
-      add(result, rope(mangle(s.name.s)))
       add(result, ~"_")
       add(result, rope(s.id))
+      add(result, ~"_")
+      add(result, rope(hashOwner(s).BiggestInt))
     s.loc.r = result
 
 proc typeName(typ: PType): Rope =
@@ -137,6 +138,10 @@ proc mapType(typ: PType): TCTypeKind =
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctPtrToArray
+    #of tySet:
+    #  if mapSetType(base) == ctArray: result = ctPtrToArray
+    #  else: result = ctPtr
+    # XXX for some reason this breaks the pegs module
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
@@ -148,8 +153,9 @@ proc mapType(typ: PType): TCTypeKind =
   else: internalError("mapType")
 
 proc mapReturnType(typ: PType): TCTypeKind =
-  if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
-  else: result = mapType(typ)
+  #if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
+  #else:
+  result = mapType(typ)
 
 proc isImportedType(t: PType): bool =
   result = t.sym != nil and sfImportc in t.sym.flags
@@ -223,7 +229,7 @@ proc ccgIntroducedPtr(s: PSym): bool =
 proc fillResult(param: PSym) =
   fillLoc(param.loc, locParam, param.typ, ~"Result",
           OnStack)
-  if (mapReturnType(param.typ) != ctArray) and isInvalidReturnType(param.typ):
+  if mapReturnType(param.typ) != ctArray and isInvalidReturnType(param.typ):
     incl(param.loc.flags, lfIndirect)
     param.loc.s = OnUnknown
 
@@ -238,22 +244,10 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     NumericalTypeToStr: array[tyInt..tyUInt64, string] = [
       "NI", "NI8", "NI16", "NI32", "NI64",
       "NF", "NF32", "NF64", "NF128",
-      "NU", "NU8", "NU16", "NU32", "NU64",]
+      "NU", "NU8", "NU16", "NU32", "NU64"]
   case typ.kind
   of tyPointer:
     result = typeNameOrLiteral(typ, "void*")
-  of tyEnum:
-    if firstOrd(typ) < 0:
-      result = typeNameOrLiteral(typ, "NI32")
-    else:
-      case int(getSize(typ))
-      of 1: result = typeNameOrLiteral(typ, "NU8")
-      of 2: result = typeNameOrLiteral(typ, "NU16")
-      of 4: result = typeNameOrLiteral(typ, "NI32")
-      of 8: result = typeNameOrLiteral(typ, "NI64")
-      else:
-        internalError(typ.sym.info, "getSimpleTypeDesc: " & $(getSize(typ)))
-        result = nil
   of tyString:
     discard cgsym(m, "NimStringDesc")
     result = typeNameOrLiteral(typ, "NimStringDesc*")
@@ -317,7 +311,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
     result = getTypeDescAux(m, t, check)
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {tyArray, tyOpenArray}:
+  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {tyArray, tyOpenArray, tyVarargs, tyArrayConstr}:
     result = OnStack
   else:
     result = OnUnknown
@@ -326,7 +320,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
   params = nil
-  if (t.sons[0] == nil) or isInvalidReturnType(t.sons[0]):
+  if t.sons[0] == nil or isInvalidReturnType(t.sons[0]):
     rettype = ~"void"
   else:
     rettype = getTypeDescAux(m, t.sons[0], check)
@@ -359,10 +353,10 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       addf(params, ", NI $1Len$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr.sons[0]
-  if (t.sons[0] != nil) and isInvalidReturnType(t.sons[0]):
+  if t.sons[0] != nil and isInvalidReturnType(t.sons[0]):
     var arr = t.sons[0]
     if params != nil: add(params, ", ")
-    if (mapReturnType(t.sons[0]) != ctArray):
+    if mapReturnType(t.sons[0]) != ctArray:
       add(params, getTypeDescWeak(m, arr, check))
       add(params, "*")
     else:
@@ -483,7 +477,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   else:
     addf(result, " {$n", [name])
 
-  var desc = getRecordFields(m, typ, check)
+  let desc = getRecordFields(m, typ, check)
   if desc == nil and not hasField:
     addf(result, "char dummy;$n", [])
   else:
@@ -536,8 +530,8 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   result = getTypePre(m, t)
   if result != nil: return
   if containsOrIncl(check, t.id):
-    if isImportedCppType(typ) or isImportedCppType(t): return
-    internalError("cannot generate C type for: " & typeToString(typ))
+    if not (isImportedCppType(typ) or isImportedCppType(t)):
+      internalError("cannot generate C type for: " & typeToString(typ))
     # XXX: this BUG is hard to fix -> we need to introduce helper structs,
     # but determining when this needs to be done is hard. We should split
     # C type generation into an analysis and a code generation phase somehow.
@@ -576,8 +570,37 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
       result = getTypeDescAux(m, et, check) & star
       idTablePut(m.typeCache, t, result)
   of tyOpenArray, tyVarargs:
-    result = getTypeDescAux(m, t.sons[0], check) & "*"
+    result = getTypeDescWeak(m, t.sons[0], check) & "*"
     idTablePut(m.typeCache, t, result)
+  of tyRange, tyEnum:
+    let t = if t.kind == tyRange: t.lastSon else: t
+    result = cacheGetType(m.typeCache, t)
+    if result == nil:
+      result = getTypeName(t)
+      if not (isImportedCppType(t) or
+          (sfImportc in t.sym.flags and t.sym.magic == mNone)):
+        idTablePut(m.typeCache, t, result)
+        var size: int
+        if firstOrd(t) < 0:
+          addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
+          size = 4
+        else:
+          size = int(getSize(t))
+          case size
+          of 1: addf(m.s[cfsTypes], "typedef NU8 $1;$n", [result])
+          of 2: addf(m.s[cfsTypes], "typedef NU16 $1;$n", [result])
+          of 4: addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
+          of 8: addf(m.s[cfsTypes], "typedef NI64 $1;$n", [result])
+          else: internalError(t.sym.info, "getTypeDescAux: enum")
+        let owner = hashOwner(t.sym)
+        if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
+          var vals: seq[(string, int)] = @[]
+          for i in countup(0, t.n.len - 1):
+            assert(t.n.sons[i].kind == nkSym)
+            let field = t.n.sons[i].sym
+            vals.add((field.name.s, field.position.int))
+          gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
+            name: t.sym.name.s, values: vals))
   of tyProc:
     result = getTypeName(t)
     idTablePut(m.typeCache, t, result)
@@ -654,7 +677,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
       else:
         result = cppName & "<"
         for i in 1 .. typ.len-2:
-          if i > 1: result.add(", ")
+          if i > 1: result.add(" COMMA ")
           result.add(getTypeDescAux(m, typ.sons[i], check))
         result.add("> ")
       # always call for sideeffects:
@@ -673,16 +696,13 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
                     else: getTupleDesc(m, t, result, check)
       if not isImportedType(t): add(m.s[cfsTypes], recdesc)
   of tySet:
-    case int(getSize(t))
-    of 1: result = rope("NU8")
-    of 2: result = rope("NU16")
-    of 4: result = rope("NU32")
-    of 8: result = rope("NU64")
-    else:
-      result = getTypeName(t)
-      idTablePut(m.typeCache, t, result)
-      if not isImportedType(t):
-        addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
+    result = getTypeName(t.lastSon) & "Set"
+    idTablePut(m.typeCache, t, result)
+    if not isImportedType(t):
+      let s = int(getSize(t))
+      case s
+      of 1, 2, 4, 8: addf(m.s[cfsTypes], "typedef NU$2 $1;$n", [result, rope(s*8)])
+      else: addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
              [result, rope(getSize(t))])
   of tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable,
       tyIter, tyTypeDesc:
@@ -739,7 +759,7 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
   genCLineDir(result, prc.info)
   # using static is needed for inline procs
   if lfExportLib in prc.loc.flags:
-    if m.isHeaderFile:
+    if isHeaderFile in m.flags:
       result.add "N_LIB_IMPORT "
     else:
       result.add "N_LIB_EXPORT "

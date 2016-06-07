@@ -138,7 +138,7 @@ proc slave(w: ptr Worker) {.thread.} =
 const NumThreads = 4
 
 var
-  workers: array[NumThreads, TThread[ptr Worker]]
+  workers: array[NumThreads, Thread[ptr Worker]]
   workersData: array[NumThreads, Worker]
 
 proc setup() =

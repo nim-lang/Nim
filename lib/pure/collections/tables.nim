@@ -85,6 +85,10 @@ template dataLen(t): expr = len(t.data)
 
 include tableimpl
 
+proc clear*[A, B](t: Table[A, B] | TableRef[A, B]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+
 proc rightSize*(count: Natural): int {.inline.} =
   ## Return the value of `initialSize` to support `count` items.
   ##
@@ -135,6 +139,51 @@ proc mget*[A, B](t: var Table[A, B], key: A): var B {.deprecated.} =
   get(t, key)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A): B = getOrDefaultImpl(t, key)
+
+template withValue*[A, B](t: var Table[A, B], key: A,
+                          value, body: untyped) =
+  ## retrieves the value at ``t[key]``.
+  ## `value` can be modified in the scope of the ``withValue`` call.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   sharedTable.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     value.name = "username"
+  ##     value.uid = 1000
+  ##
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    var value {.inject.} = addr(t.data[index].val)
+    body
+
+template withValue*[A, B](t: var Table[A, B], key: A,
+                          value, body1, body2: untyped) =
+  ## retrieves the value at ``t[key]``.
+  ## `value` can be modified in the scope of the ``withValue`` call.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   table.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     value.name = "username"
+  ##     value.uid = 1000
+  ##   do:
+  ##     # block is executed when ``key`` not in ``t``
+  ##     raise newException(KeyError, "Key not found")
+  ##
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    var value {.inject.} = addr(t.data[index].val)
+    body1
+  else:
+    body2
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
@@ -375,6 +424,12 @@ type
 proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
+
+proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+  t.first = -1
+  t.last = -1
 
 template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
   var h = t.first
@@ -663,6 +718,27 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   ## contrast to the `sort` for count tables).
   t[].sort(cmp)
 
+proc del*[A, B](t: var OrderedTable[A, B], key: A) =
+  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  var prev = -1
+  let hc = hash(key)
+  forAllOrderedPairs:
+    if t.data[h].hcode == hc:
+      if t.first == h:
+        t.first = t.data[h].next
+      else:
+        t.data[prev].next = t.data[h].next
+      var zeroValue : type(t.data[h])
+      t.data[h] = zeroValue
+      dec t.counter
+      break
+    else:
+      prev = h
+
+proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
+  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  t[].del(key)
+
 # ------------------------------ count tables -------------------------------
 
 type
@@ -677,6 +753,11 @@ type
 proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
+
+proc clear*[A](t: CountTable[A] | CountTable[A]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+  t.counter = 0
 
 iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
@@ -984,6 +1065,26 @@ when isMainModule:
   s3[p1] = 30_000
   s3[p2] = 45_000
 
+  block: # Ordered table should preserve order after deletion
+    var
+      s4 = initOrderedTable[int, int]()
+    s4[1] = 1
+    s4[2] = 2
+    s4[3] = 3
+
+    var prev = 0
+    for i in s4.values:
+      doAssert(prev < i)
+      prev = i
+
+    s4.del(2)
+    doAssert(2 notin s4)
+    doAssert(s4.len == 2)
+    prev = 0
+    for i in s4.values:
+      doAssert(prev < i)
+      prev = i
+
   var
     t1 = initCountTable[string]()
     t2 = initCountTable[string]()
@@ -1040,3 +1141,12 @@ when isMainModule:
     doAssert 0 == t.getOrDefault(testKey)
     t.inc(testKey,3)
     doAssert 3 == t.getOrDefault(testKey)
+
+  # Clear tests
+  var clearTable = newTable[int, string]()
+  clearTable[42] = "asd"
+  clearTable[123123] = "piuyqwb "
+  doAssert clearTable[42] == "asd"
+  clearTable.clear()
+  doAssert(not clearTable.hasKey(123123))
+  doAssert clearTable.getOrDefault(42) == nil

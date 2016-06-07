@@ -65,12 +65,6 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
 
-proc typeMismatch(n: PNode, formal, actual: PType) =
-  if formal.kind != tyError and actual.kind != tyError:
-    localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
-        typeToString(actual) & ") " &
-        `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
-
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
   if arg.typ.isNil:
     localError(arg.info, errExprXHasNoType,
@@ -191,7 +185,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
-  # identifier with visability
+  # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 proc semStmtScope(c: PContext, n: PNode): PNode
@@ -360,7 +354,6 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
-
   result = evalMacroCall(c.module, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
@@ -420,6 +413,12 @@ proc myOpen(module: PSym): PPassContext =
     c.importTable.addSym magicsys.systemModule # import the "System" identifier
     importAllSymbols(c, magicsys.systemModule)
   c.topLevelScope = openScope(c)
+  # don't be verbose unless the module belongs to the main package:
+  if module.owner.id == gMainPackageId:
+    gNotes = gMainPackageNotes
+  else:
+    if gMainPackageNotes == {}: gMainPackageNotes = gNotes
+    gNotes = ForeignPackageNotes
   result = c
 
 proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =

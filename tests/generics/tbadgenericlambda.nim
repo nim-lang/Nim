@@ -3,5 +3,5 @@ discard """
   line: 6
 """
 
-let x = proc (x, y): auto = x + y
+let x = proc (x, y: auto): auto = x + y
 

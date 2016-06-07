@@ -16,8 +16,8 @@
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
-  traceGC = false # extensive debugging
-  alwaysCycleGC = false
+  traceGC = defined(smokeCycles) # extensive debugging
+  alwaysCycleGC = defined(smokeCycles)
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
   leakDetector = false
@@ -389,15 +389,30 @@ elif defined(nogc) and defined(useMalloc):
 
   when not defined(useNimRtl):
     proc alloc(size: Natural): pointer =
-      result = cmalloc(size)
-      if result == nil: raiseOutOfMem()
+      var x = cmalloc(size + sizeof(size))
+      if x == nil: raiseOutOfMem()
+
+      cast[ptr int](x)[] = size
+      result = cast[pointer](cast[int](x) + sizeof(size))
+
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
     proc realloc(p: pointer, newsize: Natural): pointer =
-      result = crealloc(p, newsize)
-      if result == nil: raiseOutOfMem()
-    proc dealloc(p: pointer) = cfree(p)
+      var x = cast[pointer](cast[int](p) - sizeof(newsize))
+      let oldsize = cast[ptr int](x)[]
+
+      x = crealloc(x, newsize + sizeof(newsize))
+
+      if x == nil: raiseOutOfMem()
+
+      cast[ptr int](x)[] = newsize
+      result = cast[pointer](cast[int](x) + sizeof(newsize))
+
+      if newsize > oldsize:
+        zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+
+    proc dealloc(p: pointer) = cfree(cast[pointer](cast[int](p) - sizeof(int)))
 
     proc allocShared(size: Natural): pointer =
       result = cmalloc(size)
@@ -427,7 +442,7 @@ elif defined(nogc) and defined(useMalloc):
   proc initGC() = discard
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
-    result = alloc(size)
+    result = alloc0(size)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
@@ -511,13 +526,17 @@ elif defined(nogc):
   include "system/cellsets"
 
 else:
-  include "system/alloc"
+  when not defined(gcStack):
+    include "system/alloc"
 
-  include "system/cellsets"
-  when not leakDetector:
-    sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
+    include "system/cellsets"
+    when not leakDetector and not useCellIds:
+      sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
+  elif defined(gcStack):
+    # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
+    include "system/gc_stack"
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"

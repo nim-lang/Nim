@@ -1,5 +1,3 @@
-import unsigned
-
 discard """
   errormsg: "number 0x123'u8 out of valid range"
 """

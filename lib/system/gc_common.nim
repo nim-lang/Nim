@@ -7,6 +7,31 @@
 #    distribution, for details about the copyright.
 #
 
+type
+  ForeignCell* = object
+    data*: pointer
+    owner: ptr GcHeap
+
+proc protect*(x: pointer): ForeignCell =
+  nimGCref(x)
+  result.data = x
+  result.owner = addr(gch)
+
+proc dispose*(x: ForeignCell) =
+  when hasThreadSupport:
+    # if we own it we can free it directly:
+    if x.owner == addr(gch):
+      nimGCunref(x.data)
+    else:
+      x.owner.toDispose.add(x.data)
+  else:
+    nimGCunref(x.data)
+
+proc isNotForeign*(x: ForeignCell): bool =
+  ## returns true if 'x' belongs to the calling thread.
+  ## No deep copy has to be performed then.
+  x.owner == addr(gch)
+
 proc len(stack: ptr GcStack): int =
   if stack == nil:
     return 0
@@ -78,19 +103,29 @@ iterator items(stack: ptr GcStack): ptr GcStack =
     yield s
     s = s.next
 
-var
-  localGcInitialized {.rtlThreadVar.}: bool
+# There will be problems with GC in foreign threads if `threads` option is off or TLS emulation is enabled
+const allowForeignThreadGc = compileOption("threads") and not compileOption("tlsEmulation")
 
-proc setupForeignThreadGc*() =
-  ## call this if you registered a callback that will be run from a thread not
-  ## under your control. This has a cheap thread-local guard, so the GC for
-  ## this thread will only be initialized once per thread, no matter how often
-  ## it is called.
-  if not localGcInitialized:
-    localGcInitialized = true
-    var stackTop {.volatile.}: pointer
-    setStackBottom(addr(stackTop))
-    initGC()
+when allowForeignThreadGc:
+  var
+    localGcInitialized {.rtlThreadVar.}: bool
+
+  proc setupForeignThreadGc*() =
+    ## Call this if you registered a callback that will be run from a thread not
+    ## under your control. This has a cheap thread-local guard, so the GC for
+    ## this thread will only be initialized once per thread, no matter how often
+    ## it is called.
+    ##
+    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## switches are used
+    if not localGcInitialized:
+      localGcInitialized = true
+      var stackTop {.volatile.}: pointer
+      setStackBottom(addr(stackTop))
+      initGC()
+else:
+  template setupForeignThreadGc*(): stmt =
+    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
@@ -131,9 +166,9 @@ when defined(sparc): # For SPARC architecture.
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
     stackTop = addr(stackTop)
-    var b = cast[TAddress](gch.stackBottom)
-    var a = cast[TAddress](stackTop)
-    var x = cast[TAddress](p)
+    var b = cast[ByteAddress](gch.stackBottom)
+    var a = cast[ByteAddress](stackTop)
+    var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
@@ -150,7 +185,7 @@ when defined(sparc): # For SPARC architecture.
     # Addresses decrease as the stack grows.
     while sp <= max:
       gcMark(gch, sp[])
-      sp = cast[PPointer](cast[TAddress](sp) +% sizeof(pointer))
+      sp = cast[PPointer](cast[ByteAddress](sp) +% sizeof(pointer))
 
 elif defined(ELATE):
   {.error: "stack marking code is to be written for this architecture".}

@@ -412,7 +412,6 @@ const
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
 
 proc addTypeFlags(name: var string, typ: PType) {.inline.} =
-  if tfShared in typ.flags: name = "shared " & name
   if tfNotNil in typ.flags: name.add(" not nil")
 
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
@@ -1449,6 +1448,18 @@ proc skipConv*(n: PNode): PNode =
       result = n.sons[1]
   else: discard
 
+proc skipHidden*(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of nkHiddenStdConv, nkHiddenSubConv:
+      if result.sons[1].typ.classify == result.typ.classify:
+        result = result.sons[1]
+      else: break
+    of nkHiddenDeref, nkHiddenAddr:
+      result = result.sons[0]
+    else: break
+
 proc skipConvTakeType*(n: PNode): PNode =
   result = n.skipConv
   result.typ = n.typ
@@ -1494,3 +1505,12 @@ proc skipHiddenSubConv*(n: PNode): PNode =
       result.typ = dest
   else:
     result = n
+
+proc typeMismatch*(n: PNode, formal, actual: PType) =
+  if formal.kind != tyError and actual.kind != tyError:
+    let named = typeToString(formal)
+    let desc = typeToString(formal, preferDesc)
+    let x = if named == desc: named else: named & " = " & desc
+    localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
+        typeToString(actual) & ") " &
+        `%`(msgKindToString(errButExpectedX), [x]))

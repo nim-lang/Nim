@@ -1,6 +1,7 @@
 discard """
   output: '''48
-hel'''
+hel
+lo'''
 """
 
 template optZero{x+x}(x: int): int = x*3
@@ -15,3 +16,8 @@ s[0] = "hello"
 s[0] = substr(s[0], 0, 2)
 
 echo s[0]
+
+# Test varargs matching
+proc someVarargProc(k: varargs[string]) = doAssert(false) # this should not get called
+template someVarargProcSingleArg{someVarargProc([a])}(a: string) = echo a
+someVarargProc("lo")

@@ -39,7 +39,6 @@ when hostOS == "solaris":
 
 import os, parseutils
 from times import epochTime
-import unsigned
 
 when defined(ssl):
   import openssl
@@ -206,6 +205,18 @@ proc htons*(x: int16): int16 =
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   result = sockets.ntohs(x)
+
+template ntohl(x: uint32): expr =
+  cast[uint32](sockets.ntohl(cast[int32](x)))
+
+template ntohs(x: uint16): expr =
+  cast[uint16](sockets.ntohs(cast[int16](x)))
+
+template htonl(x: uint32): expr =
+  sockets.ntohl(x)
+
+template htons(x: uint16): expr =
+  sockets.ntohs(x)
 
 when defined(Posix):
   proc toInt(domain: Domain): cint =
@@ -452,7 +463,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
       name.sin_family = int16(ord(AF_INET))
     else:
       name.sin_family = posix.AF_INET
-    name.sin_port = sockets.htons(int16(port))
+    name.sin_port = sockets.htons(uint16(port))
     name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
     if bindSocket(socket.fd, cast[ptr SockAddr](addr(name)),
                   sizeof(name).SockLen) < 0'i32:
@@ -835,7 +846,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   when false:
     var s: TSockAddrIn
     s.sin_addr.s_addr = inet_addr(address)
-    s.sin_port = sockets.htons(int16(port))
+    s.sin_port = sockets.htons(uint16(port))
     when defined(windows):
       s.sin_family = toU16(ord(af))
     else:

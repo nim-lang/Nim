@@ -500,12 +500,14 @@ type
   ESuggestDone* = object of Exception
 
 const
+  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
+    hintQuitCalled}
   NotesVerbosity*: array[0..3, TNoteKinds] = [
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
                                          hintSuccessX, hintPath, hintConf,
-                                         hintProcessing,
+                                         hintProcessing, hintPattern,
                                          hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,
@@ -514,7 +516,7 @@ const
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
-                                         hintPath, hintConf,
+                                         hintPath,
                                          hintDependency,
                                          hintExecuting,
                                          hintCodeBegin, hintCodeEnd,
@@ -828,7 +830,7 @@ proc quit(msg: TMsgKind) =
 proc log*(s: string) {.procvar.} =
   var f: File
   if open(f, "nimsuggest.log", fmAppend):
-    f.writeln(s)
+    f.writeLine(s)
     close(f)
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =

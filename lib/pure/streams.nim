@@ -148,7 +148,10 @@ proc write*[T](s: Stream, x: T) =
 proc write*(s: Stream, x: string) =
   ## writes the string `x` to the the stream `s`. No length field or
   ## terminating zero is written.
-  writeData(s, cstring(x), x.len)
+  when nimvm:
+    writeData(s, cstring(x), x.len)
+  else:
+    if x.len > 0: writeData(s, unsafeAddr x[0], x.len)
 
 proc writeLn*(s: Stream, args: varargs[string, `$`]) {.deprecated.} =
   ## **Deprecated since version 0.11.4:** Use **writeLine** instead.
@@ -186,7 +189,7 @@ proc readBool*(s: Stream): bool =
   read(s, result)
 
 proc peekBool*(s: Stream): bool =
-  ## peeks a bool from the stream `s`. Raises `EIO` if an error occured.
+  ## peeks a bool from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
 proc readInt8*(s: Stream): int8 =

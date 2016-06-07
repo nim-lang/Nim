@@ -44,7 +44,8 @@ type
     tkLet,
     tkMacro, tkMethod, tkMixin, tkMod, tkNil, tkNot, tkNotin,
     tkObject, tkOf, tkOr, tkOut,
-    tkProc, tkPtr, tkRaise, tkRef, tkReturn, tkShl, tkShr, tkStatic,
+    tkProc, tkPtr, tkRaise, tkRef, tkReturn,
+    tkShl, tkShr, tkStatic,
     tkTemplate,
     tkTry, tkTuple, tkType, tkUsing,
     tkVar, tkWhen, tkWhile, tkWith, tkWithout, tkXor,
@@ -136,6 +137,8 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
 
 proc isKeyword*(kind: TTokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
+
+template ones(n: expr): expr = ((1 shl n)-1) # for utf-8 conversion
 
 proc isNimIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
@@ -262,7 +265,7 @@ template eatChar(L: var TLexer, t: var TToken) =
   add(t.literal, L.buf[L.bufpos])
   inc(L.bufpos)
 
-proc getNumber(L: var TLexer): TToken =
+proc getNumber(L: var TLexer, result: var TToken) =
   proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) =
     var pos = L.bufpos              # use registers for pos, buf
     var buf = L.buf
@@ -588,12 +591,29 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   of '\\':
     add(tok.literal, '\\')
     inc(L.bufpos)
-  of 'x', 'X':
+  of 'x', 'X', 'u', 'U':
+    var tp = L.buf[L.bufpos]
     inc(L.bufpos)
     var xi = 0
     handleHexChar(L, xi)
     handleHexChar(L, xi)
-    add(tok.literal, chr(xi))
+    if tp in {'u', 'U'}:
+      handleHexChar(L, xi)
+      handleHexChar(L, xi)
+      # inlined toUTF-8 to avoid unicode and strutils dependencies.
+      if xi <=% 127:
+        add(tok.literal, xi.char )
+      elif xi <=% 0x07FF:
+        add(tok.literal, ((xi shr 6) or 0b110_00000).char )
+        add(tok.literal, ((xi and ones(6)) or 0b10_0000_00).char )
+      elif xi <=% 0xFFFF:
+        add(tok.literal, (xi shr 12 or 0b1110_0000).char )
+        add(tok.literal, (xi shr 6 and ones(6) or 0b10_0000_00).char )
+        add(tok.literal, (xi and ones(6) or 0b10_0000_00).char )
+      else: # value is 0xFFFF
+        add(tok.literal, "\xef\xbf\xbf" )
+    else:
+      add(tok.literal, chr(xi))
   of '0'..'9':
     if matchTwoChars(L, '0', {'0'..'9'}):
       lexMessage(L, warnOctalEscape)
@@ -810,10 +830,6 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
           break
         dec nesting
       inc pos
-    of '\t':
-      lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
-      inc(pos)
-      if isDoc: tok.literal.add '\t'
     of CR, LF:
       pos = handleCRLF(L, pos)
       buf = L.buf
@@ -1060,7 +1076,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       getCharacter(L, tok)
       tok.tokType = tkCharLit
     of '0'..'9':
-      tok = getNumber(L)
+      getNumber(L, tok)
     else:
       if c in OpChars:
         getOperator(L, tok)

@@ -18,7 +18,7 @@ proc foo[T](p: TType[T, range[0..2]]) =
 
 #bug #1366
 
-proc reversed(x) =
+proc reversed(x: auto) =
   for i in countdown(x.low, x.high):
     echo i
 

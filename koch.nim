@@ -79,9 +79,17 @@ proc findNim(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-proc exec(cmd: string, errorcode: int = QuitFailure) =
+proc exec(cmd: string, errorcode: int = QuitFailure, additionalPATH = "") =
+  let prevPATH = getEnv("PATH")
+  if additionalPATH.len > 0:
+    var absolute = additionalPATH
+    if not absolute.isAbsolute:
+      absolute = getCurrentDir() / absolute
+    echo("Adding to $PATH: ", absolute)
+    putEnv("PATH", prevPATH & PathSep & absolute)
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
+  putEnv("PATH", prevPATH)
 
 proc tryExec(cmd: string): bool =
   echo(cmd)
@@ -146,7 +154,7 @@ proc website(args: string) =
 
 proc pdf(args="") =
   exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-       [findNim(), args, VersionAsString])
+       [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
 
 # -------------- boot ---------------------------------------------------------
 
@@ -336,10 +344,11 @@ template `|`(a, b): expr = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  exec "nim cc --taintMode:on tests/testament/tester"
+  let nimexe = findNim()
+  exec nimexe & " cc --taintMode:on tests/testament/tester"
   # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
-  exec "nim c --lib:lib -d:release --opt:speed compiler/nim.nim"
+  exec nimexe & " c --lib:lib -d:release --opt:speed compiler/nim.nim"
   let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
   let success = tryExec tester & " " & (args|"all")
   if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):

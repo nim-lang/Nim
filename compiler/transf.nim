@@ -12,7 +12,7 @@
 #
 # * inlines iterators
 # * inlines constants
-# * performes constant folding
+# * performs constant folding
 # * converts "continue" to "break"; disambiguates "break"
 # * introduces method dispatchers
 # * performs lambda lifting for closure support
@@ -95,7 +95,7 @@ proc getCurrOwner(c: PTransf): PSym =
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
-  r.typ = skipTypes(typ, {tyGenericInst})
+  r.typ = typ #skipTypes(typ, {tyGenericInst})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
@@ -414,8 +414,8 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
         result = newTransNode(nkChckRange, n, 3)
       dest = skipTypes(n.typ, abstractVar)
       result[0] = transform(c, n.sons[1])
-      result[1] = newIntTypeNode(nkIntLit, firstOrd(dest), source).PTransNode
-      result[2] = newIntTypeNode(nkIntLit, lastOrd(dest), source).PTransNode
+      result[1] = newIntTypeNode(nkIntLit, firstOrd(dest), dest).PTransNode
+      result[2] = newIntTypeNode(nkIntLit, lastOrd(dest), dest).PTransNode
   of tyFloat..tyFloat128:
     # XXX int64 -> float conversion?
     if skipTypes(n.typ, abstractVar).kind == tyRange:

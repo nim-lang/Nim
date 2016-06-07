@@ -30,6 +30,7 @@ type
                               # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
+    selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
     inTryStmt*: int           # whether we are in a try statement; works also
@@ -46,7 +47,7 @@ type
     efLValue, efWantIterator, efInTypeof,
     efWantStmt, efAllowStmt, efDetermineType,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoProcvarCheck
+    efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo
   TExprFlags* = set[TExprFlag]
 
   TTypeAttachedOp* = enum
@@ -103,7 +104,8 @@ type
     inParallelStmt*: int
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
                             op: TTypeAttachedOp): PSym {.nimcall.}
-
+    selfName*: PIdent
+    signatures*: TStrTable
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -154,16 +156,6 @@ proc popOwner() =
 proc lastOptionEntry(c: PContext): POptionEntry =
   result = POptionEntry(c.optionStack.tail)
 
-proc pushProcCon*(c: PContext, owner: PSym) {.inline.} =
-  if owner == nil:
-    internalError("owner is nil")
-    return
-  var x: PProcCon
-  new(x)
-  x.owner = owner
-  x.next = c.p
-  c.p = x
-
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc newOptionEntry(): POptionEntry =
@@ -187,6 +179,8 @@ proc newContext(module: PSym): PContext =
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
+  initStrTable(result.signatures)
+
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)

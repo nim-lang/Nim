@@ -15,8 +15,9 @@ template toFloatHelper(result: expr; tooSmall, tooLarge: stmt) {.immediate.} =
     tooLarge
 
 proc toFloat*(a: int): float =
-  toFloatHelper(result)
-    do: raise newException(ValueError, "number too small"):
-        raise newException(ValueError, "number too large")
+  toFloatHelper(result) do:
+    raise newException(ValueError, "number too small")
+  do:
+    raise newException(ValueError, "number too large")
 
 echo toFloat(8)

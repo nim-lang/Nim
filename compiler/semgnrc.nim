@@ -205,7 +205,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         if macroToExpand(s):
           styleCheckUse(fn.info, s)
           result = semMacroExpr(c, n, n, s, {efNoSemCheck})
-          result = semGenericStmt(c, result, {}, ctx)
+          result = semGenericStmt(c, result, flags, ctx)
         else:
           n.sons[0] = symChoice(c, fn, s, scOption)
           result = n
@@ -214,7 +214,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         if macroToExpand(s):
           styleCheckUse(fn.info, s)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
-          result = semGenericStmt(c, result, {}, ctx)
+          result = semGenericStmt(c, result, flags, ctx)
         else:
           n.sons[0] = symChoice(c, fn, s, scOption)
           result = n

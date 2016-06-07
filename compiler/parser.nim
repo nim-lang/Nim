@@ -326,6 +326,7 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
         getTok(p)
       else:
         parMessage(p, errIdentifierExpected, p.tok)
+        break
     eat(p, tkAccent)
   else:
     if allowNil and p.tok.tokType == tkNil:
@@ -804,20 +805,24 @@ proc parsePragma(p: var TParser): PNode =
   else: parMessage(p, errTokenExpected, ".}")
   dec p.inPragma
 
-proc identVis(p: var TParser): PNode =
+proc identVis(p: var TParser; allowDot=false): PNode =
   #| identVis = symbol opr?  # postfix position
+  #| identVisDot = symbol '.' optInd symbol opr?
   var a = parseSymbol(p)
   if p.tok.tokType == tkOpr:
     result = newNodeP(nkPostfix, p)
     addSon(result, newIdentNodeP(p.tok.ident, p))
     addSon(result, a)
     getTok(p)
+  elif p.tok.tokType == tkDot and allowDot:
+    result = dotExpr(p, a)
   else:
     result = a
 
-proc identWithPragma(p: var TParser): PNode =
+proc identWithPragma(p: var TParser; allowDot=false): PNode =
   #| identWithPragma = identVis pragma?
-  var a = identVis(p)
+  #| identWithPragmaDot = identVisDot pragma?
+  var a = identVis(p, allowDot)
   if p.tok.tokType == tkCurlyDotLe:
     result = newNodeP(nkPragmaExpr, p)
     addSon(result, a)
@@ -959,8 +964,9 @@ proc parseDoBlock(p: var TParser): PNode =
 proc parseDoBlocks(p: var TParser, call: PNode) =
   #| doBlocks = doBlock ^* IND{=}
   if p.tok.tokType == tkDo:
-    addSon(call, parseDoBlock(p))
-    while sameInd(p) and p.tok.tokType == tkDo:
+    #withInd(p):
+    #  addSon(call, parseDoBlock(p))
+    while sameOrNoInd(p) and p.tok.tokType == tkDo:
       addSon(call, parseDoBlock(p))
 
 proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
@@ -1803,10 +1809,11 @@ proc parseTypeClass(p: var TParser): PNode =
     addSon(result, parseStmt(p))
 
 proc parseTypeDef(p: var TParser): PNode =
-  #| typeDef = identWithPragma genericParamList? '=' optInd typeDefAux
+  #|
+  #| typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
   #|             indAndComment?
   result = newNodeP(nkTypeDef, p)
-  addSon(result, identWithPragma(p))
+  addSon(result, identWithPragma(p, allowDot=true))
   if p.tok.tokType == tkBracketLe and p.validInd:
     addSon(result, parseGenericParamList(p))
   else:
@@ -1903,7 +1910,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   #|                     | 'converter' routine
   #|                     | 'type' section(typeDef)
   #|                     | 'const' section(constant)
-  #|                     | ('let' | 'var') section(variable)
+  #|                     | ('let' | 'var' | 'using') section(variable)
   #|                     | bindStmt | mixinStmt)
   #|                     / simpleStmt
   case p.tok.tokType
@@ -1940,7 +1947,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkVar: result = parseSection(p, nkVarSection, parseVariable)
   of tkBind: result = parseBind(p, nkBindStmt)
   of tkMixin: result = parseBind(p, nkMixinStmt)
-  of tkUsing: result = parseBind(p, nkUsingStmt)
+  of tkUsing: result = parseSection(p, nkUsingStmt, parseVariable)
   else: result = simpleStmt(p)
 
 proc parseStmt(p: var TParser): PNode =

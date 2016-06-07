@@ -419,7 +419,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = newStrNodeT(substr(getStr(a), int(getOrdValue(b)),
                                            int(getOrdValue(c))), n)
   of mFloatToStr: result = newStrNodeT($getFloat(a), n)
-  of mCStrToStr, mCharToStr: result = newStrNodeT(getStrOrChar(a), n)
+  of mCStrToStr, mCharToStr:
+    if a.kind == nkBracket:
+      var s = ""
+      for b in a.sons:
+        s.add b.getStrOrChar
+      result = newStrNodeT(s, n)
+    else:
+      result = newStrNodeT(getStrOrChar(a), n)
   of mStrToStr: result = a
   of mEnumToStr: result = newStrNodeT(ordinalValToString(a), n)
   of mArrToSeq:
@@ -482,7 +489,7 @@ proc leValueConv(a, b: PNode): bool =
   of nkCharLit..nkUInt64Lit:
     case b.kind
     of nkCharLit..nkUInt64Lit: result = a.intVal <= b.intVal
-    of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal)
+    of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal).int
     else: internalError(a.info, "leValueConv")
   of nkFloatLit..nkFloat128Lit:
     case b.kind

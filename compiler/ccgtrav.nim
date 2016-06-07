@@ -57,6 +57,8 @@ proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
 
 proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   if typ == nil: return
+
+  let typ = getUniqueType(typ)
   var p = c.p
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc:

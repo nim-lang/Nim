@@ -182,6 +182,9 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   ## 'owner' can be nil!
   result = arNone
   case n.kind
+  of nkEmpty:
+    if n.typ != nil and n.typ.kind == tyVar:
+      result = arLValue
   of nkSym:
     let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet}
                 else: {skVar, skResult, skTemp}

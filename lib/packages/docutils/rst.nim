@@ -323,6 +323,11 @@ proc newSharedState(options: RstParseOptions,
   result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
   result.findFile = if not isNil(findFile): findFile else: defaultFindFile
 
+proc findRelativeFile(p: RstParser; filename: string): string =
+  result = p.filename.splitFile.dir / filename
+  if not existsFile(result):
+    result = p.s.findFile(filename)
+
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line,
                              p.col + p.tok[p.idx].col, msgKind, arg)
@@ -1500,7 +1505,7 @@ proc dirInclude(p: var RstParser): PRstNode =
   result = nil
   var n = parseDirective(p, {hasArg, argIsFile, hasOptions}, nil)
   var filename = strip(addNodes(n.sons[0]))
-  var path = p.s.findFile(filename)
+  var path = p.findRelativeFile(filename)
   if path == "":
     rstMessage(p, meCannotOpenFile, filename)
   else:
@@ -1511,14 +1516,14 @@ proc dirInclude(p: var RstParser): PRstNode =
     else:
       var q: RstParser
       initParser(q, p.s)
-      q.filename = filename
+      q.filename = path
       q.col += getTokens(readFile(path), false, q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
       #  InternalError("Too many binary zeros in include file")
       result = parseDoc(q)
 
-proc dirCodeBlock(p: var RstParser, nimrodExtension = false): PRstNode =
+proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## Parses a code block.
   ##
   ## Code blocks are rnDirective trees with a `kind` of rnCodeBlock. See the
@@ -1526,8 +1531,8 @@ proc dirCodeBlock(p: var RstParser, nimrodExtension = false): PRstNode =
   ##
   ## Code blocks can come in two forms, the standard `code directive
   ## <http://docutils.sourceforge.net/docs/ref/rst/directives.html#code>`_ and
-  ## the nimrod extension ``.. code-block::``. If the block is an extension, we
-  ## want the default language syntax highlighting to be Nimrod, so we create a
+  ## the nim extension ``.. code-block::``. If the block is an extension, we
+  ## want the default language syntax highlighting to be Nim, so we create a
   ## fake internal field to comminicate with the generator. The field is named
   ## ``default-language``, which is unlikely to collide with a field specified
   ## by any random rst input file.
@@ -1538,23 +1543,23 @@ proc dirCodeBlock(p: var RstParser, nimrodExtension = false): PRstNode =
   result = parseDirective(p, {hasArg, hasOptions}, parseLiteralBlock)
   var filename = strip(getFieldValue(result, "file"))
   if filename != "":
-    var path = p.s.findFile(filename)
+    var path = p.findRelativeFile(filename)
     if path == "": rstMessage(p, meCannotOpenFile, filename)
     var n = newRstNode(rnLiteralBlock)
     add(n, newRstNode(rnLeaf, readFile(path)))
     result.sons[2] = n
 
   # Extend the field block if we are using our custom extension.
-  if nimrodExtension:
+  if nimExtension:
     # Create a field block if the input block didn't have any.
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
     assert result.sons[1].kind == rnFieldList
-    # Hook the extra field and specify the Nimrod language as value.
+    # Hook the extra field and specify the Nim language as value.
     var extraNode = newRstNode(rnField)
     extraNode.add(newRstNode(rnFieldName))
     extraNode.add(newRstNode(rnFieldBody))
     extraNode.sons[0].add(newRstNode(rnLeaf, "default-language"))
-    extraNode.sons[1].add(newRstNode(rnLeaf, "Nimrod"))
+    extraNode.sons[1].add(newRstNode(rnLeaf, "Nim"))
     result.sons[1].add(extraNode)
 
   result.kind = rnCodeBlock
@@ -1590,7 +1595,7 @@ proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
   var filename = getFieldValue(result, "file")
   if filename.len > 0:
-    var path = p.s.findFile(filename)
+    var path = p.findRelativeFile(filename)
     if path.len == 0:
       rstMessage(p, meCannotOpenFile, filename)
     else:
@@ -1641,7 +1646,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
       else:
         rstMessage(p, meInvalidDirective, d)
     of dkCode: result = dirCodeBlock(p)
-    of dkCodeBlock: result = dirCodeBlock(p, nimrodExtension = true)
+    of dkCodeBlock: result = dirCodeBlock(p, nimExtension = true)
     of dkIndex: result = dirIndex(p)
     else: rstMessage(p, meInvalidDirective, d)
     popInd(p)

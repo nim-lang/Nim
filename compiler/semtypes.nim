@@ -398,15 +398,18 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
   # identifier with visibility
   if n.kind == nkPostfix:
-    if sonsLen(n) == 2 and n.sons[0].kind == nkIdent:
+    if sonsLen(n) == 2:
       # for gensym'ed identifiers the identifier may already have been
       # transformed to a symbol and we need to use that here:
       result = newSymG(kind, n.sons[1], c)
-      var v = n.sons[0].ident
+      var v = considerQuotedIdent(n.sons[0])
       if sfExported in allowed and v.id == ord(wStar):
         incl(result.flags, sfExported)
       else:
-        localError(n.sons[0].info, errInvalidVisibilityX, v.s)
+        if not (sfExported in allowed):
+          localError(n.sons[0].info, errXOnlyAtModuleScope, "export")
+        else:
+          localError(n.sons[0].info, errInvalidVisibilityX, renderTree(n[0]))
     else:
       illFormedAst(n)
   else:
@@ -673,7 +676,11 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, base)
-  result.n = newNodeI(nkRecList, n.info)
+  if result.n.isNil:
+    result.n = newNodeI(nkRecList, n.info)
+  else:
+    # partial object so add things to the check
+    addInheritedFields(c, check, pos, result)
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result)
   if n.sons[0].kind != nkEmpty:
     # dummy symbol for `pragma`:
@@ -827,9 +834,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.rawAddSon paramType.lastSon
       return addImplicitGeneric(result)
 
-    result = instGenericContainer(c, paramType.sym.info, result,
+    let x = instGenericContainer(c, paramType.sym.info, result,
                                   allowMetaTypes = true)
-    result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, result])
+    result = newTypeWithSons(c, tyCompositeTypeClass, @[paramType, x])
+    #result = newTypeS(tyCompositeTypeClass, c)
+    #for i in 0..<x.len: result.rawAddSon(x.sons[i])
     result = addImplicitGeneric(result)
 
   of tyGenericInst:
@@ -934,14 +943,18 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           def = fitNode(c, typ, def)
     if not hasType and not hasDefault:
       if isType: localError(a.info, "':' expected")
-      let tdef = if kind in {skTemplate, skMacro}: tyExpr else: tyAnything
-      if tdef == tyAnything:
-        message(a.info, warnTypelessParam, renderTree(n))
-      typ = newTypeS(tdef, c)
-
-    if skipTypes(typ, {tyGenericInst}).kind == tyEmpty: continue
+      if kind in {skTemplate, skMacro}:
+        typ = newTypeS(tyExpr, c)
+    elif skipTypes(typ, {tyGenericInst}).kind == tyEmpty:
+      continue
     for j in countup(0, length-3):
       var arg = newSymG(skParam, a.sons[j], c)
+      if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
+        let param = strTableGet(c.signatures, arg.name)
+        if param != nil: typ = param.typ
+        else:
+          localError(a.info, "typeless parameters are obsolete")
+          typ = errorType(c)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
       let finalType = if lifted != nil: lifted else: typ.skipIntLit
@@ -1084,10 +1097,14 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
 
-proc semTypeExpr(c: PContext, n: PNode): PType =
+proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
   if n.typ.kind == tyTypeDesc:
     result = n.typ.base
+    # fix types constructed by macros:
+    if prev != nil and prev.sym != nil and result.sym.isNil:
+      result.sym = prev.sym
+      result.sym.typ = result
   else:
     localError(n.info, errTypeExpected, n.renderTree)
     result = errorType(c)
@@ -1167,7 +1184,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         localError(n.info, errGenerated, "invalid type")
     elif n[0].kind notin nkIdentKinds:
-      result = semTypeExpr(c, n)
+      result = semTypeExpr(c, n, prev)
     else:
       let op = considerQuotedIdent(n.sons[0])
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
@@ -1208,7 +1225,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
         result = typExpr.typ
       else:
-        result = semTypeExpr(c, n)
+        result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
@@ -1307,11 +1324,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkType: result = n.typ
   of nkStmtListType: result = semStmtListType(c, n, prev)
   of nkBlockType: result = semBlockType(c, n, prev)
-  of nkSharedTy:
-    checkSonsLen(n, 1)
-    result = semTypeNode(c, n.sons[0], prev)
-    result = freshType(result, prev)
-    result.flags.incl(tfShared)
   else:
     localError(n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)
@@ -1387,15 +1399,6 @@ proc processMagicType(c: PContext, m: PSym) =
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime
-  of mShared:
-    setMagicType(m, tyObject, 0)
-    m.typ.n = newNodeI(nkRecList, m.info)
-    incl m.typ.flags, tfShared
-  of mGuarded:
-    setMagicType(m, tyObject, 0)
-    m.typ.n = newNodeI(nkRecList, m.info)
-    incl m.typ.flags, tfShared
-    rawAddSon(m.typ, sysTypeFromName"shared")
   else: localError(m.info, errTypeExpected)
 
 proc semGenericConstraints(c: PContext, x: PType): PType =

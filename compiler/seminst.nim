@@ -10,6 +10,49 @@
 # This module implements the instantiation of generic procs.
 # included from sem.nim
 
+proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
+  template rec(n) = addObjFieldsToLocalScope(c, n)
+  case n.kind
+  of nkRecList:
+    for i in countup(0, len(n)-1):
+      rec n[i]
+  of nkRecCase:
+    if n.len > 0: rec n.sons[0]
+    for i in countup(1, len(n)-1):
+      if n[i].kind in {nkOfBranch, nkElse}: rec lastSon(n[i])
+  of nkSym:
+    let f = n.sym
+    if f.kind == skField and fieldVisible(c, f):
+      c.currentScope.symbols.strTableIncl(f, onConflictKeepOld=true)
+      incl(f.flags, sfUsed)
+      # it is not an error to shadow fields via parameters
+  else: discard
+
+proc rawPushProcCon(c: PContext, owner: PSym) =
+  var x: PProcCon
+  new(x)
+  x.owner = owner
+  x.next = c.p
+  c.p = x
+
+proc rawHandleSelf(c: PContext; owner: PSym) =
+  if c.selfName != nil and owner.kind in {skProc, skMethod, skConverter, skIterator, skMacro} and owner.typ != nil:
+    let params = owner.typ.n
+    if params.len > 1:
+      let arg = params[1].sym
+      if arg.name.id == c.selfName.id:
+        c.p.selfSym = arg
+        arg.flags.incl sfIsSelf
+        var t = c.p.selfSym.typ.skipTypes(abstractPtrs)
+        while t.kind == tyObject:
+          addObjFieldsToLocalScope(c, t.n)
+          if t.sons[0] == nil: break
+          t = t.sons[0].skipTypes(abstractPtrs)
+
+proc pushProcCon*(c: PContext; owner: PSym) =
+  rawPushProcCon(c, owner)
+  rawHandleSelf(c, owner)
+
 iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
   internalAssert n.kind == nkGenericParams
   for i, a in n.pairs:
@@ -70,9 +113,9 @@ proc removeDefaultParamValues(n: PNode) =
         # not possible... XXX We don't solve this issue here.
         a.sons[L-1] = ast.emptyNode
 
-proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
+proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
-  if n.kind == nkSym and sfGenSym in n.sym.flags:
+  if n.kind == nkSym and sfGenSym in n.sym.flags and n.sym.owner == orig:
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
     if x == nil:
@@ -81,7 +124,7 @@ proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
       idTablePut(symMap, s, x)
     n.sym = x
   else:
-    for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, symMap)
+    for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
@@ -96,7 +139,7 @@ proc addProcDecls(c: PContext, fn: PSym) =
 
   maybeAddResult(c, fn, fn.ast)
 
-proc instantiateBody(c: PContext, n, params: PNode, result: PSym) =
+proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
@@ -108,7 +151,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result: PSym) =
         let param = params[i].sym
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
-    freshGenSyms(b, result, symMap)
+    freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
     b = hloBody(c, b)
     n.sons[bodyPos] = transformBody(c.module, b, result)
@@ -124,7 +167,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      instantiateBody(c, n, nil, oldPrc)
+      instantiateBody(c, n, nil, oldPrc, s)
       closeScope(c)
       popInfoContext()
 
@@ -248,7 +291,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     addDecl(c, s)
     entry.concreteTypes[i] = s.typ
     inc i
-  pushProcCon(c, result)
+  rawPushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
   for j in 1 .. result.typ.len-1:
     entry.concreteTypes[i] = result.typ.sons[j]
@@ -263,6 +306,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     # a ``compiles`` context but this is the lesser evil. See
     # bug #1055 (tevilcompiles).
     #if c.compilesContextId == 0:
+    rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
     fn.procInstCache.safeAdd(entry)
     c.generics.add(makeInstPair(fn, entry))
@@ -270,7 +314,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    instantiateBody(c, n, fn.typ.n, result)
+    instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     paramsTypeCheck(c, result.typ)
   else:

@@ -46,7 +46,7 @@ const
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
-    wInjectStmt, wDeprecated, wExperimental}
+    wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
@@ -55,7 +55,7 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims}
+    wBorrow, wGcSafe, wExportNims, wPartial}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
@@ -256,8 +256,9 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
 
 proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
-    POptionEntry(c.optionStack.tail).dynlib = getLib(c, libDynamic,
-        expectDynlibNode(c, n))
+    let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
+    if not lib.isOverriden:
+      POptionEntry(c.optionStack.tail).dynlib = lib
   else:
     if n.kind == nkExprColonExpr:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
@@ -276,6 +277,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
 proc processNote(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (sonsLen(n) == 2) and
       (n.sons[0].kind == nkBracketExpr) and
+      (n.sons[0].sons.len == 2) and
       (n.sons[0].sons[1].kind == nkIdent) and
       (n.sons[0].sons[0].kind == nkIdent):
       #and (n.sons[1].kind == nkIdent):
@@ -391,21 +393,23 @@ type
   TLinkFeature = enum
     linkNormal, linkSys
 
-proc processCompile(c: PContext, n: PNode) =
+proc relativeFile(c: PContext; n: PNode; ext=""): string =
   var s = expectStrLit(c, n)
-  var found = findFile(s)
-  if found == "": found = s
-  var trunc = changeFileExt(found, "")
-  if not isAbsolute(found):
-    found = parentDir(n.info.toFullPath) / found
+  if ext.len > 0 and splitFile(s).ext == "":
+    s = addFileExt(s, ext)
+  result = parentDir(n.info.toFullPath) / s
+  if not fileExists(result):
+    if isAbsolute(s): result = s
+    else: result = findFile(s)
+
+proc processCompile(c: PContext, n: PNode) =
+  let found = relativeFile(c, n)
+  let trunc = found.changeFileExt("")
   extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
-  var f = expectStrLit(c, n)
-  if splitFile(f).ext == "": f = addFileExt(f, CC[cCompiler].objExt)
-  var found = findFile(f)
-  if found == "": found = f # use the default
+  let found = relativeFile(c, n, CC[cCompiler].objExt)
   case feature
   of linkNormal: extccomp.addFileToLink(found)
   of linkSys:
@@ -443,6 +447,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(sub))
         if e != nil:
           if e.kind == skStub: loadStub(e)
+          incl(e.flags, sfUsed)
           addSon(result, newSymNode(e))
         else:
           addSon(result, newStrNode(nkStrLit, sub))
@@ -834,6 +839,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym.kind != skType or sym.typ == nil: invalidPragma(it)
         else: incl(sym.typ.flags, tfByCopy)
+      of wPartial:
+        noVal(it)
+        if sym.kind != skType or sym.typ == nil: invalidPragma(it)
+        else:
+          incl(sym.typ.flags, tfPartial)
+          # .partial types can only work with dead code elimination
+          # to prevent the codegen from doing anything before we compiled
+          # the whole program:
+          incl gGlobalOptions, optDeadCodeElim
       of wInject, wGensym:
         # We check for errors, but do nothing with these pragmas otherwise
         # as they are handled directly in 'evalTemplate'.
@@ -874,6 +888,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           c.module.flags.incl sfExperimental
         else:
           localError(it.info, "'experimental' pragma only valid as toplevel statement")
+      of wThis:
+        if it.kind == nkExprColonExpr:
+          c.selfName = considerQuotedIdent(it[1])
+        else:
+          c.selfName = getIdent("self")
       of wNoRewrite:
         noVal(it)
       of wBase:

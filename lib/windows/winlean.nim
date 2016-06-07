@@ -12,8 +12,20 @@
 
 {.deadCodeElim:on.}
 
+import dynlib
+
+when defined(vcc):
+  {.passC: "-DWIN32_LEAN_AND_MEAN".}
+
 const
   useWinUnicode* = not defined(useWinAnsi)
+
+when useWinUnicode:
+  type WinChar* = Utf16Char
+  {.deprecated: [TWinChar: WinChar].}
+else:
+  type WinChar* = char
+  {.deprecated: [TWinChar: WinChar].}
 
 type
   Handle* = int
@@ -24,6 +36,8 @@ type
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
+  ULONG_PTR* = uint
+  PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
 
@@ -74,16 +88,17 @@ type
     nFileIndexHigh*: DWORD
     nFileIndexLow*: DWORD
 
+  OSVERSIONINFO* {.final, pure.} = object
+    dwOSVersionInfoSize*: DWORD
+    dwMajorVersion*: DWORD
+    dwMinorVersion*: DWORD
+    dwBuildNumber*: DWORD
+    dwPlatformId*: DWORD
+    szCSDVersion*: array[0..127, WinChar]
+
 {.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
     TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
     TFILETIME: FILETIME, TBY_HANDLE_FILE_INFORMATION: BY_HANDLE_FILE_INFORMATION].}
-
-when useWinUnicode:
-  type WinChar* = Utf16Char
-  {.deprecated: [TWinChar: WinChar].}
-else:
-  type WinChar* = char
-  {.deprecated: [TWinChar: WinChar].}
 
 const
   STARTF_USESHOWWINDOW* = 1'i32
@@ -116,6 +131,13 @@ const
   FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
   CREATE_NO_WINDOW* = 0x08000000'i32
+
+when useWinUnicode:
+  proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExW".}
+else:
+  proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExA".}
+
+proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion".}
 
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
@@ -190,6 +212,9 @@ proc flushFileBuffers*(hFile: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "FlushFileBuffers".}
 
 proc getLastError*(): int32 {.importc: "GetLastError",
+    stdcall, dynlib: "kernel32".}
+
+proc setLastError*(error: int32) {.importc: "SetLastError",
     stdcall, dynlib: "kernel32".}
 
 when useWinUnicode:
@@ -289,9 +314,9 @@ when useWinUnicode:
       stdcall, dynlib: "kernel32", importc: "FindNextFileW".}
 else:
   proc findFirstFileA*(lpFileName: cstring,
-                      lpFindFileData: var WIN32_FIND_DATA): THANDLE {.
+                      lpFindFileData: var WIN32_FIND_DATA): Handle {.
       stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}
-  proc findNextFileA*(hFindFile: THANDLE,
+  proc findNextFileA*(hFindFile: Handle,
                      lpFindFileData: var WIN32_FIND_DATA): int32 {.
       stdcall, dynlib: "kernel32", importc: "FindNextFileA".}
 
@@ -389,7 +414,7 @@ const
   FD_SETSIZE* = 64
   MSG_PEEK* = 2
 
-  INADDR_ANY* = 0
+  INADDR_ANY* = 0'u32
   INADDR_LOOPBACK* = 0x7F000001
   INADDR_BROADCAST* = -1
   INADDR_NONE* = -1
@@ -418,12 +443,12 @@ type
     sa_data: array[0..13, char]
 
   InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
-    s_addr*: int32  # IP address
+    s_addr*: uint32  # IP address
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
                   header: "winsock2.h".} = object
     sin_family*: int16
-    sin_port*: int16 # unsigned
+    sin_port*: uint16
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
 
@@ -433,7 +458,7 @@ type
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
                    header: "ws2tcpip.h".} = object
     sin6_family*: int16
-    sin6_port*: int16 # unsigned
+    sin6_port*: uint16
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
     sin6_scope_id*: int32 # unsigned
@@ -493,6 +518,8 @@ var
   SO_DEBUG* {.importc, header: "winsock2.h".}: cint ## turn on debugging info recording
   SO_ACCEPTCONN* {.importc, header: "winsock2.h".}: cint # socket has had listen()
   SO_REUSEADDR* {.importc, header: "winsock2.h".}: cint # allow local address reuse
+  SO_REUSEPORT* {.importc: "SO_REUSEADDR", header: "winsock2.h".}: cint # allow port reuse. Since Windows does not really support it, mapped to SO_REUSEADDR. This shouldn't cause problems.
+
   SO_KEEPALIVE* {.importc, header: "winsock2.h".}: cint # keep connections alive
   SO_DONTROUTE* {.importc, header: "winsock2.h".}: cint # just use interface addresses
   SO_BROADCAST* {.importc, header: "winsock2.h".}: cint # permit sending of broadcast msgs
@@ -567,7 +594,7 @@ proc getnameinfo*(a1: ptr SockAddr, a2: SockLen,
                   a6: SockLen, a7: cint): cint {.
   stdcall, importc: "getnameinfo", dynlib: ws2dll.}
 
-proc inet_addr*(cp: cstring): int32 {.
+proc inet_addr*(cp: cstring): uint32 {.
   stdcall, importc: "inet_addr", dynlib: ws2dll.}
 
 proc WSAFDIsSet(s: SocketHandle, set: var TFdSet): bool {.
@@ -596,9 +623,6 @@ proc freeaddrinfo*(ai: ptr AddrInfo) {.
 
 proc inet_ntoa*(i: InAddr): cstring {.
   stdcall, importc, dynlib: ws2dll.}
-
-proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
-            stringBufSize: int32): cstring {.stdcall, importc, dynlib: ws2dll.}
 
 const
   MAXIMUM_WAIT_OBJECTS* = 0x00000040
@@ -645,6 +669,7 @@ const
 const
   ERROR_ACCESS_DENIED* = 5
   ERROR_HANDLE_EOF* = 38
+  ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                       hTargetProcessHandle: HANDLE,
@@ -667,7 +692,7 @@ else:
   proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
                     lpSecurityAttributes: pointer,
                     dwCreationDisposition, dwFlagsAndAttributes: DWORD,
-                    hTemplateFile: THANDLE): THANDLE {.
+                    hTemplateFile: Handle): Handle {.
       stdcall, dynlib: "kernel32", importc: "CreateFileA".}
   proc deleteFileA*(pathName: cstring): int32 {.
     importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
@@ -697,10 +722,10 @@ proc createFileMappingW*(hFile: Handle,
   stdcall, dynlib: "kernel32", importc: "CreateFileMappingW".}
 
 when not useWinUnicode:
-  proc createFileMappingA*(hFile: THANDLE,
+  proc createFileMappingA*(hFile: Handle,
                            lpFileMappingAttributes: pointer,
                            flProtect, dwMaximumSizeHigh: DWORD,
-                           dwMaximumSizeLow: DWORD, lpName: cstring): THANDLE {.
+                           dwMaximumSizeLow: DWORD, lpName: cstring): Handle {.
       stdcall, dynlib: "kernel32", importc: "CreateFileMappingA".}
 
 proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
@@ -736,21 +761,28 @@ const
   WSAENETRESET* = 10052
   WSAETIMEDOUT* = 10060
   ERROR_NETNAME_DELETED* = 64
+  STATUS_PENDING* = 0x103
 
 proc createIoCompletionPort*(FileHandle: Handle, ExistingCompletionPort: Handle,
-                             CompletionKey: DWORD,
+                             CompletionKey: ULONG_PTR,
                              NumberOfConcurrentThreads: DWORD): Handle{.stdcall,
     dynlib: "kernel32", importc: "CreateIoCompletionPort".}
 
 proc getQueuedCompletionStatus*(CompletionPort: Handle,
-    lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG,
+    lpNumberOfBytesTransferred: PDWORD, lpCompletionKey: PULONG_PTR,
                                 lpOverlapped: ptr POVERLAPPED,
                                 dwMilliseconds: DWORD): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetQueuedCompletionStatus".}
 
-proc getOverlappedResult*(hFile: Handle, lpOverlapped: OVERLAPPED,
+proc getOverlappedResult*(hFile: Handle, lpOverlapped: POVERLAPPED,
               lpNumberOfBytesTransferred: var DWORD, bWait: WINBOOL): WINBOOL{.
     stdcall, dynlib: "kernel32", importc: "GetOverlappedResult".}
+
+# this is copy of HasOverlappedIoCompleted() macro from <winbase.h>
+# because we have declared own OVERLAPPED structure with member names not
+# compatible with original names.
+template hasOverlappedIoCompleted*(lpOverlapped): bool =
+  (cast[uint](lpOverlapped.internal) != STATUS_PENDING)
 
 const
  IOC_OUT* = 0x40000000
@@ -806,3 +838,54 @@ proc getSystemTimes*(lpIdleTime, lpKernelTime,
 proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
+
+type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
+                      stringBufSize: int32): cstring {.stdcall.}
+
+var inet_ntop_real: inet_ntop_proc = nil
+
+let ws2 = loadLib(ws2dll)
+if ws2 != nil:
+  inet_ntop_real = cast[inet_ntop_proc](symAddr(ws2, "inet_ntop"))
+
+proc WSAAddressToStringA(pAddr: ptr SockAddr, addrSize: DWORD, unused: pointer, pBuff: cstring, pBuffSize: ptr DWORD): cint {.stdcall, importc, dynlib: ws2dll.}
+proc inet_ntop_emulated(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall.} =
+  case family
+  of AF_INET:
+    var sa: Sockaddr_in
+    sa.sin_family = AF_INET
+    sa.sin_addr = cast[ptr InAddr](paddr)[]
+    var bs = stringBufSize.DWORD
+    let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+    if r != 0:
+      result = nil
+    else:
+      result = pStringBuffer
+  of AF_INET6:
+    var sa: Sockaddr_in6
+    sa.sin6_family = AF_INET6
+    sa.sin6_addr = cast[ptr In6_addr](paddr)[]
+    var bs = stringBufSize.DWORD
+    let r = WSAAddressToStringA(cast[ptr SockAddr](sa.addr), sa.sizeof.DWORD, nil, pStringBuffer, bs.addr)
+    if r != 0:
+      result = nil
+    else:
+      result = pStringBuffer
+  else:
+    setLastError(ERROR_BAD_ARGUMENTS)
+    result = nil
+
+proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
+                  stringBufSize: int32): cstring {.stdcall.} =
+  var ver: OSVERSIONINFO
+  ver.dwOSVersionInfoSize = sizeof(ver).DWORD
+  let res = when useWinUnicode: getVersionExW(ver.addr) else: getVersionExA(ver.addr)
+  if res == 0:
+    result = nil
+  elif ver.dwMajorVersion >= 6:
+    if inet_ntop_real == nil:
+      quit("Can't load inet_ntop proc from " & ws2dll)
+    result = inet_ntop_real(family, paddr, pStringBuffer, stringBufSize)
+  else:
+    result = inet_ntop_emulated(family, paddr, pStringBuffer, stringBufSize)

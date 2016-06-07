@@ -14,6 +14,7 @@
 ## <backends.html#the-javascript-target>`_.
 
 import parseutils
+from math import pow, round, floor, log10
 
 {.deadCodeElim: on.}
 
@@ -324,7 +325,7 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-iterator split*(s: string, seps: set[char] = Whitespace): string =
+iterator split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a group of separators.
   ##
   ## Substrings are separated by a substring containing only `seps`. Note
@@ -369,15 +370,19 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   "08.398990"
   ##
   var last = 0
+  var splits = maxsplit
   assert(not ('\0' in seps))
   while last < len(s):
     while s[last] in seps: inc(last)
     var first = last
     while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
     if first <= last-1:
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
 
-iterator split*(s: string, sep: char): string =
+iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
@@ -404,26 +409,39 @@ iterator split*(s: string, sep: char): string =
   ##   ""
   ##
   var last = 0
+  var splits = maxsplit
   assert('\0' != sep)
   if len(s) > 0:
     # `<=` is correct here for the edge cases!
     while last <= len(s):
       var first = last
       while last < len(s) and s[last] != sep: inc(last)
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
       inc(last)
 
-iterator split*(s: string, sep: string): string =
+proc substrEq(s: string, a, L: int, x: string): bool =
+  var i = 0
+  while i < L and s[a+i] == x[i]: inc i
+  result = i == L
+
+iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`.
   var last = 0
+  var splits = maxsplit
   if len(s) > 0:
     while last <= len(s):
       var first = last
-      while last < len(s) and s.substr(last, last + <sep.len) != sep:
+      while last < len(s) and not s.substrEq(last, sep.len, sep):
         inc(last)
+      if splits == 0: last = len(s)
       yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
       inc(last, sep.len)
 
 iterator splitLines*(s: string): string =
@@ -493,25 +511,25 @@ proc countLines*(s: string): int {.noSideEffect,
     else: discard
     inc i
 
-proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
+proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char]>`_, but is a
   ## proc that returns a sequence of substrings.
-  accumulateResult(split(s, seps))
+  accumulateResult(split(s, seps, maxsplit))
 
-proc split*(s: string, sep: char): seq[string] {.noSideEffect,
+proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char>`_, but is a proc
   ## that returns a sequence of substrings.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxsplit))
 
-proc split*(s: string, sep: string): seq[string] {.noSideEffect,
+proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitString".} =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxsplit))
 
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
@@ -529,6 +547,10 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     n = n shr 4
     # handle negative overflow
     if n == 0 and x < 0: n = -1
+
+proc toHex*[T](x: T): string =
+  ## Shortcut for ``toHex(x, T.sizeOf * 2)``
+  toHex(x, T.sizeOf * 2)
 
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
@@ -559,6 +581,24 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   var L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
+
+proc parseUInt*(s: string): uint {.noSideEffect, procvar,
+  rtl, extern: "nsuParseUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
+
+proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+  rtl, extern: "nsuParseBiggestUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseBiggestUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
 
 proc parseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
@@ -651,7 +691,7 @@ proc repeat*(s: string, n: Natural): string {.noSideEffect,
   result = newStringOfCap(n * s.len)
   for i in 1..n: result.add(s)
 
-template spaces*(n: Natural): string =  repeat(' ',n)
+template spaces*(n: Natural): string = repeat(' ', n)
   ## Returns a String with `n` space characters. You can use this proc
   ## to left align strings. Example:
   ##
@@ -766,8 +806,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuIndent".} =
   ## Indents each line in ``s`` by ``count`` amount of ``padding``.
   ##
-  ## **Note:** This currently does not preserve the specific new line characters
-  ## used.
+  ## **Note:** This does not preserve the new line characters used in ``s``.
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -778,32 +817,39 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, eatAllIndent = false): string {.
-               noSideEffect, rtl, extern: "nsuUnindent".} =
-  ## Unindents `s`.
-  result = newStringOfCap(s.len)
+proc unindent*(s: string, count: Natural, padding: string = " "): string
+    {.noSideEffect, rtl, extern: "nsuUnindent".} =
+  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ##
+  ## **Note:** This does not preserve the new line characters used in ``s``.
+  result = ""
   var i = 0
-  var pattern = true
-  var indent = 0
-  while s[i] == ' ': inc i
-  var level = if i == 0: -1 else: i
-  while i < s.len:
-    if s[i] == ' ':
-      if i > 0 and s[i-1] in {'\l', '\c'}:
-        pattern = true
-        indent = 0
-      if pattern:
-        inc(indent)
-        if indent > level and not eatAllIndent:
-          result.add(s[i])
-        if level < 0: level = indent
-      else:
-        # a space somewhere: do not delete
-        result.add(s[i])
-    else:
-      pattern = false
-      result.add(s[i])
-    inc i
+  for line in s.splitLines():
+    if i != 0:
+      result.add("\n")
+    var indentCount = 0
+    for j in 0..<count.int:
+      indentCount.inc
+      if line[j .. j + <padding.len] != padding:
+        indentCount = j
+        break
+    result.add(line[indentCount*padding.len .. ^1])
+    i.inc
+
+proc unindent*(s: string): string
+    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
+  ## Removes all indentation composed of whitespace from each line in ``s``.
+  ##
+  ## For example:
+  ##
+  ## .. code-block:: nim
+  ##   const x = """
+  ##     Hello
+  ##     There
+  ##   """.unindent()
+  ##
+  ##   doAssert x == "Hello\nThere\n"
+  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
 
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
@@ -882,7 +928,7 @@ proc abbrev*(s: string, possibilities: openArray[string]): int =
 
 # ---------------------------------------------------------------------------
 
-proc join*(a: openArray[string], sep: string): string {.
+proc join*(a: openArray[string], sep: string = ""): string {.
   noSideEffect, rtl, extern: "nsuJoinSep".} =
   ## Concatenates all strings in `a` separating them with `sep`.
   if len(a) > 0:
@@ -896,16 +942,15 @@ proc join*(a: openArray[string], sep: string): string {.
   else:
     result = ""
 
-proc join*(a: openArray[string]): string {.
-  noSideEffect, rtl, extern: "nsuJoin".} =
-  ## Concatenates all strings in `a`.
-  if len(a) > 0:
-    var L = 0
-    for i in 0..high(a): inc(L, a[i].len)
-    result = newStringOfCap(L)
-    for i in 0..high(a): add(result, a[i])
-  else:
-    result = ""
+proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
+  noSideEffect, rtl.} =
+  ## Converts all elements in `a` to strings using `$` and concatenates them
+  ## with `sep`.
+  result = ""
+  for i, x in a:
+    if i > 0:
+      add(result, sep)
+    add(result, $x)
 
 type
   SkipTable = array[char, int]
@@ -1421,28 +1466,216 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``float`` type.
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
-proc formatSize*(bytes: BiggestInt, decimalSep = '.'): string =
-  ## Rounds and formats `bytes`. Examples:
+proc trimZeros*(x: var string) {.noSideEffect.} =
+  ## Trim trailing zeros from a formatted floating point
+  ## value (`x`).  Modifies the passed value.
+  var spl: seq[string]
+  if x.contains('.') or x.contains(','):
+    if x.contains('e'):
+      spl= x.split('e')
+      x = spl[0]
+    while x[x.high] == '0':
+      x.setLen(x.len-1)
+    if x[x.high] in [',', '.']:
+      x.setLen(x.len-1)
+    if spl.len > 0:
+      x &= "e" & spl[1]
+
+type
+  BinaryPrefixMode* = enum ## the different names for binary prefixes
+    bpIEC, # use the IEC/ISO standard prefixes such as kibi
+    bpColloquial # use the colloquial kilo, mega etc
+
+proc formatSize*(bytes: int64,
+                 decimalSep = '.',
+                 prefix = bpIEC,
+                 includeSpace = false): string {.noSideEffect.} =
+  ## Rounds and formats `bytes`.
+  ##
+  ## By default, uses the IEC/ISO standard binary prefixes, so 1024 will be
+  ## formatted as 1KiB.  Set prefix to `bpColloquial` to use the colloquial
+  ## names from the SI standard (e.g. k for 1000 being reused as 1024).
+  ##
+  ## `includeSpace` can be set to true to include the (SI preferred) space
+  ## between the number and the unit (e.g. 1 KiB).
+  ##
+  ## Examples:
   ##
   ## .. code-block:: nim
   ##
-  ##    formatSize(1'i64 shl 31 + 300'i64) == "2.204GB"
-  ##    formatSize(4096) == "4KB"
+  ##    formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
+  ##    formatSize((2.234*1024*1024).int) == "2.234MiB"
+  ##    formatSize(4096, includeSpace=true) == "4 KiB"
+  ##    formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
+  ##    formatSize(4096) == "4KiB"
+  ##    formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
   ##
-  template frmt(a, b, c: expr): expr =
-    let bs = $b
-    insertSep($a) & decimalSep & bs.substr(0, 2) & c
-  let gigabytes = bytes shr 30
-  let megabytes = bytes shr 20
-  let kilobytes = bytes shr 10
-  if gigabytes != 0:
-    result = frmt(gigabytes, megabytes, "GB")
-  elif megabytes != 0:
-    result = frmt(megabytes, kilobytes, "MB")
-  elif kilobytes != 0:
-    result = frmt(kilobytes, bytes, "KB")
+  const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
+  const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
+  var
+    xb: int64 = bytes
+    fbytes: float
+    last_xb: int64 = bytes
+    matchedIndex: int
+    prefixes: array[9, string]
+  if prefix == bpColloquial:
+    prefixes = collPrefixes
   else:
-    result = insertSep($bytes) & "B"
+    prefixes = iecPrefixes
+
+  # Iterate through prefixes seeing if value will be greater than
+  # 0 in each case
+  for index in 1..<prefixes.len:
+    last_xb = xb
+    xb = bytes div (1'i64 shl (index*10))
+    matchedIndex = index
+    if xb == 0:
+      xb = last_xb
+      matchedIndex = index - 1
+      break
+  # xb has the integer number for the latest value; index should be correct
+  fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
+  result = formatFloat(fbytes, format=ffDecimal, precision=3, decimalSep=decimalSep)
+  result.trimZeros()
+  if includeSpace:
+    result &= " "
+  result &= prefixes[matchedIndex]
+  result &= "B"
+
+proc formatEng*(f: BiggestFloat,
+                precision: range[0..32] = 10,
+                trim: bool = true,
+                siPrefix: bool = false,
+                unit: string = nil,
+                decimalSep = '.'): string {.noSideEffect.} =
+  ## Converts a floating point value `f` to a string using engineering notation.
+  ##
+  ## Numbers in of the range -1000.0<f<1000.0 will be formatted without an
+  ## exponent.  Numbers outside of this range will be formatted as a
+  ## significand in the range -1000.0<f<1000.0 and an exponent that will always
+  ## be an integer multiple of 3, corresponding with the SI prefix scale k, M,
+  ## G, T etc for numbers with an absolute value greater than 1 and m, μ, n, p
+  ## etc for numbers with an absolute value less than 1.
+  ##
+  ## The default configuration (`trim=true` and `precision=10`) shows the
+  ## **shortest** form that precisely (up to a maximum of 10 decimal places)
+  ## displays the value.  For example, 4.100000 will be displayed as 4.1 (which
+  ## is mathematically identical) whereas 4.1000003 will be displayed as
+  ## 4.1000003.
+  ##
+  ## If `trim` is set to true, trailing zeros will be removed; if false, the
+  ## number of digits specified by `precision` will always be shown.
+  ##
+  ## `precision` can be used to set the number of digits to be shown after the
+  ## decimal point or (if `trim` is true) the maximum number of digits to be
+  ## shown.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(0, 2, trim=false) == "0.00"
+  ##    formatEng(0, 2) == "0"
+  ##    formatEng(0.053, 0) == "53e-3"
+  ##    formatEng(52731234, 2) == "52.73e6"
+  ##    formatEng(-52731234, 2) == "-52.73e6"
+  ##
+  ## If `siPrefix` is set to true, the number will be displayed with the SI
+  ## prefix corresponding to the exponent.  For example 4100 will be displayed
+  ## as "4.1 k" instead of "4.1e3".  Note that `u` is used for micro- in place
+  ## of the greek letter mu (μ) as per ISO 2955.  Numbers with an absolute
+  ## value outside of the range 1e-18<f<1000e18 (1a<f<1000E) will be displayed
+  ## with an exponent rather than an SI prefix, regardless of whether
+  ## `siPrefix` is true.
+  ##
+  ## If `unit` is not nil, the provided unit will be appended to the string
+  ## (with a space as required by the SI standard).  This behaviour is slightly
+  ## different to appending the unit to the result as the location of the space
+  ## is altered depending on whether there is an exponent.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+  ##    formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+  ##    formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+  ##    formatEng(4100, siPrefix=true) == "4.1 k"
+  ##    formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Space with unit=""
+  ##    formatEng(4100, siPrefix=true, unit="") == "4.1 k"
+  ##    formatEng(4100) == "4.1e3"
+  ##    formatEng(4100, unit="V") == "4.1e3 V"
+  ##    formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+  ##
+  ## `decimalSep` is used as the decimal separator
+  var
+    absolute: BiggestFloat
+    significand: BiggestFloat
+    fexponent: BiggestFloat
+    exponent: int
+    splitResult: seq[string]
+    suffix: string = ""
+  proc getPrefix(exp: int): char =
+    ## Get the SI prefix for a given exponent
+    ##
+    ## Assumes exponent is a multiple of 3; returns ' ' if no prefix found
+    const siPrefixes = ['a','f','p','n','u','m',' ','k','M','G','T','P','E']
+    var index: int = (exp div 3) + 6
+    result = ' '
+    if index in low(siPrefixes)..high(siPrefixes):
+      result = siPrefixes[index]
+
+  # Most of the work is done with the sign ignored, so get the absolute value
+  absolute = abs(f)
+  significand = f
+
+  if absolute == 0.0:
+    # Simple case: just format it and force the exponent to 0
+    exponent = 0
+    result = significand.formatBiggestFloat(ffDecimal, precision, decimalSep='.')
+  else:
+    # Find the best exponent that's a multiple of 3
+    fexponent = round(floor(log10(absolute)))
+    fexponent = 3.0 * round(floor(fexponent / 3.0))
+    # Adjust the significand for the new exponent
+    significand /= pow(10.0, fexponent)
+
+    # Round the significand and check whether it has affected
+    # the exponent
+    significand = round(significand, precision)
+    absolute = abs(significand)
+    if absolute >= 1000.0:
+      significand *= 0.001
+      fexponent += 3
+    # Components of the result:
+    result = significand.formatBiggestFloat(ffDecimal, precision, decimalSep='.')
+    exponent = fexponent.int()
+
+  splitResult = result.split('.')
+  result = splitResult[0]
+  # result should have at most one decimal character
+  if splitResult.len() > 1:
+    # If trim is set, we get rid of trailing zeros.  Don't use trimZeros here as
+    # we can be a bit more efficient through knowledge that there will never be
+    # an exponent in this part.
+    if trim:
+        while splitResult[1].endsWith("0"):
+          # Trim last character
+          splitResult[1].setLen(splitResult[1].len-1)
+        if splitResult[1].len() > 0:
+          result &= decimalSep & splitResult[1]
+    else:
+      result &= decimalSep & splitResult[1]
+
+  # Combine the results accordingly
+  if siPrefix and exponent != 0:
+    var p = getPrefix(exponent)
+    if p != ' ':
+      suffix = " " & p
+      exponent = 0 # Exponent replaced by SI prefix
+  if suffix == "" and unit != nil:
+    suffix = " "
+  if unit != nil:
+    suffix &= unit
+  if exponent != 0:
+    result &= "e" & $exponent
+  result &= suffix
 
 proc findNormalized(x: string, inArray: openArray[string]): int =
   var i = 0
@@ -1638,9 +1871,14 @@ when isMainModule:
                                                    ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-  when not defined(testing):
-    echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
-    echo formatSize(1'i64 shl 31)
+
+  block: # formatSize tests
+    doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
+    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    doAssert formatSize(4096) == "4KiB"
+    doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
+    doAssert formatSize(4096, includeSpace=true) == "4 KiB"
+    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
@@ -1720,4 +1958,75 @@ when isMainModule:
   doAssert isUpper("ABC")
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
+
   doAssert(unescape(r"\x013", "", "") == "\x013")
+
+  doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
+  doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
+  doAssert join([1, 2, 3]) == "123"
+  doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
+
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
+
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
+  doAssert """~~foo
+~~  bar
+~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
+  doAssert """foo
+bar
+    baz
+  """.unindent(4) == "foo\nbar\nbaz\n"
+  doAssert """foo
+    bar
+    baz
+  """.unindent(2) == "foo\n  bar\n  baz\n"
+  doAssert """foo
+    bar
+    baz
+  """.unindent(100) == "foo\nbar\nbaz\n"
+
+  doAssert """foo
+    foo
+    bar
+  """.unindent() == "foo\nfoo\nbar\n"
+
+  let s = " this   is     an example   "
+  doAssert s.split() == @["this", "is", "an", "example"]
+  doAssert s.split(maxsplit=4) == @["this", "is", "an", "example"]
+  doAssert s.split(' ', maxsplit=4) == @["", "this", "", "", "is     an example   "]
+  doAssert s.split(" ", maxsplit=4) == @["", "this", "", "", "is     an example   "]
+
+  block: # formatEng tests
+    doAssert formatEng(0, 2, trim=false) == "0.00"
+    doAssert formatEng(0, 2) == "0"
+    doAssert formatEng(53, 2, trim=false) == "53.00"
+    doAssert formatEng(0.053, 2, trim=false) == "53.00e-3"
+    doAssert formatEng(0.053, 4, trim=false) == "53.0000e-3"
+    doAssert formatEng(0.053, 4, trim=true) == "53e-3"
+    doAssert formatEng(0.053, 0) == "53e-3"
+    doAssert formatEng(52731234) == "52.731234e6"
+    doAssert formatEng(-52731234) == "-52.731234e6"
+    doAssert formatEng(52731234, 1) == "52.7e6"
+    doAssert formatEng(-52731234, 1) == "-52.7e6"
+    doAssert formatEng(52731234, 1, decimalSep=',') == "52,7e6"
+    doAssert formatEng(-52731234, 1, decimalSep=',') == "-52,7e6"
+
+    doAssert formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+    doAssert formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+    doAssert formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+    doAssert formatEng(4100, siPrefix=true) == "4.1 k"
+    doAssert formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Includes space
+    doAssert formatEng(4100, siPrefix=true, unit="") == "4.1 k"
+    doAssert formatEng(4100) == "4.1e3"
+    doAssert formatEng(4100, unit="V") == "4.1e3 V"
+    doAssert formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+    # Don't use SI prefix as number is too big
+    doAssert formatEng(3.1e22, siPrefix=true, unit="a") == "31e21 a"
+    # Don't use SI prefix as number is too small
+    doAssert formatEng(3.1e-25, siPrefix=true, unit="A") == "310e-27 A"
+
+  #echo("strutils tests passed")

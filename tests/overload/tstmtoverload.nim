@@ -10,7 +10,7 @@ template test(loopCount: int, extraI: int, testBody: stmt): stmt =
 
 template test(loopCount: int, extraF: float, testBody: stmt): stmt =
   block:
-    test(loopCount, round(extraF), testBody)
+    test(loopCount, round(extraF).int, testBody)
 
 template test(loopCount: int, testBody: stmt): stmt =
   block:

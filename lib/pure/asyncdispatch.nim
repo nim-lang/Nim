@@ -9,9 +9,9 @@
 
 include "system/inclrtl"
 
-import os, oids, tables, strutils, macros, times
+import os, oids, tables, strutils, macros, times, heapqueue
 
-import nativesockets, net
+import nativesockets, net, queues
 
 export Port, SocketFlag
 
@@ -155,6 +155,9 @@ type
 
 when not defined(release):
   var currentID = 0
+
+proc callSoon*(cbproc: proc ()) {.gcsafe.}
+
 proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   ## Creates a new future.
   ##
@@ -257,7 +260,7 @@ proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
   ## passes ``future`` as a param to the callback.
   future.cb = cb
   if future.finished:
-    future.cb()
+    callSoon(future.cb)
 
 proc `callback=`*[T](future: Future[T],
     cb: proc (future: Future[T]) {.closure,gcsafe.}) =
@@ -352,23 +355,80 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   fut2.callback = cb
   return retFuture
 
+proc all*[T](futs: varargs[Future[T]]): auto =
+  ## Returns a future which will complete once
+  ## all futures in ``futs`` complete.
+  ##
+  ## If the awaited futures are not ``Future[void]``, the returned future
+  ## will hold the values of all awaited futures in a sequence.
+  ##
+  ## If the awaited futures *are* ``Future[void]``,
+  ## this proc returns ``Future[void]``.
+
+  when T is void:
+    var
+      retFuture = newFuture[void]("asyncdispatch.all")
+      completedFutures = 0
+
+    let totalFutures = len(futs)
+
+    for fut in futs:
+      fut.callback = proc(f: Future[T]) =
+        inc(completedFutures)
+
+        if completedFutures == totalFutures:
+          retFuture.complete()
+
+    return retFuture
+
+  else:
+    var
+      retFuture = newFuture[seq[T]]("asyncdispatch.all")
+      retValues = newSeq[T](len(futs))
+      completedFutures = 0
+
+    for i, fut in futs:
+      proc setCallback(i: int) =
+        fut.callback = proc(f: Future[T]) =
+          retValues[i] = f.read()
+          inc(completedFutures)
+
+          if completedFutures == len(retValues):
+            retFuture.complete(retValues)
+
+      setCallback(i)
+
+    return retFuture
+
 type
   PDispatcherBase = ref object of RootRef
-    timers: seq[tuple[finishAt: float, fut: Future[void]]]
+    timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
+    callbacks: Queue[proc ()]
 
-proc processTimers(p: PDispatcherBase) =
-  var oldTimers = p.timers
-  p.timers = @[]
-  for t in oldTimers:
-    if epochTime() >= t.finishAt:
-      t.fut.complete()
-    else:
-      p.timers.add(t)
+proc processTimers(p: PDispatcherBase) {.inline.} =
+  while p.timers.len > 0 and epochTime() >= p.timers[0].finishAt:
+    p.timers.pop().fut.complete()
+
+proc processPendingCallbacks(p: PDispatcherBase) =
+  while p.callbacks.len > 0:
+    var cb = p.callbacks.dequeue()
+    cb()
+
+proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
+  # If dispatcher has active timers this proc returns the timeout
+  # of the nearest timer. Returns `timeout` otherwise.
+  result = timeout
+  if p.timers.len > 0:
+    let timerTimeout = p.timers[0].finishAt
+    let curTime = epochTime()
+    if timeout == -1 or (curTime + (timeout / 1000)) > timerTimeout:
+      result = int((timerTimeout - curTime) * 1000)
+      if result < 0: result = 0
 
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
   type
-    CompletionKey = Dword
+    CompletionKey = ULONG_PTR
 
     CompletionData* = object
       fd*: AsyncFD # TODO: Rename this.
@@ -396,7 +456,8 @@ when defined(windows) or defined(nimdoc):
     new result
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[AsyncFD]()
-    result.timers = @[]
+    result.timers.newHeapQueue()
+    result.callbacks = initQueue[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -423,15 +484,17 @@ when defined(windows) or defined(nimdoc):
   proc poll*(timeout = 500) =
     ## Waits for completion events and processes them.
     let p = getGlobalDispatcher()
-    if p.handles.len == 0 and p.timers.len == 0:
+    if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
-    let llTimeout =
-      if timeout ==  -1: winlean.INFINITE
-      else: timeout.int32
+    let at = p.adjustedTimeout(timeout)
+    var llTimeout =
+      if at == -1: winlean.INFINITE
+      else: at.int32
+
     var lpNumberOfBytesTransferred: Dword
-    var lpCompletionKey: ULONG
+    var lpCompletionKey: ULONG_PTR
     var customOverlapped: PCustomOverlapped
     let res = getQueuedCompletionStatus(p.ioPort,
         addr lpNumberOfBytesTransferred, addr lpCompletionKey,
@@ -461,6 +524,8 @@ when defined(windows) or defined(nimdoc):
 
     # Timer processing.
     processTimers(p)
+    # Callback queue processing
+    processPendingCallbacks(p)
 
   var connectExPtr: pointer = nil
   var acceptExPtr: pointer = nil
@@ -651,34 +716,16 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete("")
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete("")
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      var data = newString(realSize)
-      assert realSize <= size
-      copyMem(addr data[0], addr dataBuf.buf[0], realSize)
-      #dealloc dataBuf.buf
-      retFuture.complete($data)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+    elif ret == 0:
+      # Request completed immediately.
+      if bytesReceived != 0:
+        var data = newString(bytesReceived)
+        assert bytesReceived <= size
+        copyMem(addr data[0], addr dataBuf.buf[0], bytesReceived)
+        retFuture.complete($data)
+      else:
+        if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
+          retFuture.complete("")
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: cstring, size: int,
@@ -741,31 +788,14 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete(0)
         else:
           retFuture.fail(newException(OSError, osErrorMsg(err)))
-    elif ret == 0 and bytesReceived == 0 and dataBuf.buf[0] == '\0':
-      # We have to ensure that the buffer is empty because WSARecv will tell
-      # us immediately when it was disconnected, even when there is still
-      # data in the buffer.
-      # We want to give the user as much data as we can. So we only return
-      # the empty string (which signals a disconnection) when there is
-      # nothing left to read.
-      retFuture.complete(0)
-      # TODO: "For message-oriented sockets, where a zero byte message is often
-      # allowable, a failure with an error code of WSAEDISCON is used to
-      # indicate graceful closure."
-      # ~ http://msdn.microsoft.com/en-us/library/ms741688%28v=vs.85%29.aspx
-    else:
-      # Request to read completed immediately.
-      # From my tests bytesReceived isn't reliable.
-      let realSize =
-        if bytesReceived == 0:
-          size
-        else:
-          bytesReceived
-      assert realSize <= size
-      retFuture.complete(realSize)
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
+    elif ret == 0:
+      # Request completed immediately.
+      if bytesReceived != 0:
+        assert bytesReceived <= size
+        retFuture.complete(bytesReceived)
+      else:
+        if hasOverlappedIoCompleted(cast[POVERLAPPED](ol)):
+          retFuture.complete(bytesReceived)
     return retFuture
 
   proc send*(socket: AsyncFD, data: string,
@@ -956,7 +986,8 @@ else:
   proc newDispatcher*(): PDispatcher =
     new result
     result.selector = newSelector()
-    result.timers = @[]
+    result.timers.newHeapQueue()
+    result.callbacks = initQueue[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -1014,7 +1045,7 @@ else:
 
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
-    for info in p.selector.select(timeout):
+    for info in p.selector.select(p.adjustedTimeout(timeout)):
       let data = PData(info.key.data)
       assert data.fd == info.key.fd.AsyncFD
       #echo("In poll ", data.fd.cint)
@@ -1052,7 +1083,10 @@ else:
         # (e.g. socket disconnected).
         discard
 
+    # Timer processing.
     processTimers(p)
+    # Callback queue processing
+    processPendingCallbacks(p)
 
   proc connect*(socket: AsyncFD, address: string, port: Port,
     domain = AF_INET): Future[void] =
@@ -1215,7 +1249,7 @@ proc sleepAsync*(ms: int): Future[void] =
   ## ``ms`` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
   let p = getGlobalDispatcher()
-  p.timers.add((epochTime() + (ms / 1000), retFuture))
+  p.timers.push((epochTime() + (ms / 1000), retFuture))
   return retFuture
 
 proc accept*(socket: AsyncFD,
@@ -1316,6 +1350,23 @@ proc generateExceptionCheck(futSym,
     )
     result.add elseNode
 
+template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
+                rootReceiver: expr, fromNode: NimNode) =
+  ## Params:
+  ##    futureVarNode: The NimNode which is a symbol identifying the Future[T]
+  ##                   variable to yield.
+  ##    fromNode: Used for better debug information (to give context).
+  ##    valueReceiver: The node which defines an expression that retrieves the
+  ##                   future's value.
+  ##
+  ##    rootReceiver: ??? TODO
+  # -> yield future<x>
+  result.add newNimNode(nnkYieldStmt, fromNode).add(futureVarNode)
+  # -> future<x>.read
+  valueReceiver = newDotExpr(futureVarNode, newIdentNode("read"))
+  result.add generateExceptionCheck(futureVarNode, tryStmt, rootReceiver,
+      fromNode)
+
 template createVar(result: var NimNode, futSymName: string,
                    asyncProc: NimNode,
                    valueReceiver, rootReceiver: expr,
@@ -1323,9 +1374,7 @@ template createVar(result: var NimNode, futSymName: string,
   result = newNimNode(nnkStmtList, fromNode)
   var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
-  result.add newNimNode(nnkYieldStmt, fromNode).add(futSym) # -> yield future<x>
-  valueReceiver = newDotExpr(futSym, newIdentNode("read")) # -> future<x>.read
-  result.add generateExceptionCheck(futSym, tryStmt, rootReceiver, fromNode)
+  useVar(result, futSym, valueReceiver, rootReceiver, fromNode)
 
 proc processBody(node, retFutureSym: NimNode,
                  subTypeIsVoid: bool,
@@ -1352,7 +1401,11 @@ proc processBody(node, retFutureSym: NimNode,
       case node[1].kind
       of nnkIdent, nnkInfix:
         # await x
-        result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
+        result = newNimNode(nnkStmtList, node)
+        var futureValue: NimNode
+        result.useVar(node[1], futureValue, futureValue, node)
+        # -> yield x
+        # -> x.read()
       of nnkCall, nnkCommand:
         # await foo(p, x)
         var futureValue: NimNode
@@ -1550,6 +1603,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   for i in 0 .. <result[4].len:
     if result[4][i].kind == nnkIdent and result[4][i].ident == !"async":
       result[4].del(i)
+  result[4] = newEmptyNode()
   if subtypeIsVoid:
     # Add discardable pragma.
     if returnType.kind == nnkEmpty:
@@ -1559,7 +1613,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "hubConnectionLoop":
+  #if prc[0].getName == "g":
   #  echo(toStrLit(result))
 
 macro async*(prc: stmt): stmt {.immediate.} =
@@ -1610,6 +1664,11 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
       addNLIfEmpty()
       return
     add(result, c)
+
+proc callSoon*(cbproc: proc ()) =
+  ## Schedule `cbproc` to be called as soon as possible.
+  ## The callback is called when control returns to the event loop.
+  getGlobalDispatcher().callbacks.enqueue(cbproc)
 
 proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.

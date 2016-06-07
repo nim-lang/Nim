@@ -41,6 +41,7 @@ proc commandGenDepend =
 
 proc commandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
+  defineSymbol("nimcheck")
   semanticPasses()            # use an empty backend for semantic checking only
   rodPass()
   compileProject()
@@ -108,6 +109,7 @@ proc commandCompileToJS =
   defineSymbol("nimrod") # 'nimrod' is always defined
   defineSymbol("ecmascript") # For backward compatibility
   defineSymbol("js")
+  if gCmd == cmdCompileToPHP: defineSymbol("nimphp")
   semanticPasses()
   registerPass(JSgenPass)
   compileProject()
@@ -240,7 +242,7 @@ proc mainCommand* =
   clearPasses()
   gLastCmdTime = epochTime()
   appendStr(searchPaths, options.libpath)
-  if gProjectFull.len != 0:
+  when false: # gProjectFull.len != 0:
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
   setId(100)
@@ -266,6 +268,9 @@ proc mainCommand* =
       rawMessage(errInvalidCommandX, command)
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
+    commandCompileToJS()
+  of "php":
+    gCmd = cmdCompileToPHP
     commandCompileToJS()
   of "doc":
     wantMainModule()

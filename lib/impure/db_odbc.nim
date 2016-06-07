@@ -38,7 +38,7 @@
 ##
 ## .. code-block:: Nim
 ##     import db_odbc
-##     let db = open("localhost", "user", "password", "dbname")
+##     var db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
 ## Creating a table
@@ -64,7 +64,7 @@
 ##
 ##  import db_odbc, math
 ##
-##  let theDb = open("localhost", "nim", "nim", "test")
+##  var theDb = open("localhost", "nim", "nim", "test")
 ##
 ##  theDb.exec(sql"Drop table if exists myTestTbl")
 ##  theDb.exec(sql("create table myTestTbl (" &
@@ -88,9 +88,7 @@
 ##
 ##  theDb.close()
 
-
 import strutils, odbcsql
-
 import db_common
 export db_common
 
@@ -169,11 +167,11 @@ proc dbError*(db: var DbConn) {.
     properFreeResult(SQL_HANDLE_ENV, db.env)
     raise e
 
-proc SqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [DbError]} =
-  ## Wrapper that checks if ``resVal`` is not SQL_SUCCESS and if so, raises [EDb]
-  if resVal != SQL_SUCCESS: dbError(db)
+proc sqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [DbError]} =
+  ## Wrapper that raises [EDb] if ``resVal`` is neither SQL_SUCCESS or SQL_NO_DATA
+  if resVal notIn [SQL_SUCCESS, SQL_NO_DATA]: dbError(db)
 
-proc SqlGetDBMS(db: var DbConn): string {.
+proc sqlGetDBMS(db: var DbConn): string {.
         tags: [ReadDbEffect, WriteDbEffect], raises: [] .} =
   ## Returns the ODBC SQL_DBMS_NAME string
   const
@@ -182,7 +180,7 @@ proc SqlGetDBMS(db: var DbConn): string {.
     sz: TSqlSmallInt = 0
   buf[0] = '\0'
   try:
-    db.SqlCheck(SQLGetInfo(db.hDb, SQL_DBMS_NAME, cast[SqlPointer](buf.addr),
+    db.sqlCheck(SQLGetInfo(db.hDb, SQL_DBMS_NAME, cast[SqlPointer](buf.addr),
                         4095.TSqlSmallInt, sz.addr))
   except: discard
   return $buf.cstring
@@ -212,7 +210,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
       add(result, c)
 
 proc prepareFetch(db: var DbConn, query: SqlQuery,
-                args: varargs[string, `$`]) {.
+                args: varargs[string, `$`]): TSqlSmallInt {.
                 tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
   # Prepare a statement, execute it and fetch the data to the driver
   # ready for retrieval of the data
@@ -220,11 +218,12 @@ proc prepareFetch(db: var DbConn, query: SqlQuery,
   # requires calling
   #      properFreeResult(SQL_HANDLE_STMT, db.stmt)
   # when finished
-  db.SqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
+  db.sqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
   var q = dbFormat(query, args)
-  db.SqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
-  db.SqlCheck(SQLExecute(db.stmt))
-  db.SqlCheck(SQLFetch(db.stmt))
+  db.sqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
+  db.sqlCheck(SQLExecute(db.stmt))
+  result = SQLFetch(db.stmt)
+  db.sqlCheck(result)
 
 proc prepareFetchDirect(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]) {.
@@ -235,10 +234,10 @@ proc prepareFetchDirect(db: var DbConn, query: SqlQuery,
   # requires calling
   #      properFreeResult(SQL_HANDLE_STMT, db.stmt)
   # when finished
-  db.SqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
+  db.sqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
   var q = dbFormat(query, args)
-  db.SqlCheck(SQLExecDirect(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
-  db.SqlCheck(SQLFetch(db.stmt))
+  db.sqlCheck(SQLExecDirect(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
+  db.sqlCheck(SQLFetch(db.stmt))
 
 proc tryExec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect], raises: [].} =
@@ -250,8 +249,8 @@ proc tryExec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]): bool
     var
       rCnt = -1
     res = SQLRowCount(db.stmt, rCnt)
-    if res != SQL_SUCCESS: dbError(db)
     properFreeResult(SQL_HANDLE_STMT, db.stmt)
+    if res != SQL_SUCCESS: dbError(db)
   except: discard
   return res == SQL_SUCCESS
 
@@ -285,21 +284,31 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
     rowRes: Row
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
-    rCnt = -1
-
-  db.prepareFetch(query, args)
-  db.SqlCheck(SQLNumResultCols(db.stmt, cCnt))
-  db.SqlCheck(SQLRowCount(db.stmt, rCnt))
-  rowRes = newRow(cCnt)
-  for rNr in 1..rCnt:
-    for colId in 1..cCnt:
-      buf[0] = '\0'
-      db.SqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
-      rowRes[colId-1] = $buf.cstring
-    db.SqlCheck(SQLFetchScroll(db.stmt, SQL_FETCH_NEXT, 1))
-    yield rowRes
+    res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt: TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    # tempcCnt,A field to store the number of temporary variables, for unknown reasons,
+    # after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    # so the values of the temporary variable to store the cCnt.
+    # After every cycle and specified to cCnt. To ensure the traversal of all fields.
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    discard
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
+    rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
+    while res == SQL_SUCCESS:
+      for colId in 1..cCnt:
+        buf[0] = '\0'
+        db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+        rowRes[colId-1] = $buf.cstring
+        cCnt = tempcCnt
+      yield rowRes
+      res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
+  db.sqlCheck(res)
 
 iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
@@ -307,23 +316,34 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
   ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the interator body.
   var
-    rowRes: Row
+    rowRes: Row = @[]
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
-    rCnt = -1
-  db.prepareFetch(query, args)
-  db.SqlCheck(SQLNumResultCols(db.stmt, cCnt))
-  db.SqlCheck(SQLRowCount(db.stmt, rCnt))
-  rowRes = newRow(cCnt)
-  for rNr in 1..rCnt:
-    for colId in 1..cCnt:
-      buf[0] = '\0'
-      db.SqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
-      rowRes[colId-1] = $buf.cstring
-    db.SqlCheck(SQLFetchScroll(db.stmt, SQL_FETCH_NEXT, 1))
-    yield (row: rowRes, len: cCnt.int)
+    res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt: TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    # tempcCnt,A field to store the number of temporary variables, for unknown reasons,
+    # after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    # so the values of the temporary variable to store the cCnt.
+    # After every cycle and specified to cCnt. To ensure the traversal of all fields.
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    discard
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
+    rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
+    while res == SQL_SUCCESS:
+      for colId in 1..cCnt:
+        buf[0] = '\0'
+        db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+        rowRes[colId-1] = $buf.cstring
+        cCnt = tempcCnt
+      yield (row: rowRes, len: cCnt.int)
+      res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
+  db.sqlCheck(res)
 
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row
@@ -339,44 +359,69 @@ proc getRow*(db: var DbConn, query: SqlQuery,
   ## Retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
   var
+    rowRes: Row
     sz: TSqlSmallInt = 0.TSqlSmallInt
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
-    rCnt = -1
-  result = @[]
-  db.prepareFetch(query, args)
-  db.SqlCheck(SQLNumResultCols(db.stmt, cCnt))
-
-  db.SqlCheck(SQLRowCount(db.stmt, rCnt))
-  for colId in 1..cCnt:
-    db.SqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                             cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
-    result.add($buf.cstring)
-  db.SqlCheck(SQLFetchScroll(db.stmt, SQL_FETCH_NEXT, 1))
+    res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt: TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    ## tempcCnt,A field to store the number of temporary variables, for unknown reasons,
+    ## after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    ## so the values of the temporary variable to store the cCnt.
+    ## After every cycle and specified to cCnt. To ensure the traversal of all fields.
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    result = @[]
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
+    rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
+    for colId in 1..cCnt:
+      buf[0] = '\0'
+      db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
+                               cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+      rowRes[colId-1] = $buf.cstring
+      cCnt = tempcCnt
+    res = SQLFetch(db.stmt)
+    result = rowRes
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
+  db.sqlCheck(res)
 
 proc getAllRows*(db: var DbConn, query: SqlQuery,
                  args: varargs[string, `$`]): seq[Row] {.
-           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
+           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError] .} =
   ## Executes the query and returns the whole result dataset.
   var
+    rows: seq[Row] = @[]
     rowRes: Row
     sz: TSqlSmallInt = 0
     cCnt: TSqlSmallInt = 0.TSqlSmallInt
-    rCnt = -1
-  db.prepareFetch(query, args)
-  db.SqlCheck(SQLNumResultCols(db.stmt, cCnt))
-  db.SqlCheck(SQLRowCount(db.stmt, rCnt))
-  result = @[]
-  for rNr in 1..rCnt:
-    rowRes = @[]
-    buf[0] = '\0'
-    for colId in 1..cCnt:
-      db.SqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[SqlPointer](buf.addr), 4095.TSqlSmallInt, sz.addr))
-      rowRes.add($buf.cstring)
-    db.SqlCheck(SQLFetchScroll(db.stmt, SQL_FETCH_NEXT, 1))
-    result.add(rowRes)
+    res: TSqlSmallInt = 0.TSqlSmallInt
+    tempcCnt: TSqlSmallInt # temporary cCnt,Fix the field values to be null when the release schema is compiled.
+    ## tempcCnt,A field to store the number of temporary variables, for unknown reasons,
+    ## after performing a sqlgetdata function and circulating variables cCnt value will be changed to 0,
+    ## so the values of the temporary variable to store the cCnt.
+    ## After every cycle and specified to cCnt. To ensure the traversal of all fields.
+  res = db.prepareFetch(query, args)
+  if res == SQL_NO_DATA:
+    result = @[]
+  elif res == SQL_SUCCESS:
+    res = SQLNumResultCols(db.stmt, cCnt)
+    rowRes = newRow(cCnt)
+    rowRes.setLen(max(cCnt,0))
+    tempcCnt = cCnt
+    while res == SQL_SUCCESS:
+      for colId in 1..cCnt:
+        buf[0] = '\0'
+        db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+        rowRes[colId-1] = $buf.cstring
+        cCnt = tempcCnt
+      rows.add(rowRes)
+      res = SQLFetch(db.stmt)
+    result = rows
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
+  db.sqlCheck(res)
 
 iterator rows*(db: var DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.
@@ -407,10 +452,9 @@ proc tryInsertId*(db: var DbConn, query: SqlQuery,
   if not tryExec(db, query, args):
     result = -1'i64
   else:
-    echo "DBMS: ",SqlGetDBMS(db).toLower()
     result = -1'i64
     try:
-      case SqlGetDBMS(db).toLower():
+      case sqlGetDBMS(db).toLower():
       of "postgresql":
         result = getValue(db, sql"SELECT LASTVAL();", []).parseInt
       of "mysql":
@@ -438,15 +482,12 @@ proc execAffectedRows*(db: var DbConn, query: SqlQuery,
   ## Runs the query (typically "UPDATE") and returns the
   ## number of affected rows
   result = -1
-  var res = SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt.SqlHandle)
-  if res != SQL_SUCCESS: dbError(db)
+  db.sqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt.SqlHandle))
   var q = dbFormat(query, args)
-  res = SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt)
-  if res != SQL_SUCCESS: dbError(db)
+  db.sqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
   rawExec(db, query, args)
   var rCnt = -1
-  result = SQLRowCount(db.hDb, rCnt)
-  if res != SQL_SUCCESS: dbError(db)
+  db.sqlCheck(SQLRowCount(db.hDb, rCnt))
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
   result = rCnt
 
@@ -501,5 +542,5 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   ##
   ## Sets the encoding of a database connection, returns true for
   ## success, false for failure.
-  #result = set_character_set(connection, encoding) == 0
+  ##result = set_character_set(connection, encoding) == 0
   dbError("setEncoding() is currently not implemented by the db_odbc module")

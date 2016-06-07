@@ -1,14 +1,13 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2015 Nim Contributers
+#        (c) Copyright 2015 Nim Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-import
-  strutils, unsigned
+import strutils
 
 const Sha1DigestSize = 20
 

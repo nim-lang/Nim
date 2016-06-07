@@ -66,11 +66,14 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
+    optNoCppExceptions        # use C exception handling even with CPP
   TGlobalOptions* = set[TGlobalOption]
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-    cmdCompileToJS, cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
+    cmdCompileToJS,
+    cmdCompileToPHP,
+    cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
@@ -83,7 +86,8 @@ type                          # please make sure we have under 32 options
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcMarkAndSweep, gcRefc, gcV2, gcGenerational
+    gcNone, gcBoehm, gcGo, gcStack, gcMarkAndSweep, gcRefc,
+    gcV2, gcGenerational
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
@@ -147,8 +151,8 @@ var
   gDllOverrides = newStringTable(modeCaseInsensitive)
   gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
   libpath* = ""
-  gProjectName* = "" # holds a name like 'nimrod'
-  gProjectPath* = "" # holds a path like /home/alice/projects/nimrod/compiler/
+  gProjectName* = "" # holds a name like 'nim'
+  gProjectPath* = "" # holds a path like /home/alice/projects/nim/compiler/
   gProjectFull* = "" # projectPath/projectName
   gProjectIsStdin* = false # whether we're compiling from stdin
   gProjectMainIdx*: int32 # the canonical path id of the main module
@@ -237,6 +241,21 @@ proc removeTrailingDirSep*(path: string): string =
 proc getNimcacheDir*: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
                                                          genSubDir
+
+
+proc pathSubs*(p, config: string): string =
+  let home = removeTrailingDirSep(os.getHomeDir())
+  result = unixToNativePath(p % [
+    "nim", getPrefixDir(),
+    "lib", libpath,
+    "home", home,
+    "config", config,
+    "projectname", options.gProjectName,
+    "projectpath", options.gProjectPath,
+    "projectdir", options.gProjectPath,
+    "nimcache", getNimcacheDir()])
+  if '~' in result:
+    result = result.replace("~", home)
 
 template newPackageCache(): expr =
   newStringTable(when FileSystemCaseSensitive:

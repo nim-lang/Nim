@@ -546,7 +546,7 @@ so that the builtin ``echo`` proc does what is expected:
 .. code-block:: nim
   proc echo*(x: varargs[expr, `$`]) {...}
 
-  echo(@[1, 2, 3])
+  echo @[1, 2, 3]
   # prints "@[1, 2, 3]" and not "123"
 
 
@@ -694,7 +694,7 @@ branch switch ``system.reset`` has to be used.
 Set type
 --------
 
-.. include:: sets_fragment.txt
+.. include:: ../sets_fragment.txt
 
 Reference and pointer types
 ---------------------------

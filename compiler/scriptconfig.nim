@@ -118,10 +118,10 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     processSwitch(a.getString 0, a.getString 1, passPP, unknownLineInfo())
 
 
-proc runNimScript*(scriptName: string) =
+proc runNimScript*(scriptName: string; freshDefines=true) =
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
-  initDefines()
+  if freshDefines: initDefines()
 
   defineSymbol("nimscript")
   defineSymbol("nimconfig")

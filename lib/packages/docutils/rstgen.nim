@@ -757,10 +757,15 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   template valid(s): expr =
     s.len > 0 and allCharsInSet(s, {'.','/',':','%','_','\\','\128'..'\xFF'} +
                                    Digits + Letters + WhiteSpace)
-
-  var options = ""
+  let
+    arg = getArgument(n)
+    isObject = arg.toLower().endsWith(".svg")
+  var
+    options = ""
+    content = ""
   var s = getFieldValue(n, "scale")
-  if s.valid: dispA(d.target, options, " scale=\"$1\"", " scale=$1", [strip(s)])
+  if s.valid: dispA(d.target, options, if isObject: "" else: " scale=\"$1\"",
+                    " scale=$1", [strip(s)])
 
   s = getFieldValue(n, "height")
   if s.valid: dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
@@ -769,16 +774,21 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if s.valid: dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
 
   s = getFieldValue(n, "alt")
-  if s.valid: dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
+  if s.valid:
+    # <object> displays its content if it cannot render the image
+    if isObject: dispA(d.target, content, "$1", "", [strip(s)])
+    else: dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
 
   s = getFieldValue(n, "align")
   if s.valid: dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
 
   if options.len > 0: options = dispF(d.target, "$1", "[$1]", [options])
-
-  let arg = getArgument(n)
+  
   if arg.valid:
-    dispA(d.target, result, "<img src=\"$1\"$2 />", "\\includegraphics$2{$1}",
+    let htmlOut = if isObject:
+        "<object data=\"$1\" type=\"image/svg+xml\"$2 >" & content & "</object>"
+        else: "<img src=\"$1\"$2 />"
+    dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
           [arg, options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
@@ -802,7 +812,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     if parseInt(n.getFieldValue, number) > 0:
       params.startLine = number
   of "file":
-    # The ``file`` option is a Nimrod extension to the official spec, it acts
+    # The ``file`` option is a Nim extension to the official spec, it acts
     # like it would for other directives like ``raw`` or ``cvs-table``. This
     # field is dealt with in ``rst.nim`` which replaces the existing block with
     # the referenced file, so we only need to ignore it here to avoid incorrect
@@ -871,7 +881,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   ## second the code block itself. The code block can use syntax highlighting,
   ## which depends on the directive argument specified by the rst input, and
   ## may also come from the parser through the internal ``default-language``
-  ## option to differentiate between a plain code block and nimrod's code block
+  ## option to differentiate between a plain code block and Nim's code block
   ## extension.
   assert n.kind == rnCodeBlock
   if n.sons[2] == nil: return

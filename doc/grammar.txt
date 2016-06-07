@@ -67,7 +67,9 @@ ifExpr = 'if' condExpr
 whenExpr = 'when' condExpr
 pragma = '{.' optInd (exprColonExpr comma?)* optPar ('.}' | '}')
 identVis = symbol opr?  # postfix position
+identVisDot = symbol '.' optInd symbol opr?
 identWithPragma = identVis pragma?
+identWithPragmaDot = identVisDot pragma?
 declColonEquals = identWithPragma (comma identWithPragma)* comma?
                   (':' optInd typeDesc)? ('=' optInd expr)?
 identColonEquals = ident (comma ident)* comma?
@@ -171,7 +173,7 @@ object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
 typeClassParam = ('var' | 'out')? symbol
 typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
               &IND{>} stmt
-typeDef = identWithPragma genericParamList? '=' optInd typeDefAux
+typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
             indAndComment?
 varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
 variable = (varTuple / identColonEquals) indAndComment

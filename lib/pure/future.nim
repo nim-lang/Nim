@@ -29,21 +29,17 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
       of nnkExprColonExpr:
         identDefs.add ident[0]
         identDefs.add ident[1]
-      of nnkIdent:
+      else:
         identDefs.add newIdentNode("i" & $i)
         identDefs.add(ident)
-      else:
-        error("Incorrect type list in proc type declaration.")
       identDefs.add newEmptyNode()
       formalParams.add identDefs
-  of nnkIdent:
+  else:
     var identDefs = newNimNode(nnkIdentDefs)
     identDefs.add newIdentNode("i0")
     identDefs.add(p)
     identDefs.add newEmptyNode()
     formalParams.add identDefs
-  else:
-    error("Incorrect type list in proc type declaration.")
 
   result.add formalParams
   result.add newEmptyNode()
@@ -134,7 +130,7 @@ macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
   ## the type that will be stored inside the result seq.
   ##
-  ## .. code-block:: nimrod
+  ## .. code-block:: nim
   ##
   ##   echo lc[x | (x <- 1..10, x mod 2 == 0), int]
   ##

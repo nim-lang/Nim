@@ -12,7 +12,7 @@ include "system/inclrtl"
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
 
-## .. include:: ../doc/astspec.txt
+## .. include:: ../../doc/astspec.txt
 
 type
   NimNodeKind* = enum
@@ -71,7 +71,12 @@ type
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern
-    nnkReturnToken
+    nnkReturnToken,
+    nnkClosure,
+    nnkGotoState,
+    nnkState,
+    nnkBreakState
+
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum
     ntyNone, ntyBool, ntyChar, ntyEmpty,
@@ -191,6 +196,18 @@ proc getType*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
   ## means the node should have been obtained via `getType`.
+
+proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for a specific instance
+
+proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for a specific instance
+
+proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for the implementation
+
+proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for the implementation
 
 proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
@@ -601,7 +618,7 @@ proc last*(node: NimNode): NimNode {.compileTime.} = node[<node.len]
 
 
 const
-  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef}
+  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
@@ -791,17 +808,17 @@ proc infix*(a: NimNode; op: string;
 proc unpackPostfix*(node: NimNode): tuple[node: NimNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPostfix
-  result = (node[0], $node[1])
+  result = (node[1], $node[0])
 
 proc unpackPrefix*(node: NimNode): tuple[node: NimNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPrefix
-  result = (node[0], $node[1])
+  result = (node[1], $node[0])
 
 proc unpackInfix*(node: NimNode): tuple[left: NimNode; op: string;
                                         right: NimNode] {.compileTime.} =
   assert node.kind == nnkInfix
-  result = (node[0], $node[1], node[2])
+  result = (node[1], $node[0], node[2])
 
 proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for copyNimTree().
@@ -813,6 +830,8 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     else: result = c
   var i = 0
   var j = 0
+  # first char is case sensitive
+  if a[0] != b[0]: return 1
   while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
@@ -823,8 +842,22 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     inc(i)
     inc(j)
 
-proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   ## Check if two idents are identical.
+
+proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
+  ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
+  ## is the same as ``s``. Note that this is the preferred way to check! Most
+  ## other ways like ``node.ident`` are much more error-prone, unfortunately.
+  case node.kind
+  of nnkIdent:
+    result = node.ident == !s
+  of nnkSym:
+    result = eqIdent($node.symbol, s)
+  of nnkOpenSymChoice, nnkClosedSymChoice:
+    result = eqIdent($node[0], s)
+  else:
+    result = false
 
 proc hasArgOfName* (params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.

@@ -9,7 +9,7 @@ tgc_unsafe2.nim(28, 5) Error: 'consumer' is not GC-safe as it calls 'track'
 
 import threadpool
 
-type StringChannel = TChannel[string]
+type StringChannel = Channel[string]
 var channels: array[1..3, StringChannel]
 
 type

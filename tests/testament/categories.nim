@@ -152,6 +152,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   testWithoutBoehm "closureleak"
   testWithoutMs "refarrayleak"
 
+  testWithoutBoehm "tlists"
+  testWithoutBoehm "thavlak"
+
   test "stackrefleak"
   test "cyclecollector"
 
@@ -220,10 +223,10 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "actiontable/tactiontable", "method/tmultim1",
                    "method/tmultim3", "method/tmultim4",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup"]:
+                   "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
     test "tests/" & testfile & ".nim"
 
-  for testfile in ["pure/strutils"]:
+  for testfile in ["pure/strutils", "pure/json", "pure/random", "pure/times"]:
     test "lib/" & testfile & ".nim"
 
 # ------------------------- manyloc -------------------------------------------

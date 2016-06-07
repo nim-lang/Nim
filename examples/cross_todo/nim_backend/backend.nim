@@ -1,6 +1,6 @@
 # Backend for a simple todo program with sqlite persistence.
 #
-# Most procs dealing with a TDbConn object may raise an EDb exception.
+# Most procs dealing with a DbConn object may raise an EDb exception.
 
 import db_sqlite, parseutils, strutils, times
 
@@ -42,7 +42,7 @@ proc initDefaults*(params: var TPagedParams) =
   params.showChecked = false
 
 
-proc openDatabase*(path: string): TDbConn =
+proc openDatabase*(path: string): DbConn =
   ## Creates or opens the sqlite3 database.
   ##
   ## Pass the path to the sqlite database, if the database doesn't exist it
@@ -86,7 +86,7 @@ proc getModificationDate*(todo: TTodo): Time =
   return todo.modificationDate
 
 
-proc update*(todo: var TTodo; conn: TDbConn): bool =
+proc update*(todo: var TTodo; conn: DbConn): bool =
   ## Checks the database for the object and refreshes its variables.
   ##
   ## Use this method if you (or another entity) have modified the database and
@@ -112,7 +112,7 @@ proc update*(todo: var TTodo; conn: TDbConn): bool =
     echo("Something went wrong selecting for id " & $todo.id)
 
 
-proc save*(todo: var TTodo; conn: TDbConn): bool =
+proc save*(todo: var TTodo; conn: DbConn): bool =
   ## Saves the current state of text, priority and isDone to the database.
   ##
   ## Returns true if the database object was updated (in which case the
@@ -135,7 +135,7 @@ proc save*(todo: var TTodo; conn: TDbConn): bool =
 
 # - Procs dealing directly with the database
 #
-proc addTodo*(conn: TDbConn; priority: int; text: string): TTodo =
+proc addTodo*(conn: DbConn; priority: int; text: string): TTodo =
   ## Inserts a new todo into the database.
   ##
   ## Returns the generated todo object. If there is an error EDb will be raised.
@@ -149,7 +149,7 @@ proc addTodo*(conn: TDbConn; priority: int; text: string): TTodo =
   result = initFromDB(todoId, text, priority, false, currentDate)
 
 
-proc deleteTodo*(conn: TDbConn; todoId: int64): int64 {.discardable.} =
+proc deleteTodo*(conn: DbConn; todoId: int64): int64 {.discardable.} =
   ## Deletes the specified todo identifier.
   ##
   ## Returns the number of rows which were affected (1 or 0)
@@ -157,7 +157,7 @@ proc deleteTodo*(conn: TDbConn; todoId: int64): int64 {.discardable.} =
   result = conn.execAffectedRows(query, $todoId)
 
 
-proc getNumEntries*(conn: TDbConn): int =
+proc getNumEntries*(conn: DbConn): int =
   ## Returns the number of entries in the Todos table.
   ##
   ## If the function succeeds, returns the zero or positive value, if something
@@ -171,7 +171,7 @@ proc getNumEntries*(conn: TDbConn): int =
     result = -1
 
 
-proc getPagedTodos*(conn: TDbConn; params: TPagedParams;
+proc getPagedTodos*(conn: DbConn; params: TPagedParams;
                     page = 0'i64): seq[TTodo] =
   ## Returns the todo entries for a specific page.
   ##
@@ -210,7 +210,7 @@ proc getPagedTodos*(conn: TDbConn; params: TPagedParams;
         row[3].parseBool, Time(row[4].parseInt)))
 
 
-proc getTodo*(conn: TDbConn; todoId: int64): ref TTodo =
+proc getTodo*(conn: DbConn; todoId: int64): ref TTodo =
   ## Returns a reference to a TTodo or nil if the todo could not be found.
   var tempTodo: TTodo
   tempTodo.id = todoId

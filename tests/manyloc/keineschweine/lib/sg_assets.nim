@@ -110,7 +110,6 @@ type
   TGameState* = enum
     Lobby, Transitioning, Field
 const
-  TAU* = PI * 2.0
   MomentMult* = 0.62 ## global moment of inertia multiplier
 var
   cfg: PZoneSettings
