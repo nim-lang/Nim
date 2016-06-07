@@ -8,18 +8,18 @@ Windows we recommend that you use
 `Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
 and Clang on Mac.
 
-..
-  Binaries
-  --------
 
-  Unfortunately, right now we only provide binaries for Windows. You can download
-  an installer for both 32 bit and 64 bit versions of Windows below.
+Binaries
+--------
 
-  * 32 bit: `nim-0.14.0_x32.exe <download/nim-0.14.0_x32.exe>`_
-  * 64 bit: `nim-0.14.0_x64.exe <download/nim-0.14.0_x64.exe>`_
+Unfortunately, right now we only provide binaries for Windows. You can download
+an installer for both 32 bit and 64 bit versions of Windows below.
 
-  These installers also include Aporia, Nimble and other useful Nim tools to get
-  you started with Nim development!
+* 32 bit: `nim-0.14.0_x32.exe <download/nim-0.14.0_x32.exe>`_
+* 64 bit: `nim-0.14.0_x64.exe <download/nim-0.14.0_x64.exe>`_
+
+These installers also include Aporia, Nimble and other useful Nim tools to get
+you started with Nim development!
 
 Installation based on generated C code
 --------------------------------------
