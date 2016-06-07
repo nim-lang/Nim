@@ -35,7 +35,7 @@
 
   ; Default installation folder
   ; This is changed later (in .onInit) to the root directory, if possible.
-  InstallDir "$LOCALAPPDATA\?{c.name}-?{c.version}"
+  InstallDir "$PROGRAMFILES?{when sizeof(int) == 8: "64" else: ""}\?{c.name}-?{c.version}"
 
   ; Get installation folder from registry if available
   InstallDirRegKey HKCU "Software\c.name\c.version" ""
