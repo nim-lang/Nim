@@ -112,7 +112,7 @@ proc csource(args: string) =
 
 proc bundleNimble() =
   if dirExists("dist/nimble/.git"):
-    exec("git --git-dir dist/nimble pull --rebase")
+    exec("git --git-dir dist/nimble/.git pull")
   else:
     exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
   let tags = execProcess("git --git-dir dist/nimble/.git tag -l v*").splitLines
@@ -121,7 +121,7 @@ proc bundleNimble() =
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
   exec(findNim() & " c dist/nimble/src/nimble.nim")
-  copyExe("dist/nimble/nimble".exe, "bin/nimble".exe)
+  copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
 proc zip(args: string) =
   bundleNimble()
