@@ -61,8 +61,6 @@ Changes affecting backwards compatibility
   ``table.mpairs`` iterator only the returned values can be modified, no
   longer the keys.
 - The deprecated Nim shebang notation ``#!`` was removed from the language. Use ``#?`` instead.
-- The ``using`` statement now means something completely different. You can use the
-  new experimental ``this`` pragma to achieve a similar effect to what the old ``using`` statement tried to achieve.
 - Typeless parameters have been removed from the language since it would
   clash with ``using``.
 - Procedures in ``mersenne.nim`` (Mersenne Twister implementation) no longer
@@ -89,8 +87,12 @@ Changes affecting backwards compatibility
   Nim.
 - The path handling changed. The project directory is not added to the
   search path automatically anymore. Add this line to your project's
-  config to get back the old behaviour: ``--path:"$projectdir"``. (Do
-  not replace ``$projectdir`` by the project's directory!
+  config to get back the old behaviour: ``--path:"$projectdir"``. (The compiler
+  replaces ``$projectdir`` with your project's absolute directory when compiling,
+  so you don't need to replace ``$projectdir`` by your project's actual
+  directory!). See issue `#546 <https://github.com/nim-lang/Nim/issues/546>`_
+  and `this forum thread <http://forum.nim-lang.org/t/2277>`_ for more
+  information.
 - The ``round`` function in ``math.nim`` now returns a float and has been
   corrected such that the C implementation always rounds up from .5 rather
   than changing the operation for even and odd numbers.
@@ -110,6 +112,68 @@ Changes affecting backwards compatibility
   a single key. A new ``httpcore`` module implements it and it is used by
   both ``asynchttpserver`` and ``httpclient``.
 
+The ``using`` statement
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``using`` statement now has a different meaning.
+
+In version 0.13.0, it
+was used to provide syntactic convenience for procedures that heavily use
+a single contextual parameter. For example:
+
+.. code-block:: nim
+  var socket = newSocket()
+  using socket
+
+  connect("google.com", Port(80))
+  send("GET / HTTP/1.1\c\l")
+
+
+The ``connect`` and ``send`` calls are both transformed so that they pass
+``socket`` as the first argument:
+
+.. code-block:: nim
+  var socket = newSocket()
+
+  socket.connect("google.com", Port(80))
+  socket.send("GET / HTTP/1.1\c\l")
+
+Take a look at the old version of the
+`manual <http://nim-lang.org/0.13.0/manual.html#statements-and-expressions-using-statement>`_
+to learn more about the old behaviour.
+
+In 0.14.0,
+the ``using`` statement
+instead provides a syntactic convenience for procedure definitions where the
+same parameter names and types are used repeatedly. For example, instead of
+writing:
+
+.. code-block:: nim
+  proc foo(c: Context; n: Node) = ...
+  proc bar(c: Context; n: Node, counter: int) = ...
+  proc baz(c: Context; n: Node) = ...
+
+
+You can simply write:
+
+.. code-block:: nim
+  {.experimental.}
+  using
+    c: Context
+    n: Node
+    counter: int
+
+  proc foo(c, n) = ...
+  proc bar(c, n, counter) = ...
+  proc baz(c, n) = ...
+
+Again, the
+`manual <http://nim-lang.org/docs/manual.html#statements-and-expressions-using-statement>`_
+has more details.
+
+You can still achieve a similar effect to what the old ``using`` statement
+tried to achieve by using the new experimental ``this`` pragma, documented
+`here <http://nim-lang.org/docs/manual.html#overloading-resolution-automatic-self-insertions>`_.
 
 Generic type classes
 ~~~~~~~~~~~~~~~~~~~~
@@ -143,10 +207,12 @@ Library Additions
 
 - The rlocks module has been added providing a reentrant lock synchronization
   primitive.
-- A generic "sink operator" written as ``&=`` has been added to the ``system`` and the ``net`` modules.
+- A generic "sink operator" written as ``&=`` has been added to the
+``system`` and the ``net`` modules. This operator is similar to the C++
+``<<`` operator which writes data to a stream.
 - Added ``strscans`` module that implements a ``scanf`` for easy input extraction.
-- Added a version of ``parseutils.parseUntil`` that can deal with a string ``until`` token. The other
-  versions are for ``char`` and ``set[char]``.
+- Added a version of ``parseutils.parseUntil`` that can deal with a string
+  ``until`` token. The other versions are for ``char`` and ``set[char]``.
 - Added ``splitDecimal`` to ``math.nim`` to split a floating point value
   into an integer part and a floating part (in the range -1<x<1).
 - Added ``trimZeros`` to ```strutils.nim`` to trim trailing zeros in a
