@@ -288,18 +288,18 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
