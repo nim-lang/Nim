@@ -28,10 +28,10 @@ are now included in the release tarballs. This should fix many of the problems
 that users experienced trying to compile the Nimble package manager.
 
 Finally, you will find multiple changes in the standard library. Some of which
-unfortunately affects backwards compatibility. This includes the `random`
-procedures being moved to a new `random` module, HTTP headers being stored
-in a new `HttpHeaders` object and the `round` procedure in the `math` module
-being changed to return a `float` instead of an `int`. You can find a full
+unfortunately affects backwards compatibility. This includes the ``random``
+procedures being moved to a new ``random`` module, HTTP headers being stored
+in a new ``HttpHeaders`` object and the ``round`` procedure in the ``math`` module
+being changed to return a ``float`` instead of an ``int``. You can find a full
 list of such changes below.
 
 Together with the new release of Nim, we are also releasing a new version of
