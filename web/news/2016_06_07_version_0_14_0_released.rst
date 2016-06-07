@@ -67,9 +67,9 @@ Changes affecting backwards compatibility
   accept and produce ``int`` values which have platform-dependent size -
   they use ``uint32`` instead.
 - The ``strutils.unindent`` procedure has been rewritten. Its parameters now
-  match the parameters of ``strutils.indent``. See issue [#4037](https://github.com/nim-lang/Nim/issues/4037)
+  match the parameters of ``strutils.indent``. See issue `#4037 <https://github.com/nim-lang/Nim/issues/4037>`_
   for more details.
-- The ``matchers`` module has been deprecated. See issue [#2446](https://github.com/nim-lang/Nim/issues/2446)
+- The ``matchers`` module has been deprecated. See issue `#2446 <https://github.com/nim-lang/Nim/issues/2446>`_
   for more details.
 - The ``json.[]`` no longer returns ``nil`` when a key is not found. Instead it
   raises a ``KeyError`` exception. You can compile with the ``-d:nimJsonGet``
