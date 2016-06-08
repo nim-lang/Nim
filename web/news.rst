@@ -2,6 +2,9 @@
 News
 ====
 
+`2016-06-08 Version 0.14.2 released <news/2016_06_08_version_0_14_2_released.html>`_
+===================================
+
 `2016-06-04 Meet our BountySource sponsors <news/2016_06_04_meet_our_bountysource_sponsors.html>`_
 ===================================
 
