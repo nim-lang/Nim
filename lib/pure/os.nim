@@ -51,6 +51,8 @@ proc c_getenv(env: cstring): cstring {.
 proc c_putenv(env: cstring): cint {.
   importc: "putenv", header: "<stdlib.h>".}
 
+var errno {.importc, header: "<errno.h>".}: cint
+
 proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Retrieves the operating system's error flag, ``errno``.
   ## On Windows ``GetLastError`` is checked before ``errno``.
@@ -74,8 +76,9 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)
-  if errno != 0'i32:
-    result = $os.c_strerror(errno)
+  else:
+    if errno != 0'i32:
+      result = $os.c_strerror(errno)
 
 {.push warning[deprecated]: off.}
 proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
