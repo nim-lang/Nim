@@ -10,6 +10,5 @@ regressions. In particular, the ``tar.xz`` now supports documentation
 generation, and the Windows installers bundle the latest stable nimble
 release.
 
-The news about the 0.14.0 release are still relevant, so here they are:
-
-.. include:: 2016_06_07_version_0_14_0_released.rst
+The news about the 0.14.0 release are still relevant, so check them out
+`here <http://nim-lang.org/news/2016_06_07_version_0_14_0_released.html>`_.
