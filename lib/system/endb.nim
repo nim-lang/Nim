@@ -336,7 +336,7 @@ proc readLine(f: File, line: var StaticStr): bool =
     if c == 10'i32: break # LF
     if c == 13'i32:  # CR
       c = c_fgetc(f) # is the next char LF?
-      if c != 10'i32: ungetc(c, f) # no, put the character back
+      if c != 10'i32: discard c_ungetc(c, f) # no, put the character back
       break
     add line, chr(int(c))
   result = true
