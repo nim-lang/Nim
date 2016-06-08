@@ -2616,9 +2616,9 @@ when not defined(JS): #and not defined(nimscript):
 
   {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
 
-  when not defined(nimscript):
-    include "system/ansi_c"
+  include "system/ansi_c"
 
+  when not defined(nimscript):
     proc cmp(x, y: string): int =
       result = int(c_strcmp(x, y))
 
