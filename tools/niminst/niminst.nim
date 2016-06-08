@@ -202,23 +202,41 @@ proc parseCmdLine(c: var ConfigData) =
   if c.infile.len == 0: quit(Usage)
   if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
-proc walkDirRecursively(s: var seq[string], root: string) =
+proc ignoreFile(f, root: string, allowHtml: bool): bool =
+  let (_, name, ext) = splitFile(f)
+  let html = if not allowHtml: ".html" else: ""
+  let explicit = splitPath(root).tail
+  result = (ext in ["", ".exe", ".idx"] or
+            ext == html or name[0] == '.') and name & ext != explicit
+
+proc walkDirRecursively(s: var seq[string], root: string,
+                        allowHtml: bool) =
+  let tail = splitPath(root).tail
+  if tail == "nimcache" or tail[0] == '.':
+    return
+  let allowHtml = allowHtml or tail == "doc"
   for k, f in walkDir(root):
-    case k
-    of pcFile, pcLinkToFile: add(s, unixToNativePath(f))
-    of pcDir: walkDirRecursively(s, f)
-    of pcLinkToDir: discard
+    if f[0] == '.' and root[0] != '.':
+      discard "skip .git directories etc"
+    else:
+      case k
+      of pcFile, pcLinkToFile:
+        if not ignoreFile(f, root, allowHtml):
+          add(s, unixToNativePath(f))
+      of pcDir:
+        walkDirRecursively(s, f, allowHtml)
+      of pcLinkToDir: discard
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
     if existsDir(p):
-      walkDirRecursively(s, p)
+      walkDirRecursively(s, p, false)
     else:
       var i = 0
       for f in walkFiles(p):
         if existsDir(f):
-          walkDirRecursively(s, f)
-        else:
+          walkDirRecursively(s, f, false)
+        elif not ignoreFile(f, p, false):
           add(s, unixToNativePath(f))
           inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
@@ -613,13 +631,14 @@ proc xzDist(c: var ConfigData) =
   let nimbleFile = c.nimblePkgName & ".nimble"
   processFile(z, proj / nimbleFile, nimbleFile)
 
-  let oldDir = getCurrentDir()
-  setCurrentDir(tmpDir)
-  try:
-    if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
-      echo("External program failed")
-  finally:
-    setCurrentDir(oldDir)
+  when true:
+    let oldDir = getCurrentDir()
+    setCurrentDir(tmpDir)
+    try:
+      if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
+        echo("External program failed")
+    finally:
+      setCurrentDir(oldDir)
 
 # -- prepare build files for .deb creation
 

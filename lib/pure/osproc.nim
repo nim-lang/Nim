@@ -89,7 +89,7 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
     result.add("\"")
 
 proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
-  ## Quote s, so it can be safely passed to POSIX shell.
+  ## Quote ``s``, so it can be safely passed to POSIX shell.
   ## Based on Python's pipes.quote
   const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
                          '0'..'9', 'A'..'Z', 'a'..'z'}
@@ -104,7 +104,7 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
     return "'" & s.replace("'", "'\"'\"'") & "'"
 
 proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
-  ## Quote s, so it can be safely passed to shell.
+  ## Quote ``s``, so it can be safely passed to shell.
   when defined(Windows):
     return quoteShellWindows(s)
   elif defined(posix):
@@ -967,7 +967,7 @@ elif not defined(useNimRtl):
   proc kill(p: Process) =
     if kill(p.id, SIGKILL) != 0'i32:
       raiseOsError(osLastError())
-  
+
   when defined(macosx) or defined(freebsd) or defined(netbsd) or
        defined(openbsd):
     import kqueue, times

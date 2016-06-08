@@ -110,8 +110,8 @@ interface <manual.html#foreign-function-interface>`_ mainly through the
 `importc pragma <manual.html#importc-pragma>`_. The ``importc`` pragma is the
 *generic* way of making backend symbols available in Nim and is available
 in all the target backends (JavaScript too).  The C++ or Objective-C backends
-have their respective `ImportCpp <nimc.html#importcpp-pragma>`_ and
-`ImportObjC <nimc.html#importobjc-pragma>`_ pragmas to call methods from
+have their respective `ImportCpp <manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
+`ImportObjC <manual.html#implementation-specific-pragmas-importobjc-pragma>`_ pragmas to call methods from
 classes.
 
 Whenever you use any of these pragmas you need to integrate native code into

@@ -41,11 +41,15 @@ proc getSysSym*(name: string): PSym =
 proc getSysMagic*(name: string, m: TMagic): PSym =
   var ti: TIdentIter
   let id = getIdent(name)
-  result = initIdentIter(ti, systemModule.tab, id)
-  while result != nil:
-    if result.kind == skStub: loadStub(result)
-    if result.magic == m: return result
-    result = nextIdentIter(ti, systemModule.tab)
+  var r = initIdentIter(ti, systemModule.tab, id)
+  while r != nil:
+    if r.kind == skStub: loadStub(r)
+    if r.magic == m:
+      # prefer the tyInt variant:
+      if r.typ.sons[0].kind == tyInt: return r
+      result = r
+    r = nextIdentIter(ti, systemModule.tab)
+  if result != nil: return result
   rawMessage(errSystemNeeds, name)
   result = newSym(skError, id, systemModule, systemModule.info)
   result.typ = newType(tyError, systemModule)

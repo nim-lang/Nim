@@ -1,5 +1,54 @@
-2016-XX-XX Version 0.14.0 released
-==================================
+Version 0.14.0 released
+=======================
+
+.. container:: metadata
+
+  Posted by Dominik Picheta on 07/06/2016
+
+It's been a while since the last release, but we've been very busy in the
+meantime. In
+addition to working on Nim we have started a
+`BountySource campaign <https://salt.bountysource.com/teams/nim>`_ and
+announced the pre-release of a new Nim book titled
+`Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_.
+Our BountySource campaign has already been very successful, helping us raise
+enough funds to surpass 4 of our monthly goals. The companies and individuals
+that made this possible are listed on our brand new
+`sponsors page <http://nim-lang.org/sponsors.html>`_.
+
+This release includes over 260 bug fixes. As mentioned in the previous release
+announcement, one of the focuses of this release was going to be improvements
+to the GC. Indeed, the most prominent fixes are related to the GC not collecting
+cycles properly. This was a major problem that was triggered typically when
+applications using asynchronous I/O were left running for long periods of time.
+
+There have also been many fixes to the way that the compiler sources are
+installed. Some applications such as Nimble depend on these sources and they
+are now included in the release tarballs. This should fix many of the problems
+that users experienced trying to compile the Nimble package manager.
+
+Finally, you will find multiple changes in the standard library. Some of which
+unfortunately affects backwards compatibility. This includes the ``random``
+procedures being moved to a new ``random`` module, HTTP headers being stored
+in a new ``HttpHeaders`` object and the ``round`` procedure in the ``math`` module
+being changed to return a ``float`` instead of an ``int``. You can find a full
+list of such changes below.
+
+Together with the new release of Nim, we are also releasing a new version of
+Nimble. The release notes for it are available on
+`GitHub <https://github.com/nim-lang/nimble/blob/master/changelog.markdown#074---06062016>`_.
+
+As always you can download the latest version of Nim from the
+`download <http://nim-lang.org/download.html>`_ page.
+
+We hope that you will like this new release. Let us know if you run into
+any trouble, have any questions or want to give some feedback. You can get
+in touch with us on the `Forum <http://forum.nim-lang.org/>`_,
+`IRC <http://webchat.freenode.net/?channels=nim>`_,
+`Twitter <http://twitter.com/nim_lang>`_,
+or via email contact@nim-lang.org.
+
+Happy coding!
 
 Changes affecting backwards compatibility
 -----------------------------------------
@@ -12,17 +61,15 @@ Changes affecting backwards compatibility
   ``table.mpairs`` iterator only the returned values can be modified, no
   longer the keys.
 - The deprecated Nim shebang notation ``#!`` was removed from the language. Use ``#?`` instead.
-- The ``using`` statement now means something completely different. You can use the
-  new experimental ``this`` pragma to achieve a similar effect to what the old ``using`` statement tried to achieve.
 - Typeless parameters have been removed from the language since it would
   clash with ``using``.
 - Procedures in ``mersenne.nim`` (Mersenne Twister implementation) no longer
   accept and produce ``int`` values which have platform-dependent size -
   they use ``uint32`` instead.
 - The ``strutils.unindent`` procedure has been rewritten. Its parameters now
-  match the parameters of ``strutils.indent``. See issue [#4037](https://github.com/nim-lang/Nim/issues/4037)
+  match the parameters of ``strutils.indent``. See issue `#4037 <https://github.com/nim-lang/Nim/issues/4037>`_
   for more details.
-- The ``matchers`` module has been deprecated. See issue [#2446](https://github.com/nim-lang/Nim/issues/2446)
+- The ``matchers`` module has been deprecated. See issue `#2446 <https://github.com/nim-lang/Nim/issues/2446>`_
   for more details.
 - The ``json.[]`` no longer returns ``nil`` when a key is not found. Instead it
   raises a ``KeyError`` exception. You can compile with the ``-d:nimJsonGet``
@@ -40,7 +87,12 @@ Changes affecting backwards compatibility
   Nim.
 - The path handling changed. The project directory is not added to the
   search path automatically anymore. Add this line to your project's
-  config to get back the old behaviour: ``--path:"$projectdir"``.
+  config to get back the old behaviour: ``--path:"$projectdir"``. (The compiler
+  replaces ``$projectdir`` with your project's absolute directory when compiling,
+  so you don't need to replace ``$projectdir`` by your project's actual
+  directory!). See issue `#546 <https://github.com/nim-lang/Nim/issues/546>`_
+  and `this forum thread <http://forum.nim-lang.org/t/2277>`_ for more
+  information.
 - The ``round`` function in ``math.nim`` now returns a float and has been
   corrected such that the C implementation always rounds up from .5 rather
   than changing the operation for even and odd numbers.
@@ -51,7 +103,7 @@ Changes affecting backwards compatibility
   than meaning 2.285 GB as in the previous implementation).  By default it
   also uses IEC prefixes (KiB, MiB) etc and optionally uses colloquial names
   (kB, MB etc) and the (SI-preferred) space.
-- The ``==`` operator for ``cstring`` now implements a value comparision
+- The ``==`` operator for ``cstring`` now implements a value comparison
   for the C backend (using ``strcmp``), not reference comparisons anymore.
   Convert the cstrings to pointers if you really want reference equality
   for speed.
@@ -60,19 +112,110 @@ Changes affecting backwards compatibility
   a single key. A new ``httpcore`` module implements it and it is used by
   both ``asynchttpserver`` and ``httpclient``.
 
+The ``using`` statement
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``using`` statement now has a different meaning.
+
+In version 0.13.0, it
+was used to provide syntactic convenience for procedures that heavily use
+a single contextual parameter. For example:
+
+.. code-block:: nim
+  var socket = newSocket()
+  using socket
+
+  connect("google.com", Port(80))
+  send("GET / HTTP/1.1\c\l")
+
+
+The ``connect`` and ``send`` calls are both transformed so that they pass
+``socket`` as the first argument:
+
+.. code-block:: nim
+  var socket = newSocket()
+
+  socket.connect("google.com", Port(80))
+  socket.send("GET / HTTP/1.1\c\l")
+
+Take a look at the old version of the
+`manual <http://nim-lang.org/0.13.0/manual.html#statements-and-expressions-using-statement>`_
+to learn more about the old behaviour.
+
+In 0.14.0,
+the ``using`` statement
+instead provides a syntactic convenience for procedure definitions where the
+same parameter names and types are used repeatedly. For example, instead of
+writing:
+
+.. code-block:: nim
+  proc foo(c: Context; n: Node) = ...
+  proc bar(c: Context; n: Node, counter: int) = ...
+  proc baz(c: Context; n: Node) = ...
+
+
+You can simply write:
+
+.. code-block:: nim
+  {.experimental.}
+  using
+    c: Context
+    n: Node
+    counter: int
+
+  proc foo(c, n) = ...
+  proc bar(c, n, counter) = ...
+  proc baz(c, n) = ...
+
+Again, the
+`manual <http://nim-lang.org/docs/manual.html#statements-and-expressions-using-statement>`_
+has more details.
+
+You can still achieve a similar effect to what the old ``using`` statement
+tried to achieve by using the new experimental ``this`` pragma, documented
+`here <http://nim-lang.org/docs/manual.html#overloading-resolution-automatic-self-insertions>`_.
+
+Generic type classes
+~~~~~~~~~~~~~~~~~~~~
+
+Generic type classes are now handled properly in the compiler, but this
+means code like the following does not compile any longer:
+
+.. code-block:: nim
+  type
+    Vec3[T] = distinct array[3, T]
+
+  proc vec3*[T](a, b, c: T): Vec3[T] = Vec3([a, b, c])
+
+While every ``Vec3[T]`` is part of the ``Vec3`` type class, the reverse
+is not true, not every ``Vec3`` is a ``Vec3[T]``. Otherwise there would
+be a subtype relation between ``Vec3[int]`` and ``Vec3[float]`` and there
+is none for Nim. The fix is to write this instead:
+
+.. code-block:: nim
+  type
+    Vec3[T] = distinct array[3, T]
+
+  proc vec3*[T](a, b, c: T): Vec3[T] = Vec3[T]([a, b, c])
+
+Note that in general we don't advise to use ``distinct array``,
+use ``object`` instead.
+
 
 Library Additions
 -----------------
 
-- The rlocks module has been added providing reentrant lock synchronization
+- The rlocks module has been added providing a reentrant lock synchronization
   primitive.
-- A generic "sink operator" written as ``&=`` has been added to the ``system`` and the ``net`` modules.
+- A generic "sink operator" written as ``&=`` has been added to the
+``system`` and the ``net`` modules. This operator is similar to the C++
+``<<`` operator which writes data to a stream.
 - Added ``strscans`` module that implements a ``scanf`` for easy input extraction.
-- Added a version of ``parseutils.parseUntil`` that can deal with a string ``until`` token. The other
-  versions are for ``char`` and ``set[char]``.
+- Added a version of ``parseutils.parseUntil`` that can deal with a string
+  ``until`` token. The other versions are for ``char`` and ``set[char]``.
 - Added ``splitDecimal`` to ``math.nim`` to split a floating point value
   into an integer part and a floating part (in the range -1<x<1).
-- Added ``trimZeros`` to ```strutils.nim`` to trim trailing zeros in a
+- Added ``trimZeros`` to ``strutils.nim`` to trim trailing zeros in a
   floating point number.
 - Added ``formatEng`` to ``strutils.nim`` to format numbers using engineering
   notation.
@@ -89,7 +232,9 @@ Language Additions
 ------------------
 
 - Nim now supports a ``.this`` pragma for more notational convenience.
+  See `automatic-self-insertions <../docs/manual.html#overloading-resolution-automatic-self-insertions>`_ for more information.
 - Nim now supports a different ``using`` statement for more convenience.
+  Consult `using-statement <../docs/manual.html#statements-and-expressions-using-statement>`_ for more information.
 - ``include`` statements are not restricted to top level statements anymore.
 
 ..
@@ -108,8 +253,6 @@ via a commit, for a full list see
 
   - Fixed "Calling generic templates with explicit generic arguments crashes compiler"
     (`#3496 <https://github.com/nim-lang/Nim/issues/3496>`_)
-  - Fixed "JS backend - strange utf-8 handling"
-    (`#3714 <https://github.com/nim-lang/Nim/issues/3714>`_)
   - Fixed "JS backend - strange utf-8 handling"
     (`#3714 <https://github.com/nim-lang/Nim/issues/3714>`_)
   - Fixed "execvpe is glibc specific"

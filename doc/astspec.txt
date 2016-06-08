@@ -33,7 +33,7 @@ contains:
       of nnkIdent:
         ident: NimIdent                ## the identifier
       of nnkSym:
-        symbol: NimSymbol              ## the symbol (after symbol lookup phase)
+        symbol: NimSym                 ## the symbol (after symbol lookup phase)
       else:
         sons: seq[NimNode]             ## the node's sons (or children)
 

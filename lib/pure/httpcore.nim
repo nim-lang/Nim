@@ -102,7 +102,7 @@ proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
   ## Replaces any existing values.
-  headers.table[key.toLower] = @[value.toLower]
+  headers.table[key.toLower] = @[value]
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of

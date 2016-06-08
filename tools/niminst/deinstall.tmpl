@@ -21,7 +21,7 @@ if [ $# -eq 1 ] ; then
       libdir=/usr/lib/?proj
       docdir=/usr/share/?proj/doc
       datadir=/usr/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version/"
+      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
       ;;
     "/usr/local/bin")
       bindir=/usr/local/bin
@@ -29,7 +29,7 @@ if [ $# -eq 1 ] ; then
       libdir=/usr/local/lib/?proj
       docdir=/usr/local/share/?proj/doc
       datadir=/usr/local/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version/"
+      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
       ;;
     "/opt")
       bindir="/opt/?proj/bin"
@@ -37,7 +37,7 @@ if [ $# -eq 1 ] ; then
       libdir="/opt/?proj/lib"
       docdir="/opt/?proj/doc"
       datadir="/opt/?proj/data"
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version/"
+      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
       ;;
     *)
       bindir="$1/?proj/bin"
