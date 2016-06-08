@@ -202,35 +202,35 @@ proc parseCmdLine(c: var ConfigData) =
   if c.infile.len == 0: quit(Usage)
   if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
-proc ignoreFile(f, root: string, preventHtml: bool): bool =
+proc ignoreFile(f, root: string, allowHtml: bool): bool =
   let (_, name, ext) = splitFile(f)
-  let html = if preventHtml: ".html" else: ""
+  let html = if not allowHtml: ".html" else: ""
   let explicit = splitPath(root).tail
   result = (ext in ["", ".exe", ".idx"] or
-            ext == html or name[0] == '.') and f != explicit
+            ext == html or name[0] == '.') and name & ext != explicit
 
 proc walkDirRecursively(s: var seq[string], root: string,
-                        preventHtml: bool) =
+                        allowHtml: bool) =
   let tail = splitPath(root).tail
   if tail == "nimcache" or tail[0] == '.':
     return
-  let preventHtml = preventHtml or tail != "doc"
+  let allowHtml = allowHtml or tail == "doc"
   for k, f in walkDir(root):
     if f[0] == '.' and root[0] != '.':
       discard "skip .git directories etc"
     else:
       case k
       of pcFile, pcLinkToFile:
-        if not ignoreFile(f, root, preventHtml):
+        if not ignoreFile(f, root, allowHtml):
           add(s, unixToNativePath(f))
       of pcDir:
-        walkDirRecursively(s, f, preventHtml)
+        walkDirRecursively(s, f, allowHtml)
       of pcLinkToDir: discard
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
     if existsDir(p):
-      walkDirRecursively(s, p, true)
+      walkDirRecursively(s, p, false)
     else:
       var i = 0
       for f in walkFiles(p):
