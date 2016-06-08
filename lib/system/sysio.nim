@@ -20,7 +20,7 @@ proc c_fdopen(filehandle: cint, mode: cstring): File {.
   importc: "fdopen", header: "<stdio.h>".}
 proc c_fputs(c: cstring, f: File): cint {.
   importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
-proc c_fgets(c: pointer, n: cint, f: File): cstring {.
+proc c_fgets(c: cstring, n: cint, f: File): cstring {.
   importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
 proc c_fgetc(stream: File): cint {.
   importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
