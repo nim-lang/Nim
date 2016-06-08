@@ -215,7 +215,7 @@ Library Additions
   ``until`` token. The other versions are for ``char`` and ``set[char]``.
 - Added ``splitDecimal`` to ``math.nim`` to split a floating point value
   into an integer part and a floating part (in the range -1<x<1).
-- Added ``trimZeros`` to ```strutils.nim`` to trim trailing zeros in a
+- Added ``trimZeros`` to ``strutils.nim`` to trim trailing zeros in a
   floating point number.
 - Added ``formatEng`` to ``strutils.nim`` to format numbers using engineering
   notation.
