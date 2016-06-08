@@ -2669,7 +2669,7 @@ when not defined(JS): #and not defined(nimscript):
       proc c_setmode(handle, mode: cint) {.importc: "_setmode",
                                            header: "<io.h>".}
       var
-        O_BINARY {.importc: "O_BINARY", nodecl.}: int
+        O_BINARY {.importc: "O_BINARY", nodecl.}: cint
 
       # we use binary mode on Windows:
       c_setmode(c_fileno(stdin), O_BINARY)
