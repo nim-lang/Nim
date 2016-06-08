@@ -2672,8 +2672,8 @@ when not defined(JS): #and not defined(nimscript):
         O_BINARY {.importc: "O_BINARY", nodecl.}: int
 
       # we use binary mode on Windows:
-      setmode(c_fileno(stdin), O_BINARY)
-      setmode(c_fileno(stdout), O_BINARY)
+      c_setmode(c_fileno(stdin), O_BINARY)
+      c_setmode(c_fileno(stdout), O_BINARY)
 
     when defined(endb):
       proc endbStep()
