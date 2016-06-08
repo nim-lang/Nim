@@ -1594,7 +1594,7 @@ proc substr*(s: string, first, last: int): string {.
   ## is used instead: This means ``substr`` can also be used to `cut`:idx:
   ## or `limit`:idx: a string's length.
 
-when not defined(nimscript):
+when not defined(nimscript) and not defined(JS):
   proc zeroMem*(p: pointer, size: Natural) {.inline, benign.}
     ## overwrites the contents of the memory at ``p`` with the value 0.
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
@@ -1619,6 +1619,7 @@ when not defined(nimscript):
     ## otherwise. Like any procedure dealing with raw memory this is
     ## *unsafe*.
 
+when not defined(nimscript):
   when hasAlloc:
     proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
