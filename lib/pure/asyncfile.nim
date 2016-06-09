@@ -316,6 +316,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
 proc close*(f: AsyncFile) =
   ## Closes the file specified.
+  unregister(f.fd)
   when defined(windows) or defined(nimdoc):
     if not closeHandle(f.fd.Handle).bool:
       raiseOSError(osLastError())

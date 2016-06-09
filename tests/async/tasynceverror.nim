@@ -1,9 +1,9 @@
 discard """
   file: "tasynceverror.nim"
   exitcode: 1
-  outputsub: "Error: unhandled exception: Connection reset by peer"
+  outputsub: "Error: unhandled exception: "
 """
-
+# error message is actually different on OSX
 import
     asyncdispatch,
     asyncnet,
@@ -43,7 +43,7 @@ else:
         await s.connect(testHost, testPort)
 
         var ps = await ls.accept()
-        SocketHandle(ls).close()
+        closeSocket(ls)
 
         await ps.send("test 1", flags={})
         s.close()

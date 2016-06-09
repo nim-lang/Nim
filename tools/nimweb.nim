@@ -251,9 +251,22 @@ proc parseIniFile(c: var TConfigData) =
 
 # ------------------- main ----------------------------------------------------
 
+
+proc exe(f: string): string = return addFileExt(f, ExeExt)
+
+proc findNim(): string =
+  var nim = "nim".exe
+  result = "bin" / nim
+  if existsFile(result): return
+  for dir in split(getEnv("PATH"), PathSep):
+    if existsFile(dir / nim): return dir / nim
+  # assume there is a symlink to the exe or something:
+  return nim
+
 proc exec(cmd: string) =
   echo(cmd)
-  if os.execShellCmd(cmd) != 0: quit("external program failed")
+  let (_, exitCode) = osproc.execCmdEx(cmd)
+  if exitCode != 0: quit("external program failed")
 
 proc sexec(cmds: openarray[string]) =
   ## Serial queue wrapper around exec.
@@ -275,9 +288,9 @@ proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## it didn't make much sense to integrate into the existing generic
   ## documentation builders.
   const src = "doc"/"docgen_sample.nim"
-  exec("nim doc $# -o:$# $#" %
+  exec(findNim() & " doc $# -o:$# $#" %
     [c.nimArgs, destPath / "docgen_sample.html", src])
-  exec("nim doc2 $# -o:$# $#" %
+  exec(findNim() & " doc2 $# -o:$# $#" %
     [c.nimArgs, destPath / "docgen_sample2.html", src])
 
 proc pathPart(d: string): string = splitFile(d).dir.replace('\\', '/')
@@ -288,30 +301,30 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = "nim rst2html $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+    commands[i] = findNim() & " rst2html $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
       [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = "nim doc $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+    commands[i] = findNim() & " doc $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
       [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+    commands[i] = findNim() & " doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
       [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
   mexec(commands, c.numProcessors)
-  exec("nim buildIndex -o:$1/theindex.html $1" % [destPath])
+  exec(findNim() & " buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
     for d in items(c.pdf):
-      exec("nim rst2tex $# $#" % [c.nimArgs, d])
+      exec(findNim() & " rst2tex $# $#" % [c.nimArgs, d])
       # call LaTeX twice to get cross references right:
       exec("pdflatex " & changeFileExt(d, "tex"))
       exec("pdflatex " & changeFileExt(d, "tex"))
@@ -331,7 +344,7 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = "nim doc2 $# --docSeeSrcUrl:$#/$# -o:$# $#" %
+    commands[i] = findNim() & " doc2 $# --docSeeSrcUrl:$#/$# -o:$# $#" %
       [c.nimArgs, c.gitRepo, c.gitCommit,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
@@ -415,7 +428,7 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
   generateRss(destFilename, parseNewsTitles(srcFilename))
 
 proc buildJS(destPath: string) =
-  exec("nim js -d:release --out:$1 web/nimblepkglist.nim" %
+  exec(findNim() & " js -d:release --out:$1 web/nimblepkglist.nim" %
       [destPath / "nimblepkglist.js"])
 
 proc readSponsors(sponsorsFile: string): seq[Sponsor] =
@@ -443,10 +456,10 @@ proc buildSponsors(c: var TConfigData, sponsorsFile: string, outputDir: string) 
     quit("[Error] Cannot write file: " & outFile)
 
 const
-  cmdRst2Html = "nim rst2html --compileonly $1 -o:web/$2.temp web/$2.rst"
+  cmdRst2Html = " rst2html --compileonly $1 -o:web/$2.temp web/$2.rst"
 
 proc buildPage(c: var TConfigData, file, title, rss: string, assetDir = "") =
-  exec(cmdRst2Html % [c.nimArgs, file])
+  exec(findNim() & cmdRst2Html % [c.nimArgs, file])
   var temp = "web" / changeFileExt(file, "temp")
   var content: string
   try:
