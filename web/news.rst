@@ -2,7 +2,7 @@
 News
 ====
 
-`2016-06-08 Version 0.14.2 released <news/2016_06_08_version_0_14_2_released.html>`_
+`2016-06-09 Version 0.14.2 released <news/2016_06_09_version_0_14_2_released.html>`_
 ===================================
 
 `2016-06-07 Version 0.14.0 released <news/2016_06_07_version_0_14_0_released.html>`_
