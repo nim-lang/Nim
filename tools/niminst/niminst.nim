@@ -635,7 +635,7 @@ proc xzDist(c: var ConfigData) =
     let oldDir = getCurrentDir()
     setCurrentDir(tmpDir)
     try:
-      if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" % proj) == 0:
+      if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" % proj) != 0:
         # try old 'tar' without --exclude feature:
         if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
           echo("External program failed")
