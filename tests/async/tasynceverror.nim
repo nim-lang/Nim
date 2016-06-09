@@ -43,7 +43,7 @@ else:
         await s.connect(testHost, testPort)
 
         var ps = await ls.accept()
-        SocketHandle(ls).close()
+        closeSocket(ls)
 
         await ps.send("test 1", flags={})
         s.close()
