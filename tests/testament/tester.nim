@@ -284,6 +284,7 @@ proc testSpec(r: var TResults, test: TTest) =
     return
 
   let tname = test.name.addFileExt(".nim")
+  #echo "TESTING ", tname
   inc(r.total)
   var expected: TSpec
   if test.action != actionRunNoSpec:
