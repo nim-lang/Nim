@@ -664,60 +664,6 @@ else:
           s.fds[fdi].flags = 0
           dec(s.count)
 
-    import strutils
-    proc `$`*(ev: var KEvent| ptr KEvent): string =
-      var filter = ""
-      when defined(macosx) or defined(freebsd):
-        case ev.filter:
-          of EVFILT_READ: filter &= "EVFILT_READ"
-          of EVFILT_WRITE: filter &= "EVFILT_WRITE"
-          of EVFILT_TIMER: filter &= "EVFILT_TIMER"
-          of EVFILT_SIGNAL: filter &= "EVFILT_SIGNAL"
-          of EVFILT_PROC: filter &= "EVFILT_PROC"
-          of EVFILT_VNODE: filter &= "EVFILT_VNODE"
-          of EVFILT_USER: filter &= "EVFILT_USER"
-          else: filter &= "UNKNOWN"
-      else:
-        case ev.filter:
-          of EVFILT_READ: filter &= "EVFILT_READ"
-          of EVFILT_WRITE: filter &= "EVFILT_WRITE"
-          of EVFILT_TIMER: filter &= "EVFILT_TIMER"
-          of EVFILT_SIGNAL: filter &= "EVFILT_SIGNAL"
-          of EVFILT_PROC: filter &= "EVFILT_PROC"
-          of EVFILT_VNODE: filter &= "EVFILT_VNODE"
-          else: filter &= "UNKNOWN"
-      
-      var flags = ""
-      if ev.flags != 0:
-        if (ev.flags and EV_ADD) != 0: flags &= "EV_ADD|"
-        if (ev.flags and EV_DELETE) != 0: flags &= "EV_DELETE|"
-        if (ev.flags and EV_ENABLE) != 0: flags &= "EV_ENABLE|"
-        if (ev.flags and EV_DISABLE) != 0: flags &= "EV_DISABLE|"
-        if (ev.flags and EV_ONESHOT) != 0: flags &= "EV_ONESHOT|"
-        if (ev.flags and EV_CLEAR) != 0: flags &= "EV_CLEAR|"
-        if (ev.flags and EV_RECEIPT) != 0: flags &= "EV_RECEIPT|"
-        if (ev.flags and EV_DISPATCH) != 0: flags &= "EV_DISPATCH|"
-        if (ev.flags and EV_DROP) != 0: flags &= "EV_DROP|"
-        if (ev.flags and EV_FLAG1) != 0: flags &= "EV_FLAG1|"
-        if (ev.flags and EV_EOF) != 0: flags &= "EV_EOF|"
-        if (ev.flags and EV_ERROR) != 0: flags &= "EV_ERROR|"
-        flags = "[" & flags.substr(0, len(flags) - 2) & " : 0x" &
-                toHex(ev.flags.int, sizeof(int) * 2) & "]"
-      else:
-        flags = "[]"
-
-      var fflags = $ev.fflags
-      var data = $ev.data
-      var udata = "nil"
-      if ev.udata != nil: udata = "0x" & toHex(cast[int](ev.udata), sizeof(int) * 2)
-
-      result = "KEVENT [" & "ident: " & $(ev.ident) & ", " &
-                            "filter: " & filter & ", " &
-                            "flags: " & flags & ", " &
-                            "fflags: " & fflags & ", " &
-                            "data: " & data & ", " &
-                            "udata: " & udata & "]" 
-
     proc selectInto*[T](s: Selector[T], timeout: int,
                         results: var openarray[ReadyKey[T]]): int =
       var
