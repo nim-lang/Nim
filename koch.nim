@@ -42,6 +42,7 @@ Possible Commands:
   boot [options]           bootstraps with given command line options
   install [bindir]         installs to given directory; Unix only!
   geninstall               generate ./install.sh; Unix only!
+  testinstall              test tar.xz package; Unix only! Only for devs!
   clean                    cleans Nim project; removes generated files
   web [options]            generates the website and the full documentation
   website [options]        generates only the website
@@ -91,6 +92,44 @@ proc exec(cmd: string, errorcode: int = QuitFailure, additionalPATH = "") =
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPATH)
 
+proc execCleanPath(cmd: string,
+                   additionalPath = ""; errorcode: int = QuitFailure) =
+  # simulate a poor man's virtual environment
+  let prevPath = getEnv("PATH")
+  when defined(windows):
+    let CleanPath = r"$1\system32;$1;$1\System32\Wbem" % getEnv"SYSTEMROOT"
+  else:
+    const CleanPath = r"/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin"
+  putEnv("PATH", CleanPath & PathSep & additionalPath)
+  echo(cmd)
+  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
+  putEnv("PATH", prevPath)
+
+proc testUnixInstall() =
+  let oldCurrentDir = getCurrentDir()
+  try:
+    let destDir = getTempDir()
+    copyFile("build/nim-$1.tar.xz" % VersionAsString,
+             destDir / "nim-$1.tar.xz" % VersionAsString)
+    setCurrentDir(destDir)
+    execCleanPath("tar -xJf nim-$1.tar.xz" % VersionAsString)
+    setCurrentDir("nim-$1" % VersionAsString)
+    execCleanPath("sh build.sh")
+    # first test: try if './bin/nim --version' outputs something sane:
+    let output = execProcess("./bin/nim --version").splitLines
+    if output.len > 0 and output[0].contains(VersionAsString):
+      echo "Version check: success"
+      execCleanPath("./bin/nim c koch.nim")
+      execCleanPath("./koch boot -d:release", destDir / "bin")
+      # check the docs build:
+      execCleanPath("./koch web", destDir / "bin")
+      # check the tests work:
+      execCleanPath("./koch tests", destDir / "bin")
+    else:
+      echo "Version check: failure"
+  finally:
+    setCurrentDir oldCurrentDir
+
 proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
@@ -110,13 +149,28 @@ proc csource(args: string) =
   exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource --main:compiler/nim.nim compiler/installer.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
+proc bundleNimble() =
+  if dirExists("dist/nimble/.git"):
+    exec("git --git-dir dist/nimble/.git pull")
+  else:
+    exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
+  let tags = execProcess("git --git-dir dist/nimble/.git tag -l v*").splitLines
+  let tag = tags[^1]
+  exec("git --git-dir dist/nimble/.git checkout " & tag)
+  # now compile Nimble and copy it to $nim/bin for the installer.ini
+  # to pick it up:
+  exec(findNim() & " c dist/nimble/src/nimble.nim")
+  copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
+
 proc zip(args: string) =
+  bundleNimble()
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
 proc xz(args: string) =
+  bundleNimble()
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim xz compiler/installer.ini" %
@@ -127,6 +181,7 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
 proc nsis(args: string) =
+  bundleNimble()
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   #buildTool("tools/nimgrep", args)
@@ -389,6 +444,7 @@ of cmdArgument:
   of "nsis": nsis(op.cmdLineRest)
   of "geninstall": geninstall(op.cmdLineRest)
   of "install": install(op.cmdLineRest)
+  of "testinstall": testUnixInstall()
   of "test", "tests": tests(op.cmdLineRest)
   of "update":
     when defined(withUpdate):

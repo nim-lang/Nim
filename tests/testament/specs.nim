@@ -155,7 +155,11 @@ proc parseSpec*(filename: string): TSpec =
       result.nimout = e.value
     of "disabled":
       if parseCfgBool(e.value): result.err = reIgnored
-    of "cmd": result.cmd = e.value
+    of "cmd":
+      if e.value.startsWith("nim "):
+        result.cmd = "compiler" / e.value
+      else:
+        result.cmd = e.value
     of "ccodecheck": result.ccodeCheck = e.value
     of "target", "targets":
       for v in e.value.normalize.split:

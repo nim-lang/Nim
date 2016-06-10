@@ -203,7 +203,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
         result = n.sons[1]
       else:
         result = newNodeIT(nkCall, n.info, getSysType(tyInt))
-        result.add newSymNode(getSysMagic("-", mSubI), n.info)
+        let subi = getSysMagic("-", mSubI)
+        #echo "got ", typeToString(subi.typ)
+        result.add newSymNode(subi, n.info)
         result.add lenExprB
         result.add n.sons[1]
   of mPlugin:
