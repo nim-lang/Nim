@@ -1214,12 +1214,10 @@ else:
     var i = 0
     if not (len(p.callbacks) > 0 and p.selector.isEmpty()):
       var count = p.selector.selectInto(timeout, keys)
-      echo("select results ==>")
       while i < count:
         var update = false
         let afd = AsyncFD(keys[i].fd)
         let events = keys[i].events
-        echo(repr(keys[i]))
 
         if isReadable(events):
           let cb = keys[i].data.readCB
