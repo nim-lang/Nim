@@ -112,7 +112,7 @@ proc testUnixInstall() =
     copyFile("build/nim-$1.tar.xz" % VersionAsString,
              destDir / "nim-$1.tar.xz" % VersionAsString)
     setCurrentDir(destDir)
-    execCleanPath("tar -xzf nim-$1.tar.xz" % VersionAsString)
+    execCleanPath("tar -xJf nim-$1.tar.xz" % VersionAsString)
     setCurrentDir("nim-$1" % VersionAsString)
     execCleanPath("sh build.sh")
     # first test: try if './bin/nim --version' outputs something sane:
