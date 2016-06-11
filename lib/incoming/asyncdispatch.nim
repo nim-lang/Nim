@@ -909,8 +909,7 @@ when defined(windows) or defined(nimdoc):
 
   proc close*(ev: AsyncEvent) =
     if ev.hWaiter != 0:
-      if unregisterWait(ev.hWaiter) == 0:
-        raiseOSError(osLastError())
+      discard unregisterWait(ev.hWaiter)
     if closeHandle(ev.hEvent) == 0:
       raiseOSError(osLastError())
     deallocShared(cast[pointer](ev))
@@ -981,8 +980,8 @@ when defined(windows) or defined(nimdoc):
         proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
           let res = cb(fd)
           if res or oneshot:
-            discard closeHandle(hEvent)
             discard unregisterWait(pcd.waitFd)
+            discard closeHandle(hEvent)
             deallocShared(cast[pointer](pcd))
             p.handles.excl(fd)
       )
@@ -1016,8 +1015,8 @@ when defined(windows) or defined(nimdoc):
     var ol = PCustomOverlapped()
     ol.data = CompletionData(fd: hfd, cb:
       proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
-        discard closeHandle(hProcess)
         discard unregisterWait(pcd.waitFd)
+        discard closeHandle(hProcess)
         deallocShared(cast[pointer](pcd))
         p.handles.excl(fd)
         discard cb(fd)
@@ -1092,8 +1091,7 @@ when defined(windows) or defined(nimdoc):
     ## Unregisters ``ev``.
     let p = getGlobalDispatcher()
     if ev.hWaiter != 0:
-      if unregisterWait(ev.hWaiter) == 0:
-        raiseOSError(osLastError())
+      discard unregisterWait(ev.hWaiter)
       if ev.pcd != nil:
         GC_unref(ev.pcd.ovl)
         deallocShared(cast[pointer](ev.pcd))
@@ -1919,3 +1917,4 @@ proc waitFor*[T](fut: Future[T]): T =
     poll()
 
   fut.read
+  
