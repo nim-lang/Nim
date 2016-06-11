@@ -915,12 +915,14 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(osLastError())
     deallocShared(cast[pointer](ev))
 
+  {.push stackTrace: off.}
   proc waitableCallback(param: pointer,
                         TimerOrWaitFired: WINBOOL): void {.stdcall.} =
     var p = cast[PPCD](param)
     discard postQueuedCompletionStatus(p.ioPort, Dword(TimerOrWaitFired),
                                        ULONG_PTR(p.handleFd),
                                        cast[pointer](p.ovl))
+  {.pop.}
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     if ev.hWaiter == 0:
