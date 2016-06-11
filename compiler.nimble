@@ -1,6 +1,6 @@
 [Package]
 name = "compiler"
-version = "0.14.2"
+version = "0.14.3"
 author = "Andreas Rumpf"
 description = "Compiler package providing the compiler sources as a library."
 license = "MIT"
