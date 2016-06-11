@@ -939,13 +939,10 @@ when defined(windows) or defined(nimdoc):
       ol.data = CompletionData(fd: hfd, cb:
         proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
           if cb(fd):
-            try:
-              if unregisterWait(pcd.waitFd) == 0:
-                raiseOSError(osLastError())
-              ev.hWaiter = 0
-            finally:
-              deallocShared(cast[pointer](pcd))
-              p.handles.excl(fd)
+            discard unregisterWait(pcd.waitFd)
+            ev.hWaiter = 0
+            deallocShared(cast[pointer](pcd))
+            p.handles.excl(fd)
       )
       pcd.ovl = ol
 
@@ -984,13 +981,10 @@ when defined(windows) or defined(nimdoc):
         proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
           let res = cb(fd)
           if res or oneshot:
-            try:
-              if unregisterWait(pcd.waitFd) == 0:
-                raiseOSError(osLastError())
-            finally:
-              discard closeHandle(hEvent)
-              deallocShared(cast[pointer](pcd))
-              p.handles.excl(fd)
+            discard closeHandle(hEvent)
+            discard unregisterWait(pcd.waitFd)
+            deallocShared(cast[pointer](pcd))
+            p.handles.excl(fd)
       )
       pcd.ovl = ol
       if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
@@ -1022,15 +1016,11 @@ when defined(windows) or defined(nimdoc):
     var ol = PCustomOverlapped()
     ol.data = CompletionData(fd: hfd, cb:
       proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
-        var exitCode: int32 = 0
-        try:
-          if unregisterWait(pcd.waitFd) == 0:
-            raiseOSError(osLastError())
-        finally:
-          discard closeHandle(hProcess)
-          deallocShared(cast[pointer](pcd))
-          p.handles.excl(fd)
-          discard cb(fd)
+        discard closeHandle(hProcess)
+        discard unregisterWait(pcd.waitFd)
+        deallocShared(cast[pointer](pcd))
+        p.handles.excl(fd)
+        discard cb(fd)
     )
     pcd.ovl = ol
     if not registerWaitForSingleObject(addr(pcd.waitFd), hProcess,
