@@ -471,6 +471,8 @@ type
     shortName*: string         # short name of the module
     quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
+    quotedFullName*: Rope      # cached quoted full name for codegen
+                               # purposes
 
     lines*: seq[Rope]          # the source code of the module
                                #   used for better error messages and
@@ -563,6 +565,7 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   let fileName = projPath.extractFilename
   result.shortName = fileName.changeFileExt("")
   result.quotedName = fileName.makeCString
+  result.quotedFullName = fullPath.makeCString
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
 
@@ -1024,7 +1027,10 @@ proc sourceLine*(i: TLineInfo): Rope =
 
 proc quotedFilename*(i: TLineInfo): Rope =
   internalAssert i.fileIndex >= 0
-  result = fileInfos[i.fileIndex].quotedName
+  if optExcessiveStackTrace in gGlobalOptions:
+    result = fileInfos[i.fileIndex].quotedFullName
+  else:
+    result = fileInfos[i.fileIndex].quotedName
 
 ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   case err
