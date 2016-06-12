@@ -14,6 +14,8 @@ Changes affecting backwards compatibility
 Library Additions
 -----------------
 
+- Added ``readHeaderRow`` and ``rowEntry`` to ``parsecsv.nim`` to provide
+  a lightweight alternative to python's ``csv.DictReader``.
 
 Compiler Additions
 ------------------
