@@ -1210,34 +1210,6 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
     if sub == s[i]: return i
   return -1
 
-proc partition*(s: string, sep: string,
-                right: bool = false): (string, string, string)
-                {.noSideEffect, procvar, rtl, extern: "nsuPartitionStr".} =
-  ## Split the string at the first or last occurrence of `sep` into a 3-tuple
-  ##
-  ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or
-  ## (`s`, "", "") if `sep` is not found and `right` is false or
-  ## ("", "", `s`) if `sep` is not found and `right` is true
-
-  let position = if right: s.rfind(sep) else: s.find(sep)
-
-  if position != -1:
-    let
-      beforeSep = s[0 ..< position]
-      afterSep = s[position + sep.len ..< s.len]
-
-    return (s[0 ..< position], sep, afterSep)
-
-  return if right: ("", "", s) else: (s, "", "")
-
-proc rpartition*(s: string, sep: string): (string, string, string)
-                {.noSideEffect, procvar, rtl, extern: "nsuRPartitionStr".} =
-  ## Split the string at the last occurrence of `sep` into a 3-tuple
-  ##
-  ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or
-  ## ("", "", `s`) if `sep` is not found
-  return partition(s, sep, right = true)
-
 proc center*(s: string, width: int, fillChar: char = ' '): string {.
   noSideEffect, rtl, extern: "nsuCenterString".} =
   ## Return the contents of `s` centered in a string `width` long using
@@ -2242,18 +2214,6 @@ when isMainModule:
   doAssert expandTabs("", 4) == ""
   doAssert expandTabs("", 0) == ""
   doAssert expandTabs("\t\t\t", 0) == ""
-
-  doAssert partition("foo:bar", ":") == ("foo", ":", "bar")
-  doAssert partition("foobarbar", "bar") == ("foo", "bar", "bar")
-  doAssert partition("foobarbar", "bank") == ("foobarbar", "", "")
-  doAssert partition("foobarbar", "foo") == ("", "foo", "barbar")
-  doAssert partition("foofoobar", "bar") == ("foofoo", "bar", "")
-
-  doAssert rpartition("foo:bar", ":") == ("foo", ":", "bar")
-  doAssert rpartition("foobarbar", "bar") == ("foobar", "bar", "")
-  doAssert rpartition("foobarbar", "bank") == ("", "", "foobarbar")
-  doAssert rpartition("foobarbar", "foo") == ("", "foo", "barbar")
-  doAssert rpartition("foofoobar", "bar") == ("foofoo", "bar", "")
 
   doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
   doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
