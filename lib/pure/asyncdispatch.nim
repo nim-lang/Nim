@@ -444,14 +444,14 @@ when defined(windows) or defined(nimdoc):
 
     PCustomOverlapped* = ref CustomOverlapped
 
-    PCD = object
+    AsyncFD* = distinct int
+
+    PostCallbackData = object
       ioPort: Handle
       handleFd: AsyncFD
       waitFd: Handle
       ovl: PCustomOverlapped
-    PPCD = ptr PCD
-
-    AsyncFD* = distinct int
+    PostCallbackDataPtr = ptr PostCallbackData
 
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
   {.deprecated: [TCompletionKey: CompletionKey, TAsyncFD: AsyncFD,
@@ -964,9 +964,9 @@ when defined(windows) or defined(nimdoc):
 
   {.push stackTrace:off.}
   proc waitableCallback(param: pointer,
-                        TimerOrWaitFired: WINBOOL): void {.stdcall.} =
-    var p = cast[PPCD](param)
-    discard postQueuedCompletionStatus(p.ioPort, Dword(TimerOrWaitFired),
+                        timerOrWaitFired: WINBOOL): void {.stdcall.} =
+    var p = cast[PostCallbackDataPtr](param)
+    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.Dword,
                                        ULONG_PTR(p.handleFd),
                                        cast[pointer](p.ovl))
   {.pop.}
@@ -977,7 +977,7 @@ when defined(windows) or defined(nimdoc):
     var hEvent = wsaCreateEvent()
     if hEvent == 0:
       raiseOSError(osLastError())
-    var pcd = cast[PPCD](allocShared0(sizeof(PCD)))
+    var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
     pcd.ioPort = p.ioPort
     pcd.handleFd = fd
     var ol = PCustomOverlapped()
@@ -991,11 +991,15 @@ when defined(windows) or defined(nimdoc):
         # unregisterWait() is called before callback, because appropriate
         # winsockets function can re-enable event.
         # https://msdn.microsoft.com/en-us/library/windows/desktop/ms741576(v=vs.85).aspx
-        discard unregisterWait(pcd.waitFd)
+        if unregisterWait(pcd.waitFd) == 0:
+          let err = osLastError()
+          if err.int32 != ERROR_IO_PENDING:
+            raiseOSError(osLastError())
         if cb(fd):
           # callback returned `true`, so we free all allocated resources
-          discard wsaCloseEvent(hEvent)
           deallocShared(cast[pointer](pcd))
+          if not wsaCloseEvent(hEvent):
+            raiseOSError(osLastError())
           # pcd.ovl will be unrefed in poll().
         else:
           # callback returned `false` we need to continue
@@ -1003,8 +1007,9 @@ when defined(windows) or defined(nimdoc):
             # new callback was already registered with `fd`, so we free all
             # allocated resources. This happens because in callback `cb`
             # addRead/addWrite was called with same `fd`.
-            discard wsaCloseEvent(hEvent)
             deallocShared(cast[pointer](pcd))
+            if not wsaCloseEvent(hEvent):
+              raiseOSError(osLastError())
           else:
             # we need to include `fd` again
             p.handles.incl(fd)
