@@ -20,7 +20,8 @@
 ##  let
 ##    small_json = """{"test": 1.3, "key2": true}"""
 ##    jobj = parseJson(small_json)
-##  assert (jobj.kind == JObject)
+##  assert (jobj.kind == JObject)\
+##  jobj["test"] = newJFloat(0.7)  # create or update
 ##  echo($jobj["test"].fnum)
 ##  echo($jobj["key2"].bval)
 ##
