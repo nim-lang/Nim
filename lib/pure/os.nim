@@ -76,9 +76,8 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)
-  else:
-    if errno != 0'i32:
-      result = $os.c_strerror(errno)
+  if errno != 0'i32:
+    result = $os.c_strerror(errno)
 
 {.push warning[deprecated]: off.}
 proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
