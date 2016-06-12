@@ -2708,6 +2708,9 @@ when not defined(JS): #and not defined(nimscript):
       ##
       ## Default mode is readonly. Returns true iff the file could be reopened.
 
+    proc setStdIoUnbuffered() {.tags: [], benign.}
+      ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
+
     proc close*(f: File) {.importc: "fclose", header: "<stdio.h>", tags: [].}
       ## Closes the file.
 

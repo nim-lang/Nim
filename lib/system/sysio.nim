@@ -354,4 +354,9 @@ proc writeFile(filename, content: string) =
   else:
     sysFatal(IOError, "cannot open: ", filename)
 
+proc setStdIoUnbuffered() =
+  discard setvbuf(stdout, nil, IONBF, 0)
+  discard setvbuf(stderr, nil, IONBF, 0)
+  discard setvbuf(stdin, nil, IONBF, 0)
+
 {.pop.}

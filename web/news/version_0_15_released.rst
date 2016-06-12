@@ -14,6 +14,7 @@ Changes affecting backwards compatibility
 Library Additions
 -----------------
 
+- Added ``setStdIoUnbuffered`` proc to ``system.nim`` to enable unbuffered I/O.
 
 Compiler Additions
 ------------------
