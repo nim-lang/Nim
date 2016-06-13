@@ -152,10 +152,10 @@ proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
   if c.typ != nil: kind = ord(c.typ.kind)
   when leakDetector:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
+    c_fprintf(stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
               msg, c, kind, c.refcount shr rcShift, c.filename, c.line)
   else:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
+    c_fprintf(stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
               msg, c, kind, c.refcount shr rcShift, c.color)
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =

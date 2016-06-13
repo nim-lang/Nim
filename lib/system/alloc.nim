@@ -324,9 +324,9 @@ proc contains[T](list, x: T): bool =
 
 proc writeFreeList(a: MemRegion) =
   var it = a.freeChunksList
-  c_fprintf(c_stdout, "freeChunksList: %p\n", it)
+  c_fprintf(stdout, "freeChunksList: %p\n", it)
   while it != nil:
-    c_fprintf(c_stdout, "it: %p, next: %p, prev: %p\n",
+    c_fprintf(stdout, "it: %p, next: %p, prev: %p\n",
               it, it.next, it.prev)
     it = it.next
 

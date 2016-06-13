@@ -272,7 +272,7 @@ when false:
   proc copyDeepString(dr: var MemRegion; stack: var PointerStackChunk; src: NimString): NimString {.inline.} =
     result = rawNewStringNoInit(dr, src.len)
     result.len = src.len
-    c_memcpy(result.data, src.data, src.len + 1)
+    copyMem(result.data, src.data, src.len + 1)
 
   proc genericDeepCopyAux(dr: var MemRegion; stack: var PointerStackChunk;
                           dest, src: pointer, mt: PNimType) =
@@ -417,15 +417,15 @@ proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   dest[] = src
 
 proc alloc(size: Natural): pointer =
-  result = cmalloc(size)
+  result = c_malloc(size)
   if result == nil: raiseOutOfMem()
 proc alloc0(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
 proc realloc(p: pointer, newsize: Natural): pointer =
-  result = crealloc(p, newsize)
+  result = c_realloc(p, newsize)
   if result == nil: raiseOutOfMem()
-proc dealloc(p: pointer) = cfree(p)
+proc dealloc(p: pointer) = c_free(p)
 
 proc alloc0(r: var MemRegion; size: Natural): pointer =
   # ignore the region. That is correct for the channels module
@@ -435,15 +435,15 @@ proc alloc0(r: var MemRegion; size: Natural): pointer =
 proc dealloc(r: var MemRegion; p: pointer) = dealloc(p)
 
 proc allocShared(size: Natural): pointer =
-  result = cmalloc(size)
+  result = c_malloc(size)
   if result == nil: raiseOutOfMem()
 proc allocShared0(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
 proc reallocShared(p: pointer, newsize: Natural): pointer =
-  result = crealloc(p, newsize)
+  result = c_realloc(p, newsize)
   if result == nil: raiseOutOfMem()
-proc deallocShared(p: pointer) = cfree(p)
+proc deallocShared(p: pointer) = c_free(p)
 
 when hasThreadSupport:
   proc getFreeSharedMem(): int = 0
