@@ -98,7 +98,7 @@ const
   BufSize = 4000
 
 proc close*(f: File) = discard c_fclose(f)
-proc readChar*(f: File): char = result = cast[char](c_fgetc(f))
+proc readChar*(f: File): char = result = char(c_fgetc(f))
 proc flushFile*(f: File) = discard c_fflush(f)
 proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
