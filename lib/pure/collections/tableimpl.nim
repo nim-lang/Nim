@@ -11,20 +11,20 @@
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: Hash): bool {.inline.} =
+proc isEmpty(hcode: Hash): bool {.inline, noSideEffect.} =
   result = hcode == 0
 
-proc isFilled(hcode: Hash): bool {.inline.} =
+proc isFilled(hcode: Hash): bool {.inline, noSideEffect.} =
   result = hcode != 0
 
 const
   growthFactor = 2
 
-proc mustRehash(length, counter: int): bool {.inline.} =
+proc mustRehash(length, counter: int): bool {.inline, noSideEffect.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline, noSideEffect.} =
   result = (h + 1) and maxHash
 
 template rawGetKnownHCImpl() {.dirty.} =
@@ -59,17 +59,17 @@ template rawInsertImpl() {.dirty.} =
   data[h].val = val
   data[h].hcode = hc
 
-proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
+proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline, noSideEffect.} =
   rawGetKnownHCImpl()
 
-proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
+proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline, noSideEffect.} =
   rawGetDeepImpl()
 
-proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
+proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline, noSideEffect.} =
   rawGetImpl()
 
 proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
-                     key: A, val: B, hc: Hash, h: Hash) =
+                     key: A, val: B, hc: Hash, h: Hash) {.noSideEffect.} =
   rawInsertImpl()
 
 template addImpl(enlarge) {.dirty, immediate.} =
