@@ -256,7 +256,7 @@ proc addFiles(s: var seq[string], patterns: seq[string]) =
       for f in walkFiles(p):
         if existsDir(f):
           walkDirRecursively(s, f, p, false)
-        elif not ignoreFile(f, f, false):
+        elif not ignoreFile(f, p, false):
           add(s, unixToNativePath(f))
           inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
