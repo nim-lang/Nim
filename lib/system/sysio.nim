@@ -369,4 +369,12 @@ proc writeFile(filename, content: string) =
   else:
     sysFatal(IOError, "cannot open: ", filename)
 
+proc setStdIoUnbuffered() =
+  when declared(stdout):
+    discard c_setvbuf(stdout, nil, IONBF, 0)
+  when declared(stderr):
+    discard c_setvbuf(stderr, nil, IONBF, 0)
+  when declared(stdin):
+    discard c_setvbuf(stdin, nil, IONBF, 0)
+
 {.pop.}
