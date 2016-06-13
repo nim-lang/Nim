@@ -355,8 +355,11 @@ proc writeFile(filename, content: string) =
     sysFatal(IOError, "cannot open: ", filename)
 
 proc setStdIoUnbuffered() =
-  discard setvbuf(stdout, nil, IONBF, 0)
-  discard setvbuf(stderr, nil, IONBF, 0)
-  discard setvbuf(stdin, nil, IONBF, 0)
+  when declared(stdout):
+    discard setvbuf(stdout, nil, IONBF, 0)
+  when declared(stderr):
+    discard setvbuf(stderr, nil, IONBF, 0)
+  when declared(stdin):
+    discard setvbuf(stdin, nil, IONBF, 0)
 
 {.pop.}
