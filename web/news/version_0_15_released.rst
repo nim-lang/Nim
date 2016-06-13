@@ -14,6 +14,8 @@ Changes affecting backwards compatibility
 Library Additions
 -----------------
 
+- Added ``readHeaderRow`` and ``rowEntry`` to ``parsecsv.nim`` to provide
+  a lightweight alternative to python's ``csv.DictReader``.
 - Added ``setStdIoUnbuffered`` proc to ``system.nim`` to enable unbuffered I/O.
 
 Compiler Additions

@@ -257,12 +257,10 @@ type MemSlice* = object  ## represent slice of a MemFile for iteration over deli
   data*: pointer
   size*: int
 
-proc c_memcpy(a, b: pointer, n: int) {.importc: "memcpy", header: "<string.h>".}
-
 proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
   var buf = newString(ms.size)
-  c_memcpy(addr(buf[0]), ms.data, ms.size)
+  copyMem(addr(buf[0]), ms.data, ms.size)
   buf[ms.size] = '\0'
   result = buf
 
@@ -329,7 +327,7 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): T
 
   for ms in memSlices(mfile, delim, eat):
     buf.setLen(ms.size)
-    c_memcpy(addr(buf[0]), ms.data, ms.size)
+    copyMem(addr(buf[0]), ms.data, ms.size)
     buf[ms.size] = '\0'
     yield buf
 
