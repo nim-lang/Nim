@@ -10,6 +10,8 @@ Some text here.
 Changes affecting backwards compatibility
 -----------------------------------------
 
+- De-deprecated ``re.nim`` because we have too much code using it
+  and it got the basic API right.
 
 Library Additions
 -----------------
