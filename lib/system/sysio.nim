@@ -371,10 +371,10 @@ proc writeFile(filename, content: string) =
 
 proc setStdIoUnbuffered() =
   when declared(stdout):
-    discard setvbuf(stdout, nil, IONBF, 0)
+    discard c_setvbuf(stdout, nil, IONBF, 0)
   when declared(stderr):
-    discard setvbuf(stderr, nil, IONBF, 0)
+    discard c_setvbuf(stderr, nil, IONBF, 0)
   when declared(stdin):
-    discard setvbuf(stdin, nil, IONBF, 0)
+    discard c_setvbuf(stdin, nil, IONBF, 0)
 
 {.pop.}
