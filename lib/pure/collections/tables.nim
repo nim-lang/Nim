@@ -754,7 +754,7 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: CountTable[A] | CountTable[A]) =
+proc clear*[A](t: CountTable[A] | CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
   t.counter = 0
