@@ -534,6 +534,8 @@ when defined(windows) or defined(nimdoc):
         assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
         customOverlapped.data.cb(customOverlapped.data.fd,
             lpNumberOfBytesTransferred, errCode)
+        if customOverlapped.data.cell.data != nil:
+          system.dispose(customOverlapped.data.cell)
         GC_unref(customOverlapped)
       else:
         if errCode.int32 == WAIT_TIMEOUT:
