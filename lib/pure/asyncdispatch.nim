@@ -445,6 +445,15 @@ when defined(windows) or defined(nimdoc):
     PCustomOverlapped* = ref CustomOverlapped
 
     AsyncFD* = distinct int
+
+    PostCallbackData = object
+      ioPort: Handle
+      handleFd: AsyncFD
+      waitFd: Handle
+      ovl: PCustomOverlapped
+    PostCallbackDataPtr = ptr PostCallbackData
+
+    Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
   {.deprecated: [TCompletionKey: CompletionKey, TAsyncFD: AsyncFD,
                 TCustomOverlapped: CustomOverlapped, TCompletionData: CompletionData].}
 
@@ -952,6 +961,122 @@ when defined(windows) or defined(nimdoc):
   proc unregister*(fd: AsyncFD) =
     ## Unregisters ``fd``.
     getGlobalDispatcher().handles.excl(fd)
+
+  {.push stackTrace:off.}
+  proc waitableCallback(param: pointer,
+                        timerOrWaitFired: WINBOOL): void {.stdcall.} =
+    var p = cast[PostCallbackDataPtr](param)
+    discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.Dword,
+                                       ULONG_PTR(p.handleFd),
+                                       cast[pointer](p.ovl))
+  {.pop.}
+
+  template registerWaitableEvent(mask) =
+    let p = getGlobalDispatcher()
+    var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).Dword
+    var hEvent = wsaCreateEvent()
+    if hEvent == 0:
+      raiseOSError(osLastError())
+    var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
+    pcd.ioPort = p.ioPort
+    pcd.handleFd = fd
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
+
+    ol.data = CompletionData(fd: fd, cb:
+      proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+        # we excluding our `fd` because cb(fd) can register own handler
+        # for this `fd`
+        p.handles.excl(fd)
+        # unregisterWait() is called before callback, because appropriate
+        # winsockets function can re-enable event.
+        # https://msdn.microsoft.com/en-us/library/windows/desktop/ms741576(v=vs.85).aspx
+        if unregisterWait(pcd.waitFd) == 0:
+          let err = osLastError()
+          if err.int32 != ERROR_IO_PENDING:
+            raiseOSError(osLastError())
+        if cb(fd):
+          # callback returned `true`, so we free all allocated resources
+          deallocShared(cast[pointer](pcd))
+          if not wsaCloseEvent(hEvent):
+            raiseOSError(osLastError())
+          # pcd.ovl will be unrefed in poll().
+        else:
+          # callback returned `false` we need to continue
+          if p.handles.contains(fd):
+            # new callback was already registered with `fd`, so we free all
+            # allocated resources. This happens because in callback `cb`
+            # addRead/addWrite was called with same `fd`.
+            deallocShared(cast[pointer](pcd))
+            if not wsaCloseEvent(hEvent):
+              raiseOSError(osLastError())
+          else:
+            # we need to include `fd` again
+            p.handles.incl(fd)
+            # and register WaitForSingleObject again
+            if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
+                                    cast[WAITORTIMERCALLBACK](waitableCallback),
+                                       cast[pointer](pcd), INFINITE, flags):
+              # pcd.ovl will be unrefed in poll()
+              discard wsaCloseEvent(hEvent)
+              deallocShared(cast[pointer](pcd))
+              raiseOSError(osLastError())
+            else:
+              # we ref pcd.ovl one more time, because it will be unrefed in
+              # poll()
+              GC_ref(pcd.ovl)
+    )
+    # This is main part of `hacky way` is using WSAEventSelect, so `hEvent`
+    # will be signaled when appropriate `mask` events will be triggered.
+    if wsaEventSelect(fd.SocketHandle, hEvent, mask) != 0:
+      GC_unref(ol)
+      deallocShared(cast[pointer](pcd))
+      discard wsaCloseEvent(hEvent)
+      raiseOSError(osLastError())
+
+    pcd.ovl = ol
+    if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
+                                    cast[WAITORTIMERCALLBACK](waitableCallback),
+                                       cast[pointer](pcd), INFINITE, flags):
+      GC_unref(ol)
+      deallocShared(cast[pointer](pcd))
+      discard wsaCloseEvent(hEvent)
+      raiseOSError(osLastError())
+    p.handles.incl(fd)
+
+  proc addRead*(fd: AsyncFD, cb: Callback) =
+    ## Start watching the file descriptor for read availability and then call
+    ## the callback ``cb``.
+    ##
+    ## This is not ``pure`` mechanism for Windows Completion Ports (IOCP),
+    ## so if you can avoid it, please do it. Use `addRead` only if really
+    ## need it (main usecase is adaptation of `unix like` libraries to be
+    ## asynchronous on Windows).
+    ## If you use this function, you dont need to use asyncdispatch.recv()
+    ## or asyncdispatch.accept(), because they are using IOCP, please use
+    ## nativesockets.recv() and nativesockets.accept() instead.
+    ##
+    ## Be sure your callback ``cb`` returns ``true``, if you want to remove
+    ## watch of `read` notifications, and ``false``, if you want to continue
+    ## receiving notifies.
+    registerWaitableEvent(FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
+
+  proc addWrite*(fd: AsyncFD, cb: Callback) =
+    ## Start watching the file descriptor for write availability and then call
+    ## the callback ``cb``.
+    ##
+    ## This is not ``pure`` mechanism for Windows Completion Ports (IOCP),
+    ## so if you can avoid it, please do it. Use `addWrite` only if really
+    ## need it (main usecase is adaptation of `unix like` libraries to be
+    ## asynchronous on Windows).
+    ## If you use this function, you dont need to use asyncdispatch.send()
+    ## or asyncdispatch.connect(), because they are using IOCP, please use
+    ## nativesockets.send() and nativesockets.connect() instead.
+    ##
+    ## Be sure your callback ``cb`` returns ``true``, if you want to remove
+    ## watch of `write` notifications, and ``false``, if you want to continue
+    ## receiving notifies.
+    registerWaitableEvent(FD_WRITE or FD_CONNECT or FD_CLOSE)
 
   initAll()
 else:
