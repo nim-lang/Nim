@@ -442,6 +442,8 @@ type
     sa_family*: int16 # unsigned
     sa_data: array[0..13, char]
 
+  PSockAddr = ptr SockAddr
+
   InAddr* {.importc: "IN_ADDR", header: "winsock2.h".} = object
     s_addr*: uint32  # IP address
 
@@ -889,3 +891,87 @@ proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
     result = inet_ntop_real(family, paddr, pStringBuffer, stringBufSize)
   else:
     result = inet_ntop_emulated(family, paddr, pStringBuffer, stringBufSize)
+
+type
+  WSAPROC_ACCEPTEX* = proc (sListenSocket: SocketHandle,
+                            sAcceptSocket: SocketHandle,
+                            lpOutputBuffer: pointer, dwReceiveDataLength: DWORD,
+                            dwLocalAddressLength: DWORD,
+                            dwRemoteAddressLength: DWORD,
+                            lpdwBytesReceived: ptr DWORD,
+                            lpOverlapped: POVERLAPPED): bool {.
+                            stdcall,gcsafe.}
+
+  WSAPROC_CONNECTEX* = proc (s: SocketHandle, name: ptr SockAddr, namelen: cint,
+                             lpSendBuffer: pointer, dwSendDataLength: DWORD,
+                             lpdwBytesSent: ptr DWORD,
+                             lpOverlapped: POVERLAPPED): bool {.
+                             stdcall,gcsafe.}
+
+  WSAPROC_GETACCEPTEXSOCKADDRS* = proc(lpOutputBuffer: pointer,
+                                       dwReceiveDataLength: DWORD,
+                                       dwLocalAddressLength: DWORD,
+                                       dwRemoteAddressLength: DWORD,
+                                       LocalSockaddr: ptr PSockAddr,
+                                       LocalSockaddrLength: ptr cint,
+                                       RemoteSockaddr: ptr PSockAddr,
+                                       RemoteSockaddrLength: ptr cint) {.
+                                       stdcall,gcsafe.}
+
+const
+  WT_EXECUTEDEFAULT*                 = 0x00000000'i32
+  WT_EXECUTEINIOTHREAD*              = 0x00000001'i32
+  WT_EXECUTEINUITHREAD*              = 0x00000002'i32
+  WT_EXECUTEINWAITTHREAD*            = 0x00000004'i32
+  WT_EXECUTEONLYONCE*                = 0x00000008'i32
+  WT_EXECUTEINTIMERTHREAD*           = 0x00000020'i32
+  WT_EXECUTELONGFUNCTION*            = 0x00000010'i32
+  WT_EXECUTEINPERSISTENTIOTHREAD*    = 0x00000040'i32
+  WT_EXECUTEINPERSISTENTTHREAD*      = 0x00000080'i32
+  WT_TRANSFER_IMPERSONATION*         = 0x00000100'i32
+  PROCESS_TERMINATE*                 = 0x00000001'i32
+  PROCESS_CREATE_THREAD*             = 0x00000002'i32
+  PROCESS_SET_SESSIONID*             = 0x00000004'i32
+  PROCESS_VM_OPERATION*              = 0x00000008'i32
+  PROCESS_VM_READ*                   = 0x00000010'i32
+  PROCESS_VM_WRITE*                  = 0x00000020'i32
+  PROCESS_DUP_HANDLE*                = 0x00000040'i32
+  PROCESS_CREATE_PROCESS*            = 0x00000080'i32
+  PROCESS_SET_QUOTA*                 = 0x00000100'i32
+  PROCESS_SET_INFORMATION*           = 0x00000200'i32
+  PROCESS_QUERY_INFORMATION*         = 0x00000400'i32
+  PROCESS_SUSPEND_RESUME*            = 0x00000800'i32
+  PROCESS_QUERY_LIMITED_INFORMATION* = 0x00001000'i32
+  PROCESS_SET_LIMITED_INFORMATION*   = 0x00002000'i32
+type
+  WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32): void {.stdcall.}
+
+proc postQueuedCompletionStatus*(CompletionPort: HANDLE,
+                                dwNumberOfBytesTransferred: DWORD,
+                                dwCompletionKey: ULONG_PTR,
+                                lpOverlapped: pointer): bool
+     {.stdcall, dynlib: "kernel32", importc: "PostQueuedCompletionStatus".}
+proc registerWaitForSingleObject*(phNewWaitObject: ptr Handle, hObject: Handle,
+                                 Callback: WAITORTIMERCALLBACK,
+                                 Context: pointer,
+                                 dwMilliseconds: ULONG,
+                                 dwFlags: ULONG): bool
+     {.stdcall, dynlib: "kernel32", importc: "RegisterWaitForSingleObject".}
+
+proc unregisterWait*(WaitHandle: HANDLE): DWORD
+     {.stdcall, dynlib: "kernel32", importc: "UnregisterWait".}
+proc openProcess*(dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
+                    dwProcessId: DWORD): Handle
+     {.stdcall, dynlib: "kernel32", importc: "OpenProcess".}
+when defined(useWinAnsi):
+  proc createEvent*(lpEventAttributes: ptr SECURITY_ATTRIBUTES,
+                    bManualReset: DWORD, bInitialState: DWORD,
+                    lpName: cstring): Handle
+       {.stdcall, dynlib: "kernel32", importc: "CreateEventA".}
+else:
+  proc createEvent*(lpEventAttributes: ptr SECURITY_ATTRIBUTES,
+                    bManualReset: DWORD, bInitialState: DWORD,
+                    lpName: ptr Utf16Char): Handle
+       {.stdcall, dynlib: "kernel32", importc: "CreateEventW".}
+proc setEvent*(hEvent: Handle): cint
+     {.stdcall, dynlib: "kernel32", importc: "SetEvent".}
