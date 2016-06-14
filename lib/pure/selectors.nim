@@ -132,11 +132,12 @@ elif defined(linux):
         s.fds[fd].events = events
 
   proc unregister*(s: var Selector, fd: SocketHandle) =
-    if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
-      let err = osLastError()
-      if err.cint notin {ENOENT, EBADF}:
-        # TODO: Why do we sometimes get an EBADF? Is this normal?
-        raiseOSError(err)
+    if s.fds[fd].events != {}:
+      if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
+        let err = osLastError()
+        if err.cint notin {ENOENT, EBADF}:
+          # TODO: Why do we sometimes get an EBADF? Is this normal?
+          raiseOSError(err)
     s.fds.del(fd)
 
   proc close*(s: var Selector) =
