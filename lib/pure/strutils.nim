@@ -15,6 +15,7 @@
 
 import parseutils
 from math import pow, round, floor, log10
+from algorithm import reverse
 
 {.deadCodeElim: on.}
 
@@ -325,7 +326,8 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-iterator split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): string =
+iterator split*(s: string, seps: set[char] = Whitespace,
+                maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a group of separators.
   ##
   ## Substrings are separated by a substring containing only `seps`. Note
@@ -422,10 +424,13 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
       dec(splits)
       inc(last)
 
-proc substrEq(s: string, a, L: int, x: string): bool =
+proc substrEq(s: string, pos: int, substr: string): bool =
   var i = 0
-  while i < L and s[a+i] == x[i]: inc i
-  result = i == L
+  var length = substr.len
+  while i < length and s[pos+i] == substr[i]:
+    inc i
+
+  return i == length
 
 iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a string separator.
@@ -433,16 +438,119 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Substrings are separated by the string `sep`.
   var last = 0
   var splits = maxsplit
+
   if len(s) > 0:
     while last <= len(s):
       var first = last
-      while last < len(s) and not s.substrEq(last, sep.len, sep):
+      while last < len(s) and not s.substrEq(last, sep):
         inc(last)
       if splits == 0: last = len(s)
       yield substr(s, first, last-1)
       if splits == 0: break
       dec(splits)
       inc(last, sep.len)
+
+# --------- Private templates for different rsplit separators -----------
+
+template stringHasSep(s: string, index: int, seps: set[char]): bool =
+  s[index] in seps
+
+template stringHasSep(s: string, index: int, sep: char): bool =
+  s[index] == sep
+
+template stringHasSep(s: string, index: int, sep: string): bool =
+  s.substrEq(index, sep)
+
+template rsplitCommon(s, sep, maxsplit, sepLen) =
+  ## Common code for rsplit functions
+  var
+    last = s.len - 1
+    first = last
+    splits = maxsplit
+    startPos = 0
+
+  if len(s) > 0:
+    # go to -1 in order to get separators at the beginning
+    while first >= -1:
+      while first >= 0 and not stringHasSep(s, first, sep):
+        dec(first)
+
+      if splits == 0:
+        # No more splits means set first to the beginning
+        first = -1
+
+      if first == -1:
+        startPos = 0
+      else:
+        startPos = first + sepLen
+
+      yield substr(s, startPos, last)
+
+      if splits == 0:
+        break
+
+      dec(splits)
+      dec(first)
+
+      last = first
+
+iterator rsplit*(s: string, seps: set[char] = Whitespace,
+                 maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,char>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foo bar".rsplit(WhiteSpace):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the set of chars `seps`
+
+  rsplitCommon(s, seps, maxsplit, 1)
+
+iterator rsplit*(s: string, sep: char,
+                 maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,char>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foo:bar".rsplit(':'):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the char `sep`
+  rsplitCommon(s, sep, maxsplit, 1)
+
+iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
+                 keepSeparators: bool = false): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,string>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foothebar".rsplit("the"):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the string `sep`
+  rsplitCommon(s, sep, maxsplit, sep.len)
 
 iterator splitLines*(s: string): string =
   ## Splits the string `s` into its containing lines.
@@ -530,6 +638,73 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
   accumulateResult(split(s, sep, maxsplit))
+
+proc rsplit*(s: string, seps: set[char] = Whitespace,
+             maxsplit: int = -1): seq[string]
+             {.noSideEffect, rtl, extern: "nsuRSplitCharSet".} =
+  ## The same as the `rsplit iterator <#rsplit.i,string,set[char]>`_, but is a
+  ## proc that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", {'#'}, maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  accumulateResult(rsplit(s, seps, maxsplit))
+  result.reverse()
+
+proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
+             {.noSideEffect, rtl, extern: "nsuRSplitChar".} =
+  ## The same as the `split iterator <#rsplit.i,string,char>`_, but is a proc
+  ## that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", '#', maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  accumulateResult(rsplit(s, sep, maxsplit))
+  result.reverse()
+
+proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
+             {.noSideEffect, rtl, extern: "nsuRSplitString".} =
+  ## The same as the `split iterator <#rsplit.i,string,string>`_, but is a proc
+  ## that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", "#", maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  accumulateResult(rsplit(s, sep, maxsplit))
+  result.reverse()
 
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
@@ -1035,6 +1210,34 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
     if sub == s[i]: return i
   return -1
 
+proc center*(s: string, width: int, fillChar: char = ' '): string {.
+  noSideEffect, rtl, extern: "nsuCenterString".} =
+  ## Return the contents of `s` centered in a string `width` long using
+  ## `fillChar` as padding.
+  ##
+  ## The original string is returned if `width` is less than or equal
+  ## to `s.len`.
+  if width <= s.len:
+    return s
+
+  result = newString(width)
+
+  # Left padding will be one fillChar
+  # smaller if there are an odd number
+  # of characters
+  let
+    charsLeft = (width - s.len)
+    leftPadding = charsLeft div 2
+
+  for i in 0 ..< width:
+    if i >= leftPadding and i < leftPadding + s.len:
+      # we are where the string should be located
+      result[i] = s[i-leftPadding]
+    else:
+      # we are either before or after where
+      # the string s should go
+      result[i] = fillChar
+
 proc count*(s: string, sub: string, overlapping: bool = false): int {.
   noSideEffect, rtl, extern: "nsuCountString".} =
   ## Count the occurrences of a substring `sub` in the string `s`.
@@ -1115,6 +1318,38 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
     if s[i] == sub: result[i] = by
     else: result[i] = s[i]
     inc(i)
+
+proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
+  procvar, rtl, extern: "nsuExpandTabsStr".} =
+  ## Expand tab characters in `s` by `tabSize` spaces
+
+  if len(s) == 0:
+    return s
+
+  result = newStringOfCap(s.len + s.len shr 2)
+
+  var pos = 0
+
+  template addSpaces(n) =
+    for j in 0 ..< n:
+      result.add(' ')
+      pos += 1
+
+  for i in 0 ..< len(s):
+    let c = s[i]
+
+    if c == '\t':
+      let
+        denominator = if tabSize > 0: tabSize else: 1
+        numSpaces = tabSize - pos mod denominator
+
+      addSpaces(numSpaces)
+    else:
+      result.add(c)
+      pos += 1
+
+    if c == '\l':
+      pos = 0
 
 proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceWord".} =
@@ -1899,6 +2134,11 @@ when isMainModule:
 
   doAssert parseEnum("invalid enum value", enC) == enC
 
+  doAssert center("foo", 13) == "     foo     "
+  doAssert center("foo", 0) == "foo"
+  doAssert center("foo", 3, fillChar = 'a') == "foo"
+  doAssert center("foo", 10, fillChar = '\t') == "\t\t\tfoo\t\t\t\t"
+
   doAssert count("foofoofoo", "foofoo") == 1
   doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
   doAssert count("foofoofoo", 'f') == 3
@@ -1966,6 +2206,22 @@ when isMainModule:
   doAssert isUpper("ABC")
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
+
+  doAssert expandTabs("\t", 4) == "    "
+  doAssert expandTabs("\tfoo\t", 4) == "    foo "
+  doAssert expandTabs("\tfoo\tbar", 4) == "    foo bar"
+  doAssert expandTabs("\tfoo\tbar\t", 4) == "    foo bar "
+  doAssert expandTabs("", 4) == ""
+  doAssert expandTabs("", 0) == ""
+  doAssert expandTabs("\t\t\t", 0) == ""
+
+  doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
+  doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
+  doAssert rsplit(" foo bar ", seps=Whitespace, maxsplit=1) == @[" foo bar", ""]
+  doAssert rsplit(":foo:bar", sep=':') == @["", "foo", "bar"]
+  doAssert rsplit(":foo:bar", sep=':', maxsplit=2) == @["", "foo", "bar"]
+  doAssert rsplit(":foo:bar", sep=':', maxsplit=3) == @["", "foo", "bar"]
+  doAssert rsplit("foothebar", sep="the") == @["foo", "bar"]
 
   doAssert(unescape(r"\x013", "", "") == "\x013")
 

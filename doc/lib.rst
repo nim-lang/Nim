@@ -97,6 +97,10 @@ String handling
   case of a string, splitting a string into substrings, searching for
   substrings, replacing substrings.
 
+* `strmisc <strmisc.html>`_
+  This module contains uncommon string handling operations that do not
+  fit with the commonly used operations in strutils.
+
 * `parseutils <parseutils.html>`_
   This module contains helpers for parsing tokens, numbers, identifiers, etc.
 

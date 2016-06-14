@@ -18,6 +18,15 @@ Library Additions
   a lightweight alternative to python's ``csv.DictReader``.
 - Added ``setStdIoUnbuffered`` proc to ``system.nim`` to enable unbuffered I/O.
 
+- Added ``center``, ``rsplit``, and ``expandTabs`` to ``strutils.nim`` to
+  provide similar Python functionality for Nim's strings.
+
+- Added ``isTitle``, ``title``, and ``swapCase`` to ``unicode.nim`` to
+  provide unicode aware string case manipulation.
+
+- Added a new module ``lib/pure/strmisc.nim`` to hold uncommon string
+  operations. Currently contains ``partition`` and ``rpartition``.
+
 Compiler Additions
 ------------------
 
