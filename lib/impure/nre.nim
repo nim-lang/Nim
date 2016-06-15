@@ -48,7 +48,6 @@ export options
 ##     # (a: 6, b: 6)
 ##     # (a: 7, b: 7)
 ##
-##     import options  # critical to use isSome() and get()
 ##     let firstVowel = "foo".find(vowels)
 ##     let hasVowel = firstVowel.isSome()
 ##     if hasVowel:
