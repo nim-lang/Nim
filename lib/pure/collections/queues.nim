@@ -8,6 +8,33 @@
 #
 
 ## Implementation of a `queue`:idx:. The underlying implementation uses a ``seq``.
+##
+## None of the procs that get an individual value from the queue can be used
+## on an empty queue.
+## If compiled with `boundChecks` option, those procs will raise an `IndexError`
+## on such access. This should not be relied upon, as `-d:release` will
+## disable those checks and may return garbage or crash the program.
+##
+## As such, a check to see if the queue is empty is needed before any
+## access, unless your program logic guarantees it indirectly.
+##
+## .. code-block:: Nim
+##   proc foo(a, b: Positive) =  # assume random positive values for `a` and `b`
+##     var q = initQueue[int]()  # initializes the object
+##     for i in 1 ..< a: q.add i  # populates the queue
+##
+##     if b < q.len:  # checking before indexed access
+##       echo "The element at index position ", b, " is ", q[b]
+##
+##     # The following two lines don't need any checking on access due to the
+##     # logic of the program, but that would not be the case if `a` could be 0.
+##     assert q.front == 1
+##     assert q.back == a
+##
+##     while q.len > 0:  # checking if the queue is empty
+##       echo q.pop()
+##
+##
 ## Note: For inter thread communication use
 ## a `Channel <channels.html>`_ instead.
 
@@ -30,61 +57,71 @@ proc englishOrdinal(n: SomeInteger): string =
 import math
 
 type
-  Queue*[T] = object ## a queue
+  Queue*[T] = object ## A queue.
     data: seq[T]
     rd, wr, count, mask: int
 
 {.deprecated: [TQueue: Queue].}
 
 proc initQueue*[T](initialSize: int = 4): Queue[T] =
-  ## creates a new queue. `initialSize` needs to be a power of 2.
+  ## Create a new queue.
+  ## Optionally, the initial capacity can be reserved via `initialSize` as a
+  ## performance optimization. `initialSize` needs to be a power of 2.
+  ## The lenght of a newly created queue will still be 0.
   assert isPowerOfTwo(initialSize)
   result.mask = initialSize-1
   newSeq(result.data, initialSize)
 
 proc len*[T](q: Queue[T]): int {.inline.}=
-  ## returns the number of elements of `q`.
+  ## Return the number of elements of `q`.
   result = q.count
 
 proc low*[T](q: Queue[T]): int {.inline.}=
-  ## returns the index of the oldest element of `q` (always 0).
+  ## Return the index of the oldest element of `q` (always 0).
   result = 0
 
 proc high*[T](q: Queue[T]): int {.inline.}=
-  ## returns the index of the last element inserted on `q` (equivalent to
+  ## Return the index of the last element inserted on `q` (equivalent to
   ## `q.len - 1`).
   result = q.count - 1
 
+template emptyCheck(q) =
+  # Bounds check for the regular queue access.
+  when compileOption("boundChecks"):
+    if unlikely(q.count < 1):
+      raise newException(IndexError, "Empty queue.")
+  discard
+
+template xBoundsCheck(q, i) =
+  # Bounds check for the array like accesses.
+  when compileOption("boundChecks"):  # d:release should disable this.
+    if unlikely(i >= q.count):  # x < q.low is taken care by the Natural parameter
+      raise newException(IndexError,
+                         "Tried to access the " & englishOrdinal(i+1) &
+                         " element of the queue but it has only " &
+                         $q.count &  " elements.")
+  discard
+
 proc front*[T](q: Queue[T]): T {.inline.}=
-  ## returns the oldest element of `q`. Equivalent to `q.pop()` but does not
+  ## Return the oldest element of `q`. Equivalent to `q.pop()` but does not
   ## remove it from the queue.
-  assert q.count > 0
+  emptyCheck(q)
   result = q.data[q.rd]
 
 proc back*[T](q: Queue[T]): T {.inline.} =
-  ## returns the newest element of `q` but does not remove it from the queue.
-  assert q.count > 0
-  result = q.data[q.wr - 1]
-
-template xBoundsCheck(q, i) =
-  # Bounds check for the array like acceses.
-  when compileOption("boundChecks"):  # d:release should disable this.
-    if i > q.high:  # x < q.low is taken care by the Natural parameter
-      raise newException(IndexError,
-                         "You tried to access the " & englishOrdinal(i+1) &
-                         " element of the queue but it has only " &
-                         $q.len &  " elements.")
-  discard
+  ## Return the newest element of `q` but does not remove it from the queue.
+  emptyCheck(q)
+  result = q.data[q.wr - 1 and q.mask]
 
 proc `[]`*[T](q: Queue[T], i: Natural) : T {.inline.} =
-  ## Acess the i-th element of `q` by order of insertion.
+  ## Access the i-th element of `q` by order of insertion.
   ## q[0] is the oldest (the next one q.pop() will extract),
   ## q[^1] is the newest (last one added to the queue).
   xBoundsCheck(q, i)
   return q.data[q.rd + i and q.mask]
 
 proc `[]`*[T](q: var Queue[T], i: Natural): var T {.inline.} =
-  ## Acess the i-th element of `q` and returns a mutable
+  ## Access the i-th element of `q` and returns a mutable
   ## reference to it.
   xBoundsCheck(q, i)
   return q.data[q.rd + i and q.mask]
@@ -95,28 +132,28 @@ proc `[]=`* [T] (q: var Queue[T], i: Natural, val : T) {.inline.} =
   q.data[q.rd + i and q.mask] = val
 
 iterator items*[T](q: Queue[T]): T =
-  ## yields every element of `q`.
+  ## Yield every element of `q`.
   var i = q.rd
   for c in 0 ..< q.count:
     yield q.data[i]
     i = (i + 1) and q.mask
 
 iterator mitems*[T](q: var Queue[T]): var T =
-  ## yields every element of `q`.
+  ## Yield every element of `q`.
   var i = q.rd
   for c in 0 ..< q.count:
     yield q.data[i]
     i = (i + 1) and q.mask
 
 iterator pairs*[T](q: Queue[T]): tuple[key: int, val: T] =
-  ## yields every (position, value) of `q`.
+  ## Yield every (position, value) of `q`.
   var i = q.rd
   for c in 0 ..< q.count:
     yield (c, q.data[i])
     i = (i + 1) and q.mask
 
 proc contains*[T](q: Queue[T], item: T): bool {.inline.} =
-  ## Returns true if `item` is in `q` or false if not found. Usually used
+  ## Return true if `item` is in `q` or false if not found. Usually used
   ## via the ``in`` operator. It is the equivalent of ``q.find(item) >= 0``.
   ##
   ## .. code-block:: Nim
@@ -127,9 +164,9 @@ proc contains*[T](q: Queue[T], item: T): bool {.inline.} =
   return false
 
 proc add*[T](q: var Queue[T], item: T) =
-  ## adds an `item` to the end of the queue `q`.
+  ## Add an `item` to the end of the queue `q`.
   var cap = q.mask+1
-  if q.count >= cap:
+  if unlikely(q.count >= cap):
     var n {.noinit.} = newSeq[T](cap*2)
     for i, x in q:
       shallowCopy(n[i], x)  # does not use copyMem because the GC.
@@ -141,23 +178,23 @@ proc add*[T](q: var Queue[T], item: T) =
   q.data[q.wr] = item
   q.wr = (q.wr + 1) and q.mask
 
-proc pop*[T](q: var Queue[T]): T =
-  ## removes and returns the first (oldest) element of the queue `q`.
-  assert q.count > 0
+proc pop*[T](q: var Queue[T]): T {.inline, discardable.} =
+  ## Remove and returns the first (oldest) element of the queue `q`.
+  emptyCheck(q)
   dec q.count
   result = q.data[q.rd]
   q.rd = (q.rd + 1) and q.mask
 
 proc enqueue*[T](q: var Queue[T], item: T) =
-  ## alias for the ``add`` operation.
+  ## Alias for the ``add`` operation.
   q.add(item)
 
 proc dequeue*[T](q: var Queue[T]): T =
-  ## alias for the ``pop`` operation.
+  ## Alias for the ``pop`` operation.
   q.pop()
 
 proc `$`*[T](q: Queue[T]): string =
-  ## turns a queue into its string representation.
+  ## Turn a queue into its string representation.
   result = "["
   for x in q:
     if result.len > 1: result.add(", ")
@@ -202,3 +239,35 @@ when isMainModule:
       assert false
     except IndexError:
       discard
+
+    try:
+      assert q.len == 4
+      for i in 0 ..< 5: q.pop()
+      assert false
+    except IndexError:
+      discard
+
+  # Similar to proc from the documentation example
+  proc foo(a, b: Positive) = # assume random positive values for `a` and `b`.
+    var q = initQueue[int]()
+    assert q.len == 0
+    for i in 1 .. a: q.add i
+
+    if b < q.len: # checking before indexed access.
+      assert q[b] == b + 1
+
+    # The following two lines don't need any checking on access due to the logic
+    # of the program, but that would not be the case if `a` could be 0.
+    assert q.front == 1
+    assert q.back == a
+
+    while q.len > 0: # checking if the queue is empty
+      assert q.pop() > 0
+
+  #foo(0,0)
+  foo(8,5)
+  foo(10,9)
+  foo(1,1)
+  foo(2,1)
+  foo(1,5)
+  foo(3,2)
