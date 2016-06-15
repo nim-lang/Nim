@@ -906,45 +906,10 @@ when defined(windows) or defined(nimdoc):
     ## has been sent.
     ##
     ## Things to note: This function will make DNS resolution of ``address``.
-    verifyPresence(socket)
-    var retFuture = newFuture[void]("sendToAddress")
-    var dataBuf = TWSABuf(buf: data, len: data.len.ULONG)
-    var bytesSent = 0.Dword
-    let lowFlags = 0.Dword
-    var staddr: array[128, char] # SOCKADDR_STORAGE size is 128 bytes
-    var stalen: cint = 0
-
     var aiList = getAddrInfo(address, port, domain, SOCK_DGRAM, IPPROTO_UDP)
-    stalen = aiList.ai_addrlen.cint
-    zeroMem(addr(staddr[0]), 128)
-    copyMem(addr(staddr[0]), aiList.ai_addr, aiList.ai_addrlen)
+    var retFuture = sendTo(socket, data, aiList.ai_addr,
+                           aiList.ai_addrlen.SockLen)
     dealloc(aiList)
-
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
-    ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
-        if not retFuture.finished:
-          if errcode == OSErrorCode(-1):
-            retFuture.complete()
-          else:
-            # datagram sockets don't have disconnection,
-            # so we don't need isDisconnectionError() check
-            retFuture.fail(newException(OSError, osErrorMsg(errcode)))
-    )
-    let ret = WSASendTo(socket.SocketHandle, addr dataBuf, 1, addr bytesSent,
-                        lowFlags, cast[ptr SockAddr](addr(staddr[0])), stalen,
-                        cast[POVERLAPPED](ol), nil)
-    if ret == -1:
-      let err = osLastError()
-      if err.int32 != ERROR_IO_PENDING:
-        GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(err)))
-    else:
-      retFuture.complete()
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
     return retFuture
 
   proc recvFromInto*(socket: AsyncFD, buf: cstring, size: int,
