@@ -409,6 +409,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     if processOnOffSwitchOrList({optHints}, arg, pass, info): listHints()
   of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
+  of "excessivestacktrace": processOnOffSwitchG({optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)
   of "debugger":
     case arg.normalize

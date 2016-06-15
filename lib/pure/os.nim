@@ -26,7 +26,6 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-include "system/ansi_c"
 include ospaths
 
 when defined(posix):
@@ -36,6 +35,23 @@ when defined(posix):
   else:
     var
       pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
+
+proc c_remove(filename: cstring): cint {.
+  importc: "remove", header: "<stdio.h>".}
+proc c_rename(oldname, newname: cstring): cint {.
+  importc: "rename", header: "<stdio.h>".}
+proc c_system(cmd: cstring): cint {.
+  importc: "system", header: "<stdlib.h>".}
+proc c_strerror(errnum: cint): cstring {.
+  importc: "strerror", header: "<string.h>".}
+proc c_strlen(a: cstring): cint {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
+proc c_getenv(env: cstring): cstring {.
+  importc: "getenv", header: "<stdlib.h>".}
+proc c_putenv(env: cstring): cint {.
+  importc: "putenv", header: "<stdlib.h>".}
+
+var errno {.importc, header: "<errno.h>".}: cint
 
 proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Retrieves the operating system's error flag, ``errno``.
@@ -61,7 +77,7 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)
   if errno != 0'i32:
-    result = $os.strerror(errno)
+    result = $os.c_strerror(errno)
 
 {.push warning[deprecated]: off.}
 proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
@@ -114,7 +130,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
           if msgbuf != nil: localFree(msgbuf)
   else:
     if errorCode != OSErrorCode(0'i32):
-      result = $os.strerror(errorCode.int32)
+      result = $os.c_strerror(errorCode.int32)
 
 proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   ## Raises an ``OSError`` exception. The ``errorCode`` will determine the

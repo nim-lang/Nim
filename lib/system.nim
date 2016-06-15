@@ -1593,34 +1593,32 @@ proc substr*(s: string, first, last: int): string {.
   ## is used instead: This means ``substr`` can also be used to `cut`:idx:
   ## or `limit`:idx: a string's length.
 
-when not defined(nimscript):
-  proc zeroMem*(p: pointer, size: Natural) {.importc, noDecl, benign.}
+when not defined(nimscript) and not defined(JS):
+  proc zeroMem*(p: pointer, size: Natural) {.inline, benign.}
     ## overwrites the contents of the memory at ``p`` with the value 0.
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: pointer, size: Natural) {.
-    importc: "memcpy", header: "<string.h>", benign.}
+  proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: pointer, size: Natural) {.
-    importc: "memmove", header: "<string.h>", benign.}
+  proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may overlap, ``moveMem`` handles this case appropriately
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still *unsafe*, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.
-    importc: "equalMem", noDecl, noSideEffect.}
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect.}
     ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared. If the blocks are equal, true is returned, false
     ## otherwise. Like any procedure dealing with raw memory this is
     ## *unsafe*.
 
+when not defined(nimscript):
   when hasAlloc:
     proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign.}
       ## allocates a new memory block with at least ``size`` bytes. The
@@ -1812,7 +1810,7 @@ const
   NimMinor*: int = 14
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 2
+  NimPatch*: int = 3
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2618,11 +2616,21 @@ when not defined(JS): #and not defined(nimscript):
 
   {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
 
-  when not defined(nimscript):
-    include "system/ansi_c"
+  include "system/ansi_c"
 
+  when not defined(nimscript):
     proc cmp(x, y: string): int =
       result = int(c_strcmp(x, y))
+
+    proc zeroMem(p: pointer, size: Natural) =
+      c_memset(p, 0, size)
+    proc copyMem(dest, source: pointer, size: Natural) =
+      c_memcpy(dest, source, size)
+    proc moveMem(dest, source: pointer, size: Natural) =
+      c_memmove(dest, source, size)
+    proc equalMem(a, b: pointer, size: Natural): bool =
+      c_memcmp(a, b, size) == 0
+
   else:
     proc cmp(x, y: string): int =
       if x < y: result = -1
@@ -2644,22 +2652,6 @@ when not defined(JS): #and not defined(nimscript):
       ## Raises an IO exception in case of an error.
 
   when not defined(nimscript) and hostOS != "standalone":
-    when defined(windows):
-      # work-around C's sucking abstraction:
-      # BUGFIX: stdin and stdout should be binary files!
-      proc setmode(handle, mode: int) {.importc: "setmode",
-                                        header: "<io.h>".}
-      proc fileno(f: C_TextFileStar): int {.importc: "fileno",
-                                            header: "<fcntl.h>".}
-      var
-        O_BINARY {.importc: "O_BINARY", nodecl.}: int
-
-      # we use binary mode on Windows:
-      setmode(fileno(c_stdin), O_BINARY)
-      setmode(fileno(c_stdout), O_BINARY)
-
-    when defined(endb):
-      proc endbStep()
 
     # text file handling:
     var
@@ -2669,6 +2661,21 @@ when not defined(JS): #and not defined(nimscript):
         ## The standard output stream.
       stderr* {.importc: "stderr", header: "<stdio.h>".}: File
         ## The standard error stream.
+
+    when defined(windows):
+      # work-around C's sucking abstraction:
+      # BUGFIX: stdin and stdout should be binary files!
+      proc c_setmode(handle, mode: cint) {.importc: "_setmode",
+                                           header: "<io.h>".}
+      var
+        O_BINARY {.importc: "O_BINARY", nodecl.}: cint
+
+      # we use binary mode on Windows:
+      c_setmode(c_fileno(stdin), O_BINARY)
+      c_setmode(c_fileno(stdout), O_BINARY)
+
+    when defined(endb):
+      proc endbStep()
 
     when defined(useStdoutAsStdmsg):
       template stdmsg*: File = stdout
@@ -2708,17 +2715,19 @@ when not defined(JS): #and not defined(nimscript):
       ##
       ## Default mode is readonly. Returns true iff the file could be reopened.
 
-    proc close*(f: File) {.importc: "fclose", header: "<stdio.h>", tags: [].}
+    proc setStdIoUnbuffered*() {.tags: [], benign.}
+      ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
+
+    proc close*(f: File) {.tags: [].}
       ## Closes the file.
 
     proc endOfFile*(f: File): bool {.tags: [], benign.}
       ## Returns true iff `f` is at the end.
 
-    proc readChar*(f: File): char {.
-      importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
+    proc readChar*(f: File): char {.tags: [ReadIOEffect].}
       ## Reads a single character from the stream `f`.
-    proc flushFile*(f: File) {.
-      importc: "fflush", header: "<stdio.h>", tags: [WriteIOEffect].}
+
+    proc flushFile*(f: File) {.tags: [WriteIOEffect].}
       ## Flushes `f`'s buffer.
 
     proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.}
@@ -2824,8 +2833,7 @@ when not defined(JS): #and not defined(nimscript):
       ## retrieves the current position of the file pointer that is used to
       ## read from the file `f`. The file's first byte has the index zero.
 
-    proc getFileHandle*(f: File): FileHandle {.importc: "fileno",
-                                               header: "<stdio.h>"}
+    proc getFileHandle*(f: File): FileHandle
       ## returns the OS file handle of the file ``f``. This is only useful for
       ## platform specific programming.
 

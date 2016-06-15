@@ -570,7 +570,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   else:
     genLineDir(p, t)
     # reraise the last exception:
-    if p.module.compileToCpp:
+    if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions:
       line(p, cpsStmts, ~"throw;$n")
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n")

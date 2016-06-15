@@ -104,12 +104,7 @@ proc newWideCString*(source: cstring, L: int): WideCString =
 proc newWideCString*(s: cstring): WideCString =
   if s.isNil: return nil
 
-  when not declared(c_strlen):
-    proc c_strlen(a: cstring): int {.
-      header: "<string.h>", noSideEffect, importc: "strlen".}
-
-  let L = c_strlen(s)
-  result = newWideCString(s, L)
+  result = newWideCString(s, s.len)
 
 proc newWideCString*(s: string): WideCString =
   result = newWideCString(s, s.len)
