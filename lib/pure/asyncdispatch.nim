@@ -1526,13 +1526,11 @@ proc processBody(node, retFutureSym: NimNode,
       case node[1].kind
       of nnkIdent, nnkInfix:
         # await x
-        result = newNimNode(nnkStmtList, node)
-        var futureValue: NimNode
-        result.useVar(node[1], futureValue, futureValue, node)
-        # -> yield x
-        # -> x.read()
+        # await x or y
+        result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
       of nnkCall, nnkCommand:
         # await foo(p, x)
+        # await foo p, x
         var futureValue: NimNode
         result.createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
                   futureValue, node)
@@ -1738,7 +1736,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "g":
+  #if prc[0].getName == "testInfix":
   #  echo(toStrLit(result))
 
 macro async*(prc: stmt): stmt {.immediate.} =
