@@ -1,0 +1,121 @@
+discard """
+  file: "tnewasyncudp.nim"
+  output: "5000"
+"""
+import asyncdispatch, nativesockets, net, strutils, os
+
+when defined(windows):
+  import winlean
+else:
+  import posix
+
+var msgCount = 0
+var recvCount = 0
+
+const
+  messagesToSend = 100
+  swarmSize = 50
+  serverPort = 10333
+
+var
+  sendports = 0
+  recvports = 0
+
+proc saveSendingPort(port: int) =
+  sendports = sendports + port
+
+proc saveReceivedPort(port: int) =
+  recvports = recvports + port
+
+proc prepareAddress(intaddr: uint32, intport: uint16): ptr Sockaddr_in =
+  result = cast[ptr Sockaddr_in](alloc0(sizeof(Sockaddr_in)))
+  when defined(windows):
+    result.sin_family = toInt(nativesockets.AF_INET).int16
+  else:
+    result.sin_family = toInt(nativesockets.AF_INET)
+  result.sin_port = htons(intport)
+  result.sin_addr.s_addr = htonl(intaddr)
+
+proc launchSwarm(name: ptr SockAddr) {.async.} =
+  var name_address = getAddrString(name)
+  var name_addr = cast[ptr Sockaddr_in](name)
+  var name_port = Port(ntohs(name_addr.sin_port))
+  var i = 0
+  var k = 0
+  while i < swarmSize:
+    var peeraddr = prepareAddress(INADDR_ANY, 0)
+    var sock = newAsyncNativeSocket(nativesockets.AF_INET,
+                                    nativesockets.SOCK_DGRAM,
+                                    Protocol.IPPROTO_UDP)
+    if bindAddr(sock.SocketHandle, cast[ptr SockAddr](peeraddr),
+              sizeof(Sockaddr_in).Socklen) < 0'i32:
+      raiseOSError(osLastError())
+    let sockport = getSockName(sock.SocketHandle).int
+    k = 0
+    while k < messagesToSend:
+      if (k %% 2) == 0:
+        #echo("Sending [" & "Message " & $(i * messagesToSend + k) & "] using m1")
+        await sendTo(sock, "Message " & $(i * messagesToSend + k),
+                     name, sizeof(Sockaddr_in).SockLen)
+        saveSendingPort(sockport)
+      else:
+        #echo("Sending [" & "Message " & $(i * messagesToSend + k) & "] using m2")
+        await sendTo(sock, "Message " & $(i * messagesToSend + k),
+                     name_address, name_port)
+        saveSendingPort(sockport)
+      inc(k)
+    closeSocket(sock)
+    inc(i)
+
+proc readMessages(server: AsyncFD) {.async.} =
+  var buffer: array[16384, char]
+  var slen = sizeof(Sockaddr_in).SockLen
+  var saddr = Sockaddr_in()
+  var maxResponses = (swarmSize * messagesToSend) div 2
+  #var maxResponses = (swarmSize * messagesToSend)
+
+  var i = 0
+  while i < maxResponses:
+    var gramm = await recvFrom(server)
+    if gramm.data.startswith("Message ") and
+       gramm.saddr.sin_addr.s_addr == 0x100007F:
+       inc(msgCount)
+       saveReceivedPort(ntohs(gramm.saddr.sin_port).int)
+       inc(recvCount)
+    inc(i)
+  i = 0
+  while i < maxResponses:
+    zeroMem(addr(buffer[0]), 16384)
+    zeroMem(cast[pointer](addr(saddr)), sizeof(Sockaddr_in))
+    var size = await recvFromInto(server, cast[cstring](addr buffer[0]),
+                                  16384, cast[ptr SockAddr](addr(saddr)),
+                                  addr(slen))
+    size = 0
+    var grammString = $buffer
+    if grammString.startswith("Message ") and
+       saddr.sin_addr.s_addr == 0x100007F:
+      inc(msgCount)
+      saveReceivedPort(ntohs(saddr.sin_port).int)
+      inc(recvCount)
+    inc(i)
+
+proc createServer() {.async.} =
+  var name = prepareAddress(INADDR_ANY, serverPort)
+  var server = newAsyncNativeSocket(nativesockets.AF_INET,
+                                    nativesockets.SOCK_DGRAM,
+                                    Protocol.IPPROTO_UDP)
+  if bindAddr(server.SocketHandle, cast[ptr SockAddr](name),
+              sizeof(Sockaddr_in).Socklen) < 0'i32:
+    raiseOSError(osLastError())
+  asyncCheck readMessages(server)
+
+var name = prepareAddress(0x7F000001, serverPort) # 127.0.0.1
+asyncCheck createServer()
+asyncCheck launchSwarm(cast[ptr SockAddr](name))
+while true:
+  poll()
+  if recvCount == swarmSize * messagesToSend:
+    break
+assert msgCount == swarmSize * messagesToSend
+assert sendports == recvports
+echo msgCount
