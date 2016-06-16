@@ -37,7 +37,8 @@ when defined(windows):
     SIGINT = cint(2)
     SIGSEGV = cint(11)
     SIGTERM = cint(15)
-elif defined(macosx) or defined(linux):
+elif defined(macosx) or defined(linux) or defined(freebsd) or
+     defined(openbsd) or defined(netbsd) or defined(solaris):
   const
     SIGABRT = cint(6)
     SIGFPE = cint(8)
