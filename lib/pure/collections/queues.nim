@@ -34,25 +34,8 @@
 ##     while q.len > 0:  # checking if the queue is empty
 ##       echo q.pop()
 ##
-##
 ## Note: For inter thread communication use
 ## a `Channel <channels.html>`_ instead.
-
-proc englishOrdinal(n: SomeInteger): string =
-  # Temporary proc. Needs to be moved somewhere else as it can be reused in
-  # other places too.
-  # If this accepted number strings instead and only gave out the letters it
-  # would be more flexible, permitting things like 1.100.000th, 34,545,321st
-  # but it would be harder and more error prone to use.
-  let num = $n
-  if num.len > 1 and num[^2] == '1':
-    return num & "th"
-  else:
-    case num[^1]
-    of '1': return num & "st"
-    of '2': return num & "nd"
-    of '3': return num & "rd"
-    else: return num & "th"
 
 import math
 
@@ -66,8 +49,12 @@ type
 proc initQueue*[T](initialSize: int = 4): Queue[T] =
   ## Create a new queue.
   ## Optionally, the initial capacity can be reserved via `initialSize` as a
-  ## performance optimization. `initialSize` needs to be a power of 2.
-  ## The lenght of a newly created queue will still be 0.
+  ## performance optimization. The length of a newly created queue will still
+  ## be 0.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module.
   assert isPowerOfTwo(initialSize)
   result.mask = initialSize-1
   newSeq(result.data, initialSize)
@@ -90,17 +77,13 @@ template emptyCheck(q) =
   when compileOption("boundChecks"):
     if unlikely(q.count < 1):
       raise newException(IndexError, "Empty queue.")
-  discard
 
 template xBoundsCheck(q, i) =
   # Bounds check for the array like accesses.
   when compileOption("boundChecks"):  # d:release should disable this.
     if unlikely(i >= q.count):  # x < q.low is taken care by the Natural parameter
       raise newException(IndexError,
-                         "Tried to access the " & englishOrdinal(i+1) &
-                         " element of the queue but it has only " &
-                         $q.count &  " elements.")
-  discard
+                         "Out of bounds: " & $i & " > " & $(q.count - 1))
 
 proc front*[T](q: Queue[T]): T {.inline.}=
   ## Return the oldest element of `q`. Equivalent to `q.pop()` but does not
@@ -167,7 +150,7 @@ proc add*[T](q: var Queue[T], item: T) =
   ## Add an `item` to the end of the queue `q`.
   var cap = q.mask+1
   if unlikely(q.count >= cap):
-    var n {.noinit.} = newSeq[T](cap*2)
+    var n = newSeq[T](cap*2)
     for i, x in q:
       shallowCopy(n[i], x)  # does not use copyMem because the GC.
     shallowCopy(q.data, n)
@@ -196,13 +179,13 @@ proc dequeue*[T](q: var Queue[T]): T =
 proc `$`*[T](q: Queue[T]): string =
   ## Turn a queue into its string representation.
   result = "["
-  for x in q:
+  for x in items(q):  # Don't remove the items here for reasons that don't fit in this margin.
     if result.len > 1: result.add(", ")
     result.add($x)
   result.add("]")
 
 when isMainModule:
-  var q = initQueue[int]()
+  var q = initQueue[int](1)
   q.add(123)
   q.add(9)
   q.enqueue(4)
@@ -246,6 +229,14 @@ when isMainModule:
       assert false
     except IndexError:
       discard
+
+  # grabs some types of resize error.
+  q = initQueue[int]()
+  for i in 1 .. 4: q.add i
+  q.pop()
+  q.pop()
+  for i in 5 .. 8: q.add i
+  assert $q == "[3, 4, 5, 6, 7, 8]"
 
   # Similar to proc from the documentation example
   proc foo(a, b: Positive) = # assume random positive values for `a` and `b`.
