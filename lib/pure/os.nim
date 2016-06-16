@@ -815,7 +815,10 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
     if res == 0:
       for i in 0.. f.gl_pathc - 1:
         assert(f.gl_pathv[i] != nil)
-        yield $f.gl_pathv[i]
+        let path = $f.gl_pathv[i]
+        # Make sure it's a file and not a directory
+        if fileExists(path):
+          yield path
 
 type
   PathComponent* = enum   ## Enumeration specifying a path component.
