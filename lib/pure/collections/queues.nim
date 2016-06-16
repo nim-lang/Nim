@@ -63,15 +63,6 @@ proc len*[T](q: Queue[T]): int {.inline.}=
   ## Return the number of elements of `q`.
   result = q.count
 
-proc low*[T](q: Queue[T]): int {.inline.}=
-  ## Return the index of the oldest element of `q` (always 0).
-  result = 0
-
-proc high*[T](q: Queue[T]): int {.inline.}=
-  ## Return the index of the last element inserted on `q` (equivalent to
-  ## `q.len - 1`).
-  result = q.count - 1
-
 template emptyCheck(q) =
   # Bounds check for the regular queue access.
   when compileOption("boundChecks"):
@@ -151,8 +142,8 @@ proc add*[T](q: var Queue[T], item: T) =
   var cap = q.mask+1
   if unlikely(q.count >= cap):
     var n = newSeq[T](cap*2)
-    for i, x in q:
-      shallowCopy(n[i], x)  # does not use copyMem because the GC.
+    for i, x in q:  # don't use copyMem because the GC and because it's slower.
+      shallowCopy(n[i], x)
     shallowCopy(q.data, n)
     q.mask = cap*2 - 1
     q.wr = q.count
@@ -203,8 +194,6 @@ when isMainModule:
   assert q[^1] == q.back and q.back == 789
   q[0] = 42
   q[^1] = 7
-  assert q[q.low] == 42
-  assert q[q.high] == 7
 
   assert 6 in q and 789 notin q
   assert q.find(6) >= 0
