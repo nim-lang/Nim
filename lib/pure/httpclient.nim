@@ -167,7 +167,7 @@ proc parseChunks(s: Socket, timeout: int): string =
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(s: Socket, headers: HttpHeaders, timeout: int): string =
+proc parseBody(s: Socket, headers: HttpHeaders, httpVersion: string, timeout: int): string =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = parseChunks(s, timeout)
@@ -193,7 +193,7 @@ proc parseBody(s: Socket, headers: HttpHeaders, timeout: int): string =
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers.getOrDefault"Connection" == "close":
+      if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         var buf = ""
         while true:
           buf = newString(4000)
@@ -249,7 +249,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
-    result.body = parseBody(s, result.headers, timeout)
+    result.body = parseBody(s, result.headers, result.version, timeout)
   else:
     result.body = ""
 
@@ -685,7 +685,8 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
 proc parseBody(client: AsyncHttpClient,
-               headers: HttpHeaders): Future[string] {.async.} =
+               headers: HttpHeaders,
+               httpVersion: string): Future[string] {.async.} =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = await parseChunks(client)
@@ -707,7 +708,7 @@ proc parseBody(client: AsyncHttpClient,
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers.getOrDefault"Connection" == "close":
+      if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         var buf = ""
         while true:
           buf = await client.socket.recvFull(4000)
@@ -761,7 +762,7 @@ proc parseResponse(client: AsyncHttpClient,
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
-    result.body = await parseBody(client, result.headers)
+    result.body = await parseBody(client, result.headers, result.version)
   else:
     result.body = ""
 
