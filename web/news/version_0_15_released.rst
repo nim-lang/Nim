@@ -13,6 +13,12 @@ Changes affecting backwards compatibility
 - De-deprecated ``re.nim`` because we have too much code using it
   and it got the basic API right.
 
+- ``split`` with ``set[char]`` as a delimiter in ``strutils.nim``
+  no longer strips and splits characters out of the target string
+  by the entire set of characters. Instead, it now behaves in a
+  similar fashion to ``split`` with ``string`` and ``char``
+  delimiters.
+
 Library Additions
 -----------------
 
