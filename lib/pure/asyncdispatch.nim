@@ -434,6 +434,9 @@ when defined(windows) or defined(nimdoc):
       fd*: AsyncFD # TODO: Rename this.
       cb*: proc (fd: AsyncFD, bytesTransferred: Dword,
                 errcode: OSErrorCode) {.closure,gcsafe.}
+      cell*: ForeignCell # we need this `cell` to protect our `cb` environment,
+                         # when using RegisterWaitForSingleObject, because
+                         # waiting is done in different thread.
 
     PDispatcher* = ref object of PDispatcherBase
       ioPort: Handle
@@ -517,6 +520,13 @@ when defined(windows) or defined(nimdoc):
 
       customOverlapped.data.cb(customOverlapped.data.fd,
           lpNumberOfBytesTransferred, OSErrorCode(-1))
+
+      # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
+      # so we need to dispose our `cb` environment, because it is not needed
+      # anymore.
+      if customOverlapped.data.cell.data != nil:
+        system.dispose(customOverlapped.data.cell)
+
       GC_unref(customOverlapped)
     else:
       let errCode = osLastError()
@@ -524,6 +534,8 @@ when defined(windows) or defined(nimdoc):
         assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
         customOverlapped.data.cb(customOverlapped.data.fd,
             lpNumberOfBytesTransferred, errCode)
+        if customOverlapped.data.cell.data != nil:
+          system.dispose(customOverlapped.data.cell)
         GC_unref(customOverlapped)
       else:
         if errCode.int32 == WAIT_TIMEOUT:
@@ -1026,6 +1038,10 @@ when defined(windows) or defined(nimdoc):
               # poll()
               GC_ref(pcd.ovl)
     )
+    # We need to protect our callback environment value, so GC will not free it
+    # accidentally.
+    ol.data.cell = system.protect(rawEnv(ol.data.cb))
+
     # This is main part of `hacky way` is using WSAEventSelect, so `hEvent`
     # will be signaled when appropriate `mask` events will be triggered.
     if wsaEventSelect(fd.SocketHandle, hEvent, mask) != 0:
@@ -1526,13 +1542,11 @@ proc processBody(node, retFutureSym: NimNode,
       case node[1].kind
       of nnkIdent, nnkInfix:
         # await x
-        result = newNimNode(nnkStmtList, node)
-        var futureValue: NimNode
-        result.useVar(node[1], futureValue, futureValue, node)
-        # -> yield x
-        # -> x.read()
+        # await x or y
+        result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
       of nnkCall, nnkCommand:
         # await foo(p, x)
+        # await foo p, x
         var futureValue: NimNode
         result.createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
                   futureValue, node)
@@ -1738,7 +1752,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   result[6] = outerProcBody
 
   #echo(treeRepr(result))
-  #if prc[0].getName == "g":
+  #if prc[0].getName == "testInfix":
   #  echo(toStrLit(result))
 
 macro async*(prc: stmt): stmt {.immediate.} =

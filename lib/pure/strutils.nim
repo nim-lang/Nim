@@ -1319,38 +1319,6 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
     else: result[i] = s[i]
     inc(i)
 
-proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
-  procvar, rtl, extern: "nsuExpandTabsStr".} =
-  ## Expand tab characters in `s` by `tabSize` spaces
-
-  if len(s) == 0:
-    return s
-
-  result = newStringOfCap(s.len + s.len shr 2)
-
-  var pos = 0
-
-  template addSpaces(n) =
-    for j in 0 ..< n:
-      result.add(' ')
-      pos += 1
-
-  for i in 0 ..< len(s):
-    let c = s[i]
-
-    if c == '\t':
-      let
-        denominator = if tabSize > 0: tabSize else: 1
-        numSpaces = tabSize - pos mod denominator
-
-      addSpaces(numSpaces)
-    else:
-      result.add(c)
-      pos += 1
-
-    if c == '\l':
-      pos = 0
-
 proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceWord".} =
   ## Replaces `sub` in `s` by the string `by`.
@@ -2206,14 +2174,6 @@ when isMainModule:
   doAssert isUpper("ABC")
   doAssert(not isUpper("AAcc"))
   doAssert(not isUpper("A#$"))
-
-  doAssert expandTabs("\t", 4) == "    "
-  doAssert expandTabs("\tfoo\t", 4) == "    foo "
-  doAssert expandTabs("\tfoo\tbar", 4) == "    foo bar"
-  doAssert expandTabs("\tfoo\tbar\t", 4) == "    foo bar "
-  doAssert expandTabs("", 4) == ""
-  doAssert expandTabs("", 0) == ""
-  doAssert expandTabs("\t\t\t", 0) == ""
 
   doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
   doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
