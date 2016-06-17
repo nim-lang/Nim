@@ -138,11 +138,6 @@ when not defined(JS):
   proc exp*(x: float64): float64 {.importc: "exp", header: "<math.h>".}
     ## Computes the exponential function of `x` (pow(E, x))
 
-  proc round0(x: float32): float32 {.importc: "roundf", header: "<math.h>".}
-  proc round0(x: float64): float64 {.importc: "round", header: "<math.h>".}
-    ## Converts a float to an int by rounding.  Used internally by the round
-    ## function when the specified number of places is 0.
-
   proc arccos*(x: float32): float32 {.importc: "acosf", header: "<math.h>".}
   proc arccos*(x: float64): float64 {.importc: "acos", header: "<math.h>".}
     ## Computes the arc cosine of `x`
@@ -224,6 +219,17 @@ when not defined(JS):
     ##
     ## .. code-block:: nim
     ##  echo ceil(-2.1) ## -2.0
+  
+  when defined(windows):
+    proc round0[T: float32|float64](x: T): T =
+      ## Windows compilers prior to MSVC 2012 do not implement 'round',
+      ## 'roundl' or 'roundf'.
+      result = if x < 0.0: ceil(x - T(0.5)) else: floor(x + T(0.5))
+  else:
+    proc round0(x: float32): float32 {.importc: "roundf", header: "<math.h>".}
+    proc round0(x: float64): float64 {.importc: "round", header: "<math.h>".}
+      ## Converts a float to an int by rounding.  Used internally by the round
+      ## function when the specified number of places is 0.
 
   proc fmod*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc fmod*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
