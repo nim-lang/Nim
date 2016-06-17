@@ -260,7 +260,10 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
     else:
       result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
   else:
-    result = genArgNoParam(p, ri.sons[i])
+    # TODO: add a semantic check to detect this at the definition.
+    # For now, report the error at the callsite.
+    #result = genArgNoParam(p, ri.sons[i])
+    localError(ri.info, "wrong argument count") 
 
 discard """
 Dot call syntax in C++
