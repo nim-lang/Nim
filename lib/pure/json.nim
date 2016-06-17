@@ -848,6 +848,16 @@ proc hasKey*(node: JsonNode, key: string): bool =
   assert(node.kind == JObject)
   result = node.fields.hasKey(key)
 
+proc contains*(node: JsonNode, key: string): bool =
+  ## Checks if `key` exists in `node`.
+  assert(node.kind == JObject)
+  node.fields.hasKey(key)
+
+proc contains*(node: JsonNode, val: JsonNode): bool =
+  ## Checks if `val` exists in array `node`.
+  assert(node.kind == JArray)
+  find(node.elems, val) >= 0
+
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
