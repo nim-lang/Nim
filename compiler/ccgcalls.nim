@@ -262,7 +262,6 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   else:
     # TODO: add a semantic check to detect this at the definition.
     # For now, report the error at the callsite.
-    #result = genArgNoParam(p, ri.sons[i])
     localError(ri.info, "wrong argument count") 
 
 discard """
