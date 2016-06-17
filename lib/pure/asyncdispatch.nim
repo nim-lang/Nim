@@ -908,7 +908,7 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
     return retFuture
 
-  proc recvFromInto*(socket: AsyncFD, buf: pointer, size: int,
+  proc recvFromInto*(socket: AsyncFD, data: pointer, size: int,
                      saddr: ptr SockAddr, saddrLen: ptr SockLen,
                      flags = {SocketFlag.SafeDisconn}): Future[int] =
     ## Receives a datagram data from ``socket`` into ``buf``, which must
@@ -919,7 +919,7 @@ when defined(windows) or defined(nimdoc):
     verifyPresence(socket)
     var retFuture = newFuture[int]("recvFromInto")
 
-    var dataBuf = TWSABuf(buf: cast[cstring](buf), len: size.ULONG)
+    var dataBuf = TWSABuf(buf: cast[cstring](data), len: size.ULONG)
 
     var bytesReceived = 0.Dword
     var lowFlags = 0.Dword
