@@ -66,7 +66,7 @@ when defined(posix) and not defined(JS):
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
-  var  
+  var
     tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
   # we also need tzset() to make sure that tzname is initialized
   proc tzset() {.importc, header: "<time.h>".}
@@ -369,7 +369,10 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## very accurate.
   let t = toSeconds(toTime(a))
   let secs = toSeconds(a, interval)
-  result = getLocalTime(fromSeconds(t + secs))
+  if a.tzname == "UTC":
+    result = getGMTime(fromSeconds(t + secs))
+  else:
+    result = getLocalTime(fromSeconds(t + secs))
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## subtracts ``interval`` time from TimeInfo ``a``.
@@ -386,7 +389,10 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   intval.months = - interval.months
   intval.years = - interval.years
   let secs = toSeconds(a, intval)
-  result = getLocalTime(fromSeconds(t + secs))
+  if a.tzname == "UTC":
+    result = getGMTime(fromSeconds(t + secs))
+  else:
+    result = getLocalTime(fromSeconds(t + secs))
 
 proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
 
