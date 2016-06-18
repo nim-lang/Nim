@@ -26,6 +26,12 @@ include "system/inclrtl"
 
 {.pop.}
 
+# Support old split with set[char]
+when defined(nimOldSplit):
+  {.pragma: deprecatedSplit, deprecated.}
+else:
+  {.pragma: deprecatedSplit.}
+
 type
   CharSet* {.deprecated.} = set[char] # for compatibility with Nim
 {.deprecated: [TCharSet: CharSet].}
@@ -376,6 +382,22 @@ template splitCommon(s, sep, maxsplit, sepLen) =
       dec(splits)
       inc(last, sepLen)
 
+when defined(nimOldSplit):
+  template oldSplit(s, seps, maxsplit) =
+    ## Deprecated split[char] for transition period
+    var last = 0
+    var splits = maxsplit
+    assert(not ('\0' in seps))
+    while last < len(s):
+      while s[last] in seps: inc(last)
+      var first = last
+      while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
+      if first <= last-1:
+        if splits == 0: last = len(s)
+        yield substr(s, first, last-1)
+        if splits == 0: break
+        dec(splits)
+
 iterator split*(s: string, seps: set[char] = Whitespace,
                 maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a group of separators.
@@ -418,7 +440,10 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##   "08"
   ##   "08.398990"
   ##
-  splitCommon(s, seps, maxsplit, 1)
+  when defined(nimOldSplit):
+    oldSplit(s, seps, maxsplit)
+  else:
+    splitCommon(s, seps, maxsplit, 1)
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
