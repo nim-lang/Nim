@@ -1542,6 +1542,24 @@ proc sleepAsync*(ms: int): Future[void] =
   p.timers.push((epochTime() + (ms / 1000), retFuture))
   return retFuture
 
+proc withTimeout*[T](fut: Future[T], timeout: int): Future[bool] =
+  ## Returns a future which will complete once ``fut`` completes or after
+  ## ``timeout`` milliseconds has elapsed.
+  ##
+  ## If ``fut`` completes first the returned future will hold true,
+  ## otherwise, if ``timeout`` milliseconds has elapsed first, the returned
+  ## future will hold false.
+
+  var retFuture = newFuture[bool]("asyncdispatch.`withTimeout`")
+  var timeoutFuture = sleepAsync(timeout)
+  fut.callback =
+    proc () =
+      if not retFuture.finished: retFuture.complete(true)
+  timeoutFuture.callback =
+    proc () =
+      if not retFuture.finished: retFuture.complete(false)
+  return retFuture
+
 proc accept*(socket: AsyncFD,
     flags = {SocketFlag.SafeDisconn}): Future[AsyncFD] =
   ## Accepts a new connection. Returns a future containing the client socket
