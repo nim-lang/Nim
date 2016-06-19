@@ -139,6 +139,7 @@ proc instantiateDestructor(c: PContext, typ: PType): PType =
   t = t.skipTypes({tyGenericInst})
   case t.kind
   of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
+    t.destructor = analyzingDestructor
     if instantiateDestructor(c, t.sons[0]) != nil:
       t.destructor = getCompilerProc"nimDestroyRange"
       return t
