@@ -1969,3 +1969,9 @@ proc waitFor*[T](fut: Future[T]): T =
     poll()
 
   fut.read
+
+proc timedWaitFor*[T](fut: Future[T], timeout: int = 500): bool =
+  ## **Blocks** the current thread until the specified future completes or timeouts.
+  ## Returns true if the future was completed, false otherwise.
+  waitFor fut or sleepAsync(timeout)
+  return fut.finished
