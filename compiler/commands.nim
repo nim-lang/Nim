@@ -185,6 +185,7 @@ proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   of wOff:
     excl(gNotes, n)
     incl(disableNotes, n)
+    excl(ForeignPackageNotes, n)
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processCompile(filename: string) =

@@ -502,8 +502,6 @@ type
   ESuggestDone* = object of Exception
 
 const
-  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
-    hintQuitCalled}
   NotesVerbosity*: array[0..3, TNoteKinds] = [
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
@@ -531,6 +529,8 @@ const
   InvalidFileIDX* = int32(-1)
 
 var
+  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
+    hintQuitCalled}
   filenameToIndexTbl = initTable[string, int32]()
   fileInfos*: seq[TFileInfo] = @[]
   systemFileIdx*: int32
