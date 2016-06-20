@@ -228,7 +228,7 @@ when not defined(JS):
   else:
     proc round0(x: float32): float32 {.importc: "roundf", header: "<math.h>".}
     proc round0(x: float64): float64 {.importc: "round", header: "<math.h>".}
-      ## Converts a float to an int by rounding.  Used internally by the round
+      ## Rounds a float to zero decimal places.  Used internally by the round
       ## function when the specified number of places is 0.
 
   proc fmod*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
