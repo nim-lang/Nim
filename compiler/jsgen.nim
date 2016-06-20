@@ -1678,8 +1678,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
-  of mSetLengthStr: binaryExpr(p, n, r, "", "$1.length = $2+1; $1[$1.length-1] = 0" | "")
-  of mSetLengthSeq: binaryExpr(p, n, r, "", "$1.length = $2" | "")
+  of mSetLengthStr:
+    binaryExpr(p, n, r, "", "$1.length = $2+1; $1[$1.length-1] = 0" | "$1 = substr($1, 0, $2)")
+  of mSetLengthSeq: binaryExpr(p, n, r, "", "$1.length = $2" | "$1 = array_slice($1, 0, $2)")
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
   of mLtSet: binaryExpr(p, n, r, "SetLt", "SetLt($1, $2)")
   of mLeSet: binaryExpr(p, n, r, "SetLe", "SetLe($1, $2)")
