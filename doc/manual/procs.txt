@@ -619,7 +619,7 @@ Note that ``system.finished`` is error prone to use because it only returns
   3
   0
 
-Instead this code has be used:
+Instead this code has to be used:
 
 .. code-block:: nim
   var c = mycount # instantiate the iterator
