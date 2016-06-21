@@ -940,6 +940,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     considerPreviousT:
       if a.kind == tyGenericInst and a.sons[0] == f:
         bindingRet isGeneric
+      elif a.kind == tyGenericBody and a == f:
+        bindingRet isGeneric
       let ff = lastSon(f)
       if ff != nil: result = typeRel(c, ff, a)
 
