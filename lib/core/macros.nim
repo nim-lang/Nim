@@ -667,8 +667,18 @@ template expectRoutine(node: NimNode): stmt =
   expectKind(node, RoutineNodes)
 
 proc name*(someProc: NimNode): NimNode {.compileTime.} =
+  ## Returns name node of the proc. Note: if result is nnkPostfix
+  ## the name is not unpacked. Use `unpackedName` to obtain the "pure" name.
   someProc.expectRoutine
   result = someProc[0]
+
+proc unpackedName*(someProc: NimNode): NimNode {.compileTime.} =
+  ## Returns name node of the proc. Note: if result is nnkPostfix
+  ## the name is unpacked.
+  result = someProc.name
+  if not result.isNil and result.kind == nnkPostfix:
+    result = result[1]
+
 proc `name=`*(someProc: NimNode; val: NimNode) {.compileTime.} =
   someProc.expectRoutine
   someProc[0] = val
@@ -692,6 +702,14 @@ proc `pragma=`*(someProc: NimNode; val: NimNode){.compileTime.}=
   assert val.kind in {nnkEmpty, nnkPragma}
   someProc[4] = val
 
+proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
+  ## Adds pragma to routine definition
+  someProc.expectRoutine
+  var pragmaNode = someProc.pragma
+  if pragmaNode.isNil or pragmaNode.kind == nnkEmpty:
+    pragmaNode = newNimNode(nnkPragma)
+    someProc.pragma = pragmaNode
+  pragmaNode.add(pragma)
 
 template badNodeKind(k; f): stmt{.immediate.} =
   assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
