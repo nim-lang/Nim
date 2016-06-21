@@ -758,12 +758,12 @@ template findChild*(n: NimNode; cond: expr): NimNode {.
   ##   var res = findChild(n, it.kind == nnkPostfix and
   ##                          it.basename.ident == !"foo")
   block:
-    var result: NimNode
+    var res: NimNode
     for it in n.children:
       if cond:
-        result = it
+        res = it
         break
-    result
+    res
 
 proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
   ## Insert node B into A at pos
