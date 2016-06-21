@@ -253,7 +253,7 @@ proc addFiles(s: var seq[string], patterns: seq[string]) =
       walkDirRecursively(s, p, p, false)
     else:
       var i = 0
-      for f in walkFiles(p):
+      for f in walkPattern(p):
         if existsDir(f):
           walkDirRecursively(s, f, p, false)
         elif not ignoreFile(f, p, false):
