@@ -5,11 +5,15 @@ type
 
 {.deprecated: [TMersenneTwister: MersenneTwister].}
 
-proc newMersenneTwister*(seed: uint32): MersenneTwister =
-  result.index = 0
-  result.mt[0] = seed
+proc seed*(m: var MersenneTwister, seed: uint32) =
+  ## Initializes the mersenne twister with a specific seed.
+  m.index = 0
+  m.mt[0] = seed
   for i in 1..623'u32:
-    result.mt[i] = (0x6c078965'u32 * (result.mt[i-1] xor (result.mt[i-1] shr 30'u32)) + i)
+    m.mt[i] = (0x6c078965'u32 * (m.mt[i-1] xor (m.mt[i-1] shr 30'u32)) + i)
+
+proc newMersenneTwister*(seed: uint32): MersenneTwister =
+  result.seed(seed)
 
 proc generateNumbers(m: var MersenneTwister) =
   for i in 0..623:
