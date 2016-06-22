@@ -1690,7 +1690,29 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mMinusSet: binaryExpr(p, n, r, "SetMinus", "SetMinus($1, $2)")
   of mIncl: binaryExpr(p, n, r, "", "$1[$2] = true")
   of mExcl: binaryExpr(p, n, r, "", "delete $1[$2]" | "unset $1[$2]")
-  of mInSet: binaryExpr(p, n, r, "", "($1[$2] != undefined)" | "isset($1[$2])")
+  of mInSet:
+    if p.target == targetJS:
+      binaryExpr(p, n, r, "", "($1[$2] != undefined)")
+    else:
+      let s = n.sons[1]
+      if s.kind == nkCurly:
+        var a, b, x: TCompRes
+        gen(p, n.sons[2], x)
+        r.res = rope("(")
+        r.kind = resExpr
+        for i in countup(0, sonsLen(s) - 1):
+          if i > 0: add(r.res, " || ")
+          var it = s.sons[i]
+          if it.kind == nkRange:
+            gen(p, it.sons[0], a)
+            gen(p, it.sons[1], b)
+            addf(r.res, "($1 >= $2 && $1 <= $3)", [x.res, a.res, b.res,])
+          else:
+            gen(p, it, a)
+            addf(r.res, "($1 == $2)", [x.res, a.res])
+        add(r.res, ")")
+      else:
+        binaryExpr(p, n, r, "", "isset($1[$2])")
   of mNewSeq: genNewSeq(p, n)
   of mOf: genOf(p, n, r)
   of mReset: genReset(p, n)
