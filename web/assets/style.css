@@ -606,6 +606,11 @@ dt.level-1 {
   color: #2f2f2f !important;
 }
 
+p.lastUpdate {
+  font-size: 12pt;
+  color: #6d6d6d;
+}
+
 /* News articles */
 
 .metadata {
@@ -614,3 +619,4 @@ dt.level-1 {
   margin-top: -16pt;
   color: #4f4f4f;
 }
+
