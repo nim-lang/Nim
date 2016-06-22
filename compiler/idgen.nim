@@ -11,7 +11,7 @@
 
 import idents, strutils, os, options
 
-var gFrontEndId, gBackendId*: int
+var gFrontEndId*: int
 
 const
   debugIds* = false
@@ -30,10 +30,6 @@ proc getID*(): int {.inline.} =
   result = gFrontEndId
   inc(gFrontEndId)
 
-proc backendId*(): int {.inline.} =
-  result = gBackendId
-  inc(gBackendId)
-
 proc setId*(id: int) {.inline.} =
   gFrontEndId = max(gFrontEndId, id + 1)
 
@@ -49,7 +45,6 @@ proc toGid(f: string): string =
 proc saveMaxIds*(project: string) =
   var f = open(project.toGid, fmWrite)
   f.writeLine($gFrontEndId)
-  f.writeLine($gBackendId)
   f.close()
 
 proc loadMaxIds*(project: string) =
@@ -61,5 +56,4 @@ proc loadMaxIds*(project: string) =
       if f.readLine(line):
         var backEndId = parseInt(line)
         gFrontEndId = max(gFrontEndId, frontEndId)
-        gBackendId = max(gBackendId, backEndId)
     f.close()

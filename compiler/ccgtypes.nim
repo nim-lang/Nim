@@ -202,11 +202,9 @@ proc cacheGetType(tab: TIdTable, key: PType): Rope =
   # linear search is not necessary anymore:
   result = Rope(idTableGet(tab, key))
 
-proc getTempName(): Rope =
-  result = rfmt(nil, "TMP$1", rope(backendId()))
-
-proc getGlobalTempName(): Rope =
-  result = rfmt(nil, "TMP$1", rope(backendId()))
+proc getTempName(m: BModule): Rope =
+  result = m.tmpBase & rope(m.labels)
+  inc m.labels
 
 proc ccgIntroducedPtr(s: PSym): bool =
   var pt = skipTypes(s.typ, typedescInst)
@@ -724,7 +722,7 @@ type
 proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
   assert t.kind == tyProc
   var check = initIntSet()
-  result = getTempName()
+  result = getTempName(m)
   var rettype, desc: Rope
   genProcParams(m, t, rettype, desc, check, declareEnvironment=kind != clHalf)
   if not isImportedType(t):
@@ -839,7 +837,7 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: Rope) =
     if L == 1:
       genObjectFields(m, typ, n.sons[0], expr)
     elif L > 0:
-      var tmp = getTempName()
+      var tmp = getTempName(m)
       addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, rope(L)])
       for i in countup(0, L-1):
         var tmp2 = getNimNode(m)
@@ -911,7 +909,7 @@ proc genTupleInfo(m: BModule, typ: PType, name: Rope) =
   var expr = getNimNode(m)
   var length = sonsLen(typ)
   if length > 0:
-    var tmp = getTempName()
+    var tmp = getTempName(m)
     addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, rope(length)])
     for i in countup(0, length - 1):
       var a = typ.sons[i]
@@ -935,7 +933,7 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope) =
   # anyway. We generate a cstring array and a loop over it. Exceptional
   # positions will be reset after the loop.
   genTypeInfoAux(m, typ, typ, name)
-  var nodePtrs = getTempName()
+  var nodePtrs = getTempName(m)
   var length = sonsLen(typ.n)
   addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n",
        [nodePtrs, rope(length)])
@@ -955,8 +953,8 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope) =
     if field.position != i or tfEnumHasHoles in typ.flags:
       addf(specialCases, "$1.offset = $2;$n", [elemNode, rope(field.position)])
       hasHoles = true
-  var enumArray = getTempName()
-  var counter = getTempName()
+  var enumArray = getTempName(m)
+  var counter = getTempName(m)
   addf(m.s[cfsTypeInit1], "NI $1;$n", [counter])
   addf(m.s[cfsTypeInit1], "static char* NIM_CONST $1[$2] = {$n$3};$n",
        [enumArray, rope(length), enumNames])

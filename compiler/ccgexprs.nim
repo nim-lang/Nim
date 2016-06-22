@@ -45,7 +45,7 @@ proc genHexLiteral(v: PNode): Rope =
 
 proc getStrLit(m: BModule, s: string): Rope =
   discard cgsym(m, "TGenericSeq")
-  result = "TMP" & rope(backendId())
+  result = getTempName(m)
   addf(m.s[cfsData], "STRING_LITERAL($1, $2, $3);$n",
        [result, makeCString(s), rope(len(s))])
 
@@ -67,11 +67,11 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   of nkNilLit:
     let t = skipTypes(ty, abstractVarRange)
     if t.kind == tyProc and t.callConv == ccClosure:
-      var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
-      result = "TMP" & rope(id)
-      if id == gBackendId:
+      let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+      result = p.module.tmpBase & rope(id)
+      if id == p.module.labels:
         # not found in cache:
-        inc(gBackendId)
+        inc(p.module.labels)
         addf(p.module.s[cfsData],
              "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
              [getTypeDesc(p.module, t), result])
@@ -81,13 +81,14 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     if n.strVal.isNil:
       result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
     elif skipTypes(ty, abstractVarRange).kind == tyString:
-      var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
-      if id == gBackendId:
+      let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+      if id == p.module.labels:
         # string literal not found in the cache:
         result = ropecg(p.module, "((#NimStringDesc*) &$1)",
                         [getStrLit(p.module, n.strVal)])
       else:
-        result = ropecg(p.module, "((#NimStringDesc*) &TMP$1)", [rope(id)])
+        result = ropecg(p.module, "((#NimStringDesc*) &$1$2)",
+                        [p.module.tmpBase, rope(id)])
     else:
       result = makeCString(n.strVal)
   of nkFloatLit..nkFloat64Lit:
@@ -134,11 +135,11 @@ proc genSetNode(p: BProc, n: PNode): Rope =
   var size = int(getSize(n.typ))
   toBitSet(n, cs)
   if size > 8:
-    var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
-    result = "TMP" & rope(id)
-    if id == gBackendId:
+    let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+    result = p.module.tmpBase & rope(id)
+    if id == p.module.labels:
       # not found in cache:
-      inc(gBackendId)
+      inc(p.module.labels)
       addf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
            [getTypeDesc(p.module, n.typ), result, genRawSetData(cs, size)])
   else:
@@ -490,7 +491,7 @@ proc binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
   var size = getSize(t)
   let storage = if size < platform.intSize: rope("NI")
                 else: getTypeDesc(p.module, t)
-  result = getTempName()
+  result = getTempName(p.module)
   linefmt(p, cpsLocals, "$1 $2;$n", storage, result)
   lineCg(p, cpsStmts, frmt, result, rdCharLoc(a), rdCharLoc(b))
   if size < platform.intSize or t.kind in {tyRange, tyEnum}:
@@ -801,9 +802,9 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym;
     v.r.add(d.loc.r)
     genInExprAux(p, it, u, v, test)
     let id = nodeTableTestOrSet(p.module.dataCache,
-                               newStrNode(nkStrLit, field.name.s), gBackendId)
-    let strLit = if id == gBackendId: getStrLit(p.module, field.name.s)
-                 else: "TMP" & rope(id)
+                               newStrNode(nkStrLit, field.name.s), p.module.labels)
+    let strLit = if id == p.module.labels: getStrLit(p.module, field.name.s)
+                 else: p.module.tmpBase & rope(id)
     if op.magic == mNot:
       linefmt(p, cpsStmts,
               "if ($1) #raiseFieldError(((#NimStringDesc*) &$2));$n",
@@ -1761,11 +1762,11 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if nfAllConst in n.flags and d.k == locNone and n.len > 0 and n.isDeepConstExpr:
     var t = getUniqueType(n.typ)
     discard getTypeDesc(p.module, t) # so that any fields are initialized
-    var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
-    fillLoc(d, locData, t, "TMP" & rope(id), OnStatic)
-    if id == gBackendId:
+    let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+    fillLoc(d, locData, t, p.module.tmpBase & rope(id), OnStatic)
+    if id == p.module.labels:
       # expression not found in the cache:
-      inc(gBackendId)
+      inc(p.module.labels)
       addf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
            [getTypeDesc(p.module, t), d.r, genConstExpr(p, n)])
     result = true
@@ -1952,12 +1953,12 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
 proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   var t = getUniqueType(n.typ)
   discard getTypeDesc(p.module, t) # so that any fields are initialized
-  var id = nodeTableTestOrSet(p.module.dataCache, n, gBackendId)
-  var tmp = "TMP" & rope(id)
+  let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+  let tmp = p.module.tmpBase & rope(id)
 
-  if id == gBackendId:
+  if id == p.module.labels:
     # expression not found in the cache:
-    inc(gBackendId)
+    inc(p.module.labels)
     addf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
          [getTypeDesc(p.module, t), tmp, genConstExpr(p, n)])
 
@@ -2179,8 +2180,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
     data.add("}")
   data.add("}")
 
-  inc(gBackendId)
-  result = "CNSTSEQ" & gBackendId.rope
+  result = getTempName(p.module)
 
   appcg(p.module, cfsData,
         "NIM_CONST struct {$n" &

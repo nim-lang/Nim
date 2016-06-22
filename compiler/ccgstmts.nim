@@ -793,7 +793,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
-  let exc = getTempName()
+  let exc = getTempName(p.module)
   if getCompilerProc("Exception") != nil:
     discard cgsym(p.module, "Exception")
   else:
@@ -886,7 +886,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
   discard lists.includeStr(p.module.headerFiles, "<setjmp.h>")
   genLineDir(p, t)
-  var safePoint = getTempName()
+  var safePoint = getTempName(p.module)
   if getCompilerProc("Exception") != nil:
     discard cgsym(p.module, "Exception")
   else:
