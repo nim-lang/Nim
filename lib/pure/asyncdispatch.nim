@@ -1659,7 +1659,7 @@ proc generateExceptionCheck(futSym,
     result.add elseNode
 
 template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
-                rootReceiver: expr, fromNode: NimNode) =
+                rootReceiver: expr, fromNode: NimNode, readFuture: bool) =
   ## Params:
   ##    futureVarNode: The NimNode which is a symbol identifying the Future[T]
   ##                   variable to yield.
@@ -1671,18 +1671,21 @@ template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
   # -> yield future<x>
   result.add newNimNode(nnkYieldStmt, fromNode).add(futureVarNode)
   # -> future<x>.read
-  valueReceiver = newDotExpr(futureVarNode, newIdentNode("read"))
+  if readFuture:
+    valueReceiver = newDotExpr(futureVarNode, newIdentNode("read"))
+  else:
+    valueReceiver = newNimNode(nnkEmpty)
   result.add generateExceptionCheck(futureVarNode, tryStmt, rootReceiver,
       fromNode)
 
 template createVar(result: var NimNode, futSymName: string,
                    asyncProc: NimNode,
                    valueReceiver, rootReceiver: expr,
-                   fromNode: NimNode) =
+                   fromNode: NimNode, readFuture: bool = true) =
   result = newNimNode(nnkStmtList, fromNode)
   var futSym = genSym(nskVar, "future")
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
-  useVar(result, futSym, valueReceiver, rootReceiver, fromNode)
+  useVar(result, futSym, valueReceiver, rootReceiver, fromNode, readFuture)
 
 proc processBody(node, retFutureSym: NimNode,
                  subTypeIsVoid: bool,
@@ -1710,7 +1713,9 @@ proc processBody(node, retFutureSym: NimNode,
       of nnkIdent, nnkInfix, nnkDotExpr:
         # await x
         # await x or y
-        result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
+        var futureValue: NimNode
+        result.createVar("future" & $node[1].toStrLit, node[1], futureValue,
+                  futureValue, node, false)
       of nnkCall, nnkCommand:
         # await foo(p, x)
         # await foo p, x
