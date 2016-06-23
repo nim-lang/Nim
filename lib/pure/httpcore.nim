@@ -54,7 +54,7 @@ type
     Http417 = "417 Expectation Failed",
     Http418 = "418 I'm a teapot",
     Http421 = "421 Misdirected Request",
-    Http421 = "422 Unprocessable Entity",
+    Http422 = "422 Unprocessable Entity",
     Http426 = "426 Upgrade Required",
     Http428 = "428 Precondition Required",
     Http429 = "429 Too Many Requests",
