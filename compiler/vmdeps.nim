@@ -63,8 +63,9 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
     localError(info, errCannotOpenFile, file)
     result = ""
 
-proc atomicTypeX(name: string; t: PType; info: TLineInfo): PNode =
+proc atomicTypeX(name: string; m: TMagic; t: PType; info: TLineInfo): PNode =
   let sym = newSym(skType, getIdent(name), t.owner, info)
+  sym.magic = m
   sym.typ = t
   result = newSymNode(sym)
   result.typ = t
@@ -72,13 +73,13 @@ proc atomicTypeX(name: string; t: PType; info: TLineInfo): PNode =
 proc mapTypeToAstX(t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false): PNode
 
-proc mapTypeToBracketX(name: string; t: PType; info: TLineInfo;
+proc mapTypeToBracketX(name: string; m: TMagic; t: PType; info: TLineInfo;
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-  result.add atomicTypeX(name, t, info)
+  result.add atomicTypeX(name, m, t, info)
   for i in 0 .. < t.len:
     if t.sons[i] == nil:
-      let void = atomicTypeX("void", t, info)
+      let void = atomicTypeX("void", mVoid, t, info)
       void.typ = newType(tyEmpty, t.owner)
       result.add void
     else:
@@ -87,14 +88,14 @@ proc mapTypeToBracketX(name: string; t: PType; info: TLineInfo;
 proc mapTypeToAstX(t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false): PNode =
   var allowRecursion = allowRecursionX
-  template atomicType(name): expr = atomicTypeX(name, t, info)
+  template atomicType(name, m): expr = atomicTypeX(name, m, t, info)
   template mapTypeToAst(t,info): expr = mapTypeToAstX(t, info, inst)
   template mapTypeToAstR(t,info): expr = mapTypeToAstX(t, info, inst, true)
   template mapTypeToAst(t,i,info): expr =
     if i<t.len and t.sons[i]!=nil: mapTypeToAstX(t.sons[i], info, inst)
     else: ast.emptyNode
-  template mapTypeToBracket(name,t,info): expr =
-    mapTypeToBracketX(name, t, info, inst)
+  template mapTypeToBracket(name, m, t, info): expr =
+    mapTypeToBracketX(name, m, t, info, inst)
   template newNodeX(kind):expr =
     newNodeIT(kind, if t.n.isNil: info else: t.n.info, t)
   template newIdent(s):expr =
@@ -114,19 +115,19 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       if allowRecursion:  # getTypeImpl behavior: turn off recursion
         allowRecursion = false
       else:  # getTypeInst behavior: return symbol
-        return atomicType(t.sym.name.s)
+        return atomicType(t.sym.name.s, t.sym.magic)
 
   case t.kind
-  of tyNone: result = atomicType("none")
-  of tyBool: result = atomicType("bool")
-  of tyChar: result = atomicType("char")
-  of tyNil: result = atomicType("nil")
-  of tyExpr: result = atomicType("expr")
-  of tyStmt: result = atomicType("stmt")
-  of tyEmpty: result = atomicType"void"
+  of tyNone: result = atomicType("none", mNone)
+  of tyBool: result = atomicType("bool", mBool)
+  of tyChar: result = atomicType("char", mChar)
+  of tyNil: result = atomicType("nil", mNil)
+  of tyExpr: result = atomicType("expr", mExpr)
+  of tyStmt: result = atomicType("stmt", mStmt)
+  of tyEmpty: result = atomicType("void", mVoid)
   of tyArrayConstr, tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    result.add atomicType("array")
+    result.add atomicType("array", mArray)
     if inst and t.sons[0].kind == tyRange:
       var rng = newNodeX(nkInfix)
       rng.add newIdentNode(getIdent(".."), info)
@@ -139,10 +140,10 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyTypeDesc:
     if t.base != nil:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-      result.add atomicType("typeDesc")
+      result.add atomicType("typeDesc", mTypeDesc)
       result.add mapTypeToAst(t.base, info)
     else:
-      result = atomicType"typeDesc"
+      result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     for i in 0 .. < t.len:
@@ -166,10 +167,11 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add mapTypeToAst(t.sons[0], info)
     else:
       if allowRecursion or t.sym==nil:
-        result = mapTypeToBracket("distinct", t, info)
+        result = mapTypeToBracket("distinct", mDistinct, t, info)
       else:
-        result = atomicType(t.sym.name.s)
-  of tyGenericParam, tyForward: result = atomicType(t.sym.name.s)
+        result = atomicType(t.sym.name.s, t.sym.magic)
+  of tyGenericParam, tyForward:
+    result = atomicType(t.sym.name.s, t.sym.magic)
   of tyObject:
     if inst:
       result = newNodeX(nkObjectTy)
@@ -196,7 +198,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
           result.add mapTypeToAst(t.sons[0], info)
         result.add copyTree(t.n)
       else:
-        result = atomicType(t.sym.name.s)
+        result = atomicType(t.sym.name.s, t.sym.magic)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
     result.add copyTree(t.n)
@@ -206,22 +208,22 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       for s in t.n.sons:
         result.add newIdentDefs(s)
     else:
-      result = mapTypeToBracket("tuple", t, info)
-  of tySet: result = mapTypeToBracket("set", t, info)
+      result = mapTypeToBracket("tuple", mTuple, t, info)
+  of tySet: result = mapTypeToBracket("set", mSet, t, info)
   of tyPtr:
     if inst:
       result = newNodeX(nkPtrTy)
       result.add mapTypeToAst(t.sons[0], info)
     else:
-      result = mapTypeToBracket("ptr", t, info)
+      result = mapTypeToBracket("ptr", mPtr, t, info)
   of tyRef:
     if inst:
       result = newNodeX(nkRefTy)
       result.add mapTypeToAst(t.sons[0], info)
     else:
-      result = mapTypeToBracket("ref", t, info)
-  of tyVar: result = mapTypeToBracket("var", t, info)
-  of tySequence: result = mapTypeToBracket("seq", t, info)
+      result = mapTypeToBracket("ref", mRef, t, info)
+  of tyVar: result = mapTypeToBracket("var", mVar, t, info)
+  of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
   of tyProc:
     if inst:
       result = newNodeX(nkProcTy)
@@ -235,52 +237,54 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add fp
       result.add ast.emptyNode  # pragmas aren't reconstructed yet
     else:
-      result = mapTypeToBracket("proc", t, info)
-  of tyOpenArray: result = mapTypeToBracket("openArray", t, info)
+      result = mapTypeToBracket("proc", mNone, t, info)
+  of tyOpenArray: result = mapTypeToBracket("openArray", mOpenArray, t, info)
   of tyRange:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    result.add atomicType("range")
+    result.add atomicType("range", mRange)
     result.add t.n.sons[0].copyTree
     result.add t.n.sons[1].copyTree
-  of tyPointer: result = atomicType"pointer"
-  of tyString: result = atomicType"string"
-  of tyCString: result = atomicType"cstring"
-  of tyInt: result = atomicType"int"
-  of tyInt8: result = atomicType"int8"
-  of tyInt16: result = atomicType"int16"
-  of tyInt32: result = atomicType"int32"
-  of tyInt64: result = atomicType"int64"
-  of tyFloat: result = atomicType"float"
-  of tyFloat32: result = atomicType"float32"
-  of tyFloat64: result = atomicType"float64"
-  of tyFloat128: result = atomicType"float128"
-  of tyUInt: result = atomicType"uint"
-  of tyUInt8: result = atomicType"uint8"
-  of tyUInt16: result = atomicType"uint16"
-  of tyUInt32: result = atomicType"uint32"
-  of tyUInt64: result = atomicType"uint64"
-  of tyBigNum: result = atomicType"bignum"
-  of tyConst: result = mapTypeToBracket("const", t, info)
-  of tyMutable: result = mapTypeToBracket("mutable", t, info)
-  of tyVarargs: result = mapTypeToBracket("varargs", t, info)
-  of tyIter: result = mapTypeToBracket("iter", t, info)
-  of tyProxy: result = atomicType"error"
-  of tyBuiltInTypeClass: result = mapTypeToBracket("builtinTypeClass", t, info)
+  of tyPointer: result = atomicType("pointer", mPointer)
+  of tyString: result = atomicType("string", mString)
+  of tyCString: result = atomicType("cstring", mCString)
+  of tyInt: result = atomicType("int", mInt)
+  of tyInt8: result = atomicType("int8", mInt8)
+  of tyInt16: result = atomicType("int16", mInt16)
+  of tyInt32: result = atomicType("int32", mInt32)
+  of tyInt64: result = atomicType("int64", mInt64)
+  of tyFloat: result = atomicType("float", mFloat)
+  of tyFloat32: result = atomicType("float32", mFloat32)
+  of tyFloat64: result = atomicType("float64", mFloat64)
+  of tyFloat128: result = atomicType("float128", mFloat128)
+  of tyUInt: result = atomicType("uint", mUint)
+  of tyUInt8: result = atomicType("uint8", mUint8)
+  of tyUInt16: result = atomicType("uint16", mUint16)
+  of tyUInt32: result = atomicType("uint32", mUint32)
+  of tyUInt64: result = atomicType("uint64", mUint64)
+  of tyBigNum: result = atomicType("bignum", mNone)
+  of tyConst: result = mapTypeToBracket("const", mNone, t, info)
+  of tyMutable: result = mapTypeToBracket("mutable", mNone, t, info)
+  of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
+  of tyIter: result = mapTypeToBracket("iter", mNone, t, info)
+  of tyProxy: result = atomicType("error", mNone)
+  of tyBuiltInTypeClass:
+    result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
   of tyUserTypeClass:
-    result = mapTypeToBracket("concept", t, info)
+    result = mapTypeToBracket("concept", mNone, t, info)
     result.add t.n.copyTree
-  of tyCompositeTypeClass: result = mapTypeToBracket("compositeTypeClass", t, info)
-  of tyAnd: result = mapTypeToBracket("and", t, info)
-  of tyOr: result = mapTypeToBracket("or", t, info)
-  of tyNot: result = mapTypeToBracket("not", t, info)
-  of tyAnything: result = atomicType"anything"
+  of tyCompositeTypeClass:
+    result = mapTypeToBracket("compositeTypeClass", mNone, t, info)
+  of tyAnd: result = mapTypeToBracket("and", mAnd, t, info)
+  of tyOr: result = mapTypeToBracket("or", mOr, t, info)
+  of tyNot: result = mapTypeToBracket("not", mNot, t, info)
+  of tyAnything: result = atomicType("anything", mNone)
   of tyStatic, tyFromExpr, tyFieldAccessor:
     if inst:
       if t.n != nil: result = t.n.copyTree
-      else: result = atomicType "void"
+      else: result = atomicType("void", mVoid)
     else:
       result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-      result.add atomicType "static"
+      result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
 
