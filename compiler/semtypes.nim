@@ -788,8 +788,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # naked typedescs are not bindOnce types
       if paramType.base.kind == tyNone and paramTypId != nil and
          paramTypId.id == typedescId.id: paramTypId = nil
-      result = addImplicitGeneric(
-        c.newTypeWithSons(tyTypeDesc, @[paramType.base]))
+      if paramType.base.kind == tyGenericBody:
+        result = addImplicitGeneric(
+          c.newTypeWithSons(tyTypeDesc, @[paramType.base.liftingWalk]))
+      else:
+        result = addImplicitGeneric(
+          c.newTypeWithSons(tyTypeDesc, @[paramType.base]))
 
   of tyDistinct:
     if paramType.sonsLen == 1:
