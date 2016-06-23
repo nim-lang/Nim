@@ -455,7 +455,7 @@ type
     sin_zero*: array[0..7, char]
 
   In6_addr* {.importc: "IN6_ADDR", header: "winsock2.h".} = object
-    bytes*: array[0..15, char]
+    bytes* {.importc: "u.Byte".}: array[0..15, char]
 
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
                    header: "ws2tcpip.h".} = object
@@ -825,10 +825,22 @@ proc WSARecv*(s: SocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
   completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
   stdcall, importc: "WSARecv", dynlib: "Ws2_32.dll".}
 
+proc WSARecvFrom*(s: SocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
+                  bytesReceived: PDWORD, flags: PDWORD, name: ptr SockAddr,
+                  namelen: ptr cint, lpOverlapped: POVERLAPPED,
+                  completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
+     stdcall, importc: "WSARecvFrom", dynlib: "Ws2_32.dll".}
+
 proc WSASend*(s: SocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
   bytesSent: PDWORD, flags: DWORD, lpOverlapped: POVERLAPPED,
   completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
   stdcall, importc: "WSASend", dynlib: "Ws2_32.dll".}
+
+proc WSASendTo*(s: SocketHandle, buf: ptr TWSABuf, bufCount: DWORD,
+                bytesSent: PDWORD, flags: DWORD, name: ptr SockAddr,
+                namelen: cint, lpOverlapped: POVERLAPPED,
+                completionProc: POVERLAPPED_COMPLETION_ROUTINE): cint {.
+     stdcall, importc: "WSASendTo", dynlib: "Ws2_32.dll".}
 
 proc get_osfhandle*(fd:FileHandle): Handle {.
   importc: "_get_osfhandle", header:"<io.h>".}
@@ -994,7 +1006,7 @@ const
   FD_ALL_EVENTS* = 0x000003FF'i32
 
 proc wsaEventSelect*(s: SocketHandle, hEventObject: Handle,
-                     lNetworkEvents: clong): cint 
+                     lNetworkEvents: clong): cint
     {.stdcall, importc: "WSAEventSelect", dynlib: "ws2_32.dll".}
 
 proc wsaCreateEvent*(): Handle

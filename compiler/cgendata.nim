@@ -102,12 +102,13 @@ type
     includesStringh,    # C source file already includes ``<string.h>``
     objHasKidsValid     # whether we can rely on tfObjHasKids
   TCGen = object of TPassContext # represents a C source file
-    module*: PSym
-    filename*: string
     s*: TCFileSections        # sections of the C file
     flags*: set[Codegenflag]
+    module*: PSym
+    filename*: string
     cfilename*: string        # filename of the module (including path,
                               # without extension)
+    tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TIdTable      # cache the generated types
     forwTypeCache*: TIdTable  # cache for forward declarations of types
     declaredThings*: IntSet  # things we have declared in this .c file

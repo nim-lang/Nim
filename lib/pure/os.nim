@@ -778,12 +778,26 @@ iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].}
     yield (TaintedString(substr(environment[i], 0, p-1)),
            TaintedString(substr(environment[i], p+1)))
 
-iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
-  ## Iterate over all the files that match the `pattern`. On POSIX this uses
-  ## the `glob`:idx: call.
-  ##
-  ## `pattern` is OS dependent, but at least the "\*.ext"
-  ## notation is supported.
+# Templates for filtering directories and files
+when defined(windows):
+  template isDir(f: WIN32_FIND_DATA): bool =
+    (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
+  template isFile(f: WIN32_FIND_DATA): bool =
+    not isDir(f)
+else:
+  template isDir(f: string): bool =
+    dirExists(f)
+  template isFile(f: string): bool =
+    fileExists(f)
+
+template defaultWalkFilter(item): bool =
+  ## Walk filter used to return true on both
+  ## files and directories
+  true
+
+template walkCommon(pattern: string, filter) =
+  ## Common code for getting the files and directories with the
+  ## specified `pattern`
   when defined(windows):
     var
       f: WIN32_FIND_DATA
@@ -792,8 +806,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
     if res != -1:
       defer: findClose(res)
       while true:
-        if not skipFindData(f) and
-            (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) == 0'i32:
+        if not skipFindData(f) and filter(f):
           # Windows bug/gotcha: 't*.nim' matches 'tfoo.nims' -.- so we check
           # that the file extensions have the same length ...
           let ff = getFilename(f)
@@ -815,7 +828,33 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
     if res == 0:
       for i in 0.. f.gl_pathc - 1:
         assert(f.gl_pathv[i] != nil)
-        yield $f.gl_pathv[i]
+        let path = $f.gl_pathv[i]
+        if filter(path):
+          yield path
+
+iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect].} =
+  ## Iterate over all the files and directories that match the `pattern`.
+  ## On POSIX this uses the `glob`:idx: call.
+  ##
+  ## `pattern` is OS dependent, but at least the "\*.ext"
+  ## notation is supported.
+  walkCommon(pattern, defaultWalkFilter)
+
+iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
+  ## Iterate over all the files that match the `pattern`. On POSIX this uses
+  ## the `glob`:idx: call.
+  ##
+  ## `pattern` is OS dependent, but at least the "\*.ext"
+  ## notation is supported.
+  walkCommon(pattern, isFile)
+
+iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect].} =
+  ## Iterate over all the directories that match the `pattern`.
+  ## On POSIX this uses the `glob`:idx: call.
+  ##
+  ## `pattern` is OS dependent, but at least the "\*.ext"
+  ## notation is supported.
+  walkCommon(pattern, isDir)
 
 type
   PathComponent* = enum   ## Enumeration specifying a path component.

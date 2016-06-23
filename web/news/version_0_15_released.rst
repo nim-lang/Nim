@@ -30,6 +30,11 @@ Library Additions
   operations. Currently contains ``partition``, ``rpartition``
   and ``expandTabs``.
 
+- Split out ``walkFiles`` in ``os.nim`` to three separate procs in order
+  to make a clear distinction of functionality. ``walkPattern`` iterates
+  over both files and directories, while ``walkFiles`` now only iterates
+  over files and ``walkDirs`` only iterates over directories.
+
 Compiler Additions
 ------------------
 

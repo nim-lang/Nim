@@ -500,7 +500,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
   assert(lib != nil)
   if not lib.generated:
     lib.generated = true
-    var tmp = getGlobalTempName()
+    var tmp = getTempName(m)
     assert(lib.name == nil)
     lib.name = tmp # BUGFIX: cgsym has awful side-effects
     addf(m.s[cfsVars], "static void* $1;$n", [tmp])
@@ -1084,6 +1084,7 @@ proc initProcOptions(m: BModule): TOptions =
 
 proc rawNewModule(module: PSym, filename: string): BModule =
   new(result)
+  result.tmpBase = rope("T" & $hashOwner(module) & "_")
   initLinkedList(result.headerFiles)
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()
@@ -1100,8 +1101,8 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
-  result.typeNodesName = getTempName()
-  result.nimTypesName = getTempName()
+  result.typeNodesName = getTempName(result)
+  result.nimTypesName = getTempName(result)
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
@@ -1126,8 +1127,8 @@ proc resetModule*(m: BModule) =
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]
-  m.typeNodesName = getTempName()
-  m.nimTypesName = getTempName()
+  m.typeNodesName = getTempName(m)
+  m.nimTypesName = getTempName(m)
   if sfSystemModule in m.module.flags:
     incl m.flags, preventStackTrace
   else:
