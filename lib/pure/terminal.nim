@@ -493,17 +493,26 @@ template styledEcho*(args: varargs[expr]): expr =
   ## Echoes styles arguments to stdout using ``styledWriteLine``.
   callStyledEcho(args)
 
-when defined(nimdoc):
-  proc getch*(): char =
-    ## Read a single character from the terminal, blocking until it is entered.
-    ## The character is not printed to the terminal. This is not available for
-    ## Windows.
-    discard
-elif not defined(windows):
-  proc getch*(): char =
-    ## Read a single character from the terminal, blocking until it is entered.
-    ## The character is not printed to the terminal. This is not available for
-    ## Windows.
+proc getch*(): char =
+  ## Read a single character from the terminal, blocking until it is entered.
+  ## The character is not printed to the terminal.
+  when defined(windows):
+    let fd = getStdHandle(STD_INPUT_HANDLE)
+    # Block until character is entered
+    discard waitForSingleObject(fd, INFINITE)
+    var record = INPUT_RECORD()
+    var recordPtr: ptr INPUT_RECORD = addr(record)
+    var numRead: cint 
+    while true:
+      discard readConsoleInput(fd, recordPtr, 1, addr(numRead))
+      if numRead == 0 or record.eventType != 1:
+        continue
+      let keyEvent = cast[ptr KEY_EVENT_RECORD](recordPtr)
+      # skip key release events
+      if keyEvent.bKeyDown == 0:
+        continue
+      return char(keyEvent.UnicodeChar)
+  else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
     discard fd.tcgetattr(addr oldMode)
