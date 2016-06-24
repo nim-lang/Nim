@@ -970,7 +970,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       # simply no match for now:
       discard
     elif x.kind == tyGenericInst and
-          isGenericSubtype(x, f, depth) and
+          ((f.sons[0] == x.sons[0]) or isGenericSubtype(x, f, depth)) and
           (sonsLen(x) - 1 == sonsLen(f)):
       for i in countup(1, sonsLen(f) - 1):
         if x.sons[i].kind == tyGenericParam:
