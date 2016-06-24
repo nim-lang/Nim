@@ -333,8 +333,13 @@ proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIs
 
 proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrWhitespace".} =
   ## Checks if `s` is nil or consists entirely of whitespace characters.
-  ##
-  ## This is an alias to `isSpace`.
+  if len(s) == 0:
+    return true
+
+  result = true
+  for c in s:
+    if not c.isSpace():
+      return false
 
 iterator split*(s: string, seps: set[char] = Whitespace,
                 maxsplit: int = -1): string =
