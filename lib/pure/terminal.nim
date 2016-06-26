@@ -498,20 +498,15 @@ proc getch*(): char =
   ## The character is not printed to the terminal.
   when defined(windows):
     let fd = getStdHandle(STD_INPUT_HANDLE)
-    # Block until character is entered
-    discard waitForSingleObject(fd, INFINITE)
-    var record = INPUT_RECORD()
-    var recordPtr: ptr INPUT_RECORD = addr(record)
+    var keyEvent = KEY_EVENT_RECORD()
     var numRead: cint 
     while true:
-      discard readConsoleInput(fd, recordPtr, 1, addr(numRead))
-      if numRead == 0 or record.eventType != 1:
+      # Block until character is entered
+      assert(waitForSingleObject(fd, INFINITE) == WAIT_OBJECT_0)
+      assert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
+      if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
         continue
-      let keyEvent = cast[ptr KEY_EVENT_RECORD](recordPtr)
-      # skip key release events
-      if keyEvent.bKeyDown == 0:
-        continue
-      return char(keyEvent.UnicodeChar)
+      return char(keyEvent.uChar)
   else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios

@@ -1019,23 +1019,21 @@ proc wsaResetEvent*(hEvent: Handle): bool
      {.stdcall, importc: "WSAResetEvent", dynlib: "ws2_32.dll".}
 
 type
-  INPUT_RECORD* {.final, pure.} = object
-    eventType*: int16
-    padding: array[18, byte]
   KEY_EVENT_RECORD* {.final, pure.} = object
-    eventType*: int16
+    eventType*: uint16
+    # padding: array[2, byte]
     bKeyDown*: WINBOOL
-    wRepeatCount*: int16
-    wVirtualKeyCode*: int16
-    wVirtualScanCode*: int16
-    UnicodeChar*: int16
+    wRepeatCount*: uint16
+    wVirtualKeyCode*: uint16
+    wVirtualScanCode*: uint16
+    uChar*: uint16
     dwControlKeyState*: DWORD
 
 when defined(useWinAnsi):
   proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                         lpNumberOfEventsRead: ptr cint): cint
-       {.header: "<windows.h>", importc: "ReadConsoleInputA".}
+       {.dynlib: "kernel32", importc: "ReadConsoleInputA".}
 else:
   proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                         lpNumberOfEventsRead: ptr cint): cint
-       {.header: "<windows.h>", importc: "ReadConsoleInputW".}
+       {.dynlib: "kernel32", importc: "ReadConsoleInputW".}
