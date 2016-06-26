@@ -1735,24 +1735,20 @@ else:
     template withData*[T](s: Selector[T], fd: SocketHandle, value,
                           body: untyped) =
       var fdi = int(fd)
-      if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident != 0:
-          var value = addr(s.fds[fdi].key.data)
-          body
-      else:
-        raise newException(ValueError, "Maximum file descriptors exceeded")
+      s.checkMaxFd(fdi)
+      if s.fds[fdi].ident != 0:
+        var value = addr(s.fds[fdi].key.data)
+        body
 
     template withData*[T](s: Selector[T], fd: SocketHandle, value, body1,
                           body2: untyped) =
       var fdi = int(fd)
-      if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident != 0:
-          var value = addr(s.fds[fdi].key.data)
-          body1
-        else:
-          body2
+      s.checkMaxFd(fdi)
+      if s.fds[fdi].ident != 0:
+        var value = addr(s.fds[fdi].key.data)
+        body1
       else:
-        raise newException(ValueError, "Maximum file descriptors exceeded")
+        body2
   else:
     template withData*(s: Selector, fd: SocketHandle, value, body: untyped) =
       s.fds.withValue(fd, skey) do:
