@@ -38,8 +38,8 @@ when not defined(windows):
     var client_socket = create_test_socket()
     var server_socket = create_test_socket()
 
-    registerHandle(selector, server_socket, {eventRead}, 0)
-    registerHandle(selector, client_socket, {eventWrite}, 0)
+    registerHandle(selector, server_socket, {Event.Read}, 0)
+    registerHandle(selector, client_socket, {Event.Write}, 0)
 
     var option : int32 = 1
     if setsockopt(server_socket, cint(SOL_SOCKET), cint(SO_REUSEADDR),
@@ -67,13 +67,13 @@ when not defined(windows):
                                 cast[ptr SockAddr](addr(sockAddress)),
                                 addr(addrLen))
     assert(server2_socket != osInvalidSocket)
-    selector.registerHandle(server2_socket, {eventRead}, 0)
+    selector.registerHandle(server2_socket, {Event.Read}, 0)
 
     if posix.send(client_socket, addr(client_message[0]),
                   len(client_message), 0) == -1:
       raiseOSError(osLastError())
 
-    selector.updateHandle(client_socket, {eventRead})
+    selector.updateHandle(client_socket, {Event.Read})
 
     var rc2 = selector.select(100)
     assert(len(rc2) == 1)
@@ -90,13 +90,13 @@ when not defined(windows):
         break
     assert(test1)
 
-    selector.updateHandle(server2_socket, {eventWrite})
+    selector.updateHandle(server2_socket, {Event.Write})
     var rc3 = selector.select(0)
     assert(len(rc3) == 1)
     if posix.send(server2_socket, addr(server_message[0]),
                   len(server_message), 0) == -1:
       raiseOSError(osLastError())
-    selector.updateHandle(server2_socket, {eventRead})
+    selector.updateHandle(server2_socket, {Event.Read})
 
     var rc4 = selector.select(100)
     assert(len(rc4) == 1)
@@ -238,7 +238,7 @@ when not defined(windows):
       var event = newEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)
-      selector.registerHandle(sock, {eventRead}, 1)
+      selector.registerHandle(sock, {Event.Read}, 1)
       discard selector.select(500)
       selector.unregister(sock)
       event.setEvent()
@@ -273,8 +273,8 @@ else:
     var client_socket = create_test_socket()
     var server_socket = create_test_socket()
 
-    selector.registerHandle(server_socket, {eventRead}, 0)
-    selector.registerHandle(client_socket, {eventWrite}, 0)
+    selector.registerHandle(server_socket, {Event.Read}, 0)
+    selector.registerHandle(client_socket, {Event.Write}, 0)
 
     var option : int32 = 1
     if setsockopt(server_socket, cint(SOL_SOCKET), cint(SO_REUSEADDR),
@@ -305,13 +305,13 @@ else:
                                 cast[ptr SockAddr](addr(sockAddress)),
                                 addr(addrLen))
     assert(server2_socket != osInvalidSocket)
-    selector.registerHandle(server2_socket, {eventRead}, 0)
+    selector.registerHandle(server2_socket, {Event.Read}, 0)
 
     if send(client_socket, cast[pointer](addr(client_message[0])),
             cint(len(client_message)), 0) == -1:
       raiseOSError(osLastError())
 
-    selector.updateHandle(client_socket, {eventRead})
+    selector.updateHandle(client_socket, {Event.Read})
 
     var rc2 = selector.select(100)
     assert(len(rc2) == 1)

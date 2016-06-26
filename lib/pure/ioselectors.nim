@@ -50,16 +50,16 @@ when defined(nimdoc):
     Selector*[T] = ref object
       ## An object which holds descriptors to be checked for read/write status
 
-    Event* = enum
+    Event* {.pure.} = enum 
       ## An enum which hold event types
-      eventRead,    ## Descriptor is available for read
-      eventWrite,   ## Descriptor is available for write
-      eventTimer,   ## Timer descriptor is completed
-      eventSignal,  ## Signal is raised
-      eventProcess, ## Process is finished
-      eventVnode,   ## Currently not supported
-      eventUser,    ## User event is raised
-      eventError    ## Error happens while waiting, for descriptor
+      Read,    ## Descriptor is available for read
+      Write,   ## Descriptor is available for write
+      Timer,   ## Timer descriptor is completed
+      Signal,  ## Signal is raised
+      Process, ## Process is finished
+      Vnode,   ## Currently not supported
+      User,    ## User event is raised
+      Error    ## Error happens while waiting, for descriptor
 
     ReadyKey*[T] = object
       ## An object which holds result for descriptor
@@ -189,36 +189,68 @@ when defined(nimdoc):
     ##
 
 else:
-  when not defined(windows):
+  when defined(macosx) or defined(freebsd):
     when defined(macosx):
-      var
-        OPEN_MAX {.importc: "OPEN_MAX", header: "<sys/resource.h>".}: cint
+      const maxDescriptors = 29 # KERN_MAXFILESPERPROC (MacOS)
+    else:
+      const maxDescriptors = 27 # KERN_MAXFILESPERPROC (FreeBSD)
+    proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr int,
+                newp: pointer, newplen: int): cint
+         {.importc: "sysctl",header: """#include <sys/types.h>
+                                        #include <sys/sysctl.h>"""}
+  elif defined(netbsd) or defined(openbsd):
+    # OpenBSD and NetBSD don't have KERN_MAXFILESPERPROC, so we are using
+    # KERN_MAXFILES, because KERN_MAXFILES is always bigger,
+    # than KERN_MAXFILESPERPROC
+    const maxDescriptors = 7 # KERN_MAXFILES
+    proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr int,
+                newp: pointer, newplen: int): cint
+         {.importc: "sysctl",header: """#include <sys/param.h>
+                                        #include <sys/sysctl.h>"""}
+  elif defined(linux) or defined(solaris):
+    proc ulimit(cmd: cint): clong
+         {.importc: "ulimit", header: "<ulimit.h>", varargs.}
+  elif defined(windows):
+    discard
+  else:
     var
       RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
                       header: "<sys/resource.h>".}: cint
     type
       rlimit {.importc: "struct rlimit",
-              header: "<sys/resource.h>", pure, final.} = object
+               header: "<sys/resource.h>", pure, final.} = object
         rlim_cur: int
         rlim_max: int
-    proc getrlimit(resource: cint, rlp: var rlimit): cint {.
-         importc: "getrlimit",header: "<sys/resource.h>"}
-    proc getMaxFds*(): int =
+    proc getrlimit(resource: cint, rlp: var rlimit): cint
+        {.importc: "getrlimit",header: "<sys/resource.h>".}
+
+  proc getMaxFds*(): int =
+    when defined(macosx) or defined(freebsd) or defined(netbsd) or
+         defined(openbsd):
+      var count = cint(0)
+      var size = sizeof(count)
+      var namearr = [cint(1), cint(maxDescriptors)]
+
+      if sysctl(addr namearr[0], 2, cast[pointer](addr count), addr size,
+                nil, 0) != 0:
+        raiseOsError(osLastError())
+      result = count
+    elif defined(linux) or defined(solaris):
+      result = int(ulimit(4, 0))
+    elif defined(windows):
+      result = FD_SETSIZE
+    else:
       var a = rlimit()
       if getrlimit(RLIMIT_NOFILE, a) != 0:
         raiseOsError(osLastError())
       result = a.rlim_max
-      when defined(macosx):
-        if a.rlim_max > OPEN_MAX:
-          result = OPEN_MAX
 
   when hasThreadSupport:
     import locks
 
   type
-    Event* = enum
-      eventRead, eventWrite, eventTimer, eventSignal, eventProcess,
-      eventVnode, eventUser, eventError,
+    Event* {.pure.} = enum 
+      Read, Write, Timer, Signal, Process, Vnode, User, Error,
       flagHandle, flagTimer, flagSignal, flagProcess, flagVnode, flagUser,
       flagOneshot
 
@@ -234,20 +266,19 @@ else:
       key : ReadyKey[T]
 
   when not defined(windows):
-    when hasThreadSupport:
-      type
-        SharedArrayHolder[T] = object
-          part: array[16, T]
-        SharedArray {.unchecked.}[T] = array[0..100_000_000, T]
+    type
+      SharedArrayHolder[T] = object
+        part: array[16, T]
+      SharedArray {.unchecked.}[T] = array[0..100_000_000, T]
 
-      proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
-        let holder = cast[ptr SharedArrayHolder[T]](
-                       allocShared0(sizeof(T) * nsize)
-                     )
-        result = cast[ptr SharedArray[T]](addr(holder.part[0]))
+    proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
+      let holder = cast[ptr SharedArrayHolder[T]](
+                     allocShared0(sizeof(T) * nsize)
+                   )
+      result = cast[ptr SharedArray[T]](addr(holder.part[0]))
 
-      proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
-        deallocShared(cast[pointer](sa))
+    proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
+      deallocShared(cast[pointer](sa))
 
     template setNonBlocking(fd) =
       var x: int = fcntl(fd, F_GETFL, 0)
@@ -298,30 +329,17 @@ else:
       MAX_KQUEUE_CHANGE_EVENTS = 64
       MAX_KQUEUE_RESULT_EVENTS = 64
 
-    when hasThreadSupport:
-      type
-        SelectorImpl[T] = object
-          kqFD : cint
-          maxFD : uint
-          changesTable: array[MAX_KQUEUE_CHANGE_EVENTS, KEvent]
-          changesCount: int
-          fds: ptr SharedArray[SelectorKey[T]]
-          count: int
+    type
+      SelectorImpl[T] = object
+        kqFD : cint
+        maxFD : uint
+        changesTable: array[MAX_KQUEUE_CHANGE_EVENTS, KEvent]
+        changesCount: int
+        fds: ptr SharedArray[SelectorKey[T]]
+        count: int
+        when hasThreadSupport:
           changesLock: Lock
-    else:
-      type
-        SelectorImpl[T] = object
-          kqFD : cint
-          maxFD : uint
-          changesTable: array[MAX_KQUEUE_CHANGE_EVENTS, KEvent]
-          changesCount: int
-          fds: seq[SelectorKey[T]]
-          count: int
-
-    when hasThreadSupport:
-      type Selector*[T] = ptr SelectorImpl[T]
-    else:
-      type Selector*[T] = ref SelectorImpl[T]
+      Selector*[T] = ptr SelectorImpl[T]
 
     type
       SelectEventImpl = object
@@ -336,23 +354,21 @@ else:
       var kqFD = kqueue()
       if kqFD < 0:
         raiseOsError(osLastError())
+
+      result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
+      result.kqFD = kqFD
+      result.maxFD = maxFD.uint
+      result.fds = allocSharedArray[SelectorKey[T]](maxFD)
       when hasThreadSupport:
-        result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
-        result.kqFD = kqFD
-        result.maxFD = maxFD.uint
-        result.fds = allocSharedArray[SelectorKey[T]](maxFD)
         initLock(result.changesLock)
-      else:
-        result = Selector[T](kqFD: kqFD, maxFD: maxFD.uint)
-        result.fds = newSeq[SelectorKey[T]](maxFD)
 
     proc close*[T](s: Selector[T]) =
       if posix.close(s.kqFD) != 0:
         raiseOSError(osLastError())
       when hasThreadSupport:
         deinitLock(s.changesLock)
-        deallocSharedArray(s.fds)
-        deallocShared(cast[pointer](s))
+      deallocSharedArray(s.fds)
+      deallocShared(cast[pointer](s))
 
     when hasThreadSupport:
       template withChangeLock[T](s: Selector[T], body: untyped) =
@@ -386,17 +402,15 @@ else:
                             events: set[Event], data: T) =
       var fdi = int(fd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          setKey(s, fdi, fdi, {flagHandle} + events, 0, data)
-          if events != {}:
-            if eventRead in events:
-              modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
-              inc(s.count)
-            if eventWrite in events:
-              modifyKQueue(s, fdi.uint, EVFILT_WRITE, EV_ADD, 0, 0, nil)
-              inc(s.count)
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+        doAssert(s.fds[fdi].ident == 0)
+        setKey(s, fdi, fdi, {Event.flagHandle} + events, 0, data)
+        if events != {}:
+          if Event.Read in events:
+            modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
+            inc(s.count)
+          if Event.Write in events:
+            modifyKQueue(s, fdi.uint, EVFILT_WRITE, EV_ADD, 0, 0, nil)
+            inc(s.count)
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -404,30 +418,24 @@ else:
                           events: set[Event]) =
       var fdi = int(fd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident != 0:
-          if flagHandle in s.fds[fdi].flags:
-            var ne = events + {flagHandle}
-            var oe = s.fds[fdi].flags
-            if oe != ne:
-              if (eventRead in oe) and (eventRead notin ne):
-                modifyKQueue(s, fdi.uint, EVFILT_READ, EV_DELETE, 0, 0, nil)
-                dec(s.count)
-              if (eventWrite in oe) and (eventWrite notin ne):
-                modifyKQueue(s, fdi.uint, EVFILT_WRITE, EV_DELETE, 0, 0, nil)
-                dec(s.count)
-              if (eventRead notin oe) and (eventRead in ne):
-                modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
-                inc(s.count)
-              if (eventWrite notin oe) and (eventWrite in ne):
-                modifyKQueue(s, fdi.uint, EVFILT_WRITE, EV_ADD, 0, 0, nil)
-                inc(s.count)
-              s.fds[fdi].flags = ne
-          else:
-            raise newException(ValueError,
-                               "Could not update non-handle descriptor")
-        else:
-          raise newException(ValueError,
-                             "Descriptor is not registered in queue")
+        doAssert(s.fds[fdi].ident != 0)
+        doAssert(Event.flagHandle in s.fds[fdi].flags)
+        var ne = events + {Event.flagHandle}
+        var oe = s.fds[fdi].flags
+        if oe != ne:
+          if (Event.Read in oe) and (Event.Read notin ne):
+            modifyKQueue(s, fdi.uint, EVFILT_READ, EV_DELETE, 0, 0, nil)
+            dec(s.count)
+          if (Event.Write in oe) and (Event.Write notin ne):
+             modifyKQueue(s, fdi.uint, EVFILT_WRITE, EV_DELETE, 0, 0, nil)
+             dec(s.count)
+          if (Event.Read notin oe) and (Event.Read in ne):
+             modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
+             inc(s.count)
+          if (Event.Write notin oe) and (Event.Write in ne):
+             modifyKQueue(s, fdi.uint, EVFILT_WRITE, EV_ADD, 0, 0, nil)
+             inc(s.count)
+          s.fds[fdi].flags = ne
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -438,20 +446,18 @@ else:
       if fdi == -1:
         raiseOsError(osLastError())
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          var mflags = if oneshot: {flagTimer, flagOneshot}
-                       else: {flagTimer}
-          var kflags: cushort = if oneshot: EV_ONESHOT or EV_ADD
-                                else: EV_ADD
-          setKey(s, fdi, fdi, mflags, 0, data)
-          # EVFILT_TIMER on Open/Net(BSD) has granularity of only milliseconds,
-          # but MacOS and FreeBSD allow use `0` as `fflags` to use milliseconds
-          # too
-          modifyKQueue(s, fdi.uint, EVFILT_TIMER, kflags, 0, cint(timeout), nil)
-          inc(s.count)
-          result = fdi
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+        doAssert(s.fds[fdi].ident == 0)
+        var mflags = if oneshot: {Event.flagTimer, Event.flagOneshot}
+                     else: {Event.flagTimer}
+        var kflags: cushort = if oneshot: EV_ONESHOT or EV_ADD
+                              else: EV_ADD
+        setKey(s, fdi, fdi, mflags, 0, data)
+        # EVFILT_TIMER on Open/Net(BSD) has granularity of only milliseconds,
+        # but MacOS and FreeBSD allow use `0` as `fflags` to use milliseconds
+        # too
+        modifyKQueue(s, fdi.uint, EVFILT_TIMER, kflags, 0, cint(timeout), nil)
+        inc(s.count)
+        result = fdi
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -463,23 +469,21 @@ else:
         raiseOsError(osLastError())
 
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          setKey(s, fdi, signal, {flagSignal}, signal, data)
-          # block signal `signal`
-          var nmask: Sigset
-          var omask: Sigset
-          discard sigemptyset(nmask)
-          discard sigemptyset(omask)
-          discard sigaddset(nmask, cint(signal))
-          blockSignals(nmask, omask)
-          # to be compatible with linux semantic we need to "eat" signals
-          posix.signal(cint(signal), SIG_IGN)
-          modifyKQueue(s, signal.uint, EVFILT_SIGNAL, EV_ADD, 0, 0,
-                       cast[pointer](fdi))
-          inc(s.count)
-          result = fdi
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+        doAssert(s.fds[fdi].ident == 0)
+        setKey(s, fdi, signal, {Event.flagSignal}, signal, data)
+        # block signal `signal`
+        var nmask: Sigset
+        var omask: Sigset
+        discard sigemptyset(nmask)
+        discard sigemptyset(omask)
+        discard sigaddset(nmask, cint(signal))
+        blockSignals(nmask, omask)
+        # to be compatible with linux semantic we need to "eat" signals
+        posix.signal(cint(signal), SIG_IGN)
+        modifyKQueue(s, signal.uint, EVFILT_SIGNAL, EV_ADD, 0, 0,
+                     cast[pointer](fdi))
+        inc(s.count)
+        result = fdi
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -491,15 +495,13 @@ else:
         raiseOsError(osLastError())
 
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          var kflags: cushort = EV_ONESHOT or EV_ADD
-          setKey(s, fdi, pid, {flagProcess, flagOneshot}, pid, data)
-          modifyKQueue(s, pid.uint, EVFILT_PROC, kflags, NOTE_EXIT, 0,
-                       cast[pointer](fdi))
-          inc(s.count)
-          result = fdi
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+        doAssert(s.fds[fdi].ident == 0)
+        var kflags: cushort = EV_ONESHOT or EV_ADD
+        setKey(s, fdi, pid, {Event.flagProcess, Event.flagOneshot}, pid, data)
+        modifyKQueue(s, pid.uint, EVFILT_PROC, kflags, NOTE_EXIT, 0,
+                     cast[pointer](fdi))
+        inc(s.count)
+        result = fdi
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -509,22 +511,22 @@ else:
         var flags = s.fds[fdi].flags
         var filter: cshort = 0
         if s.fds[fdi].ident != 0 and flags != {}:
-          if flagHandle in flags:
+          if Event.flagHandle in flags:
             # if events == 0, than descriptor was modified with
             # updateHandle(fd, 0), so it was already deleted from kqueue.
-            if flags != {flagHandle}:
-              if eventRead in flags:
+            if flags != {Event.flagHandle}:
+              if Event.Read in flags:
                 modifyKQueue(s, fdi.uint, EVFILT_READ, EV_DELETE, 0, 0, nil)
                 dec(s.count)
-              if eventWrite in flags:
+              if Event.Write in flags:
                 modifyKQueue(s, fdi.uint, EVFILT_WRITE, EV_DELETE, 0, 0, nil)
                 dec(s.count)
-          elif flagTimer in flags:
+          elif Event.flagTimer in flags:
             filter = EVFILT_TIMER
             discard posix.close(cint(s.fds[fdi].key.fd))
             modifyKQueue(s, fdi.uint, filter, EV_DELETE, 0, 0, nil)
             dec(s.count)
-          elif flagSignal in flags:
+          elif Event.flagSignal in flags:
             filter = EVFILT_SIGNAL
             # unblocking signal
             var nmask = Sigset()
@@ -536,12 +538,12 @@ else:
             discard posix.close(cint(s.fds[fdi].key.fd))
             modifyKQueue(s, fdi.uint, filter, EV_DELETE, 0, 0, nil)
             dec(s.count)
-          elif flagProcess in flags:
+          elif Event.flagProcess in flags:
             filter = EVFILT_PROC
             discard posix.close(cint(s.fds[fdi].key.fd))
             modifyKQueue(s, fdi.uint, filter, EV_DELETE, 0, 0, nil)
             dec(s.count)
-          elif flagUser in flags:
+          elif Event.flagUser in flags:
             filter = EVFILT_READ
             modifyKQueue(s, fdi.uint, filter, EV_DELETE, 0, 0, nil)
             dec(s.count)
@@ -583,15 +585,10 @@ else:
 
     proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
       let fdi = ev.rfd.int
-      if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0 and s.fds[fdi].flags == {}:
-          setKey(s, fdi, fdi, {flagUser}, 0, data)
-          modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
-          inc(s.count)
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
-      else:
-        raise newException(ValueError, "Event wait still pending!")
+      doAssert(s.fds[fdi].ident == 0)
+      setKey(s, fdi, fdi, {Event.flagUser}, 0, data)
+      modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
+      inc(s.count)
 
     proc unregister*[T](s: Selector[T], ev: SelectEvent) =
       let fdi = ev.rfd.int
@@ -640,9 +637,9 @@ else:
             case kevent.filter
             of EVFILT_READ:
               skey = addr(s.fds[kevent.ident.int])
-              if flagHandle in skey.flags:
-                events = {eventRead}
-              elif flagUser in skey.flags:
+              if Event.flagHandle in skey.flags:
+                events = {Event.Read}
+              elif Event.flagUser in skey.flags:
                 var data: int = 0
                 if posix.read(kevent.ident.cint, addr data,
                               sizeof(int)) != sizeof(int):
@@ -653,28 +650,28 @@ else:
                     continue
                   else:
                     raiseOSError(osLastError())
-                  events = {eventUser}
+                  events = {Event.User}
               else:
-                events = {eventRead}
+                events = {Event.Read}
             of EVFILT_WRITE:
               skey = addr(s.fds[kevent.ident.int])
-              events = {eventWrite}
+              events = {Event.Write}
             of EVFILT_TIMER:
               skey = addr(s.fds[kevent.ident.int])
-              if flagOneshot in skey.flags:
+              if Event.flagOneshot in skey.flags:
                 if posix.close(skey.ident.cint) == -1:
                   raiseOSError(osLastError())
                 clearKey(s, skey.ident)
                 # no need to modify kqueue, because EV_ONESHOT is already made
                 # this for us
                 dec(s.count)
-              events = {eventTimer}
+              events = {Event.Timer}
             of EVFILT_VNODE:
               skey = addr(s.fds[kevent.ident.int])
-              events = {eventVnode}
+              events = {Event.Vnode}
             of EVFILT_SIGNAL:
               skey = addr(s.fds[cast[int](kevent.udata)])
-              events = {eventSignal}
+              events = {Event.Signal}
             of EVFILT_PROC:
               skey = addr(s.fds[cast[int](kevent.udata)])
               if posix.close(skey.ident.cint) == -1:
@@ -683,13 +680,13 @@ else:
               # no need to modify kqueue, because EV_ONESHOT is already made
               # this for us
               dec(s.count)
-              events = {eventProcess}
+              events = {Event.Process}
             else:
               raise newException(ValueError,
                                  "Unsupported kqueue filter in queue")
 
             if (kevent.flags and EV_EOF) != 0:
-              events = events + {eventError}
+              events = events + {Event.Error}
             results[k].fd = skey.key.fd
             results[k].events = events
             results[k].data = skey.key.data
@@ -775,72 +772,55 @@ else:
     proc eventfd(count: cuint, flags: cint): cint
          {.cdecl, importc: "eventfd", header: "<sys/eventfd.h>".}
 
-    when hasThreadSupport:
-      type
-        SelectorImpl[T] = object
-          epollFD : cint
-          maxFD : uint
-          fds: ptr SharedArray[SelectorKey[T]]
-          count: int
-    else:
-      type
-        SelectorImpl[T] = object
-          epollFD : cint
-          maxFD : uint
-          fds: seq[SelectorKey[T]]
-          count: int
-
-    when hasThreadSupport:
-      type Selector*[T] = ptr SelectorImpl[T]
-    else:
-      type Selector*[T] = ref SelectorImpl[T]
 
     type
+      SelectorImpl[T] = object
+        epollFD : cint
+        maxFD : uint
+        fds: ptr SharedArray[SelectorKey[T]]
+        count: int
+
+      Selector*[T] = ptr SelectorImpl[T]
+
       SelectEventImpl = object
         efd: cint
 
-    type SelectEvent* = ptr SelectEventImpl
+      SelectEvent* = ptr SelectEventImpl
 
     proc newSelector*[T](): Selector[T] =
       var maxFD = getMaxFds()
       var epollFD = epoll_create(MAX_EPOLL_RESULT_EVENTS)
       if epollFD < 0:
         raiseOsError(osLastError())
-      when hasThreadSupport:
-        result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
-        result.epollFD = epollFD
-        result.maxFD = maxFD.uint
-        result.fds = allocSharedArray[SelectorKey[T]](maxFD)
-      else:
-        result = Selector[T](epollFD: epollFD, maxFD: maxFD.uint)
-        result.fds = newSeq[SelectorKey[T]](maxFD)
+
+      result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
+      result.epollFD = epollFD
+      result.maxFD = maxFD.uint
+      result.fds = allocSharedArray[SelectorKey[T]](maxFD)
 
     proc close*[T](s: Selector[T]) =
       if posix.close(s.epollFD) != 0:
         raiseOSError(osLastError())
-      when hasThreadSupport:
-        deallocSharedArray(s.fds)
-        deallocShared(cast[pointer](s))
+      deallocSharedArray(s.fds)
+      deallocShared(cast[pointer](s))
 
     proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                             events: set[Event], data: T) =
       var fdi = int(fd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          setKey(s, fdi, fdi, events + {flagHandle}, 0, data)
-          if events != {}:
-            var epv: epoll_event
-            epv.events = EPOLLRDHUP
-            epv.data.u64 = fdi.uint
-            if eventRead in events:
-              epv.events = epv.events or EPOLLIN
-            if eventWrite in events:
-              epv.events = epv.events or EPOLLOUT
-            if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
-              raiseOSError(osLastError())
-            inc(s.count)
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+        doAssert(s.fds[fdi].ident == 0)
+        setKey(s, fdi, fdi, events + {Event.flagHandle}, 0, data)
+        if events != {}:
+          var epv: epoll_event
+          epv.events = EPOLLRDHUP
+          epv.data.u64 = fdi.uint
+          if Event.Read in events:
+            epv.events = epv.events or EPOLLIN
+          if Event.Write in events:
+            epv.events = epv.events or EPOLLOUT
+          if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+            raiseOSError(osLastError())
+          inc(s.count)
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -848,43 +828,37 @@ else:
                           events: set[Event]) =
       var fdi = int(fd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident != 0:
-          var oe = s.fds[fdi].flags
-          if flagHandle in oe:
-            var ne = events + {flagHandle}
-            if oe != ne:
-              var epv: epoll_event
-              epv.data.u64 = fdi.uint
-              epv.events = EPOLLRDHUP
+        var oe = s.fds[fdi].flags
+        doAssert(s.fds[fdi].ident != 0)
+        doAssert(Event.flagHandle in oe)
+        var ne = events + {Event.flagHandle}
+        if oe != ne:
+          var epv: epoll_event
+          epv.data.u64 = fdi.uint
+          epv.events = EPOLLRDHUP
 
-              if eventRead in events:
-                epv.events = epv.events or EPOLLIN
-              if eventWrite in events:
-                epv.events = epv.events or EPOLLOUT
+          if Event.Read in events:
+            epv.events = epv.events or EPOLLIN
+          if Event.Write in events:
+            epv.events = epv.events or EPOLLOUT
 
-              if oe == {flagHandle}:
-                if ne != {flagHandle}:
-                  if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint,
-                               addr epv) == -1:
-                    raiseOSError(osLastError())
-                  inc(s.count)
-              else:
-                if events != {}:
-                  if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fdi.cint,
-                               addr epv) == -1:
-                    raiseOSError(osLastError())
-                else:
-                  if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint,
-                               addr epv) == -1:
-                    raiseOSError(osLastError())
-                  dec(s.count)
-              s.fds[fdi].flags = ne
+          if oe == {Event.flagHandle}:
+            if ne != {Event.flagHandle}:
+              if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint,
+                           addr epv) == -1:
+                raiseOSError(osLastError())
+              inc(s.count)
           else:
-            raise newException(ValueError,
-                               "Could not update non-handle descriptor")
-        else:
-          raise newException(ValueError,
-                             "Descriptor is not registered in queue")
+            if events != {}:
+              if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fdi.cint,
+                           addr epv) == -1:
+                raiseOSError(osLastError())
+            else:
+              if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint,
+                           addr epv) == -1:
+                raiseOSError(osLastError())
+              dec(s.count)
+          s.fds[fdi].flags = ne
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -894,21 +868,21 @@ else:
       if fdi.uint < s.maxFD:
         var flags = s.fds[fdi].flags
         if s.fds[fdi].ident != 0 and flags != {}:
-          if flagHandle in flags:
+          if Event.flagHandle in flags:
             # if events == {flagHandle}, then descriptor was already
             # unregistered from epoll with updateHandle() call.
             # This check is done to omit EBADF error.
-            if flags != {flagHandle}:
+            if flags != {Event.flagHandle}:
               if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint,
                            addr epv) == -1:
                 raiseOSError(osLastError())
               dec(s.count)
-          elif flagTimer in flags:
+          elif Event.flagTimer in flags:
             if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
               raiseOSError(osLastError())
             discard posix.close(fdi.cint)
             dec(s.count)
-          elif flagSignal in flags:
+          elif Event.flagSignal in flags:
             if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
               raiseOSError(osLastError())
             var nmask: Sigset
@@ -919,7 +893,7 @@ else:
             unblockSignals(nmask, omask)
             discard posix.close(fdi.cint)
             dec(s.count)
-          elif flagProcess in flags:
+          elif Event.flagProcess in flags:
             if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
               raiseOSError(osLastError())
             var nmask: Sigset
@@ -935,7 +909,7 @@ else:
     proc unregister*[T](s: Selector[T], ev: SelectEvent) =
       let fdi = int(ev.efd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident != 0 and flagUser in s.fds[fdi].flags:
+        if s.fds[fdi].ident != 0 and (Event.flagUser in s.fds[fdi].flags):
           clearKey(s, fdi)
           var epv: epoll_event
           if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
@@ -951,33 +925,31 @@ else:
       if fdi == -1:
         raiseOSError(osLastError())
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          var flags = {flagTimer}
-          var epv: epoll_event
-          epv.data.u64 = fdi.uint
-          epv.events = EPOLLIN or EPOLLRDHUP
-          setNonBlocking(fdi.cint)
-          if oneshot:
-            new_ts.it_interval.tv_sec = 0.Time
-            new_ts.it_interval.tv_nsec = 0
-            new_ts.it_value.tv_sec = (timeout div 1_000).Time
-            new_ts.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
-            flags = flags + {flagOneshot}
-            epv.events = epv.events or EPOLLONESHOT
-          else:
-            new_ts.it_interval.tv_sec = (timeout div 1000).Time
-            new_ts.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
-            new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
-            new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec
-          if timerfd_settime(fdi.cint, cint(0), new_ts, old_ts) == -1:
-            raiseOSError(osLastError())
-          if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
-            raiseOSError(osLastError())
-          setKey(s, fdi, fdi, flags, 0, data)
-          inc(s.count)
-          result = fdi
+        doAssert(s.fds[fdi].ident == 0)
+        var flags = {Event.flagTimer}
+        var epv: epoll_event
+        epv.data.u64 = fdi.uint
+        epv.events = EPOLLIN or EPOLLRDHUP
+        setNonBlocking(fdi.cint)
+        if oneshot:
+          new_ts.it_interval.tv_sec = 0.Time
+          new_ts.it_interval.tv_nsec = 0
+          new_ts.it_value.tv_sec = (timeout div 1_000).Time
+          new_ts.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
+          flags = flags + {Event.flagOneshot}
+          epv.events = epv.events or EPOLLONESHOT
         else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+          new_ts.it_interval.tv_sec = (timeout div 1000).Time
+          new_ts.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
+          new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
+          new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec
+        if timerfd_settime(fdi.cint, cint(0), new_ts, old_ts) == -1:
+          raiseOSError(osLastError())
+        if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        setKey(s, fdi, fdi, flags, 0, data)
+        inc(s.count)
+        result = fdi
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -995,18 +967,16 @@ else:
       if fdi == -1:
         raiseOSError(osLastError())
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          setNonBlocking(fdi.cint)
-          var epv: epoll_event
-          epv.data.u64 = fdi.uint
-          epv.events = EPOLLIN or EPOLLRDHUP
-          if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
-            raiseOSError(osLastError())
-          setKey(s, fdi, signal, {flagSignal}, signal, data)
-          inc(s.count)
-          result = fdi
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+        doAssert(s.fds[fdi].ident == 0)
+        setNonBlocking(fdi.cint)
+        var epv: epoll_event
+        epv.data.u64 = fdi.uint
+        epv.events = EPOLLIN or EPOLLRDHUP
+        if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        setKey(s, fdi, signal, {Event.flagSignal}, signal, data)
+        inc(s.count)
+        result = fdi
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -1020,28 +990,22 @@ else:
       discard sigemptyset(omask)
       discard sigaddset(nmask, posix.SIGCHLD)
       blockSignals(nmask, omask)
-      try:
-        var fdi = signalfd(-1, nmask, 0)
-        if fd == -1:
+      var fdi = signalfd(-1, nmask, 0)
+      if fd == -1:
+        raiseOSError(osLastError())
+      if fdi.uint < s.maxFD:
+        doAssert(s.fds[fdi].ident == 0)
+        setNonBlocking(fdi.cint)
+        var epv: epoll_event
+        epv.data.u64 = fdi.uint
+        epv.events = EPOLLIN or EPOLLRDHUP
+        if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
           raiseOSError(osLastError())
-        if fdi.uint < s.maxFD:
-          if s.fds[fdi].ident == 0:
-            setNonBlocking(fdi.cint)
-            var epv: epoll_event
-            epv.data.u64 = fdi.uint
-            epv.events = EPOLLIN or EPOLLRDHUP
-            if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
-              raiseOSError(osLastError())
-            setKey(s, fdi, pid, {flagProcess}, pid, data)
-            inc(s.count)
-            result = fdi
-          else:
-            raise newException(ValueError, "Re-use of non-closed descriptor")
-        else:
-          raise newException(ValueError, "Maximum file descriptors exceeded")
-      except:
-        if fd != -1: discard posix.close(fd.cint)
-        unblockSignals(omask, nmask)
+        setKey(s, fdi, pid, {Event.flagProcess}, pid, data)
+        inc(s.count)
+        result = fdi
+      else:
+        raise newException(ValueError, "Maximum file descriptors exceeded")
 
     proc flush*[T](s: Selector[T]) =
       discard
@@ -1051,18 +1015,13 @@ else:
 
     proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
       let fdi = int(ev.efd)
-      if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          setKey(s, fdi, fdi, {flagUser}, 0, data)
-          var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
-          epv.data.u64 = ev.efd.uint
-          if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, ev.efd, addr epv) == -1:
-            raiseOSError(osLastError())
-          inc(s.count)
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
-      else:
-        raise newException(ValueError, "Maximum file descriptors exceeded")
+      doAssert(s.fds[fdi].ident == 0)
+      setKey(s, fdi, fdi, {Event.flagUser}, 0, data)
+      var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
+      epv.data.u64 = ev.efd.uint
+      if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, ev.efd, addr epv) == -1:
+        raiseOSError(osLastError())
+      inc(s.count)
 
     proc setEvent*(ev: SelectEvent) =
       var data : uint64 = 1
@@ -1105,36 +1064,36 @@ else:
           if skey.ident != 0 and flags != {}:
             block processItem:
               if (pevents and EPOLLERR) != 0 or (pevents and EPOLLHUP) != 0:
-                events = events + {eventError}
+                events = events + {Event.Error}
               if (pevents and EPOLLOUT) != 0:
-                events = events + {eventWrite}
+                events = events + {Event.Write}
               if (pevents and EPOLLIN) != 0:
-                if flagHandle in flags:
-                  events = events + {eventRead}
-                elif flagTimer in flags:
+                if Event.flagHandle in flags:
+                  events = events + {Event.Read}
+                elif Event.flagTimer in flags:
                   var data: uint64 = 0
                   if posix.read(fdi.cint, addr data,
                                 sizeof(uint64)) != sizeof(uint64):
                     raiseOSError(osLastError())
-                  events = events + {eventTimer}
-                elif flagSignal in flags:
+                  events = events + {Event.Timer}
+                elif Event.flagSignal in flags:
                   var data: SignalFdInfo
                   if posix.read(fdi.cint, addr data,
                                 sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
                     raiseOsError(osLastError())
-                  events = events + {eventSignal}
-                elif flagProcess in flags:
+                  events = events + {Event.Signal}
+                elif Event.flagProcess in flags:
                   var data: SignalFdInfo
                   if posix.read(fdi.cint, addr data,
                                 sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
                     raiseOsError(osLastError())
                   if cast[int](data.ssi_pid) == skey.param:
-                    events = events + {eventProcess}
+                    events = events + {Event.Process}
                     # we want to free resources for this event
-                    flags = flags + {flagOneshot}
+                    flags = flags + {Event.flagOneshot}
                   else:
                     break processItem
-                elif flagUser in flags:
+                elif Event.flagUser in flags:
                   var data: uint = 0
                   if posix.read(fdi.cint, addr data,
                                 sizeof(uint)) != sizeof(uint):
@@ -1145,7 +1104,7 @@ else:
                       continue
                     else:
                       raiseOSError(err)
-                  events = events + {eventUser}
+                  events = events + {Event.User}
                 else:
                   raise newException(ValueError,
                                      "Unsupported epoll event in queue")
@@ -1153,7 +1112,7 @@ else:
               results[k].events = events
               results[k].data = skey.key.data
 
-              if flagOneshot in flags:
+              if Event.flagOneshot in flags:
                 var epv: epoll_event
                 try:
                   if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint,
@@ -1305,12 +1264,12 @@ else:
                           events: set[Event]) =
       mixin withSelectLock
       s.withSelectLock():
-        if eventRead in events:
+        if Event.Read in events:
           if s.rSet.fd_count == FD_SETSIZE:
             raise newException(ValueError, "Maximum numbers of fds exceeded")
           iFD_SET(fd, s.rSet)
           inc(s.count)
-        if eventWrite in events:
+        if Event.Write in events:
           if s.wSet.fd_count == FD_SETSIZE:
             raise newException(ValueError, "Maximum numbers of fds exceeded")
           iFD_SET(fd, s.wSet)
@@ -1320,7 +1279,7 @@ else:
     proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                             events: set[Event], data: T) =
       var fdi = int(fd)
-      var flags = {flagHandle} + events
+      var flags = {Event.flagHandle} + events
       var nkey = SelectorKey[T](ident: fdi, flags: flags)
       nkey.key.fd = fdi
       nkey.key.data = data
@@ -1333,21 +1292,21 @@ else:
                           events: set[Event]) =
       s.withSelectLock():
         withValue(s.fds, fd, skey) do:
-          if flagHandle in skey.flags:
+          if Event.flagHandle in skey.flags:
             var oe = skey.flags
-            var ne = events + {flagHandle}
+            var ne = events + {Event.flagHandle}
             if oe != ne:
-              if (eventRead in oe) and (eventRead notin ne):
+              if (Event.Read in oe) and (Event.Read notin ne):
                 iFD_CLR(fd, s.rSet)
                 dec(s.count)
-              if (eventWrite in oe) and (eventWrite notin ne):
+              if (Event.Write in oe) and (Event.Write notin ne):
                 iFD_CLR(fd, s.wSet)
                 iFD_CLR(fd, s.eSet)
                 dec(s.count)
-              if (eventRead notin oe) and (eventRead in ne):
+              if (Event.Read notin oe) and (Event.Read in ne):
                 iFD_SET(fd, s.rSet)
                 inc(s.count)
-              if (eventWrite notin oe) and (eventWrite in ne):
+              if (Event.Write notin oe) and (Event.Write in ne):
                 iFD_SET(fd, s.wSet)
                 iFD_SET(fd, s.eSet)
                 inc(s.count)
@@ -1384,17 +1343,17 @@ else:
     proc unregister*[T](s: Selector[T], fd: SocketHandle) =
       s.withSelectLock():
         s.fds.withValue(fd, skey) do:
-          if eventRead in skey.flags:
+          if Event.Read in skey.flags:
             iFD_CLR(fd, s.rSet)
             dec(s.count)
-          if eventWrite in skey.flags:
+          if Event.Write in skey.flags:
             iFD_CLR(fd, s.wSet)
             iFD_CLR(fd, s.eSet)
             dec(s.count)
         s.fds.del(fd)
 
     proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
-      var flags = {flagUser, eventRead}
+      var flags = {Event.flagUser, Event.Read}
       var nkey = SelectorKey[T](ident: ev.rsock.int, flags: flags)
       nkey.key.fd = ev.rsock.int
       nkey.key.data = data
@@ -1488,13 +1447,13 @@ else:
         while i < rset.fd_count:
           let fd = rset.fd_array[i]
           if iFD_ISSET(fd, rset):
-            var events = {eventRead}
-            if iFD_ISSET(fd, eset): events = events + {eventError}
-            if iFD_ISSET(fd, wset): events = events + {eventWrite}
+            var events = {Event.Read}
+            if iFD_ISSET(fd, eset): events = events + {Event.Error}
+            if iFD_ISSET(fd, wset): events = events + {Event.Write}
             s.fds.withValue(fd, skey) do:
-              if flagHandle in skey.flags:
+              if Event.flagHandle in skey.flags:
                 skey.key.events = events
-              elif flagUser in skey.flags:
+              elif Event.flagUser in skey.flags:
                 var data: int = 0
                 if winlean.recv(fd, cast[pointer](addr(data)),
                                 sizeof(int).cint, 0) != sizeof(int):
@@ -1505,7 +1464,7 @@ else:
                     # someone already consumed event data
                     inc(i)
                     continue
-                skey.key.events = {eventUser}
+                skey.key.events = {Event.User}
               results[rindex].fd = skey.key.fd
               results[rindex].data = skey.key.data
               results[rindex].events = skey.key.events
@@ -1516,9 +1475,9 @@ else:
         while i < wset.fd_count:
           let fd = wset.fd_array[i]
           if iFD_ISSET(fd, wset):
-            var events = {eventWrite}
+            var events = {Event.Write}
             if not iFD_ISSET(fd, rset):
-              if iFD_ISSET(fd, eset): events = events + {eventError}
+              if iFD_ISSET(fd, eset): events = events + {Event.Error}
               s.fds.withValue(fd, skey) do:
                 skey.key.events = events
                 results[rindex].fd = skey.key.fd
@@ -1545,35 +1504,23 @@ else:
   else:
     const MAX_POLL_RESULT_EVENTS = 64
 
-    when hasThreadSupport:
-      type
-        SelectorImpl[T] = object
-          maxFD : uint
-          pollcnt: int
-          fds: ptr SharedArray[SelectorKey[T]]
-          pollfds: ptr SharedArray[TPollFd]
-          count: int
-          lock: Lock
-    else:
-      type
-        SelectorImpl[T] = object
-          maxFD : uint
-          pollcnt: int
-          fds: seq[SelectorKey[T]]
-          pollfds: seq[TPollFd]
-          count: int
-
-    when hasThreadSupport:
-      type Selector*[T] = ptr SelectorImpl[T]
-    else:
-      type Selector*[T] = ref SelectorImpl[T]
-
     type
+      SelectorImpl[T] = object
+        maxFD : uint
+        pollcnt: int
+        fds: ptr SharedArray[SelectorKey[T]]
+        pollfds: ptr SharedArray[TPollFd]
+        count: int
+        when hasThreadSupport:
+          lock: Lock
+
+      Selector*[T] = ptr SelectorImpl[T]
+
       SelectEventImpl = object
         rfd: cint
         wfd: cint
 
-    type SelectEvent* = ptr SelectEventImpl
+      SelectEvent* = ptr SelectEventImpl
 
     when hasThreadSupport:
       template withPollLock[T](s: Selector[T], body: untyped) =
@@ -1590,29 +1537,25 @@ else:
     proc newSelector*[T](): Selector[T] =
       var maxFD = getMaxFds()
 
+      result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
+      result.maxFD = maxFD.uint
+      result.fds = allocSharedArray[SelectorKey[T]](maxFD)
+      result.pollfds = allocSharedArray[TPollFd](maxFD)
       when hasThreadSupport:
-        result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
-        result.maxFD = maxFD.uint
-        result.fds = allocSharedArray[SelectorKey[T]](maxFD)
-        result.pollfds = allocSharedArray[TPollFd](maxFD)
         initLock(result.lock)
-      else:
-        result = Selector[T](maxFD: maxFD.uint)
-        result.fds = newSeq[SelectorKey[T]](maxFD)
-        result.pollfds = newSeq[TPollFd](maxFD)
 
     proc close*[T](s: Selector[T]) =
       when hasThreadSupport:
         deinitLock(s.lock)
-        deallocSharedArray(s.fds)
-        deallocSharedArray(s.pollfds)
-        deallocShared(cast[pointer](s))
+      deallocSharedArray(s.fds)
+      deallocSharedArray(s.pollfds)
+      deallocShared(cast[pointer](s))
 
     template pollAdd[T](s: Selector[T], sock: cint, events: set[Event]) =
       withPollLock(s):
         var pollev: cshort = 0
-        if eventRead in events: pollev = pollev or POLLIN
-        if eventWrite in events: pollev = pollev or POLLOUT
+        if Event.Read in events: pollev = pollev or POLLIN
+        if Event.Write in events: pollev = pollev or POLLOUT
         s.pollfds[s.pollcnt].fd = cint(sock)
         s.pollfds[s.pollcnt].events = pollev
         inc(s.count)
@@ -1622,8 +1565,8 @@ else:
       withPollLock(s):
         var i = 0
         var pollev: cshort = 0
-        if eventRead in events: pollev = pollev or POLLIN
-        if eventWrite in events: pollev = pollev or POLLOUT
+        if Event.Read in events: pollev = pollev or POLLIN
+        if Event.Write in events: pollev = pollev or POLLOUT
 
         while i < s.pollcnt:
           if s.pollfds[i].fd == sock:
@@ -1658,11 +1601,9 @@ else:
                             events: set[Event], data: T) =
       var fdi = int(fd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          setKey(s, fdi, fdi, {flagHandle} + events, 0, data)
-          s.pollAdd(fdi.cint, events)
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
+        doAssert(s.fds[fdi].ident == 0)
+        setKey(s, fdi, fdi, {Event.flagHandle} + events, 0, data)
+        s.pollAdd(fdi.cint, events)
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -1670,21 +1611,16 @@ else:
                           events: set[Event]) =
       var fdi = int(fd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident != 0:
-          var oe = s.fds[fdi].flags
-          if flagHandle in oe:
-            var ne = events + {flagHandle}
-            if ne != oe:
-              if events != {}:
-                s.pollUpdate(fd.cint, events)
-              else:
-                s.pollRemove(fd.cint)
-              s.fds[fdi].flags = ne
+        var oe = s.fds[fdi].flags
+        doAssert(s.fds[fdi].ident != 0)
+        doAssert(Event.flagHandle in oe)
+        var ne = events + {Event.flagHandle}
+        if ne != oe:
+          if events != {}:
+            s.pollUpdate(fd.cint, events)
           else:
-            raise newException(ValueError,
-                               "Could not update non-handle descriptor")
-        else:
-          raise newException(ValueError, "Re-use of non closed descriptor")
+            s.pollRemove(fd.cint)
+          s.fds[fdi].flags = ne
       else:
         raise newException(ValueError, "Maximum file descriptors exceeded")
 
@@ -1702,15 +1638,10 @@ else:
 
     proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
       var fdi = int(ev.rfd)
-      if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident == 0:
-          var events = {flagUser, eventRead}
-          setKey(s, fdi, fdi, events, 0, data)
-          s.pollAdd(fdi.cint, events)
-        else:
-          raise newException(ValueError, "Re-use of non-closed descriptor")
-      else:
-        raise newException(ValueError, "Maximum file descriptors exceeded")
+      doAssert(s.fds[fdi].ident == 0)
+      var events = {Event.flagUser, Event.Read}
+      setKey(s, fdi, fdi, events, 0, data)
+      s.pollAdd(fdi.cint, events)
 
     proc flush*[T](s: Selector[T]) = discard
 
@@ -1727,7 +1658,7 @@ else:
     proc unregister*[T](s: Selector[T], ev: SelectEvent) =
       var fdi = int(ev.rfd)
       if fdi.uint < s.maxFD:
-        if s.fds[fdi].ident != 0 and (flagUser in s.fds[fdi].flags):
+        if s.fds[fdi].ident != 0 and (Event.flagUser in s.fds[fdi].flags):
           clearKey(s, fdi)
           s.pollRemove(fdi.cint)
 
@@ -1769,16 +1700,16 @@ else:
             if revents != 0:
               var events: set[Event] = {}
               if (revents and POLLIN) != 0:
-                events = events + {eventRead}
+                events = events + {Event.Read}
               if (revents and POLLOUT) != 0:
-                events = events + {eventWrite}
+                events = events + {Event.Write}
               if (revents and POLLERR) != 0 or (revents and POLLHUP) != 0 or
                  (revents and POLLNVAL) != 0:
-                events = events + {eventError}
+                events = events + {Event.Error}
 
               var skey = addr(s.fds[fd])
-              if flagUser in skey.flags:
-                if eventRead in events:
+              if Event.flagUser in skey.flags:
+                if Event.Read in events:
                   var data: int = 0
                   if posix.read(fd, addr data, sizeof(int)) != sizeof(int):
                     let err = osLastError()
@@ -1788,7 +1719,7 @@ else:
                       # someone already consumed event data
                       inc(i)
                       continue
-                  events = {eventUser}
+                  events = {Event.User}
 
               results[rindex].fd = fd
               results[rindex].events = events
