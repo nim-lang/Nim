@@ -95,16 +95,5 @@ assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
 
-assert(isNilOrEmpty(""))
-assert(isNilOrEmpty(nil))
-assert(not isNilOrEmpty("test"))
-assert(not isNilOrEmpty(" "))
-
-assert(isNilOrWhitespace(""))
-assert(isNilOrWhitespace(nil))
-assert(isNilOrWhitespace("       "))
-assert(isNilOrWhitespace("\t\l \v\r\f"))
-assert(not isNilOrWhitespace("ABc   \td"))
-
 main()
 #OUT ha/home/a1xyz/usr/bin
