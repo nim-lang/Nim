@@ -590,6 +590,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
+    mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,

@@ -130,7 +130,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
   else:
-    let isCall = ord(n.kind in nkCallKinds)
+    let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
     var base = semTypeNode(c, n.lastSon, nil)
@@ -370,7 +370,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   result.n = newNodeI(nkRecList, n.info)
   var check = initIntSet()
   var counter = 0
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(ord(n.kind == nkBracketExpr), sonsLen(n) - 1):
     var a = n.sons[i]
     if (a.kind != nkIdentDefs): illFormedAst(a)
     checkMinSonsLen(a, 3)
@@ -1248,6 +1248,19 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = copyType(result, getCurrOwner(), false)
         for i in countup(1, n.len - 1):
           result.rawAddSon(semTypeNode(c, n.sons[i], nil))
+    of mDistinct:
+      result = newOrPrevType(tyDistinct, prev, c)
+      addSonSkipIntLit(result, semTypeNode(c, n[1], nil))
+    of mVar:
+      result = newOrPrevType(tyVar, prev, c)
+      var base = semTypeNode(c, n.sons[1], nil)
+      if base.kind == tyVar:
+        localError(n.info, errVarVarTypeNotAllowed)
+        base = base.sons[0]
+      addSonSkipIntLit(result, base)
+    of mRef: result = semAnyRef(c, n, tyRef, prev)
+    of mPtr: result = semAnyRef(c, n, tyPtr, prev)
+    of mTuple: result = semTuple(c, n, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     var typeExpr = semExpr(c, n)
