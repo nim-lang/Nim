@@ -68,7 +68,7 @@ else:
       result = O_RDWR
     result = result or O_NONBLOCK
 
-proc getFileSize(f: AsyncFile): int64 =
+proc getFileSize*(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
   when defined(windows) or defined(nimdoc):
     var high: DWord
