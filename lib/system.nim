@@ -3633,6 +3633,27 @@ proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
+template closureScope*(body: untyped): stmt =
+  ## Useful when creating a closure in a loop to capture local loop variables by
+  ## their current iteration values. Example:
+  ##
+  ## .. code-block:: nim
+  ##   var myClosure : proc()
+  ##   # without closureScope:
+  ##   for i in 0 .. 5:
+  ##     let j = i
+  ##     if j == 3:
+  ##       myClosure = proc() = echo j
+  ##   myClosure() # outputs 5. `j` is changed after closure creation
+  ##   # with closureScope:
+  ##   for i in 0 .. 5:
+  ##     closureScope: # Everything in this scope is locked after closure creation
+  ##       let j = i
+  ##       if j == 3:
+  ##         myClosure = proc() = echo j
+  ##   myClosure() # outputs 3
+  (proc() = body)()
+
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 when defined(nimconfig):
