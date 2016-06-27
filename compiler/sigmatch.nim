@@ -363,6 +363,25 @@ proc isObjectSubtype(a, f: PType): int =
   if t != nil:
     result = depth
 
+proc skipToGenericBody(t: PType): PType =
+  var r = t
+  while r != nil:
+    if r.kind in {tyGenericInst, tyGenericInvocation}:
+      return r.sons[0]
+    r = if r.len > 0: r.lastSon else: nil
+
+proc isGenericSubtype(a, f: PType, d: var int): bool =
+  assert f.kind in {tyGenericInst, tyGenericInvocation, tyGenericBody}
+  var t = if a.kind == tyGenericBody: a else: a.skipToGenericBody
+  var r = if f.kind == tyGenericBody: f else: f.skipToGenericBody
+  var depth = 0
+  while t != nil and not sameObjectTypes(r, t):
+    t = t.skipToGenericBody
+    inc depth
+  if t != nil:
+    d = depth
+    result = true
+
 proc minRel(a, b: TTypeRelation): TTypeRelation =
   if a <= b: result = a
   else: result = b
@@ -647,7 +666,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   template bindingRet(res) =
     if doBind:
       let bound = aOrig.skipTypes({tyRange}).skipIntLit
-      if doBind: put(c.bindings, f, bound)
+      put(c.bindings, f, bound)
     return res
 
   template considerPreviousT(body: stmt) {.immediate.} =
@@ -945,17 +964,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
+    var depth = 0
     if x.kind == tyGenericInvocation or f.sons[0].kind != tyGenericBody:
       #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
       # simply no match for now:
       discard
     elif x.kind == tyGenericInst and
-          (f.sons[0] == x.sons[0]) and
+          ((f.sons[0] == x.sons[0]) or isGenericSubtype(x, f, depth)) and
           (sonsLen(x) - 1 == sonsLen(f)):
       for i in countup(1, sonsLen(f) - 1):
         if x.sons[i].kind == tyGenericParam:
           internalError("wrong instantiated type!")
         elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return
+      c.inheritancePenalty += depth
       result = isGeneric
     else:
       let genericBody = f.sons[0]
