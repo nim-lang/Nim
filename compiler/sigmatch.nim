@@ -976,7 +976,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         if x.sons[i].kind == tyGenericParam:
           internalError("wrong instantiated type!")
         elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return
-      c.inheritancePenalty = depth
+      c.inheritancePenalty += depth
       result = isGeneric
     else:
       let genericBody = f.sons[0]
