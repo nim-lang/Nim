@@ -160,7 +160,8 @@ proc isSpace*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isSpace() and result
+    if not c.isSpace():
+      return false
 
 proc isLower*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsLowerStr".}=
@@ -325,6 +326,20 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
   for i in countdown(2, 0):
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
+
+proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrEmpty".} =
+  ## Checks if `s` is nil or empty.
+  result = len(s) == 0
+
+proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrWhitespace".} =
+  ## Checks if `s` is nil or consists entirely of whitespace characters.
+  if len(s) == 0:
+    return true
+
+  result = true
+  for c in s:
+    if not c.isSpace():
+      return false
 
 iterator split*(s: string, seps: set[char] = Whitespace,
                 maxsplit: int = -1): string =
@@ -2155,6 +2170,17 @@ when isMainModule:
   doAssert isSpace("\t\l \v\r\f")
   doAssert isSpace("       ")
   doAssert(not isSpace("ABc   \td"))
+
+  doAssert(isNilOrEmpty(""))
+  doAssert(isNilOrEmpty(nil))
+  doAssert(not isNilOrEmpty("test"))
+  doAssert(not isNilOrEmpty(" "))
+
+  doAssert(isNilOrWhitespace(""))
+  doAssert(isNilOrWhitespace(nil))
+  doAssert(isNilOrWhitespace("       "))
+  doAssert(isNilOrWhitespace("\t\l \v\r\f"))
+  doAssert(not isNilOrWhitespace("ABc   \td"))
 
   doAssert isLower('a')
   doAssert isLower('z')
