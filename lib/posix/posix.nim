@@ -2616,8 +2616,12 @@ proc gai_strerror*(a1: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>
 proc getaddrinfo*(a1, a2: cstring, a3: ptr AddrInfo,
                   a4: var ptr AddrInfo): cint {.importc, header: "<netdb.h>".}
 
-proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
-                    importc, header: "<netdb.h>".}
+when not defined(android4):
+  proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
+                      importc, header: "<netdb.h>".}
+else:
+  proc gethostbyaddr*(a1: cstring, a2: cint, a3: cint): ptr Hostent {.
+                      importc, header: "<netdb.h>".}
 proc gethostbyname*(a1: cstring): ptr Hostent {.importc, header: "<netdb.h>".}
 proc gethostent*(): ptr Hostent {.importc, header: "<netdb.h>".}
 
