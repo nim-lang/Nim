@@ -3377,6 +3377,20 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## returns the full file-system path of the current source
 
+template currentSourceDir*: string =
+  ## Returns the absolute path of the directory containing the current
+  ## source file
+  ##
+  ## This is useful when wrapping C/C++ libraries that must be
+  ## compiled as a part of the Nim module.
+  const fileName = instantiationInfo(-1, false).fileName
+  const filePath = instantiationInfo(-1, true).fileName
+  var   result = ""
+
+  for i in 0..<(filePath.len - fileName.len - 1):
+    result.add(filePath[i])
+  result
+
 proc raiseAssert*(msg: string) {.noinline.} =
   sysFatal(AssertionError, msg)
 
