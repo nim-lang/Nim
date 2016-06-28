@@ -215,6 +215,12 @@ the closure and its enclosing scope (i.e. any modifications made to them are
 visible in both places). The closure environment may be allocated on the heap
 or on the stack if the compiler determines that this would be safe.
 
+Creating closures in loops
+~~~~~~~~~~~~~~~~
+
+Since closures capture local variables by reference it is often not wanted
+behavior inside loop bodies. See `closureScope <system.html#closureScope>`_
+for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
@@ -223,7 +229,7 @@ Procs can also be treated as expressions, in which case it's allowed to omit
 the proc's name.
 
 .. code-block:: nim
-  var cities = @["Frankfurt", "Tokyo", "New York"]
+  var cities = @["Frankfurt", "Tokyo", "New York", "Kyiv"]
 
   cities.sort(proc (x,y: string): int =
       cmp(x.len, y.len))
