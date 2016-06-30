@@ -884,7 +884,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   else: n == bindSym"true" # hacky solution for now
 
 when not defined(booting):
-  template emit*(e: static[string]): stmt =
+  template emit*(e: static[string]): stmt {.deprecated.} =
     ## accepts a single string argument and treats it as nim code
     ## that should be inserted verbatim in the program
     ## Example:
@@ -892,6 +892,7 @@ when not defined(booting):
     ## .. code-block:: nim
     ##   emit("echo " & '"' & "hello world".toUpper & '"')
     ##
+    ## Deprecated since version 0.15 since it's so rarely useful.
     macro payload: stmt {.gensym.} =
       result = parseStmt(e)
     payload()
