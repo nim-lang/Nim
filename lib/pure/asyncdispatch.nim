@@ -1931,6 +1931,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
       result.add asyncSingleProc(oneProc)
   else:
     result = asyncSingleProc(prc)
+  when defined(nimAsyncDebug):
+    echo repr result
 
 proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
