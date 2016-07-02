@@ -23,8 +23,10 @@ Library Additions
 - Added ``center`` and ``rsplit`` to ``strutils.nim`` to
   provide similar Python functionality for Nim's strings.
 
-- Added ``isTitle``, ``title``, and ``swapCase`` to ``unicode.nim`` to
-  provide unicode aware string case manipulation.
+- Added ``isTitle``, ``title``, ``swapCase``, ``isUpper``, ``toUpper``,
+  ``isLower``, ``toLower``, ``isAlpha``, ``isSpace``, and ``capitalize``
+  to ``unicode.nim`` to provide unicode aware case manipulation and case
+  testing.
 
 - Added a new module ``lib/pure/strmisc.nim`` to hold uncommon string
   operations. Currently contains ``partition``, ``rpartition``

@@ -64,8 +64,8 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
-proc isAlpha*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaChar".}=
+proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaAsciiChar".}=
   ## Checks whether or not `c` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -85,27 +85,27 @@ proc isDigit*(c: char): bool {.noSideEffect, procvar,
   ## This checks 0-9 ASCII characters only.
   return c in Digits
 
-proc isSpace*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceChar".}=
+proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceAsciiChar".}=
   ## Checks whether or not `c` is a whitespace character.
   return c in Whitespace
 
-proc isLower*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerChar".}=
+proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerAsciiChar".}=
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
   return c in {'a'..'z'}
 
-proc isUpper*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperChar".}=
+proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperAsciiChar".}=
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
   return c in {'A'..'Z'}
 
-proc isAlpha*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaStr".}=
+proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaAsciiStr".}=
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -117,7 +117,7 @@ proc isAlpha*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isAlpha() and result
+    result = c.isAlphaAscii() and result
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsAlphaNumericStr".}=
@@ -149,8 +149,8 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
   for c in s:
     result = c.isDigit() and result
 
-proc isSpace*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceStr".}=
+proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceAsciiStr".}=
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -160,11 +160,11 @@ proc isSpace*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    if not c.isSpace():
+    if not c.isSpaceAscii():
       return false
 
-proc isLower*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerStr".}=
+proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerAsciiStr".}=
   ## Checks whether or not `s` contains all lower case characters.
   ##
   ## This checks ASCII characters only.
@@ -175,10 +175,10 @@ proc isLower*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isLower() and result
+    result = c.isLowerAscii() and result
 
-proc isUpper*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperStr".}=
+proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperAsciiStr".}=
   ## Checks whether or not `s` contains all upper case characters.
   ##
   ## This checks ASCII characters only.
@@ -189,10 +189,10 @@ proc isUpper*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isUpper() and result
+    result = c.isUpperAscii() and result
 
-proc toLower*(c: char): char {.noSideEffect, procvar,
-  rtl, extern: "nsuToLowerChar".} =
+proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
+  rtl, extern: "nsuToLowerAsciiChar".} =
   ## Converts `c` into lower case.
   ##
   ## This works only for the letters ``A-Z``. See `unicode.toLower
@@ -203,8 +203,8 @@ proc toLower*(c: char): char {.noSideEffect, procvar,
   else:
     result = c
 
-proc toLower*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nsuToLowerStr".} =
+proc toLowerAscii*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts `s` into lower case.
   ##
   ## This works only for the letters ``A-Z``. See `unicode.toLower
@@ -212,10 +212,10 @@ proc toLower*(s: string): string {.noSideEffect, procvar,
   ## character.
   result = newString(len(s))
   for i in 0..len(s) - 1:
-    result[i] = toLower(s[i])
+    result[i] = toLowerAscii(s[i])
 
-proc toUpper*(c: char): char {.noSideEffect, procvar,
-  rtl, extern: "nsuToUpperChar".} =
+proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
+  rtl, extern: "nsuToUpperAsciiChar".} =
   ## Converts `c` into upper case.
   ##
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
@@ -226,8 +226,8 @@ proc toUpper*(c: char): char {.noSideEffect, procvar,
   else:
     result = c
 
-proc toUpper*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nsuToUpperStr".} =
+proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuToUpperAsciiStr".} =
   ## Converts `s` into upper case.
   ##
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
@@ -235,14 +235,145 @@ proc toUpper*(s: string): string {.noSideEffect, procvar,
   ## character.
   result = newString(len(s))
   for i in 0..len(s) - 1:
-    result[i] = toUpper(s[i])
+    result[i] = toUpperAscii(s[i])
 
-proc capitalize*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nsuCapitalize".} =
+proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of `s` into upper case.
   ##
   ## This works only for the letters ``A-Z``.
-  result = toUpper(s[0]) & substr(s, 1)
+  result = toUpperAscii(s[0]) & substr(s, 1)
+
+proc isSpace*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsSpaceChar".}=
+  ## Checks whether or not `c` is a whitespace character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isSpaceAscii`` instead.
+  isSpaceAscii(c)
+
+proc isLower*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsLowerChar".}=
+  ## Checks whether or not `c` is a lower case character.
+  ##
+  ## This checks ASCII characters only.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isLowerAscii`` instead.
+  isLowerAscii(c)
+
+proc isUpper*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsUpperChar".}=
+  ## Checks whether or not `c` is an upper case character.
+  ##
+  ## This checks ASCII characters only.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isUpperAscii`` instead.
+  isUpperAscii(c)
+
+proc isAlpha*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsAlphaChar".}=
+  ## Checks whether or not `c` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isAlphaAscii`` instead.
+  isAlphaAscii(c)
+
+proc isAlpha*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsAlphaStr".}=
+  ## Checks whether or not `s` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## alphabetic and there is at least one character
+  ## in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isAlphaAscii`` instead.
+  isAlphaAscii(s)
+
+proc isSpace*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsSpaceStr".}=
+  ## Checks whether or not `s` is completely whitespace.
+  ##
+  ## Returns true if all characters in `s` are whitespace
+  ## characters and there is at least one character in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isSpaceAscii`` instead.
+  isSpaceAscii(s)
+
+proc isLower*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsLowerStr".}=
+  ## Checks whether or not `s` contains all lower case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are lower case
+  ## and there is at least one character  in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isLowerAscii`` instead.
+  isLowerAscii(s)
+
+proc isUpper*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsUpperStr".}=
+  ## Checks whether or not `s` contains all upper case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are upper case
+  ## and there is at least one character in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isUpperAscii`` instead.
+  isUpperAscii(s)
+
+proc toLower*(c: char): char {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToLowerChar".} =
+  ## Converts `c` into lower case.
+  ##
+  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## <unicode.html#toLower>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toLowerAscii`` instead.
+  toLowerAscii(c)
+
+proc toLower*(s: string): string {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToLowerStr".} =
+  ## Converts `s` into lower case.
+  ##
+  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## <unicode.html#toLower>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toLowerAscii`` instead.
+  toLowerAscii(s)
+
+proc toUpper*(c: char): char {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToUpperChar".} =
+  ## Converts `c` into upper case.
+  ##
+  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## <unicode.html#toUpper>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toUpperAscii`` instead.
+  toUpperAscii(c)
+
+proc toUpper*(s: string): string {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToUpperStr".} =
+  ## Converts `s` into upper case.
+  ##
+  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## <unicode.html#toUpper>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toUpperAscii`` instead.
+  toUpperAscii(s)
+
+proc capitalize*(s: string): string {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuCapitalize".} =
+  ## Converts the first character of `s` into upper case.
+  ##
+  ## This works only for the letters ``A-Z``.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``capitalizeAscii`` instead.
+  capitalizeAscii(s)
 
 proc normalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuNormalize".} =
@@ -271,7 +402,7 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
   var i = 0
   var m = min(a.len, b.len)
   while i < m:
-    result = ord(toLower(a[i])) - ord(toLower(b[i]))
+    result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
     if result != 0: return
     inc(i)
   result = a.len - b.len
@@ -292,8 +423,8 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
-    var aa = toLower(a[i])
-    var bb = toLower(b[j])
+    var aa = toLowerAscii(a[i])
+    var bb = toLowerAscii(b[j])
     result = ord(aa) - ord(bb)
     if result != 0 or aa == '\0': break
     inc(i)
@@ -2138,13 +2269,13 @@ when isMainModule:
 
   doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
 
-  doAssert isAlpha('r')
-  doAssert isAlpha('A')
-  doAssert(not isAlpha('$'))
+  doAssert isAlphaAscii('r')
+  doAssert isAlphaAscii('A')
+  doAssert(not isAlphaAscii('$'))
 
-  doAssert isAlpha("Rasp")
-  doAssert isAlpha("Args")
-  doAssert(not isAlpha("$Tomato"))
+  doAssert isAlphaAscii("Rasp")
+  doAssert isAlphaAscii("Args")
+  doAssert(not isAlphaAscii("$Tomato"))
 
   doAssert isAlphaNumeric('3')
   doAssert isAlphaNumeric('R')
@@ -2163,13 +2294,13 @@ when isMainModule:
   doAssert(not isDigit("12.33"))
   doAssert(not isDigit("A45b"))
 
-  doAssert isSpace('\t')
-  doAssert isSpace('\l')
-  doAssert(not isSpace('A'))
+  doAssert isSpaceAscii('\t')
+  doAssert isSpaceAscii('\l')
+  doAssert(not isSpaceAscii('A'))
 
-  doAssert isSpace("\t\l \v\r\f")
-  doAssert isSpace("       ")
-  doAssert(not isSpace("ABc   \td"))
+  doAssert isSpaceAscii("\t\l \v\r\f")
+  doAssert isSpaceAscii("       ")
+  doAssert(not isSpaceAscii("ABc   \td"))
 
   doAssert(isNilOrEmpty(""))
   doAssert(isNilOrEmpty(nil))
@@ -2182,24 +2313,24 @@ when isMainModule:
   doAssert(isNilOrWhitespace("\t\l \v\r\f"))
   doAssert(not isNilOrWhitespace("ABc   \td"))
 
-  doAssert isLower('a')
-  doAssert isLower('z')
-  doAssert(not isLower('A'))
-  doAssert(not isLower('5'))
-  doAssert(not isLower('&'))
+  doAssert isLowerAscii('a')
+  doAssert isLowerAscii('z')
+  doAssert(not isLowerAscii('A'))
+  doAssert(not isLowerAscii('5'))
+  doAssert(not isLowerAscii('&'))
 
-  doAssert isLower("abcd")
-  doAssert(not isLower("abCD"))
-  doAssert(not isLower("33aa"))
+  doAssert isLowerAscii("abcd")
+  doAssert(not isLowerAscii("abCD"))
+  doAssert(not isLowerAscii("33aa"))
 
-  doAssert isUpper('A')
-  doAssert(not isUpper('b'))
-  doAssert(not isUpper('5'))
-  doAssert(not isUpper('%'))
+  doAssert isUpperAscii('A')
+  doAssert(not isUpperAscii('b'))
+  doAssert(not isUpperAscii('5'))
+  doAssert(not isUpperAscii('%'))
 
-  doAssert isUpper("ABC")
-  doAssert(not isUpper("AAcc"))
-  doAssert(not isUpper("A#$"))
+  doAssert isUpperAscii("ABC")
+  doAssert(not isUpperAscii("AAcc"))
+  doAssert(not isUpperAscii("A#$"))
 
   doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
   doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]

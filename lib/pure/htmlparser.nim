@@ -433,7 +433,7 @@ proc htmlTag*(n: XmlNode): HtmlTag =
 proc htmlTag*(s: string): HtmlTag =
   ## converts `s` to a ``HtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
   ## returned.
-  let s = if allLower(s): s else: s.toLower
+  let s = if allLower(s): s else: toLowerAscii(s)
   result = toHtmlTag(s)
 
 proc entityToUtf8*(entity: string): string =
@@ -513,13 +513,13 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     errors.add(errorMsg(x))
     next(x)
   of xmlElementStart:
-    result = newElement(x.elemName.toLower)
+    result = newElement(toLowerAscii(x.elemName))
     next(x)
     untilElementEnd(x, result, errors)
   of xmlElementEnd:
     errors.add(errorMsg(x, "unexpected ending tag: " & x.elemName))
   of xmlElementOpen:
-    result = newElement(x.elemName.toLower)
+    result = newElement(toLowerAscii(x.elemName))
     next(x)
     result.attrs = newStringTable()
     while true:
