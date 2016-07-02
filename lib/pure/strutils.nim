@@ -26,6 +26,12 @@ include "system/inclrtl"
 
 {.pop.}
 
+# Support old split with set[char]
+when defined(nimOldSplit):
+  {.pragma: deprecatedSplit, deprecated.}
+else:
+  {.pragma: deprecatedSplit.}
+
 type
   CharSet* {.deprecated.} = set[char] # for compatibility with Nim
 {.deprecated: [TCharSet: CharSet].}
@@ -472,17 +478,65 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "
     if not c.isSpace():
       return false
 
+proc substrEq(s: string, pos: int, substr: string): bool =
+  var i = 0
+  var length = substr.len
+  while i < length and s[pos+i] == substr[i]:
+    inc i
+
+  return i == length
+
+# --------- Private templates for different split separators -----------
+
+template stringHasSep(s: string, index: int, seps: set[char]): bool =
+  s[index] in seps
+
+template stringHasSep(s: string, index: int, sep: char): bool =
+  s[index] == sep
+
+template stringHasSep(s: string, index: int, sep: string): bool =
+  s.substrEq(index, sep)
+
+template splitCommon(s, sep, maxsplit, sepLen) =
+  ## Common code for split procedures
+  var last = 0
+  var splits = maxsplit
+
+  if len(s) > 0:
+    while last <= len(s):
+      var first = last
+      while last < len(s) and not stringHasSep(s, last, sep):
+        inc(last)
+      if splits == 0: last = len(s)
+      yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
+      inc(last, sepLen)
+
+when defined(nimOldSplit):
+  template oldSplit(s, seps, maxsplit) =
+    ## Deprecated split[char] for transition period
+    var last = 0
+    var splits = maxsplit
+    assert(not ('\0' in seps))
+    while last < len(s):
+      while s[last] in seps: inc(last)
+      var first = last
+      while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
+      if first <= last-1:
+        if splits == 0: last = len(s)
+        yield substr(s, first, last-1)
+        if splits == 0: break
+        dec(splits)
+
 iterator split*(s: string, seps: set[char] = Whitespace,
                 maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a group of separators.
   ##
-  ## Substrings are separated by a substring containing only `seps`. Note
-  ## that whole sequences of characters found in ``seps`` will be counted as
-  ## a single split point and leading/trailing separators will be ignored.
-  ## The following example:
+  ## Substrings are separated by a substring containing only `seps`.
   ##
   ## .. code-block:: nim
-  ##   for word in split("  this is an  example  "):
+  ##   for word in split("this\lis an\texample"):
   ##     writeLine(stdout, word)
   ##
   ## ...generates this output:
@@ -496,7 +550,7 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ## And the following code:
   ##
   ## .. code-block:: nim
-  ##   for word in split(";;this;is;an;;example;;;", {';'}):
+  ##   for word in split("this:is;an$example", {';', ':', '$'}):
   ##     writeLine(stdout, word)
   ##
   ## ...produces the same output as the first example. The code:
@@ -517,26 +571,16 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ##   "08"
   ##   "08.398990"
   ##
-  var last = 0
-  var splits = maxsplit
-  assert(not ('\0' in seps))
-  while last < len(s):
-    while s[last] in seps: inc(last)
-    var first = last
-    while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
-    if first <= last-1:
-      if splits == 0: last = len(s)
-      yield substr(s, first, last-1)
-      if splits == 0: break
-      dec(splits)
+  when defined(nimOldSplit):
+    oldSplit(s, seps, maxsplit)
+  else:
+    splitCommon(s, seps, maxsplit, 1)
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
-  ## Unlike the version of the iterator which accepts a set of separator
-  ## characters, this proc will not coalesce groups of the
-  ## separator, returning a string for each found character. The code:
+  ## The code:
   ##
   ## .. code-block:: nim
   ##   for word in split(";;this;is;an;;example;;;", ';'):
@@ -556,56 +600,27 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  var last = 0
-  var splits = maxsplit
-  assert('\0' != sep)
-  if len(s) > 0:
-    # `<=` is correct here for the edge cases!
-    while last <= len(s):
-      var first = last
-      while last < len(s) and s[last] != sep: inc(last)
-      if splits == 0: last = len(s)
-      yield substr(s, first, last-1)
-      if splits == 0: break
-      dec(splits)
-      inc(last)
-
-proc substrEq(s: string, pos: int, substr: string): bool =
-  var i = 0
-  var length = substr.len
-  while i < length and s[pos+i] == substr[i]:
-    inc i
-
-  return i == length
+  splitCommon(s, sep, maxsplit, 1)
 
 iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`.
-  var last = 0
-  var splits = maxsplit
+  ## The code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("thisDATAisDATAcorrupted", "DATA"):
+  ##     writeLine(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is"
+  ##   "corrupted"
+  ##
 
-  if len(s) > 0:
-    while last <= len(s):
-      var first = last
-      while last < len(s) and not s.substrEq(last, sep):
-        inc(last)
-      if splits == 0: last = len(s)
-      yield substr(s, first, last-1)
-      if splits == 0: break
-      dec(splits)
-      inc(last, sep.len)
-
-# --------- Private templates for different rsplit separators -----------
-
-template stringHasSep(s: string, index: int, seps: set[char]): bool =
-  s[index] in seps
-
-template stringHasSep(s: string, index: int, sep: char): bool =
-  s[index] == sep
-
-template stringHasSep(s: string, index: int, sep: string): bool =
-  s.substrEq(index, sep)
+  splitCommon(s, sep, maxsplit, sep.len)
 
 template rsplitCommon(s, sep, maxsplit, sepLen) =
   ## Common code for rsplit functions
@@ -2375,11 +2390,14 @@ bar
     bar
   """.unindent() == "foo\nfoo\nbar\n"
 
-  let s = " this   is     an example   "
-  doAssert s.split() == @["this", "is", "an", "example"]
-  doAssert s.split(maxsplit=4) == @["this", "is", "an", "example"]
-  doAssert s.split(' ', maxsplit=4) == @["", "this", "", "", "is     an example   "]
-  doAssert s.split(" ", maxsplit=4) == @["", "this", "", "", "is     an example   "]
+  let s = " this is an example  "
+  let s2 = ":this;is;an:example;;"
+
+  doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
+  doAssert s2.split(seps={':', ';'}) == @["", "this", "is", "an", "example", "", ""]
+  doAssert s.split(maxsplit=4) == @["", "this", "is", "an", "example  "]
+  doAssert s.split(' ', maxsplit=1) == @["", "this is an example  "]
+  doAssert s.split(" ", maxsplit=4) == @["", "this", "is", "an", "example  "]
 
   block: # formatEng tests
     doAssert formatEng(0, 2, trim=false) == "0.00"
