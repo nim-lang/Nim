@@ -260,6 +260,8 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
     else:
       result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
   else:
+    if tfVarargs notin typ.flags:
+      localError(ri.info, "wrong argument count")
     result = genArgNoParam(p, ri.sons[i])
 
 discard """
