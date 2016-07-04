@@ -11,7 +11,8 @@ Arguments:
   arguments are passed to the program being run (if --run option is selected)
 Options:
   -p, --path:PATH           add path to search paths
-  -d, --define:SYMBOL       define a conditional symbol
+  -d, --define:SYMBOL(:VAL) define a conditional symbol
+                            (Optionally: Define the value for that symbol)
   -u, --undef:SYMBOL        undefine a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off

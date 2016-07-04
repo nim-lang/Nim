@@ -150,8 +150,9 @@ elif defined(windows):
     #VirtualFree(p, size, MEM_DECOMMIT)
 
 elif hostOS == "standalone":
+  const StandaloneHeapSize {.magic: "IntDefine"}: int = 1024 * PageSize
   var
-    theHeap: array[1024*PageSize, float64] # 'float64' for alignment
+    theHeap: array[StandaloneHeapSize, float64] # 'float64' for alignment
     bumpPointer = cast[int](addr theHeap)
 
   proc osAllocPages(size: int): pointer {.inline.} =
