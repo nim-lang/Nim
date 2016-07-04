@@ -631,6 +631,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optNoCppExceptions)
     defineSymbol("noCppExceptions")
+  of "standaloneheapsize":
+    expectArg(switch, arg, pass, info)
+    platform.standaloneHeapSize = parseInt(arg)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

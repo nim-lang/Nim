@@ -201,6 +201,7 @@ var
   floatSize*: int
   ptrSize*: int
   tnl*: string                # target newline
+  standaloneHeapSize*: int
 
 proc setTarget*(o: TSystemOS, c: TSystemCPU) =
   assert(c != cpuNone)
@@ -212,6 +213,9 @@ proc setTarget*(o: TSystemOS, c: TSystemCPU) =
   floatSize = CPU[c].floatSize div 8
   ptrSize = CPU[c].bit div 8
   tnl = OS[o].newLine
+
+  let pageSize = if CPU[c].bit == 16: 1 shl 8 else: 1 shl 12
+  standaloneHeapSize = 1024 * pageSize
 
 proc nameToOS(name: string): TSystemOS =
   for i in countup(succ(osNone), high(TSystemOS)):
