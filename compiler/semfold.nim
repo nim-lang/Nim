@@ -636,6 +636,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLower(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLower, n)
+      of mStandaloneHeapSize: result = newIntNodeT(platform.standaloneHeapSize, n)
       of mAppType: result = getAppType(n)
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)

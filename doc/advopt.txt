@@ -65,6 +65,9 @@ Advanced options:
   --skipProjCfg             do not read the project's configuration file
   --gc:refc|v2|markAndSweep|boehm|go|none
                             select the GC to use; default is 'refc'
+  --standaloneHeapSize:SIZE set the size of the heap used in
+                            os:standalone environments. (total size is
+                            standaloneHeapSize * sizeof(float64))
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
