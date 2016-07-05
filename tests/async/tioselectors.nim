@@ -124,7 +124,7 @@ when not defined(windows):
 
   proc event_notification_test(): bool =
     var selector = newSelector[int]()
-    var event = newEvent()
+    var event = newSelectEvent()
     selector.registerEvent(event, 1)
     selector.flush()
     event.setEvent()
@@ -235,7 +235,7 @@ when not defined(windows):
         thr: array [0..7, Thread[SelectEvent]]
       var selector = newSelector[int]()
       var sock = newNativeSocket()
-      var event = newEvent()
+      var event = newSelectEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)
       selector.registerHandle(sock, {Event.Read}, 1)
@@ -358,7 +358,7 @@ else:
 
   proc event_notification_test(): bool =
     var selector = newSelector[int]()
-    var event = newEvent()
+    var event = newSelectEvent()
     selector.registerEvent(event, 1)
     selector.flush()
     event.setEvent()
@@ -391,7 +391,7 @@ else:
 
     proc mt_event_test(): bool =
       var thr: array [0..7, Thread[SelectEvent]]
-      var event = newEvent()
+      var event = newSelectEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)
       event.setEvent()
