@@ -98,6 +98,11 @@ enable builds in release mode (``-d:release``) where certain safety checks are
 omitted for better performance. Another common use is the ``-d:ssl`` switch to
 activate `SSL sockets <sockets.html>`_.
 
+Additionally, you may pass a value along with the symbol: ``-d:x=y``
+which may be used in conjunction with the `compile time define
+pragmas<manual.html#implementation-specific-pragmas-compile-time-define-pragmas>`_
+to override symbols during build time.
+
 
 Configuration files
 -------------------
@@ -370,7 +375,10 @@ For example, to generate code for an `AVR`:idx: processor use this command::
 For the ``standalone`` target one needs to provide
 a file ``panicoverride.nim``.
 See ``tests/manyloc/standalone/panicoverride.nim`` for an example
-implementation.
+implementation.  Additionally, users should specify the
+amount of heap space to use with the ``-d:StandaloneHeapSize=<size>``
+command line switch.  Note that the total heap size will be
+``<size> * sizeof(float64)``.
 
 
 Nim for realtime systems
