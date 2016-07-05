@@ -262,7 +262,9 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   else:
     if tfVarargs notin typ.flags:
       localError(ri.info, "wrong argument count")
-    result = genArgNoParam(p, ri.sons[i])
+      result = nil
+    else:
+      result = genArgNoParam(p, ri.sons[i])
 
 discard """
 Dot call syntax in C++
