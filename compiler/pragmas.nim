@@ -902,7 +902,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wIntDefine:
         sym.magic = mIntDefine
       of wStrDefine:
-        sym.magic = mIntDefine
+        sym.magic = mStrDefine
       else: invalidPragma(it)
     else: invalidPragma(it)
 

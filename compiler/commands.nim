@@ -122,13 +122,6 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
   elif switch[i] in {':', '=', '['}: arg = substr(switch, i + 1)
   else: invalidCmdLineOption(pass, switch, info)
 
-proc hasKeyValuePair(arg: string): bool =
-  for i in 0..arg.high:
-    if arg[i] in {':', '='}:
-      return true
-
-  return false
-
 proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
   case whichKeyword(arg)
@@ -349,7 +342,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
     expectArg(switch, arg, pass, info)
-    if hasKeyValuePair(arg):
+    if {':', '='} in arg:
       splitSwitch(arg, key, val, pass, info)
       defineSymbol(key, val)
     else:
