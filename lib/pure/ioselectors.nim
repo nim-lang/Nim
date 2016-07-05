@@ -188,7 +188,7 @@ else:
       SharedArray {.unchecked.}[T] = array[0..100_000_000, T]
 
     proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
-      result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) & nsize))
+      result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) * nsize))
 
     proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
