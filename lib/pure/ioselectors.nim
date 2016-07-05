@@ -250,12 +250,12 @@ else:
           raiseOSError(osLastError())
 
   when defined(linux):
-    include ioselectors/ioselectors_epoll
+    include ioselects/ioselectors_epoll
   elif bsdPlatform:
-    include ioselectors/ioselectors_kqueue
+    include ioselects/ioselectors_kqueue
   elif defined(windows):
-    include ioselectors/ioselectors_select
+    include ioselects/ioselectors_select
   elif defined(solaris):
-    include ioselectors/ioselectors_poll # need to replace it with event ports
+    include ioselects/ioselectors_poll # need to replace it with event ports
   else:
-    include ioselectors/ioselectors_poll
+    include ioselects/ioselectors_poll
