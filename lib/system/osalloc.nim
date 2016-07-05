@@ -150,7 +150,7 @@ elif defined(windows):
     #VirtualFree(p, size, MEM_DECOMMIT)
 
 elif hostOS == "standalone":
-  const StandaloneHeapSize {.magic: "IntDefine"}: int = 1024 * PageSize
+  const StandaloneHeapSize {.intdefine.}: int = 1024 * PageSize
   var
     theHeap: array[StandaloneHeapSize, float64] # 'float64' for alignment
     bumpPointer = cast[int](addr theHeap)
