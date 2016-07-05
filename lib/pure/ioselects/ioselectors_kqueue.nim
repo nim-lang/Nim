@@ -25,7 +25,7 @@ when defined(macosx) or defined(freebsd):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr int,
               newp: pointer, newplen: int): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
-                                        #include <sys/sysctl.h>"""}
+                                      #include <sys/sysctl.h>"""}
 elif defined(netbsd) or defined(openbsd):
   # OpenBSD and NetBSD don't have KERN_MAXFILESPERPROC, so we are using
   # KERN_MAXFILES, because KERN_MAXFILES is always bigger,

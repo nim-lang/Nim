@@ -185,19 +185,13 @@ else:
     import locks
 
     type
-      SharedArrayHolder[T] = object
-        part: array[1, T]
       SharedArray {.unchecked.}[T] = array[0..100_000_000, T]
 
     proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
-      let holder = cast[ptr SharedArrayHolder[T]](
-                         allocShared0(sizeof(T) * nsize)
-                       )
-      result = cast[ptr SharedArray[T]](addr(holder.part[0]))
+      result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) & nsize))
 
     proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
-  
   type
     Event* {.pure.} = enum
       Read, Write, Timer, Signal, Process, Vnode, User, Error, Oneshot
