@@ -36,6 +36,7 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
+    wIntDefine, wStrDefine,
 
     wDestroy,
 
@@ -121,7 +122,7 @@ const
 
     ":", "::", "=", ".", "..",
     "*", "-",
-    "magic", "thread", "final", "profiler", "objchecks",
+    "magic", "thread", "final", "profiler", "objchecks", "intdefine", "strdefine",
 
     "destroy",
 

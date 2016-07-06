@@ -46,8 +46,14 @@ Library Additions
 Compiler Additions
 ------------------
 
+- The ``-d/--define`` flag can now optionally take a value to be used
+  by code at compile time.
+
 Language Additions
 ------------------
+
+- Added ``{.intdefine.}`` and ``{.strdefine.}`` macros to make use of
+  (optional) compile time defines.
 
 Bugfixes
 --------

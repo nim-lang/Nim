@@ -58,7 +58,7 @@ proc isValid*[A](s: HashSet[A]): bool =
   ## initialized. Example:
   ##
   ## .. code-block ::
-  ##   proc savePreferences(options: Set[string]) =
+  ##   proc savePreferences(options: HashSet[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
   result = not s.data.isNil
@@ -72,7 +72,7 @@ proc len*[A](s: HashSet[A]): int =
   ##
   ## .. code-block::
   ##
-  ##   var values: Set[int]
+  ##   var values: HashSet[int]
   ##   assert(not values.isValid)
   ##   assert values.len == 0
   result = s.counter
@@ -338,7 +338,7 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   ## existing values and calling `excl() <#excl,TSet[A],A>`_ on them. Example:
   ##
   ## .. code-block ::
-  ##   var a: Set[int]
+  ##   var a: HashSet[int]
   ##   a.init(4)
   ##   a.incl(2)
   ##   a.init

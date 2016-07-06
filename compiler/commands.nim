@@ -342,7 +342,11 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
     expectArg(switch, arg, pass, info)
-    defineSymbol(arg)
+    if {':', '='} in arg:
+      splitSwitch(arg, key, val, pass, info)
+      defineSymbol(key, val)
+    else:
+      defineSymbol(arg)
   of "undef", "u":
     expectArg(switch, arg, pass, info)
     undefSymbol(arg)

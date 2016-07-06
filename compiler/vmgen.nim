@@ -516,8 +516,11 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   let x = c.getTempRange(n.len, slotTempUnknown)
   # varargs need 'opcSetType' for the FFI support:
-  let fntyp = n.sons[0].typ
+  let fntyp = skipTypes(n.sons[0].typ, abstractInst)
   for i in 0.. <n.len:
+    if i > 0 and i < sonsLen(fntyp):
+      let paramType = fntyp.n.sons[i]
+      if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
     c.gen(n.sons[i], r)
     if i >= fntyp.len:

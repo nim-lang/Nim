@@ -727,6 +727,7 @@ proc equalParam(a, b: PSym): TParamsEquality =
     result = paramsNotEqual
 
 proc sameConstraints(a, b: PNode): bool =
+  if isNil(a) and isNil(b): return true
   internalAssert a.len == b.len
   for i in 1 .. <a.len:
     if not exprStructuralEquivalent(a[i].sym.constraint,
