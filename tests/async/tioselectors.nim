@@ -58,6 +58,7 @@ when not defined(windows):
     discard posix.connect(client_socket, aiList.ai_addr,
                           aiList.ai_addrlen.Socklen)
     dealloc(aiList)
+    discard selector.select(100)
     var rc1 = selector.select(100)
     assert(len(rc1) == 2)
 
