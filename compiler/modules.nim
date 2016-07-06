@@ -184,8 +184,8 @@ proc importModule*(s: PSym, fileIdx: int32): PSym {.procvar.} =
   # this is called by the semantic checking phase
   result = compileModule(fileIdx, {})
   if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
-  if sfSystemModule in result.flags:
-    localError(result.info, errAttemptToRedefine, result.name.s)
+  #if sfSystemModule in result.flags:
+  #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:
   gNotes = if s.owner.id == gMainPackageId: gMainPackageNotes
            else: ForeignPackageNotes

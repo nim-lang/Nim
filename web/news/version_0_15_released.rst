@@ -54,6 +54,9 @@ Language Additions
 
 - Added ``{.intdefine.}`` and ``{.strdefine.}`` macros to make use of
   (optional) compile time defines.
+- If the first statement is an ``import system`` statement then ``system``
+  is not imported implicitly anymore. This allows for code like
+  ``import system except echo`` or ``from system import nil``.
 
 Bugfixes
 --------
