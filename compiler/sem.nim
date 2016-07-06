@@ -307,6 +307,13 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
 
 include hlo, seminst, semcall
 
+when false:
+  # hopefully not required:
+  proc resetSemFlag(n: PNode) =
+    excl n.flags, nfSem
+    for i in 0 ..< n.safeLen:
+      resetSemFlag(n[i])
+
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
                        flags: TExprFlags): PNode =
   ## Semantically check the output of a macro.
@@ -320,6 +327,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
   c.friendModules.add(s.owner.getModule)
 
   result = n
+  excl(n.flags, nfSem)
+  #resetSemFlag n
   if s.typ.sons[0] == nil:
     result = semStmt(c, result)
   else:
