@@ -266,7 +266,6 @@ template resetVar[T](v: T): untyped =
   when nimvm: discard # Not (yet) supported at compile time. See #4412.
   else: v = default(type(v))
 
-
 proc excl*[A](s: var HashSet[A], key: A) =
   ## Excludes `key` from the set `s`.
   ##
