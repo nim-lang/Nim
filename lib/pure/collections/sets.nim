@@ -262,6 +262,9 @@ template doWhile(a: expr, b: stmt): stmt =
     if not a: break
 
 proc default[T](t: typedesc[T]): T {.inline.} = discard
+template resetVar[T](v: T): untyped =
+  when nimvm: discard # Not (yet) supported at compile time. See #4412.
+  else: v = default(type(v))
 
 proc excl*[A](s: var HashSet[A], key: A) =
   ## Excludes `key` from the set `s`.
@@ -279,13 +282,13 @@ proc excl*[A](s: var HashSet[A], key: A) =
   var msk = high(s.data)
   if i >= 0:
     s.data[i].hcode = 0
-    s.data[i].key = default(type(s.data[i].key))
+    resetVar(s.data[i].key) # Reset key (to allow GC cleanup)
     dec(s.counter)
     while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
       var j = i         # The correctness of this depends on (h+1) in nextTry,
       var r = j         # though may be adaptable to other simple sequences.
       s.data[i].hcode = 0              # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
+      resetVar(s.data[i].key) # Reset key (to allow GC cleanup)
       doWhile ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
         i = (i + 1) and msk            # increment mod table size
         if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
