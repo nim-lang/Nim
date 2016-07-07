@@ -304,8 +304,9 @@ template equalsImpl() =
     # to use the slow route here:
     for key, val in s:
       # prefix notation leads to automatic dereference in case of PTable
-      if not t.hasKey(key): return false
-      if t[key] != val: return false
+      try:
+        if t[key] != val: return false
+      except KeyError: return false
     return true
 
 proc `==`*[A, B](s, t: Table[A, B]): bool =
