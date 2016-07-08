@@ -1557,8 +1557,16 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   of tyEnum, tyOrdinal:
     gen(p, n.sons[1], r)
     useMagic(p, "cstrToNimstr")
+    var offset = ""
+    if t.kind == tyEnum:
+      let firstFieldOffset = t.n.sons[0].sym.position
+      if firstFieldOffset < 0:
+        offset = "+" & $(-firstFieldOffset)
+      elif firstFieldOffset > 0:
+        offset = "-" & $firstFieldOffset
+
     r.kind = resExpr
-    r.res = "cstrToNimstr($1.node.sons[$2].name)" % [genTypeInfo(p, t), r.res]
+    r.res = "cstrToNimstr($1.node.sons[$2$3].name)" % [genTypeInfo(p, t), r.res, rope(offset)]
   else:
     # XXX:
     internalError(n.info, "genRepr: Not implemented")

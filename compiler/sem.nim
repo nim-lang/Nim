@@ -307,6 +307,13 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
 
 include hlo, seminst, semcall
 
+when false:
+  # hopefully not required:
+  proc resetSemFlag(n: PNode) =
+    excl n.flags, nfSem
+    for i in 0 ..< n.safeLen:
+      resetSemFlag(n[i])
+
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
                        flags: TExprFlags): PNode =
   ## Semantically check the output of a macro.
@@ -320,6 +327,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
   c.friendModules.add(s.owner.getModule)
 
   result = n
+  excl(n.flags, nfSem)
+  #resetSemFlag n
   if s.typ.sons[0] == nil:
     result = semStmt(c, result)
   else:
@@ -409,9 +418,6 @@ proc myOpen(module: PSym): PPassContext =
   c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags:
     magicsys.systemModule = module # set global variable!
-  else:
-    c.importTable.addSym magicsys.systemModule # import the "System" identifier
-    importAllSymbols(c, magicsys.systemModule)
   c.topLevelScope = openScope(c)
   # don't be verbose unless the module belongs to the main package:
   if module.owner.id == gMainPackageId:
@@ -425,7 +431,29 @@ proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
   result = myOpen(module)
   for m in items(rd.methods): methodDef(m, true)
 
+proc isImportSystemStmt(n: PNode): bool =
+  if magicsys.systemModule == nil: return false
+  case n.kind
+  of nkImportStmt:
+    for x in n:
+      let f = checkModuleName(x)
+      if f == magicsys.systemModule.info.fileIndex:
+        return true
+  of nkImportExceptStmt, nkFromStmt:
+    let f = checkModuleName(n[0])
+    if f == magicsys.systemModule.info.fileIndex:
+      return true
+  else: discard
+
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
+  if c.topStmts == 0 and not isImportSystemStmt(n):
+    if sfSystemModule notin c.module.flags and
+        n.kind notin {nkEmpty, nkCommentStmt}:
+      c.importTable.addSym magicsys.systemModule # import the "System" identifier
+      importAllSymbols(c, magicsys.systemModule)
+      inc c.topStmts
+  else:
+    inc c.topStmts
   if sfNoForward in c.module.flags:
     result = semAllTypeSections(c, n)
   else:

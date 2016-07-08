@@ -63,7 +63,8 @@ const
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims}
+    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
+    wIntDefine, wStrDefine}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -898,6 +899,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wBase:
         noVal(it)
         sym.flags.incl sfBase
+      of wIntDefine:
+        sym.magic = mIntDefine
+      of wStrDefine:
+        sym.magic = mStrDefine
       else: invalidPragma(it)
     else: invalidPragma(it)
 

@@ -601,6 +601,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
   result = n
   if n.kind notin nkCallKinds or n.sons[0].kind != nkSym: return
   var callee = n.sons[0].sym
+  # workaround for bug #537 (overly aggressive inlining leading to
+  # wrong NimNode semantics):
+  if n.typ != nil and tfTriggersCompileTime in n.typ.flags: return
 
   # constant folding that is necessary for correctness of semantic pass:
   if callee.magic != mNone and callee.magic in ctfeWhitelist and n.typ != nil:

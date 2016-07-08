@@ -513,21 +513,19 @@ template splitCommon(s, sep, maxsplit, sepLen) =
       dec(splits)
       inc(last, sepLen)
 
-when defined(nimOldSplit):
-  template oldSplit(s, seps, maxsplit) =
-    ## Deprecated split[char] for transition period
-    var last = 0
-    var splits = maxsplit
-    assert(not ('\0' in seps))
-    while last < len(s):
-      while s[last] in seps: inc(last)
-      var first = last
-      while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
-      if first <= last-1:
-        if splits == 0: last = len(s)
-        yield substr(s, first, last-1)
-        if splits == 0: break
-        dec(splits)
+template oldSplit(s, seps, maxsplit) =
+  var last = 0
+  var splits = maxsplit
+  assert(not ('\0' in seps))
+  while last < len(s):
+    while s[last] in seps: inc(last)
+    var first = last
+    while last < len(s) and s[last] notin seps: inc(last)
+    if first <= last-1:
+      if splits == 0: last = len(s)
+      yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
 
 iterator split*(s: string, seps: set[char] = Whitespace,
                 maxsplit: int = -1): string =
@@ -575,6 +573,16 @@ iterator split*(s: string, seps: set[char] = Whitespace,
     oldSplit(s, seps, maxsplit)
   else:
     splitCommon(s, seps, maxsplit, 1)
+
+iterator splitWhitespace*(s: string): string =
+  ## Splits at whitespace.
+  oldSplit(s, Whitespace, -1)
+
+proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+  rtl, extern: "nsuSplitWhitespace".} =
+  ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
+  ## iterator, but is a proc that returns a sequence of substrings.
+  accumulateResult(splitWhitespace(s))
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
