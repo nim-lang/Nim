@@ -1215,6 +1215,7 @@ proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
     genArgNoParam(p, it, r)
   else:
     genArg(p, it, paramType.sym, r)
+  inc generated
 
 proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
                     r: var TCompRes) =
