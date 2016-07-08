@@ -1234,10 +1234,18 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
       genOtherArg(p, n, j, typ, generated, r)
       inc j
       inc i
+    of '\31':
+      # unit separator
+      add(r.res, "#")
+      inc i
+    of '\29':
+      # group separator
+      add(r.res, "@")
+      inc i
     else:
       let start = i
       while i < pat.len:
-        if pat[i] notin {'@', '#'}: inc(i)
+        if pat[i] notin {'@', '#', '\31', '\29'}: inc(i)
         else: break
       if i - 1 >= start:
         add(r.res, substr(pat, start, i - 1))
