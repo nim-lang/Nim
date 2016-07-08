@@ -380,8 +380,16 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
             "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
     of tkSpaces, tkInvalid:
       add(result, literal)
+    of tkCurlyDotLe:
+      dispA(result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
+                    "\\spanOther{$1}",
+                  [rope(esc(d.target, literal))])
+    of tkCurlyDotRi:
+      dispA(result, "</div><span class=\"Other pragmaend\">$1</span>",
+                    "\\spanOther{$1}",
+                  [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
-       tkBracketDotLe, tkBracketDotRi, tkCurlyDotLe, tkCurlyDotRi, tkParDotLe,
+       tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
        tkAccent, tkColonColon,
        tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr:
