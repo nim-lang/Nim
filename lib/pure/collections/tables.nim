@@ -298,19 +298,17 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
-template equalsImpl() =
+template equalsImpl(t) =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
     # to use the slow route here:
     for key, val in s:
-      # prefix notation leads to automatic dereference in case of PTable
-      try:
-        if t[key] != val: return false
-      except KeyError: return false
+      if not t.hasKey(key): return false
+      if t.getOrDefault(key) != val: return false
     return true
 
 proc `==`*[A, B](s, t: Table[A, B]): bool =
-  equalsImpl()
+  equalsImpl(t)
 
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.
@@ -400,7 +398,7 @@ proc `$`*[A, B](t: TableRef[A, B]): string =
 proc `==`*[A, B](s, t: TableRef[A, B]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
-  else: equalsImpl()
+  else: equalsImpl(t[])
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
   ## Index the collection with the proc provided.
