@@ -10,7 +10,7 @@
 # Included by the ``os`` module but a module in its own right for NimScript
 # support.
 
-when isMainModule:
+when not declared(os):
   {.pragma: rtl.}
   import strutils
 

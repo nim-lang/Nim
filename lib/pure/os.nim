@@ -66,13 +66,13 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
     if err != 0'i32:
       when useWinUnicode:
         var msgbuf: WideCString
-        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
+        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
           if msgbuf != nil: localFree(cast[pointer](msgbuf))
       else:
         var msgbuf: cstring
-        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200,
+        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)

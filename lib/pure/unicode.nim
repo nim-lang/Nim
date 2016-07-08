@@ -1369,6 +1369,64 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     (c >= 0x20d0 and c <= 0x20ff) or
     (c >= 0xfe20 and c <= 0xfe2f))
 
+template runeCheck(s, runeProc) =
+  ## Common code for rune.isLower, rune.isUpper, etc
+  result = if len(s) == 0: false else: true
+
+  var
+    i = 0
+    rune: Rune
+
+  while i < len(s) and result:
+    fastRuneAt(s, i, rune, doInc=true)
+    result = runeProc(rune) and result
+
+proc isUpper*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Returns true iff `s` contains all upper case unicode characters.
+  runeCheck(s, isUpper)
+
+proc isLower*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Returns true iff `s` contains all lower case unicode characters.
+  runeCheck(s, isLower)
+
+proc isAlpha*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Returns true iff `s` contains all alphabetic unicode characters.
+  runeCheck(s, isAlpha)
+
+proc isSpace*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Returns true iff `s` contains all whitespace unicode characters.
+  runeCheck(s, isWhiteSpace)
+
+template convertRune(s, runeProc) =
+  ## Convert runes in `s` using `runeProc` as the converter.
+  result = newString(len(s))
+
+  var
+    i = 0
+    lastIndex = 0
+    rune: Rune
+
+  while i < len(s):
+    lastIndex = i
+    fastRuneAt(s, i, rune, doInc=true)
+    rune = runeProc(rune)
+
+    rune.fastToUTF8Copy(result, lastIndex)
+
+proc toUpper*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Converts `s` into upper-case unicode characters.
+  convertRune(s, toUpper)
+
+proc toLower*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Converts `s` into lower-case unicode characters.
+  convertRune(s, toLower)
+
 proc swapCase*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1".} =
   ## Swaps the case of unicode characters in `s`
@@ -1394,6 +1452,20 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
       rune = rune.toUpper()
 
     rune.fastToUTF8Copy(result, lastIndex)
+
+proc capitalize*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nuc$1".} =
+  ## Converts the first character of `s` into an upper-case unicode character.
+  if len(s) == 0:
+    return s
+
+  var
+    rune: Rune
+    i = 0
+
+  fastRuneAt(s, i, rune, doInc=true)
+
+  result = $toUpper(rune) & substr(s, i)
 
 proc translate*(s: string, replacements: proc(key: string): string): string {.
   rtl, extern: "nuc$1".} =
@@ -1618,6 +1690,10 @@ when isMainModule:
   doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
   doAssert title("") == ""
 
+  doAssert capitalize("βeta") == "Βeta"
+  doAssert capitalize("foo") == "Foo"
+  doAssert capitalize("") == ""
+
   doAssert isTitle("Foo")
   doAssert(not isTitle("Foo bar"))
   doAssert(not isTitle("αlpha Βeta"))
@@ -1630,6 +1706,64 @@ when isMainModule:
   doAssert swapCase("a✓B") == "A✓b"
   doAssert swapCase("") == ""
 
+  doAssert isAlpha("r")
+  doAssert isAlpha("α")
+  doAssert(not isAlpha("$"))
+  doAssert(not isAlpha(""))
+
+  doAssert isAlpha("Βeta")
+  doAssert isAlpha("Args")
+  doAssert(not isAlpha("$Foo✓"))
+
+  doAssert isSpace("\t")
+  doAssert isSpace("\l")
+  doAssert(not isSpace("Β"))
+  doAssert(not isSpace("Βeta"))
+
+  doAssert isSpace("\t\l \v\r\f")
+  doAssert isSpace("       ")
+  doAssert(not isSpace(""))
+  doAssert(not isSpace("ΑΓc   \td"))
+
+  doAssert isLower("a")
+  doAssert isLower("γ")
+  doAssert(not isLower("Γ"))
+  doAssert(not isLower("4"))
+  doAssert(not isLower(""))
+
+  doAssert isLower("abcdγ")
+  doAssert(not isLower("abCDΓ"))
+  doAssert(not isLower("33aaΓ"))
+
+  doAssert isUpper("Γ")
+  doAssert(not isUpper("b"))
+  doAssert(not isUpper("α"))
+  doAssert(not isUpper("✓"))
+  doAssert(not isUpper(""))
+
+  doAssert isUpper("ΑΒΓ")
+  doAssert(not isUpper("AAccβ"))
+  doAssert(not isUpper("A#$β"))
+
+  doAssert toUpper("Γ") == "Γ"
+  doAssert toUpper("b") == "B"
+  doAssert toUpper("α") == "Α"
+  doAssert toUpper("✓") == "✓"
+  doAssert toUpper("") == ""
+
+  doAssert toUpper("ΑΒΓ") == "ΑΒΓ"
+  doAssert toUpper("AAccβ") == "AACCΒ"
+  doAssert toUpper("A✓$β") == "A✓$Β"
+
+  doAssert toLower("a") == "a"
+  doAssert toLower("γ") == "γ"
+  doAssert toLower("Γ") == "γ"
+  doAssert toLower("4") == "4"
+  doAssert toLower("") == ""
+
+  doAssert toLower("abcdγ") == "abcdγ"
+  doAssert toLower("abCDΓ") == "abcdγ"
+  doAssert toLower("33aaΓ") == "33aaγ"
 
   doAssert reversed("Reverse this!") == "!siht esreveR"
   doAssert reversed("先秦兩漢") == "漢兩秦先"

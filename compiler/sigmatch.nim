@@ -949,8 +949,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isConvertible
     else: discard
 
-  of tyEmpty:
-    if a.kind == tyEmpty: result = isEqual
+  of tyEmpty, tyVoid:
+    if a.kind == f.kind: result = isEqual
 
   of tyGenericInst:
     result = typeRel(c, lastSon(f), a)

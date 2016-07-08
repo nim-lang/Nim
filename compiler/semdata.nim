@@ -99,6 +99,7 @@ type
     unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
                                # naming it multiple times
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
+    topStmts*: int # counts the number of encountered top level statements
     lastGenericIdx*: int      # used for the generics stack
     hloLoopDetector*: int     # used to prevent endless loops in the HLO
     inParallelStmt*: int

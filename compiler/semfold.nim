@@ -640,6 +640,12 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)
       of mNegInf: result = newFloatNodeT(NegInf, n)
+      of mIntDefine:
+        if isDefined(s.name):
+          result = newIntNodeT(lookupSymbol(s.name).parseInt, n)
+      of mStrDefine:
+        if isDefined(s.name):
+          result = newStrNodeT(lookupSymbol(s.name), n)
       else:
         if sfFakeConst notin s.flags: result = copyTree(s.ast)
     of {skProc, skMethod}:

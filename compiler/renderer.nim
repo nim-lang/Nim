@@ -704,7 +704,10 @@ proc gcase(g: var TSrcGen, n: PNode) =
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
-    put(g, tkSymbol, renderDefinitionName(n.sons[namePos].sym))
+    let s = n.sons[namePos].sym
+    put(g, tkSymbol, renderDefinitionName(s))
+    if sfGenSym in s.flags:
+      put(g, tkIntLit, $s.id)
   else:
     gsub(g, n.sons[namePos])
 
@@ -798,7 +801,8 @@ proc gident(g: var TSrcGen, n: PNode) =
   else:
     t = tkOpr
   put(g, t, s)
-  if n.kind == nkSym and renderIds in g.flags: put(g, tkIntLit, $n.sym.id)
+  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
+    put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:

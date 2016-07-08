@@ -426,7 +426,12 @@ proc semGenericStmt(c: PContext, n: PNode,
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos], flags, ctx)
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos], flags, ctx)
     var body: PNode
-    if n.sons[namePos].kind == nkSym: body = n.sons[namePos].sym.getBody
+    if n.sons[namePos].kind == nkSym:
+      let s = n.sons[namePos].sym
+      if sfGenSym in s.flags and s.ast == nil:
+        body = n.sons[bodyPos]
+      else:
+        body = s.getBody
     else: body = n.sons[bodyPos]
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)

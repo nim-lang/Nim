@@ -138,7 +138,7 @@ proc fixNilType(n: PNode) =
 
 proc discardCheck(c: PContext, result: PNode) =
   if c.inTypeClass > 0: return
-  if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
+  if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if result.kind == nkNilLit:
       result.typ = nil
       message(result.info, warnNilStatement)
@@ -711,7 +711,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       a.sons[1] = s.typ.n
       s.typ.size = -1 # could not be computed properly
       # we fill it out later. For magic generics like 'seq', it won't be filled
-      # so we use tyEmpty instead of nil to not crash for strange conversions
+      # so we use tyNone instead of nil to not crash for strange conversions
       # like: mydata.seq
       rawAddSon(s.typ, newTypeS(tyNone, c))
       s.ast = a

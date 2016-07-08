@@ -8,6 +8,9 @@ import ospaths
 
 --forceBuild
 
+warning("uninit", off)
+hint("processing", off)
+
 task listDirs, "lists every subdirectory":
   for x in listDirs("."):
     echo "DIR ", x

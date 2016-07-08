@@ -163,7 +163,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
-     tyExpr, tyStmt, tyStatic, tyTypeDesc, tyTypeClasses:
+     tyExpr, tyStmt, tyStatic, tyTypeDesc, tyTypeClasses, tyVoid:
     result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
@@ -1215,6 +1215,7 @@ proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
     genArgNoParam(p, it, r)
   else:
     genArg(p, it, paramType.sym, r)
+  inc generated
 
 proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
                     r: var TCompRes) =
@@ -1557,8 +1558,16 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   of tyEnum, tyOrdinal:
     gen(p, n.sons[1], r)
     useMagic(p, "cstrToNimstr")
+    var offset = ""
+    if t.kind == tyEnum:
+      let firstFieldOffset = t.n.sons[0].sym.position
+      if firstFieldOffset < 0:
+        offset = "+" & $(-firstFieldOffset)
+      elif firstFieldOffset > 0:
+        offset = "-" & $firstFieldOffset
+
     r.kind = resExpr
-    r.res = "cstrToNimstr($1.node.sons[$2].name)" % [genTypeInfo(p, t), r.res]
+    r.res = "cstrToNimstr($1.node.sons[$2$3].name)" % [genTypeInfo(p, t), r.res, rope(offset)]
   else:
     # XXX:
     internalError(n.info, "genRepr: Not implemented")

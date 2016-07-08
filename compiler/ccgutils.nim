@@ -93,7 +93,7 @@ proc getUniqueType*(key: PType): PType =
     # produced instead of ``NI``.
     result = key
   of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString,
-      tyCString, tyNone, tyBigNum:
+      tyCString, tyNone, tyBigNum, tyVoid:
     result = gCanonicalTypes[k]
     if result == nil:
       gCanonicalTypes[k] = key

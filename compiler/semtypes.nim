@@ -945,7 +945,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if isType: localError(a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyExpr, c)
-    elif skipTypes(typ, {tyGenericInst}).kind == tyEmpty:
+    elif skipTypes(typ, {tyGenericInst}).kind == tyVoid:
       continue
     for j in countup(0, length-3):
       var arg = newSymG(skParam, a.sons[j], c)
@@ -977,7 +977,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
-    if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
+    if skipTypes(r, {tyGenericInst}).kind != tyVoid:
       # 'auto' as a return type does not imply a generic:
       if r.kind == tyAnything:
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
@@ -1390,10 +1390,7 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mVoidType:
-    setMagicType(m, tyEmpty, 0)
-    # for historical reasons we conflate 'void' with 'empty' so that '@[]'
-    # has the type 'seq[void]'.
-    m.typ.flags.incl tfVoid
+    setMagicType(m, tyVoid, 0)
   of mArray:
     setMagicType(m, tyArray, 0)
   of mOpenArray:

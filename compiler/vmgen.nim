@@ -267,7 +267,7 @@ proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
 proc clearDest(c: PCtx; n: PNode; dest: var TDest) {.inline.} =
   # stmt is different from 'void' in meta programming contexts.
   # So we only set dest to -1 if 'void':
-  if dest >= 0 and (n.typ.isNil or n.typ.kind == tyEmpty):
+  if dest >= 0 and (n.typ.isNil or n.typ.kind == tyVoid):
     c.freeTemp(dest)
     dest = -1
 
@@ -374,7 +374,7 @@ proc canonValue*(n: PNode): PNode =
 
 proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
-  assert(n.kind != nkCall)
+  #assert(n.kind != nkCall)
   n.flags.incl nfAllConst
   c.constants.add n.canonValue
   internalAssert result < 0x7fff
@@ -497,12 +497,30 @@ proc genReturn(c: PCtx; n: PNode) =
     gen(c, n.sons[0])
   c.gABC(n, opcRet)
 
+
+proc genLit(c: PCtx; n: PNode; dest: var TDest) =
+  # opcLdConst is now always valid. We produce the necessary copy in the
+  # assignments now:
+  #var opc = opcLdConst
+  if dest < 0: dest = c.getTemp(n.typ)
+  #elif c.prc.slots[dest].kind == slotFixedVar: opc = opcAsgnConst
+  let lit = genLiteral(c, n)
+  c.gABx(n, opcLdConst, dest, lit)
+
 proc genCall(c: PCtx; n: PNode; dest: var TDest) =
+  # it can happen that due to inlining we have a 'n' that should be
+  # treated as a constant (see issue #537).
+  #if n.typ != nil and n.typ.sym != nil and n.typ.sym.magic == mPNimrodNode:
+  #  genLit(c, n, dest)
+  #  return
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   let x = c.getTempRange(n.len, slotTempUnknown)
   # varargs need 'opcSetType' for the FFI support:
-  let fntyp = n.sons[0].typ
+  let fntyp = skipTypes(n.sons[0].typ, abstractInst)
   for i in 0.. <n.len:
+    #if i > 0 and i < sonsLen(fntyp):
+    #  let paramType = fntyp.n.sons[i]
+    #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
     c.gen(n.sons[i], r)
     if i >= fntyp.len:
@@ -1307,15 +1325,6 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let dest = c.genx(le, {gfAddrOf})
     genAsgn(c, dest, ri, requiresCopy)
 
-proc genLit(c: PCtx; n: PNode; dest: var TDest) =
-  # opcLdConst is now always valid. We produce the necessary copy in the
-  # assignments now:
-  #var opc = opcLdConst
-  if dest < 0: dest = c.getTemp(n.typ)
-  #elif c.prc.slots[dest].kind == slotFixedVar: opc = opcAsgnConst
-  let lit = genLiteral(c, n)
-  c.gABx(n, opcLdConst, dest, lit)
-
 proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   var n = newNode(nkType)
   n.typ = t
@@ -1788,6 +1797,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genConv(c, n, n.sons[1], dest, opcCast)
     else:
       globalError(n.info, errGenerated, "VM is not allowed to 'cast'")
+  of nkTypeOfExpr:
+    genTypeLit(c, n.typ, dest)
   else:
     globalError(n.info, errGenerated, "cannot generate VM code for " & $n)
 
