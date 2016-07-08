@@ -19,7 +19,7 @@ template test(opr, a, b, c: expr): stmt {.immediate.} =
     var aa = a
     var bb = b
     var varExpr = opr(aa, bb)
-    assert(varExpr == c)
+    doAssert(varExpr == c)
 
 test(`+`, 12'i8, -13'i16, -1'i16)
 test(`shl`, 0b11, 0b100, 0b110000)
@@ -47,6 +47,17 @@ test(`shl`, 0xff'i8, 0x4'i8, 0xf0'i8)
 when not defined(js):
   test(`shl`, 0xffffffff'i64, 0x4'i64, 0xffffffff0'i64)
 test(`shl`, 0xffffffff'i32, 0x4'i32, 0xfffffff0'i32)
+
+block: # bug #4065
+  proc ctProc(): int =
+      let a = -1443503907
+      let b = 0
+      result = a xor b
+
+  const a = ctProc()
+  let b = ctProc()
+
+  doAssert(a == b)
 
 # bug #916
 proc unc(a: float): float =

@@ -1109,7 +1109,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           msgKindToString(errUnhandledExceptionX) % "value out of range")
     of opcNarrowU:
       decodeB(rkInt)
-      regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
+      let a = regs[ra].intVal
+      if a < 0:
+        regs[ra].intVal = -(-a and ((1'i64 shl rb)-1))
+      else:
+        regs[ra].intVal = (a and ((1'i64 shl rb)-1))
     of opcIsNil:
       decodeB(rkInt)
       let node = regs[rb].node
