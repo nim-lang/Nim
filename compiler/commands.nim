@@ -158,7 +158,7 @@ var
   enableNotes: TNoteKinds
   disableNotes: TNoteKinds
 
-proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
+proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string) =
   var id = ""  # arg = "X]:on|off"
   var i = 0
