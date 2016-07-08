@@ -1898,7 +1898,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
   # -> createCb(retFuture)
   #var cbName = newIdentNode("cb")
-  var procCb = newCall(bindSym"createCb", retFutureSym, iteratorNameSym,
+  var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                        newStrLitNode(prc[0].getName))
   outerProcBody.add procCb
 
@@ -1933,6 +1933,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
       result.add asyncSingleProc(oneProc)
   else:
     result = asyncSingleProc(prc)
+  when defined(nimDumpAsync):
+    echo repr result
 
 proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
