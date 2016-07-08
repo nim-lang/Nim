@@ -712,6 +712,7 @@ proc `%`*(b: bool): JsonNode =
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  if keyvals.len == 0: return newJArray()
   result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
 
