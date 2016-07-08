@@ -75,7 +75,7 @@ proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
     result = matchNodeKinds(p.constraint, n)
     if not result: return
   if isNil(n.typ):
-    result = p.typ.kind in {tyEmpty, tyStmt}
+    result = p.typ.kind in {tyVoid, tyStmt}
   else:
     result = sigmatch.argtypeMatches(c.c, p.typ, n.typ)
 

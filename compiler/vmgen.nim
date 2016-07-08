@@ -267,7 +267,7 @@ proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
 proc clearDest(c: PCtx; n: PNode; dest: var TDest) {.inline.} =
   # stmt is different from 'void' in meta programming contexts.
   # So we only set dest to -1 if 'void':
-  if dest >= 0 and (n.typ.isNil or n.typ.kind == tyEmpty):
+  if dest >= 0 and (n.typ.isNil or n.typ.kind == tyVoid):
     c.freeTemp(dest)
     dest = -1
 

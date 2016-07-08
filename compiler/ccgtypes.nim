@@ -416,7 +416,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       addf(result, "union{$n$1} $2;$n", [unionBody, uname])
   of nkSym:
     field = n.sym
-    if field.typ.kind == tyEmpty: return
+    if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     sname = mangleRecFieldName(field, rectype)
     if accessExpr != nil: ae = "$1.$2" % [accessExpr, sname]
@@ -663,7 +663,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
             chunkStart = i
 
             let typeInSlot = resolveStarsInCppType(typ, idx + 1, stars)
-            if typeInSlot == nil or typeInSlot.kind == tyEmpty:
+            if typeInSlot == nil or typeInSlot.kind == tyVoid:
               result.add(~"void")
             else:
               result.add getTypeDescAux(m, typeInSlot, check)
@@ -1022,7 +1022,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
          [result, rope(typeToString(t))])
     return "(&".rope & result & ")".rope
   case t.kind
-  of tyEmpty: result = rope"0"
+  of tyEmpty, tyVoid: result = rope"0"
   of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
     genTypeInfoAuxBase(m, t, t, result, rope"0")
   of tyProc:

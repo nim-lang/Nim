@@ -1699,8 +1699,10 @@ proc processBody(node, retFutureSym: NimNode,
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
-      result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt))
+      let x = node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt)
+      if x.kind == nnkYieldStmt: result.add x
+      else:
+        result.add newCall(newIdentNode("complete"), retFutureSym, x)
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt

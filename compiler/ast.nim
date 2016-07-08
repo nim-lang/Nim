@@ -395,6 +395,9 @@ type
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
 
+    tyVoid #\
+      # now different from tyEmpty, hurray!
+
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
   assert TTypeKind.high.ord <= 63
@@ -528,8 +531,6 @@ const
   tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
     # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
     # deprecated and this mess can be cleaned up.
-  tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
-                      # 'empty' ('@[]' has the type 'seq[empty]').
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
@@ -1588,7 +1589,7 @@ proc isAtom*(n: PNode): bool {.inline.} =
 
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
-  result = t == nil or t.kind in {tyEmpty, tyStmt}
+  result = t == nil or t.kind in {tyVoid, tyStmt}
 
 proc makeStmtList*(n: PNode): PNode =
   if n.kind == nkStmtList:
