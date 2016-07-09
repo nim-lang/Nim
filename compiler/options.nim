@@ -151,6 +151,7 @@ const
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
   gDllOverrides = newStringTable(modeCaseInsensitive)
+  gModuleOverrides* = newStringTable(modeStyleInsensitive)
   gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
   libpath* = ""
   gProjectName* = "" # holds a name like 'nim'
@@ -374,6 +375,13 @@ proc rawFindFile2(f: string): string =
     it = PStrEntry(it.next)
   result = ""
 
+template patchModule() {.dirty.} =
+  if result.len > 0 and gModuleOverrides.len > 0:
+    let key = getPackageName(result) & "_" & splitFile(result).name
+    if gModuleOverrides.hasKey(key):
+      let ov = gModuleOverrides[key]
+      if ov.len > 0: result = ov
+
 proc findFile*(f: string): string {.procvar.} =
   if f.isAbsolute:
     result = if f.existsFile: f else: ""
@@ -385,6 +393,7 @@ proc findFile*(f: string): string {.procvar.} =
         result = f.rawFindFile2
         if result.len == 0:
           result = f.toLower.rawFindFile2
+  patchModule()
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module
@@ -403,6 +412,7 @@ proc findModule*(modulename, currentModule: string): string =
   result = currentPath / m
   if not existsFile(result):
     result = findFile(m)
+  patchModule()
 
 proc libCandidates*(s: string, dest: var seq[string]) =
   var le = strutils.find(s, '(')

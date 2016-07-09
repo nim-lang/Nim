@@ -65,6 +65,21 @@ proc hint*(name: string; val: bool) =
   let v = if val: "on" else: "off"
   hintImpl(name & "]:" & v, "hint[" & name & "]:" & v)
 
+proc patchFile*(package, filename, replacement: string) =
+  ## Overrides the location of a given file belonging to the
+  ## passed package.
+  ## If the ``replacement`` is not an absolute path, the path
+  ## is interpreted to be local to the Nimscript file that contains
+  ## the call to ``patchFile``, Nim's ``--path`` is not used at all
+  ## to resolve the filename!
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   patchFile("stdlib", "asyncdispatch", "patches/replacement")
+  discard
+
 proc getCommand*(): string =
   ## Gets the Nim command that the compiler has been invoked with, for example
   ## "c", "js", "build", "help".
