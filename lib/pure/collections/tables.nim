@@ -85,7 +85,7 @@ template dataLen(t): expr = len(t.data)
 
 include tableimpl
 
-proc clear*[A, B](t: Table[A, B] | TableRef[A, B]) =
+proc clear*[A, B](t: var Table[A, B] | TableRef[A, B]) =
   ## Resets the table so that it is empty.
   clearImpl()
 
@@ -425,7 +425,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) =
+proc clear*[A, B](t: var OrderedTable[A, B] | OrderedTableRef[A, B]) =
   ## Resets the table so that it is empty.
   clearImpl()
   t.first = -1
@@ -754,7 +754,7 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: CountTable[A] | CountTableRef[A]) =
+proc clear*[A](t: var CountTable[A] | CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
   t.counter = 0
