@@ -155,3 +155,4 @@ proc runNimScript*(scriptName: string; freshDefines=true) =
   #initDefines()
   undefSymbol("nimscript")
   undefSymbol("nimconfig")
+  gMainPackageNotes = {}
