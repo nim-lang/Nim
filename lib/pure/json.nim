@@ -1127,7 +1127,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     discard getTok(p)
     while p.tok != tkCurlyRi:
       if p.tok != tkString:
-        raiseParseErr(p, "string literal as key expected")
+        raiseParseErr(p, "string literal as key")
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)
