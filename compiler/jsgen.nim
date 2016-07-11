@@ -1223,6 +1223,7 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
                     r: var TCompRes) =
   var i = 0
   var j = 1
+  r.kind = resExpr
   while i < pat.len:
     case pat[i]
     of '@':
