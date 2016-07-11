@@ -1049,6 +1049,8 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $kindOfIndexedExpr & ')')
   of nkObjDownConv:
     gen(p, n.sons[0], r)
+  of nkHiddenDeref:
+    gen(p, n.sons[0].sons[0], r)
   else: internalError(n.sons[0].info, "genAddr: " & $n.sons[0].kind)
 
 proc thisParam(p: PProc; typ: PType): PType =
