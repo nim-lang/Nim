@@ -407,7 +407,8 @@ const
     "!", "varargs[$1]", "iter[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
+    "void"]
 
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
 
@@ -923,7 +924,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
-     tyInt..tyBigNum, tyStmt, tyExpr:
+     tyInt..tyBigNum, tyStmt, tyExpr, tyVoid:
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -1109,7 +1110,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyExpr, tyStmt, tyStatic:
     if kind notin {skParam, skResult}: result = t
-  of tyEmpty:
+  of tyVoid:
     if taField notin flags: result = t
   of tyTypeClasses:
     if not (tfGenericTypeParam in t.flags or taField notin flags): result = t
@@ -1154,7 +1155,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if result != nil: break
     if result.isNil and t.n != nil:
       result = typeAllowedNode(marker, t.n, kind, flags)
-  of tyProxy:
+  of tyProxy, tyEmpty:
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil

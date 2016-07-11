@@ -712,6 +712,7 @@ proc `%`*(b: bool): JsonNode =
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  if keyvals.len == 0: return newJArray()
   result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
 
@@ -1126,7 +1127,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     discard getTok(p)
     while p.tok != tkCurlyRi:
       if p.tok != tkString:
-        raiseParseErr(p, "string literal as key expected")
+        raiseParseErr(p, "string literal as key")
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)

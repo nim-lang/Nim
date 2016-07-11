@@ -163,7 +163,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
-     tyExpr, tyStmt, tyStatic, tyTypeDesc, tyTypeClasses:
+     tyExpr, tyStmt, tyStatic, tyTypeDesc, tyTypeClasses, tyVoid:
     result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
@@ -1215,6 +1215,7 @@ proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
     genArgNoParam(p, it, r)
   else:
     genArg(p, it, paramType.sym, r)
+  inc generated
 
 proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
                     r: var TCompRes) =
@@ -1233,10 +1234,18 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
       genOtherArg(p, n, j, typ, generated, r)
       inc j
       inc i
+    of '\31':
+      # unit separator
+      add(r.res, "#")
+      inc i
+    of '\29':
+      # group separator
+      add(r.res, "@")
+      inc i
     else:
       let start = i
       while i < pat.len:
-        if pat[i] notin {'@', '#'}: inc(i)
+        if pat[i] notin {'@', '#', '\31', '\29'}: inc(i)
         else: break
       if i - 1 >= start:
         add(r.res, substr(pat, start, i - 1))

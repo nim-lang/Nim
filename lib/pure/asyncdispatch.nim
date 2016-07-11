@@ -1699,8 +1699,10 @@ proc processBody(node, retFutureSym: NimNode,
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
-      result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt))
+      let x = node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt)
+      if x.kind == nnkYieldStmt: result.add x
+      else:
+        result.add newCall(newIdentNode("complete"), retFutureSym, x)
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -1896,7 +1898,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
   # -> createCb(retFuture)
   #var cbName = newIdentNode("cb")
-  var procCb = newCall(bindSym"createCb", retFutureSym, iteratorNameSym,
+  var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                        newStrLitNode(prc[0].getName))
   outerProcBody.add procCb
 
@@ -1931,6 +1933,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
       result.add asyncSingleProc(oneProc)
   else:
     result = asyncSingleProc(prc)
+  when defined(nimDumpAsync):
+    echo repr result
 
 proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once

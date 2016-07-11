@@ -205,7 +205,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it
   # will need to use openScope, addDecl, etc.
-  addDecl(c, prc)
+  #addDecl(c, prc)
 
   pushInfoContext(info)
   var cl = initTypeVars(c, pt, info, nil)

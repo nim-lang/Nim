@@ -80,7 +80,7 @@ proc mapTypeToBracketX(name: string; m: TMagic; t: PType; info: TLineInfo;
   for i in 0 .. < t.len:
     if t.sons[i] == nil:
       let void = atomicTypeX("void", mVoid, t, info)
-      void.typ = newType(tyEmpty, t.owner)
+      void.typ = newType(tyVoid, t.owner)
       result.add void
     else:
       result.add mapTypeToAstX(t.sons[i], info, inst)
@@ -124,7 +124,8 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyNil: result = atomicType("nil", mNil)
   of tyExpr: result = atomicType("expr", mExpr)
   of tyStmt: result = atomicType("stmt", mStmt)
-  of tyEmpty: result = atomicType("void", mVoid)
+  of tyVoid: result = atomicType("void", mVoid)
+  of tyEmpty: result = atomicType("empty", mNone)
   of tyArrayConstr, tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array", mArray)

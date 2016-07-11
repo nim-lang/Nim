@@ -267,7 +267,7 @@ proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
 proc clearDest(c: PCtx; n: PNode; dest: var TDest) {.inline.} =
   # stmt is different from 'void' in meta programming contexts.
   # So we only set dest to -1 if 'void':
-  if dest >= 0 and (n.typ.isNil or n.typ.kind == tyEmpty):
+  if dest >= 0 and (n.typ.isNil or n.typ.kind == tyVoid):
     c.freeTemp(dest)
     dest = -1
 
@@ -518,9 +518,9 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n.sons[0].typ, abstractInst)
   for i in 0.. <n.len:
-    if i > 0 and i < sonsLen(fntyp):
-      let paramType = fntyp.n.sons[i]
-      if paramType.typ.isCompileTimeOnly: continue
+    #if i > 0 and i < sonsLen(fntyp):
+    #  let paramType = fntyp.n.sons[i]
+    #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
     c.gen(n.sons[i], r)
     if i >= fntyp.len:
@@ -1797,6 +1797,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genConv(c, n, n.sons[1], dest, opcCast)
     else:
       globalError(n.info, errGenerated, "VM is not allowed to 'cast'")
+  of nkTypeOfExpr:
+    genTypeLit(c, n.typ, dest)
   else:
     globalError(n.info, errGenerated, "cannot generate VM code for " & $n)
 

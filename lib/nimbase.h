@@ -102,7 +102,7 @@ __clang__
        defined __ICL || \
        defined __DMC__ || \
        defined __BORLANDC__ )
-#  define NIM_THREADVAR __declspec(thread) 
+#  define NIM_THREADVAR __declspec(thread)
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
        defined __SUNPRO_C || \
@@ -449,8 +449,8 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 
 /* Test to see if Nim and the C compiler agree on the size of a pointer.
    On disagreement, your C compiler will say something like:
-   "error: 'assert_numbits' declared as an array with a negative size" */
-typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+   "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
+typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
 #endif
 
 #ifdef  __cplusplus

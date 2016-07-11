@@ -32,8 +32,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # XXX tyGenericInst here?
     if result.typ.kind == tyVar: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
-    result.typ = newTypeS(tyEmpty, c)
-    result.typ.flags.incl tfVoid
+    result.typ = newTypeS(tyVoid, c)
   else:
     localError(n.info, errExprXHasNoType,
                renderTree(result, {renderNoComments}))

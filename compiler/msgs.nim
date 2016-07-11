@@ -621,6 +621,7 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
+  gMainPackageNotes*: TNoteKinds = NotesVerbosity[1]
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)

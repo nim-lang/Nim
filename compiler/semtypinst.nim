@@ -162,7 +162,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
     discard
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)
-    if result.sym.typ.kind == tyEmpty:
+    if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
       result = newNode(nkRecList, n.info)
   of nkRecWhen:
@@ -316,15 +316,15 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
   # don't deal with '(): void':
-  if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
+  if t.sons[0] != nil and t.sons[0].kind == tyVoid:
     t.sons[0] = nil
 
   for i in 1 .. <t.sonsLen:
     # don't touch any memory unless necessary
-    if t.sons[i].kind == tyEmpty:
+    if t.sons[i].kind == tyVoid:
       var pos = i
       for j in i+1 .. <t.sonsLen:
-        if t.sons[j].kind != tyEmpty:
+        if t.sons[j].kind != tyVoid:
           t.sons[pos] = t.sons[j]
           t.n.sons[pos] = t.n.sons[j]
           inc pos
