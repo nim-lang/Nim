@@ -1746,8 +1746,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
           var container = newNodeIT(nkBracket, n.info, arrayConstr(c, n.info))
-          addSon(m.call, implicitConv(nkHiddenStdConv, formal.typ,
-                                      container, m, c))
+          setSon(m.call, formal.position + 1,
+                 implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
         else:
           # no default value
           m.state = csNoMatch
