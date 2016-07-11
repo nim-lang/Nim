@@ -48,6 +48,7 @@ type
     etyNull,                  # null type
     etyProc,                  # proc type
     etyBool,                  # bool type
+    etySeq,                   # Nim seq or string type
     etyInt,                   # JavaScript's int
     etyFloat,                 # JavaScript's float
     etyString,                # JavaScript's string
@@ -156,7 +157,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
-  of tyString, tySequence: result = etyInt # little hack to get right semantics
+  of tyString, tySequence: result = etySeq
   of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, tyBigNum,
      tyVarargs:
     result = etyObject
@@ -817,7 +818,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     addf(p.body, "$#[$#] = chr($#);$n", [a.rdLoc, b.rdLoc, c.rdLoc])
     return
 
-  let xtyp = mapType(p, x.typ)
+  var xtyp = mapType(p, x.typ)
 
   if x.kind == nkHiddenDeref and x.sons[0].kind == nkCall and xtyp != etyObject:
     gen(p, x.sons[0], a)
@@ -829,7 +830,18 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
 
   gen(p, y, b)
 
+  # we don't care if it's an etyBaseIndex (global) of a string, it's
+  # still a string that needs to be copied properly:
+  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyString}:
+    xtyp = etySeq
   case xtyp
+  of etySeq:
+    if (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+      addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
+    else:
+      useMagic(p, "nimCopy")
+      addf(p.body, "$1 = nimCopy(null, $2, $3);$n",
+           [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
     if (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
@@ -1430,7 +1442,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     discard mangleName(v, p.target)
     gen(p, n, a)
     case mapType(p, v.typ)
-    of etyObject:
+    of etyObject, etySeq:
       if needsNoCopy(p, n):
         s = a.res
       else:
