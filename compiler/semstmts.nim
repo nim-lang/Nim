@@ -455,6 +455,13 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if hasEmpty(typ):
           localError(def.info, errCannotInferTypeOfTheLiteral,
                      ($typ.kind).substr(2).toLower)
+        elif typ.kind == tyTuple and def.kind == nkConv:
+          # def is a tuple conversion: MyTuple((fieldA: valA, fieldB: val B, ...))
+          for colonExpr in def.sons[^1].sons:
+            let fieldVal = colonExpr.sons[^1]
+            if hasEmpty(fieldVal.typ):
+              localError(fieldVal.info, errCannotInferTypeOfTheLiteral,
+                        ($fieldVal.typ.kind).substr(2).toLower)
     else:
       def = ast.emptyNode
       if symkind == skLet: localError(a.info, errLetNeedsInit)
