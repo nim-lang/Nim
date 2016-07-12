@@ -150,6 +150,9 @@ proc mapType(typ: PType): TCTypeKind =
   of tyCString: result = ctCString
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
+  of tyStatic:
+    if typ.n != nil: result = mapType(lastSon typ)
+    else: internalError("mapType")
   else: internalError("mapType")
 
 proc mapReturnType(typ: PType): TCTypeKind =
@@ -256,6 +259,11 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
+  of tyStatic:
+    if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
+    else: internalError("tyStatic for getSimpleTypeDesc")
+  of tyGenericInst:
+    result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
 proc pushType(m: BModule, typ: PType) =
@@ -1025,6 +1033,9 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   of tyEmpty, tyVoid: result = rope"0"
   of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
     genTypeInfoAuxBase(m, t, t, result, rope"0")
+  of tyStatic:
+    if t.n != nil: result = genTypeInfo(m, lastSon t)
+    else: internalError("genTypeInfo(" & $t.kind & ')')
   of tyProc:
     if t.callConv != ccClosure:
       genTypeInfoAuxBase(m, t, t, result, rope"0")
