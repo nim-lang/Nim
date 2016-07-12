@@ -24,7 +24,7 @@
 ##   import tables
 ##
 ##   var
-##     a = toTable([(1, "one"), (2, "two")])  # creates a Table
+##     a = {1: "one", 2: "two"}.toTable  # creates a Table
 ##     b = a
 ##
 ##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
@@ -40,7 +40,7 @@
 ##   import tables
 ##
 ##   var
-##     a = newTable([(1, "one"), (2, "two")])  # creates a TableRef
+##     a = {1: "one", 2: "two"}.newTable  # creates a TableRef
 ##     b = a
 ##
 ##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
