@@ -1,7 +1,7 @@
 discard """
   file: "tbadcast.nim"
-  line: 13
-  errormsg: "cannot infer the type of the sequence"
+  line: 12
+  errormsg: "conversion from tuple[strings: seq[empty], ints: seq[empty], chars: set[empty]] to MyTuple is invalid"
 """
 type
   MyTuple = tuple

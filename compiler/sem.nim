@@ -385,6 +385,13 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
 
+proc hasEmpty(typ: PType): bool =
+  if typ.kind in {tySequence, tyArray, tySet}:
+    result = typ.lastSon.kind == tyEmpty
+  elif typ.kind == tyTuple:
+    for s in typ.sons:
+      result = result or hasEmpty(s)
+
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =

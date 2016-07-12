@@ -114,6 +114,8 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     result = convNotLegal
   elif d.kind == tyObject and s.kind == tyObject:
     result = checkConversionBetweenObjects(d, s, pointers)
+  elif hasEmpty(s):
+    result = convNotLegal
   elif (skipTypes(castDest, abstractVarRange).kind in IntegralTypes) and
       (skipTypes(src, abstractVarRange-{tyTypeDesc}).kind in IntegralTypes):
     # accept conversion between integral types
