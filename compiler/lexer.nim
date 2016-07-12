@@ -735,7 +735,8 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       if  c == '\226' and
           buf[pos+1] == '\128' and
           buf[pos+2] == '\147':  # It's a 'magic separator' en-dash Unicode
-        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars:
+        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars or
+            isMagicIdentSeparatorRune(buf, pos+magicIdentSeparatorRuneByteWidth) or pos == L.bufpos:
           lexMessage(L, errInvalidToken, "–")
           break
         inc(pos, magicIdentSeparatorRuneByteWidth)
@@ -747,7 +748,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       h = h !& ord(c)
       inc(pos)
     of '_':
-      if buf[pos+1] notin SymChars:
+      if buf[pos+1] notin SymChars or isMagicIdentSeparatorRune(buf, pos+1):
         lexMessage(L, errInvalidToken, "_")
         break
       inc(pos)
@@ -1056,7 +1057,8 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '_':
       inc(L.bufpos)
-      if L.buf[L.bufpos] notin SymChars:
+      if L.buf[L.bufpos] notin SymChars+{'_'} and not
+          isMagicIdentSeparatorRune(L.buf, L.bufpos):
         tok.tokType = tkSymbol
         tok.ident = getIdent("_")
       else:
@@ -1077,6 +1079,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       tok.tokType = tkCharLit
     of '0'..'9':
       getNumber(L, tok)
+      let c = L.buf[L.bufpos]
+      if c in SymChars+{'_'}:
+        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     else:
       if c in OpChars:
         getOperator(L, tok)

@@ -1065,8 +1065,11 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = newSymNode(s, n.info)
     result.typ = makeTypeDesc(c, s.typ)
   of skField:
-    if c.p != nil and c.p.selfSym != nil:
-      var ty = skipTypes(c.p.selfSym.typ, {tyGenericInst, tyVar, tyPtr, tyRef})
+    var p = c.p
+    while p != nil and p.selfSym == nil:
+      p = p.next
+    if p != nil and p.selfSym != nil:
+      var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyPtr, tyRef})
       while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
       var check: PNode = nil
       if ty.kind == tyObject:
@@ -1079,7 +1082,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
             markUsed(n.info, f)
             styleCheckUse(n.info, f)
             result = newNodeIT(nkDotExpr, n.info, f.typ)
-            result.add makeDeref(newSymNode(c.p.selfSym))
+            result.add makeDeref(newSymNode(p.selfSym))
             result.add newSymNode(f) # we now have the correct field
             if check != nil:
               check.sons[0] = result
