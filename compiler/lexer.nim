@@ -1079,6 +1079,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       tok.tokType = tkCharLit
     of '0'..'9':
       getNumber(L, tok)
+      let c = L.buf[L.bufpos]
+      if c in SymChars+{'_'}:
+        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     else:
       if c in OpChars:
         getOperator(L, tok)
