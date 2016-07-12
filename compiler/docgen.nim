@@ -25,6 +25,7 @@ type
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
+    jArray: JsonNode
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -81,6 +82,7 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
 
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
+  result.jArray = newJArray()
 
 proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if gCmd != cmdRst2tex: addf(dest, xml, args)
@@ -439,7 +441,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   setIndexTerm(d[], symbolOrId, name, linkTitle,
     xmltree.escape(plainDocstring.docstringSummary))
 
-proc genJSONItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
+proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
   if not isVisible(nameNode): return
   var
     name = getName(d, nameNode)
@@ -499,46 +501,44 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
   else: discard
 
-proc generateJson(d: PDoc, n: PNode, jArray: JsonNode = nil): JsonNode =
+proc add(d: PDoc; j: JsonNode) =
+  if j != nil: d.jArray.add j
+
+proc generateJson*(d: PDoc, n: PNode) =
   case n.kind
   of nkCommentStmt:
     if n.comment != nil and startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
-      result = %{ "comment": %stripped }
+      d.add %{ "comment": %stripped }
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
-    result = genJSONItem(d, n, n.sons[namePos], skProc)
+    d.add genJsonItem(d, n, n.sons[namePos], skProc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(n)
-    result = genJSONItem(d, n, n.sons[namePos], skMethod)
+    d.add genJsonItem(d, n, n.sons[namePos], skMethod)
   of nkIteratorDef:
     when useEffectSystem: documentRaises(n)
-    result = genJSONItem(d, n, n.sons[namePos], skIterator)
+    d.add genJsonItem(d, n, n.sons[namePos], skIterator)
   of nkMacroDef:
-    result = genJSONItem(d, n, n.sons[namePos], skMacro)
+    d.add genJsonItem(d, n, n.sons[namePos], skMacro)
   of nkTemplateDef:
-    result = genJSONItem(d, n, n.sons[namePos], skTemplate)
+    d.add genJsonItem(d, n, n.sons[namePos], skTemplate)
   of nkConverterDef:
     when useEffectSystem: documentRaises(n)
-    result = genJSONItem(d, n, n.sons[namePos], skConverter)
+    d.add genJsonItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
-        result = genJSONItem(d, n.sons[i], n.sons[i].sons[0],
+        d.add genJsonItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    result = if jArray != nil: jArray else: newJArray()
-
     for i in countup(0, sonsLen(n) - 1):
-      var r = generateJson(d, n.sons[i], result)
-      if r != nil:
-        result.add(r)
-
+      generateJson(d, n.sons[i])
   of nkWhenStmt:
     # generate documentation for the first branch only:
-    if not checkForFalse(n.sons[0].sons[0]) and jArray != nil:
-      discard generateJson(d, lastSon(n.sons[0]), jArray)
+    if not checkForFalse(n.sons[0].sons[0]):
+      generateJson(d, lastSon(n.sons[0]))
   else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
@@ -607,6 +607,19 @@ proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   else:
     writeRope(content, getOutFile(filename, outExt), useWarning)
 
+proc writeOutputJson*(d: PDoc, filename, outExt: string,
+                      useWarning = false) =
+  let content = $d.jArray
+  if optStdout in gGlobalOptions:
+    write(stdout, content)
+  else:
+    var f: File
+    if open(f, getOutFile(filename, outExt), fmWrite):
+      write(f, content)
+      close(f)
+    else:
+      discard "fixme: error report"
+
 proc commandDoc*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
@@ -636,13 +649,14 @@ proc commandRst2TeX*() =
   splitter = "\\-"
   commandRstAux(gProjectFull, TexExt)
 
-proc commandJSON*() =
+proc commandJson*() =
   var ast = parseFile(gProjectMainIdx)
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
-  var json = generateJson(d, ast)
-  var content = rope(pretty(json))
+  generateJson(d, ast)
+  let json = d.jArray
+  let content = rope(pretty(json))
 
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
