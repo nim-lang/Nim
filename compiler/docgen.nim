@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json, xmltree, cgi, typesrenderer
+  importer, sempass2, json, xmltree, cgi, typesrenderer, astalgo
 
 type
   TSections = array[TSymKind, Rope]
@@ -26,8 +26,30 @@ type
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
     jArray: JsonNode
+    types: TStrTable
 
   PDoc* = ref TDocumentor ## Alias to type less.
+
+proc whichType(d: PDoc; n: PNode): PSym =
+  if n.kind == nkSym:
+    if d.types.strTableContains(n.sym):
+      result = n.sym
+  else:
+    for i in 0..<safeLen(n):
+      let x = whichType(d, n[i])
+      if x != nil: return x
+
+proc attachToType(d: PDoc; p: PSym): PSym =
+  let params = p.ast.sons[paramsPos]
+  # first check the first parameter, then the return type,
+  # then the other parameter:
+  template check(i) =
+    result = whichType(d, params[i])
+    if result != nil: return result
+
+  if params.len > 1: check(1)
+  if params.len > 0: check(0)
+  for i in 2..<params.len: check(i)
 
 proc compilerMsgHandler(filename: string, line, col: int,
                         msgKind: rst.MsgKind, arg: string) {.procvar.} =
@@ -83,6 +105,7 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
   result.jArray = newJArray()
+  initStrTable result.types
 
 proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if gCmd != cmdRst2tex: addf(dest, xml, args)
@@ -228,9 +251,26 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
     result = esc(d.target, "`")
     for i in 0.. <n.len: result.add(getName(d, n[i], splitAfter))
     result.add esc(d.target, "`")
+  of nkOpenSymChoice, nkClosedSymChoice:
+    result = getName(d, n[0], splitAfter)
   else:
     internalError(n.info, "getName()")
     result = ""
+
+proc getNameIdent(n: PNode): PIdent =
+  case n.kind
+  of nkPostfix: result = getNameIdent(n.sons[1])
+  of nkPragmaExpr: result = getNameIdent(n.sons[0])
+  of nkSym: result = n.sym.name
+  of nkIdent: result = n.ident
+  of nkAccQuoted:
+    var r = ""
+    for i in 0.. <n.len: r.add(getNameIdent(n[i]).s)
+    result = getIdent(r)
+  of nkOpenSymChoice, nkClosedSymChoice:
+    result = getNameIdent(n[0])
+  else:
+    result = nil
 
 proc getRstName(n: PNode): PRstNode =
   case n.kind
@@ -241,6 +281,8 @@ proc getRstName(n: PNode): PRstNode =
   of nkAccQuoted:
     result = getRstName(n.sons[0])
     for i in 1 .. <n.len: result.text.add(getRstName(n[i]).text)
+  of nkOpenSymChoice, nkClosedSymChoice:
+    result = getRstName(n[0])
   else:
     internalError(n.info, "getRstName()")
     result = nil
@@ -397,6 +439,12 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
        tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr:
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [rope(esc(d.target, literal))])
+
+  if k in routineKinds and nameNode.kind == nkSym:
+    let att = attachToType(d, nameNode.sym)
+    if att != nil:
+      dispA(result, """<span class="attachedType" style="visibility:hidden">$1</span>""", "",
+        [rope esc(d.target, att.name.s)])
   inc(d.id)
   let
     plainNameRope = rope(xmltree.escape(plainName.strip))
@@ -440,6 +488,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
 
   setIndexTerm(d[], symbolOrId, name, linkTitle,
     xmltree.escape(plainDocstring.docstringSummary))
+  if k == skType and nameNode.kind == nkSym:
+    d.types.strTableAdd nameNode.sym
 
 proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
   if not isVisible(nameNode): return
