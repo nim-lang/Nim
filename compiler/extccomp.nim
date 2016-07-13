@@ -754,7 +754,7 @@ proc callCCompiler*(projectfile: string) =
           "lib", quoteShell(libpath)])
     if optCompileOnly notin gGlobalOptions:
       execExternalProgram(linkCmd,
-                          if gVerbosity > 1: hintExecuting else: hintLinking)
+        if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
