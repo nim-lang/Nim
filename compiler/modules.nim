@@ -105,12 +105,13 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
     resetModule(fileIdx)
     return Yes
 
-  if gMemCacheData[fileIdx].needsRecompile != Maybe:
-    return gMemCacheData[fileIdx].needsRecompile
+  # cycle detection: We claim that a cycle does no harm.
+  if gMemCacheData[fileIdx].needsRecompile == Probing:
+    return No
+    #return gMemCacheData[fileIdx].needsRecompile
 
-  if optForceFullMake in gGlobalOptions or
-     hashChanged(fileIdx):
-       markDirty
+  if optForceFullMake in gGlobalOptions or hashChanged(fileIdx):
+    markDirty()
 
   if gMemCacheData[fileIdx].deps != nil:
     gMemCacheData[fileIdx].needsRecompile = Probing
@@ -118,7 +119,7 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
       let d = checkDepMem(dep)
       if d in {Yes, Recompiled}:
         # echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
-        markDirty
+        markDirty()
 
   gMemCacheData[fileIdx].needsRecompile = No
   return No

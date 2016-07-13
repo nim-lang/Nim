@@ -518,7 +518,6 @@ const
                                          warnGcUnsafe,
                                          hintPath,
                                          hintDependency,
-                                         hintExecuting,
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
@@ -530,7 +529,7 @@ const
 
 var
   ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
-    hintQuitCalled}
+    hintQuitCalled, hintExecuting}
   filenameToIndexTbl = initTable[string, int32]()
   fileInfos*: seq[TFileInfo] = @[]
   systemFileIdx*: int32
@@ -621,6 +620,7 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
+  gMainPackageNotes*: TNoteKinds = NotesVerbosity[1]
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)

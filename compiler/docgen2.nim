@@ -29,10 +29,25 @@ proc close(p: PPassContext, n: PNode): PNode =
     except IOError:
       discard
 
+proc closeJson(p: PPassContext, n: PNode): PNode =
+  var g = PGen(p)
+  let useWarning = sfMainModule notin g.module.flags
+  if gWholeProject or sfMainModule in g.module.flags:
+    writeOutputJson(g.doc, g.module.filename, ".json", useWarning)
+    try:
+      generateIndex(g.doc)
+    except IOError:
+      discard
+
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   generateDoc(g.doc, n)
+
+proc processNodeJson(c: PPassContext, n: PNode): PNode =
+  result = n
+  var g = PGen(c)
+  generateJson(g.doc, n)
 
 proc myOpen(module: PSym): PPassContext =
   var g: PGen
@@ -44,6 +59,8 @@ proc myOpen(module: PSym): PPassContext =
   result = g
 
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
+const docgen2JsonPass* = makePass(open = myOpen, process = processNodeJson,
+                                  close = closeJson)
 
 proc finishDoc2Pass*(project: string) =
   discard

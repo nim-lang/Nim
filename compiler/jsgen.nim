@@ -48,6 +48,7 @@ type
     etyNull,                  # null type
     etyProc,                  # proc type
     etyBool,                  # bool type
+    etySeq,                   # Nim seq or string type
     etyInt,                   # JavaScript's int
     etyFloat,                 # JavaScript's float
     etyString,                # JavaScript's string
@@ -156,15 +157,18 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
-  of tyString, tySequence: result = etyInt # little hack to get right semantics
+  of tyString, tySequence: result = etySeq
   of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, tyBigNum,
      tyVarargs:
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
-     tyExpr, tyStmt, tyStatic, tyTypeDesc, tyTypeClasses, tyVoid:
+     tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid:
     result = etyNone
+  of tyStatic:
+    if t.n != nil: result = mapType(lastSon t)
+    else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
 
@@ -817,7 +821,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     addf(p.body, "$#[$#] = chr($#);$n", [a.rdLoc, b.rdLoc, c.rdLoc])
     return
 
-  let xtyp = mapType(p, x.typ)
+  var xtyp = mapType(p, x.typ)
 
   if x.kind == nkHiddenDeref and x.sons[0].kind == nkCall and xtyp != etyObject:
     gen(p, x.sons[0], a)
@@ -829,7 +833,18 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
 
   gen(p, y, b)
 
+  # we don't care if it's an etyBaseIndex (global) of a string, it's
+  # still a string that needs to be copied properly:
+  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyString}:
+    xtyp = etySeq
   case xtyp
+  of etySeq:
+    if (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+      addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
+    else:
+      useMagic(p, "nimCopy")
+      addf(p.body, "$1 = nimCopy(null, $2, $3);$n",
+           [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
     if (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       addf(p.body, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
@@ -1049,6 +1064,8 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       else: internalError(n.sons[0].info, "expr(nkBracketExpr, " & $kindOfIndexedExpr & ')')
   of nkObjDownConv:
     gen(p, n.sons[0], r)
+  of nkHiddenDeref:
+    gen(p, n.sons[0].sons[0], r)
   else: internalError(n.sons[0].info, "genAddr: " & $n.sons[0].kind)
 
 proc thisParam(p: PProc; typ: PType): PType =
@@ -1221,6 +1238,7 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
                     r: var TCompRes) =
   var i = 0
   var j = 1
+  r.kind = resExpr
   while i < pat.len:
     case pat[i]
     of '@':
@@ -1234,10 +1252,18 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
       genOtherArg(p, n, j, typ, generated, r)
       inc j
       inc i
+    of '\31':
+      # unit separator
+      add(r.res, "#")
+      inc i
+    of '\29':
+      # group separator
+      add(r.res, "@")
+      inc i
     else:
       let start = i
       while i < pat.len:
-        if pat[i] notin {'@', '#'}: inc(i)
+        if pat[i] notin {'@', '#', '\31', '\29'}: inc(i)
         else: break
       if i - 1 >= start:
         add(r.res, substr(pat, start, i - 1))
@@ -1404,6 +1430,12 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("null", indirect)
   of tySequence, tyString, tyCString, tyPointer, tyProc:
     result = putToSeq("null", indirect)
+  of tyStatic:
+    if t.n != nil:
+      result = createVar(p, lastSon t, indirect)
+    else:
+      internalError("createVar: " & $t.kind)
+      result = nil
   else:
     internalError("createVar: " & $t.kind)
     result = nil
@@ -1419,7 +1451,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     discard mangleName(v, p.target)
     gen(p, n, a)
     case mapType(p, v.typ)
-    of etyObject:
+    of etyObject, etySeq:
       if needsNoCopy(p, n):
         s = a.res
       else:

@@ -965,7 +965,6 @@ const
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 var
   gMainPackageId*: int
-  gMainPackageNotes*: TNoteKinds
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds

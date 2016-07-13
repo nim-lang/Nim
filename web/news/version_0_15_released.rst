@@ -49,6 +49,16 @@ Compiler Additions
 - The ``-d/--define`` flag can now optionally take a value to be used
   by code at compile time.
 
+Nimscript Additions
+-------------------
+
+- Finally it's possible to dis/enable specific hints and warnings in
+  Nimscript via the procs ``warning`` and ``hint``.
+- Nimscript exports  a proc named ``patchFile`` which can be used to
+  patch modules or include files for different Nimble packages, including
+  the ``stdlib`` package.
+
+
 Language Additions
 ------------------
 

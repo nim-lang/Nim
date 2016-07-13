@@ -152,11 +152,13 @@ proc add*[T](q: var Queue[T], item: T) =
   q.data[q.wr] = item
   q.wr = (q.wr + 1) and q.mask
 
+proc default[T](t: typedesc[T]): T {.inline.} = discard
 proc pop*[T](q: var Queue[T]): T {.inline, discardable.} =
   ## Remove and returns the first (oldest) element of the queue `q`.
   emptyCheck(q)
   dec q.count
   result = q.data[q.rd]
+  q.data[q.rd] = default(type(result))
   q.rd = (q.rd + 1) and q.mask
 
 proc enqueue*[T](q: var Queue[T], item: T) =

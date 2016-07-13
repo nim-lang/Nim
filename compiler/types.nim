@@ -541,7 +541,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     else:
       result.add typeToString(t.sons[0])
   of tyRange:
-    result = "range " & rangeToStr(t.n)
+    result = "range "
+    if t.n != nil and t.n.kind == nkRange:
+      result.add rangeToStr(t.n)
     if prefer != preferExported:
       result.add("(" & typeToString(t.sons[0]) & ")")
   of tyProc:
@@ -1315,6 +1317,9 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
+  of tyStatic:
+    if typ.n != nil: result = computeSizeAux(lastSon(typ), a)
+    else: result = szUnknownSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize

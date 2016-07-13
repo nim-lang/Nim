@@ -411,6 +411,13 @@ proc semUsing(c: PContext; n: PNode): PNode =
     if a.sons[length-1].kind != nkEmpty:
       localError(a.info, "'using' sections cannot contain assignments")
 
+proc hasEmpty(typ: PType): bool =
+  if typ.kind in {tySequence, tyArray, tySet}:
+    result = typ.lastSon.kind == tyEmpty
+  elif typ.kind == tyTuple:
+    for s in typ.sons:
+      result = result or hasEmpty(s)
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -445,8 +452,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = skipIntLit(def.typ)
-        if typ.kind in {tySequence, tyArray, tySet} and
-           typ.lastSon.kind == tyEmpty:
+        if hasEmpty(typ):
           localError(def.info, errCannotInferTypeOfTheLiteral,
                      ($typ.kind).substr(2).toLower)
     else:
