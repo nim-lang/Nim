@@ -126,7 +126,7 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     let key = a.getString(0) & "_" & a.getString(1)
     var val = a.getString(2).addFileExt(NimExt)
     if not isAbsolute(val):
-      val = vthisDir / val
+      val = vthisDir / pathSubs(val, vthisDir)
     gModuleOverrides[key] = val
 
 proc runNimScript*(scriptName: string; freshDefines=true) =
