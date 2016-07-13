@@ -1686,10 +1686,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     of skType:
       genTypeLit(c, s.typ, dest)
     of skGenericParam:
-      if c.prc.sym.kind == skMacro:
+      if c.prc.sym != nil and c.prc.sym.kind == skMacro:
         genRdVar(c, n, dest, flags)
       else:
-        internalError(n.info, "cannot generate code for: " & s.name.s)
+        globalError(n.info, errGenerated, "cannot generate code for: " & s.name.s)
     else:
       globalError(n.info, errGenerated, "cannot generate code for: " & s.name.s)
   of nkCallKinds:

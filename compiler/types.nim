@@ -1317,6 +1317,9 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
+  of tyStatic:
+    if typ.n != nil: result = computeSizeAux(lastSon(typ), a)
+    else: result = szUnknownSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize

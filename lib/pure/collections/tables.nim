@@ -16,6 +16,39 @@
 ## semantics, this means that ``=`` performs a copy of the hash table.
 ## For **reference** semantics use the ``Ref`` variant: ``TableRef``,
 ## ``OrderedTableRef``, ``CountTableRef``.
+## To give an example, when `a` is a Table, then `var b = a` gives `b`
+## as a new independent table. b is initialised with the contents of `a`.
+## Changing `b` does not affect `a` and vice versa:
+##
+## .. code-block::
+##   import tables
+##
+##   var
+##     a = {1: "one", 2: "two"}.toTable  # creates a Table
+##     b = a
+##
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
+##
+##   b[3] = "three"
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two, 3: three}
+##   echo a == b  # output: false
+##
+## On the other hand, when `a` is a TableRef instead, then changes to `b` also affect `a`.
+## Both `a` and `b` reference the same data structure:
+##
+## .. code-block::
+##   import tables
+##
+##   var
+##     a = {1: "one", 2: "two"}.newTable  # creates a TableRef
+##     b = a
+##
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
+##
+##   b[3] = "three"
+##   echo a, b  # output: {1: one, 2: two, 3: three}{1: one, 2: two, 3: three}
+##   echo a == b  # output: true
+##
 ##
 ## If you are using simple standard types like ``int`` or ``string`` for the
 ## keys of the table you won't have any problems, but as soon as you try to use

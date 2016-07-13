@@ -164,8 +164,11 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
-     tyExpr, tyStmt, tyStatic, tyTypeDesc, tyTypeClasses, tyVoid:
+     tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid:
     result = etyNone
+  of tyStatic:
+    if t.n != nil: result = mapType(lastSon t)
+    else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
 
@@ -1427,6 +1430,12 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("null", indirect)
   of tySequence, tyString, tyCString, tyPointer, tyProc:
     result = putToSeq("null", indirect)
+  of tyStatic:
+    if t.n != nil:
+      result = createVar(p, lastSon t, indirect)
+    else:
+      internalError("createVar: " & $t.kind)
+      result = nil
   else:
     internalError("createVar: " & $t.kind)
     result = nil
