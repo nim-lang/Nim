@@ -198,6 +198,10 @@ proc semConv(c: PContext, n: PNode): PNode =
       # separate proc from fitNode?
       if op.kind == nkSym and op.sym.isGenericRoutine:
         result.sons[1] = fitNode(c, result.typ, result.sons[1])
+      elif op.kind == nkPar and targetType.kind == tyTuple:
+        # Set type of each field in case any have type tyEmpty (eg. `@[]`)
+        for i in 0..<op.sons.len:
+          op.sons[i][1].typ = targetType.sons[i]
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
