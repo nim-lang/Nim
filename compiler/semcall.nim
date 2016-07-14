@@ -69,7 +69,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     #  gDebug = true
     matches(c, n, orig, z)
     if errors != nil:
-      errors.safeAdd(sym)
+      errors.safeAdd((sym, int z.mutabilityProblem))
       if z.errors != nil:
         for err in z.errors:
           errors.add(err)
@@ -111,7 +111,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   let proto = describeArgs(c, n, 1, preferName)
 
   var prefer = preferName
-  for err in errors:
+  for err, mut in items(errors):
     var errProto = ""
     let n = err.typ.n
     for i in countup(1, n.len - 1):
@@ -123,18 +123,21 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     if errProto == proto:
       prefer = preferModuleInfo
       break
+
   # now use the information stored in 'prefer' to produce a nice error message:
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1, prefer))
   add(result, ')')
   var candidates = ""
-  for err in errors:
+  for err, mut in items(errors):
     if err.kind in routineKinds and err.ast != nil:
       add(candidates, renderTree(err.ast,
             {renderNoBody, renderNoComments,renderNoPragmas}))
     else:
       add(candidates, err.getProcHeader(prefer))
     add(candidates, "\n")
+    if mut != 0 and mut < n.len:
+      add(candidates, "for a 'var' type a variable needs to be passed, but '" & renderTree(n[mut]) & "' is immutable\n")
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
   if c.compilesContextId > 0 and optReportConceptFailures in gGlobalOptions:
@@ -158,8 +161,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   template pickBest(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, errors)
-
-
   pickBest(f)
 
   let overloadsState = result.state
@@ -230,7 +231,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         #notFoundError(c, n, errors)
 
       return
-
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
       not sameMethodDispatcher(result.calleeSym, alt.calleeSym):
     internalAssert result.state == csMatch
@@ -299,8 +299,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   var finalCallee = x.calleeSym
   markUsed(n.sons[0].info, finalCallee)
   styleCheckUse(n.sons[0].info, finalCallee)
-  if finalCallee.ast == nil:
-    internalError(n.info, "calleeSym.ast is nil") # XXX: remove this check!
+  assert finalCallee.ast != nil
   if x.hasFauxMatch:
     result = x.call
     result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
@@ -319,12 +318,12 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       # are added as normal params.
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
-          of skConst:
-            x.call.add s.ast
-          of skType:
-            x.call.add newSymNode(s, n.info)
-          else:
-            internalAssert false
+        of skConst:
+          x.call.add s.ast
+        of skType:
+          x.call.add newSymNode(s, n.info)
+        else:
+          internalAssert false
 
   result = x.call
   instGenericConvertersSons(c, result, x)

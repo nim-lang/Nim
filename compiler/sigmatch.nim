@@ -22,7 +22,7 @@ type
   TCandidateState* = enum
     csEmpty, csMatch, csNoMatch
 
-  CandidateErrors* = seq[PSym]
+  CandidateErrors* = seq[(PSym,int)]
   TCandidate* = object
     c*: PContext
     exactMatches*: int       # also misused to prefer iters over procs
@@ -49,6 +49,7 @@ type
                              # a distrinct type
     typedescMatched*: bool
     isNoCall*: bool          # misused for generic type instantiations C[T]
+    mutabilityProblem*: uint8 # tyVar mismatch
     inheritancePenalty: int  # to prefer closest father object type
     errors*: CandidateErrors # additional clarifications to be displayed to the
                              # user if overload resolution fails
@@ -1579,6 +1580,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     if formal.typ.kind == tyVar:
       if not n.isLValue:
         m.state = csNoMatch
+        m.mutabilityProblem = uint8(f-1)
         return
 
   var
