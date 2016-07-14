@@ -1390,15 +1390,16 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     # --> `[]=`(a, i, x)
     let oldBracketExpr = c.p.bracketExpr
     a = semSubscript(c, a, {efLValue})
-    if a == nil and mode != noOverloadedSubscript:
+    if a == nil:
       result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
       add(result, n[1])
-      result = semExprNoType(c, result)
-      c.p.bracketExpr = oldBracketExpr
-      return result
-    elif a == nil:
-      localError(n.info, "could not resolve: " & $n[0])
-      return n
+      if mode == noOverloadedSubscript:
+        bracketNotFoundError(c, result)
+        return n
+      else:
+        result = semExprNoType(c, result)
+        c.p.bracketExpr = oldBracketExpr
+        return result
     c.p.bracketExpr = oldBracketExpr
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)

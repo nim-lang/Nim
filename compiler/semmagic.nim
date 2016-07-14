@@ -42,7 +42,10 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = semSubscript(c, result, flags)
   c.p.bracketExpr = oldBracketExpr
   if result.isNil:
-    localError(n.info, "could not resolve: " & $n)
+    let x = copyTree(n)
+    x.sons[0] = newIdentNode(getIdent"[]", n.info)
+    bracketNotFoundError(c, x)
+    #localError(n.info, "could not resolve: " & $n)
     result = n
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =

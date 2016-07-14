@@ -145,6 +145,20 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   else:
     localError(n.info, errGenerated, result)
 
+proc bracketNotFoundError(c: PContext; n: PNode) =
+  var errors: CandidateErrors = @[]
+  var o: TOverloadIter
+  let headSymbol = n[0]
+  var symx = initOverloadIter(o, c, headSymbol)
+  while symx != nil:
+    if symx.kind in routineKinds:
+      errors.add((symx, 0))
+    symx = nextOverloadIter(o, c, headSymbol)
+  if errors.len == 0:
+    localError(n.info, "could not resolve: " & $n)
+  else:
+    notFoundError(c, n, errors)
+
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds;
                       errors: var CandidateErrors): TCandidate =
