@@ -1635,8 +1635,8 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
   result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
-  var macroCall = n[1]
-  var expandedSym = expectMacroOrTemplateCall(c, macroCall)
+  let macroCall = n[1]
+  let expandedSym = expectMacroOrTemplateCall(c, macroCall)
   if expandedSym.kind == skError: return n
 
   macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
@@ -1644,13 +1644,13 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
   styleCheckUse(n.info, expandedSym)
 
   for i in countup(1, macroCall.len-1):
+    #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
     macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
 
   # Preserve the magic symbol in order to be handled in evals.nim
   internalAssert n.sons[0].sym.magic == mExpandToAst
-  #n.typ = getSysSym("PNimrodNode").typ # expandedSym.getReturnType
-  n.typ = if getCompilerProc("NimNode") != nil: sysTypeFromName"NimNode"
-          else: sysTypeFromName"PNimrodNode"
+  #n.typ = getSysSym("NimNode").typ # expandedSym.getReturnType
+  n.typ = sysTypeFromName"NimNode"
   result = n
 
 proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,

@@ -105,10 +105,14 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
     resetModule(fileIdx)
     return Yes
 
-  # cycle detection: We claim that a cycle does no harm.
-  if gMemCacheData[fileIdx].needsRecompile == Probing:
-    return No
-    #return gMemCacheData[fileIdx].needsRecompile
+  when true:
+    if gMemCacheData[fileIdx].needsRecompile != Maybe:
+      return gMemCacheData[fileIdx].needsRecompile
+  else:
+    # cycle detection: We claim that a cycle does no harm.
+    if gMemCacheData[fileIdx].needsRecompile == Probing:
+      return No
+      #return gMemCacheData[fileIdx].needsRecompile
 
   if optForceFullMake in gGlobalOptions or hashChanged(fileIdx):
     markDirty()
