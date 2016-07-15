@@ -24,7 +24,7 @@
 ##  import locks
 ##
 ##  var
-##    thr: array [0..4, Thread[tuple[a,b: int]]]
+##    thr: array[0..4, Thread[tuple[a,b: int]]]
 ##    L: Lock
 ##
 ##  proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
@@ -198,7 +198,7 @@ when emulatedThreadVars:
 # allocations are needed. Currently less than 7K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
 type
-  ThreadLocalStorage = array [0..1_000, float]
+  ThreadLocalStorage = array[0..1_000, float]
 
   PGcThread = ptr GcThread
   GcThread {.pure, inheritable.} = object

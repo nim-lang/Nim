@@ -721,7 +721,7 @@ elif not defined(useNimRtl):
                  env: StringTableRef = nil,
                  options: set[ProcessOption] = {poStdErrToStdOut}): Process =
     var
-      pStdin, pStdout, pStderr: array [0..1, cint]
+      pStdin, pStdout, pStderr: array[0..1, cint]
     new(result)
     result.options = options
     result.exitCode = -3 # for ``waitForExit``
