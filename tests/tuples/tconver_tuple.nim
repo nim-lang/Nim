@@ -17,3 +17,7 @@ var bar = (
   strings: @[],
   ints: @[],
 ).MyTuple
+
+var fooUnnamed = MyTuple((7, @[], @[]))
+var n = 7
+var fooSym = MyTuple((num: n, strings: @[], ints: @[]))
