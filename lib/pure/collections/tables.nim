@@ -118,11 +118,11 @@ template dataLen(t): expr = len(t.data)
 
 include tableimpl
 
-proc clear*[A, B](t: Table[A, B] | TableRef[A, B]) =
+proc clear*[A, B](t: Table[A, B] | TableRef[A, B]) {.noSideEffect.} =
   ## Resets the table so that it is empty.
   clearImpl()
 
-proc rightSize*(count: Natural): int {.inline.} =
+proc rightSize*(count: Natural): int {.inline, noSideEffect.} =
   ## Return the value of `initialSize` to support `count` items.
   ##
   ## If more items are expected to be added, simply add that
@@ -131,7 +131,7 @@ proc rightSize*(count: Natural): int {.inline.} =
   ## Internally, we want mustRehash(rightSize(x), x) == false.
   result = nextPowerOfTwo(count * 3 div 2  +  4)
 
-proc len*[A, B](t: Table[A, B]): int =
+proc len*[A, B](t: Table[A, B]): int {.noSideEffect.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
@@ -154,24 +154,25 @@ template getOrDefaultImpl(t, key): untyped {.immediate.} =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
-proc `[]`*[A, B](t: Table[A, B], key: A): B {.deprecatedGet.} =
+proc `[]`*[A, B](t: Table[A, B], key: A): B {.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   get(t, key)
 
-proc `[]`*[A, B](t: var Table[A, B], key: A): var B {.deprecatedGet.} =
+proc `[]`*[A, B](t: var Table[A, B], key: A): var B {.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   get(t, key)
 
-proc mget*[A, B](t: var Table[A, B], key: A): var B {.deprecated.} =
+proc mget*[A, B](t: var Table[A, B], key: A): var B {.deprecated, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised. Use ```[]```
   ## instead.
   get(t, key)
 
-proc getOrDefault*[A, B](t: Table[A, B], key: A): B = getOrDefaultImpl(t, key)
+proc getOrDefault*[A, B](t: Table[A, B], key: A): B {.noSideEffect.} =
+  getOrDefaultImpl(t, key)
 
 template withValue*[A, B](t: var Table[A, B], key: A,
                           value, body: untyped) =
@@ -218,7 +219,7 @@ template withValue*[A, B](t: var Table[A, B], key: A,
   else:
     body2
 
-iterator allValues*[A, B](t: Table[A, B]; key: A): B =
+iterator allValues*[A, B](t: Table[A, B]; key: A): B {.noSideEffect.} =
   ## iterates over any value in the table `t` that belongs to the given `key`.
   var h: Hash = hash(key) and high(t.data)
   while isFilled(t.data[h].hcode):
@@ -226,46 +227,46 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
       yield t.data[h].val
     h = nextTry(h, high(t.data))
 
-proc hasKey*[A, B](t: Table[A, B], key: A): bool =
+proc hasKey*[A, B](t: Table[A, B], key: A): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table `t`.
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
-proc contains*[A, B](t: Table[A, B], key: A): bool =
+proc contains*[A, B](t: Table[A, B], key: A): bool {.noSideEffect.} =
   ## alias of `hasKey` for use with the `in` operator.
   return hasKey[A, B](t, key)
 
-iterator pairs*[A, B](t: Table[A, B]): (A, B) =
+iterator pairs*[A, B](t: Table[A, B]): (A, B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
+iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A, B](t: Table[A, B]): A =
+iterator keys*[A, B](t: Table[A, B]): A {.noSideEffect.} =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].key
 
-iterator values*[A, B](t: Table[A, B]): B =
+iterator values*[A, B](t: Table[A, B]): B {.noSideEffect.} =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
-iterator mvalues*[A, B](t: var Table[A, B]): var B =
+iterator mvalues*[A, B](t: var Table[A, B]): var B {.noSideEffect.} =
   ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
-proc del*[A, B](t: var Table[A, B], key: A) =
+proc del*[A, B](t: var Table[A, B], key: A) {.noSideEffect.} =
   ## deletes `key` from hash table `t`.
   delImpl()
 
-proc enlarge[A, B](t: var Table[A, B]) =
+proc enlarge[A, B](t: var Table[A, B]) {.noSideEffect.} =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
@@ -274,28 +275,28 @@ proc enlarge[A, B](t: var Table[A, B]) =
       var j = -1 - rawGetKnownHC(t, n[i].key, n[i].hcode)
       rawInsert(t, t.data, n[i].key, n[i].val, n[i].hcode, j)
 
-proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
+proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B {.noSideEffect.} =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   mgetOrPutImpl(enlarge)
 
-proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table, otherwise inserts `value`.
   hasKeyOrPutImpl(enlarge)
 
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a (key, value)-pair into `t`.
   putImpl(enlarge)
 
-proc add*[A, B](t: var Table[A, B], key: A, val: B) =
+proc add*[A, B](t: var Table[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   addImpl(enlarge)
 
-proc len*[A, B](t: TableRef[A, B]): int =
+proc len*[A, B](t: TableRef[A, B]): int {.noSideEffect.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc initTable*[A, B](initialSize=64): Table[A, B] =
+proc initTable*[A, B](initialSize=64): Table[A, B] {.noSideEffect.} =
   ## creates a new hash table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
@@ -306,7 +307,7 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
   newSeq(result.data, initialSize)
 
 proc toTable*[A, B](pairs: openArray[(A,
-                    B)]): Table[A, B] =
+                    B)]): Table[A, B] {.noSideEffect.} =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
@@ -323,11 +324,11 @@ template dollarImpl(): stmt {.dirty.} =
       result.add($val)
     result.add("}")
 
-proc `$`*[A, B](t: Table[A, B]): string =
+proc `$`*[A, B](t: Table[A, B]): string {.noSideEffect.} =
   ## The `$` operator for hash tables.
   dollarImpl()
 
-proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
+proc hasKey*[A, B](t: TableRef[A, B], key: A): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
@@ -341,7 +342,7 @@ template equalsImpl() =
       if t[key] != val: return false
     return true
 
-proc `==`*[A, B](s, t: Table[A, B]): bool =
+proc `==`*[A, B](s, t: Table[A, B]): bool {.noSideEffect.} =
   equalsImpl()
 
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
@@ -351,85 +352,86 @@ proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   for item in collection:
     result[index(item)] = item
 
-iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
+iterator pairs*[A, B](t: TableRef[A, B]): (A, B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
+iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A, B](t: TableRef[A, B]): A =
+iterator keys*[A, B](t: TableRef[A, B]): A {.noSideEffect.} =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].key
 
-iterator values*[A, B](t: TableRef[A, B]): B =
+iterator values*[A, B](t: TableRef[A, B]): B {.noSideEffect.} =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
-iterator mvalues*[A, B](t: TableRef[A, B]): var B =
+iterator mvalues*[A, B](t: TableRef[A, B]): var B {.noSideEffect.} =
   ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
-proc `[]`*[A, B](t: TableRef[A, B], key: A): var B {.deprecatedGet.} =
+proc `[]`*[A, B](t: TableRef[A, B], key: A): var B {.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``.  If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   result = t[][key]
 
-proc mget*[A, B](t: TableRef[A, B], key: A): var B {.deprecated.} =
+proc mget*[A, B](t: TableRef[A, B], key: A): var B {.deprecated, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## Use ```[]``` instead.
   t[][key]
 
-proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B = getOrDefault(t[], key)
+proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B {.noSideEffect.} =
+  getOrDefault(t[], key)
 
-proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
+proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B {.noSideEffect.} =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   t[].mgetOrPut(key, val)
 
-proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table, otherwise inserts `value`.
   t[].hasKeyOrPut(key, val)
 
-proc contains*[A, B](t: TableRef[A, B], key: A): bool =
+proc contains*[A, B](t: TableRef[A, B], key: A): bool {.noSideEffect.} =
   ## alias of `hasKey` for use with the `in` operator.
   return hasKey[A, B](t, key)
 
-proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a (key, value)-pair into `t`.
   t[][key] = val
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
+proc add*[A, B](t: TableRef[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   t[].add(key, val)
 
-proc del*[A, B](t: TableRef[A, B], key: A) =
+proc del*[A, B](t: TableRef[A, B], key: A) {.noSideEffect.} =
   ## deletes `key` from hash table `t`.
   t[].del(key)
 
-proc newTable*[A, B](initialSize=64): TableRef[A, B] =
+proc newTable*[A, B](initialSize=64): TableRef[A, B] {.noSideEffect.} =
   new(result)
   result[] = initTable[A, B](initialSize)
 
-proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
+proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] {.noSideEffect.} =
   ## creates a new hash table that contains the given `pairs`.
   new(result)
   result[] = toTable[A, B](pairs)
 
-proc `$`*[A, B](t: TableRef[A, B]): string =
+proc `$`*[A, B](t: TableRef[A, B]): string {.noSideEffect.} =
   ## The `$` operator for hash tables.
   dollarImpl()
 
-proc `==`*[A, B](s, t: TableRef[A, B]): bool =
+proc `==`*[A, B](s, t: TableRef[A, B]): bool {.noSideEffect.} =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
   else: equalsImpl()
@@ -454,11 +456,11 @@ type
 
 {.deprecated: [TOrderedTable: OrderedTable, POrderedTable: OrderedTableRef].}
 
-proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
+proc len*[A, B](t: OrderedTable[A, B]): int {.inline, noSideEffect.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) =
+proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) {.noSideEffect.} =
   ## Resets the table so that it is empty.
   clearImpl()
   t.first = -1
@@ -471,83 +473,83 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
     if isFilled(t.data[h].hcode): yieldStmt
     h = nxt
 
-iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
+iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order.
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
+iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order. The values can be modified.
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A, B](t: OrderedTable[A, B]): A =
+iterator keys*[A, B](t: OrderedTable[A, B]): A {.noSideEffect.} =
   ## iterates over any key in the table `t` in insertion order.
   forAllOrderedPairs:
     yield t.data[h].key
 
-iterator values*[A, B](t: OrderedTable[A, B]): B =
+iterator values*[A, B](t: OrderedTable[A, B]): B {.noSideEffect.} =
   ## iterates over any value in the table `t` in insertion order.
   forAllOrderedPairs:
     yield t.data[h].val
 
-iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
+iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B {.noSideEffect.} =
   ## iterates over any value in the table `t` in insertion order. The values
   ## can be modified.
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: Hash): int =
+proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: Hash): int {.noSideEffect.} =
   rawGetKnownHCImpl()
 
-proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline.} =
+proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline, noSideEffect.} =
   rawGetDeepImpl()
 
-proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
+proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.noSideEffect.} =
   rawGetImpl()
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B {.deprecatedGet.} =
+proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B {.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   get(t, key)
 
-proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B{.deprecatedGet.} =
+proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B{.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   get(t, key)
 
-proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B {.deprecated.} =
+proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B {.deprecated, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## Use ```[]``` instead.
   get(t, key)
 
-proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
+proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B {.noSideEffect.} =
   getOrDefaultImpl(t, key)
 
 
-proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
+proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table `t`.
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
-proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
+proc contains*[A, B](t: OrderedTable[A, B], key: A): bool {.noSideEffect.} =
   ## alias of `hasKey` for use with the `in` operator.
   return hasKey[A, B](t, key)
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: B, hc: Hash, h: Hash) =
+                     key: A, val: B, hc: Hash, h: Hash) {.noSideEffect.} =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
   if t.last >= 0: data[t.last].next = h
   t.last = h
 
-proc enlarge[A, B](t: var OrderedTable[A, B]) =
+proc enlarge[A, B](t: var OrderedTable[A, B]) {.noSideEffect.} =
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   var h = t.first
@@ -561,24 +563,24 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
       rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a (key, value)-pair into `t`.
   putImpl(enlarge)
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   addImpl(enlarge)
 
-proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
+proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B {.noSideEffect.} =
   ## retrieves value at ``t[key]`` or puts ``value`` if not present, either way
   ## returning a value which can be modified.
   mgetOrPutImpl(enlarge)
 
-proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table, otherwise inserts `value`.
   hasKeyOrPutImpl(enlarge)
 
-proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
+proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] {.noSideEffect.} =
   ## creates a new ordered hash table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
@@ -591,12 +593,12 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   newSeq(result.data, initialSize)
 
 proc toOrderedTable*[A, B](pairs: openArray[(A,
-                           B)]): OrderedTable[A, B] =
+                           B)]): OrderedTable[A, B] {.noSideEffect.} =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = initOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
-proc `$`*[A, B](t: OrderedTable[A, B]): string =
+proc `$`*[A, B](t: OrderedTable[A, B]): string {.noSideEffect.} =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
 
@@ -646,7 +648,7 @@ proc sort*[A, B](t: var OrderedTable[A, B],
   t.first = list
   t.last = tail
 
-proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
+proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline, noSideEffect.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
@@ -657,75 +659,75 @@ template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
     if isFilled(t.data[h].hcode): yieldStmt
     h = nxt
 
-iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
+iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order.
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
+iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order. The values can be modified.
   forAllOrderedPairs:
     yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
+iterator keys*[A, B](t: OrderedTableRef[A, B]): A {.noSideEffect.} =
   ## iterates over any key in the table `t` in insertion order.
   forAllOrderedPairs:
     yield t.data[h].key
 
-iterator values*[A, B](t: OrderedTableRef[A, B]): B =
+iterator values*[A, B](t: OrderedTableRef[A, B]): B {.noSideEffect.} =
   ## iterates over any value in the table `t` in insertion order.
   forAllOrderedPairs:
     yield t.data[h].val
 
-iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
+iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B {.noSideEffect.} =
   ## iterates over any value in the table `t` in insertion order. The values
   ## can be modified.
   forAllOrderedPairs:
     yield t.data[h].val
 
-proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
+proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B {.noSideEffect.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
   result = t[][key]
 
-proc mget*[A, B](t: OrderedTableRef[A, B], key: A): var B {.deprecated.} =
+proc mget*[A, B](t: OrderedTableRef[A, B], key: A): var B {.deprecated, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## Use ```[]``` instead.
   result = t[][key]
 
-proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
+proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B {.noSideEffect.} =
   getOrDefault(t[], key)
 
-proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
+proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B {.noSideEffect.} =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   result = t[].mgetOrPut(key, val)
 
-proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
+proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table, otherwise inserts `val`.
   result = t[].hasKeyOrPut(key, val)
 
-proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
+proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
-proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
+proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool {.noSideEffect.} =
   ## alias of `hasKey` for use with the `in` operator.
   return hasKey[A, B](t, key)
 
-proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a (key, value)-pair into `t`.
   t[][key] = val
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
+proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) {.noSideEffect.} =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
   t[].add(key, val)
 
-proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] {.noSideEffect.} =
   ## creates a new ordered hash table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
@@ -734,12 +736,12 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   new(result)
   result[] = initOrderedTable[A, B]()
 
-proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] {.noSideEffect.} =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = newOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
-proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
+proc `$`*[A, B](t: OrderedTableRef[A, B]): string {.noSideEffect.} =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
 
@@ -751,7 +753,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   ## contrast to the `sort` for count tables).
   t[].sort(cmp)
 
-proc del*[A, B](t: var OrderedTable[A, B], key: A) =
+proc del*[A, B](t: var OrderedTable[A, B], key: A) {.noSideEffect.} =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
   var prev = -1
   let hc = hash(key)
@@ -768,7 +770,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     else:
       prev = h
 
-proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
+proc del*[A, B](t: var OrderedTableRef[A, B], key: A) {.noSideEffect.} =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
   t[].del(key)
 
@@ -783,42 +785,42 @@ type
 
 {.deprecated: [TCountTable: CountTable, PCountTable: CountTableRef].}
 
-proc len*[A](t: CountTable[A]): int =
+proc len*[A](t: CountTable[A]): int {.noSideEffect.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: CountTable[A] | CountTableRef[A]) =
+proc clear*[A](t: CountTable[A] | CountTableRef[A]) {.noSideEffect.} =
   ## Resets the table so that it is empty.
   clearImpl()
   t.counter = 0
 
-iterator pairs*[A](t: CountTable[A]): (A, int) =
+iterator pairs*[A](t: CountTable[A]): (A, int) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
+iterator mpairs*[A](t: var CountTable[A]): (A, var int) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`. The values can
   ## be modified.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A](t: CountTable[A]): A =
+iterator keys*[A](t: CountTable[A]): A {.noSideEffect.} =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].key
 
-iterator values*[A](t: CountTable[A]): int =
+iterator values*[A](t: CountTable[A]): int {.noSideEffect.} =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-iterator mvalues*[A](t: CountTable[A]): var int =
+iterator mvalues*[A](t: CountTable[A]): var int {.noSideEffect.} =
   ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-proc rawGet[A](t: CountTable[A], key: A): int =
+proc rawGet[A](t: CountTable[A], key: A): int {.noSideEffect.} =
   var h: Hash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].val != 0:
     if t.data[h].key == key: return h
@@ -834,50 +836,50 @@ template ctget(t, key: untyped): untyped {.immediate.} =
     else:
       raise newException(KeyError, "key not found")
 
-proc `[]`*[A](t: CountTable[A], key: A): int {.deprecatedGet.} =
+proc `[]`*[A](t: CountTable[A], key: A): int {.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`,
   ## the ``KeyError`` exception is raised. One can check with ``hasKey``
   ## whether the key exists.
   ctget(t, key)
 
-proc `[]`*[A](t: var CountTable[A], key: A): var int {.deprecatedGet.} =
+proc `[]`*[A](t: var CountTable[A], key: A): var int {.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ctget(t, key)
 
-proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated.} =
+proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## Use ```[]``` instead.
   ctget(t, key)
 
-proc getOrDefault*[A](t: CountTable[A], key: A): int =
+proc getOrDefault*[A](t: CountTable[A], key: A): int {.noSideEffect.} =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
 
-proc hasKey*[A](t: CountTable[A], key: A): bool =
+proc hasKey*[A](t: CountTable[A], key: A): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
-proc contains*[A](t: CountTable[A], key: A): bool =
+proc contains*[A](t: CountTable[A], key: A): bool {.noSideEffect.} =
   ## alias of `hasKey` for use with the `in` operator.
   return hasKey[A](t, key)
 
 proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
-                  key: A, val: int) =
+                  key: A, val: int) {.noSideEffect.} =
   var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
 
-proc enlarge[A](t: var CountTable[A]) =
+proc enlarge[A](t: var CountTable[A]) {.noSideEffect.} =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i].val != 0: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
+proc `[]=`*[A](t: var CountTable[A], key: A, val: int) {.noSideEffect.} =
   ## puts a (key, value)-pair into `t`.
   assert val > 0
   var h = rawGet(t, key)
@@ -891,7 +893,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     #t.data[h].key = key
     #t.data[h].val = val
 
-proc initCountTable*[A](initialSize=64): CountTable[A] =
+proc initCountTable*[A](initialSize=64): CountTable[A] {.noSideEffect.} =
   ## creates a new count table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
@@ -901,16 +903,16 @@ proc initCountTable*[A](initialSize=64): CountTable[A] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
+proc toCountTable*[A](keys: openArray[A]): CountTable[A] {.noSideEffect.} =
   ## creates a new count table with every key in `keys` having a count of 1.
   result = initCountTable[A](rightSize(keys.len))
   for key in items(keys): result[key] = 1
 
-proc `$`*[A](t: CountTable[A]): string =
+proc `$`*[A](t: CountTable[A]): string {.noSideEffect.} =
   ## The `$` operator for count tables.
   dollarImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val = 1) {.noSideEffect.} =
   ## increments `t[key]` by `val`.
   var index = rawGet(t, key)
   if index >= 0:
@@ -920,7 +922,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     rawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
+proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] {.noSideEffect.} =
   ## returns the largest (key,val)-pair. Efficiency: O(n)
   assert t.len > 0
   var minIdx = 0
@@ -929,7 +931,7 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
-proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
+proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] {.noSideEffect.} =
   ## returns the (key,val)-pair with the largest `val`. Efficiency: O(n)
   assert t.len > 0
   var maxIdx = 0
@@ -938,7 +940,7 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   result.key = t.data[maxIdx].key
   result.val = t.data[maxIdx].val
 
-proc sort*[A](t: var CountTable[A]) =
+proc sort*[A](t: var CountTable[A]) {.noSideEffect.} =
   ## sorts the count table so that the entry with the highest counter comes
   ## first. This is destructive! You must not modify `t` afterwards!
   ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
@@ -959,64 +961,64 @@ proc sort*[A](t: var CountTable[A]) =
         if j < h: break
     if h == 1: break
 
-proc len*[A](t: CountTableRef[A]): int =
+proc len*[A](t: CountTableRef[A]): int {.noSideEffect.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-iterator pairs*[A](t: CountTableRef[A]): (A, int) =
+iterator pairs*[A](t: CountTableRef[A]): (A, int) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
-iterator mpairs*[A](t: CountTableRef[A]): (A, var int) =
+iterator mpairs*[A](t: CountTableRef[A]): (A, var int) {.noSideEffect.} =
   ## iterates over any (key, value) pair in the table `t`. The values can
   ## be modified.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield (t.data[h].key, t.data[h].val)
 
-iterator keys*[A](t: CountTableRef[A]): A =
+iterator keys*[A](t: CountTableRef[A]): A {.noSideEffect.} =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].key
 
-iterator values*[A](t: CountTableRef[A]): int =
+iterator values*[A](t: CountTableRef[A]): int {.noSideEffect.} =
   ## iterates over any value in the table `t`.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-iterator mvalues*[A](t: CountTableRef[A]): var int =
+iterator mvalues*[A](t: CountTableRef[A]): var int {.noSideEffect.} =
   ## iterates over any value in the table `t`. The values can be modified.
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-proc `[]`*[A](t: CountTableRef[A], key: A): var int {.deprecatedGet.} =
+proc `[]`*[A](t: CountTableRef[A], key: A): var int {.deprecatedGet, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   result = t[][key]
 
-proc mget*[A](t: CountTableRef[A], key: A): var int {.deprecated.} =
+proc mget*[A](t: CountTableRef[A], key: A): var int {.deprecated, noSideEffect.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## Use ```[]``` instead.
   result = t[][key]
 
-proc getOrDefault*[A](t: CountTableRef[A], key: A): int =
+proc getOrDefault*[A](t: CountTableRef[A], key: A): int {.noSideEffect.} =
   result = t[].getOrDefault(key)
 
-proc hasKey*[A](t: CountTableRef[A], key: A): bool =
+proc hasKey*[A](t: CountTableRef[A], key: A): bool {.noSideEffect.} =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
-proc contains*[A](t: CountTableRef[A], key: A): bool =
+proc contains*[A](t: CountTableRef[A], key: A): bool {.noSideEffect.} =
   ## alias of `hasKey` for use with the `in` operator.
   return hasKey[A](t, key)
 
-proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
+proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) {.noSideEffect.} =
   ## puts a (key, value)-pair into `t`. `val` has to be positive.
   assert val > 0
   t[][key] = val
 
-proc newCountTable*[A](initialSize=64): CountTableRef[A] =
+proc newCountTable*[A](initialSize=64): CountTableRef[A] {.noSideEffect.} =
   ## creates a new count table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
@@ -1025,47 +1027,47 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   new(result)
   result[] = initCountTable[A](initialSize)
 
-proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
+proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] {.noSideEffect.} =
   ## creates a new count table with every key in `keys` having a count of 1.
   result = newCountTable[A](rightSize(keys.len))
   for key in items(keys): result[key] = 1
 
-proc `$`*[A](t: CountTableRef[A]): string =
+proc `$`*[A](t: CountTableRef[A]): string {.noSideEffect.} =
   ## The `$` operator for count tables.
   dollarImpl()
 
-proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
+proc inc*[A](t: CountTableRef[A], key: A, val = 1) {.noSideEffect.} =
   ## increments `t[key]` by `val`.
   t[].inc(key, val)
 
-proc smallest*[A](t: CountTableRef[A]): (A, int) =
+proc smallest*[A](t: CountTableRef[A]): (A, int) {.noSideEffect.} =
   ## returns the largest (key,val)-pair. Efficiency: O(n)
   t[].smallest
 
-proc largest*[A](t: CountTableRef[A]): (A, int) =
+proc largest*[A](t: CountTableRef[A]): (A, int) {.noSideEffect.} =
   ## returns the (key,val)-pair with the largest `val`. Efficiency: O(n)
   t[].largest
 
-proc sort*[A](t: CountTableRef[A]) =
+proc sort*[A](t: CountTableRef[A]) {.noSideEffect.} =
   ## sorts the count table so that the entry with the highest counter comes
   ## first. This is destructive! You must not modify `t` afterwards!
   ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
   ## `t` in the sorted order.
   t[].sort
 
-proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
+proc merge*[A](s: var CountTable[A], t: CountTable[A]) {.noSideEffect.} =
   ## merges the second table into the first one
   for key, value in t:
     s.inc(key, value)
 
-proc merge*[A](s, t: CountTable[A]): CountTable[A] =
+proc merge*[A](s, t: CountTable[A]): CountTable[A] {.noSideEffect.} =
   ## merges the two tables into a new one
   result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
   for table in @[s, t]:
     for key, value in table:
       result.inc(key, value)
 
-proc merge*[A](s, t: CountTableRef[A]) =
+proc merge*[A](s, t: CountTableRef[A]) {.noSideEffect.} =
   ## merges the second table into the first one
   s[].merge(t[])
 
@@ -1074,7 +1076,7 @@ when isMainModule:
     Person = object
       firstName, lastName: string
 
-  proc hash(x: Person): Hash =
+  proc hash(x: Person): Hash {.noSideEffect.} =
     ## Piggyback on the already available string hash proc.
     ##
     ## Without this proc nothing works!
