@@ -597,15 +597,26 @@ proc genNew(c: PCtx; n: PNode) =
   c.freeTemp(dest)
 
 proc genNewSeq(c: PCtx; n: PNode) =
-  let dest = if needsAsgnPatch(n.sons[1]): c.getTemp(n.sons[1].typ)
+  let t = n.sons[1].typ
+  let dest = if needsAsgnPatch(n.sons[1]): c.getTemp(t)
              else: c.genx(n.sons[1])
   let tmp = c.genx(n.sons[2])
-  c.gABx(n, opcNewSeq, dest, c.genType(n.sons[1].typ.skipTypes(
+  c.gABx(n, opcNewSeq, dest, c.genType(t.skipTypes(
                                                   abstractVar-{tyTypeDesc})))
   c.gABx(n, opcNewSeq, tmp, 0)
   c.freeTemp(tmp)
   c.genAsgnPatch(n.sons[1], dest)
   c.freeTemp(dest)
+
+proc genNewSeqOfCap(c: PCtx; n: PNode; dest: var TDest) =
+  let t = n.typ
+  let tmp = c.getTemp(n.sons[1].typ)
+  c.gABx(n, opcLdNull, dest, c.genType(t))
+  c.gABx(n, opcLdImmInt, tmp, 0)
+  c.gABx(n, opcNewSeq, dest, c.genType(t.skipTypes(
+                                                  abstractVar-{tyTypeDesc})))
+  c.gABx(n, opcNewSeq, tmp, 0)
+  c.freeTemp(tmp)
 
 proc genUnaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   let tmp = c.genx(n.sons[1])
@@ -782,6 +793,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNewSeq:
     unused(n, dest)
     c.genNewSeq(n)
+  of mNewSeqOfCap: c.genNewSeqOfCap(n, dest)
   of mNewString:
     genUnaryABC(c, n, dest, opcNewStr)
     # XXX buggy

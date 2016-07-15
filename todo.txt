@@ -1,7 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- introduce newSeqOfCap(10)
 - overloading of `()` and ``.`` needs to be in .experimental
 - implement ``.delegate`` for .experimental
 - find a solution for the  x.f[T](y)  gotcha

@@ -669,6 +669,12 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
+proc newSeqOfCap*[T](cap: Natural): seq[T] {.
+  magic: "NewSeqOfCap", noSideEffect.} =
+  ## creates a new sequence of type ``seq[T]`` with length 0 and capacity
+  ## ``cap``.
+  discard
+
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}

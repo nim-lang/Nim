@@ -354,6 +354,12 @@ elif defined(gogc):
     cast[PGenericSeq](result).reserved = len
     cast[PGenericSeq](result).elemSize = typ.base.size
 
+  proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
+    result = newObj(typ, cap * typ.base.size + GenericSeqSize)
+    cast[PGenericSeq](result).len = 0
+    cast[PGenericSeq](result).reserved = cap
+    cast[PGenericSeq](result).elemSize = typ.base.size
+
   proc growObj(old: pointer, newsize: int): pointer =
     # the Go GC doesn't have a realloc
     var
@@ -447,6 +453,7 @@ elif defined(nogc) and defined(useMalloc):
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
+
   proc newObjNoInit(typ: PNimType, size: int): pointer =
     result = alloc(size)
 
@@ -506,6 +513,7 @@ elif defined(nogc):
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
+
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
@@ -544,5 +552,11 @@ else:
     include "system/gc"
   else:
     include "system/gc"
+
+when not declared(nimNewSeqOfCap):
+  proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
+    result = newObj(typ, addInt(mulInt(cap, typ.base.size), GenericSeqSize))
+    cast[PGenericSeq](result).len = 0
+    cast[PGenericSeq](result).reserved = cap
 
 {.pop.}
