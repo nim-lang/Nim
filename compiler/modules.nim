@@ -29,6 +29,7 @@ var
   gMemCacheData*: seq[TModuleInMemory] = @[]
     ## XXX: we should implement recycling of file IDs
     ## if the user keeps renaming modules, the file IDs will keep growing
+  gFuzzyGraphChecking*: bool # nimsuggest uses this. XXX figure out why.
 
 proc getModule*(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
@@ -105,14 +106,13 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
     resetModule(fileIdx)
     return Yes
 
-  when false:
+  if gFuzzyGraphChecking:
     if gMemCacheData[fileIdx].needsRecompile != Maybe:
       return gMemCacheData[fileIdx].needsRecompile
   else:
     # cycle detection: We claim that a cycle does no harm.
     if gMemCacheData[fileIdx].needsRecompile == Probing:
       return No
-      #return gMemCacheData[fileIdx].needsRecompile
 
   if optForceFullMake in gGlobalOptions or hashChanged(fileIdx):
     markDirty()
