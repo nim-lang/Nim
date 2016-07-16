@@ -1144,7 +1144,7 @@ proc genNewSeq(p: BProc, e: PNode) =
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
-  getTemp(p, t, tmp)
+  let cleared = getTemp(p, t, tmp)
   let isRef = t.kind == tyRef
   var r = rdLoc(tmp)
   if isRef:
@@ -1153,7 +1153,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     r = "(*$1)" % [r]
     gcUsage(e)
   else:
-    constructLoc(p, tmp)
+    constructLoc(p, tmp, allowInit = not cleared)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
   for i in 1 .. <e.len:

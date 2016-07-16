@@ -298,7 +298,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
-proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
+proc constructLoc(p: BProc, loc: TLoc, isTemp = false, allowInit = true): bool {.discardable.} =
   let typ = skipTypes(loc.t, abstractRange)
   if not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
@@ -307,10 +307,11 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
     if not isTemp or containsGarbageCollectedRef(loc.t):
       # don't use memset for temporary values for performance if we can
       # avoid it:
-      if not isImportedCppType(typ):
+      if allowInit and not isImportedCppType(typ):
         useStringh(p.module)
         linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
                 addrLoc(loc), rdLoc(loc))
+        result = true # Initialisation occurred
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
@@ -325,17 +326,17 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     if not immediateAsgn:
       constructLoc(p, v.loc)
 
-proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
+proc getTemp(p: BProc, t: PType, loc: var TLoc; needsInit=false): bool =
   inc(p.labels)
-  result.r = "LOC" & rope(p.labels)
-  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
-  result.k = locTemp
-  #result.a = - 1
-  result.t = t
-  #result.t = getUniqueType(t)
-  result.s = OnStack
-  result.flags = {}
-  constructLoc(p, result, not needsInit)
+  loc.r = "LOC" & rope(p.labels)
+  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), loc.r)
+  loc.k = locTemp
+  #loc.a = - 1
+  loc.t = t
+  #loc.t = getUniqueType(t)
+  loc.s = OnStack
+  loc.flags = {}
+  constructLoc(p, loc, not needsInit)
 
 proc keepAlive(p: BProc, toKeepAlive: TLoc) =
   when false:

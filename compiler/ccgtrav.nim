@@ -19,7 +19,7 @@ type
 
 proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
-proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false)
+proc getTemp(p: BProc, t: PType, loc: var TLoc; needsInit=false): bool {.discardable.}
 
 proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode) =
   if n == nil: return
