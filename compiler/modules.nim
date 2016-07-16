@@ -105,7 +105,7 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
     resetModule(fileIdx)
     return Yes
 
-  when true:
+  when false:
     if gMemCacheData[fileIdx].needsRecompile != Maybe:
       return gMemCacheData[fileIdx].needsRecompile
   else:
