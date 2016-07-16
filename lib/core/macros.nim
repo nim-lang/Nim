@@ -692,6 +692,14 @@ proc `pragma=`*(someProc: NimNode; val: NimNode){.compileTime.}=
   assert val.kind in {nnkEmpty, nnkPragma}
   someProc[4] = val
 
+proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
+  ## Adds pragma to routine definition
+  someProc.expectRoutine
+  var pragmaNode = someProc.pragma
+  if pragmaNode.isNil or pragmaNode.kind == nnkEmpty:
+    pragmaNode = newNimNode(nnkPragma)
+    someProc.pragma = pragmaNode
+  pragmaNode.add(pragma)
 
 template badNodeKind(k; f): stmt{.immediate.} =
   assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
