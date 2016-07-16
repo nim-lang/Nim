@@ -198,6 +198,8 @@ proc semConv(c: PContext, n: PNode): PNode =
       # separate proc from fitNode?
       if op.kind == nkSym and op.sym.isGenericRoutine:
         result.sons[1] = fitNode(c, result.typ, result.sons[1])
+      elif op.kind == nkPar and targetType.kind == tyTuple:
+        op = fitNode(c, targetType, op)
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
