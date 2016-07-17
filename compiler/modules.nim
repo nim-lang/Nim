@@ -11,7 +11,8 @@
 
 import
   ast, astalgo, magicsys, securehash, rodread, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream, tables, strutils
+  idents, os, lexer, idgen, passes, syntaxes, llstream, tables, strutils,
+  condsyms
 
 type
   TNeedRecompile* = enum Maybe, No, Yes, Probing, Recompiled
@@ -135,7 +136,9 @@ proc newModule(fileIdx: int32): PSym =
   result.id = - 1             # for better error checking
   result.kind = skModule
   let filename = fileIdx.toFullPath
-  let name = splitFile(filename).name
+  let filenameSplit = splitFile(filename)
+  let name = filenameSplit.name
+  let nameWithExt = name & filenameSplit.ext
   result.name = getIdent(name)
   if not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
@@ -160,14 +163,16 @@ proc newModule(fileIdx: int32): PSym =
   # For example, see issue #4485.
   var ownerInfo {.global.} =
     initTable[string, tuple[fileIdx: int32, owner: PIdent]]()
-  if ownerInfo.hasKey(name):
-    let (fileIdxInitial, ownerInitial) = ownerInfo[name]
+  if ownerInfo.hasKey(nameWithExt):
+    let (fileIdxInitial, ownerInitial) = ownerInfo[nameWithExt]
     if ownerInitial == owner:
-      const errFormatStr = "module $1/$2 is already defined in $3"
-      localError(result.info,
-        errFormatStr % [owner.s, name, fileIdxInitial.toFullPath])
+      # Allow aliases of system.nim (used by eg. nimscript)
+      if fileIdx != fileInfoIdx(options.libpath/"system.nim"):
+        const errFormatStr = "module $1/$2 is already defined in $3"
+        localError(result.info,
+                errFormatStr % [owner.s, name, fileIdxInitial.toFullPath])
   else:
-    ownerInfo[name] = (fileIdx, owner)
+    ownerInfo[nameWithExt] = (fileIdx, owner)
 
 proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
