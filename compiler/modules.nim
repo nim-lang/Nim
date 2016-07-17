@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, magicsys, securehash, rodread, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream
+  idents, os, lexer, idgen, passes, syntaxes, llstream, tables, strutils
 
 type
   TNeedRecompile* = enum Maybe, No, Yes, Probing, Recompiled
@@ -135,13 +135,14 @@ proc newModule(fileIdx: int32): PSym =
   result.id = - 1             # for better error checking
   result.kind = skModule
   let filename = fileIdx.toFullPath
-  result.name = getIdent(splitFile(filename).name)
+  let name = splitFile(filename).name
+  result.name = getIdent(name)
   if not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
-  result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
-                        result.info)
+  let owner = getIdent(getPackageName(filename))
+  result.owner = newSym(skPackage, owner, nil, result.info)
   result.position = fileIdx
 
   growCache gMemCacheData, fileIdx
@@ -151,6 +152,22 @@ proc newModule(fileIdx: int32): PSym =
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
+
+  # Keep track of previously defined modules and their owners.
+  # Reject this module if it conflicts with one already defined.
+  # Such conflicts can be caused by misuse of the `--path` argument,
+  # creating ambiguities in module name resolution.
+  # For example, see issue #4485.
+  var ownerInfo {.global.} =
+    initTable[string, tuple[fileIdx: int32, owner: PIdent]]()
+  if ownerInfo.hasKey(name):
+    let (fileIdxInitial, ownerInitial) = ownerInfo[name]
+    if ownerInitial == owner:
+      const errFormatStr = "module $1/$2 is already defined in $3"
+      localError(result.info,
+        errFormatStr % [owner.s, name, fileIdxInitial.toFullPath])
+  else:
+    ownerInfo[name] = (fileIdx, owner)
 
 proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
