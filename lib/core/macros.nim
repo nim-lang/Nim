@@ -692,6 +692,14 @@ proc `pragma=`*(someProc: NimNode; val: NimNode){.compileTime.}=
   assert val.kind in {nnkEmpty, nnkPragma}
   someProc[4] = val
 
+proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
+  ## Adds pragma to routine definition
+  someProc.expectRoutine
+  var pragmaNode = someProc.pragma
+  if pragmaNode.isNil or pragmaNode.kind == nnkEmpty:
+    pragmaNode = newNimNode(nnkPragma)
+    someProc.pragma = pragmaNode
+  pragmaNode.add(pragma)
 
 template badNodeKind(k; f): stmt{.immediate.} =
   assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
@@ -884,7 +892,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   else: n == bindSym"true" # hacky solution for now
 
 when not defined(booting):
-  template emit*(e: static[string]): stmt =
+  template emit*(e: static[string]): stmt {.deprecated.} =
     ## accepts a single string argument and treats it as nim code
     ## that should be inserted verbatim in the program
     ## Example:
@@ -892,6 +900,7 @@ when not defined(booting):
     ## .. code-block:: nim
     ##   emit("echo " & '"' & "hello world".toUpper & '"')
     ##
+    ## Deprecated since version 0.15 since it's so rarely useful.
     macro payload: stmt {.gensym.} =
       result = parseStmt(e)
     payload()

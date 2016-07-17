@@ -239,7 +239,7 @@ else:
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array [0..7, pointer]
+      type PStackSlice = ptr array[0..7, pointer]
       var registers {.noinit.}: Registers
       getRegisters(registers)
       for i in registers.low .. registers.high:
@@ -277,7 +277,7 @@ else:
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array [0..7, pointer]
+      type PStackSlice = ptr array[0..7, pointer]
       var registers {.noinit.}: C_JmpBuf
       if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
         var max = cast[ByteAddress](gch.stackBottom)

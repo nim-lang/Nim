@@ -545,7 +545,7 @@ type
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
-    mNew, mNewFinalize, mNewSeq,
+    mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
     mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,

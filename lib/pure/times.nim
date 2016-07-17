@@ -477,7 +477,7 @@ when not defined(JS):
   # our own procs on top of that:
   proc tmToTimeInfo(tm: StructTM, local: bool): TimeInfo =
     const
-      weekDays: array [0..6, WeekDay] = [
+      weekDays: array[0..6, WeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
     when defined(freebsd) or defined(netbsd) or defined(openbsd):
       TimeInfo(second: int(tm.second),
@@ -523,7 +523,7 @@ when not defined(JS):
 
   proc timeInfoToTM(t: TimeInfo): StructTM =
     const
-      weekDays: array [WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
+      weekDays: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
     result.second = t.second
     result.minute = t.minute
     result.hour = t.hour
@@ -652,7 +652,7 @@ elif defined(JS):
     return newDate()
 
   const
-    weekDays: array [0..6, WeekDay] = [
+    weekDays: array[0..6, WeekDay] = [
       dSun, dMon, dTue, dWed, dThu, dFri, dSat]
 
   proc getLocalTime(t: Time): TimeInfo =

@@ -19,7 +19,7 @@ const
   MaxTraceLen = 20 # tracking the last 20 calls is enough
 
 type
-  StackTrace* = array [0..MaxTraceLen-1, cstring]
+  StackTrace* = array[0..MaxTraceLen-1, cstring]
   ProfilerHook* = proc (st: StackTrace) {.nimcall.}
 {.deprecated: [TStackTrace: StackTrace, TProfilerHook: ProfilerHook].}
 

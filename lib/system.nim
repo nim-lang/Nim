@@ -669,6 +669,12 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
+proc newSeqOfCap*[T](cap: Natural): seq[T] {.
+  magic: "NewSeqOfCap", noSideEffect.} =
+  ## creates a new sequence of type ``seq[T]`` with length 0 and capacity
+  ## ``cap``.
+  discard
+
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
@@ -1523,7 +1529,7 @@ type # these work for most platforms:
     ## This is the same as the type ``unsigned long long`` in *C*.
 
   cstringArray* {.importc: "char**", nodecl.} = ptr
-    array [0..ArrayDummySize, cstring]
+    array[0..ArrayDummySize, cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.

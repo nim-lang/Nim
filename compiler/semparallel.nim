@@ -74,8 +74,6 @@ type
     currentSpawnId: int
     inLoop: int
 
-let opSlice = createMagic("slice", mSlice)
-
 proc initAnalysisCtx(): AnalysisCtx =
   result.locals = @[]
   result.slices = @[]
@@ -399,7 +397,9 @@ proc transformSlices(n: PNode): PNode =
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
-      result.add opSlice.newSymNode
+      let opSlice = newSymNode(createMagic("slice", mSlice))
+      opSlice.typ = getSysType(tyInt)
+      result.add opSlice
       result.add n[1]
       let slice = n[2].skipStmtList
       result.add slice[1]

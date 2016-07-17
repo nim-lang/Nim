@@ -59,8 +59,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
   # templates perform some quick check whether the cursor is actually in
   # the generic or template.
   when defined(nimsuggest):
-    assert gCmd == cmdIdeTools
-    if requiresCheck:
+    if gCmd == cmdIdeTools and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)

@@ -21,7 +21,7 @@ proc toStrMaxPrecision*(f: BiggestFloat): string =
     if f > 0.0: result = "INF"
     else: result = "-INF"
   else:
-    var buf: array [0..80, char]
+    var buf: array[0..80, char]
     c_sprintf(buf, "%#.16e", f)
     result = $buf
 

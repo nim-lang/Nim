@@ -110,7 +110,7 @@ type
                     ## (not POSIX)
       when defined(linux) or defined(bsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
-    d_name*: array [0..255, char] ## Name of entry.
+    d_name*: array[0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
             header: "<fcntl.h>".} = object ## flock type
@@ -242,7 +242,7 @@ type
                    ## network to which this node is attached, if any.
       release*,    ## Current release level of this implementation.
       version*,    ## Current version level of this release.
-      machine*: array [0..255, char] ## Name of the hardware type on which the
+      machine*: array[0..255, char] ## Name of the hardware type on which the
                                      ## system is running.
 
   Sem* {.importc: "sem_t", header: "<semaphore.h>", final, pure.} = object
@@ -463,12 +463,12 @@ type
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
     sa_family*: TSa_Family         ## Address family.
-    sa_data*: array [0..255, char] ## Socket address (variable-length data).
+    sa_data*: array[0..255, char] ## Socket address (variable-length data).
 
   Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
               pure, final.} = object ## struct sockaddr_un
     sun_family*: TSa_Family         ## Address family.
-    sun_path*: array [0..Sockaddr_un_path_length-1, char] ## Socket path
+    sun_path*: array[0..Sockaddr_un_path_length-1, char] ## Socket path
 
   Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",
@@ -526,7 +526,7 @@ type
 
   In6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr
-    s6_addr*: array [0..15, char]
+    s6_addr*: array[0..15, char]
 
   Sockaddr_in6* {.importc: "struct sockaddr_in6", pure, final,
                    header: "<netinet/in.h>".} = object ## struct sockaddr_in6
@@ -2653,7 +2653,7 @@ proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
 
-proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
+proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>".}
   ## Sets file access and modification times.
   ##

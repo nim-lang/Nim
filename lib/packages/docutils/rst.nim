@@ -49,7 +49,7 @@ type
               TMsgKind: MsgKind].}
 
 const
-  messages: array [MsgKind, string] = [
+  messages: array[MsgKind, string] = [
     meCannotOpenFile: "cannot open '$1'",
     meExpected: "'$1' expected",
     meGridTableNotImplemented: "grid table is not implemented",

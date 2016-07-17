@@ -1,26 +1,25 @@
+version 1.0 battle plan
+=======================
 
-nim c --gc:v2 -r -d:useSysAssert -d:useGcAssert -d:smokeCycles -d:useRealtimeGc tests/gc/gctest
-
-- https://github.com/nim-lang/Nim/issues/3898
-
-essential for 1.0
-=================
-
-- introduce newSeqOfCap(10)
-- annotation support for getType()
-- overloading of `()` needs to be in .experimental
+- overloading of `()` and ``.`` needs to be in .experimental
+- implement ``.delegate`` for .experimental
 - find a solution for the  x.f[T](y)  gotcha
-- ``concept`` needs to be refined, a nice name for the feature is not enough.
-- make '--implicitStatic:on' the default; then we can also clean up the
-  'static[T]' mess in the compiler!
 - Deprecate ``immediate`` for templates and macros
-- document NimMain and check whether it works for threading
+- fix generic multi-methods
+- fix "high priority" bugs
+- try to fix as many compiler crashes as reasonable
 
 
 Not critical for 1.0
 ====================
 
+- get GC:v2 stable: nim c --gc:v2 -r -d:useSysAssert -d:useGcAssert -d:smokeCycles -d:useRealtimeGc tests/gc/gctest
+
 - Destructors need to be refined.
+- annotation support for getType()
+- ``concept`` needs to be refined, a nice name for the feature is not enough.
+- make '--implicitStatic:on' the default; then we can also clean up the
+  'static[T]' mess in the compiler!
 - ``not`` or ``~`` for the effects system
 - document and stress test ``.partial`` object declarations
 - add "all threads are blocked" detection to 'spawn'

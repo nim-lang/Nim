@@ -29,6 +29,7 @@ var
   gMemCacheData*: seq[TModuleInMemory] = @[]
     ## XXX: we should implement recycling of file IDs
     ## if the user keeps renaming modules, the file IDs will keep growing
+  gFuzzyGraphChecking*: bool # nimsuggest uses this. XXX figure out why.
 
 proc getModule*(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
@@ -105,12 +106,16 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
     resetModule(fileIdx)
     return Yes
 
-  if gMemCacheData[fileIdx].needsRecompile != Maybe:
-    return gMemCacheData[fileIdx].needsRecompile
+  if gFuzzyGraphChecking:
+    if gMemCacheData[fileIdx].needsRecompile != Maybe:
+      return gMemCacheData[fileIdx].needsRecompile
+  else:
+    # cycle detection: We claim that a cycle does no harm.
+    if gMemCacheData[fileIdx].needsRecompile == Probing:
+      return No
 
-  if optForceFullMake in gGlobalOptions or
-     hashChanged(fileIdx):
-       markDirty
+  if optForceFullMake in gGlobalOptions or hashChanged(fileIdx):
+    markDirty()
 
   if gMemCacheData[fileIdx].deps != nil:
     gMemCacheData[fileIdx].needsRecompile = Probing
@@ -118,7 +123,7 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
       let d = checkDepMem(dep)
       if d in {Yes, Recompiled}:
         # echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
-        markDirty
+        markDirty()
 
   gMemCacheData[fileIdx].needsRecompile = No
   return No

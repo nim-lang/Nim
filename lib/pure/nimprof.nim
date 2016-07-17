@@ -27,7 +27,7 @@ const
   tickCountCorrection = 50_000
 
 when not declared(system.StackTrace):
-  type StackTrace = array [0..20, cstring]
+  type StackTrace = array[0..20, cstring]
   {.deprecated: [TStackTrace: StackTrace].}
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
@@ -35,7 +35,7 @@ type
   ProfileEntry = object
     total: int
     st: StackTrace
-  ProfileData = array [0..64*1024-1, ptr ProfileEntry]
+  ProfileData = array[0..64*1024-1, ptr ProfileEntry]
 {.deprecated: [TProfileEntry: ProfileEntry, TProfileData: ProfileData].}
 
 proc `==`(a, b: StackTrace): bool =

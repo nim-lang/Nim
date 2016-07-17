@@ -212,9 +212,7 @@ proc setDefaultLibpath*() =
 
     # Special rule to support other tools (nimble) which import the compiler
     # modules and make use of them.
-    let realNimPath = # Make sure we expand the symlink
-      if symlinkExists(findExe("nim")): expandSymlink(findExe("nim"))
-      else: findExe("nim")
+    let realNimPath = findExe("nim")
     # Find out if $nim/../../lib/system.nim exists.
     let parentNimLibPath = realNimPath.parentDir().parentDir() / "lib"
     if not fileExists(libpath / "system.nim") and

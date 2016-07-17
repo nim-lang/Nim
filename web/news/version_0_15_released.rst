@@ -17,7 +17,18 @@ Changes affecting backwards compatibility
   no longer strips and splits characters out of the target string
   by the entire set of characters. Instead, it now behaves in a
   similar fashion to ``split`` with ``string`` and ``char``
-  delimiters.
+  delimiters. Use ``splitWhitespace`` to get the old behaviour.
+- The command invocation syntax will soon apply to open brackets
+  and curlies too. This means that code like ``a [i]`` will be
+  interpreted as ``a([i])`` and not as ``a[i]`` anymore. Likewise
+  ``f (a, b)`` means that the tuple ``(a, b)`` is passed to ``f``.
+  The compiler produces a warning for ``a [i]``::
+
+    Warning: a [b] will be parsed as command syntax; spacing is deprecated
+
+  See `https://github.com/nim-lang/Nim/issues/3898`_ for the relevant
+  discussion.
+
 
 Library Additions
 -----------------

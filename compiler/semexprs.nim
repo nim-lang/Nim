@@ -198,6 +198,8 @@ proc semConv(c: PContext, n: PNode): PNode =
       # separate proc from fitNode?
       if op.kind == nkSym and op.sym.isGenericRoutine:
         result.sons[1] = fitNode(c, result.typ, result.sons[1])
+      elif op.kind == nkPar and targetType.kind == tyTuple:
+        op = fitNode(c, targetType, op)
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
@@ -1390,15 +1392,16 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     # --> `[]=`(a, i, x)
     let oldBracketExpr = c.p.bracketExpr
     a = semSubscript(c, a, {efLValue})
-    if a == nil and mode != noOverloadedSubscript:
+    if a == nil:
       result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
       add(result, n[1])
-      result = semExprNoType(c, result)
-      c.p.bracketExpr = oldBracketExpr
-      return result
-    elif a == nil:
-      localError(n.info, "could not resolve: " & $n[0])
-      return n
+      if mode == noOverloadedSubscript:
+        bracketNotFoundError(c, result)
+        return n
+      else:
+        result = semExprNoType(c, result)
+        c.p.bracketExpr = oldBracketExpr
+        return result
     c.p.bracketExpr = oldBracketExpr
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
@@ -1634,8 +1637,8 @@ proc newAnonSym(kind: TSymKind, info: TLineInfo,
   result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
-  var macroCall = n[1]
-  var expandedSym = expectMacroOrTemplateCall(c, macroCall)
+  let macroCall = n[1]
+  let expandedSym = expectMacroOrTemplateCall(c, macroCall)
   if expandedSym.kind == skError: return n
 
   macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
@@ -1643,11 +1646,12 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
   styleCheckUse(n.info, expandedSym)
 
   for i in countup(1, macroCall.len-1):
+    #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
     macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
 
   # Preserve the magic symbol in order to be handled in evals.nim
   internalAssert n.sons[0].sym.magic == mExpandToAst
-  #n.typ = getSysSym("PNimrodNode").typ # expandedSym.getReturnType
+  #n.typ = getSysSym("NimNode").typ # expandedSym.getReturnType
   n.typ = if getCompilerProc("NimNode") != nil: sysTypeFromName"NimNode"
           else: sysTypeFromName"PNimrodNode"
   result = n

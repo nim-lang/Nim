@@ -271,7 +271,7 @@ else:
     importc: "freopen", nodecl.}
 
 const
-  FormatOpen: array [FileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]
+  FormatOpen: array[FileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]
     #"rt", "wt", "w+t", "r+t", "at"
     # we always use binary here as for Nim the OS line ending
     # should not be translated.

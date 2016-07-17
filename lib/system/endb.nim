@@ -475,7 +475,7 @@ proc dbgWriteStackTrace(f: PFrame) =
     it = f
     i = 0
     total = 0
-    tempFrames: array [0..127, PFrame]
+    tempFrames: array[0..127, PFrame]
   # setup long head:
   while it != nil and i <= high(tempFrames)-firstCalls:
     tempFrames[i] = it

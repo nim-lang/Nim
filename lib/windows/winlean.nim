@@ -750,7 +750,7 @@ type
     D1*: int32
     D2*: int16
     D3*: int16
-    D4*: array [0..7, int8]
+    D4*: array[0..7, int8]
 {.deprecated: [TOVERLAPPED: OVERLAPPED, TGUID: GUID].}
 
 const

@@ -518,7 +518,6 @@ const
                                          warnGcUnsafe,
                                          hintPath,
                                          hintDependency,
-                                         hintExecuting,
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
@@ -530,7 +529,7 @@ const
 
 var
   ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
-    hintQuitCalled}
+    hintQuitCalled, hintExecuting}
   filenameToIndexTbl = initTable[string, int32]()
   fileInfos*: seq[TFileInfo] = @[]
   systemFileIdx*: int32

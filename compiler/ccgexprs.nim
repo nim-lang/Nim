@@ -1141,6 +1141,16 @@ proc genNewSeq(p: BProc, e: PNode) =
   genNewSeqAux(p, a, b.rdLoc)
   gcUsage(e)
 
+proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
+  let seqtype = skipTypes(e.typ, abstractVarRange)
+  var a: TLoc
+  initLocExpr(p, e.sons[1], a)
+  putIntoDest(p, d, e.typ, ropecg(p.module,
+              "($1)#nimNewSeqOfCap($2, $3)", [
+              getTypeDesc(p.module, seqtype),
+              genTypeInfo(p.module, seqtype), a.rdLoc]))
+  gcUsage(e)
+
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
@@ -1668,10 +1678,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if optOverflowCheck notin p.options: unaryExpr(p, e, d, "($1 - 1)")
     else: unaryExpr(p, e, d, "#subInt($1, 1)")
   of mInc, mDec:
-    const opr: array [mInc..mDec, string] = ["$1 += $2;$n", "$1 -= $2;$n"]
-    const fun64: array [mInc..mDec, string] = ["$# = #addInt64($#, $#);$n",
+    const opr: array[mInc..mDec, string] = ["$1 += $2;$n", "$1 -= $2;$n"]
+    const fun64: array[mInc..mDec, string] = ["$# = #addInt64($#, $#);$n",
                                                "$# = #subInt64($#, $#);$n"]
-    const fun: array [mInc..mDec, string] = ["$# = #addInt($#, $#);$n",
+    const fun: array[mInc..mDec, string] = ["$# = #addInt($#, $#);$n",
                                              "$# = #subInt($#, $#);$n"]
     let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyVar, tyRange})
     if optOverflowCheck notin p.options or underlying.kind in {tyUInt..tyUInt64}:
@@ -1712,6 +1722,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNew: genNew(p, e)
   of mNewFinalize: genNewFinalize(p, e)
   of mNewSeq: genNewSeq(p, e)
+  of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e.sons[1].typ.skipTypes({tyTypeDesc})
     putIntoDest(p, d, e.typ, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])

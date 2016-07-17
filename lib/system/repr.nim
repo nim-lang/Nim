@@ -16,7 +16,7 @@ proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
-  var buf: array [0..59, char]
+  var buf: array[0..59, char]
   discard c_sprintf(buf, "%p", x)
   return $buf
 
@@ -24,7 +24,7 @@ proc `$`(x: uint64): string =
   if x == 0:
     result = "0"
   else:
-    var buf: array [60, char]
+    var buf: array[60, char]
     var i = 0
     var n = x
     while n != 0:

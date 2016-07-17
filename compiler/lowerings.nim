@@ -471,6 +471,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       let slice = newNodeI(nkCall, n.info, 4)
       slice.typ = n.typ
       slice.sons[0] = newSymNode(createMagic("slice", mSlice))
+      slice.sons[0].typ = getSysType(tyInt) # fake type
       var fieldB = newSym(skField, tmpName, objType.owner, n.info)
       fieldB.typ = getSysType(tyInt)
       objType.addField(fieldB)

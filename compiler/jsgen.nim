@@ -1755,6 +1755,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       else:
         binaryExpr(p, n, r, "", "isset($1[$2])")
   of mNewSeq: genNewSeq(p, n)
+  of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]" | "array()")
   of mOf: genOf(p, n, r)
   of mReset: genReset(p, n)
   of mEcho: genEcho(p, n, r)

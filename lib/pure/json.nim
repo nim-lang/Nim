@@ -126,7 +126,7 @@ type
   TJsonParser: JsonParser, TTokKind: TokKind].}
 
 const
-  errorMessages: array [JsonError, string] = [
+  errorMessages: array[JsonError, string] = [
     "no error",
     "invalid token",
     "string expected",
@@ -139,7 +139,7 @@ const
     "EOF expected",
     "expression expected"
   ]
-  tokToStr: array [TokKind, string] = [
+  tokToStr: array[TokKind, string] = [
     "invalid token",
     "EOF",
     "string literal",
