@@ -144,8 +144,9 @@ proc newModule(fileIdx: int32): PSym =
     rawMessage(errInvalidModuleName, result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
-  let owner = getIdent(getPackageName(filename))
-  result.owner = newSym(skPackage, owner, nil, result.info)
+  let packageName = getPackageName(filename)
+  let pkgFileIdx = fileInfoIdx(packageName)
+  result.owner = newSym(skPackage, getIdent(packageName), nil, result.info)
   result.position = fileIdx
 
   growCache gMemCacheData, fileIdx
@@ -156,23 +157,22 @@ proc newModule(fileIdx: int32): PSym =
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
 
-  # Keep track of previously defined modules and their owners.
+  # Keep track of previously defined modules and their packages.
   # Reject this module if it conflicts with one already defined.
   # Such conflicts can be caused by misuse of the `--path` argument,
   # creating ambiguities in module name resolution.
   # For example, see issue #4485.
-  var ownerInfo {.global.} =
-    initTable[string, tuple[fileIdx: int32, owner: PIdent]]()
-  if ownerInfo.hasKey(nameWithExt):
-    let (fileIdxInitial, ownerInitial) = ownerInfo[nameWithExt]
-    if ownerInitial == owner:
-      # Allow aliases of system.nim (used by eg. nimscript)
-      if fileIdx != fileInfoIdx(options.libpath/"system.nim"):
-        const errFormatStr = "module $1/$2 is already defined in $3"
-        localError(result.info,
-                errFormatStr % [owner.s, name, fileIdxInitial.toFullPath])
+  var pkgInfo {.global.} =
+    initTable[string, tuple[fileIdx, pkgFileIdx: int32]]()
+  if pkgInfo.hasKey(nameWithExt):
+    let (fileIdxInitial, pkgFileIdxInitial) = pkgInfo[nameWithExt]
+    # Allow a module to be reloaded: from the same file only.
+    if pkgFileIdxInitial == pkgFileIdx and fileIdx != fileIdxInitial:
+      const errFormatStr = "module $1/$2 is already defined in $3"
+      localError(result.info,
+        errFormatStr % [packageName, name, fileIdxInitial.toFullPath])
   else:
-    ownerInfo[nameWithExt] = (fileIdx, owner)
+    pkgInfo[nameWithExt] = (fileIdx, pkgFileIdx)
 
 proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
