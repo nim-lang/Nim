@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nim
-#        (c) Copyright 2015 Andreas Rumpf
+#        (c) Copyright 2016 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -30,7 +30,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nim                             |
 |             Version $1|
-|             (c) 2015 Andreas Rumpf                              |
+|             (c) 2016 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -80,17 +80,17 @@ proc findNim(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-proc exec(cmd: string, errorcode: int = QuitFailure, additionalPATH = "") =
-  let prevPATH = getEnv("PATH")
-  if additionalPATH.len > 0:
+proc exec(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
+  let prevPath = getEnv("PATH")
+  if additionalPath.len > 0:
     var absolute = additionalPATH
     if not absolute.isAbsolute:
       absolute = getCurrentDir() / absolute
     echo("Adding to $PATH: ", absolute)
-    putEnv("PATH", prevPATH & PathSep & absolute)
+    putEnv("PATH", prevPath & PathSep & absolute)
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
-  putEnv("PATH", prevPATH)
+  putEnv("PATH", prevPath)
 
 proc execCleanPath(cmd: string,
                    additionalPath = ""; errorcode: int = QuitFailure) =
@@ -433,6 +433,7 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
+  of "json2": web("--json2 " & op.cmdLineRest)
   of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
   of "web0":
     # undocumented command for Araq-the-merciful:
