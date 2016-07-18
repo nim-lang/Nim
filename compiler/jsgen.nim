@@ -2054,7 +2054,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic != mNone):
       genMagic(p, n, r)
     elif n.sons[0].kind == nkSym and sfInfixCall in n.sons[0].sym.flags and
-        n.len >= 2:
+        n.len >= 1:
       genInfixCall(p, n, r)
     else:
       genCall(p, n, r)
