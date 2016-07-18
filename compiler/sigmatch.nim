@@ -384,7 +384,7 @@ proc skipToGenericBody(t: PType; skipped: var SkippedPtr): PType =
       inc ptrs
       skipped = skippedPtr
       r = r.lastSon
-    of tyGenericBody:
+    of tyGenericBody, tyObject:
       r = r.lastSon
     else:
       break
