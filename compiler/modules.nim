@@ -11,7 +11,8 @@
 
 import
   ast, astalgo, magicsys, securehash, rodread, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream
+  idents, os, lexer, idgen, passes, syntaxes, llstream, tables, strutils,
+  condsyms
 
 type
   TNeedRecompile* = enum Maybe, No, Yes, Probing, Recompiled
@@ -135,13 +136,17 @@ proc newModule(fileIdx: int32): PSym =
   result.id = - 1             # for better error checking
   result.kind = skModule
   let filename = fileIdx.toFullPath
-  result.name = getIdent(splitFile(filename).name)
+  let filenameSplit = splitFile(filename)
+  let name = filenameSplit.name
+  let nameWithExt = name & filenameSplit.ext
+  result.name = getIdent(name)
   if not isNimIdentifier(result.name.s):
     rawMessage(errInvalidModuleName, result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
-  result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
-                        result.info)
+  let packageName = getPackageName(filename)
+  let pkgFileIdx = fileInfoIdx(packageName)
+  result.owner = newSym(skPackage, getIdent(packageName), nil, result.info)
   result.position = fileIdx
 
   growCache gMemCacheData, fileIdx
@@ -151,6 +156,23 @@ proc newModule(fileIdx: int32): PSym =
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
+
+  # Keep track of previously defined modules and their packages.
+  # Reject this module if it conflicts with one already defined.
+  # Such conflicts can be caused by misuse of the `--path` argument,
+  # creating ambiguities in module name resolution.
+  # For example, see issue #4485.
+  var pkgInfo {.global.} =
+    initTable[string, tuple[fileIdx, pkgFileIdx: int32]]()
+  if pkgInfo.hasKey(nameWithExt):
+    let (fileIdxInitial, pkgFileIdxInitial) = pkgInfo[nameWithExt]
+    # Allow a module to be reloaded: from the same file only.
+    if pkgFileIdxInitial == pkgFileIdx and fileIdx != fileIdxInitial:
+      const errFormatStr = "module $1/$2 is already defined in $3"
+      localError(result.info,
+        errFormatStr % [packageName, name, fileIdxInitial.toFullPath])
+  else:
+    pkgInfo[nameWithExt] = (fileIdx, pkgFileIdx)
 
 proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
