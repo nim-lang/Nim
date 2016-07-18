@@ -364,22 +364,43 @@ proc isObjectSubtype(a, f: PType): int =
   if t != nil:
     result = depth
 
-proc skipToGenericBody(t: PType): PType =
+type
+  SkippedPtr = enum skippedNone, skippedRef, skippedPtr
+
+proc skipToGenericBody(t: PType; skipped: var SkippedPtr): PType =
   var r = t
+  # we're allowed to skip one level of ptr/ref:
+  var ptrs = 0
   while r != nil:
-    if r.kind in {tyGenericInst, tyGenericInvocation}:
-      return r.sons[0]
-    r = if r.len > 0: r.lastSon else: nil
+    case r.kind
+    of tyGenericInst, tyGenericInvocation:
+      result = r.sons[0]
+      break
+    of tyRef:
+      inc ptrs
+      skipped = skippedRef
+      r = r.lastSon
+    of tyPtr:
+      inc ptrs
+      skipped = skippedPtr
+      r = r.lastSon
+    of tyGenericBody:
+      r = r.lastSon
+    else:
+      break
+  if ptrs > 1: result = nil
 
 proc isGenericSubtype(a, f: PType, d: var int): bool =
   assert f.kind in {tyGenericInst, tyGenericInvocation, tyGenericBody}
-  var t = if a.kind == tyGenericBody: a else: a.skipToGenericBody
-  var r = if f.kind == tyGenericBody: f else: f.skipToGenericBody
+  var askip = skippedNone
+  var fskip = skippedNone
+  var t = if a.kind == tyGenericBody: a else: a.skipToGenericBody(askip)
+  var r = if f.kind == tyGenericBody: f else: f.skipToGenericBody(fskip)
   var depth = 0
-  while t != nil and not sameObjectTypes(r, t):
-    t = t.skipToGenericBody
+  while t != nil and not sameObjectTypes(r, t) and askip == fskip:
+    t = t.skipToGenericBody(askip)
     inc depth
-  if t != nil:
+  if t != nil and askip == fskip:
     d = depth
     result = true
 
