@@ -584,7 +584,7 @@ when declared(getEnv) or defined(nimscript):
       if existsFile(x):
         when not defined(windows) and declared(os):
           while followSymlinks: # doubles as if here
-            if x.checkSymlink:
+            if x.isAbsolute and x.checkSymlink:
               var r = newString(256)
               var len = readlink(x, r, 256)
               if len < 0:
