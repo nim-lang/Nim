@@ -30,6 +30,9 @@ var
     ## XXX: we should implement recycling of file IDs
     ## if the user keeps renaming modules, the file IDs will keep growing
   gFuzzyGraphChecking*: bool # nimsuggest uses this. XXX figure out why.
+  packageSyms: TStrTable
+
+initStrTable(packageSyms)
 
 proc getModule*(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
@@ -91,6 +94,7 @@ proc resetAllModules* =
     if gCompiledModules[i] != nil:
       resetModule(i.int32)
   resetPackageCache()
+  initStrTable(packageSyms)
   # for m in cgenModules(): echo "CGEN MODULE FOUND"
 
 proc resetAllModulesHard* =
@@ -98,6 +102,7 @@ proc resetAllModulesHard* =
   gCompiledModules.setLen 0
   gMemCacheData.setLen 0
   magicsys.resetSysTypes()
+  initStrTable(packageSyms)
   # XXX
   #gOwners = @[]
 
@@ -140,8 +145,16 @@ proc newModule(fileIdx: int32): PSym =
     rawMessage(errInvalidModuleName, result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
-  result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
-                        result.info)
+  let pack = getIdent(getPackageName(filename))
+  var packSym = packageSyms.strTableGet(pack)
+  if packSym == nil:
+    let pck = getPackageName(filename)
+    let pck2 = if pck.len > 0: pck else: "unknown"
+    packSym = newSym(skPackage, getIdent(pck2), nil, result.info)
+    initStrTable(packSym.tab)
+    packageSyms.strTableAdd(packSym)
+
+  result.owner = packSym
   result.position = fileIdx
 
   growCache gMemCacheData, fileIdx
@@ -151,6 +164,11 @@ proc newModule(fileIdx: int32): PSym =
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
+  let existing = strTableGet(packSym.tab, result.name)
+  if existing != nil and existing.info.fileIndex != result.info.fileIndex:
+    localError(result.info, "module names need to be unique per Nimble package; module clashes with " & existing.info.fileIndex.toFullPath)
+  # strTableIncl() for error corrections:
+  discard strTableIncl(packSym.tab, result)
 
 proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)

@@ -650,22 +650,32 @@ proc generateIndex*(d: PDoc) =
     writeIndexFile(d[], splitFile(options.outFile).dir /
                         splitFile(d.filename).name & IndexExt)
 
+proc getOutFile2(filename, ext, dir: string): string =
+  if gWholeProject:
+    let d = if options.outFile != "": options.outFile else: dir
+    createDir(d)
+    result = d / changeFileExt(filename, ext)
+  else:
+    result = getOutFile(filename, ext)
+
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
   else:
-    writeRope(content, getOutFile(filename, outExt), useWarning)
+    writeRope(content, getOutFile2(filename, outExt, "htmldoc"), useWarning)
 
 proc writeOutputJson*(d: PDoc, filename, outExt: string,
                       useWarning = false) =
-  let content = $d.jArray
+  let content = %*{"orig": d.filename,
+    "nimble": getPackageName(d.filename),
+    "entries": d.jArray}
   if optStdout in gGlobalOptions:
-    write(stdout, content)
+    write(stdout, $content)
   else:
     var f: File
-    if open(f, getOutFile(filename, outExt), fmWrite):
-      write(f, content)
+    if open(f, getOutFile2(filename, outExt, "jsondoc"), fmWrite):
+      write(f, $content)
       close(f)
     else:
       discard "fixme: error report"
