@@ -355,7 +355,7 @@ proc docstringSummary(rstText: string): string =
   ## Also, we hope to not break the rst, but maybe we do. If there is any
   ## trimming done, an ellipsis unicode char is added.
   const maxDocstringChars = 100
-  assert (rstText.len < 2 or (rstText[0] == '#' and rstText[1] == '#'))
+  assert(rstText.len < 2 or (rstText[0] == '#' and rstText[1] == '#'))
   result = rstText.substr(2).strip
   var pos = result.find('\L')
   if pos > 0:
