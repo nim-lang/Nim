@@ -50,7 +50,6 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
   else:
-    # XXX tyGenericInst here?
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
     semDestructorCheck(c, result, flags)
