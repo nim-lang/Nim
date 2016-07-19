@@ -454,7 +454,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         typ = skipIntLit(def.typ)
         if hasEmpty(typ):
           localError(def.info, errCannotInferTypeOfTheLiteral,
-                     ($typ.kind).substr(2).toLower)
+                     ($typ.kind).substr(2).toLowerAscii)
     else:
       def = ast.emptyNode
       if symkind == skLet: localError(a.info, errLetNeedsInit)

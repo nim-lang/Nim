@@ -188,7 +188,7 @@ proc mangle*(name: string): string =
     let c = name[i]
     case c
     of 'A'..'Z':
-      add(result, c.toLower)
+      add(result, c.toLowerAscii)
     of '_':
       discard
     of 'a'..'z', '0'..'9':

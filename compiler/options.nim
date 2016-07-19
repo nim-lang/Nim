@@ -220,7 +220,7 @@ proc setDefaultLibpath*() =
       libpath = parentNimLibPath
 
 proc canonicalizePath*(path: string): string =
-  when not FileSystemCaseSensitive: result = path.expandFilename.toLower
+  when not FileSystemCaseSensitive: result = path.expandFilename.toLowerAscii
   else: result = path.expandFilename
 
 proc shortenDir*(dir: string): string =
@@ -340,11 +340,11 @@ proc findFile*(f: string): string {.procvar.} =
   else:
     result = f.rawFindFile
     if result.len == 0:
-      result = f.toLower.rawFindFile
+      result = f.toLowerAscii.rawFindFile
       if result.len == 0:
         result = f.rawFindFile2
         if result.len == 0:
-          result = f.toLower.rawFindFile2
+          result = f.toLowerAscii.rawFindFile2
   patchModule()
 
 proc findModule*(modulename, currentModule: string): string =
