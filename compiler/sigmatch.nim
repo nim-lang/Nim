@@ -1451,7 +1451,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     if skipTypes(f, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
-    # do not do this in ``typeRel`` as it then can't infere T in ``ref T``:
+    # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
       inc(m.genericMatches)
       m.fauxMatch = a.kind
@@ -1472,6 +1472,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
           m.baseTypeMatch = true
         else:
           result = userConvMatch(c, m, base(f), a, arg)
+          if result != nil: m.baseTypeMatch = true
 
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
