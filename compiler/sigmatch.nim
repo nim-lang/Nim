@@ -1777,7 +1777,10 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           break
       else:
         # use default value:
-        setSon(m.call, formal.position + 1, copyTree(formal.ast))
+        var def = copyTree(formal.ast)
+        if def.kind == nkNilLit:
+          def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
+        setSon(m.call, formal.position + 1, def)
     inc(f)
 
 proc argtypeMatches*(c: PContext, f, a: PType): bool =
