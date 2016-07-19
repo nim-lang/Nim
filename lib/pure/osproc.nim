@@ -400,7 +400,7 @@ when defined(Windows) and not defined(useNimRtl):
     result = cast[cstring](alloc0(res.len+1))
     copyMem(result, cstring(res), res.len)
 
-  proc buildEnv(env: StringTableRef): cstring =
+  proc envToCString(env: StringTableRef): cstring =
     var L = 0
     for key, val in pairs(env): inc(L, key.len + val.len + 2)
     result = cast[cstring](alloc0(L+2))
@@ -409,6 +409,45 @@ when defined(Windows) and not defined(useNimRtl):
       var x = key & "=" & val
       copyMem(addr(result[L]), cstring(x), x.len+1) # copy \0
       inc(L, x.len+1)
+
+  proc envToWideCString(env: StringTableRef): WideCString =
+    # newWideCString stops on \0 characters, so we have to
+    # convert every pair separately.
+    const wcharSize = 2
+    var rows = newSeq[tuple[str: WideCString, len: int]]()
+    var L = 0  # length in wide chars
+
+    for key, val in pairs(env):
+      let str = newWideCString(key & "=" & val)
+      let row = (str: str, len: str.len)
+      rows.add(row)
+      inc(L, succ row.len)
+
+    # Leave space for trailing \0
+    result = cast[WideCString](alloc0(wcharSize * (succ L)))
+
+    L = 0
+    for row in rows:
+      # Copy \0 too
+      copyMem(
+        addr(result[L]),
+        addr(row.str[0]),
+        wcharSize * (succ row.len)
+      )
+      inc(L, succ row.len)
+
+    # Trailing \0
+    result[L] = Utf16Char(0)
+
+  proc buildEnv(env: StringTableRef): auto =
+    # return type is WideCString if useWinUnicode is enabled,
+    # otherwise cstring
+    if env.isNil: nil
+    else:
+      when useWinUnicode:
+        envToWideCString(env)
+      else:
+        envToCString(env)
 
   #proc open_osfhandle(osh: Handle, mode: int): int {.
   #  importc: "_open_osfhandle", header: "<fcntl.h>".}
@@ -526,18 +565,16 @@ when defined(Windows) and not defined(useNimRtl):
     else:
       cmdl = buildCommandLine(command, args)
     var wd: cstring = nil
-    var e: cstring = nil
+    let e = buildEnv(env)
     if len(workingDir) > 0: wd = workingDir
-    if env != nil: e = buildEnv(env)
     if poEchoCmd in options: echo($cmdl)
     when useWinUnicode:
       var tmp = newWideCString(cmdl)
-      var ee = newWideCString(e)
       var wwd = newWideCString(wd)
       var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT
       if poDemon in options: flags = flags or CREATE_NO_WINDOW
       success = winlean.createProcessW(nil, tmp, nil, nil, 1, flags,
-        ee, wwd, si, procInfo)
+        e, wwd, si, procInfo)
     else:
       success = winlean.createProcessA(nil,
         cmdl, nil, nil, 1, NORMAL_PRIORITY_CLASS, e, wd, si, procInfo)
@@ -549,7 +586,7 @@ when defined(Windows) and not defined(useNimRtl):
       if poStdErrToStdOut notin options:
         fileClose(si.hStdError)
 
-    if e != nil: dealloc(e)
+    if e != nil: dealloc(addr(e[0]))
     if success == 0:
       if poInteractive in result.options: close(result)
       const errInvalidParameter = 87.int
