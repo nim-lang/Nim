@@ -592,7 +592,10 @@ when declared(getEnv) or defined(nimscript):
                 r = newString(len+1)
                 len = readlink(x, r, len)
               setLen(r, len)
-              x = r
+              if isAbsolute(r):
+                x = r
+              else:
+                x = parentDir(x) / r
             else:
               break
         return x
