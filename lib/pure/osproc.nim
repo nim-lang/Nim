@@ -400,15 +400,16 @@ when defined(Windows) and not defined(useNimRtl):
     result = cast[cstring](alloc0(res.len+1))
     copyMem(result, cstring(res), res.len)
 
-  proc buildEnv(env: StringTableRef): cstring =
+  proc buildEnv(env: StringTableRef): tuple[str: cstring, len: int] =
     var L = 0
     for key, val in pairs(env): inc(L, key.len + val.len + 2)
-    result = cast[cstring](alloc0(L+2))
+    var str = cast[cstring](alloc0(L+2))
     L = 0
     for key, val in pairs(env):
       var x = key & "=" & val
-      copyMem(addr(result[L]), cstring(x), x.len+1) # copy \0
+      copyMem(addr(str[L]), cstring(x), x.len+1) # copy \0
       inc(L, x.len+1)
+    (str, L)
 
   #proc open_osfhandle(osh: Handle, mode: int): int {.
   #  importc: "_open_osfhandle", header: "<fcntl.h>".}
@@ -526,13 +527,15 @@ when defined(Windows) and not defined(useNimRtl):
     else:
       cmdl = buildCommandLine(command, args)
     var wd: cstring = nil
-    var e: cstring = nil
+    var e = (str: nil.cstring, len: -1)
     if len(workingDir) > 0: wd = workingDir
     if env != nil: e = buildEnv(env)
     if poEchoCmd in options: echo($cmdl)
     when useWinUnicode:
       var tmp = newWideCString(cmdl)
-      var ee = newWideCString(e)
+      var ee =
+        if e.str.isNil: nil
+        else: newWideCString(e.str, e.len)
       var wwd = newWideCString(wd)
       var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT
       if poDemon in options: flags = flags or CREATE_NO_WINDOW
@@ -549,7 +552,7 @@ when defined(Windows) and not defined(useNimRtl):
       if poStdErrToStdOut notin options:
         fileClose(si.hStdError)
 
-    if e != nil: dealloc(e)
+    if e.str != nil: dealloc(e.str)
     if success == 0:
       if poInteractive in result.options: close(result)
       const errInvalidParameter = 87.int
