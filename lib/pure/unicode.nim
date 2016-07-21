@@ -1572,13 +1572,21 @@ proc isTitle*(s: string): bool {.noSideEffect, procvar,
       firstRune = true
 
 iterator runes*(s: string): Rune =
-  ## Iterates over any unicode character of the string ``s``
+  ## Iterates over any unicode character of the string ``s`` returning runes
   var
     i = 0
     result: Rune
   while i < len(s):
     fastRuneAt(s, i, result, true)
     yield result
+
+iterator utf8*(s: string): string =
+  ## Iterates over any unicode character of the string ``s`` returning utf8 values
+  var o = 0
+  while o < s.len:
+    let n = runeLenAt(s, o)
+    yield s[o.. (o+n-1)]
+    o += n
 
 proc toRunes*(s: string): seq[Rune] =
   ## Obtains a sequence containing the Runes in ``s``
@@ -1776,6 +1784,12 @@ when isMainModule:
 
   # test for rune positioning and runeSubStr()
   let s = "Hänsel  ««: 10,00€"
+
+  var t = ""
+  for c in s.utf8:
+    t.add c
+
+  doAssert(s == t)
 
   doAssert(runeReverseOffset(s, 1) == (20, 18))
   doAssert(runeReverseOffset(s, 19) == (-1, 18))
