@@ -336,7 +336,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns the full path of `filename`, raises OSError in case of an error.
+  ## Returns the full (`absolute`:idx:) path of the file `filename`, raises OSError in case of an error.
   when defined(windows):
     const bufsize = 3072'i32
     when useWinUnicode:
