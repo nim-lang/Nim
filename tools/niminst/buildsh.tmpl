@@ -105,7 +105,11 @@ case $ucpu in
   *amd*64* | *x86-64* | *x86_64* )
     mycpu="amd64" ;;
   *sparc*|*sun* )
-    mycpu="sparc" ;;
+    mycpu="sparc"
+    if [ "$(isainfo -b)" = "64" ]; then
+      mycpu="sparc64"
+    fi
+    ;;
   *ppc64* )
     if [ "$myos" = "linux" ] ; then
       COMP_FLAGS="$COMP_FLAGS -m64"

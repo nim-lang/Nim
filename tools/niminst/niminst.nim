@@ -18,7 +18,7 @@ import
 
 const
   maxOS = 20 # max number of OSes
-  maxCPU = 10 # max number of CPUs
+  maxCPU = 20 # max number of CPUs
   buildShFile = "build.sh"
   buildBatFile32 = "build.bat"
   buildBatFile64 = "build64.bat"
