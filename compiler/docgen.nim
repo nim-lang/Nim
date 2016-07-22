@@ -663,7 +663,7 @@ proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
   else:
-    writeRope(content, getOutFile2(filename, outExt, "htmldoc"), useWarning)
+    writeRope(content, getOutFile2(filename, outExt, "htmldocs"), useWarning)
 
 proc writeOutputJson*(d: PDoc, filename, outExt: string,
                       useWarning = false) =
@@ -674,7 +674,8 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
     write(stdout, $content)
   else:
     var f: File
-    if open(f, getOutFile2(filename, outExt, "jsondoc"), fmWrite):
+    if open(f, getOutFile2(splitFile(filename).name,
+            outExt, "jsondocs"), fmWrite):
       write(f, $content)
       close(f)
     else:
@@ -721,7 +722,7 @@ proc commandJson*() =
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
   else:
-    echo getOutFile(gProjectFull, JsonExt)
+    #echo getOutFile(gProjectFull, JsonExt)
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
 proc commandBuildIndex*() =
