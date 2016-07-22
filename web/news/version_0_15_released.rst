@@ -28,6 +28,8 @@ Changes affecting backwards compatibility
 
   See `https://github.com/nim-lang/Nim/issues/3898`_ for the relevant
   discussion.
+- Overloading the special operators ``.``, ``.()``, ``.=``, ``()`` now
+  should be enabled via ``{.experimental.}``.
 
 
 Library Additions

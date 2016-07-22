@@ -1,8 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- overloading of `()` and ``.`` needs to be in .experimental
-- implement ``.delegate`` for .experimental
 - Deprecate ``immediate`` for templates and macros
 - fix generic multi-methods
 - fix "high priority" bugs
@@ -15,6 +13,7 @@ Not critical for 1.0
 - get GC:v2 stable: nim c --gc:v2 -r -d:useSysAssert -d:useGcAssert -d:smokeCycles -d:useRealtimeGc tests/gc/gctest
 
 - find a solution for the  x.f[T](y)  gotcha
+- implement ``.delegate`` for .experimental
 
 - Destructors need to be refined.
 - annotation support for getType()

@@ -1252,6 +1252,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     pushOwner(s)
   s.options = gOptions
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
+  if s.name.s[0] in {'.', '('}:
+    if s.name.s in [".", ".()", ".=", "()"] and not experimentalMode(c):
+      message(n.info, warnDeprecated, "overloaded '.' and '()' operators are now .experimental; " & s.name.s)
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:
