@@ -83,3 +83,9 @@ suite "suite with both":
 
   test "unittest with both 2":
     check c == 2
+
+suite "bug #4494":
+    test "Uniqueness check":
+      var tags = @[1, 2, 3, 4, 5]
+      check:
+        allIt(0..3, tags[it] != tags[it + 1])
