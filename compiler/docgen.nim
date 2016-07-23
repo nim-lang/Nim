@@ -500,8 +500,8 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
 
-  result = %{ "name": %name, "type": %($k) }
-
+  result = %{ "name": %name, "type": %($k), "line": %n.info.line,
+                 "col": %n.info.col}
   if comm != nil and comm != "":
     result["description"] = %comm
   if r.buf != nil:
@@ -559,7 +559,8 @@ proc generateJson*(d: PDoc, n: PNode) =
   of nkCommentStmt:
     if n.comment != nil and startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
-      d.add %{ "comment": %stripped }
+      d.add %{ "comment": %stripped, "line": %n.info.line,
+               "col": %n.info.col }
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
     d.add genJsonItem(d, n, n.sons[namePos], skProc)
