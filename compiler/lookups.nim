@@ -153,7 +153,8 @@ proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
         # XXX: implicit type params are currently skTypes
         # maybe they can be made skGenericParam as well.
-        if s.typ != nil and tfImplicitTypeParam notin s.typ.flags:
+        if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
+           s.typ.kind != tyGenericParam:
           message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
     s = nextIter(it, scope.symbols)
 

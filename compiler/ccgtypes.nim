@@ -25,8 +25,9 @@ proc isKeyword(w: PIdent): bool =
 proc mangleField(name: PIdent): string =
   result = mangle(name.s)
   if isKeyword(name):
-    result[0] = result[0].toUpper # Mangling makes everything lowercase,
-                                  # but some identifiers are C keywords
+    result[0] = result[0].toUpperAscii
+    # Mangling makes everything lowercase,
+    # but some identifiers are C keywords
 
 proc hashOwner(s: PSym): FilenameHash =
   var m = s

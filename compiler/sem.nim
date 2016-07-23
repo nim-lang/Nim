@@ -164,7 +164,7 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
-  proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLower
+  proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
 
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:

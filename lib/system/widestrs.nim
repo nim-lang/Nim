@@ -73,11 +73,11 @@ template fastRuneAt(s: cstring, i: int, result: expr, doInc = true) =
     result = 0xFFFD
     when doInc: inc(i)
 
-iterator runes(s: cstring): int =
+iterator runes(s: cstring, L: int): int =
   var
     i = 0
     result: int
-  while s[i] != '\0':
+  while i < L:
     fastRuneAt(s, i, result, true)
     yield result
 
@@ -85,7 +85,7 @@ proc newWideCString*(source: cstring, L: int): WideCString =
   unsafeNew(result, L * 4 + 2)
   #result = cast[wideCString](alloc(L * 4 + 2))
   var d = 0
-  for ch in runes(source):
+  for ch in runes(source, L):
     if ch <=% UNI_MAX_BMP:
       if ch >=% UNI_SUR_HIGH_START and ch <=% UNI_SUR_LOW_END:
         result[d] = UNI_REPLACEMENT_CHAR

@@ -220,7 +220,7 @@ proc setDefaultLibpath*() =
       libpath = parentNimLibPath
 
 proc canonicalizePath*(path: string): string =
-  when not FileSystemCaseSensitive: result = path.expandFilename.toLower
+  when not FileSystemCaseSensitive: result = path.expandFilename.toLowerAscii
   else: result = path.expandFilename
 
 proc shortenDir*(dir: string): string =
@@ -238,6 +238,8 @@ proc removeTrailingDirSep*(path: string): string =
     result = substr(path, 0, len(path) - 2)
   else:
     result = path
+
+include packagehandling
 
 proc getNimcacheDir*: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
@@ -257,54 +259,6 @@ proc pathSubs*(p, config: string): string =
     "nimcache", getNimcacheDir()])
   if '~' in result:
     result = result.replace("~", home)
-
-template newPackageCache(): expr =
-  newStringTable(when FileSystemCaseSensitive:
-                   modeCaseInsensitive
-                 else:
-                   modeCaseSensitive)
-
-var packageCache = newPackageCache()
-
-proc resetPackageCache*() = packageCache = newPackageCache()
-
-iterator myParentDirs(p: string): string =
-  # XXX os's parentDirs is stupid (multiple yields) and triggers an old bug...
-  var current = p
-  while true:
-    current = current.parentDir
-    if current.len == 0: break
-    yield current
-
-proc getPackageName*(path: string): string =
-  var parents = 0
-  block packageSearch:
-    for d in myParentDirs(path):
-      if packageCache.hasKey(d):
-        #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
-        return packageCache[d]
-      inc parents
-      for file in walkFiles(d / "*.nimble"):
-        result = file.splitFile.name
-        break packageSearch
-      for file in walkFiles(d / "*.babel"):
-        result = file.splitFile.name
-        break packageSearch
-  # we also store if we didn't find anything:
-  if result.isNil: result = ""
-  for d in myParentDirs(path):
-    #echo "set cache ", d, " |", result, "|", parents
-    packageCache[d] = result
-    dec parents
-    if parents <= 0: break
-
-proc withPackageName*(path: string): string =
-  let x = path.getPackageName
-  if x.len == 0:
-    result = path
-  else:
-    let (p, file, ext) = path.splitFile
-    result = (p / (x & '_' & file)) & ext
 
 proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
@@ -386,11 +340,11 @@ proc findFile*(f: string): string {.procvar.} =
   else:
     result = f.rawFindFile
     if result.len == 0:
-      result = f.toLower.rawFindFile
+      result = f.toLowerAscii.rawFindFile
       if result.len == 0:
         result = f.rawFindFile2
         if result.len == 0:
-          result = f.toLower.rawFindFile2
+          result = f.toLowerAscii.rawFindFile2
   patchModule()
 
 proc findModule*(modulename, currentModule: string): string =

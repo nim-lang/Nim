@@ -1872,38 +1872,40 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
   var procBody = prc[6].processBody(retFutureSym, subtypeIsVoid, nil)
-  if not subtypeIsVoid:
-    procBody.insert(0, newNimNode(nnkPragma).add(newIdentNode("push"),
-      newNimNode(nnkExprColonExpr).add(newNimNode(nnkBracketExpr).add(
-        newIdentNode("warning"), newIdentNode("resultshadowed")),
-      newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
+  # don't do anything with forward bodies (empty)
+  if procBody.kind != nnkEmpty:
+    if not subtypeIsVoid:
+      procBody.insert(0, newNimNode(nnkPragma).add(newIdentNode("push"),
+        newNimNode(nnkExprColonExpr).add(newNimNode(nnkBracketExpr).add(
+          newIdentNode("warning"), newIdentNode("resultshadowed")),
+        newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
 
-    procBody.insert(1, newNimNode(nnkVarSection, prc[6]).add(
-      newIdentDefs(newIdentNode("result"), baseType))) # -> var result: T
+      procBody.insert(1, newNimNode(nnkVarSection, prc[6]).add(
+        newIdentDefs(newIdentNode("result"), baseType))) # -> var result: T
 
-    procBody.insert(2, newNimNode(nnkPragma).add(
-      newIdentNode("pop"))) # -> {.pop.})
+      procBody.insert(2, newNimNode(nnkPragma).add(
+        newIdentNode("pop"))) # -> {.pop.})
 
-    procBody.add(
-      newCall(newIdentNode("complete"),
-        retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
-  else:
-    # -> complete(retFuture)
-    procBody.add(newCall(newIdentNode("complete"), retFutureSym))
+      procBody.add(
+        newCall(newIdentNode("complete"),
+          retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
+    else:
+      # -> complete(retFuture)
+      procBody.add(newCall(newIdentNode("complete"), retFutureSym))
 
-  var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
-                                procBody, nnkIteratorDef)
-  closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
-  outerProcBody.add(closureIterator)
+    var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
+                                  procBody, nnkIteratorDef)
+    closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
+    outerProcBody.add(closureIterator)
 
-  # -> createCb(retFuture)
-  #var cbName = newIdentNode("cb")
-  var procCb = getAst createCb(retFutureSym, iteratorNameSym,
-                       newStrLitNode(prc[0].getName))
-  outerProcBody.add procCb
+    # -> createCb(retFuture)
+    #var cbName = newIdentNode("cb")
+    var procCb = getAst createCb(retFutureSym, iteratorNameSym,
+                         newStrLitNode(prc[0].getName))
+    outerProcBody.add procCb
 
-  # -> return retFuture
-  outerProcBody.add newNimNode(nnkReturnStmt, prc[6][prc[6].len-1]).add(retFutureSym)
+    # -> return retFuture
+    outerProcBody.add newNimNode(nnkReturnStmt, prc[6][prc[6].len-1]).add(retFutureSym)
 
   result = prc
 
@@ -1917,9 +1919,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     if returnType.kind == nnkEmpty:
       # Add Future[void]
       result[3][0] = parseExpr("Future[void]")
-
-  result[6] = outerProcBody
-
+  if procBody.kind != nnkEmpty:
+    result[6] = outerProcBody
   #echo(treeRepr(result))
   #if prc[0].getName == "testInfix":
   #  echo(toStrLit(result))

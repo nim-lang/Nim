@@ -232,16 +232,6 @@ type signatures of the required operations, but since type inference and
 default parameters are still applied in the provided block, it's also possible
 to encode usage protocols that do not reveal implementation details.
 
-As a special rule providing further convenience when writing concepts, any
-type value appearing in a callable expression will be treated as a variable of
-the designated type for overload resolution purposes, unless the type value was
-passed in its explicit ``typedesc[T]`` form:
-
-.. code-block:: nim
-  type
-    OutputStream = concept s
-      write(var s, string)
-
 Much like generics, concepts are instantiated exactly
 once for each tested type and any static code included within them is also
 executed once.

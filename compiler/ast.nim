@@ -771,7 +771,7 @@ type
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       #scope*: PScope          # the scope where the proc was defined
-    of skModule:
+    of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
       # be replaced with a newer version, we must decrement the usage count

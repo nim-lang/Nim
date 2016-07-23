@@ -1038,7 +1038,7 @@ proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(n.info, "cannot instantiate the '$1' $2" %
-                       [s.name.s, ($s.kind).substr(2).toLower])
+                       [s.name.s, ($s.kind).substr(2).toLowerAscii])
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ

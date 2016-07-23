@@ -355,7 +355,7 @@ proc docstringSummary(rstText: string): string =
   ## Also, we hope to not break the rst, but maybe we do. If there is any
   ## trimming done, an ellipsis unicode char is added.
   const maxDocstringChars = 100
-  assert (rstText.len < 2 or (rstText[0] == '#' and rstText[1] == '#'))
+  assert(rstText.len < 2 or (rstText[0] == '#' and rstText[1] == '#'))
   result = rstText.substr(2).strip
   var pos = result.find('\L')
   if pos > 0:
@@ -650,22 +650,33 @@ proc generateIndex*(d: PDoc) =
     writeIndexFile(d[], splitFile(options.outFile).dir /
                         splitFile(d.filename).name & IndexExt)
 
+proc getOutFile2(filename, ext, dir: string): string =
+  if gWholeProject:
+    let d = if options.outFile != "": options.outFile else: dir
+    createDir(d)
+    result = d / changeFileExt(filename, ext)
+  else:
+    result = getOutFile(filename, ext)
+
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
   else:
-    writeRope(content, getOutFile(filename, outExt), useWarning)
+    writeRope(content, getOutFile2(filename, outExt, "htmldocs"), useWarning)
 
 proc writeOutputJson*(d: PDoc, filename, outExt: string,
                       useWarning = false) =
-  let content = $d.jArray
+  let content = %*{"orig": d.filename,
+    "nimble": getPackageName(d.filename),
+    "entries": d.jArray}
   if optStdout in gGlobalOptions:
-    write(stdout, content)
+    write(stdout, $content)
   else:
     var f: File
-    if open(f, getOutFile(filename, outExt), fmWrite):
-      write(f, content)
+    if open(f, getOutFile2(splitFile(filename).name,
+            outExt, "jsondocs"), fmWrite):
+      write(f, $content)
       close(f)
     else:
       discard "fixme: error report"
@@ -711,7 +722,7 @@ proc commandJson*() =
   if optStdout in gGlobalOptions:
     writeRope(stdout, content)
   else:
-    echo getOutFile(gProjectFull, JsonExt)
+    #echo getOutFile(gProjectFull, JsonExt)
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
 proc commandBuildIndex*() =

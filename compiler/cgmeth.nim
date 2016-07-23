@@ -69,13 +69,19 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
       else:
         break
     if sameType(aa, bb):
-      if aa.kind == tyObject and result != Invalid: result = Yes
+      if aa.kind == tyObject and result != Invalid:
+        result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject:
       let diff = inheritanceDiff(bb, aa)
       if diff < 0:
-        if result != Invalid: result = Yes
+        if result != Invalid:
+          result = Yes
+        else:
+          return No
       elif diff != high(int):
         result = Invalid
+      else:
+        return No
     else:
       return No
 

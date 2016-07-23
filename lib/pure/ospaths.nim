@@ -559,9 +559,8 @@ when declared(getEnv) or defined(nimscript):
   when not defined(windows) and declared(os):
     proc checkSymlink(path: string): bool =
       var rawInfo: Stat
-      if lstat(path, rawInfo) < 0'i32:
-        raiseOSError(osLastError())
-      S_ISLNK(rawInfo.st_mode)
+      if lstat(path, rawInfo) < 0'i32: result = false
+      else: result = S_ISLNK(rawInfo.st_mode)
 
   proc findExe*(exe: string, followSymlinks: bool = true): string {.
     tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
@@ -593,7 +592,10 @@ when declared(getEnv) or defined(nimscript):
                 r = newString(len+1)
                 len = readlink(x, r, len)
               setLen(r, len)
-              x = r
+              if isAbsolute(r):
+                x = r
+              else:
+                x = parentDir(x) / r
             else:
               break
         return x

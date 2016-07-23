@@ -29,7 +29,7 @@ type
   TRssItem = object
     year, month, day, title, url, content: string
   TAction = enum
-    actAll, actOnlyWebsite, actPdf
+    actAll, actOnlyWebsite, actPdf, actJson2
 
   Sponsor = object
     logo: string
@@ -157,6 +157,7 @@ proc parseCmdLine(c: var TConfigData) =
         c.vars[substr(val, 0, idx-1)] = substr(val, idx+1)
       of "website": action = actOnlyWebsite
       of "pdf": action = actPdf
+      of "json2": action = actJson2
       of "googleanalytics":
         c.gaId = val
         c.nimArgs.add("--doc.googleAnalytics:" & val & " ")
@@ -379,7 +380,7 @@ proc genNewsLink(title: string): string =
   result = title
   result.insert("Z")
   for i in 1..len(result)-1:
-    let letter = result[i].toLower()
+    let letter = result[i].toLowerAscii()
     if letter in validAnchorCharacters:
       result[i] = letter
     else:
@@ -487,7 +488,6 @@ proc buildNews(c: var TConfigData, newsDir: string, outputDir: string) =
       echo("Skipping file in news directory: ", path)
 
 proc buildWebsite(c: var TConfigData) =
-
   if c.ticker.len > 0:
     try:
       c.ticker = readFile("web" / c.ticker)
@@ -512,6 +512,19 @@ proc main(c: var TConfigData) =
   buildDocSamples(c, "doc")
   buildDoc(c, "doc")
 
+proc json2(c: var TConfigData) =
+  const destPath = "web/json2"
+  var commands = newSeq[string](c.srcdoc2.len)
+  var i = 0
+  for d in items(c.srcdoc2):
+    createDir(destPath / splitFile(d).dir)
+    commands[i] = findNim() & " jsondoc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+      destPath / changeFileExt(d, "json"), d]
+    i.inc
+
+  mexec(commands, c.numProcessors)
+
 var c: TConfigData
 initConfigData(c)
 parseCmdLine(c)
@@ -520,3 +533,4 @@ case action
 of actOnlyWebsite: buildWebsite(c)
 of actPdf: buildPdfDoc(c, "doc")
 of actAll: main(c)
+of actJson2: json2(c)

@@ -259,31 +259,34 @@ macro check*(conditions: stmt): stmt {.immediate.} =
 
   proc inspectArgs(exp: NimNode): NimNode =
     result = copyNimTree(exp)
-    for i in countup(1, exp.len - 1):
-      if exp[i].kind notin nnkLiterals:
-        inc counter
-        var arg = newIdentNode(":p" & $counter)
-        var argStr = exp[i].toStrLit
-        var paramAst = exp[i]
-        if exp[i].kind == nnkIdent:
-          argsPrintOuts.add getAst(print(argStr, paramAst))
-        if exp[i].kind in nnkCallKinds:
-          var callVar = newIdentNode(":c" & $counter)
-          argsAsgns.add getAst(asgn(callVar, paramAst))
-          result[i] = callVar
-          argsPrintOuts.add getAst(print(argStr, callVar))
-        if exp[i].kind == nnkExprEqExpr:
-          # ExprEqExpr
-          #   Ident !"v"
-          #   IntLit 2
-          result[i] = exp[i][1]
-        if exp[i].typekind notin {ntyTypeDesc}:
-          argsAsgns.add getAst(asgn(arg, paramAst))
-          argsPrintOuts.add getAst(print(argStr, arg))
-          if exp[i].kind != nnkExprEqExpr:
-            result[i] = arg
-          else:
-            result[i][1] = arg
+    if exp[0].kind == nnkIdent and
+        $exp[0] in ["and", "or", "not", "in", "notin", "==", "<=",
+                    ">=", "<", ">", "!=", "is", "isnot"]:
+      for i in countup(1, exp.len - 1):
+        if exp[i].kind notin nnkLiterals:
+          inc counter
+          var arg = newIdentNode(":p" & $counter)
+          var argStr = exp[i].toStrLit
+          var paramAst = exp[i]
+          if exp[i].kind == nnkIdent:
+            argsPrintOuts.add getAst(print(argStr, paramAst))
+          if exp[i].kind in nnkCallKinds:
+            var callVar = newIdentNode(":c" & $counter)
+            argsAsgns.add getAst(asgn(callVar, paramAst))
+            result[i] = callVar
+            argsPrintOuts.add getAst(print(argStr, callVar))
+          if exp[i].kind == nnkExprEqExpr:
+            # ExprEqExpr
+            #   Ident !"v"
+            #   IntLit 2
+            result[i] = exp[i][1]
+          if exp[i].typekind notin {ntyTypeDesc}:
+            argsAsgns.add getAst(asgn(arg, paramAst))
+            argsPrintOuts.add getAst(print(argStr, arg))
+            if exp[i].kind != nnkExprEqExpr:
+              result[i] = arg
+            else:
+              result[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:

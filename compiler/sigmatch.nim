@@ -364,22 +364,43 @@ proc isObjectSubtype(a, f: PType): int =
   if t != nil:
     result = depth
 
-proc skipToGenericBody(t: PType): PType =
+type
+  SkippedPtr = enum skippedNone, skippedRef, skippedPtr
+
+proc skipToGenericBody(t: PType; skipped: var SkippedPtr): PType =
   var r = t
+  # we're allowed to skip one level of ptr/ref:
+  var ptrs = 0
   while r != nil:
-    if r.kind in {tyGenericInst, tyGenericInvocation}:
-      return r.sons[0]
-    r = if r.len > 0: r.lastSon else: nil
+    case r.kind
+    of tyGenericInst, tyGenericInvocation:
+      result = r.sons[0]
+      break
+    of tyRef:
+      inc ptrs
+      skipped = skippedRef
+      r = r.lastSon
+    of tyPtr:
+      inc ptrs
+      skipped = skippedPtr
+      r = r.lastSon
+    of tyGenericBody, tyObject:
+      r = r.lastSon
+    else:
+      break
+  if ptrs > 1: result = nil
 
 proc isGenericSubtype(a, f: PType, d: var int): bool =
   assert f.kind in {tyGenericInst, tyGenericInvocation, tyGenericBody}
-  var t = if a.kind == tyGenericBody: a else: a.skipToGenericBody
-  var r = if f.kind == tyGenericBody: f else: f.skipToGenericBody
+  var askip = skippedNone
+  var fskip = skippedNone
+  var t = if a.kind == tyGenericBody: a else: a.skipToGenericBody(askip)
+  var r = if f.kind == tyGenericBody: f else: f.skipToGenericBody(fskip)
   var depth = 0
-  while t != nil and not sameObjectTypes(r, t):
-    t = t.skipToGenericBody
+  while t != nil and not sameObjectTypes(r, t) and askip == fskip:
+    t = t.skipToGenericBody(askip)
     inc depth
-  if t != nil:
+  if t != nil and askip == fskip:
     d = depth
     result = true
 
@@ -1430,7 +1451,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     if skipTypes(f, abstractVar-{tyTypeDesc}).kind in {tyTuple}:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isNone:
-    # do not do this in ``typeRel`` as it then can't infere T in ``ref T``:
+    # do not do this in ``typeRel`` as it then can't infer T in ``ref T``:
     if a.kind in {tyProxy, tyUnknown}:
       inc(m.genericMatches)
       m.fauxMatch = a.kind
@@ -1451,6 +1472,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
           m.baseTypeMatch = true
         else:
           result = userConvMatch(c, m, base(f), a, arg)
+          if result != nil: m.baseTypeMatch = true
 
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
@@ -1756,7 +1778,10 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           break
       else:
         # use default value:
-        setSon(m.call, formal.position + 1, copyTree(formal.ast))
+        var def = copyTree(formal.ast)
+        if def.kind == nkNilLit:
+          def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
+        setSon(m.call, formal.position + 1, def)
     inc(f)
 
 proc argtypeMatches*(c: PContext, f, a: PType): bool =

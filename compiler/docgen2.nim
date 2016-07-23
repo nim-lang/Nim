@@ -19,25 +19,25 @@ type
     module: PSym
   PGen = ref TGen
 
-proc close(p: PPassContext, n: PNode): PNode =
+template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
-  if gWholeProject or sfMainModule in g.module.flags:
-    writeOutput(g.doc, g.module.filename, HtmlExt, useWarning)
+  #echo g.module.name.s, " ", g.module.owner.id, " ", gMainPackageId
+  if (g.module.owner.id == gMainPackageId and gWholeProject) or
+    sfMainModule in g.module.flags:
+    body
     try:
       generateIndex(g.doc)
     except IOError:
       discard
 
+proc close(p: PPassContext, n: PNode): PNode =
+  closeImpl:
+    writeOutput(g.doc, g.module.filename, HtmlExt, useWarning)
+
 proc closeJson(p: PPassContext, n: PNode): PNode =
-  var g = PGen(p)
-  let useWarning = sfMainModule notin g.module.flags
-  if gWholeProject or sfMainModule in g.module.flags:
+  closeImpl:
     writeOutputJson(g.doc, g.module.filename, ".json", useWarning)
-    try:
-      generateIndex(g.doc)
-    except IOError:
-      discard
 
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
