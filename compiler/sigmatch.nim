@@ -1622,6 +1622,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
   while a < n.len:
     if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
+      incl(marker, formal.position)
       if container.isNil:
         container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
         setSon(m.call, formal.position + 1, container)
@@ -1684,6 +1685,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           # beware of the side-effects in 'prepareOperand'! So only do it for
           # varargs matching. See tests/metatype/tstatic_overloading.
           m.baseTypeMatch = false
+          incl(marker, formal.position)
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
