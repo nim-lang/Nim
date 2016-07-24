@@ -771,6 +771,14 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
   t[].del(key)
 
+proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
+  equalsImpl()
+
+proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
+  if isNil(s): result = isNil(t)
+  elif isNil(t): result = false
+  else: equalsImpl()
+
 # ------------------------------ count tables -------------------------------
 
 type
