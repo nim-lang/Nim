@@ -387,8 +387,6 @@ proc format(p: MultipartData): tuple[header, body: string] =
     result.body.add("--" & bound & "\c\L" & s)
   result.body.add("--" & bound & "--\c\L")
 
-
-
 proc request*(url: string, httpMethod: string, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response =
