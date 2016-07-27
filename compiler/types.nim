@@ -803,6 +803,8 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
           result = x.name.id == y.name.id
           if not result: break
         else: internalError(a.n.info, "sameTuple")
+    elif a.n != b.n and (a.n == nil or b.n == nil) and IgnoreTupleFields notin c.flags:
+      result = false
 
 template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
   if tfFromGeneric notin a.flags + b.flags:
