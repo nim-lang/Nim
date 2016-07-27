@@ -464,9 +464,15 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
     case x.kind
     of xmlElementStart, xmlElementOpen:
       case result.htmlTag
-      of tagLi, tagP, tagDt, tagDd, tagInput, tagOption:
-        # some tags are common to have no ``</end>``, like ``<li>``:
+      of tagP, tagInput, tagOption:
+        # some tags are common to have no ``</end>``, like ``<li>`` but
+        # allow ``<p>`` in `<dd>`, `<dt>` and ``<li>`` in next case
         if htmlTag(x.elemName) in {tagLi, tagP, tagDt, tagDd, tagInput,
+                                   tagOption}:
+          errors.add(expected(x, result))
+          break
+      of tagDd, tagDt, tagLi:
+        if htmlTag(x.elemName) in {tagLi, tagDt, tagDd, tagInput,
                                    tagOption}:
           errors.add(expected(x, result))
           break
