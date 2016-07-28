@@ -2,7 +2,6 @@ version 1.0 battle plan
 =======================
 
 - Deprecate ``immediate`` for templates and macros
-- fix generic multi-methods
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 

@@ -104,7 +104,7 @@ type
     hloLoopDetector*: int     # used to prevent endless loops in the HLO
     inParallelStmt*: int
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
-                            op: TTypeAttachedOp): PSym {.nimcall.}
+                            op: TTypeAttachedOp; col: int): PSym {.nimcall.}
     selfName*: PIdent
     signatures*: TStrTable
 

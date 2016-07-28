@@ -850,6 +850,7 @@ type
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
     assignment*: PSym         # overriden '=' operator
+    methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements

@@ -1796,16 +1796,19 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   result = res != nil
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
-                      op: TTypeAttachedOp): PSym {.procvar.} =
+                      op: TTypeAttachedOp; col: int): PSym {.procvar.} =
   var m: TCandidate
   initCandidate(c, m, dc.typ)
-  var f = dc.typ.sons[1]
+  if col >= dc.typ.len:
+    localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
+    return nil
+  var f = dc.typ.sons[col]
   if op == attachedDeepCopy:
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
     if f.kind == tyVar: f = f.lastSon
   if typeRel(m, f, t) == isNone:
-    localError(info, errGenerated, "cannot instantiate 'deepCopy'")
+    localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
   else:
     result = c.semGenerateInstance(c, dc, m.bindings, info)
     assert sfFromGeneric in result.flags
