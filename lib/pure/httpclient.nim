@@ -423,6 +423,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   add(headers, extraHeaders)
   add(headers, "\c\L")
   var s = newSocket()
+  defer: s.close()
   if s == nil: raiseOSError(osLastError())
   var port = net.Port(80)
   if r.scheme == "https":
@@ -444,7 +445,6 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
     s.send(body)
 
   result = parseResponse(s, httpMethod != "httpHEAD", timeout)
-  s.close()
 
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
