@@ -446,8 +446,6 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
       s.send(body)
 
     result = parseResponse(s, httpMethod != "httpHEAD", timeout)
-  except:
-    raise
   finally:
     s.close()
 
