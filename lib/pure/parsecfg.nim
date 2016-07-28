@@ -131,7 +131,7 @@ type
 # implementation
 
 const
-  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\'}
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\', '-'}
 
 proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
