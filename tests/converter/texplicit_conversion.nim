@@ -2,7 +2,7 @@ discard """
   output: "234"
 """
 
-# bug #4461
+# bug #4432
 
 import strutils
 
