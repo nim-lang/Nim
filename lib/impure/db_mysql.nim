@@ -288,7 +288,8 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
 
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row.
-  $row.row[col]
+  if row.row[col] == nil: nil
+  else: $row.row[col]
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row.
