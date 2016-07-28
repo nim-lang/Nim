@@ -393,6 +393,8 @@ proc suggestSym*(info: TLineInfo; s: PSym; isDecl=true) {.inline.} =
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
+  if s.kind == skEnumField and s.owner != nil:
+    incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
