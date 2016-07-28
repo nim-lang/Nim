@@ -1355,11 +1355,13 @@ proc semMethod(c: PContext, n: PNode): PNode =
   if isGenericRoutine(s):
     let tt = s.typ
     var foundObj = false
-    for col in countup(0, sonsLen(tt)-1):
+    # we start at 1 for now so that tparsecombnum continues to compile.
+    # XXX Revisit this problem later.
+    for col in countup(1, sonsLen(tt)-1):
       let t = tt.sons[col]
       if t != nil and t.kind == tyGenericInvocation:
         var x = skipTypes(t.sons[0], {tyVar, tyPtr, tyRef, tyGenericInst, tyGenericInvocation, tyGenericBody})
-        if x.kind == tyObject:
+        if x.kind == tyObject and t.len-1 == result.sons[genericParamsPos].len:
           foundObj = true
           x.methods.safeAdd((col,s))
     if not foundObj:
