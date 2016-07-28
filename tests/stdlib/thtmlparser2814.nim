@@ -1,5 +1,5 @@
 discard """
-  output: "@[]"
+  output: true
 """
 import htmlparser
 import xmltree
@@ -24,6 +24,7 @@ from streams import newStringStream
 ##   </li>
 ## </ul>
 
+
 for ltype in [["dl","dd"], ["ul","li"]]:
   let desc_item = if ltype[0]=="dl": "<dt>this</dt>" else: ""
   let item = "$1<$2><p>that</p></$2>" % [desc_item, ltype[1]]
@@ -35,4 +36,9 @@ for ltype in [["dl","dd"], ["ul","li"]]:
 
   let parseH = parseHtml(newStringStream(list),"statichtml", errors =errors)
 
-  echo $parseH.findAll(ltype[1])[0].child("p") == "<p>that</p>"
+  if $parseH.findAll(ltype[1])[0].child("p") != "<p>that</p>":
+    echo "case " & ltype[0] & " failed !"
+    quit(2)
+
+
+echo "true"
