@@ -217,6 +217,15 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "none": result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
     else: localError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
   of "verbosity": result = $gVerbosity == arg
+  of "app":
+    case arg.normalize
+    of "gui":       result = contains(gGlobalOptions, optGenGuiApp)
+    of "console":   result = not contains(gGlobalOptions, optGenGuiApp)
+    of "lib":       result = contains(gGlobalOptions, optGenDynLib) and
+                      not contains(gGlobalOptions, optGenGuiApp)
+    of "staticlib": result = contains(gGlobalOptions, optGenStaticLib) and
+                      not contains(gGlobalOptions, optGenGuiApp)
+    else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool =
