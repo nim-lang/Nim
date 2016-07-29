@@ -482,6 +482,7 @@ type
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam
+    tfInferrableTypeClassTypeParam
     tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
                       # T and I here can bind to both typedesc and static types
                       # before this is determined, we'll consider them to be a

@@ -318,7 +318,9 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     else:
       result = newIntNode(nkIntLit, 0)
   else:
-    var t2 = n[2].typ.skipTypes({tyTypeDesc})
+    var rhsOrigType = n[2].typ
+    discard inferTypeClassParam(c, t1, rhsOrigType)
+    var t2 = rhsOrigType.skipTypes({tyTypeDesc})
     maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
