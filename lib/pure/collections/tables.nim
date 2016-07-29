@@ -463,7 +463,7 @@ proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) =
   t.first = -1
   t.last = -1
 
-template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -649,7 +649,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next

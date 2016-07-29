@@ -1874,7 +1874,7 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-template countupImpl(incr: untyped) {.dirty.} =
+template countupImpl(incr: untyped) {.oldimmediate, dirty.} =
   when T is IntLikeForCount:
     var res = int(a)
     while res <= int(b):

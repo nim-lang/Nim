@@ -20,6 +20,8 @@
 ## **Note**: This interface will change as soon as the compiler supports
 ## closures and proper coroutines.
 
+include "system/inclrtl"
+
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
@@ -456,7 +458,7 @@ template anyIt*(seq1, pred: untyped): bool =
       break
   result
 
-template toSeq*(iter: untyped): untyped =
+template toSeq*(iter: untyped): untyped {.oldimmediate.} =
   ## Transforms any iterator into a sequence.
   ##
   ## Example:
