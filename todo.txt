@@ -1,9 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- tests/stdlib/tnre.nim
-- tests/closure/tflatmap.nim
-
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 

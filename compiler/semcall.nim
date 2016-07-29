@@ -53,7 +53,18 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     if symx.kind in filter:
       syms.add((symx, o.lastOverloadScope))
     symx = nextOverloadIter(o, c, headSymbol)
-  if syms.len == 0: return
+  if syms.len == 0:
+    when false:
+      if skIterator notin filter:
+        # also try iterators, but these are 2nd class:
+        symx = initOverloadIter(o, c, headSymbol)
+        while symx != nil:
+          if symx.kind == skIterator:
+            syms.add((symx, 100))
+          symx = nextOverloadIter(o, c, headSymbol)
+        if syms.len == 0: return
+    else:
+      return
 
   var z: TCandidate
   initCandidate(c, best, syms[0][0], initialBinding, symScope)
