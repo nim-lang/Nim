@@ -2,6 +2,7 @@ discard """
 output: "20\n10"
 msg: '''
 INFERRED int
+IMPLICIT INFERRED int int
 '''
 """
 
@@ -32,7 +33,7 @@ proc genericAlgorithm[T](s: var Stack[T], y: T) =
   echo s.pop
 
 proc implicitGeneric(s: var Stack): auto =
-  # static: echo "IMPLICIT INFERRED ", s.T.name, " ", Stack.T.name
+  static: echo "IMPLICIT INFERRED ", s.T.name, " ", Stack.T.name
 
   return s.pop()
 

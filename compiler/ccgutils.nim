@@ -101,6 +101,8 @@ proc getUniqueType*(key: PType): PType =
         gCanonicalTypes[k] = key
         result = key
     of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr, tyFieldAccessor:
+      if key.isResolvedUserTypeClass:
+        return getUniqueType(lastSon(key))
       if key.sym != nil:
         internalError(key.sym.info, "metatype not eliminated")
       else:

@@ -447,7 +447,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   of tyUserTypeClass:
     result = t
 
-  of tyGenericInst:
+  of tyGenericInst, tyUserTypeClassInst:
     bailout()
     result = instCopyType(cl, t)
     idTablePut(cl.localCache, t, result)

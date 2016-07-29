@@ -909,12 +909,12 @@ proc makeDeref(n: PNode): PNode =
     t = skipTypes(baseTyp, {tyGenericInst, tyAlias})
 
 const
-  tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
+  tyTypeParamsHolders = {tyGenericInst, tyUserTypeClassInst, tyCompositeTypeClass}
   tyDotOpTransparent = {tyVar, tyPtr, tyRef, tyAlias}
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
-  let ty = if typ.kind == tyGenericInst: typ.skipGenericAlias
+  let ty = if typ.kind in {tyGenericInst, tyUserTypeClassInst}: typ.skipGenericAlias
            else: (internalAssert(typ.kind == tyCompositeTypeClass);
                   typ.sons[1].skipGenericAlias)
   let tbody = ty.sons[0]

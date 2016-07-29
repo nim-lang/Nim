@@ -642,7 +642,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   # We need to put them in the current sigmatch's binding table in order for them
   # to be resolvable while matching the rest of the parameters
   for p in typeParams:
-    put(m.bindings, p[0].typ, p[1])
+    put(m.bindings, p[1], p[0].typ)
 
   return isGeneric
 
@@ -715,6 +715,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
+
+  if a.isResolvedUserTypeClass:
+    return typeRel(c, f, a.lastSon)
 
   template bindingRet(res) =
     if doBind:
@@ -1125,11 +1128,19 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         return isNone
 
-  of tyUserTypeClass, tyUserTypeClassInst:
+  of tyUserTypeClass:
     considerPreviousT:
       result = matchUserTypeClass(c.c, c, f, aOrig)
       if result == isGeneric:
         put(c, f, a)
+
+  of tyUserTypeClassInst:
+    considerPreviousT:
+      result = matchUserTypeClass(c.c, c, f, aOrig)
+      if result == isGeneric:
+        var fWithResolvedParams = generateTypeInstance(c.c, c.bindings, c.call.info, f)
+        fWithResolvedParams.sons.add a
+        put(c.bindings, f, fWithResolvedParams)
 
   of tyCompositeTypeClass:
     considerPreviousT:
@@ -1397,7 +1408,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
-
+ 
   if inferTypeClassParam(c, f, argType):
     return argSemantized
 

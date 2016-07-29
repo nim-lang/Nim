@@ -1485,6 +1485,9 @@ proc isEmptyContainer*(t: PType): bool =
   of tyGenericInst, tyAlias: result = isEmptyContainer(t.lastSon)
   else: result = false
 
+proc isResolvedUserTypeClass*(t: PType): bool =
+  t.kind in {tyUserTypeClassInst} and t.base.sonsLen == t.sonsLen - 2
+
 proc takeType*(formal, arg: PType): PType =
   # param: openArray[string] = []
   # [] is an array constructor of length 0 of type string!
