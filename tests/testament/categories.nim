@@ -260,12 +260,14 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     testNoSpec r, makeTest(test, options, cat)
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
+  var disabledSet = disabledFiles.toSet()
   for test in os.walkFiles(pattern):
-    let contents = readFile(test).string
-    if contents.contains("when isMainModule"):
-      testSpec r, makeTest(test, options, cat, actionRunNoSpec)
-    else:
-      testNoSpec r, makeTest(test, options, cat, actionCompile)
+    if test notin disabledSet:
+      let contents = readFile(test).string
+      if contents.contains("when isMainModule"):
+        testSpec r, makeTest(test, options, cat, actionRunNoSpec)
+      else:
+        testNoSpec r, makeTest(test, options, cat, actionCompile)
 
 # ----------------------------- nimble ----------------------------------------
 type PackageFilter = enum

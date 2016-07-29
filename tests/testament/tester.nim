@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, re, times
+  algorithm, compiler/nodejs, re, times, sets
 
 const
   resultsFile = "testresults.html"
@@ -387,6 +387,10 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
   # start with 'actionCompile', will be overwritten in the spec:
   result = TTest(cat: cat, name: test, options: options,
                  target: target, action: action, startTime: epochTime())
+
+const
+  # array of files disabled from compilation test of stdlib.
+  disabledFiles = ["lib/pure/coro.nim"]
 
 include categories
 
