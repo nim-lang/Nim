@@ -98,7 +98,7 @@ proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) =
   ## Produce and emit a parser message to output about the token `tok`
   parMessage(p, msg, prettyTok(tok))
 
-template withInd(p: expr, body: stmt) {.immediate.} =
+template withInd(p, body: untyped) =
   let oldInd = p.currInd
   p.currInd = p.tok.indent
   body

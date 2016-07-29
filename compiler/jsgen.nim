@@ -95,7 +95,7 @@ type
     up: PProc     # up the call chain; required for closure support
     declaredGlobals: IntSet
 
-template `|`(a, b: expr): expr {.immediate, dirty.} =
+template `|`(a, b: untyped): untyped {.dirty.} =
   (if p.target == targetJS: a else: b)
 
 proc newGlobals(): PGlobals =

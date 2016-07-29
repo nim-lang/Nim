@@ -355,7 +355,7 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
     inc(j)
 
 
-template filterIt*(seq1, pred: expr): expr =
+template filterIt*(seq1, pred: untyped): untyped =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -374,7 +374,7 @@ template filterIt*(seq1, pred: expr): expr =
     if pred: result.add(it)
   result
 
-template keepItIf*(varSeq: seq, pred: expr) =
+template keepItIf*(varSeq: seq, pred: untyped) =
   ## Convenience template around the ``keepIf`` proc to reduce typing.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -409,7 +409,7 @@ proc all*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): bool =
       return false
   return true
 
-template allIt*(seq1, pred: expr): bool {.immediate.} =
+template allIt*(seq1, pred: untyped): bool =
   ## Checks if every item fulfills the predicate.
   ##
   ## Example:
@@ -440,7 +440,7 @@ proc any*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): bool =
       return true
   return false
 
-template anyIt*(seq1, pred: expr): bool {.immediate.} =
+template anyIt*(seq1, pred: untyped): bool =
   ## Checks if some item fulfills the predicate.
   ##
   ## Example:
@@ -456,7 +456,7 @@ template anyIt*(seq1, pred: expr): bool {.immediate.} =
       break
   result
 
-template toSeq*(iter: expr): expr {.immediate.} =
+template toSeq*(iter: untyped): untyped =
   ## Transforms any iterator into a sequence.
   ##
   ## Example:
@@ -482,7 +482,7 @@ template toSeq*(iter: expr): expr {.immediate.} =
       result.add(x)
     result
 
-template foldl*(sequence, operation: expr): expr =
+template foldl*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
   ##
   ## The sequence is required to have at least a single element. Debug versions
@@ -519,7 +519,7 @@ template foldl*(sequence, operation: expr): expr =
     result = operation
   result
 
-template foldl*(sequence, operation: expr, first): expr =
+template foldl*(sequence, operation, first): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
   ##
   ## This version of ``foldl`` gets a starting parameter. This makes it possible
@@ -544,7 +544,7 @@ template foldl*(sequence, operation: expr, first): expr =
     result = operation
   result
 
-template foldr*(sequence, operation: expr): expr =
+template foldr*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from right to left, returning the accumulation.
   ##
   ## The sequence is required to have at least a single element. Debug versions
@@ -581,7 +581,7 @@ template foldr*(sequence, operation: expr): expr =
     result = operation
   result
 
-template mapIt*(seq1, typ, op: expr): expr {.deprecated.}=
+template mapIt*(seq1, typ, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -602,7 +602,7 @@ template mapIt*(seq1, typ, op: expr): expr {.deprecated.}=
   result
 
 
-template mapIt*(seq1, op: expr): expr =
+template mapIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -631,7 +631,7 @@ template mapIt*(seq1, op: expr): expr =
       result.add(op)
   result
 
-template applyIt*(varSeq, op: expr) =
+template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -648,7 +648,7 @@ template applyIt*(varSeq, op: expr) =
 
 
 
-template newSeqWith*(len: int, init: expr): expr =
+template newSeqWith*(len: int, init: untyped): untyped =
   ## creates a new sequence, calling `init` to initialize each value. Example:
   ##
   ## .. code-block::

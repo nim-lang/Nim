@@ -1,7 +1,9 @@
 version 1.0 battle plan
 =======================
 
-- Deprecate ``immediate`` for templates and macros
+- tests/stdlib/tnre.nim
+- tests/closure/tflatmap.nim
+
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 

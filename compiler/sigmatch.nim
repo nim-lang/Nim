@@ -691,7 +691,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       put(c.bindings, f, bound)
     return res
 
-  template considerPreviousT(body: stmt) {.immediate.} =
+  template considerPreviousT(body: untyped) =
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil: body
     else: return typeRel(c, prev, a)
@@ -1591,7 +1591,7 @@ template isVarargsUntyped(x): expr =
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =
-  template checkConstraint(n: expr) {.immediate, dirty.} =
+  template checkConstraint(n: untyped) {.dirty.} =
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
         # better match over other routines with no such restriction:
@@ -1816,7 +1816,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
 include suggest
 
 when not declared(tests):
-  template tests(s: stmt) {.immediate.} = discard
+  template tests(s: untyped) = discard
 
 tests:
   var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())

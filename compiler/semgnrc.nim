@@ -48,7 +48,10 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   closeScope(c)
 
 template macroToExpand(s: expr): expr =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfImmediate in s.flags)
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
+
+template macroToExpandSym(s: expr): expr =
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1)
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx): PNode =
@@ -61,14 +64,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skProc, skMethod, skIterator, skConverter, skModule:
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
-    if macroToExpand(s):
+    if macroToExpandSym(s):
       styleCheckUse(n.info, s)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
       result = symChoice(c, n, s, scOpen)
   of skMacro:
-    if macroToExpand(s):
+    if macroToExpandSym(s):
       styleCheckUse(n.info, s)
       result = semMacroExpr(c, n, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)

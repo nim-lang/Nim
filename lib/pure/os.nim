@@ -173,24 +173,24 @@ proc osLastError*(): OSErrorCode =
 
 when defined(windows):
   when useWinUnicode:
-    template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
+    template wrapUnary(varname, winApiProc, arg: untyped) =
       var varname = winApiProc(newWideCString(arg))
 
-    template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
+    template wrapBinary(varname, winApiProc, arg, arg2: untyped) =
       var varname = winApiProc(newWideCString(arg), arg2)
     proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
       result = findFirstFileW(newWideCString(a), b)
-    template findNextFile(a, b: expr): expr = findNextFileW(a, b)
-    template getCommandLine(): expr = getCommandLineW()
+    template findNextFile(a, b: untyped): untyped = findNextFileW(a, b)
+    template getCommandLine(): untyped = getCommandLineW()
 
-    template getFilename(f: expr): expr =
+    template getFilename(f: untyped): untyped =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
-    template findFirstFile(a, b: expr): expr = findFirstFileA(a, b)
-    template findNextFile(a, b: expr): expr = findNextFileA(a, b)
-    template getCommandLine(): expr = getCommandLineA()
+    template findFirstFile(a, b: untyped): untyped = findFirstFileA(a, b)
+    template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
+    template getCommandLine(): untyped = getCommandLineA()
 
-    template getFilename(f: expr): expr = $f.cFilename
+    template getFilename(f: untyped): untyped = $f.cFilename
 
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring

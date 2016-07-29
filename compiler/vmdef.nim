@@ -230,10 +230,10 @@ const
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
-template opcode*(x: TInstr): TOpcode {.immediate.} = TOpcode(x.uint32 and 0xff'u32)
-template regA*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
-template regB*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
-template regC*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 24'u32)
-template regBx*(x: TInstr): int {.immediate.} = (x.uint32 shr 16'u32).int
+template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
+template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
+template regB*(x: TInstr): TRegister = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
+template regC*(x: TInstr): TRegister = TRegister(x.uint32 shr 24'u32)
+template regBx*(x: TInstr): int = (x.uint32 shr 16'u32).int
 
-template jmpDiff*(x: TInstr): int {.immediate.} = regBx(x) - wordExcess
+template jmpDiff*(x: TInstr): int = regBx(x) - wordExcess

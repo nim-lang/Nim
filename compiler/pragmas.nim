@@ -626,7 +626,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         processImportCompilerProc(sym, getOptionalStr(c, it, "$1"))
       of wExtern: setExternName(sym, expectStrLit(c, it))
       of wImmediate:
-        if sym.kind in {skTemplate, skMacro}: incl(sym.flags, sfImmediate)
+        if sym.kind in {skTemplate, skMacro}:
+          incl(sym.flags, sfImmediate)
+          incl(sym.flags, sfAllUntyped)
+          message(n.info, warnDeprecated, "use 'untyped' parameters instead; immediate")
         else: invalidPragma(it)
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)

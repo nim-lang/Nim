@@ -136,7 +136,7 @@ proc exprBlock(p: BProc, n: PNode, d: var TLoc) =
   expr(p, n, d)
   endBlock(p)
 
-template preserveBreakIdx(body: stmt): stmt {.immediate.} =
+template preserveBreakIdx(body: untyped): untyped =
   var oldBreakIdx = p.breakIdx
   body
   p.breakIdx = oldBreakIdx

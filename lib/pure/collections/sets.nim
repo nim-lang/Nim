@@ -286,7 +286,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
       var r = j         # though may be adaptable to other simple sequences.
       s.data[i].hcode = 0              # mark current EMPTY
       s.data[i].key = default(type(s.data[i].key))
-      doWhile ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
+      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
         i = (i + 1) and msk            # increment mod table size
         if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
           return
@@ -615,7 +615,7 @@ proc card*[A](s: OrderedSet[A]): int {.inline.} =
   ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
   result = s.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
   var h = s.first
   while h >= 0:
     var nxt = s.data[h].next

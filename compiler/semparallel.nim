@@ -260,7 +260,7 @@ proc min(a, b: PNode): PNode =
 
 proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 
-template pushSpawnId(c: expr, body: stmt) {.immediate, dirty.} =
+template pushSpawnId(c, body) {.dirty.} =
   inc c.spawns
   let oldSpawnId = c.currentSpawnId
   c.currentSpawnId = c.spawns

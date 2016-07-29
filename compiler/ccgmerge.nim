@@ -229,7 +229,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template withCFile(cfilename: string, body: stmt) {.immediate.} =
+template withCFile(cfilename: string, body: untyped) =
   var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer

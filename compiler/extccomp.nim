@@ -61,7 +61,7 @@ type
 # When adding new compilers, the cmake sources could be a good reference:
 # http://cmake.org/gitweb?p=cmake.git;a=tree;f=Modules/Platform;
 
-template compiler(name: expr, settings: stmt): stmt {.immediate.} =
+template compiler(name, settings: untyped): untyped =
   proc name: TInfoCC {.compileTime.} = settings
 
 # GNU C and C++ Compiler

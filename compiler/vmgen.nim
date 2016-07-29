@@ -231,7 +231,7 @@ proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
 proc freeTempRange(c: PCtx; start: TRegister, n: int) =
   for i in start .. start+n-1: c.freeTemp(TRegister(i))
 
-template withTemp(tmp, typ: expr, body: stmt) {.immediate, dirty.} =
+template withTemp(tmp, typ, body: untyped) {.dirty.} =
   var tmp = getTemp(c, typ)
   body
   c.freeTemp(tmp)
@@ -241,7 +241,7 @@ proc popBlock(c: PCtx; oldLen: int) =
     c.patch(f)
   c.prc.blocks.setLen(oldLen)
 
-template withBlock(labl: PSym; body: stmt) {.immediate, dirty.} =
+template withBlock(labl: PSym; body: untyped) {.dirty.} =
   var oldLen {.gensym.} = c.prc.blocks.len
   c.prc.blocks.add TBlock(label: labl, fixups: @[])
   body

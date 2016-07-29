@@ -278,6 +278,8 @@ const
   sfImmediate* = sfDeadCodeElim
     # macro or template is immediately expanded
     # without considering any possible overloads
+  sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
+    # in a generic context
 
   sfDirty* = sfPure
     # template is not hygienic (old styled template)

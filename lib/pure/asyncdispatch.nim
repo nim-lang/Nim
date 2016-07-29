@@ -983,7 +983,7 @@ when defined(windows) or defined(nimdoc):
     let dwLocalAddressLength = Dword(sizeof (Sockaddr_in) + 16)
     let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
 
-    template completeAccept(): stmt {.immediate, dirty.} =
+    template completeAccept() {.dirty.} =
       var listenSock = socket
       let setoptRet = setsockopt(clientSock, SOL_SOCKET,
           SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
@@ -1003,7 +1003,7 @@ when defined(windows) or defined(nimdoc):
          client: clientSock.AsyncFD)
       )
 
-    template failAccept(errcode): stmt =
+    template failAccept(errcode) =
       if flags.isDisconnectionError(errcode):
         var newAcceptFut = acceptAddr(socket, flags)
         newAcceptFut.callback =
@@ -1590,7 +1590,7 @@ proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
     result = node[0]
 
 template createCb(retFutureSym, iteratorNameSym,
-                   name: expr): stmt {.immediate.} =
+                   name: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
   proc cb {.closure,gcsafe.} =
@@ -1925,7 +1925,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   #if prc[0].getName == "testInfix":
   #  echo(toStrLit(result))
 
-macro async*(prc: stmt): stmt {.immediate.} =
+macro async*(prc: untyped): untyped =
   ## Macro which processes async procedures into the appropriate
   ## iterators and yield statements.
   if prc.kind == nnkStmtList:

@@ -475,7 +475,7 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "
 
   result = true
   for c in s:
-    if not c.isSpace():
+    if not c.isSpaceAscii():
       return false
 
 proc substrEq(s: string, pos: int, substr: string): bool =

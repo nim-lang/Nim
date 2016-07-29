@@ -138,7 +138,7 @@ proc suggestField(c: PContext, s: PSym, outputs: var int) =
     suggestResult(symToSuggest(s, isLocal=true, $ideSug, 100))
     inc outputs
 
-template wholeSymTab(cond, section: expr) {.immediate.} =
+template wholeSymTab(cond, section: untyped) =
   var isLocal = true
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false

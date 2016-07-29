@@ -30,6 +30,10 @@ Changes affecting backwards compatibility
   discussion.
 - Overloading the special operators ``.``, ``.()``, ``.=``, ``()`` now
   should be enabled via ``{.experimental.}``.
+- ``immediate`` templates and macros are now deprecated.
+  Instead use ``untyped`` parameters.
+- The metatype ``expr`` is deprecated. Use ``untyped`` instead.
+- The metatype ``stmt`` is deprecated. Use ``typed`` instead.
 
 
 Library Additions
