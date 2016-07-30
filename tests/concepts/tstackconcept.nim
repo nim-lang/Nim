@@ -2,11 +2,15 @@ discard """
 output: "20\n10"
 msg: '''
 INFERRED int
+VALUE TYPE int
+VALUE TYPE NAME INT
 IMPLICIT INFERRED int int
+IMPLICIT VALUE TYPE int int
+IMPLICIT VALUE TYPE NAME INT INT
 '''
 """
 
-import typetraits
+import typetraits, strutils
 
 template reject(e: expr) =
   static: assert(not compiles(e))
@@ -26,14 +30,23 @@ type
     s.push(T)
     s.pop() is T
 
+    type ValueType = T
+    const ValueTypeName = T.name.toUpper
+
 proc genericAlgorithm[T](s: var Stack[T], y: T) =
-  static: echo "INFERRED ", T.name
+  static:
+    echo "INFERRED ", T.name
+    echo "VALUE TYPE ", s.ValueType.name
+    echo "VALUE TYPE NAME ", s.ValueTypeName
 
   s.push(y)
   echo s.pop
 
 proc implicitGeneric(s: var Stack): auto =
-  static: echo "IMPLICIT INFERRED ", s.T.name, " ", Stack.T.name
+  static:
+    echo "IMPLICIT INFERRED ", s.T.name, " ", Stack.T.name
+    echo "IMPLICIT VALUE TYPE ", s.ValueType.name, " ", Stack.ValueType.name
+    echo "IMPLICIT VALUE TYPE NAME ", s.ValueTypeName, " ", s.ValueTypeName
 
   return s.pop()
 

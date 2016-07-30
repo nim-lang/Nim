@@ -572,11 +572,11 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
     result = isNone
 
 proc matchUserTypeClass*(c: PContext, m: var TCandidate,
-                         ff, a: PType): TTypeRelation =
+                         ff, a: PType): PType =
   var body = ff.skipTypes({tyUserTypeClassInst})
   if c.inTypeClass > 4:
     localError(body.n[3].info, $body.n[3] & " too nested for type matching")
-    return isNone
+    return nil
 
   openScope(c)
   inc c.inTypeClass
@@ -636,7 +636,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     #echo "B ", dummyName.ident.s, " ", typeToString(dummyType), " ", dummyparam.kind
 
   var checkedBody = c.semTryExpr(c, body.n[3].copyTree)
-  if checkedBody == nil: return isNone
+  if checkedBody == nil: return nil
 
   # The inferrable type params have been identified during the semTryExpr above.
   # We need to put them in the current sigmatch's binding table in order for them
@@ -644,7 +644,12 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   for p in typeParams:
     put(m.bindings, p[1], p[0].typ)
 
-  return isGeneric
+  if ff.kind == tyUserTypeClassInst:
+    result = generateTypeInstance(c, m.bindings, m.call.info, ff)
+  else:
+    result = copyType(ff, ff.owner, true)
+
+  result.n = checkedBody
 
 proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =
   if rules.kind == nkWith:
@@ -1130,17 +1135,23 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyUserTypeClass:
     considerPreviousT:
-      result = matchUserTypeClass(c.c, c, f, aOrig)
-      if result == isGeneric:
+      var matched = matchUserTypeClass(c.c, c, f, aOrig)
+      if matched != nil:
+        # TODO, make user type classes skipable too
         put(c, f, a)
+        result = isGeneric
+      else:
+        result = isNone
 
   of tyUserTypeClassInst:
     considerPreviousT:
-      result = matchUserTypeClass(c.c, c, f, aOrig)
-      if result == isGeneric:
-        var fWithResolvedParams = generateTypeInstance(c.c, c.bindings, c.call.info, f)
-        fWithResolvedParams.sons.add a
-        put(c.bindings, f, fWithResolvedParams)
+      var matched = matchUserTypeClass(c.c, c, f, aOrig)
+      if matched != nil:
+        matched.sons.add a
+        put(c.bindings, f, matched)
+        result = isGeneric
+      else:
+        result = isNone
 
   of tyCompositeTypeClass:
     considerPreviousT:
@@ -1408,7 +1419,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     arg = argSemantized
     argType = argType
     c = m.c
- 
+
   if inferTypeClassParam(c, f, argType):
     return argSemantized
 

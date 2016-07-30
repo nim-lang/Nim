@@ -912,11 +912,14 @@ const
   tyTypeParamsHolders = {tyGenericInst, tyUserTypeClassInst, tyCompositeTypeClass}
   tyDotOpTransparent = {tyVar, tyPtr, tyRef, tyAlias}
 
+
+
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
   let ty = if typ.kind in {tyGenericInst, tyUserTypeClassInst}: typ.skipGenericAlias
            else: (internalAssert(typ.kind == tyCompositeTypeClass);
                   typ.sons[1].skipGenericAlias)
+
   let tbody = ty.sons[0]
   for s in countup(0, tbody.len-2):
     let tParam = tbody.sons[s]
@@ -927,7 +930,29 @@ proc readTypeParameter(c: PContext, typ: PType,
       else:
         let foundTyp = makeTypeDesc(c, rawTyp)
         return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
-  #echo "came here: returned nil"
+
+  if ty.n != nil:
+    for statement in ty.n:
+      case statement.kind
+      of nkTypeSection:
+        for def in statement:
+          if def[0].sym.name.id == paramName.id:
+            # XXX: Instead of lifting the section type to a typedesc
+            # here, we could try doing it earlier in semTypeSection.
+            # This seems semantically correct and then we'll be able
+            # to return the section symbol directly here
+            let foundType = makeTypeDesc(c, def[2].typ)
+            return newSymNode(copySym(def[2].sym).linkTo(foundType), info)
+
+      of nkConstSection:
+        for def in statement:
+          if def[0].sym.name.id == paramName.id:
+            return def[2]
+
+      else:
+        discard
+
+  return nil
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   let s = getGenSym(c, sym)
