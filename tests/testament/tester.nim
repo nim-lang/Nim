@@ -389,7 +389,7 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
                  target: target, action: action, startTime: epochTime())
 
 const
-  # array of files disabled from compilation test of stdlib.
+  # array of modules disabled from compilation test of stdlib.
   disabledFiles = ["lib/pure/coro.nim"]
 
 include categories
