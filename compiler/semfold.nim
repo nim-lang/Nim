@@ -648,7 +648,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         if isDefined(s.name):
           result = newStrNodeT(lookupSymbol(s.name), n)
       else:
-        if sfFakeConst notin s.flags: result = copyTree(s.ast)
+        result = copyTree(s.ast)
     of {skProc, skMethod}:
       result = n
     of skType:
