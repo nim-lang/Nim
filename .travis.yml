@@ -10,12 +10,14 @@ addons:
     - libgc-dev
 before_script:
   - set -e
+  - wget http://nim-lang.org/download/fasm-1.71.39.tgz
+  - tar xvf fasm-1.71.39.tgz
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
   - sh build.sh
   - cd ..
   - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
-  - export PATH=$(pwd)/bin:$PATH
+  - export PATH=$(pwd)/bin:$(pwd)/fasm:$PATH
 script:
   - nim c koch
   - ./koch boot
