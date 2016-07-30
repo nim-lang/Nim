@@ -162,6 +162,10 @@ proc wrongRedefinition*(info: TLineInfo, s: string) =
   if gCmd != cmdInteractive:
     localError(info, errAttemptToRedefine, s)
 
+proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
+  if not c.currentScope.addUniqueSym(sym):
+    wrongRedefinition(info, sym.name.s)
+
 proc addDecl*(c: PContext, sym: PSym) =
   if not c.currentScope.addUniqueSym(sym):
     wrongRedefinition(sym.info, sym.name.s)
