@@ -15,7 +15,7 @@ iterator myParentDirs(p: string): string =
     if current.len == 0: break
     yield current
 
-template newPackageCache(): expr =
+template newPackageCache(): untyped =
   newStringTable(when FileSystemCaseSensitive:
                    modeCaseInsensitive
                  else:

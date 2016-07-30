@@ -129,10 +129,10 @@ var
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
 
-template compilationCachePresent*: expr =
+template compilationCachePresent*: untyped =
   {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
-template optPreserveOrigSource*: expr =
+template optPreserveOrigSource*: untyped =
   optEmbedOrigSrc in gGlobalOptions
 
 const
@@ -405,10 +405,10 @@ proc binaryStrSearch*(x: openArray[string], y: string): int =
       return mid
   result = - 1
 
-template nimdbg*: expr = c.module.fileIdx == gProjectMainIdx
-template cnimdbg*: expr = p.module.module.fileIdx == gProjectMainIdx
-template pnimdbg*: expr = p.lex.fileIdx == gProjectMainIdx
-template lnimdbg*: expr = L.fileIdx == gProjectMainIdx
+template nimdbg*: untyped = c.module.fileIdx == gProjectMainIdx
+template cnimdbg*: untyped = p.module.module.fileIdx == gProjectMainIdx
+template pnimdbg*: untyped = p.lex.fileIdx == gProjectMainIdx
+template lnimdbg*: untyped = L.fileIdx == gProjectMainIdx
 
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:

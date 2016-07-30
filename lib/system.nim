@@ -66,8 +66,10 @@ type
   `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
 
   `nil` {.magic: "Nil".}
-  expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
-  stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
+  expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
+                        ## **Deprecated** since version 0.15. Use ``untyped`` instead.
+  stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
+    ## **Deprecated** since version 0.15. Use ``typed`` instead.
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination

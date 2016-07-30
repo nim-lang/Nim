@@ -1502,7 +1502,7 @@ type
     lastWriteTime*: Time # Time file was last modified/written to.
     creationTime*: Time # Time file was created. Not supported on all systems!
 
-template rawToFormalFileInfo(rawInfo, formalInfo): expr =
+template rawToFormalFileInfo(rawInfo, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
@@ -1533,7 +1533,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
 
 
   else:
-    template checkAndIncludeMode(rawMode, formalMode: expr) =
+    template checkAndIncludeMode(rawMode, formalMode: untyped) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)

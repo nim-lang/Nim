@@ -539,12 +539,12 @@ not wrapped in another implicit array construction:
   takeV([123, 2, 1]) # takeV's T is "int", not "array of int"
 
 
-``varargs[expr]`` is treated specially: It matches a variable list of arguments
+``varargs[typed]`` is treated specially: It matches a variable list of arguments
 of arbitrary type but *always* constructs an implicit array. This is required
 so that the builtin ``echo`` proc does what is expected:
 
 .. code-block:: nim
-  proc echo*(x: varargs[expr, `$`]) {...}
+  proc echo*(x: varargs[typed, `$`]) {...}
 
   echo @[1, 2, 3]
   # prints "@[1, 2, 3]" and not "123"
@@ -1082,7 +1082,7 @@ But it seems all this boilerplate code needs to be repeated for the ``Euro``
 currency. This can be solved with templates_.
 
 .. code-block:: nim
-  template additive(typ: typedesc): stmt =
+  template additive(typ: typedesc) =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
 
@@ -1090,18 +1090,18 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template multiplicative(typ, base: typedesc): stmt =
+  template multiplicative(typ, base: typedesc) =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template comparable(typ: typedesc): stmt =
+  template comparable(typ: typedesc) =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
 
-  template defineCurrency(typ, base: expr): stmt =
+  template defineCurrency(typ, base: untyped) =
     type
       typ* = distinct base
     additive(typ)

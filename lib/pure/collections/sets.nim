@@ -256,7 +256,7 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
-template doWhile(a: expr, b: stmt): stmt =
+template doWhile(a, b) =
   while true:
     b
     if not a: break
@@ -371,7 +371,7 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] =
   result = initSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
-template dollarImpl(): stmt {.dirty.} =
+template dollarImpl() {.dirty.} =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")

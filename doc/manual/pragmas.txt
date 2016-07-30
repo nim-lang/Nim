@@ -213,7 +213,7 @@ statement as seen in stack backtraces:
 
 .. code-block:: nim
 
-  template myassert*(cond: expr, msg = "") =
+  template myassert*(cond: untyped, msg = "") =
     if not cond:
       # change run-time line information of the 'raise' statement:
       {.line: InstantiationInfo().}:
