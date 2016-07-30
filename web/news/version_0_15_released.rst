@@ -26,7 +26,7 @@ Changes affecting backwards compatibility
 
     Warning: a [b] will be parsed as command syntax; spacing is deprecated
 
-  See `https://github.com/nim-lang/Nim/issues/3898`_ for the relevant
+  See `<https://github.com/nim-lang/Nim/issues/3898>`_ for the relevant
   discussion.
 - Overloading the special operators ``.``, ``.()``, ``.=``, ``()`` now
   should be enabled via ``{.experimental.}``.
@@ -52,6 +52,8 @@ that have tuple name:
   var rocketaims = initOrderedTable[string, Table[tuple[k: int8, v: int8], int64] ]()
   rocketaims["hi"] = {(k: -1.int8, v: 0.int8): 0.int64}.toTable()
 
+- Now when you compile console application for Windows, console output
+  encoding is automatically set to UTF-8.
 
 Library Additions
 -----------------
