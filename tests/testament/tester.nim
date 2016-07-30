@@ -390,7 +390,7 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
 
 const
   # array of modules disabled from compilation test of stdlib.
-  disabledFiles = ["lib/pure/coro.nim"]
+  disabledFiles = ["-"]
 
 include categories
 
