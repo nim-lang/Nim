@@ -46,7 +46,7 @@ proc implicitGeneric(s: var Stack): auto =
   static:
     echo "IMPLICIT INFERRED ", s.T.name, " ", Stack.T.name
     echo "IMPLICIT VALUE TYPE ", s.ValueType.name, " ", Stack.ValueType.name
-    echo "IMPLICIT VALUE TYPE NAME ", s.ValueTypeName, " ", s.ValueTypeName
+    echo "IMPLICIT VALUE TYPE NAME ", s.ValueTypeName, " ", Stack.ValueTypeName
 
   return s.pop()
 

@@ -645,7 +645,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     put(m.bindings, p[1], p[0].typ)
 
   if ff.kind == tyUserTypeClassInst:
-    result = generateTypeInstance(c, m.bindings, m.call.info, ff)
+    result = generateTypeInstance(c, m.bindings, ff.sym.info, ff)
   else:
     result = copyType(ff, ff.owner, true)
 
@@ -1403,13 +1403,34 @@ proc skipToInferrableParam(tt: PType): PType =
 
   return nil
 
-proc inferTypeClassParam*(c: PContext, f, a: PType): bool =
+proc inferTypeClassParam*(m: var TCandidate, f, a: PType): bool =
+  var c = m.c
   if c.inTypeClass == 0: return false
 
   var inferrableType = a.skipToInferrableParam
   if inferrableType == nil: return false
 
-  inferrableType.assignType f
+  var inferAs = f
+  
+  case f.kind
+  of tyGenericParam:
+    var prev  = PType(idTableGet(m.bindings, f))
+    if prev != nil: inferAs = prev
+  
+  of tyFromExpr:
+    let computedType = tryResolvingStaticExpr(m, f.n).typ
+    case computedType.kind
+    of tyTypeDesc:
+      inferAs = computedType.base
+    of tyStatic:
+      inferAs = computedType
+    else:
+      localError(f.n.info, errTypeExpected)
+  
+  else:
+    discard
+    
+  inferrableType.assignType inferAs
   return true
 
 proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
@@ -1420,7 +1441,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
     argType = argType
     c = m.c
 
-  if inferTypeClassParam(c, f, argType):
+  if inferTypeClassParam(m, f, argType):
     return argSemantized
 
   if tfHasStatic in fMaybeStatic.flags:
@@ -1448,9 +1469,18 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         arg.typ.n = evaluated
         argType = arg.typ
 
-  var a = argType
-  var r = typeRel(m, f, a)
+  var
+    useTypeLoweringRuleInTypeClass = c.inTypeClass > 0 and
+                                     not m.isNoCall and
+                                     f.kind != tyTypeDesc
 
+    a = if useTypeLoweringRuleInTypeClass:
+          argType.skipTypes({tyTypeDesc, tyFieldAccessor})
+        else:
+          argType
+    
+    r = typeRel(m, f, a)
+  
   if r != isNone and m.calleeSym != nil and
      m.calleeSym.kind in {skMacro, skTemplate}:
     # XXX: duplicating this is ugly, but we cannot (!) move this

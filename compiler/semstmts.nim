@@ -1631,8 +1631,12 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: discard
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: discard
-  if result.len == 1 and result.sons[0].kind != nkDefer:
+  
+  if result.len == 1 and
+     c.inTypeClass == 0 and # concept bodies should be preserved as a stmt list
+     result.sons[0].kind != nkDefer:
     result = result.sons[0]
+
   when defined(nimfix):
     if result.kind == nkCommentStmt and not result.comment.isNil and
         not (result.comment[0] == '#' and result.comment[1] == '#'):
