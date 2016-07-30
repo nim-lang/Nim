@@ -34,6 +34,23 @@ Changes affecting backwards compatibility
   Instead use ``untyped`` parameters.
 - The metatype ``expr`` is deprecated. Use ``untyped`` instead.
 - The metatype ``stmt`` is deprecated. Use ``typed`` instead.
+- The compiler is now more picky when it comes to ``tuple`` types. The
+  following code used to compile, now it's rejected:
+
+.. code-block:: nim
+
+  import tables
+  var rocketaims = initOrderedTable[string, Table[tuple[k: int8, v: int8], int64] ]()
+  rocketaims["hi"] = {(-1.int8, 0.int8): 0.int64}.toTable()
+
+Instead be consistent in your tuple usage and use tuple names for tuples
+that have tuple name:
+
+.. code-block:: nim
+
+  import tables
+  var rocketaims = initOrderedTable[string, Table[tuple[k: int8, v: int8], int64] ]()
+  rocketaims["hi"] = {(k: -1.int8, v: 0.int8): 0.int64}.toTable()
 
 
 Library Additions
