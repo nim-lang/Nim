@@ -271,7 +271,6 @@ type
   TSymFlags* = set[TSymFlag]
 
 const
-  sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
   sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
   sfNoInit* = sfMainModule       # don't generate code to init the variable
 

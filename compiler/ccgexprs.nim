@@ -2003,10 +2003,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         internalError(n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
-      if sfFakeConst in sym.flags:
-        if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
-        putLocIntoDest(p, d, sym.loc)
-      elif isSimpleConst(sym.typ):
+      if isSimpleConst(sym.typ):
         putIntoDest(p, d, n.typ, genLiteral(p, sym.ast, sym.typ), OnStatic)
       else:
         genComplexConst(p, sym, d)
