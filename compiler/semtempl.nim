@@ -632,7 +632,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     c.patterns.add(s)
 
 proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
-  template templToExpand(s: expr): expr =
+  template templToExpand(s: untyped): untyped =
     s.kind == skTemplate and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
   proc newParam(c: var TemplCtx, n: PNode, s: PSym): PNode =

@@ -113,7 +113,7 @@ proc genMergeInfo*(m: BModule): Rope =
   s.add("*/")
   result = s.rope
 
-template `^`(pos: int): expr = L.buf[pos]
+template `^`(pos: int): untyped = L.buf[pos]
 
 proc skipWhite(L: var TBaseLexer) =
   var pos = L.bufpos

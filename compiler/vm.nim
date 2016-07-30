@@ -115,7 +115,7 @@ template decodeBImm(k: untyped) {.dirty.} =
   let imm = instr.regC - byteExcess
   ensureKind(k)
 
-template decodeBx(k: expr) {.dirty.} =
+template decodeBx(k: untyped) {.dirty.} =
   let rbx = instr.regBx - wordExcess
   ensureKind(k)
 
@@ -162,7 +162,7 @@ proc moveConst(x: var TFullReg, y: TFullReg) =
 
 # this seems to be the best way to model the reference semantics
 # of system.NimNode:
-template asgnRef(x, y: expr) = moveConst(x, y)
+template asgnRef(x, y: untyped) = moveConst(x, y)
 
 proc copyValue(src: PNode): PNode =
   if src == nil or nfIsRef in src.flags:
@@ -233,7 +233,7 @@ proc regToNode(x: TFullReg): PNode =
   of rkRegisterAddr: result = regToNode(x.regAddr[])
   of rkNodeAddr: result = x.nodeAddr[]
 
-template getstr(a: expr): expr =
+template getstr(a: untyped): untyped =
   (if a.kind == rkNode: a.node.strVal else: $chr(int(a.intVal)))
 
 proc pushSafePoint(f: PStackFrame; pc: int) =

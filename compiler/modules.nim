@@ -38,7 +38,7 @@ proc getModule*(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
     result = gCompiledModules[fileIdx]
 
-template hash(x: PSym): expr =
+template hash(x: PSym): untyped =
   gMemCacheData[x.position].hash
 
 proc hashChanged(fileIdx: int32): bool =

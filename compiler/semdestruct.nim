@@ -87,7 +87,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
     result = nil
 
 proc destroyFieldOrFields(c: PContext, field: PNode, holder: PNode): PNode =
-  template maybeAddLine(e: expr): stmt =
+  template maybeAddLine(e) =
     let stmt = e
     if stmt != nil:
       if result == nil: result = newNode(nkStmtList)

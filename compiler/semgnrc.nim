@@ -47,10 +47,10 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   result = semGenericStmt(c, n, flags, ctx)
   closeScope(c)
 
-template macroToExpand(s: expr): expr =
+template macroToExpand(s): untyped =
   s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
-template macroToExpandSym(s: expr): expr =
+template macroToExpandSym(s): untyped =
   s.kind in {skMacro, skTemplate} and (s.typ.len == 1)
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,

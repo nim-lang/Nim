@@ -575,7 +575,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
         typ = ff.sons[i]
         param: PSym
 
-      template paramSym(kind): expr =
+      template paramSym(kind): untyped =
         newSym(kind, typeParamName, body.sym, body.sym.info)
 
       case typ.kind
@@ -1585,7 +1585,7 @@ proc incrIndexType(t: PType) =
   assert t.kind == tyArrayConstr
   inc t.sons[0].n.sons[1].intVal
 
-template isVarargsUntyped(x): expr =
+template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x.sons[0].kind == tyExpr and
     tfOldSchoolExprStmt notin x.sons[0].flags
 

@@ -138,7 +138,7 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
 proc isKeyword*(kind: TTokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
-template ones(n: expr): expr = ((1 shl n)-1) # for utf-8 conversion
+template ones(n): untyped = ((1 shl n)-1) # for utf-8 conversion
 
 proc isNimIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
@@ -893,10 +893,10 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       inc(indent)
 
     when defined(nimfix):
-      template doContinue(): expr =
+      template doContinue(): untyped =
         buf[pos] == '#' and (col == indent or lastBackslash > 0)
     else:
-      template doContinue(): expr =
+      template doContinue(): untyped =
         buf[pos] == '#' and buf[pos+1] == '#'
     if doContinue():
       tok.literal.add "\n"
@@ -942,9 +942,9 @@ proc skip(L: var TLexer, tok: var TToken) =
           break
       tok.strongSpaceA = 0
       when defined(nimfix):
-        template doBreak(): expr = buf[pos] > ' '
+        template doBreak(): untyped = buf[pos] > ' '
       else:
-        template doBreak(): expr =
+        template doBreak(): untyped =
           buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#')
       if doBreak():
         tok.indent = indent

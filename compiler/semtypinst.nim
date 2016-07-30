@@ -511,6 +511,6 @@ proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
   popInfoContext()
 
 template generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
-                               t: PType): expr =
+                               t: PType): untyped =
   generateTypeInstance(p, pt, arg.info, t)
 
