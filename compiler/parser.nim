@@ -1793,8 +1793,16 @@ proc parseObject(p: var TParser): PNode =
   addSon(result, parseObjectPart(p))
 
 proc parseTypeClassParam(p: var TParser): PNode =
-  if p.tok.tokType in {tkOut, tkVar}:
-    result = newNodeP(nkVarTy, p)
+  let modifier = case p.tok.tokType
+    of tkOut, tkVar: nkVarTy
+    of tkPtr: nkPtrTy
+    of tkRef: nkRefTy
+    of tkStatic: nkStaticTy
+    of tkType: nkTypeOfExpr
+    else: nkEmpty
+
+  if modifier != nkEmpty:
+    result = newNodeP(modifier, p)
     getTok(p)
     result.addSon(p.parseSymbol)
   else:

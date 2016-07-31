@@ -230,6 +230,17 @@ proc makePtrType*(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
   addSonSkipIntLit(result, baseType.assertNotNil)
 
+proc makeTypeWithModifier*(c: PContext,
+                           modifier: TTypeKind,
+                           baseType: PType): PType =
+  assert modifier in {tyVar, tyPtr, tyRef, tyStatic, tyTypeDesc}
+
+  if modifier in {tyVar, tyTypeDesc} and baseType.kind == modifier:
+    result = baseType
+  else:
+    result = newTypeS(modifier, c)
+    addSonSkipIntLit(result, baseType.assertNotNil)
+
 proc makeVarType*(c: PContext, baseType: PType): PType =
   if baseType.kind == tyVar:
     result = baseType
@@ -238,8 +249,11 @@ proc makeVarType*(c: PContext, baseType: PType): PType =
     addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  result = newTypeS(tyTypeDesc, c)
-  result.addSonSkipIntLit(typ.assertNotNil)
+  if typ.kind == tyTypeDesc:
+    result = typ
+  else:
+    result = newTypeS(tyTypeDesc, c)
+    result.addSonSkipIntLit(typ.assertNotNil)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)

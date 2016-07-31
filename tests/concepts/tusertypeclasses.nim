@@ -2,15 +2,12 @@ discard """
   output: '''Sortable
 Sortable
 Container
-true
-true
-false
-false
-false
 '''
 """
 
 import typetraits
+
+template reject(expr) = assert(not compiles(x))
 
 type
   TObj = object
@@ -36,33 +33,52 @@ foo(@[TObj(x: 10), TObj(x: 20)])
 
 proc intval(x: int): int = 10
 
-# check real and virtual fields
 type
-  TFoo = concept T
-    T.x
-    y(T)
+  TFoo = concept o, type T, ref r, var v, ptr p, static s
+    o.x
+    y(o) is int
+
+    var str: string
+    var intref: ref int
+
+    refproc(ref T, ref int)
+    varproc(var T)
+    ptrproc(ptr T, str)
+
+    staticproc(static[T])
+
+    typeproc o.type
+    o.type.typeproc
+
+    refproc(r, intref)
+    varproc(v)
+    p.ptrproc(string)
+    staticproc s
+    typeproc(T)
+
+    const TypeName = T.name
+    type MappedType = type(T.y)
+
     intval T.y
-    let z = intval(T.y)
+    let z = intval(o.y)
+
+    static:
+      assert T.name.len == 4
+      reject o.name
+      reject o.typeproc
+      reject staticproc(o)
+      reject o.varproc
+      reject T.staticproc
+      reject p.staticproc
 
 proc y(x: TObj): int = 10
 
+proc varproc(x: var TObj) = discard
+proc refproc(x: ref TObj, y: ref int) = discard
+proc ptrproc(x: ptr TObj, y: string) = discard
+proc staticproc(x: static[TObj]) = discard
+proc typeproc(t: type TObj) = discard
+
 proc testFoo(x: TFoo) = discard
 testFoo(TObj(x: 10))
-
-type
-  Matrix[Rows, Cols: static[int]; T] = concept M
-    M.M == Rows
-    M.N == Cols
-    M.T is T
-
-  MyMatrix[M, N: static[int]; T] = object
-    data: array[M*N, T]
-
-var x: MyMatrix[3, 3, int]
-
-echo x is Matrix
-echo x is Matrix[3, 3, int]
-echo x is Matrix[3, 3, float]
-echo x is Matrix[4, 3, int]
-echo x is Matrix[3, 4, int]
 

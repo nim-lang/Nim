@@ -135,7 +135,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
-    var base = semTypeNode(c, n.lastSon, nil)
+    var base = semTypeNode(c, n.lastSon, nil).skipTypes({tyTypeDesc})
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     # check every except the last is an object:
@@ -155,7 +155,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 1:
     result = newOrPrevType(tyVar, prev, c)
-    var base = semTypeNode(c, n.sons[0], nil)
+    var base = semTypeNode(c, n.sons[0], nil).skipTypes({tyTypeDesc})
     if base.kind == tyVar:
       localError(n.info, errVarVarTypeNotAllowed)
       base = base.sons[0]
@@ -1404,7 +1404,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy:
     result = newOrPrevType(tyStatic, prev, c)
-    var base = semTypeNode(c, n.sons[0], nil)
+    var base = semTypeNode(c, n.sons[0], nil).skipTypes({tyTypeDesc})
     result.rawAddSon(base)
     result.flags.incl tfHasStatic
   of nkIteratorTy:

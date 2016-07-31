@@ -622,17 +622,27 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       dummyName: PNode
       dummyType: PType
 
-    if param.kind == nkVarTy:
+    let modifier = case param.kind
+      of nkVarTy: tyVar
+      of nkRefTy: tyRef
+      of nkPtrTy: tyPtr
+      of nkStaticTy: tyStatic
+      of nkTypeOfExpr: tyTypeDesc
+      else: tyNone
+
+    if modifier != tyNone:
       dummyName = param[0]
-      dummyType = if a.kind != tyVar: makeVarType(c, a) else: a
+      dummyType = c.makeTypeWithModifier(modifier, a)
     else:
       dummyName = param
       dummyType = a
 
     internalAssert dummyName.kind == nkIdent
-    var dummyParam = newSym(skVar, dummyName.ident, body.sym, body.sym.info)
+    var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
+                            dummyName.ident, body.sym, body.sym.info)
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
+
     #echo "B ", dummyName.ident.s, " ", typeToString(dummyType), " ", dummyparam.kind
 
   var checkedBody = c.semTryExpr(c, body.n[3].copyTree)
@@ -1411,12 +1421,12 @@ proc inferTypeClassParam*(m: var TCandidate, f, a: PType): bool =
   if inferrableType == nil: return false
 
   var inferAs = f
-  
+
   case f.kind
   of tyGenericParam:
     var prev  = PType(idTableGet(m.bindings, f))
     if prev != nil: inferAs = prev
-  
+
   of tyFromExpr:
     let computedType = tryResolvingStaticExpr(m, f.n).typ
     case computedType.kind
@@ -1426,10 +1436,10 @@ proc inferTypeClassParam*(m: var TCandidate, f, a: PType): bool =
       inferAs = computedType
     else:
       localError(f.n.info, errTypeExpected)
-  
+
   else:
     discard
-    
+
   inferrableType.assignType inferAs
   return true
 
@@ -1470,7 +1480,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         argType = arg.typ
 
   var
-    useTypeLoweringRuleInTypeClass = c.inTypeClass > 0 and
+    useTypeLoweringRuleInTypeClass = argType != nil and
+                                     c.inTypeClass > 0 and
                                      not m.isNoCall and
                                      f.kind != tyTypeDesc
 
@@ -1478,9 +1489,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
           argType.skipTypes({tyTypeDesc, tyFieldAccessor})
         else:
           argType
-    
+
     r = typeRel(m, f, a)
-  
+
   if r != isNone and m.calleeSym != nil and
      m.calleeSym.kind in {skMacro, skTemplate}:
     # XXX: duplicating this is ugly, but we cannot (!) move this
