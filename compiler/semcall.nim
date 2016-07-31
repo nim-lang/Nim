@@ -396,12 +396,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
     let arg = n[i].typ
     let tm = typeRel(m, formal, arg, true)
-    if tm in {isNone, isConvertible}:
-      if formal.sonsLen > 0 and formal.sons[0].kind != tyNone:
-        typeMismatch(n, formal.sons[0], arg)
-      else:
-        typeMismatch(n, formal, arg)
-      break
+    if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   markUsed(n.info, s)
   styleCheckUse(n.info, s)
@@ -422,6 +417,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
          "; got " & $(n.len-1) & " type(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
+    if result == nil: result = explicitGenericInstError(n)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
@@ -434,11 +430,12 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # it suffices that the candidate has the proper number of generic
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
-          result.add(explicitGenericSym(c, n, candidate))
+          let x = explicitGenericSym(c, n, candidate)
+          if x != nil: result.add(x)
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]
-    # candidateCount != 1: return explicitGenericInstError(n)
+    elif result.len == 0: result = explicitGenericInstError(n)
   else:
     result = explicitGenericInstError(n)
 
