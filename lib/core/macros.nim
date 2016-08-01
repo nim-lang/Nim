@@ -508,7 +508,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
 
   add(result, ")")
 
-macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
+macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
@@ -516,17 +516,17 @@ macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 
-macro dumpLisp*(s: stmt): stmt {.immediate.} = echo s.lispRepr
+macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toLisp` function. Printing is done *at compile time*.
   ##
   ## See `dumpTree`.
 
-macro dumpTreeImm*(s: stmt): stmt {.immediate, deprecated.} = echo s.treeRepr
-  ## The ``immediate`` version of `dumpTree`.
+macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
+  ## Deprecated.
 
-macro dumpLispImm*(s: stmt): stmt {.immediate, deprecated.} = echo s.lispRepr
-  ## The ``immediate`` version of `dumpLisp`.
+macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
+  ## Deprecated.
 
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
@@ -701,7 +701,7 @@ proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
     someProc.pragma = pragmaNode
   pragmaNode.add(pragma)
 
-template badNodeKind(k; f): stmt{.immediate.} =
+template badNodeKind(k, f) =
   assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
 
 proc body*(someProc: NimNode): NimNode {.compileTime.} =
@@ -758,8 +758,7 @@ iterator children*(n: NimNode): NimNode {.inline.} =
   for i in 0 ..< n.len:
     yield n[i]
 
-template findChild*(n: NimNode; cond: expr): NimNode {.
-  immediate, dirty.} =
+template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ## Find the first child node matching condition (or nil).
   ##
   ## .. code-block:: nim

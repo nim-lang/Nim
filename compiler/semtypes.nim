@@ -754,18 +754,18 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     addDecl(c, s)
 
   # XXX: There are codegen errors if this is turned into a nested proc
-  template liftingWalk(typ: PType, anonFlag = false): expr =
+  template liftingWalk(typ: PType, anonFlag = false): untyped =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
   #proc liftingWalk(paramType: PType, anon = false): PType =
 
   var paramTypId = if not anon and paramType.sym != nil: paramType.sym.name
                    else: nil
 
-  template maybeLift(typ: PType): expr =
+  template maybeLift(typ: PType): untyped =
     let lifted = liftingWalk(typ)
     (if lifted != nil: lifted else: typ)
 
-  template addImplicitGeneric(e: expr): expr =
+  template addImplicitGeneric(e): untyped =
     addImplicitGenericImpl(e, paramTypId)
 
   case paramType.kind:

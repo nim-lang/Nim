@@ -1000,11 +1000,11 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty() =
     if line.len == 0:
       line.string.add("\c\L")
 
-  template raiseSockError(): stmt {.dirty, immediate.} =
+  template raiseSockError() {.dirty.} =
     let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError): setLen(line.string, 0); return
     socket.socketError(n, lastError = lastError)

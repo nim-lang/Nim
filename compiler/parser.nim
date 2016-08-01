@@ -98,7 +98,7 @@ proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) =
   ## Produce and emit a parser message to output about the token `tok`
   parMessage(p, msg, prettyTok(tok))
 
-template withInd(p: expr, body: stmt) {.immediate.} =
+template withInd(p, body: untyped) =
   let oldInd = p.currInd
   p.currInd = p.tok.indent
   body
@@ -202,7 +202,7 @@ proc isRightAssociative(tok: TToken): bool {.inline.} =
 
 proc getPrecedence(tok: TToken, strongSpaces: bool): int =
   ## Calculates the precedence of the given token.
-  template considerStrongSpaces(x): expr =
+  template considerStrongSpaces(x): untyped =
     x + (if strongSpaces: 100 - tok.strongSpaceA.int*10 else: 0)
 
   case tok.tokType
@@ -214,7 +214,7 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
     if L > 1 and tok.ident.s[L-1] == '>' and
       tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
 
-    template considerAsgn(value: expr) =
+    template considerAsgn(value: untyped) =
       result = if tok.ident.s[L-1] == '=': 1 else: value
 
     case relevantChar

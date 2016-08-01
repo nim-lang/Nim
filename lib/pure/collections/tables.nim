@@ -113,8 +113,8 @@ type
 
 {.deprecated: [TTable: Table, PTable: TableRef].}
 
-template maxHash(t): expr {.immediate.} = high(t.data)
-template dataLen(t): expr = len(t.data)
+template maxHash(t): untyped = high(t.data)
+template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
@@ -135,7 +135,7 @@ proc len*[A, B](t: Table[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template get(t, key): untyped {.immediate.} =
+template get(t, key): untyped =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   mixin rawGet
@@ -148,7 +148,7 @@ template get(t, key): untyped {.immediate.} =
     else:
       raise newException(KeyError, "key not found")
 
-template getOrDefaultImpl(t, key): untyped {.immediate.} =
+template getOrDefaultImpl(t, key): untyped =
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -311,7 +311,7 @@ proc toTable*[A, B](pairs: openArray[(A,
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
-template dollarImpl(): stmt {.dirty.} =
+template dollarImpl(): untyped {.dirty.} =
   if t.len == 0:
     result = "{:}"
   else:
@@ -463,7 +463,7 @@ proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) =
   t.first = -1
   t.last = -1
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -649,7 +649,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -824,7 +824,7 @@ proc rawGet[A](t: CountTable[A], key: A): int =
     h = nextTry(h, high(t.data))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template ctget(t, key: untyped): untyped {.immediate.} =
+template ctget(t, key: untyped): untyped =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:

@@ -399,6 +399,59 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   var hostUrl = if proxy == nil: r else: parseUri(url)
   var headers = substr(httpMethod, len("http"))
   # TODO: Use generateHeaders further down once it supports proxies.
+
+  var s = newSocket()
+  defer: s.close()
+  if s == nil: raiseOSError(osLastError())
+  var port = net.Port(80)
+  if r.scheme == "https":
+    when defined(ssl):
+      sslContext.wrapSocket(s)
+      port = net.Port(443)
+    else:
+      raise newException(HttpRequestError,
+                "SSL support is not available. Cannot connect over SSL.")
+  if r.port != "":
+    port = net.Port(r.port.parseInt)
+
+
+  # get the socket ready. If we are connecting through a proxy to SSL,
+  # send the appropiate CONNECT header. If not, simply connect to the proper
+  # host (which may still be the proxy, for normal HTTP)
+  if proxy != nil and hostUrl.scheme == "https":
+    when defined(ssl):
+      var connectHeaders = "CONNECT "
+      let targetPort = if hostUrl.port == "": 443 else: hostUrl.port.parseInt
+      connectHeaders.add(hostUrl.hostname)
+      connectHeaders.add(":" & $targetPort)
+      connectHeaders.add(" HTTP/1.1\c\L")
+      connectHeaders.add("Host: " & hostUrl.hostname & ":" & $targetPort & "\c\L")
+      if proxy.auth != "":
+        let auth = base64.encode(proxy.auth, newline = "")
+        connectHeaders.add("Proxy-Authorization: basic " & auth & "\c\L")
+      connectHeaders.add("\c\L")
+      if timeout == -1:
+        s.connect(r.hostname, port)
+      else:
+        s.connect(r.hostname, port, timeout)
+
+      s.send(connectHeaders)
+      let connectResult = parseResponse(s, false, timeout)
+      if not connectResult.status.startsWith("200"):
+        raise newException(HttpRequestError,
+                           "The proxy server rejected a CONNECT request, " &
+                           "so a secure connection could not be established.")
+      sslContext.wrapConnectedSocket(s, handshakeAsClient)
+    else:
+      raise newException(HttpRequestError, "SSL support not available. Cannot connect via proxy over SSL")
+  else:
+    if timeout == -1:
+      s.connect(r.hostname, port)
+    else:
+      s.connect(r.hostname, port, timeout)
+
+
+  # now that the socket is ready, prepare the headers
   if proxy == nil:
     headers.add ' '
     if r.path[0] != '/': headers.add '/'
@@ -422,29 +475,13 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
     add(headers, "Proxy-Authorization: basic " & auth & "\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
-  var s = newSocket()
-  if s == nil: raiseOSError(osLastError())
-  var port = net.Port(80)
-  if r.scheme == "https":
-    when defined(ssl):
-      sslContext.wrapSocket(s)
-      port = net.Port(443)
-    else:
-      raise newException(HttpRequestError,
-                "SSL support is not available. Cannot connect over SSL.")
-  if r.port != "":
-    port = net.Port(r.port.parseInt)
 
-  if timeout == -1:
-    s.connect(r.hostname, port)
-  else:
-    s.connect(r.hostname, port, timeout)
+  # headers are ready. send them, await the result, and close the socket.
   s.send(headers)
   if body != "":
     s.send(body)
 
   result = parseResponse(s, httpMethod != "httpHEAD", timeout)
-  s.close()
 
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,

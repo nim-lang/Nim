@@ -51,7 +51,7 @@ const
 
 when defined(windows):
   type
-    SysThread = Handle
+    SysThread* = Handle
     WinThreadProc = proc (x: pointer): int32 {.stdcall.}
   {.deprecated: [TSysThread: SysThread, TWinThreadProc: WinThreadProc].}
 
@@ -123,7 +123,7 @@ else:
     type Time = int
 
   type
-    SysThread {.importc: "pthread_t", header: "<sys/types.h>",
+    SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
                  final, pure.} = object
     Pthread_attr {.importc: "pthread_attr_t",
                      header: "<sys/types.h>", final, pure.} = object
@@ -378,6 +378,10 @@ else:
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
   ## returns true if `t` is running.
   result = t.dataFn != nil
+
+proc handle*[TArg](t: Thread[TArg]): SysThread {.inline.} =
+  ## returns the thread handle of `t`.
+  result = t.sys
 
 when hostOS == "windows":
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =

@@ -92,34 +92,34 @@ when not defined(nimComputedGoto):
 
 proc myreset(n: var TFullReg) = reset(n)
 
-template ensureKind(k: expr) {.immediate, dirty.} =
+template ensureKind(k: untyped) {.dirty.} =
   if regs[ra].kind != k:
     myreset(regs[ra])
     regs[ra].kind = k
 
-template decodeB(k: expr) {.immediate, dirty.} =
+template decodeB(k: untyped) {.dirty.} =
   let rb = instr.regB
   ensureKind(k)
 
-template decodeBC(k: expr) {.immediate, dirty.} =
+template decodeBC(k: untyped) {.dirty.} =
   let rb = instr.regB
   let rc = instr.regC
   ensureKind(k)
 
-template declBC() {.immediate, dirty.} =
+template declBC() {.dirty.} =
   let rb = instr.regB
   let rc = instr.regC
 
-template decodeBImm(k: expr) {.immediate, dirty.} =
+template decodeBImm(k: untyped) {.dirty.} =
   let rb = instr.regB
   let imm = instr.regC - byteExcess
   ensureKind(k)
 
-template decodeBx(k: expr) {.immediate, dirty.} =
+template decodeBx(k: untyped) {.dirty.} =
   let rbx = instr.regBx - wordExcess
   ensureKind(k)
 
-template move(a, b: expr) {.immediate, dirty.} = system.shallowCopy(a, b)
+template move(a, b: untyped) {.dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
 proc createStrKeepNode(x: var TFullReg; keepNode=true) =
@@ -162,7 +162,7 @@ proc moveConst(x: var TFullReg, y: TFullReg) =
 
 # this seems to be the best way to model the reference semantics
 # of system.NimNode:
-template asgnRef(x, y: expr) = moveConst(x, y)
+template asgnRef(x, y: untyped) = moveConst(x, y)
 
 proc copyValue(src: PNode): PNode =
   if src == nil or nfIsRef in src.flags:
@@ -233,7 +233,7 @@ proc regToNode(x: TFullReg): PNode =
   of rkRegisterAddr: result = regToNode(x.regAddr[])
   of rkNodeAddr: result = x.nodeAddr[]
 
-template getstr(a: expr): expr =
+template getstr(a: untyped): untyped =
   (if a.kind == rkNode: a.node.strVal else: $chr(int(a.intVal)))
 
 proc pushSafePoint(f: PStackFrame; pc: int) =
@@ -1573,7 +1573,7 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
 var evalMacroCounter: int
 
 proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
-  # XXX GlobalError() is ugly here, but I don't know a better solution for now
+  # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
   if evalMacroCounter > 100:
     globalError(n.info, errTemplateInstantiationTooNested)
@@ -1603,7 +1603,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
 
   # return value:
   tos.slots[0].kind = rkNode
-  tos.slots[0].node = newNodeIT(nkEmpty, n.info, sym.typ.sons[0])
+  tos.slots[0].node = newNodeI(nkEmpty, n.info)
 
   # setup parameters:
   for i in 1.. <sym.typ.len:
@@ -1623,4 +1623,3 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
   if cyclicTree(result): globalError(n.info, errCyclicTree)
   dec(evalMacroCounter)
   c.callsite = nil
-  #debug result

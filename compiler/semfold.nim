@@ -143,7 +143,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
   const ordIntLit = {nkIntLit..nkUInt64Lit}
   result = n.typ
 
-  template commutativeOp(opr: expr) {.immediate.} =
+  template commutativeOp(opr: untyped) =
     let a = n.sons[1]
     let b = n.sons[2]
     if isIntRangeOrLit(a.typ) and isIntRangeOrLit(b.typ):
@@ -151,7 +151,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
                          opr(pickMinInt(a), pickMinInt(b)),
                          opr(pickMaxInt(a), pickMaxInt(b)))
 
-  template binaryOp(opr: expr) {.immediate.} =
+  template binaryOp(opr: untyped) =
     let a = n.sons[1]
     let b = n.sons[2]
     if isIntRange(a.typ) and b.kind in {nkIntLit..nkUInt64Lit}:
@@ -648,7 +648,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         if isDefined(s.name):
           result = newStrNodeT(lookupSymbol(s.name), n)
       else:
-        if sfFakeConst notin s.flags: result = copyTree(s.ast)
+        result = copyTree(s.ast)
     of {skProc, skMethod}:
       result = n
     of skType:

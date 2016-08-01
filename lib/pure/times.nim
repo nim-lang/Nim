@@ -998,21 +998,14 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     info.monthday = value[j..j+1].parseInt()
     j += 2
   of "ddd":
-    case value[j..j+2].toLower()
-    of "sun":
-      info.weekday = dSun
-    of "mon":
-      info.weekday = dMon
-    of "tue":
-      info.weekday = dTue
-    of "wed":
-      info.weekday = dWed
-    of "thu":
-      info.weekday = dThu
-    of "fri":
-      info.weekday = dFri
-    of "sat":
-      info.weekday = dSat
+    case value[j..j+2].toLowerAscii()
+    of "sun": info.weekday = dSun
+    of "mon": info.weekday = dMon
+    of "tue": info.weekday = dTue
+    of "wed": info.weekday = dWed
+    of "thu": info.weekday = dThu
+    of "fri": info.weekday = dFri
+    of "sat": info.weekday = dSat
     else:
       raise newException(ValueError,
         "Couldn't parse day of week (ddd), got: " & value[j..j+2])
@@ -1066,31 +1059,19 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 2
     info.month = Month(month-1)
   of "MMM":
-    case value[j..j+2].toLower():
-    of "jan":
-      info.month =  mJan
-    of "feb":
-      info.month =  mFeb
-    of "mar":
-      info.month =  mMar
-    of "apr":
-      info.month =  mApr
-    of "may":
-      info.month =  mMay
-    of "jun":
-      info.month =  mJun
-    of "jul":
-      info.month =  mJul
-    of "aug":
-      info.month =  mAug
-    of "sep":
-      info.month =  mSep
-    of "oct":
-      info.month =  mOct
-    of "nov":
-      info.month =  mNov
-    of "dec":
-      info.month =  mDec
+    case value[j..j+2].toLowerAscii():
+    of "jan": info.month =  mJan
+    of "feb": info.month =  mFeb
+    of "mar": info.month =  mMar
+    of "apr": info.month =  mApr
+    of "may": info.month =  mMay
+    of "jun": info.month =  mJun
+    of "jul": info.month =  mJul
+    of "aug": info.month =  mAug
+    of "sep": info.month =  mSep
+    of "oct": info.month =  mOct
+    of "nov": info.month =  mNov
+    of "dec": info.month =  mDec
     else:
       raise newException(ValueError,
         "Couldn't parse month (MMM), got: " & value)
@@ -1187,7 +1168,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
         "Couldn't parse timezone offset (zzz), got: " & value[j])
     j += 6
   of "ZZZ":
-    info.tzname = value[j..j+2].toUpper()
+    info.tzname = value[j..j+2].toUpperAscii()
     j += 3
   else:
     # Ignore the token and move forward in the value string by the same length

@@ -191,10 +191,6 @@ proc semConv(c: PContext, n: PNode): PNode =
     case status
     of convOK:
       # handle SomeProcType(SomeGenericProc)
-      # XXX: This needs fixing. checkConvertible uses typeRel internally, but
-      # doesn't bother to perform the work done in paramTypeMatchAux/fitNode
-      # so we are redoing the typeRel work here. Why does semConv exist as a
-      # separate proc from fitNode?
       if op.kind == nkSym and op.sym.isGenericRoutine:
         result.sons[1] = fitNode(c, result.typ, result.sons[1])
       elif op.kind == nkPar and targetType.kind == tyTuple:
@@ -202,8 +198,10 @@ proc semConv(c: PContext, n: PNode): PNode =
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
-      localError(n.info, errGenerated, msgKindToString(errIllegalConvFromXtoY)%
-        [op.typ.typeToString, result.typ.typeToString])
+      result = fitNode(c, result.typ, result.sons[1])
+      if result == nil:
+        localError(n.info, errGenerated, msgKindToString(errIllegalConvFromXtoY)%
+          [op.typ.typeToString, result.typ.typeToString])
   else:
     for i in countup(0, sonsLen(op) - 1):
       let it = op.sons[i]
@@ -1365,7 +1363,7 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
       n.sons[1] = takeImplicitAddr(c, ri)
       x.typ.flags.incl tfVarIsPtr
 
-template resultTypeIsInferrable(typ: PType): expr =
+template resultTypeIsInferrable(typ: PType): untyped =
   typ.isMetaType and typ.kind != tyTypeDesc
 
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
@@ -1890,7 +1888,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
   # the correct branch. Otherwise the AST will be passed through semStmt.
   result = nil
 
-  template setResult(e: expr) =
+  template setResult(e: untyped) =
     if semCheck: result = semExpr(c, e) # do not open a new scope!
     else: result = e
 

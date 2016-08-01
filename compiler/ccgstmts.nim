@@ -136,7 +136,7 @@ proc exprBlock(p: BProc, n: PNode, d: var TLoc) =
   expr(p, n, d)
   endBlock(p)
 
-template preserveBreakIdx(body: stmt): stmt {.immediate.} =
+template preserveBreakIdx(body: untyped): untyped =
   var oldBreakIdx = p.breakIdx
   body
   p.breakIdx = oldBreakIdx
@@ -269,8 +269,6 @@ proc genConstStmt(p: BProc, t: PNode) =
     if it.kind != nkConstDef: internalError(t.info, "genConstStmt")
     var c = it.sons[0].sym
     if c.typ.containsCompileTimeOnly: continue
-    if sfFakeConst in c.flags:
-      genSingleVar(p, it)
     elif c.typ.kind in ConstantDataTypes and lfNoDecl notin c.loc.flags and
         c.ast.len != 0:
       if not emitLazily(c): requestConstImpl(p, c)

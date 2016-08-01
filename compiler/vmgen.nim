@@ -231,7 +231,7 @@ proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
 proc freeTempRange(c: PCtx; start: TRegister, n: int) =
   for i in start .. start+n-1: c.freeTemp(TRegister(i))
 
-template withTemp(tmp, typ: expr, body: stmt) {.immediate, dirty.} =
+template withTemp(tmp, typ, body: untyped) {.dirty.} =
   var tmp = getTemp(c, typ)
   body
   c.freeTemp(tmp)
@@ -241,7 +241,7 @@ proc popBlock(c: PCtx; oldLen: int) =
     c.patch(f)
   c.prc.blocks.setLen(oldLen)
 
-template withBlock(labl: PSym; body: stmt) {.immediate, dirty.} =
+template withBlock(labl: PSym; body: untyped) {.dirty.} =
   var oldLen {.gensym.} = c.prc.blocks.len
   c.prc.blocks.add TBlock(label: labl, fixups: @[])
   body
@@ -1266,7 +1266,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
 proc isTemp(c: PCtx; dest: TDest): bool =
   result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown
 
-template needsAdditionalCopy(n): expr =
+template needsAdditionalCopy(n): untyped =
   not c.isTemp(dest) and not fitsRegister(n.typ)
 
 proc skipDeref(n: PNode): PNode =
@@ -1404,7 +1404,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       # see tests/t99bott for an example that triggers it:
       cannotEval(n)
 
-template needsRegLoad(): expr =
+template needsRegLoad(): untyped =
   gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar}))
 
 proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;

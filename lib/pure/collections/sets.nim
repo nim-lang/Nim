@@ -256,7 +256,7 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
-template doWhile(a: expr, b: stmt): stmt =
+template doWhile(a, b) =
   while true:
     b
     if not a: break
@@ -286,7 +286,7 @@ proc excl*[A](s: var HashSet[A], key: A) =
       var r = j         # though may be adaptable to other simple sequences.
       s.data[i].hcode = 0              # mark current EMPTY
       s.data[i].key = default(type(s.data[i].key))
-      doWhile ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
+      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
         i = (i + 1) and msk            # increment mod table size
         if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
           return
@@ -371,7 +371,7 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] =
   result = initSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
-template dollarImpl(): stmt {.dirty.} =
+template dollarImpl() {.dirty.} =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
@@ -615,7 +615,7 @@ proc card*[A](s: OrderedSet[A]): int {.inline.} =
   ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
   result = s.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
   var h = s.first
   while h >= 0:
     var nxt = s.data[h].next

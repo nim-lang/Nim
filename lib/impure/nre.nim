@@ -274,7 +274,7 @@ proc `[]`*(pattern: Captures, name: string): string =
   let pattern = RegexMatch(pattern)
   return pattern.captures[pattern.pattern.captureNameToId.fget(name)]
 
-template toTableImpl(cond: bool): stmt {.immediate, dirty.} =
+template toTableImpl(cond: untyped) {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
     let nextVal = pattern[key]
     if cond:
@@ -291,7 +291,7 @@ proc toTable*(pattern: CaptureBounds, default = none(Slice[int])):
   result = initTable[string, Option[Slice[int]]]()
   toTableImpl(nextVal.isNone)
 
-template itemsImpl(cond: bool): stmt {.immediate, dirty.} =
+template itemsImpl(cond: untyped) {.dirty.} =
   for i in 0 .. <RegexMatch(pattern).pattern.captureCount:
     let nextVal = pattern[i]
     # done in this roundabout way to avoid multiple yields (potential code
@@ -625,7 +625,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
     result.add(str.substr(bounds.b + 1, str.high))
 
 template replaceImpl(str: string, pattern: Regex,
-                     replacement: expr): stmt {.immediate, dirty.} =
+                     replacement: untyped) {.dirty.} =
   # XXX seems very similar to split, maybe I can reduce code duplication
   # somehow?
   result = ""

@@ -129,7 +129,7 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
     if i - 1 >= start:
       add(result, substr(frmt, start, i - 1))
 
-template rfmt(m: BModule, fmt: string, args: varargs[Rope]): expr =
+template rfmt(m: BModule, fmt: string, args: varargs[Rope]): untyped =
   ropecg(m, fmt, args)
 
 proc appcg(m: BModule, c: var Rope, frmt: FormatStr,
@@ -215,7 +215,7 @@ proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)
 
-template compileToCpp(m: BModule): expr =
+template compileToCpp(m: BModule): untyped =
   gCmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
 
 include "ccgtypes.nim"

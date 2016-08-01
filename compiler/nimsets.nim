@@ -121,7 +121,7 @@ proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
       e = b
     inc(e)
 
-template nodeSetOp(a, b: PNode, op: expr) {.dirty.} =
+template nodeSetOp(a, b: PNode, op: untyped) {.dirty.} =
   var x, y: TBitSet
   toBitSet(a, x)
   toBitSet(b, y)

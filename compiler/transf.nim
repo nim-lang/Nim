@@ -204,14 +204,8 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
       if it.kind != nkConstDef: internalError(it.info, "transformConstSection")
       if it.sons[0].kind != nkSym:
         internalError(it.info, "transformConstSection")
-      if sfFakeConst in it[0].sym.flags:
-        var b = newNodeI(nkConstDef, it.info)
-        addSon(b, it[0])
-        addSon(b, ast.emptyNode)            # no type description
-        addSon(b, transform(c, it[2]).PNode)
-        result[i] = PTransNode(b)
-      else:
-        result[i] = PTransNode(it)
+
+      result[i] = PTransNode(it)
 
 proc hasContinue(n: PNode): bool =
   case n.kind

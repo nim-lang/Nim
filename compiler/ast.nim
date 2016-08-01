@@ -271,13 +271,14 @@ type
   TSymFlags* = set[TSymFlag]
 
 const
-  sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
   sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
   sfNoInit* = sfMainModule       # don't generate code to init the variable
 
   sfImmediate* = sfDeadCodeElim
     # macro or template is immediately expanded
     # without considering any possible overloads
+  sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
+    # in a generic context
 
   sfDirty* = sfPure
     # template is not hygienic (old styled template)
@@ -850,6 +851,7 @@ type
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
     assignment*: PSym         # overriden '=' operator
+    methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
@@ -988,12 +990,12 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
-template `-|`*(b, s: expr): expr =
+template `-|`*(b, s: untyped): untyped =
   (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
-template `{}`*(n: PNode, i: int): expr = n[i -| n]
-template `{}=`*(n: PNode, i: int, s: PNode): stmt =
+template `{}`*(n: PNode, i: int): untyped = n[i -| n]
+template `{}=`*(n: PNode, i: int, s: PNode) =
   n.sons[i -| n] = s
 
 when defined(useNodeIds):

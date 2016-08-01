@@ -575,7 +575,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
         typ = ff.sons[i]
         param: PSym
 
-      template paramSym(kind): expr =
+      template paramSym(kind): untyped =
         newSym(kind, typeParamName, body.sym, body.sym.info)
 
       case typ.kind
@@ -691,7 +691,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       put(c.bindings, f, bound)
     return res
 
-  template considerPreviousT(body: stmt) {.immediate.} =
+  template considerPreviousT(body: untyped) =
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil: body
     else: return typeRel(c, prev, a)
@@ -1585,13 +1585,13 @@ proc incrIndexType(t: PType) =
   assert t.kind == tyArrayConstr
   inc t.sons[0].n.sons[1].intVal
 
-template isVarargsUntyped(x): expr =
+template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x.sons[0].kind == tyExpr and
     tfOldSchoolExprStmt notin x.sons[0].flags
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =
-  template checkConstraint(n: expr) {.immediate, dirty.} =
+  template checkConstraint(n: untyped) {.dirty.} =
     if not formal.constraint.isNil:
       if matchNodeKinds(formal.constraint, n):
         # better match over other routines with no such restriction:
@@ -1796,16 +1796,19 @@ proc argtypeMatches*(c: PContext, f, a: PType): bool =
   result = res != nil
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
-                      op: TTypeAttachedOp): PSym {.procvar.} =
+                      op: TTypeAttachedOp; col: int): PSym {.procvar.} =
   var m: TCandidate
   initCandidate(c, m, dc.typ)
-  var f = dc.typ.sons[1]
+  if col >= dc.typ.len:
+    localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
+    return nil
+  var f = dc.typ.sons[col]
   if op == attachedDeepCopy:
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
     if f.kind == tyVar: f = f.lastSon
   if typeRel(m, f, t) == isNone:
-    localError(info, errGenerated, "cannot instantiate 'deepCopy'")
+    localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
   else:
     result = c.semGenerateInstance(c, dc, m.bindings, info)
     assert sfFromGeneric in result.flags
@@ -1813,7 +1816,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
 include suggest
 
 when not declared(tests):
-  template tests(s: stmt) {.immediate.} = discard
+  template tests(s: untyped) = discard
 
 tests:
   var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())

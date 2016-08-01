@@ -63,7 +63,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
     while true:
       aa = skipTypes(aa, {tyGenericInst})
       bb = skipTypes(bb, {tyGenericInst})
-      if (aa.kind == bb.kind) and (aa.kind in {tyVar, tyPtr, tyRef}):
+      if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef}:
         aa = aa.lastSon
         bb = bb.lastSon
       else:
@@ -187,7 +187,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
       var bb = skipTypes(b.typ.sons[col], skipPtrs)
       var d = inheritanceDiff(aa, bb)
-      if (d != high(int)):
+      if (d != high(int)) and d != 0:
         return d
 
 proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =

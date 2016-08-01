@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-template setX(k, field) {.immediate, dirty.} =
+template setX(k, field) {.dirty.} =
   var s: seq[TFullReg]
   move(s, cast[seq[TFullReg]](a.slots))
   if s[a.ra].kind != k:
@@ -48,7 +48,7 @@ proc setResult*(a: VmArgs; v: seq[string]) =
   for x in v: n.add newStrNode(nkStrLit, x)
   s[a.ra].node = n
 
-template getX(k, field) {.immediate, dirty.} =
+template getX(k, field) {.dirty.} =
   doAssert i < a.rc-1
   let s = cast[seq[TFullReg]](a.slots)
   doAssert s[i+a.rb+1].kind == k

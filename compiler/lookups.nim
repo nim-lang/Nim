@@ -162,6 +162,10 @@ proc wrongRedefinition*(info: TLineInfo, s: string) =
   if gCmd != cmdInteractive:
     localError(info, errAttemptToRedefine, s)
 
+proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
+  if not c.currentScope.addUniqueSym(sym):
+    wrongRedefinition(info, sym.name.s)
+
 proc addDecl*(c: PContext, sym: PSym) =
   if not c.currentScope.addUniqueSym(sym):
     wrongRedefinition(sym.info, sym.name.s)
@@ -213,14 +217,14 @@ when defined(nimfix):
     of 'a'..'z': result = getIdent(toLower(x.s[0]) & x.s.substr(1))
     else: result = x
 
-  template fixSpelling(n: PNode; ident: PIdent; op: expr) =
+  template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
     let alt = ident.altSpelling
     result = op(c, alt).skipAlias(n)
     if result != nil:
       prettybase.replaceDeprecated(n.info, ident, alt)
       return result
 else:
-  template fixSpelling(n: PNode; ident: PIdent; op: expr) = discard
+  template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var err = "Error: ambiguous identifier: '" & s.name.s & "'"

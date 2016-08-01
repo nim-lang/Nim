@@ -803,8 +803,10 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
           result = x.name.id == y.name.id
           if not result: break
         else: internalError(a.n.info, "sameTuple")
+    elif a.n != b.n and (a.n == nil or b.n == nil) and IgnoreTupleFields notin c.flags:
+      result = false
 
-template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
+template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
   if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
     result = a.id == b.id
@@ -912,7 +914,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false
 
-  if x.kind == tyGenericInst:
+  # this is required by tunique_type but makes no sense really:
+  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias

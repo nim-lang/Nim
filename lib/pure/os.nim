@@ -173,24 +173,24 @@ proc osLastError*(): OSErrorCode =
 
 when defined(windows):
   when useWinUnicode:
-    template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
+    template wrapUnary(varname, winApiProc, arg: untyped) =
       var varname = winApiProc(newWideCString(arg))
 
-    template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
+    template wrapBinary(varname, winApiProc, arg, arg2: untyped) =
       var varname = winApiProc(newWideCString(arg), arg2)
     proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
       result = findFirstFileW(newWideCString(a), b)
-    template findNextFile(a, b: expr): expr = findNextFileW(a, b)
-    template getCommandLine(): expr = getCommandLineW()
+    template findNextFile(a, b: untyped): untyped = findNextFileW(a, b)
+    template getCommandLine(): untyped = getCommandLineW()
 
-    template getFilename(f: expr): expr =
+    template getFilename(f: untyped): untyped =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
-    template findFirstFile(a, b: expr): expr = findFirstFileA(a, b)
-    template findNextFile(a, b: expr): expr = findNextFileA(a, b)
-    template getCommandLine(): expr = getCommandLineA()
+    template findFirstFile(a, b: untyped): untyped = findFirstFileA(a, b)
+    template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
+    template getCommandLine(): untyped = getCommandLineA()
 
-    template getFilename(f: expr): expr = $f.cFilename
+    template getFilename(f: untyped): untyped = $f.cFilename
 
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
@@ -1502,7 +1502,7 @@ type
     lastWriteTime*: Time # Time file was last modified/written to.
     creationTime*: Time # Time file was created. Not supported on all systems!
 
-template rawToFormalFileInfo(rawInfo, formalInfo): expr =
+template rawToFormalFileInfo(rawInfo, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
@@ -1533,7 +1533,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
 
 
   else:
-    template checkAndIncludeMode(rawMode, formalMode: expr) =
+    template checkAndIncludeMode(rawMode, formalMode: untyped) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)

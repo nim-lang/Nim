@@ -138,7 +138,7 @@ proc suggestField(c: PContext, s: PSym, outputs: var int) =
     suggestResult(symToSuggest(s, isLocal=true, $ideSug, 100))
     inc outputs
 
-template wholeSymTab(cond, section: expr) {.immediate.} =
+template wholeSymTab(cond, section: untyped) =
   var isLocal = true
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
@@ -393,6 +393,8 @@ proc suggestSym*(info: TLineInfo; s: PSym; isDecl=true) {.inline.} =
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
+  if s.kind == skEnumField and s.owner != nil:
+    incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)

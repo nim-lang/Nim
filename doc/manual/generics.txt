@@ -293,7 +293,7 @@ definition):
   var
     lastId = 0
 
-  template genId*: expr =
+  template genId*: untyped =
     bind lastId
     inc(lastId)
     lastId

@@ -151,7 +151,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
     guardGlobal(a, n, g)
 
 proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
-  template compileToCpp(a): expr =
+  template compileToCpp(a): untyped =
     gCmd == cmdCompileToCpp or sfCompileToCpp in getModule(a.owner).flags
   if a.inTryStmt > 0 and not compileToCpp(a):
     incl(s.flags, sfVolatile)
@@ -459,7 +459,7 @@ proc documentRaises*(n: PNode) =
     if p4 != nil: n.sons[pragmasPos].add p4
     if p5 != nil: n.sons[pragmasPos].add p5
 
-template notGcSafe(t): expr = {tfGcSafe, tfNoSideEffect} * t.flags == {}
+template notGcSafe(t): untyped = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
 proc importedFromC(n: PNode): bool =
   # when imported from C, we assume GC-safety.
