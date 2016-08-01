@@ -55,16 +55,17 @@ const
   # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
   # replace with typedescX
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
-                   tyTypeDesc, tyAlias}
+                   tyTypeDesc, tyAlias, tyInferred}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc,
-                  tyAlias}
+                  tyAlias, tyInferred}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
-                    tyAlias}
+                    tyAlias, tyInferred}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias}
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias}
-
-  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias}
+                       tyTypeDesc, tyAlias, tyInferred}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred}
+  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
+               tyInferred}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
@@ -410,7 +411,7 @@ const
     "unused0", "unused1",
     "unused2", "varargs[$1]", "unused", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
-    "UserTypeClassInst", "CompositeTypeClass",
+    "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
     "void"]
 
@@ -476,6 +477,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyTuple: "tuple"
       of tyOpenArray: "openarray"
       else: typeToStr[t.base.kind]
+  of tyInferred:
+    let concrete = t.previouslyInferred
+    if concrete != nil: result = typeToString(concrete)
+    else: result = "inferred[" & typeToString(t.base) & "]"
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
@@ -971,7 +976,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         sameValue(a.n.sons[0], b.n.sons[0]) and
         sameValue(a.n.sons[1], b.n.sons[1])
-  of tyGenericInst, tyAlias: discard
+  of tyGenericInst, tyAlias, tyInferred:
+    cycleCheck()
+    result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
   of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("sameFlags")
 
@@ -1118,7 +1125,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias:
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin

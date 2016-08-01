@@ -110,7 +110,7 @@ proc getUniqueType*(key: PType): PType =
     of tyDistinct:
       if key.deepCopy != nil: result = key
       else: result = getUniqueType(lastSon(key))
-    of tyGenericInst, tyOrdinal, tyStatic, tyAlias:
+    of tyGenericInst, tyOrdinal, tyStatic, tyAlias, tyInferred:
       result = getUniqueType(lastSon(key))
       #let obj = lastSon(key)
       #if obj.sym != nil and obj.sym.name.s == "TOption":

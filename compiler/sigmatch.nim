@@ -49,6 +49,10 @@ type
                              # a distrinct type
     typedescMatched*: bool
     isNoCall*: bool          # misused for generic type instantiations C[T]
+    inferredTypes: seq[PType] # inferred types during the current signature
+                              # matching. they will be reset if the matching
+                              # is not successful. may replace the bindings
+                              # table in the future.
     mutabilityProblem*: uint8 # tyVar mismatch
     inheritancePenalty: int  # to prefer closest father object type
     errors*: CandidateErrors # additional clarifications to be displayed to the
@@ -600,17 +604,17 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       case typ.kind
       of tyStatic:
         param = paramSym skConst
-        param.typ = typ.base
+        param.typ = typ.exactReplica
         param.ast = typ.n
       of tyUnknown:
         param = paramSym skVar
-        param.typ = typ
+        param.typ = typ.exactReplica
       else:
         param = paramSym skType
-        param.typ = makeTypeDesc(c, typ)
-
-      if typ.isMetaType:
-        param.typ.flags.incl tfInferrableTypeClassTypeParam
+        param.typ = if typ.isMetaType:
+                      c.newTypeWithSons(tyInferred, @[typ])
+                    else:
+                      makeTypeDesc(c, typ)
 
       addDecl(c, param)
       typeParams.safeAdd((param, typ))
@@ -718,8 +722,51 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   assert(aOrig != nil)
 
+  var
+    useTypeLoweringRuleInTypeClass = c.c.inTypeClass > 0 and
+                                     not c.isNoCall and
+                                     f.kind != tyTypeDesc
+
+    aOrig = if useTypeLoweringRuleInTypeClass:
+          aOrig.skipTypes({tyTypeDesc, tyFieldAccessor})
+        else:
+          aOrig
+
+  if aOrig.kind == tyInferred:
+    # echo "INFER A"
+    # debug f
+    # debug aOrig
+    let prev = aOrig.previouslyInferred
+    if prev != nil:
+      return typeRel(c, f, prev)
+    else:
+      var candidate = f
+
+      case f.kind
+      of tyGenericParam:
+        var prev  = PType(idTableGet(c.bindings, f))
+        if prev != nil: candidate = prev
+      of tyFromExpr:
+        let computedType = tryResolvingStaticExpr(c, f.n).typ
+        case computedType.kind
+        of tyTypeDesc:
+          candidate = computedType.base
+        of tyStatic:
+          candidate = computedType
+        else:
+          localError(f.n.info, errTypeExpected)
+      else:
+        discard
+
+      result = typeRel(c, aOrig.base, candidate)
+      if result != isNone:
+        c.inferredTypes.safeAdd aOrig
+        aOrig.sons.add candidate
+        result = isEqual
+      return
+
   # var and static arguments match regular modifier-free types
-  let a = aOrig.skipTypes({tyStatic, tyVar}).maybeSkipDistinct(c.calleeSym)
+  var a = aOrig.skipTypes({tyStatic, tyVar}).maybeSkipDistinct(c.calleeSym)
   # XXX: Theoretically, maybeSkipDistinct could be called before we even
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
@@ -1258,6 +1305,20 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       # XXX endless recursion?
       #result = typeRel(c, prev, aOrig)
       result = isNone
+
+  of tyInferred:
+    # echo "INFER F"
+    # debug f
+    # debug a
+    let prev = f.previouslyInferred
+    if prev != nil:
+      result = typeRel(c, prev, a)
+    else:
+      result = typeRel(c, f.base, a)
+      if result != isNone:
+        c.inferredTypes.safeAdd f
+        f.sons.add a
+
   of tyTypeDesc:
     var prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
@@ -1401,58 +1462,13 @@ proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   of isEqual: inc(m.exactMatches)
   of isNone: discard
 
-proc skipToInferrableParam(tt: PType): PType =
-  var t = tt
-  while t != nil:
-    if tfInferrableTypeClassTypeParam in t.flags:
-      return t
-    if t.sonsLen > 0 and t.kind == tyTypeDesc:
-      t = t.base
-    else:
-      return nil
-
-  return nil
-
-proc inferTypeClassParam*(m: var TCandidate, f, a: PType): bool =
-  var c = m.c
-  if c.inTypeClass == 0: return false
-
-  var inferrableType = a.skipToInferrableParam
-  if inferrableType == nil: return false
-
-  var inferAs = f
-
-  case f.kind
-  of tyGenericParam:
-    var prev  = PType(idTableGet(m.bindings, f))
-    if prev != nil: inferAs = prev
-
-  of tyFromExpr:
-    let computedType = tryResolvingStaticExpr(m, f.n).typ
-    case computedType.kind
-    of tyTypeDesc:
-      inferAs = computedType.base
-    of tyStatic:
-      inferAs = computedType
-    else:
-      localError(f.n.info, errTypeExpected)
-
-  else:
-    discard
-
-  inferrableType.assignType inferAs
-  return true
-
-proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
+proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
     fMaybeStatic = f.skipTypes({tyDistinct})
     arg = argSemantized
-    argType = argType
+    a = a
     c = m.c
-
-  if inferTypeClassParam(m, f, argType):
-    return argSemantized
 
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
@@ -1461,12 +1477,12 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
 
     # XXX: weaken tyGenericParam and call it tyGenericPlaceholder
     # and finally start using tyTypedesc for generic types properly.
-    if argType.kind == tyGenericParam and tfWildcard in argType.flags:
-      argType.assignType(f)
-      # put(m.bindings, f, argType)
+    if a.kind == tyGenericParam and tfWildcard in a.flags:
+      a.assignType(f)
+      # put(m.bindings, f, a)
       return argSemantized
 
-    if argType.kind == tyStatic:
+    if a.kind == tyStatic:
       if m.callee.kind == tyGenericBody and
          argType.n == nil and
          tfGenericTypeParam notin argType.flags:
@@ -1477,20 +1493,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
         arg.typ = newTypeS(tyStatic, c)
         arg.typ.sons = @[evaluated.typ]
         arg.typ.n = evaluated
-        argType = arg.typ
+        a = arg.typ
 
-  var
-    useTypeLoweringRuleInTypeClass = argType != nil and
-                                     c.inTypeClass > 0 and
-                                     not m.isNoCall and
-                                     f.kind != tyTypeDesc
-
-    a = if useTypeLoweringRuleInTypeClass:
-          argType.skipTypes({tyTypeDesc, tyFieldAccessor})
-        else:
-          argType
-
-    r = typeRel(m, f, a)
+  var r = typeRel(m, f, a)
 
   if r != isNone and m.calleeSym != nil and
      m.calleeSym.kind in {skMacro, skTemplate}:
@@ -1931,6 +1936,10 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
         setSon(m.call, formal.position + 1, def)
     inc(f)
+  # forget all inferred types if the overload matching failed
+  if m.state == csNoMatch:
+    for t in m.inferredTypes:
+      if t.sonsLen > 1: t.sons.setLen 1
 
 proc argtypeMatches*(c: PContext, f, a: PType): bool =
   var m: TCandidate

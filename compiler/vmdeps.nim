@@ -294,6 +294,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyOr: result = mapTypeToBracket("or", mOr, t, info)
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyAnything: result = atomicType("anything", mNone)
+  of tyInferred: internalAssert false
   of tyStatic, tyFromExpr, tyFieldAccessor:
     if inst:
       if t.n != nil: result = t.n.copyTree

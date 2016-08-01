@@ -354,44 +354,52 @@ type
     tyUnused,
     tyProxy # used as errornous type (for idetools)
 
-    tyBuiltInTypeClass #\
+    tyBuiltInTypeClass
       # Type such as the catch-all object, tuple, seq, etc
 
-    tyUserTypeClass #\
+    tyUserTypeClass
       # the body of a user-defined type class
 
-    tyUserTypeClassInst #\
+    tyUserTypeClassInst
       # Instance of a parametric user-defined type class.
       # Structured similarly to tyGenericInst.
       # tyGenericInst represents concrete types, while
       # this is still a "generic param" that will bind types
       # and resolves them during sigmatch and instantiation.
 
-    tyCompositeTypeClass #\
+    tyCompositeTypeClass
       # Type such as seq[Number]
       # The notes for tyUserTypeClassInst apply here as well
       # sons[0]: the original expression used by the user.
       # sons[1]: fully expanded and instantiated meta type
       # (potentially following aliases)
 
-    tyAnd, tyOr, tyNot #\
+    tyInferred
+      # In the initial state `base` stores a type class constraining
+      # the types that can be inferred. After a candidate type is
+      # selected, it's stored in `lastSon`. Between `base` and `lastSon`
+      # there may be 0, 2 or more types that were also considered as
+      # possible candidates in the inference process (i.e. lastSon will
+      # be updated to store a type best conforming to all candidates)
+
+    tyAnd, tyOr, tyNot
       # boolean type classes such as `string|int`,`not seq`,
       # `Sortable and Enumable`, etc
 
-    tyAnything #\
+    tyAnything
       # a type class matching any type
 
-    tyStatic #\
+    tyStatic
       # a value known at compile type (the underlying type is .base)
 
-    tyFromExpr #\
+    tyFromExpr
       # This is a type representing an expression that depends
       # on generic parameters (the expression is stored in t.n)
       # It will be converted to a real type only during generic
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyFieldAccessor #\
+    tyFieldAccessor
       # Expressions such as Type.field (valid in contexts such
       # as the `is` operator and magics like `high` and `low`).
       # Could be lifted to a single argument proc returning the
@@ -400,7 +408,7 @@ type
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
 
-    tyVoid #\
+    tyVoid
       # now different from tyEmpty, hurray!
 
 static:
@@ -482,7 +490,6 @@ type
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam
-    tfInferrableTypeClassTypeParam
     tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
                       # T and I here can bind to both typedesc and static types
                       # before this is determined, we'll consider them to be a
@@ -1037,6 +1044,9 @@ proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
   result = newNode(kind)
   result.strVal = strVal
 
+template previouslyInferred*(t: PType): PType =
+  if t.sons.len > 1: t.lastSon else: nil
+
 proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
              info: TLineInfo): PSym =
   # generates a symbol and initializes the hash field too
@@ -1278,6 +1288,8 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   else:
     when debugIds: registerId(result)
   result.sym = t.sym          # backend-info should not be copied
+
+proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
 proc copySym*(s: PSym, keepId: bool = false): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info)
