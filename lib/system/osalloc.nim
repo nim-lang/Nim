@@ -68,7 +68,7 @@ when defined(emscripten):
     mmapDescr.realSize = realSize
     mmapDescr.realPointer = realPointer
 
-    #c_fprintf(c_stdout, "[Alloc] size %d %d realSize:%d realPos:%d\n", block_size, cast[int](result), realSize, cast[int](realPointer))
+    #c_fprintf(stdout, "[Alloc] size %d %d realSize:%d realPos:%d\n", block_size, cast[int](result), realSize, cast[int](realPointer))
 
   proc osTryAllocPages(size: int): pointer = osAllocPages(size)
 

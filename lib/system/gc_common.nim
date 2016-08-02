@@ -63,7 +63,7 @@ when defined(nimCoroutines):
       stack.next = gch.stack
       gch.stack.prev = stack
       gch.stack = stack
-    # c_fprintf(c_stdout, "[GC] added stack 0x%016X\n", starts)
+    # c_fprintf(stdout, "[GC] added stack 0x%016X\n", starts)
 
   proc GC_removeStack*(starts: pointer) {.cdecl, exportc.} =
     var stack = gch.stack
@@ -143,7 +143,7 @@ else:
 when not defined(useNimRtl):
   {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
+    #c_fprintf(stdout, "stack bottom: %p;\n", theStackBottom)
     # the first init must be the one that defines the stack bottom:
     when defined(nimCoroutines):
       GC_addStack(theStackBottom)
@@ -152,7 +152,7 @@ when not defined(useNimRtl):
       else:
         var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
         var b = cast[ByteAddress](gch.stackBottom)
-        #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
+        #c_fprintf(stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
         when stackIncreases:
           gch.stackBottom = cast[pointer](min(a, b))
         else:
