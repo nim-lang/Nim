@@ -1031,6 +1031,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         if x < isSubtype: return isNone
         # 'and' implies minimum matching result:
         if x < result: result = x
+      if result > isGeneric: result = isGeneric
       bindingRet result
 
   of tyOr:
@@ -1041,6 +1042,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # 'or' implies maximum matching result:
         if x > result: result = x
       if result >= isSubtype:
+        if result > isGeneric: result = isGeneric
         bindingRet result
       else:
         result = isNone
