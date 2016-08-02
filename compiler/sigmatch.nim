@@ -605,7 +605,10 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       of tyStatic:
         param = paramSym skConst
         param.typ = typ.exactReplica
-        param.ast = typ.n
+        if typ.n == nil:
+          param.typ.flags.incl tfInferrableStatic
+        else:
+          param.ast = typ.n
       of tyUnknown:
         param = paramSym skVar
         param.typ = typ.exactReplica
@@ -618,8 +621,6 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 
       addDecl(c, param)
       typeParams.safeAdd((param, typ))
-
-      #echo "A ", param.name.s, " ", typeToString(param.typ), " ", param.kind
 
   for param in body.n[0]:
     var
@@ -646,8 +647,6 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                             dummyName.ident, body.sym, body.sym.info)
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
-
-    #echo "B ", dummyName.ident.s, " ", typeToString(dummyType), " ", dummyparam.kind
 
   var checkedBody = c.semTryExpr(c, body.n[3].copyTree)
   if checkedBody == nil: return nil
@@ -733,9 +732,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           aOrig
 
   if aOrig.kind == tyInferred:
-    # echo "INFER A"
-    # debug f
-    # debug aOrig
     let prev = aOrig.previouslyInferred
     if prev != nil:
       return typeRel(c, f, prev)
@@ -886,6 +882,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     case a.kind
     of tyArray:
       var fRange = f.sons[0]
+      var aRange = a.sons[0]
       if fRange.kind == tyGenericParam:
         var prev = PType(idTableGet(c.bindings, fRange))
         if prev == nil:
@@ -893,21 +890,28 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           fRange = a
         else:
           fRange = prev
-      result = typeRel(c, f.sons[1], a.sons[1])
+      result = typeRel(c, f.sons[1].skipTypes({tyTypeDesc}),
+                          a.sons[1].skipTypes({tyTypeDesc}))
       if result < isGeneric: return isNone
-      if rangeHasStaticIf(fRange):
+      
+      proc inferStaticRange(c: var TCandidate, inferred, concrete: PType) =
+        var (staticT, offset) = inferred.findUnresolvedStaticInRange
+        var
+          replacementT = newTypeWithSons(c.c, tyStatic, @[tyInt.getSysType])
+          concreteUpperBound = concrete.n[1].intVal
+        # we must correct for the off-by-one discrepancy between
+        # ranges and static params:
+        replacementT.n = newIntNode(nkIntLit, concreteUpperBound + offset)
+        if tfInferrableStatic in staticT.flags:
+          staticT.n = replacementT.n
+        put(c.bindings, staticT, replacementT)
+
+      if rangeHasUnresolvedStatic(fRange):
         if tfUnresolved in fRange.flags:
           # This is a range from an array instantiated with a generic
           # static param. We must extract the static param here and bind
           # it to the size of the currently supplied array.
-          var
-            rangeStaticT = fRange.getStaticTypeFromRange
-            replacementT = newTypeWithSons(c.c, tyStatic, @[tyInt.getSysType])
-            inputUpperBound = a.sons[0].n[1].intVal
-          # we must correct for the off-by-one discrepancy between
-          # ranges and static params:
-          replacementT.n = newIntNode(nkIntLit, inputUpperBound + 1)
-          put(c, rangeStaticT, replacementT)
+          inferStaticRange(c, fRange, aRange)
           return isGeneric
 
         let len = tryResolvingStaticExpr(c, fRange.n[1])
@@ -915,6 +919,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           return # if we get this far, the result is already good
         else:
           return isNone
+      elif c.c.inTypeClass > 0 and aRange.rangeHasUnresolvedStatic:
+        inferStaticRange(c, aRange, fRange)
+        return isGeneric
       elif lengthOrd(fRange) != lengthOrd(a):
         result = isNone
     else: discard
@@ -1307,9 +1314,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isNone
 
   of tyInferred:
-    # echo "INFER F"
-    # debug f
-    # debug a
     let prev = f.previouslyInferred
     if prev != nil:
       result = typeRel(c, prev, a)

@@ -122,6 +122,7 @@ proc isTypeParam(n: PNode): bool =
 proc hasGenericArguments*(n: PNode): bool =
   if n.kind == nkSym:
     return n.sym.kind == skGenericParam or
+           tfInferrableStatic in n.sym.typ.flags or
            (n.sym.kind == skType and
             n.sym.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
   else:

@@ -1553,6 +1553,11 @@ proc usesResult(n: PNode): bool =
       for c in n:
         if usesResult(c): return true
 
+proc inferConceptStaticParam(c: PContext, typ: PType, n: PNode) =
+  let res = semConstExpr(c, n)
+  if not sameType(res.typ, typ.base): localError(n.info, "")
+  typ.n = res
+
 proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # these must be last statements in a block:
   const
@@ -1604,10 +1609,19 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = n.sons[i].typ
       return
     else:
-      n.sons[i] = semExpr(c, n.sons[i])
-      if c.inTypeClass > 0 and n[i].typ != nil:
-        case n[i].typ.kind
+      var expr = semExpr(c, n.sons[i])
+      n.sons[i] = expr
+      if c.inTypeClass > 0 and expr.typ != nil:
+        case expr.typ.kind
         of tyBool:
+          if expr.kind == nkInfix and expr[0].sym.name.s == "==":
+            if expr[1].typ.isUnresolvedStatic:
+              inferConceptStaticParam(c, expr[1].typ, expr[2])
+              continue
+            elif expr[2].typ.isUnresolvedStatic:
+              inferConceptStaticParam(c, expr[2].typ, expr[1])
+              continue
+
           let verdict = semConstExpr(c, n[i])
           if verdict.intVal == 0:
             localError(result.info, "type class predicate failed")
