@@ -133,7 +133,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     return errorNode(c, n)
 
   let id = newIdentNode(getIdent(sl.strVal), n.info)
-  let s = qualifiedLookUp(c, id)
+  let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))

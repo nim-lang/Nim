@@ -80,7 +80,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
     # the same symbol!
     # This is however not true anymore for hygienic templates as semantic
     # processing for them changes the symbol table...
-    let s = qualifiedLookUp(c, a)
+    let s = qualifiedLookUp(c, a, {checkUndeclared})
     if s != nil:
       # we need to mark all symbols:
       let sc = symChoice(c, n, s, scClosed)

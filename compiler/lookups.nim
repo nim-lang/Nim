@@ -99,8 +99,11 @@ proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
 
 proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
   for scope in walkScopes(c.currentScope):
-    result = strTableGet(scope.symbols, s)
-    if result != nil and result.kind in filter: return
+    var ti: TIdentIter
+    var candidate = initIdentIter(ti, scope.symbols, s)
+    while candidate != nil:
+      if candidate.kind in filter: return candidate
+      candidate = nextIdentIter(ti, scope.symbols)
   result = nil
 
 proc errorSym*(c: PContext, n: PNode): PSym =
@@ -266,13 +269,17 @@ proc lookUp*(c: PContext, n: PNode): PSym =
 
 type
   TLookupFlag* = enum
-    checkAmbiguity, checkUndeclared
+    checkAmbiguity, checkUndeclared, checkModule
 
-proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
+proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
+  const allExceptModule = {low(TSymKind)..high(TSymKind)}-{skModule,skPackage}
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(n)
-    result = searchInScopes(c, ident).skipAlias(n)
+    if checkModule in flags:
+      result = searchInScopes(c, ident).skipAlias(n)
+    else:
+      result = searchInScopes(c, ident, allExceptModule).skipAlias(n)
     if result == nil and checkUndeclared in flags:
       fixSpelling(n, ident, searchInScopes)
       localError(n.info, errUndeclaredIdentifier, ident.s)
@@ -286,7 +293,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
       errorUseQualifier(c, n.info, n.sym)
   of nkDotExpr:
     result = nil
-    var m = qualifiedLookUp(c, n.sons[0], flags*{checkUndeclared})
+    var m = qualifiedLookUp(c, n.sons[0], (flags*{checkUndeclared})+{checkModule})
     if m != nil and m.kind == skModule:
       var ident: PIdent = nil
       if n.sons[1].kind == nkIdent:
@@ -331,7 +338,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.mode = oimDone
   of nkDotExpr:
     o.mode = oimOtherModule
-    o.m = qualifiedLookUp(c, n.sons[0])
+    o.m = qualifiedLookUp(c, n.sons[0], {checkUndeclared, checkModule})
     if o.m != nil and o.m.kind == skModule:
       var ident: PIdent = nil
       if n.sons[1].kind == nkIdent:

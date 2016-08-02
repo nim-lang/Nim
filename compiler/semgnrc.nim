@@ -127,7 +127,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
 
-  let luf = if withinMixin notin flags: {checkUndeclared} else: {}
+  let luf = if withinMixin notin flags: {checkUndeclared, checkModule} else: {checkModule}
 
   var s = qualifiedLookUp(c, n, luf)
   if s != nil:

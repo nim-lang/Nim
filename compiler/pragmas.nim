@@ -569,7 +569,7 @@ proc deprecatedStmt(c: PContext; pragma: PNode) =
     localError(pragma.info, "list of key:value pairs expected"); return
   for n in pragma:
     if n.kind in {nkExprColonExpr, nkExprEqExpr}:
-      let dest = qualifiedLookUp(c, n[1])
+      let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
       let src = considerQuotedIdent(n[0])
       let alias = newSym(skAlias, src, dest, n[0].info)
       incl(alias.flags, sfExported)
@@ -594,7 +594,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
       # and perform the lookup on demand instead.
       result = newSym(skUnknown, considerQuotedIdent(n), nil, n.info)
   else:
-    result = qualifiedLookUp(c, n)
+    result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
