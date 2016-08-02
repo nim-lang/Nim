@@ -86,8 +86,8 @@ Docker Hub
 ----------
 
 The `official Docker images <https://hub.docker.com/r/nimlang/nim/>`_
-are published Docker Hub and include the compiler and Nimble. There're images
-to be used with single scripts as well as Nimble packages.
+are published Docker Hub and include the compiler and Nimble. There are images
+for standalone scripts as well as Nimble packages.
 
 Get the latest stable image::
 
