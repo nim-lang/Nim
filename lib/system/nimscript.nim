@@ -234,7 +234,7 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ##
   ## The change is permanent for the rest of the execution, since this is just
   ## a shortcut for `os.setCurrentDir()
-  ## <http://nim-lang.org/os.html#setCurrentDir,string>`_ . Use the `withDir()
+  ## <http://nim-lang.org/docs/os.html#setCurrentDir,string>`_ . Use the `withDir()
   ## <#withDir>`_ template if you want to perform a temporary change only.
   setCurrentDir(dir)
   checkOsError()
