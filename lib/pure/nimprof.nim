@@ -27,8 +27,11 @@ const
   tickCountCorrection = 50_000
 
 when not declared(system.StackTrace):
-  type StackTrace = array[0..20, cstring]
+  type StackTrace = object
+    lines: array[0..20, cstring]
+    files: array[0..20, cstring]
   {.deprecated: [TStackTrace: StackTrace].}
+  proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
 type
@@ -39,7 +42,7 @@ type
 {.deprecated: [TProfileEntry: ProfileEntry, TProfileData: ProfileData].}
 
 proc `==`(a, b: StackTrace): bool =
-  for i in 0 .. high(a):
+  for i in 0 .. high(a.lines):
     if a[i] != b[i]: return false
   result = true
 
@@ -72,7 +75,7 @@ proc hookAux(st: StackTrace, costs: int) =
   # this is quite performance sensitive!
   when withThreads: acquire profilingLock
   inc totalCalls
-  var last = high(st)
+  var last = high(st.lines)
   while last > 0 and isNil(st[last]): dec last
   var h = hash(pointer(st[last])) and high(profileData)
 
@@ -178,7 +181,7 @@ proc writeProfile() {.noconv.} =
     var perProc = initCountTable[string]()
     for i in 0..entries-1:
       var dups = initSet[string]()
-      for ii in 0..high(StackTrace):
+      for ii in 0..high(StackTrace.lines):
         let procname = profileData[i].st[ii]
         if isNil(procname): break
         let p = $procname
@@ -193,10 +196,11 @@ proc writeProfile() {.noconv.} =
         writeLine(f, "Entry: ", i+1, "/", entries, " Calls: ",
           profileData[i].total // totalCalls, " [sum: ", sum, "; ",
           sum // totalCalls, "]")
-        for ii in 0..high(StackTrace):
+        for ii in 0..high(StackTrace.lines):
           let procname = profileData[i].st[ii]
+          let filename = profileData[i].st.files[ii]
           if isNil(procname): break
-          writeLine(f, "  ", procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", $filename & ": " & $procname, " ", perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:
