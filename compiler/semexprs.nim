@@ -752,14 +752,16 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var prc = n.sons[0]
   if n.sons[0].kind == nkDotExpr:
     checkSonsLen(n.sons[0], 2)
-    n.sons[0] = semFieldAccess(c, n.sons[0])
-    if n.sons[0].kind == nkDotCall:
+    let n0 = semFieldAccess(c, n.sons[0])
+    if n0.kind == nkDotCall:
       # it is a static call!
-      result = n.sons[0]
+      result = n0
       result.kind = nkCall
       result.flags.incl nfExplicitCall
       for i in countup(1, sonsLen(n) - 1): addSon(result, n.sons[i])
       return semExpr(c, result, flags)
+    else:
+      n.sons[0] = n0
   else:
     n.sons[0] = semExpr(c, n.sons[0], {efInCall})
     let t = n.sons[0].typ
