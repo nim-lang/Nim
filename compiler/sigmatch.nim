@@ -1310,6 +1310,13 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
+    # bug #4545: allow the call to go through a 'var T':
+    let vt = result.sons[0].typ.sons[1]
+    if vt.kind == tyVar:
+      let x = result.sons[1]
+      let va = newNodeIT(nkHiddenAddr, x.info, vt)
+      va.add x
+      result.sons[1] = va
 
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
