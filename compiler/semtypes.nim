@@ -393,6 +393,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
       if gCmd == cmdPretty: styleCheckDef(a.sons[j].info, field)
+  if result.n.len == 0: result.n = nil
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
