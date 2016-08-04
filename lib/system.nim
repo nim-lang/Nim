@@ -1901,6 +1901,13 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   countupImpl:
     inc(res)
 
+iterator `..`*[T](a: T): T {.inline.} =
+  ## shortcut for countup(default(T), a).
+  var res: T
+  while res <= a:
+    yield res
+    inc res
+
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
   ## parallel loop iterator. Same as `..` but the loop may run in parallel.
