@@ -328,7 +328,8 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "LOC" & rope(p.labels)
-  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
+  addf(p.blocks[0].sections[cpsLocals],
+     "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
   result.k = locTemp
   #result.a = - 1
   result.t = t
