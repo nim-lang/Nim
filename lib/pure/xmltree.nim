@@ -337,12 +337,33 @@ proc child*(n: XmlNode, name: string): XmlNode =
       if i.tag == name:
         return i
 
+proc child*(n: XmlNode, p: proc(n: XmlNode): bool): XmlNode =
+  ## Finds the first child element of `n` which satisfies the
+  ## predicate `p`.
+  ## Returns `nil` on failure.
+  assert n.kind == xnElement
+  for i in items(n):
+    if i.kind == xnElement:
+      if p(i):
+        return i
+
 proc attr*(n: XmlNode, name: string): string =
   ## Finds the first attribute of `n` with a name of `name`.
   ## Returns "" on failure.
   assert n.kind == xnElement
   if n.attrs == nil: return ""
   return n.attrs.getOrDefault(name)
+
+proc findAttr*(n: XmlNode, p: proc(name: string): bool): string =
+  ## Finds the first attribute of `n` which name satisfies the
+  ## predicate `p`.
+  ## Returns it's name or "" on failure.
+  assert n.kind == xnElement
+  if n.attrs == nil: return ""
+  for name in n.attrs.keys:
+    if p(name):
+      return name
+  return ""
 
 proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
   ## Iterates over all the children of `n` returning those matching `tag`.
@@ -368,6 +389,30 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
       result.add(child)
     child.findAll(tag, result)
 
+proc findAll*(n: XmlNode, p: proc(n: XmlNode): bool, result: var seq[XmlNode]) =
+  ## Iterates over all the children of `n` returning those satisfying predicate `p`.
+  ##
+  ## Found nodes satisfying the condition will be appended to the `result`
+  ## sequence, which can't be nil or the proc will crash. Usage example:
+  ##
+  ## .. code-block::
+  ##   var
+  ##     html: XmlNode
+  ##     tags: seq[XmlNode] = @[]
+  ##
+  ##   html = buildHtml()
+  ##   findAll(html, n => n.tag == "img", tags)
+  ##   for imgTag in tags:
+  ##     process(imgTag)
+  assert isNil(result) == false
+  assert n.k == xnElement
+  for child in n.items():
+    if child.k != xnElement:
+      continue
+    if p(child):
+      result.add(child)
+    child.findAll(p, result)
+
 proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   ## Shortcut version to assign in let blocks. Example:
   ##
@@ -379,6 +424,18 @@ proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   ##     process(imgTag)
   newSeq(result, 0)
   findAll(n, tag, result)
+
+proc findAll*(n: XmlNode, p: proc(n: XmlNode): bool): seq[XmlNode] =
+  ## Shortcut version to assign in let blocks. Example:
+  ##
+  ## .. code-block::
+  ##   var html: XmlNode
+  ##
+  ##   html = buildHtml(html)
+  ##   for imgTag in html.findAll(n => n.tag == "img"):
+  ##     process(imgTag)
+  newSeq(result, 0)
+  findAll(n, p, result)
 
 when isMainModule:
   let link = "http://nim-lang.org"

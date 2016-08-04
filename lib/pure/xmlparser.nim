@@ -121,10 +121,17 @@ proc parseXml*(s: Stream, filename: string,
   close(x)
 
 proc parseXml*(s: Stream): XmlNode =
-  ## parses the XTML from stream `s` and returns a ``PXmlNode``. All parsing
+  ## parses the XML from stream `s` and returns a ``XmlNode``. All parsing
   ## errors are turned into an ``EInvalidXML`` exception.
   var errors: seq[string] = @[]
   result = parseXml(s, "unknown_html_doc", errors)
+  if errors.len > 0: raiseInvalidXml(errors)
+
+proc parseXml*(s: string): XmlNode =
+  ## parses the XML from string `s` and returns a ``XmlNode``. All parsing
+  ## errors are turned into an ``EInvalidXML`` exception.
+  var errors: seq[string] = @[]
+  result = parseXml(s.newStringStream, "unknown_html_doc", errors)
   if errors.len > 0: raiseInvalidXml(errors)
 
 proc loadXml*(path: string, errors: var seq[string]): XmlNode =
