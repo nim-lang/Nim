@@ -31,6 +31,7 @@ else:
 
 type
   AsyncFile* = ref object
+    filename: string
     fd: AsyncFd
     offset: int64
 
@@ -68,14 +69,9 @@ else:
       result = O_RDWR
     result = result or O_NONBLOCK
 
-proc getFileSize(f: AsyncFile): int64 =
+proc getFileSize*(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
-  when defined(windows) or defined(nimdoc):
-    var high: DWord
-    let low = getFileSize(f.fd.Handle, addr high)
-    if low == INVALID_FILE_SIZE:
-      raiseOSError(osLastError())
-    return (high shl 32) or low
+  result = getFileSize(f.filename)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
@@ -85,6 +81,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)
     let creationDisposition = getCreationDisposition(mode, filename)
+    result.filename = filename
     when useWinUnicode:
       result.fd = createFileW(newWideCString(filename), desiredAccess,
           FILE_SHARE_READ,
@@ -106,6 +103,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let flags = getPosixFlags(mode)
     # RW (Owner), RW (Group), R (Other)
     let perm = S_IRUSR or S_IWUSR or S_IRGRP or S_IWGRP or S_IROTH
+    result.filename = filename
     result.fd = open(filename, flags, perm).AsyncFD
     if result.fd.cint == -1:
       raiseOSError(osLastError())
@@ -323,4 +321,3 @@ proc close*(f: AsyncFile) =
   else:
     if close(f.fd.cint) == -1:
       raiseOSError(osLastError())
-
