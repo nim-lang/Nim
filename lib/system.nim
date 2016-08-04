@@ -2295,7 +2295,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ## .. code-block:: nim
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
-  result = "("
+  result = $type(x) & "("
   var firstElement = true
   for name, value in fieldPairs(x):
     if not firstElement: result.add(", ")
@@ -2544,6 +2544,12 @@ when not declared(sysFatal):
       new(e)
       e.msg = message & arg
       raise e
+
+import typetraits
+
+proc `$`*[T](some: typedesc[T]): string =
+  ## Get the name of the type `some` as a string.
+  name(T)
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## get type information for `x`. Ordinary code should not use this, but
