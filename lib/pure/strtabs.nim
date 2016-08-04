@@ -128,7 +128,7 @@ proc getOrDefault*(t: StringTableRef; key: string): string =
   else: result = ""
 
 proc hasKey*(t: StringTableRef, key: string): bool {.rtl, extern: "nst$1".} =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
 proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
