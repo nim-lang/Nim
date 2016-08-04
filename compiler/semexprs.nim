@@ -2216,7 +2216,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
-    var s = lookUp(c, n)
+    let checks = if efNoEvaluateGeneric in flags: {checkUndeclared}
+                 else: {checkUndeclared, checkModule, checkAmbiguity}
+    var s = qualifiedLookUp(c, n, checks)
     if c.inTypeClass == 0: semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
     if s.kind in {skProc, skMethod, skConverter, skIterator}:

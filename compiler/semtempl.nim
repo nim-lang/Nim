@@ -51,9 +51,10 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
   var i = 0
   a = initOverloadIter(o, c, n)
   while a != nil:
+    if a.kind != skModule:
+      inc(i)
+      if i > 1: break
     a = nextOverloadIter(o, c, n)
-    inc(i)
-    if i > 1: break
   if i <= 1 and r != scForceOpen:
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
@@ -68,8 +69,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     result = newNodeIT(kind, n.info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
-      incl(a.flags, sfUsed)
-      addSon(result, newSymNode(a, n.info))
+      if a.kind != skModule:
+        incl(a.flags, sfUsed)
+        addSon(result, newSymNode(a, n.info))
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
