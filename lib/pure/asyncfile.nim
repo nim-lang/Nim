@@ -68,7 +68,7 @@ else:
       result = O_RDWR
     result = result or O_NONBLOCK
 
-proc getFileSize(f: AsyncFile): int64 =
+proc getFileSize*(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
   when defined(windows) or defined(nimdoc):
     var high: DWord
@@ -76,7 +76,9 @@ proc getFileSize(f: AsyncFile): int64 =
     if low == INVALID_FILE_SIZE:
       raiseOSError(osLastError())
     return (high shl 32) or low
-
+  else:
+    result = getFileSize(f.fd.Handle)
+    
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
   ## the specified ``mode`` asynchronously.
