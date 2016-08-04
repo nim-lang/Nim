@@ -118,7 +118,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.compilesContextId > 0 and optReportConceptFailures notin gGlobalOptions:
+  if c.compilesContextId > 0:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
   if errors.isNil or errors.len == 0:
@@ -163,10 +163,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
       add(candidates, "for a 'var' type a variable needs to be passed, but '" & renderTree(n[mut]) & "' is immutable\n")
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  if c.compilesContextId > 0 and optReportConceptFailures in gGlobalOptions:
-    globalError(n.info, errGenerated, result)
-  else:
-    localError(n.info, errGenerated, result)
+  localError(n.info, errGenerated, result)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]
