@@ -342,8 +342,6 @@ when defineSsl:
     result = SSLContext(context: newCTX, extraInternalIndex: 0,
         referencedData: initSet[int]())
     result.extraInternalIndex = getExtraDataIndex(result)
-    # The PSK callback functions assume the internal index is 0.
-    assert result.extraInternalIndex == 0
 
     let extraInternal = new(SslContextExtraInternal)
     result.setExtraData(result.extraInternalIndex, extraInternal)
