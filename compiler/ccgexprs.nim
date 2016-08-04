@@ -1151,7 +1151,25 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
               genTypeInfo(p.module, seqtype), a.rdLoc]))
   gcUsage(e)
 
+proc genConstExpr(p: BProc, n: PNode): Rope
+proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
+  if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
+    var t = getUniqueType(n.typ)
+    discard getTypeDesc(p.module, t) # so that any fields are initialized
+    let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+    fillLoc(d, locData, t, p.module.tmpBase & rope(id), OnStatic)
+    if id == p.module.labels:
+      # expression not found in the cache:
+      inc(p.module.labels)
+      addf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
+           [getTypeDesc(p.module, t), d.r, genConstExpr(p, n)])
+    result = true
+  else:
+    result = false
+
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
+  if handleConstExpr(p, e, d): return
+  #echo rendertree e, " ", e.isDeepConstExpr
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
   getTemp(p, t, tmp)
@@ -1768,22 +1786,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     genDeepCopy(p, a, b)
   of mDotDot, mEqCString: genCall(p, e, d)
   else: internalError(e.info, "genMagicExpr: " & $op)
-
-proc genConstExpr(p: BProc, n: PNode): Rope
-proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
-  if nfAllConst in n.flags and d.k == locNone and n.len > 0 and n.isDeepConstExpr:
-    var t = getUniqueType(n.typ)
-    discard getTypeDesc(p.module, t) # so that any fields are initialized
-    let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-    fillLoc(d, locData, t, p.module.tmpBase & rope(id), OnStatic)
-    if id == p.module.labels:
-      # expression not found in the cache:
-      inc(p.module.labels)
-      addf(p.module.s[cfsData], "NIM_CONST $1 $2 = $3;$n",
-           [getTypeDesc(p.module, t), d.r, genConstExpr(p, n)])
-    result = true
-  else:
-    result = false
 
 proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
   # example: { a..b, c, d, e, f..g }
