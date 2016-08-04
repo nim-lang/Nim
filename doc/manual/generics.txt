@@ -148,8 +148,8 @@ as `type constraints`:idx: of the generic type parameter:
   onlyIntOrString("xy", 50) # invalid as 'T' cannot be both at the same time
 
 By default, during overload resolution each named type class will bind to
-exactly one concrete type. Here is an example taken directly from the system
-module to illustrate this:
+exactly one concrete type. We call such type classes `bind once`:idx: types.
+Here is an example taken directly from the system module to illustrate this:
 
 .. code-block:: nim
   proc `==`*(x, y: tuple): bool =
@@ -161,7 +161,8 @@ module to illustrate this:
       if a != b: result = false
 
 Alternatively, the ``distinct`` type modifier can be applied to the type class
-to allow each param matching the type class to bind to a different type.
+to allow each param matching the type class to bind to a different type. Such
+type classes are called `bind many`:idx: types.
 
 Procs written with the implicitly generic style will often need to refer to the
 type parameters of the matched generic type. They can be easily accessed using
@@ -211,34 +212,375 @@ Concepts are written in the following form:
     Comparable = concept x, y
       (x < y) is bool
 
-    Container[T] = concept c
-      c.len is Ordinal
-      items(c) is T
-      for value in c:
-        type(value) is T
+    Stack[T] = concept s, var v
+      s.pop() is T
+      v.push(T)
+
+      s.len is Ordinal
+
+      for value in s:
+        value is T
 
 The concept is a match if:
 
 a) all of the expressions within the body can be compiled for the tested type
-b) all statically evaluatable boolean expressions in the body must be true
+b) all statically evaluable boolean expressions in the body must be true
 
 The identifiers following the ``concept`` keyword represent instances of the
-currently matched type. These instances can act both as variables of the type,
-when used in contexts where a value is expected, and as the type itself when
-used in contexts where a type is expected.
+currently matched type. You can apply any of the standard type modifiers such
+as ``var``, ``ref``, ``ptr`` and ``static`` to denote a more specific type of
+instance. You can also apply the `type` modifier to create a named instance of
+the type itself:
+
+.. code-block:: nim
+  type
+    MyConcept = concept x, var v, ref r, ptr p, static s, type T
+      ...
+
+Within the concept body, types can appear in positions where ordinary values
+and parameters are expected. This provides a more convenient way to check for
+the presence of callable symbols with specific signatures:
+
+.. code-block:: nim
+  type
+    OutputStream = concept var s
+      s.write(string)
+
+In order to check for symbols accepting ``typedesc`` params, you must prefix
+the type with an explicit ``type`` modifier. The named instance of the type,
+following the ``concept`` keyword is also considered an explicit ``typedesc``
+value that will be matched only as a type.
+
+.. code-block:: nim
+  type
+    # Let's imagine a user-defined casting framework with operators
+    # such as `val.to(string)` and `val.to(JSonValue)`. We can test
+    # for these with the following concept:
+    MyCastables = concept x
+      x.to(type string)
+      x.to(type JSonValue)
+
+    # Let's define a couple of concepts, known from Algebra:
+    AdditiveMonoid* = concept x, y, type T
+      x + y is T
+      T.zero is T # require a proc such as `int.zero` or 'Position.zero'
+
+    AdditiveGroup* = concept x, y, type T
+      x is AdditiveMonoid
+      -x is T
+      x - y is T
 
 Please note that the ``is`` operator allows one to easily verify the precise
 type signatures of the required operations, but since type inference and
-default parameters are still applied in the provided block, it's also possible
+default parameters are still applied in the concept body, it's also possible
 to encode usage protocols that do not reveal implementation details.
 
-Much like generics, concepts are instantiated exactly
-once for each tested type and any static code included within them is also
-executed once.
+Much like generics, concepts are instantiated exactly once for each tested type
+and any static code included within the body is executed only once.
 
-**Hint**: Since concepts are still very rough at the edges there is a
-command line switch ``--reportConceptFailures:on`` to make debugging
-concept related type failures more easy.
+
+Concept diagnostics
+-------------------
+
+By default, the compiler will report the matching errors in concepts only when
+no other overload can be selected and a normal compilation error is produced.
+When you need to understand why the compiler is not matching a particular
+concept and, as a result, a wrong overload is selected, you can apply the
+``explain`` pragma to either the concept body or a particular call-site.
+
+.. code-block:: nim
+  type
+    MyConcept {.explain.} = concept ...
+
+  overloadedProc(x, y, z) {.explain.}
+
+This will provide Hints in the compiler output either every time the concept is
+not matched or only on the particular call-site.
+
+
+Generic concepts and type binding rules
+---------------------------------------
+
+The concept types can be parametric just like the regular generic types:
+
+.. code-block:: nim
+  ### matrixalgo.nim
+  type
+    AnyMatrix*[R, C: static[int]; T] = concept m, var mvar, type M
+      M.ValueType is T
+      M.Rows == R
+      M.Cols == C
+
+      m[int, int] is T
+      mvar[int, int] = T
+
+    AnySquareMatrix*[N: static[int], T] = AnyMatrix[N, N, T]
+
+  proc transpose*[R, C, T](m: AnyMatrix[R, C, T]): m.type.basis[C, R, T] =
+    for r in 0 .. <m.R:
+      for c in 0 .. <m.C:
+        result[r, c] = m[c, r]
+
+  proc determinant*(m: AnySquareMatrix): int =
+    ...
+
+  --------------
+  ### matrix.nim
+
+  type
+    Matrix*[M, N: static[int]; T] = object
+      data: array[M*N, T]
+
+  proc `[]`*(m: Matrix; m, n: int): m.T =
+    m.data[m * m.N + n]
+
+  proc `[]=`*(m: var Matrix; m, n: int; v: m.T) =
+    m.data[m * m.N + n] = v
+
+  # Adapt the Matrix type to the concept's requirements
+  template Rows*(M: type Matrix): expr = M.M
+  template Cols*(M: type Matrix): expr = M.N
+  template ValueType*(M: type Matrix): typedesc = M.T
+
+  -------------
+  ### usage.nim
+
+  import matrix, matrixalgo
+
+  var v: Matrix[3, 3, int]
+  echo v.determinant
+
+When the concept type is matched against a concrete type, the unbound type
+parameters are inferred from the body of the concept in a way that closely
+resembles the way generic parameters of callable symbols are inferred on
+call sites.
+
+Unbound types can appear both as params to calls such as `s.push(T)` and
+on the right-hand side of the ``is`` operator in cases such as `x.pop is T`
+and `x.data is seq[T]`.
+
+Unbound static params will be inferred from expressions involving the `==`
+operator and also when types dependent on them are being matched:
+
+.. code-block:: nim
+  type
+    MyConcept[M, N: static[int]; T] = concept x
+      x.foo(SquareMatrix[N, T]) is array[M, int]`
+
+Nim may include a simple linear equation solver in the future to help us
+infer static params when arithmetic is involved.
+
+Just like in regular type classes, Nim discriminates between ``bind once``
+and ``bind many`` types when matching the concept. You can add the ``distinct``
+modifier to any of the otherwise inferable types to get a type that will be
+matched without permanently inferring it. This may be useful when you need
+to match several procs accepting the same wide class of types:
+
+.. code-block:: nim
+  type
+    Enumerable[T] = concept e
+      for v in e:
+        v is T
+
+  type
+    MyConcept = concept o
+      # this could be inferred to a type such as Enumerable[int]
+      o.foo is distinct Enumerable
+
+      # this could be inferred to a different type such as Enumerable[float]
+      o.bar is distinct Enumerable
+
+      # it's also possible to give an alias name to a `bind many` type class
+      type Enum = distinct Enumerable
+      o.baz is Enum
+
+On the other hand, using ``bind once`` types allows you to test for equivalent
+types used in multiple signatures, without actually requiring any concrete
+types, thus allowing you to encode implementation detail types:
+
+.. code-block:: nim
+  type
+    MyConcept = concept x
+      type T1 = auto
+      x.foo(T1)
+      x.bar(T1) # both procs must accept the same type
+
+      type T2 = seq[SomeNumber]
+      x.alpha(T2)
+      x.omega(T2) # both procs must accept the same type
+                  # and it must be a numeric sequence
+
+As seen in the previous examples, you can refer to generic concepts such as
+Enumerable[T] just by their short name. Much like the regular generic types,
+the concept will be automatically instantiated with the bind once auto type
+in the place of each missing generic param.
+
+
+Concept derived values
+----------------------
+
+All top level constants or types appearing within the concept body are
+accessible through the dot operator in procs where the concept was successfully
+matched to a concrete type:
+
+.. code-block:: nim
+  type
+    DateTime = concept t1, t2, type T
+      const Min = T.MinDate
+      T.Now is T
+
+      t1 < t2 is bool
+
+      type TimeSpan = type(t1 - t2)
+      TimeSpan * int is TimeSpan
+      TimeSpan + TimeSpan is TimeSpan
+
+      t1 + TimeSpan is T
+
+  proc eventsJitter(events: Enumerable[DateTime]): float =
+    var
+      # this variable will have the inferred TimeSpan type for
+      # the concrete Date-like value the proc was called with:
+      averageInterval: DateTime.TimeSpan
+
+      deviation: float
+    ...
+
+
+Concept refinement
+------------------
+
+When the matched type within a concept is directly tested against a different
+concept, we say that the outer concept is a refinement of the inner concept and
+thus it is more-specific. When both concepts are matched in a call during
+overload resolution, Nim will assign a higher precedence to the most specific
+one. As an alternative way of defining concept refinements, you can use the
+object inheritance syntax involving the ``of`` keyword:
+
+.. code-block:: nim
+  type
+    Graph = concept g, type G of EqualyComparable, Copyable
+      type
+        VertexType = G.VertexType
+        EdgeType = G.EdgeType
+
+      VertexType is Copyable
+      EdgeType is Copyable
+
+      var
+        v: VertexType
+        e: EdgeType
+
+    IncidendeGraph = concept of Graph
+      # symbols such as variables and types from the refined
+      # concept are automatically in scope:
+
+      g.source(e) is VertexType
+      g.target(e) is VertexType
+
+      g.outgoingEdges(v) is Enumerable[EdgeType]
+
+    BidirectionalGraph = concept g, type G
+      # The following will also turn the concept into a refinement when it
+      # comes to overload resolution, but it doesn't provide the convenient
+      # symbol inheritance
+      g is IncidendeGraph
+
+      g.incomingEdges(G.VertexType) is Enumerable[G.EdgeType]
+
+  proc f(g: IncidendeGraph)
+  proc f(g: BidirectionalGraph) # this one will be preferred if we pass a type
+                                # matching the BidirectionalGraph concept
+
+
+Converter type classes
+----------------------
+
+Concepts can also be used to reduce a whole range of types to a single type or
+a small set of simpler types. This is achieved with a `return` statement within
+the concept body:
+
+.. code-block:: nim
+  type
+    Stringable = concept x
+      $x is string
+      return $x
+
+    StringRefValue[CharType] = object
+      base: ptr CharType
+      len: int
+
+    StringRef = concept x
+      # the following would be an overloaded proc for cstring, string, seq and
+      # other user-defined types, returning either a StringRefValue[char] or
+      # StringRefValue[wchar]
+      return makeStringRefValue(x)
+
+  # this proc will have only two instantiations for the two character types
+  # the varargs param will be converted to an array of StringRefValues
+  proc log(format: static[string], varargs[StringRef])
+
+  # this proc will allow char and wchar values to be mixed in the same call
+  # at the cost of additional instantiations. the varargs param will be
+  # converted to a tuple
+  proc log(format: static[string], varargs[distinct StringRef])
+
+
+VTable types
+------------
+
+Concepts allow Nim to define a great number of algorithms, using only
+static polymorphism and without erasing any type information or sacrificing
+any execution speed. But when polymorphic collections of objects are required,
+the user must use one of the provided type erasure techniques - either common
+base types or VTable types.
+
+VTable types are represented as "fat pointers" storing a reference to an
+object together with a reference to a table of procs implementing a set of
+required operations (the so called vtable).
+
+In contrast to other programming languages, the vtable in Nim is stored
+externally to the object, allowing you to create multiple vtable views for
+the same object. Thus, the polymorphism in Nim is unbounded - any type can
+implement an unlimited number of protocols or interfaces not originally
+envisioned by the type's author.
+
+Any concept type can be turned into a VTable type by using the ``vtable``
+or the ``ptrvtable`` compiler magics. Under the hood, these magics generate
+a converter type class, which converts the regular instances of the matching
+types to the corresponding VTable type.
+
+.. code-block:: nim
+  type
+    IntEnumerable = vtable Enumerable[int]
+
+    MyObject = object
+      enumerables: seq[IntEnumerable]
+      additives: seq[AdditiveGroup.vtable]
+
+  proc addEnumerable(o: var MyObject, e: IntEnumerable) =
+    o.enumerables.add e
+
+  proc addAdditive(o: var MyObject, e: AdditiveGroup.vtable) =
+    o.additives.add e
+
+The procs that will be included in the vtable are derived from the concept
+body and include all proc calls for which all param types were inferred
+successfully to concrete types. All such calls should include at least one
+param of the type matched against the concept (not necessarily in the first
+position). If there is more than one such param, the one appearing closest
+to the ``concept`` keyword is considered the value bound to the vtable.
+
+Overloads will be created for all captured procs, accepting the vtable value
+in the position of the captured underlying object.
+
+Under these rules, it's possible to obtain a vtable type for a concept with
+unbound type parameters or one instantiated with metatypes (type classes),
+but it will include a smaller number of captured procs. A completely empty
+vtable will be reported as an error.
+
+The ``vtable`` magic produces types, which can be bound to ``ref`` types and
+the ``ptrvtable`` magic produced types bound to ``ptr`` types.
 
 
 Symbol lookup in generics
