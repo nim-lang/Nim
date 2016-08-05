@@ -400,8 +400,12 @@ proc relativeFile(c: PContext; n: PNode; ext=""): string =
     s = addFileExt(s, ext)
   result = parentDir(n.info.toFullPath) / s
   if not fileExists(result):
-    if isAbsolute(s): result = s
-    else: result = findFile(s)
+    if isAbsolute(s):
+      result = s
+    else:
+      result = findFile(s)
+      if result.len == 0:
+        result = s
 
 proc processCompile(c: PContext, n: PNode) =
   let found = relativeFile(c, n)
