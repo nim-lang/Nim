@@ -42,6 +42,10 @@ type
 
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
+  ## returns a pointer to a mapped portion of MemFile `m`
+  ##
+  ## ``mappedSize`` of ``-1`` maps to the whole file, and
+  ## ``offset`` must be multiples of the PAGE SIZE of your OS
   var readonly = mode == fmRead
   when defined(windows):
     result = mapViewOfFileEx(
@@ -68,7 +72,9 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
 proc unmapMem*(f: var MemFile, p: pointer, size: int) =
   ## unmaps the memory region ``(p, <p+size)`` of the mapped file `f`.
   ## All changes are written back to the file system, if `f` was opened
-  ## with write access. ``size`` must be of exactly the size that was requested
+  ## with write access.
+  ##
+  ## ``size`` must be of exactly the size that was requested
   ## via ``mapMem``.
   when defined(windows):
     if unmapViewOfFile(p) == 0: raiseOSError(osLastError())
@@ -79,9 +85,17 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 proc open*(filename: string, mode: FileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1): MemFile =
   ## opens a memory mapped file. If this fails, ``EOS`` is raised.
-  ## `newFileSize` can only be set if the file does not exist and is opened
-  ## with write access (e.g., with fmReadWrite). `mappedSize` and `offset`
-  ## can be used to map only a slice of the file. Example:
+  ##
+  ## ``newFileSize`` can only be set if the file does not exist and is opened
+  ## with write access (e.g., with fmReadWrite).
+  ##
+  ##``mappedSize`` and ``offset``
+  ## can be used to map only a slice of the file.
+  ##
+  ## ``offset`` must be multiples of the PAGE SIZE of your OS
+  ## (usually 4K or 8K but is unique to your OS)
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   var
@@ -285,7 +299,9 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   ## iterate over line-like records in a file.  However, returned (data,size)
   ## objects are not Nim strings, bounds checked Nim arrays, or even terminated
   ## C strings.  So, care is required to access the data (e.g., think C mem*
-  ## functions, not str* functions).  Example:
+  ## functions, not str* functions).
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   var count = 0
@@ -318,7 +334,9 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): T
   ## Replace contents of passed buffer with each new line, like
   ## `readLine(File) <system.html#readLine,File,TaintedString>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for
-  ## `memSlices <#memSlices>`_, but Nim strings are returned.  Example:
+  ## `memSlices <#memSlices>`_, but Nim strings are returned.
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   var buffer: TaintedString = ""
@@ -335,7 +353,9 @@ iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} 
   ## Return each line in a file as a Nim string, like
   ## `lines(File) <system.html#lines.i,File>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for
-  ## `memSlices <#memSlices>`_, but Nim strings are returned.  Example:
+  ## `memSlices <#memSlices>`_, but Nim strings are returned.
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   for line in lines(memfiles.open("foo")):

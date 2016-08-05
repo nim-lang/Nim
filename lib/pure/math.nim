@@ -219,7 +219,7 @@ when not defined(JS):
     ##
     ## .. code-block:: nim
     ##  echo ceil(-2.1) ## -2.0
-  
+
   when defined(windows) and defined(vcc):
     proc round0[T: float32|float64](x: T): T =
       ## Windows compilers prior to MSVC 2012 do not implement 'round',
@@ -360,7 +360,7 @@ proc `mod`*[T: float32|float64](x, y: T): T =
 proc `^`*[T](x, y: T): T =
   ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
   ## `pow <#pow,float,float>` for negative exponents.
-  assert y >= 0
+  assert y >= T(0)
   var (x, y) = (x, y)
   result = 1
 
