@@ -219,7 +219,7 @@ when not defined(JS):
     ##
     ## .. code-block:: nim
     ##  echo ceil(-2.1) ## -2.0
-  
+
   when defined(windows) and defined(vcc):
     proc round0[T: float32|float64](x: T): T =
       ## Windows compilers prior to MSVC 2012 do not implement 'round',
