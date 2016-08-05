@@ -900,6 +900,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       if sameDistinctTypes(f, a): result = isEqual
       elif f.base.kind == tyAnything: result = isGeneric
       elif c.coerceDistincts: result = typeRel(c, f.base, a)
+    elif a.kind == tyNil and f.base.kind in NilableTypes:
+      result = f.allowsNil
     elif c.coerceDistincts: result = typeRel(c, f.base, a)
   of tySet:
     if a.kind == tySet:
