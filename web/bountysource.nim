@@ -85,7 +85,7 @@ proc writeCsv(sponsors: seq[Sponsor]) =
   var csv = ""
   csv.add "logo, name, url, this_month, all_time, since, level\n"
   for sponsor in sponsors:
-    csv.add "$#, $#, $#, $#, $#, $#, $#\n" % [
+    csv.add "$#,$#,$#,$#,$#,$#,$#\n" % [
       sponsor.logo.quote, sponsor.name.quote,
       sponsor.url.quote, $sponsor.amount.int,
       $sponsor.allTime.int, sponsor.since.format("MMM d, yyyy").quote,
