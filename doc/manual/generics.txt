@@ -365,7 +365,7 @@ operator and also when types dependent on them are being matched:
 .. code-block:: nim
   type
     MyConcept[M, N: static[int]; T] = concept x
-      x.foo(SquareMatrix[N, T]) is array[M, int]`
+      x.foo(SquareMatrix[N, T]) is array[M, int]
 
 Nim may include a simple linear equation solver in the future to help us
 infer static params when arithmetic is involved.
@@ -496,7 +496,7 @@ object inheritance syntax involving the ``of`` keyword:
 Converter type classes
 ----------------------
 
-Concepts can also be used to reduce a whole range of types to a single type or
+Concepts can also be used to convert a whole range of types to a single type or
 a small set of simpler types. This is achieved with a `return` statement within
 the concept body:
 
@@ -516,13 +516,13 @@ the concept body:
       # StringRefValue[wchar]
       return makeStringRefValue(x)
 
-  # this proc will have only two instantiations for the two character types
-  # the varargs param will be converted to an array of StringRefValues
+  # the varargs param will here be converted to an array of StringRefValues
+  # the proc will have only two instantiations for the two character types
   proc log(format: static[string], varargs[StringRef])
 
-  # this proc will allow char and wchar values to be mixed in the same call
-  # at the cost of additional instantiations. the varargs param will be
-  # converted to a tuple
+  # this proc will allow char and wchar values to be mixed in
+  # the same call at the cost of additional instantiations
+  # the varargs param will be converted to a tuple
   proc log(format: static[string], varargs[distinct StringRef])
 
 
@@ -540,38 +540,37 @@ object together with a reference to a table of procs implementing a set of
 required operations (the so called vtable).
 
 In contrast to other programming languages, the vtable in Nim is stored
-externally to the object, allowing you to create multiple vtable views for
-the same object. Thus, the polymorphism in Nim is unbounded - any type can
-implement an unlimited number of protocols or interfaces not originally
-envisioned by the type's author.
+externally to the object, allowing you to create multiple different vtable
+views for the same object. Thus, the polymorphism in Nim is unbounded -
+any type can implement an unlimited number of protocols or interfaces not
+originally envisioned by the type's author.
 
-Any concept type can be turned into a VTable type by using the ``vtable``
-or the ``ptrvtable`` compiler magics. Under the hood, these magics generate
+Any concept type can be turned into a VTable type by using the ``vtref``
+or the ``vtptr`` compiler magics. Under the hood, these magics generate
 a converter type class, which converts the regular instances of the matching
 types to the corresponding VTable type.
 
 .. code-block:: nim
   type
-    IntEnumerable = vtable Enumerable[int]
+    IntEnumerable = vtref Enumerable[int]
 
     MyObject = object
       enumerables: seq[IntEnumerable]
-      additives: seq[AdditiveGroup.vtable]
+      streams: seq[OutputStream.vtref]
 
   proc addEnumerable(o: var MyObject, e: IntEnumerable) =
     o.enumerables.add e
 
-  proc addAdditive(o: var MyObject, e: AdditiveGroup.vtable) =
-    o.additives.add e
+  proc addStream(o: var MyObject, e: OutputStream.vtref) =
+    o.streams.add e
 
 The procs that will be included in the vtable are derived from the concept
-body and include all proc calls for which all param types were inferred
-successfully to concrete types. All such calls should include at least one
-param of the type matched against the concept (not necessarily in the first
-position). If there is more than one such param, the one appearing closest
-to the ``concept`` keyword is considered the value bound to the vtable.
+body and include all proc calls for which all param types were specified as
+concrete types. All such calls should include exactly one param of the type
+matched against the concept (not necessarily in the first position), which
+will be considered the value bound to the vtable.
 
-Overloads will be created for all captured procs, accepting the vtable value
+Overloads will be created for all captured procs, accepting the vtable type
 in the position of the captured underlying object.
 
 Under these rules, it's possible to obtain a vtable type for a concept with
@@ -579,8 +578,8 @@ unbound type parameters or one instantiated with metatypes (type classes),
 but it will include a smaller number of captured procs. A completely empty
 vtable will be reported as an error.
 
-The ``vtable`` magic produces types, which can be bound to ``ref`` types and
-the ``ptrvtable`` magic produced types bound to ``ptr`` types.
+The ``vtref`` magic produces types which can be bound to ``ref`` types and
+the ``vtptr`` magic produced types bound to ``ptr`` types.
 
 
 Symbol lookup in generics
