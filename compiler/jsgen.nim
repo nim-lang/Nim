@@ -1445,8 +1445,11 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     a: TCompRes
     s: Rope
   if n.kind == nkEmpty:
+    let mname = mangleName(v, p.target)
     addf(p.body, "var $1 = $2;$n" | "$$$1 = $2;$n",
-         [mangleName(v, p.target), createVar(p, v.typ, isIndirect(v))])
+         [mname, createVar(p, v.typ, isIndirect(v))])
+    if v.typ.kind in { tyVar, tyPtr, tyRef } and mapType(p, v.typ) == etyBaseIndex:
+      addf(p.body, "var $1_Idx = 0;$n", [ mname ])
   else:
     discard mangleName(v, p.target)
     gen(p, n, a)
@@ -1948,9 +1951,13 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   let header = generateHeader(p, prc.typ)
   if prc.typ.sons[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast.sons[resultPos].sym
+    let mname = mangleName(resultSym, p.target)
     resultAsgn = ("var $# = $#;$n" | "$$$# = $#;$n") % [
-        mangleName(resultSym, p.target),
+        mname,
         createVar(p, resultSym.typ, isIndirect(resultSym))]
+    if resultSym.typ.kind in { tyVar, tyPtr, tyRef } and mapType(p, resultSym.typ) == etyBaseIndex:
+      resultAsgn.add "var $#_Idx = 0;$n" % [
+        mname ];
     gen(p, prc.ast.sons[resultPos], a)
     if mapType(p, resultSym.typ) == etyBaseIndex:
       returnStmt = "return [$#, $#];$n" % [a.address, a.res]
