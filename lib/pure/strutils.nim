@@ -2234,6 +2234,98 @@ proc removeSuffix*(s: var string, suffix: string) {.
 
   s.setLen(newLen)
 
+proc hexDump*[T](s: T, chars: bool = true, cols: int = 16, offs: int = 2): string =
+  ## Creates a hex dump from the given parameter `s`. `s` needs to have an ``items()``
+  ## implementation which delivers a type which has to be ``ord(C).char.int`` compatible.
+  ## This is true for `string`, `cstring`, seq and array of char, byte, int8, uint8
+  ## and many enums.
+  ##
+  ## By default the generated string has 16 bit offsets and 16 bytes per line with ASCII
+  ## output to the right.
+  ##
+  ## If `chars` is set to ``false`` no ASCII dump is performed. If `offs` is set to ``0``
+  ## no offsets will be printed. If ``cols`` is set to ``0`` all is fit into one line.
+  ## These variants can be freely mixed.
+  ##
+  ## For convenince the generated string does not contain a final linefeed. This is done such
+  ## that ``echo`` and other functions which add a linefeed on their own are easier to handle.
+  ##
+  ## An example:
+  ##
+  ## .. code-block:: nim
+  ##   echo hexDump("ab\0c\l12345@\r")
+  ##   echo hexDump("ab\0c\l12345@\r", false, 0, 0)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "0000: 61 62 00 63 0A 31 32 33 34 35 40 0D .. .. .. ..  'ab.c.12345@.'"
+  ##   "61 62 00 63 0A 31 32 33 34 35 40 0D"
+
+  let offs = offs * 2
+  var cols = if cols <= 0: s.len else: cols
+  let lines = (s.len + cols - 1) div cols # how many lines we have
+  var cap = 0
+  if offs > 0:
+    cap += lines * (offs + 2) # offset display
+  if chars:
+    # adjust cols to "number of lines" * cols
+    cap += lines * (cols * 3)
+    # number of full lines with ascii + partial
+    cap += (lines - 1) * (cols + 4)
+    if s.len mod cols > 0:
+      cap += s.len mod cols + 3
+    else:
+      cap += cols + 3
+  else:
+    cap += s.len * 3 - 1
+
+  result = newStringOfCap(cap)
+  var newLine = true
+  var ascii = newStringOfCap(cols + 2)
+  var idx = 0
+  for o in s:
+    let c = ord(o).char.int
+    if idx > 0:
+      if idx mod cols == 0:
+        if chars:
+          result.add ascii
+          result.add '\''
+        if idx < s.len:
+          result.add "\n"
+        newLine = true
+      else:
+        result.add ' '
+
+    if newLine:
+      ascii.setLen(0)
+      ascii.add "  '"
+      newLine = false
+      if offs > 0:
+        result.add idx.toHex offs
+        result.add ": "
+    result.add c.toHex 2
+
+    if chars:
+      if c > 31 and c < 127:
+        ascii.add o.char
+      else:
+        ascii.add '.'
+
+    inc idx
+
+  if chars:
+    idx = idx mod cols
+    if idx > 0:
+      while idx < cols:
+        result.add " .."
+        inc idx
+    result.add ascii
+    result.add '\''
+
+  when defined(testing):
+    assert(cap == result.len)
+
 when isMainModule:
   doAssert align("abc", 4) == " abc"
   doAssert align("a", 0) == "a"
