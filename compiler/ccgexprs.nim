@@ -2177,7 +2177,8 @@ proc genConstSimpleList(p: BProc, n: PNode): Rope =
   result = rope("{")
   for i in countup(ord(n.kind == nkObjConstr), length - 2):
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
-  if length > 0: add(result, genNamedConstExpr(p, n.sons[length - 1]))
+  if length > ord(n.kind == nkObjConstr):
+    add(result, genNamedConstExpr(p, n.sons[length - 1]))
   addf(result, "}$n", [])
 
 proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
