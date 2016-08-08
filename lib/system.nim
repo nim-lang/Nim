@@ -1744,7 +1744,7 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
   ## ``tmp = a; a = b; b = tmp``. Particularly useful for sorting algorithms.
 
-when not defined(js) and not defined(booting):
+when not defined(js) and not defined(booting) and defined(nimTrMacros):
   template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openarray[ref], a, b: int) =
     # Optimize swapping of array elements if they are refs. Default swap
     # implementation will cause unsureAsgnRef to be emitted which causes
