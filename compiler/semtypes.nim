@@ -130,7 +130,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
   else:
-    let isCall = ord(n.kind in nkCallKinds)
+    let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
     var base = semTypeNode(c, n.lastSon, nil)
@@ -370,7 +370,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   result.n = newNodeI(nkRecList, n.info)
   var check = initIntSet()
   var counter = 0
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(ord(n.kind == nkBracketExpr), sonsLen(n) - 1):
     var a = n.sons[i]
     if (a.kind != nkIdentDefs): illFormedAst(a)
     checkMinSonsLen(a, 3)
@@ -393,6 +393,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
       if gCmd == cmdPretty: styleCheckDef(a.sons[j].info, field)
+  if result.n.len == 0: result.n = nil
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
@@ -754,18 +755,18 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     addDecl(c, s)
 
   # XXX: There are codegen errors if this is turned into a nested proc
-  template liftingWalk(typ: PType, anonFlag = false): expr =
+  template liftingWalk(typ: PType, anonFlag = false): untyped =
     liftParamType(c, procKind, genericParams, typ, paramName, info, anonFlag)
   #proc liftingWalk(paramType: PType, anon = false): PType =
 
   var paramTypId = if not anon and paramType.sym != nil: paramType.sym.name
                    else: nil
 
-  template maybeLift(typ: PType): expr =
+  template maybeLift(typ: PType): untyped =
     let lifted = liftingWalk(typ)
     (if lifted != nil: lifted else: typ)
 
-  template addImplicitGeneric(e: expr): expr =
+  template addImplicitGeneric(e): untyped =
     addImplicitGenericImpl(e, paramTypId)
 
   case paramType.kind:
@@ -945,7 +946,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if isType: localError(a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyExpr, c)
-    elif skipTypes(typ, {tyGenericInst}).kind == tyEmpty:
+    elif skipTypes(typ, {tyGenericInst}).kind == tyVoid:
       continue
     for j in countup(0, length-3):
       var arg = newSymG(skParam, a.sons[j], c)
@@ -977,7 +978,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
-    if skipTypes(r, {tyGenericInst}).kind != tyEmpty:
+    if skipTypes(r, {tyGenericInst}).kind != tyVoid:
       # 'auto' as a return type does not imply a generic:
       if r.kind == tyAnything:
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
@@ -1038,7 +1039,7 @@ proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(n.info, "cannot instantiate the '$1' $2" %
-                       [s.name.s, ($s.kind).substr(2).toLower])
+                       [s.name.s, ($s.kind).substr(2).toLowerAscii])
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ
@@ -1248,6 +1249,19 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = copyType(result, getCurrOwner(), false)
         for i in countup(1, n.len - 1):
           result.rawAddSon(semTypeNode(c, n.sons[i], nil))
+    of mDistinct:
+      result = newOrPrevType(tyDistinct, prev, c)
+      addSonSkipIntLit(result, semTypeNode(c, n[1], nil))
+    of mVar:
+      result = newOrPrevType(tyVar, prev, c)
+      var base = semTypeNode(c, n.sons[1], nil)
+      if base.kind == tyVar:
+        localError(n.info, errVarVarTypeNotAllowed)
+        base = base.sons[0]
+      addSonSkipIntLit(result, base)
+    of mRef: result = semAnyRef(c, n, tyRef, prev)
+    of mPtr: result = semAnyRef(c, n, tyPtr, prev)
+    of mTuple: result = semTuple(c, n, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     var typeExpr = semExpr(c, n)
@@ -1377,10 +1391,7 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mVoidType:
-    setMagicType(m, tyEmpty, 0)
-    # for historical reasons we conflate 'void' with 'empty' so that '@[]'
-    # has the type 'seq[void]'.
-    m.typ.flags.incl tfVoid
+    setMagicType(m, tyVoid, 0)
   of mArray:
     setMagicType(m, tyArray, 0)
   of mOpenArray:

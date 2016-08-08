@@ -47,8 +47,11 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   result = semGenericStmt(c, n, flags, ctx)
   closeScope(c)
 
-template macroToExpand(s: expr): expr =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfImmediate in s.flags)
+template macroToExpand(s): untyped =
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
+
+template macroToExpandSym(s): untyped =
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1)
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx): PNode =
@@ -61,14 +64,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skProc, skMethod, skIterator, skConverter, skModule:
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
-    if macroToExpand(s):
+    if macroToExpandSym(s):
       styleCheckUse(n.info, s)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
       result = symChoice(c, n, s, scOpen)
   of skMacro:
-    if macroToExpand(s):
+    if macroToExpandSym(s):
       styleCheckUse(n.info, s)
       result = semMacroExpr(c, n, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
@@ -124,7 +127,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
 
-  let luf = if withinMixin notin flags: {checkUndeclared} else: {}
+  let luf = if withinMixin notin flags: {checkUndeclared, checkModule} else: {checkModule}
 
   var s = qualifiedLookUp(c, n, luf)
   if s != nil:
@@ -426,7 +429,12 @@ proc semGenericStmt(c: PContext, n: PNode,
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos], flags, ctx)
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos], flags, ctx)
     var body: PNode
-    if n.sons[namePos].kind == nkSym: body = n.sons[namePos].sym.getBody
+    if n.sons[namePos].kind == nkSym:
+      let s = n.sons[namePos].sym
+      if sfGenSym in s.flags and s.ast == nil:
+        body = n.sons[bodyPos]
+      else:
+        body = s.getBody
     else: body = n.sons[bodyPos]
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)

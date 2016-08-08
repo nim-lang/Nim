@@ -27,6 +27,8 @@ To build from source you will need:
     are: clang, Visual C++, Intel's C++ compiler
   * git or wget
 
+**Note:** When installing ``gcc`` on Ubuntu (and likely other distros) ensure that the ``build-essentials`` package is installed also.
+
 If you are on a fairly modern *nix system, the following steps should work:
 
 ```
@@ -47,7 +49,7 @@ The above steps can be performed on Windows in a similar fashion, the
 instead of ``build.sh``.
 
 The ``koch`` tool is the Nim build tool, more ``koch`` related options are
-documented in [doc/koch.txt](doc/koch.txt).
+documented in [doc/koch.rst](doc/koch.rst).
 
 ## Nimble
 [Nimble](https://github.com/nim-lang/nimble) is Nim's package manager. For the

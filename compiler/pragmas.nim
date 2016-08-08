@@ -63,11 +63,12 @@ const
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims}
+    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
+    wIntDefine, wStrDefine}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
-  allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
+  allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
@@ -399,8 +400,12 @@ proc relativeFile(c: PContext; n: PNode; ext=""): string =
     s = addFileExt(s, ext)
   result = parentDir(n.info.toFullPath) / s
   if not fileExists(result):
-    if isAbsolute(s): result = s
-    else: result = findFile(s)
+    if isAbsolute(s):
+      result = s
+    else:
+      result = findFile(s)
+      if result.len == 0:
+        result = s
 
 proc processCompile(c: PContext, n: PNode) =
   let found = relativeFile(c, n)
@@ -568,7 +573,7 @@ proc deprecatedStmt(c: PContext; pragma: PNode) =
     localError(pragma.info, "list of key:value pairs expected"); return
   for n in pragma:
     if n.kind in {nkExprColonExpr, nkExprEqExpr}:
-      let dest = qualifiedLookUp(c, n[1])
+      let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
       let src = considerQuotedIdent(n[0])
       let alias = newSym(skAlias, src, dest, n[0].info)
       incl(alias.flags, sfExported)
@@ -593,7 +598,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
       # and perform the lookup on demand instead.
       result = newSym(skUnknown, considerQuotedIdent(n), nil, n.info)
   else:
-    result = qualifiedLookUp(c, n)
+    result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
@@ -625,7 +630,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         processImportCompilerProc(sym, getOptionalStr(c, it, "$1"))
       of wExtern: setExternName(sym, expectStrLit(c, it))
       of wImmediate:
-        if sym.kind in {skTemplate, skMacro}: incl(sym.flags, sfImmediate)
+        if sym.kind in {skTemplate, skMacro}:
+          incl(sym.flags, sfImmediate)
+          incl(sym.flags, sfAllUntyped)
+          message(n.info, warnDeprecated, "use 'untyped' parameters instead; immediate")
         else: invalidPragma(it)
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
@@ -898,6 +906,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wBase:
         noVal(it)
         sym.flags.incl sfBase
+      of wIntDefine:
+        sym.magic = mIntDefine
+      of wStrDefine:
+        sym.magic = mStrDefine
       else: invalidPragma(it)
     else: invalidPragma(it)
 

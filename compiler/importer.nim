@@ -176,7 +176,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
     var m = myImportModule(c, n.sons[i])
     if m != nil:
       # ``addDecl`` needs to be done before ``importAllSymbols``!
-      addDecl(c, m)             # add symbol to symbol table of module
+      addDecl(c, m, n.info)             # add symbol to symbol table of module
       importAllSymbolsExcept(c, m, emptySet)
       #importForwarded(c, m.ast, emptySet)
 
@@ -186,7 +186,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)
-    addDecl(c, m)               # add symbol to symbol table of module
+    addDecl(c, m, n.info)               # add symbol to symbol table of module
     for i in countup(1, sonsLen(n) - 1):
       if n.sons[i].kind != nkNilLit:
         importSymbol(c, n.sons[i], m)
@@ -197,7 +197,7 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)
-    addDecl(c, m)               # add symbol to symbol table of module
+    addDecl(c, m, n.info)               # add symbol to symbol table of module
     var exceptSet = initIntSet()
     for i in countup(1, sonsLen(n) - 1):
       let ident = lookups.considerQuotedIdent(n.sons[i])

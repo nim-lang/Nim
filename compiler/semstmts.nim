@@ -138,7 +138,7 @@ proc fixNilType(n: PNode) =
 
 proc discardCheck(c: PContext, result: PNode) =
   if c.inTypeClass > 0: return
-  if result.typ != nil and result.typ.kind notin {tyStmt, tyEmpty}:
+  if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if result.kind == nkNilLit:
       result.typ = nil
       message(result.info, warnNilStatement)
@@ -411,6 +411,13 @@ proc semUsing(c: PContext; n: PNode): PNode =
     if a.sons[length-1].kind != nkEmpty:
       localError(a.info, "'using' sections cannot contain assignments")
 
+proc hasEmpty(typ: PType): bool =
+  if typ.kind in {tySequence, tyArray, tySet}:
+    result = typ.lastSon.kind == tyEmpty
+  elif typ.kind == tyTuple:
+    for s in typ.sons:
+      result = result or hasEmpty(s)
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -445,10 +452,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = skipIntLit(def.typ)
-        if typ.kind in {tySequence, tyArray, tySet} and
-           typ.lastSon.kind == tyEmpty:
+        if hasEmpty(typ):
           localError(def.info, errCannotInferTypeOfTheLiteral,
-                     ($typ.kind).substr(2).toLower)
+                     ($typ.kind).substr(2).toLowerAscii)
     else:
       def = ast.emptyNode
       if symkind == skLet: localError(a.info, errLetNeedsInit)
@@ -669,7 +675,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     let name = a.sons[0]
     var s: PSym
     if name.kind == nkDotExpr:
-      s = qualifiedLookUp(c, name)
+      s = qualifiedLookUp(c, name, {checkUndeclared, checkModule})
       if s.kind != skType or s.typ.skipTypes(abstractPtrs).kind != tyObject or tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
         localError(name.info, "only .partial objects can be extended")
     else:
@@ -711,7 +717,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       a.sons[1] = s.typ.n
       s.typ.size = -1 # could not be computed properly
       # we fill it out later. For magic generics like 'seq', it won't be filled
-      # so we use tyEmpty instead of nil to not crash for strange conversions
+      # so we use tyNone instead of nil to not crash for strange conversions
       # like: mydata.seq
       rawAddSon(s.typ, newTypeS(tyNone, c))
       s.ast = a
@@ -1246,6 +1252,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     pushOwner(s)
   s.options = gOptions
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
+  if s.name.s[0] in {'.', '('}:
+    if s.name.s in [".", ".()", ".=", "()"] and not experimentalMode(c):
+      message(n.info, warnDeprecated, "overloaded '.' and '()' operators are now .experimental; " & s.name.s)
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:
@@ -1343,7 +1352,21 @@ proc semMethod(c: PContext, n: PNode): PNode =
   # macros can transform methods to nothing:
   if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
-  if not isGenericRoutine(s):
+  if isGenericRoutine(s):
+    let tt = s.typ
+    var foundObj = false
+    # we start at 1 for now so that tparsecombnum continues to compile.
+    # XXX Revisit this problem later.
+    for col in countup(1, sonsLen(tt)-1):
+      let t = tt.sons[col]
+      if t != nil and t.kind == tyGenericInvocation:
+        var x = skipTypes(t.sons[0], {tyVar, tyPtr, tyRef, tyGenericInst, tyGenericInvocation, tyGenericBody})
+        if x.kind == tyObject and t.len-1 == result.sons[genericParamsPos].len:
+          foundObj = true
+          x.methods.safeAdd((col,s))
+    if not foundObj:
+      message(n.info, warnDeprecated, "generic method not attachable to object type")
+  else:
     # why check for the body? bug #2400 has none. Checking for sfForward makes
     # no sense either.
     # and result.sons[bodyPos].kind != nkEmpty:

@@ -159,7 +159,7 @@ type
 {.deprecated: [THash: Hash, TWatchpoint: Watchpoint].}
 
 var
-  watchpoints: array [0..99, Watchpoint]
+  watchpoints: array[0..99, Watchpoint]
   watchpointsLen: int
 
 proc `!&`(h: Hash, val: int): Hash {.inline.} =

@@ -72,14 +72,14 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
   rawInsertImpl()
 
-template addImpl(enlarge) {.dirty, immediate.} =
+template addImpl(enlarge) {.dirty.} =
   if mustRehash(t.dataLen, t.counter): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
-template maybeRehashPutImpl(enlarge) {.dirty, immediate.} =
+template maybeRehashPutImpl(enlarge) {.oldimmediate, dirty.} =
   if mustRehash(t.dataLen, t.counter):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
@@ -87,13 +87,13 @@ template maybeRehashPutImpl(enlarge) {.dirty, immediate.} =
   rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
-template putImpl(enlarge) {.dirty, immediate.} =
+template putImpl(enlarge) {.oldimmediate, dirty.} =
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
   else: maybeRehashPutImpl(enlarge)
 
-template mgetOrPutImpl(enlarge) {.dirty, immediate.} =
+template mgetOrPutImpl(enlarge) {.dirty.} =
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -102,7 +102,7 @@ template mgetOrPutImpl(enlarge) {.dirty, immediate.} =
   # either way return modifiable val
   result = t.data[index].val
 
-template hasKeyOrPutImpl(enlarge) {.dirty, immediate.} =
+template hasKeyOrPutImpl(enlarge) {.dirty.} =
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -110,18 +110,24 @@ template hasKeyOrPutImpl(enlarge) {.dirty, immediate.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-template delImpl() {.dirty, immediate.} =
+proc default[T](t: typedesc[T]): T {.inline.} = discard
+
+template delImpl() {.dirty.} =
   var hc: Hash
   var i = rawGet(t, key, hc)
   let msk = maxHash(t)
   if i >= 0:
     t.data[i].hcode = 0
+    t.data[i].key = default(type(t.data[i].key))
+    t.data[i].val = default(type(t.data[i].val))
     dec(t.counter)
     block outer:
       while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
         var j = i         # The correctness of this depends on (h+1) in nextTry,
         var r = j         # though may be adaptable to other simple sequences.
         t.data[i].hcode = 0              # mark current EMPTY
+        t.data[i].key = default(type(t.data[i].key))
+        t.data[i].val = default(type(t.data[i].val))
         while true:
           i = (i + 1) and msk            # increment mod table size
           if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
@@ -134,7 +140,9 @@ template delImpl() {.dirty, immediate.} =
         else:
           shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
 
-template clearImpl() {.dirty, immediate.} =
+template clearImpl() {.dirty.} =
   for i in 0 .. <t.data.len:
     t.data[i].hcode = 0
+    t.data[i].key = default(type(t.data[i].key))
+    t.data[i].val = default(type(t.data[i].val))
   t.counter = 0

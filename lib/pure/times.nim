@@ -66,7 +66,7 @@ when defined(posix) and not defined(JS):
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
-  var  
+  var
     tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
   # we also need tzset() to make sure that tzname is initialized
   proc tzset() {.importc, header: "<time.h>".}
@@ -369,7 +369,10 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## very accurate.
   let t = toSeconds(toTime(a))
   let secs = toSeconds(a, interval)
-  result = getLocalTime(fromSeconds(t + secs))
+  if a.tzname == "UTC":
+    result = getGMTime(fromSeconds(t + secs))
+  else:
+    result = getLocalTime(fromSeconds(t + secs))
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## subtracts ``interval`` time from TimeInfo ``a``.
@@ -386,7 +389,10 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   intval.months = - interval.months
   intval.years = - interval.years
   let secs = toSeconds(a, intval)
-  result = getLocalTime(fromSeconds(t + secs))
+  if a.tzname == "UTC":
+    result = getGMTime(fromSeconds(t + secs))
+  else:
+    result = getLocalTime(fromSeconds(t + secs))
 
 proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
 
@@ -471,7 +477,7 @@ when not defined(JS):
   # our own procs on top of that:
   proc tmToTimeInfo(tm: StructTM, local: bool): TimeInfo =
     const
-      weekDays: array [0..6, WeekDay] = [
+      weekDays: array[0..6, WeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
     when defined(freebsd) or defined(netbsd) or defined(openbsd):
       TimeInfo(second: int(tm.second),
@@ -517,7 +523,7 @@ when not defined(JS):
 
   proc timeInfoToTM(t: TimeInfo): StructTM =
     const
-      weekDays: array [WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
+      weekDays: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
     result.second = t.second
     result.minute = t.minute
     result.hour = t.hour
@@ -646,7 +652,7 @@ elif defined(JS):
     return newDate()
 
   const
-    weekDays: array [0..6, WeekDay] = [
+    weekDays: array[0..6, WeekDay] = [
       dSun, dMon, dTue, dWed, dThu, dFri, dSat]
 
   proc getLocalTime(t: Time): TimeInfo =
@@ -992,21 +998,14 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     info.monthday = value[j..j+1].parseInt()
     j += 2
   of "ddd":
-    case value[j..j+2].toLower()
-    of "sun":
-      info.weekday = dSun
-    of "mon":
-      info.weekday = dMon
-    of "tue":
-      info.weekday = dTue
-    of "wed":
-      info.weekday = dWed
-    of "thu":
-      info.weekday = dThu
-    of "fri":
-      info.weekday = dFri
-    of "sat":
-      info.weekday = dSat
+    case value[j..j+2].toLowerAscii()
+    of "sun": info.weekday = dSun
+    of "mon": info.weekday = dMon
+    of "tue": info.weekday = dTue
+    of "wed": info.weekday = dWed
+    of "thu": info.weekday = dThu
+    of "fri": info.weekday = dFri
+    of "sat": info.weekday = dSat
     else:
       raise newException(ValueError,
         "Couldn't parse day of week (ddd), got: " & value[j..j+2])
@@ -1060,31 +1059,19 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 2
     info.month = Month(month-1)
   of "MMM":
-    case value[j..j+2].toLower():
-    of "jan":
-      info.month =  mJan
-    of "feb":
-      info.month =  mFeb
-    of "mar":
-      info.month =  mMar
-    of "apr":
-      info.month =  mApr
-    of "may":
-      info.month =  mMay
-    of "jun":
-      info.month =  mJun
-    of "jul":
-      info.month =  mJul
-    of "aug":
-      info.month =  mAug
-    of "sep":
-      info.month =  mSep
-    of "oct":
-      info.month =  mOct
-    of "nov":
-      info.month =  mNov
-    of "dec":
-      info.month =  mDec
+    case value[j..j+2].toLowerAscii():
+    of "jan": info.month =  mJan
+    of "feb": info.month =  mFeb
+    of "mar": info.month =  mMar
+    of "apr": info.month =  mApr
+    of "may": info.month =  mMay
+    of "jun": info.month =  mJun
+    of "jul": info.month =  mJul
+    of "aug": info.month =  mAug
+    of "sep": info.month =  mSep
+    of "oct": info.month =  mOct
+    of "nov": info.month =  mNov
+    of "dec": info.month =  mDec
     else:
       raise newException(ValueError,
         "Couldn't parse month (MMM), got: " & value)
@@ -1181,7 +1168,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
         "Couldn't parse timezone offset (zzz), got: " & value[j])
     j += 6
   of "ZZZ":
-    info.tzname = value[j..j+2].toUpper()
+    info.tzname = value[j..j+2].toUpperAscii()
     j += 3
   else:
     # Ignore the token and move forward in the value string by the same length

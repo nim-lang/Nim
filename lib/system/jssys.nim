@@ -65,7 +65,7 @@ proc auxWriteStackTrace(f: PCallFrame): string =
     it = f
     i = 0
     total = 0
-    tempFrames: array [0..63, TempFrame]
+    tempFrames: array[0..63, TempFrame]
   while it != nil and i <= high(tempFrames):
     tempFrames[i].procname = it.procname
     tempFrames[i].line = it.line

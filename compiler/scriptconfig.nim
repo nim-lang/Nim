@@ -13,10 +13,10 @@
 import
   ast, modules, passes, passaux, condsyms,
   options, nimconf, lists, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc
+  os, times, osproc, wordrecg, strtabs
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
-from strutils import cmpIgnoreStyle
+from strutils import cmpIgnoreStyle, contains
 
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)
@@ -116,7 +116,20 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     setResult(a, options.command)
   cbconf switch:
     processSwitch(a.getString 0, a.getString 1, passPP, unknownLineInfo())
-
+  cbconf hintImpl:
+    processSpecificNote(a.getString 0, wHint, passPP, unknownLineInfo(),
+      a.getString 1)
+  cbconf warningImpl:
+    processSpecificNote(a.getString 0, wWarning, passPP, unknownLineInfo(),
+      a.getString 1)
+  cbconf patchFile:
+    let key = a.getString(0) & "_" & a.getString(1)
+    var val = a.getString(2).addFileExt(NimExt)
+    if {'$', '~'} in val:
+      val = pathSubs(val, vthisDir)
+    elif not isAbsolute(val):
+      val = vthisDir / val
+    gModuleOverrides[key] = val
 
 proc runNimScript*(scriptName: string; freshDefines=true) =
   passes.gIncludeFile = includeModule

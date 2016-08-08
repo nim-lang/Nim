@@ -129,7 +129,7 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
     if i - 1 >= start:
       add(result, substr(frmt, start, i - 1))
 
-template rfmt(m: BModule, fmt: string, args: varargs[Rope]): expr =
+template rfmt(m: BModule, fmt: string, args: varargs[Rope]): untyped =
   ropecg(m, fmt, args)
 
 proc appcg(m: BModule, c: var Rope, frmt: FormatStr,
@@ -215,7 +215,7 @@ proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)
 
-template compileToCpp(m: BModule): expr =
+template compileToCpp(m: BModule): untyped =
   gCmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
 
 include "ccgtypes.nim"
@@ -328,7 +328,8 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "LOC" & rope(p.labels)
-  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
+  addf(p.blocks[0].sections[cpsLocals],
+     "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
   result.k = locTemp
   #result.a = - 1
   result.t = t
@@ -500,7 +501,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
   assert(lib != nil)
   if not lib.generated:
     lib.generated = true
-    var tmp = getGlobalTempName()
+    var tmp = getTempName(m)
     assert(lib.name == nil)
     lib.name = tmp # BUGFIX: cgsym has awful side-effects
     addf(m.s[cfsVars], "static void* $1;$n", [tmp])
@@ -1084,6 +1085,7 @@ proc initProcOptions(m: BModule): TOptions =
 
 proc rawNewModule(module: PSym, filename: string): BModule =
   new(result)
+  result.tmpBase = rope("T" & $hashOwner(module) & "_")
   initLinkedList(result.headerFiles)
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()
@@ -1100,8 +1102,8 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
-  result.typeNodesName = getTempName()
-  result.nimTypesName = getTempName()
+  result.typeNodesName = getTempName(result)
+  result.nimTypesName = getTempName(result)
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
@@ -1126,8 +1128,8 @@ proc resetModule*(m: BModule) =
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]
-  m.typeNodesName = getTempName()
-  m.nimTypesName = getTempName()
+  m.typeNodesName = getTempName(m)
+  m.nimTypesName = getTempName(m)
   if sfSystemModule in m.module.flags:
     incl m.flags, preventStackTrace
   else:

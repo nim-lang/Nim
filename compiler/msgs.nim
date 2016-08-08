@@ -502,8 +502,6 @@ type
   ESuggestDone* = object of Exception
 
 const
-  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
-    hintQuitCalled}
   NotesVerbosity*: array[0..3, TNoteKinds] = [
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
@@ -520,7 +518,6 @@ const
                                          warnGcUnsafe,
                                          hintPath,
                                          hintDependency,
-                                         hintExecuting,
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
@@ -531,6 +528,8 @@ const
   InvalidFileIDX* = int32(-1)
 
 var
+  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
+    hintQuitCalled, hintExecuting}
   filenameToIndexTbl = initTable[string, int32]()
   fileInfos*: seq[TFileInfo] = @[]
   systemFileIdx*: int32
@@ -621,6 +620,7 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
+  gMainPackageNotes*: TNoteKinds = NotesVerbosity[1]
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)
@@ -760,7 +760,7 @@ proc msgWriteln*(s: string, flags: MsgFlags = {}) =
         flushFile(stderr)
 
 macro callIgnoringStyle(theProc: typed, first: typed,
-                        args: varargs[expr]): stmt =
+                        args: varargs[typed]): untyped =
   let typForegroundColor = bindSym"ForegroundColor".getType
   let typBackgroundColor = bindSym"BackgroundColor".getType
   let typStyle = bindSym"Style".getType
@@ -777,7 +777,7 @@ macro callIgnoringStyle(theProc: typed, first: typed,
        typ != typTerminalCmd:
       result.add(arg)
 
-macro callStyledWriteLineStderr(args: varargs[expr]): stmt =
+macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
   result = newCall(bindSym"styledWriteLine")
   result.add(bindSym"stderr")
   for arg in children(args[0][1]):
@@ -789,7 +789,7 @@ template callWritelnHook(args: varargs[string, `$`]) =
     s.add arg
   writelnHook s
 
-template styledMsgWriteln*(args: varargs[expr]) =
+template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in gGlobalOptions:
@@ -1000,11 +1000,11 @@ proc internalError*(errMsg: string) =
   writeContext(unknownLineInfo())
   rawMessage(errInternal, errMsg)
 
-template assertNotNil*(e: expr): expr =
+template assertNotNil*(e): untyped =
   if e == nil: internalError($instantiationInfo())
   e
 
-template internalAssert*(e: bool): stmt =
+template internalAssert*(e: bool) =
   if not e: internalError($instantiationInfo())
 
 proc addSourceLine*(fileIdx: int32, line: string) =

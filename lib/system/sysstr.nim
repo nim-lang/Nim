@@ -85,7 +85,8 @@ proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   copyMem(addr(result.data), str, len + 1)
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
-  result = toNimStr(str, str.len)
+  if str == nil: NimString(nil)
+  else: toNimStr(str, str.len)
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:

@@ -77,7 +77,7 @@ checkpoints = @[]
 proc shouldRun(testName: string): bool =
   result = true
 
-template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
+template suite*(name, body) {.dirty.} =
   ## Declare a test suite identified by `name` with optional ``setup``
   ## and/or ``teardown`` section.
   ##
@@ -106,13 +106,13 @@ template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   ##  [OK] 2 + 2 = 4
   ##  [OK] (2 + -2) != 4
   block:
-    template setup(setupBody: stmt): stmt {.immediate, dirty.} =
+    template setup(setupBody: untyped) {.dirty.} =
       var testSetupIMPLFlag = true
-      template testSetupIMPL: stmt {.immediate, dirty.} = setupBody
+      template testSetupIMPL: untyped {.dirty.} = setupBody
 
-    template teardown(teardownBody: stmt): stmt {.immediate, dirty.} =
+    template teardown(teardownBody: untyped) {.dirty.} =
       var testTeardownIMPLFlag = true
-      template testTeardownIMPL: stmt {.immediate, dirty.} = teardownBody
+      template testTeardownIMPL: untyped {.dirty.} = teardownBody
 
     body
 
@@ -135,7 +135,7 @@ proc testDone(name: string, s: TestStatus) =
     else:
       rawPrint()
 
-template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
+template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
   ##
   ## .. code-block:: nim
@@ -226,7 +226,7 @@ template skip* =
   testStatusIMPL = SKIPPED
   checkpoints = @[]
 
-macro check*(conditions: stmt): stmt {.immediate.} =
+macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
   ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
@@ -259,31 +259,34 @@ macro check*(conditions: stmt): stmt {.immediate.} =
 
   proc inspectArgs(exp: NimNode): NimNode =
     result = copyNimTree(exp)
-    for i in countup(1, exp.len - 1):
-      if exp[i].kind notin nnkLiterals:
-        inc counter
-        var arg = newIdentNode(":p" & $counter)
-        var argStr = exp[i].toStrLit
-        var paramAst = exp[i]
-        if exp[i].kind == nnkIdent:
-          argsPrintOuts.add getAst(print(argStr, paramAst))
-        if exp[i].kind in nnkCallKinds:
-          var callVar = newIdentNode(":c" & $counter)
-          argsAsgns.add getAst(asgn(callVar, paramAst))
-          result[i] = callVar
-          argsPrintOuts.add getAst(print(argStr, callVar))
-        if exp[i].kind == nnkExprEqExpr:
-          # ExprEqExpr
-          #   Ident !"v"
-          #   IntLit 2
-          result[i] = exp[i][1]
-        if exp[i].typekind notin {ntyTypeDesc}:
-          argsAsgns.add getAst(asgn(arg, paramAst))
-          argsPrintOuts.add getAst(print(argStr, arg))
-          if exp[i].kind != nnkExprEqExpr:
-            result[i] = arg
-          else:
-            result[i][1] = arg
+    if exp[0].kind == nnkIdent and
+        $exp[0] in ["and", "or", "not", "in", "notin", "==", "<=",
+                    ">=", "<", ">", "!=", "is", "isnot"]:
+      for i in countup(1, exp.len - 1):
+        if exp[i].kind notin nnkLiterals:
+          inc counter
+          var arg = newIdentNode(":p" & $counter)
+          var argStr = exp[i].toStrLit
+          var paramAst = exp[i]
+          if exp[i].kind == nnkIdent:
+            argsPrintOuts.add getAst(print(argStr, paramAst))
+          if exp[i].kind in nnkCallKinds:
+            var callVar = newIdentNode(":c" & $counter)
+            argsAsgns.add getAst(asgn(callVar, paramAst))
+            result[i] = callVar
+            argsPrintOuts.add getAst(print(argStr, callVar))
+          if exp[i].kind == nnkExprEqExpr:
+            # ExprEqExpr
+            #   Ident !"v"
+            #   IntLit 2
+            result[i] = exp[i][1]
+          if exp[i].typekind notin {ntyTypeDesc}:
+            argsAsgns.add getAst(asgn(arg, paramAst))
+            argsPrintOuts.add getAst(print(argStr, arg))
+            if exp[i].kind != nnkExprEqExpr:
+              result[i] = arg
+            else:
+              result[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:
@@ -315,7 +318,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
 
     result = getAst(rewrite(checked, checked.lineinfo, checked.toStrLit))
 
-template require*(conditions: stmt): stmt {.immediate.} =
+template require*(conditions: untyped) =
   ## Same as `check` except any failed test causes the program to quit
   ## immediately. Any teardown statements are not executed and the failed
   ## test output is not generated.
@@ -325,7 +328,7 @@ template require*(conditions: stmt): stmt {.immediate.} =
     check conditions
   abortOnError = savedAbortOnError
 
-macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
+macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## Test if `body` raises an exception found in the passed `exceptions`.
   ## The test passes if the raised exception is part of the acceptable
   ## exceptions. Otherwise, it fails.

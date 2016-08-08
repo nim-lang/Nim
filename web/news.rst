@@ -2,6 +2,9 @@
 News
 ====
 
+`2016-06-23 Launching the 2016 Nim community survey <news/2016_06_23_launching_the_2016_nim_community_survey.html>`_
+===================================
+
 `2016-06-11 Version 0.14.2 released <news/2016_06_11_version_0_14_2_released.html>`_
 ===================================
 

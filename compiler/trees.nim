@@ -103,13 +103,15 @@ proc getMagic*(op: PNode): TMagic =
     else: result = mNone
   else: result = mNone
 
-proc treeToSym*(t: PNode): PSym =
-  result = t.sym
-
 proc isConstExpr*(n: PNode): bool =
   result = (n.kind in
       {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
        nkFloatLit..nkFloat64Lit, nkNilLit}) or (nfAllConst in n.flags)
+
+proc isCaseObj*(n: PNode): bool =
+  if n.kind == nkRecCase: return true
+  for i in 0..<safeLen(n):
+    if n[i].isCaseObj: return true
 
 proc isDeepConstExpr*(n: PNode): bool =
   case n.kind
@@ -119,11 +121,14 @@ proc isDeepConstExpr*(n: PNode): bool =
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])
   of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure:
-    for i in 0 .. <n.len:
+    for i in ord(n.kind == nkObjConstr) .. <n.len:
       if not isDeepConstExpr(n.sons[i]): return false
-    # XXX once constant objects are supported by the codegen this needs to be
-    # weakened:
-    result = n.typ.isNil or n.typ.skipTypes({tyGenericInst, tyDistinct}).kind != tyObject
+    if n.typ.isNil: result = true
+    else:
+      let t = n.typ.skipTypes({tyGenericInst, tyDistinct})
+      if t.kind in {tyRef, tyPtr}: return false
+      if t.kind != tyObject or not isCaseObj(t.n):
+        result = true
   else: discard
 
 proc flattenTreeAux(d, a: PNode, op: TMagic) =

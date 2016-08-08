@@ -100,7 +100,7 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
 proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
-  result = getGlobalTempName()
+  result = getTempName(m)
 
   case reason
   of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
@@ -135,7 +135,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
   var sLoc = s.loc.r
-  result = getGlobalTempName()
+  result = getTempName(m)
 
   if sfThread in s.flags and emulatedThreadVars():
     accessThreadLocalVar(p, s)
@@ -143,7 +143,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
 
   c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
   c.p = p
-  let header = "N_NIMCALL(void, $1)()" % [result]
+  let header = "N_NIMCALL(void, $1)(void)" % [result]
   genTraverseProc(c, sLoc, s.loc.t)
 
   let generatedProc = "$1 {$n$2$3$4}$n" %

@@ -66,8 +66,10 @@ type
   `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
 
   `nil` {.magic: "Nil".}
-  expr* {.magic: Expr.} ## meta type to denote an expression (for templates)
-  stmt* {.magic: Stmt.} ## meta type to denote a statement (for templates)
+  expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
+                        ## **Deprecated** since version 0.15. Use ``untyped`` instead.
+  stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
+    ## **Deprecated** since version 0.15. Use ``typed`` instead.
   typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination
@@ -338,15 +340,15 @@ proc `<` *[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<` *[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<` *(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
 
-template `!=` * (x, y: expr): expr {.immediate.} =
+template `!=` * (x, y: untyped): untyped =
   ## unequals operator. This is a shorthand for ``not (x == y)``.
   not (x == y)
 
-template `>=` * (x, y: expr): expr {.immediate.} =
+template `>=` * (x, y: untyped): untyped =
   ## "is greater or equals" operator. This is the same as ``y <= x``.
   y <= x
 
-template `>` * (x, y: expr): expr {.immediate.} =
+template `>` * (x, y: untyped): untyped =
   ## "is greater" operator. This is the same as ``y < x``.
   y < x
 
@@ -668,6 +670,12 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##   inputStrings[2] = "would crash"
   ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
+
+proc newSeqOfCap*[T](cap: Natural): seq[T] {.
+  magic: "NewSeqOfCap", noSideEffect.} =
+  ## creates a new sequence of type ``seq[T]`` with length 0 and capacity
+  ## ``cap``.
+  discard
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
@@ -1092,13 +1100,13 @@ proc contains*[T](s: Slice[T], value: T): bool {.noSideEffect, inline.} =
   ##   assert((1..3).contains(4) == false)
   result = s.a <= value and value <= s.b
 
-template `in` * (x, y: expr): expr {.immediate, dirty.} = contains(y, x)
+template `in` * (x, y: untyped): untyped {.dirty.} = contains(y, x)
   ## Sugar for contains
   ##
   ## .. code-block:: Nim
   ##   assert(1 in (1..3) == true)
   ##   assert(5 in (1..3) == false)
-template `notin` * (x, y: expr): expr {.immediate, dirty.} = not contains(y, x)
+template `notin` * (x, y: untyped): untyped {.dirty.} = not contains(y, x)
   ## Sugar for not containing
   ##
   ## .. code-block:: Nim
@@ -1117,7 +1125,7 @@ proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
   ##
   ##   assert(test[int](3) == 3)
   ##   assert(test[string]("xyz") == 0)
-template `isnot` *(x, y: expr): expr {.immediate.} = not (x is y)
+template `isnot` *(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
@@ -1523,7 +1531,7 @@ type # these work for most platforms:
     ## This is the same as the type ``unsigned long long`` in *C*.
 
   cstringArray* {.importc: "char**", nodecl.} = ptr
-    array [0..ArrayDummySize, cstring]
+    array[0..ArrayDummySize, cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
@@ -1736,11 +1744,11 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## swaps the values `a` and `b`. This is often more efficient than
   ## ``tmp = a; a = b; b = tmp``. Particularly useful for sorting algorithms.
 
-template `>=%` *(x, y: expr): expr {.immediate.} = y <=% x
+template `>=%` *(x, y: untyped): untyped = y <=% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) >= unsigned(y)``.
 
-template `>%` *(x, y: expr): expr {.immediate.} = y <% x
+template `>%` *(x, y: untyped): untyped = y <% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
@@ -1868,7 +1876,7 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-template countupImpl(incr: stmt) {.immediate, dirty.} =
+template countupImpl(incr: untyped) {.oldimmediate, dirty.} =
   when T is IntLikeForCount:
     var res = int(a)
     while res <= int(b):
@@ -3175,7 +3183,7 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
   result = toFloat(x) / toFloat(y)
 
-template spliceImpl(s, a, L, b: expr): stmt {.immediate.} =
+template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
   var slen = s.len
   var shift = b.len - L
@@ -3353,7 +3361,11 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
 
 proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
-  ## provides access to the compiler's instantiation stack line information.
+  ## provides access to the compiler's instantiation stack line information
+  ## of a template.
+  ##
+  ## While similar to the `caller info`:idx: of other languages, it is determined
+  ## at compile time.
   ##
   ## This proc is mostly useful for meta programming (eg. ``assert`` template)
   ## to retrieve information about the current filename and line number.
@@ -3457,7 +3469,7 @@ iterator mitems*(a: var string): var char {.inline.} =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
+template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ## Sets an assertion failure handler that will intercept any assert
   ## statements following `onFailedAssert` in the current module scope.
   ##
@@ -3470,7 +3482,7 @@ template onFailedAssert*(msg: expr, code: stmt): stmt {.dirty, immediate.} =
   ##    e.lineinfo = instantiationInfo(-2)
   ##    raise e
   ##
-  template failedAssertImpl(msgIMPL: string): stmt {.dirty.} =
+  template failedAssertImpl(msgIMPL: string): untyped {.dirty.} =
     let msg = msgIMPL
     code
 
@@ -3633,9 +3645,35 @@ proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
+template closureScope*(body: untyped): untyped =
+  ## Useful when creating a closure in a loop to capture local loop variables by
+  ## their current iteration values. Example:
+  ##
+  ## .. code-block:: nim
+  ##   var myClosure : proc()
+  ##   # without closureScope:
+  ##   for i in 0 .. 5:
+  ##     let j = i
+  ##     if j == 3:
+  ##       myClosure = proc() = echo j
+  ##   myClosure() # outputs 5. `j` is changed after closure creation
+  ##   # with closureScope:
+  ##   for i in 0 .. 5:
+  ##     closureScope: # Everything in this scope is locked after closure creation
+  ##       let j = i
+  ##       if j == 3:
+  ##         myClosure = proc() = echo j
+  ##   myClosure() # outputs 3
+  (proc() = body)()
+
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 when defined(nimconfig):
   include "system/nimscript"
+
+when defined(windows) and appType == "console" and not defined(nimconfig):
+  proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleOutputCP".}
+  discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
 include "pure/future"

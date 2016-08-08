@@ -98,7 +98,7 @@ proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) =
   ## Produce and emit a parser message to output about the token `tok`
   parMessage(p, msg, prettyTok(tok))
 
-template withInd(p: expr, body: stmt) {.immediate.} =
+template withInd(p, body: untyped) =
   let oldInd = p.currInd
   p.currInd = p.tok.indent
   body
@@ -202,7 +202,7 @@ proc isRightAssociative(tok: TToken): bool {.inline.} =
 
 proc getPrecedence(tok: TToken, strongSpaces: bool): int =
   ## Calculates the precedence of the given token.
-  template considerStrongSpaces(x): expr =
+  template considerStrongSpaces(x): untyped =
     x + (if strongSpaces: 100 - tok.strongSpaceA.int*10 else: 0)
 
   case tok.tokType
@@ -214,7 +214,7 @@ proc getPrecedence(tok: TToken, strongSpaces: bool): int =
     if L > 1 and tok.ident.s[L-1] == '>' and
       tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
 
-    template considerAsgn(value: expr) =
+    template considerAsgn(value: untyped) =
       result = if tok.ident.s[L-1] == '=': 1 else: value
 
     case relevantChar
@@ -686,11 +686,19 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   #|       | '{' optInd indexExprList optPar '}'
   #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
   result = r
+
+  template somePar() =
+    if p.tok.strongSpaceA > 0:
+      if p.strongSpaces:
+        break
+      else:
+        parMessage(p, warnDeprecated,
+          "a [b] will be parsed as command syntax; spacing")
   while p.tok.indent < 0 or
        (p.tok.tokType == tkDot and p.tok.indent >= baseIndent):
     case p.tok.tokType
     of tkParLe:
-      if p.strongSpaces and p.tok.strongSpaceA > 0: break
+      somePar()
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result.sons[1].kind == nkExprColonExpr:
         result.kind = nkObjConstr
@@ -705,10 +713,10 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
       result = dotExpr(p, result)
       result = parseGStrLit(p, result)
     of tkBracketLe:
-      if p.strongSpaces and p.tok.strongSpaceA > 0: break
+      somePar()
       result = namedParams(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
-      if p.strongSpaces and p.tok.strongSpaceA > 0: break
+      somePar()
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast, tkAddr, tkType:
       if p.inPragma == 0:

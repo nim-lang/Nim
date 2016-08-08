@@ -114,7 +114,7 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
 proc merge[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
-  template `<-` (a, b: expr) =
+  template `<-` (a, b) =
     when false:
       a = b
     elif onlySafeCode:
@@ -206,7 +206,7 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
     result[i] = a[i]
   sort(result, cmp, order)
 
-template sortedByIt*(seq1, op: expr): expr =
+template sortedByIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``sorted`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an

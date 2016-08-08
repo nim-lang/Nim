@@ -80,3 +80,19 @@ and then to build it::
 
 You should then add the ``./bin`` (make sure to expand this into an
 absolute path) directory to your ``PATH``.
+
+
+Docker Hub
+----------
+
+The `official Docker images <https://hub.docker.com/r/nimlang/nim/>`_
+are published Docker Hub and include the compiler and Nimble. There are images
+for standalone scripts as well as Nimble packages.
+
+Get the latest stable image::
+
+  docker pull nimlang/nim
+
+The latest development version::
+
+  docker pull nimlang/nim:devel

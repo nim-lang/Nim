@@ -46,7 +46,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   #echo(treeRepr(result))
   #echo(result.toStrLit())
 
-macro `=>`*(p, b: expr): expr {.immediate.} =
+macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
   ##
   ## .. code-block:: nim
@@ -107,7 +107,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
   #echo(result.toStrLit())
   #return result # TODO: Bug?
 
-macro `->`*(p, b: expr): expr {.immediate.} =
+macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types.
   ##
   ## .. code-block:: nim
@@ -125,7 +125,7 @@ macro `->`*(p, b: expr): expr {.immediate.} =
 type ListComprehension = object
 var lc*: ListComprehension
 
-macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
+macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
   ## List comprehension, returns a sequence. `comp` is the actual list
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
   ## the type that will be stored inside the result seq.

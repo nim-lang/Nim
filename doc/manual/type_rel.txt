@@ -313,7 +313,7 @@ matches better than just ``T`` then.
 Automatic dereferencing
 -----------------------
 
-If the `experimental mode <experimental pragma>`_ is active and no other match
+If the `experimental mode <#pragmas-experimental-pragma>`_ is active and no other match
 is found, the first argument ``a`` is dereferenced automatically if it's a
 pointer type and overloading resolution is tried with ``a[]`` instead.
 

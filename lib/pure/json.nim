@@ -126,7 +126,7 @@ type
   TJsonParser: JsonParser, TTokKind: TokKind].}
 
 const
-  errorMessages: array [JsonError, string] = [
+  errorMessages: array[JsonError, string] = [
     "no error",
     "invalid token",
     "string expected",
@@ -139,7 +139,7 @@ const
     "EOF expected",
     "expression expected"
   ]
-  tokToStr: array [TokKind, string] = [
+  tokToStr: array[TokKind, string] = [
     "invalid token",
     "EOF",
     "string literal",
@@ -712,6 +712,7 @@ proc `%`*(b: bool): JsonNode =
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  if keyvals.len == 0: return newJArray()
   result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
 
@@ -847,6 +848,16 @@ proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   result = node.fields.hasKey(key)
+
+proc contains*(node: JsonNode, key: string): bool =
+  ## Checks if `key` exists in `node`.
+  assert(node.kind == JObject)
+  node.fields.hasKey(key)
+
+proc contains*(node: JsonNode, val: JsonNode): bool =
+  ## Checks if `val` exists in array `node`.
+  assert(node.kind == JArray)
+  find(node.elems, val) >= 0
 
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
@@ -1116,7 +1127,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     discard getTok(p)
     while p.tok != tkCurlyRi:
       if p.tok != tkString:
-        raiseParseErr(p, "string literal as key expected")
+        raiseParseErr(p, "string literal as key")
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)

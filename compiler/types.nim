@@ -407,7 +407,8 @@ const
     "!", "varargs[$1]", "iter[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
+    "void"]
 
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
 
@@ -540,7 +541,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     else:
       result.add typeToString(t.sons[0])
   of tyRange:
-    result = "range " & rangeToStr(t.n)
+    result = "range "
+    if t.n != nil and t.n.kind == nkRange:
+      result.add rangeToStr(t.n)
     if prefer != preferExported:
       result.add("(" & typeToString(t.sons[0]) & ")")
   of tyProc:
@@ -727,6 +730,7 @@ proc equalParam(a, b: PSym): TParamsEquality =
     result = paramsNotEqual
 
 proc sameConstraints(a, b: PNode): bool =
+  if isNil(a) and isNil(b): return true
   internalAssert a.len == b.len
   for i in 1 .. <a.len:
     if not exprStructuralEquivalent(a[i].sym.constraint,
@@ -799,8 +803,10 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
           result = x.name.id == y.name.id
           if not result: break
         else: internalError(a.n.info, "sameTuple")
+    elif a.n != b.n and (a.n == nil or b.n == nil) and IgnoreTupleFields notin c.flags:
+      result = false
 
-template ifFastObjectTypeCheckFailed(a, b: PType, body: stmt) {.immediate.} =
+template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
   if tfFromGeneric notin a.flags + b.flags:
     # fast case: id comparison suffices:
     result = a.id == b.id
@@ -908,7 +914,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       while a.kind == tyDistinct: a = a.sons[0]
       if a.kind != b.kind: return false
 
-  if x.kind == tyGenericInst:
+  # this is required by tunique_type but makes no sense really:
+  if x.kind == tyGenericInst and IgnoreTupleFields notin c.flags:
     let
       lhs = x.skipGenericAlias
       rhs = y.skipGenericAlias
@@ -922,7 +929,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
-     tyInt..tyBigNum, tyStmt, tyExpr:
+     tyInt..tyBigNum, tyStmt, tyExpr, tyVoid:
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -1108,7 +1115,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyExpr, tyStmt, tyStatic:
     if kind notin {skParam, skResult}: result = t
-  of tyEmpty:
+  of tyVoid:
     if taField notin flags: result = t
   of tyTypeClasses:
     if not (tfGenericTypeParam in t.flags or taField notin flags): result = t
@@ -1153,7 +1160,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if result != nil: break
     if result.isNil and t.n != nil:
       result = typeAllowedNode(marker, t.n, kind, flags)
-  of tyProxy:
+  of tyProxy, tyEmpty:
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
@@ -1313,6 +1320,9 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
+  of tyStatic:
+    if typ.n != nil: result = computeSizeAux(lastSon(typ), a)
+    else: result = szUnknownSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize

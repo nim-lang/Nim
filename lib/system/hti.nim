@@ -71,7 +71,7 @@ type
     typ: ptr TNimType
     name: cstring
     len: int
-    sons: ptr array [0..0x7fff, ptr TNimNode]
+    sons: ptr array[0..0x7fff, ptr TNimNode]
 
   TNimTypeFlag = enum
     ntfNoRefs = 0,     # type contains no tyRef, tySequence, tyString

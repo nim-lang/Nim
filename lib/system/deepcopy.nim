@@ -124,7 +124,9 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
     copyMem(dest, src, mt.size)
 
 proc genericDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+  GC_disable()
   genericDeepCopyAux(dest, src, mt)
+  GC_enable()
 
 proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   # also invoked for 'string'

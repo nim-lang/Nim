@@ -311,7 +311,7 @@ proc freeOsChunks(a: var MemRegion, p: pointer, size: int) =
   osDeallocPages(p, size)
   decCurrMem(a, size)
   dec(a.freeMem, size)
-  #c_fprintf(c_stdout, "[Alloc] back to OS: %ld\n", size)
+  #c_fprintf(stdout, "[Alloc] back to OS: %ld\n", size)
 
 proc isAccessible(a: MemRegion, p: pointer): bool {.inline.} =
   result = contains(a.chunkStarts, pageIndex(p))
@@ -472,7 +472,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
   var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= requestedSize, "insufficient allocated size!")
-  #c_fprintf(c_stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
+  #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
   if size <= SmallChunkSize-smallChunkOverhead():
     # allocate a small block: for small chunks, we use only its next pointer
     var s = size div MemAlign
@@ -493,7 +493,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert(allocInv(a), "rawAlloc: begin c != nil")
       sysAssert c.next != c, "rawAlloc 5"
       #if c.size != size:
-      #  c_fprintf(c_stdout, "csize: %lld; size %lld\n", c.size, size)
+      #  c_fprintf(stdout, "csize: %lld; size %lld\n", c.size, size)
       sysAssert c.size == size, "rawAlloc 6"
       if c.freeList == nil:
         sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,

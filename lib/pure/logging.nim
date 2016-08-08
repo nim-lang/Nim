@@ -61,7 +61,7 @@ type
     lvlNone       ## no levels active
 
 const
-  LevelNames*: array [Level, string] = [
+  LevelNames*: array[Level, string] = [
     "DEBUG", "DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "NONE"
   ]
 

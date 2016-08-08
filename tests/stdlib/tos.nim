@@ -1,12 +1,88 @@
-# test some things of the os module
+discard """
+  output: '''true
+true
+true
+true
+true
+true
+true
+true
+true
+All:
+__really_obscure_dir_name/are.x
+__really_obscure_dir_name/created
+__really_obscure_dir_name/dirs
+__really_obscure_dir_name/files.q
+__really_obscure_dir_name/some
+__really_obscure_dir_name/test
+__really_obscure_dir_name/testing.r
+__really_obscure_dir_name/these.txt
+Files:
+__really_obscure_dir_name/are.x
+__really_obscure_dir_name/files.q
+__really_obscure_dir_name/testing.r
+__really_obscure_dir_name/these.txt
+Dirs:
+__really_obscure_dir_name/created
+__really_obscure_dir_name/dirs
+__really_obscure_dir_name/some
+__really_obscure_dir_name/test
+false
+false
+false
+false
+false
+false
+false
+false
+false
+'''
+"""
+# test os path creation, iteration, and deletion
 
 import os
 
-proc walkDirTree(root: string) =
-  for k, f in walkDir(root):
-    case k
-    of pcFile, pcLinkToFile: echo(f)
-    of pcDir: walkDirTree(f)
-    of pcLinkToDir: discard
+let files = @["these.txt", "are.x", "testing.r", "files.q"]
+let dirs = @["some", "created", "test", "dirs"]
 
-walkDirTree(".")
+let dname = "__really_obscure_dir_name"
+
+createDir(dname)
+echo dirExists(dname)
+
+# Test creating files and dirs
+for dir in dirs:
+  createDir(dname/dir)
+  echo dirExists(dname/dir)
+
+for file in files:
+  let fh = open(dname/file, fmReadWrite)
+  fh.close()
+  echo fileExists(dname/file)
+
+echo "All:"
+
+for path in walkPattern(dname/"*"):
+  echo path
+
+echo "Files:"
+
+for path in walkFiles(dname/"*"):
+  echo path
+
+echo "Dirs:"
+
+for path in walkDirs(dname/"*"):
+  echo path
+
+# Test removal of files dirs
+for dir in dirs:
+  removeDir(dname/dir)
+  echo dirExists(dname/dir)
+
+for file in files:
+  removeFile(dname/file)
+  echo fileExists(dname/file)
+
+removeDir(dname)
+echo dirExists(dname)
