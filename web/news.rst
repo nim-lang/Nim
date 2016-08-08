@@ -2,6 +2,9 @@
 News
 ====
 
+`2016-08-06 BountySource Update: The Road to v1.0 <news/2016_08_06_bountysource_update_the_road_to_v10.html>`_
+===================================
+
 `2016-06-23 Launching the 2016 Nim community survey <news/2016_06_23_launching_the_2016_nim_community_survey.html>`_
 ===================================
 
