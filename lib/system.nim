@@ -3637,3 +3637,5 @@ proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
 
 when defined(nimconfig):
   include "system/nimscript"
+
+include "pure/future"
