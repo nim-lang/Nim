@@ -1309,6 +1309,7 @@ proc determineType(c: PContext, s: PSym) =
 
 proc semIterator(c: PContext, n: PNode): PNode =
   # gensym'ed iterator?
+  let isAnon = n[namePos].kind == nkEmpty
   if n[namePos].kind == nkSym:
     # gensym'ed iterators might need to become closure iterators:
     n[namePos].sym.owner = getCurrOwner()
@@ -1318,6 +1319,8 @@ proc semIterator(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
     localError(n.info, errXNeedsReturnType, "iterator")
+  if isAnon and s.typ.callConv == ccInline:
+    localError(n.info, "inline iterators are not first-class / cannot be assigned to variables")
   # iterators are either 'inline' or 'closure'; for backwards compatibility,
   # we require first class iterators to be marked with 'closure' explicitly
   # -- at least for 0.9.2.
