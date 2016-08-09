@@ -260,7 +260,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
 type
   TAssignmentFlag = enum
     needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
-    afSrcIsNotNil, needToKeepAlive
+    afSrcIsNotNil
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
@@ -337,31 +337,6 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.s = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
-
-proc keepAlive(p: BProc, toKeepAlive: TLoc) =
-  when false:
-    # deactivated because of the huge slowdown this causes; GC will take care
-    # of interior pointers instead
-    if optRefcGC notin gGlobalOptions: return
-    var result: TLoc
-    var fid = rope(p.gcFrameId)
-    result.r = "GCFRAME.F" & fid
-    addf(p.gcFrameType, "  $1 F$2;$n",
-        [getTypeDesc(p.module, toKeepAlive.t), fid])
-    inc(p.gcFrameId)
-    result.k = locTemp
-    #result.a = -1
-    result.t = toKeepAlive.t
-    result.s = OnStack
-    result.flags = {}
-
-    if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
-      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
-    else:
-      useStringh(p.module)
-      linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-           addrLoc(result), addrLoc(toKeepAlive), rdLoc(result))
 
 proc initGCFrame(p: BProc): Rope =
   if p.gcFrameId > 0: result = "struct {$1} GCFRAME;$n" % [p.gcFrameType]

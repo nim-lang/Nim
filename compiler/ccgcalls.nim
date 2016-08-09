@@ -536,8 +536,6 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, nil, e, d)
   postStmtActions(p)
-  when false:
-    if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if ri.sons[0].typ.skipTypes({tyGenericInst}).callConv == ccClosure:
@@ -549,6 +547,3 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, le, ri, d)
   postStmtActions(p)
-  when false:
-    if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
-
