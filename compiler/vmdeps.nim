@@ -109,10 +109,6 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     mapTypeToBracketX(name, m, t, info, inst)
   template newNodeX(kind): untyped =
     newNodeIT(kind, if t.n.isNil: info else: t.n.info, t)
-  template newIdent(s): untyped =
-    var r = newNodeX(nkIdent)
-    r.add !s
-    r
   template newIdentDefs(n,t): untyped =
     var id = newNodeX(nkIdentDefs)
     id.add n  # name

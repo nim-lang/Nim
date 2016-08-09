@@ -1135,11 +1135,6 @@ type
   TProcCompilationSteps = enum
     stepRegisterSymbol,
     stepDetermineType,
-    stepCompileBody
-
-proc isForwardDecl(s: PSym): bool =
-  internalAssert s.kind == skProc
-  result = s.ast[bodyPos].kind != nkEmpty
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
@@ -1177,8 +1172,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.ast = n
     #s.scope = c.currentScope
 
-    # if typeIsDetermined: assert phase == stepCompileBody
-    # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
@@ -1560,8 +1553,3 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc semStmt(c: PContext, n: PNode): PNode =
   # now: simply an alias:
   result = semExprNoType(c, n)
-
-proc semStmtScope(c: PContext, n: PNode): PNode =
-  openScope(c)
-  result = semStmt(c, n)
-  closeScope(c)

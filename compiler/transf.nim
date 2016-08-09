@@ -584,13 +584,6 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   popTransCon(c)
   # echo "transformed: ", stmtList.PNode.renderTree
 
-proc getMagicOp(call: PNode): TMagic =
-  if call.sons[0].kind == nkSym and
-      call.sons[0].sym.kind in {skProc, skMethod, skConverter}:
-    result = call.sons[0].sym.magic
-  else:
-    result = mNone
-
 proc transformCase(c: PTransf, n: PNode): PTransNode =
   # removes `elif` branches of a case stmt
   # adds ``else: nil`` if needed for the code generator

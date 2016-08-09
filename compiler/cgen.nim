@@ -167,10 +167,6 @@ proc linefmt(p: BProc, s: TCProcSection, frmt: FormatStr,
              args: varargs[Rope]) =
   add(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
-proc appLineCg(p: BProc, r: var Rope, frmt: FormatStr,
-               args: varargs[Rope]) =
-  add(r, indentLine(p, ropecg(p.module, frmt, args)))
-
 proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
   if result < 0: result = 0 # negative numbers are not allowed in #line
@@ -259,8 +255,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
 
 type
   TAssignmentFlag = enum
-    needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
-    afSrcIsNotNil
+    needToCopy, afDestIsNil, afDestIsNotNil, afSrcIsNil, afSrcIsNotNil
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
@@ -594,9 +589,6 @@ proc generateHeaders(m: BModule) =
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it.data)])
     it = PStrEntry(it.next)
-
-proc retIsNotVoid(s: PSym): bool =
-  result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")

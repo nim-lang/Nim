@@ -660,8 +660,6 @@ const
   WarningColor = fgYellow
   HintTitle    = "Hint: "
   HintColor    = fgGreen
-  InfoTitle    = "Info: "
-  InfoColor    = fgCyan
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)

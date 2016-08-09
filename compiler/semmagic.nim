@@ -147,13 +147,6 @@ proc isStrangeArray(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind == tyArray and t.firstOrd != 0
 
-proc isNegative(n: PNode): bool =
-  let n = n.skipConv
-  if n.kind in {nkCharLit..nkUInt64Lit}:
-    result = n.intVal < 0
-  elif n.kind in nkCallKinds and n.sons[0].kind == nkSym:
-    result = n.sons[0].sym.magic in {mUnaryMinusI, mUnaryMinusI64}
-
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic

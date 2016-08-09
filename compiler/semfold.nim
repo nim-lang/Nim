@@ -458,32 +458,6 @@ proc getConstIfExpr(c: PSym, n: PNode): PNode =
       if result == nil: result = getConstExpr(c, it.sons[0])
     else: internalError(it.info, "getConstIfExpr()")
 
-proc partialAndExpr(c: PSym, n: PNode): PNode =
-  # partial evaluation
-  result = n
-  var a = getConstExpr(c, n.sons[1])
-  var b = getConstExpr(c, n.sons[2])
-  if a != nil:
-    if getInt(a) == 0: result = a
-    elif b != nil: result = b
-    else: result = n.sons[2]
-  elif b != nil:
-    if getInt(b) == 0: result = b
-    else: result = n.sons[1]
-
-proc partialOrExpr(c: PSym, n: PNode): PNode =
-  # partial evaluation
-  result = n
-  var a = getConstExpr(c, n.sons[1])
-  var b = getConstExpr(c, n.sons[2])
-  if a != nil:
-    if getInt(a) != 0: result = a
-    elif b != nil: result = b
-    else: result = n.sons[2]
-  elif b != nil:
-    if getInt(b) != 0: result = b
-    else: result = n.sons[1]
-
 proc leValueConv(a, b: PNode): bool =
   result = false
   case a.kind

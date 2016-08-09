@@ -30,19 +30,6 @@ proc intLiteral(i: BiggestInt): Rope =
   else:
     result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
-proc int32Literal(i: int): Rope =
-  if i == int(low(int32)):
-    result = ~"(-2147483647 -1)"
-  else:
-    result = rope(i)
-
-proc genHexLiteral(v: PNode): Rope =
-  # hex literals are unsigned in C
-  # so we don't generate hex literals any longer.
-  if v.kind notin {nkIntLit..nkUInt64Lit}:
-    internalError(v.info, "genHexLiteral")
-  result = intLiteral(v.intVal)
-
 proc getStrLit(m: BModule, s: string): Rope =
   discard cgsym(m, "TGenericSeq")
   result = getTempName(m)
@@ -395,9 +382,6 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: internalError("genDeepCopy: " & $ty.kind)
 
-proc getDestLoc(p: BProc, d: var TLoc, typ: PType) =
-  if d.k == locNone: getTemp(p, typ, d)
-
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc) =
   if d.k != locNone:
     if lfNoDeepCopy in d.flags: genAssignment(p, d, s, {})
@@ -447,13 +431,6 @@ proc unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   if d.k != locNone: internalError(e.info, "unaryStmt")
   initLocExpr(p, e.sons[1], a)
   lineCg(p, cpsStmts, frmt, [rdLoc(a)])
-
-proc binaryStmtChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
-  var a, b: TLoc
-  if (d.k != locNone): internalError(e.info, "binaryStmtChar")
-  initLocExpr(p, e.sons[1], a)
-  initLocExpr(p, e.sons[2], b)
-  lineCg(p, cpsStmts, frmt, [rdCharLoc(a), rdCharLoc(b)])
 
 proc binaryExpr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a, b: TLoc
@@ -1236,7 +1213,6 @@ proc genNewFinalize(p: BProc, e: PNode) =
     a, b, f: TLoc
     refType, bt: PType
     ti: Rope
-    oldModule: BModule
   refType = skipTypes(e.sons[1].typ, abstractVarRange)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], f)
@@ -1671,7 +1647,6 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     binaryArith(p, e, d, m)
 
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
-  var line, filen: Rope
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
   of mNot..mToBiggestInt: unaryArith(p, e, d, op)
