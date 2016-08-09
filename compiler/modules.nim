@@ -49,7 +49,7 @@ proc hashChanged(fileIdx: int32): bool =
                                        else: hashNotChanged
     # echo "TESTING Hash: ", fileIdx.toFilename, " ", result
 
-  case gMemCacheData[fileIdx].hashStatus:
+  case gMemCacheData[fileIdx].hashStatus
   of hashHasChanged:
     result = true
   of hashNotChanged:
