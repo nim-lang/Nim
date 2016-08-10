@@ -117,7 +117,7 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): Rope =
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".rope, typ)
   else:
-    if skipTypes(typ.sons[0], typedescInst).kind in {tyArrayConstr, tyArray}:
+    if skipTypes(typ.sons[0], abstractInst).kind in {tyArrayConstr, tyArray}:
       # C's arrays are broken beyond repair:
       genTraverseProc(c, "a".rope, typ.sons[0])
     else:

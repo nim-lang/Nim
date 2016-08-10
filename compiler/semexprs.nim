@@ -232,7 +232,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   else:
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
     var typ = skipTypes(n.sons[1].typ, abstractVarRange +
-                                       {tyTypeDesc, tyFieldAccessor})
+                                       {tyFieldAccessor})
     case typ.kind
     of tySequence, tyString, tyCString, tyOpenArray, tyVarargs:
       n.typ = getSysType(tyInt)
