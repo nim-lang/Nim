@@ -136,7 +136,7 @@ proc mapType(typ: PType): TCTypeKind =
       else: internalError("mapType")
   of tyRange: result = mapType(typ.sons[0])
   of tyPtr, tyVar, tyRef:
-    var base = skipTypes(typ.lastSon, typedescInst)
+    var base = skipTypes(typ.lastSon, abstractInst)
     case base.kind
     of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctPtrToArray
     #of tySet:
@@ -157,7 +157,7 @@ proc mapType(typ: PType): TCTypeKind =
   else: internalError("mapType")
 
 proc mapReturnType(typ: PType): TCTypeKind =
-  #if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
+  #if skipTypes(typ, abstractInst).kind == tyArray: result = ctPtr
   #else:
   result = mapType(typ)
 
@@ -184,10 +184,10 @@ proc isInvalidReturnType(rettype: PType): bool =
   else:
     case mapType(rettype)
     of ctArray:
-      result = not (skipTypes(rettype, typedescInst).kind in
+      result = not (skipTypes(rettype, abstractInst).kind in
           {tyVar, tyRef, tyPtr})
     of ctStruct:
-      let t = skipTypes(rettype, typedescInst)
+      let t = skipTypes(rettype, abstractInst)
       if rettype.isImportedCppType or t.isImportedCppType: return false
       result = needsComplexAssignment(t) or
           (t.kind == tyObject and not isObjLackingTypeField(t))
@@ -211,7 +211,7 @@ proc getTempName(m: BModule): Rope =
   inc m.labels
 
 proc ccgIntroducedPtr(s: PSym): bool =
-  var pt = skipTypes(s.typ, typedescInst)
+  var pt = skipTypes(s.typ, abstractInst)
   assert skResult != s.kind
   if tfByRef in pt.flags: return true
   elif tfByCopy in pt.flags: return false
@@ -635,7 +635,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     assert(cacheGetType(m.typeCache, t) == nil)
     idTablePut(m.typeCache, t, result & "*")
     if not isImportedType(t):
-      if skipTypes(t.sons[0], typedescInst).kind != tyEmpty:
+      if skipTypes(t.sons[0], abstractInst).kind != tyEmpty:
         const
           cppSeq = "struct $2 : #TGenericSeq {$n"
           cSeq = "struct $2 {$n" &
@@ -1020,7 +1020,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
 
   # getUniqueType doesn't skip tyDistinct when that has an overriden operation:
   while t.kind == tyDistinct: t = t.lastSon
-  let owner = t.skipTypes(typedescPtrs).owner.getModule
+  let owner = t.skipTypes(abstractPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
     discard genTypeInfo(owner.bmod, t)

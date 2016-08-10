@@ -61,8 +61,6 @@ const
 
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable,
                tyTypeDesc}
-  typedescPtrs* = abstractPtrs + {tyTypeDesc}
-  typedescInst* = abstractInst + {tyTypeDesc}
 
 proc containsObject*(t: PType): bool
 proc containsGarbageCollectedRef*(typ: PType): bool
