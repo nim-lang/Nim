@@ -2,6 +2,8 @@ discard """
   output: '''Sortable
 Sortable
 Container
+TObj
+int
 '''
 """
 
@@ -20,7 +22,7 @@ type
     C.len is Ordinal
     for v in items(C):
       v.type is tuple|object
-
+   
 proc foo(c: ObjectContainer) =
   echo "Container"
 
@@ -79,6 +81,9 @@ proc ptrproc(x: ptr TObj, y: string) = discard
 proc staticproc(x: static[TObj]) = discard
 proc typeproc(t: type TObj) = discard
 
-proc testFoo(x: TFoo) = discard
+proc testFoo(x: TFoo) =
+  echo x.TypeName
+  echo x.MappedType.name
+  
 testFoo(TObj(x: 10))
 

@@ -63,7 +63,7 @@ const
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred}
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred}
+                   tyInferred} + tyTypeClasses
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
                tyInferred}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
@@ -417,6 +417,13 @@ const
 
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
 
+template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
+  tc.sons.safeAdd concrete
+  tc.flags.incl tfResolved
+
+template isResolvedUserTypeClass*(t: PType): bool =
+  tfResolved in t.flags
+
 proc addTypeFlags(name: var string, typ: PType) {.inline.} =
   if tfNotNil in typ.flags: name.add(" not nil")
 
@@ -461,6 +468,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if t.n != nil: result.add "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
+    if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
     return t.sym.owner.name.s
   of tyBuiltInTypeClass:
     result = case t.base.kind:
@@ -1314,12 +1322,15 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     result = align(result, a)
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
     result = computeSizeAux(lastSon(typ), a)
+  of tyTypeClasses:
+    result = if typ.isResolvedUserTypeClass: computeSizeAux(typ.lastSon, a)
+             else: szUnknownSize
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
   of tyStatic:
-    if typ.n != nil: result = computeSizeAux(lastSon(typ), a)
-    else: result = szUnknownSize
+    result = if typ.n != nil: computeSizeAux(typ.lastSon, a)
+             else: szUnknownSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize
@@ -1491,9 +1502,6 @@ proc isEmptyContainer*(t: PType): bool =
     result = t.sons[0].kind == tyEmpty
   of tyGenericInst, tyAlias: result = isEmptyContainer(t.lastSon)
   else: result = false
-
-proc isResolvedUserTypeClass*(t: PType): bool =
-  t.kind in {tyUserTypeClassInst} and t.base.sonsLen == t.sonsLen - 2
 
 proc takeType*(formal, arg: PType): PType =
   # param: openArray[string] = []

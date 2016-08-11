@@ -1197,22 +1197,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         return isNone
 
-  of tyUserTypeClass:
-    considerPreviousT:
+  of tyUserTypeClassInst, tyUserTypeClass:
+    if f.isResolvedUserTypeClass:
+      result = typeRel(c, f.lastSon, a)
+    else:
       var matched = matchUserTypeClass(c.c, c, f, aOrig)
       if matched != nil:
-        # TODO, make user type classes skipable too
-        put(c, f, a)
-        result = isGeneric
-      else:
-        result = isNone
-
-  of tyUserTypeClassInst:
-    considerPreviousT:
-      var matched = matchUserTypeClass(c.c, c, f, aOrig)
-      if matched != nil:
-        matched.sons.add a
-        put(c.bindings, f, matched)
+        bindConcreteTypeToUserTypeClass(matched, a)
+        put(c, f, matched)
         result = isGeneric
       else:
         result = isNone

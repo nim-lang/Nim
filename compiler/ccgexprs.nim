@@ -890,7 +890,7 @@ proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
               rfmt(nil, "$1->data[$2]", rdLoc(a), rdCharLoc(b)), a.s)
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
-  var ty = skipTypes(n.sons[0].typ, abstractVarRange)
+  var ty = skipTypes(n.sons[0].typ, abstractVarRange + tyUserTypeClasses)
   if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
   of tyArray: genArrayElem(p, n.sons[0], n.sons[1], d)
@@ -1359,7 +1359,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
 proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   var a = e.sons[1]
   if a.kind == nkHiddenAddr: a = a.sons[0]
-  let typ = skipTypes(a.typ, abstractVar)
+  var typ = skipTypes(a.typ, abstractVar + tyUserTypeClasses)
   case typ.kind
   of tyOpenArray, tyVarargs:
     if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")

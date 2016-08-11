@@ -428,6 +428,7 @@ const
                     tyAnd, tyOr, tyNot, tyAnything}
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyExpr} + tyTypeClasses
+  tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -471,6 +472,8 @@ type
                       # can be attached to generic procs with free standing
                       # type parameters: e.g. proc foo[T]()
                       # depends on unresolved static params.
+    tfResolved        # marks a user type class, after it has been bound to a
+                      # concrete type (lastSon becomes the concrete type)
     tfRetType,        # marks return types in proc (used to detect type classes
                       # used as return types for return type inference)
     tfCapturesEnv,    # whether proc really captures some environment
