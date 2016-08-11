@@ -151,7 +151,8 @@ proc isOrdinalType(t: PType): bool =
   const
     # caution: uint, uint64 are no ordinal types!
     baseKinds = {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum}
-    parentKinds = {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}
+    parentKinds = {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst,
+                   tyDistinct}
   t.kind in baseKinds or (t.kind in parentKinds and isOrdinalType(t.sons[0]))
 
 proc enumHasHoles(t: PType): bool =
