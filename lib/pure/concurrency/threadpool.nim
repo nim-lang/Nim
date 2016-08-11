@@ -297,9 +297,17 @@ var
   gSomeReady : Semaphore
   readyWorker: ptr Worker
 
+# A workaround for recursion deadlock issue
+# https://github.com/nim-lang/Nim/issues/4597
+var
+  numSlavesRunning: int
+  numSlavesWaiting: int
+  isSlave {.threadvar.}: bool
+
 gSomeReady.initSemaphore()
 
 proc slave(w: ptr Worker) {.thread.} =
+  isSlave = true
   while true:
     when declared(atomicStoreN):
       atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
@@ -311,7 +319,11 @@ proc slave(w: ptr Worker) {.thread.} =
     # XXX Somebody needs to look into this (why does this assertion fail
     # in Visual Studio?)
     when not defined(vcc): assert(not w.ready)
+
+    atomicInc numSlavesRunning
     w.f(w, w.data)
+    atomicDec numSlavesRunning
+
     if w.q.len != 0: w.cleanFlowVars
     if w.shutdown:
       w.shutdown = false
@@ -464,10 +476,30 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
         fn(self, data)
         await(self.taskStarted)
         return
+
+    if isSlave and numSlavesRunning <= numSlavesWaiting + 1:
+      # All the other slaves are waiting
+      # If we wait now, we-re deadlocked until
+      # an external spawn happens !
+      if currentPoolSize < maxPoolSize:
+        if not workersData[currentPoolSize].initialized:
+          activateWorkerThread(currentPoolSize)
+        let w = addr(workersData[currentPoolSize])
+        atomicInc currentPoolSize
+        if selectWorker(w, fn, data):
+          return
       else:
-        await(gSomeReady)
-    else:
-      await(gSomeReady)
+        # There is no place in pool. We're deadlocked.
+        # echo "Deadlock!"
+        discard
+
+    if isSlave:
+      atomicInc numSlavesWaiting
+
+    await(gSomeReady)
+
+    if isSlave:
+      atomicDec numSlavesWaiting
 
 var
   distinguishedLock: Lock
