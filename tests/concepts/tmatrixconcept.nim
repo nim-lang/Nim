@@ -25,7 +25,7 @@ type
 
     # more complicated static param inference cases
     m.data is array[TotalElements, T]
-    M.foo(array[0..FromFoo, type m[int, 10]])
+    m.foo(array[0..FromFoo, type m[int, 10]])
 
   MyMatrix[M, K: static[int]; T] = object
     data: array[M*K, T]

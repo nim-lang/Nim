@@ -638,6 +638,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     if modifier != tyNone:
       dummyName = param[0]
       dummyType = c.makeTypeWithModifier(modifier, a)
+      if modifier == tyTypeDesc: dummyType.flags.incl tfExplicit
     else:
       dummyName = param
       dummyType = a
@@ -833,7 +834,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   var
     useTypeLoweringRuleInTypeClass = c.c.inTypeClass > 0 and
                                      not c.isNoCall and
-                                     f.kind != tyTypeDesc
+                                     f.kind != tyTypeDesc and
+                                     tfExplicit notin aOrig.flags
 
     aOrig = if useTypeLoweringRuleInTypeClass:
           aOrig.skipTypes({tyTypeDesc, tyFieldAccessor})

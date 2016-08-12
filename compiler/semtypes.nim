@@ -1239,6 +1239,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
     fixupTypeOf(c, prev, typExpr)
     result = typExpr.typ
+    if result.kind == tyTypeDesc: result.flags.incl tfExplicit
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:

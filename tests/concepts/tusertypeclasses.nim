@@ -15,6 +15,9 @@ type
   TObj = object
     x: int
 
+  JSonValue = object
+    val: string
+
   Sortable = concept x, y
     (x < y) is bool
 
@@ -49,8 +52,13 @@ type
 
     staticproc(static[T])
 
+    typeproc T
+    T.typeproc
     typeproc o.type
     o.type.typeproc
+
+    o.to(type string)
+    o.to(type JsonValue)
 
     refproc(r, intref)
     varproc(v)
@@ -59,9 +67,9 @@ type
     typeproc(T)
 
     const TypeName = T.name
-    type MappedType = type(T.y)
+    type MappedType = type(o.y)
 
-    intval T.y
+    intval y(o)
     let z = intval(o.y)
 
     static:
@@ -80,6 +88,8 @@ proc refproc(x: ref TObj, y: ref int) = discard
 proc ptrproc(x: ptr TObj, y: string) = discard
 proc staticproc(x: static[TObj]) = discard
 proc typeproc(t: type TObj) = discard
+proc to(x: TObj, t: type string) = discard
+proc to(x: TObj, t: type JSonValue) = discard
 
 proc testFoo(x: TFoo) =
   echo x.TypeName
