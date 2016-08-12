@@ -445,7 +445,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     elif t.sons[0].kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
 
-  of tyUserTypeClass:
+  of tyUserTypeClass, tyStatic:
     result = t
 
   of tyGenericInst, tyUserTypeClassInst:
@@ -502,8 +502,9 @@ proc initTypeVars*(p: PContext, pt: TIdTable, info: TLineInfo;
   result.owner = owner
 
 proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
-                         owner: PSym): PNode =
+                         owner: PSym, allowMetaTypes = false): PNode =
   var cl = initTypeVars(p, pt, n.info, owner)
+  cl.allowMetaTypes = allowMetaTypes
   pushInfoContext(n.info)
   result = replaceTypeVarsN(cl, n)
   popInfoContext()

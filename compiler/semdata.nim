@@ -318,23 +318,14 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   let intType = getSysType(tyInt)
   result = newTypeS(tyRange, c)
   result.sons = @[intType]
-  if n.typ.n == nil: result.flags.incl tfUnresolved
+  if n.typ != nil and n.typ.n == nil:
+    result.flags.incl tfUnresolved
   result.n = newNode(nkRange, n.info, @[
     newIntTypeNode(nkIntLit, 0, intType),
     makeStaticExpr(c, n.nMinusOne)])
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
-  # this accepts the ranges's node
-  t.n != nil and t.n.len > 1 and t.n[1].kind == nkStaticExpr
-
-proc findUnresolvedStaticInRange*(t: PType): (PType, int) =
-  assert t.kind == tyRange
-  # XXX: This really needs to become more sophisticated
-  let upperBound = t.n[1]
-  if upperBound[0].kind == nkCall:
-    return (upperBound[0][1].typ, 1)
-  else:
-    return (upperBound.typ, 0)
+  tfUnresolved in t.flags
 
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state

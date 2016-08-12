@@ -367,8 +367,8 @@ operator and also when types dependent on them are being matched:
     MyConcept[M, N: static[int]; T] = concept x
       x.foo(SquareMatrix[N, T]) is array[M, int]
 
-Nim may include a simple linear equation solver in the future to help us
-infer static params when arithmetic is involved.
+The Nim compiler includes a simple linear equation solver, allowing it to
+infer static params in some situations where integer arithmetic is involved.
 
 Just like in regular type classes, Nim discriminates between ``bind once``
 and ``bind many`` types when matching the concept. You can add the ``distinct``

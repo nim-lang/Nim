@@ -195,6 +195,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   for i in 0..1:
     if hasGenericArguments(range[i]):
       result.n.addSon makeStaticExpr(c, range[i])
+      result.flags.incl tfUnresolved
     else:
       result.n.addSon semConstExpr(c, range[i])
 
