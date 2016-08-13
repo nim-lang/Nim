@@ -342,8 +342,6 @@ when defineSsl:
     result = SSLContext(context: newCTX, extraInternalIndex: 0,
         referencedData: initSet[int]())
     result.extraInternalIndex = getExtraDataIndex(result)
-    # The PSK callback functions assume the internal index is 0.
-    assert result.extraInternalIndex == 0
 
     let extraInternal = new(SslContextExtraInternal)
     result.setExtraData(result.extraInternalIndex, extraInternal)
@@ -392,6 +390,8 @@ when defineSsl:
     ##
     ## Only used in PSK ciphersuites.
     ctx.getExtraInternal().clientGetPskFunc = fun
+    assert ctx.extraInternalIndex == 0,
+          "The pskClientCallback assumes the extraInternalIndex is 0"
     ctx.context.SSL_CTX_set_psk_client_callback(
         if fun == nil: nil else: pskClientCallback)
 
