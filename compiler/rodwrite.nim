@@ -39,13 +39,6 @@ type
 
   PRodWriter = ref TRodWriter
 
-proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter
-proc addModDep(w: PRodWriter, dep: string)
-proc addInclDep(w: PRodWriter, dep: string)
-proc addInterfaceSym(w: PRodWriter, s: PSym)
-proc addStmt(w: PRodWriter, n: PNode)
-proc writeRod(w: PRodWriter)
-
 proc getDefines(): string =
   result = ""
   for d in definedSymbolNames():
@@ -86,16 +79,17 @@ proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter =
   result.origFile = module.info.toFilename
   result.data = newStringOfCap(12_000)
 
-proc addModDep(w: PRodWriter, dep: string) =
+proc addModDep(w: PRodWriter, dep: string; info: TLineInfo) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
-  encodeVInt(fileIdx(w, dep), w.modDeps)
+  let resolved = dep.findModule(info.toFullPath)
+  encodeVInt(fileIdx(w, resolved), w.modDeps)
 
 const
   rodNL = "\x0A"
 
-proc addInclDep(w: PRodWriter, dep: string) =
-  var resolved = dep.findModule(w.module.info.toFullPath)
-  encodeVInt(fileIdx(w, dep), w.inclDeps)
+proc addInclDep(w: PRodWriter, dep: string; info: TLineInfo) =
+  let resolved = dep.findModule(info.toFullPath)
+  encodeVInt(fileIdx(w, resolved), w.inclDeps)
   add(w.inclDeps, " ")
   encodeStr($secureHashFile(resolved), w.inclDeps)
   add(w.inclDeps, rodNL)
@@ -147,7 +141,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.typ.id, result)
     pushType(w, n.typ)
   case n.kind
-  of nkCharLit..nkInt64Lit:
+  of nkCharLit..nkUInt64Lit:
     if n.intVal != 0:
       result.add('!')
       encodeVBiggestInt(n.intVal, result)
@@ -562,13 +556,15 @@ proc process(c: PPassContext, n: PNode): PNode =
       #            addInterfaceSym(w, a.sons[j].sym);
       #        end
   of nkImportStmt:
-    for i in countup(0, sonsLen(n) - 1): addModDep(w, getModuleName(n.sons[i]))
+    for i in countup(0, sonsLen(n) - 1):
+      addModDep(w, getModuleName(n.sons[i]), n.info)
     addStmt(w, n)
   of nkFromStmt:
-    addModDep(w, getModuleName(n.sons[0]))
+    addModDep(w, getModuleName(n.sons[0]), n.info)
     addStmt(w, n)
   of nkIncludeStmt:
-    for i in countup(0, sonsLen(n) - 1): addInclDep(w, getModuleName(n.sons[i]))
+    for i in countup(0, sonsLen(n) - 1):
+      addInclDep(w, getModuleName(n.sons[i]), n.info)
   of nkPragma:
     addStmt(w, n)
   else:

@@ -566,7 +566,8 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
     of "GOPTIONS":
       inc(r.pos)              # skip ':'
       var dep = cast[TGlobalOptions](int32(decodeVInt(r.s, r.pos)))
-      if gGlobalOptions != dep: r.reason = rrOptions
+      if gGlobalOptions-harmlessOptions != dep-harmlessOptions:
+        r.reason = rrOptions
     of "CMD":
       inc(r.pos)              # skip ':'
       var dep = cast[TCommands](int32(decodeVInt(r.s, r.pos)))
@@ -580,14 +581,14 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
         if not condsyms.isDefined(getIdent(w)):
           r.reason = rrDefines #MessageOut('not defined, but should: ' + w);
         if r.s[r.pos] == ' ': inc(r.pos)
-      if (d != countDefinedSymbols()): r.reason = rrDefines
+      if d != countDefinedSymbols(): r.reason = rrDefines
     of "FILES":
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       while r.s[r.pos] != ')':
-        let relativePath = decodeStr(r.s, r.pos)
-        let resolvedPath = relativePath.findModule(r.origFile)
-        let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
+        let finalPath = decodeStr(r.s, r.pos)
+        #let resolvedPath = relativePath.findModule(r.origFile)
+        #let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
         r.files.add(finalPath.fileInfoIdx)
         inc(r.pos)            # skip #10
         inc(r.line)
@@ -683,8 +684,11 @@ proc newRodReader(modfilename: string, hash: SecureHash,
     if version != RodFileVersion:
       # since ROD files are only for caching, no backwards compatibility is
       # needed
+      #echo "expected version ", version, " ", RodFileVersion
+      result.memfile.close
       result = nil
   else:
+    result.memfile.close
     result = nil
 
 proc rrGetType(r: PRodReader, id: int, info: TLineInfo): PType =
@@ -818,9 +822,8 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
   var hash = getHash(fileIdx)
   gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
-  var r: PRodReader = nil
   var rodfile = toGeneratedFile(filename.withPackageName, RodExt)
-  r = newRodReader(rodfile, hash, fileIdx)
+  var r = newRodReader(rodfile, hash, fileIdx)
   if r == nil:
     result = (if existsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
   else:
