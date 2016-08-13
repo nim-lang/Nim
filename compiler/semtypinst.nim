@@ -145,7 +145,7 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
       if isTypeParam(n[i]): needsFixing = true
     if needsFixing:
       n.sons[0] = newSymNode(n.sons[0].sym.owner)
-      return cl.c.semOverloadedCall(cl.c, n, n, {skProc})
+      return cl.c.semOverloadedCall(cl.c, n, n, {skProc}, {})
 
   for i in 0 .. <n.safeLen:
     n.sons[i] = reResolveCallsWithTypedescParams(cl, n[i])

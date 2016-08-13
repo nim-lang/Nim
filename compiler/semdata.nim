@@ -46,9 +46,10 @@ type
 
   TExprFlag* = enum
     efLValue, efWantIterator, efInTypeof,
-    efWantStmt, efAllowStmt, efDetermineType,
+    efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo
+    efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
+  
   TExprFlags* = set[TExprFlag]
 
   TTypeAttachedOp* = enum
@@ -84,12 +85,12 @@ type
     libs*: seq[PLib]           # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
-    semTryExpr*: proc (c: PContext, n: PNode,flags: TExprFlags = {}): PNode {.nimcall.}
+    semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
-                              filter: TSymKinds): PNode {.nimcall.}
+                              filter: TSymKinds, flags: TExprFlags): PNode {.nimcall.}
     semTypeNode*: proc(c: PContext, n: PNode, prev: PType): PType {.nimcall.}
     semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,

@@ -252,6 +252,7 @@ type
     sfProcvar,        # proc can be passed to a proc var
     sfDiscriminant,   # field is a discriminant in a record/object
     sfDeprecated,     # symbol is deprecated
+    sfExplain,        # provide more diagnostics when this symbol is used
     sfError,          # usage of symbol should trigger a compile-time error
     sfShadowed,       # a symbol that was shadowed in some inner scope
     sfThread,         # proc will run as a thread

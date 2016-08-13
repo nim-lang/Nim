@@ -184,6 +184,8 @@ proc addResult(r: var TResults, test: TTest,
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, expected.msg, given.msg, reMsgsDiffer)
+  elif expected.nimout.len > 0 and expected.nimout.normalize notin given.nimout.normalize:
+    r.addResult(test, expected.nimout, given.nimout, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, expected.file, given.file, reFilesDiffer)
@@ -232,6 +234,8 @@ proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
   let giv = given.nimout.strip.replace("\C\L", "\L")
   if exp notin giv:
     given.err = reMsgsDiffer
+
+proc normalize(s: string): string = s.strip.replace("\C\L", "\L")
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
