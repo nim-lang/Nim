@@ -1239,6 +1239,23 @@ proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
     arr.r = rfmt(nil, "$1[$2]", rdLoc(a), intLiteral(i))
     genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
 
+proc genArrGet(p: BProc, n: PNode, d: var TLoc) =
+  var e = newNodeI(nkBracketExpr, n.info)
+  for i in 1..<n.len: e.add(n[i])
+  expr(p, e, d)
+
+proc genArrPut(p: BProc, n: PNode, d: var TLoc) =
+  template skipAddr(n: PNode): PNode =
+    if n.kind == nkHiddenAddr: n.sons[0] else: n
+  # rewrite `[]=`(a, i, x) back to ``a[i] = x``.
+  let b = newNodeI(nkBracketExpr, n.info)
+  b.add(n[1].skipAddr)
+  for i in 2..n.len-2: b.add(n[i])
+  var e = newNodeI(nkAsgn, n.info, 2)
+  e.sons[0] = b
+  e.sons[1] = n.lastSon
+  genAsgn(p, e, true)
+
 proc genNewFinalize(p: BProc, e: PNode) =
   var
     a, b, f: TLoc
@@ -1770,6 +1787,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
+  # For normal (non-borrow) types, mArrGet/mArrPut are handled during
+  # semantic checking. genArrGet/genArrPut are only called for borrow types.
+  of mArrGet: genArrGet(p, e, d)
+  of mArrPut: genArrPut(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
     localError(e.info, errXMustBeCompileTime, e.sons[0].sym.name.s)
   of mSpawn:
