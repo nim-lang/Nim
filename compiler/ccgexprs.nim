@@ -1787,8 +1787,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)
   of mArrToSeq: genArrToSeq(p, e, d)
-  # For normal (non-borrow) types, mArrGet/mArrPut are handled during
-  # semantic checking. genArrGet/genArrPut are only called for borrow types.
+  # For normal (non-distinct) types, mArrGet/mArrPut are handled during
+  # semantic checking. genArrGet/genArrPut are only called for distinct types.
   of mArrGet: genArrGet(p, e, d)
   of mArrPut: genArrPut(p, e, d)
   of mNLen..mNError, mSlurp..mQuoteAst:
