@@ -299,7 +299,8 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = "", cipherList = "ALL"): SSLContext =
+                   certFile = "", keyFile = "", cipherList = "ALL",
+                   options = SSL_OP_NO_SSLv3): SSLContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
@@ -325,6 +326,8 @@ when defineSsl:
       raiseSslError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
     of protTLSv1:
       newCTX = SSL_CTX_new(TLSv1_method())
+
+    discard newCTX.SSL_CTX_ctrl(SSL_CTRL_OPTIONS, options, nil)
 
     if newCTX.SSLCTXSetCipherList(cipherList) != 1:
       raiseSSLError()
