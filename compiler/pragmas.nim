@@ -572,11 +572,13 @@ proc deprecatedStmt(c: PContext; pragma: PNode) =
   for n in pragma:
     if n.kind in {nkExprColonExpr, nkExprEqExpr}:
       let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
+      assert dest != nil
       let src = considerQuotedIdent(n[0])
       let alias = newSym(skAlias, src, dest, n[0].info)
       incl(alias.flags, sfExported)
       if sfCompilerProc in dest.flags: markCompilerProc(alias)
       addInterfaceDecl(c, alias)
+      n.sons[1] = newSymNode(dest)
     else:
       localError(n.info, "key:value pair expected")
 

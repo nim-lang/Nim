@@ -1020,7 +1020,7 @@ proc genInitCode(m: BModule) =
       var procname = makeCString(m.module.name.s)
       add(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
-      add(prc, ~"\tTFrame F; FR.len = 0;$N")
+      add(prc, ~"\tTFrame FR; FR.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit))
   add(prc, m.preInitProc.s(cpsInit))

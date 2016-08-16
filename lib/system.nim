@@ -1831,9 +1831,6 @@ const
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
-{.deprecated: [TEndian: Endianness, NimrodVersion: NimVersion,
-    NimrodMajor: NimMajor, NimrodMinor: NimMinor, NimrodPatch: NimPatch].}
-
 # GC interface:
 
 when not defined(nimscript) and hasAlloc:

@@ -16,8 +16,6 @@ import
   condsyms, ropes, idents, securehash, rodread, passes, importer, idgen,
   rodutils
 
-# implementation
-
 type
   TRodWriter = object of TPassContext
     module: PSym
@@ -223,6 +221,28 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.align != 2:
     add(result, '=')
     encodeVInt(t.align, result)
+  if t.lockLevel.ord != UnspecifiedLockLevel.ord:
+    add(result, '\14')
+    encodeVInt(t.lockLevel.int16, result)
+
+  if t.destructor != nil:
+    add(result, '\15')
+    encodeVInt(t.destructor.id, result)
+    pushSym(w, t.destructor)
+  if t.deepCopy != nil:
+    add(result, '\16')
+    encodeVInt(t.deepcopy.id, result)
+    pushSym(w, t.deepcopy)
+  if t.assignment != nil:
+    add(result, '\17')
+    encodeVInt(t.assignment.id, result)
+    pushSym(w, t.assignment)
+  for i, s in items(t.methods):
+    add(result, '\18')
+    encodeVInt(i, result)
+    add(result, '\19')
+    encodeVInt(s.id, result)
+    pushSym(w, s)
   encodeLoc(w, t.loc, result)
   for i in countup(0, sonsLen(t) - 1):
     if t.sons[i] == nil:
@@ -239,6 +259,19 @@ proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   encodeStr($lib.name, result)
   add(result, '|')
   encodeNode(w, info, lib.path, result)
+
+proc encodeInstantiations(w: PRodWriter; s: seq[PInstantiation];
+                          result: var string) =
+  for t in s:
+    result.add('\15')
+    encodeVInt(t.sym.id, result)
+    pushSym(w, t.sym)
+    for tt in t.concreteTypes:
+      result.add('\17')
+      encodeVInt(tt.id, result)
+      pushType(w, tt)
+    result.add('\20')
+    encodeVInt(t.compilesId, result)
 
 proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s == nil:
@@ -285,6 +318,31 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s.constraint != nil:
     add(result, '#')
     encodeNode(w, unknownLineInfo(), s.constraint, result)
+  case s.kind
+  of skType, skGenericParam:
+    for t in s.typeInstCache:
+      result.add('\14')
+      encodeVInt(t.id, result)
+      pushType(w, t)
+  of routineKinds:
+    encodeInstantiations(w, s.procInstCache, result)
+    if s.gcUnsafetyReason != nil:
+      result.add('\16')
+      encodeVInt(s.gcUnsafetyReason.id, result)
+      pushSym(w, s.gcUnsafetyReason)
+  of skModule, skPackage:
+    encodeInstantiations(w, s.usedGenerics, result)
+    # we don't serialize:
+    #tab*: TStrTable         # interface table for modules
+  of skLet, skVar, skField, skForVar:
+    if s.guard != nil:
+      result.add('\18')
+      encodeVInt(s.guard.id, result)
+      pushSym(w, s.guard)
+    if s.bitsize != 0:
+      result.add('\19')
+      encodeVInt(s.bitsize, result)
+  else: discard
   # lazy loading will soon reload the ast lazily, so the ast needs to be
   # the last entry of a symbol:
   if s.ast != nil:
@@ -292,16 +350,6 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
     # it is not necessary, but Nim's heavy compile-time evaluation features
     # make that unfeasible nowadays:
     encodeNode(w, s.info, s.ast, result)
-    when false:
-      var codeAst: PNode = nil
-      if not astNeeded(s):
-        codeAst = s.ast.sons[codePos]
-        # ugly hack to not store the AST:
-        s.ast.sons[codePos] = ast.emptyNode
-      encodeNode(w, s.info, s.ast, result)
-      if codeAst != nil:
-        # resore the AST:
-        s.ast.sons[codePos] = codeAst
 
 proc addToIndex(w: var TIndex, key, val: int) =
   if key - w.lastIdxKey == 1:

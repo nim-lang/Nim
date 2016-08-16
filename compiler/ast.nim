@@ -725,8 +725,8 @@ type
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
-    r*: Rope                 # rope value of location (code generators)
-    heapRoot*: Rope          # keeps track of the enclosing heap object that
+    r*: Rope                  # rope value of location (code generators)
+    heapRoot*: Rope           # keeps track of the enclosing heap object that
                               # owns this location (required by GC algorithms
                               # employing heap snapshots or sliding views)
 
@@ -746,10 +746,6 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
-    usedBy*: seq[int32]       # list of modules using the generic
-                              # needed in caas mode for purging the cache
-                              # XXX: it's possible to switch to a
-                              # simple ref count here
     compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
@@ -767,7 +763,6 @@ type
     case kind*: TSymKind
     of skType, skGenericParam:
       typeInstCache*: seq[PType]
-      typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
