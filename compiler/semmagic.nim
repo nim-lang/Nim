@@ -114,8 +114,12 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
-  result.typ = makeRangeType(c, firstOrd(n.sons[1].typ),
-                                lastOrd(n.sons[1].typ), n.info)
+  let parType = n.sons[1].typ
+  if isOrdinalType(parType) or parType.kind == tySet:
+    result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
+  else:
+    localError(n.info, errOrdinalTypeExpected)
+    result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
   result = copyNode(n)

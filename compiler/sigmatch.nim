@@ -985,11 +985,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyGenericBody:
     considerPreviousT:
-      let ff = lastSon(f)
-      var depth = 0
-      if a.kind == tyGenericInst and (a.sons[0] == f): #or (ff != nil and ff.kind == tyObject and isGenericSubtype(a.sons[0], ff, depth))):
-        c.inheritancePenalty += depth
+      if a.kind == tyGenericInst and a.sons[0] == f:
         bindingRet isGeneric
+      let ff = lastSon(f)
       if ff != nil:
         result = typeRel(c, ff, a)
 
@@ -1006,7 +1004,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       for i in countup(1, sonsLen(f) - 1):
         if x.sons[i].kind == tyGenericParam:
           internalError("wrong instantiated type!")
-        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype: return
+        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype:
+          # Workaround for regression #4589
+          if f.sons[i].kind != tyTypeDesc: return
       c.inheritancePenalty += depth
       result = isGeneric
     else:
@@ -1024,7 +1024,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         #
         # we steal the generic parameters from the tyGenericBody:
         for i in countup(1, sonsLen(f) - 1):
-          var x = PType(idTableGet(c.bindings, genericBody.sons[i-1]))
+          let x = PType(idTableGet(c.bindings, genericBody.sons[i-1]))
           if x == nil:
             discard "maybe fine (for eg. a==tyNil)"
           elif x.kind in {tyGenericInvocation, tyGenericParam}:

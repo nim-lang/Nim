@@ -144,10 +144,12 @@ proc elemType*(t: PType): PType =
 
 proc isOrdinalType(t: PType): bool =
   assert(t != nil)
-  # caution: uint, uint64 are no ordinal types!
-  result = t.kind in {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum} or
-      (t.kind in {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst}) and
-       isOrdinalType(t.sons[0])
+  const
+    # caution: uint, uint64 are no ordinal types!
+    baseKinds = {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum}
+    parentKinds = {tyRange, tyOrdinal, tyConst, tyMutable, tyGenericInst,
+                   tyDistinct}
+  t.kind in baseKinds or (t.kind in parentKinds and isOrdinalType(t.sons[0]))
 
 proc enumHasHoles(t: PType): bool =
   var b = t

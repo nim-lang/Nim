@@ -79,7 +79,7 @@ when not defined(windows):
     var rc2 = selector.select(100)
     assert(len(rc2) == 1)
 
-    var read_count = posix.recv(server2_socket, addr (buffer[0]), 128, 0)
+    var read_count = posix.recv(server2_socket, addr buffer[0], 128, 0)
     if read_count == -1:
       raiseOSError(osLastError())
 
@@ -233,7 +233,7 @@ when not defined(windows):
 
     proc mt_event_test(): bool =
       var
-        thr: array [0..7, Thread[SelectEvent]]
+        thr: array[0..7, Thread[SelectEvent]]
       var selector = newSelector[int]()
       var sock = newNativeSocket()
       var event = newSelectEvent()
@@ -317,7 +317,7 @@ else:
     var rc2 = selector.select(100)
     assert(len(rc2) == 1)
 
-    var read_count = recv(server2_socket, addr (buffer[0]), 128, 0)
+    var read_count = recv(server2_socket, addr buffer[0], 128, 0)
     if read_count == -1:
       raiseOSError(osLastError())
 
@@ -391,7 +391,7 @@ else:
       assert(selector.isEmpty())
 
     proc mt_event_test(): bool =
-      var thr: array [0..7, Thread[SelectEvent]]
+      var thr: array[0..7, Thread[SelectEvent]]
       var event = newSelectEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)

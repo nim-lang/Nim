@@ -1944,7 +1944,8 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
     putDataIntoDest(p, d, t, tmp)
     # This fixes bug #4551, but we really need better dataflow
     # analysis to make this 100% safe.
-    d.s = OnStatic
+    if t.kind notin {tySequence, tyString}:
+      d.s = OnStatic
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   case n.kind

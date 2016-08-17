@@ -528,7 +528,7 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let a = skipConvAndClosure(n)
   let op = a.typ
-  if op != nil and op.kind == tyProc and n.kind != nkNilLit:
+  if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
     internalAssert op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
     let s = n.skipConv
