@@ -203,7 +203,6 @@ proc optAsgnLoc(a: TLoc, t: PType, field: Rope): TLoc =
   result.s = a.s
   result.t = t
   result.r = rdLoc(a) & "." & field
-  result.heapRoot = a.heapRoot
 
 proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   let newflags =
@@ -698,8 +697,6 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
 
 template inheritLocation(d: var TLoc, a: TLoc) =
   if d.k == locNone: d.s = a.s
-  if d.heapRoot == nil:
-    d.heapRoot = if a.heapRoot != nil: a.heapRoot else: a.r
 
 proc genRecordFieldAux(p: BProc, e: PNode, d, a: var TLoc): PType =
   initLocExpr(p, e.sons[0], a)
@@ -863,7 +860,6 @@ proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
            "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
            rdLoc(b), rdLoc(a), lenField(p))
   if d.k == locNone: d.s = OnHeap
-  d.heapRoot = a.r
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = rfmt(nil, "(*$1)", a.r)
   putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),
@@ -1166,7 +1162,6 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     tmp2.k = locTemp
     tmp2.t = field.loc.t
     tmp2.s = if isRef: OnHeap else: OnStack
-    tmp2.heapRoot = tmp.r
     expr(p, it.sons[1], tmp2)
 
   if d.k == locNone:
