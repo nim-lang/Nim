@@ -1212,7 +1212,7 @@ proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
   # generate call to newSeq before adding the elements per hand:
   genNewSeqAux(p, d, intLiteral(sonsLen(t)))
   for i in countup(0, sonsLen(t) - 1):
-    initLoc(arr, locExpr, elemType(skipTypes(t.typ, typedescInst)), OnHeap)
+    initLoc(arr, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
     arr.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
     arr.s = OnHeap            # we know that sequences are on the heap
     expr(p, t.sons[i], arr)
@@ -1280,7 +1280,7 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope): Rope =
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, x, a)
-  var dest = skipTypes(typ, typedescPtrs)
+  var dest = skipTypes(typ, abstractPtrs)
   var r = rdLoc(a)
   var nilCheck: Rope = nil
   var t = skipTypes(a.t, abstractInst)
@@ -1288,11 +1288,11 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     if t.kind != tyVar: nilCheck = r
     if t.kind != tyVar or not p.module.compileToCpp:
       r = rfmt(nil, "(*$1)", r)
-    t = skipTypes(t.lastSon, typedescInst)
+    t = skipTypes(t.lastSon, abstractInst)
   if not p.module.compileToCpp:
     while t.kind == tyObject and t.sons[0] != nil:
       add(r, ~".Sup")
-      t = skipTypes(t.sons[0], typedescInst)
+      t = skipTypes(t.sons[0], abstractInst)
   if isObjLackingTypeField(t):
     globalError(x.info, errGenerated,
       "no 'of' operator available for pure objects")
