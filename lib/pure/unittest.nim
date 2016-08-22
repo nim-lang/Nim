@@ -279,6 +279,10 @@ macro check*(conditions: untyped): untyped =
           var paramAst = exp[i]
           if exp[i].kind == nnkIdent:
             argsPrintOuts.add getAst(print(argStr, paramAst))
+          if exp[i].kind == nnkDotExpr:
+            argsPrintOuts.add getAst(print(argStr, paramAst))
+          if exp[i].kind == nnkBracketExpr:
+            argsPrintOuts.add getAst(print(argStr, paramAst))
           if exp[i].kind in nnkCallKinds:
             var callVar = newIdentNode(":c" & $counter)
             argsAsgns.add getAst(asgn(callVar, paramAst))
