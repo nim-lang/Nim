@@ -328,6 +328,9 @@ macro check*(conditions: untyped): untyped =
       if checked[i].kind != nnkCommentStmt:
         result.add(newCall(!"check", checked[i]))
 
+  of nnkLetSection:
+    result = checked
+
   else:
     template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
       if not Exp:
