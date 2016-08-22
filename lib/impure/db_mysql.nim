@@ -336,6 +336,30 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
       inc(j)
     mysql.freeResult(sqlres)
 
+import tables
+#Result must import tables
+proc getAllRowsTab*(db: DbConn, col:int, query: SqlQuery,
+                 args: varargs[string, `$`]): TableRef[string, Row] {.tags: [ReadDbEffect].} =
+  ## executes the query and returns the whole result dataset.
+  result = tables.newTable[string, Row]()
+
+  rawExec(db, query, args)
+  var sqlres = mysql.useResult(db)
+  if sqlres != nil:
+    var L = int(mysql.numFields(sqlres))
+    var row: cstringArray
+    while true:
+      row = mysql.fetchRow(sqlres)
+      if row == nil: break
+      var c = row[col]
+      if c == nil: continue
+      result[$c] = @[]
+      for i in 0..L-1:
+        if row[i] != nil:
+          result[$c].add $row[i]
+    mysql.freeResult(sqlres)
+
+
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## same as `fastRows`, but slower and safe.
