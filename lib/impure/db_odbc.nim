@@ -218,12 +218,16 @@ proc prepareFetch(db: var DbConn, query: SqlQuery,
   # requires calling
   #      properFreeResult(SQL_HANDLE_STMT, db.stmt)
   # when finished
-  db.sqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
-  var q = dbFormat(query, args)
-  db.sqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
-  db.sqlCheck(SQLExecute(db.stmt))
-  result = SQLFetch(db.stmt)
-  db.sqlCheck(result)
+  try:
+    db.sqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
+    var q = dbFormat(query, args)
+    db.sqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
+    db.sqlCheck(SQLExecute(db.stmt))
+    result = SQLFetch(db.stmt)
+    db.sqlCheck(result)
+  except:
+    db.dbError()
+
 
 proc prepareFetchDirect(db: var DbConn, query: SqlQuery,
                 args: varargs[string, `$`]) {.
@@ -234,10 +238,14 @@ proc prepareFetchDirect(db: var DbConn, query: SqlQuery,
   # requires calling
   #      properFreeResult(SQL_HANDLE_STMT, db.stmt)
   # when finished
-  db.sqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
-  var q = dbFormat(query, args)
-  db.sqlCheck(SQLExecDirect(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
-  db.sqlCheck(SQLFetch(db.stmt))
+  try:
+    db.sqlCheck(SQLAllocHandle(SQL_HANDLE_STMT, db.hDb, db.stmt))
+    var q = dbFormat(query, args)
+    db.sqlCheck(SQLExecDirect(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
+    db.sqlCheck(SQLFetch(db.stmt))
+  except:
+    db.dbError()
+
 
 proc tryExec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect], raises: [].} =
