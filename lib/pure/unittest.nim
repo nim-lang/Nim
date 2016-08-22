@@ -226,6 +226,9 @@ template skip* =
   testStatusIMPL = SKIPPED
   checkpoints = @[]
 
+macro isLiteral(value: expr[typed]): expr =
+  bool(value.kind == nnkSym and value.symbol.getImpl.kind == nnkNilLit)
+
 macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
@@ -260,7 +263,9 @@ macro check*(conditions: untyped): untyped =
       false
 
   template print(name, value: expr): stmt =
-    when compiles(string($value)):
+    when isLiteral(value):
+      discard
+    elif compiles(string($value)):
       if isNil(value):
         checkpoint(name & " was nil")
       else:
