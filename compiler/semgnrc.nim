@@ -202,24 +202,25 @@ proc semGenericStmt(c: PContext, n: PNode,
     if s != nil:
       incl(s.flags, sfUsed)
       mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles}
-      let scOption = if s.name.id in ctx.toMixin: scForceOpen else: scOpen
+      let sc = symChoice(c, fn, s,
+            if s.name.id in ctx.toMixin: scForceOpen else: scOpen)
       case s.kind
       of skMacro:
-        if macroToExpand(s):
+        if macroToExpand(s) and sc.safeLen <= 1:
           styleCheckUse(fn.info, s)
           result = semMacroExpr(c, n, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, flags, ctx)
         else:
-          n.sons[0] = symChoice(c, fn, s, scOption)
+          n.sons[0] = sc
           result = n
         mixinContext = true
       of skTemplate:
-        if macroToExpand(s):
+        if macroToExpand(s) and sc.safeLen <= 1:
           styleCheckUse(fn.info, s)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, flags, ctx)
         else:
-          n.sons[0] = symChoice(c, fn, s, scOption)
+          n.sons[0] = sc
           result = n
         # BUGFIX: we must not return here, we need to do first phase of
         # symbol lookup. Also since templates and macros can do scope injections
@@ -230,7 +231,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         # Leave it as an identifier.
         discard
       of skProc, skMethod, skIterator, skConverter, skModule:
-        result.sons[0] = symChoice(c, fn, s, scOption)
+        result.sons[0] = sc
         # do not check of 's.magic==mRoof' here because it might be some
         # other '^' but after overload resolution the proper one:
         if ctx.bracketExpr != nil and n.len == 2 and s.name.s == "^":
