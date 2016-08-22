@@ -48,6 +48,8 @@ proc isOrdinalType*(t: PType): bool
 proc enumHasHoles*(t: PType): bool
 
 const
+  # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
+  # replace with typedescX
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
                    tyConst, tyMutable, tyTypeDesc}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal,
@@ -61,6 +63,7 @@ const
 
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable,
                tyTypeDesc}
+  # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
 
