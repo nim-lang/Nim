@@ -253,9 +253,18 @@ macro check*(conditions: untyped): untyped =
     var a = value # XXX: we need "var: var" here in order to
                   # preserve the semantics of var params
 
+  template isNil(value: expr): expr =
+    when compiles(value == nil):
+      value == nil
+    else:
+      false
+
   template print(name, value: expr): stmt =
     when compiles(string($value)):
-      checkpoint(name & " was " & $value)
+      if isNil(value):
+        checkpoint(name & " was nil")
+      else:
+        checkpoint(name & " was " & $value)
 
   proc inspectArgs(exp: NimNode): NimNode =
     result = copyNimTree(exp)
