@@ -304,8 +304,14 @@ proc semTry(c: PContext, n: PNode): PNode =
 proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
   result = fitNode(c, typ, n)
   if result.kind in {nkHiddenStdConv, nkHiddenSubConv}:
-    changeType(result.sons[1], typ, check=true)
-    result = result.sons[1]
+    let r1 = result.sons[1]
+    if r1.kind in {nkCharLit..nkUInt64Lit} and typ.skipTypes(abstractRange).kind in {tyFloat..tyFloat128}:
+      result = newFloatNode(nkFloatLit, BiggestFloat r1.intVal)
+      result.info = n.info
+      result.typ = typ
+    else:
+      changeType(r1, typ, check=true)
+      result = r1
   elif not sameType(result.typ, typ):
     changeType(result, typ, check=false)
 
