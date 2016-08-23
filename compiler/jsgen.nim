@@ -1280,14 +1280,15 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
       assert(typ.kind == tyProc)
       genPatternCall(p, n, pat, typ, r)
       return
-  gen(p, n.sons[1], r)
-  if r.typ == etyBaseIndex:
-    if r.address == nil:
-      globalError(n.info, "cannot invoke with infix syntax")
-    r.res = "$1[$2]" % [r.address, r.res]
-    r.address = nil
-    r.typ = etyNone
-  add(r.res, "." | "->")
+  if n.len != 1:
+    gen(p, n.sons[1], r)
+    if r.typ == etyBaseIndex:
+      if r.address == nil:
+        globalError(n.info, "cannot invoke with infix syntax")
+      r.res = "$1[$2]" % [r.address, r.res]
+      r.address = nil
+      r.typ = etyNone
+    add(r.res, "." | "->")
   var op: TCompRes
   if p.target == targetPHP:
     op.kind = resCallee
