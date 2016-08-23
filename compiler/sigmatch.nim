@@ -664,6 +664,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   var
     oldWriteHook: type(writelnHook)
     diagnostics: seq[string]
+    errorPrefix: string
     flags: TExprFlags = {}
     collectDiagnostics = m.diagnostics != nil or
                          sfExplain in Concept.sym.flags
@@ -673,9 +674,13 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     # XXX: we can't write to m.diagnostics directly, because
     # Nim doesn't support capturing var params in closures
     diagnostics = @[]
-    writelnHook = proc (s: string) = diagnostics.add(s)
     flags = {efExplain}
-
+    writelnHook = proc (s: string) =
+      if errorPrefix == nil: errorPrefix = Concept.sym.name.s & ":"
+      let msg = s.replace("Error:", errorPrefix)
+      if oldWriteHook != nil: oldWriteHook msg
+      diagnostics.add msg
+   
   var checkedBody = c.semTryExpr(c, body.copyTree, flags)
   
   if collectDiagnostics:

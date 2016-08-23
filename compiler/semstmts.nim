@@ -1609,7 +1609,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = n.sons[i].typ
       return
     else:
-      var expr = semExpr(c, n.sons[i])
+      var expr = semExpr(c, n.sons[i], flags)
       n.sons[i] = expr
       if c.inTypeClass > 0 and expr.typ != nil:
         case expr.typ.kind

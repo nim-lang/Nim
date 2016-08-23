@@ -302,7 +302,7 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   result = n
 
-proc isOpImpl(c: PContext, n: PNode): PNode =
+proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
   internalAssert n.sonsLen == 3 and
     n[1].typ != nil and n[1].typ.kind == tyTypeDesc and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
@@ -324,12 +324,13 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
+    if efExplain in flags: m.diagnostics = @[]
     let match = typeRel(m, t2, t1) >= isSubtype # isNone
     result = newIntNode(nkIntLit, ord(match))
 
   result.typ = n.typ
 
-proc semIs(c: PContext, n: PNode): PNode =
+proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if sonsLen(n) != 3:
     localError(n.info, errXExpectsTwoArguments, "is")
 
@@ -349,7 +350,7 @@ proc semIs(c: PContext, n: PNode): PNode =
     return
 
   # BUGFIX: don't evaluate this too early: ``T is void``
-  if not n[1].typ.base.containsGenericType: result = isOpImpl(c, n)
+  if not n[1].typ.base.containsGenericType: result = isOpImpl(c, n, flags)
 
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
@@ -754,7 +755,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
-      if c.compilesContextId > 0:
+      if errorOutputs == {}:
         # speed up error generation:
         globalError(n.info, errTypeMismatch, "")
         return emptyNode
@@ -1837,7 +1838,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mLow: result = semLowHigh(c, setMs(n, s), mLow)
   of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
   of mSizeOf: result = semSizeof(c, setMs(n, s))
-  of mIs: result = semIs(c, setMs(n, s))
+  of mIs: result = semIs(c, setMs(n, s), flags)
   of mOf: result = semOf(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)

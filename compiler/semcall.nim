@@ -148,7 +148,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if c.compilesContextId > 0:
+  if errorOutputs == {}:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
   if errors.isNil or errors.len == 0:
@@ -263,7 +263,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if c.compilesContextId > 0:
+    if errorOutputs == {}:
       # quick error message for performance of 'compiles' built-in:
       globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
@@ -374,7 +374,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     # this may be triggered, when the explain pragma is used
     if errors.len > 0:
       let (_, candidates) = presentFailedCandidates(c, n, errors)
-      message(n.info, hintUser,
+      message(n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
     result = semResolvedCall(c, n, r)

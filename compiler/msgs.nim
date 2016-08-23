@@ -133,7 +133,7 @@ type
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintStackTrace, hintGCStats,
-    hintUser
+    hintUser, hintUserRaw
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -434,10 +434,11 @@ const
     hintSource: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
-    hintUser: "$1"]
+    hintUser: "$1",
+    hintUserRaw: "$1"]
 
 const
-  WarningsToStr*: array[0..30, string] = ["CannotOpenFile", "OctalEscape",
+  WarningsToStr* = ["CannotOpenFile", "OctalEscape",
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic",
@@ -449,12 +450,12 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
-  HintsToStr*: array[0..22, string] = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr* = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "StackTrace", "GCStats",
-    "User"]
+    "User", "UserRaw"]
 
 const
   fatalMin* = errUnknown
@@ -657,9 +658,6 @@ proc concat(strings: openarray[string]): string =
   for s in strings: totalLen += s.len
   result = newStringOfCap totalLen
   for s in strings: result.add s
-
-template writeBufferedMsg(args: varargs[string, `$`]) =
-  bufferedMsgs.safeAdd concat(args)
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
@@ -929,7 +927,7 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
     if msg notin gNotes: return
     title = HintTitle
     color = HintColor
-    kind = HintsToStr[ord(msg) - ord(hintMin)]
+    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
   let s = msgKindToString(msg) % args
 
@@ -997,7 +995,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     title = HintTitle
     color = HintColor
-    kind = HintsToStr[ord(msg) - ord(hintMin)]
+    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
   # NOTE: currently line info line numbers start with 1,
   # but column numbers start with 0, however most editors expect
