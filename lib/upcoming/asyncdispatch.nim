@@ -1686,11 +1686,11 @@ else:
 
   proc setEvent*(ev: AsyncEvent) =
     ## Sets new ``AsyncEvent`` to signaled state.
-    setEvent(SelectEvent(ev))
+    ioselectors.setEvent(SelectEvent(ev))
 
   proc close*(ev: AsyncEvent) =
     ## Closes ``AsyncEvent``
-    close(SelectEvent(ev))
+    ioselectors.close(SelectEvent(ev))
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Start watching for event ``ev``, and call callback ``cb``, when
