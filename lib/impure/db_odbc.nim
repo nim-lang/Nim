@@ -149,15 +149,21 @@ proc dbError*(db: var DbConn) {.
     (res, ss, ne, msg) = db.getErrInfo()
     if prevSs == ss:
       break
-    # sqlState of 00000 is not an error
-    elif ss == "00000":
-      break
-    elif ss == "01000":
-      echo "\nWarning: ", ss, " ", msg
-      continue
     else:
-      isAnError = true
-      echo "\nError: ", ss, " ", msg
+      case ss:
+        # sqlState of 00000 is not an error
+        of "00000":
+          break
+        of "01000":
+          echo "\nWarning: ", ss, " ", msg
+          continue
+        of "24000":
+          echo "\nWarning: ", ss, " ", msg
+          continue
+        else:
+          isAnError = true
+          echo "\nError: ", ss, " ", msg
+
   if isAnError:
     new(e)
     e.msg = "ODBC Error"
