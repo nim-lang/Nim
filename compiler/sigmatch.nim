@@ -221,13 +221,14 @@ proc cmpCandidates*(a, b: TCandidate): int =
   if result != 0: return
   result = a.convMatches - b.convMatches
   if result != 0: return
-  result = a.calleeScope - b.calleeScope
-  if result != 0: return
   # the other way round because of other semantics:
   result = b.inheritancePenalty - a.inheritancePenalty
   if result != 0: return
   # prefer more specialized generic over more general generic:
   result = complexDisambiguation(a.callee, b.callee)
+  # only as a last resort, consider scoping:
+  if result != 0: return
+  result = a.calleeScope - b.calleeScope
 
 proc writeMatches*(c: TCandidate) =
   writeLine(stdout, "exact matches: " & $c.exactMatches)
