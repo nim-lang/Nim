@@ -86,9 +86,32 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result.add(filename)
   result.add(line)
 
+proc toNode(t: PType, i: TLineInfo): PNode =
+  result = newNodeIT(nkType, i, t)
+
+const 
+  # these are types that use the bracket syntax for instantiation
+  # they can be subjected to the type traits `GenericHead` and 
+  # `Uninstantiated`
+  tyUserDefinedGenerics* = {tyGenericInst, tyGenericInvocation,
+                            tyUserTypeClassInst}
+
+  tyMagicGenerics* = {tySet, tySequence, tyArray, tyOpenArray}
+
+  tyGenericLike* = tyUserDefinedGenerics +
+                   tyMagicGenerics +
+                   {tyCompositeTypeClass}
+
+proc uninstantiate(t: PType): PType =
+  result = case t.kind
+    of tyMagicGenerics: t
+    of tyUserDefinedGenerics: t.base
+    of tyCompositeTypeClass: uninstantiate t.sons[1]
+    else: t
+
 proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
-  let typ = operand.skipTypes({tyTypeDesc})
-  case trait.sym.name.s.normalize
+  var typ = operand.skipTypes({tyTypeDesc})
+  case trait.sym.name.s
   of "name":
     result = newStrNode(nkStrLit, typ.typeToString(preferName))
     result.typ = newType(tyString, context)
@@ -97,6 +120,16 @@ proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
     result = newIntNode(nkIntLit, typ.len - ord(typ.kind==tyProc))
     result.typ = newType(tyInt, context)
     result.info = trait.info
+  of "GenericHead":
+    var res = uninstantiate(typ)
+    if res == typ and res.kind notin tyMagicGenerics:
+      localError(trait.info,
+        "GenericHead expects a generic type. The given type was " &
+        typeToString(typ))
+      return newType(tyError, context).toNode(trait.info)
+    result = res.base.toNode(trait.info)
+  of "StripGenericParams":
+    result = uninstantiate(typ).toNode(trait.info)
   else:
     internalAssert false
 

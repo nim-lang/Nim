@@ -1226,6 +1226,13 @@ proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
     result.sym = prev.sym
     assignType(prev, result)
 
+proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
+  if n.kind == nkType:
+    result = symFromType(n.typ, n.info)
+  else:
+    localError(n.info, "xx")
+    result = errorSym(c, n)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   when defined(nimsuggest):
@@ -1316,7 +1323,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
     checkMinSonsLen(n, 2)
-    var s = semTypeIdent(c, n.sons[0])
+    var head = n.sons[0]
+    var s = if head.kind notin nkCallKinds: semTypeIdent(c, head)
+            else: symFromExpectedTypeNode(c, semExpr(c, head))
     case s.magic
     of mArray: result = semArray(c, n, prev)
     of mOpenArray: result = semContainer(c, n, tyOpenArray, "openarray", prev)
