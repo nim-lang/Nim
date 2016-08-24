@@ -300,9 +300,12 @@ var
 # A workaround for recursion deadlock issue
 # https://github.com/nim-lang/Nim/issues/4597
 var
-  numSlavesRunning: int
-  numSlavesWaiting: int
+  numSlavesLock: Lock
+  numSlavesRunning {.guard: numSlavesLock}: int
+  numSlavesWaiting {.guard: numSlavesLock}: int
   isSlave {.threadvar.}: bool
+
+numSlavesLock.initLock
 
 gSomeReady.initSemaphore()
 
@@ -320,9 +323,13 @@ proc slave(w: ptr Worker) {.thread.} =
     # in Visual Studio?)
     when not defined(vcc): assert(not w.ready)
 
-    atomicInc numSlavesRunning
+    withLock numSlavesLock:
+      inc numSlavesRunning
+
     w.f(w, w.data)
-    atomicDec numSlavesRunning
+
+    withLock numSlavesLock:
+      dec numSlavesRunning
 
     if w.q.len != 0: w.cleanFlowVars
     if w.shutdown:
@@ -477,29 +484,33 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
         await(self.taskStarted)
         return
 
-    if isSlave and numSlavesRunning <= numSlavesWaiting + 1:
-      # All the other slaves are waiting
-      # If we wait now, we-re deadlocked until
-      # an external spawn happens !
-      if currentPoolSize < maxPoolSize:
-        if not workersData[currentPoolSize].initialized:
-          activateWorkerThread(currentPoolSize)
-        let w = addr(workersData[currentPoolSize])
-        atomicInc currentPoolSize
-        if selectWorker(w, fn, data):
-          return
-      else:
-        # There is no place in pool. We're deadlocked.
-        # echo "Deadlock!"
-        discard
-
     if isSlave:
-      atomicInc numSlavesWaiting
+      # Run under lock until `numSlavesWaiting` increment to avoid a
+      # race (otherwise two last threads might start waiting together)
+      withLock numSlavesLock:
+        if numSlavesRunning <= numSlavesWaiting + 1:
+          # All the other slaves are waiting
+          # If we wait now, we-re deadlocked until
+          # an external spawn happens !
+          if currentPoolSize < maxPoolSize:
+            if not workersData[currentPoolSize].initialized:
+              activateWorkerThread(currentPoolSize)
+            let w = addr(workersData[currentPoolSize])
+            atomicInc currentPoolSize
+            if selectWorker(w, fn, data):
+              return
+          else:
+            # There is no place in the pool. We're deadlocked.
+            # echo "Deadlock!"
+            discard
+
+        inc numSlavesWaiting
 
     await(gSomeReady)
 
     if isSlave:
-      atomicDec numSlavesWaiting
+      withLock numSlavesLock:
+        dec numSlavesWaiting
 
 var
   distinguishedLock: Lock
