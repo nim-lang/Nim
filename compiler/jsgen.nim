@@ -8,7 +8,7 @@
 #
 
 # This is the JavaScript code generator.
-# Soon also a PHP code generator. ;-)
+# Also a PHP code generator. ;-)
 
 discard """
 The JS code generator contains only 2 tricks:
