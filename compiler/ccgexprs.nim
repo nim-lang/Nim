@@ -670,6 +670,8 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     #if e[0].kind != nkBracketExpr:
     #  message(e.info, warnUser, "CAME HERE " & renderTree(e))
     expr(p, e.sons[0], d)
+    if e.sons[0].typ.skipTypes(abstractInst).kind == tyRef:
+      d.s = OnHeap
   else:
     var a: TLoc
     let typ = skipTypes(e.sons[0].typ, abstractInst)
