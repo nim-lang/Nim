@@ -701,9 +701,6 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
         result.sons[0] = newSymNode(errorSym(c, n))
-      if sfNoSideEffect notin callee.flags:
-        if {sfImportc, sfSideEffect} * callee.flags != {}:
-          incl(c.p.owner.flags, sfSideEffect)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
 
@@ -804,9 +801,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       result = m.call
       instGenericConvertersSons(c, result, m)
-    # we assume that a procedure that calls something indirectly
-    # has side-effects:
-    if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   elif t != nil and t.kind == tyTypeDesc:
     if n.len == 1: return semObjConstr(c, n, flags)
     return semConv(c, n)
@@ -1040,9 +1034,6 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
 
     markUsed(n.info, s)
     styleCheckUse(n.info, s)
-    # if a proc accesses a global variable, it is not side effect free:
-    if sfGlobal in s.flags:
-      incl(c.p.owner.flags, sfSideEffect)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
     # not sure the symbol really ends up being used:

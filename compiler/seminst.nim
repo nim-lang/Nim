@@ -172,9 +172,10 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       popInfoContext()
 
 proc sideEffectsCheck(c: PContext, s: PSym) =
-  if {sfNoSideEffect, sfSideEffect} * s.flags ==
-      {sfNoSideEffect, sfSideEffect}:
-    localError(s.info, errXhasSideEffects, s.name.s)
+  when false:
+    if {sfNoSideEffect, sfSideEffect} * s.flags ==
+        {sfNoSideEffect, sfSideEffect}:
+      localError(s.info, errXhasSideEffects, s.name.s)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
