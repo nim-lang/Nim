@@ -34,7 +34,7 @@
 ## document.
 ##
 ## .. code-block:: nim
-##     :file: examples/htmltitle.nim
+##     :file: ../../examples/htmltitle.nim
 ##
 ##
 ## Example 2: Retrieve all HTML links
@@ -45,7 +45,7 @@
 ## an HTML document contains.
 ##
 ## .. code-block:: nim
-##     :file: examples/htmlrefs.nim
+##     :file: ../../examples/htmlrefs.nim
 ##
 
 import
@@ -142,6 +142,9 @@ proc kind*(my: XmlParser): XmlEventKind {.inline.} =
 template charData*(my: XmlParser): string =
   ## returns the character data for the events: ``xmlCharData``,
   ## ``xmlWhitespace``, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
+  ## Raises an assertion in debug mode if ``my.kind`` is not one 
+  ## of those events. In release mode, this will not trigger an error
+  ## but the value returned will not be valid. 
   assert(my.kind in {xmlCharData, xmlWhitespace, xmlComment, xmlCData,
                      xmlSpecial})
   my.a
@@ -149,31 +152,49 @@ template charData*(my: XmlParser): string =
 template elementName*(my: XmlParser): string =
   ## returns the element name for the events: ``xmlElementStart``,
   ## ``xmlElementEnd``, ``xmlElementOpen``
+  ## Raises an assertion in debug mode if ``my.kind`` is not one 
+  ## of those events. In release mode, this will not trigger an error
+  ## but the value returned will not be valid. 
   assert(my.kind in {xmlElementStart, xmlElementEnd, xmlElementOpen})
   my.a
 
 template entityName*(my: XmlParser): string =
   ## returns the entity name for the event: ``xmlEntity``
+  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## ``xmlEntity``. In release mode, this will not trigger an error
+  ## but the value returned will not be valid. 
   assert(my.kind == xmlEntity)
   my.a
 
 template attrKey*(my: XmlParser): string =
   ## returns the attribute key for the event ``xmlAttribute``
+  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## ``xmlAttribute``. In release mode, this will not trigger an error
+  ## but the value returned will not be valid. 
   assert(my.kind == xmlAttribute)
   my.a
 
 template attrValue*(my: XmlParser): string =
   ## returns the attribute value for the event ``xmlAttribute``
+  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## ``xmlAttribute``. In release mode, this will not trigger an error
+  ## but the value returned will not be valid. 
   assert(my.kind == xmlAttribute)
   my.b
 
 template piName*(my: XmlParser): string =
   ## returns the processing instruction name for the event ``xmlPI``
+  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## ``xmlPI``. In release mode, this will not trigger an error
+  ## but the value returned will not be valid. 
   assert(my.kind == xmlPI)
   my.a
 
 template piRest*(my: XmlParser): string =
   ## returns the rest of the processing instruction for the event ``xmlPI``
+  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## ``xmlPI``. In release mode, this will not trigger an error
+  ## but the value returned will not be valid. 
   assert(my.kind == xmlPI)
   my.b
 

@@ -471,6 +471,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       let slice = newNodeI(nkCall, n.info, 4)
       slice.typ = n.typ
       slice.sons[0] = newSymNode(createMagic("slice", mSlice))
+      slice.sons[0].typ = getSysType(tyInt) # fake type
       var fieldB = newSym(skField, tmpName, objType.owner, n.info)
       fieldB.typ = getSysType(tyInt)
       objType.addField(fieldB)
@@ -577,6 +578,8 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   var fn = n.sons[0]
   # templates and macros are in fact valid here due to the nature of
   # the transformation:
+  if fn.kind == nkClosure:
+    localError(n.info, "closure in spawn environment is not allowed")
   if not (fn.kind == nkSym and fn.sym.kind in {skProc, skTemplate, skMacro,
                                                skMethod, skConverter}):
     # for indirect calls we pass the function pointer in the scratchObj

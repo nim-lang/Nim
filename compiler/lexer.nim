@@ -138,6 +138,8 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
 proc isKeyword*(kind: TTokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
+template ones(n): untyped = ((1 shl n)-1) # for utf-8 conversion
+
 proc isNimIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
     var i = 1
@@ -589,12 +591,29 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   of '\\':
     add(tok.literal, '\\')
     inc(L.bufpos)
-  of 'x', 'X':
+  of 'x', 'X', 'u', 'U':
+    var tp = L.buf[L.bufpos]
     inc(L.bufpos)
     var xi = 0
     handleHexChar(L, xi)
     handleHexChar(L, xi)
-    add(tok.literal, chr(xi))
+    if tp in {'u', 'U'}:
+      handleHexChar(L, xi)
+      handleHexChar(L, xi)
+      # inlined toUTF-8 to avoid unicode and strutils dependencies.
+      if xi <=% 127:
+        add(tok.literal, xi.char )
+      elif xi <=% 0x07FF:
+        add(tok.literal, ((xi shr 6) or 0b110_00000).char )
+        add(tok.literal, ((xi and ones(6)) or 0b10_0000_00).char )
+      elif xi <=% 0xFFFF:
+        add(tok.literal, (xi shr 12 or 0b1110_0000).char )
+        add(tok.literal, (xi shr 6 and ones(6) or 0b10_0000_00).char )
+        add(tok.literal, (xi and ones(6) or 0b10_0000_00).char )
+      else: # value is 0xFFFF
+        add(tok.literal, "\xef\xbf\xbf" )
+    else:
+      add(tok.literal, chr(xi))
   of '0'..'9':
     if matchTwoChars(L, '0', {'0'..'9'}):
       lexMessage(L, warnOctalEscape)
@@ -716,7 +735,8 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       if  c == '\226' and
           buf[pos+1] == '\128' and
           buf[pos+2] == '\147':  # It's a 'magic separator' en-dash Unicode
-        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars:
+        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars or
+            isMagicIdentSeparatorRune(buf, pos+magicIdentSeparatorRuneByteWidth) or pos == L.bufpos:
           lexMessage(L, errInvalidToken, "–")
           break
         inc(pos, magicIdentSeparatorRuneByteWidth)
@@ -728,7 +748,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       h = h !& ord(c)
       inc(pos)
     of '_':
-      if buf[pos+1] notin SymChars:
+      if buf[pos+1] notin SymChars or isMagicIdentSeparatorRune(buf, pos+1):
         lexMessage(L, errInvalidToken, "_")
         break
       inc(pos)
@@ -811,10 +831,6 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
           break
         dec nesting
       inc pos
-    of '\t':
-      lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
-      inc(pos)
-      if isDoc: tok.literal.add '\t'
     of CR, LF:
       pos = handleCRLF(L, pos)
       buf = L.buf
@@ -877,10 +893,10 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       inc(indent)
 
     when defined(nimfix):
-      template doContinue(): expr =
+      template doContinue(): untyped =
         buf[pos] == '#' and (col == indent or lastBackslash > 0)
     else:
-      template doContinue(): expr =
+      template doContinue(): untyped =
         buf[pos] == '#' and buf[pos+1] == '#'
     if doContinue():
       tok.literal.add "\n"
@@ -926,9 +942,9 @@ proc skip(L: var TLexer, tok: var TToken) =
           break
       tok.strongSpaceA = 0
       when defined(nimfix):
-        template doBreak(): expr = buf[pos] > ' '
+        template doBreak(): untyped = buf[pos] > ' '
       else:
-        template doBreak(): expr =
+        template doBreak(): untyped =
           buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#')
       if doBreak():
         tok.indent = indent
@@ -1041,7 +1057,8 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '_':
       inc(L.bufpos)
-      if L.buf[L.bufpos] notin SymChars:
+      if L.buf[L.bufpos] notin SymChars+{'_'} and not
+          isMagicIdentSeparatorRune(L.buf, L.bufpos):
         tok.tokType = tkSymbol
         tok.ident = getIdent("_")
       else:
@@ -1062,6 +1079,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       tok.tokType = tkCharLit
     of '0'..'9':
       getNumber(L, tok)
+      let c = L.buf[L.bufpos]
+      if c in SymChars+{'_'}:
+        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     else:
       if c in OpChars:
         getOperator(L, tok)

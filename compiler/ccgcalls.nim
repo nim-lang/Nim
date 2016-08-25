@@ -124,7 +124,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
         result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
       of tyArray, tyArrayConstr:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(lastSon(a.t)))]
-      else: 
+      else:
         internalError("openArrayLoc: " & typeToString(a.t))
     else: internalError("openArrayLoc: " & typeToString(a.t))
 
@@ -260,7 +260,11 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
     else:
       result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
   else:
-    result = genArgNoParam(p, ri.sons[i])
+    if tfVarargs notin typ.flags:
+      localError(ri.info, "wrong argument count")
+      result = nil
+    else:
+      result = genArgNoParam(p, ri.sons[i])
 
 discard """
 Dot call syntax in C++

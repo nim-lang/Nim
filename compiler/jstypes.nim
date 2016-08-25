@@ -165,4 +165,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   of tyEnum: genEnumInfo(p, t, result)
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)
+  of tyStatic:
+    if t.n != nil: result = genTypeInfo(p, lastSon t)
+    else: internalError("genTypeInfo(" & $t.kind & ')')
   else: internalError("genTypeInfo(" & $t.kind & ')')

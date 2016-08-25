@@ -162,7 +162,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
       # Request completed immediately.
       var bytesRead: DWord
       let overlappedRes = getOverlappedResult(f.fd.Handle,
-          cast[POverlapped](ol)[], bytesRead, false.WinBool)
+          cast[POverlapped](ol), bytesRead, false.WinBool)
       if not overlappedRes.bool:
         let err = osLastError()
         if err.int32 == ERROR_HANDLE_EOF:
@@ -282,7 +282,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
       # Request completed immediately.
       var bytesWritten: DWord
       let overlappedRes = getOverlappedResult(f.fd.Handle,
-          cast[POverlapped](ol)[], bytesWritten, false.WinBool)
+          cast[POverlapped](ol), bytesWritten, false.WinBool)
       if not overlappedRes.bool:
         retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
       else:
@@ -316,6 +316,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
 proc close*(f: AsyncFile) =
   ## Closes the file specified.
+  unregister(f.fd)
   when defined(windows) or defined(nimdoc):
     if not closeHandle(f.fd.Handle).bool:
       raiseOSError(osLastError())

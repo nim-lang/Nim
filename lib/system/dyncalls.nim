@@ -52,11 +52,14 @@ when defined(posix):
   #
 
   # c stuff:
-  var
-    RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
+  when defined(linux) or defined(macosx):
+    const RTLD_NOW = cint(2)
+  else:
+    var
+      RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: cint
 
   proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: cstring, mode: int): LibHandle {.
+  proc dlopen(path: cstring, mode: cint): LibHandle {.
       importc, header: "<dlfcn.h>".}
   proc dlsym(lib: LibHandle, name: cstring): ProcAddr {.
       importc, header: "<dlfcn.h>".}
@@ -109,9 +112,30 @@ elif defined(windows) or defined(dos):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result != nil: return
-    var decorated: array[250, char]
+    const decorated_length = 250
+    var decorated: array[decorated_length, char]
+    decorated[0] = '_'
+    var m = 1
+    while m < (decorated_length - 5):
+      if name[m - 1] == '\x00': break
+      decorated[m] = name[m - 1]
+      inc(m)
+    decorated[m] = '@'
     for i in countup(0, 50):
-      discard csprintf(decorated, "_%s@%ld", name, i*4)
+      var k = i * 4
+      if k div 100 == 0: 
+        if k div 10 == 0:
+          m = m + 1
+        else:
+          m = m + 2
+      else:
+        m = m + 3
+      decorated[m + 1] = '\x00'
+      while true:
+        decorated[m] = chr(ord('0') + (k %% 10))
+        dec(m)
+        k = k div 10
+        if k == 0: break
       result = getProcAddress(cast[THINSTANCE](lib), decorated)
       if result != nil: return
     procAddrError(name)

@@ -41,14 +41,16 @@ proc commandGenDepend =
 
 proc commandCheck =
   msgs.gErrorMax = high(int)  # do not stop after first error
+  defineSymbol("nimcheck")
   semanticPasses()            # use an empty backend for semantic checking only
   rodPass()
   compileProject()
 
-proc commandDoc2 =
+proc commandDoc2(json: bool) =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
-  registerPass(docgen2Pass)
+  if json: registerPass(docgen2JsonPass)
+  else: registerPass(docgen2Pass)
   #registerPass(cleanupPass())
   compileProject()
   finishDoc2Pass(gProjectName)
@@ -241,7 +243,7 @@ proc mainCommand* =
   clearPasses()
   gLastCmdTime = epochTime()
   appendStr(searchPaths, options.libpath)
-  if gProjectFull.len != 0:
+  when false: # gProjectFull.len != 0:
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
   setId(100)
@@ -280,7 +282,7 @@ proc mainCommand* =
     gCmd = cmdDoc
     loadConfigs(DocConfig)
     defineSymbol("nimdoc")
-    commandDoc2()
+    commandDoc2(false)
   of "rst2html":
     gCmd = cmdRst2html
     loadConfigs(DocConfig)
@@ -295,7 +297,13 @@ proc mainCommand* =
     loadConfigs(DocConfig)
     wantMainModule()
     defineSymbol("nimdoc")
-    commandJSON()
+    commandJson()
+  of "jsondoc2":
+    gCmd = cmdDoc
+    loadConfigs(DocConfig)
+    wantMainModule()
+    defineSymbol("nimdoc")
+    commandDoc2(true)
   of "buildindex":
     gCmd = cmdDoc
     loadConfigs(DocConfig)

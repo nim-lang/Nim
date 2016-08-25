@@ -271,13 +271,14 @@ type
   TSymFlags* = set[TSymFlag]
 
 const
-  sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
   sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
   sfNoInit* = sfMainModule       # don't generate code to init the variable
 
   sfImmediate* = sfDeadCodeElim
     # macro or template is immediately expanded
     # without considering any possible overloads
+  sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
+    # in a generic context
 
   sfDirty* = sfPure
     # template is not hygienic (old styled template)
@@ -394,6 +395,9 @@ type
       # sons[0]: type of containing object or tuple
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
+
+    tyVoid #\
+      # now different from tyEmpty, hurray!
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
@@ -528,8 +532,6 @@ const
   tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
     # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
     # deprecated and this mess can be cleaned up.
-  tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
-                      # 'empty' ('@[]' has the type 'seq[empty]').
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
@@ -544,7 +546,7 @@ type
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
-    mNew, mNewFinalize, mNewSeq,
+    mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
     mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
@@ -563,8 +565,8 @@ type
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
-    mEqRef, mEqUntracedRef, mLePtr, mLtPtr, mEqCString,
-    mXor, mEqProc,
+    mEqRef, mEqUntracedRef, mLePtr, mLtPtr,
+    mXor, mEqCString, mEqProc,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64, mAbsF64,
@@ -590,6 +592,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
+    mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
@@ -609,7 +612,7 @@ type
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
-    mNimvm
+    mNimvm, mIntDefine, mStrDefine
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -769,7 +772,7 @@ type
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       #scope*: PScope          # the scope where the proc was defined
-    of skModule:
+    of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
       # be replaced with a newer version, we must decrement the usage count
@@ -848,6 +851,7 @@ type
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
     assignment*: PSym         # overriden '=' operator
+    methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
@@ -938,7 +942,7 @@ const
   genericParamsPos* = 2
   paramsPos* = 3
   pragmasPos* = 4
-  optimizedCodePos* = 5  # will be used for exception tracking
+  miscPos* = 5  # used for undocumented and hacky stuff
   bodyPos* = 6       # position of body; use rodread.getBody() instead!
   resultPos* = 7
   dispatcherPos* = 8 # caution: if method has no 'result' it can be position 7!
@@ -961,6 +965,8 @@ const
                   skMethod, skConverter}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
+var
+  gMainPackageId*: int
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
@@ -984,12 +990,12 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
-template `-|`*(b, s: expr): expr =
+template `-|`*(b, s: untyped): untyped =
   (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
-template `{}`*(n: PNode, i: int): expr = n[i -| n]
-template `{}=`*(n: PNode, i: int, s: PNode): stmt =
+template `{}`*(n: PNode, i: int): untyped = n[i -| n]
+template `{}=`*(n: PNode, i: int, s: PNode) =
   n.sons[i -| n] = s
 
 when defined(useNodeIds):
@@ -1584,7 +1590,7 @@ proc isAtom*(n: PNode): bool {.inline.} =
 
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
-  result = t == nil or t.kind in {tyEmpty, tyStmt}
+  result = t == nil or t.kind in {tyVoid, tyStmt}
 
 proc makeStmtList*(n: PNode): PNode =
   if n.kind == nkStmtList:

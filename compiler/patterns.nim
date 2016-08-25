@@ -75,7 +75,7 @@ proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
     result = matchNodeKinds(p.constraint, n)
     if not result: return
   if isNil(n.typ):
-    result = p.typ.kind in {tyEmpty, tyStmt}
+    result = p.typ.kind in {tyVoid, tyStmt}
   else:
     result = sigmatch.argtypeMatches(c.c, p.typ, n.typ)
 
@@ -129,7 +129,7 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       result = bindOrCheck(c, p.sons[2].sym, arglist)
 
 proc matches(c: PPatternContext, p, n: PNode): bool =
-  # hidden conversions (?)
+  let n = skipHidden(n)
   if nfNoRewrite in n.flags:
     result = false
   elif isPatternParam(c, p):

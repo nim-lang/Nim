@@ -107,13 +107,13 @@ proc genMergeInfo*(m: BModule): Rope =
   writeIntSet(m.typeInfoMarker, s)
   s.add("labels:")
   encodeVInt(m.labels, s)
-  s.add(" hasframe:")
-  encodeVInt(ord(m.frameDeclared), s)
+  s.add(" flags:")
+  encodeVInt(cast[int](m.flags), s)
   s.add(tnl)
   s.add("*/")
   result = s.rope
 
-template `^`(pos: int): expr = L.buf[pos]
+template `^`(pos: int): untyped = L.buf[pos]
 
 proc skipWhite(L: var TBaseLexer) =
   var pos = L.bufpos
@@ -222,13 +222,14 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "declared":  readIntSet(L, m.declaredThings)
     of "typeInfo":  readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
-    of "hasframe":  m.frameDeclared = decodeVInt(L.buf, L.bufpos) != 0
+    of "flags":
+      m.flags = cast[set[CodegenFlag]](decodeVInt(L.buf, L.bufpos) != 0)
     else: internalError("ccgmerge: unknown key: " & k)
 
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template withCFile(cfilename: string, body: stmt) {.immediate.} =
+template withCFile(cfilename: string, body: untyped) =
   var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer

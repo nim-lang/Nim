@@ -79,15 +79,18 @@
 ## constructor should be used for this purpose. However,
 ## currently only basic authentication is supported.
 
-import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes, math
+import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
+  math, random, httpcore
 import asyncnet, asyncdispatch
 import nativesockets
+
+export httpcore except parseHeader # TODO: The ``except`` doesn't work
 
 type
   Response* = tuple[
     version: string,
     status: string,
-    headers: StringTableRef,
+    headers: HttpHeaders,
     body: string]
 
   Proxy* = ref object
@@ -164,7 +167,7 @@ proc parseChunks(s: Socket, timeout: int): string =
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
+proc parseBody(s: Socket, headers: HttpHeaders, httpVersion: string, timeout: int): string =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = parseChunks(s, timeout)
@@ -190,7 +193,7 @@ proc parseBody(s: Socket, headers: StringTableRef, timeout: int): string =
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers.getOrDefault"Connection" == "close":
+      if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         var buf = ""
         while true:
           buf = newString(4000)
@@ -204,7 +207,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
   var linei = 0
   var fullyRead = false
   var line = ""
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   while true:
     line = ""
     linei = 0
@@ -239,10 +242,14 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       inc(linei) # Skip :
 
       result.headers[name] = line[linei.. ^1].strip()
+      # Ensure the server isn't trying to DoS us.
+      if result.headers.len > headerLimit:
+        httpError("too many headers")
+
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
-    result.body = parseBody(s, result.headers, timeout)
+    result.body = parseBody(s, result.headers, result.version, timeout)
   else:
     result.body = ""
 
@@ -335,7 +342,7 @@ proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
   var m = newMimetypes()
   for name, file in xs.items:
     var contentType: string
-    let (dir, fName, ext) = splitFile(file)
+    let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = m.getMimetype(ext[1..ext.high], nil)
     p.add(name, readFile(file), fName & ext, contentType)
@@ -392,6 +399,59 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   var hostUrl = if proxy == nil: r else: parseUri(url)
   var headers = substr(httpMethod, len("http"))
   # TODO: Use generateHeaders further down once it supports proxies.
+
+  var s = newSocket()
+  defer: s.close()
+  if s == nil: raiseOSError(osLastError())
+  var port = net.Port(80)
+  if r.scheme == "https":
+    when defined(ssl):
+      sslContext.wrapSocket(s)
+      port = net.Port(443)
+    else:
+      raise newException(HttpRequestError,
+                "SSL support is not available. Cannot connect over SSL.")
+  if r.port != "":
+    port = net.Port(r.port.parseInt)
+
+
+  # get the socket ready. If we are connecting through a proxy to SSL,
+  # send the appropiate CONNECT header. If not, simply connect to the proper
+  # host (which may still be the proxy, for normal HTTP)
+  if proxy != nil and hostUrl.scheme == "https":
+    when defined(ssl):
+      var connectHeaders = "CONNECT "
+      let targetPort = if hostUrl.port == "": 443 else: hostUrl.port.parseInt
+      connectHeaders.add(hostUrl.hostname)
+      connectHeaders.add(":" & $targetPort)
+      connectHeaders.add(" HTTP/1.1\c\L")
+      connectHeaders.add("Host: " & hostUrl.hostname & ":" & $targetPort & "\c\L")
+      if proxy.auth != "":
+        let auth = base64.encode(proxy.auth, newline = "")
+        connectHeaders.add("Proxy-Authorization: basic " & auth & "\c\L")
+      connectHeaders.add("\c\L")
+      if timeout == -1:
+        s.connect(r.hostname, port)
+      else:
+        s.connect(r.hostname, port, timeout)
+
+      s.send(connectHeaders)
+      let connectResult = parseResponse(s, false, timeout)
+      if not connectResult.status.startsWith("200"):
+        raise newException(HttpRequestError,
+                           "The proxy server rejected a CONNECT request, " &
+                           "so a secure connection could not be established.")
+      sslContext.wrapConnectedSocket(s, handshakeAsClient)
+    else:
+      raise newException(HttpRequestError, "SSL support not available. Cannot connect via proxy over SSL")
+  else:
+    if timeout == -1:
+      s.connect(r.hostname, port)
+    else:
+      s.connect(r.hostname, port, timeout)
+
+
+  # now that the socket is ready, prepare the headers
   if proxy == nil:
     headers.add ' '
     if r.path[0] != '/': headers.add '/'
@@ -415,29 +475,13 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
     add(headers, "Proxy-Authorization: basic " & auth & "\c\L")
   add(headers, extraHeaders)
   add(headers, "\c\L")
-  var s = newSocket()
-  if s == nil: raiseOSError(osLastError())
-  var port = net.Port(80)
-  if r.scheme == "https":
-    when defined(ssl):
-      sslContext.wrapSocket(s)
-      port = net.Port(443)
-    else:
-      raise newException(HttpRequestError,
-                "SSL support is not available. Cannot connect over SSL.")
-  if r.port != "":
-    port = net.Port(r.port.parseInt)
 
-  if timeout == -1:
-    s.connect(r.hostname, port)
-  else:
-    s.connect(r.hostname, port, timeout)
+  # headers are ready. send them, await the result, and close the socket.
   s.send(headers)
   if body != "":
     s.send(body)
 
   result = parseResponse(s, httpMethod != "httpHEAD", timeout)
-  s.close()
 
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
@@ -455,7 +499,7 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return true
 
-proc getNewLocation(lastURL: string, headers: StringTableRef): string =
+proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
   result = headers.getOrDefault"Location"
   if result == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
@@ -624,10 +668,10 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
   new result
   result.headers = newStringTable(modeCaseInsensitive)
-  result.userAgent = defUserAgent
+  result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   when defined(ssl):
-    result.sslContext = net.SslContext(sslContext)
+    result.sslContext = sslContext
 
 proc close*(client: AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
@@ -678,7 +722,8 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
 proc parseBody(client: AsyncHttpClient,
-               headers: StringTableRef): Future[string] {.async.} =
+               headers: HttpHeaders,
+               httpVersion: string): Future[string] {.async.} =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = await parseChunks(client)
@@ -700,7 +745,7 @@ proc parseBody(client: AsyncHttpClient,
 
       # -REGION- Connection: Close
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.5
-      if headers.getOrDefault"Connection" == "close":
+      if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         var buf = ""
         while true:
           buf = await client.socket.recvFull(4000)
@@ -713,7 +758,7 @@ proc parseResponse(client: AsyncHttpClient,
   var linei = 0
   var fullyRead = false
   var line = ""
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   while true:
     linei = 0
     line = await client.socket.recvLine()
@@ -748,10 +793,13 @@ proc parseResponse(client: AsyncHttpClient,
       inc(linei) # Skip :
 
       result.headers[name] = line[linei.. ^1].strip()
+      if result.headers.len > headerLimit:
+        httpError("too many headers")
+
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
   if getBody:
-    result.body = await parseBody(client, result.headers)
+    result.body = await parseBody(client, result.headers, result.version)
   else:
     result.body = ""
 

@@ -59,7 +59,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
 
-proc evalTemplateArgs(n: PNode, s: PSym): PNode =
+proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   # if the template has zero arguments, it can be called without ``()``
   # `n` is then a nkSym or something similar
   var totalParams = case n.kind
@@ -75,11 +75,11 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
     # their bodies. We could try to fix this, but it may be
     # wiser to just deprecate immediate templates and macros
     # now that we have working untyped parameters.
-    genericParams = if sfImmediate in s.flags: 0
+    genericParams = if sfImmediate in s.flags or fromHlo: 0
                     else: s.ast[genericParamsPos].len
     expectedRegularParams = <s.typ.len
     givenRegularParams = totalParams - genericParams
-
+  if givenRegularParams < 0: givenRegularParams = 0
   if totalParams > expectedRegularParams + genericParams:
     globalError(n.info, errWrongNumberOfArguments)
 
@@ -104,14 +104,14 @@ proc evalTemplateArgs(n: PNode, s: PSym): PNode =
 var evalTemplateCounter* = 0
   # to prevent endless recursion in templates instantiation
 
-proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym): PNode =
+proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
     globalError(n.info, errTemplateInstantiationTooNested)
     result = n
 
   # replace each param by the corresponding node:
-  var args = evalTemplateArgs(n, tmpl)
+  var args = evalTemplateArgs(n, tmpl, fromHlo)
   var ctx: TemplCtx
   ctx.owner = tmpl
   ctx.genSymOwner = genSymOwner

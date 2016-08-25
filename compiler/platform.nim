@@ -159,7 +159,7 @@ type
                      # alias conditionals to condsyms (end of module).
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuMipsel,
-    cpuArm, cpuArm64, cpuJS, cpuNimrodVM, cpuAVR, cpuMSP430
+    cpuArm, cpuArm64, cpuJS, cpuNimrodVM, cpuAVR, cpuMSP430, cpuSparc64
 
 type
   TEndian* = enum
@@ -187,7 +187,8 @@ const
     (name: "js", intSize: 32, endian: bigEndian,floatSize: 64,bit: 32),
     (name: "nimrodvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "avr", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
-    (name: "msp430", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16)]
+    (name: "msp430", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
+    (name: "sparc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64)]
 
 var
   targetCPU*, hostCPU*: TSystemCPU

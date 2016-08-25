@@ -36,7 +36,7 @@ proc copyDeepString(src: NimString): NimString {.inline.} =
   if src != nil:
     result = rawNewStringNoInit(src.len)
     result.len = src.len
-    c_memcpy(result.data, src.data, src.len + 1)
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
   var
@@ -124,7 +124,9 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
     copyMem(dest, src, mt.size)
 
 proc genericDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+  GC_disable()
   genericDeepCopyAux(dest, src, mt)
+  GC_enable()
 
 proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   # also invoked for 'string'

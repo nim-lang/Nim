@@ -95,7 +95,7 @@ proc getCurrOwner(c: PTransf): PSym =
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
-  r.typ = skipTypes(typ, {tyGenericInst})
+  r.typ = typ #skipTypes(typ, {tyGenericInst})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
@@ -204,14 +204,8 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
       if it.kind != nkConstDef: internalError(it.info, "transformConstSection")
       if it.sons[0].kind != nkSym:
         internalError(it.info, "transformConstSection")
-      if sfFakeConst in it[0].sym.flags:
-        var b = newNodeI(nkConstDef, it.info)
-        addSon(b, it[0])
-        addSon(b, ast.emptyNode)            # no type description
-        addSon(b, transform(c, it[2]).PNode)
-        result[i] = PTransNode(b)
-      else:
-        result[i] = PTransNode(it)
+
+      result[i] = PTransNode(it)
 
 proc hasContinue(n: PNode): bool =
   case n.kind
@@ -414,8 +408,8 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
         result = newTransNode(nkChckRange, n, 3)
       dest = skipTypes(n.typ, abstractVar)
       result[0] = transform(c, n.sons[1])
-      result[1] = newIntTypeNode(nkIntLit, firstOrd(dest), source).PTransNode
-      result[2] = newIntTypeNode(nkIntLit, lastOrd(dest), source).PTransNode
+      result[1] = newIntTypeNode(nkIntLit, firstOrd(dest), dest).PTransNode
+      result[2] = newIntTypeNode(nkIntLit, lastOrd(dest), dest).PTransNode
   of tyFloat..tyFloat128:
     # XXX int64 -> float conversion?
     if skipTypes(n.typ, abstractVar).kind == tyRange:
@@ -480,12 +474,14 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
 
 type
   TPutArgInto = enum
-    paDirectMapping, paFastAsgn, paVarAsgn
+    paDirectMapping, paFastAsgn, paVarAsgn, paComplexOpenarray
 
 proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
   # inline context.
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
+    if arg.kind == nkStmtListExpr:
+      return paComplexOpenarray
     return paDirectMapping    # XXX really correct?
                               # what if ``arg`` has side-effects?
   case arg.kind
@@ -575,6 +571,14 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
+    of paComplexOpenarray:
+      let typ = newType(tySequence, formal.owner)
+      addSonSkipIntLit(typ, formal.typ.sons[0])
+      var temp = newTemp(c, typ, formal.info)
+      addVar(v, temp)
+      add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
+      idNodeTablePut(newC.mapping, formal, temp)
+
   var body = iter.getBody.copyTree
   pushInfoContext(n.info)
   # XXX optimize this somehow. But the check "c.inlining" is not correct:

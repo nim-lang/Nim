@@ -471,6 +471,8 @@ type
     shortName*: string         # short name of the module
     quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
+    quotedFullName*: Rope      # cached quoted full name for codegen
+                               # purposes
 
     lines*: seq[Rope]          # the source code of the module
                                #   used for better error messages and
@@ -505,7 +507,7 @@ const
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
                                          hintSuccessX, hintPath, hintConf,
-                                         hintProcessing,
+                                         hintProcessing, hintPattern,
                                          hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,
@@ -514,9 +516,8 @@ const
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
-                                         hintPath, hintConf,
+                                         hintPath,
                                          hintDependency,
-                                         hintExecuting,
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
@@ -527,6 +528,8 @@ const
   InvalidFileIDX* = int32(-1)
 
 var
+  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
+    hintQuitCalled, hintExecuting}
   filenameToIndexTbl = initTable[string, int32]()
   fileInfos*: seq[TFileInfo] = @[]
   systemFileIdx*: int32
@@ -561,6 +564,7 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   let fileName = projPath.extractFilename
   result.shortName = fileName.changeFileExt("")
   result.quotedName = fileName.makeCString
+  result.quotedFullName = fullPath.makeCString
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
 
@@ -616,6 +620,7 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
+  gMainPackageNotes*: TNoteKinds = NotesVerbosity[1]
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)
@@ -755,7 +760,7 @@ proc msgWriteln*(s: string, flags: MsgFlags = {}) =
         flushFile(stderr)
 
 macro callIgnoringStyle(theProc: typed, first: typed,
-                        args: varargs[expr]): stmt =
+                        args: varargs[typed]): untyped =
   let typForegroundColor = bindSym"ForegroundColor".getType
   let typBackgroundColor = bindSym"BackgroundColor".getType
   let typStyle = bindSym"Style".getType
@@ -772,7 +777,7 @@ macro callIgnoringStyle(theProc: typed, first: typed,
        typ != typTerminalCmd:
       result.add(arg)
 
-macro callStyledWriteLineStderr(args: varargs[expr]): stmt =
+macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
   result = newCall(bindSym"styledWriteLine")
   result.add(bindSym"stderr")
   for arg in children(args[0][1]):
@@ -784,7 +789,7 @@ template callWritelnHook(args: varargs[string, `$`]) =
     s.add arg
   writelnHook s
 
-template styledMsgWriteln*(args: varargs[expr]) =
+template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in gGlobalOptions:
@@ -995,11 +1000,11 @@ proc internalError*(errMsg: string) =
   writeContext(unknownLineInfo())
   rawMessage(errInternal, errMsg)
 
-template assertNotNil*(e: expr): expr =
+template assertNotNil*(e): untyped =
   if e == nil: internalError($instantiationInfo())
   e
 
-template internalAssert*(e: bool): stmt =
+template internalAssert*(e: bool) =
   if not e: internalError($instantiationInfo())
 
 proc addSourceLine*(fileIdx: int32, line: string) =
@@ -1022,7 +1027,10 @@ proc sourceLine*(i: TLineInfo): Rope =
 
 proc quotedFilename*(i: TLineInfo): Rope =
   internalAssert i.fileIndex >= 0
-  result = fileInfos[i.fileIndex].quotedName
+  if optExcessiveStackTrace in gGlobalOptions:
+    result = fileInfos[i.fileIndex].quotedFullName
+  else:
+    result = fileInfos[i.fileIndex].quotedName
 
 ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   case err

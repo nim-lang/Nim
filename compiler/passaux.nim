@@ -24,7 +24,7 @@ proc verboseProcess(context: PPassContext, n: PNode): PNode =
     # system.nim deactivates all hints, for verbosity:3 we want the processing
     # messages nonetheless, so we activate them again unconditionally:
     incl(msgs.gNotes, hintProcessing)
-    message(n.info, hintProcessing, $idgen.gBackendId)
+    message(n.info, hintProcessing, $idgen.gFrontendId)
 
 const verbosePass* = makePass(open = verboseOpen, process = verboseProcess)
 

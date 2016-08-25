@@ -9,6 +9,7 @@
 
 ## This module contains Nim's support for reentrant locks.
 
+const insideRLocksModule = true
 include "system/syslocks"
 
 type

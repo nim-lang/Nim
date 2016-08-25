@@ -20,7 +20,8 @@
 ##  let
 ##    small_json = """{"test": 1.3, "key2": true}"""
 ##    jobj = parseJson(small_json)
-##  assert (jobj.kind == JObject)
+##  assert (jobj.kind == JObject)\
+##  jobj["test"] = newJFloat(0.7)  # create or update
 ##  echo($jobj["test"].fnum)
 ##  echo($jobj["key2"].bval)
 ##
@@ -49,12 +50,21 @@
 ##         "age": herAge
 ##       }
 ##     ]
+##
+##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
+##    j2["details"] = %* {"age":35, "pi":3.1415}
+##    echo j2
 
 import
   hashes, tables, strutils, lexbase, streams, unicode, macros
 
 export
   tables.`$`
+
+when defined(nimJsonGet):
+  {.pragma: deprecatedGet, deprecated.}
+else:
+  {.pragma: deprecatedGet.}
 
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
@@ -116,7 +126,7 @@ type
   TJsonParser: JsonParser, TTokKind: TokKind].}
 
 const
-  errorMessages: array [JsonError, string] = [
+  errorMessages: array[JsonError, string] = [
     "no error",
     "invalid token",
     "string expected",
@@ -129,7 +139,7 @@ const
     "EOF expected",
     "expression expected"
   ]
-  tokToStr: array [TokKind, string] = [
+  tokToStr: array[TokKind, string] = [
     "invalid token",
     "EOF",
     "string literal",
@@ -702,17 +712,28 @@ proc `%`*(b: bool): JsonNode =
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
-  new(result)
-  result.kind = JObject
-  result.fields = initTable[string, JsonNode](4)
+  if keyvals.len == 0: return newJArray()
+  result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
 
-proc `%`*(elements: openArray[JsonNode]): JsonNode =
+template `%`*(j: JsonNode): JsonNode = j
+
+proc `%`*[T](elements: openArray[T]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
-  new(result)
-  result.kind = JArray
-  newSeq(result.elems, elements.len)
-  for i, p in pairs(elements): result.elems[i] = p
+  result = newJArray()
+  for elem in elements: result.add(%elem)
+
+proc `%`*(o: object): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  result = newJObject()
+  for k, v in o.fieldPairs: result[k] = %v
+
+proc `%`*(o: ref object): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  if o.isNil:
+    result = newJNull()
+  else:
+    result = %(o[])
 
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
@@ -730,6 +751,9 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
   of nnkCurly: # empty object
     result = newNimNode(nnkTableConstr)
     x.expectLen(0)
+
+  of nnkNilLit:
+    result = newCall("newJNull")
 
   else:
     result = x
@@ -799,16 +823,23 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
+proc `[]`*(node: JsonNode, name: string): JsonNode {.inline, deprecatedGet.} =
   ## Gets a field from a `JObject`, which must not be nil.
-  ## If the value at `name` does not exist, returns nil
+  ## If the value at `name` does not exist, raises KeyError.
+  ##
+  ## **Note:** The behaviour of this procedure changed in version 0.14.0. To
+  ## get a list of usages and to restore the old behaviour of this procedure,
+  ## compile with the ``-d:nimJsonGet`` flag.
   assert(not isNil(node))
   assert(node.kind == JObject)
-  result = node.fields.getOrDefault(name)
+  when defined(nimJsonGet):
+    if not node.fields.hasKey(name): return nil
+  result = node.fields[name]
 
 proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
-  ## is out of bounds
+  ## is out of bounds, but as long as array bound checks are enabled it will
+  ## result in an exception.
   assert(not isNil(node))
   assert(node.kind == JArray)
   return node.elems[index]
@@ -817,6 +848,16 @@ proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   result = node.fields.hasKey(key)
+
+proc contains*(node: JsonNode, key: string): bool =
+  ## Checks if `key` exists in `node`.
+  assert(node.kind == JObject)
+  node.fields.hasKey(key)
+
+proc contains*(node: JsonNode, val: JsonNode): bool =
+  ## Checks if `val` exists in array `node`.
+  assert(node.kind == JArray)
+  find(node.elems, val) >= 0
 
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
@@ -838,20 +879,28 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
-  ## keys do not exist, returns nil. Also returns nil if one of the
-  ## intermediate data structures is not an object
+  ## keys do not exist, returns ``nil``. Also returns ``nil`` if one of the
+  ## intermediate data structures is not an object.
   result = node
   for key in keys:
-    if isNil(result) or result.kind!=JObject:
+    if isNil(result) or result.kind != JObject:
       return nil
-    result=result[key]
+    result = result.fields.getOrDefault(key)
+
+proc getOrDefault*(node: JsonNode, key: string): JsonNode =
+  ## Gets a field from a `node`. If `node` is nil or not an object or
+  ## value at `key` does not exist, returns nil
+  if not isNil(node) and node.kind == JObject:
+    result = node.fields.getOrDefault(key)
+
+template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode, key: string): JsonNode = node.getOrDefault(key)
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
-  ## to `value` If any of the keys are missing, they are added
+  ## to ``value``. If any of the keys are missing, they are added.
   var node = node
   for i in 0..(keys.len-2):
-    if isNil(node[keys[i]]):
+    if not node.hasKey(keys[i]):
       node[keys[i]] = newJObject()
     node = node[keys[i]]
   node[keys[keys.len-1]] = value
@@ -972,7 +1021,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     result.add("null")
 
 proc pretty*(node: JsonNode, indent = 2): string =
-  ## Converts `node` to its JSON Representation, with indentation and
+  ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
   result = ""
   toPretty(result, node, indent)
@@ -982,7 +1031,9 @@ proc toUgly*(result: var string, node: JsonNode) =
   ## regard for human readability. Meant to improve ``$`` string
   ## conversion performance.
   ##
-  ## This provides higher efficiency than the ``toPretty`` procedure as it
+  ## JSON representation is stored in the passed `result`
+  ##
+  ## This provides higher efficiency than the ``pretty`` procedure as it
   ## does **not** attempt to format the resulting JSON to make it human readable.
   var comma = false
   case node.kind:
@@ -1076,7 +1127,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     discard getTok(p)
     while p.tok != tkCurlyRi:
       if p.tok != tkString:
-        raiseParseErr(p, "string literal as key expected")
+        raiseParseErr(p, "string literal as key")
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)
@@ -1217,16 +1268,6 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
-  when not defined(js):
-    var parsed = parseFile("tests/testdata/jsontest.json")
-
-    try:
-      discard parsed["key2"][12123]
-      doAssert(false)
-    except IndexError: doAssert(true)
-
-    var parsed2 = parseFile("tests/testdata/jsontest2.json")
-    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
@@ -1314,3 +1355,35 @@ when isMainModule:
 
   var j4 = %*{"test": nil}
   doAssert j4 == %{"test": newJNull()}
+
+  let seqOfNodes = @[%1, %2]
+  let jSeqOfNodes = %seqOfNodes
+  doAssert(jSeqOfNodes[1].num == 2)
+
+  type MyObj = object
+    a, b: int
+    s: string
+    f32: float32
+    f64: float64
+    next: ref MyObj
+  var m: MyObj
+  m.s = "hi"
+  m.a = 5
+  let jMyObj = %m
+  doAssert(jMyObj["a"].num == 5)
+  doAssert(jMyObj["s"].str == "hi")
+
+  # Test loading of file.
+  when not defined(js):
+    echo("99% of tests finished. Going to try loading file.")
+    var parsed = parseFile("tests/testdata/jsontest.json")
+
+    try:
+      discard parsed["key2"][12123]
+      doAssert(false)
+    except IndexError: doAssert(true)
+
+    var parsed2 = parseFile("tests/testdata/jsontest2.json")
+    doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+
+  echo("Tests succeeded!")

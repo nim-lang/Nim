@@ -16,4 +16,4 @@ x.callback =
   proc () =
     finished = true
 
-while not finished: discard
+while not finished: poll()

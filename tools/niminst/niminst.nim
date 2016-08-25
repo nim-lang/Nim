@@ -18,7 +18,7 @@ import
 
 const
   maxOS = 20 # max number of OSes
-  maxCPU = 10 # max number of CPUs
+  maxCPU = 20 # max number of CPUs
   buildShFile = "build.sh"
   buildBatFile32 = "build.bat"
   buildBatFile64 = "build64.bat"
@@ -48,7 +48,8 @@ type
     fcWindows,    # files only for Windows
     fcUnix,       # files only for Unix; must be after ``fcWindows``
     fcUnixBin,    # binaries for Unix
-    fcDocStart    # links to documentation for Windows installer
+    fcDocStart,   # links to documentation for Windows installer
+    fcNimble      # nimble package files to copy to /opt/nimble/pkgs/pkg-ver
 
   ConfigData = object of RootObj
     actions: set[Action]
@@ -65,6 +66,7 @@ type
     app: AppType
     nimArgs: string
     debOpts: TDebOptions
+    nimblePkgName: string
 
 const
   unixDirVars: array[fcConfig..fcLib, string] = [
@@ -200,22 +202,63 @@ proc parseCmdLine(c: var ConfigData) =
   if c.infile.len == 0: quit(Usage)
   if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
-proc walkDirRecursively(s: var seq[string], root: string) =
+proc eqT(a, b: string; t: proc (a: char): char{.nimcall.}): bool =
+  ## equality under a transformation ``t``. candidate for the stdlib?
+  var i = 0
+  var j = 0
+  while i < a.len and j < b.len:
+    let aa = t a[i]
+    let bb = t b[j]
+    if aa == '\0':
+      inc i
+      if bb == '\0': inc j
+    elif bb == '\0': inc j
+    else:
+      if aa != bb: return false
+      inc i
+      inc j
+  result = i >= a.len and j >= b.len
+
+proc tPath(c: char): char =
+  if c == '\\': '/'
+  else: c
+
+proc ignoreFile(f, explicit: string, allowHtml: bool): bool =
+  let (_, name, ext) = splitFile(f)
+  let html = if not allowHtml: ".html" else: ""
+  result = (ext in ["", ".exe", ".idx", ".o", ".obj", ".dylib"] or
+            ext == html or name[0] == '.') and not eqT(f, explicit, tPath)
+
+proc walkDirRecursively(s: var seq[string], root, explicit: string,
+                        allowHtml: bool) =
+  let tail = splitPath(root).tail
+  if tail == "nimcache" or tail[0] == '.':
+    return
+  let allowHtml = allowHtml or tail == "doc"
   for k, f in walkDir(root):
-    case k
-    of pcFile, pcLinkToFile: add(s, unixToNativePath(f))
-    of pcDir: walkDirRecursively(s, f)
-    of pcLinkToDir: discard
+    if f[0] == '.' and root[0] != '.':
+      discard "skip .git directories etc"
+    else:
+      case k
+      of pcFile, pcLinkToFile:
+        if not ignoreFile(f, explicit, allowHtml):
+          add(s, unixToNativePath(f))
+      of pcDir:
+        walkDirRecursively(s, f, explicit, allowHtml)
+      of pcLinkToDir: discard
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
     if existsDir(p):
-      walkDirRecursively(s, p)
+      walkDirRecursively(s, p, p, false)
     else:
       var i = 0
-      for f in walkFiles(p):
-        add(s, unixToNativePath(f))
-        inc(i)
+      for f in walkPattern(p):
+        if existsDir(f):
+          walkDirRecursively(s, f, p, false)
+        elif not ignoreFile(f, p, false):
+          add(s, unixToNativePath(f))
+          inc(i)
       if i == 0: echo("[Warning] No file found that matches: " & p)
 
 proc pathFlags(p: var CfgParser, k, v: string,
@@ -362,6 +405,14 @@ proc parseIniFile(c: var ConfigData) =
                 else: file.add(v[i])
               inc(i)
           else: quit(errorStr(p, "unknown variable: " & k.key))
+        of "nimble":
+          case normalize(k.key)
+          of "pkgname":
+            c.nimblePkgName = v
+          of "pkgfiles":
+            addFiles(c.cat[fcNimble], split(v, {';'}))
+          else:
+            quit(errorStr(p, "invalid key: " & k.key))
         else: quit(errorStr(p, "invalid section: " & section))
 
       of cfgOption: quit(errorStr(p, "syntax error"))
@@ -554,8 +605,13 @@ when haveZipLib:
           for k, f in walkDir("build" / dir):
             if k == pcFile: addFile(z, proj / dir / extractFilename(f), f)
 
-      for cat in items({fcConfig..fcOther, fcUnix}):
+      for cat in items({fcConfig..fcOther, fcUnix, fcNimble}):
         for f in items(c.cat[cat]): addFile(z, proj / f, f)
+
+      # Copy the .nimble file over
+      let nimbleFile = c.nimblePkgName & ".nimble"
+      processFile(z, proj / nimbleFile, nimbleFile)
+
       close(z)
     else:
       quit("Cannot open for writing: " & n)
@@ -587,16 +643,24 @@ proc xzDist(c: var ConfigData) =
       for k, f in walkDir("build" / dir):
         if k == pcFile: processFile(z, proj / dir / extractFilename(f), f)
 
-  for cat in items({fcConfig..fcOther, fcUnix}):
+  for cat in items({fcConfig..fcOther, fcUnix, fcNimble}):
+    echo("Current category: ", cat)
     for f in items(c.cat[cat]): processFile(z, proj / f, f)
 
-  let oldDir = getCurrentDir()
-  setCurrentDir(tmpDir)
-  try:
-    if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
-      echo("External program failed")
-  finally:
-    setCurrentDir(oldDir)
+  # Copy the .nimble file over
+  let nimbleFile = c.nimblePkgName & ".nimble"
+  processFile(z, proj / nimbleFile, nimbleFile)
+
+  when true:
+    let oldDir = getCurrentDir()
+    setCurrentDir(tmpDir)
+    try:
+      if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" % proj) != 0:
+        # try old 'tar' without --exclude feature:
+        if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
+          echo("External program failed")
+    finally:
+      setCurrentDir(oldDir)
 
 # -- prepare build files for .deb creation
 

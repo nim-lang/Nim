@@ -14,6 +14,8 @@
 ## <backends.html#the-javascript-target>`_.
 
 import parseutils
+from math import pow, round, floor, log10
+from algorithm import reverse
 
 {.deadCodeElim: on.}
 
@@ -23,6 +25,12 @@ import parseutils
 include "system/inclrtl"
 
 {.pop.}
+
+# Support old split with set[char]
+when defined(nimOldSplit):
+  {.pragma: deprecatedSplit, deprecated.}
+else:
+  {.pragma: deprecatedSplit.}
 
 type
   CharSet* {.deprecated.} = set[char] # for compatibility with Nim
@@ -62,8 +70,8 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
-proc isAlpha*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaChar".}=
+proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaAsciiChar".}=
   ## Checks whether or not `c` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -83,27 +91,27 @@ proc isDigit*(c: char): bool {.noSideEffect, procvar,
   ## This checks 0-9 ASCII characters only.
   return c in Digits
 
-proc isSpace*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceChar".}=
+proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceAsciiChar".}=
   ## Checks whether or not `c` is a whitespace character.
   return c in Whitespace
 
-proc isLower*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerChar".}=
+proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerAsciiChar".}=
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
   return c in {'a'..'z'}
 
-proc isUpper*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperChar".}=
+proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperAsciiChar".}=
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
   return c in {'A'..'Z'}
 
-proc isAlpha*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaStr".}=
+proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsAlphaAsciiStr".}=
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -115,7 +123,7 @@ proc isAlpha*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isAlpha() and result
+    result = c.isAlphaAscii() and result
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsAlphaNumericStr".}=
@@ -147,8 +155,8 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
   for c in s:
     result = c.isDigit() and result
 
-proc isSpace*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceStr".}=
+proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsSpaceAsciiStr".}=
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -158,10 +166,11 @@ proc isSpace*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isSpace() and result
+    if not c.isSpaceAscii():
+      return false
 
-proc isLower*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerStr".}=
+proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerAsciiStr".}=
   ## Checks whether or not `s` contains all lower case characters.
   ##
   ## This checks ASCII characters only.
@@ -172,10 +181,10 @@ proc isLower*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isLower() and result
+    result = c.isLowerAscii() and result
 
-proc isUpper*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperStr".}=
+proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperAsciiStr".}=
   ## Checks whether or not `s` contains all upper case characters.
   ##
   ## This checks ASCII characters only.
@@ -186,10 +195,10 @@ proc isUpper*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isUpper() and result
+    result = c.isUpperAscii() and result
 
-proc toLower*(c: char): char {.noSideEffect, procvar,
-  rtl, extern: "nsuToLowerChar".} =
+proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
+  rtl, extern: "nsuToLowerAsciiChar".} =
   ## Converts `c` into lower case.
   ##
   ## This works only for the letters ``A-Z``. See `unicode.toLower
@@ -200,8 +209,8 @@ proc toLower*(c: char): char {.noSideEffect, procvar,
   else:
     result = c
 
-proc toLower*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nsuToLowerStr".} =
+proc toLowerAscii*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts `s` into lower case.
   ##
   ## This works only for the letters ``A-Z``. See `unicode.toLower
@@ -209,10 +218,10 @@ proc toLower*(s: string): string {.noSideEffect, procvar,
   ## character.
   result = newString(len(s))
   for i in 0..len(s) - 1:
-    result[i] = toLower(s[i])
+    result[i] = toLowerAscii(s[i])
 
-proc toUpper*(c: char): char {.noSideEffect, procvar,
-  rtl, extern: "nsuToUpperChar".} =
+proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
+  rtl, extern: "nsuToUpperAsciiChar".} =
   ## Converts `c` into upper case.
   ##
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
@@ -223,8 +232,8 @@ proc toUpper*(c: char): char {.noSideEffect, procvar,
   else:
     result = c
 
-proc toUpper*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nsuToUpperStr".} =
+proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuToUpperAsciiStr".} =
   ## Converts `s` into upper case.
   ##
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
@@ -232,14 +241,145 @@ proc toUpper*(s: string): string {.noSideEffect, procvar,
   ## character.
   result = newString(len(s))
   for i in 0..len(s) - 1:
-    result[i] = toUpper(s[i])
+    result[i] = toUpperAscii(s[i])
 
-proc capitalize*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nsuCapitalize".} =
+proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of `s` into upper case.
   ##
   ## This works only for the letters ``A-Z``.
-  result = toUpper(s[0]) & substr(s, 1)
+  result = toUpperAscii(s[0]) & substr(s, 1)
+
+proc isSpace*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsSpaceChar".}=
+  ## Checks whether or not `c` is a whitespace character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isSpaceAscii`` instead.
+  isSpaceAscii(c)
+
+proc isLower*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsLowerChar".}=
+  ## Checks whether or not `c` is a lower case character.
+  ##
+  ## This checks ASCII characters only.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isLowerAscii`` instead.
+  isLowerAscii(c)
+
+proc isUpper*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsUpperChar".}=
+  ## Checks whether or not `c` is an upper case character.
+  ##
+  ## This checks ASCII characters only.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isUpperAscii`` instead.
+  isUpperAscii(c)
+
+proc isAlpha*(c: char): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsAlphaChar".}=
+  ## Checks whether or not `c` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isAlphaAscii`` instead.
+  isAlphaAscii(c)
+
+proc isAlpha*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsAlphaStr".}=
+  ## Checks whether or not `s` is alphabetical.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  ## Returns true if all characters in `s` are
+  ## alphabetic and there is at least one character
+  ## in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isAlphaAscii`` instead.
+  isAlphaAscii(s)
+
+proc isSpace*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsSpaceStr".}=
+  ## Checks whether or not `s` is completely whitespace.
+  ##
+  ## Returns true if all characters in `s` are whitespace
+  ## characters and there is at least one character in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isSpaceAscii`` instead.
+  isSpaceAscii(s)
+
+proc isLower*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsLowerStr".}=
+  ## Checks whether or not `s` contains all lower case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are lower case
+  ## and there is at least one character  in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isLowerAscii`` instead.
+  isLowerAscii(s)
+
+proc isUpper*(s: string): bool {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuIsUpperStr".}=
+  ## Checks whether or not `s` contains all upper case characters.
+  ##
+  ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are upper case
+  ## and there is at least one character in `s`.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``isUpperAscii`` instead.
+  isUpperAscii(s)
+
+proc toLower*(c: char): char {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToLowerChar".} =
+  ## Converts `c` into lower case.
+  ##
+  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## <unicode.html#toLower>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toLowerAscii`` instead.
+  toLowerAscii(c)
+
+proc toLower*(s: string): string {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToLowerStr".} =
+  ## Converts `s` into lower case.
+  ##
+  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## <unicode.html#toLower>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toLowerAscii`` instead.
+  toLowerAscii(s)
+
+proc toUpper*(c: char): char {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToUpperChar".} =
+  ## Converts `c` into upper case.
+  ##
+  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## <unicode.html#toUpper>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toUpperAscii`` instead.
+  toUpperAscii(c)
+
+proc toUpper*(s: string): string {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuToUpperStr".} =
+  ## Converts `s` into upper case.
+  ##
+  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## <unicode.html#toUpper>`_ for a version that works for any Unicode
+  ## character.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``toUpperAscii`` instead.
+  toUpperAscii(s)
+
+proc capitalize*(s: string): string {.noSideEffect, procvar,
+  rtl, deprecated, extern: "nsuCapitalize".} =
+  ## Converts the first character of `s` into upper case.
+  ##
+  ## This works only for the letters ``A-Z``.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``capitalizeAscii`` instead.
+  capitalizeAscii(s)
 
 proc normalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuNormalize".} =
@@ -268,7 +408,7 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
   var i = 0
   var m = min(a.len, b.len)
   while i < m:
-    result = ord(toLower(a[i])) - ord(toLower(b[i]))
+    result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
     if result != 0: return
     inc(i)
   result = a.len - b.len
@@ -289,8 +429,8 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
-    var aa = toLower(a[i])
-    var bb = toLower(b[j])
+    var aa = toLowerAscii(a[i])
+    var bb = toLowerAscii(b[j])
     result = ord(aa) - ord(bb)
     if result != 0 or aa == '\0': break
     inc(i)
@@ -324,16 +464,77 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-iterator split*(s: string, seps: set[char] = Whitespace): string =
+proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrEmpty".} =
+  ## Checks if `s` is nil or empty.
+  result = len(s) == 0
+
+proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrWhitespace".} =
+  ## Checks if `s` is nil or consists entirely of whitespace characters.
+  if len(s) == 0:
+    return true
+
+  result = true
+  for c in s:
+    if not c.isSpaceAscii():
+      return false
+
+proc substrEq(s: string, pos: int, substr: string): bool =
+  var i = 0
+  var length = substr.len
+  while i < length and s[pos+i] == substr[i]:
+    inc i
+
+  return i == length
+
+# --------- Private templates for different split separators -----------
+
+template stringHasSep(s: string, index: int, seps: set[char]): bool =
+  s[index] in seps
+
+template stringHasSep(s: string, index: int, sep: char): bool =
+  s[index] == sep
+
+template stringHasSep(s: string, index: int, sep: string): bool =
+  s.substrEq(index, sep)
+
+template splitCommon(s, sep, maxsplit, sepLen) =
+  ## Common code for split procedures
+  var last = 0
+  var splits = maxsplit
+
+  if len(s) > 0:
+    while last <= len(s):
+      var first = last
+      while last < len(s) and not stringHasSep(s, last, sep):
+        inc(last)
+      if splits == 0: last = len(s)
+      yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
+      inc(last, sepLen)
+
+template oldSplit(s, seps, maxsplit) =
+  var last = 0
+  var splits = maxsplit
+  assert(not ('\0' in seps))
+  while last < len(s):
+    while s[last] in seps: inc(last)
+    var first = last
+    while last < len(s) and s[last] notin seps: inc(last)
+    if first <= last-1:
+      if splits == 0: last = len(s)
+      yield substr(s, first, last-1)
+      if splits == 0: break
+      dec(splits)
+
+iterator split*(s: string, seps: set[char] = Whitespace,
+                maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a group of separators.
   ##
-  ## Substrings are separated by a substring containing only `seps`. Note
-  ## that whole sequences of characters found in ``seps`` will be counted as
-  ## a single split point and leading/trailing separators will be ignored.
-  ## The following example:
+  ## Substrings are separated by a substring containing only `seps`.
   ##
   ## .. code-block:: nim
-  ##   for word in split("  this is an  example  "):
+  ##   for word in split("this\lis an\texample"):
   ##     writeLine(stdout, word)
   ##
   ## ...generates this output:
@@ -347,7 +548,7 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ## And the following code:
   ##
   ## .. code-block:: nim
-  ##   for word in split(";;this;is;an;;example;;;", {';'}):
+  ##   for word in split("this:is;an$example", {';', ':', '$'}):
   ##     writeLine(stdout, word)
   ##
   ## ...produces the same output as the first example. The code:
@@ -368,22 +569,26 @@ iterator split*(s: string, seps: set[char] = Whitespace): string =
   ##   "08"
   ##   "08.398990"
   ##
-  var last = 0
-  assert(not ('\0' in seps))
-  while last < len(s):
-    while s[last] in seps: inc(last)
-    var first = last
-    while last < len(s) and s[last] notin seps: inc(last) # BUGFIX!
-    if first <= last-1:
-      yield substr(s, first, last-1)
+  when defined(nimOldSplit):
+    oldSplit(s, seps, maxsplit)
+  else:
+    splitCommon(s, seps, maxsplit, 1)
 
-iterator split*(s: string, sep: char): string =
+iterator splitWhitespace*(s: string): string =
+  ## Splits at whitespace.
+  oldSplit(s, Whitespace, -1)
+
+proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+  rtl, extern: "nsuSplitWhitespace".} =
+  ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
+  ## iterator, but is a proc that returns a sequence of substrings.
+  accumulateResult(splitWhitespace(s))
+
+iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
-  ## Unlike the version of the iterator which accepts a set of separator
-  ## characters, this proc will not coalesce groups of the
-  ## separator, returning a string for each found character. The code:
+  ## The code:
   ##
   ## .. code-block:: nim
   ##   for word in split(";;this;is;an;;example;;;", ';'):
@@ -403,28 +608,118 @@ iterator split*(s: string, sep: char): string =
   ##   ""
   ##   ""
   ##
-  var last = 0
-  assert('\0' != sep)
-  if len(s) > 0:
-    # `<=` is correct here for the edge cases!
-    while last <= len(s):
-      var first = last
-      while last < len(s) and s[last] != sep: inc(last)
-      yield substr(s, first, last-1)
-      inc(last)
+  splitCommon(s, sep, maxsplit, 1)
 
-iterator split*(s: string, sep: string): string =
+iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`.
-  var last = 0
+  ## The code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("thisDATAisDATAcorrupted", "DATA"):
+  ##     writeLine(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is"
+  ##   "corrupted"
+  ##
+
+  splitCommon(s, sep, maxsplit, sep.len)
+
+template rsplitCommon(s, sep, maxsplit, sepLen) =
+  ## Common code for rsplit functions
+  var
+    last = s.len - 1
+    first = last
+    splits = maxsplit
+    startPos = 0
+
   if len(s) > 0:
-    while last <= len(s):
-      var first = last
-      while last < len(s) and s.substr(last, last + <sep.len) != sep:
-        inc(last)
-      yield substr(s, first, last-1)
-      inc(last, sep.len)
+    # go to -1 in order to get separators at the beginning
+    while first >= -1:
+      while first >= 0 and not stringHasSep(s, first, sep):
+        dec(first)
+
+      if splits == 0:
+        # No more splits means set first to the beginning
+        first = -1
+
+      if first == -1:
+        startPos = 0
+      else:
+        startPos = first + sepLen
+
+      yield substr(s, startPos, last)
+
+      if splits == 0:
+        break
+
+      dec(splits)
+      dec(first)
+
+      last = first
+
+iterator rsplit*(s: string, seps: set[char] = Whitespace,
+                 maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,char>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foo bar".rsplit(WhiteSpace):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the set of chars `seps`
+
+  rsplitCommon(s, seps, maxsplit, 1)
+
+iterator rsplit*(s: string, sep: char,
+                 maxsplit: int = -1): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,char>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foo:bar".rsplit(':'):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the char `sep`
+  rsplitCommon(s, sep, maxsplit, 1)
+
+iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
+                 keepSeparators: bool = false): string =
+  ## Splits the string `s` into substrings from the right using a
+  ## string separator. Works exactly the same as `split iterator
+  ## <#split.i,string,string>`_ except in reverse order.
+  ##
+  ## .. code-block:: nim
+  ##   for piece in "foothebar".rsplit("the"):
+  ##     echo piece
+  ##
+  ## Results in:
+  ##
+  ## .. code-block:: nim
+  ##   "bar"
+  ##   "foo"
+  ##
+  ## Substrings are separated from the right by the string `sep`
+  rsplitCommon(s, sep, maxsplit, sep.len)
 
 iterator splitLines*(s: string): string =
   ## Splits the string `s` into its containing lines.
@@ -493,25 +788,92 @@ proc countLines*(s: string): int {.noSideEffect,
     else: discard
     inc i
 
-proc split*(s: string, seps: set[char] = Whitespace): seq[string] {.
+proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char]>`_, but is a
   ## proc that returns a sequence of substrings.
-  accumulateResult(split(s, seps))
+  accumulateResult(split(s, seps, maxsplit))
 
-proc split*(s: string, sep: char): seq[string] {.noSideEffect,
+proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char>`_, but is a proc
   ## that returns a sequence of substrings.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxsplit))
 
-proc split*(s: string, sep: string): seq[string] {.noSideEffect,
+proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitString".} =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
-  accumulateResult(split(s, sep))
+  accumulateResult(split(s, sep, maxsplit))
+
+proc rsplit*(s: string, seps: set[char] = Whitespace,
+             maxsplit: int = -1): seq[string]
+             {.noSideEffect, rtl, extern: "nsuRSplitCharSet".} =
+  ## The same as the `rsplit iterator <#rsplit.i,string,set[char]>`_, but is a
+  ## proc that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", {'#'}, maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  accumulateResult(rsplit(s, seps, maxsplit))
+  result.reverse()
+
+proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
+             {.noSideEffect, rtl, extern: "nsuRSplitChar".} =
+  ## The same as the `split iterator <#rsplit.i,string,char>`_, but is a proc
+  ## that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", '#', maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  accumulateResult(rsplit(s, sep, maxsplit))
+  result.reverse()
+
+proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
+             {.noSideEffect, rtl, extern: "nsuRSplitString".} =
+  ## The same as the `split iterator <#rsplit.i,string,string>`_, but is a proc
+  ## that returns a sequence of substrings.
+  ##
+  ## A possible common use case for `rsplit` is path manipulation,
+  ## particularly on systems that don't use a common delimiter.
+  ##
+  ## For example, if a system had `#` as a delimiter, you could
+  ## do the following to get the tail of the path:
+  ##
+  ## .. code-block:: nim
+  ##   var tailSplit = rsplit("Root#Object#Method#Index", "#", maxsplit=1)
+  ##
+  ## Results in `tailSplit` containing:
+  ##
+  ## .. code-block:: nim
+  ##   @["Root#Object#Method", "Index"]
+  ##
+  accumulateResult(rsplit(s, sep, maxsplit))
+  result.reverse()
 
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
@@ -529,6 +891,10 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     n = n shr 4
     # handle negative overflow
     if n == 0 and x < 0: n = -1
+
+proc toHex*[T](x: T): string =
+  ## Shortcut for ``toHex(x, T.sizeOf * 2)``
+  toHex(x, T.sizeOf * 2)
 
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
@@ -559,6 +925,24 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   var L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
+
+proc parseUInt*(s: string): uint {.noSideEffect, procvar,
+  rtl, extern: "nsuParseUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
+
+proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+  rtl, extern: "nsuParseBiggestUInt".} =
+  ## Parses a decimal unsigned integer value contained in `s`.
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  var L = parseutils.parseBiggestUInt(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid unsigned integer: " & s)
 
 proc parseFloat*(s: string): float {.noSideEffect, procvar,
   rtl, extern: "nsuParseFloat".} =
@@ -651,7 +1035,7 @@ proc repeat*(s: string, n: Natural): string {.noSideEffect,
   result = newStringOfCap(n * s.len)
   for i in 1..n: result.add(s)
 
-template spaces*(n: Natural): string =  repeat(' ',n)
+template spaces*(n: Natural): string = repeat(' ', n)
   ## Returns a String with `n` space characters. You can use this proc
   ## to left align strings. Example:
   ##
@@ -766,8 +1150,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuIndent".} =
   ## Indents each line in ``s`` by ``count`` amount of ``padding``.
   ##
-  ## **Note:** This currently does not preserve the specific new line characters
-  ## used.
+  ## **Note:** This does not preserve the new line characters used in ``s``.
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -778,32 +1161,39 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, eatAllIndent = false): string {.
-               noSideEffect, rtl, extern: "nsuUnindent".} =
-  ## Unindents `s`.
-  result = newStringOfCap(s.len)
+proc unindent*(s: string, count: Natural, padding: string = " "): string
+    {.noSideEffect, rtl, extern: "nsuUnindent".} =
+  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ##
+  ## **Note:** This does not preserve the new line characters used in ``s``.
+  result = ""
   var i = 0
-  var pattern = true
-  var indent = 0
-  while s[i] == ' ': inc i
-  var level = if i == 0: -1 else: i
-  while i < s.len:
-    if s[i] == ' ':
-      if i > 0 and s[i-1] in {'\l', '\c'}:
-        pattern = true
-        indent = 0
-      if pattern:
-        inc(indent)
-        if indent > level and not eatAllIndent:
-          result.add(s[i])
-        if level < 0: level = indent
-      else:
-        # a space somewhere: do not delete
-        result.add(s[i])
-    else:
-      pattern = false
-      result.add(s[i])
-    inc i
+  for line in s.splitLines():
+    if i != 0:
+      result.add("\n")
+    var indentCount = 0
+    for j in 0..<count.int:
+      indentCount.inc
+      if line[j .. j + <padding.len] != padding:
+        indentCount = j
+        break
+    result.add(line[indentCount*padding.len .. ^1])
+    i.inc
+
+proc unindent*(s: string): string
+    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
+  ## Removes all indentation composed of whitespace from each line in ``s``.
+  ##
+  ## For example:
+  ##
+  ## .. code-block:: nim
+  ##   const x = """
+  ##     Hello
+  ##     There
+  ##   """.unindent()
+  ##
+  ##   doAssert x == "Hello\nThere\n"
+  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
 
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
@@ -816,6 +1206,10 @@ proc startsWith*(s, prefix: string): bool {.noSideEffect,
     if s[i] != prefix[i]: return false
     inc(i)
 
+proc startsWith*(s: string, prefix: char): bool {.noSideEffect, inline.} =
+  ## Returns true iff ``s`` starts with ``prefix``.
+  result = s[0] == prefix
+
 proc endsWith*(s, suffix: string): bool {.noSideEffect,
   rtl, extern: "nsuEndsWith".} =
   ## Returns true iff ``s`` ends with ``suffix``.
@@ -827,6 +1221,10 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
     if s[i+j] != suffix[i]: return false
     inc(i)
   if suffix[i] == '\0': return true
+
+proc endsWith*(s: string, suffix: char): bool {.noSideEffect, inline.} =
+  ## Returns true iff ``s`` ends with ``suffix``.
+  result = s[s.high] == suffix
 
 proc continuesWith*(s, substr: string, start: Natural): bool {.noSideEffect,
   rtl, extern: "nsuContinuesWith".} =
@@ -980,6 +1378,34 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
   for i in countdown(realStart, 0):
     if sub == s[i]: return i
   return -1
+
+proc center*(s: string, width: int, fillChar: char = ' '): string {.
+  noSideEffect, rtl, extern: "nsuCenterString".} =
+  ## Return the contents of `s` centered in a string `width` long using
+  ## `fillChar` as padding.
+  ##
+  ## The original string is returned if `width` is less than or equal
+  ## to `s.len`.
+  if width <= s.len:
+    return s
+
+  result = newString(width)
+
+  # Left padding will be one fillChar
+  # smaller if there are an odd number
+  # of characters
+  let
+    charsLeft = (width - s.len)
+    leftPadding = charsLeft div 2
+
+  for i in 0 ..< width:
+    if i >= leftPadding and i < leftPadding + s.len:
+      # we are where the string should be located
+      result[i] = s[i-leftPadding]
+    else:
+      # we are either before or after where
+      # the string s should go
+      result[i] = fillChar
 
 proc count*(s: string, sub: string, overlapping: bool = false): int {.
   noSideEffect, rtl, extern: "nsuCountString".} =
@@ -1420,28 +1846,216 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``float`` type.
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
-proc formatSize*(bytes: BiggestInt, decimalSep = '.'): string =
-  ## Rounds and formats `bytes`. Examples:
+proc trimZeros*(x: var string) {.noSideEffect.} =
+  ## Trim trailing zeros from a formatted floating point
+  ## value (`x`).  Modifies the passed value.
+  var spl: seq[string]
+  if x.contains('.') or x.contains(','):
+    if x.contains('e'):
+      spl= x.split('e')
+      x = spl[0]
+    while x[x.high] == '0':
+      x.setLen(x.len-1)
+    if x[x.high] in [',', '.']:
+      x.setLen(x.len-1)
+    if spl.len > 0:
+      x &= "e" & spl[1]
+
+type
+  BinaryPrefixMode* = enum ## the different names for binary prefixes
+    bpIEC, # use the IEC/ISO standard prefixes such as kibi
+    bpColloquial # use the colloquial kilo, mega etc
+
+proc formatSize*(bytes: int64,
+                 decimalSep = '.',
+                 prefix = bpIEC,
+                 includeSpace = false): string {.noSideEffect.} =
+  ## Rounds and formats `bytes`.
+  ##
+  ## By default, uses the IEC/ISO standard binary prefixes, so 1024 will be
+  ## formatted as 1KiB.  Set prefix to `bpColloquial` to use the colloquial
+  ## names from the SI standard (e.g. k for 1000 being reused as 1024).
+  ##
+  ## `includeSpace` can be set to true to include the (SI preferred) space
+  ## between the number and the unit (e.g. 1 KiB).
+  ##
+  ## Examples:
   ##
   ## .. code-block:: nim
   ##
-  ##    formatSize(1'i64 shl 31 + 300'i64) == "2.204GB"
-  ##    formatSize(4096) == "4KB"
+  ##    formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
+  ##    formatSize((2.234*1024*1024).int) == "2.234MiB"
+  ##    formatSize(4096, includeSpace=true) == "4 KiB"
+  ##    formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
+  ##    formatSize(4096) == "4KiB"
+  ##    formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
   ##
-  template frmt(a, b, c: expr): expr =
-    let bs = $b
-    insertSep($a) & decimalSep & bs.substr(0, 2) & c
-  let gigabytes = bytes shr 30
-  let megabytes = bytes shr 20
-  let kilobytes = bytes shr 10
-  if gigabytes != 0:
-    result = frmt(gigabytes, megabytes, "GB")
-  elif megabytes != 0:
-    result = frmt(megabytes, kilobytes, "MB")
-  elif kilobytes != 0:
-    result = frmt(kilobytes, bytes, "KB")
+  const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
+  const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
+  var
+    xb: int64 = bytes
+    fbytes: float
+    last_xb: int64 = bytes
+    matchedIndex: int
+    prefixes: array[9, string]
+  if prefix == bpColloquial:
+    prefixes = collPrefixes
   else:
-    result = insertSep($bytes) & "B"
+    prefixes = iecPrefixes
+
+  # Iterate through prefixes seeing if value will be greater than
+  # 0 in each case
+  for index in 1..<prefixes.len:
+    last_xb = xb
+    xb = bytes div (1'i64 shl (index*10))
+    matchedIndex = index
+    if xb == 0:
+      xb = last_xb
+      matchedIndex = index - 1
+      break
+  # xb has the integer number for the latest value; index should be correct
+  fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
+  result = formatFloat(fbytes, format=ffDecimal, precision=3, decimalSep=decimalSep)
+  result.trimZeros()
+  if includeSpace:
+    result &= " "
+  result &= prefixes[matchedIndex]
+  result &= "B"
+
+proc formatEng*(f: BiggestFloat,
+                precision: range[0..32] = 10,
+                trim: bool = true,
+                siPrefix: bool = false,
+                unit: string = nil,
+                decimalSep = '.'): string {.noSideEffect.} =
+  ## Converts a floating point value `f` to a string using engineering notation.
+  ##
+  ## Numbers in of the range -1000.0<f<1000.0 will be formatted without an
+  ## exponent.  Numbers outside of this range will be formatted as a
+  ## significand in the range -1000.0<f<1000.0 and an exponent that will always
+  ## be an integer multiple of 3, corresponding with the SI prefix scale k, M,
+  ## G, T etc for numbers with an absolute value greater than 1 and m, μ, n, p
+  ## etc for numbers with an absolute value less than 1.
+  ##
+  ## The default configuration (`trim=true` and `precision=10`) shows the
+  ## **shortest** form that precisely (up to a maximum of 10 decimal places)
+  ## displays the value.  For example, 4.100000 will be displayed as 4.1 (which
+  ## is mathematically identical) whereas 4.1000003 will be displayed as
+  ## 4.1000003.
+  ##
+  ## If `trim` is set to true, trailing zeros will be removed; if false, the
+  ## number of digits specified by `precision` will always be shown.
+  ##
+  ## `precision` can be used to set the number of digits to be shown after the
+  ## decimal point or (if `trim` is true) the maximum number of digits to be
+  ## shown.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(0, 2, trim=false) == "0.00"
+  ##    formatEng(0, 2) == "0"
+  ##    formatEng(0.053, 0) == "53e-3"
+  ##    formatEng(52731234, 2) == "52.73e6"
+  ##    formatEng(-52731234, 2) == "-52.73e6"
+  ##
+  ## If `siPrefix` is set to true, the number will be displayed with the SI
+  ## prefix corresponding to the exponent.  For example 4100 will be displayed
+  ## as "4.1 k" instead of "4.1e3".  Note that `u` is used for micro- in place
+  ## of the greek letter mu (μ) as per ISO 2955.  Numbers with an absolute
+  ## value outside of the range 1e-18<f<1000e18 (1a<f<1000E) will be displayed
+  ## with an exponent rather than an SI prefix, regardless of whether
+  ## `siPrefix` is true.
+  ##
+  ## If `unit` is not nil, the provided unit will be appended to the string
+  ## (with a space as required by the SI standard).  This behaviour is slightly
+  ## different to appending the unit to the result as the location of the space
+  ## is altered depending on whether there is an exponent.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+  ##    formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+  ##    formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+  ##    formatEng(4100, siPrefix=true) == "4.1 k"
+  ##    formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Space with unit=""
+  ##    formatEng(4100, siPrefix=true, unit="") == "4.1 k"
+  ##    formatEng(4100) == "4.1e3"
+  ##    formatEng(4100, unit="V") == "4.1e3 V"
+  ##    formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+  ##
+  ## `decimalSep` is used as the decimal separator
+  var
+    absolute: BiggestFloat
+    significand: BiggestFloat
+    fexponent: BiggestFloat
+    exponent: int
+    splitResult: seq[string]
+    suffix: string = ""
+  proc getPrefix(exp: int): char =
+    ## Get the SI prefix for a given exponent
+    ##
+    ## Assumes exponent is a multiple of 3; returns ' ' if no prefix found
+    const siPrefixes = ['a','f','p','n','u','m',' ','k','M','G','T','P','E']
+    var index: int = (exp div 3) + 6
+    result = ' '
+    if index in low(siPrefixes)..high(siPrefixes):
+      result = siPrefixes[index]
+
+  # Most of the work is done with the sign ignored, so get the absolute value
+  absolute = abs(f)
+  significand = f
+
+  if absolute == 0.0:
+    # Simple case: just format it and force the exponent to 0
+    exponent = 0
+    result = significand.formatBiggestFloat(ffDecimal, precision, decimalSep='.')
+  else:
+    # Find the best exponent that's a multiple of 3
+    fexponent = round(floor(log10(absolute)))
+    fexponent = 3.0 * round(floor(fexponent / 3.0))
+    # Adjust the significand for the new exponent
+    significand /= pow(10.0, fexponent)
+
+    # Round the significand and check whether it has affected
+    # the exponent
+    significand = round(significand, precision)
+    absolute = abs(significand)
+    if absolute >= 1000.0:
+      significand *= 0.001
+      fexponent += 3
+    # Components of the result:
+    result = significand.formatBiggestFloat(ffDecimal, precision, decimalSep='.')
+    exponent = fexponent.int()
+
+  splitResult = result.split('.')
+  result = splitResult[0]
+  # result should have at most one decimal character
+  if splitResult.len() > 1:
+    # If trim is set, we get rid of trailing zeros.  Don't use trimZeros here as
+    # we can be a bit more efficient through knowledge that there will never be
+    # an exponent in this part.
+    if trim:
+        while splitResult[1].endsWith("0"):
+          # Trim last character
+          splitResult[1].setLen(splitResult[1].len-1)
+        if splitResult[1].len() > 0:
+          result &= decimalSep & splitResult[1]
+    else:
+      result &= decimalSep & splitResult[1]
+
+  # Combine the results accordingly
+  if siPrefix and exponent != 0:
+    var p = getPrefix(exponent)
+    if p != ' ':
+      suffix = " " & p
+      exponent = 0 # Exponent replaced by SI prefix
+  if suffix == "" and unit != nil:
+    suffix = " "
+  if unit != nil:
+    suffix &= unit
+  if exponent != 0:
+    result &= "e" & $exponent
+  result &= suffix
 
 proc findNormalized(x: string, inArray: openArray[string]): int =
   var i = 0
@@ -1637,9 +2251,14 @@ when isMainModule:
                                                    ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-  when not defined(testing):
-    echo formatSize(1'i64 shl 31 + 300'i64) # == "4,GB"
-    echo formatSize(1'i64 shl 31)
+
+  block: # formatSize tests
+    doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
+    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    doAssert formatSize(4096) == "4KiB"
+    doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
+    doAssert formatSize(4096, includeSpace=true) == "4 KiB"
+    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
 
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
@@ -1651,6 +2270,11 @@ when isMainModule:
   doAssert parseEnum[MyEnum]("enu_D") == enuD
 
   doAssert parseEnum("invalid enum value", enC) == enC
+
+  doAssert center("foo", 13) == "     foo     "
+  doAssert center("foo", 0) == "foo"
+  doAssert center("foo", 3, fillChar = 'a') == "foo"
+  doAssert center("foo", 10, fillChar = '\t') == "\t\t\tfoo\t\t\t\t"
 
   doAssert count("foofoofoo", "foofoo") == 1
   doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
@@ -1668,13 +2292,13 @@ when isMainModule:
 
   doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
 
-  doAssert isAlpha('r')
-  doAssert isAlpha('A')
-  doAssert(not isAlpha('$'))
+  doAssert isAlphaAscii('r')
+  doAssert isAlphaAscii('A')
+  doAssert(not isAlphaAscii('$'))
 
-  doAssert isAlpha("Rasp")
-  doAssert isAlpha("Args")
-  doAssert(not isAlpha("$Tomato"))
+  doAssert isAlphaAscii("Rasp")
+  doAssert isAlphaAscii("Args")
+  doAssert(not isAlphaAscii("$Tomato"))
 
   doAssert isAlphaNumeric('3')
   doAssert isAlphaNumeric('R')
@@ -1693,35 +2317,131 @@ when isMainModule:
   doAssert(not isDigit("12.33"))
   doAssert(not isDigit("A45b"))
 
-  doAssert isSpace('\t')
-  doAssert isSpace('\l')
-  doAssert(not isSpace('A'))
+  doAssert isSpaceAscii('\t')
+  doAssert isSpaceAscii('\l')
+  doAssert(not isSpaceAscii('A'))
 
-  doAssert isSpace("\t\l \v\r\f")
-  doAssert isSpace("       ")
-  doAssert(not isSpace("ABc   \td"))
+  doAssert isSpaceAscii("\t\l \v\r\f")
+  doAssert isSpaceAscii("       ")
+  doAssert(not isSpaceAscii("ABc   \td"))
 
-  doAssert isLower('a')
-  doAssert isLower('z')
-  doAssert(not isLower('A'))
-  doAssert(not isLower('5'))
-  doAssert(not isLower('&'))
+  doAssert(isNilOrEmpty(""))
+  doAssert(isNilOrEmpty(nil))
+  doAssert(not isNilOrEmpty("test"))
+  doAssert(not isNilOrEmpty(" "))
 
-  doAssert isLower("abcd")
-  doAssert(not isLower("abCD"))
-  doAssert(not isLower("33aa"))
+  doAssert(isNilOrWhitespace(""))
+  doAssert(isNilOrWhitespace(nil))
+  doAssert(isNilOrWhitespace("       "))
+  doAssert(isNilOrWhitespace("\t\l \v\r\f"))
+  doAssert(not isNilOrWhitespace("ABc   \td"))
 
-  doAssert isUpper('A')
-  doAssert(not isUpper('b'))
-  doAssert(not isUpper('5'))
-  doAssert(not isUpper('%'))
+  doAssert isLowerAscii('a')
+  doAssert isLowerAscii('z')
+  doAssert(not isLowerAscii('A'))
+  doAssert(not isLowerAscii('5'))
+  doAssert(not isLowerAscii('&'))
 
-  doAssert isUpper("ABC")
-  doAssert(not isUpper("AAcc"))
-  doAssert(not isUpper("A#$"))
+  doAssert isLowerAscii("abcd")
+  doAssert(not isLowerAscii("abCD"))
+  doAssert(not isLowerAscii("33aa"))
+
+  doAssert isUpperAscii('A')
+  doAssert(not isUpperAscii('b'))
+  doAssert(not isUpperAscii('5'))
+  doAssert(not isUpperAscii('%'))
+
+  doAssert isUpperAscii("ABC")
+  doAssert(not isUpperAscii("AAcc"))
+  doAssert(not isUpperAscii("A#$"))
+
+  doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
+  doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
+  doAssert rsplit(" foo bar ", seps=Whitespace, maxsplit=1) == @[" foo bar", ""]
+  doAssert rsplit(":foo:bar", sep=':') == @["", "foo", "bar"]
+  doAssert rsplit(":foo:bar", sep=':', maxsplit=2) == @["", "foo", "bar"]
+  doAssert rsplit(":foo:bar", sep=':', maxsplit=3) == @["", "foo", "bar"]
+  doAssert rsplit("foothebar", sep="the") == @["foo", "bar"]
+
   doAssert(unescape(r"\x013", "", "") == "\x013")
 
   doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
   doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
   doAssert join([1, 2, 3]) == "123"
   doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
+
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
+
+  doAssert """~~!!foo
+~~!!bar
+~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
+  doAssert """~~foo
+~~  bar
+~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
+  doAssert """foo
+bar
+    baz
+  """.unindent(4) == "foo\nbar\nbaz\n"
+  doAssert """foo
+    bar
+    baz
+  """.unindent(2) == "foo\n  bar\n  baz\n"
+  doAssert """foo
+    bar
+    baz
+  """.unindent(100) == "foo\nbar\nbaz\n"
+
+  doAssert """foo
+    foo
+    bar
+  """.unindent() == "foo\nfoo\nbar\n"
+
+  let s = " this is an example  "
+  let s2 = ":this;is;an:example;;"
+
+  doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
+  doAssert s2.split(seps={':', ';'}) == @["", "this", "is", "an", "example", "", ""]
+  doAssert s.split(maxsplit=4) == @["", "this", "is", "an", "example  "]
+  doAssert s.split(' ', maxsplit=1) == @["", "this is an example  "]
+  doAssert s.split(" ", maxsplit=4) == @["", "this", "is", "an", "example  "]
+
+  block: # formatEng tests
+    doAssert formatEng(0, 2, trim=false) == "0.00"
+    doAssert formatEng(0, 2) == "0"
+    doAssert formatEng(53, 2, trim=false) == "53.00"
+    doAssert formatEng(0.053, 2, trim=false) == "53.00e-3"
+    doAssert formatEng(0.053, 4, trim=false) == "53.0000e-3"
+    doAssert formatEng(0.053, 4, trim=true) == "53e-3"
+    doAssert formatEng(0.053, 0) == "53e-3"
+    doAssert formatEng(52731234) == "52.731234e6"
+    doAssert formatEng(-52731234) == "-52.731234e6"
+    doAssert formatEng(52731234, 1) == "52.7e6"
+    doAssert formatEng(-52731234, 1) == "-52.7e6"
+    doAssert formatEng(52731234, 1, decimalSep=',') == "52,7e6"
+    doAssert formatEng(-52731234, 1, decimalSep=',') == "-52,7e6"
+
+    doAssert formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
+    doAssert formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+    doAssert formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
+    doAssert formatEng(4100, siPrefix=true) == "4.1 k"
+    doAssert formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Includes space
+    doAssert formatEng(4100, siPrefix=true, unit="") == "4.1 k"
+    doAssert formatEng(4100) == "4.1e3"
+    doAssert formatEng(4100, unit="V") == "4.1e3 V"
+    doAssert formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+    # Don't use SI prefix as number is too big
+    doAssert formatEng(3.1e22, siPrefix=true, unit="a") == "31e21 a"
+    # Don't use SI prefix as number is too small
+    doAssert formatEng(3.1e-25, siPrefix=true, unit="A") == "310e-27 A"
+
+  block: # startsWith / endsWith char tests
+    var s = "abcdef"
+    doAssert s.startsWith('a')
+    doAssert s.startsWith('b') == false
+    doAssert s.endsWith('f')
+    doAssert s.endsWith('a') == false
+    doAssert s.endsWith('\0') == false
+
+  #echo("strutils tests passed")

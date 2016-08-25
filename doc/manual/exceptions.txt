@@ -155,4 +155,4 @@ Exception hierarchy
 
 The exception tree is defined in the `system <system.html>`_ module:
 
-.. include:: exception_hierarchy_fragment.txt
+.. include:: ../exception_hierarchy_fragment.txt

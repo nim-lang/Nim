@@ -435,7 +435,9 @@ has the same type. Arrays always have a fixed length which is specified at
 compile time (except for open arrays). They can be indexed by any ordinal type.
 A parameter ``A`` may be an *open array*, in which case it is indexed by
 integers from 0 to ``len(A)-1``. An array expression may be constructed by the
-array constructor ``[]``.
+array constructor ``[]``. The element type of this array expression is
+inferred from the type of the first element. All other elements need to be
+implicitly convertable to this type.
 
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays,
@@ -459,6 +461,8 @@ Example:
     y: IntSeq
   x = [1, 2, 3, 4, 5, 6]  # [] is the array constructor
   y = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence
+
+  let z = [1.0, 2, 3, 4] # the type of z is array[0..3, float]
 
 The lower bound of an array or sequence may be received by the built-in proc
 ``low()``, the higher bound by ``high()``. The length may be
@@ -539,12 +543,12 @@ not wrapped in another implicit array construction:
   takeV([123, 2, 1]) # takeV's T is "int", not "array of int"
 
 
-``varargs[expr]`` is treated specially: It matches a variable list of arguments
+``varargs[typed]`` is treated specially: It matches a variable list of arguments
 of arbitrary type but *always* constructs an implicit array. This is required
 so that the builtin ``echo`` proc does what is expected:
 
 .. code-block:: nim
-  proc echo*(x: varargs[expr, `$`]) {...}
+  proc echo*(x: varargs[typed, `$`]) {...}
 
   echo @[1, 2, 3]
   # prints "@[1, 2, 3]" and not "123"
@@ -694,7 +698,7 @@ branch switch ``system.reset`` has to be used.
 Set type
 --------
 
-.. include:: sets_fragment.txt
+.. include:: ../sets_fragment.txt
 
 Reference and pointer types
 ---------------------------
@@ -1082,7 +1086,7 @@ But it seems all this boilerplate code needs to be repeated for the ``Euro``
 currency. This can be solved with templates_.
 
 .. code-block:: nim
-  template additive(typ: typedesc): stmt =
+  template additive(typ: typedesc) =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
 
@@ -1090,18 +1094,18 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template multiplicative(typ, base: typedesc): stmt =
+  template multiplicative(typ, base: typedesc) =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template comparable(typ: typedesc): stmt =
+  template comparable(typ: typedesc) =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
 
-  template defineCurrency(typ, base: expr): stmt =
+  template defineCurrency(typ, base: untyped) =
     type
       typ* = distinct base
     additive(typ)

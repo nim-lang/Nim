@@ -43,9 +43,11 @@ proc rawHandleSelf(c: PContext; owner: PSym) =
       if arg.name.id == c.selfName.id:
         c.p.selfSym = arg
         arg.flags.incl sfIsSelf
-        let t = c.p.selfSym.typ.skipTypes(abstractPtrs)
-        if t.kind == tyObject:
+        var t = c.p.selfSym.typ.skipTypes(abstractPtrs)
+        while t.kind == tyObject:
           addObjFieldsToLocalScope(c, t.n)
+          if t.sons[0] == nil: break
+          t = t.sons[0].skipTypes(abstractPtrs)
 
 proc pushProcCon*(c: PContext; owner: PSym) =
   rawPushProcCon(c, owner)
@@ -111,9 +113,9 @@ proc removeDefaultParamValues(n: PNode) =
         # not possible... XXX We don't solve this issue here.
         a.sons[L-1] = ast.emptyNode
 
-proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
+proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
-  if n.kind == nkSym and sfGenSym in n.sym.flags:
+  if n.kind == nkSym and sfGenSym in n.sym.flags and n.sym.owner == orig:
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
     if x == nil:
@@ -122,7 +124,7 @@ proc freshGenSyms(n: PNode, owner: PSym, symMap: var TIdTable) =
       idTablePut(symMap, s, x)
     n.sym = x
   else:
-    for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, symMap)
+    for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
@@ -137,7 +139,7 @@ proc addProcDecls(c: PContext, fn: PSym) =
 
   maybeAddResult(c, fn, fn.ast)
 
-proc instantiateBody(c: PContext, n, params: PNode, result: PSym) =
+proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
@@ -149,7 +151,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result: PSym) =
         let param = params[i].sym
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
-    freshGenSyms(b, result, symMap)
+    freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
     b = hloBody(c, b)
     n.sons[bodyPos] = transformBody(c.module, b, result)
@@ -165,7 +167,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      instantiateBody(c, n, nil, oldPrc)
+      instantiateBody(c, n, nil, oldPrc, s)
       closeScope(c)
       popInfoContext()
 
@@ -203,7 +205,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it
   # will need to use openScope, addDecl, etc.
-  addDecl(c, prc)
+  #addDecl(c, prc)
 
   pushInfoContext(info)
   var cl = initTypeVars(c, pt, info, nil)
@@ -312,7 +314,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    instantiateBody(c, n, fn.typ.n, result)
+    instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     paramsTypeCheck(c, result.typ)
   else:

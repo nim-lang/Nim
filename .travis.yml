@@ -10,7 +10,7 @@ addons:
     - libgc-dev
 before_script:
   - set -e
-  - wget http://flatassembler.net/fasm-1.71.39.tgz
+  - wget http://nim-lang.org/download/fasm-1.71.39.tgz
   - tar xvf fasm-1.71.39.tgz
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
@@ -23,6 +23,7 @@ script:
   - ./koch boot
   - ./koch boot -d:release
   - nim e install_nimble.nims
+  - nim e tests/test_nimscript.nims
   - nimble update
   - nimble install zip
   - nimble install opengl

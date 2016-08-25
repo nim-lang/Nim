@@ -97,6 +97,8 @@ type
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
     spaceIter: ObjectSpaceIter
     dumpHeapFile: File # File that is used for GC_dumpHeap
+    when hasThreadSupport:
+      toDispose: SharedList[pointer]
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -119,6 +121,8 @@ proc initGC() =
     init(gch.decStack)
     init(gch.additionalRoots)
     init(gch.greyStack)
+    when hasThreadSupport:
+      gch.toDispose = initSharedList[pointer]()
 
 # Which color to use for new objects is tricky: When we're marking,
 # they have to be *white* so that everything is marked that is only
@@ -185,7 +189,7 @@ proc writeCell(file: File; msg: cstring, c: PCell) =
               msg, id, kind, c.refcount shr rcShift, col)
 
 proc writeCell(msg: cstring, c: PCell) =
-  c_stdout.writeCell(msg, c)
+  stdout.writeCell(msg, c)
 
 proc myastToStr[T](x: T): string {.magic: "AstToStr", noSideEffect.}
 
@@ -259,7 +263,7 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
 template markGrey(x: PCell) =
   if x.color != 1-gch.black and gch.phase == Phase.Marking:
     if not isAllocatedPtr(gch.region, x):
-      c_fprintf(c_stdout, "[GC] markGrey proc: %p\n", x)
+      c_fprintf(stdout, "[GC] markGrey proc: %p\n", x)
       #GC_dumpHeap()
       sysAssert(false, "wtf")
     x.setColor(rcGrey)
@@ -675,7 +679,7 @@ proc sweep(gch: var GcHeap): bool =
   takeStartTime(100)
   #echo "loop start"
   let white = 1-gch.black
-  #cfprintf(cstdout, "black is %d\n", black)
+  #c_fprintf(stdout, "black is %d\n", black)
   while true:
     let x = allObjectsAsProc(gch.region, addr gch.spaceIter)
     if gch.spaceIter.state < 0: break
@@ -715,7 +719,7 @@ proc markIncremental(gch: var GcHeap): bool =
   while L[] > 0:
     var c = gch.greyStack.d[0]
     if not isAllocatedPtr(gch.region, c):
-      c_fprintf(c_stdout, "[GC] not allocated anymore: %p\n", c)
+      c_fprintf(stdout, "[GC] not allocated anymore: %p\n", c)
       #GC_dumpHeap()
       sysAssert(false, "wtf")
 
@@ -760,7 +764,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c)
+    #  c_fprintf(stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
@@ -779,14 +783,14 @@ proc doOperation(p: pointer, op: WalkOp) =
     else:
       #gcAssert(isAllocatedPtr(gch.region, c), "doOperation: waMarkGlobal")
       if not isAllocatedPtr(gch.region, c):
-        c_fprintf(c_stdout, "[GC] not allocated anymore: MarkGlobal %p\n", c)
+        c_fprintf(stdout, "[GC] not allocated anymore: MarkGlobal %p\n", c)
         #GC_dumpHeap()
         sysAssert(false, "wtf")
       handleRoot()
     discard allocInv(gch.region)
   of waMarkGrey:
     if not isAllocatedPtr(gch.region, c):
-      c_fprintf(c_stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
+      c_fprintf(stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
       #GC_dumpHeap()
       sysAssert(false, "wtf")
     if c.color == 1-gch.black:
@@ -800,6 +804,10 @@ proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
 proc collectZCT(gch: var GcHeap): bool {.benign.}
 
 proc collectCycles(gch: var GcHeap): bool =
+  when hasThreadSupport:
+    for c in gch.toDispose:
+      nimGCunref(c)
+
   # ensure the ZCT 'color' is not used:
   while gch.zct.len > 0: discard collectZCT(gch)
 
@@ -808,7 +816,7 @@ proc collectCycles(gch: var GcHeap): bool =
     gch.phase = Phase.Marking
     markGlobals(gch)
 
-    cfprintf(stdout, "collectCycles: introduced bug E %ld\n", gch.phase)
+    c_fprintf(stdout, "collectCycles: introduced bug E %ld\n", gch.phase)
     discard allocInv(gch.region)
   of Phase.Marking:
     # since locals do not have a write barrier, we need
@@ -922,7 +930,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
+        c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
 
 when defined(nimCoroutines):
   proc currentStackSizes(): int =
@@ -956,7 +964,19 @@ when withRealTime:
         strongAdvice:
       collectCTBody(gch)
 
-  proc GC_step*(us: int, strongAdvice = false) = GC_step(gch, us, strongAdvice)
+  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+    var stackTop {.volatile.}: pointer
+    let prevStackBottom = gch.stackBottom
+    if stackSize >= 0:
+      stackTop = addr(stackTop)
+      when stackIncreases:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
+      else:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
+    GC_step(gch, us, strongAdvice)
+    gch.stackBottom = prevStackBottom
 
 when not defined(useNimRtl):
   proc GC_disable() =

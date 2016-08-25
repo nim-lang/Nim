@@ -54,14 +54,15 @@ type
     lvlAll,       ## all levels active
     lvlDebug,     ## debug level (and any above) active
     lvlInfo,      ## info level (and any above) active
+    lvlNotice,    ## info notice (and any above) active
     lvlWarn,      ## warn level (and any above) active
     lvlError,     ## error level (and any above) active
     lvlFatal,     ## fatal level (and any above) active
     lvlNone       ## no levels active
 
 const
-  LevelNames*: array [Level, string] = [
-    "DEBUG", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "NONE"
+  LevelNames*: array[Level, string] = [
+    "DEBUG", "DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "NONE"
   ]
 
   defaultFmtStr* = "$levelname " ## default format string
@@ -258,22 +259,47 @@ template log*(level: Level, args: varargs[string, `$`]) =
 
 template debug*(args: varargs[string, `$`]) =
   ## Logs a debug message to all registered handlers.
+  ##
+  ## Messages that are useful to the application developer only and are usually
+  ## turned off in release.
   log(lvlDebug, args)
 
 template info*(args: varargs[string, `$`]) =
   ## Logs an info message to all registered handlers.
+  ##
+  ## Messages that are generated during the normal operation of an application
+  ## and are of no particular importance. Useful to aggregate for potential
+  ## later analysis.
   log(lvlInfo, args)
+
+template notice*(args: varargs[string, `$`]) =
+  ## Logs an notice message to all registered handlers.
+  ##
+  ## Semantically very similar to `info`, but meant to be messages you want to
+  ## be actively notified about (depending on your application).
+  ## These could be, for example, grouped by hour and mailed out.
+  log(lvlNotice, args)
 
 template warn*(args: varargs[string, `$`]) =
   ## Logs a warning message to all registered handlers.
+  ##
+  ## A non-error message that may indicate a potential problem rising or
+  ## impacted performance.
   log(lvlWarn, args)
 
 template error*(args: varargs[string, `$`]) =
   ## Logs an error message to all registered handlers.
+  ##
+  ## A application-level error condition. For example, some user input generated
+  ## an exception. The application will continue to run, but functionality or
+  ## data was impacted, possibly visible to users.
   log(lvlError, args)
 
 template fatal*(args: varargs[string, `$`]) =
   ## Logs a fatal error message to all registered handlers.
+  ##
+  ## A application-level fatal condition. FATAL usually means that the application
+  ## cannot go on and will exit (but this logging event will not do that for you).
   log(lvlFatal, args)
 
 proc addHandler*(handler: Logger) =

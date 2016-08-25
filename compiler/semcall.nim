@@ -53,7 +53,18 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     if symx.kind in filter:
       syms.add((symx, o.lastOverloadScope))
     symx = nextOverloadIter(o, c, headSymbol)
-  if syms.len == 0: return
+  if syms.len == 0:
+    when false:
+      if skIterator notin filter:
+        # also try iterators, but these are 2nd class:
+        symx = initOverloadIter(o, c, headSymbol)
+        while symx != nil:
+          if symx.kind == skIterator:
+            syms.add((symx, 100))
+          symx = nextOverloadIter(o, c, headSymbol)
+        if syms.len == 0: return
+    else:
+      return
 
   var z: TCandidate
   initCandidate(c, best, syms[0][0], initialBinding, symScope)
@@ -69,7 +80,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     #  gDebug = true
     matches(c, n, orig, z)
     if errors != nil:
-      errors.safeAdd(sym)
+      errors.safeAdd((sym, int z.mutabilityProblem))
       if z.errors != nil:
         for err in z.errors:
           errors.add(err)
@@ -111,7 +122,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   let proto = describeArgs(c, n, 1, preferName)
 
   var prefer = preferName
-  for err in errors:
+  for err, mut in items(errors):
     var errProto = ""
     let n = err.typ.n
     for i in countup(1, n.len - 1):
@@ -123,20 +134,41 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     if errProto == proto:
       prefer = preferModuleInfo
       break
+
   # now use the information stored in 'prefer' to produce a nice error message:
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1, prefer))
   add(result, ')')
   var candidates = ""
-  for err in errors:
-    add(candidates, err.getProcHeader(prefer))
+  for err, mut in items(errors):
+    if err.kind in routineKinds and err.ast != nil:
+      add(candidates, renderTree(err.ast,
+            {renderNoBody, renderNoComments,renderNoPragmas}))
+    else:
+      add(candidates, err.getProcHeader(prefer))
     add(candidates, "\n")
+    if mut != 0 and mut < n.len:
+      add(candidates, "for a 'var' type a variable needs to be passed, but '" & renderTree(n[mut]) & "' is immutable\n")
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
   if c.compilesContextId > 0 and optReportConceptFailures in gGlobalOptions:
     globalError(n.info, errGenerated, result)
   else:
     localError(n.info, errGenerated, result)
+
+proc bracketNotFoundError(c: PContext; n: PNode) =
+  var errors: CandidateErrors = @[]
+  var o: TOverloadIter
+  let headSymbol = n[0]
+  var symx = initOverloadIter(o, c, headSymbol)
+  while symx != nil:
+    if symx.kind in routineKinds:
+      errors.add((symx, 0))
+    symx = nextOverloadIter(o, c, headSymbol)
+  if errors.len == 0:
+    localError(n.info, "could not resolve: " & $n)
+  else:
+    notFoundError(c, n, errors)
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds;
@@ -154,8 +186,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   template pickBest(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, errors)
-
-
   pickBest(f)
 
   let overloadsState = result.state
@@ -226,7 +256,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         #notFoundError(c, n, errors)
 
       return
-
   if alt.state == csMatch and cmpCandidates(result, alt) == 0 and
       not sameMethodDispatcher(result.calleeSym, alt.calleeSym):
     internalAssert result.state == csMatch
@@ -295,8 +324,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   var finalCallee = x.calleeSym
   markUsed(n.sons[0].info, finalCallee)
   styleCheckUse(n.sons[0].info, finalCallee)
-  if finalCallee.ast == nil:
-    internalError(n.info, "calleeSym.ast is nil") # XXX: remove this check!
+  assert finalCallee.ast != nil
   if x.hasFauxMatch:
     result = x.call
     result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
@@ -315,12 +343,12 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       # are added as normal params.
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
-          of skConst:
-            x.call.add s.ast
-          of skType:
-            x.call.add newSymNode(s, n.info)
-          else:
-            internalAssert false
+        of skConst:
+          x.call.add s.ast
+        of skType:
+          x.call.add newSymNode(s, n.info)
+        else:
+          internalAssert false
 
   result = x.call
   instGenericConvertersSons(c, result, x)
@@ -361,7 +389,14 @@ proc explicitGenericInstError(n: PNode): PNode =
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var m: TCandidate
-  initCandidate(c, m, s, n)
+  # binding has to stay 'nil' for this to work!
+  initCandidate(c, m, s, nil)
+
+  for i in 1..sonsLen(n)-1:
+    let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
+    let arg = n[i].typ
+    let tm = typeRel(m, formal, arg, true)
+    if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   markUsed(n.info, s)
   styleCheckUse(n.info, s)
@@ -382,6 +417,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
          "; got " & $(n.len-1) & " type(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
+    if result == nil: result = explicitGenericInstError(n)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
@@ -394,11 +430,12 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # it suffices that the candidate has the proper number of generic
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
-          result.add(explicitGenericSym(c, n, candidate))
+          let x = explicitGenericSym(c, n, candidate)
+          if x != nil: result.add(x)
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]
-    # candidateCount != 1: return explicitGenericInstError(n)
+    elif result.len == 0: result = explicitGenericInstError(n)
   else:
     result = explicitGenericInstError(n)
 

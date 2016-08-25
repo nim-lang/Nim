@@ -93,7 +93,7 @@ proc getUniqueType*(key: PType): PType =
     # produced instead of ``NI``.
     result = key
   of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString,
-      tyCString, tyNone, tyBigNum:
+      tyCString, tyNone, tyBigNum, tyVoid:
     result = gCanonicalTypes[k]
     if result == nil:
       gCanonicalTypes[k] = key
@@ -188,7 +188,7 @@ proc mangle*(name: string): string =
     let c = name[i]
     case c
     of 'A'..'Z':
-      add(result, c.toLower)
+      add(result, c.toLowerAscii)
     of '_':
       discard
     of 'a'..'z', '0'..'9':

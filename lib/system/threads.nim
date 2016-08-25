@@ -24,7 +24,7 @@
 ##  import locks
 ##
 ##  var
-##    thr: array [0..4, Thread[tuple[a,b: int]]]
+##    thr: array[0..4, Thread[tuple[a,b: int]]]
 ##    L: Lock
 ##
 ##  proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
@@ -51,7 +51,7 @@ const
 
 when defined(windows):
   type
-    SysThread = Handle
+    SysThread* = Handle
     WinThreadProc = proc (x: pointer): int32 {.stdcall.}
   {.deprecated: [TSysThread: SysThread, TWinThreadProc: WinThreadProc].}
 
@@ -117,16 +117,21 @@ else:
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
+  when defined(linux):
+    type Time = clong
+  else:
+    type Time = int
+
   type
-    SysThread {.importc: "pthread_t", header: "<sys/types.h>",
+    SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
                  final, pure.} = object
     Pthread_attr {.importc: "pthread_attr_t",
                      header: "<sys/types.h>", final, pure.} = object
 
     Timespec {.importc: "struct timespec",
                 header: "<time.h>", final, pure.} = object
-      tv_sec: int
-      tv_nsec: int
+      tv_sec: Time
+      tv_nsec: clong
   {.deprecated: [TSysThread: SysThread, Tpthread_attr: PThreadAttr,
                 Ttimespec: Timespec].}
 
@@ -193,7 +198,7 @@ when emulatedThreadVars:
 # allocations are needed. Currently less than 7K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
 type
-  ThreadLocalStorage = array [0..1_000, float]
+  ThreadLocalStorage = array[0..1_000, float]
 
   PGcThread = ptr GcThread
   GcThread {.pure, inheritable.} = object
@@ -301,7 +306,7 @@ type
                                        ## a pointer as a thread ID.
 {.deprecated: [TThread: Thread, TThreadId: ThreadId].}
 
-when not defined(boehmgc) and not hasSharedHeap and not defined(gogc):
+when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
   proc deallocOsPages()
 
 when defined(boehmgc):
@@ -331,7 +336,7 @@ else:
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc):
+  elif not defined(nogc) and not defined(gogc) and not defined(gcstack):
     var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:
@@ -373,6 +378,10 @@ else:
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
   ## returns true if `t` is running.
   result = t.dataFn != nil
+
+proc handle*[TArg](t: Thread[TArg]): SysThread {.inline.} =
+  ## returns the thread handle of `t`.
+  result = t.sys
 
 when hostOS == "windows":
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =

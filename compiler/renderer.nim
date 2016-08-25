@@ -704,7 +704,10 @@ proc gcase(g: var TSrcGen, n: PNode) =
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
-    put(g, tkSymbol, renderDefinitionName(n.sons[namePos].sym))
+    let s = n.sons[namePos].sym
+    put(g, tkSymbol, renderDefinitionName(s))
+    if sfGenSym in s.flags:
+      put(g, tkIntLit, $s.id)
   else:
     gsub(g, n.sons[namePos])
 
@@ -712,7 +715,11 @@ proc gproc(g: var TSrcGen, n: PNode) =
     gpattern(g, n.sons[patternPos])
   let oldCheckAnon = g.checkAnon
   g.checkAnon = true
-  gsub(g, n.sons[genericParamsPos])
+  if renderNoBody in g.flags and n[miscPos].kind != nkEmpty and
+      n[miscPos][1].kind != nkEmpty:
+    gsub(g, n[miscPos][1])
+  else:
+    gsub(g, n.sons[genericParamsPos])
   g.checkAnon = oldCheckAnon
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])
@@ -794,7 +801,8 @@ proc gident(g: var TSrcGen, n: PNode) =
   else:
     t = tkOpr
   put(g, t, s)
-  if n.kind == nkSym and renderIds in g.flags: put(g, tkIntLit, $n.sym.id)
+  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
+    put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -802,7 +810,7 @@ proc doParamsAux(g: var TSrcGen, params: PNode) =
     gsemicolon(g, params, 1)
     put(g, tkParRi, ")")
 
-  if params.sons[0].kind != nkEmpty:
+  if params.len > 0 and params.sons[0].kind != nkEmpty:
     putWithSpace(g, tkOpr, "->")
     gsub(g, params.sons[0])
 

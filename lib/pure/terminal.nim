@@ -384,7 +384,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
     var old = getAttributes(h) and not 0x0007
     if bright:
       old = old or FOREGROUND_INTENSITY
-    const lookup: array [ForegroundColor, int] = [
+    const lookup: array[ForegroundColor, int] = [
       0,
       (FOREGROUND_RED),
       (FOREGROUND_GREEN),
@@ -406,7 +406,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
     var old = getAttributes(h) and not 0x0070
     if bright:
       old = old or BACKGROUND_INTENSITY
-    const lookup: array [BackgroundColor, int] = [
+    const lookup: array[BackgroundColor, int] = [
       0,
       (BACKGROUND_RED),
       (BACKGROUND_GREEN),
@@ -493,17 +493,21 @@ template styledEcho*(args: varargs[expr]): expr =
   ## Echoes styles arguments to stdout using ``styledWriteLine``.
   callStyledEcho(args)
 
-when defined(nimdoc):
-  proc getch*(): char =
-    ## Read a single character from the terminal, blocking until it is entered.
-    ## The character is not printed to the terminal. This is not available for
-    ## Windows.
-    discard
-elif not defined(windows):
-  proc getch*(): char =
-    ## Read a single character from the terminal, blocking until it is entered.
-    ## The character is not printed to the terminal. This is not available for
-    ## Windows.
+proc getch*(): char =
+  ## Read a single character from the terminal, blocking until it is entered.
+  ## The character is not printed to the terminal.
+  when defined(windows):
+    let fd = getStdHandle(STD_INPUT_HANDLE)
+    var keyEvent = KEY_EVENT_RECORD()
+    var numRead: cint 
+    while true:
+      # Block until character is entered
+      doAssert(waitForSingleObject(fd, INFINITE) == WAIT_OBJECT_0)
+      doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
+      if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
+        continue
+      return char(keyEvent.uChar)
+  else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
     discard fd.tcgetattr(addr oldMode)

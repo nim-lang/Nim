@@ -151,7 +151,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
     guardGlobal(a, n, g)
 
 proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
-  template compileToCpp(a): expr =
+  template compileToCpp(a): untyped =
     gCmd == cmdCompileToCpp or sfCompileToCpp in getModule(a.owner).flags
   if a.inTryStmt > 0 and not compileToCpp(a):
     incl(s.flags, sfVolatile)
@@ -459,7 +459,7 @@ proc documentRaises*(n: PNode) =
     if p4 != nil: n.sons[pragmasPos].add p4
     if p5 != nil: n.sons[pragmasPos].add p5
 
-template notGcSafe(t): expr = {tfGcSafe, tfNoSideEffect} * t.flags == {}
+template notGcSafe(t): untyped = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
 proc importedFromC(n: PNode): bool =
   # when imported from C, we assume GC-safety.
@@ -505,7 +505,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
     elif (n.kind == nkSym and n.sym.kind in routineKinds) or
-         n.kind in procDefs+{nkObjConstr}:
+         n.kind in procDefs+{nkObjConstr, nkBracket}:
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
@@ -532,7 +532,7 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let a = skipConvAndClosure(n)
   let op = a.typ
-  if op != nil and op.kind == tyProc and n.kind != nkNilLit:
+  if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
     internalAssert op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
     let s = n.skipConv

@@ -51,7 +51,6 @@ proc chckRangeF(x, a, b: float): float =
 proc chckNil(p: pointer) =
   if p == nil:
     sysFatal(ValueError, "attempt to write to a nil address")
-    #c_raise(SIGSEGV)
 
 proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   # checks if obj is of type subclass:

@@ -15,17 +15,78 @@
 
 ## This is an example of how a configuration file may look like:
 ##
-## .. include:: doc/mytest.cfg
+## .. include:: ../../doc/mytest.cfg
 ##     :literal:
 ## The file ``examples/parsecfgex.nim`` demonstrates how to use the
 ## configuration file parser:
 ##
 ## .. code-block:: nim
-##     :file: examples/parsecfgex.nim
-
+##     :file: ../../examples/parsecfgex.nim
+##
+## Examples
+## --------
+##
+## This is an example of a configuration file.
+##
+## ::
+##
+##     charset = "utf-8"
+##     [Package]
+##     name = "hello"
+##     --threads:on
+##     [Author]
+##     name = "lihf8515"
+##     qq = "10214028"
+##     email = "lihaifeng@wxm.com"
+##
+## Creating a configuration file.
+## ==============================
+## .. code-block:: nim
+##
+##     import parsecfg
+##     var dict=newConfig()
+##     dict.setSectionKey("","charset","utf-8")
+##     dict.setSectionKey("Package","name","hello")
+##     dict.setSectionKey("Package","--threads","on")
+##     dict.setSectionKey("Author","name","lihf8515")
+##     dict.setSectionKey("Author","qq","10214028")
+##     dict.setSectionKey("Author","email","lihaifeng@wxm.com")
+##     dict.writeConfig("config.ini")
+##
+## Reading a configuration file.
+## =============================
+## .. code-block:: nim
+##
+##     import parsecfg
+##     var dict = loadConfig("config.ini")
+##     var charset = dict.getSectionValue("","charset")
+##     var threads = dict.getSectionValue("Package","--threads")
+##     var pname = dict.getSectionValue("Package","name")
+##     var name = dict.getSectionValue("Author","name")
+##     var qq = dict.getSectionValue("Author","qq")
+##     var email = dict.getSectionValue("Author","email")
+##     echo pname & "\n" & name & "\n" & qq & "\n" & email
+##
+## Modifying a configuration file.
+## ===============================
+## .. code-block:: nim
+##
+##     import parsecfg
+##     var dict = loadConfig("config.ini")
+##     dict.setSectionKey("Author","name","lhf")
+##     dict.writeConfig("config.ini")
+##
+## Deleting a section key in a configuration file.
+## ===============================================
+## .. code-block:: nim
+##
+##     import parsecfg
+##     var dict = loadConfig("config.ini")
+##     dict.delSectionKey("Author","email")
+##     dict.writeConfig("config.ini")
 
 import
-  hashes, strutils, lexbase, streams
+  hashes, strutils, lexbase, streams, tables
 
 include "system/inclrtl"
 
@@ -70,7 +131,7 @@ type
 # implementation
 
 const
-  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\'}
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\', '-'}
 
 proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
@@ -359,3 +420,138 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     result.kind = cfgError
     result.msg = errorStr(c, "invalid token: " & c.tok.literal)
     rawGetTok(c, c.tok)
+
+# ---------------- Configuration file related operations ----------------
+type
+  Config* = OrderedTableRef[string, OrderedTableRef[string, string]]
+
+proc newConfig*(): Config =
+  ## Create a new configuration table.
+  ## Useful when wanting to create a configuration file.
+  result = newOrderedTable[string, OrderedTableRef[string, string]]()
+
+proc loadConfig*(filename: string): Config =
+  ## Load the specified configuration file into a new Config instance.
+  var dict = newOrderedTable[string, OrderedTableRef[string, string]]()
+  var curSection = "" ## Current section,
+                      ## the default value of the current section is "",
+                      ## which means that the current section is a common
+  var p: CfgParser
+  var fileStream = newFileStream(filename, fmRead)
+  if fileStream != nil:
+    open(p, fileStream, filename)
+    while true:
+      var e = next(p)
+      case e.kind
+      of cfgEof:
+        break
+      of cfgSectionStart: # Only look for the first time the Section
+        curSection = e.section
+      of cfgKeyValuePair:
+        var t = newOrderedTable[string, string]()
+        if dict.hasKey(curSection):
+          t = dict[curSection]
+        t[e.key] = e.value
+        dict[curSection] = t
+      of cfgOption:
+        var c = newOrderedTable[string, string]()
+        if dict.hasKey(curSection):
+          c = dict[curSection]
+        c["--" & e.key] = e.value
+        dict[curSection] = c
+      of cfgError:
+        break
+    close(p)
+  result = dict
+
+proc replace(s: string): string =
+  var d = ""
+  var i = 0
+  while i < s.len():
+    if s[i] == '\\':
+      d.add(r"\\")
+    elif s[i] == '\c' and s[i+1] == '\L':
+      d.add(r"\n")
+      inc(i)
+    elif s[i] == '\c':
+      d.add(r"\n")
+    elif s[i] == '\L':
+      d.add(r"\n")
+    else:
+      d.add(s[i])
+    inc(i)
+  result = d
+
+proc writeConfig*(dict: Config, filename: string) =
+  ## Writes the contents of the table to the specified configuration file.
+  ## Note: Comment statement will be ignored.
+  var file: File
+  if file.open(filename, fmWrite):
+    try:
+      var section, key, value, kv, segmentChar:string
+      for pair in dict.pairs():
+        section = pair[0]
+        if section != "": ## Not general section
+          if not allCharsInSet(section, SymChars): ## Non system character
+            file.writeLine("[\"" & section & "\"]")
+          else:
+            file.writeLine("[" & section & "]")
+        for pair2 in pair[1].pairs():
+          key = pair2[0]
+          value = pair2[1]
+          if key[0] == '-' and key[1] == '-': ## If it is a command key
+            segmentChar = ":"
+            if not allCharsInSet(key[2..key.len()-1], SymChars):
+              kv.add("--\"")
+              kv.add(key[2..key.len()-1])
+              kv.add("\"")
+            else:
+              kv = key
+          else:
+            segmentChar = "="
+            kv = key
+          if value != "": ## If the key is not empty
+            if not allCharsInSet(value, SymChars):
+              kv.add(segmentChar)
+              kv.add("\"")
+              kv.add(replace(value))
+              kv.add("\"")
+            else:
+              kv.add(segmentChar)
+              kv.add(value)
+          file.writeLine(kv)
+    except:
+      raise
+    finally:
+      file.close()
+
+proc getSectionValue*(dict: Config, section, key: string): string =
+  ## Gets the Key value of the specified Section.
+  if dict.haskey(section):
+    if dict[section].hasKey(key):
+      result = dict[section][key]
+    else:
+      result = ""
+  else:
+    result = ""
+
+proc setSectionKey*(dict: var Config, section, key, value: string) =
+  ## Sets the Key value of the specified Section.
+  var t = newOrderedTable[string, string]()
+  if dict.hasKey(section):
+    t = dict[section]
+  t[key] = value
+  dict[section] = t
+
+proc delSection*(dict: var Config, section: string) =
+  ## Deletes the specified section and all of its sub keys.
+  dict.del(section)
+
+proc delSectionKey*(dict: var Config, section, key: string) =
+  ## Delete the key of the specified section.
+  if dict.haskey(section):
+    if dict[section].hasKey(key):
+      if dict[section].len() == 1:
+        dict.del(section)
+      else:
+        dict[section].del(key)

@@ -19,8 +19,8 @@ var gSymbols: StringTableRef
 const
   catNone = "false"
 
-proc defineSymbol*(symbol: string) =
-  gSymbols[symbol] = "true"
+proc defineSymbol*(symbol: string, value: string = "true") =
+  gSymbols[symbol] = value
 
 proc undefSymbol*(symbol: string) =
   gSymbols[symbol] = catNone
@@ -62,6 +62,11 @@ proc isDefined*(symbol: string): bool =
 
 proc isDefined*(symbol: PIdent): bool = isDefined(symbol.s)
 
+proc lookupSymbol*(symbol: string): string =
+  result = if isDefined(symbol): gSymbols[symbol] else: nil
+
+proc lookupSymbol*(symbol: PIdent): string = lookupSymbol(symbol.s)
+
 iterator definedSymbolNames*: string =
   for key, val in pairs(gSymbols):
     if val != catNone: yield key
@@ -93,3 +98,4 @@ proc initDefines*() =
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
+  defineSymbol("nimImmediateDeprecated")

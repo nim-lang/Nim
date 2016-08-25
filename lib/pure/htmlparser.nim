@@ -433,7 +433,7 @@ proc htmlTag*(n: XmlNode): HtmlTag =
 proc htmlTag*(s: string): HtmlTag =
   ## converts `s` to a ``HtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
   ## returned.
-  let s = if allLower(s): s else: s.toLower
+  let s = if allLower(s): s else: toLowerAscii(s)
   result = toHtmlTag(s)
 
 proc entityToUtf8*(entity: string): string =
@@ -464,9 +464,15 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
     case x.kind
     of xmlElementStart, xmlElementOpen:
       case result.htmlTag
-      of tagLi, tagP, tagDt, tagDd, tagInput, tagOption:
-        # some tags are common to have no ``</end>``, like ``<li>``:
+      of tagP, tagInput, tagOption:
+        # some tags are common to have no ``</end>``, like ``<li>`` but
+        # allow ``<p>`` in `<dd>`, `<dt>` and ``<li>`` in next case
         if htmlTag(x.elemName) in {tagLi, tagP, tagDt, tagDd, tagInput,
+                                   tagOption}:
+          errors.add(expected(x, result))
+          break
+      of tagDd, tagDt, tagLi:
+        if htmlTag(x.elemName) in {tagLi, tagDt, tagDd, tagInput,
                                    tagOption}:
           errors.add(expected(x, result))
           break
@@ -513,13 +519,13 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     errors.add(errorMsg(x))
     next(x)
   of xmlElementStart:
-    result = newElement(x.elemName.toLower)
+    result = newElement(toLowerAscii(x.elemName))
     next(x)
     untilElementEnd(x, result, errors)
   of xmlElementEnd:
     errors.add(errorMsg(x, "unexpected ending tag: " & x.elemName))
   of xmlElementOpen:
-    result = newElement(x.elemName.toLower)
+    result = newElement(toLowerAscii(x.elemName))
     next(x)
     result.attrs = newStringTable()
     while true:

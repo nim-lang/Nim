@@ -19,10 +19,8 @@ other binary operators are left-associative.
   proc `^/`(x, y: float): float =
     # a right-associative division operator
     result = x / y
-  echo 12 ^/ 4 ^/ 8 # 24.0 (4 / 8 = 0.5, then
-                           12 / 0.5 = 24.0)
-  echo 12  / 4  / 8 # 0.375 (12 / 4 = 3.0, then
-                              3 / 8 = 0.375)
+  echo 12 ^/ 4 ^/ 8 # 24.0 (4 / 8 = 0.5, then 12 / 0.5 = 24.0)
+  echo 12  / 4  / 8 # 0.375 (12 / 4 = 3.0, then 3 / 8 = 0.375)
 
 Precedence
 ----------
@@ -72,53 +70,11 @@ Whether an operator is used a prefix operator is also affected by preceeding whi
   echo($foo)
 
 
-Strong spaces
--------------
-
-The number of spaces preceding a non-keyword operator affects precedence
-if the experimental parser directive ``#?strongSpaces`` is used. Indentation
-is not used to determine the number of spaces. If 2 or more operators have the
-same number of preceding spaces the precedence table applies, so ``1 + 3 * 4``
-is still parsed as ``1 + (3 * 4)``, but ``1+3 * 4`` is parsed as ``(1+3) * 4``:
-
-.. code-block:: nim
-  #? strongSpaces
-  if foo+4 * 4 == 8  and  b&c | 9  ++
-      bar:
-    echo ""
-  # is parsed as
-  if ((foo+4)*4 == 8) and (((b&c) | 9) ++ bar): echo ""
-
-
-Furthermore whether an operator is used a prefix operator is affected by the
-number of spaces:
-
-.. code-block:: nim
-  #? strongSpaces
-  echo $foo
-  # is parsed as
-  echo($foo)
-
-This also affects whether ``[]``, ``{}``, ``()`` are parsed as constructors
-or as accessors:
-
-.. code-block:: nim
-  #? strongSpaces
-  echo (1,2)
-  # is parsed as
-  echo((1,2))
-
-Only 0, 1, 2, 4 or 8 spaces are allowed to specify precedence and it is
-enforced that infix operators have the same amount of spaces before and after
-them. This rules does not apply when a newline follows after the operator,
-then only the preceding spaces are considered.
-
-
 Grammar
 -------
 
 The grammar's start symbol is ``module``.
 
-.. include:: grammar.txt
+.. include:: ../grammar.txt
    :literal:
 

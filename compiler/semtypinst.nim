@@ -162,7 +162,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
     discard
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)
-    if result.sym.typ.kind == tyEmpty:
+    if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
       result = newNode(nkRecList, n.info)
   of nkRecWhen:
@@ -289,7 +289,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # but we already raised an error!
     rawAddSon(result, header.sons[i])
 
-  var newbody = replaceTypeVarsT(cl, lastSon(body))
+  let bbody = lastSon body
+  var newbody = replaceTypeVarsT(cl, bbody)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
@@ -306,25 +307,31 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # 'deepCopy' needs to be instantiated for
     # generics *when the type is constructed*:
     newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
-                                            attachedDeepCopy)
+                                            attachedDeepCopy, 1)
   let asgn = newbody.assignment
   if asgn != nil and sfFromGeneric notin asgn.flags:
     # '=' needs to be instantiated for generics when the type is constructed:
     newbody.assignment = cl.c.instTypeBoundOp(cl.c, asgn, result, cl.info,
-                                              attachedAsgn)
+                                              attachedAsgn, 1)
+  let methods = skipTypes(bbody, abstractPtrs).methods
+  for col, meth in items(methods):
+    # we instantiate the known methods belonging to that type, this causes
+    # them to be registered and that's enough, so we 'discard' the result.
+    discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
+      attachedAsgn, col)
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
   # don't deal with '(): void':
-  if t.sons[0] != nil and t.sons[0].kind == tyEmpty:
+  if t.sons[0] != nil and t.sons[0].kind == tyVoid:
     t.sons[0] = nil
 
   for i in 1 .. <t.sonsLen:
     # don't touch any memory unless necessary
-    if t.sons[i].kind == tyEmpty:
+    if t.sons[i].kind == tyVoid:
       var pos = i
       for j in i+1 .. <t.sonsLen:
-        if t.sons[j].kind != tyEmpty:
+        if t.sons[j].kind != tyVoid:
           t.sons[pos] = t.sons[j]
           t.n.sons[pos] = t.n.sons[j]
           inc pos
@@ -504,6 +511,6 @@ proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
   popInfoContext()
 
 template generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
-                               t: PType): expr =
+                               t: PType): untyped =
   generateTypeInstance(p, pt, arg.info, t)
 

@@ -20,9 +20,9 @@
 ##   var msg = createMessage("Hello from Nim's SMTP",
 ##                           "Hello!.\n Is this awesome or what?",
 ##                           @["foo@gmail.com"])
-##   var smtp = connect("smtp.gmail.com", 465, true, true)
-##   smtp.auth("username", "password")
-##   smtp.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
+##   var smtpConn = connect("smtp.gmail.com", Port 465, true, true)
+##   smtpConn.auth("username", "password")
+##   smtpConn.sendmail("username@gmail.com", @["foo@gmail.com"], $msg)
 ##
 ##
 ## For SSL support this module relies on OpenSSL. If you want to
@@ -30,6 +30,8 @@
 
 import net, strutils, strtabs, base64, os
 import asyncnet, asyncdispatch
+
+export Port
 
 type
   Smtp* = object
@@ -258,8 +260,8 @@ when not defined(testing) and isMainModule:
   #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
   #echo(msg)
 
-  #var smtp = connect("localhost", 25, False, True)
-  #smtp.sendmail("root@localhost", @["dominik@localhost"], $msg)
+  #var smtpConn = connect("localhost", Port 25, false, true)
+  #smtpConn.sendmail("root@localhost", @["dominik@localhost"], $msg)
 
   #echo(decode("a17sm3701420wbe.12"))
   proc main() {.async.} =

@@ -143,7 +143,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
   const ordIntLit = {nkIntLit..nkUInt64Lit}
   result = n.typ
 
-  template commutativeOp(opr: expr) {.immediate.} =
+  template commutativeOp(opr: untyped) =
     let a = n.sons[1]
     let b = n.sons[2]
     if isIntRangeOrLit(a.typ) and isIntRangeOrLit(b.typ):
@@ -151,7 +151,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
                          opr(pickMinInt(a), pickMinInt(b)),
                          opr(pickMaxInt(a), pickMaxInt(b)))
 
-  template binaryOp(opr: expr) {.immediate.} =
+  template binaryOp(opr: untyped) =
     let a = n.sons[1]
     let b = n.sons[2]
     if isIntRange(a.typ) and b.kind in {nkIntLit..nkUInt64Lit}:
@@ -286,13 +286,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mNot: result = newIntNodeT(1 - getInt(a), n)
   of mCard: result = newIntNodeT(nimsets.cardSet(a), n)
   of mBitnotI: result = newIntNodeT(not getInt(a), n)
-  of mLengthStr, mXLenStr:
-    if a.kind == nkNilLit: result = newIntNodeT(0, n)
-    else: result = newIntNodeT(len(getStr(a)), n)
   of mLengthArray: result = newIntNodeT(lengthOrd(a.typ), n)
-  of mLengthSeq, mLengthOpenArray, mXLenSeq:
-    if a.kind == nkNilLit: result = newIntNodeT(0, n)
-    else: result = newIntNodeT(sonsLen(a), n) # BUGFIX
+  of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
+    if a.kind == nkNilLit:
+      result = newIntNodeT(0, n)
+    elif a.kind in {nkStrLit..nkTripleStrLit}:
+      result = newIntNodeT(len a.strVal, n)
+    else:
+      result = newIntNodeT(sonsLen(a), n) # BUGFIX
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   of mToFloat, mToBiggestFloat:
     result = newFloatNodeT(toFloat(int(getInt(a))), n)
@@ -419,7 +420,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     result = newStrNodeT(substr(getStr(a), int(getOrdValue(b)),
                                            int(getOrdValue(c))), n)
   of mFloatToStr: result = newStrNodeT($getFloat(a), n)
-  of mCStrToStr, mCharToStr: result = newStrNodeT(getStrOrChar(a), n)
+  of mCStrToStr, mCharToStr:
+    if a.kind == nkBracket:
+      var s = ""
+      for b in a.sons:
+        s.add b.getStrOrChar
+      result = newStrNodeT(s, n)
+    else:
+      result = newStrNodeT(getStrOrChar(a), n)
   of mStrToStr: result = a
   of mEnumToStr: result = newStrNodeT(ordinalValToString(a), n)
   of mArrToSeq:
@@ -482,7 +490,7 @@ proc leValueConv(a, b: PNode): bool =
   of nkCharLit..nkUInt64Lit:
     case b.kind
     of nkCharLit..nkUInt64Lit: result = a.intVal <= b.intVal
-    of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal)
+    of nkFloatLit..nkFloat128Lit: result = a.intVal <= round(b.floatVal).int
     else: internalError(a.info, "leValueConv")
   of nkFloatLit..nkFloat128Lit:
     case b.kind
@@ -627,14 +635,20 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
       of mCompileTime: result = newStrNodeT(times.getClockStr(), n)
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
-      of mHostOS: result = newStrNodeT(toLower(platform.OS[targetOS].name), n)
-      of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLower, n)
+      of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[targetOS].name), n)
+      of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLowerAscii, n)
       of mAppType: result = getAppType(n)
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)
       of mNegInf: result = newFloatNodeT(NegInf, n)
+      of mIntDefine:
+        if isDefined(s.name):
+          result = newIntNodeT(lookupSymbol(s.name).parseInt, n)
+      of mStrDefine:
+        if isDefined(s.name):
+          result = newStrNodeT(lookupSymbol(s.name), n)
       else:
-        if sfFakeConst notin s.flags: result = copyTree(s.ast)
+        result = copyTree(s.ast)
     of {skProc, skMethod}:
       result = n
     of skType:

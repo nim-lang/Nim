@@ -16,6 +16,8 @@ import
   lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs,
   securehash, streams
 
+from debuginfo import writeDebugInfo
+
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
@@ -59,7 +61,7 @@ type
 # When adding new compilers, the cmake sources could be a good reference:
 # http://cmake.org/gitweb?p=cmake.git;a=tree;f=Modules/Platform;
 
-template compiler(name: expr, settings: stmt): stmt {.immediate.} =
+template compiler(name, settings: untyped): untyped =
   proc name: TInfoCC {.compileTime.} = settings
 
 # GNU C and C++ Compiler
@@ -736,6 +738,8 @@ proc callCCompiler*(projectfile: string) =
       if not noAbsolutePaths():
         if not exefile.isAbsolute():
           exefile = joinPath(splitFile(projectfile).dir, exefile)
+      if optCDebug in gGlobalOptions:
+        writeDebugInfo(exefile.changeFileExt("ndb"))
       exefile = quoteShell(exefile)
       let linkOptions = getLinkOptions() & " " &
                         getConfigVar(cCompiler, ".options.linker")
@@ -750,7 +754,7 @@ proc callCCompiler*(projectfile: string) =
           "lib", quoteShell(libpath)])
     if optCompileOnly notin gGlobalOptions:
       execExternalProgram(linkCmd,
-                          if gVerbosity > 1: hintExecuting else: hintLinking)
+        if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
