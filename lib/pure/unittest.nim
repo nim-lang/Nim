@@ -77,6 +77,15 @@ checkpoints = @[]
 proc shouldRun(testName: string): bool =
   result = true
 
+proc startSuite(name: string) =
+  template rawPrint() = echo("\n[Suite] ", name) 
+  when not defined(ECMAScript):
+    if colorOutput:
+      styledEcho styleBright, fgBlue, "\n[Suite] ", fgWhite, name
+    else: rawPrint()
+  else: rawPrint()
+
+
 template suite*(name, body) {.dirty.} =
   ## Declare a test suite identified by `name` with optional ``setup``
   ## and/or ``teardown`` section.
@@ -103,9 +112,11 @@ template suite*(name, body) {.dirty.} =
   ##
   ## .. code-block::
   ##
-  ##  [OK] 2 + 2 = 4
-  ##  [OK] (2 + -2) != 4
+  ##  [Suite] test suite for addition
+  ##    [OK] 2 + 2 = 4
+  ##    [OK] (2 + -2) != 4
   block:
+    bind startSuite
     template setup(setupBody: untyped) {.dirty.} =
       var testSetupIMPLFlag = true
       template testSetupIMPL: untyped {.dirty.} = setupBody
@@ -114,14 +125,16 @@ template suite*(name, body) {.dirty.} =
       var testTeardownIMPLFlag = true
       template testTeardownIMPL: untyped {.dirty.} = teardownBody
 
+    let testInSuiteImplFlag = true
+    startSuite name
     body
 
-proc testDone(name: string, s: TestStatus) =
+proc testDone(name: string, s: TestStatus, indent: bool) =
   if s == FAILED:
     programResult += 1
-
+  let prefix = if indent: "  " else: ""
   if outputLevel != PRINT_NONE and (outputLevel == PRINT_ALL or s == FAILED):
-    template rawPrint() = echo("[", $s, "] ", name)
+    template rawPrint() = echo(prefix, "[", $s, "] ", name)
     when not defined(ECMAScript):
       if colorOutput and not defined(ECMAScript):
         var color = case s
@@ -129,7 +142,7 @@ proc testDone(name: string, s: TestStatus) =
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
                     else: fgWhite
-        styledEcho styleBright, color, "[", $s, "] ", fgWhite, name
+        styledEcho styleBright, color, prefix, "[", $s, "] ", fgWhite, name
       else:
         rawPrint()
     else:
@@ -168,7 +181,7 @@ template test*(name, body) {.dirty.} =
       fail()
 
     finally:
-      testDone name, testStatusIMPL
+      testDone name, testStatusIMPL, declared(testInSuiteImplFlag)
 
 proc checkpoint*(msg: string) =
   ## Set a checkpoint identified by `msg`. Upon test failure all
@@ -198,8 +211,9 @@ template fail* =
   ##
   ## outputs "Checkpoint A" before quitting.
   bind checkpoints
+  let prefix = if declared(testInSuiteImplFlag): "    " else: ""
   for msg in items(checkpoints):
-    echo msg
+    echo prefix, msg
 
   when not defined(ECMAScript):
     if abortOnError: quit(1)
