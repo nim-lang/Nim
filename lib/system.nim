@@ -2582,10 +2582,10 @@ else:
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
-  when not defined(nimscript) and (not defined(nogc) or not defined(useMalloc)):
+  when not defined(nimscript):
     when not defined(gcStack):
       proc initGC()
-    when not defined(boehmgc) and not defined(gogc) and not defined(gcStack):
+    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc) and not defined(gcStack):
       proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
