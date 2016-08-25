@@ -2565,6 +2565,7 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when not (
+      defined(nimscript) or
       defined(boehmgc) or
       defined(gogc) or
       (defined(nogc) and defined(useMalloc))):
