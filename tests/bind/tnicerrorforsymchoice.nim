@@ -1,6 +1,6 @@
 discard """
   line: 18
-  errormsg: "type mismatch: got (proc (s: TScgi) | proc (client: AsyncSocket, headers: StringTableRef, input: string){.gcsafe, locks: 0.}"
+  errormsg: "type mismatch: got (proc (s: TScgi) | proc (client: AsyncSocket, headers: StringTableRef, input: string){.noSideEffect, gcsafe, locks: 0.}"
 """
 
 #bug #442
