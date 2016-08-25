@@ -54,6 +54,6 @@ proc loadMaxIds*(project: string) =
     if f.readLine(line):
       var frontEndId = parseInt(line)
       if f.readLine(line):
-        var backEndId = parseInt(line)
+        # var backEndId = parseInt(line)
         gFrontEndId = max(gFrontEndId, frontEndId)
     f.close()

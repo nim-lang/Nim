@@ -211,9 +211,6 @@ proc closeLexer*(lex: var TLexer) =
   inc(gLinesCompiled, lex.lineNumber)
   closeBaseLexer(lex)
 
-proc getColumn(L: TLexer): int =
-  result = getColNumber(L, L.bufpos)
-
 proc getLineInfo(L: TLexer): TLineInfo =
   result = newLineInfo(L.fileIdx, L.lineNumber, getColNumber(L, L.bufpos))
 
@@ -236,12 +233,6 @@ proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
 
 proc matchTwoChars(L: TLexer, first: char, second: set[char]): bool =
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in second)
-
-proc isFloatLiteral(s: string): bool =
-  for i in countup(0, len(s) - 1):
-    if s[i] in {'.', 'e', 'E'}:
-      return true
-  result = false
 
 {.push overflowChecks: off.}
 # We need to parse the largest uint literal without overflow checks

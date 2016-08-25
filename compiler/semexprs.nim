@@ -414,8 +414,6 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   if sonsLen(n) == 0:
     rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else:
-    var x = n.sons[0]
-    var lastIndex: BiggestInt = sonsLen(n) - 1
     var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
     addSonSkipIntLit(typ, t)
   typ.sons[0] = makeRangeType(c, 0, sonsLen(n) - 1, n.info)
@@ -511,16 +509,6 @@ proc fixAbstractType(c: PContext, n: PNode) =
         discard
         #if (it.typ == nil):
         #  InternalError(it.info, "fixAbstractType: " & renderTree(it))
-
-proc skipObjConv(n: PNode): PNode =
-  case n.kind
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if skipTypes(n.sons[1].typ, abstractPtrs).kind in {tyTuple, tyObject}:
-      result = n.sons[1]
-    else:
-      result = n
-  of nkObjUpConv, nkObjDownConv: result = n.sons[0]
-  else: result = n
 
 proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult =
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)

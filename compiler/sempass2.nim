@@ -280,10 +280,6 @@ proc createTag(n: PNode): PNode =
     result.typ = sysTypeFromName"TEffect"
   if not n.isNil: result.info = n.info
 
-proc createAnyGlobal(n: PNode): PNode =
-  result = newSymNode(anyGlobal)
-  result.info = n.info
-
 proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
   assert e.kind != nkRaiseStmt
   var aa = a.exc
@@ -815,9 +811,6 @@ proc track(tracked: PEffects, n: PNode) =
 
 proc subtypeRelation(spec, real: PNode): bool =
   result = safeInheritanceDiff(real.excType, spec.typ) <= 0
-
-proc symbolPredicate(spec, real: PNode): bool =
-  result = real.sym.id == spec.sym.id
 
 proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool;
                      effectPredicate: proc (a, b: PNode): bool {.nimcall.}) =
