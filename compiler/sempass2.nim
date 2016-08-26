@@ -935,7 +935,7 @@ proc trackProc*(s: PSym, body: PNode) =
       localError(s.info, errXhasSideEffects, s.name.s)
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
-  if not t.hasSideEffect:
+  if not t.hasSideEffect and sfSideEffect notin s.flags:
     s.typ.flags.incl tfNoSideEffect
   if s.typ.lockLevel == UnspecifiedLockLevel:
     s.typ.lockLevel = t.maxLockLevel
