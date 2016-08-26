@@ -444,3 +444,6 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var resolved = semOverloadedCall(c, call, call, {fn.kind})
     if resolved != nil:
       result = resolved.sons[0].sym
+      if not compareTypes(result.typ.sons[0], fn.typ.sons[0], dcEqIgnoreDistinct):
+        result = nil
+
