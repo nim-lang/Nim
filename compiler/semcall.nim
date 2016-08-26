@@ -446,4 +446,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       result = resolved.sons[0].sym
       if not compareTypes(result.typ.sons[0], fn.typ.sons[0], dcEqIgnoreDistinct):
         result = nil
+      elif result.magic in {mArrPut, mArrGet}:
+        # cannot borrow these magics for now
+        result = nil
 
