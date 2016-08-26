@@ -1310,7 +1310,7 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semOverloadedCall(c, call, call, routineKinds)
+  result = c.semExpr(c, call)
   if result != nil:
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f.sons[0], result.typ)
@@ -1320,13 +1320,6 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
-    # bug #4545: allow the call to go through a 'var T':
-    let vt = result.sons[0].typ.sons[1]
-    if vt.kind == tyVar:
-      let x = result.sons[1]
-      let va = newNodeIT(nkHiddenAddr, x.info, vt)
-      va.add x
-      result.sons[1] = va
 
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
