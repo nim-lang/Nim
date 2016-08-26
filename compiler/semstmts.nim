@@ -1396,6 +1396,11 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   var t = s.typ
+  var allUntyped = true
+  for i in 1 .. t.n.len-1:
+    let param = t.n.sons[i].sym
+    if param.typ.kind != tyExpr: allUntyped = false
+  if allUntyped: incl(s.flags, sfAllUntyped)
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "macro")
   if n.sons[bodyPos].kind == nkEmpty:
     localError(n.info, errImplOfXexpected, s.name.s)
