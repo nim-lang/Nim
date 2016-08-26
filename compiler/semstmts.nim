@@ -1227,7 +1227,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       implicitPragmas(c, s, n, validPragmas)
   else:
     if n.sons[pragmasPos].kind != nkEmpty:
-      localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
+      localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX,
+        "'" & proto.name.s & "' from " & $proto.info)
     if sfForward notin proto.flags:
       wrongRedefinition(n.info, proto.name.s)
     excl(proto.flags, sfForward)
