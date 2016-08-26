@@ -1497,7 +1497,7 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
 
 proc getInt*(a: PNode): BiggestInt =
   case a.kind
-  of nkIntLit..nkUInt64Lit: result = a.intVal
+  of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
     internalError(a.info, "getInt")
     result = 0
