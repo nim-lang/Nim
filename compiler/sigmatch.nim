@@ -1312,6 +1312,7 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   call.add(arg.copyTree)
   result = c.semExpr(c, call)
   if result != nil:
+    if result.typ == nil: return nil
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f.sons[0], result.typ)
     if r < isGeneric: return nil
