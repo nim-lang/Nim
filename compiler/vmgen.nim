@@ -748,7 +748,7 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
   let tmp = c.genx(arg)
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
-  c.gABx(n, opc, 0, genType(c, n.typ))
+  c.gABx(n, opc, 0, genType(c, n.typ.skipTypes({tyStatic})))
   c.gABx(n, opc, 0, genType(c, arg.typ.skipTypes({tyStatic})))
   c.freeTemp(tmp)
 
