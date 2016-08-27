@@ -1201,19 +1201,19 @@ else:
   proc len(x: JSObject): int =
     assert x.getVarType == JArray
     asm """
-      return `x`.length;
+      `result` = `x`.length;
     """
 
   proc `[]`(x: JSObject, y: string): JSObject =
     assert x.getVarType == JObject
     asm """
-      return `x`[`y`];
+      `result` = `x`[`y`];
     """
 
   proc `[]`(x: JSObject, y: int): JSObject =
     assert x.getVarType == JArray
     asm """
-      return `x`[`y`];
+      `result` = `x`[`y`];
     """
 
   proc convertObject(x: JSObject): JsonNode =
