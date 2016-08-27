@@ -38,9 +38,6 @@ proc getModule*(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
     result = gCompiledModules[fileIdx]
 
-template hash(x: PSym): untyped =
-  gMemCacheData[x.position].hash
-
 proc hashChanged(fileIdx: int32): bool =
   internalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
 
@@ -219,12 +216,6 @@ proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
     growCache gMemCacheData, fileIdx
     addDep(s, fileIdx)
     doHash(fileIdx)
-
-proc `==^`(a, b: string): bool =
-  try:
-    result = sameFile(a, b)
-  except OSError:
-    result = false
 
 proc compileSystemModule* =
   if magicsys.systemModule == nil:

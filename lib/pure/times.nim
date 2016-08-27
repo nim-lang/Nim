@@ -1248,8 +1248,11 @@ proc parse*(value, layout: string): TimeInfo =
       else:
         parseToken(info, token, value, j)
         token = ""
-  # Reset weekday as it might not have been provided and the default may be wrong
-  info.weekday = getLocalTime(toTime(info)).weekday
+  # Reset weekday (might not have been provided and the default may be wrong)
+  # and yearday (is never provided directly and therefore probably wrong)
+  let processed = getLocalTime(toTime(info))
+  info.weekday = processed.weekday
+  info.yearday = processed.yearday
   return info
 
 # Leap year calculations are adapted from:

@@ -16,6 +16,10 @@ const
   MAX_KQUEUE_CHANGE_EVENTS = 64
   # Maximum number of events that can be returned.
   MAX_KQUEUE_RESULT_EVENTS = 64
+  # SIG_IGN and SIG_DFL declared in posix.nim as variables, but we need them
+  # to be constants and GC-safe.
+  SIG_DFL = cast[proc(x: cint) {.noconv,gcsafe.}](0)
+  SIG_IGN = cast[proc(x: cint) {.noconv,gcsafe.}](1)
 
 when defined(macosx) or defined(freebsd):
   when defined(macosx):

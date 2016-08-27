@@ -39,7 +39,6 @@ proc semStmt(c: PContext, n: PNode): PNode
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
-proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
@@ -187,7 +186,6 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
   # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
-proc semStmtScope(c: PContext, n: PNode): PNode
 
 proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
   let t = typeAllowed(typ, kind)

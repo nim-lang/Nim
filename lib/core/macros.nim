@@ -333,7 +333,7 @@ proc parseStmt*(s: string): NimNode {.noSideEffect, compileTime.} =
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 
-proc getAst*(macroOrTemplate: expr): NimNode {.magic: "ExpandToAst", noSideEffect.}
+proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
   ##
@@ -342,7 +342,7 @@ proc getAst*(macroOrTemplate: expr): NimNode {.magic: "ExpandToAst", noSideEffec
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-proc quote*(bl: stmt, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
+proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate NimNode expressions
@@ -663,7 +663,7 @@ proc copyChildrenTo*(src, dest: NimNode) {.compileTime.}=
   for i in 0 .. < src.len:
     dest.add src[i].copyNimTree
 
-template expectRoutine(node: NimNode): stmt =
+template expectRoutine(node: NimNode) =
   expectKind(node, RoutineNodes)
 
 proc name*(someProc: NimNode): NimNode {.compileTime.} =
@@ -870,7 +870,7 @@ proc hasArgOfName* (params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
   assert params.kind == nnkFormalParams
   for i in 1 .. <params.len:
-    template node: expr = params[i]
+    template node: untyped = params[i]
     if name.eqIdent( $ node[0]):
       return true
 
@@ -891,7 +891,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   else: n == bindSym"true" # hacky solution for now
 
 when not defined(booting):
-  template emit*(e: static[string]): stmt {.deprecated.} =
+  template emit*(e: static[string]): untyped {.deprecated.} =
     ## accepts a single string argument and treats it as nim code
     ## that should be inserted verbatim in the program
     ## Example:
@@ -900,6 +900,6 @@ when not defined(booting):
     ##   emit("echo " & '"' & "hello world".toUpper & '"')
     ##
     ## Deprecated since version 0.15 since it's so rarely useful.
-    macro payload: stmt {.gensym.} =
+    macro payload: untyped {.gensym.} =
       result = parseStmt(e)
     payload()

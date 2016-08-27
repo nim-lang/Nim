@@ -63,18 +63,6 @@ proc addNimblePath(p: string, info: TLineInfo) =
     message(info, hintPath, p)
     lists.prependStr(options.lazyPaths, p)
 
-proc addPathWithNimFiles(p: string, info: TLineInfo) =
-  proc hasNimFile(dir: string): bool =
-    for kind, path in walkDir(dir):
-      if kind == pcFile and path.endsWith(".nim"):
-        result = true
-        break
-  if hasNimFile(p):
-    addNimblePath(p, info)
-  else:
-    for kind, p2 in walkDir(p):
-      if hasNimFile(p2): addNimblePath(p2, info)
-
 proc addPathRec(dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
   var pos = dir.len-1

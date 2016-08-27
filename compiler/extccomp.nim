@@ -505,10 +505,6 @@ proc noAbsolutePaths: bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = gGlobalOptions * {optGenScript, optGenMapping} != {}
 
-const
-  specialFileA = 42
-  specialFileB = 42
-
 var fileCounter: int
 
 proc add(s: var string, many: openArray[string]) =

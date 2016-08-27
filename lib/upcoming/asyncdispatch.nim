@@ -1233,7 +1233,7 @@ when defined(windows) or defined(nimdoc):
 
     registerWaitableHandle(p, hProcess, flags, pcd, proccb)
 
-  proc newEvent*(): AsyncEvent =
+  proc newAsyncEvent*(): AsyncEvent =
     ## Creates new ``AsyncEvent`` object.
     var sa = SECURITY_ATTRIBUTES(
       nLength: sizeof(SECURITY_ATTRIBUTES).cint,
@@ -1314,7 +1314,7 @@ else:
       readCB: Callback
       writeCB: Callback
 
-    AsyncEvent = SelectEvent
+    AsyncEvent* = SelectEvent
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
@@ -1419,7 +1419,7 @@ else:
               if adata.writeCB == cb:
                 adata.writeCB = nil
                 update = true
-        
+
         when supportedPlatform:
           if (customSet * events) != {}:
             let cb = keys[i].data.readCB
@@ -1686,11 +1686,11 @@ else:
 
   proc setEvent*(ev: AsyncEvent) =
     ## Sets new ``AsyncEvent`` to signaled state.
-    setEvent(SelectEvent(ev))
+    ioselectors.setEvent(SelectEvent(ev))
 
   proc close*(ev: AsyncEvent) =
     ## Closes ``AsyncEvent``
-    close(SelectEvent(ev))
+    ioselectors.close(SelectEvent(ev))
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Start watching for event ``ev``, and call callback ``cb``, when

@@ -726,9 +726,6 @@ type
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
     r*: Rope                  # rope value of location (code generators)
-    heapRoot*: Rope           # keeps track of the enclosing heap object that
-                              # owns this location (required by GC algorithms
-                              # employing heap snapshots or sliding views)
 
   # ---------------- end of backend information ------------------------------
 
@@ -857,9 +854,6 @@ type
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
-  TTable* = object   # the same as table[PObject] of PObject
-    counter*: int
-    data*: TPairSeq
 
   TIdPair* = object
     key*: PIdObj
@@ -1103,12 +1097,6 @@ proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   newSeq(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
-proc copyTable*(dest: var TTable, src: TTable) =
-  dest.counter = src.counter
-  if isNil(src.data): return
-  setLen(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
-
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
   if isNil(src.data): return
@@ -1322,10 +1310,6 @@ proc initStrTable*(x: var TStrTable) =
 proc newStrTable*: TStrTable =
   initStrTable(result)
 
-proc initTable(x: var TTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
 proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
@@ -1506,19 +1490,9 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc replaceSons(n: PNode, oldKind, newKind: TNodeKind) =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i].kind == oldKind: n.sons[i].kind = newKind
-
-proc sonsNotNil(n: PNode): bool =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i] == nil:
-      return false
-  result = true
-
 proc getInt*(a: PNode): BiggestInt =
   case a.kind
-  of nkIntLit..nkUInt64Lit: result = a.intVal
+  of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
     internalError(a.info, "getInt")
     result = 0

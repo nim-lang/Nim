@@ -31,17 +31,6 @@ proc objectSetIncl*(t: var TObjectSet, obj: RootRef)
 proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool
   # more are not needed ...
 
-# ----------------------- (key, val)-Hashtables ----------------------------
-proc tablePut*(t: var TTable, key, val: RootRef)
-proc tableGet*(t: TTable, key: RootRef): RootRef
-type
-  TCmpProc* = proc (key, closure: RootRef): bool {.nimcall.} # true if found
-
-proc tableSearch*(t: TTable, key, closure: RootRef,
-                  comparator: TCmpProc): RootRef
-  # return val as soon as comparator returns true; if this never happens,
-  # nil is returned
-
 # ----------------------- str table -----------------------------------------
 proc strTableContains*(t: TStrTable, n: PSym): bool
 proc strTableAdd*(t: var TStrTable, n: PSym)
@@ -251,20 +240,6 @@ proc symToYamlAux(n: PSym, marker: var IntSet,
                   indent, maxRecDepth: int): Rope
 proc typeToYamlAux(n: PType, marker: var IntSet,
                    indent, maxRecDepth: int): Rope
-proc strTableToYaml(n: TStrTable, marker: var IntSet, indent: int,
-                    maxRecDepth: int): Rope =
-  var istr = rspaces(indent + 2)
-  result = rope("[")
-  var mycount = 0
-  for i in countup(0, high(n.data)):
-    if n.data[i] != nil:
-      if mycount > 0: add(result, ",")
-      addf(result, "$N$1$2",
-           [istr, symToYamlAux(n.data[i], marker, indent + 2, maxRecDepth - 1)])
-      inc(mycount)
-  if mycount > 0: addf(result, "$N$1", [rspaces(indent)])
-  add(result, "]")
-  assert(mycount == n.counter)
 
 proc ropeConstr(indent: int, c: openArray[Rope]): Rope =
   # array of (name, value) pairs
@@ -463,9 +438,6 @@ proc debug(n: PType) =
 proc debug(n: PNode) =
   echo($debugTree(n, 0, 100))
 
-const
-  EmptySeq = @[]
-
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
   # For any initial h in range(maxHash), repeating that maxHash times
@@ -518,55 +490,6 @@ proc objectSetContainsOrIncl(t: var TObjectSet, obj: RootRef): bool =
     t.data[h] = obj
   inc(t.counter)
   result = false
-
-proc tableRawGet(t: TTable, key: RootRef): int =
-  var h: Hash = hashNode(key) and high(t.data) # start with real hash value
-  while t.data[h].key != nil:
-    if t.data[h].key == key:
-      return h
-    h = nextTry(h, high(t.data))
-  result = -1
-
-proc tableSearch(t: TTable, key, closure: RootRef,
-                 comparator: TCmpProc): RootRef =
-  var h: Hash = hashNode(key) and high(t.data) # start with real hash value
-  while t.data[h].key != nil:
-    if t.data[h].key == key:
-      if comparator(t.data[h].val, closure):
-        # BUGFIX 1
-        return t.data[h].val
-    h = nextTry(h, high(t.data))
-  result = nil
-
-proc tableGet(t: TTable, key: RootRef): RootRef =
-  var index = tableRawGet(t, key)
-  if index >= 0: result = t.data[index].val
-  else: result = nil
-
-proc tableRawInsert(data: var TPairSeq, key, val: RootRef) =
-  var h: Hash = hashNode(key) and high(data)
-  while data[h].key != nil:
-    assert(data[h].key != key)
-    h = nextTry(h, high(data))
-  assert(data[h].key == nil)
-  data[h].key = key
-  data[h].val = val
-
-proc tableEnlarge(t: var TTable) =
-  var n: TPairSeq
-  newSeq(n, len(t.data) * GrowthFactor)
-  for i in countup(0, high(t.data)):
-    if t.data[i].key != nil: tableRawInsert(n, t.data[i].key, t.data[i].val)
-  swap(t.data, n)
-
-proc tablePut(t: var TTable, key, val: RootRef) =
-  var index = tableRawGet(t, key)
-  if index >= 0:
-    t.data[index].val = val
-  else:
-    if mustRehash(len(t.data), t.counter): tableEnlarge(t)
-    tableRawInsert(t.data, key, val)
-    inc(t.counter)
 
 proc strTableContains(t: TStrTable, n: PSym): bool =
   var h: Hash = n.name.h and high(t.data) # start with real hash value

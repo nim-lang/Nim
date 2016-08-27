@@ -48,6 +48,8 @@ proc isOrdinalType*(t: PType): bool
 proc enumHasHoles*(t: PType): bool
 
 const
+  # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
+  # replace with typedescX
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
                    tyConst, tyMutable, tyTypeDesc}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal,
@@ -61,6 +63,7 @@ const
 
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyConst, tyMutable,
                tyTypeDesc}
+  # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
 
@@ -141,10 +144,6 @@ proc elemType*(t: PType): PType =
   of tyArray, tyArrayConstr: result = t.sons[1]
   else: result = t.lastSon
   assert(result != nil)
-
-proc skipGeneric(t: PType): PType =
-  result = t
-  while result.kind == tyGenericInst: result = lastSon(result)
 
 proc isOrdinalType(t: PType): bool =
   assert(t != nil)
@@ -575,10 +574,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc resultType(t: PType): PType =
-  assert(t.kind == tyProc)
-  result = t.sons[0]          # nil is allowed
-
 proc base(t: PType): PType =
   result = t.sons[0]
 
@@ -658,7 +653,14 @@ proc lengthOrd(t: PType): BiggestInt =
   case t.kind
   of tyInt64, tyInt32, tyInt: result = lastOrd(t)
   of tyDistinct, tyConst, tyMutable: result = lengthOrd(t.sons[0])
-  else: result = lastOrd(t) - firstOrd(t) + 1
+  else:
+    let last = lastOrd t
+    let first = firstOrd t
+    # XXX use a better overflow check here:
+    if last == high(BiggestInt) and first <= 0:
+      result = last
+    else:
+      result = lastOrd(t) - firstOrd(t) + 1
 
 # -------------- type equality -----------------------------------------------
 
@@ -768,18 +770,6 @@ proc equalParams(a, b: PNode): TParamsEquality =
       else:
         result = paramsIncompatible # overloading by different
                                     # result types does not work
-
-proc sameLiteral(x, y: PNode): bool =
-  if x.kind == y.kind:
-    case x.kind
-    of nkCharLit..nkInt64Lit: result = x.intVal == y.intVal
-    of nkFloatLit..nkFloat64Lit: result = x.floatVal == y.floatVal
-    of nkNilLit: result = true
-    else: assert(false)
-
-proc sameRanges(a, b: PNode): bool =
-  result = sameLiteral(a.sons[0], b.sons[0]) and
-           sameLiteral(a.sons[1], b.sons[1])
 
 proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   # two tuples are equivalent iff the names, types and positions are the same;
@@ -1067,10 +1057,10 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       of nkNone..nkNilLit:
         discard
       else:
+        if n.kind == nkRecCase and kind in {skProc, skConst}:
+          return n[0].typ
         for i in countup(0, sonsLen(n) - 1):
           let it = n.sons[i]
-          if it.kind == nkRecCase and kind in {skProc, skConst}:
-            return n.typ
           result = typeAllowedNode(marker, it, kind, flags)
           if result != nil: break
 

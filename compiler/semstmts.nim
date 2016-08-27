@@ -304,8 +304,14 @@ proc semTry(c: PContext, n: PNode): PNode =
 proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
   result = fitNode(c, typ, n)
   if result.kind in {nkHiddenStdConv, nkHiddenSubConv}:
-    changeType(result.sons[1], typ, check=true)
-    result = result.sons[1]
+    let r1 = result.sons[1]
+    if r1.kind in {nkCharLit..nkUInt64Lit} and typ.skipTypes(abstractRange).kind in {tyFloat..tyFloat128}:
+      result = newFloatNode(nkFloatLit, BiggestFloat r1.intVal)
+      result.info = n.info
+      result.typ = typ
+    else:
+      changeType(r1, typ, check=true)
+      result = r1
   elif not sameType(result.typ, typ):
     changeType(result, typ, check=false)
 
@@ -1135,11 +1141,6 @@ type
   TProcCompilationSteps = enum
     stepRegisterSymbol,
     stepDetermineType,
-    stepCompileBody
-
-proc isForwardDecl(s: PSym): bool =
-  internalAssert s.kind == skProc
-  result = s.ast[bodyPos].kind != nkEmpty
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
@@ -1177,8 +1178,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.ast = n
     #s.scope = c.currentScope
 
-    # if typeIsDetermined: assert phase == stepCompileBody
-    # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
@@ -1228,7 +1227,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       implicitPragmas(c, s, n, validPragmas)
   else:
     if n.sons[pragmasPos].kind != nkEmpty:
-      localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
+      localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX,
+        "'" & proto.name.s & "' from " & $proto.info)
     if sfForward notin proto.flags:
       wrongRedefinition(n.info, proto.name.s)
     excl(proto.flags, sfForward)
@@ -1397,6 +1397,11 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   var t = s.typ
+  var allUntyped = true
+  for i in 1 .. t.n.len-1:
+    let param = t.n.sons[i].sym
+    if param.typ.kind != tyExpr: allUntyped = false
+  if allUntyped: incl(s.flags, sfAllUntyped)
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "macro")
   if n.sons[bodyPos].kind == nkEmpty:
     localError(n.info, errImplOfXexpected, s.name.s)
@@ -1560,8 +1565,3 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc semStmt(c: PContext, n: PNode): PNode =
   # now: simply an alias:
   result = semExprNoType(c, n)
-
-proc semStmtScope(c: PContext, n: PNode): PNode =
-  openScope(c)
-  result = semStmt(c, n)
-  closeScope(c)

@@ -744,14 +744,6 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
           "void* ClEnv;$n} $1;$n",
            [result, rettype, desc])
 
-proc getTypeDesc(m: BModule, magic: string): Rope =
-  var sym = magicsys.getCompilerProc(magic)
-  if sym != nil:
-    result = getTypeDesc(m, sym.typ)
-  else:
-    rawMessage(errSystemNeeds, magic)
-    result = nil
-
 proc finishTypeDescriptions(m: BModule) =
   var i = 0
   while i < len(m.typeStack):
@@ -1000,9 +992,6 @@ proc fakeClosureType(owner: PSym): PType =
 type
   TTypeInfoReason = enum  ## for what do we need the type info?
     tiNew,                ## for 'new'
-    tiNewSeq,             ## for 'newSeq'
-    tiNonVariantAsgn,     ## for generic assignment without variants
-    tiVariantAsgn         ## for generic assignment with variants
 
 include ccgtrav
 

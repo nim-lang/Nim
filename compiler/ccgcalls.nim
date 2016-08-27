@@ -411,7 +411,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
         add(result, substr(pat, start, i - 1))
 
 proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  var op, a: TLoc
+  var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
@@ -458,7 +458,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
 proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # generates a crappy ObjC call
-  var op, a: TLoc
+  var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl = ~"["
   # getUniqueType() is too expensive here:
@@ -536,8 +536,6 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, nil, e, d)
   postStmtActions(p)
-  when false:
-    if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if ri.sons[0].typ.skipTypes({tyGenericInst}).callConv == ccClosure:
@@ -549,6 +547,3 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, le, ri, d)
   postStmtActions(p)
-  when false:
-    if d.s == onStack and containsGarbageCollectedRef(d.t): keepAlive(p, d)
-

@@ -90,43 +90,38 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
       else:
         invalidPragma(it)
 
-proc setExternName(s: PSym, extname: string) =
-  s.loc.r = rope(extname % s.name.s)
+proc setExternName(s: PSym, extname: string, info: TLineInfo) =
+  # special cases to improve performance:
+  if extname == "$1":
+    s.loc.r = rope(s.name.s)
+  elif '$' notin extname:
+    s.loc.r = rope(extname)
+  else:
+    try:
+      s.loc.r = rope(extname % s.name.s)
+    except ValueError:
+      localError(info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   if gCmd == cmdPretty and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
 
-proc makeExternImport(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc makeExternImport(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-proc validateExternCName(s: PSym, info: TLineInfo) =
-  ## Validates that the symbol name in s.loc.r is a valid C identifier.
-  ##
-  ## Valid identifiers are those alphanumeric including the underscore not
-  ## starting with a number. If the check fails, a generic error will be
-  ## displayed to the user.
-  let target = $s.loc.r
-  if target.len < 1 or target[0] notin IdentStartChars or
-      not target.allCharsInSet(IdentChars):
-    localError(info, errGenerated, "invalid exported symbol")
-
 proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
-  setExternName(s, extname)
-  # XXX to fix make it work with nimrtl.
-  #if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}:
-  #  validateExternCName(s, info)
+  setExternName(s, extname, info)
   incl(s.flags, sfExportc)
 
-proc processImportCompilerProc(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc processImportCompilerProc(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
   incl(s.loc.flags, lfImportCompilerProc)
 
-proc processImportCpp(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc processImportCpp(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   incl(s.flags, sfInfixCall)
   excl(s.flags, sfForward)
@@ -134,8 +129,8 @@ proc processImportCpp(s: PSym, extname: string) =
   incl(m.flags, sfCompileToCpp)
   extccomp.gMixedMode = true
 
-proc processImportObjC(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc processImportObjC(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   incl(s.flags, sfNamedParamCall)
   excl(s.flags, sfForward)
@@ -625,10 +620,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wExportc:
         makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
         incl(sym.flags, sfUsed) # avoid wrong hints
-      of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"))
+      of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportCompilerProc:
-        processImportCompilerProc(sym, getOptionalStr(c, it, "$1"))
-      of wExtern: setExternName(sym, expectStrLit(c, it))
+        processImportCompilerProc(sym, getOptionalStr(c, it, "$1"), it.info)
+      of wExtern: setExternName(sym, expectStrLit(c, it), it.info)
       of wImmediate:
         if sym.kind in {skTemplate, skMacro}:
           incl(sym.flags, sfImmediate)
@@ -639,9 +634,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
         else: invalidPragma(it)
       of wImportCpp:
-        processImportCpp(sym, getOptionalStr(c, it, "$1"))
+        processImportCpp(sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportObjC:
-        processImportObjC(sym, getOptionalStr(c, it, "$1"))
+        processImportObjC(sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:
         if sym.typ == nil: invalidPragma(it)
         var align = expectIntLit(c, it)
