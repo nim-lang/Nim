@@ -135,11 +135,6 @@ proc flattenTree*(root: PNode, op: TMagic): PNode =
     addSon(result, copyNode(root.sons[0]))
     flattenTreeAux(result, root, op)
 
-proc swapOperands*(op: PNode) =
-  var tmp = op.sons[1]
-  op.sons[1] = op.sons[2]
-  op.sons[2] = tmp
-
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
     if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
