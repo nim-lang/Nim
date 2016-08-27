@@ -27,7 +27,6 @@ proc cyclicTree*(n: PNode): bool =
   cyclicTreeAux(n, visited)
 
 proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
-  result = false
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
@@ -51,7 +50,6 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
         result = true
 
 proc sameTree*(a, b: PNode): bool =
-  result = false
   if a == b:
     result = true
   elif a != nil and b != nil and a.kind == b.kind:
@@ -83,6 +81,7 @@ proc getMagic*(op: PNode): TMagic =
   else: result = mNone
 
 proc isConstExpr*(n: PNode): bool =
+  const constKinds = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit, nkFloatLit..nkFloat64Lit, nkNilLit}
   result = (n.kind in
       {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
        nkFloatLit..nkFloat64Lit, nkNilLit}) or (nfAllConst in n.flags)
