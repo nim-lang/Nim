@@ -128,7 +128,6 @@ proc unnestStmts(n, result: PNode) =
     result.add(n)
 
 proc flattenStmts*(n: PNode): PNode =
-  ## flattens a nested statement list; used for pattern matching
   result = newNodeI(nkStmtList, n.info)
   unnestStmts(n, result)
   if result.len == 1:
