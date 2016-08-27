@@ -121,20 +121,6 @@ proc isDeepConstExpr*(n: PNode): bool =
         result = true
   else: discard
 
-proc flattenTreeAux(d, a: PNode, op: TMagic) =
-  if (getMagic(a) == op):     # a is a "leaf", so add it:
-    for i in countup(1, sonsLen(a) - 1): # BUGFIX
-      flattenTreeAux(d, a.sons[i], op)
-  else:
-    addSon(d, copyTree(a))
-
-proc flattenTree*(root: PNode, op: TMagic): PNode =
-  result = copyNode(root)
-  if getMagic(root) == op:
-    # BUGFIX: forget to copy prc
-    addSon(result, copyNode(root.sons[0]))
-    flattenTreeAux(result, root, op)
-
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
     if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
