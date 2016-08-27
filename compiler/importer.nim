@@ -163,7 +163,7 @@ proc myImportModule(c: PContext, n: PNode): PSym =
   var f = checkModuleName(n)
   if f != InvalidFileIDX:
     result = importModuleAs(n, gImportModule(c.module, f))
-    if result.info.fileIndex == n.info.fileIndex:
+    if result.info.fileIndex == c.module.info.fileIndex:
       localError(n.info, errGenerated, "A module cannot import itself")
     if sfDeprecated in result.flags:
       message(n.info, warnDeprecated, result.name.s)
