@@ -86,9 +86,6 @@ proc auxWriteStackTrace(f: PCallFrame): string =
 proc rawWriteStackTrace(): string =
   if framePtr != nil:
     result = "Traceback (most recent call last)\n" & auxWriteStackTrace(framePtr)
-    framePtr = nil
-  elif lastJSError != nil:
-    result = $lastJSError.stack
   else:
     result = "No stack traceback available\n"
 
@@ -108,6 +105,7 @@ proc unhandledException(e: ref Exception) {.
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
   let cbuf : cstring = buf
+  framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
     throw new Error(`cbuf`);
