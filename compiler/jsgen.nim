@@ -558,11 +558,13 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   # code to generate:
   #
   #  ++excHandler;
+  #  var tmpFramePtr = framePtr;
   #  try {
   #    stmts;
   #    --excHandler;
   #  } catch (EXC) {
   #    var prevJSError = lastJSError; lastJSError = EXC;
+  #    framePtr = tmpFramePtr;
   #    --excHandler;
   #    if (e.typ && e.typ == NTI433 || e.typ == NTI2321) {
   #      stmts;
@@ -573,6 +575,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   #    }
   #    lastJSError = prevJSError;
   #  } finally {
+  #    framePtr = tmpFramePtr;
   #    stmts;
   #  }
   genLineDir(p, n)
@@ -585,8 +588,10 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   var catchBranchesExist = length > 1 and n.sons[i].kind == nkExceptBranch
   if catchBranchesExist and p.target == targetJS:
     add(p.body, "++excHandler;" & tnl)
-  var safePoint = "Tmp$1" % [rope(p.unique)]
-  if optStackTrace in p.options: add(p.body, "framePtr = F;" & tnl)
+  var tmpFramePtr = rope"F"
+  if optStackTrace notin p.options:
+    tmpFramePtr = p.getTemp(true)
+    add(p.body, tmpFramePtr & " = framePtr;" & tnl)
   addf(p.body, "try {$n", [])
   if p.target == targetPHP and p.globals == nil:
       p.globals = "global $lastJSError; global $prevJSError;".rope
@@ -598,6 +603,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetJS and catchBranchesExist:
     addf(p.body, "--excHandler;$n} catch (EXC) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXC;$n --excHandler;$n", [])
+    add(p.body, "framePtr = $1;$n" % [tmpFramePtr])
   elif p.target == targetPHP:
     addf(p.body, "} catch (Exception $$EXC) {$n $$prevJSError = $$lastJSError;$n $$lastJSError = $$EXC;$n", [])
   while i < length and n.sons[i].kind == nkExceptBranch:
@@ -619,8 +625,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
         addf(orExpr, "isObj($2lastJSError.m_type, $1)",
              [genTypeInfo(p, n.sons[i].sons[j].typ), dollar])
       if i > 1: add(p.body, "else ")
-      addf(p.body, "if ($3lastJSError && ($2)) {$n",
-        [safePoint, orExpr, dollar])
+      addf(p.body, "if ($1lastJSError && ($2)) {$n", [dollar, orExpr])
       gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
       addf(p.body, "}$n", [])
@@ -632,6 +637,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
   if p.target == targetJS:
     add(p.body, "} finally {" & tnl)
+    add(p.body, "framePtr = $1;$n" % [tmpFramePtr])
   if p.target == targetPHP:
     # XXX ugly hack for PHP codegen
     add(p.body, "}" & tnl)
