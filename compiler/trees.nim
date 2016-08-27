@@ -12,29 +12,19 @@
 import
   ast, astalgo, lexer, msgs, strutils, wordrecg
 
-proc hasSon(father, son: PNode): bool =
-  for i in countup(0, sonsLen(father) - 1):
-    if father.sons[i] == son:
-      return true
-  result = false
-
-proc cyclicTreeAux(n, s: PNode): bool =
-  if n == nil:
-    return false
-  if hasSon(s, n):
-    return true
-  var m = sonsLen(s)
-  addSon(s, n)
+proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
+  if n == nil: return
+  for v in visited:
+    if v == n: return true
   if not (n.kind in {nkEmpty..nkNilLit}):
-    for i in countup(0, sonsLen(n) - 1):
-      if cyclicTreeAux(n.sons[i], s):
-        return true
-  result = false
-  delSon(s, m)
+    visited.add(n)
+    for nSon in n.sons:
+      if cyclicTreeAux(nSon, visited): return true
+    discard visited.pop()
 
 proc cyclicTree*(n: PNode): bool =
-  var s = newNodeI(nkEmpty, n.info)
-  result = cyclicTreeAux(n, s)
+  var visited: seq[PNode] = @[]
+  cyclicTreeAux(n, visited)
 
 proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
   result = false
