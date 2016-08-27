@@ -512,6 +512,10 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     arithAux(p, n, r, op, jsOps)
   r.kind = resExpr
 
+proc hasFrameInfo(p: PProc): bool =
+  ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
+      ((p.prc == nil) or not (sfPure in p.prc.flags))
+
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if optLineDir in p.options:
@@ -521,9 +525,7 @@ proc genLineDir(p: PProc, n: PNode) =
       ((p.prc == nil) or sfPure notin p.prc.flags):
     useMagic(p, "endb")
     addf(p.body, "endb($1);$n", [rope(line)])
-  elif ({optLineTrace, optStackTrace} * p.options ==
-      {optLineTrace, optStackTrace}) and
-      ((p.prc == nil) or not (sfPure in p.prc.flags)):
+  elif hasFrameInfo(p):
     addf(p.body, "F.line = $1;$n" | "$$F['line'] = $1;$n", [rope(line)])
 
 proc genWhileStmt(p: PProc, n: PNode) =
@@ -1925,10 +1927,10 @@ proc frameCreate(p: PProc; procname, filename: Rope): Rope =
             procname, filename]
 
 proc frameDestroy(p: PProc): Rope =
-  result = rope(("framePtr = framePtr.prev;" | "$framePtr = $framePtr['prev'];") & tnl)
+  result = rope(("framePtr = F.prev;" | "$framePtr = $F['prev'];") & tnl)
 
 proc genProcBody(p: PProc, prc: PSym): Rope =
-  if optStackTrace in prc.options:
+  if hasFrameInfo(p):
     result = frameCreate(p,
               makeJSString(prc.owner.name.s & '.' & prc.name.s),
               makeJSString(toFilename(prc.info)))
@@ -1942,7 +1944,7 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   if prc.typ.callConv == ccSysCall and p.target == targetJS:
     result = ("try {$n$1} catch (e) {$n" &
       " alert(\"Unhandled exception:\\n\" + e.message + \"\\n\"$n}") % [result]
-  if optStackTrace in prc.options:
+  if hasFrameInfo(p):
     add(result, frameDestroy(p))
 
 proc genProc(oldProc: PProc, prc: PSym): Rope =
