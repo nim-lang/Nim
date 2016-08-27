@@ -57,6 +57,9 @@ that have tuple name:
 - Now when you compile console application for Windows, console output
   encoding is automatically set to UTF-8.
 
+- Unhandled exceptions in JavaScript are now thrown regardless ``noUnhandledHandler``
+  is defined. But now they do their best to provide a readable stack trace.
+
 Library Additions
 -----------------
 
