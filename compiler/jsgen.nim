@@ -560,6 +560,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   #  ++excHandler;
   #  try {
   #    stmts;
+  #    --excHandler;
   #  } catch (EXC) {
   #    var prevJSError = lastJSError; lastJSError = EXC;
   #    --excHandler;
@@ -595,7 +596,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   var generalCatchBranchExists = false
   let dollar = rope(if p.target == targetJS: "" else: "$")
   if p.target == targetJS and catchBranchesExist:
-    addf(p.body, "} catch (EXC) {$n var prevJSError = lastJSError;$n" &
+    addf(p.body, "--excHandler;$n} catch (EXC) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXC;$n --excHandler;$n", [])
   elif p.target == targetPHP:
     addf(p.body, "} catch (Exception $$EXC) {$n $$prevJSError = $$lastJSError;$n $$lastJSError = $$EXC;$n", [])
