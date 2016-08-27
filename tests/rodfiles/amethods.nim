@@ -1,11 +1,11 @@
 
 type
-  TBaseClass* = object of TObject
+  TBaseClass* = object of RootObj
 
 proc newBaseClass*: ref TBaseClass =
   new result
 
-method echoType*(x: ref TBaseClass) =
+method echoType*(x: ref TBaseClass) {.base.} =
   echo "base class"
 
 proc echoAlias*(x: ref TBaseClass) =
