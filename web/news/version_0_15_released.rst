@@ -60,6 +60,8 @@ that have tuple name:
 - Unhandled exceptions in JavaScript are now thrown regardless ``noUnhandledHandler``
   is defined. But now they do their best to provide a readable stack trace.
 
+- In JavaScript ``system.alert`` is deprecated. Use ``dom.alert`` instead.
+
 Library Additions
 -----------------
 
