@@ -74,17 +74,6 @@ proc sameTree*(a, b: PNode): bool =
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
-proc getProcSym*(call: PNode): PSym =
-  result = call.sons[0].sym
-
-proc getOpSym*(op: PNode): PSym =
-  if op.kind notin {nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit}:
-    result = nil
-  else:
-    if sonsLen(op) <= 0: internalError(op.info, "getOpSym")
-    elif op.sons[0].kind == nkSym: result = op.sons[0].sym
-    else: result = nil
-
 proc getMagic*(op: PNode): TMagic =
   case op.kind
   of nkCallKinds:
