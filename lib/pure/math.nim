@@ -35,6 +35,20 @@ proc fac*(n: int): int {.noSideEffect.} =
   for i in countup(2, n):
     result = result * i
 
+proc isClose*[T: SomeReal](x, y: T; rtol = 1e-05, atol = 1e-08): bool {.noSideEffect.} =
+  ## Implements something close to NumPy's isclose on floats
+  ## Compares floating-point numbers based on a combination of
+  ## relative and absolute tolerance
+  result = abs(x - y) <= (atol + rtol * max(abs(x), abs(y)))
+
+proc `=~`*[T: SomeReal](x, y: T): bool {.noSideEffect.} =
+  ## Compares floating-point numbers with the defaults of isClose
+  result = isClose(x,y)
+
+proc `!=~`*[T: SomeReal](x, y: T): bool {.noSideEffect.} =
+  ## Returns negation of `=~`
+  result = not (x =~ y)
+
 {.push checks:off, line_dir:off, stack_trace:off.}
 
 when defined(Posix) and not defined(haiku):
@@ -199,13 +213,6 @@ when not defined(JS):
   proc tgamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
     ## The gamma function
 
-  proc trunc*(x: float32): float32 {.importc: "truncf", header: "<math.h>".}
-  proc trunc*(x: float64): float64 {.importc: "trunc", header: "<math.h>".}
-    ## Truncates `x` to the decimal point
-    ##
-    ## .. code-block:: nim
-    ##  echo trunc(PI) # 3.0
-
   proc floor*(x: float32): float32 {.importc: "floorf", header: "<math.h>".}
   proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
     ## Computes the floor function (i.e., the largest integer not greater than `x`)
@@ -221,6 +228,56 @@ when not defined(JS):
     ##  echo ceil(-2.1) ## -2.0
 
   when defined(windows) and defined(vcc):
+    # MSVC 2010 don't have trunc/truncf
+    # this implementation was inspired by Go-lang Math.Trunc
+    proc truncImpl(f: float64): float64 =
+      const
+        mask : uint64 = 0x7FF
+        shift: uint64 = 64 - 12
+        bias : uint64 = 0x3FF
+
+      if f < 1:
+        if f < 0: return -truncImpl(-f)
+        elif f == 0: return f # Return -0 when f == -0
+        else: return 0
+
+      var x = cast[uint64](f)
+      let e = (x shr shift) and mask - bias
+
+      # Keep the top 12+e bits, the integer part; clear the rest.
+      if e < 64-12:
+        x = x and (not (1'u64 shl (64'u64-12'u64-e) - 1'u64))
+
+      result = cast[float64](x)
+
+    proc truncImpl(f: float32): float32 =
+      const
+        mask : uint32 = 0xFF
+        shift: uint32 = 32 - 9
+        bias : uint32 = 0x7F
+
+      if f < 1:
+        if f < 0: return -truncImpl(-f)
+        elif f == 0: return f # Return -0 when f == -0
+        else: return 0
+
+      var x = cast[uint32](f)
+      let e = (x shr shift) and mask - bias
+
+      # Keep the top 9+e bits, the integer part; clear the rest.
+      if e < 32-9:
+        x = x and (not (1'u32 shl (32'u32-9'u32-e) - 1'u32))
+
+      result = cast[float32](x)
+
+    proc trunc*(x: float64): float64 =
+      if classify(x) in {fcZero, fcNegZero, fcNan, fcInf, fcNegInf}: return x
+      result = truncImpl(x)
+
+    proc trunc*(x: float32): float32 =
+      if classify(x) in {fcZero, fcNegZero, fcNan, fcInf, fcNegInf}: return x
+      result = truncImpl(x)
+
     proc round0[T: float32|float64](x: T): T =
       ## Windows compilers prior to MSVC 2012 do not implement 'round',
       ## 'roundl' or 'roundf'.
@@ -230,6 +287,13 @@ when not defined(JS):
     proc round0(x: float64): float64 {.importc: "round", header: "<math.h>".}
       ## Rounds a float to zero decimal places.  Used internally by the round
       ## function when the specified number of places is 0.
+
+    proc trunc*(x: float32): float32 {.importc: "truncf", header: "<math.h>".}
+    proc trunc*(x: float64): float64 {.importc: "trunc", header: "<math.h>".}
+      ## Truncates `x` to the decimal point
+      ##
+      ## .. code-block:: nim
+      ##  echo trunc(PI) # 3.0
 
   proc fmod*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc fmod*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
@@ -335,6 +399,10 @@ proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
     result.intpart = -result.intpart
     result.floatpart = -result.floatpart
 
+proc `**`*[T: SomeReal](x, y: T): T =
+  ## Operator for `pow <#pow,float,float>` which works for any base/exponent pair
+  result = pow(x, y)
+
 {.pop.}
 
 proc degToRad*[T: float32|float64](d: T): T {.inline.} =
@@ -397,36 +465,68 @@ when isMainModule and not defined(JS):
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
+  
 when isMainModule:
-  # Function for approximate comparison of floats
-  proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
+  block: # floating point comparison tests for very large and very small numbers
+    doAssert(1e10 =~ (1e10 + 1))
+    doAssert((1/1e10) =~ 1/(1e10 + 1))
 
   block: # round() tests
     # Round to 0 decimal places
-    doAssert round(54.652) ==~ 55.0
-    doAssert round(54.352) ==~ 54.0
-    doAssert round(-54.652) ==~ -55.0
-    doAssert round(-54.352) ==~ -54.0
-    doAssert round(0.0) ==~ 0.0
+    doAssert round(54.652) =~ 55.0
+    doAssert(not (round(54.652) !=~ 55.0))
+    doAssert round(54.352) =~ 54.0
+    doAssert round(-54.652) =~ -55.0
+    doAssert round(-54.352) =~ -54.0
+    doAssert round(0.0) =~ 0.0
     # Round to positive decimal places
-    doAssert round(-547.652, 1) ==~ -547.7
-    doAssert round(547.652, 1) ==~ 547.7
-    doAssert round(-547.652, 2) ==~ -547.65
-    doAssert round(547.652, 2) ==~ 547.65
+    doAssert round(-547.652, 1) =~ -547.7
+    doAssert round(547.652, 1) =~ 547.7
+    doAssert round(-547.652, 2) =~ -547.65
+    doAssert round(547.652, 2) =~ 547.65
     # Round to negative decimal places
-    doAssert round(547.652, -1) ==~ 550.0
-    doAssert round(547.652, -2) ==~ 500.0
-    doAssert round(547.652, -3) ==~ 1000.0
-    doAssert round(547.652, -4) ==~ 0.0
-    doAssert round(-547.652, -1) ==~ -550.0
-    doAssert round(-547.652, -2) ==~ -500.0
-    doAssert round(-547.652, -3) ==~ -1000.0
-    doAssert round(-547.652, -4) ==~ 0.0
+    doAssert round(547.652, -1) =~ 550.0
+    doAssert round(547.652, -2) =~ 500.0
+    doAssert round(547.652, -3) =~ 1000.0
+    doAssert round(547.652, -4) =~ 0.0
+    doAssert round(-547.652, -1) =~ -550.0
+    doAssert round(-547.652, -2) =~ -500.0
+    doAssert round(-547.652, -3) =~ -1000.0
+    doAssert round(-547.652, -4) =~ 0.0
 
   block: # splitDecimal() tests
-    doAssert splitDecimal(54.674).intpart ==~ 54.0
-    doAssert splitDecimal(54.674).floatpart ==~ 0.674
-    doAssert splitDecimal(-693.4356).intpart ==~ -693.0
-    doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
-    doAssert splitDecimal(0.0).intpart ==~ 0.0
-    doAssert splitDecimal(0.0).floatpart ==~ 0.0
+    doAssert splitDecimal(54.674).intpart =~ 54.0
+    doAssert splitDecimal(54.674).floatpart =~ 0.674
+    doAssert splitDecimal(-693.4356).intpart =~ -693.0
+    doAssert splitDecimal(-693.4356).floatpart =~ -0.4356
+    doAssert splitDecimal(0.0).intpart =~ 0.0
+    doAssert splitDecimal(0.0).floatpart =~ 0.0
+
+  block: # trunc tests for vcc
+    doAssert(trunc(-1.1) == -1)
+    doAssert(trunc(1.1) == 1)
+    doAssert(trunc(-0.1) == -0)
+    doAssert(trunc(0.1) == 0)
+
+    #special case
+    doAssert(classify(trunc(1e1000000)) == fcInf)
+    doAssert(classify(trunc(-1e1000000)) == fcNegInf)
+    doAssert(classify(trunc(0.0/0.0)) == fcNan)
+    doAssert(classify(trunc(0.0)) == fcZero)
+
+    #trick the compiler to produce signed zero
+    let
+      f_neg_one = -1.0
+      f_zero = 0.0
+      f_nan = f_zero / f_zero
+
+    doAssert(classify(trunc(f_neg_one*f_zero)) == fcNegZero)
+
+    doAssert(trunc(-1.1'f32) == -1)
+    doAssert(trunc(1.1'f32) == 1)
+    doAssert(trunc(-0.1'f32) == -0)
+    doAssert(trunc(0.1'f32) == 0)
+    doAssert(classify(trunc(1e1000000'f32)) == fcInf)
+    doAssert(classify(trunc(-1e1000000'f32)) == fcNegInf)
+    doAssert(classify(trunc(f_nan.float32)) == fcNan)
+    doAssert(classify(trunc(0.0'f32)) == fcZero)
