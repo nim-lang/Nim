@@ -231,7 +231,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
   ##
   ##   echo people.sortedByIt((it.age, it.name))
   ##
-  var result {.gensym.} = sorted(seq1, proc(x, y: type(seq1[0])): int =
+  var result = sorted(seq1, proc(x, y: type(seq1[0])): int =
     var it {.inject.} = x
     let a = op
     it = y

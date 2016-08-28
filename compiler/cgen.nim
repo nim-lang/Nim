@@ -167,10 +167,6 @@ proc linefmt(p: BProc, s: TCProcSection, frmt: FormatStr,
              args: varargs[Rope]) =
   add(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
-proc appLineCg(p: BProc, r: var Rope, frmt: FormatStr,
-               args: varargs[Rope]) =
-  add(r, indentLine(p, ropecg(p.module, frmt, args)))
-
 proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
   if result < 0: result = 0 # negative numbers are not allowed in #line
@@ -259,8 +255,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
 
 type
   TAssignmentFlag = enum
-    needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
-    afSrcIsNotNil, needToKeepAlive
+    needToCopy, afDestIsNil, afDestIsNotNil, afSrcIsNil, afSrcIsNotNil
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
@@ -337,31 +332,6 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.s = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
-
-proc keepAlive(p: BProc, toKeepAlive: TLoc) =
-  when false:
-    # deactivated because of the huge slowdown this causes; GC will take care
-    # of interior pointers instead
-    if optRefcGC notin gGlobalOptions: return
-    var result: TLoc
-    var fid = rope(p.gcFrameId)
-    result.r = "GCFRAME.F" & fid
-    addf(p.gcFrameType, "  $1 F$2;$n",
-        [getTypeDesc(p.module, toKeepAlive.t), fid])
-    inc(p.gcFrameId)
-    result.k = locTemp
-    #result.a = -1
-    result.t = toKeepAlive.t
-    result.s = OnStack
-    result.flags = {}
-
-    if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
-      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
-    else:
-      useStringh(p.module)
-      linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-           addrLoc(result), addrLoc(toKeepAlive), rdLoc(result))
 
 proc initGCFrame(p: BProc): Rope =
   if p.gcFrameId > 0: result = "struct {$1} GCFRAME;$n" % [p.gcFrameType]
@@ -619,9 +589,6 @@ proc generateHeaders(m: BModule) =
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it.data)])
     it = PStrEntry(it.next)
-
-proc retIsNotVoid(s: PSym): bool =
-  result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
@@ -1020,7 +987,7 @@ proc genInitCode(m: BModule) =
       var procname = makeCString(m.module.name.s)
       add(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
-      add(prc, ~"\tTFrame F; FR.len = 0;$N")
+      add(prc, ~"\tTFrame FR; FR.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit))
   add(prc, m.preInitProc.s(cpsInit))

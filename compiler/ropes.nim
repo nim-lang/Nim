@@ -310,15 +310,19 @@ proc equalsFile*(r: Rope, f: File): bool =
     buf: array[bufSize, char]
     bpos = buf.len
     blen = buf.len
+    btotal = 0
+    rtotal = 0
 
   for s in leaves(r):
     var spos = 0
     let slen = s.len
+    rtotal += slen
     while spos < slen:
       if bpos == blen:
         # Read more data
         bpos = 0
         blen = readBuffer(f, addr(buf[0]), buf.len)
+        btotal += blen
         if blen == 0:  # no more data in file
           result = false
           return
@@ -330,7 +334,8 @@ proc equalsFile*(r: Rope, f: File): bool =
       spos += n
       bpos += n
 
-  result = readBuffer(f, addr(buf[0]), 1) == 0  # check that we've read all
+  result = readBuffer(f, addr(buf[0]), 1) == 0 and
+      btotal == rtotal # check that we've read all
 
 proc equalsFile*(r: Rope, filename: string): bool =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not

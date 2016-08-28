@@ -297,9 +297,20 @@ var
   gSomeReady : Semaphore
   readyWorker: ptr Worker
 
+# A workaround for recursion deadlock issue
+# https://github.com/nim-lang/Nim/issues/4597
+var
+  numSlavesLock: Lock
+  numSlavesRunning {.guard: numSlavesLock}: int
+  numSlavesWaiting {.guard: numSlavesLock}: int
+  isSlave {.threadvar.}: bool
+
+numSlavesLock.initLock
+
 gSomeReady.initSemaphore()
 
 proc slave(w: ptr Worker) {.thread.} =
+  isSlave = true
   while true:
     when declared(atomicStoreN):
       atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
@@ -311,7 +322,15 @@ proc slave(w: ptr Worker) {.thread.} =
     # XXX Somebody needs to look into this (why does this assertion fail
     # in Visual Studio?)
     when not defined(vcc): assert(not w.ready)
+
+    withLock numSlavesLock:
+      inc numSlavesRunning
+
     w.f(w, w.data)
+
+    withLock numSlavesLock:
+      dec numSlavesRunning
+
     if w.q.len != 0: w.cleanFlowVars
     if w.shutdown:
       w.shutdown = false
@@ -464,10 +483,34 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
         fn(self, data)
         await(self.taskStarted)
         return
-      else:
-        await(gSomeReady)
-    else:
-      await(gSomeReady)
+
+    if isSlave:
+      # Run under lock until `numSlavesWaiting` increment to avoid a
+      # race (otherwise two last threads might start waiting together)
+      withLock numSlavesLock:
+        if numSlavesRunning <= numSlavesWaiting + 1:
+          # All the other slaves are waiting
+          # If we wait now, we-re deadlocked until
+          # an external spawn happens !
+          if currentPoolSize < maxPoolSize:
+            if not workersData[currentPoolSize].initialized:
+              activateWorkerThread(currentPoolSize)
+            let w = addr(workersData[currentPoolSize])
+            atomicInc currentPoolSize
+            if selectWorker(w, fn, data):
+              return
+          else:
+            # There is no place in the pool. We're deadlocked.
+            # echo "Deadlock!"
+            discard
+
+        inc numSlavesWaiting
+
+    await(gSomeReady)
+
+    if isSlave:
+      withLock numSlavesLock:
+        dec numSlavesWaiting
 
 var
   distinguishedLock: Lock

@@ -340,26 +340,6 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
       if not isKeyword(p.tok.tokType): getTok(p)
       result = ast.emptyNode
 
-proc indexExpr(p: var TParser): PNode =
-  #| indexExpr = expr
-  result = parseExpr(p)
-
-proc indexExprList(p: var TParser, first: PNode, k: TNodeKind,
-                   endToken: TTokType): PNode =
-  #| indexExprList = indexExpr ^+ comma
-  result = newNodeP(k, p)
-  addSon(result, first)
-  getTok(p)
-  optInd(p, result)
-  while p.tok.tokType notin {endToken, tkEof}:
-    var a = indexExpr(p)
-    addSon(result, a)
-    if p.tok.tokType != tkComma: break
-    getTok(p)
-    skipComment(p, a)
-  optPar(p)
-  eat(p, endToken)
-
 proc colonOrEquals(p: var TParser, a: PNode): PNode =
   if p.tok.tokType == tkColon:
     result = newNodeP(nkExprColonExpr, p)

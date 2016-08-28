@@ -74,8 +74,7 @@ proc genOid*(): Oid =
 
   var t = gettime(nil)
 
-  var i = int32(incr)
-  atomicInc(incr)
+  var i = int32(atomicInc(incr))
 
   if fuzz == 0:
     # racy, but fine semantically:

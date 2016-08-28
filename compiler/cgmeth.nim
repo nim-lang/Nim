@@ -145,15 +145,16 @@ proc fixupDispatcher(meth, disp: PSym) =
         disp.typ.lockLevel = meth.typ.lockLevel
 
 proc methodDef*(s: PSym, fromCache: bool) =
-  var L = len(gMethods)
+  let L = len(gMethods)
   var witness: PSym
   for i in countup(0, L - 1):
-    var disp = gMethods[i].dispatcher
+    let disp = gMethods[i].dispatcher
     case sameMethodBucket(disp, s)
     of Yes:
       add(gMethods[i].methods, s)
       attachDispatcher(s, lastSon(disp.ast))
       fixupDispatcher(s, disp)
+      #echo "fixup ", disp.name.s, " ", disp.id
       when useEffectSystem: checkMethodEffects(disp, s)
       if sfBase in s.flags and gMethods[i].methods[0] != s:
         # already exists due to forwarding definition?

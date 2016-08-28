@@ -474,12 +474,14 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
 
 type
   TPutArgInto = enum
-    paDirectMapping, paFastAsgn, paVarAsgn
+    paDirectMapping, paFastAsgn, paVarAsgn, paComplexOpenarray
 
 proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # This analyses how to treat the mapping "formal <-> arg" in an
   # inline context.
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
+    if arg.kind == nkStmtListExpr:
+      return paComplexOpenarray
     return paDirectMapping    # XXX really correct?
                               # what if ``arg`` has side-effects?
   case arg.kind
@@ -569,6 +571,14 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
+    of paComplexOpenarray:
+      let typ = newType(tySequence, formal.owner)
+      addSonSkipIntLit(typ, formal.typ.sons[0])
+      var temp = newTemp(c, typ, formal.info)
+      addVar(v, temp)
+      add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
+      idNodeTablePut(newC.mapping, formal, temp)
+
   var body = iter.getBody.copyTree
   pushInfoContext(n.info)
   # XXX optimize this somehow. But the check "c.inlining" is not correct:
@@ -583,13 +593,6 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   popInfoContext()
   popTransCon(c)
   # echo "transformed: ", stmtList.PNode.renderTree
-
-proc getMagicOp(call: PNode): TMagic =
-  if call.sons[0].kind == nkSym and
-      call.sons[0].sym.kind in {skProc, skMethod, skConverter}:
-    result = call.sons[0].sym.magic
-  else:
-    result = mNone
 
 proc transformCase(c: PTransf, n: PNode): PTransNode =
   # removes `elif` branches of a case stmt

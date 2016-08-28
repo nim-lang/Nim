@@ -748,7 +748,7 @@ proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
   let tmp = c.genx(arg)
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
-  c.gABx(n, opc, 0, genType(c, n.typ))
+  c.gABx(n, opc, 0, genType(c, n.typ.skipTypes({tyStatic})))
   c.gABx(n, opc, 0, genType(c, arg.typ.skipTypes({tyStatic})))
   c.freeTemp(tmp)
 
@@ -1127,14 +1127,6 @@ proc fitsRegister*(t: PType): bool =
   t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
-proc requiresCopy(n: PNode): bool =
-  if n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind in atomicTypes:
-    result = false
-  elif n.kind in ({nkCurly, nkBracket, nkPar, nkObjConstr}+nkCallKinds):
-    result = false
-  else:
-    result = true
-
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInst-{tyTypeDesc}).kind == tyRef
 
@@ -1215,8 +1207,6 @@ proc whichAsgnOpc(n: PNode): TOpcode =
   else:
     opcAsgnComplex
 
-proc isRef(t: PType): bool = t.skipTypes(abstractRange-{tyTypeDesc}).kind == tyRef
-
 proc whichAsgnOpc(n: PNode; opc: TOpcode): TOpcode = opc
 
 proc genAsgn(c: PCtx; dest: TDest; ri: PNode; requiresCopy: bool) =
@@ -1267,9 +1257,6 @@ proc isTemp(c: PCtx; dest: TDest): bool =
 
 template needsAdditionalCopy(n): untyped =
   not c.isTemp(dest) and not fitsRegister(n.typ)
-
-proc skipDeref(n: PNode): PNode =
-  result = if n.kind in {nkDerefExpr, nkHiddenDeref}: n.sons[0] else: n
 
 proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
                        dest, idx, value: TRegister) =
@@ -1848,7 +1835,6 @@ proc genParams(c: PCtx; params: PNode) =
   # res.sym.position is already 0
   c.prc.slots[0] = (inUse: true, kind: slotFixedVar)
   for i in 1.. <params.len:
-    let param = params.sons[i].sym
     c.prc.slots[i] = (inUse: true, kind: slotFixedLet)
   c.prc.maxSlots = max(params.len, 1)
 

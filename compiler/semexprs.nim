@@ -414,8 +414,6 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   if sonsLen(n) == 0:
     rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else:
-    var x = n.sons[0]
-    var lastIndex: BiggestInt = sonsLen(n) - 1
     var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
     addSonSkipIntLit(typ, t)
   typ.sons[0] = makeRangeType(c, 0, sonsLen(n) - 1, n.info)
@@ -511,16 +509,6 @@ proc fixAbstractType(c: PContext, n: PNode) =
         discard
         #if (it.typ == nil):
         #  InternalError(it.info, "fixAbstractType: " & renderTree(it))
-
-proc skipObjConv(n: PNode): PNode =
-  case n.kind
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if skipTypes(n.sons[1].typ, abstractPtrs).kind in {tyTuple, tyObject}:
-      result = n.sons[1]
-    else:
-      result = n
-  of nkObjUpConv, nkObjDownConv: result = n.sons[0]
-  else: result = n
 
 proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult =
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
@@ -701,9 +689,6 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
         result.sons[0] = newSymNode(errorSym(c, n))
-      if sfNoSideEffect notin callee.flags:
-        if {sfImportc, sfSideEffect} * callee.flags != {}:
-          incl(c.p.owner.flags, sfSideEffect)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
 
@@ -804,9 +789,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       result = m.call
       instGenericConvertersSons(c, result, m)
-    # we assume that a procedure that calls something indirectly
-    # has side-effects:
-    if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   elif t != nil and t.kind == tyTypeDesc:
     if n.len == 1: return semObjConstr(c, n, flags)
     return semConv(c, n)
@@ -1040,9 +1022,6 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
 
     markUsed(n.info, s)
     styleCheckUse(n.info, s)
-    # if a proc accesses a global variable, it is not side effect free:
-    if sfGlobal in s.flags:
-      incl(c.p.owner.flags, sfSideEffect)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
     # not sure the symbol really ends up being used:
@@ -1421,8 +1400,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   # a = b # both are vars, means: a[] = b[]
   # a = b # b no 'var T' means: a = addr(b)
   var le = a.typ
-  if skipTypes(le, {tyGenericInst}).kind != tyVar and
-      isAssignable(c, a) == arNone:
+  if (skipTypes(le, {tyGenericInst}).kind != tyVar and
+        isAssignable(c, a) == arNone) or
+      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!
     localError(a.info, errXCannotBeAssignedTo,
                renderTree(a, {renderNoComments}))

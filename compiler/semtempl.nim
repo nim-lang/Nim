@@ -287,35 +287,6 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   for i in 0.. < n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
 
-proc wrapInBind(c: var TemplCtx; n: PNode; opr: string): PNode =
-  let ident = getIdent(opr)
-  if ident.id in c.toInject: return n
-
-  let s = searchInScopes(c.c, ident)
-  if s != nil:
-    var callee: PNode
-    if contains(c.toBind, s.id):
-      callee = symChoice(c.c, n, s, scClosed)
-    elif contains(c.toMixin, s.name.id):
-      callee = symChoice(c.c, n, s, scForceOpen)
-    elif s.owner == c.owner and sfGenSym in s.flags:
-      # template tmp[T](x: var seq[T]) =
-      # var yz: T
-      incl(s.flags, sfUsed)
-      callee = newSymNode(s, n.info)
-      styleCheckUse(n.info, s)
-    else:
-      callee = semTemplSymbol(c.c, n, s)
-
-    let call = newNodeI(nkCall, n.info)
-    call.add(callee)
-    for i in 0 .. n.len-1: call.add(n[i])
-    result = newNodeI(nkBind, n.info, 2)
-    result.sons[0] = n
-    result.sons[1] = call
-  else:
-    result = n
-
 proc oprIsRoof(n: PNode): bool =
   const roof = "^"
   case n.kind

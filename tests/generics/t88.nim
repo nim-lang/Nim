@@ -23,3 +23,11 @@ let c = ChildClass[string].new("Base", "Child")
 
 assert c.baseMethod == "Base"
 assert c.overridedMethod == "Child"
+
+
+# bug #4528
+type GenericBase[T] = ref object of RootObj
+type GenericSubclass[T] = ref object of GenericBase[T]
+proc foo[T](g: GenericBase[T]) = discard
+var bar: GenericSubclass[int]
+foo(bar)

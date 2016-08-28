@@ -122,6 +122,10 @@ proc existsDir*(dir: string): bool =
   ## An alias for ``dirExists``.
   dirExists(dir)
 
+proc selfExe*(): string =
+  ## Returns the currently running nim or nimble executable.
+  builtin
+
 proc toExe*(filename: string): string =
   ## On Windows adds ".exe" to `filename`, else returns `filename` unmodified.
   (when defined(windows): filename & ".exe" else: filename)
@@ -207,6 +211,15 @@ proc exec*(command: string, input: string, cache = "") {.
   ## Executes an external process.
   log "exec: " & command:
     echo staticExec(command, input, cache)
+
+proc selfExec*(command: string) =
+  ## Executes an external command with the current nim/nimble executable.
+  ## ``Command`` must not contain the "nim " part.
+  let c = selfExe() & " " & command
+  log "exec: " & c:
+    if rawExec(c) != 0:
+      raise newException(OSError, "FAILED: " & c)
+    checkOsError()
 
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.

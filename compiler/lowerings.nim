@@ -578,6 +578,8 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   var fn = n.sons[0]
   # templates and macros are in fact valid here due to the nature of
   # the transformation:
+  if fn.kind == nkClosure:
+    localError(n.info, "closure in spawn environment is not allowed")
   if not (fn.kind == nkSym and fn.sym.kind in {skProc, skTemplate, skMacro,
                                                skMethod, skConverter}):
     # for indirect calls we pass the function pointer in the scratchObj

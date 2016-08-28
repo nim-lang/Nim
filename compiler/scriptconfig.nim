@@ -130,6 +130,8 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
     elif not isAbsolute(val):
       val = vthisDir / val
     gModuleOverrides[key] = val
+  cbconf selfExe:
+    setResult(a, os.getAppFilename())
 
 proc runNimScript*(scriptName: string; freshDefines=true) =
   passes.gIncludeFile = includeModule

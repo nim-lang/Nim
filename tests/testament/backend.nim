@@ -59,6 +59,7 @@ var
   thisMachine: MachineId
   thisCommit: CommitId
 
+{.experimental.}
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
 
 proc getMachine*(db: DbConn): MachineId =

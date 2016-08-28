@@ -21,7 +21,7 @@ proc registerGcRoot(p: BProc, v: PSym) =
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v)
-    appcg(p.module, p.module.initProc.procSec(cpsStmts),
+    appcg(p.module, p.module.initProc.procSec(cpsInit),
       "#nimRegisterGlobalMarker($1);$n", [prc])
 
 proc isAssignedImmediately(n: PNode): bool {.inline.} =
@@ -459,7 +459,6 @@ proc genWhileStmt(p: BProc, t: PNode) =
   # significantly worse code
   var
     a: TLoc
-    labl: TLabel
   assert(sonsLen(t) == 2)
   inc(p.withinLoop)
   genLineDir(p, t)
@@ -756,16 +755,6 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
       genGotoForCase(p, t)
     else:
       genOrdinalCase(p, t, d)
-
-proc hasGeneralExceptSection(t: PNode): bool =
-  var length = sonsLen(t)
-  var i = 1
-  while (i < length) and (t.sons[i].kind == nkExceptBranch):
-    var blen = sonsLen(t.sons[i])
-    if blen == 1:
-      return true
-    inc(i)
-  result = false
 
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
@@ -1089,7 +1078,6 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   var a, tmp: TLoc
   var dotExpr = e.sons[0]
-  var d: PSym
   if dotExpr.kind == nkCheckedFieldExpr: dotExpr = dotExpr.sons[0]
   initLocExpr(p, e.sons[0], a)
   getTemp(p, a.t, tmp)

@@ -24,7 +24,7 @@ proc delNimCache() =
     echo "[Warning] could not delete: ", nimcacheDir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: expr): stmt =
+  template test(filename: untyped) =
     testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
 
   delNimCache()
@@ -46,18 +46,19 @@ proc runRodFiles(r: var TResults, cat: Category, options: string) =
   test "deada2"
   delNimCache()
 
-  # test method generation:
-  test "bmethods"
-  test "bmethods2"
-  delNimCache()
+  when false:
+    # test method generation:
+    test "bmethods"
+    test "bmethods2"
+    delNimCache()
 
-  # test generics:
-  test "tgeneric1"
-  test "tgeneric2"
-  delNimCache()
+    # test generics:
+    test "tgeneric1"
+    test "tgeneric2"
+    delNimCache()
 
 proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: expr): stmt =
+  template test(filename: untyped) =
     testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
   delNimCache()
@@ -114,20 +115,20 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
-  template testWithoutMs(filename: expr): stmt =
+  template testWithoutMs(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options, cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat, actionRun)
 
-  template testWithoutBoehm(filename: expr): stmt =
+  template testWithoutBoehm(filename: untyped) =
     testWithoutMs filename
     testSpec r, makeTest("tests/gc" / filename, options &
                   " --gc:markAndSweep", cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat, actionRun)
-  template test(filename: expr): stmt =
+  template test(filename: untyped) =
     testWithoutBoehm filename
     when not defined(windows):
       # AR: cannot find any boehm.dll on the net, right now, so disabled
@@ -173,7 +174,7 @@ proc longGCTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- threading tests -----------------------------------
 
 proc threadTests(r: var TResults, cat: Category, options: string) =
-  template test(filename: expr): stmt =
+  template test(filename: untyped) =
     testSpec r, makeTest("tests/threads" / filename, options, cat, actionRun)
     testSpec r, makeTest("tests/threads" / filename, options &
       " -d:release", cat, actionRun)
@@ -209,7 +210,7 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- JS tests ------------------------------------------
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
-  template test(filename: expr): stmt =
+  template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat,
                          actionRun, targetJS)
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
@@ -369,9 +370,8 @@ proc `&?.`(a, b: string): string =
 proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: string = "t*.nim") =
   case cat.string.normalize
   of "rodfiles":
-    discard # Disabled for now
-    #compileRodFiles(r, cat, options)
-    #runRodFiles(r, cat, options)
+    when false: compileRodFiles(r, cat, options)
+    runRodFiles(r, cat, options)
   of "js":
     # XXX JS doesn't need to be special anymore
     jsTests(r, cat, options)

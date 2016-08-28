@@ -371,7 +371,7 @@ template filterIt*(seq1, pred: untyped): untyped =
   ##      notAcceptable = filterIt(temperatures, it > 50 or it < -10)
   ##    assert acceptable == @[-2.0, 24.5, 44.31]
   ##    assert notAcceptable == @[-272.15, 99.9, -113.44]
-  var result {.gensym.} = newSeq[type(seq1[0])]()
+  var result = newSeq[type(seq1[0])]()
   for it {.inject.} in items(seq1):
     if pred: result.add(it)
   result
@@ -420,7 +420,7 @@ template allIt*(seq1, pred: untyped): bool =
   ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
   ##   assert allIt(numbers, it < 10) == true
   ##   assert allIt(numbers, it < 9) == false
-  var result {.gensym.} = true
+  var result = true
   for it {.inject.} in items(seq1):
     if not pred:
       result = false
@@ -451,7 +451,7 @@ template anyIt*(seq1, pred: untyped): bool =
   ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
   ##   assert anyIt(numbers, it > 8) == true
   ##   assert anyIt(numbers, it > 9) == false
-  var result {.gensym.} = false
+  var result = false
   for it {.inject.} in items(seq1):
     if pred:
       result = true
@@ -512,7 +512,7 @@ template foldl*(sequence, operation: untyped): untyped =
   ##   assert concatenation == "nimiscool"
   let s = sequence
   assert s.len > 0, "Can't fold empty sequences"
-  var result {.gensym.}: type(s[0])
+  var result: type(s[0])
   result = s[0]
   for i in 1..<s.len:
     let
@@ -537,7 +537,7 @@ template foldl*(sequence, operation, first): untyped =
   ##     numbers = @[0, 8, 1, 5]
   ##     digits = foldl(numbers, a & (chr(b + ord('0'))), "")
   ##   assert digits == "0815"
-  var result {.gensym.}: type(first)
+  var result: type(first)
   result = first
   for x in items(sequence):
     let
@@ -574,7 +574,7 @@ template foldr*(sequence, operation: untyped): untyped =
   ##   assert concatenation == "nimiscool"
   let s = sequence
   assert s.len > 0, "Can't fold empty sequences"
-  var result {.gensym.}: type(s[0])
+  var result: type(s[0])
   result = sequence[s.len - 1]
   for i in countdown(s.len - 2, 0):
     let
@@ -598,7 +598,7 @@ template mapIt*(seq1, typ, op: untyped): untyped =
   ##   assert strings == @["4", "8", "12", "16"]
   ## **Deprecated since version 0.12.0:** Use the ``mapIt(seq1, op)``
   ##   template instead.
-  var result {.gensym.}: seq[typ] = @[]
+  var result: seq[typ] = @[]
   for it {.inject.} in items(seq1):
     result.add(op)
   result
@@ -662,7 +662,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
   ##   import random
   ##   var seqRand = newSeqWith(20, random(10))
   ##   echo seqRand
-  var result {.gensym.} = newSeq[type(init)](len)
+  var result = newSeq[type(init)](len)
   for i in 0 .. <len:
     result[i] = init
   result

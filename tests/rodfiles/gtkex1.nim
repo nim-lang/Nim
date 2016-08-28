@@ -1,12 +1,12 @@
 import
   cairo, glib2, gtk2
 
-proc destroy(widget: pWidget, data: pgpointer) {.cdecl.} =
+proc destroy(widget: PWidget, data: Pgpointer) {.cdecl.} =
   main_quit()
 
 var
-  window: pWidget
-nimrod_init()
+  window: PWidget
+nim_init()
 window = window_new(WINDOW_TOPLEVEL)
 discard signal_connect(window, "destroy",
                        SIGNAL_FUNC(gtkex1.destroy), nil)

@@ -10,6 +10,8 @@ Some text here.
 Changes affecting backwards compatibility
 -----------------------------------------
 
+- The ``json`` module uses an ``OrderedTable`` rather than a ``Table``
+  for JSON objects.
 - De-deprecated ``re.nim`` because we have too much code using it
   and it got the basic API right.
 

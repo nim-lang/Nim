@@ -465,7 +465,7 @@ when isMainModule and not defined(JS):
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
-  
+
 when isMainModule:
   block: # floating point comparison tests for very large and very small numbers
     doAssert(1e10 =~ (1e10 + 1))
