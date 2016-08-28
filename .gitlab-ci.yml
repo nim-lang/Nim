@@ -1,0 +1,83 @@
+# use the official gcc image, based on debian
+# can use versions as well, like gcc:5.2
+# see https://hub.docker.com/_/gcc/
+image: gcc
+
+stages:
+  - pre-build
+  - build
+  - test
+
+.linux_set_path: &linux_set_path_def
+  before_script:
+    - export PATH=$(pwd)/bin:$PATH
+  tags:
+    - linux
+
+.windows_set_path: &win_set_path_def
+  before_script:
+    - set PATH=%CD%\bin;%PATH%
+  tags:
+    - windows
+
+build-linux:
+  stage: build
+  script:
+    - sh ci/build.sh
+  artifacts:
+    paths:
+      - bin/nim
+      - bin/nimd
+      - compiler/nim
+      - koch
+    expire_in: 1 week
+  tags:
+    - linux
+
+build-windows:
+  stage: build
+  script:
+    - ci\build.bat
+  artifacts:
+    paths:
+      - bin\nim.exe
+      - bin\nimd.exe
+      - compiler\nim.exe
+      - koch.exe
+    expire_in: 1 week
+  tags:
+    - windows
+
+test-linux:
+  stage: test
+  <<: *linux_set_path_def
+  script:
+    - sh ci/deps.sh
+    - nim c --taintMode:on tests/testament/tester
+    - tests/testament/tester --pedantic all
+  tags:
+    - linux
+
+test-windows:
+  stage: test
+  <<: *win_set_path_def
+  script:
+    - call ci\deps.bat
+    - nim c --taintMode:on tests\testament\tester
+    - tests\testament\tester.exe --pedantic all
+  tags:
+    - windows
+
+.csources: &csources_definition
+  stage: test
+  script:
+    - nim -v
+    - ./koch csources
+    - ./koch xz
+  artifacts:
+    paths:
+      - csources
+
+csources-linux:
+  <<: *csources_definition
+  <<: *linux_set_path_def
