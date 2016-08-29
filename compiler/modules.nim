@@ -186,14 +186,11 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
         return
     else:
       result.id = getID()
-    if sfMainModule in flags and gProjectIsStdin:
-      processModule(result, llStreamOpen(stdin), rd)
-    else:
-      processModule(result, nil, rd)
+    let validFile = processModule(result, if sfMainModule in flags and gProjectIsStdin: llStreamOpen(stdin) else: nil, rd)
     if optCaasEnabled in gGlobalOptions:
       gMemCacheData[fileIdx].compiledAt = gLastCmdTime
       gMemCacheData[fileIdx].needsRecompile = Recompiled
-      doHash fileIdx
+      if validFile: doHash fileIdx
   else:
     if checkDepMem(fileIdx) == Yes:
       result = compileModule(fileIdx, flags)
