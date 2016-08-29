@@ -512,6 +512,10 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     arithAux(p, n, r, op, jsOps)
   r.kind = resExpr
 
+proc hasFrameInfo(p: PProc): bool =
+  ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
+      ((p.prc == nil) or not (sfPure in p.prc.flags))
+
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if optLineDir in p.options:
@@ -521,9 +525,7 @@ proc genLineDir(p: PProc, n: PNode) =
       ((p.prc == nil) or sfPure notin p.prc.flags):
     useMagic(p, "endb")
     addf(p.body, "endb($1);$n", [rope(line)])
-  elif ({optLineTrace, optStackTrace} * p.options ==
-      {optLineTrace, optStackTrace}) and
-      ((p.prc == nil) or not (sfPure in p.prc.flags)):
+  elif hasFrameInfo(p):
     addf(p.body, "F.line = $1;$n" | "$$F['line'] = $1;$n", [rope(line)])
 
 proc genWhileStmt(p: PProc, n: PNode) =
@@ -558,10 +560,13 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   # code to generate:
   #
   #  ++excHandler;
+  #  var tmpFramePtr = framePtr;
   #  try {
   #    stmts;
+  #    --excHandler;
   #  } catch (EXC) {
   #    var prevJSError = lastJSError; lastJSError = EXC;
+  #    framePtr = tmpFramePtr;
   #    --excHandler;
   #    if (e.typ && e.typ == NTI433 || e.typ == NTI2321) {
   #      stmts;
@@ -572,6 +577,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   #    }
   #    lastJSError = prevJSError;
   #  } finally {
+  #    framePtr = tmpFramePtr;
   #    stmts;
   #  }
   genLineDir(p, n)
@@ -584,8 +590,10 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   var catchBranchesExist = length > 1 and n.sons[i].kind == nkExceptBranch
   if catchBranchesExist and p.target == targetJS:
     add(p.body, "++excHandler;" & tnl)
-  var safePoint = "Tmp$1" % [rope(p.unique)]
-  if optStackTrace in p.options: add(p.body, "framePtr = F;" & tnl)
+  var tmpFramePtr = rope"F"
+  if optStackTrace notin p.options:
+    tmpFramePtr = p.getTemp(true)
+    add(p.body, tmpFramePtr & " = framePtr;" & tnl)
   addf(p.body, "try {$n", [])
   if p.target == targetPHP and p.globals == nil:
       p.globals = "global $lastJSError; global $prevJSError;".rope
@@ -595,8 +603,9 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   var generalCatchBranchExists = false
   let dollar = rope(if p.target == targetJS: "" else: "$")
   if p.target == targetJS and catchBranchesExist:
-    addf(p.body, "} catch (EXC) {$n var prevJSError = lastJSError;$n" &
+    addf(p.body, "--excHandler;$n} catch (EXC) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXC;$n --excHandler;$n", [])
+    add(p.body, "framePtr = $1;$n" % [tmpFramePtr])
   elif p.target == targetPHP:
     addf(p.body, "} catch (Exception $$EXC) {$n $$prevJSError = $$lastJSError;$n $$lastJSError = $$EXC;$n", [])
   while i < length and n.sons[i].kind == nkExceptBranch:
@@ -618,8 +627,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
         addf(orExpr, "isObj($2lastJSError.m_type, $1)",
              [genTypeInfo(p, n.sons[i].sons[j].typ), dollar])
       if i > 1: add(p.body, "else ")
-      addf(p.body, "if ($3lastJSError && ($2)) {$n",
-        [safePoint, orExpr, dollar])
+      addf(p.body, "if ($1lastJSError && ($2)) {$n", [dollar, orExpr])
       gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
       addf(p.body, "}$n", [])
@@ -631,6 +639,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
   if p.target == targetJS:
     add(p.body, "} finally {" & tnl)
+    add(p.body, "framePtr = $1;$n" % [tmpFramePtr])
   if p.target == targetPHP:
     # XXX ugly hack for PHP codegen
     add(p.body, "}" & tnl)
@@ -1918,10 +1927,10 @@ proc frameCreate(p: PProc; procname, filename: Rope): Rope =
             procname, filename]
 
 proc frameDestroy(p: PProc): Rope =
-  result = rope(("framePtr = framePtr.prev;" | "$framePtr = $framePtr['prev'];") & tnl)
+  result = rope(("framePtr = F.prev;" | "$framePtr = $F['prev'];") & tnl)
 
 proc genProcBody(p: PProc, prc: PSym): Rope =
-  if optStackTrace in prc.options:
+  if hasFrameInfo(p):
     result = frameCreate(p,
               makeJSString(prc.owner.name.s & '.' & prc.name.s),
               makeJSString(toFilename(prc.info)))
@@ -1935,7 +1944,7 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   if prc.typ.callConv == ccSysCall and p.target == targetJS:
     result = ("try {$n$1} catch (e) {$n" &
       " alert(\"Unhandled exception:\\n\" + e.message + \"\\n\"$n}") % [result]
-  if optStackTrace in prc.options:
+  if hasFrameInfo(p):
     add(result, frameDestroy(p))
 
 proc genProc(oldProc: PProc, prc: PSym): Rope =

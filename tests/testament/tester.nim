@@ -334,6 +334,11 @@ proc testSpec(r: var TResults, test: TTest) =
 
     let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
     var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
+
+    # Treat all failure codes from nodejs as 1. Older versions of nodejs used
+    # to return other codes, but for us it is sufficient to know that it's not 0.
+    if exitCode != 0: exitCode = 1
+
     let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
                else: strip(buf.string)
     let expectedOut = strip(expected.outp)
