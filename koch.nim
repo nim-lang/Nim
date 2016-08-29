@@ -275,7 +275,7 @@ proc cleanAux(dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
-      var (dir, name, ext) = splitFile(path)
+      var (_, name, ext) = splitFile(path)
       if ext == "" or cleanExt.contains(ext):
         if not ignore.contains(name):
           echo "removing: ", path
@@ -367,6 +367,7 @@ when defined(withUpdate):
 
 # -------------- builds a release ---------------------------------------------
 
+#[
 proc run7z(platform: string, patterns: varargs[string]) =
   const tmpDir = "nim-" & VersionAsString
   createDir tmpDir
@@ -378,6 +379,7 @@ proc run7z(platform: string, patterns: varargs[string]) =
     exec("7z a -tzip $1-$2.zip $1" % [tmpDir, platform])
   finally:
     removeDir tmpDir
+]#
 
 proc winRelease() =
   boot(" -d:release")
@@ -396,7 +398,7 @@ proc winRelease() =
 
 # -------------- tests --------------------------------------------------------
 
-template `|`(a, b): expr = (if a.len > 0: a else: b)
+template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
