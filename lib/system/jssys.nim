@@ -47,11 +47,30 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result = newString(1)
   result[0] = x
 
+proc isNimException(): bool {.asmNoStackFrame.} =
+  when defined(nimphp):
+    asm "return isset(`lastJSError`['m_type']);"
+  else:
+    asm "return `lastJSError`.m_type;"
+
+proc getCurrentException*(): ref Exception =
+  if isNimException(): result = cast[ref Exception](lastJSError)
+
 proc getCurrentExceptionMsg*(): string =
   if lastJSError != nil:
-    return $lastJSError.message
-  else:
-    return ""
+    if isNimException():
+      return cast[Exception](lastJSError).msg
+    else:
+      when not defined(nimphp):
+        var msg: cstring
+        {.emit: """
+        if (`lastJSError`.message !== undefined) {
+          `msg` = `lastJSError`.message;
+        }
+        """.}
+        if not msg.isNil:
+          return $msg
+  return ""
 
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
@@ -130,12 +149,7 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
     raise newException(ReraiseError, "no exception to reraise")
   else:
     if excHandler == 0:
-      var isNimException: bool
-      when defined(nimphp):
-        asm "`isNimException` = isset(`lastJSError`['m_type']);"
-      else:
-        asm "`isNimException` = lastJSError.m_type;"
-      if isNimException:
+      if isNimException():
         unhandledException(cast[ref Exception](lastJSError))
 
     asm "throw lastJSError;"
