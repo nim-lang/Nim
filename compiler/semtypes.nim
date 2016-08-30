@@ -845,9 +845,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
     for i in 0 .. paramType.sonsLen - 2:
       if paramType.sons[i].kind == tyStatic:
-        var x = copyNode(ast.emptyNode)
-        x.typ = paramType.sons[i]
-        result.rawAddSon makeTypeFromExpr(c, x) # aka 'tyUnknown'
+        var staticCopy = paramType.sons[i].exactReplica
+        staticCopy.flags.incl tfInferrableStatic
+        result.rawAddSon staticCopy
       else:
         result.rawAddSon newTypeS(tyAnything, c)
 
@@ -891,7 +891,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                           allowMetaTypes = true)
       result = liftingWalk(expanded, true)
 
-  of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
+  of tyUserTypeClasses, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), true))
 
   of tyGenericParam:
@@ -1357,6 +1357,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)
+    if typeExpr.typ.kind == tyFromExpr:
+      return typeExpr.typ
     if typeExpr.typ.kind != tyTypeDesc:
       localError(n.info, errTypeExpected)
       result = errorType(c)

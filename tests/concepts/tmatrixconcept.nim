@@ -1,7 +1,8 @@
 discard """
-output: "0\n0"
+output: "0\n0\n0"
 msg: '''
 R=3 C=3 TE=9 FF=14 FC=20 T=int
+R=3 C=3 T=int
 '''
 """
 
@@ -41,13 +42,25 @@ proc `[]=`(m: var MyMatrix; r, c: int, v: m.T) =
 
 proc foo(x: MyMatrix, arr: array[15, x.T]) = discard
 
-proc matrixProc[R, C, TE, FF, FC, T](m: Matrix[R, C, TE, FF, FC, T]): T =
+proc genericMatrixProc[R, C, TE, FF, FC, T](m: Matrix[R, C, TE, FF, FC, T]): T =
   static:
     echo "R=", R, " C=", C, " TE=", TE, " FF=", FF, " FC=", FC, " T=", T.name
   
   m[0, 0]
 
-proc myMatrixProc(x: MyMatrix): MyMatrix.T = matrixProc(x)
+proc implicitMatrixProc(m: Matrix): m.T =
+  static:
+    echo "R=", m.Rows,
+        " C=", m.Cols,
+        # XXX: fix these
+        #" TE=", m.TotalElements,
+        #" FF=", m.FromFoo,
+        #" FC=", m.FromConst,
+        " T=", m.T.name
+    
+  m[0, 0]
+
+proc myMatrixProc(x: MyMatrix): MyMatrix.T = genericMatrixProc(x)
 
 var x: MyMatrix[3, 3, int]
 
@@ -63,5 +76,6 @@ static:
   no x is Matrix[3, 4, 9, 15, 20, int]
 
 echo x.myMatrixProc
-echo x.matrixProc
+echo x.genericMatrixProc
+echo x.implicitMatrixProc
 

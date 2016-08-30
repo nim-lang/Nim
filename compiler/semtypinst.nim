@@ -404,6 +404,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   case t.kind
   of tyGenericInvocation:
     result = handleGenericInvocation(cl, t)
+    if result.lastSon.kind == tyUserTypeClass:
+      result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
     localError(cl.info, errCannotInstantiateX, typeToString(t))

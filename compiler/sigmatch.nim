@@ -613,26 +613,34 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       template paramSym(kind): untyped =
         newSym(kind, typeParamName, Concept.sym, Concept.sym.info)
 
-      case typ.kind
-      of tyStatic:
-        param = paramSym skConst
-        param.typ = typ.exactReplica
-        if typ.n == nil:
-          param.typ.flags.incl tfInferrableStatic
-        else:
-          param.ast = typ.n
-      of tyUnknown:
-        param = paramSym skVar
-        param.typ = typ.exactReplica
-      else:
-        param = paramSym skType
-        param.typ = if typ.isMetaType:
-                      c.newTypeWithSons(tyInferred, @[typ])
-                    else:
-                      makeTypeDesc(c, typ)
+      block addTypeParam:
+        for prev in typeParams:
+          if prev[1].id == typ.id:
+            param = paramSym prev[0].kind
+            param.typ = prev[0].typ
+            break addTypeParam
 
+        case typ.kind
+        of tyStatic:
+          param = paramSym skConst
+          param.typ = typ.exactReplica
+          if typ.n == nil:
+            param.typ.flags.incl tfInferrableStatic
+          else:
+            param.ast = typ.n
+        of tyUnknown:
+          param = paramSym skVar
+          param.typ = typ.exactReplica
+        else:
+          param = paramSym skType
+          param.typ = if typ.isMetaType:
+                        c.newTypeWithSons(tyInferred, @[typ])
+                      else:
+                        makeTypeDesc(c, typ)
+
+        typeParams.safeAdd((param, typ))
+      
       addDecl(c, param)
-      typeParams.safeAdd((param, typ))
 
   for param in Concept.n[0]:
     var
@@ -682,7 +690,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       diagnostics.add msg
    
   var checkedBody = c.semTryExpr(c, body.copyTree, flags)
-  
+
   if collectDiagnostics:
     writelnHook = oldWriteHook
     for msg in diagnostics: m.diagnostics.safeAdd msg
@@ -696,7 +704,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     put(m.bindings, p[1], p[0].typ)
 
   if ff.kind == tyUserTypeClassInst:
-    result = generateTypeInstance(c, m.bindings, ff.sym.info, ff)
+    result = generateTypeInstance(c, m.bindings, Concept.sym.info, ff)
   else:
     result = copyType(ff, ff.owner, true)
 

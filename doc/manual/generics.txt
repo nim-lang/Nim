@@ -305,6 +305,9 @@ The concept types can be parametric just like the regular generic types:
 
 .. code-block:: nim
   ### matrixalgo.nim
+  
+  import typetraits
+
   type
     AnyMatrix*[R, C: static[int]; T] = concept m, var mvar, type M
       M.ValueType is T
@@ -314,14 +317,21 @@ The concept types can be parametric just like the regular generic types:
       m[int, int] is T
       mvar[int, int] = T
 
+      type TransposedType = StripGenericParams(M)[C, R, T]
+
     AnySquareMatrix*[N: static[int], T] = AnyMatrix[N, N, T]
 
-  proc transpose*[R, C, T](m: AnyMatrix[R, C, T]): m.type.basis[C, R, T] =
+    AnyTransform3D* = AnyMatrix[4, 4, float]
+
+  proc transposed*(m: AnyMatrix): m.TransposedType =
     for r in 0 .. <m.R:
       for c in 0 .. <m.C:
         result[r, c] = m[c, r]
 
   proc determinant*(m: AnySquareMatrix): int =
+    ...
+
+  proc setPerspectiveProjection*(m: AnyTransform3D) =
     ...
 
   --------------
@@ -331,24 +341,28 @@ The concept types can be parametric just like the regular generic types:
     Matrix*[M, N: static[int]; T] = object
       data: array[M*N, T]
 
-  proc `[]`*(m: Matrix; m, n: int): m.T =
-    m.data[m * m.N + n]
+  proc `[]`*(M: Matrix; m, n: int): M.T =
+    M.data[m * M.N + n]
 
-  proc `[]=`*(m: var Matrix; m, n: int; v: m.T) =
-    m.data[m * m.N + n] = v
+  proc `[]=`*(M: var Matrix; m, n: int; v: M.T) =
+    M.data[m * M.N + n] = v
 
   # Adapt the Matrix type to the concept's requirements
   template Rows*(M: type Matrix): expr = M.M
   template Cols*(M: type Matrix): expr = M.N
   template ValueType*(M: type Matrix): typedesc = M.T
-
+  
   -------------
   ### usage.nim
 
   import matrix, matrixalgo
 
-  var v: Matrix[3, 3, int]
-  echo v.determinant
+  var
+    m: Matrix[3, 3, int]
+    projectionMatrix: Matrix[4, 4, float]
+
+  echo m.transposed.determinant
+  setPerspectiveProjection projectionMatrix
 
 When the concept type is matched against a concrete type, the unbound type
 parameters are inferred from the body of the concept in a way that closely

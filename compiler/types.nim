@@ -183,7 +183,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
   if result: return
   if not containsOrIncl(marker, t.id):
     case t.kind
-    of tyGenericInst, tyGenericBody, tyAlias:
+    of tyGenericInst, tyGenericBody, tyAlias, tyInferred:
       result = iterOverTypeAux(marker, lastSon(t), iter, closure)
     else:
       for i in countup(0, sonsLen(t) - 1):
@@ -1320,6 +1320,9 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if result < 0: return
     if a < maxAlign: a = maxAlign
     result = align(result, a)
+  of tyInferred:
+    if typ.len > 1:
+      result = computeSizeAux(typ.lastSon, a)
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
     result = computeSizeAux(lastSon(typ), a)
   of tyTypeClasses:
@@ -1351,18 +1354,17 @@ proc getSize(typ: PType): BiggestInt =
   if result < 0: internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
-  if t.kind == tyStatic:
+  case t.kind
+  of tyStatic:
     return t.n == nil
-
-  if t.kind == tyTypeDesc:
+  of tyTypeDesc:
     if t.base.kind == tyNone: return true
     if containsGenericTypeIter(t.base, closure): return true
     return false
-
-  if t.kind in GenericTypes + tyTypeClasses + {tyFromExpr}:
+  of GenericTypes + tyTypeClasses + {tyFromExpr}:
     return true
-
-  return false
+  else:
+    return false
 
 proc containsGenericType*(t: PType): bool =
   result = iterOverType(t, containsGenericTypeIter, nil)
