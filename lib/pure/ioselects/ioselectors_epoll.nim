@@ -407,8 +407,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
             inc(i)
             continue
         elif Event.User in skey.events:
-          var data: uint = 0
-          if posix.read(fdi.cint, addr data, sizeof(uint)) != sizeof(uint):
+          var data: uint64 = 0
+          if posix.read(fdi.cint, addr data, sizeof(uint64)) != sizeof(uint64):
             let err = osLastError()
             if err == OSErrorCode(EAGAIN):
               inc(i)

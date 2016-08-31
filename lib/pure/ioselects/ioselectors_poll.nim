@@ -245,7 +245,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
             skey.key.events.incl(Event.Read)
             if Event.User in skey.events:
               var data: uint64 = 0
-              if posix.read(fd, addr data, sizeof(int)) != sizeof(int):
+              if posix.read(fd, addr data, sizeof(uint64)) != sizeof(uint64):
                 let err = osLastError()
                 if err != OSErrorCode(EAGAIN):
                   raiseOSError(osLastError())
