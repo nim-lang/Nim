@@ -326,7 +326,7 @@ proc sendBuffer*(socket: AsyncSocket, buf: pointer, size: int,
   if socket.isSsl:
     when defineSsl:
       sslLoop(socket, flags,
-              sslWrite(socket.sslHandle, cast[pointer](buf), size.cint))
+              sslWrite(socket.sslHandle, cast[cstring](buf), size.cint))
       await sendPendingSslData(socket, flags)
   else:
     await sendBuffer(socket.fd.AsyncFD, buf, size, flags)
