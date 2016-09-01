@@ -162,11 +162,11 @@ else:
         return int(win.ws_col)
     return 0
 
+  var L_ctermid{.importc, header: "<stdio.h>".}: cint
   proc terminalWidth*(): int =
-    ## Returns **some** reasonable terminal width from either standard file
+    ## Returns some reasonable terminal width from either standard file
     ## descriptors, controlling terminal, environment variables or tradition.
 
-    var L_ctermid{.importc, header: "<stdio.h>".}: cint
     var w = terminalWidthIoctl([0, 1, 2])   #Try standard file descriptors
     if w > 0: return w
     var cterm = newString(L_ctermid)        #Try controlling tty
