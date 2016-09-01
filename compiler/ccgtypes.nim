@@ -812,7 +812,9 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
   var base: Rope
   if (sonsLen(typ) > 0) and (typ.sons[0] != nil):
-    base = genTypeInfo(m, typ.sons[0])
+    var x = typ.sons[0]
+    if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
+    base = genTypeInfo(m, x)
   else:
     base = rope("0")
   genTypeInfoAuxBase(m, typ, origType, name, base)
