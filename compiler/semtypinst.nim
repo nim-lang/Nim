@@ -463,7 +463,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           result.sons[i] = r
           propagateToOwner(result, r)
 
-      result.n = replaceTypeVarsN(cl, result.n)
+      if result.kind != tyProc:
+        result.n = replaceTypeVarsN(cl, result.n)
 
       case result.kind
       of tyArray:
