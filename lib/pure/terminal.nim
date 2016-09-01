@@ -176,7 +176,7 @@ else:
     discard close(fd)
     if w > 0: return w
     var s = getEnv("COLUMNS")               #Try standard env var
-    if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
+    if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
       return w
     return 80                               #Finally default to venerable value
 
