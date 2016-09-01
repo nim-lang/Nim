@@ -661,11 +661,12 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if n.sonsLen == 0: return newConstraint(c, tyObject)
   var check = initIntSet()
   var pos = 0
-  var base: PType = nil
+  var base, realBase: PType = nil
   # n.sons[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3)
   if n.sons[1].kind != nkEmpty:
-    base = skipTypesOrNil(semTypeNode(c, n.sons[1].sons[0], nil), skipPtrs)
+    realBase = semTypeNode(c, n.sons[1].sons[0], nil)
+    base = skipTypesOrNil(realBase, skipPtrs)
     if base.isNil:
       localError(n.info, errIllegalRecursionInTypeX, "object")
     else:
@@ -676,9 +677,10 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
         if concreteBase.kind != tyError:
           localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
         base = nil
+        realBase = nil
   if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
-  rawAddSon(result, base)
+  rawAddSon(result, realBase)
   if result.n.isNil:
     result.n = newNodeI(nkRecList, n.info)
   else:

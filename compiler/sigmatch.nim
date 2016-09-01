@@ -352,18 +352,28 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
-proc isObjectSubtype(a, f: PType): int =
+proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var t = a
   assert t.kind == tyObject
   var depth = 0
+  var last = a
   while t != nil and not sameObjectTypes(f, t):
     assert t.kind == tyObject
     t = t.sons[0]
     if t == nil: break
-    t = skipTypes(t, {tyGenericInst})
+    last = t
+    t = skipTypes(t, skipPtrs)
     inc depth
   if t != nil:
+    if fGenericOrigin != nil and last.kind == tyGenericInst and
+        last.len-1 == fGenericOrigin.len:
+      for i in countup(1, sonsLen(fGenericOrigin) - 1):
+        let x = PType(idTableGet(c.bindings, fGenericOrigin.sons[i]))
+        if x == nil:
+          put(c, fGenericOrigin.sons[i], last.sons[i])
     result = depth
+  else:
+    result = -1
 
 type
   SkippedPtr = enum skippedNone, skippedRef, skippedPtr
@@ -896,7 +906,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       else:
-        var depth = isObjectSubtype(a, f)
+        var depth = isObjectSubtype(c, a, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
           result = isSubtype
@@ -1012,6 +1022,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isGeneric
     else:
       let genericBody = f.sons[0]
+      var askip = skippedNone
+      var fskip = skippedNone
+      let aobj = x.skipToObject(askip)
+      let fobj = genericBody.lastSon.skipToObject(fskip)
+      if fobj != nil and aobj != nil and askip == fskip:
+        let depth = isObjectSubtype(c, aobj, fobj, f)
+        if depth >= 0:
+          c.inheritancePenalty += depth
+          return if depth == 0: isGeneric else: isSubtype
       result = typeRel(c, genericBody, x)
       if result != isNone:
         # see tests/generics/tgeneric3.nim for an example that triggers this

@@ -1070,7 +1070,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
               result = check
             return result
           if ty.sons[0] == nil: break
-          ty = skipTypes(ty.sons[0], {tyGenericInst})
+          ty = skipTypes(ty.sons[0], skipPtrs)
     # old code, not sure if it's live code:
     markUsed(n.info, s)
     styleCheckUse(n.info, s)
@@ -1148,7 +1148,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       f = lookupInRecordAndBuildCheck(c, n, ty.n, i, check)
       if f != nil: break
       if ty.sons[0] == nil: break
-      ty = skipTypes(ty.sons[0], {tyGenericInst})
+      ty = skipTypes(ty.sons[0], skipPtrs)
     if f != nil:
       if fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
@@ -2108,7 +2108,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       f = lookupInRecordAndBuildCheck(c, it, t.n, id, check)
       if f != nil: break
       if t.sons[0] == nil: break
-      t = skipTypes(t.sons[0], {tyGenericInst})
+      t = skipTypes(t.sons[0], skipPtrs)
     if f != nil and fieldVisible(c, f):
       it.sons[0] = newSymNode(f)
       e = fitNode(c, f.typ, e)

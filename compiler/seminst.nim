@@ -47,7 +47,7 @@ proc rawHandleSelf(c: PContext; owner: PSym) =
         while t.kind == tyObject:
           addObjFieldsToLocalScope(c, t.n)
           if t.sons[0] == nil: break
-          t = t.sons[0].skipTypes(abstractPtrs)
+          t = t.sons[0].skipTypes(skipPtrs)
 
 proc pushProcCon*(c: PContext; owner: PSym) =
   rawPushProcCon(c, owner)

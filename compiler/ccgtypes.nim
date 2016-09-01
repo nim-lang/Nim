@@ -475,11 +475,11 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
         hasField = true
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
-                      [getTypeDescAux(m, typ.sons[0], check)])
+                      [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
-                      [getTypeDescAux(m, typ.sons[0], check)])
+                      [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       hasField = true
   else:
     addf(result, " {$n", [name])
@@ -901,7 +901,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
   addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
   while t != nil:
-    t = t.skipTypes(abstractInst)
+    t = t.skipTypes(skipPtrs)
     t.flags.incl tfObjHasKids
     t = t.sons[0]
 

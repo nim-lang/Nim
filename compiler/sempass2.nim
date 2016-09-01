@@ -131,7 +131,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
         if field != nil: break
         ty = ty.sons[0]
         if ty == nil: break
-        ty = ty.skipTypes(abstractPtrs)
+        ty = ty.skipTypes(skipPtrs)
     if field == nil:
       localError(n.info, errGenerated, "invalid guard field: " & g.name.s)
       return

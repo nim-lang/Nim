@@ -273,7 +273,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       while true:
         suggestObject(c, t.n, outputs)
         if t.sons[0] == nil: break
-        t = skipTypes(t.sons[0], {tyGenericInst})
+        t = skipTypes(t.sons[0], skipPtrs)
       suggestOperations(c, n, typ, outputs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, outputs)

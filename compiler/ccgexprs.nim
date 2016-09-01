@@ -726,6 +726,7 @@ proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope): PSym =
   var ty = ty
   assert r != nil
   while ty != nil:
+    ty = ty.skipTypes(skipPtrs)
     assert(ty.kind in {tyTuple, tyObject})
     result = lookupInRecord(ty.n, field.name)
     if result != nil: break
@@ -1257,7 +1258,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   if not p.module.compileToCpp:
     while t.kind == tyObject and t.sons[0] != nil:
       add(r, ~".Sup")
-      t = skipTypes(t.sons[0], typedescInst)
+      t = skipTypes(t.sons[0], skipPtrs)
   if isObjLackingTypeField(t):
     globalError(x.info, errGenerated,
       "no 'of' operator available for pure objects")
@@ -1875,7 +1876,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     if not p.module.compileToCpp:
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")
-        t = skipTypes(t.sons[0], abstractInst)
+        t = skipTypes(t.sons[0], skipPtrs)
     if nilCheck != nil:
       linefmt(p, cpsStmts, "if ($1) #chckObj($2.m_type, $3);$n",
               nilCheck, r, genTypeInfo(p.module, dest))

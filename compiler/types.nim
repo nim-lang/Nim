@@ -94,7 +94,8 @@ proc invalidGenericInst(f: PType): bool =
 
 proc isPureObject(typ: PType): bool =
   var t = typ
-  while t.kind == tyObject and t.sons[0] != nil: t = t.sons[0]
+  while t.kind == tyObject and t.sons[0] != nil:
+    t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
 proc getOrdValue(n: PNode): BiggestInt =
@@ -228,7 +229,8 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   if result: return
   case t.kind
   of tyObject:
-    result = searchTypeForAux(t.sons[0], predicate, marker)
+    if t.sons[0] != nil:
+      result = searchTypeForAux(t.sons[0].skipTypes(skipPtrs), predicate, marker)
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
   of tyGenericInst, tyDistinct:
     result = searchTypeForAux(lastSon(t), predicate, marker)
@@ -265,7 +267,9 @@ proc analyseObjectWithTypeFieldAux(t: PType,
       if searchTypeNodeForAux(t.n, isObjectWithTypeFieldPredicate, marker):
         return frEmbedded
     for i in countup(0, sonsLen(t) - 1):
-      res = analyseObjectWithTypeFieldAux(t.sons[i], marker)
+      var x = t.sons[i]
+      if x != nil: x = x.skipTypes(skipPtrs)
+      res = analyseObjectWithTypeFieldAux(x, marker)
       if res == frEmbedded:
         return frEmbedded
       if res == frHeader: result = frHeader
@@ -1293,7 +1297,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     a = maxAlign
   of tyObject:
     if typ.sons[0] != nil:
-      result = computeSizeAux(typ.sons[0], a)
+      result = computeSizeAux(typ.sons[0].skipTypes(skipPtrs), a)
       if result < 0: return
       maxAlign = a
     elif isObjectWithTypeFieldPredicate(typ):

@@ -246,7 +246,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     if not p.module.compileToCpp:
       while (s.kind == tyObject) and (s.sons[0] != nil):
         add(r, ".Sup")
-        s = skipTypes(s.sons[0], abstractInst)
+        s = skipTypes(s.sons[0], skipPtrs)
     linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t))
   of frEmbedded:
     # worst case for performance:

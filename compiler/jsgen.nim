@@ -1364,7 +1364,7 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     if output.len > 0: output.add(", ")
     addf(output, "m_type: $1" | "'m_type' => $#", [genTypeInfo(p, t)])
   while t != nil:
-    createRecordVarAux(p, t.n, excludedFieldIDs, output)
+    createRecordVarAux(p, t.skipTypes(skipPtrs).n, excludedFieldIDs, output)
     t = t.sons[0]
 
 proc arrayTypeForElemType(typ: PType): string =

@@ -659,7 +659,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
     var typ = n.sons[0].typ
-    if typ.kind != tyRef or typ.sons[0].kind != tyObject:
+    if typ.kind != tyRef or typ.lastSon.kind != tyObject:
       localError(n.info, errExprCannotBeRaised)
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
