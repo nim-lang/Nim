@@ -60,19 +60,18 @@ when defined(windows):
     lpConsoleScreenBufferInfo: ptr CONSOLE_SCREEN_BUFFER_INFO): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
 
-  proc terminalWidth*(h: Handle): int =
+  proc terminalWidthIoctl*(handles: openArray[Handle]): int =
     var csbi: CONSOLE_SCREEN_BUFFER_INFO
-    if getConsoleScreenBufferInfo(h, addr csbi) != 0:
-      return int(csbi.srWindow.Right - csbi.srWindow.Left + 1)
+    for h in handles:
+      if getConsoleScreenBufferInfo(h, addr csbi) != 0:
+        return int(csbi.srWindow.Right - csbi.srWindow.Left + 1)
     return 0
 
   proc terminalWidth*(): int =
     var w: int = 0
-    w = terminalWidth(getStdHandle(STD_INPUT_HANDLE))
-    if w > 0: return w
-    w = terminalWidth(getStdHandle(STD_OUTPUT_HANDLE))
-    if w > 0: return w
-    w = terminalWidth(getStdHandle(STD_ERROR_HANDLE))
+    w = terminalWidth([ getStdHandle(STD_INPUT_HANDLE),
+                        getStdHandle(STD_OUTPUT_HANDLE),
+                        getStdHandle(STD_ERROR_HANDLE) ] )
     if w > 0: return w
     return 80
 
