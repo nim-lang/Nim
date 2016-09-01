@@ -222,6 +222,12 @@ proc delKey[T](s: Selector[T], fd: SocketHandle) =
     inc(i)
   doAssert(i < FD_SETSIZE, "Descriptor not registered in queue")
 
+proc hasKey[T](s: Selector[T], fd: SocketHandle): bool =
+  result = false
+  for i in 0..<FD_SETSIZE:
+    if s.fds[i].ident == fd.int:
+      return true
+
 proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                         events: set[Event], data: T) =
   when not defined(windows):
@@ -287,9 +293,10 @@ proc unregister*[T](s: Selector[T], fd: SocketHandle) =
 proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fd = ev.rsock
   s.withSelectLock():
-    IOFD_CLR(fd, addr s.rSet)
-    dec(s.count)
-    s.delKey(fd)
+    if s.hasKey(fd):
+      IOFD_CLR(fd, addr s.rSet)
+      dec(s.count)
+      s.delKey(fd)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
                     results: var openarray[ReadyKey[T]]): int =

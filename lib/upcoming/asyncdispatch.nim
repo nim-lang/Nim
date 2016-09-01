@@ -1690,6 +1690,8 @@ else:
 
   proc close*(ev: AsyncEvent) =
     ## Closes ``AsyncEvent``
+    let p = getGlobalDispatcher()
+    p.selector.unregister(SelectEvent(ev))
     ioselectors.close(SelectEvent(ev))
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =

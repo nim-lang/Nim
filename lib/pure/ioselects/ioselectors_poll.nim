@@ -187,11 +187,11 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
-  doAssert(Event.User in pkey.events)
-  pkey.ident = 0
-  pkey.events = {}
-  s.pollRemove(fdi.cint)
+  if pkey.ident != 0:
+    doAssert(Event.User in pkey.events)
+    pkey.ident = 0
+    pkey.events = {}
+    s.pollRemove(fdi.cint)
 
 proc newSelectEvent*(): SelectEvent =
   var fds: array[2, cint]
