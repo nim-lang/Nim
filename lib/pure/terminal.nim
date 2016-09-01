@@ -156,7 +156,7 @@ else:
   proc terminalWidthIoctl*(fds: openArray[int]): int =
     ## Returns terminal width from first fd that supports the ioctl.
 
-    var win: ioctl_winsize
+    var win: IOctl_WinSize
     for fd in fds:
       if ioctl(cint(fd), TIOCGWINSZ, addr win) != -1:
         return int(win.ws_col)

@@ -263,9 +263,9 @@ proc tcGetSid*(fd: cint): Pid {.importc: "tcgetsid", header: "<termios.h>".}
 # Window size ioctl.  Should work on on any Unix that xterm has been ported to.
 var TIOCGWINSZ*{.importc, header: "<sys/ioctl.h>".}: culong
 
-type ioctl_winsize* {.importc: "struct winsize", header: "<termios.h>",
+type IOctl_WinSize* {.importc: "struct winsize", header: "<termios.h>",
                       final, pure.} = object
   ws_row*, ws_col*, ws_xpixel*, ws_ypixel*: cushort
 
-proc ioctl*(fd: cint, request: culong, reply: ptr ioctl_winsize): int {.
+proc ioctl*(fd: cint, request: culong, reply: ptr IOctl_WinSize): int {.
   importc: "ioctl", header: "<stdio.h>", varargs.}
