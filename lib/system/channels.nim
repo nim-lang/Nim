@@ -124,8 +124,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
   of tyObject:
     # copy type field:
     var pint = cast[ptr PNimType](dest)
-    # XXX use dynamic type here!
-    pint[] = mt
+    pint[] = cast[ptr PNimType](src)[]
     if mt.base != nil:
       storeAux(dest, src, mt.base, t, mode)
     storeAux(dest, src, mt.node, t, mode)
@@ -144,13 +143,12 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
       else:
         unsureAsgnRef(x, nil)
     else:
+      let size = if mt.base.kind == tyObject: cast[ptr PNimType](s)[].size
+                 else: mt.base.size
       if mode == mStore:
-        x[] = alloc(t.region, mt.base.size)
+        x[] = alloc(t.region, size)
       else:
-        # XXX we should use the dynamic type here too, but that is not stored
-        # in the inbox at all --> use source[]'s object type? but how? we need
-        # a tyRef to the object!
-        var obj = newObj(mt, mt.base.size)
+        var obj = newObj(mt, size)
         unsureAsgnRef(x, obj)
       storeAux(x[], s, mt.base, t, mode)
       if mode != mStore: dealloc(t.region, s)
