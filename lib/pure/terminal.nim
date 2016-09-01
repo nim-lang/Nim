@@ -69,9 +69,9 @@ when defined(windows):
 
   proc terminalWidth*(): int =
     var w: int = 0
-    w = terminalWidth([ getStdHandle(STD_INPUT_HANDLE),
-                        getStdHandle(STD_OUTPUT_HANDLE),
-                        getStdHandle(STD_ERROR_HANDLE) ] )
+    w = terminalWidthIoctl([ getStdHandle(STD_INPUT_HANDLE),
+                             getStdHandle(STD_OUTPUT_HANDLE),
+                             getStdHandle(STD_ERROR_HANDLE) ] )
     if w > 0: return w
     return 80
 
