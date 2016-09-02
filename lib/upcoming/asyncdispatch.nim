@@ -1440,7 +1440,7 @@ else:
           p.selector.withData(fd, adata) do:
             if adata.readCB != nil: incl(newEvents, Event.Read)
             if adata.writeCB != nil: incl(newEvents, Event.Write)
-          p.selector.updateHandle(fd, newEvents)
+            p.selector.updateHandle(fd, newEvents)
         inc(i)
 
     # Timer processing.
