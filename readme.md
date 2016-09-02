@@ -68,13 +68,16 @@ problem.
 
 ## Community
 [![Join the Chat at irc.freenode.net#nim](https://img.shields.io/badge/IRC-join_chat_in_%23nim-blue.svg)](https://webchat.freenode.net/?channels=nim)
+[![Join the Gitter channel](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nim-lang/Nim)
 [![Get help](https://img.shields.io/badge/Forum-get%20help-4eb899.svg)](http://forum.nim-lang.org)
 [![Stackoverflow](https://img.shields.io/badge/stackoverflow-use_%23nim_tag-yellow.svg)](http://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15)
 [![Follow @nim_lang!](https://img.shields.io/twitter/follow/nim_lang.svg?style=social)](https://twitter.com/nim_lang)
 
 * The [forum](http://forum.nim-lang.org/) - the best place to ask questions and to discuss Nim.
-* [IRC (Freenode#nim)](https://webchat.freenode.net/?channels=nim) - the best place to discuss
+* [IRC (Freenode#nim)](https://webchat.freenode.net/?channels=nim) - a place to discuss
   Nim in real-time, this is also where most development decision get made!
+* [Gitter](https://gitter.im/nim-lang/Nim) allows to discuss Nim from your browser, one click to join.
+  There is a bridge between Gitter and IRC channels.
 * [Stackoverflow](http://stackoverflow.com/questions/tagged/nim)
 
 ## Contributing
