@@ -796,14 +796,17 @@ when defined(windows) or defined(nimdoc):
     var retFuture = newFuture[void]("send")
 
     var dataBuf: TWSABuf
-    dataBuf.buf = data # since this is not used in a callback, this is fine
+    dataBuf.buf = data
     dataBuf.len = data.len.ULONG
+    GC_ref(data) # we need to protect data until send operation is completed
+                 # or failed.
 
     var bytesReceived, lowFlags: Dword
     var ol = PCustomOverlapped()
     GC_ref(ol)
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+        GC_unref(data) # if operation completed `data` must be released.
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -820,6 +823,8 @@ when defined(windows) or defined(nimdoc):
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
+        GC_unref(data) # if operation failed `data` must be released, because
+                       # completion routine will not be called.
         if flags.isDisconnectionError(err):
           retFuture.complete()
         else:
