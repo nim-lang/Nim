@@ -261,7 +261,8 @@ proc getFile(ftp: AsyncFtpClient, dest: string, total: BiggestInt,
   var progress = 0
   var progressInSecond = 0
   var countdownFut = sleepAsync(200)
-  const BufferSize = 1024 * 1024
+  const maxSpeed = 1024*1024*2
+  let BufferSize = if total < maxSpeed: total.int else: maxSpeed
   var dataFut = ftp.dsock.recv(BufferSize)
   while ftp.dsockConnected:
     await countdownFut
