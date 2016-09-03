@@ -514,7 +514,8 @@ proc foldConv*(n, a: PNode; check = false): PNode =
     else:
       result = a
       result.typ = n.typ
-    if check: rangeCheck(n, result.intVal)
+    if check and result.kind in {nkCharLit..nkUInt64Lit}:
+      rangeCheck(n, result.intVal)
   of tyFloat..tyFloat64:
     case skipTypes(a.typ, abstractRange).kind
     of tyInt..tyInt64, tyEnum, tyBool, tyChar:
