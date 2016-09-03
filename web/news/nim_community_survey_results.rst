@@ -7,7 +7,7 @@ Nim Community Survey Results
 
 We have recently closed the 2016 Nim Community Survey. I am happy to
 say that we have received exactly 790 responses, huge thanks go to the people
-that took the time to respond. We're very thankful for this very valuable
+that took the time to respond. We're incredibly thankful for this very valuable
 feedback.
 
 This survey was inspired in part by the
@@ -75,12 +75,6 @@ It's nice to see that we have such a good range of respondents. The Rust survey
 had a much larger number of Rust users amongst their respondents, with
 no distinction between users that never used Rust and users that stopped using
 Rust.
-
-.. raw::html
-
-  <a href="https://blog.rust-lang.org/images/2016-06-Survey/do_you_use_rust.png">
-    <img src="https://blog.rust-lang.org/images/2016-06-Survey/do_you_use_rust.png" alt="Do you use Rust?" style="width:100%"/>
-  </a>
 
 Should we consider your answers to be invalid?
 ----------------------------------------------
@@ -342,7 +336,7 @@ over a year ago now.
 
 Unfortunately while we are still in this pre-1.0 period, releases will likely
 introduce breaking changes as we refine certain aspects of Nim such as its
-standard library so the number of users experiencing breaking changes may
+standard library, so the number of users experiencing breaking changes may
 increase.
 
 If so, how much work did it take to fix it?
@@ -410,8 +404,9 @@ _________________________________________________
     <img src="../assets/news/images/survey/nim_displeasing.png" alt="What aspects of Nim do you find most displeasing?" style="width:100%"/>
   </a>
 
-It was only natural to ask this question. This is almost a perfect opposite of
-the previous answers, with almost 50% of respondents selecting "Debugging Tools"
+It was only natural to ask this question. The results are almost perfectly
+opposite to the previous question's answers, with almost 50% of respondents
+selecting "Debugging Tools"
 as the most displeasing aspect of Nim. With "Documentation" and "Testing Tools"
 in second and third place respectively. There is also a much larger number of
 "Other" answers to this question.
@@ -447,7 +442,8 @@ Previous Nim users
 ~~~~~~~~~~~~~~~~~~
 
 For users that have used Nim before but decided against using it, we asked just
-one specific question.
+one specific question. The proportion of our respondents that answered it
+was 24%.
 
 Why did you stop using Nim?
 ___________________________
@@ -542,8 +538,8 @@ were most popular among our user base. The
 popular. In previous questions, we saw respondents mentioning that the Nim
 tutorial does not go into enough detail about Nim. Thanks to this information
 we can come to the conclusion that the tutorial needs to be improved
-significantly to make sure that our users get the necessary information to use
-Nim effectivelly.
+significantly to make sure that it gives our users the necessary information
+to use Nim effectively.
 
 Indeed, many users also use the
 `Nim manual <http://nim-lang.org/docs/manual.html>`_ to learn Nim.
@@ -567,6 +563,9 @@ As the author of
 I wanted to get some statistics surrounding
 my book. With this in mind, I have created some questions relating to it.
 
+Have you read Nim in Action?
+____________________________
+
 .. raw::html
 
   <a href="../assets/news/images/survey/book.png">
@@ -581,9 +580,13 @@ respondents, not just Nim users.
 
   Are you interested in purchasing a copy of
   `Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_?
-  If so, you can use code ``wm090316lt`` to get 50% off today only! If you
-  purchase it now you will get access to an early access copy of Nim in Action
-  in eBook form and will be able to take part in the development of this book.
+  If so, you can use code ``wm090316lt`` to get 50% off the eBook today only!
+  If you purchase it now you will get access to an early access copy of
+  Nim in Action in eBook form and will be able to take part in the development
+  of this book.
+
+Did you enjoy Nim in Action?
+____________________________
 
 .. raw::html
 
@@ -610,9 +613,9 @@ Nim version 1.0 can be released.
   </a>
 
 It appears that the standard library is the biggest concern. With more than half
-of all respondents selecting the "The standard library needs to reviewed and
-any problems with it fixed". This is in fact one of our goals, so it's good
-to see that the majority agrees with us.
+of all respondents selecting "The standard library needs to reviewed and
+any problems with it fixed". This is in fact something we are already planning
+to address, so it's good to see that the majority agrees with us.
 
 A large proportion of users also believes that the language is great as-is
 and that we should focus on stabilising the compiler. This somewhat contradicts
