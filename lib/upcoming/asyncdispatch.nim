@@ -957,7 +957,7 @@ when defined(windows) or defined(nimdoc):
     let dwLocalAddressLength = Dword(sizeof (Sockaddr_in) + 16)
     let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
 
-    template completeAccept(): stmt {.immediate, dirty.} =
+    template completeAccept() {.dirty.} =
       var listenSock = socket
       let setoptRet = setsockopt(clientSock, SOL_SOCKET,
           SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
@@ -977,7 +977,7 @@ when defined(windows) or defined(nimdoc):
          client: clientSock.AsyncFD)
       )
 
-    template failAccept(errcode): stmt =
+    template failAccept(errcode) =
       if flags.isDisconnectionError(errcode):
         var newAcceptFut = acceptAddr(socket, flags)
         newAcceptFut.callback =
@@ -1760,7 +1760,7 @@ proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
     result = node[0]
 
 template createCb(retFutureSym, iteratorNameSym,
-                   name: expr): stmt {.immediate.} =
+                   name: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
   proc cb {.closure,gcsafe.} =
@@ -1869,8 +1869,10 @@ proc processBody(node, retFutureSym: NimNode,
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
-      result.add newCall(newIdentNode("complete"), retFutureSym,
-        node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt))
+      let x = node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt)
+      if x.kind == nnkYieldStmt: result.add x
+      else:
+        result.add newCall(newIdentNode("complete"), retFutureSym, x)
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -2040,38 +2042,40 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
   var procBody = prc[6].processBody(retFutureSym, subtypeIsVoid, nil)
-  if not subtypeIsVoid:
-    procBody.insert(0, newNimNode(nnkPragma).add(newIdentNode("push"),
-      newNimNode(nnkExprColonExpr).add(newNimNode(nnkBracketExpr).add(
-        newIdentNode("warning"), newIdentNode("resultshadowed")),
-      newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
+  # don't do anything with forward bodies (empty)
+  if procBody.kind != nnkEmpty:
+    if not subtypeIsVoid:
+      procBody.insert(0, newNimNode(nnkPragma).add(newIdentNode("push"),
+        newNimNode(nnkExprColonExpr).add(newNimNode(nnkBracketExpr).add(
+          newIdentNode("warning"), newIdentNode("resultshadowed")),
+        newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
 
-    procBody.insert(1, newNimNode(nnkVarSection, prc[6]).add(
-      newIdentDefs(newIdentNode("result"), baseType))) # -> var result: T
+      procBody.insert(1, newNimNode(nnkVarSection, prc[6]).add(
+        newIdentDefs(newIdentNode("result"), baseType))) # -> var result: T
 
-    procBody.insert(2, newNimNode(nnkPragma).add(
-      newIdentNode("pop"))) # -> {.pop.})
+      procBody.insert(2, newNimNode(nnkPragma).add(
+        newIdentNode("pop"))) # -> {.pop.})
 
-    procBody.add(
-      newCall(newIdentNode("complete"),
-        retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
-  else:
-    # -> complete(retFuture)
-    procBody.add(newCall(newIdentNode("complete"), retFutureSym))
+      procBody.add(
+        newCall(newIdentNode("complete"),
+          retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
+    else:
+      # -> complete(retFuture)
+      procBody.add(newCall(newIdentNode("complete"), retFutureSym))
 
-  var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
-                                procBody, nnkIteratorDef)
-  closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
-  outerProcBody.add(closureIterator)
+    var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
+                                  procBody, nnkIteratorDef)
+    closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
+    outerProcBody.add(closureIterator)
 
-  # -> createCb(retFuture)
-  #var cbName = newIdentNode("cb")
-  var procCb = newCall(bindSym"createCb", retFutureSym, iteratorNameSym,
-                       newStrLitNode(prc[0].getName))
-  outerProcBody.add procCb
+    # -> createCb(retFuture)
+    #var cbName = newIdentNode("cb")
+    var procCb = getAst createCb(retFutureSym, iteratorNameSym,
+                         newStrLitNode(prc[0].getName))
+    outerProcBody.add procCb
 
-  # -> return retFuture
-  outerProcBody.add newNimNode(nnkReturnStmt, prc[6][prc[6].len-1]).add(retFutureSym)
+    # -> return retFuture
+    outerProcBody.add newNimNode(nnkReturnStmt, prc[6][prc[6].len-1]).add(retFutureSym)
 
   result = prc
 
@@ -2085,14 +2089,13 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     if returnType.kind == nnkEmpty:
       # Add Future[void]
       result[3][0] = parseExpr("Future[void]")
-
-  result[6] = outerProcBody
-
+  if procBody.kind != nnkEmpty:
+    result[6] = outerProcBody
   #echo(treeRepr(result))
   #if prc[0].getName == "testInfix":
   #  echo(toStrLit(result))
 
-macro async*(prc: stmt): stmt {.immediate.} =
+macro async*(prc: untyped): untyped =
   ## Macro which processes async procedures into the appropriate
   ## iterators and yield statements.
   if prc.kind == nnkStmtList:
@@ -2101,6 +2104,8 @@ macro async*(prc: stmt): stmt {.immediate.} =
       result.add asyncSingleProc(oneProc)
   else:
     result = asyncSingleProc(prc)
+  when defined(nimDumpAsync):
+    echo repr result
 
 proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
