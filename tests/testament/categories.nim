@@ -202,6 +202,14 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
   testSpec c, makeTest("tests/system/helpers/readall_echo", options, cat)
   testSpec r, makeTest("tests/system/io", options, cat)
 
+# ------------------------- async tests ---------------------------------------
+proc asyncTests(r: var TResults, cat: Category, options: string) =
+  template test(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat)
+    testSpec r, makeTest(filename, options & " -d:upcoming_async", cat)
+  for t in os.walkFiles("tests/async/t*.nim"):
+    test(t)
+
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
@@ -390,6 +398,8 @@ proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: 
     threadTests r, cat, options & " --threads:on"
   of "io":
     ioTests r, cat, options
+  of "async":
+    asyncTests r, cat, options
   of "lib":
     testStdlib(r, "lib/pure/*.nim", options, cat)
     testStdlib(r, "lib/packages/docutils/highlite", options, cat)
