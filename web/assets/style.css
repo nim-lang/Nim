@@ -611,6 +611,15 @@ p.lastUpdate {
   color: #6d6d6d;
 }
 
+/* quotes */
+
+blockquote {
+  padding: 0px 8px;
+  margin: 10px 0px;
+  border-left: 2px solid rgb(61, 61, 61);
+  color: rgb(109, 109, 109);
+}
+
 /* News articles */
 
 .metadata {

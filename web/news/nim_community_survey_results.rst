@@ -311,7 +311,386 @@ release schedule is not regular or frequent.
 Once we go past the 1.0 release, we expect to see much less use of the unstable
 ``devel`` branch.
 
+Has upgrading to a new version of the Nim compiler broken your code?
+____________________________________________________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/breakage.png">
+    <img src="../assets/news/images/survey/breakage.png" alt="Breakage" style="width:100%"/>
+  </a>
+
+Despite the unstable nature of Nim in the lead up to version 1.0, whenever
+we make breaking changes we do our best to deprecate things and ensure that
+old code continues to work for our users. Of course sometimes this is not
+possible and other times it is simply easier to add a breaking change.
+
+This question was asked to determine how much our user base is affected by
+breaking changes between Nim versions. We decided to have three possible
+answers for this question in order to give us an idea how frequent the
+breakage was.
+
+It's incredible to see that over 50% of our users have not experienced any
+breakage after upgrading. We expect this number to increase significantly
+after version 1.0 is released. Of the users that did experience breakage,
+over 80% of them said that it was a rare occurrence.
+
+In comparison to Rust, our results show that there was a higher percentage of
+users experiencing breakage as a result of an upgrade. This is to be expected,
+because Nim is still in its pre-1.0 period, whereas Rust 1.0 has been released
+over a year ago now.
+
+Unfortunately while we are still in this pre-1.0 period, releases will likely
+introduce breaking changes as we refine certain aspects of Nim such as its
+standard library so the number of users experiencing breaking changes may
+increase.
+
+If so, how much work did it take to fix it?
+___________________________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/difficulty_fixing_breakage.png">
+    <img src="../assets/news/images/survey/difficulty_fixing_breakage.png" alt="difficulty fixing breakage" style="width:100%"/>
+  </a>
+
+Thankfully most of the breakage experienced by Nim users was very easy to fix.
 
 
+If you used Nimble, do you like it?
+___________________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/nimble_opinion.png">
+    <img src="../assets/news/images/survey/nimble_opinion.png" alt="Do you like Nimble?" style="width:100%"/>
+  </a>
+
+Nimble is the Nim package manager, a tool that is very important in Nim's
+ecosystem as it allows developers to easily install dependencies for their
+software.
+
+The majority of respondents rated it as a 4, showing us that the majority does
+like Nimble. With over 55% rating it a 4 or 5. This percentage isn't as
+overwhelming as the 94.1% of users that rated Cargo a 4 or 5 in the Rust
+survey. Based on these results I think that we definitely need to do a
+better job with Nimble.
+
+In our next survey, it might be a good idea to ask more questions about Nimble
+to determine how exactly it can be improved.
+
+What aspects of Nim do you find most appealing?
+_______________________________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/nim_appeal.png">
+    <img src="../assets/news/images/survey/nim_appeal.png" alt="What aspects of Nim do you find most appealing?" style="width:100%"/>
+  </a>
+
+We were interested to know the features of Nim that appeal most to our users.
+More than 80% of our respondents selected "Execution Speed" as one of the
+features that appeal to them. With "Development Speed" and "Readability"
+tying for second place and "Metaprogramming" at third place.
+
+The options given to our respondents are rather predictable,
+they do show us which of these features have the highest appeal though.
+What's more interesting are the "Other" answers.
+
+By far the most popular "Other" answer was related to Nim's compilation to C.
+Many users mentioned that they like how easy it is to interface with C
+libraries and the great portability that compiling to C offers.
+
+What aspects of Nim do you find most displeasing?
+_________________________________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/nim_displeasing.png">
+    <img src="../assets/news/images/survey/nim_displeasing.png" alt="What aspects of Nim do you find most displeasing?" style="width:100%"/>
+  </a>
+
+It was only natural to ask this question. This is almost a perfect opposite of
+the previous answers, with almost 50% of respondents selecting "Debugging Tools"
+as the most displeasing aspect of Nim. With "Documentation" and "Testing Tools"
+in second and third place respectively. There is also a much larger number of
+"Other" answers to this question.
+
+The "Other" answers for this question vary a lot. Here is a selection of
+them, ordered by frequency:
+
+* Small community size.
+* Lack of in-depth tutorials.
+* Quality of error messages.
+* Forward declarations and no cyclic imports.
+* Bugs in the standard library.
+* No good IDE.
+* No REPL.
+* No major version.
+* Bugs in the compiler.
+* Lack of libraries.
+* Difficulty installing on Windows.
+* Non-intuitive semantics of various constructs.
+* Lack of immutable collections.
+* Async/await not being production ready.
+* Lack of shared collections for threads.
+* No Haxe target.
+* Memory safety.
+
+We hope that we can improve these things with time. Many of these issues are
+already being worked on, including the removal of the need for forward
+declarations. Some of these issues like our small community size are difficult
+to fix, but we will nonetheless do our best.
 
 
+Previous Nim users
+~~~~~~~~~~~~~~~~~~
+
+For users that have used Nim before but decided against using it, we asked just
+one specific question.
+
+Why did you stop using Nim?
+___________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/ex_nim.png">
+    <img src="../assets/news/images/survey/ex_nim.png" alt="I stopped using Nim because..." style="width:100%"/>
+  </a>
+
+Again, this question got a lot of "Other" answers. Apart from that, the
+most popular reason for leaving Nim is that it is not stable. Followed by the
+a lack of needed libraries and packages and the instability of the
+standard library.
+
+* Lack of IDE support.
+* Style insensitive.
+* Documentation.
+* Dislike the syntax.
+* Community is too small.
+* Missing language features (for example RAII).
+* No opportunities to use it at work.
+* Messy standard library.
+
+The first item, "Lack of IDE support", was mentioned by multiple respondents.
+In the future we should look into ensuring that major IDEs have plugins which
+enable easy Nim development.
+
+Based on some of the "Other" answers, it seems that many of the respondents
+have not used Nim for very long, for example many respondents complained about
+installation issues which they would have run into before getting a chance to
+use Nim. Because of this I would consider them not
+ex-Nim users but developers that have not had a chance to try Nim fully.
+Next time we should also ask how long the respondent has used Nim for to get a
+better idea of whether they had a chance to use Nim for extended periods of
+time.
+
+Non-Nim users
+~~~~~~~~~~~~~
+
+We also wanted to know the reasons why developers decided against using Nim.
+
+Why do you not use Nim?
+_______________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/non_user.png">
+    <img src="../assets/news/images/survey/non_user.png" alt="I don't use Nim because..." style="width:100%"/>
+  </a>
+
+The most common reason that people have for not using Nim is that it is
+not yet ready for production. Thankfully this will improve with time.
+IDE support is also a prominent factor just as we've seen in previous results.
+
+There is also a lot of "Other" answers, let's have a look at a selection of
+them. Some of the most prominent ones, in order of frequency, include:
+
+* No time to use/learn it
+* Syntax
+* Documentation is incomplete
+* Garbage Collection
+* Prefer functional paradigm
+* Small community
+* Style insensitivity/Case insensitivity
+
+One respondent made a very good suggestion: they said that the
+"Do you use Nim?" question should have included "No, but I intend to" as
+an answer. Definitely something we will do in the next survey. Indeed, many
+respondents mentioned that they were planning on trying out Nim but that they
+just have no time to do so, this is very encouraging!
+
+Learning Resources
+~~~~~~~~~~~~~~~~~~
+
+We wanted to get an idea of how Nim users are learning Nim. Every respondent
+answered this question, no matter what they answered for the "Do you use Nim?"
+question.
+
+Which learning resources, if any, did you use to learn Nim?
+___________________________________________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/learning_resources.png">
+    <img src="../assets/news/images/survey/learning_resources.png" alt="learning resources" style="width:100%"/>
+  </a>
+
+The idea behind this question was to understand which learning resources
+were most popular among our user base. The
+`Nim tutorial <http://nim-lang.org/docs/tut1.html>`_ is by far the most
+popular. In previous questions, we saw respondents mentioning that the Nim
+tutorial does not go into enough detail about Nim. Thanks to this information
+we can come to the conclusion that the tutorial needs to be improved
+significantly to make sure that our users get the necessary information to use
+Nim effectivelly.
+
+Indeed, many users also use the
+`Nim manual <http://nim-lang.org/docs/manual.html>`_ to learn Nim.
+This manual has been
+written as a specification and so is not ideal for teaching Nim. Many of
+the concepts in the Nim manual need to be explained in a lot more detail in
+the Nim tutorial.
+
+Of course, it's exciting to see our respondents using other materials to learn
+Nim. In particular I am excited to see that over 15% of the respondents have
+used
+`Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_
+to learn Nim. I expect that more and more users will pick up the book after it
+is fully published.
+
+Nim in Action
+_____________
+
+As the author of
+`Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_,
+I wanted to get some statistics surrounding
+my book. With this in mind, I have created some questions relating to it.
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/book.png">
+    <img src="../assets/news/images/survey/book.png" alt="Have you read Nim in Action?" style="width:100%"/>
+  </a>
+
+It's good to see that over 50% of respondents have read the book or are at least
+planning to read it. Keep in mind that this question was answered by all
+respondents, not just Nim users.
+
+.. container:: standout
+
+  Are you interested in purchasing a copy of
+  `Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_?
+  If so, you can use code ``wm090316lt`` to get 50% off today only! If you
+  purchase it now you will get access to an early access copy of Nim in Action
+  in eBook form and will be able to take part in the development of this book.
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/book_opinion.png">
+    <img src="../assets/news/images/survey/book_opinion.png" alt="Did you enjoy Nim in Action?" style="width:100%"/>
+  </a>
+
+Of the people that read Nim in Action it's nice to see that almost 70% have
+enjoyed it.
+
+Nim's future
+~~~~~~~~~~~~
+
+What improvements are needed before Nim v1.0 can be released?
+_____________________________________________________________
+
+We were interested to know what our users believe is needed before
+Nim version 1.0 can be released.
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/10_needs.png">
+    <img src="../assets/news/images/survey/10_needs.png" alt="What is needed before 1.0 can be released?" style="width:100%"/>
+  </a>
+
+It appears that the standard library is the biggest concern. With more than half
+of all respondents selecting the "The standard library needs to reviewed and
+any problems with it fixed". This is in fact one of our goals, so it's good
+to see that the majority agrees with us.
+
+A large proportion of users also believes that the language is great as-is
+and that we should focus on stabilising the compiler. This somewhat contradicts
+the majority. But perhaps most of them thought that "The language" excludes the
+standard library.
+
+For this question, we decided to give our respondents a dedicated place to
+give general feedback about what they feel is needed before v1.0 can be
+released. We received over 200 responses to that. Many of these responses
+reflect what we have already seen: that the documentation needs to improve,
+that we need a good Nim IDE, stability for experimental features such as
+concepts, the standard library needs to be cleaned up.
+
+Unfortunately many respondents used this question to say what needs to be fixed
+in Nim in general, not what is definitely necessary before 1.0 can be released.
+
+Community demographics
+~~~~~~~~~~~~~~~~~~~~~~
+
+What domain do you work in currently?
+_____________________________________
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/domains.png">
+    <img src="../assets/news/images/survey/domains.png" alt="Work domains" style="width:100%"/>
+  </a>
+
+
+Nim users are working in a wide variety of domains. It is encouraging to see
+people from so many different backgrounds taking part in this survey.
+
+What programming languages are you most comfortable with?
+_________________________________________________________
+
+
+.. raw::html
+
+  <a href="../assets/news/images/survey/languages.png">
+    <img src="../assets/news/images/survey/languages.png" alt="Programming languages" style="width:100%"/>
+  </a>
+
+Python and C are the top two programming languages that our respondents are
+most comfortable with. This is not altogether surprising.
+
+Last words
+~~~~~~~~~~
+
+At the end of the survey we gave our respondents a chance to speak their mind
+about anything they wish, with a simple question: "Anything else you'd like
+to tell us?"
+
+There was a lot of great feedback given in this question from people who
+obviously really care deeply about Nim. There is too much to outline here,
+but rest assurred that we will take it all into account and do our best to
+act on it.
+
+In addition to feedback, we were also overwhelmed by the amount of positive
+comments in the answers to this
+question. There was a lot of support from the community thanking us for our
+work and determination.
+
+I'll let some quotes speak for themselves:
+
+.. raw::html
+
+  <blockquote>You rock, seriously.</blockquote>
+  <blockquote>Nim rocks! Keep it up! Thank you very much!</blockquote>
+  <blockquote>You've made great progress on the language without any corporate backing, that is amazing. I wish Nim becomes one of the top used languages in a few years.</blockquote>
+  <blockquote>Nim is elegant and wonderful! Keep at it!</blockquote>
+
+Our community is truly brilliant. We thank each and every one of you for
+filling out this survey and hope that you will help us tackle some of the
+challenges that face Nim.
+
+This survey was a good place to give us feedback, but please don't wait for
+the next one. We are always looking to hear more from you and we hope that you
+will participate in discussions relating to this survey as well the future
+of Nim.
+
+Thanks for reading, and have a good day!
