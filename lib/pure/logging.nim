@@ -336,10 +336,11 @@ proc getLogFilter*(): Level =
 
 when not defined(testing) and isMainModule:
   var L = newConsoleLogger()
-  var fL = newFileLogger("test.log", fmtStr = verboseFmtStr)
-  var rL = newRollingFileLogger("rolling.log", fmtStr = verboseFmtStr)
+  when not defined(js):
+    var fL = newFileLogger("test.log", fmtStr = verboseFmtStr)
+    var rL = newRollingFileLogger("rolling.log", fmtStr = verboseFmtStr)
+    addHandler(fL)
+    addHandler(rL)
   addHandler(L)
-  addHandler(fL)
-  addHandler(rL)
   for i in 0 .. 25:
     info("hello", i)
