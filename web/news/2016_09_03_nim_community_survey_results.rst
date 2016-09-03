@@ -3,7 +3,7 @@ Nim Community Survey Results
 
 .. container:: metadata
 
-  Posted by Dominik Picheta on 20/08/2016
+  Posted by Dominik Picheta on 3 September 2016
 
 We have recently closed the 2016 Nim Community Survey. I am happy to
 say that we have received exactly 790 responses, huge thanks go to the people
@@ -242,7 +242,7 @@ of that it's good to know which editor is most popular among our community.
   </a>
 
 Looks like Vim is the winner with almost 30%. Followed by Sublime Text and
-Visual Studio Code. Aporia, the Nim IDE, gets a respectable 15.5%. There was
+Emacs. Aporia, the Nim IDE, gets a respectable 15.5%. There was
 also more than
 17% of answers which included "Other" editors, such as: Notepad++, Geany, gedit,
 and Kate.
