@@ -29,12 +29,6 @@ proc newBountySource(team, token: string): BountySource =
   result.client.headers["Referer"] = "https://salt.bountysource.com/teams/nim/admin/supporters"
   result.client.headers["Origin"] = "https://salt.bountysource.com/"
 
-proc getSupportLevels(self: BountySource): Future[JsonNode] {.async.} =
-  let response = await self.client.get(apiUrl &
-    "/support_levels?supporters_for_team=" & self.team)
-  doAssert response.status.startsWith($Http200) # TODO: There should be a ==
-  return parseJson(response.body)
-
 proc getSupporters(self: BountySource): Future[JsonNode] {.async.} =
   let response = await self.client.get(apiUrl &
     "/supporters?order=monthly&per_page=200&team_slug=" & self.team)
@@ -47,26 +41,21 @@ proc getGithubUser(username: string): Future[JsonNode] {.async.} =
   if response.status.startsWith($Http200):
     return parseJson(response.body)
   else:
+    echo("Could not get Github user: ", username, ". ", response.status)
     return nil
 
-proc processLevels(supportLevels: JsonNode) =
-  var before = supportLevels.elems.len
-  supportLevels.elems.keepIf(
-    item => item["status"].getStr == "active" and
-      item["owner"]["display_name"].getStr != "Anonymous"
+proc processSupporters(supporters: JsonNode) =
+  var before = supporters.elems.len
+  supporters.elems.keepIf(
+    item => item["display_name"].getStr != "Anonymous"
   )
-  echo("Found ", before - supportLevels.elems.len, " sponsors that cancelled or didn't pay.")
-  echo("Found ", supportLevels.elems.len, " active sponsors!")
+  echo("Discarded ", before - supporters.elems.len, " anonymous sponsors.")
+  echo("Found ", supporters.elems.len, " named sponsors.")
 
-  supportLevels.elems.sort(
-    (x, y) => cmp(y["amount"].getFNum, x["amount"].getFNum)
+  supporters.elems.sort(
+    (x, y) => cmp(y["alltime_amount"].getFNum, x["alltime_amount"].getFNum)
   )
 
-proc getSupporter(supporters: JsonNode, displayName: string): JsonNode =
-  for supporter in supporters:
-    if supporter["display_name"].getStr == displayName:
-      return supporter
-  doAssert false
 
 proc quote(text: string): string =
   if {' ', ','} in text:
@@ -81,7 +70,7 @@ proc getLevel(amount: float): int =
     if amount.int <= i:
       result = i
 
-proc writeCsv(sponsors: seq[Sponsor]) =
+proc writeCsv(sponsors: seq[Sponsor], filename="sponsors.new.csv") =
   var csv = ""
   csv.add "logo, name, url, this_month, all_time, since, level\n"
   for sponsor in sponsors:
@@ -91,7 +80,8 @@ proc writeCsv(sponsors: seq[Sponsor]) =
       $sponsor.allTime.int, sponsor.since.format("MMM d, yyyy").quote,
       $sponsor.amount.getLevel
     ]
-  writeFile("sponsors.new.csv", csv)
+  writeFile(filename, csv)
+  echo("Written csv file to ", filename)
 
 when isMainModule:
   if paramCount() == 0:
@@ -105,14 +95,13 @@ when isMainModule:
 
   echo("Getting sponsors...")
   let supporters = waitFor bountysource.getSupporters()
-
-  var supportLevels = waitFor bountysource.getSupportLevels()
-  processLevels(supportLevels)
+  processSupporters(supporters)
 
   echo("Generating sponsors list... (please be patient)")
-  var sponsors: seq[Sponsor] = @[]
-  for supportLevel in supportLevels:
-    let name = supportLevel["owner"]["display_name"].getStr
+  var activeSponsors: seq[Sponsor] = @[]
+  var inactiveSponsors: seq[Sponsor] = @[]
+  for supporter in supporters:
+    let name = supporter["display_name"].getStr
     var url = ""
     let ghUser = waitFor getGithubUser(name)
     if not ghUser.isNil:
@@ -124,21 +113,28 @@ when isMainModule:
     if url.len > 0 and not url.startsWith("http"):
       url = "http://" & url
 
-    let amount = supportLevel["amount"].getFNum
+    let amount = supporter["monthly_amount"].getFNum()
     # Only show URL when user donated at least $5.
     if amount < 5:
       url = ""
 
-    let supporter = getSupporter(supporters, supportLevel["owner"]["display_name"].getStr)
+    #let supporter = getSupporter(supporters,
+    #                             supportLevel["owner"]["display_name"].getStr)
+    #if supporter.isNil: continue
     var logo = ""
     if amount >= 75:
       discard # TODO
 
-    sponsors.add(Sponsor(name: name, url: url, logo: logo, amount: amount,
-      allTime: supporter["alltime_amount"].getFNum(),
-      since: parse(supporter["created_at"].getStr, "yyyy-MM-dd'T'hh:mm:ss")
-    ))
+    let sponsor = Sponsor(name: name, url: url, logo: logo, amount: amount,
+        allTime: supporter["alltime_amount"].getFNum(),
+        since: parse(supporter["created_at"].getStr, "yyyy-MM-dd'T'hh:mm:ss")
+      )
+    if supporter["monthly_amount"].getFNum > 0.0:
+      activeSponsors.add(sponsor)
+    else:
+      inactiveSponsors.add(sponsor)
 
-  echo("Generated ", sponsors.len, " sponsors")
-  writeCsv(sponsors)
-  echo("Written csv file to sponsors.new.csv")
+  echo("Generated ", activeSponsors.len, " active sponsors")
+  echo("Generated ", inactiveSponsors.len, " inactive sponsors")
+  writeCsv(activeSponsors)
+  writeCsv(inactiveSponsors, "inactive_sponsors.new.csv")
