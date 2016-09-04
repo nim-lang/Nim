@@ -94,7 +94,8 @@ Compile_options:
   rYearMonthDay = r"(\d{4})_(\d{2})_(\d{2})"
   rssUrl = "http://nim-lang.org/news.xml"
   rssNewsUrl = "http://nim-lang.org/news.html"
-  sponsors = "web/sponsors.csv"
+  activeSponsors = "web/sponsors.csv"
+  inactiveSponsors = "web/inactive_sponsors.csv"
   validAnchorCharacters = Letters + Digits
 
 
@@ -446,8 +447,9 @@ proc readSponsors(sponsorsFile: string): seq[Sponsor] =
         since: parser.row[5], level: parser.row[6].parseInt))
   parser.close()
 
-proc buildSponsors(c: var TConfigData, sponsorsFile: string, outputDir: string) =
-  let sponsors = generateSponsors(readSponsors(sponsorsFile))
+proc buildSponsors(c: var TConfigData, outputDir: string) =
+  let sponsors = generateSponsorsPage(readSponsors(activeSponsors),
+                                      readSponsors(inactiveSponsors))
   let outFile = outputDir / "sponsors.html"
   var f: File
   if open(f, outFile, fmWrite):
@@ -500,7 +502,7 @@ proc buildWebsite(c: var TConfigData) =
     buildPage(c, file, if file == "question": "FAQ" else: file, rss)
   copyDir("web/assets", "web/upload/assets")
   buildNewsRss(c, "web/upload")
-  buildSponsors(c, sponsors, "web/upload")
+  buildSponsors(c, "web/upload")
   buildNews(c, "web/news", "web/upload/news")
 
 proc main(c: var TConfigData) =

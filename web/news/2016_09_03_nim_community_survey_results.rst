@@ -580,7 +580,7 @@ respondents, not just Nim users.
 
   Are you interested in purchasing a copy of
   `Nim in Action <https://manning.com/books/nim-in-action?a_aid=niminaction&a_bid=78a27e81>`_?
-  If so, you can use code ``wm090316lt`` to get 50% off the eBook today only!
+  If so, you can use code ``wm090416lt`` to get 50% off the printed book today only!
   If you purchase it now you will get access to an early access copy of
   Nim in Action in eBook form and will be able to take part in the development
   of this book.
