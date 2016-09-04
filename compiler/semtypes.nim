@@ -488,7 +488,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
       var r = semConstExpr(c, b)
       if r.kind in {nkCurly, nkBracket} and len(r) == 0  and sonsLen(branch)==2:
         # discarding ``{}`` and ``[]`` branches silently
-        delSon(branch, 0)
+        del(branch, 0)
         return
       elif r.kind notin {nkCurly, nkBracket} or len(r) == 0:
         checkMinSonsLen(t, 1)
@@ -537,7 +537,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
       chckCovered = false
       checkSonsLen(b, 1)
     else: illFormedAst(n)
-    delSon(b, sonsLen(b) - 1)
+    del(b, sonsLen(b) - 1)
     semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype)
   if chckCovered and (covered != lengthOrd(a.sons[0].typ)):
     localError(a.info, errNotAllCasesCovered)

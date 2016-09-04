@@ -1389,7 +1389,7 @@ proc addNilAllowed*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-proc delSon*(father: PNode, idx: int) =
+proc del*(father: PNode, idx: int) =
   if isNil(father.sons): return
   var length = sonsLen(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]

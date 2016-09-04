@@ -1405,7 +1405,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let bb = regs[rb].intVal.int
       for i in countup(0, regs[rc].intVal.int-1):
-        delSon(regs[ra].node, bb)
+        del(regs[ra].node, bb)
     of opcGenSym:
       decodeBC(rkNode)
       let k = regs[rb].intVal
