@@ -616,8 +616,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcInclRange:
       decodeBC(rkNode)
       var r = newNode(nkRange)
-      r.add regs[rb].regToNode
-      r.add regs[rc].regToNode
+      r.addSon(regs[rb].regToNode)
+      r.addSon(regs[rc].regToNode)
       addSon(regs[ra].node, r.copyTree)
     of opcExcl:
       decodeB(rkNode)
@@ -810,7 +810,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAddSeqElem:
       decodeB(rkNode)
       if regs[ra].node.kind == nkBracket:
-        regs[ra].node.add(copyTree(regs[rb].regToNode))
+        regs[ra].node.addSon(copyTree(regs[rb].regToNode))
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcGetImpl:
@@ -916,8 +916,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                           else:
                             c.module
         var macroCall = newNodeI(nkCall, c.debug[pc])
-        macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
+        macroCall.addSon(newSymNode(prc))
+        for i in 1 .. rc-1: macroCall.addSon(regs[rb+i].regToNode)
         let a = evalTemplate(macroCall, prc, genSymOwner)
         ensureKind(rkNode)
         regs[ra].node = a
@@ -1138,7 +1138,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       var u = regs[rb].node
       if u.kind notin {nkEmpty..nkNilLit}:
-        u.add(regs[rc].node)
+        u.addSon(regs[rc].node)
       else:
         stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
@@ -1148,7 +1148,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var u = regs[rb].node
       if u.kind notin {nkEmpty..nkNilLit}:
         # XXX can be optimized:
-        for i in 0.. <x.len: u.add(x.sons[i])
+        for i in 0.. <x.len: u.addSon(x.sons[i])
       else:
         stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u

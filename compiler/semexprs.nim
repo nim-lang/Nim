@@ -449,7 +449,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
         x = x.sons[1]
 
       let xx = semExprWithType(c, x, flags*{efAllowDestructor})
-      result.add xx
+      result.addSon(xx)
       typ = commonType(typ, xx.typ)
       #n.sons[i] = semExprWithType(c, x, flags*{efAllowDestructor})
       #addSon(result, fitNode(c, typ, n.sons[i]))
@@ -594,7 +594,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
   # constant folding that is necessary for correctness of semantic pass:
   if callee.magic != mNone and callee.magic in ctfeWhitelist and n.typ != nil:
     var call = newNodeIT(nkCall, n.info, n.typ)
-    call.add(n.sons[0])
+    call.addSon(n.sons[0])
     var allConst = true
     for i in 1 .. < n.len:
       var a = getConstExpr(c.module, n.sons[i])
@@ -602,7 +602,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         allConst = false
         a = n.sons[i]
         if a.kind == nkHiddenStdConv: a = a.sons[1]
-      call.add(a)
+      call.addSon(a)
     if allConst:
       result = semfold.getConstExpr(c.module, call)
       if result.isNil: result = n
@@ -636,11 +636,11 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     if n.typ != nil and typeAllowed(n.typ, skConst) != nil: return
 
     var call = newNodeIT(nkCall, n.info, n.typ)
-    call.add(n.sons[0])
+    call.addSon(n.sons[0])
     for i in 1 .. < n.len:
       let a = getConstExpr(c.module, n.sons[i])
       if a == nil: return n
-      call.add(a)
+      call.addSon(a)
     #echo "NOW evaluating at compile time: ", call.renderTree
     if sfCompileTime in callee.flags:
       result = evalStaticExpr(c.module, call, c.p.owner)
@@ -844,11 +844,11 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
   var e = strTableGet(magicsys.systemModule.tab, getIdent"echo")
   if e != nil:
-    add(result, newSymNode(e))
+    addSon(result, newSymNode(e))
   else:
     localError(n.info, errSystemNeeds, "echo")
-    add(result, errorNode(c, n))
-  add(result, n)
+    addSon(result, errorNode(c, n))
+  addSon(result, n)
   result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
@@ -1062,8 +1062,8 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
             markUsed(n.info, f)
             styleCheckUse(n.info, f)
             result = newNodeIT(nkDotExpr, n.info, f.typ)
-            result.add makeDeref(newSymNode(p.selfSym))
-            result.add newSymNode(f) # we now have the correct field
+            result.addSon(makeDeref(newSymNode(p.selfSym)))
+            result.addSon(newSymNode(f)) # we now have the correct field
             if check != nil:
               check.sons[0] = result
               check.typ = result.typ
@@ -1200,8 +1200,8 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result = newNodeI(nkCall, n.info)
-  result.add(newIdentNode(ident, n.info))
-  for i in 0 .. n.len-1: result.add(n[i])
+  result.addSon(newIdentNode(ident, n.info))
+  for i in 0 .. n.len-1: result.addSon(n[i])
 
 proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
@@ -1220,7 +1220,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let x = semDeref(c, n)
     if x == nil: return nil
     result = newNodeIT(nkDerefExpr, x.info, x.typ)
-    result.add(x[0])
+    result.addSon(x[0])
     return
   checkMinSonsLen(n, 2)
   # make sure we don't evaluate generic macros/templates
@@ -1334,7 +1334,7 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
     else:
       localError(n.info, errExprHasNoAddress)
   result = newNodeIT(nkHiddenAddr, n.info, makePtrType(c, n.typ))
-  result.add(n)
+  result.addSon(n)
 
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
@@ -1372,7 +1372,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     a = semSubscript(c, a, {efLValue})
     if a == nil:
       result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
-      add(result, n[1])
+      addSon(result, n[1])
       if mode == noOverloadedSubscript:
         bracketNotFoundError(c, result)
         return n
@@ -1384,7 +1384,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
     result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")
-    add(result, n[1])
+    addSon(result, n[1])
     return semExprNoType(c, result)
   of nkPar:
     if a.len >= 2:
@@ -1687,10 +1687,10 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   doBlk.sons[namePos] = newAnonSym(skTemplate, n.info).newSymNode
   if ids.len > 0:
     doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
-    doBlk[paramsPos].add getSysSym("stmt").newSymNode # return type
+    doBlk[paramsPos].addSon(getSysSym("stmt").newSymNode) # return type
     ids.add getSysSym("expr").newSymNode # params type
     ids.add emptyNode # no default value
-    doBlk[paramsPos].add newNode(nkIdentDefs, n.info, ids)
+    doBlk[paramsPos].addSon(newNode(nkIdentDefs, n.info, ids))
 
   var tmpl = semTemplateDef(c, doBlk)
   quotes[0] = tmpl[namePos]
@@ -1759,8 +1759,8 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # XXX ugh this is really a hack: shallowCopy() can be overloaded only
     # with procs that take not 2 parameters:
     result = newNodeI(nkFastAsgn, n.info)
-    result.add(n[1])
-    result.add(n[2])
+    result.addSon(n[1])
+    result.addSon(n[2])
     result = semAsgn(c, result)
   else:
     result = semDirectOp(c, n, flags)
@@ -1839,9 +1839,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result.typ = createFlowVar(c, typ, n.info)
       else:
         result.typ = typ
-      result.add instantiateCreateFlowVarCall(c, typ, n.info).newSymNode
+      result.addSon(instantiateCreateFlowVarCall(c, typ, n.info).newSymNode)
     else:
-      result.add emptyNode
+      result.addSon(emptyNode)
   of mProcCall:
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
@@ -1978,14 +1978,14 @@ proc semTableConstr(c: PContext, n: PNode): PNode =
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
       for j in countup(lastKey, i-1):
         var pair = newNodeI(nkPar, x.info)
-        pair.add(n.sons[j])
-        pair.add(x[1])
-        result.add(pair)
+        pair.addSon(n.sons[j])
+        pair.addSon(x[1])
+        result.addSon(pair)
 
       var pair = newNodeI(nkPar, x.info)
-      pair.add(x[0])
-      pair.add(x[1])
-      result.add(pair)
+      pair.addSon(x[0])
+      pair.addSon(x[1])
+      result.addSon(pair)
 
       lastKey = i+1
 
@@ -2116,7 +2116,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # 3 children the last being the field check
       if check != nil:
         check.sons[0] = it.sons[0]
-        it.add(check)
+        it.addSon(check)
     else:
       localError(it.info, errUndeclaredFieldX, id.s)
     it.sons[1] = e
@@ -2158,7 +2158,7 @@ proc semExport(c: PContext, n: PNode): PNode =
     elif s.kind == skModule:
       # forward everything from that module:
       strTableAdd(c.module.tab, s)
-      x.add(newSymNode(s, a.info))
+      x.addSon(newSymNode(s, a.info))
       var ti: TTabIter
       var it = initTabIter(ti, s.tab)
       while it != nil:
@@ -2168,7 +2168,7 @@ proc semExport(c: PContext, n: PNode): PNode =
     else:
       while s != nil:
         if s.kind in ExportableSymKinds+{skModule}:
-          x.add(newSymNode(s, a.info))
+          x.addSon(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
         s = nextOverloadIter(o, c, a)
   result = n
@@ -2182,7 +2182,7 @@ proc shouldBeBracketExpr(n: PNode): bool =
       for i in 0..<b.len:
         if b[i].sym.magic == mArrGet:
           let be = newNodeI(nkBracketExpr, n.info)
-          for i in 1..<a.len: be.add(a[i])
+          for i in 1..<a.len: be.addSon(a[i])
           n.sons[0] = be
           return true
 

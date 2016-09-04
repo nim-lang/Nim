@@ -170,7 +170,7 @@ proc loadAny(p: var JsonParser, t: PType,
     next(p)
     result = newNode(nkBracket)
     while p.kind != jsonArrayEnd and p.kind != jsonEof:
-      result.add loadAny(p, t.elemType, tab)
+      result.addSon(loadAny(p, t.elemType, tab))
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
   of tySequence:
@@ -182,7 +182,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       result = newNode(nkBracket)
       while p.kind != jsonArrayEnd and p.kind != jsonEof:
-        result.add loadAny(p, t.elemType, tab)
+        result.addSon(loadAny(p, t.elemType, tab))
       if p.kind == jsonArrayEnd: next(p)
       else: raiseParseErr(p, "")
     else:
@@ -198,7 +198,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       if i >= t.len:
         raiseParseErr(p, "too many fields to tuple type " & typeToString(t))
-      result.add loadAny(p, t.sons[i], tab)
+      result.addSon(loadAny(p, t.sons[i], tab))
       inc i
     if p.kind == jsonObjectEnd: next(p)
     else: raiseParseErr(p, "'}' end of object expected")
@@ -229,7 +229,7 @@ proc loadAny(p: var JsonParser, t: PType,
     next(p)
     result = newNode(nkCurly)
     while p.kind != jsonArrayEnd and p.kind != jsonEof:
-      result.add loadAny(p, t.lastSon, tab)
+      result.addSon(loadAny(p, t.lastSon, tab))
       next(p)
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")

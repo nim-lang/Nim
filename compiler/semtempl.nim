@@ -441,15 +441,15 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = onlyReplaceParams(c, n)
   of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent("[]"), n.info)
-    for i in 0 ..< n.len: result.add(n[i])
+    result.addSon(newIdentNode(getIdent("[]"), n.info))
+    for i in 0 ..< n.len: result.addSon(n[i])
     let n0 = semTemplBody(c, n.sons[0])
     withBracketExpr c, n0:
       result = semTemplBodySons(c, result)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent("{}"), n.info)
-    for i in 0 ..< n.len: result.add(n[i])
+    result.addSon(newIdentNode(getIdent("{}"), n.info))
+    for i in 0 ..< n.len: result.addSon(n[i])
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn:
     checkSonsLen(n, 2)
@@ -460,24 +460,24 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     case k
     of nkBracketExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent("[]="), n.info)
-      for i in 0 ..< a.len: result.add(a[i])
-      result.add(b)
+      result.addSon(newIdentNode(getIdent("[]="), n.info))
+      for i in 0 ..< a.len: result.addSon(a[i])
+      result.addSon(b)
       let a0 = semTemplBody(c, a.sons[0])
       withBracketExpr c, a0:
         result = semTemplBodySons(c, result)
     of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent("{}="), n.info)
-      for i in 0 ..< a.len: result.add(a[i])
-      result.add(b)
+      result.addSon(newIdentNode(getIdent("{}="), n.info))
+      for i in 0 ..< a.len: result.addSon(a[i])
+      result.addSon(b)
       result = semTemplBodySons(c, result)
     else:
       result = semTemplBodySons(c, n)
   of nkCallKinds-{nkPostfix}:
     result = semTemplBodySons(c, n)
     if c.bracketExpr != nil and n.len == 2 and oprIsRoof(n.sons[0]):
-      result.add c.bracketExpr
+      result.addSon(c.bracketExpr)
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too

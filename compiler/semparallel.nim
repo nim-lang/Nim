@@ -399,11 +399,11 @@ proc transformSlices(n: PNode): PNode =
       result = copyNode(n)
       let opSlice = newSymNode(createMagic("slice", mSlice))
       opSlice.typ = getSysType(tyInt)
-      result.add opSlice
-      result.add n[1]
+      result.addSon(opSlice)
+      result.addSon(n[1])
       let slice = n[2].skipStmtList
-      result.add slice[1]
-      result.add slice[2]
+      result.addSon(slice[1])
+      result.addSon(slice[2])
       return result
   if n.safeLen > 0:
     result = shallowCopy(n)
@@ -429,10 +429,10 @@ proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
         let m = transformSlices(b)
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
-          result.add n
+          result.addSon(n)
         let t = b[1][0].typ.sons[0]
         if spawnResult(t, true) == srByVar:
-          result.add wrapProcForSpawn(owner, m, b.typ, barrier, it[0])
+          result.addSon(wrapProcForSpawn(owner, m, b.typ, barrier, it[0]))
           it.sons[it.len-1] = emptyNode
         else:
           it.sons[it.len-1] = wrapProcForSpawn(owner, m, b.typ, barrier, nil)
@@ -487,7 +487,7 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   let barrier = genAddrOf(tempNode)
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
-  result.add varSection
-  result.add callCodegenProc("openBarrier", barrier)
-  result.add transformSpawn(owner, body, barrier)
-  result.add callCodegenProc("closeBarrier", barrier)
+  result.addSon(varSection)
+  result.addSon(callCodegenProc("openBarrier", barrier))
+  result.addSon(transformSpawn(owner, body, barrier))
+  result.addSon(callCodegenProc("closeBarrier", barrier))

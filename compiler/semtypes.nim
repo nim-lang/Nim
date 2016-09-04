@@ -452,8 +452,8 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode
   let bt = fitNode(c, t.sons[0].typ, bc).skipConvTakeType
 
   result = newNodeI(nkRange, a.info)
-  result.add(at)
-  result.add(bt)
+  result.addSon(at)
+  result.addSon(bt)
   if emptyRange(ac, bc): localError(b.info, errRangeIsEmpty)
   else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
 
@@ -499,7 +499,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
         # other elements have to be added to ``branch``
         for j in 1 .. <r.len:
-          branch.add(semCaseBranchSetElem(c, t, r[j], covered))
+          branch.addSon(semCaseBranchSetElem(c, t, r[j], covered))
           # caution! last son of branch must be the actions to execute:
           var L = branch.len
           swap(branch.sons[L-2], branch.sons[L-1])
@@ -1176,7 +1176,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
                 else: nil
     if ident != nil and ident.s == "[]":
       let b = newNodeI(nkBracketExpr, n.info)
-      for i in 1..<n.len: b.add(n[i])
+      for i in 1..<n.len: b.addSon(n[i])
       result = semTypeNode(c, b, prev)
     elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)

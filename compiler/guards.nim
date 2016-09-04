@@ -122,7 +122,7 @@ proc neg(n: PNode): PNode =
       var s = newNodeIT(nkCurly, n.info, n.sons[1].typ)
       for e in t.n:
         let eAsNode = newIntNode(nkIntLit, e.sym.position)
-        if not inSet(n.sons[1], eAsNode): s.add eAsNode
+        if not inSet(n.sons[1], eAsNode): s.addSon(eAsNode)
       result.sons[1] = s
     elif t.kind notin {tyString, tySequence} and lengthOrd(t) < 1000:
       result.sons[1] = complement(n.sons[1])
@@ -968,7 +968,7 @@ proc buildElse(n: PNode): PNode =
     let branch = n.sons[i]
     assert branch.kind == nkOfBranch
     for j in 0..branch.len-2:
-      s.add(branch.sons[j])
+      s.addSon(branch.sons[j])
   result = newNodeI(nkCall, n.info, 3)
   result.sons[0] = newSymNode(opContains)
   result.sons[1] = s

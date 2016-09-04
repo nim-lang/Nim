@@ -378,12 +378,12 @@ proc generateThunk(prc: PNode, dest: PType): PNode =
   if gCmd == cmdCompileToJS: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
-  conv.add(emptyNode)
-  conv.add(prc)
+  conv.addSon(emptyNode)
+  conv.addSon(prc)
   if prc.kind == nkClosure:
     internalError(prc.info, "closure to closure created")
-  result.add(conv)
-  result.add(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
+  result.addSon(conv)
+  result.addSon(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
 
 proc transformConv(c: PTransf, n: PNode): PTransNode =
   # numeric types need range checks:
@@ -708,7 +708,7 @@ proc commonOptimizations*(c: PSym, n: PNode): PNode =
   var op = getMergeOp(n)
   if (op != nil) and (op.magic != mNone) and (sonsLen(n) >= 3):
     result = newNodeIT(nkCall, n.info, n.typ)
-    add(result, n.sons[0])
+    addSon(result, n.sons[0])
     var args = newNode(nkArgList)
     flattenTreeAux(args, n, op)
     var j = 0
@@ -721,7 +721,7 @@ proc commonOptimizations*(c: PSym, n: PNode): PNode =
           if not isConstExpr(b): break
           a = evalOp(op.magic, result, a, b, nil)
           inc(j)
-      add(result, a)
+      addSon(result, a)
     if len(result) == 2: result = result[1]
   else:
     var cnst = getConstExpr(c, n)
@@ -892,7 +892,7 @@ proc liftDeferAux(n: PNode) =
       for i in 0..last:
         if n.sons[i].kind == nkDefer:
           let deferPart = newNodeI(nkFinally, n.sons[i].info)
-          deferPart.add n.sons[i].sons[0]
+          deferPart.addSon(n.sons[i].sons[0])
           var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
           var body = newNodeI(n.kind, n.sons[i].info)
           if i < last:

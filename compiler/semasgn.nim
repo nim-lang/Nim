@@ -55,7 +55,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     # XXX generate 'if' that checks same branches
     # generate selector:
     var access = dotField(x, n[0].sym)
-    caseStmt.add(access)
+    caseStmt.addSon(access)
     # copy the branches over, but replace the fields with the for loop body:
     for i in 1 .. <n.len:
       var branch = copyTree(n[i])
@@ -63,8 +63,8 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
       branch.sons[L-1] = newNodeI(nkStmtList, c.info)
 
       liftBodyObj(c, n[i].lastSon, branch.sons[L-1], x, y)
-      caseStmt.add(branch)
-    body.add(caseStmt)
+      caseStmt.addSon(branch)
+    body.addSon(caseStmt)
     localError(c.info, "cannot lift assignment operator to 'case' object")
   of nkRecList:
     for t in items(n): liftBodyObj(c, t, body, x, y)
@@ -83,9 +83,9 @@ proc newAsgnCall(c: PContext; op: PSym; x, y: PNode): PNode =
   if sfError in op.flags:
     localError(x.info, errWrongSymbolX, op.name.s)
   result = newNodeI(nkCall, x.info)
-  result.add newSymNode(op)
-  result.add genAddr(c, x)
-  result.add y
+  result.addSon(newSymNode(op))
+  result.addSon(genAddr(c, x))
+  result.addSon(y)
 
 proc newAsgnStmt(le, ri: PNode): PNode =
   result = newNodeI(nkAsgn, le.info, 2)
@@ -94,8 +94,8 @@ proc newAsgnStmt(le, ri: PNode): PNode =
 
 proc newDestructorCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
-  result.add(newSymNode(op))
-  result.add x
+  result.addSon(newSymNode(op))
+  result.addSon(x)
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newDestructorCall(op, y))
@@ -107,7 +107,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     if op != nil:
       markUsed(c.info, op)
       styleCheckUse(c.info, op)
-      body.add newDestructorCall(op, x)
+      body.addSon(newDestructorCall(op, x))
       result = true
   of attachedAsgn:
     if tfHasAsgn in t.flags:
@@ -125,19 +125,19 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
           op = liftBody(c.c, t, c.info)
       markUsed(c.info, op)
       styleCheckUse(c.info, op)
-      body.add newAsgnCall(c.c, op, x, y)
+      body.addSon(newAsgnCall(c.c, op, x, y))
       result = true
   of attachedDeepCopy:
     let op = t.deepCopy
     if op != nil:
       markUsed(c.info, op)
       styleCheckUse(c.info, op)
-      body.add newDeepCopyCall(op, x, y)
+      body.addSon(newDeepCopyCall(op, x, y))
       result = true
 
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind != attachedDestructor:
-    body.add newAsgnStmt(x, y)
+    body.addSon(newAsgnStmt(x, y))
 
 proc addVar(father, v, value: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
@@ -154,32 +154,32 @@ proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var v = newNodeI(nkVarSection, c.info)
   result = newSymNode(temp)
   v.addVar(result, lowerings.newIntLit(first))
-  body.add v
+  body.addSon(v)
 
 proc genBuiltin(magic: TMagic; name: string; i: PNode): PNode =
   result = newNodeI(nkCall, i.info)
-  result.add createMagic(name, magic).newSymNode
-  result.add i
+  result.addSon(createMagic(name, magic).newSymNode)
+  result.addSon(i)
 
 proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
   result = newNodeI(nkWhileStmt, c.info, 2)
   let cmp = genBuiltin(mLeI, "<=", i)
-  cmp.add genHigh(dest)
+  cmp.addSon(genHigh(dest))
   cmp.typ = getSysType(tyBool)
   result.sons[0] = cmp
   result.sons[1] = newNodeI(nkStmtList, c.info)
 
 proc addIncStmt(body, i: PNode) =
   let incCall = genBuiltin(mInc, "inc", i)
-  incCall.add lowerings.newIntLit(1)
-  body.add incCall
+  incCall.addSon(lowerings.newIntLit(1))
+  body.addSon(incCall)
 
 proc newSeqCall(c: PContext; x, y: PNode): PNode =
   # don't call genAddr(c, x) here:
   result = genBuiltin(mNewSeq, "newSeq", x)
   let lenCall = genBuiltin(mLengthSeq, "len", y)
   lenCall.typ = getSysType(tyInt)
-  result.add lenCall
+  result.addSon(lenCall)
 
 proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
@@ -191,14 +191,14 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     if tfHasAsgn in t.flags:
       if t.kind == tySequence:
         # XXX add 'nil' handling here
-        body.add newSeqCall(c.c, x, y)
+        body.addSon(newSeqCall(c.c, x, y))
       let i = declareCounter(c, body, firstOrd(t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
       liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),
                                                   y.at(i, elemType))
       addIncStmt(whileLoop.sons[1], i)
-      body.add whileLoop
+      body.addSon(whileLoop)
     else:
       defaultOp(c, t, body, x, y)
   of tyObject, tyDistinct:
@@ -218,7 +218,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       call.typ = t
       call.sons[0] = newSymNode(createMagic("deepCopy", mDeepCopy))
       call.sons[1] = y
-      body.add newAsgnStmt(x, call)
+      body.addSon(newAsgnStmt(x, call))
   of tyVarargs, tyOpenArray:
     localError(c.info, errGenerated, "cannot copy openArray")
   of tyFromExpr, tyIter, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,

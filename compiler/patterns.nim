@@ -98,7 +98,7 @@ proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
 proc gather(c: PPatternContext, param: PSym, n: PNode) =
   var pp = getLazy(c, param)
   if pp != nil and pp.kind == nkArgList:
-    pp.add(n)
+    pp.addSon(n)
   else:
     pp = newNodeI(nkArgList, n.info, 1)
     pp.sons[0] = n
@@ -112,13 +112,13 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
     if n.kind in nkCallKinds and matches(c, op.sons[1], n.sons[0]):
       for i in 1..sonsLen(n)-1:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
-      if rpn: arglist.add(n.sons[0])
+      if rpn: arglist.addSon(n.sons[0])
     elif n.kind == nkHiddenStdConv and n.sons[1].kind == nkBracket:
       let n = n.sons[1]
       for i in 0.. <n.len:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
     elif checkTypes(c, p.sons[2].sym, n):
-      add(arglist, n)
+      addSon(arglist, n)
     else:
       result = false
 
@@ -235,9 +235,9 @@ proc aliasAnalysisRequested(params: PNode): bool =
 
 proc addToArgList(result, n: PNode) =
   if n.typ != nil and n.typ.kind != tyStmt:
-    if n.kind != nkArgList: result.add(n)
+    if n.kind != nkArgList: result.addSon(n)
     else:
-      for i in 0 .. <n.len: result.add(n.sons[i])
+      for i in 0 .. <n.len: result.addSon(n.sons[i])
 
 proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ## returns a tree to semcheck if the rule triggered; nil otherwise
@@ -250,7 +250,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   # each parameter should have been bound; we simply setup a call and
   # let semantic checking deal with the rest :-)
   result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(s, n.info))
+  result.addSon(newSymNode(s, n.info))
   let params = s.typ.n
   let requiresAA = aliasAnalysisRequested(params)
   var args: PNode
@@ -261,7 +261,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
     let x = getLazy(ctx, param)
     # couldn't bind parameter:
     if isNil(x): return nil
-    result.add(x)
+    result.addSon(x)
     if requiresAA: addToArgList(args, x)
   # perform alias analysis here:
   if requiresAA:

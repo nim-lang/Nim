@@ -28,9 +28,9 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   template handleParam(param) =
     let x = param
     if x.kind == nkArgList:
-      for y in items(x): result.add(y)
+      for y in items(x): result.addSon(y)
     else:
-      result.add copyTree(x)
+      result.addSon(copyTree(x))
 
   case templ.kind
   of nkSym:
@@ -48,16 +48,16 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           x = copySym(s, false)
           x.owner = c.genSymOwner
           idTablePut(c.mapping, s, x)
-        result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
+        result.addSon(newSymNode(x, if c.instLines: actual.info else: templ.info))
     else:
-      result.add copyNode(c, templ, actual)
+      result.addSon(copyNode(c, templ, actual))
   of nkNone..nkIdent, nkType..nkNilLit: # atom
-    result.add copyNode(c, templ, actual)
+    result.addSon(copyNode(c, templ, actual))
   else:
     var res = copyNode(c, templ, actual)
     for i in countup(0, sonsLen(templ) - 1):
       evalTemplateAux(templ.sons[i], actual, c, res)
-    result.add res
+    result.addSon(res)
 
 proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   # if the template has zero arguments, it can be called without ``()``

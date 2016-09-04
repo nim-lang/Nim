@@ -1327,8 +1327,8 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   if f == arg.typ and arg.kind == nkHiddenStdConv: return arg
 
   var call = newNodeI(nkCall, arg.info)
-  call.add(f.n.copyTree)
-  call.add(arg.copyTree)
+  call.addSon(f.n.copyTree)
+  call.addSon(arg.copyTree)
   result = c.semExpr(c, call)
   if result != nil:
     if result.typ == nil: return nil

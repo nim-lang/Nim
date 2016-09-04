@@ -122,7 +122,7 @@ proc unnestStmts(n, result: PNode) =
   if n.kind == nkStmtList:
     for x in items(n): unnestStmts(x, result)
   elif n.kind notin {nkCommentStmt, nkNilLit}:
-    result.add(n)
+    result.addSon(n)
 
 proc flattenStmts*(n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)

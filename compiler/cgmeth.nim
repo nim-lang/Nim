@@ -92,7 +92,7 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
     # we've added a dispatcher already, so overwrite it
     s.ast.sons[L] = dispatcher
   else:
-    s.ast.add(dispatcher)
+    s.ast.addSon(dispatcher)
 
 proc createDispatcher(s: PSym): PSym =
   var disp = copySym(s)

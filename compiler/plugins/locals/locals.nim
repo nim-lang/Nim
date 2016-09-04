@@ -38,6 +38,6 @@ proc semLocals(c: PContext, n: PNode): PNode =
 
         var a = newSymNode(it, result.info)
         if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
-        result.add(a)
+        result.addSon(a)
 
 registerPlugin("stdlib", "system", "locals", semLocals)

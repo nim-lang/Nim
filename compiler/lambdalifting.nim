@@ -122,8 +122,8 @@ const
 
 proc newCall(a: PSym, b: PNode): PNode =
   result = newNodeI(nkCall, a.info)
-  result.add newSymNode(a)
-  result.add b
+  result.addSon(newSymNode(a))
+  result.addSon(b)
 
 proc createStateType(iter: PSym): PType =
   var n = newNodeI(nkRange, iter.info)
@@ -153,7 +153,7 @@ proc getIterResult(iter: PSym): PSym =
     result = newSym(skResult, getIdent":result", iter, iter.info)
     result.typ = iter.typ.sons[0]
     incl(result.flags, sfUsed)
-    iter.ast.add newSymNode(result)
+    iter.ast.addSon(newSymNode(result))
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   assert param.kind == skParam
@@ -209,13 +209,13 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
 
 proc makeClosure*(prc: PSym; env: PNode; info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
-  result.add(newSymNode(prc))
+  result.addSon(newSymNode(prc))
   if env == nil:
-    result.add(newNodeIT(nkNilLit, info, getSysType(tyNil)))
+    result.addSon(newNodeIT(nkNilLit, info, getSysType(tyNil)))
   else:
     if env.skipConv.kind == nkClosure:
       localError(info, "internal error: taking closure of closure")
-    result.add(env)
+    result.addSon(env)
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   # XXX optimization: Only lift the variable if it lives across
@@ -239,11 +239,11 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   env.flags = hp.flags
   var v = newNodeI(nkVarSection, n.info)
   addVar(v, newSymNode(env))
-  result.add(v)
+  result.addSon(v)
   # add 'new' statement:
   let envAsNode = env.newSymNode
-  result.add newCall(getSysSym"internalNew", envAsNode)
-  result.add makeClosure(iter, envAsNode, n.info)
+  result.addSon(newCall(getSysSym"internalNew", envAsNode))
+  result.addSon(makeClosure(iter, envAsNode, n.info))
 
 proc freshVarForClosureIter*(s, owner: PSym): PNode =
   let envParam = getHiddenParam(owner)
@@ -512,22 +512,22 @@ proc rawClosureCreation(owner: PSym;
     if env.kind == nkSym:
       var v = newNodeI(nkVarSection, env.info)
       addVar(v, env)
-      result.add(v)
+      result.addSon(v)
     # add 'new' statement:
-    result.add(newCall(getSysSym"internalNew", env))
+    result.addSon(newCall(getSysSym"internalNew", env))
     # add assignment statements for captured parameters:
     for i in 1..<owner.typ.n.len:
       let local = owner.typ.n[i].sym
       if local.id in d.capturedVars:
         let fieldAccess = indirectAccess(env, local, env.info)
         # add ``env.param = param``
-        result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
+        result.addSon(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
 
   let upField = lookupInRecord(env.typ.lastSon.n, getIdent(upName))
   if upField != nil:
     let up = getUpViaParam(owner)
     if up != nil and upField.typ == up.typ:
-      result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
+      result.addSon(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  up, env.info))
     #elif oldenv != nil and oldenv.typ == upField.typ:
     #  result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
@@ -551,18 +551,18 @@ proc closureCreationForIter(iter: PNode;
     vnode = v.newSymNode
     var vs = newNodeI(nkVarSection, iter.info)
     addVar(vs, vnode)
-    result.add(vs)
-  result.add(newCall(getSysSym"internalNew", vnode))
+    result.addSon(vs)
+  result.addSon(newCall(getSysSym"internalNew", vnode))
 
   let upField = lookupInRecord(v.typ.lastSon.n, getIdent(upName))
   if upField != nil:
     let u = setupEnvVar(owner, d, c)
     if u.typ == upField.typ:
-      result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
+      result.addSon(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
                  u, iter.info))
     else:
       localError(iter.info, "internal error: cannot create up reference for iter")
-  result.add makeClosure(iter.sym, vnode, iter.info)
+  result.addSon(makeClosure(iter.sym, vnode, iter.info))
 
 proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
                      c: var LiftingPass): PNode =
@@ -591,9 +591,9 @@ proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
   let stateNo = state.typ.n.sons[1].intVal
 
   var stateAsgnStmt = newNodeI(nkAsgn, n.info)
-  stateAsgnStmt.add(rawIndirectAccess(newSymNode(getEnvParam(owner)),
+  stateAsgnStmt.addSon(rawIndirectAccess(newSymNode(getEnvParam(owner)),
                     state, n.info))
-  stateAsgnStmt.add(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
+  stateAsgnStmt.addSon(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
 
   var retStmt = newNodeI(nkReturnStmt, n.info)
   if n.sons[0].kind != nkEmpty:
@@ -601,28 +601,28 @@ proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
     var retVal = liftCapturedVars(n.sons[0], owner, d, c)
     addSon(a, newSymNode(getIterResult(owner)))
     addSon(a, retVal)
-    retStmt.add(a)
+    retStmt.addSon(a)
   else:
-    retStmt.add(emptyNode)
+    retStmt.addSon(emptyNode)
 
   var stateLabelStmt = newNodeI(nkState, n.info)
-  stateLabelStmt.add(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
+  stateLabelStmt.addSon(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
 
   result = newNodeI(nkStmtList, n.info)
-  result.add(stateAsgnStmt)
-  result.add(retStmt)
-  result.add(stateLabelStmt)
+  result.addSon(stateAsgnStmt)
+  result.addSon(retStmt)
+  result.addSon(stateLabelStmt)
 
 proc transformReturn(n: PNode; owner: PSym; d: DetectionPass;
                      c: var LiftingPass): PNode =
   let state = getStateField(owner)
   result = newNodeI(nkStmtList, n.info)
   var stateAsgnStmt = newNodeI(nkAsgn, n.info)
-  stateAsgnStmt.add(rawIndirectAccess(newSymNode(getEnvParam(owner)),
+  stateAsgnStmt.addSon(rawIndirectAccess(newSymNode(getEnvParam(owner)),
                     state, n.info))
-  stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
-  result.add(stateAsgnStmt)
-  result.add(n)
+  stateAsgnStmt.addSon(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
+  result.addSon(stateAsgnStmt)
+  result.addSon(n)
 
 proc wrapIterBody(n: PNode; owner: PSym): PNode =
   if not owner.isIterator: return n
@@ -638,19 +638,19 @@ proc wrapIterBody(n: PNode; owner: PSym): PNode =
   let info = n.info
   result = newNodeI(nkStmtList, info)
   var gs = newNodeI(nkGotoState, info)
-  gs.add(rawIndirectAccess(newSymNode(owner.getHiddenParam), getStateField(owner), info))
-  result.add(gs)
+  gs.addSon(rawIndirectAccess(newSymNode(owner.getHiddenParam), getStateField(owner), info))
+  result.addSon(gs)
   var state0 = newNodeI(nkState, info)
-  state0.add(newIntNode(nkIntLit, 0))
-  result.add(state0)
+  state0.addSon(newIntNode(nkIntLit, 0))
+  result.addSon(state0)
 
-  result.add(n)
+  result.addSon(n)
 
   var stateAsgnStmt = newNodeI(nkAsgn, info)
-  stateAsgnStmt.add(rawIndirectAccess(newSymNode(owner.getHiddenParam),
+  stateAsgnStmt.addSon(rawIndirectAccess(newSymNode(owner.getHiddenParam),
                     getStateField(owner), info))
-  stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
-  result.add(stateAsgnStmt)
+  stateAsgnStmt.addSon(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
+  result.addSon(stateAsgnStmt)
 
 proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
                   c: var LiftingPass): PNode =
@@ -860,21 +860,21 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
 
     var v = newNodeI(nkVarSection, body.info)
     addVar(v, newSymNode(env))
-    result.add(v)
+    result.addSon(v)
     # add 'new' statement:
-    result.add(newCall(getSysSym"internalNew", env.newSymNode))
+    result.addSon(newCall(getSysSym"internalNew", env.newSymNode))
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon
     if closure.kind == nkClosure:
       call.sons[0] = closure
       for i in 0 .. op.len-2:
-        result.add op[i]
+        result.addSon(op[i])
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
   whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(tyBool))
   whileLoop.sons[1] = loopBody
-  result.add whileLoop
+  result.addSon(whileLoop)
 
   # setup loopBody:
   # gather vars in a tuple:

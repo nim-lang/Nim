@@ -360,7 +360,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
       # simply store it somewhere:
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
-      x.otherPragmas.add n.sons[i]
+      x.otherPragmas.addSon(n.sons[i])
     #localError(n.info, errOptionExpected)
 
 proc processPop(c: PContext, n: PNode) =

@@ -506,7 +506,7 @@ proc myClose(context: PPassContext, n: PNode): PNode =
     internalError(n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
-    result.add(c.module.ast)
+    result.addSon(c.module.ast)
   popOwner()
   popProcCon(c)
 

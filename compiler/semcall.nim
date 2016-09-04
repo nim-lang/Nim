@@ -356,9 +356,9 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
-          x.call.add s.ast
+          x.call.addSon(s.ast)
         of skType:
-          x.call.add newSymNode(s, n.info)
+          x.call.addSon(newSymNode(s, n.info))
         else:
           internalAssert false
 
@@ -443,7 +443,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
           let x = explicitGenericSym(c, n, candidate)
-          if x != nil: result.add(x)
+          if x != nil: result.addSon(x)
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]
@@ -458,7 +458,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # and use the overloading resolution mechanism:
   var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
-  call.add(newIdentNode(fn.name, fn.info))
+  call.addSon(newIdentNode(fn.name, fn.info))
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
     let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
@@ -469,7 +469,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       x.addSonSkipIntLit t.baseOfDistinct
     else:
       x = t.baseOfDistinct
-    call.add(newNodeIT(nkEmpty, fn.info, x))
+    call.addSon(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
     var resolved = semOverloadedCall(c, call, call, {fn.kind})
     if resolved != nil:

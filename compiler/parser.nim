@@ -323,9 +323,9 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
                                 tkParLe..tkParDotRi}:
           accm.add(tokToStr(p.tok))
           getTok(p)
-        result.add(newIdentNodeP(getIdent(accm), p))
+        result.addSon(newIdentNodeP(getIdent(accm), p))
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
-        result.add(newIdentNodeP(getIdent(tokToStr(p.tok)), p))
+        result.addSon(newIdentNodeP(getIdent(tokToStr(p.tok)), p))
         getTok(p)
       else:
         parMessage(p, errIdentifierExpected, p.tok)
@@ -472,11 +472,11 @@ proc simpleExpr(p: var TParser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var TParser, result: PNode) =
   inc p.inSemiStmtList
-  result.add(complexOrSimpleStmt(p))
+  result.addSon(complexOrSimpleStmt(p))
   while p.tok.tokType == tkSemiColon:
     getTok(p)
     optInd(p, result)
-    result.add(complexOrSimpleStmt(p))
+    result.addSon(complexOrSimpleStmt(p))
   dec p.inSemiStmtList
   result.kind = nkStmtListExpr
 
@@ -510,7 +510,7 @@ proc parsePar(p: var TParser): PNode =
     optInd(p, result)
     semiStmtList(p, result)
   elif p.tok.tokType == tkCurlyDotLe:
-    result.add(parseStmtPragma(p))
+    result.addSon(parseStmtPragma(p))
   elif p.tok.tokType != tkParRi:
     var a = simpleExpr(p)
     if p.tok.tokType == tkEquals:
@@ -521,16 +521,16 @@ proc parsePar(p: var TParser): PNode =
       let asgn = newNodeI(nkAsgn, a.info, 2)
       asgn.sons[0] = a
       asgn.sons[1] = b
-      result.add(asgn)
+      result.addSon(asgn)
       if p.tok.tokType == tkSemiColon:
         semiStmtList(p, result)
     elif p.tok.tokType == tkSemiColon:
       # stmt context:
-      result.add(a)
+      result.addSon(a)
       semiStmtList(p, result)
     else:
       a = colonOrEquals(p, a)
-      result.add(a)
+      result.addSon(a)
       if p.tok.tokType == tkComma:
         getTok(p)
         skipComment(p, a)
@@ -1136,7 +1136,7 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
     let stmtList = newNodeP(nkStmtList, p)
     if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
       let body = parseStmt(p)
-      stmtList.add body
+      stmtList.addSon body
       #addSon(result, makeStmtList(body))
     while sameInd(p):
       var b: PNode
@@ -1162,9 +1162,9 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
       if b.kind == nkElse: break
     if stmtList.len == 1 and stmtList[0].kind == nkStmtList:
       # to keep backwards compatibility (see tests/vm/tstringnil)
-      result.add stmtList[0]
+      result.addSon(stmtList[0])
     else:
-      result.add stmtList
+      result.addSon(stmtList)
 
 proc parseExprStmt(p: var TParser): PNode =
   #| exprStmt = simpleExpr
@@ -1602,7 +1602,7 @@ proc parseEnum(p: var TParser): PNode =
     var a = parseSymbol(p)
     if a.kind == nkEmpty: return
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
-      add(result, a)
+      result.addSon(a)
       break
     if p.tok.tokType == tkEquals and p.tok.indent < 0:
       getTok(p)
@@ -1976,7 +1976,7 @@ proc parseStmt(p: var TParser): PNode =
             parMessage(p, errInvalidIndentation)
           let a = simpleStmt(p)
           if a.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
-          result.add(a)
+          result.addSon(a)
           if p.tok.tokType != tkSemiColon: break
           getTok(p)
 

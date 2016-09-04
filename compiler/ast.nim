@@ -971,11 +971,6 @@ proc safeLen*(n: PNode): int {.inline.} =
   if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
   else: result = len(n.sons)
 
-proc add*(father, son: PNode) =
-  assert son != nil
-  if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
-
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
@@ -1566,7 +1561,7 @@ proc makeStmtList*(n: PNode): PNode =
     result = n
   else:
     result = newNodeI(nkStmtList, n.info)
-    result.add n
+    result.addSon n
 
 proc skipStmtList*(n: PNode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr}:

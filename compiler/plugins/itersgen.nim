@@ -37,7 +37,7 @@ proc iterToProcImpl(c: PContext, n: PNode): PNode =
   let prc = newSym(skProc, n[3].ident, iter.sym.owner, iter.sym.info)
   prc.typ = copyType(iter.sym.typ, prc, false)
   excl prc.typ.flags, tfCapturesEnv
-  prc.typ.n.add newSymNode(getEnvParam(iter.sym))
+  prc.typ.n.addSon(newSymNode(getEnvParam(iter.sym)))
   prc.typ.rawAddSon t
   let orig = iter.sym.ast
   prc.ast = newProcNode(nkProcDef, n.info,
@@ -45,7 +45,7 @@ proc iterToProcImpl(c: PContext, n: PNode): PNode =
                         params = orig[paramsPos],
                         pragmas = orig[pragmasPos],
                         body = body)
-  prc.ast.add iter.sym.ast.sons[resultPos]
+  prc.ast.addSon(iter.sym.ast.sons[resultPos])
   addInterfaceDecl(c, prc)
 
 registerPlugin("stdlib", "system", "iterToProc", iterToProcImpl)

@@ -110,8 +110,8 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let isCall = result.kind in nkCallKinds
   for i in 0 .. <n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    if isCall and i == 0: result.add(n[i])
-    else: result.add(prepareNode(cl, n[i]))
+    if isCall and i == 0: result.addSon(n[i])
+    else: result.addSon(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =
   # XXX: generic params should use skGenericParam instead of skType
