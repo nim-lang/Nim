@@ -218,7 +218,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       else: return
 
     if nfDotField in n.flags:
-      internalAssert f.kind == nkIdent and n.sonsLen >= 2
+      internalAssert f.kind == nkIdent and n.len >= 2
       let calleeName = newStrNode(nkStrLit, f.ident.s).withInfo(n.info)
 
       # leave the op head symbol empty,
@@ -239,7 +239,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         tryOp "."
 
     elif nfDotSetter in n.flags:
-      internalAssert f.kind == nkIdent and n.sonsLen == 3
+      internalAssert f.kind == nkIdent and n.len == 3
       let calleeName = newStrNode(nkStrLit,
         f.ident.s[0..f.ident.s.len-2]).withInfo(n.info)
       let callOp = newIdentNode(getIdent".=", n.info)
@@ -279,7 +279,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     elif gErrorCounter == 0:
       # don't cascade errors
       var args = "("
-      for i in countup(1, sonsLen(n) - 1):
+      for i in countup(1, len(n) - 1):
         if i > 1: add(args, ", ")
         add(args, typeToString(n.sons[i].typ))
       add(args, ")")
@@ -404,7 +404,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   # binding has to stay 'nil' for this to work!
   initCandidate(c, m, s, nil)
 
-  for i in 1..sonsLen(n)-1:
+  for i in 1..len(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
     let arg = n[i].typ
     let tm = typeRel(m, formal, arg, true)
@@ -416,7 +416,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
-  for i in 1..sonsLen(n)-1:
+  for i in 1..len(n)-1:
     n.sons[i].typ = semTypeNode(c, n.sons[i], nil)
   var s = s
   var a = n.sons[0]

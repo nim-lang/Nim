@@ -30,14 +30,14 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   var g = PGen(c)
   case n.kind
   of nkImportStmt:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var imported = getModuleName(n.sons[i])
       addDependencyAux(g.module.name.s, imported)
   of nkFromStmt, nkImportExceptStmt:
     var imported = getModuleName(n.sons[0])
     addDependencyAux(g.module.name.s, imported)
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr:
-    for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])
+    for i in countup(0, len(n) - 1): discard addDotDependency(c, n.sons[i])
   else:
     discard
 

@@ -353,7 +353,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   var hasFinally = false
   for i in 1 .. < n.len:
     let b = n.sons[i]
-    let blen = sonsLen(b)
+    let blen = len(b)
     if b.kind == nkExceptBranch:
       inc branches
       if blen == 1:
@@ -394,14 +394,14 @@ proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
 proc trackPragmaStmt(tracked: PEffects, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var it = n.sons[i]
     if whichPragma(it) == wEffects:
       # list the computed effects up to here:
       listEffects(tracked)
 
 proc effectSpec(n: PNode, effectType: TSpecialWord): PNode =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var it = n.sons[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
       result = it.sons[1]

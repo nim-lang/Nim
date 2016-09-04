@@ -639,7 +639,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         #incl(res.loc.flags, lfIndirect)
         res.loc.s = OnUnknown
 
-  for i in countup(1, sonsLen(prc.typ.n) - 1):
+  for i in countup(1, len(prc.typ.n) - 1):
     var param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param)
@@ -1280,7 +1280,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
   if sfMainModule in m.module.flags:
     incl m.flags, objHasKidsValid
     var disp = generateMethodDispatchers()
-    for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
+    for i in 0..len(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)
 
 proc cgenWriteModules* =

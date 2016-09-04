@@ -117,7 +117,7 @@ proc createObj*(owner: PSym, info: TLineInfo): PType =
 
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
-  field.position = sonsLen(obj.n)
+  field.position = len(obj.n)
   add(obj.n, newSymNode(field))
 
 proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
@@ -138,7 +138,7 @@ proc addField*(obj: PType; s: PSym) =
   let t = skipIntLit(s.typ)
   field.typ = t
   assert t.kind != tyStmt
-  field.position = sonsLen(obj.n)
+  field.position = len(obj.n)
   add(obj.n, newSymNode(field))
 
 proc addUniqueField*(obj: PType; s: PSym) =
@@ -148,7 +148,7 @@ proc addUniqueField*(obj: PType; s: PSym) =
     let t = skipIntLit(s.typ)
     field.typ = t
     assert t.kind != tyStmt
-    field.position = sonsLen(obj.n)
+    field.position = len(obj.n)
     add(obj.n, newSymNode(field))
 
 proc newDotExpr(obj, b: PSym): PNode =

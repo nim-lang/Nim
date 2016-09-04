@@ -1227,9 +1227,7 @@ proc newSons*(father: PType, length: int) =
   else:
     setLen(father.sons, length)
 
-proc sonsLen*(n: PType): int = n.sons.len
 proc len*(n: PType): int = n.sons.len
-proc sonsLen*(n: PNode): int = n.sons.len
 proc lastSon*(n: PNode): PNode = n.sons[^1]
 proc lastSon*(n: PType): PType = n.sons[^1]
 
@@ -1252,8 +1250,8 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, sonsLen(src))
-  for i in countup(0, sonsLen(src) - 1): dest.sons[i] = src.sons[i]
+  newSons(dest, len(src))
+  for i in countup(0, len(src) - 1): dest.sons[i] = src.sons[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1391,7 +1389,7 @@ proc addNilAllowed*(father, son: PNode) =
 
 proc del*(father: PNode, idx: int) =
   if isNil(father.sons): return
-  var length = sonsLen(father)
+  var length = len(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)
 
@@ -1430,7 +1428,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, sonsLen(src))
+  else: newSeq(result.sons, len(src))
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
@@ -1450,12 +1448,12 @@ proc copyTree*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1):
+    newSeq(result.sons, len(src))
+    for i in countup(0, len(src) - 1):
       result.sons[i] = copyTree(src.sons[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     if n.sons[i].kind == kind:
       return true
   result = false
@@ -1473,14 +1471,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if n.kind in kinds or containsNode(n.sons[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
         return true
     result = false

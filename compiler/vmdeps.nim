@@ -93,9 +93,9 @@ proc objectNode(n: PNode): PNode =
     result.sons[2] = ast.emptyNode  # no assigned value
   else:
     result = copyNode(n)
-    let sonsLen = n.safeLen
-    result.sons = newSeq[PNode](sonsLen)
-    for i in 0 ..< sonsLen:
+    let len = n.safeLen
+    result.sons = newSeq[PNode](len)
+    for i in 0 ..< len:
       result.sons[i] = objectNode(n[i])
 
 proc mapTypeToAstX(t: PType; info: TLineInfo;
@@ -213,8 +213,8 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     result.add(copyTree(t.n))
   of tyTuple:
     if inst:
-      let sonsLen = t.n.sons.len
-      result = newNodeX(nkTupleTy, sonslen)
+      let sonsLen = t.n.len
+      result = newNodeX(nkTupleTy, sonsLen)
       for i in 0 ..< sonsLen:
         result.sons[i] = newIdentDefs(t.n.sons[i])
     else:

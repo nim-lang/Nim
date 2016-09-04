@@ -163,7 +163,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       encodeNode(w, n.info, n.sons[i], result)
   add(result, ')')
 
@@ -247,7 +247,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     encodeVInt(s.id, result)
     pushSym(w, s)
   encodeLoc(w, t.loc, result)
-  for i in countup(0, sonsLen(t) - 1):
+  for i in countup(0, len(t) - 1):
     if t.sons[i] == nil:
       add(result, "^()")
     else:
@@ -572,7 +572,7 @@ proc process(c: PPassContext, n: PNode): PNode =
   var w = PRodWriter(c)
   case n.kind
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
+    for i in countup(0, len(n) - 1): discard process(c, n.sons[i])
     #var s = n.sons[namePos].sym
     #addInterfaceSym(w, s)
   of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef,
@@ -585,12 +585,12 @@ proc process(c: PPassContext, n: PNode): PNode =
         sfForward notin s.flags:
       addInterfaceSym(w, s)
   of nkVarSection, nkLetSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       addInterfaceSym(w, a.sons[0].sym)
   of nkTypeSection:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       if a.sons[0].kind != nkSym: internalError(a.info, "rodwrite.process")
@@ -603,18 +603,18 @@ proc process(c: PPassContext, n: PNode): PNode =
       #
       #        if (a.sons[2] <> nil) and (a.sons[2].kind = nkEnumTy) then begin
       #          a := s.typ.n;
-      #          for j := 0 to sonsLen(a)-1 do
+      #          for j := 0 to len(a)-1 do
       #            addInterfaceSym(w, a.sons[j].sym);
       #        end
   of nkImportStmt:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       addModDep(w, getModuleName(n.sons[i]), n.info)
     addStmt(w, n)
   of nkFromStmt, nkImportExceptStmt:
     addModDep(w, getModuleName(n.sons[0]), n.info)
     addStmt(w, n)
   of nkIncludeStmt:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       addInclDep(w, getModuleName(n.sons[i]), n.info)
   of nkPragma:
     addStmt(w, n)

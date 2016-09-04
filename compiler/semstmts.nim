@@ -66,7 +66,7 @@ proc semWhile(c: PContext, n: PNode): PNode =
 proc toCover(t: PType): BiggestInt =
   var t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
   if t2.kind == tyEnum and enumHasHoles(t2):
-    result = sonsLen(t2.n)
+    result = len(t2.n)
   else:
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
@@ -161,7 +161,7 @@ proc semIf(c: PContext, n: PNode): PNode =
   result = n
   var typ = commonTypeBegin
   var hasElse = false
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var it = n.sons[i]
     if it.len == 2:
       when newScopeForIf: openScope(c)
@@ -205,13 +205,13 @@ proc semCase(c: PContext, n: PNode): PNode =
   else:
     localError(n.info, errSelectorMustBeOfCertainTypes)
     return
-  for i in countup(1, sonsLen(n) - 1):
+  for i in countup(1, len(n) - 1):
     var x = n.sons[i]
     case x.kind
     of nkOfBranch:
       checkMinLen(x, 2)
       semCaseBranch(c, n, x, i, covered)
-      var last = sonsLen(x)-1
+      var last = len(x)-1
       x.sons[last] = semExprBranchScope(c, x.sons[last])
       typ = commonType(typ, x.sons[last].typ)
     of nkElifBranch:
@@ -260,16 +260,16 @@ proc semTry(c: PContext, n: PNode): PNode =
   n.sons[0] = semExprBranchScope(c, n.sons[0])
   typ = commonType(typ, n.sons[0].typ)
   var check = initIntSet()
-  var last = sonsLen(n) - 1
+  var last = len(n) - 1
   for i in countup(1, last):
     var a = n.sons[i]
     checkMinLen(a, 1)
-    var length = sonsLen(a)
+    var length = len(a)
     if a.kind == nkExceptBranch:
       # so that ``except [a, b, c]`` is supported:
       if length == 2 and a.sons[0].kind == nkBracket:
         a.sons[0..0] = a.sons[0].sons
-        length = a.sonsLen
+        length = a.len
 
       for j in countup(0, length-2):
         var typ = semTypeNode(c, a.sons[j], nil)
@@ -398,13 +398,13 @@ proc semUsing(c: PContext; n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "using")
   if not experimentalMode(c):
     localError(n.info, "use the {.experimental.} pragma to enable 'using'")
-  for i in countup(0, sonsLen(n)-1):
+  for i in countup(0, len(n)-1):
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a)
     checkMinLen(a, 3)
-    var length = sonsLen(a)
+    var length = len(a)
     if a.sons[length-2].kind != nkEmpty:
       let typ = semTypeNode(c, a.sons[length-2], nil)
       for j in countup(0, length-3):
@@ -428,13 +428,13 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
   var hasCompileTime = false
-  for i in countup(0, sonsLen(n)-1):
+  for i in countup(0, len(n)-1):
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a)
     checkMinLen(a, 3)
-    var length = sonsLen(a)
+    var length = len(a)
     var typ: PType
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
@@ -472,7 +472,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
         localError(a.info, errXExpected, "tuple")
-      elif length-2 != sonsLen(tup):
+      elif length-2 != len(tup):
         localError(a.info, errWrongNumberOfVariables)
       else:
         b = newNodeI(nkVarTuple, a.info)
@@ -525,7 +525,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
@@ -578,7 +578,7 @@ proc symForVar(c: PContext, n: PNode): PSym =
 
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
-  var length = sonsLen(n)
+  var length = len(n)
   let iterBase = n.sons[length-2].typ
   var iter = skipTypes(iterBase, {tyGenericInst})
   # length == 3 means that there is one for loop variable
@@ -595,7 +595,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
       if sfGenSym notin v.flags: addForVarDecl(c, v)
     else:
       localError(n.info, errWrongNumberOfVariables)
-  elif length-2 != sonsLen(iter):
+  elif length-2 != len(iter):
     localError(n.info, errWrongNumberOfVariables)
   else:
     for i in countup(0, length - 3):
@@ -621,7 +621,7 @@ proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
 proc semFor(c: PContext, n: PNode): PNode =
   result = n
   checkMinLen(n, 3)
-  var length = sonsLen(n)
+  var length = len(n)
   openScope(c)
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
@@ -664,7 +664,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)
-  for i in countup(0, sonsLen(n)-1):
+  for i in countup(0, len(n)-1):
     var a = n.sons[i]
     if a.kind == nkSym: addDecl(c, a.sym)
     else: illFormedAst(a)
@@ -672,7 +672,7 @@ proc addGenericParamListToScope(c: PContext, n: PNode) =
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before
   # we even look at the type definitions on the right
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
@@ -695,7 +695,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     a.sons[0] = newSymNode(s)
 
 proc typeSectionRightSidePass(c: PContext, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkTypeDef): illFormedAst(a)
@@ -733,7 +733,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if body != nil:
         body.sym = s
         body.size = -1 # could not be computed properly
-        s.typ.sons[sonsLen(s.typ) - 1] = body
+        s.typ.sons[len(s.typ) - 1] = body
       popOwner()
       closeScope(c)
     elif a.sons[2].kind != nkEmpty:
@@ -784,7 +784,7 @@ proc checkForMetaFields(n: PNode) =
     internalAssert false
 
 proc typeSectionFinalPass(c: PContext, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
     if a.sons[0].kind != nkSym: illFormedAst(a)
@@ -872,7 +872,7 @@ proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
       localError(n.info, errGenerated, "invalid return type: 'stmt'")
 
 proc addParams(c: PContext, n: PNode, kind: TSymKind) =
-  for i in countup(1, sonsLen(n)-1):
+  for i in countup(1, len(n)-1):
     if n.sons[i].kind == nkSym: addParamOrResult(c, n.sons[i].sym, kind)
     else: illFormedAst(n)
 
@@ -982,7 +982,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     #      "use the {.experimental.} pragma to enable 'do' with parameters")
     semParamList(c, n.sons[paramsPos], gp, s)
     # paramsTypeCheck(c, s.typ)
-    if sonsLen(gp) > 0 and n.sons[genericParamsPos].kind == nkEmpty:
+    if len(gp) > 0 and n.sons[genericParamsPos].kind == nkEmpty:
       # we have a list of implicit type parameters:
       n.sons[genericParamsPos] = gp
   else:
@@ -1193,7 +1193,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # process parameters:
   if n.sons[paramsPos].kind != nkEmpty:
     semParamList(c, n.sons[paramsPos], gp, s)
-    if sonsLen(gp) > 0:
+    if len(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
         n.sons[genericParamsPos] = gp
@@ -1342,7 +1342,7 @@ proc semProc(c: PContext, n: PNode): PNode =
 
 proc hasObjParam(s: PSym): bool =
   var t = s.typ
-  for col in countup(1, sonsLen(t)-1):
+  for col in countup(1, len(t)-1):
     if skipTypes(t.sons[col], skipPtrs).kind == tyObject:
       return true
 
@@ -1361,7 +1361,7 @@ proc semMethod(c: PContext, n: PNode): PNode =
     var foundObj = false
     # we start at 1 for now so that tparsecombnum continues to compile.
     # XXX Revisit this problem later.
-    for col in countup(1, sonsLen(tt)-1):
+    for col in countup(1, len(tt)-1):
       let t = tt.sons[col]
       if t != nil and t.kind == tyGenericInvocation:
         var x = skipTypes(t.sons[0], {tyVar, tyPtr, tyRef, tyGenericInst, tyGenericInvocation, tyGenericBody})
@@ -1388,7 +1388,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "converter")
-  if sonsLen(t) != 2: localError(n.info, errXRequiresOneArgument, "converter")
+  if len(t) != 2: localError(n.info, errXRequiresOneArgument, "converter")
   addConverter(c, s)
 
 proc semMacroDef(c: PContext, n: PNode): PNode =
@@ -1410,7 +1410,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   add(result, n)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var f = checkModuleName(n.sons[i])
     if f != InvalidFileIDX:
       if containsOrIncl(c.includedFiles, f):
@@ -1474,7 +1474,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n
   result.kind = nkStmtList
-  var length = sonsLen(n)
+  var length = len(n)
   var voidContext = false
   var last = length-1
   # by not allowing for nkCommentStmt etc. we ensure nkStmtListExpr actually
@@ -1510,7 +1510,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         deferPart = n.sons[i]
       var tryStmt = newNodeI(nkTryStmt, n.sons[i].info, 2)
       var body = newNodeI(nkStmtList, n.sons[i].info)
-      if i < n.sonsLen - 1:
+      if i < n.len - 1:
         body.sons = n.sons[(i+1)..n.len-1]
       tryStmt.sons[0] = body
       tryStmt.sons[1] = deferPart

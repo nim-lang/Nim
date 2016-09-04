@@ -756,7 +756,7 @@ proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym;
                    origTy: PType) =
   var test, u, v: TLoc
-  for i in countup(1, sonsLen(e) - 1):
+  for i in countup(1, len(e) - 1):
     var it = e.sons[i]
     assert(it.kind in nkCallKinds)
     assert(it.sons[0].kind == nkSym)
@@ -961,7 +961,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   var L = 0
   var appends: Rope = nil
   var lens: Rope = nil
-  for i in countup(0, sonsLen(e) - 2):
+  for i in countup(0, len(e) - 2):
     # compute the length expression:
     initLocExpr(p, e.sons[i + 1], a)
     if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
@@ -999,7 +999,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   assert(d.k == locNone)
   var L = 0
   initLocExpr(p, e.sons[1], dest)
-  for i in countup(0, sonsLen(e) - 3):
+  for i in countup(0, len(e) - 3):
     # compute the length expression:
     initLocExpr(p, e.sons[i + 2], a)
     if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
@@ -1177,8 +1177,8 @@ proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
   if d.k == locNone:
     getTemp(p, t.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  genNewSeqAux(p, d, intLiteral(sonsLen(t)))
-  for i in countup(0, sonsLen(t) - 1):
+  genNewSeqAux(p, d, intLiteral(len(t)))
+  for i in countup(0, len(t) - 1):
     initLoc(arr, locExpr, elemType(skipTypes(t.typ, typedescInst)), OnHeap)
     arr.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
     arr.s = OnHeap            # we know that sequences are on the heap
@@ -1408,7 +1408,7 @@ proc fewCmps(s: PNode): bool =
   elif elemType(s.typ).kind in {tyInt, tyInt16..tyInt64}:
     result = true             # better not emit the set if int is basetype!
   else:
-    result = sonsLen(s) <= 8  # 8 seems to be a good value
+    result = len(s) <= 8  # 8 seems to be a good value
 
 proc binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
   putIntoDest(p, d, e.typ, frmt % [rdLoc(a), rdSetElemLoc(b, a.t)])
@@ -1442,7 +1442,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
     initLocExpr(p, ea, a)
     initLoc(b, locExpr, e.typ, OnUnknown)
     b.r = rope("(")
-    var length = sonsLen(e.sons[1])
+    var length = len(e.sons[1])
     for i in countup(0, length - 1):
       if e.sons[1].sons[i].kind == nkRange:
         initLocExpr(p, e.sons[1].sons[i].sons[0], x)
@@ -1762,7 +1762,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       # big set:
       useStringh(p.module)
       lineF(p, cpsStmts, "memset($1, 0, sizeof($1));$n", [rdLoc(d)])
-      for i in countup(0, sonsLen(e) - 1):
+      for i in countup(0, len(e) - 1):
         if e.sons[i].kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
           initLocExpr(p, e.sons[i].sons[0], a)
@@ -1778,7 +1778,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       # small set
       var ts = "NU" & $(getSize(e.typ) * 8)
       lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(d)])
-      for i in countup(0, sonsLen(e) - 1):
+      for i in countup(0, len(e) - 1):
         if e.sons[i].kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
           initLocExpr(p, e.sons[i].sons[0], a)
@@ -1799,7 +1799,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     var t = getUniqueType(n.typ)
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     if d.k == locNone: getTemp(p, t, d)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
       initLoc(rec, locExpr, it.typ, d.s)
@@ -1845,7 +1845,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       initLoc(arr, locExpr, elemType(skipTypes(n.typ, abstractInst)), d.s)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n.sons[i], arr)
@@ -1856,7 +1856,7 @@ proc genComplexConst(p: BProc, sym: PSym, d: var TLoc) =
   putLocIntoDest(p, d, sym.loc)
 
 proc genStmtListExpr(p: BProc, n: PNode, d: var TLoc) =
-  var length = sonsLen(n)
+  var length = len(n)
   for i in countup(0, length - 2): genStmts(p, n.sons[i])
   if length > 0: expr(p, n.sons[length - 1], d)
 
@@ -2056,7 +2056,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkBlockExpr, nkBlockStmt: genBlock(p, n, d)
   of nkStmtListExpr: genStmtListExpr(p, n, d)
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1): genStmts(p, n.sons[i])
+    for i in countup(0, len(n) - 1): genStmts(p, n.sons[i])
   of nkIfExpr, nkIfStmt: genIf(p, n, d)
   of nkWhen:
     # This should be a "when nimvm" node.
@@ -2137,7 +2137,7 @@ proc genNamedConstExpr(p: BProc, n: PNode): Rope =
   else: result = genConstExpr(p, n)
 
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
-  var length = sonsLen(n)
+  var length = len(n)
   result = rope("{")
   for i in countup(ord(n.kind == nkObjConstr), length - 2):
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])

@@ -105,7 +105,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinLen(n, 2)
   let t = n.sons[1].typ
   internalAssert t != nil and t.kind == tyTypeDesc
-  if t.sonsLen > 0:
+  if t.len > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
     result = evalTypeTrait(n[0], t, getCurrOwner())

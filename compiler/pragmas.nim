@@ -79,7 +79,7 @@ proc invalidPragma(n: PNode) =
 proc pragmaAsm*(c: PContext, n: PNode): char =
   result = '\0'
   if n != nil:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       let it = n.sons[i]
       if it.kind == nkExprColonExpr and it.sons[0].kind == nkIdent:
         case whichKeyword(it.sons[0].ident)
@@ -271,7 +271,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
       sym.typ.callConv = ccCDecl
 
 proc processNote(c: PContext, n: PNode) =
-  if (n.kind == nkExprColonExpr) and (sonsLen(n) == 2) and
+  if (n.kind == nkExprColonExpr) and (len(n) == 2) and
       (n.sons[0].kind == nkBracketExpr) and
       (n.sons[0].sons.len == 2) and
       (n.sons[0].sons[1].kind == nkIdent) and
@@ -355,7 +355,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   x.dynlib = y.dynlib
   x.notes = gNotes
   append(c.optionStack, x)
-  for i in countup(start, sonsLen(n) - 1):
+  for i in countup(start, len(n) - 1):
     if processOption(c, n.sons[i]):
       # simply store it somewhere:
       if x.otherPragmas.isNil:
@@ -505,7 +505,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
 
   var userPragma = newSym(skTemplate, it.sons[1].ident, nil, it.info)
   var body = newNodeI(nkPragma, n.info)
-  for j in i+1 .. sonsLen(n)-1: add(body, n.sons[j])
+  for j in i+1 .. len(n)-1: add(body, n.sons[j])
   userPragma.ast = body
   strTableAdd(c.userPragmas, userPragma)
 
@@ -916,7 +916,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
       let o = it.otherPragmas
       if not o.isNil:
         pushInfoContext(n.info)
-        for i in countup(0, sonsLen(o) - 1):
+        for i in countup(0, len(o) - 1):
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(n.info, "implicitPragmas")
         popInfoContext()
@@ -944,7 +944,7 @@ proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
 
 proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     if n.sons[i].kind == nkPragma: pragmaRec(c, sym, n.sons[i], validPragmas)
     elif singlePragma(c, sym, n, i, validPragmas): break
 

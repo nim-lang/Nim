@@ -321,10 +321,10 @@ proc illFormedAstLocal*(n: PNode) =
   localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc checkLen*(n: PNode, length: int) =
-  if sonsLen(n) != length: illFormedAst(n)
+  if len(n) != length: illFormedAst(n)
 
 proc checkMinLen*(n: PNode, length: int) =
-  if sonsLen(n) < length: illFormedAst(n)
+  if len(n) < length: illFormedAst(n)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2

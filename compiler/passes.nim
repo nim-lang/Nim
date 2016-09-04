@@ -204,6 +204,6 @@ proc processModule*(module: PSym, stream: PLLStream,
   else:
     openPassesCached(a, module, rd)
     var n = loadInitSection(rd)
-    for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
+    for i in countup(0, len(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)
   result = true

@@ -1083,7 +1083,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     let info = parLineInfo(p)
     getTokNoInd(p)
     let next = primary(p, pmNormal)
-    if next.kind == nkBracket and next.sonsLen == 1:
+    if next.kind == nkBracket and next.len == 1:
       result = newNode(nkStaticTy, info, @[next.sons[0]])
     else:
       result = newNode(nkStaticExpr, info, @[next])

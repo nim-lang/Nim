@@ -121,7 +121,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
   c.errors = nil
   if binding != nil and callee.kind in routineKinds:
     var typeParams = callee.ast[genericParamsPos]
-    for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
+    for i in 1..min(len(typeParams), len(binding)-1):
       var formalTypeParam = typeParams.sons[i-1].typ
       var bound = binding[i].typ
       internalAssert bound != nil
@@ -268,7 +268,7 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
         n.sons[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
     add(result, argTypeToString(arg, prefer))
-    if i != sonsLen(n) - 1: add(result, ", ")
+    if i != len(n) - 1: add(result, ", ")
 
 proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType =
@@ -367,7 +367,7 @@ proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   if t != nil:
     if fGenericOrigin != nil and last.kind == tyGenericInst and
         last.len-1 == fGenericOrigin.len:
-      for i in countup(1, sonsLen(fGenericOrigin) - 1):
+      for i in countup(1, len(fGenericOrigin) - 1):
         let x = PType(idTableGet(c.bindings, fGenericOrigin.sons[i]))
         if x == nil:
           put(c, fGenericOrigin.sons[i], last.sons[i])
@@ -427,16 +427,16 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
   result = isNone
   if sameType(f, a):
     result = isEqual
-  elif sonsLen(a) == sonsLen(f):
+  elif len(a) == len(f):
     result = isEqual
     let firstField = if f.kind == tyTuple: 0
                      else: 1
-    for i in countup(firstField, sonsLen(f) - 1):
+    for i in countup(firstField, len(f) - 1):
       var m = typeRel(c, f.sons[i], a.sons[i])
       if m < isSubtype: return isNone
       result = minRel(result, m)
     if f.n != nil and a.n != nil:
-      for i in countup(0, sonsLen(f.n) - 1):
+      for i in countup(0, len(f.n) - 1):
         # check field names:
         if f.n.sons[i].kind != nkSym: internalError(f.n.info, "recordRel")
         elif a.n.sons[i].kind != nkSym: internalError(a.n.info, "recordRel")
@@ -507,7 +507,7 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   case a.kind
   of tyProc:
-    if sonsLen(f) != sonsLen(a): return
+    if len(f) != len(a): return
     result = isEqual      # start with maximum; also correct for no
                           # params at all
 
@@ -517,7 +517,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
     # Note: We have to do unification for the parameters before the
     # return type!
-    for i in 1 .. <f.sonsLen:
+    for i in 1 .. <f.len:
       checkParam(f.sons[i], a.sons[i])
 
     if f.sons[0] != nil:
@@ -1011,8 +1011,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       discard
     elif x.kind == tyGenericInst and
           ((f.sons[0] == x.sons[0]) or isGenericSubtype(x, f, depth)) and
-          (sonsLen(x) - 1 == sonsLen(f)):
-      for i in countup(1, sonsLen(f) - 1):
+          (len(x) - 1 == len(f)):
+      for i in countup(1, len(f) - 1):
         if x.sons[i].kind == tyGenericParam:
           internalError("wrong instantiated type!")
         elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype:
@@ -1043,7 +1043,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # var it1 = internalFind(root, 312) # cannot instantiate: 'D'
         #
         # we steal the generic parameters from the tyGenericBody:
-        for i in countup(1, sonsLen(f) - 1):
+        for i in countup(1, len(f) - 1):
           let x = PType(idTableGet(c.bindings, genericBody.sons[i-1]))
           if x == nil:
             discard "maybe fine (for eg. a==tyNil)"
@@ -1112,7 +1112,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       let roota = a.skipGenericAlias
       let rootf = f.lastSon.skipGenericAlias
       if a.kind == tyGenericInst and roota.base == rootf.base:
-        for i in 1 .. rootf.sonsLen-2:
+        for i in 1 .. rootf.len-2:
           let ff = rootf.sons[i]
           let aa = roota.sons[i]
           result = typeRel(c, ff, aa)
@@ -1136,7 +1136,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         if tfWildcard in a.flags:
           result = isGeneric
         elif a.kind == tyTypeDesc:
-          if f.sonsLen == 0:
+          if f.len == 0:
             result = isGeneric
           else:
             internalAssert a.sons != nil and a.sons.len > 0
@@ -1150,7 +1150,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         else:
           result = isNone
       else:
-        if f.sonsLen > 0 and f.sons[0].kind != tyNone:
+        if f.len > 0 and f.sons[0].kind != tyNone:
           result = typeRel(c, f.lastSon, a)
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a)
@@ -1524,7 +1524,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
     var best = -1
-    for i in countup(0, sonsLen(arg) - 1):
+    for i in countup(0, len(arg) - 1):
       if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
@@ -1572,7 +1572,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
 
 
 proc setSon(father: PNode, at: int, son: PNode) =
-  if sonsLen(father) <= at: setLen(father.sons, at + 1)
+  if len(father) <= at: setLen(father.sons, at + 1)
   father.sons[at] = son
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
@@ -1798,7 +1798,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
   var f = 1
-  while f < sonsLen(m.callee.n):
+  while f < len(m.callee.n):
     var formal = m.callee.n.sons[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:

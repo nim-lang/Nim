@@ -42,7 +42,7 @@ proc methodCall*(n: PNode): PNode =
   assert sfDispatcher in disp.flags
   result.sons[0].sym = disp
   # change the arguments to up/downcasts to fit the dispatcher's parameters:
-  for i in countup(1, sonsLen(result)-1):
+  for i in countup(1, len(result)-1):
     result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true)
 
 # save for incremental compilation:
@@ -54,10 +54,10 @@ type
 
 proc sameMethodBucket(a, b: PSym): MethodResult =
   if a.name.id != b.name.id: return
-  if sonsLen(a.typ) != sonsLen(b.typ):
+  if len(a.typ) != len(b.typ):
     return                    # check for return type:
   if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]): return
-  for i in countup(1, sonsLen(a.typ) - 1):
+  for i in countup(1, len(a.typ) - 1):
     var aa = a.typ.sons[i]
     var bb = b.typ.sons[i]
     while true:
@@ -105,7 +105,7 @@ proc createDispatcher(s: PSym): PSym =
   disp.ast.sons[bodyPos] = ast.emptyNode
   disp.loc.r = nil
   if s.typ.sons[0] != nil:
-    if disp.ast.sonsLen > resultPos:
+    if disp.ast.len > resultPos:
       disp.ast.sons[resultPos].sym = copySym(s.ast.sons[resultPos].sym)
     else:
       # We've encountered a method prototype without a filled-in
@@ -123,7 +123,7 @@ proc fixupDispatcher(meth, disp: PSym) =
   # from later definitions, particularly the resultPos slot. Also,
   # the lock level of the dispatcher needs to be updated/checked
   # against that of the method.
-  if disp.ast.sonsLen > resultPos and meth.ast.sonsLen > resultPos and
+  if disp.ast.len > resultPos and meth.ast.len > resultPos and
      disp.ast.sons[resultPos] == ast.emptyNode:
     disp.ast.sons[resultPos] = copyTree(meth.ast.sons[resultPos])
 
@@ -183,7 +183,7 @@ proc relevantCol(methods: TSymSeq, col: int): bool =
         return true
 
 proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
-  for col in countup(1, sonsLen(a.typ) - 1):
+  for col in countup(1, len(a.typ) - 1):
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
       var bb = skipTypes(b.typ.sons[col], skipPtrs)
@@ -213,7 +213,7 @@ proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =
 proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
   var base = lastSon(methods[0].ast).sym
   result = base
-  var paramLen = sonsLen(base.typ)
+  var paramLen = len(base.typ)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysSym("and")
   var iss = getSysSym("of")
@@ -261,7 +261,7 @@ proc generateMethodDispatchers*(): PNode =
   result = newNode(nkStmtList)
   for bucket in countup(0, len(gMethods) - 1):
     var relevantCols = initIntSet()
-    for col in countup(1, sonsLen(gMethods[bucket].methods[0].typ) - 1):
+    for col in countup(1, len(gMethods[bucket].methods[0].typ) - 1):
       if relevantCol(gMethods[bucket].methods, col): incl(relevantCols, col)
     sortBucket(gMethods[bucket].methods, relevantCols)
     add(result,

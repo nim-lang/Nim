@@ -999,7 +999,7 @@ proc writeNode(f: File; n: PNode) =
       f.write('!')
       f.write(n.sym.id)
     else:
-      for i in countup(0, sonsLen(n) - 1):
+      for i in countup(0, len(n) - 1):
         writeNode(f, n.sons[i])
   f.write(")")
 
@@ -1069,7 +1069,7 @@ proc writeType(f: File; t: PType) =
   if t.align != 2:
     f.write('=')
     f.write($t.align)
-  for i in countup(0, sonsLen(t) - 1):
+  for i in countup(0, len(t) - 1):
     if t.sons[i] == nil:
       f.write("^()")
     else:

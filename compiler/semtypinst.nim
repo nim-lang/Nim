@@ -167,7 +167,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNode(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var it = n.sons[i]
       if it == nil: illFormedAst(n)
       case it.kind
@@ -192,7 +192,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
   else:
-    var length = sonsLen(n)
+    var length = len(n)
     if length > 0:
       newSons(result, length)
       if start > 0:
@@ -247,7 +247,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     result = searchInstTypes(t)
   if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
-  for i in countup(1, sonsLen(t) - 1):
+  for i in countup(1, len(t) - 1):
     var x = t.sons[i]
     if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
@@ -279,14 +279,14 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
-  for i in countup(1, sonsLen(t) - 1):
+  for i in countup(1, len(t) - 1):
     var x = replaceTypeVarsT(cl, t.sons[i])
     assert x.kind != tyGenericInvocation
     header.sons[i] = x
     propagateToOwner(header, x)
     idTablePut(cl.typeMap, body.sons[i-1], x)
 
-  for i in countup(1, sonsLen(t) - 1):
+  for i in countup(1, len(t) - 1):
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
     rawAdd(result, header.sons[i])
@@ -328,11 +328,11 @@ proc eraseVoidParams*(t: PType) =
   if t.sons[0] != nil and t.sons[0].kind == tyVoid:
     t.sons[0] = nil
 
-  for i in 1 .. <t.sonsLen:
+  for i in 1 .. <t.len:
     # don't touch any memory unless necessary
     if t.sons[i].kind == tyVoid:
       var pos = i
-      for j in i+1 .. <t.sonsLen:
+      for j in i+1 .. <t.len:
         if t.sons[j].kind != tyVoid:
           t.sons[pos] = t.sons[j]
           t.n.sons[pos] = t.n.sons[j]
@@ -342,7 +342,7 @@ proc eraseVoidParams*(t: PType) =
       return
 
 proc skipIntLiteralParams*(t: PType) =
-  for i in 0 .. <t.sonsLen:
+  for i in 0 .. <t.len:
     let p = t.sons[i]
     if p == nil: continue
     let skipped = p.skipIntLit
@@ -441,7 +441,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     bailout()
     result = instCopyType(cl, t)
     idTablePut(cl.localCache, t, result)
-    for i in 1 .. <result.sonsLen:
+    for i in 1 .. <result.len:
       result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.lastSon)
 
@@ -454,7 +454,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       #if not cl.allowMetaTypes:
       idTablePut(cl.localCache, t, result)
 
-      for i in countup(0, sonsLen(result) - 1):
+      for i in countup(0, len(result) - 1):
         if result.sons[i] != nil:
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:

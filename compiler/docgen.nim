@@ -535,19 +535,19 @@ proc generateDoc*(d: PDoc, n: PNode) =
     when useEffectSystem: documentRaises(n)
     genItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1): generateDoc(d, n.sons[i])
+    for i in countup(0, len(n) - 1): generateDoc(d, n.sons[i])
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
       generateDoc(d, lastSon(n.sons[0]))
   of nkImportStmt:
-    for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i])
+    for i in 0 .. len(n)-1: traceDeps(d, n.sons[i])
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
   else: discard
 
@@ -578,13 +578,13 @@ proc generateJson*(d: PDoc, n: PNode) =
     when useEffectSystem: documentRaises(n)
     d.add genJsonItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         d.add genJsonItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       generateJson(d, n.sons[i])
   of nkWhenStmt:
     # generate documentation for the first branch only:

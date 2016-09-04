@@ -460,7 +460,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.lastGenericIdx < c.generics.len:
     var a = newNodeI(nkStmtList, n.info)
     addCodeForGenerics(c, a)
-    if sonsLen(a) > 0:
+    if len(a) > 0:
       # a generic has been added to `a`:
       if result.kind != nkEmpty: add(a, result)
       result = a

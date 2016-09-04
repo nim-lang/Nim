@@ -23,7 +23,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(n)
-    var L = sonsLen(forLoop)
+    var L = len(forLoop)
     if c.replaceByFieldName:
       if ident.id == considerQuotedIdent(forLoop[0]).id:
         let fieldName = if c.tupleType.isNil: c.field.name.s
@@ -50,8 +50,8 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
       localError(n.info, errGenerated,
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
-    newSons(result, sonsLen(n))
-    for i in countup(0, sonsLen(n)-1):
+    newSons(result, len(n))
+    for i in countup(0, len(n)-1):
       result.sons[i] = instFieldLoopBody(c, n.sons[i], forLoop)
 
 type
@@ -115,9 +115,9 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var stmts = newNodeI(nkStmtList, n.info)
   result.sons[1] = stmts
 
-  var length = sonsLen(n)
+  var length = len(n)
   var call = n.sons[length-2]
-  if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
+  if length-2 != len(call)-1 + ord(m==mFieldPairs):
     localError(n.info, errWrongNumberOfVariables)
     return result
 
@@ -133,8 +133,8 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:
     var loopBody = n.sons[length-1]
-    stmts.sons = newSeq[PNode](sonsLen(tupleTypeA))
-    for i in 0 .. <sonsLen(tupleTypeA):
+    stmts.sons = newSeq[PNode](len(tupleTypeA))
+    for i in 0 .. <len(tupleTypeA):
       openScope(c)
       var fc: TFieldInstCtx
       fc.tupleType = tupleTypeA

@@ -181,8 +181,8 @@ proc copyValue(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1):
+    newSeq(result.sons, len(src))
+    for i in countup(0, len(src) - 1):
       result.sons[i] = copyValue(src.sons[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
@@ -625,8 +625,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
       add(b, regs[rb].regToNode)
       var r = diffSets(regs[ra].node, b)
-      regs[ra].node.sons = newSeq[PNode](sonsLen(r))
-      for i in countup(0, sonsLen(r) - 1): regs[ra].node.sons[i] =  r.sons[i]
+      regs[ra].node.sons = newSeq[PNode](len(r))
+      for i in countup(0, len(r) - 1): regs[ra].node.sons[i] =  r.sons[i]
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(regs[rb].node)
@@ -944,7 +944,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in countup(0, sonsLen(branch) - 2):
+      for j in countup(0, len(branch) - 2):
         if overlap(regs[ra].regToNode, branch.sons[j]):
           cond = true
           break
@@ -1252,7 +1252,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(info, msg, arg))
       if not error.isNil:
         c.errorFlag = error
-      elif sonsLen(ast) != 1:
+      elif len(ast) != 1:
         c.errorFlag = formatMsg(c.debug[pc], errExprExpected, "multiple statements")
       else:
         regs[ra].node = ast.sons[0]

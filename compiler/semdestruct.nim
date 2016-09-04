@@ -30,7 +30,7 @@ proc instantiateDestructor(c: PContext, typ: PType): PType
 proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
   var t = s.typ.sons[1].skipTypes({tyVar})
   if t.kind == tyGenericInvocation:
-    for i in 1 .. <t.sonsLen:
+    for i in 1 .. <t.len:
       if t.sons[i].kind != tyGenericParam:
         localError(n.info, errDestructorNotGenericEnough)
         return
@@ -44,7 +44,7 @@ proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
   t.destructor = s
   # automatically insert calls to base classes' destructors
   if n.sons[bodyPos].kind != nkEmpty:
-    for i in countup(0, t.sonsLen - 1):
+    for i in countup(0, t.len - 1):
       # when inheriting directly from object
       # there will be a single nil son
       if t.sons[i] == nil: continue
@@ -202,7 +202,7 @@ proc insertDestructors(c: PContext,
   # `outer` is a statement list that should replace the original var section.
   # It will include the new truncated var section followed by the outermost
   # try block.
-  let totalVars = varSection.sonsLen
+  let totalVars = varSection.len
   for j in countup(0, totalVars - 1):
     let
       varId = varSection[j][0]

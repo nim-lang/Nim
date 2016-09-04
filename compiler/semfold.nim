@@ -65,7 +65,7 @@ proc ordinalValToString*(a: PNode): string =
     result = $chr(int(x) and 0xff)
   of tyEnum:
     var n = t.n
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if n.sons[i].kind != nkSym: internalError(a.info, "ordinalValToString")
       var field = n.sons[i].sym
       if field.position == x:
@@ -250,7 +250,7 @@ discard """
 proc evalIs(n, a: PNode): PNode =
   # XXX: This should use the standard isOpImpl
   internalAssert a.kind == nkSym and a.sym.kind == skType
-  internalAssert n.sonsLen == 3 and
+  internalAssert n.len == 3 and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
 
   let t1 = a.sym.typ
@@ -293,7 +293,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
     elif a.kind in {nkStrLit..nkTripleStrLit}:
       result = newIntNodeT(len a.strVal, n)
     else:
-      result = newIntNodeT(sonsLen(a), n) # BUGFIX
+      result = newIntNodeT(len(a), n) # BUGFIX
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   of mToFloat, mToBiggestFloat:
     result = newFloatNodeT(toFloat(int(getInt(a))), n)
@@ -445,7 +445,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
 
 proc getConstIfExpr(c: PSym, n: PNode): PNode =
   result = nil
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var it = n.sons[i]
     if it.len == 2:
       var e = getConstExpr(c, it.sons[0])
@@ -474,16 +474,16 @@ proc leValueConv(a, b: PNode): bool =
   else: internalError(a.info, "leValueConv")
 
 proc magicCall(m: PSym, n: PNode): PNode =
-  if sonsLen(n) <= 1: return
+  if len(n) <= 1: return
 
   var s = n.sons[0].sym
   var a = getConstExpr(m, n.sons[1])
   var b, c: PNode
   if a == nil: return
-  if sonsLen(n) > 2:
+  if len(n) > 2:
     b = getConstExpr(m, n.sons[2])
     if b == nil: return
-    if sonsLen(n) > 3:
+    if len(n) > 3:
       c = getConstExpr(m, n.sons[3])
       if c == nil: return
   result = evalOp(s.magic, n, a, b, c)
@@ -546,7 +546,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
   var idx = getOrdValue(y)
   case x.kind
   of nkPar:
-    if idx >= 0 and idx < sonsLen(x):
+    if idx >= 0 and idx < len(x):
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
@@ -571,7 +571,7 @@ proc foldFieldAccess(m: PSym, n: PNode): PNode =
   if x == nil or x.kind notin {nkObjConstr, nkPar}: return
 
   var field = n.sons[1].sym
-  for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
+  for i in countup(ord(x.kind == nkObjConstr), len(x) - 1):
     var it = x.sons[i]
     if it.kind != nkExprColonExpr:
       # lookup per index:
@@ -586,7 +586,7 @@ proc foldFieldAccess(m: PSym, n: PNode): PNode =
 proc foldConStrStr(m: PSym, n: PNode): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
   result.strVal = ""
-  for i in countup(1, sonsLen(n) - 1):
+  for i in countup(1, len(n) - 1):
     let a = getConstExpr(m, n.sons[i])
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
@@ -672,12 +672,12 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           var a = getArrayConstr(m, n.sons[1])
           if a.kind == nkBracket:
             # we can optimize it away:
-            result = newIntNodeT(sonsLen(a)-1, n)
+            result = newIntNodeT(len(a)-1, n)
       of mLengthOpenArray:
         var a = getArrayConstr(m, n.sons[1])
         if a.kind == nkBracket:
           # we can optimize it away! This fixes the bug ``len(134)``.
-          result = newIntNodeT(sonsLen(a), n)
+          result = newIntNodeT(len(a), n)
         else:
           result = magicCall(m, n)
       of mLengthArray:
@@ -705,7 +705,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       n.sons[0] = a
   of nkBracket:
     result = copyTree(n)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var a = getConstExpr(m, n.sons[i])
       if a == nil: return nil
       result.sons[i] = a
@@ -720,14 +720,14 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     add(result, b)
   of nkCurly:
     result = copyTree(n)
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var a = getConstExpr(m, n.sons[i])
       if a == nil: return nil
       result.sons[i] = a
     incl(result.flags, nfAllConst)
   of nkObjConstr:
     result = copyTree(n)
-    for i in countup(1, sonsLen(n) - 1):
+    for i in countup(1, len(n) - 1):
       var a = getConstExpr(m, n.sons[i].sons[1])
       if a == nil: return nil
       result.sons[i].sons[1] = a
@@ -735,13 +735,13 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkPar:
     # tuple constructor
     result = copyTree(n)
-    if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr):
-      for i in countup(0, sonsLen(n) - 1):
+    if (len(n) > 0) and (n.sons[0].kind == nkExprColonExpr):
+      for i in countup(0, len(n) - 1):
         var a = getConstExpr(m, n.sons[i].sons[1])
         if a == nil: return nil
         result.sons[i].sons[1] = a
     else:
-      for i in countup(0, sonsLen(n) - 1):
+      for i in countup(0, len(n) - 1):
         var a = getConstExpr(m, n.sons[i])
         if a == nil: return nil
         result.sons[i] = a

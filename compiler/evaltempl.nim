@@ -55,7 +55,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     result.add(copyNode(c, templ, actual))
   else:
     var res = copyNode(c, templ, actual)
-    for i in countup(0, sonsLen(templ) - 1):
+    for i in countup(0, len(templ) - 1):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add(res)
 

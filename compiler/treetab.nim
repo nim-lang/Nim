@@ -32,7 +32,7 @@ proc hashTree(n: PNode): Hash =
     if not n.strVal.isNil:
       result = result !& hash(n.strVal)
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       result = result !& hashTree(n.sons[i])
 
 proc treesEquivalent(a, b: PNode): bool =
@@ -47,8 +47,8 @@ proc treesEquivalent(a, b: PNode): bool =
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+      if len(a) == len(b):
+        for i in countup(0, len(a) - 1):
           if not treesEquivalent(a.sons[i], b.sons[i]): return
         result = true
     if result: result = sameTypeOrNil(a.typ, b.typ)

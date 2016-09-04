@@ -75,7 +75,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   if s.kind == skType:
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum} and sfPure notin s.flags:
-      for j in countup(0, sonsLen(etyp.n) - 1):
+      for j in countup(0, len(etyp.n) - 1):
         var e = etyp.n.sons[j].sym
         if e.kind != skEnumField:
           internalError(s.info, "rawImportSymbol")
@@ -175,7 +175,7 @@ proc myImportModule(c: PContext, n: PNode): PSym =
 proc evalImport(c: PContext, n: PNode): PNode =
   result = n
   var emptySet: IntSet
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var m = myImportModule(c, n.sons[i])
     if m != nil:
       # ``addDecl`` needs to be done before ``importAllSymbols``!
@@ -190,7 +190,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
   if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-    for i in countup(1, sonsLen(n) - 1):
+    for i in countup(1, len(n) - 1):
       if n.sons[i].kind != nkNilLit:
         importSymbol(c, n.sons[i], m)
 
@@ -202,7 +202,7 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
     var exceptSet = initIntSet()
-    for i in countup(1, sonsLen(n) - 1):
+    for i in countup(1, len(n) - 1):
       let ident = lookups.considerQuotedIdent(n.sons[i])
       exceptSet.incl(ident.id)
     importAllSymbolsExcept(c, m, exceptSet)

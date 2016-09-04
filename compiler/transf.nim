@@ -73,7 +73,7 @@ proc `[]`(a: PTransNode, i: int): PTransNode {.inline.} =
   result = n.sons[i].PTransNode
 
 proc add(a, b: PTransNode) {.inline.} = add(PNode(a), PNode(b))
-proc len(a: PTransNode): int {.inline.} = result = sonsLen(a.PNode)
+proc len(a: PTransNode): int {.inline.} = result = len(a.PNode)
 
 proc newTransCon(owner: PSym): PTransCon =
   assert owner != nil
@@ -107,7 +107,7 @@ proc transform(c: PTransf, n: PNode): PTransNode
 
 proc transformSons(c: PTransf, n: PNode): PTransNode =
   result = newTransNode(n)
-  for i in countup(0, sonsLen(n)-1):
+  for i in countup(0, len(n)-1):
     result[i] = transform(c, n.sons[i])
 
 proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
@@ -158,7 +158,7 @@ proc freshVar(c: PTransf; v: PSym): PNode =
 
 proc transformVarSection(c: PTransf, v: PNode): PTransNode =
   result = newTransNode(v)
-  for i in countup(0, sonsLen(v)-1):
+  for i in countup(0, len(v)-1):
     var it = v.sons[i]
     if it.kind == nkCommentStmt:
       result[i] = PTransNode(it)
@@ -183,7 +183,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
     else:
       if it.kind != nkVarTuple:
         internalError(it.info, "transformVarSection: not nkVarTuple")
-      var L = sonsLen(it)
+      var L = len(it)
       var defs = newTransNode(it.kind, it.info, L)
       for j in countup(0, L-3):
         let x = freshVar(c, it.sons[j].sym)
@@ -196,7 +196,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
 
 proc transformConstSection(c: PTransf, v: PNode): PTransNode =
   result = newTransNode(v)
-  for i in countup(0, sonsLen(v)-1):
+  for i in countup(0, len(v)-1):
     var it = v.sons[i]
     if it.kind == nkCommentStmt:
       result[i] = PTransNode(it)
@@ -212,7 +212,7 @@ proc hasContinue(n: PNode): bool =
   of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: discard
   of nkContinueStmt: result = true
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if hasContinue(n.sons[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
@@ -294,7 +294,7 @@ proc transformBreak(c: PTransf, n: PNode): PTransNode =
 
 proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) =
   # XXX: BUG: what if `n` is an expression with side-effects?
-  for i in countup(0, sonsLen(c.transCon.forStmt) - 3):
+  for i in countup(0, len(c.transCon.forStmt) - 3):
     add(father, newAsgnStmt(c, c.transCon.forStmt.sons[i],
         transform(c, newTupleAccess(n, i))))
 
@@ -317,7 +317,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
     return PTransNode(n)
   else:
     result = newTransNode(n)
-    for i in countup(0, sonsLen(n)-1):
+    for i in countup(0, len(n)-1):
       result[i] = introduceNewLocalVars(c, n.sons[i])
 
 proc transformYield(c: PTransf, n: PNode): PTransNode =
@@ -330,7 +330,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
       c.transCon.forStmt.len != 3:
     e = skipConv(e)
     if e.kind == nkPar:
-      for i in countup(0, sonsLen(e) - 1):
+      for i in countup(0, len(e) - 1):
         add(result, newAsgnStmt(c, c.transCon.forStmt.sons[i],
                                 transform(c, e.sons[i])))
     else:
@@ -491,7 +491,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = paDirectMapping
   of nkPar, nkCurly, nkBracket:
     result = paFastAsgn
-    for i in countup(0, sonsLen(arg) - 1):
+    for i in countup(0, len(arg) - 1):
       if putArgInto(arg.sons[i], formal) != paDirectMapping: return
     result = paDirectMapping
   else:
@@ -512,7 +512,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   # put mapping from formal parameters to actual parameters
   if n.kind != nkForStmt: internalError(n.info, "transformFor")
 
-  var length = sonsLen(n)
+  var length = len(n)
   var call = n.sons[length - 2]
 
   let labl = newLabel(c, n)
@@ -557,7 +557,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   if iter.kind != skIterator: return result
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
-  for i in countup(1, sonsLen(call) - 1):
+  for i in countup(1, len(call) - 1):
     var arg = transform(c, call.sons[i]).PNode
     var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym
     case putArgInto(arg, formal.typ)
@@ -601,7 +601,7 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
   # adds ``else: nil`` if needed for the code generator
   result = newTransNode(nkCaseStmt, n, 0)
   var ifs = PTransNode(nil)
-  for i in 0 .. sonsLen(n)-1:
+  for i in 0 .. len(n)-1:
     var it = n.sons[i]
     var e = transform(c, it)
     case it.kind
@@ -647,7 +647,7 @@ proc flattenTreeAux(d, a: PNode, op: PSym) =
   let op2 = getMergeOp(a)
   if op2 != nil and
       (op2.id == op.id or op.magic != mNone and op2.magic == op.magic):
-    for i in countup(1, sonsLen(a)-1): flattenTreeAux(d, a.sons[i], op)
+    for i in countup(1, len(a)-1): flattenTreeAux(d, a.sons[i], op)
   else:
     add(d, copyTree(a))
 
@@ -668,11 +668,11 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     result = newTransNode(nkCall, n, 0)
     add(result, transform(c, n.sons[0]))
     var j = 1
-    while j < sonsLen(n):
+    while j < len(n):
       var a = transform(c, n.sons[j]).PNode
       inc(j)
       if isConstExpr(a):
-        while (j < sonsLen(n)):
+        while (j < len(n)):
           let b = transform(c, n.sons[j]).PNode
           if not isConstExpr(b): break
           a = evalOp(op.magic, n, a, b, nil)
@@ -708,17 +708,17 @@ proc commonOptimizations*(c: PSym, n: PNode): PNode =
   for i in 0 .. < n.safeLen:
     result.sons[i] = commonOptimizations(c, n.sons[i])
   var op = getMergeOp(n)
-  if (op != nil) and (op.magic != mNone) and (sonsLen(n) >= 3):
+  if (op != nil) and (op.magic != mNone) and (len(n) >= 3):
     result = newNodeIT(nkCall, n.info, n.typ)
     add(result, n.sons[0])
     var args = newNode(nkArgList)
     flattenTreeAux(args, n, op)
     var j = 0
-    while j < sonsLen(args):
+    while j < len(args):
       var a = args.sons[j]
       inc(j)
       if isConstExpr(a):
-        while j < sonsLen(args):
+        while j < len(args):
           let b = args.sons[j]
           if not isConstExpr(b): break
           a = evalOp(op.magic, result, a, b, nil)

@@ -43,8 +43,8 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+      if len(a) == len(b):
+        for i in countup(0, len(a) - 1):
           if not exprStructuralEquivalent(a.sons[i], b.sons[i],
                                           strictSymEquality): return
         result = true
@@ -67,8 +67,8 @@ proc sameTree*(a, b: PNode): bool =
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+      if len(a) == len(b):
+        for i in countup(0, len(a) - 1):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
