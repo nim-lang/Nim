@@ -109,6 +109,7 @@ proc rawWriteStackTrace(): string =
     result = "No stack traceback available\n"
 
 proc getStackTrace*(): string = rawWriteStackTrace()
+proc getStackTrace*(e: ref Exception): string = e.trace
 
 proc unhandledException(e: ref Exception) {.
     compilerproc, asmNoStackFrame.} =
@@ -142,6 +143,8 @@ proc raiseException(e: ref Exception, ename: cstring) {.
   when defined(nimphp):
     asm """throw new Exception($`e`["message"]);"""
   else:
+    when NimStackTrace:
+      e.trace = rawWriteStackTrace()
     asm "throw `e`;"
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
