@@ -253,15 +253,18 @@ proc retrText*(ftp: AsyncFtpClient, file: string): Future[string] {.async.} =
 
   result = await ftp.getLines()
 
-proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
+proc getFile(ftp: AsyncFtpClient, dest: string, total: BiggestInt,
              onProgressChanged: ProgressChangedProc) {.async.} =
   assert ftp.dsockConnected
+  var file = open(dest, mode = fmWrite)
   var progress = 0
   var progressInSecond = 0
   var countdownFut = sleepAsync(1000)
+  const maxSpeed = 1024*1024*2
+  let BufferSize = if total < maxSpeed: total.int else: maxSpeed
   var dataFut = ftp.dsock.recv(BufferSize)
   while ftp.dsockConnected:
-    await dataFut or countdownFut
+    await countdownFut
     if countdownFut.finished:
       asyncCheck onProgressChanged(total, progress,
           progressInSecond.float)
@@ -278,6 +281,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
       else:
         ftp.dsockConnected = false
 
+  file.close()
   assertReply(await(ftp.expectReply()), "226")
 
 proc defaultOnProgressChanged*(total, progress: BiggestInt,
@@ -293,17 +297,22 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
   ## The ``EvRetr`` event is passed to the specified ``handleEvent`` function
   ## when the download is finished. The event's ``filename`` field will be equal
   ## to ``file``.
-  var destFile = open(dest, mode = fmWrite)
   await ftp.pasv()
-  var reply = await ftp.send("RETR " & file.normalizePathSep)
-  assertReply reply, ["125", "150"]
-  if {'(', ')'} notin reply.string:
-    raise newException(ReplyError, "Reply has no file size.")
   var fileSize: BiggestInt
-  if reply.string.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
-    raise newException(ReplyError, "Reply has no file size.")
+  var reply = await ftp.send("size " & file.normalizePathSep)
+  if "213" in reply.string:
+    if reply.string.replace("213 ", "").parseBiggestInt(fileSize) == 0:
+      raise newException(ReplyError, "Failed to get file size.")
 
-  await getFile(ftp, destFile, fileSize, onProgressChanged)
+  reply = await ftp.send("RETR " & file.normalizePathSep)
+  assertReply reply, ["125", "150"]
+  if fileSize == 0:
+    if {'(', ')'} notin reply.string:
+      raise newException(ReplyError, "Reply has no file size.")
+    elif reply.string.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
+        raise newException(ReplyError, "Reply has no file size.")
+
+  await getFile(ftp, dest, fileSize, onProgressChanged)
 
 proc doUpload(ftp: AsyncFtpClient, file: File,
               onProgressChanged: ProgressChangedProc) {.async.} =
