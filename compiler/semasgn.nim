@@ -73,7 +73,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
 
 proc genAddr(c: PContext; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
-    checkSonsLen(x, 1)
+    checkLen(x, 1)
     result = x.sons[0]
   else:
     result = newNodeIT(nkHiddenAddr, x.info, makeVarType(c, x.typ))

@@ -172,14 +172,14 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       if it == nil: illFormedAst(n)
       case it.kind
       of nkElifBranch:
-        checkSonsLen(it, 2)
+        checkLen(it, 2)
         var cond = prepareNode(cl, it.sons[0])
         var e = cl.c.semConstExpr(cl.c, cond)
         if e.kind != nkIntLit:
           internalError(e.info, "ReplaceTypeVarsN: when condition not a bool")
         if e.intVal != 0 and branch == nil: branch = it.sons[1]
       of nkElse:
-        checkSonsLen(it, 1)
+        checkLen(it, 1)
         if branch == nil: branch = it.sons[0]
       else: illFormedAst(n)
     if branch != nil:

@@ -102,7 +102,7 @@ proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
     internalAssert false
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
-  checkMinSonsLen(n, 2)
+  checkMinLen(n, 2)
   let t = n.sons[1].typ
   internalAssert t != nil and t.kind == tyTypeDesc
   if t.sonsLen > 0:
@@ -156,10 +156,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
   of mAddr:
-    checkSonsLen(n, 2)
+    checkLen(n, 2)
     result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2)
+    checkLen(n, 2)
     result = semTypeOf(c, n.sons[1])
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)

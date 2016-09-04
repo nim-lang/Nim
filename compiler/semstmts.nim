@@ -14,7 +14,7 @@ var enforceVoidContext = PType(kind: tyStmt)
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
-  checkSonsLen(n, 1)
+  checkLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
     if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone:
@@ -22,7 +22,7 @@ proc semDiscard(c: PContext, n: PNode): PNode =
 
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   result = n
-  checkSonsLen(n, 1)
+  checkLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     if n.kind != nkContinueStmt:
       var s: PSym
@@ -46,14 +46,14 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
                renderTree(n, {renderNoComments}))
 
 proc semAsm(con: PContext, n: PNode): PNode =
-  checkSonsLen(n, 2)
+  checkLen(n, 2)
   var marker = pragmaAsm(con, n.sons[0])
   if marker == '\0': marker = '`' # default marker
   result = semAsmOrEmit(con, n, marker)
 
 proc semWhile(c: PContext, n: PNode): PNode =
   result = n
-  checkSonsLen(n, 2)
+  checkLen(n, 2)
   openScope(c)
   n.sons[0] = forceBool(c, semExprWithType(c, n.sons[0]))
   inc(c.p.nestedLoopCounter)
@@ -189,7 +189,7 @@ proc semIf(c: PContext, n: PNode): PNode =
 
 proc semCase(c: PContext, n: PNode): PNode =
   result = n
-  checkMinSonsLen(n, 2)
+  checkMinLen(n, 2)
   openScope(c)
   n.sons[0] = semExprWithType(c, n.sons[0])
   var chckCovered = false
@@ -209,14 +209,14 @@ proc semCase(c: PContext, n: PNode): PNode =
     var x = n.sons[i]
     case x.kind
     of nkOfBranch:
-      checkMinSonsLen(x, 2)
+      checkMinLen(x, 2)
       semCaseBranch(c, n, x, i, covered)
       var last = sonsLen(x)-1
       x.sons[last] = semExprBranchScope(c, x.sons[last])
       typ = commonType(typ, x.sons[last].typ)
     of nkElifBranch:
       chckCovered = false
-      checkSonsLen(x, 2)
+      checkLen(x, 2)
       when newScopeForIf: openScope(c)
       x.sons[0] = forceBool(c, semExprWithType(c, x.sons[0]))
       when not newScopeForIf: openScope(c)
@@ -225,7 +225,7 @@ proc semCase(c: PContext, n: PNode): PNode =
       closeScope(c)
     of nkElse:
       chckCovered = false
-      checkSonsLen(x, 1)
+      checkLen(x, 1)
       x.sons[0] = semExprBranchScope(c, x.sons[0])
       typ = commonType(typ, x.sons[0].typ)
       hasElse = true
@@ -255,7 +255,7 @@ proc semCase(c: PContext, n: PNode): PNode =
 proc semTry(c: PContext, n: PNode): PNode =
   result = n
   inc c.p.inTryStmt
-  checkMinSonsLen(n, 2)
+  checkMinLen(n, 2)
   var typ = commonTypeBegin
   n.sons[0] = semExprBranchScope(c, n.sons[0])
   typ = commonType(typ, n.sons[0].typ)
@@ -263,7 +263,7 @@ proc semTry(c: PContext, n: PNode): PNode =
   var last = sonsLen(n) - 1
   for i in countup(1, last):
     var a = n.sons[i]
-    checkMinSonsLen(a, 1)
+    checkMinLen(a, 1)
     var length = sonsLen(a)
     if a.kind == nkExceptBranch:
       # so that ``except [a, b, c]`` is supported:
@@ -403,7 +403,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a)
-    checkMinSonsLen(a, 3)
+    checkMinLen(a, 3)
     var length = sonsLen(a)
     if a.sons[length-2].kind != nkEmpty:
       let typ = semTypeNode(c, a.sons[length-2], nil)
@@ -433,7 +433,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a)
-    checkMinSonsLen(a, 3)
+    checkMinLen(a, 3)
     var length = sonsLen(a)
     var typ: PType
     if a.sons[length-2].kind != nkEmpty:
@@ -530,7 +530,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkConstDef): illFormedAst(a)
-    checkSonsLen(a, 3)
+    checkLen(a, 3)
     var v = semIdentDef(c, a.sons[0], skConst)
     var typ: PType = nil
     if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
@@ -620,7 +620,7 @@ proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
 
 proc semFor(c: PContext, n: PNode): PNode =
   result = n
-  checkMinSonsLen(n, 3)
+  checkMinLen(n, 3)
   var length = sonsLen(n)
   openScope(c)
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
@@ -655,7 +655,7 @@ proc semFor(c: PContext, n: PNode): PNode =
 
 proc semRaise(c: PContext, n: PNode): PNode =
   result = n
-  checkSonsLen(n, 1)
+  checkLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
     var typ = n.sons[0].typ
@@ -677,7 +677,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     if gCmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind != nkTypeDef: illFormedAst(a)
-    checkSonsLen(a, 3)
+    checkLen(a, 3)
     let name = a.sons[0]
     var s: PSym
     if name.kind == nkDotExpr:
@@ -699,7 +699,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkTypeDef): illFormedAst(a)
-    checkSonsLen(a, 3)
+    checkLen(a, 3)
     let name = a.sons[0]
     if (name.kind != nkSym): illFormedAst(a)
     var s = name.sym
@@ -960,7 +960,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = semProcAnnotation(c, n, lambdaPragmas)
   if result != nil: return result
   result = n
-  checkSonsLen(n, bodyPos + 1)
+  checkLen(n, bodyPos + 1)
   var s: PSym
   if n[namePos].kind != nkSym:
     s = newSym(skProc, idAnon, getCurrOwner(), n.info)
@@ -1149,7 +1149,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
-  checkSonsLen(n, bodyPos + 1)
+  checkLen(n, bodyPos + 1)
   var s: PSym
   var typeIsDetermined = false
   var isAnon = false
@@ -1381,7 +1381,7 @@ proc semMethod(c: PContext, n: PNode): PNode =
 
 proc semConverterDef(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "converter")
-  checkSonsLen(n, bodyPos + 1)
+  checkLen(n, bodyPos + 1)
   result = semProcAux(c, n, skConverter, converterPragmas)
   # macros can transform converters to nothing:
   if namePos >= result.safeLen: return result
@@ -1392,7 +1392,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   addConverter(c, s)
 
 proc semMacroDef(c: PContext, n: PNode): PNode =
-  checkSonsLen(n, bodyPos + 1)
+  checkLen(n, bodyPos + 1)
   result = semProcAux(c, n, skMacro, macroPragmas)
   # macros can transform macros to nothing:
   if namePos >= result.safeLen: return result

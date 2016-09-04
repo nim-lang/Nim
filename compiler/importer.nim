@@ -185,7 +185,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
 
 proc evalFrom(c: PContext, n: PNode): PNode =
   result = n
-  checkMinSonsLen(n, 2)
+  checkMinLen(n, 2)
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)
@@ -196,7 +196,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = n
-  checkMinSonsLen(n, 2)
+  checkMinLen(n, 2)
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)

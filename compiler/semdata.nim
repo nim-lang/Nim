@@ -320,10 +320,10 @@ proc illFormedAst*(n: PNode) =
 proc illFormedAstLocal*(n: PNode) =
   localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
-proc checkSonsLen*(n: PNode, length: int) =
+proc checkLen*(n: PNode, length: int) =
   if sonsLen(n) != length: illFormedAst(n)
 
-proc checkMinSonsLen*(n: PNode, length: int) =
+proc checkMinLen*(n: PNode, length: int) =
   if sonsLen(n) < length: illFormedAst(n)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =

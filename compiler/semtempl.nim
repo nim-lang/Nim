@@ -249,7 +249,7 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
 
 proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   result = n
-  checkSonsLen(n, bodyPos + 1)
+  checkLen(n, bodyPos + 1)
   # routines default to 'inject':
   if n.kind notin nkLambdaKinds and symBinding(n.sons[pragmasPos]) == spGenSym:
     let ident = getIdentNode(c, n.sons[namePos])
@@ -273,7 +273,7 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a)
-    checkMinSonsLen(a, 3)
+    checkMinLen(a, 3)
     var L = sonsLen(a)
     a.sons[L-2] = semTemplBody(c, a.sons[L-2])
     a.sons[L-1] = semTemplBody(c, a.sons[L-1])
@@ -352,7 +352,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     n.sons[0] = semTemplBody(c, n.sons[0])
     for i in countup(1, sonsLen(n)-1):
       var a = n.sons[i]
-      checkMinSonsLen(a, 1)
+      checkMinLen(a, 1)
       var L = sonsLen(a)
       for j in countup(0, L-2):
         a.sons[j] = semTemplBody(c, a.sons[j])
@@ -367,7 +367,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     n.sons[L-1] = semTemplBody(c, n.sons[L-1])
     closeScope(c)
   of nkBlockStmt, nkBlockExpr, nkBlockType:
-    checkSonsLen(n, 2)
+    checkLen(n, 2)
     openScope(c)
     if n.sons[0].kind != nkEmpty:
       # labels are always 'gensym'ed:
@@ -378,11 +378,11 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     n.sons[1] = semTemplBody(c, n.sons[1])
     closeScope(c)
   of nkTryStmt:
-    checkMinSonsLen(n, 2)
+    checkMinLen(n, 2)
     n.sons[0] = semTemplBodyScope(c, n.sons[0])
     for i in countup(1, sonsLen(n)-1):
       var a = n.sons[i]
-      checkMinSonsLen(a, 1)
+      checkMinLen(a, 1)
       var L = sonsLen(a)
       for j in countup(0, L-2):
         a.sons[j] = semTemplBody(c, a.sons[j])
@@ -390,7 +390,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkVarSection: semTemplSomeDecl(c, n, skVar)
   of nkLetSection: semTemplSomeDecl(c, n, skLet)
   of nkFormalParams:
-    checkMinSonsLen(n, 1)
+    checkMinLen(n, 1)
     n.sons[0] = semTemplBody(c, n.sons[0])
     semTemplSomeDecl(c, n, skParam, 1)
   of nkConstSection:
@@ -398,7 +398,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkConstDef): illFormedAst(a)
-      checkSonsLen(a, 3)
+      checkLen(a, 3)
       addLocalDecl(c, a.sons[0], skConst)
       a.sons[1] = semTemplBody(c, a.sons[1])
       a.sons[2] = semTemplBody(c, a.sons[2])
@@ -407,13 +407,13 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkTypeDef): illFormedAst(a)
-      checkSonsLen(a, 3)
+      checkLen(a, 3)
       addLocalDecl(c, a.sons[0], skType)
     for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
       if (a.kind != nkTypeDef): illFormedAst(a)
-      checkSonsLen(a, 3)
+      checkLen(a, 3)
       if a.sons[1].kind != nkEmpty:
         openScope(c)
         a.sons[1] = semTemplBody(c, a.sons[1])
@@ -452,7 +452,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     for i in 0 ..< n.len: result.sons[i + 1] = n[i]
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn:
-    checkSonsLen(n, 2)
+    checkLen(n, 2)
     let a = n.sons[0]
     let b = n.sons[1]
 
