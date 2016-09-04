@@ -228,8 +228,8 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
     test "tests/" & testfile & ".nim"
 
-  for testfile in ["pure/strutils", "pure/json", "pure/random", "pure/times"]:
-    test "lib/" & testfile & ".nim"
+  for testfile in ["strutils", "json", "random", "times", "logging"]:
+    test "lib/pure/" & testfile & ".nim"
 
 # ------------------------- manyloc -------------------------------------------
 #proc runSpecialTests(r: var TResults, options: string) =
