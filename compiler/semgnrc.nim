@@ -118,9 +118,9 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   # else: leave as nkIdent
 
 proc newDot(n, b: PNode): PNode =
-  result = newNodeI(nkDotExpr, n.info)
-  result.addSon(n.sons[0])
-  result.addSon(b)
+  result = newNodeI(nkDotExpr, n.info, 2)
+  result.sons[0] = n.sons[0]
+  result.sons[1] = b
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
                  ctx: var GenericCtx; isMacro: var bool): PNode =
@@ -261,14 +261,14 @@ proc semGenericStmt(c: PContext, n: PNode,
     for i in countup(first, sonsLen(result) - 1):
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, ctx)
   of nkCurlyExpr:
-    result = newNodeI(nkCall, n.info)
-    result.addSon(newIdentNode(getIdent("{}"), n.info))
-    for i in 0 ..< n.len: result.addSon(n[i])
+    result = newNodeI(nkCall, n.info, n.len + 1)
+    result.sons[0] = newIdentNode(getIdent("{}"), n.info)
+    for i in 0 ..< n.len: result.sons[i + 1] = n[i]
     result = semGenericStmt(c, result, flags, ctx)
   of nkBracketExpr:
-    result = newNodeI(nkCall, n.info)
-    result.addSon(newIdentNode(getIdent("[]"), n.info))
-    for i in 0 ..< n.len: result.addSon(n[i])
+    result = newNodeI(nkCall, n.info, n.len + 1)
+    result.sons[0] = newIdentNode(getIdent("[]"), n.info)
+    for i in 0 ..< n.len: result.sons[i + 1] = n[i]
     withBracketExpr ctx, n.sons[0]:
       result = semGenericStmt(c, result, flags, ctx)
   of nkAsgn, nkFastAsgn:
@@ -279,16 +279,16 @@ proc semGenericStmt(c: PContext, n: PNode,
     let k = a.kind
     case k
     of nkCurlyExpr:
-      result = newNodeI(nkCall, n.info)
-      result.addSon(newIdentNode(getIdent("{}="), n.info))
-      for i in 0 ..< a.len: result.addSon(a[i])
-      result.addSon(b)
+      result = newNodeI(nkCall, n.info, a.len + 2)
+      result.sons[0] = newIdentNode(getIdent("{}="), n.info)
+      for i in 0 ..< a.len: result.sons[i + 1] = a[i]
+      result.sons[^1] = b
       result = semGenericStmt(c, result, flags, ctx)
     of nkBracketExpr:
-      result = newNodeI(nkCall, n.info)
-      result.addSon(newIdentNode(getIdent("[]="), n.info))
-      for i in 0 ..< a.len: result.addSon(a[i])
-      result.addSon(b)
+      result = newNodeI(nkCall, n.info, a.len + 2)
+      result.sons[0] = newIdentNode(getIdent("[]="), n.info)
+      for i in 0 ..< a.len: result.sons[i + 1] = a[i]
+      result.sons[^1] = b
       withBracketExpr ctx, a.sons[0]:
         result = semGenericStmt(c, result, flags, ctx)
     else:

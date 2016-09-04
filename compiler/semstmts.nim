@@ -610,12 +610,12 @@ proc semForVars(c: PContext, n: PNode): PNode =
   dec(c.p.nestedLoopCounter)
 
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
-  result = newNodeI(nkCall, arg.info)
-  result.addSon(newIdentNode(it.getIdent, arg.info))
+  result = newNodeI(nkCall, arg.info, 2)
+  result.sons[0] = newIdentNode(it.getIdent, arg.info)
   if arg.typ != nil and arg.typ.kind == tyVar:
-    result.addSon(newDeref(arg))
+    result.sons[1] = newDeref(arg)
   else:
-    result.addSon(arg)
+    result.sons[1] = arg
   result = semExprNoDeref(c, result, {efWantIterator})
 
 proc semFor(c: PContext, n: PNode): PNode =
@@ -898,8 +898,9 @@ proc addResultNode(c: PContext, n: PNode) =
 
 proc copyExcept(n: PNode, i: int): PNode =
   result = copyNode(n)
-  for j in 0.. <n.len:
-    if j != i: result.addSon(n.sons[j])
+  result.sons = newSeq[PNode](<n.len)
+  for j in 0 .. <i: result.sons[j] = n.sons[j]
+  for j in i + 1 .. <n.len: result.sons[j] = n.sons[j]
 
 proc lookupMacro(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
@@ -1507,12 +1508,12 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         message(n.info, warnDeprecated,
                 "use an explicit 'try'; standalone 'except'")
         deferPart = n.sons[i]
-      var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
+      var tryStmt = newNodeI(nkTryStmt, n.sons[i].info, 2)
       var body = newNodeI(nkStmtList, n.sons[i].info)
       if i < n.sonsLen - 1:
         body.sons = n.sons[(i+1)..n.len-1]
-      tryStmt.addSon(body)
-      tryStmt.addSon(deferPart)
+      tryStmt.sons[0] = body
+      tryStmt.sons[1] = deferPart
       n.sons[i] = semTry(c, tryStmt)
       n.sons.setLen(i+1)
       n.typ = n.sons[i].typ

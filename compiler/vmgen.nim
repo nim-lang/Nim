@@ -1445,9 +1445,9 @@ proc getNullValueAux(obj: PNode, result: PNode) =
     for i in countup(1, sonsLen(obj) - 1):
       getNullValueAux(lastSon(obj.sons[i]), result)
   of nkSym:
-    let field = newNodeI(nkExprColonExpr, result.info)
-    field.addSon(obj)
-    field.addSon(getNullValue(obj.sym.typ, result.info))
+    let field = newNodeI(nkExprColonExpr, result.info, 2)
+    field.sons[0] = obj
+    field.sons[1] = getNullValue(obj.sym.typ, result.info)
     addSon(result, field)
   else: globalError(result.info, "cannot create null element for: " & $obj)
 
@@ -1470,9 +1470,10 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     if t.callConv != ccClosure:
       result = newNodeIT(nkNilLit, info, t)
     else:
-      result = newNodeIT(nkPar, info, t)
-      result.addSon(newNodeIT(nkNilLit, info, t))
-      result.addSon(newNodeIT(nkNilLit, info, t))
+      result = newNodeI(nkPar, info, 2)
+      result.typ = t
+      result.sons[0] = newNodeIT(nkNilLit, info, t)
+      result.sons[1] = newNodeIT(nkNilLit, info, t)
   of tyObject:
     result = newNodeIT(nkObjConstr, info, t)
     result.addSon(newNodeIT(nkEmpty, info, t))
@@ -1483,13 +1484,16 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       base = base.sons[0]
     getNullValueAux(t.n, result)
   of tyArray, tyArrayConstr:
-    result = newNodeIT(nkBracket, info, t)
-    for i in countup(0, int(lengthOrd(t)) - 1):
-      addSon(result, getNullValue(elemType(t), info))
+    let tLen = int(lengthOrd(t))
+    result = newNodeI(nkBracket, info, tLen)
+    result.typ = t
+    for i in countup(0, < tLen):
+      result.sons[i] = getNullValue(elemType(t), info)
   of tyTuple:
-    result = newNodeIT(nkPar, info, t)
+    result = newNodeI(nkPar, info, sonsLen(t))
+    result.typ = t
     for i in countup(0, sonsLen(t) - 1):
-      addSon(result, getNullValue(t.sons[i], info))
+      result.sons[i] = getNullValue(t.sons[i], info)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
   else:

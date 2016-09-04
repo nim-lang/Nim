@@ -36,8 +36,8 @@ proc skipAddr(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n.sons[0] else: n)
 
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
-  result = newNodeI(nkBracketExpr, n.info)
-  for i in 1..<n.len: result.addSon(n[i])
+  result = newNodeI(nkBracketExpr, n.info, <n.len)
+  for i in 1..<n.len: result.sons[i - 1] = n[i]
   let oldBracketExpr = c.p.bracketExpr
   result = semSubscript(c, result, flags)
   c.p.bracketExpr = oldBracketExpr
@@ -50,9 +50,9 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
-  let b = newNodeI(nkBracketExpr, n.info)
-  b.addSon(n[1].skipAddr)
-  for i in 2..n.len-2: b.addSon(n[i])
+  let b = newNodeI(nkBracketExpr, n.info, n.len - 2)
+  b.sons[0] = n[1].skipAddr
+  for i in 2..n.len-2: b.sons[i - 1] = n[i]
   result = newNodeI(nkAsgn, n.info, 2)
   result.sons[0] = b
   result.sons[1] = n.lastSon
@@ -75,7 +75,8 @@ proc expectIntLit(c: PContext, n: PNode): int =
   else: localError(n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
-  result = newNodeIT(nkPar, n.info, n.typ)
+  result = newNodeI(nkPar, n.info, 2)
+  result.typ = n.typ
   let idx = expectIntLit(c, n.sons[1])
   let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)
@@ -83,8 +84,8 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
   var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
   line.intVal = toLinenumber(info)
-  result.addSon(filename)
-  result.addSon(line)
+  result.sons[0] = filename
+  result.sons[1] = line
 
 proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
   let typ = operand.skipTypes({tyTypeDesc})
@@ -193,21 +194,22 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n.sons[1]
     else:
       # ^x  is rewritten to: len(a)-x
-      let lenExpr = newNodeI(nkCall, n.info)
-      lenExpr.addSon(newIdentNode(getIdent"len", n.info))
-      lenExpr.addSon(bracketExpr)
+      let lenExpr = newNodeI(nkCall, n.info, 2)
+      lenExpr.sons[0] = newIdentNode(getIdent"len", n.info)
+      lenExpr.sons[1] = bracketExpr
       let lenExprB = semExprWithType(c, lenExpr)
       if lenExprB.typ.isNil or not isOrdinalType(lenExprB.typ):
         localError(n.info, "'$#' has to be of an ordinal type for '^'" %
           renderTree(lenExpr))
         result = n.sons[1]
       else:
-        result = newNodeIT(nkCall, n.info, getSysType(tyInt))
+        result = newNodeI(nkCall, n.info, 3)
+        result.typ = getSysType(tyInt)
         let subi = getSysMagic("-", mSubI)
         #echo "got ", typeToString(subi.typ)
-        result.addSon(newSymNode(subi, n.info))
-        result.addSon(lenExprB)
-        result.addSon(n.sons[1])
+        result.sons[0] = newSymNode(subi, n.info)
+        result.sons[1] = lenExprB
+        result.sons[2] = n.sons[1]
   of mPlugin:
     let plugin = getPlugin(n[0].sym)
     if plugin.isNil:

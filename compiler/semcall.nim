@@ -456,9 +456,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
   # and use the overloading resolution mechanism:
-  var call = newNodeI(nkCall, fn.info)
+  var call = newNodeI(nkCall, fn.info, fn.typ.n.len)
   var hasDistinct = false
-  call.addSon(newIdentNode(fn.name, fn.info))
+  call.sons[0] = newIdentNode(fn.name, fn.info)
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
     let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
@@ -469,7 +469,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       x.addSonSkipIntLit t.baseOfDistinct
     else:
       x = t.baseOfDistinct
-    call.addSon(newNodeIT(nkEmpty, fn.info, x))
+    call.sons[i] = newNodeIT(nkEmpty, fn.info, x)
   if hasDistinct:
     var resolved = semOverloadedCall(c, call, call, {fn.kind})
     if resolved != nil:

@@ -440,16 +440,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkPragma:
     result = onlyReplaceParams(c, n)
   of nkBracketExpr:
-    result = newNodeI(nkCall, n.info)
-    result.addSon(newIdentNode(getIdent("[]"), n.info))
-    for i in 0 ..< n.len: result.addSon(n[i])
+    result = newNodeI(nkCall, n.info, n.len + 1)
+    result.sons[0] = newIdentNode(getIdent("[]"), n.info)
+    for i in 0 ..< n.len: result.sons[i + 1] = n[i]
     let n0 = semTemplBody(c, n.sons[0])
     withBracketExpr c, n0:
       result = semTemplBodySons(c, result)
   of nkCurlyExpr:
-    result = newNodeI(nkCall, n.info)
-    result.addSon(newIdentNode(getIdent("{}"), n.info))
-    for i in 0 ..< n.len: result.addSon(n[i])
+    result = newNodeI(nkCall, n.info, n.len + 1)
+    result.sons[0] = newIdentNode(getIdent("{}"), n.info)
+    for i in 0 ..< n.len: result.sons[i + 1] = n[i]
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn:
     checkSonsLen(n, 2)
@@ -467,10 +467,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       withBracketExpr c, a0:
         result = semTemplBodySons(c, result)
     of nkCurlyExpr:
-      result = newNodeI(nkCall, n.info)
-      result.addSon(newIdentNode(getIdent("{}="), n.info))
-      for i in 0 ..< a.len: result.addSon(a[i])
-      result.addSon(b)
+      result = newNodeI(nkCall, n.info, a.len + 2)
+      result.sons[0] = newIdentNode(getIdent("{}="), n.info)
+      for i in 0 ..< a.len: result.sons[i + 1] = a[i]
+      result.sons[^1] = b
       result = semTemplBodySons(c, result)
     else:
       result = semTemplBodySons(c, n)

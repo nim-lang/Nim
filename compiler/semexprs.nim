@@ -420,7 +420,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   result = typ
 
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  result = newNodeI(nkBracket, n.info)
+  result = newNodeI(nkBracket, n.info, sonsLen(n))
   result.typ = newTypeS(tyArrayConstr, c)
   rawAddSon(result.typ, nil)     # index type
   if sonsLen(n) == 0:
@@ -437,7 +437,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
     let yy = semExprWithType(c, x)
     var typ = yy.typ
-    addSon(result, yy)
+    result.sons[0] = yy
     #var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
     for i in countup(1, sonsLen(n) - 1):
       x = n.sons[i]
@@ -449,7 +449,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
         x = x.sons[1]
 
       let xx = semExprWithType(c, x, flags*{efAllowDestructor})
-      result.addSon(xx)
+      result.sons[i] = xx
       typ = commonType(typ, xx.typ)
       #n.sons[i] = semExprWithType(c, x, flags*{efAllowDestructor})
       #addSon(result, fitNode(c, typ, n.sons[i]))
@@ -593,8 +593,9 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
   # constant folding that is necessary for correctness of semantic pass:
   if callee.magic != mNone and callee.magic in ctfeWhitelist and n.typ != nil:
-    var call = newNodeIT(nkCall, n.info, n.typ)
-    call.addSon(n.sons[0])
+    var call = newNodeI(nkCall, n.info, n.len)
+    call.typ = n.typ
+    call.sons[0] = n.sons[0]
     var allConst = true
     for i in 1 .. < n.len:
       var a = getConstExpr(c.module, n.sons[i])
@@ -602,7 +603,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         allConst = false
         a = n.sons[i]
         if a.kind == nkHiddenStdConv: a = a.sons[1]
-      call.addSon(a)
+      call.sons[i] = a
     if allConst:
       result = semfold.getConstExpr(c.module, call)
       if result.isNil: result = n
@@ -635,12 +636,13 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
     if n.typ != nil and typeAllowed(n.typ, skConst) != nil: return
 
-    var call = newNodeIT(nkCall, n.info, n.typ)
-    call.addSon(n.sons[0])
-    for i in 1 .. < n.len:
+    var call = newNodeI(nkCall, n.info, n.len)
+    call.typ = n.typ
+    call.sons[0] = n.sons[0]
+    for i in 1 .. <n.len:
       let a = getConstExpr(c.module, n.sons[i])
       if a == nil: return n
-      call.addSon(a)
+      call.sons[i] = a
     #echo "NOW evaluating at compile time: ", call.renderTree
     if sfCompileTime in callee.flags:
       result = evalStaticExpr(c.module, call, c.p.owner)
@@ -841,14 +843,14 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
   # we MUST not check 'n' for semantics again here! But for now we give up:
-  result = newNodeI(nkCall, n.info)
+  result = newNodeI(nkCall, n.info, 2)
   var e = strTableGet(magicsys.systemModule.tab, getIdent"echo")
   if e != nil:
-    addSon(result, newSymNode(e))
+    result.sons[0] = newSymNode(e)
   else:
     localError(n.info, errSystemNeeds, "echo")
-    addSon(result, errorNode(c, n))
-  addSon(result, n)
+    result.sons[0] = errorNode(c, n)
+  result.sons[1] = n
   result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
@@ -1061,9 +1063,10 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
             doAssert f == s
             markUsed(n.info, f)
             styleCheckUse(n.info, f)
-            result = newNodeIT(nkDotExpr, n.info, f.typ)
-            result.addSon(makeDeref(newSymNode(p.selfSym)))
-            result.addSon(newSymNode(f)) # we now have the correct field
+            result = newNodeI(nkDotExpr, n.info, 2)
+            result.typ = f.typ
+            result.sons[0] = makeDeref(newSymNode(p.selfSym))
+            result.sons[1] = newSymNode(f) # we now have the correct field
             if check != nil:
               check.sons[0] = result
               check.typ = result.typ
@@ -1181,15 +1184,15 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n.sons[1]):
-    result = newNodeI(nkDotCall, n.info)
-    addSon(result, n.sons[1])
-    addSon(result, copyTree(n[0]))
+    result = newNodeI(nkDotCall, n.info, 2)
+    result.sons[0] = n.sons[1]
+    result.sons[1] = copyTree(n[0])
   else:
     var i = considerQuotedIdent(n.sons[1])
-    result = newNodeI(nkDotCall, n.info)
+    result = newNodeI(nkDotCall, n.info, 2)
     result.flags.incl nfDotField
-    addSon(result, newIdentNode(i, n[1].info))
-    addSon(result, copyTree(n[0]))
+    result.sons[0] = newIdentNode(i, n[1].info)
+    result.sons[1] = copyTree(n[0])
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
@@ -1199,9 +1202,9 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = dotTransformation(c, n)
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
-  result = newNodeI(nkCall, n.info)
-  result.addSon(newIdentNode(ident, n.info))
-  for i in 0 .. n.len-1: result.addSon(n[i])
+  result = newNodeI(nkCall, n.info, n.len + 1)
+  result.sons[0] = newIdentNode(ident, n.info)
+  for i in 0 .. <n.len: result.sons[i + 1] = n[i]
 
 proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
@@ -1758,9 +1761,9 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if sonsLen(n) == 3:
     # XXX ugh this is really a hack: shallowCopy() can be overloaded only
     # with procs that take not 2 parameters:
-    result = newNodeI(nkFastAsgn, n.info)
-    result.addSon(n[1])
-    result.addSon(n[2])
+    result = newNodeI(nkFastAsgn, n.info, 2)
+    result.sons[0] = n[1]
+    result.sons[1] = n[2]
     result = semAsgn(c, result)
   else:
     result = semDirectOp(c, n, flags)
@@ -1977,14 +1980,14 @@ proc semTableConstr(c: PContext, n: PNode): PNode =
     var x = n.sons[i]
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
       for j in countup(lastKey, i-1):
-        var pair = newNodeI(nkPar, x.info)
-        pair.addSon(n.sons[j])
-        pair.addSon(x[1])
+        var pair = newNodeI(nkPar, x.info, 2)
+        pair.sons[0] = n.sons[j]
+        pair.sons[1] = x[1]
         result.addSon(pair)
 
-      var pair = newNodeI(nkPar, x.info)
-      pair.addSon(x[0])
-      pair.addSon(x[1])
+      var pair = newNodeI(nkPar, x.info, 2)
+      pair.sons[0] = x[0]
+      pair.sons[1] = x[1]
       result.addSon(pair)
 
       lastKey = i+1
@@ -2181,8 +2184,8 @@ proc shouldBeBracketExpr(n: PNode): bool =
     if b.kind in nkSymChoices:
       for i in 0..<b.len:
         if b[i].sym.magic == mArrGet:
-          let be = newNodeI(nkBracketExpr, n.info)
-          for i in 1..<a.len: be.addSon(a[i])
+          let be = newNodeI(nkBracketExpr, n.info, <a.len)
+          for i in 1..<a.len: be.sons[i - 1] = a[i]
           n.sons[0] = be
           return true
 

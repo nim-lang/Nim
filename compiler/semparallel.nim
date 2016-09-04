@@ -399,11 +399,12 @@ proc transformSlices(n: PNode): PNode =
       result = copyNode(n)
       let opSlice = newSymNode(createMagic("slice", mSlice))
       opSlice.typ = getSysType(tyInt)
-      result.addSon(opSlice)
-      result.addSon(n[1])
+      result.sons = newSeq[PNode](4)
+      result.sons[0] = opSlice
+      result.sons[1] = n[1]
       let slice = n[2].skipStmtList
-      result.addSon(slice[1])
-      result.addSon(slice[2])
+      result.sons[2] = slice[1]
+      result.sons[3] = slice[2]
       return result
   if n.safeLen > 0:
     result = shallowCopy(n)
@@ -485,9 +486,9 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   varSection.addVar tempNode
 
   let barrier = genAddrOf(tempNode)
-  result = newNodeI(nkStmtList, n.info)
+  result = newNodeI(nkStmtList, n.info, 4)
   generateAliasChecks(a, result)
-  result.addSon(varSection)
-  result.addSon(callCodegenProc("openBarrier", barrier))
-  result.addSon(transformSpawn(owner, body, barrier))
-  result.addSon(callCodegenProc("closeBarrier", barrier))
+  result.sons[0] = varSection
+  result.sons[1] = callCodegenProc("openBarrier", barrier)
+  result.sons[2] = transformSpawn(owner, body, barrier)
+  result.sons[3] = callCodegenProc("closeBarrier", barrier)

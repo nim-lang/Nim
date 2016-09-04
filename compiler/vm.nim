@@ -616,16 +616,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcInclRange:
       decodeBC(rkNode)
       var r = newNode(nkRange)
-      r.addSon(regs[rb].regToNode)
-      r.addSon(regs[rc].regToNode)
+      r.sons = newSeq[PNode](2)
+      r.sons[0] = regs[rb].regToNode
+      r.sons[1] = regs[rc].regToNode
       addSon(regs[ra].node, r.copyTree)
     of opcExcl:
       decodeB(rkNode)
       var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
       addSon(b, regs[rb].regToNode)
       var r = diffSets(regs[ra].node, b)
-      discardSons(regs[ra].node)
-      for i in countup(0, sonsLen(r) - 1): addSon(regs[ra].node, r.sons[i])
+      regs[ra].node.sons = newSeq[PNode](sonsLen(r))
+      for i in countup(0, sonsLen(r) - 1): regs[ra].node.sons[i] =  r.sons[i]
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(regs[rb].node)
@@ -915,9 +916,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             tos.next.prc
                           else:
                             c.module
-        var macroCall = newNodeI(nkCall, c.debug[pc])
-        macroCall.addSon(newSymNode(prc))
-        for i in 1 .. rc-1: macroCall.addSon(regs[rb+i].regToNode)
+        var macroCall = newNodeI(nkCall, c.debug[pc], rc)
+        macroCall.sons[0] = newSymNode(prc)
+        for i in 1 .. rc-1: macroCall.sons[i] = regs[rb+i].regToNode
         let a = evalTemplate(macroCall, prc, genSymOwner)
         ensureKind(rkNode)
         regs[ra].node = a

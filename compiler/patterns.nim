@@ -249,9 +249,9 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   if isNil(m): return nil
   # each parameter should have been bound; we simply setup a call and
   # let semantic checking deal with the rest :-)
-  result = newNodeI(nkCall, n.info)
-  result.addSon(newSymNode(s, n.info))
   let params = s.typ.n
+  result = newNodeI(nkCall, n.info, params.len)
+  result.sons[0] = newSymNode(s, n.info)
   let requiresAA = aliasAnalysisRequested(params)
   var args: PNode
   if requiresAA:
@@ -261,7 +261,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
     let x = getLazy(ctx, param)
     # couldn't bind parameter:
     if isNil(x): return nil
-    result.addSon(x)
+    result.sons[i] = x
     if requiresAA: addToArgList(args, x)
   # perform alias analysis here:
   if requiresAA:

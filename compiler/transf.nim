@@ -376,14 +376,16 @@ proc generateThunk(prc: PNode, dest: PType): PNode =
   # we cannot generate a proper thunk here for GC-safety reasons
   # (see internal documentation):
   if gCmd == cmdCompileToJS: return prc
-  result = newNodeIT(nkClosure, prc.info, dest)
-  var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
-  conv.addSon(emptyNode)
-  conv.addSon(prc)
+  result = newNodeI(nkClosure, prc.info, 2)
+  result.typ = dest
+  var conv = newNodeI(nkHiddenSubConv, prc.info, 2)
+  conv.typ = dest
+  conv.sons[0] = emptyNode
+  conv.sons[1] = prc
   if prc.kind == nkClosure:
     internalError(prc.info, "closure to closure created")
-  result.addSon(conv)
-  result.addSon(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
+  result.sons[0] = conv
+  result.sons[1] = newNodeIT(nkNilLit, prc.info, getSysType(tyNil))
 
 proc transformConv(c: PTransf, n: PNode): PTransNode =
   # numeric types need range checks:
@@ -893,12 +895,12 @@ proc liftDeferAux(n: PNode) =
         if n.sons[i].kind == nkDefer:
           let deferPart = newNodeI(nkFinally, n.sons[i].info)
           deferPart.addSon(n.sons[i].sons[0])
-          var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
+          var tryStmt = newNodeI(nkTryStmt, n.sons[i].info, 2)
           var body = newNodeI(n.kind, n.sons[i].info)
           if i < last:
             body.sons = n.sons[(i+1)..last]
-          tryStmt.addSon(body)
-          tryStmt.addSon(deferPart)
+          tryStmt.sons[0] = body
+          tryStmt.sons[1] = deferPart
           n.sons[i] = tryStmt
           n.sons.setLen(i+1)
           n.typ = n.sons[i].typ

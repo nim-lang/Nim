@@ -47,7 +47,7 @@ proc newFastAsgnStmt(le, ri: PNode): PNode =
 proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
   assert n.kind == nkVarTuple
   let value = n.lastSon
-  result = newNodeI(nkStmtList, n.info)
+  result = newNodeI(nkStmtList, n.info, n.len)
 
   var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info)
   temp.typ = skipTypes(value.typ, abstractInst)
@@ -56,23 +56,24 @@ proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
   var v = newNodeI(nkVarSection, value.info)
   let tempAsNode = newSymNode(temp)
   v.addVar(tempAsNode)
-  result.addSon(v)
+  result.sons[0] = v
 
-  result.addSon(newAsgnStmt(tempAsNode, value))
+  result.sons[1] = newAsgnStmt(tempAsNode, value)
   for i in 0 .. n.len-3:
     if n.sons[i].kind == nkSym: v.addVar(n.sons[i])
-    result.addSon(newAsgnStmt(n.sons[i], newTupleAccess(tempAsNode, i)))
+    result.sons[i + 2] = newAsgnStmt(n.sons[i], newTupleAccess(tempAsNode, i))
 
 proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
-  result = newNodeI(nkBracketExpr, tup.info)
-  addSon(result, copyTree(tup))
+  result = newNodeI(nkBracketExpr, tup.info, 2)
+  result.sons[0] = copyTree(tup)
   var lit = newNodeI(nkIntLit, tup.info)
   lit.intVal = i
-  addSon(result, lit)
+  result.sons[1] = lit
 
 proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   let value = n.lastSon
-  result = newNodeI(nkStmtList, n.info)
+  let lhs = n.sons[0]
+  result = newNodeI(nkStmtList, n.info, lhs.len + 1)
 
   var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info)
   var v = newNodeI(nkLetSection, value.info)
@@ -83,14 +84,13 @@ proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   vpart.sons[1] = ast.emptyNode
   vpart.sons[2] = value
   addSon(v, vpart)
-  result.addSon(v)
+  result.sons[0] = v
 
-  let lhs = n.sons[0]
   for i in 0 .. lhs.len-1:
-    result.addSon(newAsgnStmt(lhs.sons[i], newTupleAccessRaw(tempAsNode, i)))
+    result.sons[i + 1] = newAsgnStmt(lhs.sons[i], newTupleAccessRaw(tempAsNode, i))
 
 proc lowerSwap*(n: PNode; owner: PSym): PNode =
-  result = newNodeI(nkStmtList, n.info)
+  result = newNodeI(nkStmtList, n.info, 3)
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
   var temp = newSym(skVar, getIdent(genPrefix), owner, n.info)
   temp.typ = n.sons[1].typ
@@ -105,9 +105,9 @@ proc lowerSwap*(n: PNode; owner: PSym): PNode =
   vpart.sons[2] = n[1]
   addSon(v, vpart)
 
-  result.addSon(v)
-  result.addSon(newFastAsgnStmt(n[1], n[2]))
-  result.addSon(newFastAsgnStmt(n[2], tempAsNode))
+  result.sons[0] = v
+  result.sons[1] = newFastAsgnStmt(n[1], n[2])
+  result.sons[2] = newFastAsgnStmt(n[2], tempAsNode)
 
 proc createObj*(owner: PSym, info: TLineInfo): PType =
   result = newType(tyObject, owner)
@@ -126,9 +126,9 @@ proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
   addSon(deref, a)
-  result = newNodeI(nkDotExpr, info)
-  addSon(result, deref)
-  addSon(result, newSymNode(field))
+  result = newNodeI(nkDotExpr, info, 2)
+  result.sons[0] = deref
+  result.sons[1] = newSymNode(field)
   result.typ = field.typ
 
 proc addField*(obj: PType; s: PSym) =
@@ -178,9 +178,9 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
   #  debug deref.typ
   internalAssert field != nil
   addSon(deref, a)
-  result = newNodeI(nkDotExpr, info)
-  addSon(result, deref)
-  addSon(result, newSymNode(field))
+  result = newNodeI(nkDotExpr, info, 2)
+  result.sons[0] = deref
+  result.sons[1] = newSymNode(field)
   result.typ = field.typ
 
 proc getFieldFromObj*(t: PType; v: PSym): PSym =
@@ -369,19 +369,19 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   if barrier != nil:
     body.addSon(callCodegenProc("barrierLeave", threadLocalBarrier.newSymNode))
 
-  var params = newNodeI(nkFormalParams, f.info)
-  params.addSon(emptyNode)
-  params.addSon(threadParam.newSymNode)
-  params.addSon(argsParam.newSymNode)
+  var params = newNodeI(nkFormalParams, f.info, 3)
+  params.sons[0] = emptyNode
+  params.sons[1] = threadParam.newSymNode
+  params.sons[2] = argsParam.newSymNode
 
   var t = newType(tyProc, threadParam.owner)
   t.rawAddSon nil
   t.rawAddSon threadParam.typ
   t.rawAddSon argsParam.typ
-  t.n = newNodeI(nkFormalParams, f.info)
-  t.n.addSon(newNodeI(nkEffectList, f.info))
-  t.n.addSon(threadParam.newSymNode)
-  t.n.addSon(argsParam.newSymNode)
+  t.n = newNodeI(nkFormalParams, f.info, 3)
+  t.n.sons[0] = newNodeI(nkEffectList, f.info)
+  t.n.sons[1] = threadParam.newSymNode
+  t.n.sons[2] = argsParam.newSymNode
 
   let name = (if f.kind == nkSym: f.sym.name.s else: genPrefix) & "Wrapper"
   result = newSym(skProc, getIdent(name), argsParam.owner, f.info)
@@ -389,9 +389,9 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
   result.typ = t
 
 proc createCastExpr(argsParam: PSym; objType: PType): PNode =
-  result = newNodeI(nkCast, argsParam.info)
-  result.addSon(emptyNode)
-  result.addSon(newSymNode(argsParam))
+  result = newNodeI(nkCast, argsParam.info, 2)
+  result.sons[0] = emptyNode
+  result.sons[1] = newSymNode(argsParam)
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
 

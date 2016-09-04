@@ -451,9 +451,9 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode
   let at = fitNode(c, t.sons[0].typ, ac).skipConvTakeType
   let bt = fitNode(c, t.sons[0].typ, bc).skipConvTakeType
 
-  result = newNodeI(nkRange, a.info)
-  result.addSon(at)
-  result.addSon(bt)
+  result = newNodeI(nkRange, a.info, 2)
+  result.sons[0] = at
+  result.sons[1] = bt
   if emptyRange(ac, bc): localError(b.info, errRangeIsEmpty)
   else: covered = covered + getOrdValue(bc) - getOrdValue(ac) + 1
 
@@ -1175,8 +1175,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
                 of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
                 else: nil
     if ident != nil and ident.s == "[]":
-      let b = newNodeI(nkBracketExpr, n.info)
-      for i in 1..<n.len: b.addSon(n[i])
+      let b = newNodeI(nkBracketExpr, n.info, <n.len)
+      for i in 1..<n.len: b.sons[i - 1] = n[i]
       result = semTypeNode(c, b, prev)
     elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)

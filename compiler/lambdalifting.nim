@@ -121,14 +121,14 @@ const
   envName* = ":env"
 
 proc newCall(a: PSym, b: PNode): PNode =
-  result = newNodeI(nkCall, a.info)
-  result.addSon(newSymNode(a))
-  result.addSon(b)
+  result = newNodeI(nkCall, a.info, 2)
+  result.sons[0] = newSymNode(a)
+  result.sons[1] = b
 
 proc createStateType(iter: PSym): PType =
-  var n = newNodeI(nkRange, iter.info)
-  addSon(n, newIntNode(nkIntLit, -1))
-  addSon(n, newIntNode(nkIntLit, 0))
+  var n = newNodeI(nkRange, iter.info, 2)
+  n.sons[0] = newIntNode(nkIntLit, -1)
+  n.sons[1] = newIntNode(nkIntLit, 0)
   result = newType(tyRange, iter)
   result.n = n
   var intType = nilOrSysInt()
@@ -208,14 +208,15 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result.sons[1] = ri
 
 proc makeClosure*(prc: PSym; env: PNode; info: TLineInfo): PNode =
-  result = newNodeIT(nkClosure, info, prc.typ)
-  result.addSon(newSymNode(prc))
+  result = newNodeI(nkClosure, info, 2)
+  result.typ = prc.typ
+  result.sons[0] = newSymNode(prc)
   if env == nil:
-    result.addSon(newNodeIT(nkNilLit, info, getSysType(tyNil)))
+    result.sons[1] = newNodeIT(nkNilLit, info, getSysType(tyNil))
   else:
     if env.skipConv.kind == nkClosure:
       localError(info, "internal error: taking closure of closure")
-    result.addSon(env)
+    result.sons[1] = env
 
 proc interestingIterVar(s: PSym): bool {.inline.} =
   # XXX optimization: Only lift the variable if it lives across
@@ -231,7 +232,8 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   let iter = n.sym
   assert iter.isIterator
 
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+  result = newNodeI(nkStmtListExpr, n.info, 3)
+  result.typ = n.typ
 
   let hp = getHiddenParam(iter)
   let env = newSym(skLet, iter.name, owner, n.info)
@@ -239,11 +241,11 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   env.flags = hp.flags
   var v = newNodeI(nkVarSection, n.info)
   addVar(v, newSymNode(env))
-  result.addSon(v)
+  result.sons[0] = v
   # add 'new' statement:
   let envAsNode = env.newSymNode
-  result.addSon(newCall(getSysSym"internalNew", envAsNode))
-  result.addSon(makeClosure(iter, envAsNode, n.info))
+  result.sons[1] = newCall(getSysSym"internalNew", envAsNode)
+  result.sons[2] = makeClosure(iter, envAsNode, n.info)
 
 proc freshVarForClosureIter*(s, owner: PSym): PNode =
   let envParam = getHiddenParam(owner)
@@ -590,39 +592,39 @@ proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
   inc state.typ.n.sons[1].intVal
   let stateNo = state.typ.n.sons[1].intVal
 
-  var stateAsgnStmt = newNodeI(nkAsgn, n.info)
-  stateAsgnStmt.addSon(rawIndirectAccess(newSymNode(getEnvParam(owner)),
-                    state, n.info))
-  stateAsgnStmt.addSon(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
+  var stateAsgnStmt = newNodeI(nkAsgn, n.info, 2)
+  stateAsgnStmt.sons[0] = rawIndirectAccess(newSymNode(getEnvParam(owner)),
+                    state, n.info)
+  stateAsgnStmt.sons[1] = newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt))
 
-  var retStmt = newNodeI(nkReturnStmt, n.info)
+  var retStmt = newNodeI(nkReturnStmt, n.info, 1)
   if n.sons[0].kind != nkEmpty:
-    var a = newNodeI(nkAsgn, n.sons[0].info)
+    var a = newNodeI(nkAsgn, n.sons[0].info, 2)
     var retVal = liftCapturedVars(n.sons[0], owner, d, c)
-    addSon(a, newSymNode(getIterResult(owner)))
-    addSon(a, retVal)
-    retStmt.addSon(a)
+    a.sons[0] = newSymNode(getIterResult(owner))
+    a.sons[1] = retVal
+    retStmt.sons[0] = a
   else:
-    retStmt.addSon(emptyNode)
+    retStmt.sons[0] = emptyNode
 
-  var stateLabelStmt = newNodeI(nkState, n.info)
-  stateLabelStmt.addSon(newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt)))
+  var stateLabelStmt = newNodeI(nkState, n.info, 1)
+  stateLabelStmt.sons[0] = newIntTypeNode(nkIntLit, stateNo, getSysType(tyInt))
 
-  result = newNodeI(nkStmtList, n.info)
-  result.addSon(stateAsgnStmt)
-  result.addSon(retStmt)
-  result.addSon(stateLabelStmt)
+  result = newNodeI(nkStmtList, n.info, 3)
+  result.sons[0] = stateAsgnStmt
+  result.sons[1] = retStmt
+  result.sons[2] = stateLabelStmt
 
 proc transformReturn(n: PNode; owner: PSym; d: DetectionPass;
                      c: var LiftingPass): PNode =
   let state = getStateField(owner)
-  result = newNodeI(nkStmtList, n.info)
-  var stateAsgnStmt = newNodeI(nkAsgn, n.info)
-  stateAsgnStmt.addSon(rawIndirectAccess(newSymNode(getEnvParam(owner)),
-                    state, n.info))
-  stateAsgnStmt.addSon(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
-  result.addSon(stateAsgnStmt)
-  result.addSon(n)
+  result = newNodeI(nkStmtList, n.info, 2)
+  var stateAsgnStmt = newNodeI(nkAsgn, n.info, 2)
+  stateAsgnStmt.sons[0] = rawIndirectAccess(newSymNode(getEnvParam(owner)),
+                    state, n.info)
+  stateAsgnStmt.sons[1] = newIntTypeNode(nkIntLit, -1, getSysType(tyInt))
+  result.sons[0] = stateAsgnStmt
+  result.sons[1] = n
 
 proc wrapIterBody(n: PNode; owner: PSym): PNode =
   if not owner.isIterator: return n
@@ -636,21 +638,20 @@ proc wrapIterBody(n: PNode; owner: PSym): PNode =
           n[1][0].kind == nkGotoState:
         return n
   let info = n.info
-  result = newNodeI(nkStmtList, info)
-  var gs = newNodeI(nkGotoState, info)
-  gs.addSon(rawIndirectAccess(newSymNode(owner.getHiddenParam), getStateField(owner), info))
-  result.addSon(gs)
-  var state0 = newNodeI(nkState, info)
-  state0.addSon(newIntNode(nkIntLit, 0))
-  result.addSon(state0)
+  result = newNodeI(nkStmtList, info, 4)
+  var gs = newNodeI(nkGotoState, info, 1)
+  gs.sons[0] = rawIndirectAccess(newSymNode(owner.getHiddenParam), getStateField(owner), info)
+  result.sons[0] = gs
+  var state0 = newNodeI(nkState, info, 1)
+  state0.sons[0] = newIntNode(nkIntLit, 0)
+  result.sons[1] = state0
+  result.sons[2] = n
 
-  result.addSon(n)
-
-  var stateAsgnStmt = newNodeI(nkAsgn, info)
-  stateAsgnStmt.addSon(rawIndirectAccess(newSymNode(owner.getHiddenParam),
-                    getStateField(owner), info))
-  stateAsgnStmt.addSon(newIntTypeNode(nkIntLit, -1, getSysType(tyInt)))
-  result.addSon(stateAsgnStmt)
+  var stateAsgnStmt = newNodeI(nkAsgn, info, 2)
+  stateAsgnStmt.sons[0] = rawIndirectAccess(newSymNode(owner.getHiddenParam),
+                    getStateField(owner), info)
+  stateAsgnStmt.sons[1] = newIntTypeNode(nkIntLit, -1, getSysType(tyInt))
+  result.sons[3] = stateAsgnStmt
 
 proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
                   c: var LiftingPass): PNode =
@@ -844,12 +845,12 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
     return body
   var call = body[L-2]
 
-  result = newNodeI(nkStmtList, body.info)
 
   # static binding?
   var env: PSym
   let op = call[0]
   if op.kind == nkSym and op.sym.isIterator:
+    result = newNodeI(nkStmtList, body.info, 3)
     # createClosure()
     let iter = op.sym
 
@@ -860,39 +861,45 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
 
     var v = newNodeI(nkVarSection, body.info)
     addVar(v, newSymNode(env))
-    result.addSon(v)
+    result.sons[0] = v
     # add 'new' statement:
-    result.addSon(newCall(getSysSym"internalNew", env.newSymNode))
+    result.sons[1] = newCall(getSysSym"internalNew", env.newSymNode)
   elif op.kind == nkStmtListExpr:
     let closure = op.lastSon
     if closure.kind == nkClosure:
+      result = newNodeI(nkStmtList, body.info, op.len)
       call.sons[0] = closure
       for i in 0 .. op.len-2:
-        result.addSon(op[i])
+        result.sons[i] = op[i]
+    else:
+      result = newNodeI(nkStmtList, body.info, 1)
+  else:
+    result = newNodeI(nkStmtList, body.info, 1)
 
   var loopBody = newNodeI(nkStmtList, body.info, 3)
   var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
   whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(tyBool))
   whileLoop.sons[1] = loopBody
-  result.addSon(whileLoop)
+  result.sons[^1] = whileLoop
 
   # setup loopBody:
   # gather vars in a tuple:
-  var v2 = newNodeI(nkLetSection, body.info)
-  var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
+  var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info, L)
   for i in 0 .. L-3:
     if body[i].kind == nkSym:
       body[i].sym.kind = skLet
-    addSon(vpart, body[i])
+    vpart.sons[i] = body[i]
 
-  addSon(vpart, ast.emptyNode) # no explicit type
+  vpart.sons[^2] = ast.emptyNode # no explicit type
   if not env.isNil:
     call.sons[0] = makeClosure(call.sons[0].sym, env.newSymNode, body.info)
-  addSon(vpart, call)
-  addSon(v2, vpart)
+  vpart.sons[^1] = call
 
+  var v2 = newNodeI(nkLetSection, body.info, 1)
+  v2.sons[0] = vpart
   loopBody.sons[0] = v2
-  var bs = newNodeI(nkBreakState, body.info)
-  bs.addSon(call.sons[0])
+
+  var bs = newNodeI(nkBreakState, body.info, 1)
+  bs.sons[0] = call.sons[0]
   loopBody.sons[1] = bs
   loopBody.sons[2] = body[L-1]

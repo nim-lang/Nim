@@ -45,7 +45,8 @@ proc setResult*(a: VmArgs; v: seq[string]) =
     myreset(s[a.ra])
     s[a.ra].kind = rkNode
   var n = newNode(nkBracket)
-  for x in v: n.addSon(newStrNode(nkStrLit, x))
+  n.sons = newSeq[PNode](v.len)
+  for i in 0 .. <v.len: n.sons[i] = newStrNode(nkStrLit, v[i])
   s[a.ra].node = n
 
 template getX(k, field) {.dirty.} =

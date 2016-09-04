@@ -37,13 +37,13 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         var call = forLoop.sons[L-2]
         var tupl = call.sons[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
-          result = newNodeI(nkBracketExpr, n.info)
-          result.addSon(tupl)
-          result.addSon(newIntNode(nkIntLit, c.tupleIndex))
+          result = newNodeI(nkBracketExpr, n.info, 2)
+          result.sons[0] = tupl
+          result.sons[1] = newIntNode(nkIntLit, c.tupleIndex)
         else:
-          result = newNodeI(nkDotExpr, n.info)
-          result.addSon(tupl)
-          result.addSon(newSymNode(c.field, n.info))
+          result = newNodeI(nkDotExpr, n.info, 2)
+          result.sons[0] = tupl
+          result.sons[1] = newSymNode(c.field, n.info)
         break
   else:
     if n.kind == nkContinueStmt:
@@ -82,19 +82,19 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     # iterate over the selector:
     semForObjectFields(c, typ[0], forLoop, father)
     # we need to generate a case statement:
-    var caseStmt = newNodeI(nkCaseStmt, forLoop.info)
+    var caseStmt = newNodeI(nkCaseStmt, forLoop.info, typ.len)
     # generate selector:
     var access = newNodeI(nkDotExpr, forLoop.info, 2)
     access.sons[0] = call.sons[1]
     access.sons[1] = newSymNode(typ.sons[0].sym, forLoop.info)
-    caseStmt.addSon(semExprWithType(c.c, access))
+    caseStmt.sons[0] = semExprWithType(c.c, access)
     # copy the branches over, but replace the fields with the for loop body:
     for i in 1 .. <typ.len:
       var branch = copyTree(typ[i])
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, forLoop.info)
       semForObjectFields(c, typ[i].lastSon, forLoop, branch[L-1])
-      caseStmt.addSon(branch)
+      caseStmt.sons[i] = branch
     father.addSon(caseStmt)
   of nkRecList:
     for t in items(typ): semForObjectFields(c, t, forLoop, father)
@@ -133,7 +133,8 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:
     var loopBody = n.sons[length-1]
-    for i in 0..sonsLen(tupleTypeA)-1:
+    stmts.sons = newSeq[PNode](sonsLen(tupleTypeA))
+    for i in 0 .. <sonsLen(tupleTypeA):
       openScope(c)
       var fc: TFieldInstCtx
       fc.tupleType = tupleTypeA
@@ -141,7 +142,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
-      stmts.addSon(semStmt(c, body))
+      stmts.sons[i] = semStmt(c, body)
       dec c.inUnrolledContext
       closeScope(c)
   else:

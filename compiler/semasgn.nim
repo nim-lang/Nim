@@ -51,11 +51,11 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     # copy the selector:
     liftBodyObj(c, n[0], body, x, y)
     # we need to generate a case statement:
-    var caseStmt = newNodeI(nkCaseStmt, c.info)
+    var caseStmt = newNodeI(nkCaseStmt, c.info, n.len)
     # XXX generate 'if' that checks same branches
     # generate selector:
     var access = dotField(x, n[0].sym)
-    caseStmt.addSon(access)
+    caseStmt.sons[0] = access
     # copy the branches over, but replace the fields with the for loop body:
     for i in 1 .. <n.len:
       var branch = copyTree(n[i])
@@ -63,7 +63,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
       branch.sons[L-1] = newNodeI(nkStmtList, c.info)
 
       liftBodyObj(c, n[i].lastSon, branch.sons[L-1], x, y)
-      caseStmt.addSon(branch)
+      caseStmt.sons[i] = branch
     body.addSon(caseStmt)
     localError(c.info, "cannot lift assignment operator to 'case' object")
   of nkRecList:
@@ -82,10 +82,10 @@ proc genAddr(c: PContext; x: PNode): PNode =
 proc newAsgnCall(c: PContext; op: PSym; x, y: PNode): PNode =
   if sfError in op.flags:
     localError(x.info, errWrongSymbolX, op.name.s)
-  result = newNodeI(nkCall, x.info)
-  result.addSon(newSymNode(op))
-  result.addSon(genAddr(c, x))
-  result.addSon(y)
+  result = newNodeI(nkCall, x.info, 3)
+  result.sons[0] = newSymNode(op)
+  result.sons[1] = genAddr(c, x)
+  result.sons[2] = y
 
 proc newAsgnStmt(le, ri: PNode): PNode =
   result = newNodeI(nkAsgn, le.info, 2)
@@ -93,9 +93,10 @@ proc newAsgnStmt(le, ri: PNode): PNode =
   result.sons[1] = ri
 
 proc newDestructorCall(op: PSym; x: PNode): PNode =
-  result = newNodeIT(nkCall, x.info, op.typ.sons[0])
-  result.addSon(newSymNode(op))
-  result.addSon(x)
+  result = newNodeI(nkCall, x.info, 2)
+  result.typ = op.typ.sons[0]
+  result.sons[0] = newSymNode(op)
+  result.sons[1] = x
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newDestructorCall(op, y))
@@ -157,9 +158,9 @@ proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   body.addSon(v)
 
 proc genBuiltin(magic: TMagic; name: string; i: PNode): PNode =
-  result = newNodeI(nkCall, i.info)
-  result.addSon(createMagic(name, magic).newSymNode)
-  result.addSon(i)
+  result = newNodeI(nkCall, i.info, 2)
+  result.sons[0] = createMagic(name, magic).newSymNode
+  result.sons[1] = i
 
 proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
   result = newNodeI(nkWhileStmt, c.info, 2)
