@@ -970,14 +970,11 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
     else:
       result = newNodeI(nkProcTy, info)
 
-proc isExprStart(p: TParser): bool =
-  case p.tok.tokType
-  of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf,
-     tkProc, tkIterator, tkBind, tkAddr,
-     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr,
-     tkTuple, tkObject, tkType, tkWhen, tkCase, tkOut:
-    result = true
-  else: result = false
+const exprStartTypes = {tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf,
+     tkProc, tkIterator, tkBind, tkAddr, tkParLe, tkBracketLe, tkCurlyLe,
+     tkIntLit..tkCharLit, tkVar, tkRef, tkPtr, tkTuple, tkObject, tkType,
+     tkWhen, tkCase, tkOut}
+template isExprStart(p: TParser): bool = p.tok.tokType in exprStartTypes
 
 proc parseSymbolList(p: var TParser, result: PNode, allowNil = false) =
   while true:
