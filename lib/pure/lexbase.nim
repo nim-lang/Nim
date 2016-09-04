@@ -12,7 +12,10 @@
 ## needs refilling.
 
 import
-  strutils, streams
+  strutils
+when not defined(js):
+  import
+    streams
 
 const
   EndOfFile* = '\0'           ## end of file marker
@@ -30,10 +33,12 @@ type
     bufpos*: int              ## the current position within the buffer
     when defined(js):         ## the buffer itself
       buf*: string
+      input: string
+      inputPos: int
     else:
       buf*: cstring
+      input: Stream            ## the input stream
     bufLen*: int              ## length of buffer in characters
-    input: Stream            ## the input stream
     lineNumber*: int          ## the current line number
     sentinel: int
     lineStart: int            # index of last line start in buffer
@@ -48,7 +53,9 @@ proc close*(L: var BaseLexer) =
   ## closes the base lexer. This closes `L`'s associated stream too.
   when not defined(js):
     dealloc(L.buf)
-  close(L.input)
+    close(L.input)
+  else:
+    L.input = nil
 
 proc fillBuffer(L: var BaseLexer) =
   var
@@ -56,6 +63,14 @@ proc fillBuffer(L: var BaseLexer) =
                               # not bytes (in case this
                               # is not the same)
     oldBufLen: int
+  proc readChars(L: var BaseLexer, start, amount: int): int {.inline.} =
+    when defined(js):
+      let charsToCopy = min(amount, L.input.len - L.inputPos)
+      for i in 0..<charsToCopy: L.buf[start + i] = L.input[L.inputPos + i]
+      inc(L.inputPos, charsToCopy)
+      result = charsToCopy div chrSize
+    else:
+      result = readData(L.input, addr(L.buf[start]), amount) div chrSize
   # we know here that pos == L.sentinel, but not if this proc
   # is called the first time by initBaseLexer()
   assert(L.sentinel < L.bufLen)
@@ -67,8 +82,7 @@ proc fillBuffer(L: var BaseLexer) =
     else:
       # "moveMem" handles overlapping regions
       moveMem(L.buf, addr L.buf[L.sentinel + 1], toCopy * chrSize)
-  charsRead = readData(L.input, addr(L.buf[toCopy]),
-                       (L.sentinel + 1) * chrSize) div chrSize
+  charsRead = L.readChars(toCopy, (L.sentinel + 1) * chrSize)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker
@@ -93,8 +107,7 @@ proc fillBuffer(L: var BaseLexer) =
         else:
           L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
         assert(L.bufLen - oldBufLen == oldBufLen)
-        charsRead = readData(L.input, addr(L.buf[oldBufLen]),
-                             oldBufLen * chrSize) div chrSize
+        charsRead = L.readChars(oldBufLen, oldBufLen * chrSize)
         if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile
           L.sentinel = oldBufLen + charsRead
@@ -140,24 +153,37 @@ proc skipUtf8Bom(L: var BaseLexer) =
     inc(L.bufpos, 3)
     inc(L.lineStart, 3)
 
-proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
-           refillChars: set[char] = NewLines) =
-  ## inits the BaseLexer with a stream to read from.
+proc initCommon(L: var BaseLexer, bufLen: int, refillChars: set[char]) =
   assert(bufLen > 0)
-  assert(input != nil)
-  L.input = input
+  assert(L.input != nil)
   L.bufpos = 0
   L.bufLen = bufLen
   L.refillChars = refillChars
-  when defined(js):
-    L.buf = newString(bufLen)
-  else:
-    L.buf = cast[cstring](alloc(bufLen * chrSize))
   L.sentinel = bufLen - 1
   L.lineStart = 0
   L.lineNumber = 1            # lines start at 1
   fillBuffer(L)
   skipUtf8Bom(L)
+
+when not defined(js):
+  proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
+             refillChars: set[char] = NewLines) =
+    ## inits the BaseLexer with a stream to read from.
+    L.input = input
+    L.buf = cast[cstring](alloc(bufLen * chrSize))
+    L.initCommon(bufLen, refillChars)
+
+proc open*(L: var BaseLexer, input: string, bufLen: int = 8192,
+           refillChars: set[char] = NewLines) =
+  # inits the BaseLexer with a string to read from.
+  when defined(js):
+    L.input = input
+    L.inputPos = 0
+    L.buf = newString(bufLen)
+  else:
+    L.input = newStringStream(input)
+    L.buf = cast[cstring](alloc(bufLen * chrSize))
+  L.initCommon(bufLen, refillChars)
 
 proc getColNumber*(L: BaseLexer, pos: int): int =
   ## retrieves the current column.
