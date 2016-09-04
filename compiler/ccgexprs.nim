@@ -2084,11 +2084,14 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkCaseStmt: genCase(p, n, d)
   of nkReturnStmt: genReturnStmt(p, n)
   of nkBreakStmt: genBreakStmt(p, n)
-  of nkAsgn: genAsgn(p, n, fastAsgn=false)
+  of nkAsgn:
+    if nfPreventCg notin n.flags:
+      genAsgn(p, n, fastAsgn=false)
   of nkFastAsgn:
-    # transf is overly aggressive with 'nkFastAsgn', so we work around here.
-    # See tests/run/tcnstseq3 for an example that would fail otherwise.
-    genAsgn(p, n, fastAsgn=p.prc != nil)
+    if nfPreventCg notin n.flags:
+      # transf is overly aggressive with 'nkFastAsgn', so we work around here.
+      # See tests/run/tcnstseq3 for an example that would fail otherwise.
+      genAsgn(p, n, fastAsgn=p.prc != nil)
   of nkDiscardStmt:
     if n.sons[0].kind != nkEmpty:
       genLineDir(p, n)

@@ -413,17 +413,16 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
     result = ast.emptyNode
 
 proc suggestExpr*(c: PContext, node: PNode) =
-  if nfIsCursor notin node.flags:
-    if gTrackPos.line < 0: return
-    var cp = inCheckpoint(node.info)
-    if cp == cpNone: return
+  if gTrackPos.line < 0: return
+  var cp = inCheckpoint(node.info)
+  if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
 
   if gIdeCmd == ideSug:
-    var n = if nfIsCursor in node.flags: node else: findClosestDot(node)
+    var n = findClosestDot(node)
     if n == nil: n = node
     if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
@@ -436,7 +435,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       suggestEverything(c, n, outputs)
 
   elif gIdeCmd == ideCon:
-    var n = if nfIsCursor in node.flags: node else: findClosestCall(node)
+    var n = findClosestCall(node)
     if n == nil: n = node
     if n.kind in nkCallKinds:
       var a = copyNode(n)

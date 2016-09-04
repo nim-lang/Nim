@@ -359,6 +359,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
       linefmt(p, cpsStmts, "#popCurrentException();$n")
 
 proc genReturnStmt(p: BProc, t: PNode) =
+  if nfPreventCg in t.flags: return
   p.beforeRetNeeded = true
   genLineDir(p, t)
   if (t.sons[0].kind != nkEmpty): genStmts(p, t.sons[0])
