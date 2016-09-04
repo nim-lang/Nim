@@ -1373,19 +1373,25 @@ else:
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
     let p = getGlobalDispatcher()
+    var newEvents = {Event.Read}
     withData(p.selector, fd.SocketHandle, adata) do:
       adata.readCB = cb
+      if adata.writeCB != nil:
+        newEvents.incl(Event.Write)
     do:
       raise newException(ValueError, "File descriptor not registered.")
-    p.selector.updateHandle(fd.SocketHandle, {Event.Read})
+    p.selector.updateHandle(fd.SocketHandle, newEvents)
 
   proc addWrite*(fd: AsyncFD, cb: Callback) =
     let p = getGlobalDispatcher()
+    var newEvents = {Event.Write}
     withData(p.selector, fd.SocketHandle, adata) do:
       adata.writeCB = cb
+      if adata.readCB != nil:
+        newEvents.incl(Event.Read)
     do:
       raise newException(ValueError, "File descriptor not registered.")
-    p.selector.updateHandle(fd.SocketHandle, {Event.Write})
+    p.selector.updateHandle(fd.SocketHandle, newEvents)
 
   proc poll*(timeout = 500) =
     var keys: array[64, ReadyKey[AsyncData]]
