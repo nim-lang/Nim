@@ -1556,13 +1556,6 @@ proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
   result = t == nil or t.kind in {tyVoid, tyStmt}
 
-proc makeStmtList*(n: PNode): PNode =
-  if n.kind == nkStmtList:
-    result = n
-  else:
-    result = newNodeI(nkStmtList, n.info)
-    result.addSon n
-
 proc skipStmtList*(n: PNode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr}:
     for i in 0 .. n.len-2:
