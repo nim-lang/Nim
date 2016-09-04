@@ -442,12 +442,12 @@ proc suggestExpr*(c: PContext, node: PNode) =
       var a = copyNode(n)
       var x = safeSemExpr(c, n.sons[0])
       if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
-      addSon(a, x)
+      add(a, x)
       for i in 1..sonsLen(n)-1:
         # use as many typed arguments as possible:
         var x = safeSemExpr(c, n.sons[i])
         if x.kind == nkEmpty or x.typ == nil: break
-        addSon(a, x)
+        add(a, x)
       suggestCall(c, a, n, outputs)
 
   dec(c.compilesContextId)

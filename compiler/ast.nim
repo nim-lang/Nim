@@ -1166,13 +1166,13 @@ proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result.info = info
   result.typ = typ
 
-proc addSon*(father, son: PNode) =
+proc add*(father, son: PNode) =
   assert son != nil
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 var emptyParams = newNode(nkFormalParams)
-emptyParams.addSon(emptyNode)
+emptyParams.add(emptyNode)
 
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                  params = emptyParams,
@@ -1380,12 +1380,12 @@ proc propagateToOwner*(owner, elem: PType) =
       # ensure this doesn't bite us in sempass2.
       owner.flags.incl tfHasGCedMem
 
-proc rawAddSon*(father, son: PType) =
+proc rawAdd*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
   if not son.isNil: propagateToOwner(father, son)
 
-proc addSonNilAllowed*(father, son: PNode) =
+proc addNilAllowed*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 

@@ -235,7 +235,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         # do not check of 's.magic==mRoof' here because it might be some
         # other '^' but after overload resolution the proper one:
         if ctx.bracketExpr != nil and n.len == 2 and s.name.s == "^":
-          result.addSon(ctx.bracketExpr)
+          result.add(ctx.bracketExpr)
         first = 1
       of skGenericParam:
         result.sons[0] = newSymNodeTypeDesc(s, fn.info)

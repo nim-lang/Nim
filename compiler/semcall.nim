@@ -356,9 +356,9 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
-          x.call.addSon(s.ast)
+          x.call.add(s.ast)
         of skType:
-          x.call.addSon(newSymNode(s, n.info))
+          x.call.add(newSymNode(s, n.info))
         else:
           internalAssert false
 
@@ -374,7 +374,7 @@ proc canDeref(n: PNode): bool {.inline.} =
 proc tryDeref(n: PNode): PNode =
   result = newNodeI(nkHiddenDeref, n.info)
   result.typ = n.typ.skipTypes(abstractInst).sons[0]
-  result.addSon(n)
+  result.add(n)
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds): PNode =
@@ -443,7 +443,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
           let x = explicitGenericSym(c, n, candidate)
-          if x != nil: result.addSon(x)
+          if x != nil: result.add(x)
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]
@@ -466,7 +466,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var x: PType
     if param.typ.kind == tyVar:
       x = newTypeS(tyVar, c)
-      x.addSonSkipIntLit t.baseOfDistinct
+      x.addSkipIntLit t.baseOfDistinct
     else:
       x = t.baseOfDistinct
     call.sons[i] = newNodeIT(nkEmpty, fn.info, x)

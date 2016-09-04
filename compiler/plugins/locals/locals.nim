@@ -33,11 +33,11 @@ proc semLocals(c: PContext, n: PNode): PNode =
         field.position = counter
         inc(counter)
 
-        addSon(tupleType.n, newSymNode(field))
-        addSonSkipIntLit(tupleType, field.typ)
+        add(tupleType.n, newSymNode(field))
+        addSkipIntLit(tupleType, field.typ)
 
         var a = newSymNode(it, result.info)
         if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
-        result.addSon(a)
+        result.add(a)
 
 registerPlugin("stdlib", "system", "locals", semLocals)

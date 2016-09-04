@@ -133,7 +133,7 @@ proc createStateType(iter: PSym): PType =
   result.n = n
   var intType = nilOrSysInt()
   if intType.isNil: intType = newType(tyInt, iter)
-  rawAddSon(result, intType)
+  rawAdd(result, intType)
 
 proc createStateField(iter: PSym): PSym =
   result = newSym(skField, getIdent(":state"), iter, iter.info)
@@ -153,7 +153,7 @@ proc getIterResult(iter: PSym): PSym =
     result = newSym(skResult, getIdent":result", iter, iter.info)
     result.typ = iter.typ.sons[0]
     incl(result.flags, sfUsed)
-    iter.ast.addSon(newSymNode(result))
+    iter.ast.add(newSymNode(result))
 
 proc addHiddenParam(routine: PSym, param: PSym) =
   assert param.kind == skParam
@@ -161,7 +161,7 @@ proc addHiddenParam(routine: PSym, param: PSym) =
   # -1 is correct here as param.position is 0 based but we have at position 0
   # some nkEffect node:
   param.position = routine.typ.n.len-1
-  addSon(params, newSymNode(param))
+  add(params, newSymNode(param))
   #incl(routine.typ.flags, tfCapturesEnv)
   assert sfFromGeneric in param.flags
   #echo "produced environment: ", param.id, " for ", routine.id
@@ -297,7 +297,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym): PType =
   if result.isNil:
     result = newType(tyRef, owner)
     let obj = createEnvObj(owner)
-    rawAddSon(result, obj)
+    rawAdd(result, obj)
     c.ownerToType[owner.id] = result
 
 proc createUpField(c: var DetectionPass; dest, dep: PSym) =
@@ -514,22 +514,22 @@ proc rawClosureCreation(owner: PSym;
     if env.kind == nkSym:
       var v = newNodeI(nkVarSection, env.info)
       addVar(v, env)
-      result.addSon(v)
+      result.add(v)
     # add 'new' statement:
-    result.addSon(newCall(getSysSym"internalNew", env))
+    result.add(newCall(getSysSym"internalNew", env))
     # add assignment statements for captured parameters:
     for i in 1..<owner.typ.n.len:
       let local = owner.typ.n[i].sym
       if local.id in d.capturedVars:
         let fieldAccess = indirectAccess(env, local, env.info)
         # add ``env.param = param``
-        result.addSon(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
+        result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
 
   let upField = lookupInRecord(env.typ.lastSon.n, getIdent(upName))
   if upField != nil:
     let up = getUpViaParam(owner)
     if up != nil and upField.typ == up.typ:
-      result.addSon(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
+      result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  up, env.info))
     #elif oldenv != nil and oldenv.typ == upField.typ:
     #  result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
@@ -553,18 +553,18 @@ proc closureCreationForIter(iter: PNode;
     vnode = v.newSymNode
     var vs = newNodeI(nkVarSection, iter.info)
     addVar(vs, vnode)
-    result.addSon(vs)
-  result.addSon(newCall(getSysSym"internalNew", vnode))
+    result.add(vs)
+  result.add(newCall(getSysSym"internalNew", vnode))
 
   let upField = lookupInRecord(v.typ.lastSon.n, getIdent(upName))
   if upField != nil:
     let u = setupEnvVar(owner, d, c)
     if u.typ == upField.typ:
-      result.addSon(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
+      result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
                  u, iter.info))
     else:
       localError(iter.info, "internal error: cannot create up reference for iter")
-  result.addSon(makeClosure(iter.sym, vnode, iter.info))
+  result.add(makeClosure(iter.sym, vnode, iter.info))
 
 proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
                      c: var LiftingPass): PNode =

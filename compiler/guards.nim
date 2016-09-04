@@ -122,7 +122,7 @@ proc neg(n: PNode): PNode =
       var s = newNodeIT(nkCurly, n.info, n.sons[1].typ)
       for e in t.n:
         let eAsNode = newIntNode(nkIntLit, e.sym.position)
-        if not inSet(n.sons[1], eAsNode): s.addSon(eAsNode)
+        if not inSet(n.sons[1], eAsNode): s.add(eAsNode)
       result.sons[1] = s
     elif t.kind notin {tyString, tySequence} and lengthOrd(t) < 1000:
       result.sons[1] = complement(n.sons[1])
@@ -951,7 +951,7 @@ proc addFactLe*(m: var TModel; a, b: PNode) =
 
 proc settype(n: PNode): PType =
   result = newType(tySet, n.typ.owner)
-  addSonSkipIntLit(result, n.typ)
+  addSkipIntLit(result, n.typ)
 
 proc buildOf(it, loc: PNode): PNode =
   var s = newNodeI(nkCurly, it.info, it.len-1)
@@ -968,7 +968,7 @@ proc buildElse(n: PNode): PNode =
     let branch = n.sons[i]
     assert branch.kind == nkOfBranch
     for j in 0..branch.len-2:
-      s.addSon(branch.sons[j])
+      s.add(branch.sons[j])
   result = newNodeI(nkCall, n.info, 3)
   result.sons[0] = newSymNode(opContains)
   result.sons[1] = s

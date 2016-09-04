@@ -376,7 +376,7 @@ proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   #assert(n.kind != nkCall)
   n.flags.incl nfAllConst
-  c.constants.addSon(n.canonValue)
+  c.constants.add(n.canonValue)
   internalAssert result < 0x7fff
 
 proc sameConstant*(a, b: PNode): bool =
@@ -1137,13 +1137,13 @@ proc canElimAddr(n: PNode): PNode =
     if m.kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       result = copyNode(n.sons[0])
-      result.addSon(m.sons[0])
+      result.add(m.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       result = copyNode(n.sons[0])
-      result.addSon(m.sons[0])
+      result.add(m.sons[0])
   else:
     if n.sons[0].kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( deref ( x )) --> x
@@ -1342,7 +1342,7 @@ proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
 proc getNullValue*(typ: PType, info: TLineInfo): PNode
 
 proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
-  c.globals.addSon(getNullValue(s.typ, n.info))
+  c.globals.add(getNullValue(s.typ, n.info))
   s.position = c.globals.len
   # This is rather hard to support, due to the laziness of the VM code
   # generator. See tests/compile/tmacro2 for why this is necessary:
@@ -1448,7 +1448,7 @@ proc getNullValueAux(obj: PNode, result: PNode) =
     let field = newNodeI(nkExprColonExpr, result.info, 2)
     field.sons[0] = obj
     field.sons[1] = getNullValue(obj.sym.typ, result.info)
-    addSon(result, field)
+    add(result, field)
   else: globalError(result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo): PNode =
@@ -1476,7 +1476,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       result.sons[1] = newNodeIT(nkNilLit, info, t)
   of tyObject:
     result = newNodeIT(nkObjConstr, info, t)
-    result.addSon(newNodeIT(nkEmpty, info, t))
+    result.add(newNodeIT(nkEmpty, info, t))
     # initialize inherited fields:
     var base = t.sons[0]
     while base != nil:
@@ -1523,7 +1523,7 @@ proc genVarSection(c: PCtx; n: PNode) =
             #if s.ast.isNil: getNullValue(s.typ, a.info)
             #else: canonValue(s.ast)
             assert sa.kind != nkCall
-            c.globals.addSon(sa)
+            c.globals.add(sa)
             s.position = c.globals.len
         if a.sons[2].kind != nkEmpty:
           let tmp = c.genx(a.sons[0], {gfAddrOf})

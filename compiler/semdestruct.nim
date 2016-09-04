@@ -50,7 +50,7 @@ proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
       if t.sons[i] == nil: continue
       let destructableT = instantiateDestructor(c, t.sons[i])
       if destructableT != nil:
-        n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
+        n.sons[bodyPos].add(newNode(nkCall, t.sym.info, @[
             useSym(destructableT.destructor),
             n.sons[paramsPos][1][0]]))
 
@@ -67,7 +67,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
   var nonTrivialFields = 0
   result = newNode(nkCaseStmt, n.info, @[])
   # case x.kind
-  result.addSon(newNode(nkDotExpr, n.info, @[holder, n.sons[0]]))
+  result.add(newNode(nkDotExpr, n.info, @[holder, n.sons[0]]))
   for i in countup(1, n.len - 1):
     # of A, B:
     let ni = n[i]
@@ -75,12 +75,12 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
 
     let stmt = destroyFieldOrFields(c, ni.lastSon, holder)
     if stmt == nil:
-      caseBranch.addSon(newNode(nkStmtList, ni.info, @[]))
+      caseBranch.add(newNode(nkStmtList, ni.info, @[]))
     else:
-      caseBranch.addSon(stmt)
+      caseBranch.add(stmt)
       nonTrivialFields += stmt.len
 
-    result.addSon(caseBranch)
+    result.add(caseBranch)
 
   # maybe no fields were destroyed?
   if nonTrivialFields == 0:
@@ -91,7 +91,7 @@ proc destroyFieldOrFields(c: PContext, field: PNode, holder: PNode): PNode =
     let stmt = e
     if stmt != nil:
       if result == nil: result = newNode(nkStmtList)
-      result.addSon(stmt)
+      result.add(stmt)
 
   case field.kind
   of nkRecCase:
@@ -220,17 +220,17 @@ proc insertDestructors(c: PContext,
         remainingVars.sons = varSection.sons[(j+1)..varSection.len-1]
         let (outer, inner) = insertDestructors(c, remainingVars)
         if outer != nil:
-          tryStmt.addSon(outer)
+          tryStmt.add(outer)
           result.inner = inner
         else:
           result.inner = newNodeI(nkStmtList, info)
-          result.inner.addSon(remainingVars)
-          tryStmt.addSon(result.inner)
+          result.inner.add(remainingVars)
+          tryStmt.add(result.inner)
       else:
         result.inner = newNodeI(nkStmtList, info)
-        tryStmt.addSon(result.inner)
+        tryStmt.add(result.inner)
 
-      tryStmt.addSon(
+      tryStmt.add(
         newNode(nkFinally, info, @[
           semStmt(c, newNode(nkCall, info, @[
             useSym(destructableT.destructor),
@@ -238,7 +238,7 @@ proc insertDestructors(c: PContext,
 
       result.outer = newNodeI(nkStmtList, info)
       varSection.sons.setLen(j+1)
-      result.outer.addSon(varSection)
-      result.outer.addSon(tryStmt)
+      result.outer.add(varSection)
+      result.outer.add(tryStmt)
 
       return

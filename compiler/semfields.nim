@@ -68,7 +68,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     openScope(c.c)
     inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
-    father.addSon(semStmt(c.c, body))
+    father.add(semStmt(c.c, body))
     dec c.c.inUnrolledContext
     closeScope(c.c)
   of nkNilLit: discard
@@ -95,7 +95,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
       branch.sons[L-1] = newNodeI(nkStmtList, forLoop.info)
       semForObjectFields(c, typ[i].lastSon, forLoop, branch[L-1])
       caseStmt.sons[i] = branch
-    father.addSon(caseStmt)
+    father.add(caseStmt)
   of nkRecList:
     for t in items(typ): semForObjectFields(c, t, forLoop, father)
   else:
@@ -159,7 +159,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # we avoid it now if we can:
   if containsNode(stmts, {nkBreakStmt}):
     var b = newNodeI(nkBreakStmt, n.info)
-    b.addSon(ast.emptyNode)
-    stmts.addSon(b)
+    b.add(ast.emptyNode)
+    stmts.add(b)
   else:
     result = stmts

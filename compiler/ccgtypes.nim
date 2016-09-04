@@ -986,10 +986,10 @@ proc genArrayInfo(m: BModule, typ: PType, name: Rope) =
 proc fakeClosureType(owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
   result = newType(tyTuple, owner)
-  result.rawAddSon(newType(tyPointer, owner))
+  result.rawAdd(newType(tyPointer, owner))
   var r = newType(tyRef, owner)
-  r.rawAddSon(newType(tyTuple, owner))
-  result.rawAddSon(r)
+  r.rawAdd(newType(tyTuple, owner))
+  result.rawAdd(r)
 
 type
   TTypeInfoReason = enum  ## for what do we need the type info?

@@ -23,11 +23,11 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
       result = n
     elif diff < 0:
       result = newNodeIT(nkObjUpConv, n.info, d)
-      addSon(result, n)
+      add(result, n)
       if downcast: internalError(n.info, "cgmeth.genConv: no upcast allowed")
     elif diff > 0:
       result = newNodeIT(nkObjDownConv, n.info, d)
-      addSon(result, n)
+      add(result, n)
       if not downcast:
         internalError(n.info, "cgmeth.genConv: no downcast allowed")
     else:
@@ -92,7 +92,7 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
     # we've added a dispatcher already, so overwrite it
     s.ast.sons[L] = dispatcher
   else:
-    s.ast.addSon(dispatcher)
+    s.ast.add(dispatcher)
 
 proc createDispatcher(s: PSym): PSym =
   var disp = copySym(s)
@@ -111,7 +111,7 @@ proc createDispatcher(s: PSym): PSym =
       # We've encountered a method prototype without a filled-in
       # resultPos slot. We put a placeholder in there that will
       # be updated in fixupDispatcher().
-      disp.ast.addSon(ast.emptyNode)
+      disp.ast.add(ast.emptyNode)
   attachDispatcher(s, newSymNode(disp))
   # attach to itself to prevent bugs:
   attachDispatcher(disp, newSymNode(disp))
@@ -223,36 +223,36 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
     for col in countup(1, paramLen - 1):
       if contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
-        addSon(isn, newSymNode(iss))
-        addSon(isn, newSymNode(base.typ.n.sons[col].sym))
-        addSon(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
+        add(isn, newSymNode(iss))
+        add(isn, newSymNode(base.typ.n.sons[col].sym))
+        add(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
         if cond != nil:
           var a = newNodeIT(nkCall, base.info, getSysType(tyBool))
-          addSon(a, newSymNode(ands))
-          addSon(a, cond)
-          addSon(a, isn)
+          add(a, newSymNode(ands))
+          add(a, cond)
+          add(a, isn)
           cond = a
         else:
           cond = isn
     var call = newNodeI(nkCall, base.info)
-    addSon(call, newSymNode(curr))
+    add(call, newSymNode(curr))
     for col in countup(1, paramLen - 1):
-      addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym),
+      add(call, genConv(newSymNode(base.typ.n.sons[col].sym),
                            curr.typ.sons[col], false))
     var ret: PNode
     if base.typ.sons[0] != nil:
       var a = newNodeI(nkFastAsgn, base.info)
-      addSon(a, newSymNode(base.ast.sons[resultPos].sym))
-      addSon(a, call)
+      add(a, newSymNode(base.ast.sons[resultPos].sym))
+      add(a, call)
       ret = newNodeI(nkReturnStmt, base.info)
-      addSon(ret, a)
+      add(ret, a)
     else:
       ret = call
     if cond != nil:
       var a = newNodeI(nkElifBranch, base.info)
-      addSon(a, cond)
-      addSon(a, ret)
-      addSon(disp, a)
+      add(a, cond)
+      add(a, ret)
+      add(disp, a)
     else:
       disp = ret
   result.ast.sons[bodyPos] = disp
@@ -264,5 +264,5 @@ proc generateMethodDispatchers*(): PNode =
     for col in countup(1, sonsLen(gMethods[bucket].methods[0].typ) - 1):
       if relevantCol(gMethods[bucket].methods, col): incl(relevantCols, col)
     sortBucket(gMethods[bucket].methods, relevantCols)
-    addSon(result,
+    add(result,
            newSymNode(genDispatcher(gMethods[bucket].methods, relevantCols)))

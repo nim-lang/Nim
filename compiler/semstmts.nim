@@ -363,21 +363,21 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
     identDefs.sons[L-1] = emptyNode
     if result.kind != nkStmtList:
       let oldResult = result
-      oldResult.addSon(identDefs)
+      oldResult.add(identDefs)
       result = newNodeI(nkStmtList, result.info)
-      result.addSon(oldResult)
+      result.add(oldResult)
     else:
       let o = copyNode(orig)
-      o.addSon(identDefs)
-      result.addSon(o)
+      o.add(identDefs)
+      result.add(o)
     for i in 0 .. L-3:
-      result.addSon(overloadedAsgn(c, identDefs[i], value))
+      result.add(overloadedAsgn(c, identDefs[i], value))
   elif result.kind == nkStmtList:
     let o = copyNode(orig)
-    o.addSon(identDefs)
-    result.addSon(o)
+    o.add(identDefs)
+    result.add(o)
   else:
-    result.addSon(identDefs)
+    result.add(identDefs)
 
 proc addDefer(c: PContext; result: var PNode; s: PSym) =
   let deferDestructorCall = createDestructorCall(c, s)
@@ -385,8 +385,8 @@ proc addDefer(c: PContext; result: var PNode; s: PSym) =
     if result.kind != nkStmtList:
       let oldResult = result
       result = newNodeI(nkStmtList, result.info)
-      result.addSon(oldResult)
-    result.addSon(deferDestructorCall)
+      result.add(oldResult)
+    result.add(deferDestructorCall)
 
 proc isDiscardUnderscore(v: PSym): bool =
   if v.name.s == "_":
@@ -510,9 +510,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if importantComments():
           # keep documentation information:
           b.comment = a.comment
-        addSon(b, newSymNode(v))
-        addSon(b, a.sons[length-2])      # keep type desc for doc generator
-        addSon(b, copyTree(def))
+        add(b, newSymNode(v))
+        add(b, a.sons[length-2])      # keep type desc for doc generator
+        add(b, copyTree(def))
         addToVarSection(c, result, n, b)
       else:
         if def.kind == nkPar: v.ast = def[j]
@@ -555,10 +555,10 @@ proc semConst(c: PContext, n: PNode): PNode =
     if sfGenSym notin v.flags: addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
     if importantComments(): b.comment = a.comment
-    addSon(b, newSymNode(v))
-    addSon(b, a.sons[1])
-    addSon(b, copyTree(def))
-    addSon(result, b)
+    add(b, newSymNode(v))
+    add(b, a.sons[1])
+    add(b, copyTree(def))
+    add(result, b)
 
 include semfields
 
@@ -725,7 +725,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # we fill it out later. For magic generics like 'seq', it won't be filled
       # so we use tyNone instead of nil to not crash for strange conversions
       # like: mydata.seq
-      rawAddSon(s.typ, newTypeS(tyNone, c))
+      rawAdd(s.typ, newTypeS(tyNone, c))
       s.ast = a
       inc c.inGenericContext
       var body = semTypeNode(c, a.sons[2], nil)
@@ -826,9 +826,9 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
     of nkTypeSection:
       incl n.flags, nfSem
       typeSectionLeftSidePass(c, n)
-      result.addSon(n)
+      result.add(n)
     else:
-      result.addSon(n)
+      result.add(n)
 
   result = newNodeI(nkStmtList, n.info)
   gatherStmts(c, n, result)
@@ -894,7 +894,7 @@ proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) =
     c.p.resultSym = s
 
 proc addResultNode(c: PContext, n: PNode) =
-  if c.p.resultSym != nil: addSon(n, newSymNode(c.p.resultSym))
+  if c.p.resultSym != nil: add(n, newSymNode(c.p.resultSym))
 
 proc copyExcept(n: PNode, i: int): PNode =
   result = copyNode(n)
@@ -928,12 +928,12 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
     var x = newNodeI(nkCall, n.info)
-    x.addSon(newSymNode(m))
+    x.add(newSymNode(m))
     prc.sons[pragmasPos] = copyExcept(n, i)
     if it.kind == nkExprColonExpr:
       # pass pragma argument to the macro too:
-      x.addSon(it.sons[1])
-    x.addSon(prc)
+      x.add(it.sons[1])
+    x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
     result = semStmt(c, x)
     # since a proc annotation can set pragmas, we process these here again.
@@ -1409,14 +1409,14 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
 
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
-  addSon(result, n)
+  add(result, n)
   for i in countup(0, sonsLen(n) - 1):
     var f = checkModuleName(n.sons[i])
     if f != InvalidFileIDX:
       if containsOrIncl(c.includedFiles, f):
         localError(n.info, errRecursiveDependencyX, f.toFilename)
       else:
-        addSon(result, semStmt(c, gIncludeFile(c.module, f)))
+        add(result, semStmt(c, gIncludeFile(c.module, f)))
         excl(c.includedFiles, f)
 
 proc setLine(n: PNode, info: TLineInfo) =
@@ -1499,7 +1499,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       var deferPart: PNode
       if k == nkDefer:
         deferPart = newNodeI(nkFinally, n.sons[i].info)
-        deferPart.addSon(n.sons[i].sons[0])
+        deferPart.add(n.sons[i].sons[0])
       elif k == nkFinally:
         message(n.info, warnDeprecated,
                 "use 'defer'; standalone 'finally'")

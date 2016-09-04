@@ -123,19 +123,19 @@ proc makeRange(typ: PType, first, last: BiggestInt): PType =
     result = typ
   else:
     var n = newNode(nkRange)
-    addSon(n, lowerNode)
-    addSon(n, newIntNode(nkIntLit, maxA))
+    add(n, lowerNode)
+    add(n, newIntNode(nkIntLit, maxA))
     result = newType(tyRange, typ.owner)
     result.n = n
-    addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
+    addSkipIntLit(result, skipTypes(typ, {tyRange}))
 
 proc makeRangeF(typ: PType, first, last: BiggestFloat): PType =
   var n = newNode(nkRange)
-  addSon(n, newFloatNode(nkFloatLit, min(first.float, last.float)))
-  addSon(n, newFloatNode(nkFloatLit, max(first.float, last.float)))
+  add(n, newFloatNode(nkFloatLit, min(first.float, last.float)))
+  add(n, newFloatNode(nkFloatLit, max(first.float, last.float)))
   result = newType(tyRange, typ.owner)
   result.n = n
-  addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
+  addSkipIntLit(result, skipTypes(typ, {tyRange}))
 
 proc getIntervalType*(m: TMagic, n: PNode): PType =
   # Nim requires interval arithmetic for ``range`` types. Lots of tedious
@@ -594,7 +594,7 @@ proc foldConStrStr(m: PSym, n: PNode): PNode =
 proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s, info)
   result.typ = newType(tyTypeDesc, s.owner)
-  result.typ.addSonSkipIntLit(s.typ)
+  result.typ.addSkipIntLit(s.typ)
 
 proc getConstExpr(m: PSym, n: PNode): PNode =
   result = nil
@@ -716,8 +716,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     var b = getConstExpr(m, n.sons[1])
     if b == nil: return
     result = copyNode(n)
-    addSon(result, a)
-    addSon(result, b)
+    add(result, a)
+    add(result, b)
   of nkCurly:
     result = copyTree(n)
     for i in countup(0, sonsLen(n) - 1):

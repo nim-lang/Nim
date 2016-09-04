@@ -110,8 +110,8 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let isCall = result.kind in nkCallKinds
   for i in 0 .. <n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
-    if isCall and i == 0: result.addSon(n[i])
-    else: result.addSon(prepareNode(cl, n[i]))
+    if isCall and i == 0: result.add(n[i])
+    else: result.add(prepareNode(cl, n[i]))
 
 proc isTypeParam(n: PNode): bool =
   # XXX: generic params should use skGenericParam instead of skType
@@ -267,7 +267,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   result = newType(tyGenericInst, t.sons[0].owner)
   result.flags = header.flags
-  # be careful not to propagate unnecessary flags here (don't use rawAddSon)
+  # be careful not to propagate unnecessary flags here (don't use rawAdd)
   result.sons = @[header.sons[0]]
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
   # we need to add the candidate here, before it's fully instantiated for
@@ -289,7 +289,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   for i in countup(1, sonsLen(t) - 1):
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
-    rawAddSon(result, header.sons[i])
+    rawAdd(result, header.sons[i])
 
   let bbody = lastSon body
   var newbody = replaceTypeVarsT(cl, bbody)
@@ -302,7 +302,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # One step is enough, because the recursive nature of
   # handleGenericInvocation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
-  rawAddSon(result, newbody)
+  rawAdd(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
   let dc = newbody.deepCopy
   if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:

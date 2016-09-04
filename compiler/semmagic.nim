@@ -17,13 +17,13 @@ proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
     localError(n.info, errExprHasNoAddress)
-  result.addSon(x)
+  result.add(x)
   result.typ = makePtrType(c, x.typ)
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   result = newNodeI(nkTypeOfExpr, n.info)
   let typExpr = semExprWithType(c, n, {efInTypeof})
-  result.addSon(typExpr)
+  result.add(typExpr)
   result.typ = makeTypeDesc(c, typExpr.typ.skipTypes({tyTypeDesc, tyIter}))
 
 type
@@ -124,7 +124,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
 
 proc semBindSym(c: PContext, n: PNode): PNode =
   result = copyNode(n)
-  result.addSon(n.sons[0])
+  result.add(n.sons[0])
 
   let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
@@ -142,7 +142,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
-    result.addSon(sc)
+    result.add(sc)
   else:
     localError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
 

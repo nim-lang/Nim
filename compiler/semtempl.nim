@@ -71,7 +71,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     while a != nil:
       if a.kind != skModule:
         incl(a.flags, sfUsed)
-        addSon(result, newSymNode(a, n.info))
+        add(result, newSymNode(a, n.info))
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
@@ -460,9 +460,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     case k
     of nkBracketExpr:
       result = newNodeI(nkCall, n.info)
-      result.addSon(newIdentNode(getIdent("[]="), n.info))
-      for i in 0 ..< a.len: result.addSon(a[i])
-      result.addSon(b)
+      result.add(newIdentNode(getIdent("[]="), n.info))
+      for i in 0 ..< a.len: result.add(a[i])
+      result.add(b)
       let a0 = semTemplBody(c, a.sons[0])
       withBracketExpr c, a0:
         result = semTemplBodySons(c, result)
@@ -477,7 +477,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkCallKinds-{nkPostfix}:
     result = semTemplBodySons(c, n)
     if c.bracketExpr != nil and n.len == 2 and oprIsRoof(n.sons[0]):
-      result.addSon(c.bracketExpr)
+      result.add(c.bracketExpr)
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too
@@ -573,8 +573,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     s.typ = newTypeS(tyProc, c)
     # XXX why do we need tyStmt as a return type again?
     s.typ.n = newNodeI(nkFormalParams, n.info)
-    rawAddSon(s.typ, newTypeS(tyStmt, c))
-    addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
+    rawAdd(s.typ, newTypeS(tyStmt, c))
+    add(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
   if allUntyped: incl(s.flags, sfAllUntyped)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])

@@ -233,11 +233,11 @@ proc decodeNodeLazyBody(r: PRodReader, fInfo: TLineInfo,
       var i = 0
       while r.s[r.pos] != ')':
         if belongsTo != nil and i == bodyPos:
-          addSonNilAllowed(result, nil)
+          addNilAllowed(result, nil)
           belongsTo.offset = r.pos
           skipNode(r)
         else:
-          addSonNilAllowed(result, decodeNodeLazyBody(r, result.info, nil))
+          addNilAllowed(result, decodeNodeLazyBody(r, result.info, nil))
         inc i
     if r.s[r.pos] == ')': inc(r.pos)
     else: internalError(result.info, "decodeNode: ')' missing")
@@ -348,10 +348,10 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
       inc(r.pos)
       if r.s[r.pos] == ')': inc(r.pos)
       else: internalError(info, "decodeType ^(" & r.s[r.pos])
-      rawAddSon(result, nil)
+      rawAdd(result, nil)
     else:
       var d = decodeVInt(r.s, r.pos)
-      rawAddSon(result, rrGetType(r, d, info))
+      rawAdd(result, rrGetType(r, d, info))
 
 proc decodeLib(r: PRodReader, info: TLineInfo): PLib =
   result = nil
@@ -830,7 +830,7 @@ proc loadInitSection*(r: PRodReader): PNode =
     inc(r.pos)                # #10
     var p = r.pos
     r.pos = d + r.dataIdx
-    addSon(result, decodeNode(r, unknownLineInfo()))
+    add(result, decodeNode(r, unknownLineInfo()))
     r.pos = p
   r.pos = oldPos
 

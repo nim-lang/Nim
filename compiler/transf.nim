@@ -72,7 +72,7 @@ proc `[]`(a: PTransNode, i: int): PTransNode {.inline.} =
   var n = PNode(a)
   result = n.sons[i].PTransNode
 
-proc add(a, b: PTransNode) {.inline.} = addSon(PNode(a), PNode(b))
+proc add(a, b: PTransNode) {.inline.} = add(PNode(a), PNode(b))
 proc len(a: PTransNode): int {.inline.} = result = sonsLen(a.PNode)
 
 proc newTransCon(owner: PSym): PTransCon =
@@ -575,7 +575,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:
       let typ = newType(tySequence, formal.owner)
-      addSonSkipIntLit(typ, formal.typ.sons[0])
+      addSkipIntLit(typ, formal.typ.sons[0])
       var temp = newTemp(c, typ, formal.info)
       addVar(v, temp)
       add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
@@ -649,13 +649,13 @@ proc flattenTreeAux(d, a: PNode, op: PSym) =
       (op2.id == op.id or op.magic != mNone and op2.magic == op.magic):
     for i in countup(1, sonsLen(a)-1): flattenTreeAux(d, a.sons[i], op)
   else:
-    addSon(d, copyTree(a))
+    add(d, copyTree(a))
 
 proc flattenTree(root: PNode): PNode =
   let op = getMergeOp(root)
   if op != nil:
     result = copyNode(root)
-    addSon(result, copyTree(root.sons[0]))
+    add(result, copyTree(root.sons[0]))
     flattenTreeAux(result, root, op)
   else:
     result = root
@@ -710,7 +710,7 @@ proc commonOptimizations*(c: PSym, n: PNode): PNode =
   var op = getMergeOp(n)
   if (op != nil) and (op.magic != mNone) and (sonsLen(n) >= 3):
     result = newNodeIT(nkCall, n.info, n.typ)
-    addSon(result, n.sons[0])
+    add(result, n.sons[0])
     var args = newNode(nkArgList)
     flattenTreeAux(args, n, op)
     var j = 0
@@ -723,7 +723,7 @@ proc commonOptimizations*(c: PSym, n: PNode): PNode =
           if not isConstExpr(b): break
           a = evalOp(op.magic, result, a, b, nil)
           inc(j)
-      addSon(result, a)
+      add(result, a)
     if len(result) == 2: result = result[1]
   else:
     var cnst = getConstExpr(c, n)
@@ -791,7 +791,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         tryStmt.add c.deferAnchor.sons[L]
         c.deferAnchor.sons[L] = tryStmt
         result = newTransNode(nkCommentStmt, n.info, 0)
-      tryStmt.addSon(deferPart)
+      tryStmt.add(deferPart)
       # disable the original 'defer' statement:
       n.kind = nkEmpty
   of nkContinueStmt:
@@ -894,7 +894,7 @@ proc liftDeferAux(n: PNode) =
       for i in 0..last:
         if n.sons[i].kind == nkDefer:
           let deferPart = newNodeI(nkFinally, n.sons[i].info)
-          deferPart.addSon(n.sons[i].sons[0])
+          deferPart.add(n.sons[i].sons[0])
           var tryStmt = newNodeI(nkTryStmt, n.sons[i].info, 2)
           var body = newNodeI(n.kind, n.sons[i].info)
           if i < last:

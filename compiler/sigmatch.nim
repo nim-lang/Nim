@@ -276,8 +276,8 @@ proc concreteType(c: TCandidate, t: PType): PType =
   of tyArrayConstr:
     # make it an array
     result = newType(tyArray, t.owner)
-    addSonSkipIntLit(result, t.sons[0]) # XXX: t.owner is wrong for ID!
-    addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
+    addSkipIntLit(result, t.sons[0]) # XXX: t.owner is wrong for ID!
+    addSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
   of tyNil:
     result = nil              # what should it be?
   of tyTypeDesc:
@@ -1286,8 +1286,8 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   else:
     result.typ = f
   if result.typ == nil: internalError(arg.info, "implicitConv")
-  addSon(result, ast.emptyNode)
-  addSon(result, arg)
+  add(result, ast.emptyNode)
+  add(result, arg)
 
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
@@ -1311,8 +1311,8 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       s.typ = c.converters[i].typ
       s.info = arg.info
       result = newNodeIT(nkHiddenCallConv, arg.info, dest)
-      addSon(result, s)
-      addSon(result, copyTree(arg))
+      add(result, s)
+      add(result, copyTree(arg))
       inc(m.convMatches)
       m.genericConverter = srca == isGeneric or destIsGeneric
       return result
@@ -1327,8 +1327,8 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   if f == arg.typ and arg.kind == nkHiddenStdConv: return arg
 
   var call = newNodeI(nkCall, arg.info)
-  call.addSon(f.n.copyTree)
-  call.addSon(arg.copyTree)
+  call.add(f.n.copyTree)
+  call.add(arg.copyTree)
   result = c.semExpr(c, call)
   if result != nil:
     if result.typ == nil: return nil
@@ -1605,13 +1605,13 @@ proc prepareNamedParam(a: PNode) =
 
 proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArrayConstr, c)
-  rawAddSon(result, makeRangeType(c, 0, 0, n.info))
-  addSonSkipIntLit(result, skipTypes(n.typ, {tyGenericInst, tyVar, tyOrdinal}))
+  rawAdd(result, makeRangeType(c, 0, 0, n.info))
+  addSkipIntLit(result, skipTypes(n.typ, {tyGenericInst, tyVar, tyOrdinal}))
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
   result = newTypeS(tyArrayConstr, c)
-  rawAddSon(result, makeRangeType(c, 0, -1, info))
-  rawAddSon(result, newTypeS(tyEmpty, c)) # needs an empty basetype!
+  rawAdd(result, makeRangeType(c, 0, -1, info))
+  rawAdd(result, newTypeS(tyEmpty, c)) # needs an empty basetype!
 
 proc incrIndexType(t: PType) =
   assert t.kind == tyArrayConstr
@@ -1648,7 +1648,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   m.call = newNodeI(n.kind, n.info)
   m.call.typ = base(m.callee) # may be nil
   var formalLen = m.callee.n.len
-  addSon(m.call, copyTree(n.sons[0]))
+  add(m.call, copyTree(n.sons[0]))
   var container: PNode = nil # constructed container
   var formal: PSym = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
@@ -1660,7 +1660,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         setSon(m.call, formal.position + 1, container)
       else:
         incrIndexType(container.typ)
-      addSon(container, n.sons[a])
+      add(container, n.sons[a])
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
@@ -1694,7 +1694,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       if m.baseTypeMatch:
         #assert(container == nil)
         container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
-        addSon(container, arg)
+        add(container, arg)
         setSon(m.call, formal.position + 1, container)
         if f != formalLen - 1: container = nil
       else:
@@ -1709,10 +1709,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           # we have no formal here to snoop at:
           n.sons[a] = prepareOperand(c, n.sons[a])
           if skipTypes(n.sons[a].typ, abstractVar-{tyTypeDesc}).kind==tyString:
-            addSon(m.call, implicitConv(nkHiddenStdConv, getSysType(tyCString),
+            add(m.call, implicitConv(nkHiddenStdConv, getSysType(tyCString),
                                         copyTree(n.sons[a]), m, c))
           else:
-            addSon(m.call, copyTree(n.sons[a]))
+            add(m.call, copyTree(n.sons[a]))
         elif formal != nil and formal.typ.kind == tyVarargs:
           # beware of the side-effects in 'prepareOperand'! So only do it for
           # varargs matching. See tests/metatype/tstatic_overloading.
@@ -1722,7 +1722,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
           if arg != nil and m.baseTypeMatch and container != nil:
-            addSon(container, arg)
+            add(container, arg)
             incrIndexType(container.typ)
             checkConstraint(n.sons[a])
           else:
@@ -1748,7 +1748,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             setSon(m.call, formal.position + 1, container)
           else:
             incrIndexType(container.typ)
-          addSon(container, n.sons[a])
+          add(container, n.sons[a])
         else:
           m.baseTypeMatch = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
@@ -1763,7 +1763,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
               container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
             else:
               incrIndexType(container.typ)
-            addSon(container, arg)
+            add(container, arg)
             setSon(m.call, formal.position + 1,
                    implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
             #if f != formalLen - 1: container = nil
@@ -1855,32 +1855,32 @@ tests:
 
   proc `|` (t1, t2: PType): PType =
     result = newType(tyOr, dummyOwner)
-    result.rawAddSon(t1)
-    result.rawAddSon(t2)
+    result.rawAdd(t1)
+    result.rawAdd(t2)
 
   proc `&` (t1, t2: PType): PType =
     result = newType(tyAnd, dummyOwner)
-    result.rawAddSon(t1)
-    result.rawAddSon(t2)
+    result.rawAdd(t1)
+    result.rawAdd(t2)
 
   proc `!` (t: PType): PType =
     result = newType(tyNot, dummyOwner)
-    result.rawAddSon(t)
+    result.rawAdd(t)
 
   proc seq(t: PType): PType =
     result = newType(tySequence, dummyOwner)
-    result.rawAddSon(t)
+    result.rawAdd(t)
 
   proc array(x: int, t: PType): PType =
     result = newType(tyArray, dummyOwner)
 
     var n = newNodeI(nkRange, UnknownLineInfo())
-    addSon(n, newIntNode(nkIntLit, 0))
-    addSon(n, newIntNode(nkIntLit, x))
+    add(n, newIntNode(nkIntLit, 0))
+    add(n, newIntNode(nkIntLit, x))
     let range = newType(tyRange, dummyOwner)
 
-    result.rawAddSon(range)
-    result.rawAddSon(t)
+    result.rawAdd(range)
+    result.rawAdd(t)
 
   suite "type classes":
     let

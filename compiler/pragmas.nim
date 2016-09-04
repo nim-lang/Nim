@@ -360,7 +360,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
       # simply store it somewhere:
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
-      x.otherPragmas.addSon(n.sons[i])
+      x.otherPragmas.add(n.sons[i])
     #localError(n.info, errOptionExpected)
 
 proc processPop(c: PContext, n: PNode) =
@@ -436,7 +436,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
     while true:
       var b = strutils.find(str, marker, a)
       var sub = if b < 0: substr(str, a) else: substr(str, a, b - 1)
-      if sub != "": addSon(result, newStrNode(nkStrLit, sub))
+      if sub != "": add(result, newStrNode(nkStrLit, sub))
       if b < 0: break
       var c = strutils.find(str, marker, b + 1)
       if c < 0: sub = substr(str, b + 1)
@@ -446,12 +446,12 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         if e != nil:
           if e.kind == skStub: loadStub(e)
           incl(e.flags, sfUsed)
-          addSon(result, newSymNode(e))
+          add(result, newSymNode(e))
         else:
-          addSon(result, newStrNode(nkStrLit, sub))
+          add(result, newStrNode(nkStrLit, sub))
       else:
         # an empty '``' produces a single '`'
-        addSon(result, newStrNode(nkStrLit, $marker))
+        add(result, newStrNode(nkStrLit, $marker))
       if c < 0: break
       a = c + 1
   else:
@@ -505,7 +505,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
 
   var userPragma = newSym(skTemplate, it.sons[1].ident, nil, it.info)
   var body = newNodeI(nkPragma, n.info)
-  for j in i+1 .. sonsLen(n)-1: addSon(body, n.sons[j])
+  for j in i+1 .. sonsLen(n)-1: add(body, n.sons[j])
   userPragma.ast = body
   strTableAdd(c.userPragmas, userPragma)
 

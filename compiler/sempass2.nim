@@ -256,7 +256,7 @@ proc addToIntersection(inter: var TIntersection, s: int) =
   inter.add((id: s, count: 1))
 
 proc throws(tracked, n: PNode) =
-  if n.typ == nil or n.typ.kind != tyError: tracked.addSon(n)
+  if n.typ == nil or n.typ.kind != tyError: tracked.add(n)
 
 proc getEbase(): PType =
   result = if getCompilerProc("Exception") != nil: sysTypeFromName"Exception"
@@ -407,7 +407,7 @@ proc effectSpec(n: PNode, effectType: TSpecialWord): PNode =
       result = it.sons[1]
       if result.kind notin {nkCurly, nkBracket}:
         result = newNodeI(nkCurly, result.info)
-        result.addSon(it.sons[1])
+        result.add(it.sons[1])
       return
 
 proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
@@ -438,7 +438,7 @@ proc documentWriteEffect(n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   var effects = newNodeI(nkBracket, n.info)
   for i in 1 ..< params.len:
     if params[i].kind == nkSym and flag in params[i].sym.flags:
-      effects.addSon(params[i])
+      effects.add(params[i])
 
   if effects.len > 0:
     result = newNode(nkExprColonExpr, n.info, @[
@@ -461,11 +461,11 @@ proc documentRaises*(n: PNode) =
   if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
     if pragmas.kind == nkEmpty:
       n.sons[pragmasPos] = newNodeI(nkPragma, n.info)
-    if p1 != nil: n.sons[pragmasPos].addSon(p1)
-    if p2 != nil: n.sons[pragmasPos].addSon(p2)
-    if p3 != nil: n.sons[pragmasPos].addSon(p3)
-    if p4 != nil: n.sons[pragmasPos].addSon(p4)
-    if p5 != nil: n.sons[pragmasPos].addSon(p5)
+    if p1 != nil: n.sons[pragmasPos].add(p1)
+    if p2 != nil: n.sons[pragmasPos].add(p2)
+    if p3 != nil: n.sons[pragmasPos].add(p3)
+    if p4 != nil: n.sons[pragmasPos].add(p4)
+    if p5 != nil: n.sons[pragmasPos].add(p5)
 
 template notGcSafe(t): untyped = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 

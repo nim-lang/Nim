@@ -430,10 +430,10 @@ proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
         let m = transformSlices(b)
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
-          result.addSon(n)
+          result.add(n)
         let t = b[1][0].typ.sons[0]
         if spawnResult(t, true) == srByVar:
-          result.addSon(wrapProcForSpawn(owner, m, b.typ, barrier, it[0]))
+          result.add(wrapProcForSpawn(owner, m, b.typ, barrier, it[0]))
           it.sons[it.len-1] = emptyNode
         else:
           it.sons[it.len-1] = wrapProcForSpawn(owner, m, b.typ, barrier, nil)

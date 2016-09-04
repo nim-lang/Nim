@@ -370,7 +370,7 @@ proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator,
       discard
     else:
       for i in countup(0, sonsLen(n) - 1):
-        addSon(result, mutateNode(marker, n.sons[i], iter, closure))
+        add(result, mutateNode(marker, n.sons[i], iter, closure))
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType =

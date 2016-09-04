@@ -612,18 +612,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let b = regs[rb].regToNode
       if not inSet(regs[ra].node, b):
-        addSon(regs[ra].node, copyTree(b))
+        add(regs[ra].node, copyTree(b))
     of opcInclRange:
       decodeBC(rkNode)
       var r = newNode(nkRange)
       r.sons = newSeq[PNode](2)
       r.sons[0] = regs[rb].regToNode
       r.sons[1] = regs[rc].regToNode
-      addSon(regs[ra].node, r.copyTree)
+      add(regs[ra].node, r.copyTree)
     of opcExcl:
       decodeB(rkNode)
       var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
-      addSon(b, regs[rb].regToNode)
+      add(b, regs[rb].regToNode)
       var r = diffSets(regs[ra].node, b)
       regs[ra].node.sons = newSeq[PNode](sonsLen(r))
       for i in countup(0, sonsLen(r) - 1): regs[ra].node.sons[i] =  r.sons[i]
@@ -811,7 +811,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAddSeqElem:
       decodeB(rkNode)
       if regs[ra].node.kind == nkBracket:
-        regs[ra].node.addSon(copyTree(regs[rb].regToNode))
+        regs[ra].node.add(copyTree(regs[rb].regToNode))
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcGetImpl:
@@ -1139,7 +1139,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       var u = regs[rb].node
       if u.kind notin {nkEmpty..nkNilLit}:
-        u.addSon(regs[rc].node)
+        u.add(regs[rc].node)
       else:
         stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
@@ -1149,7 +1149,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var u = regs[rb].node
       if u.kind notin {nkEmpty..nkNilLit}:
         # XXX can be optimized:
-        for i in 0.. <x.len: u.addSon(x.sons[i])
+        for i in 0.. <x.len: u.add(x.sons[i])
       else:
         stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
