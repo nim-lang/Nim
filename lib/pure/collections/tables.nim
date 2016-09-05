@@ -270,9 +270,12 @@ proc enlarge[A, B](t: var Table[A, B]) =
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
   for i in countup(0, high(n)):
-    if isFilled(n[i].hcode):
-      var j = -1 - rawGetKnownHC(t, n[i].key, n[i].hcode)
-      rawInsert(t, t.data, n[i].key, n[i].val, n[i].hcode, j)
+    let eh = n[i].hcode
+    if isFilled(eh):
+      var j: Hash = eh and maxHash(t)
+      while isFilled(t.data[j].hcode):
+        j = nextTry(j, maxHash(t))
+      rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way

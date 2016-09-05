@@ -35,9 +35,12 @@ proc enlarge[A, B](t: var SharedTable[A, B]) =
   t.dataLen = size
   swap(t.data, n)
   for i in 0..<oldSize:
-    if isFilled(n[i].hcode):
-      var j = -1 - rawGetKnownHC(t, n[i].key, n[i].hcode)
-      rawInsert(t, t.data, n[i].key, n[i].val, n[i].hcode, j)
+    let eh = n[i].hcode
+    if isFilled(eh):
+      var j: Hash = eh and maxHash(t)
+      while isFilled(t.data[j].hcode):
+        j = nextTry(j, maxHash(t))
+      rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
   deallocShared(n)
 
 template withLock(t, x: untyped) =
@@ -47,7 +50,7 @@ template withLock(t, x: untyped) =
 
 template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body: untyped) =
-  ## retrieves the value at ``t[key]``. 
+  ## retrieves the value at ``t[key]``.
   ## `value` can be modified in the scope of the ``withValue`` call.
   ##
   ## .. code-block:: nim
@@ -55,7 +58,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
   ##   sharedTable.withValue(key, value) do:
   ##     # block is executed only if ``key`` in ``t``
   ##     # value is threadsafe in block
-  ##     value.name = "username" 
+  ##     value.name = "username"
   ##     value.uid = 1000
   ##
   acquire(t.lock)
@@ -71,15 +74,15 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
 
 template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body1, body2: untyped) =
-  ## retrieves the value at ``t[key]``. 
+  ## retrieves the value at ``t[key]``.
   ## `value` can be modified in the scope of the ``withValue`` call.
-  ## 
+  ##
   ## .. code-block:: nim
   ##
   ##   sharedTable.withValue(key, value) do:
   ##     # block is executed only if ``key`` in ``t``
   ##     # value is threadsafe in block
-  ##     value.name = "username" 
+  ##     value.name = "username"
   ##     value.uid = 1000
   ##   do:
   ##     # block is executed when ``key`` not in ``t``
