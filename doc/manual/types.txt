@@ -390,7 +390,10 @@ i-th *unichar*. The iterator ``runes`` from the `unicode module
 
 cstring type
 ------------
-The ``cstring`` type represents a pointer to a zero-terminated char array
+
+The ``cstring`` type meaning `compatible string` is the native representation
+of a string for the compilation backend. For the C backend the ``cstring`` type
+represents a pointer to a zero-terminated char array
 compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
 interfacing with C. The index operation ``s[i]`` means the i-th *char* of
 ``s``; however no bounds checking for ``cstring`` is performed making the
@@ -420,7 +423,6 @@ string from a cstring:
   var str: string = "Hello!"
   var cstr: cstring = str
   var newstr: string = $cstr
-
 
 Structured types
 ----------------
