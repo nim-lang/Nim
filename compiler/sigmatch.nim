@@ -160,14 +160,14 @@ proc sumGeneric(t: PType): int =
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyArrayConstr,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody:
-      t = t.lastSon
+      t = t.last
       inc result
     of tyVar:
       t = t.sons[0]
       inc result
       inc isvar
     of tyTypeDesc:
-      t = t.lastSon
+      t = t.last
       if t.kind == tyEmpty: break
       inc result
     of tyGenericInvocation, tyTuple, tyProc:
@@ -389,13 +389,13 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
     of tyRef:
       inc ptrs
       skipped = skippedRef
-      r = r.lastSon
+      r = r.last
     of tyPtr:
       inc ptrs
       skipped = skippedPtr
-      r = r.lastSon
+      r = r.last
     of tyGenericBody, tyGenericInst:
-      r = r.lastSon
+      r = r.last
     else:
       break
   if r.kind == tyObject and ptrs <= 1: result = r
@@ -658,7 +658,7 @@ proc tryResolvingStaticExpr(c: var TCandidate, n: PNode): PNode =
   result = c.c.semExpr(c.c, instantiated)
 
 template subtypeCheck() =
-  if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar}:
+  if result <= isSubrange and f.last.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar}:
     result = isNone
 
 proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
@@ -698,7 +698,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       skipTypes(f, {tyVar}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
-    return typeRel(c, f, lastSon(a))
+    return typeRel(c, f, last(a))
 
   template bindingRet(res) =
     if doBind:
@@ -738,7 +738,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       # seq[float] matches the first, but not the second
       # we must turn the problem around:
       # is number a subset of int?
-      return typeRel(c, a.lastSon, f.lastSon)
+      return typeRel(c, a.last, f.last)
 
     else:
       # negative type classes are essentially infinite,
@@ -932,7 +932,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       if a.len < f.len: return isNone
       for i in 0..f.len-2:
         if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
-      result = typeRel(c, f.lastSon, a.lastSon)
+      result = typeRel(c, f.last, a.last)
       subtypeCheck()
       if result <= isConvertible: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
@@ -992,13 +992,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if a.kind == f.kind: result = isEqual
 
   of tyGenericInst:
-    result = typeRel(c, lastSon(f), a)
+    result = typeRel(c, last(f), a)
 
   of tyGenericBody:
     considerPreviousT:
       if a.kind == tyGenericInst and a.sons[0] == f:
         bindingRet isGeneric
-      let ff = lastSon(f)
+      let ff = last(f)
       if ff != nil:
         result = typeRel(c, ff, a)
 
@@ -1025,7 +1025,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       var askip = skippedNone
       var fskip = skippedNone
       let aobj = x.skipToObject(askip)
-      let fobj = genericBody.lastSon.skipToObject(fskip)
+      let fobj = genericBody.last.skipToObject(fskip)
       if fobj != nil and aobj != nil and askip == fskip:
         let depth = isObjectSubtype(c, aobj, fobj, f)
         if depth >= 0:
@@ -1110,7 +1110,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyCompositeTypeClass:
     considerPreviousT:
       let roota = a.skipGenericAlias
-      let rootf = f.lastSon.skipGenericAlias
+      let rootf = f.last.skipGenericAlias
       if a.kind == tyGenericInst and roota.base == rootf.base:
         for i in 1 .. rootf.len-2:
           let ff = rootf.sons[i]
@@ -1119,7 +1119,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           if result == isNone: return
           if ff.kind == tyRange and result != isEqual: return isNone
       else:
-        result = typeRel(c, rootf.lastSon, a)
+        result = typeRel(c, rootf.last, a)
       if result != isNone:
         put(c, f, a)
         result = isGeneric
@@ -1144,14 +1144,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
             var aa = a
             while aa.kind in {tyTypeDesc, tyGenericParam} and
                 aa.len > 0:
-              aa = lastSon(aa)
+              aa = last(aa)
             result = typeRel(c, f.base, aa)
             if result > isGeneric: result = isGeneric
         else:
           result = isNone
       else:
         if f.len > 0 and f.sons[0].kind != tyNone:
-          result = typeRel(c, f.lastSon, a)
+          result = typeRel(c, f.last, a)
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a)
             if concrete == nil: return isNone
@@ -1184,7 +1184,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
       if aOrig.kind == tyStatic:
-        result = typeRel(c, f.lastSon, a)
+        result = typeRel(c, f.last, a)
         if result != isNone and f.n != nil:
           if not exprStructuralEquivalent(f.n, aOrig.n):
             result = isNone
@@ -1193,7 +1193,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isNone
     elif prev.kind == tyStatic:
       if aOrig.kind == tyStatic:
-        result = typeRel(c, prev.lastSon, a)
+        result = typeRel(c, prev.last, a)
         if result != isNone and prev.n != nil:
           if not exprStructuralEquivalent(prev.n, aOrig.n):
             result = isNone
@@ -1836,9 +1836,9 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
     return nil
   var f = dc.typ.sons[col]
   if op == attachedDeepCopy:
-    if f.kind in {tyRef, tyPtr}: f = f.lastSon
+    if f.kind in {tyRef, tyPtr}: f = f.last
   else:
-    if f.kind == tyVar: f = f.lastSon
+    if f.kind == tyVar: f = f.last
   if typeRel(m, f, t) == isNone:
     localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
   else:

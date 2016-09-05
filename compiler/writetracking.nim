@@ -65,7 +65,7 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkConv,
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
-    allRoots(n.lastSon, result, info)
+    allRoots(n.last, result, info)
   of nkCallKinds:
     if getMagic(n) == mSlice:
       allRoots(n.sons[1], result, info)
@@ -119,7 +119,7 @@ proc returnsNewExpr*(n: PNode): NewLocation =
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv,
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
-    result = returnsNewExpr(n.lastSon)
+    result = returnsNewExpr(n.last)
   of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure,
       nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt:
     result = newLit
@@ -177,7 +177,7 @@ proc deps(w: var W; n: PNode) =
   case n.kind
   of nkLetSection, nkVarSection:
     for child in n:
-      let last = lastSon(child)
+      let last = last(child)
       if last.kind == nkEmpty: continue
       if child.kind == nkVarTuple and last.kind == nkPar:
         internalAssert child.len-2 == last.len

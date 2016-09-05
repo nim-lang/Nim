@@ -603,12 +603,12 @@ proc trackCase(tracked: PEffects, n: PNode) =
       addCaseBranchFacts(tracked.guards, n, i)
     for i in 0 .. <branch.len:
       track(tracked, branch.sons[i])
-    if not breaksBlock(branch.lastSon): inc toCover
+    if not breaksBlock(branch.last): inc toCover
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
 
   setLen(tracked.init, oldState)
-  if not stringCase or lastSon(n).kind == nkElse:
+  if not stringCase or last(n).kind == nkElse:
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge
@@ -637,11 +637,11 @@ proc trackIf(tracked: PEffects, n: PNode) =
     setLen(tracked.init, oldState)
     for i in 0 .. <branch.len:
       track(tracked, branch.sons[i])
-    if not breaksBlock(branch.lastSon): inc toCover
+    if not breaksBlock(branch.last): inc toCover
     for i in oldState.. <tracked.init.len:
       addToIntersection(inter, tracked.init[i])
   setLen(tracked.init, oldState)
-  if lastSon(n).len == 1:
+  if last(n).len == 1:
     for id, count in items(inter):
       if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
@@ -726,7 +726,7 @@ proc track(tracked: PEffects, n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
       initVarViaNew(tracked, arg)
-      if {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+      if {tfNeedsInit} * arg.typ.last.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!
@@ -753,7 +753,7 @@ proc track(tracked: PEffects, n: PNode) =
     when false: cstringCheck(tracked, n)
   of nkVarSection, nkLetSection:
     for child in n:
-      let last = lastSon(child)
+      let last = last(child)
       if last.kind != nkEmpty: track(tracked, last)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0 .. child.len-3:
@@ -800,7 +800,7 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0 .. <pragmaList.len:
       if whichPragma(pragmaList.sons[i]) == wLocks:
         lockLocations(tracked, pragmaList.sons[i])
-    track(tracked, n.lastSon)
+    track(tracked, n.last)
     setLen(tracked.locked, oldLocked)
     tracked.currLockLevel = oldLockLevel
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,

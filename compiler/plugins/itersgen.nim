@@ -28,7 +28,7 @@ proc iterToProcImpl(c: PContext, n: PNode): PNode =
     return
 
   let t = n[2].typ.skipTypes({tyTypeDesc, tyGenericInst})
-  if t.kind notin {tyRef, tyPtr} or t.lastSon.kind != tyObject:
+  if t.kind notin {tyRef, tyPtr} or t.last.kind != tyObject:
     localError(n[2].info,
         "type must be a non-generic ref|ptr to object with state field")
     return

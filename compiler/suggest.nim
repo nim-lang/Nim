@@ -165,7 +165,7 @@ proc suggestObject(c: PContext, n: PNode, outputs: var int) =
     var L = len(n)
     if L > 0:
       suggestObject(c, n.sons[0], outputs)
-      for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), outputs)
+      for i in countup(1, L-1): suggestObject(c, last(n.sons[i]), outputs)
   of nkSym: suggestField(c, n.sym, outputs)
   else: discard
 

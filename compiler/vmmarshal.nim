@@ -26,7 +26,7 @@ proc getField(n: PNode; position: int): PSym =
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = getField(lastSon(n.sons[i]), position)
+        result = getField(last(n.sons[i]), position)
         if result != nil: return
       else: internalError(n.info, "getField(record case branch)")
   of nkSym:
@@ -94,15 +94,15 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
       if i > 0: s.add(", ")
       if a[i].kind == nkRange:
         var x = copyNode(a[i][0])
-        storeAny(s, t.lastSon, x, stored)
+        storeAny(s, t.last, x, stored)
         while x.intVal+1 <= a[i][1].intVal:
           s.add(", ")
-          storeAny(s, t.lastSon, x, stored)
+          storeAny(s, t.last, x, stored)
           inc x.intVal
       else:
-        storeAny(s, t.lastSon, a[i], stored)
+        storeAny(s, t.last, a[i], stored)
     s.add("]")
-  of tyRange, tyGenericInst: storeAny(s, t.lastSon, a, stored)
+  of tyRange, tyGenericInst: storeAny(s, t.last, a, stored)
   of tyEnum:
     # we need a slow linear search because of enums with holes:
     for e in items(t.n):
@@ -121,7 +121,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
       s.add("[")
       s.add($x.ptrToInt)
       s.add(", ")
-      storeAny(s, t.lastSon, a, stored)
+      storeAny(s, t.last, a, stored)
       s.add("]")
   of tyString, tyCString:
     if a.kind == nkNilLit or a.strVal.isNil: s.add("null")
@@ -229,7 +229,7 @@ proc loadAny(p: var JsonParser, t: PType,
     next(p)
     result = newNode(nkCurly)
     while p.kind != jsonArrayEnd and p.kind != jsonEof:
-      result.add(loadAny(p, t.lastSon, tab))
+      result.add(loadAny(p, t.last, tab))
       next(p)
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
@@ -248,7 +248,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if p.kind == jsonInt:
         let idx = p.getInt
         next(p)
-        result = loadAny(p, t.lastSon, tab)
+        result = loadAny(p, t.last, tab)
         tab[idx] = result
       else: raiseParseErr(p, "index for ref type expected")
       if p.kind == jsonArrayEnd: next(p)
@@ -275,7 +275,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       return
     raiseParseErr(p, "float expected")
-  of tyRange, tyGenericInst: result = loadAny(p, t.lastSon, tab)
+  of tyRange, tyGenericInst: result = loadAny(p, t.last, tab)
   else:
     internalError "cannot marshal at compile-time " & t.typeToString
 

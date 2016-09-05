@@ -26,7 +26,7 @@ proc ithField(n: PNode, field: var int): PSym =
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = ithField(lastSon(n.sons[i]), field)
+        result = ithField(last(n.sons[i]), field)
         if result != nil: return
       else: internalError(n.info, "ithField(record case branch)")
   of nkSym:

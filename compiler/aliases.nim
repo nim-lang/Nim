@@ -32,7 +32,7 @@ proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = isPartOfAux(lastSon(n.sons[i]), b, marker)
+        result = isPartOfAux(last(n.sons[i]), b, marker)
         if result == arYes: return
       else: internalError("isPartOfAux(record case branch)")
   of nkSym:
@@ -50,7 +50,7 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
       result = isPartOfAux(a.sons[0].skipTypes(skipPtrs), b, marker)
     if result == arNo: result = isPartOfAux(a.n, b, marker)
   of tyGenericInst, tyDistinct:
-    result = isPartOfAux(lastSon(a), b, marker)
+    result = isPartOfAux(last(a), b, marker)
   of tyArray, tyArrayConstr, tySet, tyTuple:
     for i in countup(0, len(a) - 1):
       result = isPartOfAux(a.sons[i], b, marker)

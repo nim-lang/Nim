@@ -55,7 +55,7 @@ proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   for i in 2..n.len-2: b.sons[i - 1] = n[i]
   result = newNodeI(nkAsgn, n.info, 2)
   result.sons[0] = b
-  result.sons[1] = n.lastSon
+  result.sons[1] = n.last
   result = semAsgn(c, result, noOverloadedSubscript)
 
 proc semAsgnOpr(c: PContext; n: PNode): PNode =

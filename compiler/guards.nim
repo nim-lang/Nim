@@ -391,7 +391,7 @@ proc usefulFact(n: PNode): PNode =
     if n.sym.ast != nil:
       result = usefulFact(n.sym.ast)
   elif n.kind == nkStmtListExpr:
-    result = usefulFact(n.lastSon)
+    result = usefulFact(n.last)
 
 type
   TModel* = seq[PNode] # the "knowledge base"

@@ -38,7 +38,7 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
 proc methodCall*(n: PNode): PNode =
   result = n
   # replace ordinary method by dispatcher method:
-  var disp = lastSon(result.sons[0].sym.ast).sym
+  var disp = last(result.sons[0].sym.ast).sym
   assert sfDispatcher in disp.flags
   result.sons[0].sym = disp
   # change the arguments to up/downcasts to fit the dispatcher's parameters:
@@ -64,8 +64,8 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
       aa = skipTypes(aa, {tyGenericInst})
       bb = skipTypes(bb, {tyGenericInst})
       if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef}:
-        aa = aa.lastSon
-        bb = bb.lastSon
+        aa = aa.last
+        bb = bb.last
       else:
         break
     if sameType(aa, bb):
@@ -152,7 +152,7 @@ proc methodDef*(s: PSym, fromCache: bool) =
     case sameMethodBucket(disp, s)
     of Yes:
       add(gMethods[i].methods, s)
-      attachDispatcher(s, lastSon(disp.ast))
+      attachDispatcher(s, last(disp.ast))
       fixupDispatcher(s, disp)
       #echo "fixup ", disp.name.s, " ", disp.id
       when useEffectSystem: checkMethodEffects(disp, s)
@@ -211,7 +211,7 @@ proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =
     if h == 1: break
 
 proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
-  var base = lastSon(methods[0].ast).sym
+  var base = last(methods[0].ast).sym
   result = base
   var paramLen = len(base.typ)
   var disp = newNodeI(nkIfStmt, base.info)

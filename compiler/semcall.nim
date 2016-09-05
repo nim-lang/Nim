@@ -13,8 +13,8 @@
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod:
-    var aa = lastSon(a.ast)
-    var bb = lastSon(b.ast)
+    var aa = last(a.ast)
+    var bb = last(b.ast)
     if aa.kind == nkSym and bb.kind == nkSym:
       if aa.sym == bb.sym:
         result = true

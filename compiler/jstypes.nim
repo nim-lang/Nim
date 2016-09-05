@@ -60,7 +60,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
       else: internalError(n.info, "genObjectFields(nkRecCase)")
       if result != nil: add(result, ", " & tnl)
       addf(result, "[SetConstr($1), $2]",
-           [u, genObjectFields(p, typ, lastSon(b))])
+           [u, genObjectFields(p, typ, last(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
         "typ: $2, name: $4, sons: [$5]}") % [
         mangleName(field, p.target), s,
@@ -154,7 +154,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
               [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
     addf(p.g.typeInfo, "$1.base = $2;$n",
-         [result, genTypeInfo(p, t.lastSon)])
+         [result, genTypeInfo(p, t.last)])
   of tyArrayConstr, tyArray:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
@@ -166,6 +166,6 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)
   of tyStatic:
-    if t.n != nil: result = genTypeInfo(p, lastSon t)
+    if t.n != nil: result = genTypeInfo(p, last t)
     else: internalError("genTypeInfo(" & $t.kind & ')')
   else: internalError("genTypeInfo(" & $t.kind & ')')

@@ -43,7 +43,7 @@ proc counterInTree(n, loop: PNode; counter: PSym): bool =
   of nkVarSection, nkLetSection:
     # definitions are fine!
     for it in n:
-      if counterInTree(it.lastSon): return true
+      if counterInTree(it.last): return true
   else:
     for i in 0 .. <safeLen(n):
       if counterInTree(n[i], loop, counter): return true
@@ -70,7 +70,7 @@ proc extractForLoop*(loop, fullTree: PNode): ForLoop =
 
   var lastStmt = loop[1]
   while lastStmt.kind in {nkStmtList, nkStmtListExpr}:
-    lastStmt = lastStmt.lastSon
+    lastStmt = lastStmt.last
 
   let counter = getCounter(lastStmt)
   if counter.isNil or counter.ast.isNil: return

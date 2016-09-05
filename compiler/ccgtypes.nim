@@ -123,7 +123,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyObject, tyTuple: result = ctStruct
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
      tyConst, tyMutable, tyIter, tyTypeDesc:
-    result = mapType(lastSon(typ))
+    result = mapType(last(typ))
   of tyEnum:
     if firstOrd(typ) < 0:
       result = ctInt32
@@ -136,7 +136,7 @@ proc mapType(typ: PType): TCTypeKind =
       else: internalError("mapType")
   of tyRange: result = mapType(typ.sons[0])
   of tyPtr, tyVar, tyRef:
-    var base = skipTypes(typ.lastSon, typedescInst)
+    var base = skipTypes(typ.last, typedescInst)
     case base.kind
     of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctPtrToArray
     #of tySet:
@@ -152,7 +152,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
-    if typ.n != nil: result = mapType(lastSon typ)
+    if typ.n != nil: result = mapType(last typ)
     else: internalError("mapType")
   else: internalError("mapType")
 
@@ -261,10 +261,10 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
   of tyStatic:
-    if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
+    if typ.n != nil: result = getSimpleTypeDesc(m, last typ)
     else: internalError("tyStatic for getSimpleTypeDesc")
   of tyGenericInst:
-    result = getSimpleTypeDesc(m, lastSon typ)
+    result = getSimpleTypeDesc(m, last typ)
   else: result = nil
 
 proc pushType(m: BModule, typ: PType) =
@@ -409,7 +409,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        k = lastSon(n.sons[i])
+        k = last(n.sons[i])
         if k.kind != nkSym:
           sname = "S" & rope(i)
           a = genRecordFieldsAux(m, k, "$1.$2" % [ae, sname], rectype,
@@ -546,7 +546,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   of tyRef, tyPtr, tyVar:
     var star = if t.kind == tyVar and tfVarIsPtr notin typ.flags and
                     compileToCpp(m): "&" else: "*"
-    var et = t.lastSon
+    var et = t.last
     var etB = et.skipTypes(abstractInst)
     if etB.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}:
       # this is correct! sets have no proper base type, so we treat
@@ -580,7 +580,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     result = getTypeDescWeak(m, t.sons[0], check) & "*"
     idTablePut(m.typeCache, t, result)
   of tyRange, tyEnum:
-    let t = if t.kind == tyRange: t.lastSon else: t
+    let t = if t.kind == tyRange: t.last else: t
     result = cacheGetType(m.typeCache, t)
     if result == nil:
       result = getTypeName(t)
@@ -703,7 +703,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
                     else: getTupleDesc(m, t, result, check)
       if not isImportedType(t): add(m.s[cfsTypes], recdesc)
   of tySet:
-    result = getTypeName(t.lastSon) & "Set"
+    result = getTypeName(t.last) & "Set"
     idTablePut(m.typeCache, t, result)
     if not isImportedType(t):
       let s = int(getSize(t))
@@ -713,7 +713,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
              [result, rope(getSize(t))])
   of tyGenericInst, tyDistinct, tyOrdinal, tyConst, tyMutable,
       tyIter, tyTypeDesc:
-    result = getTypeDescAux(m, lastSon(t), check)
+    result = getTypeDescAux(m, last(t), check)
   else:
     internalError("getTypeDescAux(" & $t.kind & ')')
     result = nil
@@ -867,7 +867,7 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: Rope) =
     for i in countup(1, len(n)-1):
       var b = n.sons[i]           # branch
       var tmp2 = getNimNode(m)
-      genObjectFields(m, typ, lastSon(b), tmp2)
+      genObjectFields(m, typ, last(b), tmp2)
       case b.kind
       of nkOfBranch:
         if len(b) < 2:
@@ -1010,7 +1010,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     return "(&".rope & result & ")".rope
 
   # getUniqueType doesn't skip tyDistinct when that has an overriden operation:
-  while t.kind == tyDistinct: t = t.lastSon
+  while t.kind == tyDistinct: t = t.last
   let owner = t.skipTypes(typedescPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
@@ -1026,7 +1026,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
     genTypeInfoAuxBase(m, t, t, result, rope"0")
   of tyStatic:
-    if t.n != nil: result = genTypeInfo(m, lastSon t)
+    if t.n != nil: result = genTypeInfo(m, last t)
     else: internalError("genTypeInfo(" & $t.kind & ')')
   of tyProc:
     if t.callConv != ccClosure:

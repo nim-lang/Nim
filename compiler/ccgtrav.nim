@@ -39,7 +39,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode) =
         genCaseRange(c.p, branch)
       else:
         lineF(p, cpsStmts, "default:$n", [])
-      genTraverseProc(c, accessor, lastSon(branch))
+      genTraverseProc(c, accessor, last(branch))
       lineF(p, cpsStmts, "break;$n", [])
     lineF(p, cpsStmts, "} $n", [])
   of nkSym:
@@ -62,7 +62,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc:
-    genTraverseProc(c, accessor, lastSon(typ))
+    genTraverseProc(c, accessor, last(typ))
   of tyArrayConstr, tyArray:
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc

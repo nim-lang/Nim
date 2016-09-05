@@ -232,7 +232,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
   of nkStmtList, nkStmtListExpr:
     if n.typ != nil:
-      result = isAssignable(owner, n.lastSon, isUnsafeAddr)
+      result = isAssignable(owner, n.last, isUnsafeAddr)
   else:
     discard
 

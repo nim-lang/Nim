@@ -344,7 +344,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
     # Find finally-stmt for this try-stmt
     # and generate a copy of its sons
-    var finallyStmt = lastSon(tryStmt)
+    var finallyStmt = last(tryStmt)
     if finallyStmt.kind == nkFinally:
       genStmts(p, finallyStmt.sons[0])
 
@@ -382,7 +382,7 @@ proc genGotoForCase(p: BProc; caseStmt: PNode) =
         return
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "NIMSTATE_$#:$n", [val.rope])
-    genStmts(p, it.lastSon)
+    genStmts(p, it.last)
     endBlock(p)
 
 proc genComputedGoto(p: BProc; n: PNode) =
@@ -392,7 +392,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   for i in 0 .. <n.len:
     let it = n.sons[i]
     if it.kind == nkCaseStmt:
-      if lastSon(it).kind != nkOfBranch:
+      if last(it).kind != nkOfBranch:
         localError(it.info,
             "case statement must be exhaustive for computed goto"); return
       casePos = i
@@ -443,7 +443,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#:$n", [intLiteral(val+id+1)])
-    genStmts(p, it.lastSon)
+    genStmts(p, it.last)
     #for j in casePos+1 .. <n.len: genStmts(p, n.sons[j]) # tailB
     #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
     add(p.s(cpsStmts), tailB)
@@ -554,7 +554,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
-    var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
+    var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].last
     if finallyBlock.kind == nkFinally:
       genSimpleBlock(p, finallyBlock.sons[0])
   if t.sons[0].kind != nkEmpty:
@@ -686,7 +686,7 @@ proc branchHasTooBigRange(b: PNode): bool =
 proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
   for i in 1..n.len-1:
     var branch = n[i]
-    var stmtBlock = lastSon(branch)
+    var stmtBlock = last(branch)
     if stmtBlock.stmtsContainPragma(wLinearScanEnd):
       result = i
     elif hasSwitchRange notin CC[cCompiler].props:
@@ -733,7 +733,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
         # else part of case statement:
         lineF(p, cpsStmts, "default:$n", [])
         hasDefault = true
-      exprBlock(p, branch.lastSon, d)
+      exprBlock(p, branch.last, d)
       lineF(p, cpsStmts, "break;$n", [])
     if (hasAssume in CC[cCompiler].props) and not hasDefault:
       lineF(p, cpsStmts, "default: __assume(0);$n", [])
@@ -825,7 +825,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   if not catchAllPresent:
     if i > 1: lineF(p, cpsStmts, "else ", [])
     startBlock(p)
-    var finallyBlock = t.lastSon
+    var finallyBlock = t.last
     if finallyBlock.kind == nkFinally:
       #expr(p, finallyBlock.sons[0], d)
       genStmts(p, finallyBlock.sons[0])

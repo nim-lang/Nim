@@ -175,16 +175,16 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
       var plen = len(p)
       # special rule for p(X) ~ f(...); this also works for stuff like
       # partial case statements, etc! - Not really ... :-/
-      let v = lastSon(p)
+      let v = last(p)
       if isPatternParam(c, v) and v.sym.typ.kind == tyVarargs:
         var arglist: PNode
         if plen <= len(n):
           for i in countup(0, plen - 2):
             if not matches(c, p.sons[i], n.sons[i]): return
-          if plen == len(n) and lastSon(n).kind == nkHiddenStdConv and
-              lastSon(n).sons[1].kind == nkBracket:
+          if plen == len(n) and last(n).kind == nkHiddenStdConv and
+              last(n).sons[1].kind == nkBracket:
             # unpack varargs:
-            let n = lastSon(n).sons[1]
+            let n = last(n).sons[1]
             arglist = newNodeI(nkArgList, n.info, n.len)
             for i in 0.. <n.len: arglist.sons[i] = n.sons[i]
           else:

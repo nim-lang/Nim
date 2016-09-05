@@ -90,7 +90,7 @@ proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult
   # at all in this type.
 
 proc invalidGenericInst(f: PType): bool =
-  result = f.kind == tyGenericInst and lastSon(f) == nil
+  result = f.kind == tyGenericInst and last(f) == nil
 
 proc isPureObject(typ: PType): bool =
   var t = typ
@@ -141,9 +141,9 @@ proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
 proc elemType*(t: PType): PType =
   assert(t != nil)
   case t.kind
-  of tyGenericInst, tyDistinct: result = elemType(lastSon(t))
+  of tyGenericInst, tyDistinct: result = elemType(last(t))
   of tyArray, tyArrayConstr: result = t.sons[1]
-  else: result = t.lastSon
+  else: result = t.last
   assert(result != nil)
 
 proc isOrdinalType(t: PType): bool =
@@ -183,7 +183,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
   if not containsOrIncl(marker, t.id):
     case t.kind
     of tyGenericInst, tyGenericBody:
-      result = iterOverTypeAux(marker, lastSon(t), iter, closure)
+      result = iterOverTypeAux(marker, last(t), iter, closure)
     else:
       for i in countup(0, len(t) - 1):
         result = iterOverTypeAux(marker, t.sons[i], iter, closure)
@@ -212,7 +212,7 @@ proc searchTypeNodeForAux(n: PNode, p: TTypePredicate,
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = searchTypeNodeForAux(lastSon(n.sons[i]), p, marker)
+        result = searchTypeNodeForAux(last(n.sons[i]), p, marker)
         if result: return
       else: internalError("searchTypeNodeForAux(record case branch)")
   of nkSym:
@@ -233,7 +233,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
       result = searchTypeForAux(t.sons[0].skipTypes(skipPtrs), predicate, marker)
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
   of tyGenericInst, tyDistinct:
-    result = searchTypeForAux(lastSon(t), predicate, marker)
+    result = searchTypeForAux(last(t), predicate, marker)
   of tyArray, tyArrayConstr, tySet, tyTuple:
     for i in countup(0, len(t) - 1):
       result = searchTypeForAux(t.sons[i], predicate, marker)
@@ -276,7 +276,7 @@ proc analyseObjectWithTypeFieldAux(t: PType,
     if result == frNone:
       if isObjectWithTypeFieldPredicate(t): result = frHeader
   of tyGenericInst, tyDistinct, tyConst, tyMutable:
-    result = analyseObjectWithTypeFieldAux(lastSon(t), marker)
+    result = analyseObjectWithTypeFieldAux(last(t), marker)
   of tyArray, tyArrayConstr, tyTuple:
     for i in countup(0, len(t) - 1):
       res = analyseObjectWithTypeFieldAux(t.sons[i], marker)
@@ -607,9 +607,9 @@ proc firstOrd(t: PType): BiggestInt =
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
   of tyGenericInst, tyDistinct, tyConst, tyMutable, tyTypeDesc, tyFieldAccessor:
-    result = firstOrd(lastSon(t))
+    result = firstOrd(last(t))
   of tyOrdinal:
-    if t.len > 0: result = firstOrd(lastSon(t))
+    if t.len > 0: result = firstOrd(last(t))
     else: internalError("invalid kind for first(" & $t.kind & ')')
   else:
     internalError("invalid kind for first(" & $t.kind & ')')
@@ -644,10 +644,10 @@ proc lastOrd(t: PType): BiggestInt =
     result = t.n.sons[len(t.n) - 1].sym.position
   of tyGenericInst, tyDistinct, tyConst, tyMutable,
      tyTypeDesc, tyFieldAccessor:
-    result = lastOrd(lastSon(t))
+    result = lastOrd(last(t))
   of tyProxy: result = 0
   of tyOrdinal:
-    if t.len > 0: result = lastOrd(lastSon(t))
+    if t.len > 0: result = lastOrd(last(t))
     else: internalError("invalid kind for last(" & $t.kind & ')')
   else:
     internalError("invalid kind for last(" & $t.kind & ')')
@@ -874,10 +874,10 @@ proc sameChildrenAux(a, b: PType, c: var TSameTypeClosure): bool =
     if not result: return
 
 proc isGenericAlias*(t: PType): bool =
-  return t.kind == tyGenericInst and t.lastSon.kind == tyGenericInst
+  return t.kind == tyGenericInst and t.last.kind == tyGenericInst
 
 proc skipGenericAlias*(t: PType): PType =
-  return if t.isGenericAlias: t.lastSon else: t
+  return if t.isGenericAlias: t.last else: t
 
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   template cycleCheck() =
@@ -1125,7 +1125,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyOrdinal:
     if kind != skParam: result = t
   of tyGenericInst, tyDistinct:
-    result = typeAllowedAux(marker, lastSon(t), kind, flags)
+    result = typeAllowedAux(marker, last(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
         {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
@@ -1140,9 +1140,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t.sons[1], skVar, flags)
   of tyRef:
     if kind == skConst: result = t
-    else: result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+    else: result = typeAllowedAux(marker, t.last, skVar, flags+{taHeap})
   of tyPtr:
-    result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
+    result = typeAllowedAux(marker, t.last, skVar, flags+{taHeap})
   of tyArrayConstr, tySet, tyConst, tyMutable, tyIter:
     for i in countup(0, len(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
@@ -1187,7 +1187,7 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        res = computeRecSizeAux(lastSon(n.sons[i]), b, currOffset)
+        res = computeRecSizeAux(last(n.sons[i]), b, currOffset)
         if res < 0: return res
         maxSize = max(maxSize, res)
         maxAlign = max(maxAlign, b)
@@ -1252,7 +1252,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     a = ptrSize
   of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray,
      tyBigNum:
-    let base = typ.lastSon
+    let base = typ.last
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       result = szIllegalRecursion
     else: result = ptrSize
@@ -1312,12 +1312,12 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if a < maxAlign: a = maxAlign
     result = align(result, a)
   of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
-    result = computeSizeAux(lastSon(typ), a)
+    result = computeSizeAux(last(typ), a)
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
   of tyStatic:
-    if typ.n != nil: result = computeSizeAux(lastSon(typ), a)
+    if typ.n != nil: result = computeSizeAux(last(typ), a)
     else: result = szUnknownSize
   else:
     #internalError("computeSizeAux()")
@@ -1364,7 +1364,7 @@ proc baseOfDistinct*(t: PType): PType =
     var it = result
     while it.kind in {tyPtr, tyRef}:
       parent = it
-      it = it.lastSon
+      it = it.last
     if it.kind == tyDistinct:
       internalAssert parent != nil
       parent.sons[0] = it.sons[0]
@@ -1476,7 +1476,7 @@ proc isEmptyContainer*(t: PType): bool =
   of tyArray, tyArrayConstr: result = t.sons[1].kind == tyEmpty
   of tySet, tySequence, tyOpenArray, tyVarargs:
     result = t.sons[0].kind == tyEmpty
-  of tyGenericInst: result = isEmptyContainer(t.lastSon)
+  of tyGenericInst: result = isEmptyContainer(t.last)
   else: result = false
 
 proc takeType*(formal, arg: PType): PType =

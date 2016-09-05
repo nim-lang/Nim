@@ -116,7 +116,7 @@ proc packSize(v: PNode, typ: PType): int =
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     else:
-      result = sizeof(pointer) + packSize(v.sons[0], typ.lastSon)
+      result = sizeof(pointer) + packSize(v.sons[0], typ.last)
   of tyDistinct, tyGenericInst:
     result = packSize(v, typ.sons[0])
   of tyArray, tyArrayConstr:
@@ -143,7 +143,7 @@ proc getField(n: PNode; position: int): PSym =
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = getField(lastSon(n.sons[i]), position)
+        result = getField(last(n.sons[i]), position)
         if result != nil: return
       else: internalError(n.info, "getField(record case branch)")
   of nkSym:
@@ -220,7 +220,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
         packRecCheck = 0
         globalError(v.info, "cannot map value to FFI " & typeToString(v.typ))
       inc packRecCheck
-      pack(v.sons[0], typ.lastSon, res +! sizeof(pointer))
+      pack(v.sons[0], typ.last, res +! sizeof(pointer))
       dec packRecCheck
       awr(pointer, res +! sizeof(pointer))
   of tyArray, tyArrayConstr:
@@ -372,7 +372,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       awi(nkPtrLit, cast[ByteAddress](p))
     elif n != nil and n.len == 1:
       internalAssert n.kind == nkRefTy
-      n.sons[0] = unpack(p, typ.lastSon, n.sons[0])
+      n.sons[0] = unpack(p, typ.last, n.sons[0])
       result = n
     else:
       globalError(n.info, "cannot map value from FFI " & typeToString(typ))

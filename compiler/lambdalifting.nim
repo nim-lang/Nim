@@ -168,7 +168,7 @@ proc addHiddenParam(routine: PSym, param: PSym) =
 
 proc getHiddenParam(routine: PSym): PSym =
   let params = routine.ast.sons[paramsPos]
-  let hidden = lastSon(params)
+  let hidden = last(params)
   if hidden.kind == nkSym and hidden.sym.kind == skParam and hidden.sym.name.s == paramName:
     result = hidden.sym
     assert sfFromGeneric in result.flags
@@ -179,7 +179,7 @@ proc getHiddenParam(routine: PSym): PSym =
 
 proc getEnvParam*(routine: PSym): PSym =
   let params = routine.ast.sons[paramsPos]
-  let hidden = lastSon(params)
+  let hidden = last(params)
   if hidden.kind == nkSym and hidden.sym.name.s == paramName:
     result = hidden.sym
     assert sfFromGeneric in result.flags
@@ -249,7 +249,7 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
 
 proc freshVarForClosureIter*(s, owner: PSym): PNode =
   let envParam = getHiddenParam(owner)
-  let obj = envParam.typ.lastSon
+  let obj = envParam.typ.last
   addField(obj, s)
 
   var access = newSymNode(envParam)
@@ -302,7 +302,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym): PType =
 
 proc createUpField(c: var DetectionPass; dest, dep: PSym) =
   let refObj = c.getEnvTypeForOwner(dest) # getHiddenParam(dest).typ
-  let obj = refObj.lastSon
+  let obj = refObj.last
   let fieldType = c.getEnvTypeForOwner(dep) #getHiddenParam(dep).typ
   if refObj == fieldType:
     localError(dep.info, "internal error: invalid up reference computed")
@@ -378,8 +378,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
         addClosureParam(c, owner)
         if interestingIterVar(s):
           if not c.capturedVars.containsOrIncl(s.id):
-            let obj = getHiddenParam(owner).typ.lastSon
-            #let obj = c.getEnvTypeForOwner(s.owner).lastSon
+            let obj = getHiddenParam(owner).typ.last
+            #let obj = c.getEnvTypeForOwner(s.owner).last
             addField(obj, s)
       # but always return because the rest of the proc is only relevant when
       # ow != owner:
@@ -403,8 +403,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       #echo "capturing ", n.info
       # variable 's' is actually captured:
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
-        let obj = c.getEnvTypeForOwner(ow).lastSon
-        #getHiddenParam(owner).typ.lastSon
+        let obj = c.getEnvTypeForOwner(ow).last
+        #getHiddenParam(owner).typ.last
         addField(obj, s)
       # create required upFields:
       var w = owner.skipGenericOwner
@@ -496,7 +496,7 @@ proc getUpViaParam(owner: PSym): PNode =
   let p = getHiddenParam(owner)
   result = p.newSymNode
   if owner.isIterator:
-    let upField = lookupInRecord(p.typ.lastSon.n, getIdent(upName))
+    let upField = lookupInRecord(p.typ.last.n, getIdent(upName))
     if upField == nil:
       localError(owner.info, "could not find up reference for closure iter")
     else:
@@ -525,7 +525,7 @@ proc rawClosureCreation(owner: PSym;
         # add ``env.param = param``
         result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
 
-  let upField = lookupInRecord(env.typ.lastSon.n, getIdent(upName))
+  let upField = lookupInRecord(env.typ.last.n, getIdent(upName))
   if upField != nil:
     let up = getUpViaParam(owner)
     if up != nil and upField.typ == up.typ:
@@ -556,7 +556,7 @@ proc closureCreationForIter(iter: PNode;
     result.add(vs)
   result.add(newCall(getSysSym"internalNew", vnode))
 
-  let upField = lookupInRecord(v.typ.lastSon.n, getIdent(upName))
+  let upField = lookupInRecord(v.typ.last.n, getIdent(upName))
   if upField != nil:
     let u = setupEnvVar(owner, d, c)
     if u.typ == upField.typ:
@@ -865,7 +865,7 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
     # add 'new' statement:
     result.sons[1] = newCall(getSysSym"internalNew", env.newSymNode)
   elif op.kind == nkStmtListExpr:
-    let closure = op.lastSon
+    let closure = op.last
     if closure.kind == nkClosure:
       result = newNodeI(nkStmtList, body.info, op.len)
       call.sons[0] = closure

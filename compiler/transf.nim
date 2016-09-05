@@ -618,7 +618,7 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     var elseBranch = newTransNode(nkElse, n.info, 1)
     elseBranch[0] = ifs
     result.add(elseBranch)
-  elif result.PNode.lastSon.kind != nkElse and not (
+  elif result.PNode.last.kind != nkElse and not (
       skipTypes(n.sons[0].typ, abstractVarRange).kind in
         {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32}):
     # fix a stupid code gen bug by normalizing:
@@ -690,7 +690,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:
     if s.sons[0].kind == nkSym and s.sons[0].sym.kind == skMethod:
-      let t = lastSon(s.sons[0].sym.ast)
+      let t = last(s.sons[0].sym.ast)
       if t.kind != nkSym or sfDispatcher notin t.sym.flags:
         methodDef(s.sons[0].sym, false)
       result = methodCall(s).PTransNode

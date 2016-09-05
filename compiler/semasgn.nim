@@ -62,7 +62,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, c.info)
 
-      liftBodyObj(c, n[i].lastSon, branch.sons[L-1], x, y)
+      liftBodyObj(c, n[i].last, branch.sons[L-1], x, y)
       caseStmt.sons[i] = branch
     body.add(caseStmt)
     localError(c.info, "cannot lift assignment operator to 'case' object")
@@ -195,7 +195,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
         body.add(newSeqCall(c.c, x, y))
       let i = declareCounter(c, body, firstOrd(t))
       let whileLoop = genWhileLoop(c, i, x)
-      let elemType = t.lastSon
+      let elemType = t.last
       liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),
                                                   y.at(i, elemType))
       addIncStmt(whileLoop.sons[1], i)
@@ -229,7 +229,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange,
      tyGenericInst, tyFieldAccessor, tyStatic, tyVar:
-    liftBodyAux(c, lastSon(t), body, x, y)
+    liftBodyAux(c, last(t), body, x, y)
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)

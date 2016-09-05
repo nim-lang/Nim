@@ -165,7 +165,7 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
     for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = lookupInRecord(lastSon(n.sons[i]), field)
+        result = lookupInRecord(last(n.sons[i]), field)
         if result != nil: return
       else: internalError(n.info, "lookupInRecord(record case branch)")
   of nkSym:

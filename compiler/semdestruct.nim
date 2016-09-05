@@ -73,7 +73,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
     let ni = n[i]
     var caseBranch = newNode(ni.kind, ni.info, ni.sons[0..ni.len-2])
 
-    let stmt = destroyFieldOrFields(c, ni.lastSon, holder)
+    let stmt = destroyFieldOrFields(c, ni.last, holder)
     if stmt == nil:
       caseBranch.add(newNode(nkStmtList, ni.info, @[]))
     else:

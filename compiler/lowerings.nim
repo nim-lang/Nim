@@ -46,7 +46,7 @@ proc newFastAsgnStmt(le, ri: PNode): PNode =
 
 proc lowerTupleUnpacking*(n: PNode; owner: PSym): PNode =
   assert n.kind == nkVarTuple
-  let value = n.lastSon
+  let value = n.last
   result = newNodeI(nkStmtList, n.info, n.len)
 
   var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info)
@@ -71,7 +71,7 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   result.sons[1] = lit
 
 proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
-  let value = n.lastSon
+  let value = n.last
   let lhs = n.sons[0]
   result = newNodeI(nkStmtList, n.info, lhs.len + 1)
 

@@ -437,10 +437,10 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
-        let elsePos = c.xjmp(it.lastSon, opcFJmp, tmp)
-        c.gen(it.lastSon, dest)
+        let elsePos = c.xjmp(it.last, opcFJmp, tmp)
+        c.gen(it.last, dest)
         if i < len(n)-1:
-          endings.add(c.xjmp(it.lastSon, opcJmp, 0))
+          endings.add(c.xjmp(it.last, opcJmp, 0))
         c.patch(elsePos)
       c.clearDest(n, dest)
   for endPos in endings: c.patch(endPos)
@@ -472,13 +472,13 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
       if blen == 1:
         # general except section:
         c.gABx(it, opcExcept, 0, 0)
-      c.gen(it.lastSon, dest)
+      c.gen(it.last, dest)
       c.clearDest(n, dest)
       if i < len(n)-1:
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
   for endPos in endings: c.patch(endPos)
-  let fin = lastSon(n)
+  let fin = last(n)
   # we always generate an 'opcFinally' as that pops the safepoint
   # from the stack
   c.gABx(fin, opcFinally, 0, 0)
@@ -1443,7 +1443,7 @@ proc getNullValueAux(obj: PNode, result: PNode) =
   of nkRecCase:
     getNullValueAux(obj.sons[0], result)
     for i in countup(1, len(obj) - 1):
-      getNullValueAux(lastSon(obj.sons[i]), result)
+      getNullValueAux(last(obj.sons[i]), result)
   of nkSym:
     let field = newNodeI(nkExprColonExpr, result.info, 2)
     field.sons[0] = obj
@@ -1755,7 +1755,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     for i in 0 .. <L: gen(c, n.sons[i])
     gen(c, n.sons[L], dest, flags)
   of nkPragmaBlock:
-    gen(c, n.lastSon, dest, flags)
+    gen(c, n.last, dest, flags)
   of nkDiscardStmt:
     unused(n, dest)
     gen(c, n.sons[0])
@@ -1933,7 +1933,7 @@ proc genProc(c: PCtx; s: PSym): int =
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:
-      #let env = s.ast.sons[paramsPos].lastSon.sym
+      #let env = s.ast.sons[paramsPos].last.sym
       #assert env.position == 2
       c.prc.slots[c.prc.maxSlots] = (inUse: true, kind: slotFixedLet)
       inc c.prc.maxSlots

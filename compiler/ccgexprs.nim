@@ -852,7 +852,7 @@ proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
   initLocExpr(p, y, b)
   var ty = skipTypes(a.t, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}:
-    ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
+    ty = skipTypes(ty.last, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
     if ty.kind == tyString:
       linefmt(p, cpsStmts,
@@ -870,7 +870,7 @@ proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.last, abstractVarRange)
   case ty.kind
   of tyArray, tyArrayConstr: genArrayElem(p, n.sons[0], n.sons[1], d)
   of tyOpenArray, tyVarargs: genOpenArrayElem(p, n.sons[0], n.sons[1], d)
@@ -1145,7 +1145,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var r = rdLoc(tmp)
   if isRef:
     rawGenNew(p, tmp, nil)
-    t = t.lastSon.skipTypes(abstractInst)
+    t = t.last.skipTypes(abstractInst)
     r = "(*$1)" % [r]
     gcUsage(e)
   else:
@@ -1219,9 +1219,9 @@ proc genNewFinalize(p: BProc, e: PNode) =
   addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
-      ti, getTypeDesc(p.module, skipTypes(refType.lastSon, abstractRange))])
+      ti, getTypeDesc(p.module, skipTypes(refType.last, abstractRange))])
   genAssignment(p, a, b, {})  # set the object type:
-  bt = skipTypes(refType.lastSon, abstractRange)
+  bt = skipTypes(refType.last, abstractRange)
   genObjectInit(p, cpsStmts, bt, a, false)
   gcUsage(e)
 
@@ -1254,7 +1254,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     if t.kind != tyVar: nilCheck = r
     if t.kind != tyVar or not p.module.compileToCpp:
       r = rfmt(nil, "(*$1)", r)
-    t = skipTypes(t.lastSon, typedescInst)
+    t = skipTypes(t.last, typedescInst)
   if not p.module.compileToCpp:
     while t.kind == tyObject and t.sons[0] != nil:
       add(r, ~".Sup")
@@ -1872,7 +1872,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       if t.kind != tyVar: nilCheck = r
       if t.kind != tyVar or not p.module.compileToCpp:
         r = "(*$1)" % [r]
-      t = skipTypes(t.lastSon, abstractInst)
+      t = skipTypes(t.last, abstractInst)
     if not p.module.compileToCpp:
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")
@@ -2110,7 +2110,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
      nkFromStmt, nkTemplateDef, nkMacroDef:
     discard
   of nkPragma: genPragma(p, n)
-  of nkPragmaBlock: expr(p, n.lastSon, d)
+  of nkPragmaBlock: expr(p, n.last, d)
   of nkProcDef, nkMethodDef, nkConverterDef:
     if n.sons[genericParamsPos].kind == nkEmpty:
       var prc = n.sons[namePos].sym

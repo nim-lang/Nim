@@ -1228,8 +1228,8 @@ proc newSons*(father: PType, length: int) =
     setLen(father.sons, length)
 
 proc len*(n: PType): int = n.sons.len
-proc lastSon*(n: PNode): PNode = n.sons[^1]
-proc lastSon*(n: PType): PType = n.sons[^1]
+proc last*(n: PNode): PNode = n.sons[^1]
+proc last*(n: PType): PType = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1331,14 +1331,14 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds: result = last(result)
 
 proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
     if result.len == 0: return nil
-    result = lastSon(result)
+    result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
@@ -1558,7 +1558,7 @@ proc skipStmtList*(n: PNode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr}:
     for i in 0 .. n.len-2:
       if n[i].kind notin {nkEmpty, nkCommentStmt}: return n
-    result = n.lastSon
+    result = n.last
   else:
     result = n
 

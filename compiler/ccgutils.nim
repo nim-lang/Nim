@@ -105,15 +105,15 @@ proc getUniqueType*(key: PType): PType =
       internalError("metatype not eliminated")
   of tyDistinct:
     if key.deepCopy != nil: result = key
-    else: result = getUniqueType(lastSon(key))
+    else: result = getUniqueType(last(key))
   of tyGenericInst, tyOrdinal, tyMutable, tyConst, tyIter, tyStatic:
-    result = getUniqueType(lastSon(key))
-    #let obj = lastSon(key)
+    result = getUniqueType(last(key))
+    #let obj = last(key)
     #if obj.sym != nil and obj.sym.name.s == "TOption":
     #  echo "for ", typeToString(key), " I returned "
     #  debug result
   of tyPtr, tyRef, tyVar:
-    let elemType = lastSon(key)
+    let elemType = last(key)
     if elemType.kind in {tyBool, tyChar, tyInt..tyUInt64}:
       # no canonicalization for integral types, so that e.g. ``ptr pid_t`` is
       # produced instead of ``ptr NI``.

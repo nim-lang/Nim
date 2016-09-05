@@ -545,7 +545,7 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
-      generateDoc(d, lastSon(n.sons[0]))
+      generateDoc(d, last(n.sons[0]))
   of nkImportStmt:
     for i in 0 .. len(n)-1: traceDeps(d, n.sons[i])
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
@@ -589,7 +589,7 @@ proc generateJson*(d: PDoc, n: PNode) =
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
-      generateJson(d, lastSon(n.sons[0]))
+      generateJson(d, last(n.sons[0]))
   else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =

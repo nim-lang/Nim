@@ -353,7 +353,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     # or maybe we should generate a 'try' XXX
   of nkVarSection, nkLetSection:
     for it in n:
-      let value = it.lastSon
+      let value = it.last
       let isSpawned = getMagic(value) == mSpawn
       if isSpawned:
         pushSpawnId(c):
@@ -424,7 +424,7 @@ proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
   of nkVarSection, nkLetSection:
     result = nil
     for it in n:
-      let b = it.lastSon
+      let b = it.last
       if getMagic(b) == mSpawn:
         if it.len != 3: localError(it.info, "invalid context for 'spawn'")
         let m = transformSlices(b)
@@ -471,7 +471,7 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   #echo "PAR ", renderTree(n)
 
   var a = initAnalysisCtx()
-  let body = n.lastSon
+  let body = n.last
   analyse(a, body)
   if a.spawns == 0:
     localError(n.info, "'parallel' section without 'spawn'")

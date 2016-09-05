@@ -67,7 +67,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     fc.replaceByFieldName = c.m == mFieldPairs
     openScope(c.c)
     inc c.c.inUnrolledContext
-    let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    let body = instFieldLoopBody(fc, last(forLoop), forLoop)
     father.add(semStmt(c.c, body))
     dec c.c.inUnrolledContext
     closeScope(c.c)
@@ -93,7 +93,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
       var branch = copyTree(typ[i])
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, forLoop.info)
-      semForObjectFields(c, typ[i].lastSon, forLoop, branch[L-1])
+      semForObjectFields(c, typ[i].last, forLoop, branch[L-1])
       caseStmt.sons[i] = branch
     father.add(caseStmt)
   of nkRecList:

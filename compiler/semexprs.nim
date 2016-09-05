@@ -106,8 +106,8 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   var s = skipTypes(src, abstractVar-{tyTypeDesc})
   var pointers = 0
   while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
-    d = d.lastSon
-    s = s.lastSon
+    d = d.last
+    s = s.last
     inc pointers
   if d == nil:
     result = convNotLegal
@@ -889,7 +889,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
       var it = r.sons[i]
       case it.kind
       of nkOfBranch:
-        result = lookupInRecordAndBuildCheck(c, n, lastSon(it), field, check)
+        result = lookupInRecordAndBuildCheck(c, n, last(it), field, check)
         if result == nil:
           for j in 0..len(it)-2: add(s, copyTree(it.sons[j]))
         else:
@@ -906,7 +906,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           #add(check, semExpr(c, inExpr))
           return
       of nkElse:
-        result = lookupInRecordAndBuildCheck(c, n, lastSon(it), field, check)
+        result = lookupInRecordAndBuildCheck(c, n, last(it), field, check)
         if result != nil:
           if check == nil:
             check = newNodeI(nkCheckedFieldExpr, n.info)
@@ -934,7 +934,7 @@ proc makeDeref(n: PNode): PNode =
     t = skipTypes(t.sons[0], {tyGenericInst})
   while t.kind in {tyPtr, tyRef}:
     var a = result
-    let baseTyp = t.lastSon
+    let baseTyp = t.last
     result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
     add(result, a)
     t = skipTypes(baseTyp, {tyGenericInst})
@@ -1212,7 +1212,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   result = n
   var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar})
   case t.kind
-  of tyRef, tyPtr: n.typ = t.lastSon
+  of tyRef, tyPtr: n.typ = t.last
   else: result = nil
   #GlobalError(n.sons[0].info, errCircumNeedsPointer)
 
@@ -1827,7 +1827,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if not experimentalMode(c):
       localError(n.info, "use the {.experimental.} pragma to enable 'parallel'")
     result = setMs(n, s)
-    var x = n.lastSon
+    var x = n.last
     if x.kind == nkDo: x = x.sons[bodyPos]
     inc c.inParallelStmt
     result.sons[1] = semStmt(c, x)
@@ -2072,7 +2072,7 @@ proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
       # XXX we cannot check here, as we don't know the branch!
       for i in countup(1, len(n) - 1):
         case n.sons[i].kind
-        of nkOfBranch, nkElse: checkInitialized(lastSon(n.sons[i]), ids, info)
+        of nkOfBranch, nkElse: checkInitialized(last(n.sons[i]), ids, info)
         else: internalError(info, "checkInitialized")
   of nkSym:
     if {tfNotNil, tfNeedsInit} * n.sym.typ.flags != {} and

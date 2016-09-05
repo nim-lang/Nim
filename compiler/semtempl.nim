@@ -673,7 +673,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       localError(n.info, errInvalidExpression)
   of nkStmtList, nkStmtListExpr:
     if stupidStmtListExpr(n):
-      result = semPatternBody(c, n.lastSon)
+      result = semPatternBody(c, n.last)
     else:
       for i in countup(0, len(n) - 1):
         result.sons[i] = semPatternBody(c, n.sons[i])

@@ -529,7 +529,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
       params.add(", ")
     let load = "\t$1 = ($2) ($3$4));$n" %
         [tmp, getTypeDesc(m, sym.typ), params, makeCString($extname)]
-    var last = lastSon(n)
+    var last = last(n)
     if last.kind == nkHiddenStdConv: last = last.sons[1]
     internalAssert(last.kind == nkStrLit)
     let idx = last.strVal
@@ -606,7 +606,7 @@ proc deinitFrame(p: BProc): Rope =
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
   # prc.ast[paramsPos].last contains the type we're after:
-  var ls = lastSon(prc.ast[paramsPos])
+  var ls = last(prc.ast[paramsPos])
   if ls.kind != nkSym:
     internalError(prc.info, "closure generation failed")
   var env = ls.sym

@@ -163,16 +163,16 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyGenericInst:
     if inst:
       if allowRecursion:
-        result = mapTypeToAstR(t.lastSon, info)
+        result = mapTypeToAstR(t.last, info)
       else:
         result = newNodeX(nkBracketExpr, t.len - 1)
-        result.sons[0] = mapTypeToAst(t.lastSon, info)
+        result.sons[0] = mapTypeToAst(t.last, info)
         for i in 1 .. < t.len-1:
           result.sons[i] = mapTypeToAst(t.sons[i], info)
     else:
-      result = mapTypeToAst(t.lastSon, info)
+      result = mapTypeToAst(t.last, info)
   of tyGenericBody, tyOrdinal, tyUserTypeClassInst:
-    result = mapTypeToAst(t.lastSon, info)
+    result = mapTypeToAst(t.last, info)
   of tyDistinct:
     if inst:
       result = newNodeX(nkDistinctTy, 1)

@@ -291,7 +291,7 @@ proc litAux(n: PNode, x: BiggestInt, size: int): string =
     result = t
     while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                           tyConst, tyMutable}:
-      result = lastSon(result)
+      result = last(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n
     # we need a slow linear search because of enums with holes:
@@ -406,7 +406,7 @@ proc lsub(n: PNode): int =
     var L = len(n)
     if n.sons[L - 2].kind != nkEmpty: result = result + lsub(n.sons[L - 2]) + 2
     if n.sons[L - 1].kind != nkEmpty: result = result + lsub(n.sons[L - 1]) + 3
-  of nkVarTuple: result = lcomma(n, 0, - 3) + len("() = ") + lsub(lastSon(n))
+  of nkVarTuple: result = lcomma(n, 0, - 3) + len("() = ") + lsub(last(n))
   of nkChckRangeF: result = len("chckRangeF") + 2 + lcomma(n)
   of nkChckRange64: result = len("chckRange64") + 2 + lcomma(n)
   of nkChckRange: result = len("chckRange") + 2 + lcomma(n)
@@ -465,7 +465,7 @@ proc lsub(n: PNode): int =
   of nkContinueStmt: result = lsub(n.sons[0]) + len("continue_")
   of nkPragma: result = lcomma(n) + 4
   of nkCommentStmt: result = if n.comment.isNil: 0 else: len(n.comment)
-  of nkOfBranch: result = lcomma(n, 0, - 2) + lsub(lastSon(n)) + len("of_:_")
+  of nkOfBranch: result = lcomma(n, 0, - 2) + lsub(last(n)) + len("of_:_")
   of nkImportAs: result = lsub(n.sons[0]) + len("_as_") + lsub(n.sons[1])
   of nkElifBranch: result = lsons(n) + len("elif_:_")
   of nkElse: result = lsub(n.sons[0]) + len("else:_")
@@ -475,7 +475,7 @@ proc lsub(n: PNode): int =
     result = lcomma(n, 1) + 2
     if n.sons[0].kind != nkEmpty: result = result + lsub(n.sons[0]) + 2
   of nkExceptBranch:
-    result = lcomma(n, 0, -2) + lsub(lastSon(n)) + len("except_:_")
+    result = lcomma(n, 0, -2) + lsub(last(n)) + len("except_:_")
   else: result = MaxLineLen + 1
 
 proc fits(g: TSrcGen, x: int): bool =
@@ -988,7 +988,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParRi, ")")
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
-    gsub(g, lastSon(n), c)
+    gsub(g, last(n), c)
   of nkExprColonExpr:
     gsub(g, n, 0)
     putWithSpace(g, tkColon, ":")
@@ -1271,7 +1271,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, c, 0, - 2)
     putWithSpace(g, tkColon, ":")
     gcoms(g)
-    gstmts(g, lastSon(n), c)
+    gstmts(g, last(n), c)
   of nkImportAs:
     gsub(g, n, 0)
     put(g, tkSpaces, Space)
@@ -1311,7 +1311,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, 0, - 2)
     putWithSpace(g, tkColon, ":")
     gcoms(g)
-    gstmts(g, lastSon(n), c)
+    gstmts(g, last(n), c)
   of nkGenericParams:
     put(g, tkBracketLe, "[")
     gcomma(g, n)

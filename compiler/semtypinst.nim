@@ -63,7 +63,7 @@ proc cacheTypeInst*(inst: PType) =
   # XXX: add to module's generics
   #      update the refcount
   let gt = inst.sons[0]
-  let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
+  let t = if gt.kind == tyGenericBody: gt.last else: gt
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     return
   gt.sym.typeInstCache.safeAdd(inst)
@@ -291,7 +291,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # but we already raised an error!
     rawAdd(result, header.sons[i])
 
-  let bbody = lastSon body
+  let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
@@ -397,7 +397,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericBody:
     localError(cl.info, errCannotInstantiateX, typeToString(t))
     result = errorType(cl.c)
-    #result = replaceTypeVarsT(cl, lastSon(t))
+    #result = replaceTypeVarsT(cl, last(t))
 
   of tyFromExpr:
     if cl.allowMetaTypes: return
@@ -443,7 +443,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     idTablePut(cl.localCache, t, result)
     for i in 1 .. <result.len:
       result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
-    propagateToOwner(result, result.lastSon)
+    propagateToOwner(result, result.last)
 
   else:
     if containsGenericType(t):

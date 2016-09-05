@@ -123,7 +123,7 @@ const
 
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
-  while n.kind in skipForDiscardable: n = n.lastSon
+  while n.kind in skipForDiscardable: n = n.last
   result = isCallExpr(n) and n.sons[0].kind == nkSym and
            sfDiscardable in n.sons[0].sym.flags
 
@@ -146,7 +146,7 @@ proc discardCheck(c: PContext, result: PNode) =
       var n = result
       result.typ = nil
       while n.kind in skipForDiscardable:
-        n = n.lastSon
+        n = n.last
         n.typ = nil
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
       if result.typ.kind == tyNil:
@@ -154,7 +154,7 @@ proc discardCheck(c: PContext, result: PNode) =
         message(result.info, warnNilStatement)
       else:
         var n = result
-        while n.kind in skipForDiscardable: n = n.lastSon
+        while n.kind in skipForDiscardable: n = n.last
         localError(n.info, errDiscardValueX, result.typ.typeToString)
 
 proc semIf(c: PContext, n: PNode): PNode =
@@ -176,7 +176,7 @@ proc semIf(c: PContext, n: PNode): PNode =
       typ = commonType(typ, it.sons[0].typ)
     else: illFormedAst(it)
   if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
-    for it in n: discardCheck(c, it.lastSon)
+    for it in n: discardCheck(c, it.last)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
     if typ == enforceVoidContext: result.typ = enforceVoidContext
@@ -241,7 +241,7 @@ proc semCase(c: PContext, n: PNode): PNode =
       localError(n.info, errNotAllCasesCovered)
   closeScope(c)
   if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].last)
     # propagate any enforced VoidContext:
     if typ == enforceVoidContext:
       result.typ = enforceVoidContext
@@ -289,11 +289,11 @@ proc semTry(c: PContext, n: PNode): PNode =
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind == tyNil:
     discardCheck(c, n.sons[0])
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].last)
     if typ == enforceVoidContext:
       result.typ = enforceVoidContext
   else:
-    if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon)
+    if n.last.kind == nkFinally: discardCheck(c, n.last.last)
     n.sons[0] = fitNode(c, typ, n.sons[0])
     for i in 1..last:
       var it = n.sons[i]
@@ -419,7 +419,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
 
 proc hasEmpty(typ: PType): bool =
   if typ.kind in {tySequence, tyArray, tySet}:
-    result = typ.lastSon.kind == tyEmpty
+    result = typ.last.kind == tyEmpty
   elif typ.kind == tyTuple:
     for s in typ.sons:
       result = result or hasEmpty(s)
@@ -659,7 +659,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
     var typ = n.sons[0].typ
-    if typ.kind != tyRef or typ.lastSon.kind != tyObject:
+    if typ.kind != tyRef or typ.last.kind != tyObject:
       localError(n.info, errExprCannotBeRaised)
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
@@ -753,10 +753,10 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
        aa.sons[0].kind == nkObjectTy:
       # give anonymous object a dummy symbol:
       var st = s.typ
-      if st.kind == tyGenericBody: st = st.lastSon
+      if st.kind == tyGenericBody: st = st.last
       internalAssert st.kind in {tyPtr, tyRef}
-      internalAssert st.lastSon.sym == nil
-      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+      internalAssert st.last.sym == nil
+      st.last.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
                               getCurrOwner(), s.info)
 
 proc checkForMetaFields(n: PNode) =
@@ -769,7 +769,7 @@ proc checkForMetaFields(n: PNode) =
   of nkRecList, nkRecCase:
     for s in n: checkForMetaFields(s)
   of nkOfBranch, nkElse:
-    checkForMetaFields(n.lastSon)
+    checkForMetaFields(n.last)
   of nkSym:
     let t = n.sym.typ
     case t.kind
@@ -793,7 +793,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     if a.sons[1].kind == nkEmpty:
       var x = a[2]
       while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
-        x = x.lastSon
+        x = x.last
       if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
           s.typ.kind notin {tyObject, tyEnum}:
         # type aliases are hard:
@@ -1091,9 +1091,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         sameType(s.typ.sons[1], s.typ.sons[0]):
       # Note: we store the deepCopy in the base of the pointer to mitigate
       # the problem that pointers are structural types:
-      var t = s.typ.sons[1].skipTypes(abstractInst).lastSon.skipTypes(abstractInst)
+      var t = s.typ.sons[1].skipTypes(abstractInst).last.skipTypes(abstractInst)
       while true:
-        if t.kind == tyGenericBody: t = t.lastSon
+        if t.kind == tyGenericBody: t = t.last
         elif t.kind == tyGenericInvocation: t = t.sons[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum}:
@@ -1116,12 +1116,12 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       var obj = t.sons[1].sons[0]
       while true:
         incl(obj.flags, tfHasAsgn)
-        if obj.kind == tyGenericBody: obj = obj.lastSon
+        if obj.kind == tyGenericBody: obj = obj.last
         elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
         else: break
       var objB = t.sons[2]
       while true:
-        if objB.kind == tyGenericBody: objB = objB.lastSon
+        if objB.kind == tyGenericBody: objB = objB.last
         elif objB.kind == tyGenericInvocation: objB = objB.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct} and sameType(obj, objB):
@@ -1556,7 +1556,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   when false:
     # a statement list (s; e) has the type 'e':
     if result.kind == nkStmtList and result.len > 0:
-      var lastStmt = lastSon(result)
+      var lastStmt = last(result)
       if lastStmt.kind != nkNilLit and not implicitlyDiscardable(lastStmt):
         result.typ = lastStmt.typ
         #localError(lastStmt.info, errGenerated,

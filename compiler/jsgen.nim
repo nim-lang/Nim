@@ -144,7 +144,7 @@ proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
   case t.kind
   of tyVar, tyRef, tyPtr:
-    if skipTypes(t.lastSon, abstractInst).kind in MappedToObject:
+    if skipTypes(t.last, abstractInst).kind in MappedToObject:
       result = etyObject
     else:
       result = etyBaseIndex
@@ -167,7 +167,7 @@ proc mapType(typ: PType): TJSTypeKind =
      tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid:
     result = etyNone
   of tyStatic:
-    if t.n != nil: result = mapType(lastSon t)
+    if t.n != nil: result = mapType(last t)
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
@@ -699,7 +699,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
           else:
             gen(p, e, cond)
             addf(p.body, "case $1: ", [cond.rdLoc])
-      gen(p, lastSon(it), stmt)
+      gen(p, last(it), stmt)
       moveInto(p, stmt, r)
       addf(p.body, "$nbreak;$n", [])
     of nkElse:
@@ -982,7 +982,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange)
-  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
+  if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.last, abstractVarRange)
   case ty.kind
   of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
      tyVarargs:
@@ -1346,7 +1346,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
   of nkRecCase:
     createRecordVarAux(p, rec.sons[0], excludedFieldIDs, output)
     for i in countup(1, len(rec) - 1):
-      createRecordVarAux(p, lastSon(rec.sons[i]), excludedFieldIDs, output)
+      createRecordVarAux(p, last(rec.sons[i]), excludedFieldIDs, output)
   of nkSym:
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
@@ -1387,7 +1387,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
   of tyRange, tyGenericInst:
-    result = createVar(p, lastSon(typ), indirect)
+    result = createVar(p, last(typ), indirect)
   of tySet:
     result = putToSeq("{}" | "array()", indirect)
   of tyBool:
@@ -1442,7 +1442,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
-      result = createVar(p, lastSon t, indirect)
+      result = createVar(p, last t, indirect)
     else:
       internalError("createVar: " & $t.kind)
       result = nil
@@ -2114,7 +2114,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     for i in countup(0, len(n) - 1 - isExpr.ord):
       genStmt(p, n.sons[i])
     if isExpr:
-      gen(p, lastSon(n), r)
+      gen(p, last(n), r)
   of nkBlockStmt, nkBlockExpr: genBlock(p, n, r)
   of nkIfStmt, nkIfExpr: genIf(p, n, r)
   of nkWhen:
@@ -2148,7 +2148,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.res = nil
   of nkGotoState, nkState:
     internalError(n.info, "first class iterators not implemented")
-  of nkPragmaBlock: gen(p, n.lastSon, r)
+  of nkPragmaBlock: gen(p, n.last, r)
   else: internalError(n.info, "gen: unknown node type: " & $n.kind)
 
 var globals: PGlobals
