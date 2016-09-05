@@ -118,6 +118,7 @@ when defined(nimdoc):
 
   proc unregister*[T](s: Selector[T], ev: SelectEvent) =
     ## Unregisters event ``ev`` from selector ``s``.
+    ## Does nothing if the event is not registered.
 
   proc unregister*[T](s: Selector[T], fd: int|SocketHandle|cint) =
     ## Unregisters file/socket descriptor ``fd`` from selector ``s``.

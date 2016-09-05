@@ -305,12 +305,12 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
-  doAssert(Event.User in pkey.events)
-  pkey.ident = 0
-  pkey.events = {}
-  modifyKQueue(s, fdi.uint, EVFILT_READ, EV_DELETE, 0, 0, nil)
-  dec(s.count)
+  if pkey.ident != 0:
+    doAssert(Event.User in pkey.events)
+    pkey.ident = 0
+    pkey.events = {}
+    modifyKQueue(s, fdi.uint, EVFILT_READ, EV_DELETE, 0, 0, nil)
+    dec(s.count)
 
 proc flush*[T](s: Selector[T]) =
   s.withChangeLock():

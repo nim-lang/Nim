@@ -234,14 +234,14 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.efd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
-  doAssert(Event.User in pkey.events)
-  pkey.ident = 0
-  pkey.events = {}
-  var epv = epoll_event()
-  if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
-    raiseOSError(osLastError())
-  dec(s.count)
+  if pkey.ident != 0:
+    doAssert(Event.User in pkey.events)
+    pkey.ident = 0
+    pkey.events = {}
+    var epv = epoll_event()
+    if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+      raiseOSError(osLastError())
+    dec(s.count)
 
 proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                        data: T): int {.discardable.} =
