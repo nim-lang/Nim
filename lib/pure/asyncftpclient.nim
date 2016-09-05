@@ -259,9 +259,9 @@ proc getFile(ftp: AsyncFtpClient, dest: string, total: BiggestInt,
   var file = open(dest, mode = fmWrite)
   var progress = 0
   var progressInSecond = 0
-  var countdownFut = sleepAsync(1000)
+  var countdownFut = sleepAsync(100)
   const maxSpeed = 1024*1024*2
-  let BufferSize = if total < maxSpeed: total.int else: maxSpeed
+  let BufferSize = if total > 0 and total < maxSpeed: total.int else: maxSpeed
   var dataFut = ftp.dsock.recv(BufferSize)
   while ftp.dsockConnected:
     await countdownFut
@@ -280,9 +280,12 @@ proc getFile(ftp: AsyncFtpClient, dest: string, total: BiggestInt,
         dataFut = ftp.dsock.recv(BufferSize)
       else:
         ftp.dsockConnected = false
+        if total > 0 and (total != progress):
+          raise newException(ReplyError, "Download file size is wrong. total:$#, cur:$#".format(total, progress))
 
   file.close()
   assertReply(await(ftp.expectReply()), "226")
+
 
 proc defaultOnProgressChanged*(total, progress: BiggestInt,
     speed: float): Future[void] {.nimcall,gcsafe.} =
@@ -307,8 +310,7 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
   reply = await ftp.send("RETR " & file.normalizePathSep)
   assertReply reply, ["125", "150"]
   if fileSize == 0:
-    if {'(', ')'} notin reply.string:
-      raise newException(ReplyError, "Reply has no file size.")
+    if {'(', ')'} notin reply.string: fileSize = -1 #download file until eof
     elif reply.string.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
         raise newException(ReplyError, "Reply has no file size.")
 
