@@ -2125,7 +2125,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     while true:
       checkInitialized(objType.n, ids, n.info)
       if objType.sons[0] == nil: break
-      objType = skipTypes(objType.sons[0], {tyGenericInst})
+      objType = skipTypes(objType.sons[0], skipPtrs)
 
 proc semBlock(c: PContext, n: PNode): PNode =
   result = n
