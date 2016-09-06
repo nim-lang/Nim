@@ -62,6 +62,8 @@ import os
 
 export SOBool
 
+# TODO: Remove duplication introduced by PR #4683.
+
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when defineSsl:

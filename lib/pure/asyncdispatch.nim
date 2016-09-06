@@ -750,7 +750,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
-                flags = {SocketFlag.SafeDisconn}): Future[int] =
+                 flags = {SocketFlag.SafeDisconn}): Future[int] =
     ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``, which must
     ## at least be of that size. Returned future will complete once all the
     ## data requested is read, a part of the data has been read, or the socket
@@ -784,7 +784,10 @@ when defined(windows) or defined(nimdoc):
       proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
-            retFuture.complete(bytesCount)
+            if bytesCount == 0 and dataBuf.buf[0] == '\0':
+              retFuture.complete(0)
+            else:
+              retFuture.complete(bytesCount)
           else:
             if flags.isDisconnectionError(errcode):
               retFuture.complete(0)
@@ -850,54 +853,6 @@ when defined(windows) or defined(nimdoc):
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
-        if flags.isDisconnectionError(err):
-          retFuture.complete()
-        else:
-          retFuture.fail(newException(OSError, osErrorMsg(err)))
-    else:
-      retFuture.complete()
-      # We don't deallocate ``ol`` here because even though this completed
-      # immediately poll will still be notified about its completion and it will
-      # free ``ol``.
-    return retFuture
-
-  proc send*(socket: AsyncFD, data: string,
-             flags = {SocketFlag.SafeDisconn}): Future[void] =
-    ## Sends ``data`` to ``socket``. The returned future will complete once all
-    ## data has been sent.
-    verifyPresence(socket)
-    var retFuture = newFuture[void]("send")
-
-    var dataBuf: TWSABuf
-    dataBuf.buf = data
-    GC_ref(data) # we need to protect data until send operation is completed
-                 # or failed.
-    dataBuf.len = data.len.ULONG
-
-    var bytesReceived, lowFlags: Dword
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
-    ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
-        GC_unref(data) # if operation completed `data` must be released.
-        if not retFuture.finished:
-          if errcode == OSErrorCode(-1):
-            retFuture.complete()
-          else:
-            if flags.isDisconnectionError(errcode):
-              retFuture.complete()
-            else:
-              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
-    )
-
-    let ret = WSASend(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
-                      lowFlags, cast[POVERLAPPED](ol), nil)
-    if ret == -1:
-      let err = osLastError()
-      if err.int32 != ERROR_IO_PENDING:
-        GC_unref(ol)
-        GC_unref(data) # if operation failed `data` must be released, because
-                       # completion routine will not be called.
         if flags.isDisconnectionError(err):
           retFuture.complete()
         else:
@@ -1501,38 +1456,6 @@ else:
     addWrite(socket, cb)
     return retFuture
 
-  proc send*(socket: AsyncFD, data: string,
-             flags = {SocketFlag.SafeDisconn}): Future[void] =
-    var retFuture = newFuture[void]("send")
-
-    var written = 0
-
-    proc cb(sock: AsyncFD): bool =
-      result = true
-      let netSize = data.len-written
-      var d = data.cstring
-      let res = send(sock.SocketHandle, addr d[written], netSize.cint,
-                     MSG_NOSIGNAL)
-      if res < 0:
-        let lastError = osLastError()
-        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
-          if flags.isDisconnectionError(lastError):
-            retFuture.complete()
-          else:
-            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
-        else:
-          result = false # We still want this callback to be called.
-      else:
-        written.inc(res)
-        if res != netSize:
-          result = false # We still have data to send.
-        else:
-          retFuture.complete()
-    # TODO: The following causes crashes.
-    #if not cb(socket):
-    addWrite(socket, cb)
-    return retFuture
-
   proc sendTo*(socket: AsyncFD, data: pointer, size: int, saddr: ptr SockAddr,
                saddrLen: SockLen,
                flags = {SocketFlag.SafeDisconn}): Future[void] =
@@ -1654,6 +1577,27 @@ proc accept*(socket: AsyncFD,
       else:
         retFut.complete(future.read.client)
   return retFut
+
+proc send*(socket: AsyncFD, data: string,
+           flags = {SocketFlag.SafeDisconn}): Future[void] =
+  ## Sends ``data`` to ``socket``. The returned future will complete once all
+  ## data has been sent.
+  var retFuture = newFuture[void]("send")
+
+  var copiedData = data
+  GC_ref(copiedData) # we need to protect data until send operation is completed
+               # or failed.
+
+  let sendFut = socket.send(addr copiedData[0], data.len, flags)
+  sendFut.cb =
+    proc () =
+      GC_unref(copiedData)
+      if sendFut.failed:
+        retFuture.fail(sendFut.error)
+      else:
+        retFuture.complete()
+
+  return retFuture
 
 # -- Await Macro
 include asyncmacro
