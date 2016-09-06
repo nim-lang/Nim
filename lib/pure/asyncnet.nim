@@ -193,7 +193,7 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
 
-template readInto(buf: cstring, size: int, socket: AsyncSocket,
+template readInto(buf: pointer, size: int, socket: AsyncSocket,
                   flags: set[SocketFlag]): int =
   ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``. Note that
   ## this is a template and not a proc.
@@ -202,10 +202,10 @@ template readInto(buf: cstring, size: int, socket: AsyncSocket,
     when defineSsl:
       # SSL mode.
       sslLoop(socket, flags,
-        sslRead(socket.sslHandle, buf, size.cint))
+        sslRead(socket.sslHandle, cast[cstring](buf), size.cint))
       res = opResult
   else:
-    var recvIntoFut = recvInto(socket.fd.AsyncFD, buf, size, flags)
+    var recvIntoFut = asyncdispatch.recvInto(socket.fd.AsyncFD, buf, size, flags)
     yield recvIntoFut
     # Not in SSL mode.
     res = recvIntoFut.read()
@@ -217,6 +217,54 @@ template readIntoBuf(socket: AsyncSocket,
   socket.currPos = 0
   socket.bufLen = size
   size
+
+proc recvInto*(socket: AsyncSocket, buf: pointer, size: int,
+           flags = {SocketFlag.SafeDisconn}): Future[int] {.async.} =
+  ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``.
+  ##
+  ## For buffered sockets this function will attempt to read all the requested
+  ## data. It will read this data in ``BufferSize`` chunks.
+  ##
+  ## For unbuffered sockets this function makes no effort to read
+  ## all the data requested. It will return as much data as the operating system
+  ## gives it.
+  ##
+  ## If socket is disconnected during the
+  ## recv operation then the future may complete with only a part of the
+  ## requested data.
+  ##
+  ## If socket is disconnected and no data is available
+  ## to be read then the future will complete with a value of ``0``.
+  if socket.isBuffered:
+    let originalBufPos = socket.currPos
+
+    if socket.bufLen == 0:
+      let res = socket.readIntoBuf(flags - {SocketFlag.Peek})
+      if res == 0:
+        return 0
+
+    var read = 0
+    var cbuf = cast[cstring](buf)
+    while read < size:
+      if socket.currPos >= socket.bufLen:
+        if SocketFlag.Peek in flags:
+          # We don't want to get another buffer if we're peeking.
+          break
+        let res = socket.readIntoBuf(flags - {SocketFlag.Peek})
+        if res == 0:
+          break
+
+      let chunk = min(socket.bufLen-socket.currPos, size-read)
+      copyMem(addr(cbuf[read]), addr(socket.buffer[socket.currPos]), chunk)
+      read.inc(chunk)
+      socket.currPos.inc(chunk)
+
+    if SocketFlag.Peek in flags:
+      # Restore old buffer cursor position.
+      socket.currPos = originalBufPos
+    result = read
+  else:
+    result = readInto(buf, size, socket, flags)
 
 proc recv*(socket: AsyncSocket, size: int,
            flags = {SocketFlag.SafeDisconn}): Future[string] {.async.} =
@@ -269,6 +317,19 @@ proc recv*(socket: AsyncSocket, size: int,
     result = newString(size)
     let read = readInto(addr result[0], size, socket, flags)
     result.setLen(read)
+
+proc send*(socket: AsyncSocket, buf: pointer, size: int,
+            flags = {SocketFlag.SafeDisconn}) {.async.} =
+  ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future will complete once all
+  ## data has been sent.
+  assert socket != nil
+  if socket.isSsl:
+    when defineSsl:
+      sslLoop(socket, flags,
+              sslWrite(socket.sslHandle, cast[cstring](buf), size.cint))
+      await sendPendingSslData(socket, flags)
+  else:
+    await send(socket.fd.AsyncFD, buf, size, flags)
 
 proc send*(socket: AsyncSocket, data: string,
            flags = {SocketFlag.SafeDisconn}) {.async.} =
