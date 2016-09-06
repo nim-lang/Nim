@@ -749,7 +749,7 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete("")
     return retFuture
 
-  proc recvBuffer*(socket: AsyncFD, buf: pointer, size: int,
+  proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
                 flags = {SocketFlag.SafeDisconn}): Future[int] =
     ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``, which must
     ## at least be of that size. Returned future will complete once all the
@@ -769,7 +769,7 @@ when defined(windows) or defined(nimdoc):
     verifyPresence(socket)
     assert SocketFlag.Peek notin flags, "Peek not supported on Windows."
 
-    var retFuture = newFuture[int]("recvBuffer")
+    var retFuture = newFuture[int]("recvInto")
 
     #buf[] = '\0'
     var dataBuf: TWSABuf
@@ -816,19 +816,7 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete(bytesReceived)
     return retFuture
 
-  proc recvInto*(socket: AsyncFD, buf: cstring, size: int,
-                 flags = {SocketFlag.SafeDisconn}): Future[int] =
-    ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``, which must
-    ## at least be of that size. Returned future will complete once all the
-    ## data requested is read, a part of the data has been read, or the socket
-    ## has disconnected in which case the future will complete with a value of
-    ## ``0``.
-    ##
-    ## **Warning**: The ``Peek`` socket flag is not supported on Windows.
-
-    socket.recvBuffer(buf, size, flags)
-
-  proc sendBuffer*(socket: AsyncFD, buf: pointer, size: int,
+  proc send*(socket: AsyncFD, buf: pointer, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[void] =
     ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future will complete once all
     ## data has been sent.
@@ -1457,9 +1445,9 @@ else:
     addRead(socket, cb)
     return retFuture
 
-  proc recvBuffer*(socket: AsyncFD, buf: pointer, size: int,
+  proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
                   flags = {SocketFlag.SafeDisconn}): Future[int] =
-    var retFuture = newFuture[int]("recvBuffer")
+    var retFuture = newFuture[int]("recvInto")
 
     proc cb(sock: AsyncFD): bool =
       result = true
@@ -1481,7 +1469,7 @@ else:
     addRead(socket, cb)
     return retFuture
 
-  proc sendBuffer*(socket: AsyncFD, buf: pointer, size: int,
+  proc send*(socket: AsyncFD, buf: pointer, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[void] =
     var retFuture = newFuture[void]("send")
 

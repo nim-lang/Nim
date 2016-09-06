@@ -205,7 +205,7 @@ template readInto(buf: pointer, size: int, socket: AsyncSocket,
         sslRead(socket.sslHandle, cast[cstring](buf), size.cint))
       res = opResult
   else:
-    var recvIntoFut = recvBuffer(socket.fd.AsyncFD, buf, size, flags)
+    var recvIntoFut = asyncdispatch.recvInto(socket.fd.AsyncFD, buf, size, flags)
     yield recvIntoFut
     # Not in SSL mode.
     res = recvIntoFut.read()
@@ -218,7 +218,7 @@ template readIntoBuf(socket: AsyncSocket,
   socket.bufLen = size
   size
 
-proc recvBuffer*(socket: AsyncSocket, buf: pointer, size: int,
+proc recvInto*(socket: AsyncSocket, buf: pointer, size: int,
            flags = {SocketFlag.SafeDisconn}): Future[int] {.async.} =
   ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``.
   ##
@@ -318,7 +318,7 @@ proc recv*(socket: AsyncSocket, size: int,
     let read = readInto(addr result[0], size, socket, flags)
     result.setLen(read)
 
-proc sendBuffer*(socket: AsyncSocket, buf: pointer, size: int,
+proc send*(socket: AsyncSocket, buf: pointer, size: int,
             flags = {SocketFlag.SafeDisconn}) {.async.} =
   ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future will complete once all
   ## data has been sent.
@@ -329,7 +329,7 @@ proc sendBuffer*(socket: AsyncSocket, buf: pointer, size: int,
               sslWrite(socket.sslHandle, cast[cstring](buf), size.cint))
       await sendPendingSslData(socket, flags)
   else:
-    await sendBuffer(socket.fd.AsyncFD, buf, size, flags)
+    await send(socket.fd.AsyncFD, buf, size, flags)
 
 proc send*(socket: AsyncSocket, data: string,
            flags = {SocketFlag.SafeDisconn}) {.async.} =
