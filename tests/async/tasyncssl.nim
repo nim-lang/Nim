@@ -42,8 +42,8 @@ when defined(ssl):
 
   proc createServer(port: Port) {.async.} =
     let serverContext = newContext(verifyMode = CVerifyNone,
-                                   certFile = "../testdata/mycert.pem",
-                                   keyFile = "../testdata/mycert.pem")
+                                   certFile = "tests/testdata/mycert.pem",
+                                   keyFile = "tests/testdata/mycert.pem")
     var server = newAsyncSocket()
     serverContext.wrapSocket(server)
     server.setSockOpt(OptReuseAddr, true)
