@@ -18,3 +18,14 @@ test proc() =
         test proc() = discard
     else:
         test proc() = discard
+
+# ensure 'case' does not trigger the same bug:
+test proc() =
+    let f = 15
+    case f
+    of 10:
+        test proc() = discard
+    of 3:
+        test proc() = discard
+    else:
+        test proc() = discard
