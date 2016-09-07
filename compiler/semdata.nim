@@ -207,18 +207,18 @@ proc addToLib(lib: PLib, sym: PSym) =
 
 proc makePtrType(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
-  addSonSkipIntLit(result, baseType.assertNotNil)
+  addSkipIntLit(result, baseType.assertNotNil)
 
 proc makeVarType*(c: PContext, baseType: PType): PType =
   if baseType.kind == tyVar:
     result = baseType
   else:
     result = newTypeS(tyVar, c)
-    addSonSkipIntLit(result, baseType.assertNotNil)
+    addSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   result = newTypeS(tyTypeDesc, c)
-  result.addSonSkipIntLit(typ.assertNotNil)
+  result.addSkipIntLit(typ.assertNotNil)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
@@ -303,11 +303,11 @@ proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
 proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType = getSysType(tyInt)): PType =
   var n = newNodeI(nkRange, info)
-  addSon(n, newIntTypeNode(nkIntLit, first, intType))
-  addSon(n, newIntTypeNode(nkIntLit, last, intType))
+  add(n, newIntTypeNode(nkIntLit, first, intType))
+  add(n, newIntTypeNode(nkIntLit, last, intType))
   result = newTypeS(tyRange, c)
   result.n = n
-  addSonSkipIntLit(result, intType) # basetype of range
+  addSkipIntLit(result, intType) # basetype of range
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skConverter, skMethod, skIterator}:
@@ -320,11 +320,11 @@ proc illFormedAst*(n: PNode) =
 proc illFormedAstLocal*(n: PNode) =
   localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
-proc checkSonsLen*(n: PNode, length: int) =
-  if sonsLen(n) != length: illFormedAst(n)
+proc checkLen*(n: PNode, length: int) =
+  if len(n) != length: illFormedAst(n)
 
-proc checkMinSonsLen*(n: PNode, length: int) =
-  if sonsLen(n) < length: illFormedAst(n)
+proc checkMinLen*(n: PNode, length: int) =
+  if len(n) < length: illFormedAst(n)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2

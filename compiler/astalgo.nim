@@ -155,17 +155,17 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       result = lookupInRecord(n.sons[i], field)
       if result != nil: return
   of nkRecCase:
     if (n.sons[0].kind != nkSym): internalError(n.info, "lookupInRecord")
     result = lookupInRecord(n.sons[0], field)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = lookupInRecord(lastSon(n.sons[i]), field)
+        result = lookupInRecord(last(n.sons[i]), field)
         if result != nil: return
       else: internalError(n.info, "lookupInRecord(record case branch)")
   of nkSym:
@@ -178,7 +178,7 @@ proc getModule(s: PSym): PSym =
   while result != nil and result.kind != skModule: result = result.owner
 
 proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
-  for i in countup(start, sonsLen(list) - 1):
+  for i in countup(start, len(list) - 1):
     if list.sons[i].kind == nkSym:
       result = list.sons[i].sym
       if result.name.id == ident.id: return
@@ -281,9 +281,9 @@ proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
     result = "\"$1 @$2\"" % [rope($n.kind), rope(
         strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
   else:
-    if sonsLen(n) > 0:
+    if len(n) > 0:
       result = rope("[")
-      for i in countup(0, sonsLen(n) - 1):
+      for i in countup(0, len(n) - 1):
         if i > 0: add(result, ",")
         addf(result, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(n.sons[i],
             marker, indent + 4, maxRecDepth - 1)])
@@ -330,9 +330,9 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
-        if sonsLen(n) > 0:
+        if len(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
-          for i in countup(0, sonsLen(n) - 1):
+          for i in countup(0, len(n) - 1):
             if i > 0: add(result, ",")
             addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(n.sons[i],
                 marker, indent + 4, maxRecDepth - 1)])
@@ -365,9 +365,9 @@ proc debugType(n: PType, maxRecDepth=100): Rope =
     if n.kind in IntegralTypes and n.n != nil:
       add(result, ", node: ")
       add(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
-    if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
+    if (n.kind != tyString) and (len(n) > 0) and maxRecDepth != 0:
       add(result, "(")
-      for i in countup(0, sonsLen(n) - 1):
+      for i in countup(0, len(n) - 1):
         if i > 0: add(result, ", ")
         if n.sons[i] == nil:
           add(result, "null")
@@ -411,9 +411,9 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
-        if sonsLen(n) > 0:
+        if len(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
-          for i in countup(0, sonsLen(n) - 1):
+          for i in countup(0, len(n) - 1):
             if i > 0: add(result, ",")
             addf(result, "$N$1$2", [rspaces(indent + 4), debugTree(n.sons[i],
                 indent + 4, maxRecDepth - 1, renderType)])

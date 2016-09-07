@@ -181,8 +181,8 @@ proc copyValue(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1):
+    newSeq(result.sons, len(src))
+    for i in countup(0, len(src) - 1):
       result.sons[i] = copyValue(src.sons[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
@@ -612,20 +612,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let b = regs[rb].regToNode
       if not inSet(regs[ra].node, b):
-        addSon(regs[ra].node, copyTree(b))
+        add(regs[ra].node, copyTree(b))
     of opcInclRange:
       decodeBC(rkNode)
       var r = newNode(nkRange)
-      r.add regs[rb].regToNode
-      r.add regs[rc].regToNode
-      addSon(regs[ra].node, r.copyTree)
+      r.sons = newSeq[PNode](2)
+      r.sons[0] = regs[rb].regToNode
+      r.sons[1] = regs[rc].regToNode
+      add(regs[ra].node, r.copyTree)
     of opcExcl:
       decodeB(rkNode)
       var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
-      addSon(b, regs[rb].regToNode)
+      add(b, regs[rb].regToNode)
       var r = diffSets(regs[ra].node, b)
-      discardSons(regs[ra].node)
-      for i in countup(0, sonsLen(r) - 1): addSon(regs[ra].node, r.sons[i])
+      regs[ra].node.sons = newSeq[PNode](len(r))
+      for i in countup(0, len(r) - 1): regs[ra].node.sons[i] =  r.sons[i]
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(regs[rb].node)
@@ -915,9 +916,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             tos.next.prc
                           else:
                             c.module
-        var macroCall = newNodeI(nkCall, c.debug[pc])
-        macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
+        var macroCall = newNodeI(nkCall, c.debug[pc], rc)
+        macroCall.sons[0] = newSymNode(prc)
+        for i in 1 .. rc-1: macroCall.sons[i] = regs[rb+i].regToNode
         let a = evalTemplate(macroCall, prc, genSymOwner)
         ensureKind(rkNode)
         regs[ra].node = a
@@ -943,7 +944,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in countup(0, sonsLen(branch) - 2):
+      for j in countup(0, len(branch) - 2):
         if overlap(regs[ra].regToNode, branch.sons[j]):
           cond = true
           break
@@ -1251,7 +1252,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(info, msg, arg))
       if not error.isNil:
         c.errorFlag = error
-      elif sonsLen(ast) != 1:
+      elif len(ast) != 1:
         c.errorFlag = formatMsg(c.debug[pc], errExprExpected, "multiple statements")
       else:
         regs[ra].node = ast.sons[0]
@@ -1404,7 +1405,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let bb = regs[rb].intVal.int
       for i in countup(0, regs[rc].intVal.int-1):
-        delSon(regs[ra].node, bb)
+        del(regs[ra].node, bb)
     of opcGenSym:
       decodeBC(rkNode)
       let k = regs[rb].intVal

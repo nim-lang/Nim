@@ -36,7 +36,7 @@ proc isAssignedImmediately(n: PNode): bool {.inline.} =
 proc genVarTuple(p: BProc, n: PNode) =
   var tup, field: TLoc
   if n.kind != nkVarTuple: internalError(n.info, "genVarTuple")
-  var L = sonsLen(n)
+  var L = len(n)
 
   # if we have a something that's been captured, use the lowering instead:
   var useLowering = false
@@ -227,7 +227,7 @@ proc genSingleVar(p: BProc, a: PNode) =
         assert(typ.kind == tyProc)
         for i in 1.. <value.len:
           if params != nil: params.add(~", ")
-          assert(sonsLen(typ) == sonsLen(typ.n))
+          assert(len(typ) == len(typ.n))
           add(params, genOtherArg(p, value, i, typ))
         lineF(p, cpsStmts, "$#($#);$n", [decl, params])
       else:
@@ -250,7 +250,7 @@ proc genClosureVar(p: BProc, a: PNode) =
     loadInto(p, a.sons[0], a.sons[2], v)
 
 proc genVarStmt(p: BProc, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
     if a.kind == nkIdentDefs:
@@ -263,7 +263,7 @@ proc genVarStmt(p: BProc, n: PNode) =
       genVarTuple(p, a)
 
 proc genConstStmt(p: BProc, t: PNode) =
-  for i in countup(0, sonsLen(t) - 1):
+  for i in countup(0, len(t) - 1):
     var it = t.sons[i]
     if it.kind == nkCommentStmt: continue
     if it.kind != nkConstDef: internalError(t.info, "genConstStmt")
@@ -292,7 +292,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     getTemp(p, n.typ, d)
   genLineDir(p, n)
   let lend = getLabel(p)
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     let it = n.sons[i]
     if it.len == 2:
       when newScopeForIf: startBlock(p)
@@ -310,7 +310,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
       else:
         expr(p, it.sons[1], d)
       endBlock(p)
-      if sonsLen(n) > 1:
+      if len(n) > 1:
         lineF(p, cpsStmts, "goto $1;$n", [lend])
       fixLabel(p, lelse)
     elif it.len == 1:
@@ -318,7 +318,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
       expr(p, it.sons[0], d)
       endBlock(p)
     else: internalError(n.info, "genIf()")
-  if sonsLen(n) > 1: fixLabel(p, lend)
+  if len(n) > 1: fixLabel(p, lend)
 
 
 proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
@@ -344,7 +344,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
     # Find finally-stmt for this try-stmt
     # and generate a copy of its sons
-    var finallyStmt = lastSon(tryStmt)
+    var finallyStmt = last(tryStmt)
     if finallyStmt.kind == nkFinally:
       genStmts(p, finallyStmt.sons[0])
 
@@ -383,7 +383,7 @@ proc genGotoForCase(p: BProc; caseStmt: PNode) =
         return
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "NIMSTATE_$#:$n", [val.rope])
-    genStmts(p, it.lastSon)
+    genStmts(p, it.last)
     endBlock(p)
 
 proc genComputedGoto(p: BProc; n: PNode) =
@@ -393,7 +393,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   for i in 0 .. <n.len:
     let it = n.sons[i]
     if it.kind == nkCaseStmt:
-      if lastSon(it).kind != nkOfBranch:
+      if last(it).kind != nkOfBranch:
         localError(it.info,
             "case statement must be exhaustive for computed goto"); return
       casePos = i
@@ -444,7 +444,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
         return
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#:$n", [intLiteral(val+id+1)])
-    genStmts(p, it.lastSon)
+    genStmts(p, it.last)
     #for j in casePos+1 .. <n.len: genStmts(p, n.sons[j]) # tailB
     #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
     add(p.s(cpsStmts), tailB)
@@ -460,7 +460,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
   # significantly worse code
   var
     a: TLoc
-  assert(sonsLen(t) == 2)
+  assert(len(t) == 2)
   inc(p.withinLoop)
   genLineDir(p, t)
 
@@ -501,7 +501,7 @@ proc genBlock(p: BProc, t: PNode, d: var TLoc) =
     endBlock(p)
 
 proc genParForStmt(p: BProc, t: PNode) =
-  assert(sonsLen(t) == 3)
+  assert(len(t) == 3)
   inc(p.withinLoop)
   genLineDir(p, t)
 
@@ -555,7 +555,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
-    var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
+    var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].last
     if finallyBlock.kind == nkFinally:
       genSimpleBlock(p, finallyBlock.sons[0])
   if t.sons[0].kind != nkEmpty:
@@ -577,7 +577,7 @@ proc genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =
   var
     x, y: TLoc
-  var length = sonsLen(b)
+  var length = len(b)
   for i in countup(0, length - 2):
     if b.sons[i].kind == nkRange:
       initLocExpr(p, b.sons[i].sons[0], x)
@@ -594,7 +594,7 @@ proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
   for i in 1..until:
     lineF(p, cpsStmts, "LA$1: ;$n", [rope(labId + i)])
     if t.sons[i].kind == nkOfBranch:
-      var length = sonsLen(t.sons[i])
+      var length = len(t.sons[i])
       exprBlock(p, t.sons[i].sons[length - 1], d)
       lineF(p, cpsStmts, "goto $1;$n", [lend])
     else:
@@ -626,13 +626,13 @@ proc genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
                     rangeFormat, eqFormat: FormatStr) =
   var a: TLoc
   initLocExpr(p, t.sons[0], a)
-  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
+  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, len(t)-1, a)
   fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
                          branches: var openArray[Rope]) =
   var x: TLoc
-  var length = sonsLen(b)
+  var length = len(b)
   for i in countup(0, length - 2):
     assert(b.sons[i].kind != nkRange)
     initLocExpr(p, b.sons[i], x)
@@ -644,8 +644,8 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
 proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
   # count how many constant strings there are in the case:
   var strings = 0
-  for i in countup(1, sonsLen(t) - 1):
-    if t.sons[i].kind == nkOfBranch: inc(strings, sonsLen(t.sons[i]) - 1)
+  for i in countup(1, len(t) - 1):
+    if t.sons[i].kind == nkOfBranch: inc(strings, len(t.sons[i]) - 1)
   if strings > stringCaseThreshold:
     var bitMask = math.nextPowerOfTwo(strings) - 1
     var branches: seq[Rope]
@@ -653,7 +653,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, t.sons[0], a) # fist pass: gnerate ifs+goto:
     var labId = p.labels
-    for i in countup(1, sonsLen(t) - 1):
+    for i in countup(1, len(t) - 1):
       inc(p.labels)
       if t.sons[i].kind == nkOfBranch:
         genCaseStringBranch(p, t.sons[i], a, "LA" & rope(p.labels),
@@ -669,16 +669,16 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
              [intLiteral(j), branches[j]])
     lineF(p, cpsStmts, "}$n", []) # else statement:
-    if t.sons[sonsLen(t)-1].kind != nkOfBranch:
+    if t.sons[len(t)-1].kind != nkOfBranch:
       lineF(p, cpsStmts, "goto LA$1;$n", [rope(p.labels)])
     # third pass: generate statements
-    var lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
+    var lend = genCaseSecondPass(p, t, d, labId, len(t)-1)
     fixLabel(p, lend)
   else:
     genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
 
 proc branchHasTooBigRange(b: PNode): bool =
-  for i in countup(0, sonsLen(b)-2):
+  for i in countup(0, len(b)-2):
     # last son is block
     if (b.sons[i].kind == nkRange) and
         b.sons[i].sons[1].intVal - b.sons[i].sons[0].intVal > RangeExpandLimit:
@@ -687,7 +687,7 @@ proc branchHasTooBigRange(b: PNode): bool =
 proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
   for i in 1..n.len-1:
     var branch = n[i]
-    var stmtBlock = lastSon(branch)
+    var stmtBlock = last(branch)
     if stmtBlock.stmtsContainPragma(wLinearScanEnd):
       result = i
     elif hasSwitchRange notin CC[cCompiler].props:
@@ -734,7 +734,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
         # else part of case statement:
         lineF(p, cpsStmts, "default:$n", [])
         hasDefault = true
-      exprBlock(p, branch.lastSon, d)
+      exprBlock(p, branch.last, d)
       lineF(p, cpsStmts, "break;$n", [])
     if (hasAssume in CC[cCompiler].props) and not hasDefault:
       lineF(p, cpsStmts, "default: __assume(0);$n", [])
@@ -789,7 +789,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
-  let length = sonsLen(t)
+  let length = len(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR);$n")
@@ -797,7 +797,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   var i = 1
   var catchAllPresent = false
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
-    let blen = sonsLen(t.sons[i])
+    let blen = len(t.sons[i])
     if i > 1: addf(p.s(cpsStmts), "else ", [])
     if blen == 1:
       # general except section:
@@ -826,7 +826,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   if not catchAllPresent:
     if i > 1: lineF(p, cpsStmts, "else ", [])
     startBlock(p)
-    var finallyBlock = t.lastSon
+    var finallyBlock = t.last
     if finallyBlock.kind == nkFinally:
       #expr(p, finallyBlock.sons[0], d)
       genStmts(p, finallyBlock.sons[0])
@@ -890,7 +890,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   else:
     linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", safePoint)
   startBlock(p, "if ($1.status == 0) {$n", [safePoint])
-  var length = sonsLen(t)
+  var length = len(t)
   add(p.nestedTryStmts, t)
   expr(p, t.sons[0], d)
   linefmt(p, cpsStmts, "#popSafePoint();$n")
@@ -902,7 +902,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   inc p.inExceptBlock
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
-    var blen = sonsLen(t.sons[i])
+    var blen = len(t.sons[i])
     if blen == 1:
       # general except section:
       if i > 1: lineF(p, cpsStmts, "else", [])
@@ -939,7 +939,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
   var res = ""
-  for i in countup(0, sonsLen(t) - 1):
+  for i in countup(0, len(t) - 1):
     case t.sons[i].kind
     of nkStrLit..nkTripleStrLit:
       res.add(t.sons[i].strVal)
@@ -1039,7 +1039,7 @@ proc genWatchpoint(p: BProc, n: PNode) =
         genTypeInfo(p.module, typ)])
 
 proc genPragma(p: BProc, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     var it = n.sons[i]
     case whichPragma(it)
     of wEmit: genEmit(p, it)

@@ -28,7 +28,7 @@ proc iterToProcImpl(c: PContext, n: PNode): PNode =
     return
 
   let t = n[2].typ.skipTypes({tyTypeDesc, tyGenericInst})
-  if t.kind notin {tyRef, tyPtr} or t.lastSon.kind != tyObject:
+  if t.kind notin {tyRef, tyPtr} or t.last.kind != tyObject:
     localError(n[2].info,
         "type must be a non-generic ref|ptr to object with state field")
     return
@@ -37,15 +37,15 @@ proc iterToProcImpl(c: PContext, n: PNode): PNode =
   let prc = newSym(skProc, n[3].ident, iter.sym.owner, iter.sym.info)
   prc.typ = copyType(iter.sym.typ, prc, false)
   excl prc.typ.flags, tfCapturesEnv
-  prc.typ.n.add newSymNode(getEnvParam(iter.sym))
-  prc.typ.rawAddSon t
+  prc.typ.n.add(newSymNode(getEnvParam(iter.sym)))
+  prc.typ.rawAdd t
   let orig = iter.sym.ast
   prc.ast = newProcNode(nkProcDef, n.info,
                         name = newSymNode(prc),
                         params = orig[paramsPos],
                         pragmas = orig[pragmasPos],
                         body = body)
-  prc.ast.add iter.sym.ast.sons[resultPos]
+  prc.ast.add(iter.sym.ast.sons[resultPos])
   addInterfaceDecl(c, prc)
 
 registerPlugin("stdlib", "system", "iterToProc", iterToProcImpl)

@@ -151,7 +151,7 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
     var importStmt = newNodeI(nodeKind, gCmdLineInfo)
     var str = newStrNode(nkStrLit, module)
     str.info = gCmdLineInfo
-    importStmt.addSon str
+    importStmt.add str
     if not processTopLevelStmt(importStmt, a): break
 
 proc processModule*(module: PSym, stream: PLLStream,
@@ -188,11 +188,11 @@ proc processModule*(module: PSym, stream: PLLStream,
         if sfNoForward in module.flags:
           # read everything, no streaming possible
           var sl = newNodeI(nkStmtList, n.info)
-          sl.add n
+          sl.add(n)
           while true:
             var n = parseTopLevelStmt(p)
             if n.kind == nkEmpty: break
-            sl.add n
+            sl.add(n)
           discard processTopLevelStmt(sl, a)
           break
         elif not processTopLevelStmt(n, a): break
@@ -204,6 +204,6 @@ proc processModule*(module: PSym, stream: PLLStream,
   else:
     openPassesCached(a, module, rd)
     var n = loadInitSection(rd)
-    for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
+    for i in countup(0, len(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)
   result = true

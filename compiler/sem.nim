@@ -108,7 +108,7 @@ proc commonType*(x, y: PType): PType =
     if a.sons == nil: result = a
     else:
       result = newType(tyTypeDesc, a.owner)
-      rawAddSon(result, newType(tyNone, a.owner))
+      rawAdd(result, newType(tyNone, a.owner))
   elif b.kind in {tyArray, tyArrayConstr, tySet, tySequence} and
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
@@ -147,8 +147,8 @@ proc commonType*(x, y: PType): PType =
     if a.kind in {tyRef, tyPtr}:
       k = a.kind
       if b.kind != a.kind: return x
-      a = a.lastSon
-      b = b.lastSon
+      a = a.last
+      b = b.last
     if a.kind == tyObject and b.kind == tyObject:
       result = commonSuperclass(a, b)
       # this will trigger an error later:
@@ -157,7 +157,7 @@ proc commonType*(x, y: PType): PType =
       if k != tyNone:
         let r = result
         result = newType(k, r.owner)
-        result.addSonSkipIntLit(r)
+        result.addSkipIntLit(r)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
@@ -391,7 +391,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
       if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
         internalError(prc.info, "no code for " & prc.name.s)
       else:
-        addSon(n, prc.ast)
+        add(n, prc.ast)
   c.lastGenericIdx = c.generics.len
 
 proc myOpen(module: PSym): PPassContext =
@@ -460,9 +460,9 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.lastGenericIdx < c.generics.len:
     var a = newNodeI(nkStmtList, n.info)
     addCodeForGenerics(c, a)
-    if sonsLen(a) > 0:
+    if len(a) > 0:
       # a generic has been added to `a`:
-      if result.kind != nkEmpty: addSon(a, result)
+      if result.kind != nkEmpty: add(a, result)
       result = a
   result = hloStmt(c, result)
   if gCmd == cmdInteractive and not isEmptyType(result.typ):

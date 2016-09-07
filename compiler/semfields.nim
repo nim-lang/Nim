@@ -23,7 +23,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(n)
-    var L = sonsLen(forLoop)
+    var L = len(forLoop)
     if c.replaceByFieldName:
       if ident.id == considerQuotedIdent(forLoop[0]).id:
         let fieldName = if c.tupleType.isNil: c.field.name.s
@@ -37,21 +37,21 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         var call = forLoop.sons[L-2]
         var tupl = call.sons[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
-          result = newNodeI(nkBracketExpr, n.info)
-          result.add(tupl)
-          result.add(newIntNode(nkIntLit, c.tupleIndex))
+          result = newNodeI(nkBracketExpr, n.info, 2)
+          result.sons[0] = tupl
+          result.sons[1] = newIntNode(nkIntLit, c.tupleIndex)
         else:
-          result = newNodeI(nkDotExpr, n.info)
-          result.add(tupl)
-          result.add(newSymNode(c.field, n.info))
+          result = newNodeI(nkDotExpr, n.info, 2)
+          result.sons[0] = tupl
+          result.sons[1] = newSymNode(c.field, n.info)
         break
   else:
     if n.kind == nkContinueStmt:
       localError(n.info, errGenerated,
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
-    newSons(result, sonsLen(n))
-    for i in countup(0, sonsLen(n)-1):
+    newSons(result, len(n))
+    for i in countup(0, len(n)-1):
       result.sons[i] = instFieldLoopBody(c, n.sons[i], forLoop)
 
 type
@@ -67,7 +67,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     fc.replaceByFieldName = c.m == mFieldPairs
     openScope(c.c)
     inc c.c.inUnrolledContext
-    let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
+    let body = instFieldLoopBody(fc, last(forLoop), forLoop)
     father.add(semStmt(c.c, body))
     dec c.c.inUnrolledContext
     closeScope(c.c)
@@ -82,19 +82,19 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     # iterate over the selector:
     semForObjectFields(c, typ[0], forLoop, father)
     # we need to generate a case statement:
-    var caseStmt = newNodeI(nkCaseStmt, forLoop.info)
+    var caseStmt = newNodeI(nkCaseStmt, forLoop.info, typ.len)
     # generate selector:
     var access = newNodeI(nkDotExpr, forLoop.info, 2)
     access.sons[0] = call.sons[1]
     access.sons[1] = newSymNode(typ.sons[0].sym, forLoop.info)
-    caseStmt.add(semExprWithType(c.c, access))
+    caseStmt.sons[0] = semExprWithType(c.c, access)
     # copy the branches over, but replace the fields with the for loop body:
     for i in 1 .. <typ.len:
       var branch = copyTree(typ[i])
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, forLoop.info)
-      semForObjectFields(c, typ[i].lastSon, forLoop, branch[L-1])
-      caseStmt.add(branch)
+      semForObjectFields(c, typ[i].last, forLoop, branch[L-1])
+      caseStmt.sons[i] = branch
     father.add(caseStmt)
   of nkRecList:
     for t in items(typ): semForObjectFields(c, t, forLoop, father)
@@ -115,9 +115,9 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var stmts = newNodeI(nkStmtList, n.info)
   result.sons[1] = stmts
 
-  var length = sonsLen(n)
+  var length = len(n)
   var call = n.sons[length-2]
-  if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
+  if length-2 != len(call)-1 + ord(m==mFieldPairs):
     localError(n.info, errWrongNumberOfVariables)
     return result
 
@@ -133,7 +133,8 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:
     var loopBody = n.sons[length-1]
-    for i in 0..sonsLen(tupleTypeA)-1:
+    stmts.sons = newSeq[PNode](len(tupleTypeA))
+    for i in 0 .. <len(tupleTypeA):
       openScope(c)
       var fc: TFieldInstCtx
       fc.tupleType = tupleTypeA
@@ -141,7 +142,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
-      stmts.add(semStmt(c, body))
+      stmts.sons[i] = semStmt(c, body)
       dec c.inUnrolledContext
       closeScope(c)
   else:

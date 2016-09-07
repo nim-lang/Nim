@@ -152,7 +152,7 @@ template wholeSymTab(cond, section: untyped) =
         inc outputs
 
 proc suggestSymList(c: PContext, list: PNode, outputs: var int) =
-  for i in countup(0, sonsLen(list) - 1):
+  for i in countup(0, len(list) - 1):
     if list.sons[i].kind == nkSym:
       suggestField(c, list.sons[i].sym, outputs)
     #else: InternalError(list.info, "getSymFromList")
@@ -160,12 +160,12 @@ proc suggestSymList(c: PContext, list: PNode, outputs: var int) =
 proc suggestObject(c: PContext, n: PNode, outputs: var int) =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], outputs)
+    for i in countup(0, len(n)-1): suggestObject(c, n.sons[i], outputs)
   of nkRecCase:
-    var L = sonsLen(n)
+    var L = len(n)
     if L > 0:
       suggestObject(c, n.sons[0], outputs)
-      for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), outputs)
+      for i in countup(1, L-1): suggestObject(c, last(n.sons[i]), outputs)
   of nkSym: suggestField(c, n.sym, outputs)
   else: discard
 
@@ -194,7 +194,7 @@ proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) =
               $ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
-  if s.typ != nil and sonsLen(s.typ) > 1 and s.typ.sons[1] != nil:
+  if s.typ != nil and len(s.typ) > 1 and s.typ.sons[1] != nil:
     # special rule: if system and some weird generic match via 'tyExpr'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion
@@ -319,7 +319,7 @@ proc findClosestSym(n: PNode): PNode =
   if n.kind == nkSym and inCheckpoint(n.info) == cpExact:
     result = n
   elif n.kind notin {nkNone..nkNilLit}:
-    for i in 0.. <sonsLen(n):
+    for i in 0.. <len(n):
       result = findClosestSym(n.sons[i])
       if result != nil: return
 
@@ -441,12 +441,12 @@ proc suggestExpr*(c: PContext, node: PNode) =
       var a = copyNode(n)
       var x = safeSemExpr(c, n.sons[0])
       if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
-      addSon(a, x)
-      for i in 1..sonsLen(n)-1:
+      add(a, x)
+      for i in 1..len(n)-1:
         # use as many typed arguments as possible:
         var x = safeSemExpr(c, n.sons[i])
         if x.kind == nkEmpty or x.typ == nil: break
-        addSon(a, x)
+        add(a, x)
       suggestCall(c, a, n, outputs)
 
   dec(c.compilesContextId)

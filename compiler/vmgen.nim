@@ -349,7 +349,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
           elsePos = c.xjmp(it.sons[0], opcFJmp, tmp) # if false
       c.clearDest(n, dest)
       c.gen(it.sons[1], dest) # then part
-      if i < sonsLen(n)-1:
+      if i < len(n)-1:
         endings.add(c.xjmp(it.sons[1], opcJmp, 0))
       c.patch(elsePos)
     else:
@@ -376,7 +376,7 @@ proc rawGenLiteral(c: PCtx; n: PNode): int =
   result = c.constants.len
   #assert(n.kind != nkCall)
   n.flags.incl nfAllConst
-  c.constants.add n.canonValue
+  c.constants.add(n.canonValue)
   internalAssert result < 0x7fff
 
 proc sameConstant*(a, b: PNode): bool =
@@ -393,8 +393,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkType, nkNilLit: result = a.typ == b.typ
     of nkEmpty: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+      if len(a) == len(b):
+        for i in countup(0, len(a) - 1):
           if not sameConstant(a.sons[i], b.sons[i]): return
         result = true
 
@@ -437,10 +437,10 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
-        let elsePos = c.xjmp(it.lastSon, opcFJmp, tmp)
-        c.gen(it.lastSon, dest)
-        if i < sonsLen(n)-1:
-          endings.add(c.xjmp(it.lastSon, opcJmp, 0))
+        let elsePos = c.xjmp(it.last, opcFJmp, tmp)
+        c.gen(it.last, dest)
+        if i < len(n)-1:
+          endings.add(c.xjmp(it.last, opcJmp, 0))
         c.patch(elsePos)
       c.clearDest(n, dest)
   for endPos in endings: c.patch(endPos)
@@ -472,13 +472,13 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
       if blen == 1:
         # general except section:
         c.gABx(it, opcExcept, 0, 0)
-      c.gen(it.lastSon, dest)
+      c.gen(it.last, dest)
       c.clearDest(n, dest)
-      if i < sonsLen(n)-1:
+      if i < len(n)-1:
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
   for endPos in endings: c.patch(endPos)
-  let fin = lastSon(n)
+  let fin = last(n)
   # we always generate an 'opcFinally' as that pops the safepoint
   # from the stack
   c.gABx(fin, opcFinally, 0, 0)
@@ -518,7 +518,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n.sons[0].typ, abstractInst)
   for i in 0.. <n.len:
-    #if i > 0 and i < sonsLen(fntyp):
+    #if i > 0 and i < len(fntyp):
     #  let paramType = fntyp.n.sons[i]
     #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
@@ -1137,13 +1137,13 @@ proc canElimAddr(n: PNode): PNode =
     if m.kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       result = copyNode(n.sons[0])
-      result.add m.sons[0]
+      result.add(m.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       result = copyNode(n.sons[0])
-      result.add m.sons[0]
+      result.add(m.sons[0])
   else:
     if n.sons[0].kind in {nkDerefExpr, nkHiddenDeref}:
       # addr ( deref ( x )) --> x
@@ -1439,16 +1439,16 @@ proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc getNullValueAux(obj: PNode, result: PNode) =
   case obj.kind
   of nkRecList:
-    for i in countup(0, sonsLen(obj) - 1): getNullValueAux(obj.sons[i], result)
+    for i in countup(0, len(obj) - 1): getNullValueAux(obj.sons[i], result)
   of nkRecCase:
     getNullValueAux(obj.sons[0], result)
-    for i in countup(1, sonsLen(obj) - 1):
-      getNullValueAux(lastSon(obj.sons[i]), result)
+    for i in countup(1, len(obj) - 1):
+      getNullValueAux(last(obj.sons[i]), result)
   of nkSym:
-    let field = newNodeI(nkExprColonExpr, result.info)
-    field.add(obj)
-    field.add(getNullValue(obj.sym.typ, result.info))
-    addSon(result, field)
+    let field = newNodeI(nkExprColonExpr, result.info, 2)
+    field.sons[0] = obj
+    field.sons[1] = getNullValue(obj.sym.typ, result.info)
+    add(result, field)
   else: globalError(result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo): PNode =
@@ -1470,9 +1470,10 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     if t.callConv != ccClosure:
       result = newNodeIT(nkNilLit, info, t)
     else:
-      result = newNodeIT(nkPar, info, t)
-      result.add(newNodeIT(nkNilLit, info, t))
-      result.add(newNodeIT(nkNilLit, info, t))
+      result = newNodeI(nkPar, info, 2)
+      result.typ = t
+      result.sons[0] = newNodeIT(nkNilLit, info, t)
+      result.sons[1] = newNodeIT(nkNilLit, info, t)
   of tyObject:
     result = newNodeIT(nkObjConstr, info, t)
     result.add(newNodeIT(nkEmpty, info, t))
@@ -1483,13 +1484,16 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       base = base.sons[0]
     getNullValueAux(t.n, result)
   of tyArray, tyArrayConstr:
-    result = newNodeIT(nkBracket, info, t)
-    for i in countup(0, int(lengthOrd(t)) - 1):
-      addSon(result, getNullValue(elemType(t), info))
+    let tLen = int(lengthOrd(t))
+    result = newNodeI(nkBracket, info, tLen)
+    result.typ = t
+    for i in countup(0, < tLen):
+      result.sons[i] = getNullValue(elemType(t), info)
   of tyTuple:
-    result = newNodeIT(nkPar, info, t)
-    for i in countup(0, sonsLen(t) - 1):
-      addSon(result, getNullValue(t.sons[i], info))
+    result = newNodeI(nkPar, info, len(t))
+    result.typ = t
+    for i in countup(0, len(t) - 1):
+      result.sons[i] = getNullValue(t.sons[i], info)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
   else:
@@ -1751,7 +1755,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     for i in 0 .. <L: gen(c, n.sons[i])
     gen(c, n.sons[L], dest, flags)
   of nkPragmaBlock:
-    gen(c, n.lastSon, dest, flags)
+    gen(c, n.last, dest, flags)
   of nkDiscardStmt:
     unused(n, dest)
     gen(c, n.sons[0])
@@ -1929,7 +1933,7 @@ proc genProc(c: PCtx; s: PSym): int =
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:
-      #let env = s.ast.sons[paramsPos].lastSon.sym
+      #let env = s.ast.sons[paramsPos].last.sym
       #assert env.position == 2
       c.prc.slots[c.prc.maxSlots] = (inUse: true, kind: slotFixedLet)
       inc c.prc.maxSlots

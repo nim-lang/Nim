@@ -27,7 +27,7 @@ proc invalidPragma(n: PNode) =
 proc getArg(n: PNode, name: string, pos: int): PNode =
   result = nil
   if n.kind in {nkEmpty..nkNilLit}: return
-  for i in countup(1, sonsLen(n) - 1):
+  for i in countup(1, len(n) - 1):
     if n.sons[i].kind == nkExprEqExpr:
       if n.sons[i].sons[0].kind != nkIdent: invalidPragma(n)
       if identEq(n.sons[i].sons[0].ident, name):

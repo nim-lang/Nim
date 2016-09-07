@@ -30,7 +30,7 @@ proc instantiateDestructor(c: PContext, typ: PType): PType
 proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
   var t = s.typ.sons[1].skipTypes({tyVar})
   if t.kind == tyGenericInvocation:
-    for i in 1 .. <t.sonsLen:
+    for i in 1 .. <t.len:
       if t.sons[i].kind != tyGenericParam:
         localError(n.info, errDestructorNotGenericEnough)
         return
@@ -44,13 +44,13 @@ proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
   t.destructor = s
   # automatically insert calls to base classes' destructors
   if n.sons[bodyPos].kind != nkEmpty:
-    for i in countup(0, t.sonsLen - 1):
+    for i in countup(0, t.len - 1):
       # when inheriting directly from object
       # there will be a single nil son
       if t.sons[i] == nil: continue
       let destructableT = instantiateDestructor(c, t.sons[i])
       if destructableT != nil:
-        n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
+        n.sons[bodyPos].add(newNode(nkCall, t.sym.info, @[
             useSym(destructableT.destructor),
             n.sons[paramsPos][1][0]]))
 
@@ -67,20 +67,20 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
   var nonTrivialFields = 0
   result = newNode(nkCaseStmt, n.info, @[])
   # case x.kind
-  result.addSon(newNode(nkDotExpr, n.info, @[holder, n.sons[0]]))
+  result.add(newNode(nkDotExpr, n.info, @[holder, n.sons[0]]))
   for i in countup(1, n.len - 1):
     # of A, B:
     let ni = n[i]
     var caseBranch = newNode(ni.kind, ni.info, ni.sons[0..ni.len-2])
 
-    let stmt = destroyFieldOrFields(c, ni.lastSon, holder)
+    let stmt = destroyFieldOrFields(c, ni.last, holder)
     if stmt == nil:
-      caseBranch.addSon(newNode(nkStmtList, ni.info, @[]))
+      caseBranch.add(newNode(nkStmtList, ni.info, @[]))
     else:
-      caseBranch.addSon(stmt)
+      caseBranch.add(stmt)
       nonTrivialFields += stmt.len
 
-    result.addSon(caseBranch)
+    result.add(caseBranch)
 
   # maybe no fields were destroyed?
   if nonTrivialFields == 0:
@@ -91,7 +91,7 @@ proc destroyFieldOrFields(c: PContext, field: PNode, holder: PNode): PNode =
     let stmt = e
     if stmt != nil:
       if result == nil: result = newNode(nkStmtList)
-      result.addSon(stmt)
+      result.add(stmt)
 
   case field.kind
   of nkRecCase:
@@ -202,7 +202,7 @@ proc insertDestructors(c: PContext,
   # `outer` is a statement list that should replace the original var section.
   # It will include the new truncated var section followed by the outermost
   # try block.
-  let totalVars = varSection.sonsLen
+  let totalVars = varSection.len
   for j in countup(0, totalVars - 1):
     let
       varId = varSection[j][0]
@@ -220,17 +220,17 @@ proc insertDestructors(c: PContext,
         remainingVars.sons = varSection.sons[(j+1)..varSection.len-1]
         let (outer, inner) = insertDestructors(c, remainingVars)
         if outer != nil:
-          tryStmt.addSon(outer)
+          tryStmt.add(outer)
           result.inner = inner
         else:
           result.inner = newNodeI(nkStmtList, info)
-          result.inner.addSon(remainingVars)
-          tryStmt.addSon(result.inner)
+          result.inner.add(remainingVars)
+          tryStmt.add(result.inner)
       else:
         result.inner = newNodeI(nkStmtList, info)
-        tryStmt.addSon(result.inner)
+        tryStmt.add(result.inner)
 
-      tryStmt.addSon(
+      tryStmt.add(
         newNode(nkFinally, info, @[
           semStmt(c, newNode(nkCall, info, @[
             useSym(destructableT.destructor),
@@ -238,7 +238,7 @@ proc insertDestructors(c: PContext,
 
       result.outer = newNodeI(nkStmtList, info)
       varSection.sons.setLen(j+1)
-      result.outer.addSon(varSection)
-      result.outer.addSon(tryStmt)
+      result.outer.add(varSection)
+      result.outer.add(tryStmt)
 
       return

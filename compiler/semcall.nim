@@ -13,8 +13,8 @@
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod:
-    var aa = lastSon(a.ast)
-    var bb = lastSon(b.ast)
+    var aa = last(a.ast)
+    var bb = last(b.ast)
     if aa.kind == nkSym and bb.kind == nkSym:
       if aa.sym == bb.sym:
         result = true
@@ -218,7 +218,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       else: return
 
     if nfDotField in n.flags:
-      internalAssert f.kind == nkIdent and n.sonsLen >= 2
+      internalAssert f.kind == nkIdent and n.len >= 2
       let calleeName = newStrNode(nkStrLit, f.ident.s).withInfo(n.info)
 
       # leave the op head symbol empty,
@@ -239,7 +239,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         tryOp "."
 
     elif nfDotSetter in n.flags:
-      internalAssert f.kind == nkIdent and n.sonsLen == 3
+      internalAssert f.kind == nkIdent and n.len == 3
       let calleeName = newStrNode(nkStrLit,
         f.ident.s[0..f.ident.s.len-2]).withInfo(n.info)
       let callOp = newIdentNode(getIdent".=", n.info)
@@ -279,7 +279,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     elif gErrorCounter == 0:
       # don't cascade errors
       var args = "("
-      for i in countup(1, sonsLen(n) - 1):
+      for i in countup(1, len(n) - 1):
         if i > 1: add(args, ", ")
         add(args, typeToString(n.sons[i].typ))
       add(args, ")")
@@ -356,9 +356,9 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
-          x.call.add s.ast
+          x.call.add(s.ast)
         of skType:
-          x.call.add newSymNode(s, n.info)
+          x.call.add(newSymNode(s, n.info))
         else:
           internalAssert false
 
@@ -374,7 +374,7 @@ proc canDeref(n: PNode): bool {.inline.} =
 proc tryDeref(n: PNode): PNode =
   result = newNodeI(nkHiddenDeref, n.info)
   result.typ = n.typ.skipTypes(abstractInst).sons[0]
-  result.addSon(n)
+  result.add(n)
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds): PNode =
@@ -404,7 +404,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   # binding has to stay 'nil' for this to work!
   initCandidate(c, m, s, nil)
 
-  for i in 1..sonsLen(n)-1:
+  for i in 1..len(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
     let arg = n[i].typ
     let tm = typeRel(m, formal, arg, true)
@@ -416,7 +416,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
-  for i in 1..sonsLen(n)-1:
+  for i in 1..len(n)-1:
     n.sons[i].typ = semTypeNode(c, n.sons[i], nil)
   var s = s
   var a = n.sons[0]
@@ -456,9 +456,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # for borrowing the sym in the symbol table is returned, else nil.
   # New approach: generate fn(x, y, z) where x, y, z have the proper types
   # and use the overloading resolution mechanism:
-  var call = newNodeI(nkCall, fn.info)
+  var call = newNodeI(nkCall, fn.info, fn.typ.n.len)
   var hasDistinct = false
-  call.add(newIdentNode(fn.name, fn.info))
+  call.sons[0] = newIdentNode(fn.name, fn.info)
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
     let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
@@ -466,10 +466,10 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var x: PType
     if param.typ.kind == tyVar:
       x = newTypeS(tyVar, c)
-      x.addSonSkipIntLit t.baseOfDistinct
+      x.addSkipIntLit t.baseOfDistinct
     else:
       x = t.baseOfDistinct
-    call.add(newNodeIT(nkEmpty, fn.info, x))
+    call.sons[i] = newNodeIT(nkEmpty, fn.info, x)
   if hasDistinct:
     var resolved = semOverloadedCall(c, call, call, {fn.kind})
     if resolved != nil:

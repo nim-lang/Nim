@@ -353,7 +353,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     # or maybe we should generate a 'try' XXX
   of nkVarSection, nkLetSection:
     for it in n:
-      let value = it.lastSon
+      let value = it.last
       let isSpawned = getMagic(value) == mSpawn
       if isSpawned:
         pushSpawnId(c):
@@ -399,11 +399,12 @@ proc transformSlices(n: PNode): PNode =
       result = copyNode(n)
       let opSlice = newSymNode(createMagic("slice", mSlice))
       opSlice.typ = getSysType(tyInt)
-      result.add opSlice
-      result.add n[1]
+      result.sons = newSeq[PNode](4)
+      result.sons[0] = opSlice
+      result.sons[1] = n[1]
       let slice = n[2].skipStmtList
-      result.add slice[1]
-      result.add slice[2]
+      result.sons[2] = slice[1]
+      result.sons[3] = slice[2]
       return result
   if n.safeLen > 0:
     result = shallowCopy(n)
@@ -423,16 +424,16 @@ proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
   of nkVarSection, nkLetSection:
     result = nil
     for it in n:
-      let b = it.lastSon
+      let b = it.last
       if getMagic(b) == mSpawn:
         if it.len != 3: localError(it.info, "invalid context for 'spawn'")
         let m = transformSlices(b)
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
-          result.add n
+          result.add(n)
         let t = b[1][0].typ.sons[0]
         if spawnResult(t, true) == srByVar:
-          result.add wrapProcForSpawn(owner, m, b.typ, barrier, it[0])
+          result.add(wrapProcForSpawn(owner, m, b.typ, barrier, it[0]))
           it.sons[it.len-1] = emptyNode
         else:
           it.sons[it.len-1] = wrapProcForSpawn(owner, m, b.typ, barrier, nil)
@@ -470,7 +471,7 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   #echo "PAR ", renderTree(n)
 
   var a = initAnalysisCtx()
-  let body = n.lastSon
+  let body = n.last
   analyse(a, body)
   if a.spawns == 0:
     localError(n.info, "'parallel' section without 'spawn'")
@@ -485,9 +486,9 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   varSection.addVar tempNode
 
   let barrier = genAddrOf(tempNode)
-  result = newNodeI(nkStmtList, n.info)
+  result = newNodeI(nkStmtList, n.info, 4)
   generateAliasChecks(a, result)
-  result.add varSection
-  result.add callCodegenProc("openBarrier", barrier)
-  result.add transformSpawn(owner, body, barrier)
-  result.add callCodegenProc("closeBarrier", barrier)
+  result.sons[0] = varSection
+  result.sons[1] = callCodegenProc("openBarrier", barrier)
+  result.sons[2] = transformSpawn(owner, body, barrier)
+  result.sons[3] = callCodegenProc("closeBarrier", barrier)

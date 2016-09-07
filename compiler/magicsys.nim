@@ -126,7 +126,7 @@ proc skipIntLit*(t: PType): PType {.inline.} =
       return getSysType(t.kind)
   result = t
 
-proc addSonSkipIntLit*(father, son: PType) =
+proc addSkipIntLit*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit
   add(father.sons, s)

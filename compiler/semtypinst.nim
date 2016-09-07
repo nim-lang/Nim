@@ -63,7 +63,7 @@ proc cacheTypeInst*(inst: PType) =
   # XXX: add to module's generics
   #      update the refcount
   let gt = inst.sons[0]
-  let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
+  let t = if gt.kind == tyGenericBody: gt.last else: gt
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     return
   gt.sym.typeInstCache.safeAdd(inst)
@@ -167,19 +167,19 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
       result = newNode(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       var it = n.sons[i]
       if it == nil: illFormedAst(n)
       case it.kind
       of nkElifBranch:
-        checkSonsLen(it, 2)
+        checkLen(it, 2)
         var cond = prepareNode(cl, it.sons[0])
         var e = cl.c.semConstExpr(cl.c, cond)
         if e.kind != nkIntLit:
           internalError(e.info, "ReplaceTypeVarsN: when condition not a bool")
         if e.intVal != 0 and branch == nil: branch = it.sons[1]
       of nkElse:
-        checkSonsLen(it, 1)
+        checkLen(it, 1)
         if branch == nil: branch = it.sons[0]
       else: illFormedAst(n)
     if branch != nil:
@@ -192,7 +192,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
   else:
-    var length = sonsLen(n)
+    var length = len(n)
     if length > 0:
       newSons(result, length)
       if start > 0:
@@ -247,7 +247,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     result = searchInstTypes(t)
   if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
-  for i in countup(1, sonsLen(t) - 1):
+  for i in countup(1, len(t) - 1):
     var x = t.sons[i]
     if x.kind == tyGenericParam:
       x = lookupTypeVar(cl, x)
@@ -267,7 +267,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   result = newType(tyGenericInst, t.sons[0].owner)
   result.flags = header.flags
-  # be careful not to propagate unnecessary flags here (don't use rawAddSon)
+  # be careful not to propagate unnecessary flags here (don't use rawAdd)
   result.sons = @[header.sons[0]]
   # ugh need another pass for deeply recursive generic types (e.g. PActor)
   # we need to add the candidate here, before it's fully instantiated for
@@ -279,19 +279,19 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
-  for i in countup(1, sonsLen(t) - 1):
+  for i in countup(1, len(t) - 1):
     var x = replaceTypeVarsT(cl, t.sons[i])
     assert x.kind != tyGenericInvocation
     header.sons[i] = x
     propagateToOwner(header, x)
     idTablePut(cl.typeMap, body.sons[i-1], x)
 
-  for i in countup(1, sonsLen(t) - 1):
+  for i in countup(1, len(t) - 1):
     # if one of the params is not concrete, we cannot do anything
     # but we already raised an error!
-    rawAddSon(result, header.sons[i])
+    rawAdd(result, header.sons[i])
 
-  let bbody = lastSon body
+  let bbody = last body
   var newbody = replaceTypeVarsT(cl, bbody)
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
@@ -302,7 +302,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # One step is enough, because the recursive nature of
   # handleGenericInvocation will handle the alias-to-alias-to-alias case
   if newbody.isGenericAlias: newbody = newbody.skipGenericAlias
-  rawAddSon(result, newbody)
+  rawAdd(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
   let dc = newbody.deepCopy
   if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
@@ -328,11 +328,11 @@ proc eraseVoidParams*(t: PType) =
   if t.sons[0] != nil and t.sons[0].kind == tyVoid:
     t.sons[0] = nil
 
-  for i in 1 .. <t.sonsLen:
+  for i in 1 .. <t.len:
     # don't touch any memory unless necessary
     if t.sons[i].kind == tyVoid:
       var pos = i
-      for j in i+1 .. <t.sonsLen:
+      for j in i+1 .. <t.len:
         if t.sons[j].kind != tyVoid:
           t.sons[pos] = t.sons[j]
           t.n.sons[pos] = t.n.sons[j]
@@ -342,7 +342,7 @@ proc eraseVoidParams*(t: PType) =
       return
 
 proc skipIntLiteralParams*(t: PType) =
-  for i in 0 .. <t.sonsLen:
+  for i in 0 .. <t.len:
     let p = t.sons[i]
     if p == nil: continue
     let skipped = p.skipIntLit
@@ -397,7 +397,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   of tyGenericBody:
     localError(cl.info, errCannotInstantiateX, typeToString(t))
     result = errorType(cl.c)
-    #result = replaceTypeVarsT(cl, lastSon(t))
+    #result = replaceTypeVarsT(cl, last(t))
 
   of tyFromExpr:
     if cl.allowMetaTypes: return
@@ -441,9 +441,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     bailout()
     result = instCopyType(cl, t)
     idTablePut(cl.localCache, t, result)
-    for i in 1 .. <result.sonsLen:
+    for i in 1 .. <result.len:
       result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
-    propagateToOwner(result, result.lastSon)
+    propagateToOwner(result, result.last)
 
   else:
     if containsGenericType(t):
@@ -454,7 +454,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       #if not cl.allowMetaTypes:
       idTablePut(cl.localCache, t, result)
 
-      for i in countup(0, sonsLen(result) - 1):
+      for i in countup(0, len(result) - 1):
         if result.sons[i] != nil:
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:

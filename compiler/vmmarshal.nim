@@ -17,16 +17,16 @@ proc ptrToInt(x: PNode): int {.inline.} =
 proc getField(n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       result = getField(n.sons[i], position)
       if result != nil: return
   of nkRecCase:
     result = getField(n.sons[0], position)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = getField(lastSon(n.sons[i]), position)
+        result = getField(last(n.sons[i]), position)
         if result != nil: return
       else: internalError(n.info, "getField(record case branch)")
   of nkSym:
@@ -38,7 +38,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet)
 proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet) =
   internalAssert x.kind == nkObjConstr
   let start = 1
-  for i in countup(start, sonsLen(x) - 1):
+  for i in countup(start, len(x) - 1):
     if i > start: s.add(", ")
     var it = x.sons[i]
     if it.kind == nkExprColonExpr:
@@ -94,15 +94,15 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
       if i > 0: s.add(", ")
       if a[i].kind == nkRange:
         var x = copyNode(a[i][0])
-        storeAny(s, t.lastSon, x, stored)
+        storeAny(s, t.last, x, stored)
         while x.intVal+1 <= a[i][1].intVal:
           s.add(", ")
-          storeAny(s, t.lastSon, x, stored)
+          storeAny(s, t.last, x, stored)
           inc x.intVal
       else:
-        storeAny(s, t.lastSon, a[i], stored)
+        storeAny(s, t.last, a[i], stored)
     s.add("]")
-  of tyRange, tyGenericInst: storeAny(s, t.lastSon, a, stored)
+  of tyRange, tyGenericInst: storeAny(s, t.last, a, stored)
   of tyEnum:
     # we need a slow linear search because of enums with holes:
     for e in items(t.n):
@@ -121,7 +121,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
       s.add("[")
       s.add($x.ptrToInt)
       s.add(", ")
-      storeAny(s, t.lastSon, a, stored)
+      storeAny(s, t.last, a, stored)
       s.add("]")
   of tyString, tyCString:
     if a.kind == nkNilLit or a.strVal.isNil: s.add("null")
@@ -170,7 +170,7 @@ proc loadAny(p: var JsonParser, t: PType,
     next(p)
     result = newNode(nkBracket)
     while p.kind != jsonArrayEnd and p.kind != jsonEof:
-      result.add loadAny(p, t.elemType, tab)
+      result.add(loadAny(p, t.elemType, tab))
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
   of tySequence:
@@ -182,7 +182,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       result = newNode(nkBracket)
       while p.kind != jsonArrayEnd and p.kind != jsonEof:
-        result.add loadAny(p, t.elemType, tab)
+        result.add(loadAny(p, t.elemType, tab))
       if p.kind == jsonArrayEnd: next(p)
       else: raiseParseErr(p, "")
     else:
@@ -198,7 +198,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       if i >= t.len:
         raiseParseErr(p, "too many fields to tuple type " & typeToString(t))
-      result.add loadAny(p, t.sons[i], tab)
+      result.add(loadAny(p, t.sons[i], tab))
       inc i
     if p.kind == jsonObjectEnd: next(p)
     else: raiseParseErr(p, "'}' end of object expected")
@@ -219,8 +219,8 @@ proc loadAny(p: var JsonParser, t: PType,
       if pos >= result.sons.len:
         setLen(result.sons, pos + 1)
       let fieldNode = newNode(nkExprColonExpr)
-      fieldNode.addSon(newSymNode(newSym(skField, ident, nil, unknownLineInfo())))
-      fieldNode.addSon(loadAny(p, field.typ, tab))
+      fieldNode.add(newSymNode(newSym(skField, ident, nil, unknownLineInfo())))
+      fieldNode.add(loadAny(p, field.typ, tab))
       result.sons[pos] = fieldNode
     if p.kind == jsonObjectEnd: next(p)
     else: raiseParseErr(p, "'}' end of object expected")
@@ -229,7 +229,7 @@ proc loadAny(p: var JsonParser, t: PType,
     next(p)
     result = newNode(nkCurly)
     while p.kind != jsonArrayEnd and p.kind != jsonEof:
-      result.add loadAny(p, t.lastSon, tab)
+      result.add(loadAny(p, t.last, tab))
       next(p)
     if p.kind == jsonArrayEnd: next(p)
     else: raiseParseErr(p, "']' end of array expected")
@@ -248,7 +248,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if p.kind == jsonInt:
         let idx = p.getInt
         next(p)
-        result = loadAny(p, t.lastSon, tab)
+        result = loadAny(p, t.last, tab)
         tab[idx] = result
       else: raiseParseErr(p, "index for ref type expected")
       if p.kind == jsonArrayEnd: next(p)
@@ -275,7 +275,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       return
     raiseParseErr(p, "float expected")
-  of tyRange, tyGenericInst: result = loadAny(p, t.lastSon, tab)
+  of tyRange, tyGenericInst: result = loadAny(p, t.last, tab)
   else:
     internalError "cannot marshal at compile-time " & t.typeToString
 

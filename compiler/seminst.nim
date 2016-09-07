@@ -19,7 +19,7 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   of nkRecCase:
     if n.len > 0: rec n.sons[0]
     for i in countup(1, len(n)-1):
-      if n[i].kind in {nkOfBranch, nkElse}: rec lastSon(n[i])
+      if n[i].kind in {nkOfBranch, nkElse}: rec last(n[i])
   of nkSym:
     let f = n.sym
     if f.kind == skField and fieldVisible(c, f):

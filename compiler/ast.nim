@@ -971,11 +971,6 @@ proc safeLen*(n: PNode): int {.inline.} =
   if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
   else: result = len(n.sons)
 
-proc add*(father, son: PNode) =
-  assert son != nil
-  if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
-
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
@@ -1171,13 +1166,13 @@ proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result.info = info
   result.typ = typ
 
-proc addSon*(father, son: PNode) =
+proc add*(father, son: PNode) =
   assert son != nil
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 var emptyParams = newNode(nkFormalParams)
-emptyParams.addSon(emptyNode)
+emptyParams.add(emptyNode)
 
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                  params = emptyParams,
@@ -1232,11 +1227,9 @@ proc newSons*(father: PType, length: int) =
   else:
     setLen(father.sons, length)
 
-proc sonsLen*(n: PType): int = n.sons.len
 proc len*(n: PType): int = n.sons.len
-proc sonsLen*(n: PNode): int = n.sons.len
-proc lastSon*(n: PNode): PNode = n.sons[^1]
-proc lastSon*(n: PType): PType = n.sons[^1]
+proc last*(n: PNode): PNode = n.sons[^1]
+proc last*(n: PType): PType = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1257,8 +1250,8 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, sonsLen(src))
-  for i in countup(0, sonsLen(src) - 1): dest.sons[i] = src.sons[i]
+  newSons(dest, len(src))
+  for i in countup(0, len(src) - 1): dest.sons[i] = src.sons[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1338,14 +1331,14 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds: result = last(result)
 
 proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
   while result != nil and result.kind in kinds:
     if result.len == 0: return nil
-    result = lastSon(result)
+    result = last(result)
 
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
@@ -1385,18 +1378,18 @@ proc propagateToOwner*(owner, elem: PType) =
       # ensure this doesn't bite us in sempass2.
       owner.flags.incl tfHasGCedMem
 
-proc rawAddSon*(father, son: PType) =
+proc rawAdd*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
   if not son.isNil: propagateToOwner(father, son)
 
-proc addSonNilAllowed*(father, son: PNode) =
+proc addNilAllowed*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-proc delSon*(father: PNode, idx: int) =
+proc del*(father: PNode, idx: int) =
   if isNil(father.sons): return
-  var length = sonsLen(father)
+  var length = len(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)
 
@@ -1435,7 +1428,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, sonsLen(src))
+  else: newSeq(result.sons, len(src))
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
@@ -1455,12 +1448,12 @@ proc copyTree*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1):
+    newSeq(result.sons, len(src))
+    for i in countup(0, len(src) - 1):
       result.sons[i] = copyTree(src.sons[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in countup(0, sonsLen(n) - 1):
+  for i in countup(0, len(n) - 1):
     if n.sons[i].kind == kind:
       return true
   result = false
@@ -1478,14 +1471,14 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if n.kind in kinds or containsNode(n.sons[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
         return true
     result = false
@@ -1561,18 +1554,11 @@ proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
   result = t == nil or t.kind in {tyVoid, tyStmt}
 
-proc makeStmtList*(n: PNode): PNode =
-  if n.kind == nkStmtList:
-    result = n
-  else:
-    result = newNodeI(nkStmtList, n.info)
-    result.add n
-
 proc skipStmtList*(n: PNode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr}:
     for i in 0 .. n.len-2:
       if n[i].kind notin {nkEmpty, nkCommentStmt}: return n
-    result = n.lastSon
+    result = n.last
   else:
     result = n
 

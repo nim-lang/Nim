@@ -119,11 +119,11 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyArray, tyArrayConstr:
       result = "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))]
     of tyPtr, tyRef:
-      case lastSon(a.t).kind
+      case last(a.t).kind
       of tyString, tySequence:
         result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
       of tyArray, tyArrayConstr:
-        result = "$1, $2" % [rdLoc(a), rope(lengthOrd(lastSon(a.t)))]
+        result = "$1, $2" % [rdLoc(a), rope(lengthOrd(last(a.t)))]
       else:
         internalError("openArrayLoc: " & typeToString(a.t))
     else: internalError("openArrayLoc: " & typeToString(a.t))
@@ -168,7 +168,7 @@ proc genArgNoParam(p: BProc, n: PNode): Rope =
     result = rdLoc(a)
 
 template genParamLoop(params) {.dirty.} =
-  if i < sonsLen(typ):
+  if i < len(typ):
     assert(typ.n.sons[i].kind == nkSym)
     let paramType = typ.n.sons[i]
     if not paramType.typ.isCompileTimeOnly:
@@ -186,8 +186,8 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  assert(sonsLen(typ) == sonsLen(typ.n))
-  var length = sonsLen(ri)
+  assert(len(typ) == len(typ.n))
+  var length = len(ri)
   for i in countup(1, length - 1):
     genParamLoop(params)
   fixupCall(p, le, ri, d, op.r, params)
@@ -208,9 +208,9 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = sonsLen(ri)
+  var length = len(ri)
   for i in countup(1, length - 1):
-    assert(sonsLen(typ) == sonsLen(typ.n))
+    assert(len(typ) == len(typ.n))
     genParamLoop(pl)
 
   template genCallPattern {.dirty.} =
@@ -220,7 +220,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if sonsLen(ri) > 1: add(pl, ~", ")
+      if len(ri) > 1: add(pl, ~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
@@ -248,7 +248,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genCallPattern()
 
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
-  if i < sonsLen(typ):
+  if i < len(typ):
     # 'var T' is 'T&' in C++. This means we ignore the request of
     # any nkHiddenAddr when it's a 'var T'.
     let paramType = typ.n.sons[i]
@@ -325,7 +325,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   # for better or worse c2nim translates the 'this' argument to a 'var T'.
   # However manual wrappers may also use 'ptr T'. In any case we support both
   # for convenience.
-  internalAssert i < sonsLen(typ)
+  internalAssert i < len(typ)
   assert(typ.n.sons[i].kind == nkSym)
   # if the parameter is lying (tyVar) and thus we required an additional deref,
   # skip the deref:
@@ -416,8 +416,8 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = sonsLen(ri)
-  assert(sonsLen(typ) == sonsLen(typ.n))
+  var length = len(ri)
+  assert(len(typ) == len(typ.n))
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
   internalAssert pat != nil
@@ -452,7 +452,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
     var params: Rope
     for i in countup(2, length - 1):
       if params != nil: params.add(~", ")
-      assert(sonsLen(typ) == sonsLen(typ.n))
+      assert(len(typ) == len(typ.n))
       add(params, genOtherArg(p, ri, i, typ))
     fixupCall(p, le, ri, d, pl, params)
 
@@ -464,8 +464,8 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
-  var length = sonsLen(ri)
-  assert(sonsLen(typ) == sonsLen(typ.n))
+  var length = len(ri)
+  assert(len(typ) == len(typ.n))
 
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
@@ -487,8 +487,8 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       add(pl, ~": ")
       add(pl, genArg(p, ri.sons[2], typ.n.sons[2].sym, ri))
   for i in countup(start, length-1):
-    assert(sonsLen(typ) == sonsLen(typ.n))
-    if i >= sonsLen(typ):
+    assert(len(typ) == len(typ.n))
+    if i >= len(typ):
       internalError(ri.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
@@ -498,7 +498,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     add(pl, genArg(p, ri.sons[i], param, ri))
   if typ.sons[0] != nil:
     if isInvalidReturnType(typ.sons[0]):
-      if sonsLen(ri) > 1: add(pl, ~" ")
+      if len(ri) > 1: add(pl, ~" ")
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:

@@ -25,21 +25,21 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode) =
   if n == nil: return
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       genTraverseProc(c, accessor, n.sons[i])
   of nkRecCase:
     if (n.sons[0].kind != nkSym): internalError(n.info, "genTraverseProc")
     var p = c.p
     let disc = n.sons[0].sym
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
-    for i in countup(1, sonsLen(n) - 1):
+    for i in countup(1, len(n) - 1):
       let branch = n.sons[i]
       assert branch.kind in {nkOfBranch, nkElse}
       if branch.kind == nkOfBranch:
         genCaseRange(c.p, branch)
       else:
         lineF(p, cpsStmts, "default:$n", [])
-      genTraverseProc(c, accessor, lastSon(branch))
+      genTraverseProc(c, accessor, last(branch))
       lineF(p, cpsStmts, "break;$n", [])
     lineF(p, cpsStmts, "} $n", [])
   of nkSym:
@@ -62,7 +62,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc:
-    genTraverseProc(c, accessor, lastSon(typ))
+    genTraverseProc(c, accessor, last(typ))
   of tyArrayConstr, tyArray:
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc
@@ -72,14 +72,14 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
     genTraverseProc(c, rfmt(nil, "$1[$2]", accessor, i.r), typ.sons[1])
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
-    for i in countup(0, sonsLen(typ) - 1):
+    for i in countup(0, len(typ) - 1):
       var x = typ.sons[i]
       if x != nil: x = x.skipTypes(skipPtrs)
       genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
     let typ = getUniqueType(typ)
-    for i in countup(0, sonsLen(typ) - 1):
+    for i in countup(0, len(typ) - 1):
       genTraverseProc(c, rfmt(nil, "$1.Field$2", accessor, i.rope), typ.sons[i])
   of tyRef, tyString, tySequence:
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)

@@ -116,7 +116,7 @@ proc packSize(v: PNode, typ: PType): int =
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     else:
-      result = sizeof(pointer) + packSize(v.sons[0], typ.lastSon)
+      result = sizeof(pointer) + packSize(v.sons[0], typ.last)
   of tyDistinct, tyGenericInst:
     result = packSize(v, typ.sons[0])
   of tyArray, tyArrayConstr:
@@ -134,16 +134,16 @@ proc pack(v: PNode, typ: PType, res: pointer)
 proc getField(n: PNode; position: int): PSym =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       result = getField(n.sons[i], position)
       if result != nil: return 
   of nkRecCase:
     result = getField(n.sons[0], position)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
+    for i in countup(1, len(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        result = getField(lastSon(n.sons[i]), position)
+        result = getField(last(n.sons[i]), position)
         if result != nil: return
       else: internalError(n.info, "getField(record case branch)")
   of nkSym:
@@ -154,7 +154,7 @@ proc packObject(x: PNode, typ: PType, res: pointer) =
   internalAssert x.kind in {nkObjConstr, nkPar}
   # compute the field's offsets:
   discard typ.getSize
-  for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
+  for i in countup(ord(x.kind == nkObjConstr), len(x) - 1):
     var it = x.sons[i]
     if it.kind == nkExprColonExpr:
       internalAssert it.sons[0].kind == nkSym
@@ -220,7 +220,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
         packRecCheck = 0
         globalError(v.info, "cannot map value to FFI " & typeToString(v.typ))
       inc packRecCheck
-      pack(v.sons[0], typ.lastSon, res +! sizeof(pointer))
+      pack(v.sons[0], typ.last, res +! sizeof(pointer))
       dec packRecCheck
       awr(pointer, res +! sizeof(pointer))
   of tyArray, tyArrayConstr:
@@ -241,7 +241,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode
 proc unpackObjectAdd(x: pointer, n, result: PNode) =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
+    for i in countup(0, len(n) - 1):
       unpackObjectAdd(x, n.sons[i], result)
   of nkRecCase:
     globalError(result.info, "case objects cannot be unpacked")
@@ -271,7 +271,7 @@ proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
       globalError(n.info, "cannot map value from FFI")
     if typ.n.isNil:
       globalError(n.info, "cannot unpack unnamed tuple")
-    for i in countup(ord(n.kind == nkObjConstr), sonsLen(n) - 1):
+    for i in countup(ord(n.kind == nkObjConstr), len(n) - 1):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr:
         internalAssert it.sons[0].kind == nkSym
@@ -372,7 +372,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       awi(nkPtrLit, cast[ByteAddress](p))
     elif n != nil and n.len == 1:
       internalAssert n.kind == nkRefTy
-      n.sons[0] = unpack(p, typ.lastSon, n.sons[0])
+      n.sons[0] = unpack(p, typ.last, n.sons[0])
       result = n
     else:
       globalError(n.info, "cannot map value from FFI " & typeToString(typ))

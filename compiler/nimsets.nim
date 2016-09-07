@@ -34,7 +34,7 @@ proc inSet(s: PNode, elem: PNode): bool =
   if s.kind != nkCurly:
     internalError(s.info, "inSet")
     return false
-  for i in countup(0, sonsLen(s) - 1):
+  for i in countup(0, len(s) - 1):
     if s.sons[i].kind == nkRange:
       if leValue(s.sons[i].sons[0], elem) and
           leValue(elem, s.sons[i].sons[1]):
@@ -63,7 +63,7 @@ proc someInSet(s: PNode, a, b: PNode): bool =
   if s.kind != nkCurly:
     internalError(s.info, "SomeInSet")
     return false
-  for i in countup(0, sonsLen(s) - 1):
+  for i in countup(0, len(s) - 1):
     if s.sons[i].kind == nkRange:
       if leValue(s.sons[i].sons[0], b) and leValue(b, s.sons[i].sons[1]) or
           leValue(s.sons[i].sons[0], a) and leValue(a, s.sons[i].sons[1]):
@@ -78,7 +78,7 @@ proc toBitSet(s: PNode, b: var TBitSet) =
   var first, j: BiggestInt
   first = firstOrd(s.typ.sons[0])
   bitSetInit(b, int(getSize(s.typ)))
-  for i in countup(0, sonsLen(s) - 1):
+  for i in countup(0, len(s) - 1):
     if s.sons[i].kind == nkRange:
       j = getOrdValue(s.sons[i].sons[0])
       while j <= getOrdValue(s.sons[i].sons[1]):
@@ -109,15 +109,15 @@ proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
       let aa = newIntTypeNode(nkIntLit, a + first, elemType)
       aa.info = info
       if a == b:
-        addSon(result, aa)
+        add(result, aa)
       else:
         n = newNodeI(nkRange, info)
         n.typ = elemType
-        addSon(n, aa)
+        add(n, aa)
         let bb = newIntTypeNode(nkIntLit, b + first, elemType)
         bb.info = info
-        addSon(n, bb)
-        addSon(result, n)
+        add(n, bb)
+        add(result, n)
       e = b
     inc(e)
 
@@ -155,7 +155,7 @@ proc cardSet(s: PNode): BiggestInt =
   # here we can do better than converting it into a compact set
   # we just count the elements directly
   result = 0
-  for i in countup(0, sonsLen(s) - 1):
+  for i in countup(0, len(s) - 1):
     if s.sons[i].kind == nkRange:
       result = result + getOrdValue(s.sons[i].sons[1]) -
           getOrdValue(s.sons[i].sons[0]) + 1
@@ -166,7 +166,7 @@ proc setHasRange(s: PNode): bool =
   if s.kind != nkCurly:
     internalError(s.info, "SetHasRange")
     return false
-  for i in countup(0, sonsLen(s) - 1):
+  for i in countup(0, len(s) - 1):
     if s.sons[i].kind == nkRange:
       return true
   result = false

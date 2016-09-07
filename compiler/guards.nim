@@ -122,7 +122,7 @@ proc neg(n: PNode): PNode =
       var s = newNodeIT(nkCurly, n.info, n.sons[1].typ)
       for e in t.n:
         let eAsNode = newIntNode(nkIntLit, e.sym.position)
-        if not inSet(n.sons[1], eAsNode): s.add eAsNode
+        if not inSet(n.sons[1], eAsNode): s.add(eAsNode)
       result.sons[1] = s
     elif t.kind notin {tyString, tySequence} and lengthOrd(t) < 1000:
       result.sons[1] = complement(n.sons[1])
@@ -391,7 +391,7 @@ proc usefulFact(n: PNode): PNode =
     if n.sym.ast != nil:
       result = usefulFact(n.sym.ast)
   elif n.kind == nkStmtListExpr:
-    result = usefulFact(n.lastSon)
+    result = usefulFact(n.last)
 
 type
   TModel* = seq[PNode] # the "knowledge base"
@@ -433,8 +433,8 @@ proc sameTree*(a, b: PNode): bool =
     of nkType: result = a.typ == b.typ
     of nkEmpty, nkNilLit: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
+      if len(a) == len(b):
+        for i in countup(0, len(a) - 1):
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
@@ -951,7 +951,7 @@ proc addFactLe*(m: var TModel; a, b: PNode) =
 
 proc settype(n: PNode): PType =
   result = newType(tySet, n.typ.owner)
-  addSonSkipIntLit(result, n.typ)
+  addSkipIntLit(result, n.typ)
 
 proc buildOf(it, loc: PNode): PNode =
   var s = newNodeI(nkCurly, it.info, it.len-1)

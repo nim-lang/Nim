@@ -17,13 +17,13 @@ proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
     localError(n.info, errExprHasNoAddress)
-  result.add x
+  result.add(x)
   result.typ = makePtrType(c, x.typ)
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
   result = newNodeI(nkTypeOfExpr, n.info)
   let typExpr = semExprWithType(c, n, {efInTypeof})
-  result.add typExpr
+  result.add(typExpr)
   result.typ = makeTypeDesc(c, typExpr.typ.skipTypes({tyTypeDesc, tyIter}))
 
 type
@@ -36,8 +36,8 @@ proc skipAddr(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n.sons[0] else: n)
 
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
-  result = newNodeI(nkBracketExpr, n.info)
-  for i in 1..<n.len: result.add(n[i])
+  result = newNodeI(nkBracketExpr, n.info, <n.len)
+  for i in 1..<n.len: result.sons[i - 1] = n[i]
   let oldBracketExpr = c.p.bracketExpr
   result = semSubscript(c, result, flags)
   c.p.bracketExpr = oldBracketExpr
@@ -50,12 +50,12 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # rewrite `[]=`(a, i, x)  back to ``a[i] = x``.
-  let b = newNodeI(nkBracketExpr, n.info)
-  b.add(n[1].skipAddr)
-  for i in 2..n.len-2: b.add(n[i])
+  let b = newNodeI(nkBracketExpr, n.info, n.len - 2)
+  b.sons[0] = n[1].skipAddr
+  for i in 2..n.len-2: b.sons[i - 1] = n[i]
   result = newNodeI(nkAsgn, n.info, 2)
   result.sons[0] = b
-  result.sons[1] = n.lastSon
+  result.sons[1] = n.last
   result = semAsgn(c, result, noOverloadedSubscript)
 
 proc semAsgnOpr(c: PContext; n: PNode): PNode =
@@ -75,7 +75,8 @@ proc expectIntLit(c: PContext, n: PNode): int =
   else: localError(n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
-  result = newNodeIT(nkPar, n.info, n.typ)
+  result = newNodeI(nkPar, n.info, 2)
+  result.typ = n.typ
   let idx = expectIntLit(c, n.sons[1])
   let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)
@@ -83,8 +84,8 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
   var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
   line.intVal = toLinenumber(info)
-  result.add(filename)
-  result.add(line)
+  result.sons[0] = filename
+  result.sons[1] = line
 
 proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
   let typ = operand.skipTypes({tyTypeDesc})
@@ -101,10 +102,10 @@ proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
     internalAssert false
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
-  checkMinSonsLen(n, 2)
+  checkMinLen(n, 2)
   let t = n.sons[1].typ
   internalAssert t != nil and t.kind == tyTypeDesc
-  if t.sonsLen > 0:
+  if t.len > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
     result = evalTypeTrait(n[0], t, getCurrOwner())
@@ -155,10 +156,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
   of mAddr:
-    checkSonsLen(n, 2)
+    checkLen(n, 2)
     result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2)
+    checkLen(n, 2)
     result = semTypeOf(c, n.sons[1])
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)
@@ -193,21 +194,22 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n.sons[1]
     else:
       # ^x  is rewritten to: len(a)-x
-      let lenExpr = newNodeI(nkCall, n.info)
-      lenExpr.add newIdentNode(getIdent"len", n.info)
-      lenExpr.add bracketExpr
+      let lenExpr = newNodeI(nkCall, n.info, 2)
+      lenExpr.sons[0] = newIdentNode(getIdent"len", n.info)
+      lenExpr.sons[1] = bracketExpr
       let lenExprB = semExprWithType(c, lenExpr)
       if lenExprB.typ.isNil or not isOrdinalType(lenExprB.typ):
         localError(n.info, "'$#' has to be of an ordinal type for '^'" %
           renderTree(lenExpr))
         result = n.sons[1]
       else:
-        result = newNodeIT(nkCall, n.info, getSysType(tyInt))
+        result = newNodeI(nkCall, n.info, 3)
+        result.typ = getSysType(tyInt)
         let subi = getSysMagic("-", mSubI)
         #echo "got ", typeToString(subi.typ)
-        result.add newSymNode(subi, n.info)
-        result.add lenExprB
-        result.add n.sons[1]
+        result.sons[0] = newSymNode(subi, n.info)
+        result.sons[1] = lenExprB
+        result.sons[2] = n.sons[1]
   of mPlugin:
     let plugin = getPlugin(n[0].sym)
     if plugin.isNil:

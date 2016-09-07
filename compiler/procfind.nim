@@ -14,8 +14,8 @@ import
   ast, astalgo, msgs, semdata, types, trees, strutils
 
 proc equalGenericParams(procA, procB: PNode): bool =
-  if sonsLen(procA) != sonsLen(procB): return
-  for i in countup(0, sonsLen(procA) - 1):
+  if len(procA) != len(procB): return
+  for i in countup(0, len(procA) - 1):
     if procA.sons[i].kind != nkSym:
       internalError(procA.info, "equalGenericParams")
       return
@@ -102,9 +102,9 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool =
-    var length = sonsLen(child)
+    var length = len(child)
     result = false
-    if length == sonsLen(parent):
+    if length == len(parent):
       for i in countup(1, length - 1):
         var m = child.sons[i].sym
         var n = parent.sons[i].sym

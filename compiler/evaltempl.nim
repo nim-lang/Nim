@@ -30,7 +30,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     if x.kind == nkArgList:
       for y in items(x): result.add(y)
     else:
-      result.add copyTree(x)
+      result.add(copyTree(x))
 
   case templ.kind
   of nkSym:
@@ -48,16 +48,16 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           x = copySym(s, false)
           x.owner = c.genSymOwner
           idTablePut(c.mapping, s, x)
-        result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
+        result.add(newSymNode(x, if c.instLines: actual.info else: templ.info))
     else:
-      result.add copyNode(c, templ, actual)
+      result.add(copyNode(c, templ, actual))
   of nkNone..nkIdent, nkType..nkNilLit: # atom
-    result.add copyNode(c, templ, actual)
+    result.add(copyNode(c, templ, actual))
   else:
     var res = copyNode(c, templ, actual)
-    for i in countup(0, sonsLen(templ) - 1):
+    for i in countup(0, len(templ) - 1):
       evalTemplateAux(templ.sons[i], actual, c, res)
-    result.add res
+    result.add(res)
 
 proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   # if the template has zero arguments, it can be called without ``()``
@@ -85,7 +85,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
 
   result = newNodeI(nkArgList, n.info)
   for i in 1 .. givenRegularParams:
-    result.addSon n.sons[i]
+    result.add n.sons[i]
 
   # handle parameters with default values, which were
   # not supplied by the user
@@ -93,13 +93,13 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
     let default = s.typ.n.sons[i].sym.ast
     if default.isNil or default.kind == nkEmpty:
       localError(n.info, errWrongNumberOfArguments)
-      addSon(result, ast.emptyNode)
+      add(result, ast.emptyNode)
     else:
-      addSon(result, default.copyTree)
+      add(result, default.copyTree)
 
   # add any generic paramaters
   for i in 1 .. genericParams:
-    result.addSon n.sons[givenRegularParams + i]
+    result.add n.sons[givenRegularParams + i]
 
 var evalTemplateCounter* = 0
   # to prevent endless recursion in templates instantiation

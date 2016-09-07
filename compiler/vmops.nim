@@ -56,8 +56,8 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
   for k, f in walkDir(path, relative):
-    result.add newTree(nkPar, newIntNode(nkIntLit, k.ord),
-                              newStrNode(nkStrLit, f))
+    result.add(newTree(nkPar, newIntNode(nkIntLit, k.ord),
+                              newStrNode(nkStrLit, f)))
 
 proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(sqrt)

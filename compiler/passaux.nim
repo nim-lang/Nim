@@ -34,7 +34,7 @@ proc cleanUp(c: PPassContext, n: PNode): PNode =
   if optDeadCodeElim in gGlobalOptions or n == nil: return
   case n.kind
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1): discard cleanUp(c, n.sons[i])
+    for i in countup(0, len(n) - 1): discard cleanUp(c, n.sons[i])
   of nkProcDef, nkMethodDef:
     if n.sons[namePos].kind == nkSym:
       var s = n.sons[namePos].sym
