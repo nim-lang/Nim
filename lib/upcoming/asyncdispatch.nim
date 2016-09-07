@@ -1373,6 +1373,7 @@ else:
   {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
+  proc `==`*(x, y: AsyncEvent): bool {.borrow.}
 
   proc newDispatcher*(): PDispatcher =
     new result
