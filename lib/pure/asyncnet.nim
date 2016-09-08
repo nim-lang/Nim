@@ -165,9 +165,14 @@ when defineSsl:
       await sendPendingSslData(socket, flags)
     of SSL_ERROR_WANT_READ:
       var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
-      let ret = bioWrite(socket.bioIn, addr data[0], data.len.cint)
-      if ret < 0:
-        raiseSSLError()
+      let length = len(data)
+      if length > 0:
+        let ret = bioWrite(socket.bioIn, addr data[0], data.len.cint)
+        if ret < 0:
+          raiseSSLError()
+      elif length == 0:
+        # connection not properly closed by remote side or connection dropped
+        SSL_set_shutdown(socket.sslHandle, SSL_RECEIVED_SHUTDOWN)
     else:
       raiseSSLError("Cannot appease SSL.")
 
