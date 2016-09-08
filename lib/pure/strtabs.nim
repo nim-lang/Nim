@@ -13,9 +13,16 @@
 ## for the string table is also provided.
 
 import
-  os, hashes, strutils
+  hashes, strutils
 
-include "system/inclrtl"
+when defined(js):
+  {.pragma: rtlFunc.}
+  {.pragma: deprecatedGetFunc.}
+else:
+  {.pragma: deprecatedGetFunc, deprecatedGet.}
+  {.pragma: rtlFunc, rtl.}
+  import os
+  include "system/inclrtl"
 
 type
   StringTableMode* = enum     ## describes the tables operation mode
@@ -34,7 +41,7 @@ type
 {.deprecated: [TStringTableMode: StringTableMode,
   TStringTable: StringTableObj, PStringTable: StringTableRef].}
 
-proc len*(t: StringTableRef): int {.rtl, extern: "nst$1".} =
+proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
   ## returns the number of keys in `t`.
   result = t.counter
 
@@ -59,7 +66,7 @@ iterator values*(t: StringTableRef): string =
 type
   FormatFlag* = enum          ## flags for the `%` operator
     useEnvironment,           ## use environment variable if the ``$key``
-                              ## is not found in the table
+                              ## is not found in the table. Does nothing when using `js` target.
     useEmpty,                 ## use the empty string as a default, thus it
                               ## won't throw an exception if ``$key`` is not
                               ## in the table
@@ -111,7 +118,7 @@ template get(t: StringTableRef, key: string): stmt {.immediate.} =
       raise newException(KeyError, "key not found")
 
 proc `[]`*(t: StringTableRef, key: string): var string {.
-           rtl, extern: "nstTake", deprecatedGet.} =
+           rtlFunc, extern: "nstTake", deprecatedGetFunc.} =
   ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
@@ -127,7 +134,7 @@ proc getOrDefault*(t: StringTableRef; key: string): string =
   if index >= 0: result = t.data[index].val
   else: result = ""
 
-proc hasKey*(t: StringTableRef, key: string): bool {.rtl, extern: "nst$1".} =
+proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
@@ -145,7 +152,7 @@ proc enlarge(t: StringTableRef) =
     if not isNil(t.data[i].key): rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`*(t: StringTableRef, key, val: string) {.rtl, extern: "nstPut".} =
+proc `[]=`*(t: StringTableRef, key, val: string) {.rtlFunc, extern: "nstPut".} =
   ## puts a (key, value)-pair into `t`.
   var index = rawGet(t, key)
   if index >= 0:
@@ -164,14 +171,17 @@ proc raiseFormatException(s: string) =
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
-  if useEnvironment in flags: result = os.getEnv(key).string
-  else: result = ""
+  when defined(js):
+    result = ""
+  else:
+    if useEnvironment in flags: result = os.getEnv(key).string
+    else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key
     elif useEmpty notin flags: raiseFormatException(key)
 
 proc newStringTable*(mode: StringTableMode): StringTableRef {.
-  rtl, extern: "nst$1".} =
+  rtlFunc, extern: "nst$1".} =
   ## creates a new string table that is empty.
   new(result)
   result.mode = mode
@@ -189,7 +199,7 @@ proc clear*(s: StringTableRef, mode: StringTableMode) =
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): StringTableRef {.
-  rtl, extern: "nst$1WithPairs".} =
+  rtlFunc, extern: "nst$1WithPairs".} =
   ## creates a new string table with given key value pairs.
   ## Example::
   ##   var mytab = newStringTable("key1", "val1", "key2", "val2",
@@ -202,7 +212,7 @@ proc newStringTable*(keyValuePairs: varargs[string],
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
                      mode: StringTableMode = modeCaseSensitive): StringTableRef {.
-  rtl, extern: "nst$1WithTableConstr".} =
+  rtlFunc, extern: "nst$1WithTableConstr".} =
   ## creates a new string table with given key value pairs.
   ## Example::
   ##   var mytab = newStringTable({"key1": "val1", "key2": "val2"},
@@ -211,7 +221,7 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
   for key, val in items(keyValuePairs): result[key] = val
 
 proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
-  rtl, extern: "nstFormat".} =
+  rtlFunc, extern: "nstFormat".} =
   ## The `%` operator for string tables.
   const
     PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}
@@ -240,7 +250,7 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
       add(result, f[i])
       inc(i)
 
-proc `$`*(t: StringTableRef): string {.rtl, extern: "nstDollar".} =
+proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
   ## The `$` operator for string tables.
   if t.len == 0:
     result = "{:}"
