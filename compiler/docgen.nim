@@ -27,6 +27,7 @@ type
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
     jArray: JsonNode
     types: TStrTable
+    isPureRst: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -634,7 +635,9 @@ proc genOutFile(d: PDoc): Rope =
     # Modules get an automatic title for the HTML, but no entry in the index.
     title = "Module " & extractFilename(changeFileExt(d.filename, ""))
 
-  let bodyname = if d.hasToc: "doc.body_toc" else: "doc.body_no_toc"
+  let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
+                 elif d.hasToc: "doc.body_toc"
+                 else: "doc.body_no_toc"
   content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
       "tableofcontents", "moduledesc", "date", "time", "content"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
@@ -699,6 +702,7 @@ proc commandDoc*() =
 proc commandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, options.gConfigVars)
+  d.isPureRst = true
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})
   var modDesc = newStringOfCap(30_000)

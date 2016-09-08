@@ -200,6 +200,7 @@ proc install(args: string) =
   exec("sh ./install.sh $#" % args)
 
 proc web(args: string) =
+  exec("$# js tools/dochack/dochack.nim" % findNim())
   exec("$# cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
        [findNim(), args, VersionAsString])
 
