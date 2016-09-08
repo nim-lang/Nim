@@ -206,7 +206,7 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
     result.currPos = 0
 
   # Set SO_NOSIGPIPE on OS X.
-  when defined(macosx):
+  when defined(macosx) and not defined(nimdoc):
     setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
 
 proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
