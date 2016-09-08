@@ -440,11 +440,6 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [rope(esc(d.target, literal))])
 
-  if k in routineKinds and nameNode.kind == nkSym:
-    let att = attachToType(d, nameNode.sym)
-    if att != nil:
-      dispA(result, """<span class="attachedType" style="visibility:hidden">$1</span>""", "",
-        [rope esc(d.target, att.name.s)])
   inc(d.id)
   let
     plainNameRope = rope(xmltree.escape(plainName.strip))
@@ -476,12 +471,18 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
+
+  var attype: Rope
+  if k in routineKinds and nameNode.kind == nkSym:
+    let att = attachToType(d, nameNode.sym)
+    if att != nil:
+      attype = rope esc(d.target, att.name.s)
   add(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc"],
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
     [rope(getName(d, nameNode, d.splitAfter)), result, comm,
       itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
-      plainSymbolEncRope, symbolOrIdEncRope]))
+      plainSymbolEncRope, symbolOrIdEncRope, attype]))
 
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
