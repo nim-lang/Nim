@@ -6,6 +6,7 @@ image: gcc
 stages:
   - pre-build
   - build
+  - deploy
   - test
 
 .linux_set_path: &linux_set_path_def
@@ -48,6 +49,18 @@ build-windows:
   tags:
     - windows
 
+deploy-windows:
+  stage: deploy
+  script:
+    - call ci\nsis_build.bat
+  artifacts:
+    paths:
+      - web\upload\download\*
+    expire_in: 1 week
+  tags:
+    - windows
+    - fast
+
 test-linux:
   stage: test
   <<: *linux_set_path_def
@@ -67,6 +80,7 @@ test-windows:
     - tests\testament\tester.exe --pedantic all
   tags:
     - windows
+    - fast
 
 .csources: &csources_definition
   stage: test
