@@ -459,13 +459,17 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
 
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar("doc.item.seesrc")
-  if docItemSeeSrc.len > 0 and options.docSeeSrcUrl.len > 0:
-    let path = n.info.toFilename.extractFilename.rope
-    let urlRope = ropeFormatNamedVars(options.docSeeSrcUrl,
-      ["path", "line"], [path, rope($n.info.line)])
+  if docItemSeeSrc.len > 0:
+    let cwd = getCurrentDir()
+    var path = n.info.toFullPath
+    if path.startsWith(cwd):
+      path = path[cwd.len+1 .. ^1].replace('\\', '/')
+    var commit = getConfigVar("git.commit")
+    if commit.len == 0: commit = "master"
     dispA(seeSrcRope, "$1", "", [ropeFormatNamedVars(docItemSeeSrc,
-        ["path", "line", "url"], [path,
-        rope($n.info.line), urlRope])])
+        ["path", "line", "url", "commit"], [rope path,
+        rope($n.info.line), rope getConfigVar("git.url"),
+        rope commit])])
 
   add(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",

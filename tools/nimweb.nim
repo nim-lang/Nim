@@ -13,6 +13,8 @@ import
 
 from xmltree import escape
 
+const gitRepo = "https://github.com/nim-lang/Nim"
+
 type
   TKeyValPair = tuple[key, id, val: string]
   TConfigData = object of RootObj
@@ -21,8 +23,6 @@ type
     authors, projectName, projectTitle, logo, infile, outdir, ticker: string
     vars: StringTableRef
     nimArgs: string
-    gitRepo: string
-    gitCommit: string
     quotations: Table[string, tuple[quote, author: string]]
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
     gaId: string  # google analytics ID, nil means analytics are disabled
@@ -59,8 +59,6 @@ proc initConfigData(c: var TConfigData) =
   c.logo = ""
   c.ticker = ""
   c.vars = newStringTable(modeStyleInsensitive)
-  c.gitRepo = "https://github.com/nim-lang/Nim/tree"
-  c.gitCommit = "master"
   c.numProcessors = countProcessors()
   # Attempts to obtain the git current commit.
   when false:
@@ -99,12 +97,12 @@ Compile_options:
   validAnchorCharacters = Letters + Digits
 
 
-macro id(e: expr): expr {.immediate.} =
+macro id(e: untyped): untyped =
   ## generates the rss xml ``id`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "id")
 
-macro updated(e: expr): expr {.immediate.} =
+macro updated(e: varargs[untyped]): untyped =
   ## generates the rss xml ``updated`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "updated")
@@ -115,12 +113,12 @@ proc updatedDate(year, month, day: string): string =
     repeat("0", 2 - len(month)) & month,
     repeat("0", 2 - len(day)) & day])
 
-macro entry(e: expr): expr {.immediate.} =
+macro entry(e: varargs[untyped]): untyped =
   ## generates the rss xml ``entry`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "entry")
 
-macro content(e: expr): expr {.immediate.} =
+macro content(e: varargs[untyped]): untyped =
   ## generates the rss xml ``content`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "content", reqAttr = "type")
@@ -245,11 +243,6 @@ proc parseIniFile(c: var TConfigData) =
     c.projectName = changeFileExt(extractFilename(c.infile), "")
   if c.outdir.len == 0:
     c.outdir = splitFile(c.infile).dir
-  # Ugly hack to override git command output when building private repo.
-  if c.vars.hasKey("githash"):
-    let githash = c.vars["githash"].strip
-    if githash.len > 0:
-      c.gitCommit = githash
 
 # ------------------- main ----------------------------------------------------
 
@@ -303,18 +296,18 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = findNim() & " rst2html $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+    commands[i] = findNim() & " rst2html $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, gitRepo,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = findNim() & " doc $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+    commands[i] = findNim() & " doc $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, gitRepo,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = findNim() & " doc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+    commands[i] = findNim() & " doc2 $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, gitRepo,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
@@ -346,8 +339,8 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = findNim() & " doc2 $# --docSeeSrcUrl:$#/$# -o:$# $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit,
+    commands[i] = findNim() & " doc2 $# --git.url:$# -o:$# $#" %
+      [c.nimArgs, gitRepo,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
 
@@ -520,8 +513,8 @@ proc json2(c: var TConfigData) =
   var i = 0
   for d in items(c.srcdoc2):
     createDir(destPath / splitFile(d).dir)
-    commands[i] = findNim() & " jsondoc2 $# --docSeeSrcUrl:$#/$#/$# -o:$# --index:on $#" %
-      [c.nimArgs, c.gitRepo, c.gitCommit, d.pathPart,
+    commands[i] = findNim() & " jsondoc2 $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, gitRepo,
       destPath / changeFileExt(d, "json"), d]
     i.inc
 
