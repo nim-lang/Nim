@@ -229,3 +229,62 @@ proc groupBy*(value: cstring) {.exportc.} =
   else:
     replaceById("tocRoot", tree("DIV"))
   togglevis(getElementById"toc-list")
+
+var
+  db: seq[Element]
+  contents: seq[cstring]
+
+template normalize(x: cstring): cstring = x.toLower.replace("_", "")
+
+proc dosearch(value: cstring): Element =
+  if db.isNil:
+    var stuff: Element
+    {.emit: """
+    var request = new XMLHttpRequest();
+    request.open("GET", "theindex.html", false);
+    request.send(null);
+
+    // var doc = document.implementation.createHTMLDocument("theindex");
+    // doc.documentElement.innerHTML = request.responseText;
+
+    parser=new DOMParser();
+    doc=parser.parseFromString(request.responseText, "text/html");
+
+    `stuff` = doc.documentElement;
+    """.}
+    db = stuff.getElementsByClass"reference external"
+    contents = @[]
+    for ahref in db:
+      contents.add ahref.textContent.normalize
+  let ul = tree("UL")
+  result = tree("DIV")
+  result.setClass"search_results"
+  var matches = 0
+  let key = value.normalize
+  for i in 0..<db.len:
+    if containsWord(key, contents[i]):
+      ul.add(tree("LI", db[i]))
+      inc matches
+      if matches > 10: break
+  if ul.len == 0:
+    result.add text"no search results"
+  else:
+    result.add ul
+
+var oldtoc: Element
+var timer: Timeout
+
+proc search*() {.exportc.} =
+  proc wrapper() =
+    let elem = getElementById("searchInput")
+    let value = elem.value
+    if value != "":
+      if oldtoc.isNil:
+        oldtoc = getElementById("tocRoot")
+      let results = dosearch(value)
+      replaceById("tocRoot", results)
+    elif not oldtoc.isNil:
+      replaceById("tocRoot", oldtoc)
+
+  if timer != nil: clearTimeout(timer)
+  timer = setTimeout(wrapper, 400)

@@ -17,6 +17,11 @@ proc `value=`*(e: Element; v: cstring) {.importcpp: "#.value = #", nodecl.}
 
 proc getElementsByClass*(e: Element; name: cstring): seq[Element] {.importcpp: "#.getElementsByClassName(#)", nodecl.}
 
+proc toLower*(x: cstring): cstring {.
+  importcpp: "#.toLowerCase()", nodecl.}
+proc replace*(x: cstring; search, by: cstring): cstring {.
+  importcpp: "#.replace(#, #)", nodecl.}
+
 type
   EventHandler* = proc(ev: Event)
   EventHandlerId* = proc(ev: Event; id: int)
