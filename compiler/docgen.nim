@@ -456,7 +456,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar("doc.item.seesrc")
   if docItemSeeSrc.len > 0:
-    let cwd = getCurrentDir()
+    let cwd = getCurrentDir().canonicalizePath()
     var path = n.info.toFullPath
     if path.startsWith(cwd):
       path = path[cwd.len+1 .. ^1].replace('\\', '/')

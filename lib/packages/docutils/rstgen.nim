@@ -415,18 +415,28 @@ proc sortIndex(a: var openArray[IndexEntry]) =
       a[j] <- v
     if h == 1: break
 
+proc escapeLink(s: string): string =
+  result = newStringOfCap(s.len + s.len shr 2)
+  for c in items(s):
+    case c
+    of 'a'..'z', '_', 'A'..'Z', '0'..'9':
+      result.add c
+    else:
+      add(result, "X")
+      add(result, toHex(ord(c), 2))
+
 proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
-  result = ""
+  result = "<dl>"
   var i = 0
   while i < symbols.len:
-    let keyword= symbols[i].keyword
-    let cleaned_keyword = keyword[1..keyword.high - 1]
-    result.addf("<dt><a name=\"$2\" href=\"#$2\"><span>$1:</span></a></dt><ul class=\"simple\"><dd>\n",
+    let keyword = symbols[i].keyword
+    let cleaned_keyword = keyword.escapeLink
+    result.addf("<dt><a name=\"$2\" href=\"#$2\"><span>$1:</span></a></dt><dd><ul class=\"simple\">\n",
                 [keyword, cleaned_keyword])
     var j = i
     while j < symbols.len and keyword == symbols[j].keyword:
       let
-        url = symbols[j].link
+        url = symbols[j].link.escapeLink #replace("&", "&amp;")
         text = if not symbols[j].linkTitle.isNil: symbols[j].linkTitle else: url
         desc = if not symbols[j].linkDesc.isNil: symbols[j].linkDesc else: ""
       if desc.len > 0:
@@ -439,6 +449,7 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
       inc j
     result.add("</ul></dd>\n")
     i = j
+  result.add("</dl>")
 
 proc isDocumentationTitle(hyperlink: string): bool =
   ## Returns true if the hyperlink is actually a documentation title.
@@ -463,9 +474,9 @@ proc indentToLevel(level: var int, newLevel: int): string =
   if level == newLevel:
     return
   if newLevel > level:
-    result = repeat("<ul>", newLevel - level)
+    result = repeat("<li><ul>", newLevel - level)
   else:
-    result = repeat("</ul>", level - newLevel)
+    result = repeat("</ul></li>", level - newLevel)
   level = newLevel
 
 proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
@@ -503,7 +514,7 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
     else:
       result.add(level.indentToLevel(levels[L].level))
       result.add("<li><a href=\"" & link & "\">" &
-        levels[L].text & "</a>\n")
+        levels[L].text & "</a></li>\n")
     inc L
   result.add(level.indentToLevel(1) & "</ul>\n")
   assert(not titleRef.isNil,
@@ -520,7 +531,7 @@ proc generateDocumentationIndex(docs: IndexedDocs): string =
   for title in titles:
     let tocList = generateDocumentationTOC(docs.getOrDefault(title))
     result.add("<ul><li><a href=\"" &
-      title.link & "\">" & title.keyword & "</a>\n" & tocList & "</ul>\n")
+      title.link & "\">" & title.keyword & "</a>\n" & tocList & "</li></ul>\n")
 
 proc generateDocumentationJumps(docs: IndexedDocs): string =
   ## Returns a plain list of hyperlinks to documentation TOCs in HTML.
@@ -783,7 +794,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if s.valid: dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
 
   if options.len > 0: options = dispF(d.target, "$1", "[$1]", [options])
-  
+
   if arg.valid:
     let htmlOut = if isObject:
         "<object data=\"$1\" type=\"image/svg+xml\"$2 >" & content & "</object>"
