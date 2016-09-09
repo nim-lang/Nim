@@ -244,11 +244,11 @@ proc dosearch(value: cstring): Element =
     request.open("GET", "theindex.html", false);
     request.send(null);
 
-    // var doc = document.implementation.createHTMLDocument("theindex");
-    // doc.documentElement.innerHTML = request.responseText;
+    var doc = document.implementation.createHTMLDocument("theindex");
+    doc.documentElement.innerHTML = request.responseText;
 
-    parser=new DOMParser();
-    doc=parser.parseFromString(request.responseText, "text/html");
+    //parser=new DOMParser();
+    //doc=parser.parseFromString("<html></html>", "text/html");
 
     `stuff` = doc.documentElement;
     """.}
