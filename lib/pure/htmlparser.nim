@@ -452,7 +452,10 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode
 proc expected(x: var XmlParser, n: XmlNode): string =
   result = errorMsg(x, "</" & n.tag & "> expected")
 
-template elemName(x: expr): expr = rawData(x)
+template elemName(x: untyped): untyped = rawData(x)
+
+template adderr(x: untyped) =
+  errors.add(x)
 
 proc untilElementEnd(x: var XmlParser, result: XmlNode,
                      errors: var seq[string]) =
@@ -469,24 +472,24 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
         # allow ``<p>`` in `<dd>`, `<dt>` and ``<li>`` in next case
         if htmlTag(x.elemName) in {tagLi, tagP, tagDt, tagDd, tagInput,
                                    tagOption}:
-          errors.add(expected(x, result))
+          adderr(expected(x, result))
           break
       of tagDd, tagDt, tagLi:
         if htmlTag(x.elemName) in {tagLi, tagDt, tagDd, tagInput,
                                    tagOption}:
-          errors.add(expected(x, result))
+          adderr(expected(x, result))
           break
       of tagTd, tagTh:
         if htmlTag(x.elemName) in {tagTr, tagTd, tagTh, tagTfoot, tagThead}:
-          errors.add(expected(x, result))
+          adderr(expected(x, result))
           break
       of tagTr:
         if htmlTag(x.elemName) == tagTr:
-          errors.add(expected(x, result))
+          adderr(expected(x, result))
           break
       of tagOptgroup:
         if htmlTag(x.elemName) in {tagOption, tagOptgroup}:
-          errors.add(expected(x, result))
+          adderr(expected(x, result))
           break
       else: discard
       result.addNode(parse(x, errors))
@@ -495,11 +498,11 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
         next(x)
       else:
         #echo "5; expected: ", result.htmltag, " ", x.elemName
-        errors.add(expected(x, result))
+        adderr(expected(x, result))
         # do not skip it here!
       break
     of xmlEof:
-      errors.add(expected(x, result))
+      adderr(expected(x, result))
       break
     else:
       result.addNode(parse(x, errors))
@@ -516,14 +519,14 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
     # we just ignore processing instructions for now
     next(x)
   of xmlError:
-    errors.add(errorMsg(x))
+    adderr(errorMsg(x))
     next(x)
   of xmlElementStart:
     result = newElement(toLowerAscii(x.elemName))
     next(x)
     untilElementEnd(x, result, errors)
   of xmlElementEnd:
-    errors.add(errorMsg(x, "unexpected ending tag: " & x.elemName))
+    adderr(errorMsg(x, "unexpected ending tag: " & x.elemName))
   of xmlElementOpen:
     result = newElement(toLowerAscii(x.elemName))
     next(x)
@@ -537,16 +540,16 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
         next(x)
         break
       of xmlError:
-        errors.add(errorMsg(x))
+        adderr(errorMsg(x))
         next(x)
         break
       else:
-        errors.add(errorMsg(x, "'>' expected"))
+        adderr(errorMsg(x, "'>' expected"))
         next(x)
         break
     untilElementEnd(x, result, errors)
   of xmlAttribute, xmlElementClose:
-    errors.add(errorMsg(x, "<some_tag> expected"))
+    adderr(errorMsg(x, "<some_tag> expected"))
     next(x)
   of xmlCData:
     result = newCData(x.rawData)
@@ -570,7 +573,7 @@ proc parseHtml*(s: Stream, filename: string,
   result = newElement("document")
   result.addNode(parse(x, errors))
   #if x.kind != xmlEof:
-  #  errors.add(errorMsg(x, "EOF expected"))
+  #  adderr(errorMsg(x, "EOF expected"))
   while x.kind != xmlEof:
     var oldPos = x.bufpos # little hack to see if we made any progess
     result.addNode(parse(x, errors))
