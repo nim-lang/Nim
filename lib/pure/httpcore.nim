@@ -81,7 +81,7 @@ proc newHttpHeaders*(keyValuePairs:
     openarray[tuple[key: string, val: string]]): HttpHeaders =
   var pairs: seq[tuple[key: string, val: seq[string]]] = @[]
   for pair in keyValuePairs:
-    pairs.add((pair.key.toLower(), @[pair.val]))
+    pairs.add((pair.key.toLowerAscii(), @[pair.val]))
   new result
   result.table = newTable[string, seq[string]](pairs)
 
@@ -96,7 +96,7 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  return headers.table[key.toLower].HttpHeaderValues
+  return headers.table[key.toLowerAscii].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
@@ -105,26 +105,26 @@ proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
-  return headers.table[key.toLower][i]
+  return headers.table[key.toLowerAscii][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
   ## Replaces any existing values.
-  headers.table[key.toLower] = @[value]
+  headers.table[key.toLowerAscii] = @[value]
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of
   ## values.
   ## Replaces any existing values.
-  headers.table[key.toLower] = value
+  headers.table[key.toLowerAscii] = value
 
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
   ## values associated with the key.
-  if not headers.table.hasKey(key.toLower):
-    headers.table[key.toLower] = @[value]
+  if not headers.table.hasKey(key.toLowerAscii):
+    headers.table[key.toLowerAscii] = @[value]
   else:
-    headers.table[key.toLower].add(value)
+    headers.table[key.toLowerAscii].add(value)
 
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
   ## Yields each key, value pair.
@@ -136,10 +136,10 @@ proc contains*(values: HttpHeaderValues, value: string): bool =
   ## Determines if ``value`` is one of the values inside ``values``. Comparison
   ## is performed without case sensitivity.
   for val in seq[string](values):
-    if val.toLower == value.toLower: return true
+    if val.toLowerAscii == value.toLowerAscii: return true
 
 proc hasKey*(headers: HttpHeaders, key: string): bool =
-  return headers.table.hasKey(key.toLower())
+  return headers.table.hasKey(key.toLowerAscii())
 
 proc getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =

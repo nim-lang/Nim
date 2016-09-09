@@ -595,12 +595,12 @@ when not declared(ENOENT) and not defined(Windows):
 
 when defined(Windows):
   when useWinUnicode:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileW(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
+    template deleteFile(file: untyped): untyped  = deleteFileW(file)
+    template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesW(file, attrs)
   else:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileA(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
+    template deleteFile(file: untyped): untyped = deleteFileA(file)
+    template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =

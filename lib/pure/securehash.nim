@@ -90,10 +90,10 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
 
   var round = 0
 
-  template rot(value, bits: uint32): uint32 {.immediate.} =
+  template rot(value, bits: uint32): uint32 =
     (value shl bits) or (value shr (32 - bits))
 
-  template sha1(fun, val: uint32): stmt =
+  template sha1(fun, val: uint32) =
     let t = rot(a, 5) + fun + e + val + w[round]
     e = d
     d = c
@@ -101,12 +101,12 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
     b = a
     a = t
 
-  template process(body: stmt): stmt =
+  template process(body: untyped) =
     w[round] = rot(w[round - 3] xor w[round - 8] xor w[round - 14] xor w[round - 16], 1)
     body
     inc(round)
 
-  template wrap(dest, value: expr): stmt {.immediate.} =
+  template wrap(dest, value: untyped) =
     let v = dest + value
     dest = v
 
@@ -136,7 +136,7 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
   wrap state[3], d
   wrap state[4], e
 
-template computeInternal(src: expr): stmt {.immediate.} =
+template computeInternal(src: untyped) =
   #Initialize state
   var state: Sha1State
   init(state)
