@@ -26,10 +26,14 @@ rem koch csources -d:release
 rem koch xz -d:release
 rem move /y build\nim-%NIMVER%.zip web\upload\download
 
+
+rem Grab C sources
+git clone --depth 1 https://github.com/nim-lang/csources.git
+
 ReM Build Win32 version:
 
 set PATH=C:\Users\araq\projects\mingw32\bin;%PATH%
-cd build
+cd csources
 call build.bat
 cd ..
 nim c koch || exit /b
@@ -44,7 +48,7 @@ move /y build\nim_%NIMVER%.exe web\upload\download\nim-%NIMVER%_x32.exe || exit 
 
 ReM Build Win64 version:
 set PATH=C:\Users\araq\projects\mingw64\bin;%PATH%
-cd build
+cd csources
 call build64.bat
 cd ..
 nim c koch || exit /b
