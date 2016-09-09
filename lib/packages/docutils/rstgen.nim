@@ -419,10 +419,10 @@ proc escapeLink(s: string): string =
   result = newStringOfCap(s.len + s.len shr 2)
   for c in items(s):
     case c
-    of 'a'..'z', '_', 'A'..'Z', '0'..'9':
+    of 'a'..'z', '_', 'A'..'Z', '0'..'9', '.', '#', ',', '/':
       result.add c
     else:
-      add(result, "X")
+      add(result, "%")
       add(result, toHex(ord(c), 2))
 
 proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
@@ -436,7 +436,7 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
     var j = i
     while j < symbols.len and keyword == symbols[j].keyword:
       let
-        url = symbols[j].link.escapeLink #replace("&", "&amp;")
+        url = symbols[j].link.escapeLink
         text = if not symbols[j].linkTitle.isNil: symbols[j].linkTitle else: url
         desc = if not symbols[j].linkDesc.isNil: symbols[j].linkDesc else: ""
       if desc.len > 0:

@@ -241,7 +241,7 @@ proc dosearch(value: cstring): Element =
     var stuff: Element
     {.emit: """
     var request = new XMLHttpRequest();
-    request.open("GET", "theindex.html", false);
+    request.open("GET", "http://nim-lang.org/0.15.0/theindex.html", false);
     request.send(null);
 
     var doc = document.implementation.createHTMLDocument("theindex");
@@ -259,16 +259,22 @@ proc dosearch(value: cstring): Element =
   let ul = tree("UL")
   result = tree("DIV")
   result.setClass"search_results"
-  var matches = 0
+  var matches: seq[(Element, int)] = @[]
   let key = value.normalize
   for i in 0..<db.len:
-    if containsWord(key, contents[i]):
-      ul.add(tree("LI", db[i]))
-      inc matches
-      if matches > 10: break
+    let c = contents[i]
+    if c.containsWord(key):
+      matches.add((db[i], -(30_000 - c.len)))
+    elif c.contains(key):
+      matches.add((db[i], c.len))
+  matches.sort do (a, b: auto) -> int:
+    a[1] - b[1]
+  for i in 0..min(<matches.len, 19):
+    ul.add(tree("LI", matches[i][0]))
   if ul.len == 0:
-    result.add text"no search results"
+    result.add tree("B", text"no search results")
   else:
+    result.add tree("B", text"search results")
     result.add ul
 
 var oldtoc: Element
