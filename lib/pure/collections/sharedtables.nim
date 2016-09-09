@@ -15,6 +15,8 @@
 import
   hashes, math, locks
 
+include "system/inclrtl"
+
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = ptr array[10_000_000, KeyValuePair[A, B]]
