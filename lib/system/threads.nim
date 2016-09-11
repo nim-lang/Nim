@@ -419,7 +419,7 @@ when false:
 
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread.},
+                           tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -441,7 +441,7 @@ when hostOS == "windows":
 
 else:
   proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread.},
+                           tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -464,7 +464,7 @@ else:
     cpusetIncl(cpu.cint, s)
     setAffinity(t.sys, sizeof(s), s)
 
-proc createThread*(t: var Thread[void], tp: proc () {.thread.}) =
+proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
 
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =

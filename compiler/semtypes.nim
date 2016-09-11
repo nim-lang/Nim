@@ -1141,14 +1141,12 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
   checkSonsLen(n, 2)
   openScope(c)
   result = semProcTypeNode(c, n.sons[0], nil, prev, kind, isType=true)
+  # start with 'ccClosure', but of course pragmas can overwrite this:
+  result.callConv = ccClosure
   # dummy symbol for `pragma`:
   var s = newSymS(kind, newIdentNode(getIdent("dummy"), n.info), c)
   s.typ = result
-  if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
-    if result.callConv == ccDefault:
-      result.callConv = ccClosure
-      #Message(n.info, warnImplicitClosure, renderTree(n))
-  else:
+  if n.sons[1].kind != nkEmpty and n.sons[1].len > 0:
     pragma(c, s, n.sons[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(result, n.sons[1])
   closeScope(c)

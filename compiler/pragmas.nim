@@ -751,7 +751,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         incl(sym.flags, sfThread)
         incl(sym.flags, sfProcvar)
-        if sym.typ != nil: incl(sym.typ.flags, tfThread)
+        if sym.typ != nil:
+          incl(sym.typ.flags, tfThread)
+          if sym.typ.callConv == ccClosure: sym.typ.callConv = ccDefault
       of wGcSafe:
         noVal(it)
         if sym.kind != skType: incl(sym.flags, sfThread)
