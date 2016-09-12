@@ -1238,7 +1238,7 @@ else:
 
   proc getSelector*(disp: PDispatcher): pointer =
     ## Retrieves the global thread-local dispatcher's backend as pointer.
-    result = cast[pointer](disp.selector)
+    result = cast[pointer](addr disp.selector)
 
   proc update(fd: AsyncFD, events: set[Event]) =
     let p = getGlobalDispatcher()
