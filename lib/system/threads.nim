@@ -43,7 +43,6 @@ when not declared(NimString):
   {.error: "You must not import this module explicitly".}
 
 const
-  maxRegisters = 256 # don't think there is an arch with more registers
   useStackMaskHack = false ## use the stack mask hack for better performance
   StackGuardSize = 4096
   ThreadStackMask = 1024*256*sizeof(int)-1
@@ -117,17 +116,26 @@ else:
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
-  when defined(linux):
-    type Time = clong
+  when defined(linux) and defined(amd64):
+    type
+      Time = clong
+      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = culong
+      Pthread_attr {.importc: "pthread_attr_t",
+                       header: "<sys/types.h>", final, pure.} = object
+        size: array[56, char]  # alignas(long)!
+      ThreadVarSlot {.importc: "pthread_key_t",
+                     header: "<sys/types.h>".} = cuint
   else:
-    type Time = int
+    type
+      Time = int
+      SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
+                   final, pure.} = object
+      Pthread_attr {.importc: "pthread_attr_t",
+                       header: "<sys/types.h>", final, pure.} = object
+      ThreadVarSlot {.importc: "pthread_key_t", pure, final,
+                     header: "<sys/types.h>".} = object
 
   type
-    SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
-                 final, pure.} = object
-    Pthread_attr {.importc: "pthread_attr_t",
-                     header: "<sys/types.h>", final, pure.} = object
-
     Timespec {.importc: "struct timespec",
                 header: "<time.h>", final, pure.} = object
       tv_sec: Time
@@ -150,9 +158,6 @@ else:
   proc pthread_cancel(a1: SysThread): cint {.
     importc: "pthread_cancel", header: pthreadh.}
 
-  type
-    ThreadVarSlot {.importc: "pthread_key_t", pure, final,
-                   header: "<sys/types.h>".} = object
   {.deprecated: [TThreadVarSlot: ThreadVarSlot].}
 
   proc pthread_getspecific(a1: ThreadVarSlot): pointer {.
@@ -179,6 +184,8 @@ else:
       importc: "pthread_attr_setstack", header: pthreadh.}
 
   type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
+    data: array[1024/(8*sizeof(clong))]
+
   proc cpusetZero(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
