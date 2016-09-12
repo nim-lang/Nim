@@ -14,6 +14,7 @@ const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
 
 when someGcc and hasThreadSupport:
   type AtomMemModel* = distinct cint
+
   var ATOMIC_RELAXED* {.importc: "__ATOMIC_RELAXED", nodecl.}: AtomMemModel
     ## No barriers or synchronization.
   var ATOMIC_CONSUME* {.importc: "__ATOMIC_CONSUME", nodecl.}: AtomMemModel
@@ -165,7 +166,8 @@ when someGcc and hasThreadSupport:
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
 elif defined(vcc) and hasThreadSupport:
   proc addAndFetch*(p: ptr int, val: int): int {.
-    importc: "NimXadd", nodecl.}
+    importc: "_InterlockedExchangeAdd", header: "<intrin.h>".}
+
   proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
 
 else:
@@ -176,6 +178,8 @@ else:
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
     result = atomic_add_fetch(memLoc.addr, x, ATOMIC_RELAXED)
+  elif defined(vcc) and hasThreadSupport:
+    result = addAndFetch(memLoc.addr, x)
   else:
     inc(memLoc, x)
     result = memLoc
@@ -186,17 +190,33 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
       result = atomic_sub_fetch(memLoc.addr, x, ATOMIC_RELAXED)
     else:
       result = atomic_add_fetch(memLoc.addr, -x, ATOMIC_RELAXED)
+  elif defined(vcc) and hasThreadSupport:
+    result = addAndFetch(memLoc.addr, -x)
   else:
     dec(memLoc, x)
     result = memLoc
 
-when defined(windows) and not someGcc:
-  proc interlockedCompareExchange(p: pointer; exchange, comparand: int): int
-    {.importc: "InterlockedCompareExchange", header: "<windows.h>", cdecl.}
+when defined(vcc):
+  proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
+    {.importc: "_InterlockedCompareExchange64", header: "<intrin.h>".}
+  proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
+    {.importc: "_InterlockedCompareExchange", header: "<intrin.h>".}
+  proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
+    {.importc: "_InterlockedCompareExchange64", header: "<intrin.h>".}
 
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
-    interlockedCompareExchange(p, cast[int](newValue), cast[int](oldValue)) != 0
-  # XXX fix for 64 bit build
+    when sizeof(T) == 8:
+      interlockedCompareExchange64(p, cast[int64](newValue), cast[int64](oldValue)) ==
+        cast[int64](oldValue)
+    elif sizeof(T) == 4:
+      interlockedCompareExchange32(p, cast[int32](newValue), cast[int32](oldValue)) ==
+        cast[int32](oldValue)
+    elif sizeof(T) == 1:
+      interlockedCompareExchange8(p, cast[byte](newValue), cast[byte](oldValue)) ==
+        cast[byte](oldValue)
+    else:
+      {.error: "invalid CAS instruction".}
+
 elif defined(tcc) and not defined(windows):
   when defined(amd64):
     {.emit:"""
@@ -237,7 +257,7 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
       return 1;
 }
 """.}
-    
+
   proc tcc_cas(p: ptr int; oldValue, newValue: int): bool
     {.importc: "__tcc_cas", nodecl.}
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
@@ -249,14 +269,14 @@ else:
   # XXX is this valid for 'int'?
 
 
-when (defined(x86) or defined(amd64)) and someGcc:
+when (defined(x86) or defined(amd64)) and defined(vcc):
+  proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
+elif (defined(x86) or defined(amd64)) and someGcc:
   proc cpuRelax* {.inline.} =
     {.emit: """asm volatile("pause" ::: "memory");""".}
 elif someGcc or defined(tcc):
   proc cpuRelax* {.inline.} =
     {.emit: """asm volatile("" ::: "memory");""".}
-elif (defined(x86) or defined(amd64)) and defined(vcc):
-  proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
 elif defined(icl):
   proc cpuRelax* {.importc: "_mm_pause", header: "xmmintrin.h".}
 elif false:
