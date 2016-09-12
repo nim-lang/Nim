@@ -183,8 +183,11 @@ else:
                                size: int): cint {.
       importc: "pthread_attr_setstack", header: pthreadh.}
 
-  type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
-    data: array[1024/(8*sizeof(clong))]
+  when defined(linux) and defined(amd64):
+    type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
+      data: array[1024/(8*sizeof(clong))]
+  else:
+    type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
 
   proc cpusetZero(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
