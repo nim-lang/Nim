@@ -1976,7 +1976,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skEnumField:
       putIntoDest(p, d, n.typ, rope(sym.position))
     of skVar, skForVar, skResult, skLet:
-      if sfGlobal in sym.flags: genVarPrototype(p.module, sym)
+      if {sfGlobal, sfThread} * sym.flags != {}:
+        genVarPrototype(p.module, sym)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})

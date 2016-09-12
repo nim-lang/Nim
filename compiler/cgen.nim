@@ -788,7 +788,7 @@ proc genProc(m: BModule, prc: PSym) =
           genProcAux(generatedHeader, prc)
 
 proc genVarPrototypeAux(m: BModule, sym: PSym) =
-  assert(sfGlobal in sym.flags)
+  #assert(sfGlobal in sym.flags)
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap)
   if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id):
