@@ -483,6 +483,10 @@ when defined(windows) or defined(nimdoc):
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
 
+  proc getSelector*(disp: PDispatcher): pointer =
+    ## Retrieves the global thread-local dispatcher's backend as pointer.
+    result = cast[pointer](disp.ioPort)
+
   proc register*(fd: AsyncFD) =
     ## Registers ``fd`` with the dispatcher.
     let p = getGlobalDispatcher()
@@ -1385,6 +1389,10 @@ else:
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
+
+  proc getSelector*(disp: PDispatcher): pointer =
+    ## Retrieves the global thread-local dispatcher's backend as pointer.
+    result = cast[pointer](disp.selector)
 
   proc register*(fd: AsyncFD) =
     let p = getGlobalDispatcher()
