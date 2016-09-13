@@ -1589,7 +1589,7 @@ proc send*(socket: AsyncFD, data: string,
                # or failed.
 
   let sendFut = socket.send(addr copiedData[0], data.len, flags)
-  sendFut.cb =
+  sendFut.callback =
     proc () =
       GC_unref(copiedData)
       if sendFut.failed:
