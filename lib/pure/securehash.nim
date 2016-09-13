@@ -15,7 +15,7 @@ type
   Sha1Digest = array[0 .. Sha1DigestSize-1, uint8]
   SecureHash* = distinct Sha1Digest
 
-proc sha1(src: string) : Sha1Digest {.gcsafe.}
+proc sha1(src: string) : Sha1Digest {.noSideEffect.}
 
 proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
 proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
