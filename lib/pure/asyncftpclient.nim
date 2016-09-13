@@ -302,12 +302,13 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
   ## to ``file``.
   await ftp.pasv()
   var fileSize: BiggestInt
+  #[
   var reply = await ftp.send("size " & file.normalizePathSep)
   if "213" in reply.string:
     if reply.string.replace("213 ", "").parseBiggestInt(fileSize) == 0:
       raise newException(ReplyError, "Failed to get file size.")
-
-  reply = await ftp.send("RETR " & file.normalizePathSep)
+  ]#
+  var reply = await ftp.send("RETR " & file.normalizePathSep)
   assertReply reply, ["125", "150"]
   if fileSize == 0:
     if {'(', ')'} notin reply.string: fileSize = -1 #download file until eof
