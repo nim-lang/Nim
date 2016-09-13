@@ -546,7 +546,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   of tyRef, tyPtr, tyVar:
     var star = if t.kind == tyVar and tfVarIsPtr notin typ.flags and
                     compileToCpp(m): "&" else: "*"
-    var et = t.lastSon
+    var et = typ.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
     if etB.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}:
       # this is correct! sets have no proper base type, so we treat
