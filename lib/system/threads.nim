@@ -145,7 +145,7 @@ else:
 
   proc pthread_attr_init(a1: var PthreadAttr) {.
     importc, header: pthreadh.}
-  proc pthread_attr_setstacksize(a1: var PthreadAttr, a2: int) {.
+  proc pthread_attr_setstacksize(a1: var PthreadAttr, a2: csize) {.
     importc, header: pthreadh.}
 
   proc pthread_create(a1: var SysThread, a2: var PthreadAttr,
@@ -163,12 +163,12 @@ else:
   proc pthread_getspecific(a1: ThreadVarSlot): pointer {.
     importc: "pthread_getspecific", header: pthreadh.}
   proc pthread_key_create(a1: ptr ThreadVarSlot,
-                          destruct: proc (x: pointer) {.noconv.}): int32 {.
+                          destruct: proc (x: pointer) {.noconv.}): cint {.
     importc: "pthread_key_create", header: pthreadh.}
-  proc pthread_key_delete(a1: ThreadVarSlot): int32 {.
+  proc pthread_key_delete(a1: ThreadVarSlot): cint {.
     importc: "pthread_key_delete", header: pthreadh.}
 
-  proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): int32 {.
+  proc pthread_setspecific(a1: ThreadVarSlot, a2: pointer): cint {.
     importc: "pthread_setspecific", header: pthreadh.}
 
   proc threadVarAlloc(): ThreadVarSlot {.inline.} =
@@ -180,7 +180,7 @@ else:
 
   when useStackMaskHack:
     proc pthread_attr_setstack(attr: var PthreadAttr, stackaddr: pointer,
-                               size: int): cint {.
+                               size: csize): cint {.
       importc: "pthread_attr_setstack", header: pthreadh.}
 
   when defined(linux) and defined(amd64):
