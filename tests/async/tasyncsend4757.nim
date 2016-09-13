@@ -11,6 +11,4 @@ proc f(): Future[void] {.async.} =
   await s.send("123")
   echo "Finished"
 
-asyncCheck f()
-
-poll(1000)
+waitFor f()
