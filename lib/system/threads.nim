@@ -185,7 +185,7 @@ else:
 
   when defined(linux) and defined(amd64):
     type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
-      data: array[1024/(8*sizeof(clong))]
+      data: array[1024 div (8*sizeof(clong)), char]
   else:
     type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
 
