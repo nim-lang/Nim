@@ -850,12 +850,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
       if result < isGeneric: result = isNone
-    of tyArrayConstr:
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty):
-        result = isSubtype    # [] is allowed here
-      elif typeRel(c, base(f), a.sons[1]) >= isGeneric:
-        result = isSubtype
-    of tyArray:
+    of tyArray, tyArrayConstr:
       if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty):
         result = isSubtype
       elif typeRel(c, base(f), a.sons[1]) >= isGeneric:
@@ -1604,17 +1599,17 @@ proc prepareNamedParam(a: PNode) =
     a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
 
 proc arrayConstr(c: PContext, n: PNode): PType =
-  result = newTypeS(tyArrayConstr, c)
+  result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, 0, n.info))
   addSonSkipIntLit(result, skipTypes(n.typ, {tyGenericInst, tyVar, tyOrdinal}))
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
-  result = newTypeS(tyArrayConstr, c)
+  result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, -1, info))
   rawAddSon(result, newTypeS(tyEmpty, c)) # needs an empty basetype!
 
 proc incrIndexType(t: PType) =
-  assert t.kind == tyArrayConstr
+  assert t.kind == tyArray
   inc t.sons[0].n.sons[1].intVal
 
 template isVarargsUntyped(x): untyped =

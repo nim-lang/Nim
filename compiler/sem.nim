@@ -46,6 +46,10 @@ proc finishMethod(c: PContext, s: PSym)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
+proc isArrayConstr(n: PNode): bool {.inline.} =
+  result = n.kind == nkBracket and
+    n.typ.skipTypes(abstractInst).kind == tyArray
+
 template semIdeForTemplateOrGenericCheck(n, requiresCheck) =
   # we check quickly if the node is where the cursor is
   when defined(nimsuggest):
@@ -250,7 +254,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = arg
       # for 'tcnstseq' we support [] to become 'seq'
       if eOrig.typ.skipTypes(abstractInst).kind == tySequence and
-         arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
+         isArrayConstr(arg):
         arg.typ = eOrig.typ
 
 proc tryConstExpr(c: PContext, n: PNode): PNode =

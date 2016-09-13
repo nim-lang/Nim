@@ -409,7 +409,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
   n.typ = newType
 
 proc arrayConstrType(c: PContext, n: PNode): PType =
-  var typ = newTypeS(tyArrayConstr, c)
+  var typ = newTypeS(tyArray, c)
   rawAddSon(typ, nil)     # index type
   if sonsLen(n) == 0:
     rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
@@ -421,7 +421,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
 
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = newNodeI(nkBracket, n.info)
-  result.typ = newTypeS(tyArrayConstr, c)
+  result.typ = newTypeS(tyArray, c)
   rawAddSon(result.typ, nil)     # index type
   if sonsLen(n) == 0:
     rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
@@ -466,49 +466,11 @@ proc fixAbstractType(c: PContext, n: PNode) =
     if it.kind == nkHiddenSubConv and
         skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
       if skipTypes(it.sons[1].typ, abstractVar).kind in
-            {tyNil, tyArrayConstr, tyTuple, tySet}:
+            {tyNil, tyTuple, tySet} or it[1].isArrayConstr:
         var s = skipTypes(it.typ, abstractVar)
         if s.kind != tyExpr:
           changeType(it.sons[1], s, check=true)
         n.sons[i] = it.sons[1]
-  when false:
-    # XXX finally rewrite that crap!
-    for i in countup(1, sonsLen(n) - 1):
-      var it = n.sons[i]
-      case it.kind
-      of nkHiddenStdConv, nkHiddenSubConv:
-        if it.sons[1].kind == nkBracket:
-          it.sons[1].typ = arrayConstrType(c, it.sons[1])
-          #it.sons[1] = semArrayConstr(c, it.sons[1])
-        if skipTypes(it.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
-          #if n.sons[0].kind == nkSym and IdentEq(n.sons[0].sym.name, "[]="):
-          #  debug(n)
-
-          var s = skipTypes(it.sons[1].typ, abstractVar)
-          if s.kind == tyArrayConstr and s.sons[1].kind == tyEmpty:
-            s = copyType(s, getCurrOwner(), false)
-            skipTypes(s, abstractVar).sons[1] = elemType(
-                skipTypes(it.typ, abstractVar))
-            it.sons[1].typ = s
-          elif s.kind == tySequence and s.sons[0].kind == tyEmpty:
-            s = copyType(s, getCurrOwner(), false)
-            skipTypes(s, abstractVar).sons[0] = elemType(
-                skipTypes(it.typ, abstractVar))
-            it.sons[1].typ = s
-
-        elif skipTypes(it.sons[1].typ, abstractVar).kind in
-            {tyNil, tyArrayConstr, tyTuple, tySet}:
-          var s = skipTypes(it.typ, abstractVar)
-          if s.kind != tyExpr:
-            changeType(it.sons[1], s, check=true)
-          n.sons[i] = it.sons[1]
-      of nkBracket:
-        # an implicitly constructed array (passed to an open array):
-        n.sons[i] = semArrayConstr(c, it, {})
-      else:
-        discard
-        #if (it.typ == nil):
-        #  InternalError(it.info, "fixAbstractType: " & renderTree(it))
 
 proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult =
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
@@ -968,7 +930,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         tyTuple, tySet, tyUInt..tyUInt64:
       if s.magic == mNone: result = inlineConst(n, s)
       else: result = newSymNode(s, n.info)
-    of tyArrayConstr, tySequence:
+    of tyArray, tySequence:
       # Consider::
       #     const x = []
       #     proc p(a: openarray[int])
