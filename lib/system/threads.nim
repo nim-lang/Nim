@@ -331,7 +331,9 @@ else:
     when TArg is void:
       thrd.dataFn()
     else:
-      thrd.dataFn(thrd.data)
+      var x: TArg
+      deepCopy(x, thrd.data)
+      thrd.dataFn(x)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):

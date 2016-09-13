@@ -2923,14 +2923,14 @@ when not defined(JS): #and not defined(nimscript):
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
 
-    proc writeStackTrace*() {.tags: [WriteIOEffect].}
+    proc writeStackTrace*() {.tags: [WriteIOEffect], gcsafe.}
       ## writes the current stack trace to ``stderr``. This is only works
       ## for debug builds.
     when hostOS != "standalone":
-      proc getStackTrace*(): string
+      proc getStackTrace*(): string {.gcsafe.}
         ## gets the current stack trace. This only works for debug builds.
 
-      proc getStackTrace*(e: ref Exception): string
+      proc getStackTrace*(e: ref Exception): string {.gcsafe.}
         ## gets the stack trace associated with `e`, which is the stack that
         ## lead to the ``raise`` statement. This only works for debug builds.
 
