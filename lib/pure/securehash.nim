@@ -15,30 +15,6 @@ type
   Sha1Digest = array[0 .. Sha1DigestSize-1, uint8]
   SecureHash* = distinct Sha1Digest
 
-proc sha1(src: string) : Sha1Digest
-
-proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
-proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
-proc `$`*(self: SecureHash): string =
-  result = ""
-  for v in Sha1Digest(self):
-    result.add(toHex(int(v), 2))
-
-proc parseSecureHash*(hash: string): SecureHash =
-  for i in 0.. <Sha1DigestSize:
-    Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
-
-proc `==`*(a, b: SecureHash): bool =
-  # Not a constant-time comparison, but that's acceptable in this context
-  Sha1Digest(a) == Sha1Digest(b)
-
-
-when isMainModule:
-  let hash1 = secureHash("a93tgj0p34jagp9[agjp98ajrhp9aej]")
-  doAssert hash1 == hash1
-  doAssert parseSecureHash($hash1) == hash1
-
-
 # Copyright (c) 2011, Micael Hildenborg
 # All rights reserved.
 #
@@ -196,3 +172,24 @@ template computeInternal(src: untyped) =
 proc sha1(src: string) : Sha1Digest =
   ## Calculate SHA1 from input string
   computeInternal(src)
+
+proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
+proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
+proc `$`*(self: SecureHash): string =
+  result = ""
+  for v in Sha1Digest(self):
+    result.add(toHex(int(v), 2))
+
+proc parseSecureHash*(hash: string): SecureHash =
+  for i in 0.. <Sha1DigestSize:
+    Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
+
+proc `==`*(a, b: SecureHash): bool =
+  # Not a constant-time comparison, but that's acceptable in this context
+  Sha1Digest(a) == Sha1Digest(b)
+
+
+when isMainModule:
+  let hash1 = secureHash("a93tgj0p34jagp9[agjp98ajrhp9aej]")
+  doAssert hash1 == hash1
+  doAssert parseSecureHash($hash1) == hash1
