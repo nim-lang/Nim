@@ -215,6 +215,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       if result.state != csMatch:
         n.sons.delete(1)
         orig.sons.delete(1)
+        excl n.flags, nfExprCall
       else: return
 
     if nfDotField in n.flags:
