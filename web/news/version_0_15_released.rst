@@ -237,3 +237,105 @@ Bugfixes
   (`#4353 <https://github.com/nim-lang/Nim/issues/4353>`_)
 - Fixed "invalid C code generated (function + block + empty tuple)"
   (`#4505 <https://github.com/nim-lang/Nim/issues/4505>`_)
+
+- Fixed "performance issue: const Table make a copy at runtime lookup."
+  (`#4354 <https://github.com/nim-lang/Nim/issues/4354>`_)
+- Fixed "Compiler issue: libraries without absolute paths cannot be found correctly"
+  (`#4568 <https://github.com/nim-lang/Nim/issues/4568>`_)
+- Fixed "Cannot use math.`^` with non-int types."
+  (`#4574 <https://github.com/nim-lang/Nim/issues/4574>`_)
+- Fixed "C codegen fails when constructing an array using an object constructor."
+  (`#4582 <https://github.com/nim-lang/Nim/issues/4582>`_)
+- Fixed "Visual Studio 10 unresolved external symbol _trunc(should we support VS2010?)"
+  (`#4532 <https://github.com/nim-lang/Nim/issues/4532>`_)
+- Fixed "Cannot pass generic subtypes to proc for generic supertype"
+  (`#4528 <https://github.com/nim-lang/Nim/issues/4528>`_)
+- Fixed "Lamda-lifting bug leading to crash."
+  (`#4551 <https://github.com/nim-lang/Nim/issues/4551>`_)
+- Fixed "First-class iterators declared as inline are compiled at Nim side (no error message) and fail at C"
+  (`#2094 <https://github.com/nim-lang/Nim/issues/2094>`_)
+- Fixed "VS2010-warning C4090 : 'function' : different 'const' qualifiers"
+  (`#4590 <https://github.com/nim-lang/Nim/issues/4590>`_)
+- Fixed "Regression: type mismatch with generics"
+  (`#4589 <https://github.com/nim-lang/Nim/issues/4589>`_)
+- Fixed "„can raise an unlisted exception“ when assigning nil as default value"
+  (`#4593 <https://github.com/nim-lang/Nim/issues/4593>`_)
+- Fixed "upcoming asyncdispatch.closeSocket is not GC-safe"
+  (`#4606 <https://github.com/nim-lang/Nim/issues/4606>`_)
+- Fixed "Visual Studio 10.0 compiler errors, 12.0 warning"
+  (`#4459 <https://github.com/nim-lang/Nim/issues/4459>`_)
+- Fixed "Exception of net.newContext: result.extraInternalIndex == 0  [AssertionError]"
+  (`#4406 <https://github.com/nim-lang/Nim/issues/4406>`_)
+- Fixed "error: redeclaration of 'result_115076' with no linkage"
+  (`#3221 <https://github.com/nim-lang/Nim/issues/3221>`_)
+- Fixed "Compiler crashes on conversion from int to float at compile time"
+  (`#4619 <https://github.com/nim-lang/Nim/issues/4619>`_)
+- Fixed "wrong number of arguments regression in devel"
+  (`#4600 <https://github.com/nim-lang/Nim/issues/4600>`_)
+- Fixed "importc $ has broken error message (and is not documented)"
+  (`#4579 <https://github.com/nim-lang/Nim/issues/4579>`_)
+- Fixed "Compiler segfaults on simple importcpp in js mode [regression]"
+  (`#4632 <https://github.com/nim-lang/Nim/issues/4632>`_)
+- Fixed "Critical reference counting codegen problem"
+  (`#4653 <https://github.com/nim-lang/Nim/issues/4653>`_)
+- Fixed "tables.nim needs lots of {.noSideEffect.}"
+  (`#4254 <https://github.com/nim-lang/Nim/issues/4254>`_)
+- Fixed "Capture variable error when using ``=>`` macro"
+  (`#4658 <https://github.com/nim-lang/Nim/issues/4658>`_)
+- Fixed "Enum from char: internal error getInt"
+  (`#3606 <https://github.com/nim-lang/Nim/issues/3606>`_)
+- Fixed "Compiler crashes in debug mode (no error in release mode) with Natural discriminant in object variants"
+  (`#2865 <https://github.com/nim-lang/Nim/issues/2865>`_)
+- Fixed "SIGSEGV when access field in const object variants"
+  (`#4253 <https://github.com/nim-lang/Nim/issues/4253>`_)
+- Fixed "varargs cannot be used with template converter."
+  (`#4292 <https://github.com/nim-lang/Nim/issues/4292>`_)
+- Fixed "Compiler crashes when borrowing $"
+  (`#3928 <https://github.com/nim-lang/Nim/issues/3928>`_)
+- Fixed "internal error: genMagicExpr: mArrPut"
+  (`#4491 <https://github.com/nim-lang/Nim/issues/4491>`_)
+- Fixed "Unhelpful error message on importc namespace collision"
+  (`#4580 <https://github.com/nim-lang/Nim/issues/4580>`_)
+- Fixed "Problem with openarrays and slices"
+  (`#4179 <https://github.com/nim-lang/Nim/issues/4179>`_)
+- Fixed "Removing lines from end of file then rebuilding does not rebuild [js only?]"
+  (`#4656 <https://github.com/nim-lang/Nim/issues/4656>`_)
+- Fixed "getCurrentException and getCurrentExceptionMsg do not work with JS"
+  (`#4635 <https://github.com/nim-lang/Nim/issues/4635>`_)
+- Fixed "generic proc parameter is not inferred if type parameter has specifier"
+  (`#4672 <https://github.com/nim-lang/Nim/issues/4672>`_)
+- Fixed "Cannot instantiate generic parameter when it is parent type parameter"
+  (`#4673 <https://github.com/nim-lang/Nim/issues/4673>`_)
+- Fixed "deepCopy doesn't work with inheritance after last commit"
+  (`#4693 <https://github.com/nim-lang/Nim/issues/4693>`_)
+- Fixed "Multi-methods don't work when passing ref to a different thread"
+  (`#4689 <https://github.com/nim-lang/Nim/issues/4689>`_)
+- Fixed "Infinite loop in effect analysis on generics"
+  (`#4677 <https://github.com/nim-lang/Nim/issues/4677>`_)
+- Fixed "SIGSEGV when compiling NimYAML tests"
+  (`#4699 <https://github.com/nim-lang/Nim/issues/4699>`_)
+
+- Fixed "Closing AsyncEvent now also unregisters it on non-Windows platforms"
+    (`#4694 <https://github.com/nim-lang/Nim/issues/4694>`_)
+- Fixed "Don't update handle in upcoming/asyncdispatch poll() if it was closed"
+  (`#4697 <https://github.com/nim-lang/Nim/issues/4697>`_)
+- Fixed "generated local variables declared outside block"
+  (`#4721 <https://github.com/nim-lang/Nim/issues/4721>`_)
+- Fixed "Footer Documentation links, & Community link point to the wrong place under news entries"
+  (`#4529 <https://github.com/nim-lang/Nim/issues/4529>`_)
+- Fixed "Jester's macro magic leads to incorrect C generation"
+  (`#4088 <https://github.com/nim-lang/Nim/issues/4088>`_)
+- Fixed "cas bug in atomics.nim"
+  (`#3279 <https://github.com/nim-lang/Nim/issues/3279>`_)
+- Fixed "nimgrep PEG not capturing the pattern 'A'"
+  (`#4751 <https://github.com/nim-lang/Nim/issues/4751>`_)
+- Fixed "GC assert triggers when assigning TableRef threadvar"
+  (`#4640 <https://github.com/nim-lang/Nim/issues/4640>`_)
+- Fixed ".this pragma conflicts with experimental ptr dereferencing when names conflict"
+  (`#4671 <https://github.com/nim-lang/Nim/issues/4671>`_)
+- Fixed "Generic procs accepting var .importcpp type do not work [regression]"
+  (`#4625 <https://github.com/nim-lang/Nim/issues/4625>`_)
+- Fixed "C Error on tuple assignment with array"
+  (`#4626 <https://github.com/nim-lang/Nim/issues/4626>`_)
+- Fixed "module securehash not gcsafe"
+  (`#4760 <https://github.com/nim-lang/Nim/issues/4760>`_)
