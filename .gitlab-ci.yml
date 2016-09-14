@@ -55,7 +55,7 @@ deploy-windows:
     - call ci\nsis_build.bat
   artifacts:
     paths:
-      - web\upload\download\*
+      - build/*.exe
     expire_in: 1 week
   tags:
     - windows

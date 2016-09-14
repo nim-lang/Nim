@@ -47,7 +47,7 @@ copy /y nimsuggest.exe ..\bin || exit /b
 cd ..
 koch nsis -d:release || exit /b
 dir build
-move /y build\nim_%NIMVER%.exe web\upload\download\nim-%NIMVER%_x32.exe || exit /b
+move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x32.exe || exit /b
 
 
 ReM Build Win64 version:
@@ -62,4 +62,4 @@ nim c -d:release --noNimblePath --path:.. nimsuggest || exit /b
 copy /y nimsuggest.exe ..\bin || exit /b
 cd ..
 koch nsis -d:release || exit /b
-move /y build\nim_%NIMVER%.exe web\upload\download\nim-%NIMVER%_x64.exe || exit /b
+move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x64.exe || exit /b
