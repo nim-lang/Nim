@@ -269,6 +269,7 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
         c.currentExceptionA = nil
         # execute the corresponding handler:
         while c.code[pc2].opcode == opcExcept: inc pc2
+        discard f.safePoints.pop
         return (pc2, f)
       inc pc2
       if c.code[pc2].opcode != opcExcept and nextExceptOrFinally >= 0:
@@ -282,7 +283,8 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
       pc2 = nextExceptOrFinally
     if c.code[pc2].opcode == opcFinally:
       # execute the corresponding handler, but don't quit walking the stack:
-      return (pc2, f)
+      discard f.safePoints.pop
+      return (pc2+1, f)
     # not the right one:
     discard f.safePoints.pop
 
@@ -964,7 +966,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we'll execute in the 'raise' handler
       let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
       inc pc, rbx
-      assert c.code[pc+1].opcode in {opcExcept, opcFinally}
+      while c.code[pc+1].opcode == opcExcept:
+        let rbx = c.code[pc+1].regBx - wordExcess - 1
+        inc pc, rbx
+      #assert c.code[pc+1].opcode in {opcExcept, opcFinally}
+      if c.code[pc+1].opcode != opcFinally:
+        # in an except handler there is no active safe point for the 'try':
+        tos.popSafePoint()
     of opcFinally:
       # just skip it; it's followed by the code we need to execute anyway
       tos.popSafePoint()
