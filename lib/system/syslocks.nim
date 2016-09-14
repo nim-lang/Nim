@@ -81,15 +81,15 @@ else:
       SysLock {.importc: "pthread_mutex_t", pure, final,
                  header: """#include <sys/types.h>
                             #include <pthread.h>""".} = object
-        lock: cint
-        count: cuint
-        owner: cint
-        nusers: cuint
-        kind: cint
-        spins: cshort
-        elision: cshort
-        list_next: pointer
-        list_prev: pointer
+        lock {.importc: "__data.__lock".}: cint
+        count {.importc: "__data.__count".}: cuint
+        owner {.importc: "__data.__owner".}: cint
+        nusers {.importc: "__data.__nusers".}: cuint
+        kind {.importc: "__data.__kind".}: cint
+        spins {.importc: "__data.__spins".}: cshort
+        elision {.importc: "__data.__elision".}: cshort
+        list_next {.importc: "__data.__list.__next".}: pointer
+        list_prev {.importc: "__data.__list.__prev".}: pointer
 
       SysLockAttr {.importc: "pthread_mutexattr_t",
                  header: """#include <sys/types.h>
@@ -99,14 +99,14 @@ else:
       SysCond {.importc: "pthread_cond_t", pure, final,
                  header: """#include <sys/types.h>
                             #include <pthread.h>""".} = object
-        lock: cint
-        futex: cuint
-        total_seq: culonglong
-        wakeup_seq: culonglong
-        woken_seq: culonglong
-        mutex: pointer
-        nwaiters: cuint
-        broadcast_seq: cuint
+        lock {.importc: "__data.__lock".}: cint
+        futex {.importc: "__data.__futex".}: cuint
+        total_seq {.importc: "__data.__total_seq".}: culonglong
+        wakeup_seq {.importc: "__data.__wakeup_seq".}: culonglong
+        woken_seq {.importc: "__data.__woken_seq".}: culonglong
+        mutex {.importc: "__data.__mutex".}: pointer
+        nwaiters {.importc: "__data.__nwaiters".}: cuint
+        broadcast_seq {.importc: "__data.__broadcast_seq".}: cuint
 
       SysLockType = distinct cint
   else:
