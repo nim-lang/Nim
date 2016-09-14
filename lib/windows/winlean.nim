@@ -337,11 +337,10 @@ when useWinUnicode:
       stdcall, dynlib: "kernel32", importc: "SetFileAttributesW".}
 
   proc copyFileW*(lpExistingFileName, lpNewFileName: WideCString,
-                 bFailIfExists: cint): cint {.
+                 bFailIfExists: WINBOOL): WINBOOL {.
     importc: "CopyFileW", stdcall, dynlib: "kernel32".}
 
-  proc moveFileW*(lpExistingFileName, lpNewFileName: WideCString,
-                 bFailIfExists: cint): cint {.
+  proc moveFileW*(lpExistingFileName, lpNewFileName: WideCString): WINBOOL {.
     importc: "MoveFileW", stdcall, dynlib: "kernel32".}
 
   proc getEnvironmentStringsW*(): WideCString {.
@@ -368,8 +367,7 @@ else:
                  bFailIfExists: cint): cint {.
     importc: "CopyFileA", stdcall, dynlib: "kernel32".}
 
-  proc moveFileA*(lpExistingFileName, lpNewFileName: cstring,
-                 bFailIfExists: cint): cint {.
+  proc moveFileA*(lpExistingFileName, lpNewFileName: cstring): WINBOOL {.
     importc: "MoveFileA", stdcall, dynlib: "kernel32".}
 
   proc getEnvironmentStringsA*(): cstring {.

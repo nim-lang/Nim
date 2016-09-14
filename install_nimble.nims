@@ -16,4 +16,8 @@ mkDir "bin/nimblepkg"
 for file in listFiles("nimble" & $id & "/src/nimblepkg/"):
   cpFile file, "bin/nimblepkg/" & file.extractFilename
 
-mvFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
+try:
+  mvFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
+except OSError:
+  cpFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
+  

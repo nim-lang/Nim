@@ -43,6 +43,7 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
   template cbos(name, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
+        errorMsg = nil
         try:
           body
         except OSError:
