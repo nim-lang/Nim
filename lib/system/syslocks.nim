@@ -86,8 +86,10 @@ else:
         owner {.importc: "__data.__owner".}: cint
         nusers {.importc: "__data.__nusers".}: cuint
         kind {.importc: "__data.__kind".}: cint
-        spins {.importc: "__data.__spins".}: cshort
-        elision {.importc: "__data.__elision".}: cshort
+        spins {.importc: "__data.__spins".}: cint
+        # glibc 2.18+:
+        # spins {.importc: "__data.__spins".}: cshort
+        # elision {.importc: "__data.__elision".}: cshort
         list_next {.importc: "__data.__list.__next".}: pointer
         list_prev {.importc: "__data.__list.__prev".}: pointer
 
