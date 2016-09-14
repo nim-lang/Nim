@@ -1,7 +1,11 @@
 *
 !**/
 !*.*
+
+# Cache
 nimcache/
+rnimcache/
+dnimcache/
 
 *.o
 !/icons/*.o
