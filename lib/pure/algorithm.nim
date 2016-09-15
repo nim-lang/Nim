@@ -179,7 +179,7 @@ proc sort*[T](a: var openArray[T],
   ##    sort(myStrArray, system.cmp)
   ##
   ## You can inline adhoc comparison procs with the `do notation
-  ## <manual.html#do-notation>`_. Example:
+  ## <manual.html#procedures-do-notation>`_. Example:
   ##
   ## .. code-block:: nim
   ##
