@@ -1070,8 +1070,8 @@ proc createHardlink*(src, dest: string) =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Most OS's restrict the creation of hard links to
-  ## root users (administrators) .
+  ## **Warning**: Some OS's restrict the creation of hard links to
+  ## root users (administrators).
   when defined(Windows):
     when useWinUnicode:
       var wSrc = newWideCString(src)
