@@ -1412,7 +1412,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an O(1) operation.
   ##
   ## .. code-block:: nim
-  ##  var i = @[1,2,3,4,5]
+  ##  var i = @[1, 2, 3, 4, 5]
   ##  i.del(2) #=> @[1, 2, 5, 4]
   let xl = x.len - 1
   shallowCopy(x[i], x[xl])
@@ -1423,7 +1423,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an O(n) operation.
   ##
   ## .. code-block:: nim
-  ##  var i = @[1,2,3,4,5]
+  ##  var i = @[1, 2, 3, 4, 5]
   ##  i.delete(2) #=> @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
@@ -1442,8 +1442,8 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   ## inserts `item` into `x` at position `i`.
   ##
   ## .. code-block:: nim
-  ##  var i = @[1,2,3,4,5]
-  ##  i.insert(2,4) #=> @[1, 2, 3, 4, 2, 5]
+  ##  var i = @[1, 2, 3, 4, 5]
+  ##  i.insert(2, 4) #=> @[1, 2, 3, 4, 2, 5]
   template defaultImpl =
     let xl = x.len
     setLen(x, xl+1)
@@ -1467,8 +1467,8 @@ proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
   ## debugging tool.
   ##
   ## .. code-block:: nim
-  ##  var s: seq[string] = @["test2","test2"]
-  ##  var i = @[1,2,3,4,5]
+  ##  var s: seq[string] = @["test2", "test2"]
+  ##  var i = @[1, 2, 3, 4, 5]
   ##  repr(s) #=> 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
   ##  repr(i) #=> 0x1055ed050[1, 2, 3, 4, 5]
 
