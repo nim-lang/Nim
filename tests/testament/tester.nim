@@ -58,7 +58,7 @@ let
   pegLineTemplate =
     peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' 'template/generic instantiation from here'.*"
   pegOtherError = peg"'Error:' \s* {.*}"
-  pegSuccess = peg"'Hint: operation successful'.*"
+  pegSuccess = peg"'Hint: [SuccessX] operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
 
 var targets = {low(TTarget)..high(TTarget)}
