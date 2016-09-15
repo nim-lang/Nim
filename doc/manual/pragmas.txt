@@ -161,7 +161,7 @@ requires full qualification.
 
 asmNoStackFrame pragma
 ----------------------
-A proc can be marked with the ``AsmNoStackFrame`` pragma to tell the compiler
+A proc can be marked with the ``asmNoStackFrame`` pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
 statements like ``return result;`` generated and the generated C function is
 declared as ``__declspec(naked)`` or ``__attribute__((naked))`` (depending on
