@@ -301,7 +301,7 @@ var
   author*: string      ## Nimble support: The package's author.
   description*: string ## Nimble support: The package's description.
   license*: string     ## Nimble support: The package's license.
-  srcdir*: string      ## Nimble support: The package's source directory.
+  srcDir*: string      ## Nimble support: The package's source directory.
   binDir*: string      ## Nimble support: The package's binary directory.
   backend*: string     ## Nimble support: The package's backend.
 
