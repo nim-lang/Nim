@@ -47,7 +47,7 @@ proc inSet(s: PNode, elem: PNode): bool =
 proc overlap(a, b: PNode): bool =
   if a.kind == nkRange:
     if b.kind == nkRange:
-      # X..Y and C..D overlap iff (X <= D and C <= Y)
+      # X..Y and C..D overlap if (X <= D and C <= Y)
       result = leValue(a.sons[0], b.sons[1]) and
                leValue(b.sons[0], a.sons[1])
     else:
@@ -172,5 +172,5 @@ proc setHasRange(s: PNode): bool =
   result = false
 
 proc emptyRange(a, b: PNode): bool =
-  result = not leValue(a, b)  # a > b iff not (a <= b)
+  result = not leValue(a, b)  # a > b if not (a <= b)
 

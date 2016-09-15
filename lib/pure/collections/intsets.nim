@@ -94,7 +94,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc contains*(s: IntSet, key: int): bool =
-  ## returns true iff `key` is in `s`.
+  ## returns true if `key` is in `s`.
   var t = intSetGet(s, `shr`(key, TrunkShift))
   if t != nil:
     var u = key and TrunkMask

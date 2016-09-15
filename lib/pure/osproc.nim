@@ -197,7 +197,7 @@ proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## the process. On Windows ``kill()`` is simply an alias for ``terminate()``.
 
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
-  ## Returns true iff the process `p` is still running. Returns immediately.
+  ## Returns true if the process `p` is still running. Returns immediately.
 
 proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
   ## returns `p`'s process ID.

@@ -276,10 +276,10 @@ proc semOf(c: PContext, n: PNode): PNode =
       localError(n.info, errXExpectsObjectTypes, "of")
     else:
       let diff = inheritanceDiff(a, b)
-      # | returns: 0 iff `a` == `b`
-      # | returns: -x iff `a` is the x'th direct superclass of `b`
-      # | returns: +x iff `a` is the x'th direct subclass of `b`
-      # | returns: `maxint` iff `a` and `b` are not compatible at all
+      # | returns: 0 if `a` == `b`
+      # | returns: -x if `a` is the x'th direct superclass of `b`
+      # | returns: +x if `a` is the x'th direct subclass of `b`
+      # | returns: `maxint` if `a` and `b` are not compatible at all
       if diff <= 0:
         # optimize to true:
         message(n.info, hintConditionAlwaysTrue, renderTree(n))

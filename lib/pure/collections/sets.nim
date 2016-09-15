@@ -177,7 +177,7 @@ proc mget*[A](s: var HashSet[A], key: A): var A {.deprecated.} =
   s[key]
 
 proc contains*[A](s: HashSet[A], key: A): bool =
-  ## Returns true iff `key` is in `s`.
+  ## Returns true if `key` is in `s`.
   ##
   ## Example:
   ##
@@ -486,7 +486,7 @@ proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   result = symmetricDifference(s1, s2)
 
 proc disjoint*[A](s1, s2: HashSet[A]): bool =
-  ## Returns true iff the sets `s1` and `s2` have no items in common.
+  ## Returns true if the sets `s1` and `s2` have no items in common.
   ##
   ## Example:
   ##
@@ -651,7 +651,7 @@ proc rawGet[A](s: OrderedSet[A], key: A, hc: var Hash): int {.inline.} =
   rawGetImpl()
 
 proc contains*[A](s: OrderedSet[A], key: A): bool =
-  ## Returns true iff `key` is in `s`.
+  ## Returns true if `key` is in `s`.
   ##
   ## Example:
   ##
