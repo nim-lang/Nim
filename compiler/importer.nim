@@ -81,7 +81,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
           internalError(s.info, "rawImportSymbol")
           # BUGFIX: because of aliases for enums the symbol may already
           # have been put into the symbol table
-          # BUGFIX: but only iff they are the same symbols!
+          # BUGFIX: but only if they are the same symbols!
         var it: TIdentIter
         check = initIdentIter(it, c.importTable.symbols, e.name)
         while check != nil:

@@ -564,7 +564,7 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   elif a0 >= f0 and a1 <= f1:
     result = isConvertible
   elif a0 <= f1 and f0 <= a1:
-    # X..Y and C..D overlap iff (X <= D and C <= Y)
+    # X..Y and C..D overlap if (X <= D and C <= Y)
     result = isConvertible
   else:
     result = isNone

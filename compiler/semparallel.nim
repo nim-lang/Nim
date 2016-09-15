@@ -153,7 +153,7 @@ proc addSlice(c: var AnalysisCtx; n: PNode; x, le, ri: PNode) =
   c.slices.add((x, le, ri, c.currentSpawnId, c.inLoop > 0))
 
 proc overlap(m: TModel; x,y,c,d: PNode) =
-  #  X..Y and C..D overlap iff (X <= D and C <= Y)
+  #  X..Y and C..D overlap if (X <= D and C <= Y)
   case proveLe(m, c, y)
   of impUnknown:
     case proveLe(m, x, d)

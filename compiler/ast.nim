@@ -800,7 +800,7 @@ type
                               # for fields its offset
                               # for parameters its position
                               # for a conditional:
-                              # 1 iff the symbol is defined, else 0
+                              # 1 if the symbol is defined, else 0
                               # (or not in symbol table)
                               # for modules, an unique index corresponding
                               # to the module's fileIdx
@@ -819,7 +819,7 @@ type
   TTypeSeq* = seq[PType]
   TLockLevel* = distinct int16
   TType* {.acyclic.} = object of TIdObj # \
-                              # types are identical iff they have the
+                              # types are identical if they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
     kind*: TTypeKind          # kind of type

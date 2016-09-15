@@ -508,7 +508,7 @@ proc leImpliesIn(x, c, aSet: PNode): TImplication =
 proc geImpliesIn(x, c, aSet: PNode): TImplication =
   if c.kind in {nkCharLit..nkUInt64Lit}:
     # fact:  x >= 4;  question x in {56}?
-    # --> true iff every value >= 4 is in the set {56}
+    # --> true if every value >= 4 is in the set {56}
     #
     var value = newIntNode(c.kind, c.intVal)
     let max = lastOrd(x.typ)
@@ -576,7 +576,7 @@ proc impliesGe(fact, x, c: PNode): TImplication =
   of someEq:
     if sameTree(fact.sons[1], x):
       if isValue(fact.sons[2]) and isValue(c):
-        # fact:  x = 4;  question x >= 56? --> true iff 4 >= 56
+        # fact:  x = 4;  question x >= 56? --> true if 4 >= 56
         if leValue(c, fact.sons[2]): result = impYes
         else: result = impNo
     elif sameTree(fact.sons[2], x):
@@ -586,21 +586,21 @@ proc impliesGe(fact, x, c: PNode): TImplication =
   of someLt:
     if sameTree(fact.sons[1], x):
       if isValue(fact.sons[2]) and isValue(c):
-        # fact:  x < 4;  question N <= x? --> false iff N <= 4
+        # fact:  x < 4;  question N <= x? --> false if N <= 4
         if leValue(fact.sons[2], c): result = impNo
         # fact:  x < 4;  question 2 <= x? --> we don't know
     elif sameTree(fact.sons[2], x):
-      # fact: 3 < x; question: N-1 < x ?  --> true iff N-1 <= 3
+      # fact: 3 < x; question: N-1 < x ?  --> true if N-1 <= 3
       if isValue(fact.sons[1]) and isValue(c):
         if leValue(c.pred, fact.sons[1]): result = impYes
   of someLe:
     if sameTree(fact.sons[1], x):
       if isValue(fact.sons[2]) and isValue(c):
-        # fact:  x <= 4;  question x >= 56? --> false iff 4 <= 56
+        # fact:  x <= 4;  question x >= 56? --> false if 4 <= 56
         if leValue(fact.sons[2], c): result = impNo
         # fact:  x <= 4;  question x >= 2? --> we don't know
     elif sameTree(fact.sons[2], x):
-      # fact: 3 <= x; question: x >= 2 ?  --> true iff 2 <= 3
+      # fact: 3 <= x; question: x >= 2 ?  --> true if 2 <= 3
       if isValue(fact.sons[1]) and isValue(c):
         if leValue(c, fact.sons[1]): result = impYes
   of mNot, mOr, mAnd: internalError(x.info, "impliesGe")
@@ -613,7 +613,7 @@ proc impliesLe(fact, x, c: PNode): TImplication =
   of someEq:
     if sameTree(fact.sons[1], x):
       if isValue(fact.sons[2]) and isValue(c):
-        # fact:  x = 4;  question x <= 56? --> true iff 4 <= 56
+        # fact:  x = 4;  question x <= 56? --> true if 4 <= 56
         if leValue(fact.sons[2], c): result = impYes
         else: result = impNo
     elif sameTree(fact.sons[2], x):
@@ -623,23 +623,23 @@ proc impliesLe(fact, x, c: PNode): TImplication =
   of someLt:
     if sameTree(fact.sons[1], x):
       if isValue(fact.sons[2]) and isValue(c):
-        # fact:  x < 4;  question x <= N? --> true iff N-1 <= 4
+        # fact:  x < 4;  question x <= N? --> true if N-1 <= 4
         if leValue(fact.sons[2], c.pred): result = impYes
         # fact:  x < 4;  question x <= 2? --> we don't know
     elif sameTree(fact.sons[2], x):
-      # fact: 3 < x; question: x <= 1 ?  --> false iff 1 <= 3
+      # fact: 3 < x; question: x <= 1 ?  --> false if 1 <= 3
       if isValue(fact.sons[1]) and isValue(c):
         if leValue(c, fact.sons[1]): result = impNo
 
   of someLe:
     if sameTree(fact.sons[1], x):
       if isValue(fact.sons[2]) and isValue(c):
-        # fact:  x <= 4;  question x <= 56? --> true iff 4 <= 56
+        # fact:  x <= 4;  question x <= 56? --> true if 4 <= 56
         if leValue(fact.sons[2], c): result = impYes
         # fact:  x <= 4;  question x <= 2? --> we don't know
 
     elif sameTree(fact.sons[2], x):
-      # fact: 3 <= x; question: x <= 2 ?  --> false iff 2 < 3
+      # fact: 3 <= x; question: x <= 2 ?  --> false if 2 < 3
       if isValue(fact.sons[1]) and isValue(c):
         if leValue(c, fact.sons[1].pred): result = impNo
 
@@ -783,10 +783,10 @@ proc ple(m: TModel; a, b: PNode): TImplication =
   if a.isValue and b.isValue:
     return if leValue(a, b): impYes else: impNo
 
-  # use type information too:  x <= 4  iff  high(x) <= 4
+  # use type information too:  x <= 4  if  high(x) <= 4
   if b.isValue and a.typ != nil and a.typ.isOrdinalType:
     if lastOrd(a.typ) <= b.intVal: return impYes
-  # 3 <= x   iff  low(x) <= 3
+  # 3 <= x   if  low(x) <= 3
   if a.isValue and b.typ != nil and b.typ.isOrdinalType:
     if firstOrd(b.typ) <= a.intVal: return impYes
 
@@ -847,12 +847,12 @@ proc ple(m: TModel; a, b: PNode): TImplication =
       if a[2] <=? a[1] and sameTree(a[1], b[1]): return impYes
 
   # slightly subtle:
-  # x <= max(y, z)  iff x <= y or x <= z
+  # x <= max(y, z)  if x <= y or x <= z
   # note that 'x <= max(x, z)' is a special case of the above rule
   if b.getMagic in someMax:
     if a <=? b[1] or a <=? b[2]: return impYes
 
-  # min(x, y) <= z  iff x <= z or y <= z
+  # min(x, y) <= z  if x <= z or y <= z
   if a.getMagic in someMin:
     if a[1] <=? b or a[2] <=? b: return impYes
 
@@ -942,7 +942,7 @@ proc proveLe*(m: TModel; a, b: PNode): TImplication =
   #echo "ROOT ", renderTree(x[1]), " <=? ", renderTree(x[2])
   result = ple(m, x[1], x[2])
   if result == impUnknown:
-    # try an alternative:  a <= b  iff  not (b < a)  iff  not (b+1 <= a):
+    # try an alternative:  a <= b  if  not (b < a)  if  not (b+1 <= a):
     let y = canon(opLe.buildCall(opAdd.buildCall(b, one()), a))
     result = ~ple(m, y[1], y[2])
 
@@ -995,7 +995,7 @@ proc sameSubexprs*(m: TModel; a, b: PNode): bool =
   #   ...
   #   access a[i].guarded
   #
-  # Here a[i] is the same as a[i] iff 'i' and 'a' are not changed via '...'.
+  # Here a[i] is the same as a[i] if 'i' and 'a' are not changed via '...'.
   # However, nil checking requires exactly the same mechanism! But for now
   # we simply use sameTree and live with the unsoundness of the analysis.
   var check = newNodeI(nkCall, a.info, 3)

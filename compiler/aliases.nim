@@ -58,7 +58,7 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
   else: discard
 
 proc isPartOf(a, b: PType): TAnalysisResult =
-  ## checks iff 'a' can be part of 'b'. Iterates over VALUE types!
+  ## checks if 'a' can be part of 'b'. Iterates over VALUE types!
   var marker = initIntSet()
   # watch out: parameters reversed because I'm too lazy to change the code...
   result = isPartOfAux(b, a, marker)
@@ -83,11 +83,11 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
   ## x           !<| y    # depending on type and symbol kind
   ## x[constA]   !<| x[constB]
   ## x.f         !<| x.g
-  ## x.f         !<| y.f  iff x !<= y
+  ## x.f         !<| y.f  if x !<= y
   ##
   ## MAYBE-cases:
   ##
-  ##  x[] ?<| y[]   iff compatible type
+  ##  x[] ?<| y[]   if compatible type
   ##
   ##
   ##  x[]  ?<| y  depending on type
@@ -152,7 +152,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
       DerefKinds = {nkHiddenDeref, nkDerefExpr}
     case b.kind
     of Ix0Kinds:
-      # a* !<| b.f  iff  a* !<| b
+      # a* !<| b.f  if  a* !<| b
       result = isPartOf(a, b[0])
 
     of DerefKinds:
@@ -162,14 +162,14 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         if result == arNo: result = arMaybe
 
     of Ix1Kinds:
-      # a* !<| T(b)  iff a* !<| b
+      # a* !<| T(b)  if a* !<| b
       result = isPartOf(a, b[1])
 
     of nkSym:
       # b is an atom, so we have to check a:
       case a.kind
       of Ix0Kinds:
-        # a.f !<| b*  iff  a.f !<| b*
+        # a.f !<| b*  if  a.f !<| b*
         result = isPartOf(a[0], b)
       of Ix1Kinds:
         result = isPartOf(a[1], b)

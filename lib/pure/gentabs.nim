@@ -105,7 +105,7 @@ proc enlarge[T](tbl: PGenTable[T]) =
   swap(tbl.data, n)
 
 proc hasKey*[T](tbl: PGenTable[T], key: string): bool =
-  ## returns true iff `key` is in the table `tbl`.
+  ## returns true if `key` is in the table `tbl`.
   result = rawGet(tbl, key) >= 0
 
 proc `[]`*[T](tbl: PGenTable[T], key: string): T =

@@ -776,7 +776,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
                                     # result types does not work
 
 proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
-  # two tuples are equivalent iff the names, types and positions are the same;
+  # two tuples are equivalent if the names, types and positions are the same;
   # however, both types may not have any field names (t.n may be nil) which
   # complicates the matter a bit.
   if sonsLen(a) == sonsLen(b):
@@ -998,10 +998,10 @@ proc compareTypes*(x, y: PType,
   else: result = sameTypeAux(x, y, c)
 
 proc inheritanceDiff*(a, b: PType): int =
-  # | returns: 0 iff `a` == `b`
-  # | returns: -x iff `a` is the x'th direct superclass of `b`
-  # | returns: +x iff `a` is the x'th direct subclass of `b`
-  # | returns: `maxint` iff `a` and `b` are not compatible at all
+  # | returns: 0 if `a` == `b`
+  # | returns: -x if `a` is the x'th direct superclass of `b`
+  # | returns: +x if `a` is the x'th direct subclass of `b`
+  # | returns: `maxint` if `a` and `b` are not compatible at all
   if a == b or a.kind == tyError or b.kind == tyError: return 0
   assert a.kind == tyObject
   assert b.kind == tyObject

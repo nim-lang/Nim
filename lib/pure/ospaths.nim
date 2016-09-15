@@ -416,9 +416,9 @@ when not declared(getEnv) or defined(nimscript):
     ## On a case-sensitive filesystem this is done
     ## case-sensitively otherwise case-insensitively. Returns:
     ##
-    ## | 0 iff pathA == pathB
-    ## | < 0 iff pathA < pathB
-    ## | > 0 iff pathA > pathB
+    ## | 0 if pathA == pathB
+    ## | < 0 if pathA < pathB
+    ## | > 0 if pathA > pathB
     if FileSystemCaseSensitive:
       result = cmp(pathA, pathB)
     else:

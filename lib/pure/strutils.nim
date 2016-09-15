@@ -402,9 +402,9 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuCmpIgnoreCase", procvar.} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
   var i = 0
   var m = min(a.len, b.len)
   while i < m:
@@ -421,9 +421,9 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   ## Compares two strings normalized (i.e. case and
   ## underscores do not matter). Returns:
   ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
   var i = 0
   var j = 0
   while true:
@@ -1197,7 +1197,7 @@ proc unindent*(s: string): string
 
 proc startsWith*(s, prefix: string): bool {.noSideEffect,
   rtl, extern: "nsuStartsWith".} =
-  ## Returns true iff ``s`` starts with ``prefix``.
+  ## Returns true if ``s`` starts with ``prefix``.
   ##
   ## If ``prefix == ""`` true is returned.
   var i = 0
@@ -1207,12 +1207,12 @@ proc startsWith*(s, prefix: string): bool {.noSideEffect,
     inc(i)
 
 proc startsWith*(s: string, prefix: char): bool {.noSideEffect, inline.} =
-  ## Returns true iff ``s`` starts with ``prefix``.
+  ## Returns true if ``s`` starts with ``prefix``.
   result = s[0] == prefix
 
 proc endsWith*(s, suffix: string): bool {.noSideEffect,
   rtl, extern: "nsuEndsWith".} =
-  ## Returns true iff ``s`` ends with ``suffix``.
+  ## Returns true if ``s`` ends with ``suffix``.
   ##
   ## If ``suffix == ""`` true is returned.
   var i = 0
@@ -1223,12 +1223,12 @@ proc endsWith*(s, suffix: string): bool {.noSideEffect,
   if suffix[i] == '\0': return true
 
 proc endsWith*(s: string, suffix: char): bool {.noSideEffect, inline.} =
-  ## Returns true iff ``s`` ends with ``suffix``.
+  ## Returns true if ``s`` ends with ``suffix``.
   result = s[s.high] == suffix
 
 proc continuesWith*(s, substr: string, start: Natural): bool {.noSideEffect,
   rtl, extern: "nsuContinuesWith".} =
-  ## Returns true iff ``s`` continues with ``substr`` at position ``start``.
+  ## Returns true if ``s`` continues with ``substr`` at position ``start``.
   ##
   ## If ``substr == ""`` true is returned.
   var i = 0
@@ -1260,7 +1260,7 @@ proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
   if dest.len > startLen: add(dest, sep)
 
 proc allCharsInSet*(s: string, theSet: set[char]): bool =
-  ## Returns true iff each character of `s` is in the set `theSet`.
+  ## Returns true if each character of `s` is in the set `theSet`.
   for c in items(s):
     if c notin theSet: return false
   return true

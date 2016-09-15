@@ -65,7 +65,7 @@ type
 
   TCProc{.final.} = object    # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
-    beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
+    beforeRetNeeded*: bool    # true if 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     nestedTryStmts*: seq[PNode]   # in how many nested try statements we are

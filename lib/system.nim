@@ -166,18 +166,18 @@ proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
   discard
 
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
-  ## Boolean not; returns true iff ``x == false``.
+  ## Boolean not; returns true if ``x == false``.
 
 proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
-  ## Boolean ``and``; returns true iff ``x == y == true``.
+  ## Boolean ``and``; returns true if ``x == y == true``.
   ## Evaluation is lazy: if ``x`` is false,
   ## ``y`` will not even be evaluated.
 proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
-  ## Boolean ``or``; returns true iff ``not (not x and not y)``.
+  ## Boolean ``or``; returns true if ``not (not x and not y)``.
   ## Evaluation is lazy: if ``x`` is true,
   ## ``y`` will not even be evaluated.
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
-  ## Boolean `exclusive or`; returns true iff ``x != y``.
+  ## Boolean `exclusive or`; returns true if ``x != y``.
 
 proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
@@ -934,14 +934,14 @@ proc `<=` *(x, y: int8): bool {.magic: "LeI", noSideEffect.}
 proc `<=` *(x, y: int16): bool {.magic: "LeI", noSideEffect.}
 proc `<=` *(x, y: int32): bool {.magic: "LeI", noSideEffect.}
 proc `<=` *(x, y: int64): bool {.magic: "LeI", noSideEffect.}
-  ## Returns true iff `x` is less than or equal to `y`.
+  ## Returns true if `x` is less than or equal to `y`.
 
 proc `<` *(x, y: int): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int8): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int16): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int32): bool {.magic: "LtI", noSideEffect.}
 proc `<` *(x, y: int64): bool {.magic: "LtI", noSideEffect.}
-  ## Returns true iff `x` is less than `y`.
+  ## Returns true if `x` is less than `y`.
 
 type
   IntMax32 = int|int8|int16|int32
@@ -980,12 +980,12 @@ proc `%%` *(x, y: int64): int64 {.magic: "ModU", noSideEffect.}
 proc `<=%` *(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
 proc `<=%` *(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
-  ## Returns true iff ``unsigned(x) <= unsigned(y)``.
+  ## Returns true if ``unsigned(x) <= unsigned(y)``.
 
 proc `<%` *(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
 proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
-  ## Returns true iff ``unsigned(x) < unsigned(y)``.
+  ## Returns true if ``unsigned(x) < unsigned(y)``.
 
 # unsigned integer operations:
 proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
@@ -1034,10 +1034,10 @@ proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
   ##   (7 mod 5) == 2
 
 proc `<=`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LeU", noSideEffect.}
-  ## Returns true iff ``x <= y``.
+  ## Returns true if ``x <= y``.
 
 proc `<`*[T: SomeUnsignedInt](x, y: T): bool {.magic: "LtU", noSideEffect.}
-  ## Returns true iff ``unsigned(x) < unsigned(y)``.
+  ## Returns true if ``unsigned(x) < unsigned(y)``.
 
 # floating point operations:
 proc `+` *(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
@@ -1136,8 +1136,8 @@ proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ##   assert(DivByZeroError of Exception)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
-  ## Generic compare proc. Returns a value < 0 iff x < y, a value > 0 iff x > y
-  ## and 0 iff x == y. This is useful for writing generic algorithms without
+  ## Generic compare proc. Returns a value < 0 if x < y, a value > 0 if x > y
+  ## and 0 if x == y. This is useful for writing generic algorithms without
   ## performance loss. This generic implementation uses the `==` and `<`
   ## operators.
   ##
@@ -1753,11 +1753,11 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
 
 template `>=%` *(x, y: untyped): untyped = y <=% x
   ## treats `x` and `y` as unsigned and compares them.
-  ## Returns true iff ``unsigned(x) >= unsigned(y)``.
+  ## Returns true if ``unsigned(x) >= unsigned(y)``.
 
 template `>%` *(x, y: untyped): untyped = y <% x
   ## treats `x` and `y` as unsigned and compares them.
-  ## Returns true iff ``unsigned(x) > unsigned(y)``.
+  ## Returns true if ``unsigned(x) > unsigned(y)``.
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
@@ -2701,14 +2701,14 @@ when not defined(JS): #and not defined(nimscript):
                benign.}
       ## Opens a file named `filename` with given `mode`.
       ##
-      ## Default mode is readonly. Returns true iff the file could be opened.
+      ## Default mode is readonly. Returns true if the file could be opened.
       ## This throws no exception if the file could not be opened.
 
     proc open*(f: var File, filehandle: FileHandle,
                mode: FileMode = fmRead): bool {.tags: [], benign.}
       ## Creates a ``File`` from a `filehandle` with given `mode`.
       ##
-      ## Default mode is readonly. Returns true iff the file could be opened.
+      ## Default mode is readonly. Returns true if the file could be opened.
 
     proc open*(filename: string,
                mode: FileMode = fmRead, bufSize: int = -1): File =
@@ -2725,7 +2725,7 @@ when not defined(JS): #and not defined(nimscript):
       ## is often used to redirect the `stdin`, `stdout` or `stderr`
       ## file variables.
       ##
-      ## Default mode is readonly. Returns true iff the file could be reopened.
+      ## Default mode is readonly. Returns true if the file could be reopened.
 
     proc setStdIoUnbuffered*() {.tags: [], benign.}
       ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
@@ -2734,7 +2734,7 @@ when not defined(JS): #and not defined(nimscript):
       ## Closes the file.
 
     proc endOfFile*(f: File): bool {.tags: [], benign.}
-      ## Returns true iff `f` is at the end.
+      ## Returns true if `f` is at the end.
 
     proc readChar*(f: File): char {.tags: [ReadIOEffect].}
       ## Reads a single character from the stream `f`.
