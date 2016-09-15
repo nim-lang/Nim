@@ -2794,7 +2794,7 @@ when not defined(JS): #and not defined(nimscript):
 
     proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                              tags: [WriteIOEffect], benign.}
-      ## writes the values `x` to `f` and then writes "\n".
+      ## writes the values `x` to `f` and then writes "\\n".
       ## May throw an IO exception.
 
     proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
