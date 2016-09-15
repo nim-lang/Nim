@@ -1047,7 +1047,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
 
 proc createSymlink*(src, dest: string) =
   ## Create a symbolic link at `dest` which points to the item specified
-  ## by `src`. On most operating systems, will fail if a lonk
+  ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## **Warning**:
   ## Some OS's (such as Microsoft Windows) restrict the creation
@@ -1070,8 +1070,8 @@ proc createHardlink*(src, dest: string) =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Most OS's restrict the creation of hard links to
-  ## root users (administrators) .
+  ## **Warning**: Some OS's restrict the creation of hard links to
+  ## root users (administrators).
   when defined(Windows):
     when useWinUnicode:
       var wSrc = newWideCString(src)

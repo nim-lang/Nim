@@ -70,9 +70,9 @@ directory where you would like the download to take place.
 The following commands can be used to download the current development branch
 and then to build it::
 
-  git clone git://github.com/nim-lang/Nim.git
+  git clone https://github.com/nim-lang/Nim.git
   cd Nim
-  git clone --depth 1 git://github.com/nim-lang/csources
+  git clone --depth 1 https://github.com/nim-lang/csources
   cd csources && sh build.sh
   cd ..
   bin/nim c koch
