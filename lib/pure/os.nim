@@ -1047,7 +1047,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
 
 proc createSymlink*(src, dest: string) =
   ## Create a symbolic link at `dest` which points to the item specified
-  ## by `src`. On most operating systems, will fail if a lonk
+  ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## **Warning**:
   ## Some OS's (such as Microsoft Windows) restrict the creation
