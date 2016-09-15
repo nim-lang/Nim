@@ -226,6 +226,7 @@ proc high*[T](x: T): T {.magic: "High", noSideEffect.}
   ##  var arr = [1,2,3,4,5,6,7]
   ##  high(arr) #=> 6
   ##  high(2) #=> 9223372036854775807
+  ##  high(int) #=> 9223372036854775807
 
 proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ## returns the lowest possible index of an array, a sequence, a string or
@@ -236,6 +237,7 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
   ##  var arr = [1,2,3,4,5,6,7]
   ##  low(arr) #=> 0
   ##  low(2) #=> -9223372036854775808
+  ##  low(int) #=> -9223372036854775808
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
