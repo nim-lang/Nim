@@ -1313,20 +1313,20 @@ when defined(boehmgc):
 
 when taintMode:
   type TaintedString* = distinct string ## a distinct string type that
-                                        ## is `tainted`:idx:. It is an alias for
+                                        ## is `tainted`:idx:, see `taint mode
+                                        ## <manual.html#taint-mode>`_ for
+                                        ## details. It is an alias for
                                         ## ``string`` if the taint mode is not
-                                        ## turned on. Use the ``-d:taintMode``
-                                        ## command line switch to turn the taint
-                                        ## mode on.
+                                        ## turned on.
 
   proc len*(s: TaintedString): int {.borrow.}
 else:
   type TaintedString* = string          ## a distinct string type that
-                                        ## is `tainted`:idx:. It is an alias for
+                                        ## is `tainted`:idx:, see `taint mode
+                                        ## <manual.html#taint-mode>`_ for
+                                        ## details. It is an alias for
                                         ## ``string`` if the taint mode is not
-                                        ## turned on. Use the ``-d:taintMode``
-                                        ## command line switch to turn the taint
-                                        ## mode on.
+                                        ## turned on.
 
 when defined(profiler):
   proc nimProfile() {.compilerProc, noinline.}
