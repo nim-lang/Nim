@@ -891,8 +891,8 @@ proc `shl` *(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
   ## computes the `shift left` operation of `x` and `y`.
   ##
   ## .. code-block:: Nim
-  ##  1'i32 shl 4  == 0x0000_0010
-  ##  1'i64 shl 4  == 0x0000_0000_0000_0010
+  ##  1'i32 shl 4 == 0x0000_0010
+  ##  1'i64 shl 4 == 0x0000_0000_0000_0010
 
 proc `and` *(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
