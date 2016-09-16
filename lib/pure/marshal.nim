@@ -31,34 +31,10 @@
 ##
 ## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
 
-import streams, typeinfo, json, intsets, tables
+import streams, typeinfo, json, intsets, tables, unicode
 
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
-
-proc binaryToUtf8(s: string): string =
-  ## converts binary data to valid UTF-8 string
-  result = newStringOfCap(s.len)
-  for c in s:
-    let code = ord(c)
-    if code > 0x7F:
-      result.add(chr(0xC0 or (code shr 6)))
-      result.add(chr(0x80 or (code and 0x3F)))
-    else:
-      result.add(c)
-
-proc utf8ToBinary(s: string): string =
-  result = newStringOfCap(s.len)
-  var i = 0
-  while i < s.len:
-    var code = ord(s[i])
-    if code > 127:
-      if (code and 0xE0) != 0xC0 or (code and 0x1F) > 3 or i + 1 == s.len:
-        raise newException(ValueError, "invalid binary encoding")
-      code = ((code and 0x1F) shl 6) or (ord(s[i + 1]) and 0x3F)
-      inc i
-    result.add(chr(code))
-    inc i
 
 proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   case a.kind
@@ -116,7 +92,15 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   of akString:
     var x = getString(a)
     if isNil(x): s.write("null")
-    else: s.write(escapeJson(binaryToUtf8(x)))
+    elif x.validateUtf8() == -1: s.write(escapeJson(x))
+    else:
+      s.write("[")
+      var i = 0
+      for c in x:
+        if i > 0: s.write(", ")
+        s.write($ord(c))
+        inc(i)
+      s.write("]")
   of akInt..akInt64, akUInt..akUInt64: s.write($getBiggestInt(a))
   of akFloat..akFloat128: s.write($getBiggestFloat(a))
 
@@ -229,8 +213,20 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
       setPointer(a, nil)
       next(p)
     of jsonString:
-      setString(a, utf8ToBinary(p.str))
+      setString(a, p.str)
       next(p)
+    of jsonArrayStart:
+      next(p)
+      var str = ""
+      while p.kind == jsonInt:
+        let code = p.getInt()
+        if code < 0 or code > 255:
+          raiseParseErr(p, "invalid charcode: " & $code)
+        str.add(chr(code))
+        next(p)
+      if p.kind == jsonArrayEnd: next(p)
+      else: raiseParseErr(p, "an array of charcodes expected for string")
+      setString(a, str)
     else: raiseParseErr(p, "string expected")
   of akInt..akInt64, akUInt..akUInt64:
     if p.kind == jsonInt:
