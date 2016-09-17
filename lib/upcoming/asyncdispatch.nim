@@ -339,17 +339,22 @@ proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   var retFuture = newFuture[void]("asyncdispatch.`and`")
   fut1.callback =
     proc () =
-      if fut2.finished: retFuture.complete()
+      if not retFuture.finished:
+        if fut1.failed: retFuture.fail(fut1.error)
+        elif fut2.finished: retFuture.complete()
   fut2.callback =
     proc () =
-      if fut1.finished: retFuture.complete()
+      if not retFuture.finished:
+        if fut2.failed: retFuture.fail(fut2.error)
+        elif fut1.finished: retFuture.complete()
   return retFuture
 
 proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once either ``fut1`` or ``fut2``
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`or`")
-  proc cb() =
+  proc cb(fut: Future[T]) =
+    if fut.failed: retFuture.fail(fut.error)
     if not retFuture.finished: retFuture.complete()
   fut1.callback = cb
   fut2.callback = cb
@@ -374,10 +379,13 @@ proc all*[T](futs: varargs[Future[T]]): auto =
 
     for fut in futs:
       fut.callback = proc(f: Future[T]) =
-        inc(completedFutures)
+        if f.failed:
+          retFuture.fail(f.error)
+        elif not retFuture.finished:
+          inc(completedFutures)
 
-        if completedFutures == totalFutures:
-          retFuture.complete()
+          if completedFutures == totalFutures:
+            retFuture.complete()
 
     return retFuture
 
@@ -390,11 +398,14 @@ proc all*[T](futs: varargs[Future[T]]): auto =
     for i, fut in futs:
       proc setCallback(i: int) =
         fut.callback = proc(f: Future[T]) =
-          retValues[i] = f.read()
-          inc(completedFutures)
+          if f.failed:
+            retFuture.fail(f.error)
+          elif not retFuture.finished:
+            retValues[i] = f.read()
+            inc(completedFutures)
 
-          if completedFutures == len(retValues):
-            retFuture.complete(retValues)
+            if completedFutures == len(retValues):
+              retFuture.complete(retValues)
 
       setCallback(i)
 

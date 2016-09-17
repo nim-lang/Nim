@@ -2,17 +2,21 @@ discard """
   file: "tawaitsemantics.nim"
   exitcode: 0
   output: '''
-Error caught
-Test infix
-Test call
+Error can be caught using yield
+Infix `or` raises
+Infix `and` raises
+All() raises
+Awaiting a async procedure call raises
+Awaiting a future raises
 '''
 """
 
 import asyncdispatch
 
 # This tests the behaviour of 'await' under different circumstances.
-# For example, when awaiting Future variable and this future has failed the
-# exception shouldn't be raised as described here
+# Specifically, when an awaited future raises an exception then `await` should
+# also raise that exception by `read`'ing that future. In cases where you don't
+# want this behaviour, you can use `yield`.
 # https://github.com/nim-lang/Nim/issues/4170
 
 proc thrower(): Future[void] =
@@ -23,15 +27,30 @@ proc dummy: Future[void] =
   result = newFuture[void]()
   result.complete()
 
-proc testInfix() {.async.} =
-  # Test the infix operator semantics.
+proc testInfixOr() {.async.} =
+  # Test the infix `or` operator semantics.
   var fut = thrower()
   var fut2 = dummy()
-  await fut or fut2 # Shouldn't raise.
-  # TODO: what about: await thrower() or fut2?
+  await fut or fut2 # Should raise!
+
+proc testInfixAnd() {.async.} =
+  # Test the infix `and` operator semantics.
+  var fut = thrower()
+  var fut2 = dummy()
+  await fut and fut2 # Should raise!
+
+proc testAll() {.async.} =
+  # Test the `all` semantics.
+  var fut = thrower()
+  var fut2 = dummy()
+  await all(fut, fut2) # Should raise!
 
 proc testCall() {.async.} =
   await thrower()
+
+proc testAwaitFut() {.async.} =
+  var fut = thrower()
+  await fut # This should raise.
 
 proc tester() {.async.} =
   # Test that we can handle exceptions without 'try'
@@ -39,21 +58,40 @@ proc tester() {.async.} =
   doAssert fut.finished
   doAssert fut.failed
   doAssert fut.error.msg == "Test"
-  await fut # We are awaiting a 'Future', so no `read` occurs.
+  yield fut # We are yielding a 'Future', so no `read` occurs.
   doAssert fut.finished
   doAssert fut.failed
   doAssert fut.error.msg == "Test"
-  echo("Error caught")
+  echo("Error can be caught using yield")
 
-  fut = testInfix()
-  await fut
+  fut = testInfixOr()
+  yield fut
   doAssert fut.finished
-  doAssert(not fut.failed)
-  echo("Test infix")
+  doAssert fut.failed
+  echo("Infix `or` raises")
+
+  fut = testInfixAnd()
+  yield fut
+  doAssert fut.finished
+  doAssert fut.failed
+  echo("Infix `and` raises")
+
+  fut = testAll()
+  yield fut
+  doAssert fut.finished
+  doAssert fut.failed
+  echo("All() raises")
 
   fut = testCall()
-  await fut
+  yield fut
   doAssert fut.failed
-  echo("Test call")
+  echo("Awaiting a async procedure call raises")
+
+  # Test that await will read the future and raise an exception.
+  fut = testAwaitFut()
+  yield fut
+  doAssert fut.failed
+  echo("Awaiting a future raises")
+
 
 waitFor(tester())

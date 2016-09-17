@@ -144,11 +144,9 @@ proc processBody(node, retFutureSym: NimNode,
   of nnkCommand, nnkCall:
     if node[0].kind == nnkIdent and node[0].ident == !"await":
       case node[1].kind
-      of nnkIdent, nnkInfix, nnkDotExpr:
+      of nnkIdent, nnkInfix, nnkDotExpr, nnkCall, nnkCommand:
         # await x
         # await x or y
-        result = newNimNode(nnkYieldStmt, node).add(node[1]) # -> yield x
-      of nnkCall, nnkCommand:
         # await foo(p, x)
         # await foo p, x
         var futureValue: NimNode
