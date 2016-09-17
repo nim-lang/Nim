@@ -353,11 +353,11 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once either ``fut1`` or ``fut2``
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`or`")
-  proc cb(fut: Future[T]) =
+  proc cb[X](fut: Future[X]) =
     if fut.failed: retFuture.fail(fut.error)
     if not retFuture.finished: retFuture.complete()
-  fut1.callback = cb
-  fut2.callback = cb
+  fut1.callback = cb[T]
+  fut2.callback = cb[Y]
   return retFuture
 
 proc all*[T](futs: varargs[Future[T]]): auto =
