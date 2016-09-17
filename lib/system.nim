@@ -1521,7 +1521,7 @@ type # these work for most platforms:
     ## This is the same as the type ``double`` in *C*.
   clongdouble* {.importc: "long double", nodecl.} = BiggestFloat
     ## This is the same as the type ``long double`` in *C*.
-    ## This C type is not supported by Nim's code generator
+    ## This C type is not supported by Nim's code generator.
 
   cuchar* {.importc: "unsigned char", nodecl.} = char
     ## This is the same as the type ``unsigned char`` in *C*.
@@ -2653,12 +2653,11 @@ when not defined(JS): #and not defined(nimscript):
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
-      ## Opens a file named `filename` for reading.
-      ##
-      ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
-      ## Returns the string.  Raises an IO exception in case of an error. If
-      ## you need to call this inside a compile time macro you can use
-      ## `staticRead <#staticRead>`_.
+      ## Opens a file named `filename` for reading, calls `readAll
+      ## <#readAll>`_ and closes the file afterwards. Returns the string.
+      ## Raises an IO exception in case of an error. If # you need to call
+      ## this inside a compile time macro you can use `staticRead
+      ## <#staticRead>`_.
 
     proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
       ## Opens a file named `filename` for writing. Then writes the

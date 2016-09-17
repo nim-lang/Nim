@@ -13,7 +13,7 @@ Example:
     Sym = object       # a symbol
       name: string     # the symbol's name
       line: int        # the line the symbol was declared in
-      code: Node      # the symbol's abstract syntax tree
+      code: Node       # the symbol's abstract syntax tree
 
 A type section begins with the ``type`` keyword. It contains multiple
 type definitions. A type definition binds a type to a name. Type definitions

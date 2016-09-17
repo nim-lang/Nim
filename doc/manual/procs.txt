@@ -61,14 +61,14 @@ Calling a procedure can be done in many different ways:
 .. code-block:: nim
   proc callme(x, y: int, s: string = "", c: char, b: bool = false) = ...
 
-  # call with positional arguments # parameter bindings:
-  callme(0, 1, "abc", '\t', true)  # (x=0, y=1, s="abc", c='\t', b=true)
+  # call with positional arguments      # parameter bindings:
+  callme(0, 1, "abc", '\t', true)       # (x=0, y=1, s="abc", c='\t', b=true)
   # call with named and positional arguments:
-  callme(y=1, x=0, "abd", '\t')    # (x=0, y=1, s="abd", c='\t', b=false)
+  callme(y=1, x=0, "abd", '\t')         # (x=0, y=1, s="abd", c='\t', b=false)
   # call with named arguments (order is not relevant):
-  callme(c='\t', y=1, x=0)         # (x=0, y=1, s="", c='\t', b=false)
+  callme(c='\t', y=1, x=0)              # (x=0, y=1, s="", c='\t', b=false)
   # call as a command statement: no () needed:
-  callme 0, 1, "abc", '\t'
+  callme 0, 1, "abc", '\t'              # (x=0, y=1, s="abc", c='\t', b=false)
 
 A procedure may call itself recursively.
 

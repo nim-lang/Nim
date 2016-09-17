@@ -227,8 +227,8 @@ floating pointer values at compile time; this means expressions like
 Boolean type
 ------------
 The boolean type is named `bool`:idx: in Nim and can be one of the two
-pre-defined values ``true`` and ``false``. Conditions in while,
-if, elif, when statements need to be of type bool.
+pre-defined values ``true`` and ``false``. Conditions in ``while``,
+``if``, ``elif``, ``when``-statements need to be of type ``bool``.
 
 This condition holds::
 
@@ -609,7 +609,7 @@ is similar to the ``instanceof`` operator in Java.
       age: int        # no * means that the field is hidden
 
     Student = ref object of Person # a student is a person
-      id: int                  # with an id field
+      id: int                      # with an id field
 
   var
     student: Student
@@ -1262,4 +1262,4 @@ Is the same as:
 
 However later versions of the language might change this to mean "infer the
 parameters' types from the body". Then the above ``foo`` would be rejected as
-the parameters' types can not be infered from an empty ``discard`` statement.
+the parameters' types can not be inferred from an empty ``discard`` statement.
