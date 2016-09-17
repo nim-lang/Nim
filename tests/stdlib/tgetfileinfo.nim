@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  output: "pcDir\npcFile\npcLinkToDir\npcLinkToFile\n"
 """
 
 import os, strutils
@@ -92,5 +92,35 @@ proc testGetFileInfo =
     except IOError, OSError:
       discard
       #echo("Handle : Invalid File : Success")
+
+  # Test kind for files, directories and symlinks.
+  block:
+    let
+      tmp = getTempDir()
+      dirPath      = tmp / "test-dir"
+      filePath     = tmp / "test-file"
+      linkDirPath  = tmp / "test-link-dir"
+      linkFilePath = tmp / "test-link-file"
+
+    createDir(dirPath)
+    writeFile(filePath, "")
+    createSymlink(dirPath, linkDirPath)
+    createSymlink(filePath, linkFilePath)
+
+    let
+      dirInfo = getFileInfo(dirPath)
+      fileInfo = getFileInfo(filePath)
+      linkDirInfo = getFileInfo(linkDirPath, followSymlink = false)
+      linkFileInfo = getFileInfo(linkFilePath, followSymlink = false)
+
+    echo dirInfo.kind
+    echo fileInfo.kind
+    echo linkDirInfo.kind
+    echo linkFileInfo.kind
+
+    removeDir(dirPath)
+    removeFile(filePath)
+    removeFile(linkDirPath)
+    removeFile(linkFilePath)
 
 testGetFileInfo()
