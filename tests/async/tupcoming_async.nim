@@ -45,7 +45,7 @@ when defined(upcoming):
 
   proc timerTest() =
     var timeout = 200
-    var errorRate = 10.0
+    var errorRate = 40.0
     var start = epochTime()
     waitFor(waitTimer(200))
     var finish = epochTime()
