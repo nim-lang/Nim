@@ -1144,8 +1144,8 @@ elif not defined(useNimRtl):
     var b = ret == int(p.id)
     if b: result = -1
     if not WIFEXITED(p.exitCode):
-        p.exitCode = -3
-        result = -1
+      p.exitCode = -3
+      result = -1
     else: result = p.exitCode.int shr 8
 
   proc createStream(stream: var Stream, handle: var FileHandle,
