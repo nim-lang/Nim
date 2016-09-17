@@ -43,7 +43,7 @@ proc launchSwarm(name: ptr SockAddr) {.async.} =
   var slen = sizeof(Sockaddr_in).SockLen
   var saddr = Sockaddr_in()
   while i < swarmSize:
-    var peeraddr = prepareAddress(0x7F000001, 0)
+    var peeraddr = prepareAddress(INADDR_LOOPBACK, 0)
     var sock = newAsyncNativeSocket(nativesockets.AF_INET,
                                     nativesockets.SOCK_DGRAM,
                                     Protocol.IPPROTO_UDP)
@@ -94,7 +94,7 @@ proc readMessages(server: AsyncFD) {.async.} =
     inc(i)
 
 proc createServer() {.async.} =
-  var name = prepareAddress(0x7F000001, serverPort)
+  var name = prepareAddress(INADDR_LOOPBACK, serverPort)
   var server = newAsyncNativeSocket(nativesockets.AF_INET,
                                     nativesockets.SOCK_DGRAM,
                                     Protocol.IPPROTO_UDP)
@@ -103,7 +103,7 @@ proc createServer() {.async.} =
     raiseOSError(osLastError())
   asyncCheck readMessages(server)
 
-var name = prepareAddress(0x7F000001, serverPort) # 127.0.0.1
+var name = prepareAddress(INADDR_LOOPBACK, serverPort) # 127.0.0.1
 asyncCheck createServer()
 asyncCheck launchSwarm(cast[ptr SockAddr](name))
 while true:

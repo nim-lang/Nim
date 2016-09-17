@@ -1694,6 +1694,8 @@ var
 
   INADDR_ANY* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 local host address.
+  INADDR_LOOPBACK* {.importc, header: "<netinet/in.h>".}: InAddrScalar
+    ## IPv4 loopback address.
   INADDR_BROADCAST* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 broadcast address.
 
