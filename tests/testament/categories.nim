@@ -378,13 +378,13 @@ proc `&?.`(a, b: string): string =
 
 proc processCategory(
     r: var TResults, cat: Category, options: string, fileGlob: string = "") =
-  
+
   if fileGlob != "":
     # run option
     let testFile = "tests" & DirSep &.? cat.string / fileGlob
   
     if not existsFile(testFile & ".nim"):
-      raise newException(AssertionError, testFile & " test does not exist")
+      echo("Error: ", testFile, " test does not exist")
       
     testSpec r, makeTest(testFile, options, cat)
     return
