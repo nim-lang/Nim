@@ -406,11 +406,11 @@ builtin can be used for that:
 
   macro debug(n: varargs[typed]): untyped =
     result = newNimNode(nnkStmtList, n)
-    for i in 0..n.len-1:
+    for x in n:
       # we can bind symbols in scope via 'bindSym':
-      add(result, newCall(bindSym"write", bindSym"stdout", toStrLit(n[i])))
+      add(result, newCall(bindSym"write", bindSym"stdout", toStrLit(x)))
       add(result, newCall(bindSym"write", bindSym"stdout", newStrLitNode(": ")))
-      add(result, newCall(bindSym"writeLine", bindSym"stdout", n[i]))
+      add(result, newCall(bindSym"writeLine", bindSym"stdout", x))
 
   var
     a: array [0..10, int]
