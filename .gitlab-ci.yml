@@ -1,7 +1,4 @@
-# use the official gcc image, based on debian
-# can use versions as well, like gcc:5.2
-# see https://hub.docker.com/_/gcc/
-image: gcc
+image: ubuntu:16.04
 
 stages:
   - pre-build
@@ -85,6 +82,8 @@ test-windows:
 .csources: &csources_definition
   stage: test
   script:
+    - apt-get update -qq
+    - apt-get install -y -qq build-essential git
     - nim -v
     - ./koch csources
     - ./koch xz
