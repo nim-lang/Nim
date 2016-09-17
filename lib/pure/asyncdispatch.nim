@@ -500,48 +500,49 @@ when defined(windows) or defined(nimdoc):
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
-    let at = p.adjustedTimeout(timeout)
-    var llTimeout =
-      if at == -1: winlean.INFINITE
-      else: at.int32
+    if p.handles.len != 0:
+      let at = p.adjustedTimeout(timeout)
+      var llTimeout =
+        if at == -1: winlean.INFINITE
+        else: at.int32
 
-    var lpNumberOfBytesTransferred: Dword
-    var lpCompletionKey: ULONG_PTR
-    var customOverlapped: PCustomOverlapped
-    let res = getQueuedCompletionStatus(p.ioPort,
-        addr lpNumberOfBytesTransferred, addr lpCompletionKey,
-        cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
+      var lpNumberOfBytesTransferred: Dword
+      var lpCompletionKey: ULONG_PTR
+      var customOverlapped: PCustomOverlapped
+      let res = getQueuedCompletionStatus(p.ioPort,
+          addr lpNumberOfBytesTransferred, addr lpCompletionKey,
+          cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
 
-    # http://stackoverflow.com/a/12277264/492186
-    # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
-    if res:
-      # This is useful for ensuring the reliability of the overlapped struct.
-      assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
-
-      customOverlapped.data.cb(customOverlapped.data.fd,
-          lpNumberOfBytesTransferred, OSErrorCode(-1))
-
-      # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
-      # so we need to dispose our `cb` environment, because it is not needed
-      # anymore.
-      if customOverlapped.data.cell.data != nil:
-        system.dispose(customOverlapped.data.cell)
-
-      GC_unref(customOverlapped)
-    else:
-      let errCode = osLastError()
-      if customOverlapped != nil:
+      # http://stackoverflow.com/a/12277264/492186
+      # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
+      if res:
+        # This is useful for ensuring the reliability of the overlapped struct.
         assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
+
         customOverlapped.data.cb(customOverlapped.data.fd,
-            lpNumberOfBytesTransferred, errCode)
+            lpNumberOfBytesTransferred, OSErrorCode(-1))
+
+        # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
+        # so we need to dispose our `cb` environment, because it is not needed
+        # anymore.
         if customOverlapped.data.cell.data != nil:
           system.dispose(customOverlapped.data.cell)
+
         GC_unref(customOverlapped)
       else:
-        if errCode.int32 == WAIT_TIMEOUT:
-          # Timed out
-          discard
-        else: raiseOSError(errCode)
+        let errCode = osLastError()
+        if customOverlapped != nil:
+          assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
+          customOverlapped.data.cb(customOverlapped.data.fd,
+              lpNumberOfBytesTransferred, errCode)
+          if customOverlapped.data.cell.data != nil:
+            system.dispose(customOverlapped.data.cell)
+          GC_unref(customOverlapped)
+        else:
+          if errCode.int32 == WAIT_TIMEOUT:
+            # Timed out
+            discard
+          else: raiseOSError(errCode)
 
     # Timer processing.
     processTimers(p)
@@ -1283,43 +1284,45 @@ else:
 
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
-    for info in p.selector.select(p.adjustedTimeout(timeout)):
-      let data = PData(info.key.data)
-      assert data.fd == info.key.fd.AsyncFD
-      #echo("In poll ", data.fd.cint)
-      # There may be EvError here, but we handle them in callbacks,
-      # so that exceptions can be raised from `send(...)` and
-      # `recv(...)` routines.
 
-      if EvRead in info.events:
-        # Callback may add items to ``data.readCBs`` which causes issues if
-        # we are iterating over ``data.readCBs`` at the same time. We therefore
-        # make a copy to iterate over.
-        let currentCBs = data.readCBs
-        data.readCBs = @[]
-        for cb in currentCBs:
-          if not cb(data.fd):
-            # Callback wants to be called again.
-            data.readCBs.add(cb)
+    if p.selector.len > 0:
+      for info in p.selector.select(p.adjustedTimeout(timeout)):
+        let data = PData(info.key.data)
+        assert data.fd == info.key.fd.AsyncFD
+        #echo("In poll ", data.fd.cint)
+        # There may be EvError here, but we handle them in callbacks,
+        # so that exceptions can be raised from `send(...)` and
+        # `recv(...)` routines.
 
-      if EvWrite in info.events:
-        let currentCBs = data.writeCBs
-        data.writeCBs = @[]
-        for cb in currentCBs:
-          if not cb(data.fd):
-            # Callback wants to be called again.
-            data.writeCBs.add(cb)
+        if EvRead in info.events:
+          # Callback may add items to ``data.readCBs`` which causes issues if
+          # we are iterating over ``data.readCBs`` at the same time. We therefore
+          # make a copy to iterate over.
+          let currentCBs = data.readCBs
+          data.readCBs = @[]
+          for cb in currentCBs:
+            if not cb(data.fd):
+              # Callback wants to be called again.
+              data.readCBs.add(cb)
 
-      if info.key in p.selector:
-        var newEvents: set[Event]
-        if data.readCBs.len != 0: newEvents = {EvRead}
-        if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
-        if newEvents != info.key.events:
-          update(data.fd, newEvents)
-      else:
-        # FD no longer a part of the selector. Likely been closed
-        # (e.g. socket disconnected).
-        discard
+        if EvWrite in info.events:
+          let currentCBs = data.writeCBs
+          data.writeCBs = @[]
+          for cb in currentCBs:
+            if not cb(data.fd):
+              # Callback wants to be called again.
+              data.writeCBs.add(cb)
+
+        if info.key in p.selector:
+          var newEvents: set[Event]
+          if data.readCBs.len != 0: newEvents = {EvRead}
+          if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
+          if newEvents != info.key.events:
+            update(data.fd, newEvents)
+        else:
+          # FD no longer a part of the selector. Likely been closed
+          # (e.g. socket disconnected).
+          discard
 
     # Timer processing.
     processTimers(p)
