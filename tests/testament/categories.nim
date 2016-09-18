@@ -383,7 +383,7 @@ proc processCategory(
     # run option
     let testFile = "tests" & DirSep &.? cat.string / fileGlob
   
-    if not existsFile(testFile & ".nim"):
+    if not existsFile(testFile):
       echo("Error: ", testFile, " test does not exist")
       
     testSpec r, makeTest(testFile, options, cat)
