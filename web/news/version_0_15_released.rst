@@ -12,6 +12,7 @@ Changes affecting backwards compatibility
 
 - The ``json`` module uses an ``OrderedTable`` rather than a ``Table``
   for JSON objects.
+
 - De-deprecated ``re.nim`` because we have too much code using it
   and it got the basic API right.
 
@@ -62,6 +63,8 @@ that have tuple name:
 
 - In JavaScript ``system.alert`` is deprecated. Use ``dom.alert`` instead.
 
+- ``AsyncHttpClient.headers`` type is now ``HttpHeaders``.
+
 Library Additions
 -----------------
 
@@ -85,6 +88,11 @@ Library Additions
   to make a clear distinction of functionality. ``walkPattern`` iterates
   over both files and directories, while ``walkFiles`` now only iterates
   over files and ``walkDirs`` only iterates over directories.
+
+- Added synchronous ``HttpClient`` in the ``httpclient`` module.
+
+- Added a new macro called ``multisync`` allowing you to write procedures for
+synchronous and asynchronous sockets with no duplication.
 
 Compiler Additions
 ------------------
