@@ -369,3 +369,113 @@ macro async*(prc: untyped): untyped =
     result = asyncSingleProc(prc)
   when defined(nimDumpAsync):
     echo repr result
+
+
+# Multisync
+proc emptyNoop[T](x: T): T =
+  # The ``await``s are replaced by a call to this for simplicity.
+  when T isnot void:
+    return x
+
+proc stripAwait(node: NimNode): NimNode =
+  ## Strips out all ``await`` commands from a procedure body, replaces them
+  ## with ``emptyNoop`` for simplicity.
+  result = node
+
+  let emptyNoopSym = bindSym("emptyNoop")
+
+  case node.kind
+  of nnkCommand, nnkCall:
+    if node[0].kind == nnkIdent and node[0].ident == !"await":
+      node[0] = emptyNoopSym
+    elif node.len > 1 and node[1].kind == nnkCommand and
+         node[1][0].kind == nnkIdent and node[1][0].ident == !"await":
+      # foo await x
+      node[1][0] = emptyNoopSym
+  of nnkVarSection, nnkLetSection:
+    case node[0][2].kind
+    of nnkCommand:
+      if node[0][2][0].kind == nnkIdent and node[0][2][0].ident == !"await":
+        # var x = await y
+        node[0][2][0] = emptyNoopSym
+    else: discard
+  of nnkAsgn:
+    case node[1].kind
+    of nnkCommand:
+      if node[1][0].ident == !"await":
+        # x = await y
+        node[1][0] = emptyNoopSym
+    else: discard
+  of nnkDiscardStmt:
+    # discard await x
+    if node[0].kind == nnkCommand and node[0][0].kind == nnkIdent and
+          node[0][0].ident == !"await":
+      node[0][0] = emptyNoopSym
+  else: discard
+
+  for i in 0 .. <result.len:
+    result[i] = stripAwait(result[i])
+
+proc splitParams(param: NimNode, async: bool): NimNode =
+  expectKind(param, nnkIdentDefs)
+  result = param
+  if param[1].kind == nnkInfix and $param[1][0].ident in ["|", "or"]:
+    let firstType = param[1][1]
+    let firstTypeName = $firstType.ident
+    let secondType = param[1][2]
+    let secondTypeName = $secondType.ident
+
+    # Make sure that at least one has the name `async`, otherwise we shouldn't
+    # touch it.
+    if not ("async" in firstTypeName.normalize or
+            "async" in secondTypeName.normalize):
+      return
+
+    if async:
+      if firstTypeName.normalize.startsWith("async"):
+        result = newIdentDefs(param[0], param[1][1])
+      elif secondTypeName.normalize.startsWith("async"):
+        result = newIdentDefs(param[0], param[1][2])
+    else:
+      if not firstTypeName.normalize.startsWith("async"):
+        result = newIdentDefs(param[0], param[1][1])
+      elif not secondTypeName.normalize.startsWith("async"):
+        result = newIdentDefs(param[0], param[1][2])
+
+proc stripReturnType(returnType: NimNode): NimNode =
+  # Strip out the 'Future' from 'Future[T]'.
+  result = returnType
+  if returnType.kind == nnkBracketExpr:
+    let fut = repr(returnType[0])
+    if fut != "Future":
+      error("Expected return type of 'Future' got '" & fut & "'")
+    result = returnType[1]
+
+proc splitProc(prc: NimNode): (NimNode, NimNode) =
+  ## Takes a procedure definition which takes a generic union of arguments,
+  ## for example: proc (socket: Socket | AsyncSocket).
+  ## It transforms them so that ``proc (socket: Socket)`` and
+  ## ``proc (socket: AsyncSocket)`` are returned.
+  result[0] = prc.copyNimTree()
+  result[0][3][0] = stripReturnType(result[0][3][0])
+  for i in 1 .. <result[0][3].len:
+    result[0][3][i] = splitParams(result[0][3][i], false)
+  result[0][6] = stripAwait(result[0][6])
+
+  result[1] = prc.copyNimTree()
+  for i in 1 .. <result[1][3].len:
+    result[1][3][i] = splitParams(result[1][3][i], true)
+
+macro multisync*(prc: untyped): untyped =
+  ## Macro which processes async procedures into both asynchronous and
+  ## synchronous procedures.
+  ##
+  ## The generated async procedures use the ``async`` macro, whereas the
+  ## generated synchronous procedures simply strip off the ``await`` calls.
+  hint("Processing " & prc[0].getName & " as a multisync proc.")
+
+  let (sync, asyncPrc) = splitProc(prc)
+  result = newStmtList()
+  result.add(asyncSingleProc(asyncPrc))
+  result.add(sync)
+  
