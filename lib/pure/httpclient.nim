@@ -607,7 +607,7 @@ proc downloadFile*(url: string, outputFilename: string,
     fileError("Unable to open file")
 
 proc generateHeaders(r: Uri, httpMethod: string,
-                     headers: StringTableRef, body: string): string =
+                     headers: HttpHeaders, body: string): string =
   # TODO: Use this in the blocking HttpClient once it supports proxies.
   result = substr(httpMethod, len("http")).toUpper()
   # TODO: Proxies
@@ -636,7 +636,7 @@ type
     socket: SocketType
     connected: bool
     currentURL: Uri ## Where we are currently connected.
-    headers*: StringTableRef
+    headers*: HttpHeaders
     maxRedirects: int
     userAgent: string
     when defined(ssl):
@@ -657,7 +657,7 @@ proc newHttpClient*(userAgent = defUserAgent,
   ##
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
   new result
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   when defined(ssl):
@@ -680,7 +680,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ##
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
   new result
-  result.headers = newStringTable(modeCaseInsensitive)
+  result.headers = newHttpHeaders()
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   when defined(ssl):
@@ -891,13 +891,13 @@ proc get*(client: HttpClient | AsyncHttpClient,
   ## Connects to the hostname specified by the URL and performs a GET request.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in ``newAsyncHttpClient``.
-  result = await client.request(url, httpGET)
+  ## specified in ``client.maxRedirects``.
+  result = await client.request(url, HttpGET)
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, httpGET)
+      result = await client.request(redirectTo, HttpGET)
       lastURL = redirectTo
 
 proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
@@ -905,7 +905,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## Connects to the hostname specified by the URL and performs a POST request.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in ``newAsyncHttpClient``.
+  ## specified in ``client.maxRedirects``.
   let (mpHeader, mpBody) = format(multipart)
 
   template withNewLine(x): expr =
