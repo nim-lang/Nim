@@ -383,19 +383,7 @@ proc run7z(platform: string, patterns: varargs[string]) =
 ]#
 
 proc winRelease() =
-  boot(" -d:release")
-  #buildTool("tools/niminst/niminst", " -d:release")
-  buildTool("tools/nimgrep", " -d:release")
-  buildTool("compiler/nimfix/nimfix", " -d:release")
-  buildTool("compiler/nimsuggest/nimsuggest", " -d:release")
-
-  #run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
-  #      "bin/nimfix.exe",
-  #      "bin/nimble.exe", "bin/*.dll",
-  #      "config", "dist/*.dll", "examples", "lib",
-  #      "readme.txt", "contributors.txt", "copying.txt")
-
-  # second step: XXX build 64 bit version
+  exec("call ci\nsis_build.bat " & VersionAsString)
 
 # -------------- tests --------------------------------------------------------
 

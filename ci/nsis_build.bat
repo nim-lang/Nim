@@ -12,7 +12,7 @@ REM - Tag the release
 REM - Merge devel into master
 REM - Update csources
 
-set NIMVER=0.14.3
+set NIMVER=%1
 
 Rem Build -docs file:
 koch web0

@@ -49,7 +49,7 @@ build-windows:
 deploy-windows:
   stage: deploy
   script:
-    - call ci\nsis_build.bat
+    - koch.exe winrelease
   artifacts:
     paths:
       - build/*.exe
