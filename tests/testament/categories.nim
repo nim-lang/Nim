@@ -376,7 +376,19 @@ proc `&?.`(a, b: string): string =
   # candidate for the stdlib?
   result = if a.endswith(b): a else: a & b
 
-proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: string = "t*.nim") =
+proc processCategory(
+    r: var TResults, cat: Category, options: string, fileGlob: string = "") =
+
+  if fileGlob != "":
+    # run option
+    let testFile = "tests" & DirSep &.? cat.string / fileGlob
+  
+    if not existsFile(testFile):
+      echo("Error: ", testFile, " test does not exist")
+      
+    testSpec r, makeTest(testFile, options, cat)
+    return
+
   case cat.string.normalize
   of "rodfiles":
     when false: compileRodFiles(r, cat, options)
@@ -417,5 +429,5 @@ proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: 
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
   else:
-    for name in os.walkFiles("tests" & DirSep &.? cat.string / fileGlob):
+    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)
