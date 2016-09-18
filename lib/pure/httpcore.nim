@@ -71,6 +71,28 @@ type
     HttpVer11,
     HttpVer10
 
+  HttpMethod* = enum  ## the requested HttpMethod
+    HttpHead,         ## Asks for the response identical to the one that would
+                      ## correspond to a GET request, but without the response
+                      ## body.
+    HttpGet,          ## Retrieves the specified resource.
+    HttpPost,         ## Submits data to be processed to the identified
+                      ## resource. The data is included in the body of the
+                      ## request.
+    HttpPut,          ## Uploads a representation of the specified resource.
+    HttpDelete,       ## Deletes the specified resource.
+    HttpTrace,        ## Echoes back the received request, so that a client
+                      ## can see what intermediate servers are adding or
+                      ## changing in the request.
+    HttpOptions,      ## Returns the HTTP methods that the server supports
+                      ## for specified address.
+    HttpConnect       ## Converts the request connection to a transparent
+                      ## TCP/IP tunnel, usually used for proxies.
+
+{.deprecated: [httpGet: HttpGet, httpHead: HttpHead, httpPost: HttpPost,
+               httpPut: HttpPut, httpDelete: HttpDelete, httpTrace: HttpTrace,
+               httpOptions: HttpOptions, httpConnect: HttpConnect].}
+
 const headerLimit* = 10_000
 
 proc newHttpHeaders*(): HttpHeaders =
@@ -187,6 +209,25 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer11: 1
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
+
+proc `==`*(rawCode: string, code: HttpCode): bool =
+  return rawCode.toLower() == ($code).toLower()
+
+proc is2xx*(code: HttpCode): bool =
+  ## Determines whether ``code`` is a 2xx HTTP status code.
+  return ($code).startsWith("2")
+
+proc is3xx*(code: HttpCode): bool =
+  ## Determines whether ``code`` is a 3xx HTTP status code.
+  return ($code).startsWith("3")
+
+proc is4xx*(code: HttpCode): bool =
+  ## Determines whether ``code`` is a 4xx HTTP status code.
+  return ($code).startsWith("4")
+
+proc is5xx*(code: HttpCode): bool =
+  ## Determines whether ``code`` is a 5xx HTTP status code.
+  return ($code).startsWith("5")
 
 when isMainModule:
   var test = newHttpHeaders()

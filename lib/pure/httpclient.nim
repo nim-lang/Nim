@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2010 Dominik Picheta, Andreas Rumpf
+#        (c) Copyright 2016 Dominik Picheta, Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -87,12 +87,20 @@ import nativesockets
 export httpcore except parseHeader # TODO: The ``except`` doesn't work
 
 type
-  Response* = tuple[
-    version: string,
-    status: string,
-    headers: HttpHeaders,
-    body: string]
+  Response* = object
+    version*: string
+    status*: string
+    headers*: HttpHeaders
+    body*: string
 
+proc code*(response: Response): HttpCode {.raises: [ValueError].} =
+  ## Retrieves the specified response's ``HttpCode``.
+  ##
+  ## Raises a ``ValueError`` if the response's ``status`` does not have a
+  ## corresponding ``HttpCode``.
+  return parseEnum[HttpCode](response.status)
+
+type
   Proxy* = ref object
     url*: Uri
     auth*: string
@@ -253,25 +261,6 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
   else:
     result.body = ""
 
-type
-  HttpMethod* = enum  ## the requested HttpMethod
-    httpHEAD,         ## Asks for the response identical to the one that would
-                      ## correspond to a GET request, but without the response
-                      ## body.
-    httpGET,          ## Retrieves the specified resource.
-    httpPOST,         ## Submits data to be processed to the identified
-                      ## resource. The data is included in the body of the
-                      ## request.
-    httpPUT,          ## Uploads a representation of the specified resource.
-    httpDELETE,       ## Deletes the specified resource.
-    httpTRACE,        ## Echoes back the received request, so that a client
-                      ## can see what intermediate servers are adding or
-                      ## changing in the request.
-    httpOPTIONS,      ## Returns the HTTP methods that the server supports
-                      ## for specified address.
-    httpCONNECT       ## Converts the request connection to a transparent
-                      ## TCP/IP tunnel, usually used for proxies.
-
 {.deprecated: [THttpMethod: HttpMethod].}
 
 when not defined(ssl):
@@ -397,7 +386,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   ## server takes longer than specified an ETimeout exception will be raised.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var hostUrl = if proxy == nil: r else: parseUri(url)
-  var headers = substr(httpMethod, len("http"))
+  var headers = substr(httpMethod, len("http")).toUpper()
   # TODO: Use generateHeaders further down once it supports proxies.
 
   var s = newSocket()
@@ -620,7 +609,7 @@ proc downloadFile*(url: string, outputFilename: string,
 proc generateHeaders(r: Uri, httpMethod: string,
                      headers: StringTableRef, body: string): string =
   # TODO: Use this in the blocking HttpClient once it supports proxies.
-  result = substr(httpMethod, len("http"))
+  result = substr(httpMethod, len("http")).toUpper()
   # TODO: Proxies
   result.add ' '
   if r.path[0] != '/': result.add '/'
@@ -643,8 +632,8 @@ proc generateHeaders(r: Uri, httpMethod: string,
   add(result, "\c\L")
 
 type
-  AsyncHttpClient* = ref object
-    socket: AsyncSocket
+  HttpClientBase*[SocketType] = ref object
+    socket: SocketType
     connected: bool
     currentURL: Uri ## Where we are currently connected.
     headers*: StringTableRef
@@ -652,6 +641,30 @@ type
     userAgent: string
     when defined(ssl):
       sslContext: net.SslContext
+
+type
+  HttpClient* = HttpClientBase[Socket]
+
+proc newHttpClient*(userAgent = defUserAgent,
+    maxRedirects = 5, sslContext = defaultSslContext): HttpClient =
+  ## Creates a new HttpClient instance.
+  ##
+  ## ``userAgent`` specifies the user agent that will be used when making
+  ## requests.
+  ##
+  ## ``maxRedirects`` specifies the maximum amount of redirects to follow,
+  ## default is 5.
+  ##
+  ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
+  new result
+  result.headers = newStringTable(modeCaseInsensitive)
+  result.userAgent = userAgent
+  result.maxRedirects = maxRedirects
+  when defined(ssl):
+    result.sslContext = sslContext
+
+type
+  AsyncHttpClient* = HttpClientBase[AsyncSocket]
 
 {.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
 
@@ -673,13 +686,14 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   when defined(ssl):
     result.sslContext = sslContext
 
-proc close*(client: AsyncHttpClient) =
+proc close*(client: HttpClient | AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
   if client.connected:
     client.socket.close()
     client.connected = false
 
-proc recvFull(socket: AsyncSocket, size: int): Future[string] {.async.} =
+proc recvFull(socket: Socket | AsyncSocket,
+              size: int): Future[string] {.multisync.} =
   ## Ensures that all the data requested is read and returned.
   result = ""
   while true:
@@ -688,7 +702,8 @@ proc recvFull(socket: AsyncSocket, size: int): Future[string] {.async.} =
     if data == "": break # We've been disconnected.
     result.add data
 
-proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
+proc parseChunks(client: HttpClient | AsyncHttpClient): Future[string]
+                 {.multisync.} =
   result = ""
   while true:
     var chunkSize = 0
@@ -721,9 +736,9 @@ proc parseChunks(client: AsyncHttpClient): Future[string] {.async.} =
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(client: AsyncHttpClient,
+proc parseBody(client: HttpClient | AsyncHttpClient,
                headers: HttpHeaders,
-               httpVersion: string): Future[string] {.async.} =
+               httpVersion: string): Future[string] {.multisync.} =
   result = ""
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     result = await parseChunks(client)
@@ -752,8 +767,8 @@ proc parseBody(client: AsyncHttpClient,
           if buf == "": break
           result.add(buf)
 
-proc parseResponse(client: AsyncHttpClient,
-                   getBody: bool): Future[Response] {.async.} =
+proc parseResponse(client: HttpClient | AsyncHttpClient,
+                   getBody: bool): Future[Response] {.multisync.} =
   var parsedStatus = false
   var linei = 0
   var fullyRead = false
@@ -803,11 +818,17 @@ proc parseResponse(client: AsyncHttpClient,
   else:
     result.body = ""
 
-proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
+proc newConnection(client: HttpClient | AsyncHttpClient,
+                   url: Uri) {.multisync.} =
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme:
     if client.connected: client.close()
-    client.socket = newAsyncSocket()
+
+    when client is HttpClient:
+      client.socket = newSocket()
+    elif client is AsyncHttpClient:
+      client.socket = newAsyncSocket()
+    else: {.fatal: "Unsupported client type".}
 
     # TODO: I should be able to write 'net.Port' here...
     let port =
@@ -829,8 +850,8 @@ proc newConnection(client: AsyncHttpClient, url: Uri) {.async.} =
     client.currentURL = url
     client.connected = true
 
-proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
-              body = ""): Future[Response] {.async.} =
+proc request*(client: HttpClient | AsyncHttpClient, url: string,
+              httpMethod: string, body = ""): Future[Response] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the custom method string specified by ``httpMethod``.
   ##
@@ -853,8 +874,8 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod: string,
 
   result = await parseResponse(client, httpMethod != "httpHEAD")
 
-proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
-              body = ""): Future[Response] =
+proc request*(client: HttpClient | AsyncHttpClient, url: string,
+              httpMethod = HttpGET, body = ""): Future[Response] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.
   ##
@@ -863,9 +884,10 @@ proc request*(client: AsyncHttpClient, url: string, httpMethod = httpGET,
   ## connection can be closed by using the ``close`` procedure.
   ##
   ## The returned future will complete once the request is completed.
-  result = request(client, url, $httpMethod, body)
+  result = await request(client, url, $httpMethod, body)
 
-proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
+proc get*(client: HttpClient | AsyncHttpClient,
+          url: string): Future[Response] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a GET request.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
@@ -878,7 +900,8 @@ proc get*(client: AsyncHttpClient, url: string): Future[Response] {.async.} =
       result = await client.request(redirectTo, httpGET)
       lastURL = redirectTo
 
-proc post*(client: AsyncHttpClient, url: string, body = "", multipart: MultipartData = nil): Future[Response] {.async.} =
+proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
+           multipart: MultipartData = nil): Future[Response] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a POST request.
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
@@ -895,45 +918,4 @@ proc post*(client: AsyncHttpClient, url: string, body = "", multipart: Multipart
     client.headers["Content-Type"] = mpHeader.split(": ")[1]
   client.headers["Content-Length"] = $len(xb)
 
-  result = await client.request(url, httpPOST, xb)
-
-when not defined(testing) and isMainModule:
-  when true:
-    # Async
-    proc main() {.async.} =
-      var client = newAsyncHttpClient()
-      var resp = await client.request("http://picheta.me")
-
-      echo("Got response: ", resp.status)
-      echo("Body:\n")
-      echo(resp.body)
-
-      resp = await client.request("http://picheta.me/asfas.html")
-      echo("Got response: ", resp.status)
-
-      resp = await client.request("http://picheta.me/aboutme.html")
-      echo("Got response: ", resp.status)
-
-      resp = await client.request("http://nim-lang.org/")
-      echo("Got response: ", resp.status)
-
-      resp = await client.request("http://nim-lang.org/download.html")
-      echo("Got response: ", resp.status)
-
-    waitFor main()
-
-  else:
-    #downloadFile("http://force7.de/nim/index.html", "nimindex.html")
-    #downloadFile("http://www.httpwatch.com/", "ChunkTest.html")
-    #downloadFile("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com",
-    # "validator.html")
-
-    #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
-    #  charset=%28detect+automatically%29&doctype=Inline&group=0")
-
-    var data = newMultipartData()
-    data["output"] = "soap12"
-    data["uploaded_file"] = ("test.html", "text/html",
-      "<html><head></head><body><p>test</p></body></html>")
-
-    echo postContent("http://validator.w3.org/check", multipart=data)
+  result = await client.request(url, HttpPOST, xb)
