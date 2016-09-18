@@ -383,7 +383,7 @@ proc run7z(platform: string, patterns: varargs[string]) =
 ]#
 
 proc winRelease() =
-  exec("call ci\nsis_build.bat " & VersionAsString)
+  exec(r"call ci\nsis_build.bat " & VersionAsString)
 
 # -------------- tests --------------------------------------------------------
 
