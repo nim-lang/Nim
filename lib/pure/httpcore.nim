@@ -210,6 +210,9 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
 
+proc contains*(methods: set[HttpMethod], x: string): bool =
+  return parseEnum[HttpMethod](x) in methods
+
 proc `==`*(rawCode: string, code: HttpCode): bool =
   return rawCode.toLower() == ($code).toLower()
 

@@ -606,26 +606,46 @@ proc downloadFile*(url: string, outputFilename: string,
   else:
     fileError("Unable to open file")
 
-proc generateHeaders(r: Uri, httpMethod: string,
-                     headers: HttpHeaders, body: string): string =
-  # TODO: Use this in the blocking HttpClient once it supports proxies.
+proc generateHeaders(requestUrl: Uri, httpMethod: string,
+                     headers: HttpHeaders, body: string, proxy: Proxy): string =
+  # GET
   result = substr(httpMethod, len("http")).toUpper()
-  # TODO: Proxies
   result.add ' '
-  if r.path[0] != '/': result.add '/'
-  result.add(r.path)
-  if r.query.len > 0:
-    result.add("?" & r.query)
+
+  if proxy.isNil:
+    # /path?query
+    if requestUrl.path[0] != '/': result.add '/'
+    result.add(requestUrl.path)
+    if requestUrl.query.len > 0:
+      result.add("?" & requestUrl.query)
+  else:
+    # Remove the 'http://' from the URL for CONNECT requests.
+    var modifiedUrl = requestUrl
+    modifiedUrl.scheme = ""
+    result.add($modifiedUrl)
+
+  # HTTP/1.1\c\l
   result.add(" HTTP/1.1\c\L")
 
-  if r.port == "":
-    add(result, "Host: " & r.hostname & "\c\L")
+  # Host header.
+  if requestUrl.port == "":
+    add(result, "Host: " & requestUrl.hostname & "\c\L")
   else:
-    add(result, "Host: " & r.hostname & ":" & r.port & "\c\L")
+    add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
 
-  add(result, "Connection: Keep-Alive\c\L")
+  # Connection header.
+  if not headers.hasKey("Connection"):
+    add(result, "Connection: Keep-Alive\c\L")
+
+  # Content length header.
   if body.len > 0 and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
+
+  # Proxy auth header.
+  if not proxy.isNil and proxy.auth != "":
+    let auth = base64.encode(proxy.auth, newline = "")
+    add(result, "Proxy-Authorization: basic " & auth & "\c\L")
+
   for key, val in headers:
     add(result, key & ": " & val & "\c\L")
 
@@ -640,6 +660,7 @@ type
     maxRedirects: int
     userAgent: string
     timeout: int ## Only used for blocking HttpClient for now.
+    proxy: Proxy
     when defined(ssl):
       sslContext: net.SslContext
 
@@ -647,7 +668,7 @@ type
   HttpClient* = HttpClientBase[Socket]
 
 proc newHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = defaultSslContext,
+    maxRedirects = 5, sslContext = defaultSslContext, proxy: Proxy = nil,
     timeout = -1): HttpClient =
   ## Creates a new HttpClient instance.
   ##
@@ -659,12 +680,16 @@ proc newHttpClient*(userAgent = defUserAgent,
   ##
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
   ##
+  ## ``proxy`` specifies an HTTP proxy to use for this HTTP client's
+  ## connections.
+  ##
   ## ``timeout`` specifies the number of miliseconds to allow before a
   ## ``TimeoutError`` is raised.
   new result
   result.headers = newHttpHeaders()
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
+  result.proxy = proxy
   result.timeout = timeout
   when defined(ssl):
     result.sslContext = sslContext
@@ -675,7 +700,8 @@ type
 {.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
 
 proc newAsyncHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = defaultSslContext): AsyncHttpClient =
+    maxRedirects = 5, sslContext = defaultSslContext,
+    proxy: Proxy = nil): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -685,10 +711,14 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ## default is 5.
   ##
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
+  ##
+  ## ``proxy`` specifies an HTTP proxy to use for this HTTP client's
+  ## connections.
   new result
   result.headers = newHttpHeaders()
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
+  result.proxy = proxy
   result.timeout = -1 # TODO
   when defined(ssl):
     result.sslContext = sslContext
@@ -873,19 +903,46 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ## connection can be closed by using the ``close`` procedure.
   ##
   ## The returned future will complete once the request is completed.
-  let r = parseUri(url)
-  await newConnection(client, r)
+  let connectionUrl =
+    if client.proxy.isNil: parseUri(url) else: client.proxy.url
+  let requestUrl = parseUri(url)
+
+  let savedProxy = client.proxy # client's proxy may be overwritten.
+
+  if requestUrl.scheme == "https" and not client.proxy.isNil:
+    when defined(ssl):
+      client.proxy.url = connectionUrl
+      var connectUrl = requestUrl
+      connectUrl.scheme = "http"
+      connectUrl.port = "443"
+      let proxyResp = await request(client, $connectUrl, $HttpConnect)
+
+      if not proxyResp.status.startsWith("200"):
+        raise newException(HttpRequestError,
+                           "The proxy server rejected a CONNECT request, " &
+                           "so a secure connection could not be established.")
+      client.sslContext.wrapConnectedSocket(client.socket, handshakeAsClient)
+      client.proxy = nil
+    else:
+      raise newException(HttpRequestError,
+          "SSL support not available. Cannot connect to https site over proxy.")
+  else:
+    await newConnection(client, connectionUrl)
 
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
     client.headers["User-Agent"] = client.userAgent
 
-  var headers = generateHeaders(r, $httpMethod, client.headers, body)
+  var headers = generateHeaders(requestUrl, $httpMethod,
+                                client.headers, body, client.proxy)
 
   await client.socket.send(headers)
   if body != "":
     await client.socket.send(body)
 
-  result = await parseResponse(client, httpMethod != "httpHEAD")
+  result = await parseResponse(client, httpMethod notin {HttpHead, HttpConnect})
+
+  # Restore the clients proxy in case it was overwritten.
+  client.proxy = savedProxy
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod = HttpGET, body = ""): Future[Response] {.multisync.} =

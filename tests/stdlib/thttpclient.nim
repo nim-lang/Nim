@@ -16,6 +16,12 @@ proc asyncTest() {.async.} =
 
   resp = await client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
+  client.close()
+
+  # Proxy test
+  #client = newAsyncHttpClient(proxy = newProxy("http://51.254.106.76:80/"))
+  #var resp = await client.request("https://github.com")
+  #echo resp
 
 proc syncTest() =
   var client = newHttpClient()
