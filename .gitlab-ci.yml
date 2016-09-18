@@ -89,7 +89,7 @@ test-windows:
     - ./koch xz
   artifacts:
     paths:
-      - csources
+      - build/c_code
 
 csources-linux:
   <<: *csources_definition
