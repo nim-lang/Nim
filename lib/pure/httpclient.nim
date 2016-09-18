@@ -639,6 +639,7 @@ type
     headers*: HttpHeaders
     maxRedirects: int
     userAgent: string
+    timeout: int ## Only used for blocking HttpClient for now.
     when defined(ssl):
       sslContext: net.SslContext
 
@@ -646,7 +647,8 @@ type
   HttpClient* = HttpClientBase[Socket]
 
 proc newHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = defaultSslContext): HttpClient =
+    maxRedirects = 5, sslContext = defaultSslContext,
+    timeout = -1): HttpClient =
   ## Creates a new HttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -656,10 +658,14 @@ proc newHttpClient*(userAgent = defUserAgent,
   ## default is 5.
   ##
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
+  ##
+  ## ``timeout`` specifies the number of miliseconds to allow before a
+  ## ``TimeoutError`` is raised.
   new result
   result.headers = newHttpHeaders()
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
+  result.timeout = timeout
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -683,6 +689,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.headers = newHttpHeaders()
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
+  result.timeout = -1 # TODO
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -693,12 +700,15 @@ proc close*(client: HttpClient | AsyncHttpClient) =
     client.connected = false
 
 proc recvFull(socket: Socket | AsyncSocket,
-              size: int): Future[string] {.multisync.} =
+              size: int, timeout: int): Future[string] {.multisync.} =
   ## Ensures that all the data requested is read and returned.
   result = ""
   while true:
     if size == result.len: break
-    let data = await socket.recv(size - result.len)
+    when socket is Socket:
+      let data = socket.recv(size - result.len, timeout)
+    else:
+      let data = await socket.recv(size - result.len)
     if data == "": break # We've been disconnected.
     result.add data
 
@@ -729,10 +739,10 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[string]
         httpError("Invalid chunk size: " & chunkSizeStr)
       inc(i)
     if chunkSize <= 0:
-      discard await recvFull(client.socket, 2) # Skip \c\L
+      discard await recvFull(client.socket, 2, client.timeout) # Skip \c\L
       break
-    result.add await recvFull(client.socket, chunkSize)
-    discard await recvFull(client.socket, 2) # Skip \c\L
+    result.add await recvFull(client.socket, chunkSize, client.timeout)
+    discard await recvFull(client.socket, 2, client.timeout) # Skip \c\L
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
@@ -749,7 +759,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
     if contentLengthHeader != "":
       var length = contentLengthHeader.parseint()
       if length > 0:
-        result = await client.socket.recvFull(length)
+        result = await client.socket.recvFull(length, client.timeout)
         if result == "":
           httpError("Got disconnected while trying to read body.")
         if result.len != length:
@@ -763,7 +773,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
       if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         var buf = ""
         while true:
-          buf = await client.socket.recvFull(4000)
+          buf = await client.socket.recvFull(4000, client.timeout)
           if buf == "": break
           result.add(buf)
 
@@ -776,7 +786,10 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   result.headers = newHttpHeaders()
   while true:
     linei = 0
-    line = await client.socket.recvLine()
+    when client is HttpClient:
+      line = await client.socket.recvLine(client.timeout)
+    else:
+      line = await client.socket.recvLine()
     if line == "": break # We've been disconnected.
     if line == "\c\L":
       fullyRead = true

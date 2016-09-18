@@ -1,4 +1,5 @@
 import strutils
+from net import TimeoutError
 
 import httpclient, asyncdispatch
 
@@ -29,6 +30,18 @@ proc syncTest() =
 
   resp = client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
+
+  client.close()
+
+  # Timeout test.
+  client = newHttpClient(timeout = 1)
+  try:
+    resp = client.request("http://example.com/")
+    doAssert false, "TimeoutError should have been raised."
+  except TimeoutError:
+    discard
+  except:
+    doAssert false, "TimeoutError should have been raised."
 
 syncTest()
 
