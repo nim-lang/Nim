@@ -93,12 +93,13 @@ type
     headers*: HttpHeaders
     body*: string
 
-proc code*(response: Response): HttpCode {.raises: [ValueError].} =
+proc code*(response: Response): HttpCode
+           {.raises: [ValueError, OverflowError].} =
   ## Retrieves the specified response's ``HttpCode``.
   ##
   ## Raises a ``ValueError`` if the response's ``status`` does not have a
   ## corresponding ``HttpCode``.
-  return parseEnum[HttpCode](response.status)
+  return response.status[0 .. 2].parseInt.HttpCode
 
 type
   Proxy* = ref object
