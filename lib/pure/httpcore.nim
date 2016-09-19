@@ -216,7 +216,7 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
 proc contains*(methods: set[HttpMethod], x: string): bool =
   return parseEnum[HttpMethod](x) in methods
 
-proc status*(code: HttpCode): string =
+proc `$`*(code: HttpCode): string =
   ## Converts the specified ``HttpCode`` into a HTTP status.
   ##
   ## For example:
@@ -276,7 +276,7 @@ proc status*(code: HttpCode): string =
 proc `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool =
-  return rawCode.toLower() == code.status.toLower()
+  return rawCode.toLower() == ($code).toLower()
 
 proc is2xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 2xx HTTP status code.

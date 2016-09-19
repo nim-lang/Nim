@@ -65,9 +65,6 @@ that have tuple name:
 
 - ``AsyncHttpClient.headers`` type is now ``HttpHeaders``.
 
-- The `$` operator for ``HttpCode`` no longer exists, use the ``status``
-procedure to get the code's status message.
-
 Library Additions
 -----------------
 
