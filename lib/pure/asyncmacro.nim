@@ -11,7 +11,7 @@
 ## *************
 ## `asyncdispatch` module depends on the `asyncmacro` module to work properly.
 
-import macros
+import macros, strutils
 
 proc skipUntilStmtList(node: NimNode): NimNode {.compileTime.} =
   # Skips a nest of StmtList's.
@@ -478,4 +478,3 @@ macro multisync*(prc: untyped): untyped =
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))
   result.add(sync)
-  
