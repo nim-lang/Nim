@@ -1,3 +1,7 @@
+discard """
+  cmd: "nim c -d:ssl $file"
+"""
+
 import strutils
 from net import TimeoutError
 
