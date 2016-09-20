@@ -70,3 +70,10 @@ proc testPtr(p: pointer, a: int) =
 var i = 123
 testPtr(addr i, 5)
 doAssert(i == 124)
+
+var someGlobal = 5
+proc getSomeGlobalPtr(): ptr int = addr someGlobal
+let someGlobalPtr = getSomeGlobalPtr()
+doAssert(someGlobalPtr[] == 5)
+someGlobalPtr[] = 10
+doAssert(someGlobal == 10)
