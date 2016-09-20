@@ -21,7 +21,7 @@ const
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
   leakDetector = false
-  overwriteFree = false
+  overwriteFree = defined(nimBurnFree) # overwrite memory with 0xFF before free
   trackAllocationSource = leakDetector
 
   cycleGC = true # (de)activate the cycle GC
