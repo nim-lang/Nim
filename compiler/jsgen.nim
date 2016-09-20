@@ -1471,13 +1471,21 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
         useMagic(p, "nimCopy")
         s = "nimCopy(null, $1, $2)" % [a.res, genTypeInfo(p, n.typ)]
     of etyBaseIndex:
-      if (a.typ != etyBaseIndex): internalError(n.info, "genVarInit")
-      if {sfAddrTaken, sfGlobal} * v.flags != {}:
-        addf(p.body, "var $1 = [$2, $3];$n",
-            [v.loc.r, a.address, a.res])
+      let targetBaseIndex = {sfAddrTaken, sfGlobal} * v.flags == {}
+      if a.typ == etyBaseIndex:
+        if targetBaseIndex:
+          addf(p.body, "var $1 = $2, $1_Idx = $3;$n", [
+              v.loc.r, a.address, a.res])
+        else:
+          addf(p.body, "var $1 = [$2, $3];$n",
+              [v.loc.r, a.address, a.res])
       else:
-        addf(p.body, "var $1 = $2; var $1_Idx = $3;$n", [
-             v.loc.r, a.address, a.res])
+        if targetBaseIndex:
+          let tmp = p.getTemp
+          addf(p.body, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
+              [tmp, a.res, v.loc.r])
+        else:
+          addf(p.body, "var $1 = $2;$n", [v.loc.r, a.res])
       return
     else:
       s = a.res
