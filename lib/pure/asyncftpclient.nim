@@ -354,6 +354,10 @@ proc store*(ftp: AsyncFtpClient, file, dest: string,
 
   await doUpload(ftp, destFile, onProgressChanged)
 
+proc removeFile*(ftp: AsyncFtpClient, filename: string) {.async.} =
+  ## Delete a file ``filename`` on the remote FTP server
+  assertReply(await ftp.send("DELE " & filename), "250")
+
 proc newAsyncFtpClient*(address: string, port = Port(21),
     user, pass = ""): AsyncFtpClient =
   ## Creates a new ``AsyncFtpClient`` object.
