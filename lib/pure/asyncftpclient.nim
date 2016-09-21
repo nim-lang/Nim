@@ -377,6 +377,8 @@ when not defined(testing) and isMainModule:
     echo await ftp.listDirs()
     await ftp.store("payload.jpg", "payload.jpg")
     await ftp.retrFile("payload.jpg", "payload2.jpg")
+    await ftp.store("payload.jpg", "payload_remove.jpg")
+    await ftp.removeFile("payload_remove.jpg")
     echo("Finished")
 
   waitFor main(ftp)
