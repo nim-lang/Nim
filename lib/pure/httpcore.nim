@@ -43,7 +43,9 @@ type
                       ## for specified address.
     HttpConnect       ## Converts the request connection to a transparent
                       ## TCP/IP tunnel, usually used for proxies.
-
+    HttpPatch         ## Added in RFC 5789. Can be used to update partial
+                      ## resources. The set of changes is represented in a
+                      ## format called a "patch document".
 {.deprecated: [httpGet: HttpGet, httpHead: HttpHead, httpPost: HttpPost,
                httpPut: HttpPut, httpDelete: HttpDelete, httpTrace: HttpTrace,
                httpOptions: HttpOptions, httpConnect: HttpConnect].}
