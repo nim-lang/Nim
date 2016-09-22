@@ -957,13 +957,10 @@ elif not defined(useNimRtl):
 
   proc running(p: Process): bool =
     var ret : int
-    when not defined(freebsd):
-      ret = waitpid(p.id, p.exitCode, WNOHANG)
-    else:
-      var status : cint = 1
-      ret = waitpid(p.id, status, WNOHANG)
-      if WIFEXITED(status):
-        p.exitCode = status
+    var status : cint = 1
+    ret = waitpid(p.id, status, WNOHANG)
+    if WIFEXITED(status):
+      p.exitCode = status
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
 
@@ -982,9 +979,10 @@ elif not defined(useNimRtl):
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitCode != -3: return p.exitCode
       if timeout == -1:
-        if waitpid(p.id, p.exitCode, 0) < 0:
-          p.exitCode = -3
+        var status : cint = 1
+        if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
+        p.exitCode = status
       else:
         var kqFD = kqueue()
         if kqFD == -1:
@@ -1004,6 +1002,7 @@ elif not defined(useNimRtl):
 
         try:
           while true:
+            var status : cint = 1
             var count = kevent(kqFD, addr(kevIn), 1, addr(kevOut), 1,
                                addr(tmspec))
             if count < 0:
@@ -1014,15 +1013,15 @@ elif not defined(useNimRtl):
               # timeout expired, so we trying to kill process
               if posix.kill(p.id, SIGKILL) == -1:
                 raiseOSError(osLastError())
-              if waitpid(p.id, p.exitCode, 0) < 0:
-                p.exitCode = -3
+              if waitpid(p.id, status, 0) < 0:
                 raiseOSError(osLastError())
+              p.exitCode = status
               break
             else:
               if kevOut.ident == p.id.uint and kevOut.filter == EVFILT_PROC:
-                if waitpid(p.id, p.exitCode, 0) < 0:
-                  p.exitCode = -3
+                if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
+                p.exitCode = status
                 break
               else:
                 raiseOSError(osLastError())
@@ -1035,6 +1034,8 @@ elif not defined(useNimRtl):
 
     const
       hasThreadSupport = compileOption("threads") and not defined(nimscript)
+
+    var status : cint = 1
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       template adjustTimeout(t, s, e: Timespec) =
@@ -1067,9 +1068,9 @@ elif not defined(useNimRtl):
       # initialized with -3, wrong success exit codes are prevented.
       if p.exitCode != -3: return p.exitCode
       if timeout == -1:
-        if waitpid(p.id, p.exitCode, 0) < 0:
-          p.exitCode = -3
+        if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
+        p.exitCode = status
       else:
         var nmask, omask: Sigset
         var sinfo: SigInfo
@@ -1100,9 +1101,9 @@ elif not defined(useNimRtl):
             let res = sigtimedwait(nmask, sinfo, tmspec)
             if res == SIGCHLD:
               if sinfo.si_pid == p.id:
-                if waitpid(p.id, p.exitCode, 0) < 0:
-                  p.exitCode = -3
+                if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
+                p.exitCode = status
                 break
               else:
                 # we have SIGCHLD, but not for process we are waiting,
@@ -1122,9 +1123,9 @@ elif not defined(useNimRtl):
                 # timeout expired, so we trying to kill process
                 if posix.kill(p.id, SIGKILL) == -1:
                   raiseOSError(osLastError())
-                if waitpid(p.id, p.exitCode, 0) < 0:
-                  p.exitCode = -3
+                if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
+                p.exitCode = status
                 break
               else:
                 raiseOSError(err)
@@ -1139,14 +1140,16 @@ elif not defined(useNimRtl):
       result = int(p.exitCode) shr 8
 
   proc peekExitCode(p: Process): int =
+    var status : cint = 1
     if p.exitCode != -3: return p.exitCode
-    var ret = waitpid(p.id, p.exitCode, WNOHANG)
+    var ret = waitpid(p.id, status, WNOHANG)
     var b = ret == int(p.id)
     if b: result = -1
-    if not WIFEXITED(p.exitCode):
-      p.exitCode = -3
+    if WIFEXITED(status):
+      p.exitCode = status
+      result = p.exitCode.int shr 8
+    else:
       result = -1
-    else: result = p.exitCode.int shr 8
 
   proc createStream(stream: var Stream, handle: var FileHandle,
                     fileMode: FileMode) =
