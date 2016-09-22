@@ -356,6 +356,8 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
   when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
+  when declared(initAllocator):
+    initAllocator()
   var thrd = cast[ptr Thread[TArg]](closure)
   threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is

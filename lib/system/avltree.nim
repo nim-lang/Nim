@@ -9,7 +9,7 @@
 
 # not really an AVL tree anymore, but still balanced ...
 
-template isBottom(n: PAvlNode): bool = n == bottom
+template isBottom(n: PAvlNode): bool = n.link[0] == n
 
 proc lowGauge(n: PAvlNode): int =
   var it = n
@@ -65,14 +65,14 @@ proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
     split(t)
 
 proc del(a: var MemRegion, t: var PAvlNode, x: int) {.benign.} =
-  if t == bottom: return
+  if isBottom(t): return
   a.last = t
   if x <% t.key:
     del(a, t.link[0], x)
   else:
     a.deleted = t
     del(a, t.link[1], x)
-  if t == a.last and a.deleted != bottom and x == a.deleted.key:
+  if t == a.last and not isBottom(a.deleted) and x == a.deleted.key:
     a.deleted.key = t.key
     a.deleted.upperBound = t.upperBound
     a.deleted = bottom
