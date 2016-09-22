@@ -15,6 +15,14 @@ when not defined(js) and not defined(Nimdoc):
 
 type Console* {.importc.} = ref object of RootObj
 
+proc convertToConsoleLoggable*[T](v: T): RootRef {.importcpp: "#".}
+template convertToConsoleLoggable*(v: string): RootRef = cast[RootRef](cstring(v))
+
+proc log*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]) {.importcpp: "#.log(#)".}
+proc debug*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]) {.importcpp: "#.debug(#)".}
+proc info*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]) {.importcpp: "#.info(#)".}
+proc error*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]) {.importcpp: "#.error(#)".}
+
 {.push importcpp .}
 
 proc log*[A](console: Console, a: A)
@@ -23,7 +31,6 @@ proc info*[A](console: Console, a: A)
 proc error*[A](console: Console, a: A)
 
 {.pop.}
-
 proc log*(console: Console, a: string) = console.log(cstring(a))
 proc debug*(console: Console, a: string) = console.log(cstring(a))
 proc info*(console: Console, a: string) = console.log(cstring(a))
