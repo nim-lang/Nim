@@ -41,7 +41,7 @@ type
                       ## changing in the request.
     HttpOptions,      ## Returns the HTTP methods that the server supports
                       ## for specified address.
-    HttpConnect       ## Converts the request connection to a transparent
+    HttpConnect,      ## Converts the request connection to a transparent
                       ## TCP/IP tunnel, usually used for proxies.
     HttpPatch         ## Added in RFC 5789. Can be used to update partial
                       ## resources. The set of changes is represented in a
