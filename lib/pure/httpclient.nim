@@ -950,9 +950,12 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.
   ##
-  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## Connection will be kept alive. Further requests on the same ``client`` to
   ## the same hostname will not require a new connection to be made. The
   ## connection can be closed by using the ``close`` procedure.
+  ##
+  ## When a request is made to a different hostname, the current connection will
+  ## be closed.
   ##
   ## The returned future will complete once the request is completed.
   result = await request(client, url, $httpMethod, body)
@@ -972,6 +975,21 @@ proc get*(client: HttpClient | AsyncHttpClient,
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = await client.request(redirectTo, HttpGET)
       lastURL = redirectTo
+
+proc getContent*(client: HttpClient | AsyncHttpClient,
+                 url: string): Future[string] {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a GET request.
+  ##
+  ## This procedure will follow redirects up to a maximum number of redirects
+  ## specified in ``client.maxRedirects``.
+  ##
+  ## A ``HttpRequestError`` will be raised if the server responds with a
+  ## client error (status code 4xx) or a server error (status code 5xx).
+  let resp = await get(client, url)
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
+  else:
+    return resp.body
 
 proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
            multipart: MultipartData = nil): Future[Response] {.multisync.} =
@@ -1000,3 +1018,20 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
       var meth = if result.status != "307": HttpGet else: HttpPost
       result = await client.request(redirectTo, meth, xb)
       lastURL = redirectTo
+
+proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
+                  body = "",
+                  multipart: MultipartData = nil): Future[string]
+                  {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a POST request.
+  ##
+  ## This procedure will follow redirects up to a maximum number of redirects
+  ## specified in ``client.maxRedirects``.
+  ##
+  ## A ``HttpRequestError`` will be raised if the server responds with a
+  ## client error (status code 4xx) or a server error (status code 5xx).
+  let resp = await post(client, url, body, multipart)
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
+  else:
+    return resp.body

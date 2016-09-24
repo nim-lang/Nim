@@ -21,6 +21,16 @@ proc asyncTest() {.async.} =
   resp = await client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
 
+  # getContent
+  try:
+    discard await client.getContent("https://google.com/404")
+    doAssert(false, "HttpRequestError should have been raised")
+  except HttpRequestError:
+    discard
+  except:
+    doAssert(false, "HttpRequestError should have been raised")
+
+
   # Multipart test.
   var data = newMultipartData()
   data["output"] = "soap12"
@@ -49,6 +59,15 @@ proc syncTest() =
 
   resp = client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
+
+  # getContent
+  try:
+    discard client.getContent("https://google.com/404")
+    doAssert(false, "HttpRequestError should have been raised")
+  except HttpRequestError:
+    discard
+  except:
+    doAssert(false, "HttpRequestError should have been raised")
 
   # Multipart test.
   var data = newMultipartData()
