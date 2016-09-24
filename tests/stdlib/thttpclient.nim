@@ -7,6 +7,8 @@ from net import TimeoutError
 
 import httpclient, asyncdispatch
 
+const manualTests = false
+
 proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
   var resp = await client.request("http://example.com/")
@@ -39,12 +41,21 @@ proc asyncTest() {.async.} =
   resp = await client.post("http://validator.w3.org/check", multipart=data)
   doAssert(resp.code.is2xx)
 
+  # onProgressChanged
+  when manualTests:
+    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
+      echo("Downloaded ", progress, " of ", total)
+      echo("Current rate: ", speed div 1000, "kb/s")
+    client.onProgressChanged = onProgressChanged
+    discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+
   client.close()
 
   # Proxy test
-  #client = newAsyncHttpClient(proxy = newProxy("http://51.254.106.76:80/"))
-  #var resp = await client.request("https://github.com")
-  #echo resp
+  #when manualTests:
+  #  client = newAsyncHttpClient(proxy = newProxy("http://51.254.106.76:80/"))
+  #  var resp = await client.request("https://github.com")
+  #  echo resp
 
 proc syncTest() =
   var client = newHttpClient()
@@ -76,6 +87,14 @@ proc syncTest() =
     "<html><head></head><body><p>test</p></body></html>")
   resp = client.post("http://validator.w3.org/check", multipart=data)
   doAssert(resp.code.is2xx)
+
+  # onProgressChanged
+  when manualTests:
+    proc onProgressChanged(total, progress, speed: BiggestInt) =
+      echo("Downloaded ", progress, " of ", total)
+      echo("Current rate: ", speed div 1000, "kb/s")
+    client.onProgressChanged = onProgressChanged
+    discard client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
 
   client.close()
 
