@@ -110,6 +110,11 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     result.len = src.len
     copyMem(addr(result.data), addr(src.data), src.len + 1)
 
+proc copyDeepString(src: NimString): NimString {.inline.} =
+  if src != nil:
+    result = rawNewStringNoInit(src.len)
+    result.len = src.len
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
