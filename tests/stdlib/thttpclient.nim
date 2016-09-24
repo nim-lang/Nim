@@ -20,6 +20,15 @@ proc asyncTest() {.async.} =
 
   resp = await client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
+
+  # Multipart test.
+  var data = newMultipartData()
+  data["output"] = "soap12"
+  data["uploaded_file"] = ("test.html", "text/html",
+    "<html><head></head><body><p>test</p></body></html>")
+  resp = await client.post("http://validator.w3.org/check", multipart=data)
+  doAssert(resp.code.is2xx)
+
   client.close()
 
   # Proxy test
@@ -41,6 +50,14 @@ proc syncTest() =
   resp = client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
 
+  # Multipart test.
+  var data = newMultipartData()
+  data["output"] = "soap12"
+  data["uploaded_file"] = ("test.html", "text/html",
+    "<html><head></head><body><p>test</p></body></html>")
+  resp = client.post("http://validator.w3.org/check", multipart=data)
+  doAssert(resp.code.is2xx)
+
   client.close()
 
   # Timeout test.
@@ -56,21 +73,3 @@ proc syncTest() =
 syncTest()
 
 waitFor(asyncTest())
-
-#[
-
-  else:
-    #downloadFile("http://force7.de/nim/index.html", "nimindex.html")
-    #downloadFile("http://www.httpwatch.com/", "ChunkTest.html")
-    #downloadFile("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com",
-    # "validator.html")
-
-    #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
-    #  charset=%28detect+automatically%29&doctype=Inline&group=0")
-
-    var data = newMultipartData()
-    data["output"] = "soap12"
-    data["uploaded_file"] = ("test.html", "text/html",
-      "<html><head></head><body><p>test</p></body></html>")
-
-    echo postContent("http://validator.w3.org/check", multipart=data)]#

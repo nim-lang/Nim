@@ -964,6 +964,8 @@ proc get*(client: HttpClient | AsyncHttpClient,
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
   result = await client.request(url, HttpGET)
+
+  # Handle redirects.
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
@@ -990,3 +992,11 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   client.headers["Content-Length"] = $len(xb)
 
   result = await client.request(url, HttpPOST, xb)
+  # Handle redirects.
+  var lastURL = url
+  for i in 1..client.maxRedirects:
+    if result.status.redirection():
+      let redirectTo = getNewLocation(lastURL, result.headers)
+      var meth = if result.status != "307": HttpGet else: HttpPost
+      result = await client.request(redirectTo, meth, xb)
+      lastURL = redirectTo
