@@ -649,7 +649,7 @@ proc downloadFile*(url: string, outputFilename: string,
 proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  result = substr(httpMethod, len("http")).toUpper()
+  result = httpMethod.toUpper()
   result.add ' '
 
   if proxy.isNil:
@@ -1010,14 +1010,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   if not client.headers.hasKey("user-agent") and client.userAgent != "":
     client.headers["User-Agent"] = client.userAgent
 
-  var headers = generateHeaders(requestUrl, $httpMethod,
+  var headers = generateHeaders(requestUrl, httpMethod,
                                 client.headers, body, client.proxy)
 
   await client.socket.send(headers)
   if body != "":
     await client.socket.send(body)
 
-  result = await parseResponse(client, httpMethod notin {HttpHead, HttpConnect})
+  result = await parseResponse(client,
+                               httpMethod.toLower() notin ["head", "connect"])
 
   # Restore the clients proxy in case it was overwritten.
   client.proxy = savedProxy
@@ -1033,7 +1034,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## When a request is made to a different hostname, the current connection will
   ## be closed.
-  result = await request(client, url, $httpMethod, body)
+  result = await request(client, url, substr($httpMethod, len("http")), body)
 
 proc get*(client: HttpClient | AsyncHttpClient,
           url: string): Future[Response] {.multisync.} =

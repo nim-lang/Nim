@@ -65,6 +65,11 @@ that have tuple name:
 
 - ``AsyncHttpClient.headers`` type is now ``HttpHeaders``.
 
+- The ``httpclient.request`` procedure that takes the ``httpMethod`` as a string
+  value no longer requires this value to be prefixed with ``"http"``
+  (or similar).
+
+
 Library Additions
 -----------------
 
