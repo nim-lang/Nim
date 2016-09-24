@@ -262,6 +262,30 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
   inc(s.count)
 
+template processVnodeEvents(events: set[Event]): cuint =
+  var rfflags = 0.cuint
+  if events == {Event.VnodeWrite, Event.VnodeDelete, Event.VnodeExtend,
+                Event.VnodeAttrib, Event.VnodeLink, Event.VnodeRename,
+                Event.VnodeRevoke}:
+    rfflags = NOTE_DELETE or NOTE_WRITE or NOTE_EXTEND or NOTE_ATTRIB or
+              NOTE_LINK or NOTE_RENAME or NOTE_REVOKE
+  else:
+    if Event.VnodeDelete in events: rfflags = rfflags or NOTE_DELETE
+    if Event.VnodeWrite in events: rfflags = rfflags or NOTE_WRITE
+    if Event.VnodeExtend in events: rfflags = rfflags or NOTE_EXTEND
+    if Event.VnodeAttrib in events: rfflags = rfflags or NOTE_ATTRIB
+    if Event.VnodeLink in events: rfflags = rfflags or NOTE_LINK
+    if Event.VnodeRename in events: rfflags = rfflags or NOTE_RENAME
+    if Event.VnodeRevoke in events: rfflags = rfflags or NOTE_REVOKE
+  rfflags
+
+proc registerVnode*[T](s: Selector[T], fd: cint, events: set[Event], data: T) =
+  let fdi = fd.int
+  setKey(s, fdi, fdi, {Event.Vnode} + events, 0, data)
+  var fflags = processVnodeEvents(events)
+  modifyKQueue(s, fdi.uint, EVFILT_VNODE, EV_ADD or EV_CLEAR, fflags, 0, nil)
+  inc(s.count)
+
 proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
@@ -294,6 +318,9 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
     elif Event.Process in pkey.events:
       discard posix.close(cint(pkey.key.fd))
       modifyKQueue(s, fdi.uint, EVFILT_PROC, EV_DELETE, 0, 0, nil)
+      dec(s.count)
+    elif Event.Vnode in pkey.events:
+      modifyKQueue(s, fdi.uint, EVFILT_VNODE, EV_DELETE, 0, 0, nil)
       dec(s.count)
     elif Event.User in pkey.events:
       modifyKQueue(s, fdi.uint, EVFILT_READ, EV_DELETE, 0, 0, nil)
@@ -392,6 +419,20 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         of EVFILT_VNODE:
           pkey = addr(s.fds[kevent.ident.int])
           pkey.key.events = {Event.Vnode}
+          if (kevent.fflags and NOTE_DELETE) != 0:
+            pkey.key.events.incl(Event.VnodeDelete)
+          if (kevent.fflags and NOTE_WRITE) != 0:
+            pkey.key.events.incl(Event.VnodeWrite)
+          if (kevent.fflags and NOTE_EXTEND) != 0:
+            pkey.key.events.incl(Event.VnodeExtend)
+          if (kevent.fflags and NOTE_ATTRIB) != 0:
+            pkey.key.events.incl(Event.VnodeAttrib)
+          if (kevent.fflags and NOTE_LINK) != 0:
+            pkey.key.events.incl(Event.VnodeLink)
+          if (kevent.fflags and NOTE_RENAME) != 0:
+            pkey.key.events.incl(Event.VnodeRename)
+          if (kevent.fflags and NOTE_REVOKE) != 0:
+            pkey.key.events.incl(Event.VnodeRevoke)
         of EVFILT_SIGNAL:
           pkey = addr(s.fds[cast[int](kevent.udata)])
           pkey.key.events = {Event.Signal}
