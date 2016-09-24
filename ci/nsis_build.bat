@@ -39,7 +39,6 @@ set PATH=C:\Users\araq\projects\mingw32\bin;%PATH%
 cd csources
 call build.bat
 cd ..
-nim c koch || exit /b
 koch boot -d:release || exit /b
 cd nimsuggest
 nim c -d:release --noNimblePath --path:.. nimsuggest || exit /b
@@ -55,7 +54,6 @@ set PATH=C:\Users\araq\projects\mingw64\bin;%PATH%
 cd csources
 call build64.bat
 cd ..
-nim c koch || exit /b
 koch boot -d:release || exit /b
 cd nimsuggest
 nim c -d:release --noNimblePath --path:.. nimsuggest || exit /b
