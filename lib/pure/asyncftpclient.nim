@@ -354,6 +354,12 @@ proc store*(ftp: AsyncFtpClient, file, dest: string,
 
   await doUpload(ftp, destFile, onProgressChanged)
 
+proc rename*(ftp: AsyncFtpClient, nameFrom: string, nameTo: string) {.async.} =
+  ## Rename a file or directory on the remote FTP Server from current name
+  ## ``name_from`` to new name ``name_to``
+  assertReply(await ftp.send("RNFR " & name_from), "350")
+  assertReply(await ftp.send("RNTO " & name_to), "250")
+
 proc newAsyncFtpClient*(address: string, port = Port(21),
     user, pass = ""): AsyncFtpClient =
   ## Creates a new ``AsyncFtpClient`` object.
@@ -373,6 +379,7 @@ when not defined(testing) and isMainModule:
     echo await ftp.listDirs()
     await ftp.store("payload.jpg", "payload.jpg")
     await ftp.retrFile("payload.jpg", "payload2.jpg")
+    await ftp.rename("payload.jpg", "payload_renamed.jpg")
     echo("Finished")
 
   waitFor main(ftp)
