@@ -242,8 +242,10 @@ proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
 
 proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
                                                   msg: TMsg] =
-  ## try to receives a message from the channel `c` if available. Otherwise
-  ## it returns ``(false, default(msg))``.
+  ## try to receives a message from the channel `c`, but this can fail
+  ## for all sort of reasons, including contention. If it fails,
+  ## it returns ``(false, default(msg))`` otherwise it
+  ## returns ``(true, msg)``.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):
