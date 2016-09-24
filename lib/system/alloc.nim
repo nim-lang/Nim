@@ -101,8 +101,8 @@ type
 
 # shared:
 var
-  bottomData: AvlNode
-  bottom: PAvlNode
+  bottomData {.threadvar.}: AvlNode
+  bottom {.threadvar.}: PAvlNode
 
 {.push stack_trace: off.}
 proc initAllocator() =

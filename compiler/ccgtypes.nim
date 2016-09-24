@@ -888,10 +888,11 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: Rope) =
       else: internalError(n.info, "genObjectFields(nkRecCase)")
   of nkSym:
     var field = n.sym
-    addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
-        "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
-        "$1.name = $5;$n", [expr, getTypeDesc(m, typ),
-        field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
+    if field.bitsize == 0:
+      addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
+          "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
+          "$1.name = $5;$n", [expr, getTypeDesc(m, typ),
+          field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
   else: internalError(n.info, "genObjectFields")
 
 proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
