@@ -48,7 +48,7 @@ type
       inHandle, outHandle, errHandle: FileHandle
       inStream, outStream, errStream: Stream
       id: Pid
-    exitCode: cint
+    exitStatus: cint
     options: set[ProcessOption]
 
   Process* = ref ProcessObj ## represents an operating system process
@@ -731,7 +731,7 @@ elif not defined(useNimRtl):
       pStdin, pStdout, pStderr: array[0..1, cint]
     new(result)
     result.options = options
-    result.exitCode = -3 # for ``waitForExit``
+    result.exitStatus = -3 # for ``waitForExit``
     if poParentStreams notin options:
       if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or
          pipe(pStderr) != 0'i32:
@@ -960,7 +960,7 @@ elif not defined(useNimRtl):
     var status : cint = 1
     ret = waitpid(p.id, status, WNOHANG)
     if WIFEXITED(status):
-      p.exitCode = status
+      p.exitStatus = status
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
 
@@ -977,12 +977,12 @@ elif not defined(useNimRtl):
     import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      if p.exitCode != -3: return p.exitCode
+      if p.exitStatus != -3: return p.exitStatus
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
-        p.exitCode = status
+        p.exitStatus = status
       else:
         var kqFD = kqueue()
         if kqFD == -1:
@@ -1015,20 +1015,20 @@ elif not defined(useNimRtl):
                 raiseOSError(osLastError())
               if waitpid(p.id, status, 0) < 0:
                 raiseOSError(osLastError())
-              p.exitCode = status
+              p.exitStatus = status
               break
             else:
               if kevOut.ident == p.id.uint and kevOut.filter == EVFILT_PROC:
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
-                p.exitCode = status
+                p.exitStatus = status
                 break
               else:
                 raiseOSError(osLastError())
         finally:
           discard posix.close(kqFD)
 
-      result = int(p.exitCode) shr 8
+      result = int(p.exitStatus) shr 8
   else:
     import times
 
@@ -1062,15 +1062,15 @@ elif not defined(useNimRtl):
         s.tv_sec = b.tv_sec
         s.tv_nsec = b.tv_nsec
 
-      #if waitPid(p.id, p.exitCode, 0) == int(p.id):
+      #if waitPid(p.id, p.exitStatus, 0) == int(p.id):
       # ``waitPid`` fails if the process is not running anymore. But then
-      # ``running`` probably set ``p.exitCode`` for us. Since ``p.exitCode`` is
+      # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
       # initialized with -3, wrong success exit codes are prevented.
-      if p.exitCode != -3: return p.exitCode
+      if p.exitStatus != -3: return p.exitStatus
       if timeout == -1:
         if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
-        p.exitCode = status
+        p.exitStatus = status
       else:
         var nmask, omask: Sigset
         var sinfo: SigInfo
@@ -1103,7 +1103,7 @@ elif not defined(useNimRtl):
               if sinfo.si_pid == p.id:
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
-                p.exitCode = status
+                p.exitStatus = status
                 break
               else:
                 # we have SIGCHLD, but not for process we are waiting,
@@ -1125,7 +1125,7 @@ elif not defined(useNimRtl):
                   raiseOSError(osLastError())
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
-                p.exitCode = status
+                p.exitStatus = status
                 break
               else:
                 raiseOSError(err)
@@ -1137,17 +1137,17 @@ elif not defined(useNimRtl):
             if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = int(p.exitCode) shr 8
+      result = int(p.exitStatus) shr 8
 
   proc peekExitCode(p: Process): int =
     var status : cint = 1
-    if p.exitCode != -3: return p.exitCode
+    if p.exitStatus != -3: return p.exitStatus
     var ret = waitpid(p.id, status, WNOHANG)
     var b = ret == int(p.id)
     if b: result = -1
     if WIFEXITED(status):
-      p.exitCode = status
-      result = p.exitCode.int shr 8
+      p.exitStatus = status
+      result = p.exitStatus.int shr 8
     else:
       result = -1
 
