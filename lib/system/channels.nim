@@ -242,7 +242,7 @@ proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
 
 proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
                                                   msg: TMsg] =
-  ## try to receives a message from the channel `c`, but this can fail
+  ## Tries to receive a message from the channel `c`, but this can fail
   ## for all sort of reasons, including contention. If it fails,
   ## it returns ``(false, default(msg))`` otherwise it
   ## returns ``(true, msg)``.
