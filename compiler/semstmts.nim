@@ -155,7 +155,10 @@ proc discardCheck(c: PContext, result: PNode) =
       else:
         var n = result
         while n.kind in skipForDiscardable: n = n.lastSon
-        localError(n.info, errDiscardValueX, result.typ.typeToString)
+        if result.typ.kind == tyProc:
+          localError(n.info, "value of type '" & result.typ.typeToString & "' has to be discarded; for a function call use ()")
+        else:
+          localError(n.info, errDiscardValueX, result.typ.typeToString)
 
 proc semIf(c: PContext, n: PNode): PNode =
   result = n
