@@ -69,6 +69,11 @@ that have tuple name:
   value no longer requires this value to be prefixed with ``"http"``
   (or similar).
 
+- Converting a ``HttpMethod`` value to string using the ``$`` operator will
+  give string values without the ``"Http"`` prefix now.
+
+- The ``Request`` object defined in the ``asynchttpserver`` module now uses
+  the ``HttpMethod`` type for the request method.
 
 Library Additions
 -----------------

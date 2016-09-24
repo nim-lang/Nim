@@ -226,7 +226,7 @@ proc `$`*(code: HttpCode): string =
   ## For example:
   ##
   ##   .. code-block:: nim
-  ##       doAssert(Http404.status == "404 Not Found")
+  ##       doAssert($Http404 == "404 Not Found")
   case code.int
   of 100: "100 Continue"
   of 101: "101 Switching Protocols"
@@ -297,6 +297,9 @@ proc is4xx*(code: HttpCode): bool =
 proc is5xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 5xx HTTP status code.
   return code.int in {500 .. 599}
+
+proc `$`*(httpMethod: HttpMethod): string =
+  return (system.`$`(httpMethod))[4 .. ^1].toUpper()
 
 when isMainModule:
   var test = newHttpHeaders()

@@ -413,7 +413,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   ## **Deprecated since version 0.15.0**: use ``HttpClient.request`` instead.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var hostUrl = if proxy == nil: r else: parseUri(url)
-  var headers = substr(httpMethod, len("http")).toUpper()
+  var headers = httpMethod.toUpper()
   # TODO: Use generateHeaders further down once it supports proxies.
 
   var s = newSocket()
@@ -497,7 +497,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   if body != "":
     s.send(body)
 
-  result = parseResponse(s, httpMethod != "httpHEAD", timeout)
+  result = parseResponse(s, httpMethod != "HEAD", timeout)
 
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
@@ -1034,7 +1034,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## When a request is made to a different hostname, the current connection will
   ## be closed.
-  result = await request(client, url, substr($httpMethod, len("http")), body)
+  result = await request(client, url, $httpMethod, body)
 
 proc get*(client: HttpClient | AsyncHttpClient,
           url: string): Future[Response] {.multisync.} =

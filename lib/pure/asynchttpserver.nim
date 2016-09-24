@@ -38,7 +38,7 @@ export httpcore except parseHeader
 type
   Request* = object
     client*: AsyncSocket # TODO: Separate this into a Response object?
-    reqMethod*: string
+    reqMethod*: HttpMethod
     headers*: HttpHeaders
     protocol*: tuple[orig: string, major, minor: int]
     url*: Uri
@@ -127,7 +127,14 @@ proc processClient(client: AsyncSocket, address: string,
     var i = 0
     for linePart in lineFut.mget.split(' '):
       case i
-      of 0: request.reqMethod.shallowCopy(linePart.normalize)
+      of 0:
+        try:
+          # TODO: this is likely slow.
+          request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
+        except ValueError:
+          asyncCheck request.respond(Http400, "Invalid request method. Got: " &
+                                     linePart)
+          continue
       of 1: parseUri(linePart, request.url)
       of 2:
         try:
@@ -159,7 +166,7 @@ proc processClient(client: AsyncSocket, address: string,
         request.client.close()
         return
 
-    if request.reqMethod == "post":
+    if request.reqMethod == HttpPost:
       # Check for Expect header
       if request.headers.hasKey("Expect"):
         if "100-continue" in request.headers["Expect"]:
@@ -178,17 +185,12 @@ proc processClient(client: AsyncSocket, address: string,
       else:
         request.body = await client.recv(contentLength)
         assert request.body.len == contentLength
-    elif request.reqMethod == "post":
+    elif request.reqMethod == HttpPost:
       await request.respond(Http400, "Bad Request. No Content-Length.")
       continue
 
-    case request.reqMethod
-    of "get", "post", "head", "put", "delete", "trace", "options",
-       "connect", "patch":
-      await callback(request)
-    else:
-      await request.respond(Http400, "Invalid request method. Got: " &
-        request.reqMethod)
+    # Call the user's callback.
+    await callback(request)
 
     if "upgrade" in request.headers.getOrDefault("connection"):
       return
