@@ -379,12 +379,15 @@ proc format(p: MultipartData): tuple[header, body: string] =
 
 proc request*(url: string, httpMethod: string, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
-              userAgent = defUserAgent, proxy: Proxy = nil): Response =
+              userAgent = defUserAgent, proxy: Proxy = nil): Response
+              {.deprecated.} =
   ## | Requests ``url`` with the custom method string specified by the
   ## | ``httpMethod`` parameter.
   ## | Extra headers can be specified and must be separated by ``\c\L``
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.request`` instead.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var hostUrl = if proxy == nil: r else: parseUri(url)
   var headers = substr(httpMethod, len("http")).toUpper()
@@ -475,11 +478,14 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
 proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
-              userAgent = defUserAgent, proxy: Proxy = nil): Response =
+              userAgent = defUserAgent, proxy: Proxy = nil): Response
+              {.deprecated.} =
   ## | Requests ``url`` with the specified ``httpMethod``.
   ## | Extra headers can be specified and must be separated by ``\c\L``
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.request`` instead.
   result = request(url, $httpMethod, extraHeaders, body, sslContext, timeout,
                    userAgent, proxy)
 
@@ -502,12 +508,14 @@ proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
           sslContext: SSLContext = defaultSSLContext,
           timeout = -1, userAgent = defUserAgent,
-          proxy: Proxy = nil): Response =
+          proxy: Proxy = nil): Response {.deprecated.} =
   ## | GETs the ``url`` and returns a ``Response`` object
   ## | This proc also handles redirection
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
+  ##
+  ## ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
   result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
   var lastURL = url
@@ -521,12 +529,14 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
                  sslContext: SSLContext = defaultSSLContext,
                  timeout = -1, userAgent = defUserAgent,
-                 proxy: Proxy = nil): string =
+                 proxy: Proxy = nil): string {.deprecated.} =
   ## | GETs the body and returns it as a string.
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.getContent`` instead.
   var r = get(url, extraHeaders, maxRedirects, sslContext, timeout, userAgent,
               proxy)
   if r.status[0] in {'4','5'}:
@@ -539,7 +549,7 @@ proc post*(url: string, extraHeaders = "", body = "",
            sslContext: SSLContext = defaultSSLContext,
            timeout = -1, userAgent = defUserAgent,
            proxy: Proxy = nil,
-           multipart: MultipartData = nil): Response =
+           multipart: MultipartData = nil): Response {.deprecated.} =
   ## | POSTs ``body`` to the ``url`` and returns a ``Response`` object.
   ## | This proc adds the necessary Content-Length header.
   ## | This proc also handles redirection.
@@ -548,6 +558,8 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## server takes longer than specified an ETimeout exception will be raised.
   ## | The optional ``multipart`` parameter can be used to create
   ## ``multipart/form-data`` POSTs comfortably.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.post`` instead.
   let (mpHeaders, mpBody) = format(multipart)
 
   template withNewLine(x): expr =
@@ -577,7 +589,8 @@ proc postContent*(url: string, extraHeaders = "", body = "",
                   sslContext: SSLContext = defaultSSLContext,
                   timeout = -1, userAgent = defUserAgent,
                   proxy: Proxy = nil,
-                  multipart: MultipartData = nil): string =
+                  multipart: MultipartData = nil): string
+                  {.deprecated.} =
   ## | POSTs ``body`` to ``url`` and returns the response's body as a string
   ## | Raises exceptions for the status codes ``4xx`` and ``5xx``
   ## | Extra headers can be specified and must be separated by ``\c\L``.
@@ -585,6 +598,9 @@ proc postContent*(url: string, extraHeaders = "", body = "",
   ## server takes longer than specified an ETimeout exception will be raised.
   ## | The optional ``multipart`` parameter can be used to create
   ## ``multipart/form-data`` POSTs comfortably.
+  ##
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.postContent``
+  ## instead.
   var r = post(url, extraHeaders, body, maxRedirects, sslContext, timeout,
                userAgent, proxy, multipart)
   if r.status[0] in {'4','5'}:
