@@ -52,7 +52,7 @@ proc split(t: var PAvlNode) =
     inc t.level
 
 proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
-  if t == bottom:
+  if t.isBottom:
     t = allocAvlNode(a, key, upperBound)
   else:
     if key <% t.key:
