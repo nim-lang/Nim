@@ -217,6 +217,216 @@ when not defined(windows):
       assert(selector.isEmpty())
       result = true
 
+  when defined(macosx) or defined(freebsd) or defined(openbsd) or
+       defined(netbsd):
+
+    proc rename(frompath: cstring, topath: cstring): cint
+       {.importc: "rename", header: "<stdio.h>".}
+
+    proc createFile(name: string): cint =
+      result = posix.open(cstring(name), posix.O_CREAT or posix.O_RDWR)
+      if result == -1:
+        raiseOsError(osLastError())
+
+    proc writeFile(name: string, data: string) =
+      let fd = posix.open(cstring(name), posix.O_APPEND or posix.O_RDWR)
+      if fd == -1:
+        raiseOsError(osLastError())
+      let length = len(data).cint
+      if posix.write(fd, cast[pointer](unsafeAddr data[0]),
+                     len(data).cint) != length:
+        raiseOsError(osLastError())
+      if posix.close(fd) == -1:
+        raiseOsError(osLastError())
+
+    proc closeFile(fd: cint) =
+      if posix.close(fd) == -1:
+        raiseOsError(osLastError())
+
+    proc removeFile(name: string) =
+      let err = posix.unlink(cstring(name))
+      if err == -1:
+        raiseOsError(osLastError())
+
+    proc createDir(name: string) =
+      let err = posix.mkdir(cstring(name), 0x1FF)
+      if err == -1:
+        raiseOsError(osLastError())
+
+    proc removeDir(name: string) =
+      let err = posix.rmdir(cstring(name))
+      if err == -1:
+        raiseOsError(osLastError())
+
+    proc chmodPath(name: string, mode: cint) =
+      let err = posix.chmod(cstring(name), Mode(mode))
+      if err == -1:
+        raiseOsError(osLastError())
+
+    proc renameFile(names: string, named: string) =
+      let err = rename(cstring(names), cstring(named))
+      if err == -1:
+        raiseOsError(osLastError())
+
+    proc symlink(names: string, named: string) =
+      let err = posix.symlink(cstring(names), cstring(named))
+      if err == -1:
+        raiseOsError(osLastError())
+
+    proc openWatch(name: string): cint =
+      result = posix.open(cstring(name), posix.O_RDONLY)
+      if result == -1:
+        raiseOsError(osLastError())
+
+    const
+      testDirectory = "/tmp/kqtest"
+
+    type
+      valType = object
+        fd: cint
+        events: set[Event]
+
+    proc vnode_test(): bool =
+      proc validate[T](test: openarray[ReadyKey[T]],
+                       check: openarray[valType]): bool =
+        result = false
+        if len(test) == len(check):
+          for checkItem in check:
+            result = false
+            for testItem in test:
+              if testItem.fd == checkItem.fd and
+                 checkItem.events <= testItem.events:
+                result = true
+                break
+            if not result:
+              break
+
+      var res: seq[ReadyKey[int]]
+      var selector = newSelector[int]()
+      var events = {Event.VnodeWrite, Event.VnodeDelete, Event.VnodeExtend,
+                    Event.VnodeAttrib, Event.VnodeLink, Event.VnodeRename,
+                    Event.VnodeRevoke}
+
+      result = true
+      discard posix.unlink(testDirectory)
+
+      createDir(testDirectory)
+      var dirfd = posix.open(cstring(testDirectory), posix.O_RDONLY)
+      if dirfd == -1:
+        raiseOsError(osLastError())
+
+      selector.registerVnode(dirfd, events, 1)
+      selector.flush()
+
+      # chmod testDirectory to 0777
+      chmodPath(testDirectory, 0x1FF)
+      res = selector.select(0)
+      doAssert(len(res) == 1)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(res[0].fd == dirfd and
+               {Event.Vnode, Event.VnodeAttrib} <= res[0].events)
+
+      # create subdirectory
+      createDir(testDirectory & "/test")
+      res = selector.select(0)
+      doAssert(len(res) == 1)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(res[0].fd == dirfd and
+               {Event.Vnode, Event.VnodeWrite,
+                Event.VnodeLink} <= res[0].events)
+
+      # open test directory for watching
+      var testfd = openWatch(testDirectory & "/test")
+      selector.registerVnode(testfd, events, 2)
+      selector.flush()
+      doAssert(len(selector.select(0)) == 0)
+
+      # rename test directory
+      renameFile(testDirectory & "/test", testDirectory & "/renamed")
+      res = selector.select(0)
+      doAssert(len(res) == 2)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(validate(res,
+                 [valType(fd: dirfd, events: {Event.Vnode, Event.VnodeWrite}),
+                  valType(fd: testfd,
+                          events: {Event.Vnode, Event.VnodeRename})])
+              )
+
+      # remove test directory
+      removeDir(testDirectory & "/renamed")
+      res = selector.select(0)
+      doAssert(len(res) == 2)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(validate(res,
+                 [valType(fd: dirfd, events: {Event.Vnode, Event.VnodeWrite,
+                                              Event.VnodeLink}),
+                  valType(fd: testfd,
+                          events: {Event.Vnode, Event.VnodeDelete})])
+              )
+      # create file new test file
+      testfd = createFile(testDirectory & "/testfile")
+      res = selector.select(0)
+      doAssert(len(res) == 1)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(res[0].fd == dirfd and
+               {Event.Vnode, Event.VnodeWrite} <= res[0].events)
+
+      # close new test file
+      closeFile(testfd)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(len(selector.select(0)) == 0)
+
+      # chmod test file with 0666
+      chmodPath(testDirectory & "/testfile", 0x1B6)
+      doAssert(len(selector.select(0)) == 0)
+
+      testfd = openWatch(testDirectory & "/testfile")
+      selector.registerVnode(testfd, events, 1)
+      selector.flush()
+
+      # write data to test file
+      writeFile(testDirectory & "/testfile", "TESTDATA")
+      res = selector.select(0)
+      doAssert(len(res) == 1)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(res[0].fd == testfd and
+              {Event.Vnode, Event.VnodeWrite,
+               Event.VnodeExtend} <= res[0].events)
+
+      # symlink test file
+      symlink(testDirectory & "/testfile", testDirectory & "/testlink")
+      res = selector.select(0)
+      doAssert(len(res) == 1)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(res[0].fd == dirfd and
+               {Event.Vnode, Event.VnodeWrite} <= res[0].events)
+
+      # remove test file
+      removeFile(testDirectory & "/testfile")
+      res = selector.select(0)
+      doAssert(len(res) == 2)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(validate(res,
+                [valType(fd: testfd, events: {Event.Vnode, Event.VnodeDelete}),
+                 valType(fd: dirfd, events: {Event.Vnode, Event.VnodeWrite})])
+              )
+
+      # remove symlink
+      removeFile(testDirectory & "/testlink")
+      res = selector.select(0)
+      doAssert(len(res) == 1)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(res[0].fd == dirfd and
+               {Event.Vnode, Event.VnodeWrite} <= res[0].events)
+
+      # remove testDirectory
+      removeDir(testDirectory)
+      res = selector.select(0)
+      doAssert(len(res) == 1)
+      doAssert(len(selector.select(0)) == 0)
+      doAssert(res[0].fd == dirfd and
+               {Event.Vnode, Event.VnodeDelete} <= res[0].events)
+
   when hasThreadSupport:
 
     var counter = 0
@@ -256,6 +466,9 @@ when not defined(windows):
     processTest("Timer notification test...", timer_notification_test())
     processTest("Process notification test...", process_notification_test())
     processTest("Signal notification test...", signal_notification_test())
+  when defined(macosx) or defined(freebsd) or defined(openbsd) or
+       defined(netbsd):
+    processTest("File notification test...", vnode_test())
   echo("All tests passed!")
 else:
   import nativesockets, winlean, os, osproc
