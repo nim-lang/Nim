@@ -1035,12 +1035,11 @@ elif not defined(useNimRtl):
     const
       hasThreadSupport = compileOption("threads") and not defined(nimscript)
 
-    var status : cint = 1
-
     proc waitForExit(p: Process, timeout: int = -1): int =
       template adjustTimeout(t, s, e: Timespec) =
         var diff: int
         var b: Timespec
+        var status : cint = 1
         b.tv_sec = e.tv_sec
         b.tv_nsec = e.tv_nsec
         e.tv_sec = (e.tv_sec - s.tv_sec).Time
