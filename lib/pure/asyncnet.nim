@@ -159,7 +159,9 @@ when defineSsl:
       await socket.fd.AsyncFd.send(data, flags)
 
   proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
-                  sslError: cint) {.async.} =
+                  sslError: cint): Future[bool] {.async.} =
+    ## Returns ``true`` if ``socket`` is still connected, otherwise ``false``.
+    result = true
     case sslError
     of SSL_ERROR_WANT_WRITE:
       await sendPendingSslData(socket, flags)
@@ -173,6 +175,7 @@ when defineSsl:
       elif length == 0:
         # connection not properly closed by remote side or connection dropped
         SSL_set_shutdown(socket.sslHandle, SSL_RECEIVED_SHUTDOWN)
+        result = false
     else:
       raiseSSLError("Cannot appease SSL.")
 
@@ -180,13 +183,27 @@ when defineSsl:
                    op: expr) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
+      # Call the desired operation.
       opResult = op
       # Bit hackish here.
       # TODO: Introduce an async template transformation pragma?
+
+      # Send any remaining pending SSL data.
       yield sendPendingSslData(socket, flags)
+
+      # If the operation failed, try to see if SSL has some data to read
+      # or write.
       if opResult < 0:
         let err = getSslError(socket.sslHandle, opResult.cint)
-        yield appeaseSsl(socket, flags, err.cint)
+        let fut = appeaseSsl(socket, flags, err.cint)
+        yield fut
+        if not fut.read():
+          # Socket disconnected.
+          if SocketFlag.SafeDisconn in flags:
+            break
+          else:
+            raiseSSLError("Socket has been disconnected")
+
 
 proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   ## Connects ``socket`` to server at ``address:port``.
