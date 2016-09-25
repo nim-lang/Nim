@@ -25,7 +25,7 @@ proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
     result = node[0]
 
 template createCb(retFutureSym, iteratorNameSym,
-                   name: untyped) =
+                  name, futureVarCompletions: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
   proc cb {.closure,gcsafe.} =
@@ -44,6 +44,8 @@ template createCb(retFutureSym, iteratorNameSym,
         raise
       else:
         retFutureSym.fail(getCurrentException())
+
+      futureVarCompletions
   cb()
   #{.pop.}
 proc generateExceptionCheck(futSym,
@@ -119,8 +121,22 @@ template createVar(result: var NimNode, futSymName: string,
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
   useVar(result, futSym, valueReceiver, rootReceiver, fromNode)
 
+proc createFutureVarCompletions(futureVarIdents: seq[NimNode]): NimNode
+                                {.compileTime.} =
+  result = newStmtList()
+  # Add calls to complete each FutureVar parameter.
+  for ident in futureVarIdents:
+    # Only complete them if they have not been completed already by the user.
+    result.add newIfStmt(
+      (
+        newCall(newIdentNode("not"),
+                newDotExpr(ident, newIdentNode("finished"))),
+        newCall(newIdentNode("complete"), ident)
+      )
+    )
+
 proc processBody(node, retFutureSym: NimNode,
-                 subTypeIsVoid: bool,
+                 subTypeIsVoid: bool, futureVarIdents: seq[NimNode],
                  tryStmt: NimNode): NimNode {.compileTime.} =
   #echo(node.treeRepr)
   result = node
@@ -134,10 +150,13 @@ proc processBody(node, retFutureSym: NimNode,
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym)
     else:
-      let x = node[0].processBody(retFutureSym, subTypeIsVoid, tryStmt)
+      let x = node[0].processBody(retFutureSym, subTypeIsVoid,
+                                  futureVarIdents, tryStmt)
       if x.kind == nnkYieldStmt: result.add x
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym, x)
+
+    result.add createFutureVarCompletions(futureVarIdents)
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -196,7 +215,8 @@ proc processBody(node, retFutureSym: NimNode,
       # Transform ``except`` body.
       # TODO: Could we perform some ``await`` transformation here to get it
       # working in ``except``?
-      tryBody[1] = processBody(n[1], retFutureSym, subTypeIsVoid, nil)
+      tryBody[1] = processBody(n[1], retFutureSym, subTypeIsVoid,
+                               futureVarIdents, nil)
 
     proc processForTry(n: NimNode, i: var int,
                        res: NimNode): bool {.compileTime.} =
@@ -207,7 +227,7 @@ proc processBody(node, retFutureSym: NimNode,
       var skipped = n.skipStmtList()
       while i < skipped.len:
         var processed = processBody(skipped[i], retFutureSym,
-                                    subTypeIsVoid, n)
+                                    subTypeIsVoid, futureVarIdents, n)
 
         # Check if we transformed the node into an exception check.
         # This suggests skipped[i] contains ``await``.
@@ -239,7 +259,8 @@ proc processBody(node, retFutureSym: NimNode,
   else: discard
 
   for i in 0 .. <result.len:
-    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid, nil)
+    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid,
+                            futureVarIdents, nil)
 
 proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
@@ -251,6 +272,14 @@ proc getName(node: NimNode): string {.compileTime.} =
     return "anonymous"
   else:
     error("Unknown name.")
+
+proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
+  result = @[]
+  for i in 1 .. <len(params):
+    expectKind(params[i], nnkIdentDefs)
+    if params[i][1].kind == nnkBracketExpr and
+       ($params[i][1][0].ident).normalize == "futurevar":
+      result.add(params[i][0])
 
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
@@ -282,6 +311,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (baseType.kind == nnkIdent and returnType[1].ident == !"void")
 
+  let futureVarIdents = getFutureVarIdents(prc[3])
+
   var outerProcBody = newNimNode(nnkStmtList, prc[6])
 
   # -> var retFuture = newFuture[T]()
@@ -304,7 +335,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prc[0].getName & "Iter")
-  var procBody = prc[6].processBody(retFutureSym, subtypeIsVoid, nil)
+  var procBody = prc[6].processBody(retFutureSym, subtypeIsVoid,
+                                    futureVarIdents, nil)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
     if not subtypeIsVoid:
@@ -326,6 +358,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       # -> complete(retFuture)
       procBody.add(newCall(newIdentNode("complete"), retFutureSym))
 
+    procBody.add(createFutureVarCompletions(futureVarIdents))
+
     var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
                                   procBody, nnkIteratorDef)
     closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
@@ -334,7 +368,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     # -> createCb(retFuture)
     #var cbName = newIdentNode("cb")
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
-                         newStrLitNode(prc[0].getName))
+                         newStrLitNode(prc[0].getName),
+                         createFutureVarCompletions(futureVarIdents))
     outerProcBody.add procCb
 
     # -> return retFuture

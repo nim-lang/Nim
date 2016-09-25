@@ -104,6 +104,9 @@ Library Additions
 - Added a new macro called ``multisync`` allowing you to write procedures for
 synchronous and asynchronous sockets with no duplication.
 
+- The ``async`` macro will now complete ``FutureVar[T]`` parameters
+  automatically unless they have been completed already.
+
 Compiler Additions
 ------------------
 

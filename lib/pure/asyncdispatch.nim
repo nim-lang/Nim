@@ -156,7 +156,6 @@ export Port, SocketFlag
 ## * Can't await in a ``except`` body
 ## * Forward declarations for async procs are broken,
 ##   link includes workaround: https://github.com/nim-lang/Nim/issues/3182.
-## * FutureVar[T] needs to be completed manually.
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
@@ -263,6 +262,18 @@ proc complete*[T](future: FutureVar[T]) =
   if fut.cb != nil:
     fut.cb()
 
+proc complete*[T](future: FutureVar[T], val: T) =
+  ## Completes a ``FutureVar`` with value ``val``.
+  ##
+  ## Any previously stored value will be overwritten.
+  template fut: expr = Future[T](future)
+  checkFinished(fut)
+  assert(fut.error == nil)
+  fut.finished = true
+  fut.value = val
+  if fut.cb != nil:
+    fut.cb()
+
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
@@ -311,17 +322,18 @@ proc injectStacktrace[T](future: Future[T]) =
       msg.add("\n    Empty or nil stack trace.")
     future.error.msg.add(msg)
 
-proc read*[T](future: Future[T]): T =
+proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
   ## this function will fail with a ``ValueError`` exception.
   ##
   ## If the result of the future is an error then that error will be raised.
-  if future.finished:
-    if future.error != nil:
-      injectStacktrace(future)
-      raise future.error
+  let fut = Future[T](future)
+  if fut.finished:
+    if fut.error != nil:
+      injectStacktrace(fut)
+      raise fut.error
     when T isnot void:
-      return future.value
+      return fut.value
   else:
     # TODO: Make a custom exception type for this?
     raise newException(ValueError, "Future still in progress.")
@@ -342,11 +354,11 @@ proc mget*[T](future: FutureVar[T]): var T =
   ## Future has not been finished.
   result = Future[T](future).value
 
-proc finished*[T](future: Future[T]): bool =
+proc finished*[T](future: Future[T] | FutureVar[T]): bool =
   ## Determines whether ``future`` has completed.
   ##
   ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
-  future.finished
+  (Future[T](future)).finished
 
 proc failed*(future: FutureBase): bool =
   ## Determines whether ``future`` completed with an error.
