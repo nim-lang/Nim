@@ -364,6 +364,10 @@ proc removeFile*(ftp: AsyncFtpClient, filename: string) {.async.} =
   ## Delete a file ``filename`` on the remote FTP server
   assertReply(await ftp.send("DELE " & filename), "250")
 
+proc removeDir*(ftp: AsyncFtpClient, dir: string) {.async.} =
+  ## Delete a directory ``dir`` on the remote FTP server
+  assertReply(await ftp.send("RMD " & dir), "250")
+
 proc newAsyncFtpClient*(address: string, port = Port(21),
     user, pass = ""): AsyncFtpClient =
   ## Creates a new ``AsyncFtpClient`` object.
@@ -386,6 +390,8 @@ when not defined(testing) and isMainModule:
     await ftp.rename("payload.jpg", "payload_renamed.jpg")
     await ftp.store("payload.jpg", "payload_remove.jpg")
     await ftp.removeFile("payload_remove.jpg")
+    await ftp.createDir("deleteme")
+    await ftp.removeDir("deleteme")
     echo("Finished")
 
   waitFor main(ftp)
