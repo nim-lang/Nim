@@ -1646,7 +1646,7 @@ proc send*(socket: AsyncFD, data: string,
 # -- Await Macro
 include asyncmacro
 
-proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
+proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##
@@ -1664,6 +1664,8 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ##
   ## **Note**: This procedure is mostly used for testing. You likely want to
   ## use ``asyncnet.recvLine`` instead.
+  ##
+  ## **Deprecated since version 0.15.0**: Use ``asyncnet.recvLine()`` instead.
 
   template addNLIfEmpty(): stmt =
     if result.len == 0:

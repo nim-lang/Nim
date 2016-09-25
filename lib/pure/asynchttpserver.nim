@@ -9,6 +9,12 @@
 
 ## This module implements a high performance asynchronous HTTP server.
 ##
+## This HTTP server has not been designed to be used in production, but
+## for testing applications locally. Because of this, when deploying your
+## application you should use a reverse proxy (for example nginx) instead of
+## allowing users to connect directly to this server.
+##
+##
 ## Examples
 ## --------
 ##
