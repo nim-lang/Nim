@@ -1039,7 +1039,6 @@ elif not defined(useNimRtl):
       template adjustTimeout(t, s, e: Timespec) =
         var diff: int
         var b: Timespec
-        var status : cint = 1
         b.tv_sec = e.tv_sec
         b.tv_nsec = e.tv_nsec
         e.tv_sec = (e.tv_sec - s.tv_sec).Time
@@ -1067,6 +1066,7 @@ elif not defined(useNimRtl):
       # initialized with -3, wrong success exit codes are prevented.
       if p.exitStatus != -3: return p.exitStatus
       if timeout == -1:
+        var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
         p.exitStatus = status
@@ -1100,6 +1100,7 @@ elif not defined(useNimRtl):
             let res = sigtimedwait(nmask, sinfo, tmspec)
             if res == SIGCHLD:
               if sinfo.si_pid == p.id:
+                var status : cint = 1
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
                 p.exitStatus = status
@@ -1122,6 +1123,7 @@ elif not defined(useNimRtl):
                 # timeout expired, so we trying to kill process
                 if posix.kill(p.id, SIGKILL) == -1:
                   raiseOSError(osLastError())
+                var status : cint = 1
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
                 p.exitStatus = status
