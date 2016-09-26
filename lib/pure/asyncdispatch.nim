@@ -159,7 +159,7 @@ export Port, SocketFlag
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
-include asyncfutures
+include includes/asyncfutures
 
 type
   PDispatcherBase = ref object of RootRef
