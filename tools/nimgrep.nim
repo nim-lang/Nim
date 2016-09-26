@@ -135,7 +135,7 @@ proc processFile(filename: string) =
   if optVerbose in options:
     stdout.writeLine(filename)
     stdout.flushFile()
-  var pegp: TPeg
+  var pegp: Peg
   var rep: Regex
   var result: string
 
@@ -213,7 +213,7 @@ proc hasRightExt(filename: string, exts: seq[string]): bool =
     if os.cmpPaths(x, y) == 0: return true
 
 proc styleInsensitive(s: string): string =
-  template addx: stmt =
+  template addx =
     result.add(s[i])
     inc(i)
   result = ""
