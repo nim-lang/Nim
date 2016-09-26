@@ -123,6 +123,8 @@ proc testUnixInstall() =
       execCleanPath("./koch boot -d:release", destDir / "bin")
       # check the docs build:
       execCleanPath("./koch web", destDir / "bin")
+      # check nimble builds:
+      execCleanPath("./bin/nim e install_tools.nims")
       # check the tests work:
       execCleanPath("./koch tests", destDir / "bin")
     else:
@@ -149,7 +151,7 @@ proc csource(args: string) =
   exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource --main:compiler/nim.nim compiler/installer.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
-proc bundleNimble() =
+proc bundleNimbleSrc() =
   if dirExists("dist/nimble/.git"):
     exec("git --git-dir dist/nimble/.git pull")
   else:
@@ -157,20 +159,33 @@ proc bundleNimble() =
   let tags = execProcess("git --git-dir dist/nimble/.git tag -l v*").splitLines
   let tag = tags[^1]
   exec("git --git-dir dist/nimble/.git checkout " & tag)
+
+proc bundleNimbleExe() =
+  bundleNimbleSrc()
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
   exec(findNim() & " c dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
+proc bundleNimsuggest(buildExe: bool) =
+  if dirExists("dist/nimsuggest/.git"):
+    exec("git --git-dir dist/nimsuggest/.git pull")
+  else:
+    exec("git clone https://github.com/nim-lang/nimsuggest.git dist/nimsuggest")
+  if buildExe:
+    exec(findNim() & " c --noNimblePath -p:compiler dist/nimsuggest/nimsuggest.nim")
+    copyExe("dist/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
+
 proc zip(args: string) =
-  bundleNimble()
+  bundleNimbleSrc()
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
 proc xz(args: string) =
-  bundleNimble()
+  bundleNimbleSrc()
+  bundleNimsuggest(false)
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim xz compiler/installer.ini" %
@@ -181,7 +196,8 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
 proc nsis(args: string) =
-  bundleNimble()
+  bundleNimbleExe()
+  bundleNimsuggest(true)
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   #buildTool("tools/nimgrep", args)
