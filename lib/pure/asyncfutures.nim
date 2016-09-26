@@ -24,7 +24,7 @@ type
 when not defined(release):
   var currentID = 0
 
-proc callSoon*(cbproc: proc ()) {.gcsafe.}
+proc callSoon*(cbproc: proc ()) {.gcsafe.} = discard
 
 proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
   ## Creates a new future.
@@ -55,7 +55,7 @@ proc clean*[T](future: FutureVar[T]) =
 proc checkFinished[T](future: Future[T]) =
   ## Checks whether `future` is finished. If it is then raises a
   ## ``FutureError``.
-  when not defined(release):
+  when not defined(release) and false:
     if future.finished:
       var msg = ""
       msg.add("An attempt was made to complete a Future more than once. ")
