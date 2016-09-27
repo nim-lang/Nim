@@ -135,6 +135,11 @@ Language Additions
 Bugfixes
 --------
 
+The list below has been generated based on the commits in Nim's git
+repository. As such it lists only the issues which have been closed
+via a commit, for a full list see
+`this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222016-01-19+..+2016-06-06%22+>`_.
+
 - Fixed "RFC: should startsWith and endsWith work with characters?"
   (`#4252 <https://github.com/nim-lang/Nim/issues/4252>`_)
 
@@ -360,3 +365,30 @@ Bugfixes
   (`#4626 <https://github.com/nim-lang/Nim/issues/4626>`_)
 - Fixed "module securehash not gcsafe"
   (`#4760 <https://github.com/nim-lang/Nim/issues/4760>`_)
+
+- Fixed "Nimble installation failed on Windows x86."
+  (`#4764 <https://github.com/nim-lang/Nim/issues/4764>`_)
+- Fixed "Recent changes to marshal module break old marshalled data"
+  (`#4779 <https://github.com/nim-lang/Nim/issues/4779>`_)
+- Fixed "tnewasyncudp.nim test loops forever"
+  (`#4777 <https://github.com/nim-lang/Nim/issues/4777>`_)
+- Fixed "Wrong poll timeout behavior in asyncdispatch"
+  (`#4262 <https://github.com/nim-lang/Nim/issues/4262>`_)
+- Fixed "Standalone await shouldn't read future"
+  (`#4170 <https://github.com/nim-lang/Nim/issues/4170>`_)
+- Fixed "Regression: httpclient fails to compile without -d:ssl"
+  (`#4797 <https://github.com/nim-lang/Nim/issues/4797>`_)
+- Fixed "C Error on declaring array of heritable objects with bitfields"
+  (`#3567 <https://github.com/nim-lang/Nim/issues/3567>`_)
+- Fixed "Corruption when using Channels and Threads"
+  (`#4776 <https://github.com/nim-lang/Nim/issues/4776>`_)
+- Fixed "Sometimes Channel tryRecv() erroneously reports no messages available on the first call on Windows"
+  (`#4746 <https://github.com/nim-lang/Nim/issues/4746>`_)
+- Fixed "Improve error message of functions called without parenthesis"
+  (`#4813 <https://github.com/nim-lang/Nim/issues/4813>`_)
+- Fixed "Docgen doesn't find doc comments in macro generated procs"
+  (`#4803 <https://github.com/nim-lang/Nim/issues/4803>`_)
+- Fixed "asynchttpserver may consume unbounded memory reading headers"
+  (`#3847 <https://github.com/nim-lang/Nim/issues/3847>`_)
+- Fixed "TLS connection to api.clashofclans.com hangs forever."
+  (`#4587 <https://github.com/nim-lang/Nim/issues/4587>`_)
