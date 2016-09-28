@@ -138,7 +138,7 @@ Bugfixes
 The list below has been generated based on the commits in Nim's git
 repository. As such it lists only the issues which have been closed
 via a commit, for a full list see
-`this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222016-01-19+..+2016-06-06%22+>`_.
+`this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222016-06-22+..+2016-09-27%22+>`_.
 
 - Fixed "RFC: should startsWith and endsWith work with characters?"
   (`#4252 <https://github.com/nim-lang/Nim/issues/4252>`_)
