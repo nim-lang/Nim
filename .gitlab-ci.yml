@@ -18,19 +18,6 @@ stages:
   tags:
     - windows
 
-build-linux:
-  stage: build
-  script:
-    - sh ci/build.sh
-  artifacts:
-    paths:
-      - bin/nim
-      - bin/nimd
-      - compiler/nim
-      - koch
-    expire_in: 1 week
-  tags:
-    - linux
 
 build-windows:
   stage: build
@@ -58,15 +45,7 @@ deploy-windows:
     - windows
     - fast
 
-test-linux:
-  stage: test
-  <<: *linux_set_path_def
-  script:
-    - sh ci/deps.sh
-    - nim c --taintMode:on tests/testament/tester
-    - tests/testament/tester --pedantic all
-  tags:
-    - linux
+
 
 test-windows:
   stage: test
@@ -79,18 +58,3 @@ test-windows:
     - windows
     - fast
 
-.csources: &csources_definition
-  stage: test
-  script:
-    - apt-get update -qq
-    - apt-get install -y -qq build-essential git
-    - nim -v
-    - ./koch csources
-    - ./koch xz
-  artifacts:
-    paths:
-      - build/c_code
-
-csources-linux:
-  <<: *csources_definition
-  <<: *linux_set_path_def

@@ -38,8 +38,11 @@ set PATH=C:\Users\araq\projects\mingw32\bin;%PATH%
 cd csources
 call build.bat
 cd ..
-koch boot -d:release || exit /b
-koch nsis -d:release || exit /b
+ReM Rebuilding koch is necessary because it uses its pointer size to determine
+ReM which mingw link to put in the NSIS installer.
+nim c --out:koch_temp koch || exit /b
+koch_temp boot -d:release || exit /b
+koch_temp nsis -d:release || exit /b
 dir build
 move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x32.exe || exit /b
 
@@ -49,6 +52,7 @@ set PATH=C:\Users\araq\projects\mingw64\bin;%PATH%
 cd csources
 call build64.bat
 cd ..
-koch boot -d:release || exit /b
-koch nsis -d:release || exit /b
+nim c --out:koch_temp koch || exit /b
+koch_temp boot -d:release || exit /b
+koch_temp nsis -d:release || exit /b
 move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x64.exe || exit /b
