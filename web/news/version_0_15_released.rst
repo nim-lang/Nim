@@ -3,7 +3,7 @@ Version 0.15.0 released
 
 .. container:: metadata
 
-  Posted by Dominik Picheta on 17/09/2016
+  Posted by Dominik Picheta and Andreas Rumpf on 17/09/2016
 
 Some text here.
 
