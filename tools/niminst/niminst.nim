@@ -447,7 +447,8 @@ proc readCFiles(c: var ConfigData, osA, cpuA: int) =
           # HACK: we conditionally add ``-lm -ldl``, so remove them from the
           # linker flags:
           c.linker.flags = c.linker.flags.replaceWord("-lm").replaceWord(
-                           "-ldl").strip
+                           "-ldl").replaceWord("-lroot").replaceWord(
+                           "-lnetwork").strip
         else:
           if cmpIgnoreStyle(k.key, "libpath") == 0:
             c.libpath = k.value

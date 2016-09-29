@@ -92,6 +92,7 @@ case $uos in
     ;;
   *haiku* )
     myos="haiku"
+    LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
     ;;
   *)
     echo 2>&1 "Error: unknown operating system: $uos"
