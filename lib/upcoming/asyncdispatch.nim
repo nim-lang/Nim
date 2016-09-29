@@ -243,43 +243,44 @@ when defined(windows) or defined(nimdoc):
       if at == -1: winlean.INFINITE
       else: at.int32
 
-    var lpNumberOfBytesTransferred: Dword
-    var lpCompletionKey: ULONG_PTR
-    var customOverlapped: PCustomOverlapped
-    let res = getQueuedCompletionStatus(p.ioPort,
-        addr lpNumberOfBytesTransferred, addr lpCompletionKey,
-        cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
+    if p.handles.len != 0:
+      var lpNumberOfBytesTransferred: Dword
+      var lpCompletionKey: ULONG_PTR
+      var customOverlapped: PCustomOverlapped
+      let res = getQueuedCompletionStatus(p.ioPort,
+          addr lpNumberOfBytesTransferred, addr lpCompletionKey,
+          cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
 
-    # http://stackoverflow.com/a/12277264/492186
-    # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
-    if res:
-      # This is useful for ensuring the reliability of the overlapped struct.
-      assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
-
-      customOverlapped.data.cb(customOverlapped.data.fd,
-          lpNumberOfBytesTransferred, OSErrorCode(-1))
-
-      # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
-      # so we need to dispose our `cb` environment, because it is not needed
-      # anymore.
-      if customOverlapped.data.cell.data != nil:
-        system.dispose(customOverlapped.data.cell)
-
-      GC_unref(customOverlapped)
-    else:
-      let errCode = osLastError()
-      if customOverlapped != nil:
+      # http://stackoverflow.com/a/12277264/492186
+      # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
+      if res:
+        # This is useful for ensuring the reliability of the overlapped struct.
         assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
+
         customOverlapped.data.cb(customOverlapped.data.fd,
-            lpNumberOfBytesTransferred, errCode)
+            lpNumberOfBytesTransferred, OSErrorCode(-1))
+
+        # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
+        # so we need to dispose our `cb` environment, because it is not needed
+        # anymore.
         if customOverlapped.data.cell.data != nil:
           system.dispose(customOverlapped.data.cell)
+
         GC_unref(customOverlapped)
       else:
-        if errCode.int32 == WAIT_TIMEOUT:
-          # Timed out
-          discard
-        else: raiseOSError(errCode)
+        let errCode = osLastError()
+        if customOverlapped != nil:
+          assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
+          customOverlapped.data.cb(customOverlapped.data.fd,
+              lpNumberOfBytesTransferred, errCode)
+          if customOverlapped.data.cell.data != nil:
+            system.dispose(customOverlapped.data.cell)
+          GC_unref(customOverlapped)
+        else:
+          if errCode.int32 == WAIT_TIMEOUT:
+            # Timed out
+            discard
+          else: raiseOSError(errCode)
 
     # Timer processing.
     processTimers(p)
