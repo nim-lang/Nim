@@ -24,6 +24,8 @@
 ##  jobj["test"] = newJFloat(0.7)  # create or update
 ##  echo($jobj["test"].fnum)
 ##  echo($jobj["key2"].bval)
+##  echo jobj{"missing key"}.getFNum(0.1)  # read a float value using a default
+##  jobj{"a", "b", "c"} = newJFloat(3.3)  # created nested keys
 ##
 ## Results in:
 ##
