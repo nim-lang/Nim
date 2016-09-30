@@ -977,7 +977,7 @@ elif not defined(useNimRtl):
     import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      if p.exitStatus != -3: return p.exitStatus
+      if p.exitStatus != -3: return int(p.exitStatus) shr 8
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1064,7 +1064,7 @@ elif not defined(useNimRtl):
       # ``waitPid`` fails if the process is not running anymore. But then
       # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
       # initialized with -3, wrong success exit codes are prevented.
-      if p.exitStatus != -3: return p.exitStatus
+      if p.exitStatus != -3: return int(p.exitStatus) shr 8
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1142,7 +1142,7 @@ elif not defined(useNimRtl):
 
   proc peekExitCode(p: Process): int =
     var status : cint = 1
-    if p.exitStatus != -3: return p.exitStatus
+    if p.exitStatus != -3: return int(p.exitStatus) shr 8
     var ret = waitpid(p.id, status, WNOHANG)
     var b = ret == int(p.id)
     if b: result = -1
