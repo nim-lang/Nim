@@ -16,9 +16,9 @@ Right now binaries are only provided for Windows. You can download
 an installer for both 32 bit and 64 bit versions of Windows below.
 
 * | 32 bit: `nim-0.15.0_x32.exe <download/nim-0.15.0_x32.exe>`_
-  | SHA-256
+  | SHA-256  0ca8931e3369735bbafdf93de98a8fd0f425870f1173845e7601922a5e00c3c2
 * | 64 bit: `nim-0.15.0_x64.exe <download/nim-0.15.0_x64.exe>`_
-  | SHA-256
+  | SHA-256  7bb9321cd9fb2860d36ee9b248e0202d7d4e36e2272a2f128fbce96fd4a9bfd6
 
 These installers also include Aporia, Nimble and other useful Nim tools to get
 you started with Nim development!
@@ -32,7 +32,7 @@ like systems.
 Firstly, download this archive:
 
 * | `nim-0.15.0.tar.xz (4.5MB) <download/nim-0.15.0.tar.xz>`_
-  | SHA-256
+  | SHA-256  c514535050b2b2156147bbe6e23aafe07cd996b2afa2c81fa9a09e1cd8c669fb
 
 Extract the archive. Then copy the extracted files into your chosen installation
 directory, ideally somewhere in your home directory.
