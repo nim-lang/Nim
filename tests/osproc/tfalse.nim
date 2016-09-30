@@ -1,0 +1,2 @@
+import system
+quit(QuitFailure)
