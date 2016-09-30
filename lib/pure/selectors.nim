@@ -377,7 +377,8 @@ proc contains*(s: Selector, key: SelectorKey): bool =
 
 proc len*(s: Selector): int =
   ## Retrieves the number of registered file descriptors in this Selector.
-  return s.fds.len
+  when not defined(nimdoc):
+    return s.fds.len
 
 {.deprecated: [TEvent: Event, PSelectorKey: SelectorKey,
    TReadyInfo: ReadyInfo, PSelector: Selector].}

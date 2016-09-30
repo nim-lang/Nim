@@ -44,19 +44,8 @@ when defined(upcoming):
     ev.setEvent()
 
   proc timerTest() =
-    var timeout = 200
-    var errorRate = 40.0
-    var start = epochTime()
     waitFor(waitTimer(200))
-    var finish = epochTime()
-    var lowlimit = float(timeout) - float(timeout) * errorRate / 100.0
-    var highlimit = float(timeout) + float(timeout) * errorRate / 100.0
-    var elapsed = (finish - start) * 1_000 # convert to milliseconds
-    if elapsed >= lowlimit and elapsed < highlimit:
-      echo "OK"
-    else:
-      echo "timerTest: Timeout = " & $(elapsed) & ", but must be inside of [" &
-                                   $lowlimit & ", " & $highlimit & ")"
+    echo "OK"
 
   proc eventTest() =
     var event = newAsyncEvent()

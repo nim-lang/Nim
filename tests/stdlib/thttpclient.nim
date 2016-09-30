@@ -7,6 +7,8 @@ from net import TimeoutError
 
 import httpclient, asyncdispatch
 
+const manualTests = false
+
 proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
   var resp = await client.request("http://example.com/")
@@ -20,12 +22,40 @@ proc asyncTest() {.async.} =
 
   resp = await client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
+
+  # getContent
+  try:
+    discard await client.getContent("https://google.com/404")
+    doAssert(false, "HttpRequestError should have been raised")
+  except HttpRequestError:
+    discard
+  except:
+    doAssert(false, "HttpRequestError should have been raised")
+
+
+  # Multipart test.
+  var data = newMultipartData()
+  data["output"] = "soap12"
+  data["uploaded_file"] = ("test.html", "text/html",
+    "<html><head></head><body><p>test</p></body></html>")
+  resp = await client.post("http://validator.w3.org/check", multipart=data)
+  doAssert(resp.code.is2xx)
+
+  # onProgressChanged
+  when manualTests:
+    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
+      echo("Downloaded ", progress, " of ", total)
+      echo("Current rate: ", speed div 1000, "kb/s")
+    client.onProgressChanged = onProgressChanged
+    discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+
   client.close()
 
   # Proxy test
-  #client = newAsyncHttpClient(proxy = newProxy("http://51.254.106.76:80/"))
-  #var resp = await client.request("https://github.com")
-  #echo resp
+  #when manualTests:
+  #  client = newAsyncHttpClient(proxy = newProxy("http://51.254.106.76:80/"))
+  #  var resp = await client.request("https://github.com")
+  #  echo resp
 
 proc syncTest() =
   var client = newHttpClient()
@@ -40,6 +70,31 @@ proc syncTest() =
 
   resp = client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
+
+  # getContent
+  try:
+    discard client.getContent("https://google.com/404")
+    doAssert(false, "HttpRequestError should have been raised")
+  except HttpRequestError:
+    discard
+  except:
+    doAssert(false, "HttpRequestError should have been raised")
+
+  # Multipart test.
+  var data = newMultipartData()
+  data["output"] = "soap12"
+  data["uploaded_file"] = ("test.html", "text/html",
+    "<html><head></head><body><p>test</p></body></html>")
+  resp = client.post("http://validator.w3.org/check", multipart=data)
+  doAssert(resp.code.is2xx)
+
+  # onProgressChanged
+  when manualTests:
+    proc onProgressChanged(total, progress, speed: BiggestInt) =
+      echo("Downloaded ", progress, " of ", total)
+      echo("Current rate: ", speed div 1000, "kb/s")
+    client.onProgressChanged = onProgressChanged
+    discard client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
 
   client.close()
 
@@ -56,21 +111,3 @@ proc syncTest() =
 syncTest()
 
 waitFor(asyncTest())
-
-#[
-
-  else:
-    #downloadFile("http://force7.de/nim/index.html", "nimindex.html")
-    #downloadFile("http://www.httpwatch.com/", "ChunkTest.html")
-    #downloadFile("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com",
-    # "validator.html")
-
-    #var r = get("http://validator.w3.org/check?uri=http%3A%2F%2Fgoogle.com&
-    #  charset=%28detect+automatically%29&doctype=Inline&group=0")
-
-    var data = newMultipartData()
-    data["output"] = "soap12"
-    data["uploaded_file"] = ("test.html", "text/html",
-      "<html><head></head><body><p>test</p></body></html>")
-
-    echo postContent("http://validator.w3.org/check", multipart=data)]#

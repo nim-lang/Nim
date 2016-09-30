@@ -29,7 +29,6 @@ rem move /y build\nim-%NIMVER%.zip web\upload\download
 
 rem Grab C sources and nimsuggest
 git clone --depth 1 https://github.com/nim-lang/csources.git
-git clone --depth 1 https://github.com/nim-lang/nimsuggest.git
 
 set PATH=%CD%\bin;%PATH%
 
@@ -39,13 +38,11 @@ set PATH=C:\Users\araq\projects\mingw32\bin;%PATH%
 cd csources
 call build.bat
 cd ..
-nim c koch || exit /b
-koch boot -d:release || exit /b
-cd nimsuggest
-nim c -d:release --noNimblePath --path:.. nimsuggest || exit /b
-copy /y nimsuggest.exe ..\bin || exit /b
-cd ..
-koch nsis -d:release || exit /b
+ReM Rebuilding koch is necessary because it uses its pointer size to determine
+ReM which mingw link to put in the NSIS installer.
+nim c --out:koch_temp koch || exit /b
+koch_temp boot -d:release || exit /b
+koch_temp nsis -d:release || exit /b
 dir build
 move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x32.exe || exit /b
 
@@ -55,11 +52,7 @@ set PATH=C:\Users\araq\projects\mingw64\bin;%PATH%
 cd csources
 call build64.bat
 cd ..
-nim c koch || exit /b
-koch boot -d:release || exit /b
-cd nimsuggest
-nim c -d:release --noNimblePath --path:.. nimsuggest || exit /b
-copy /y nimsuggest.exe ..\bin || exit /b
-cd ..
-koch nsis -d:release || exit /b
+nim c --out:koch_temp koch || exit /b
+koch_temp boot -d:release || exit /b
+koch_temp nsis -d:release || exit /b
 move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x64.exe || exit /b

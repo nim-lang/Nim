@@ -14,4 +14,4 @@ export PATH=$(pwd)/bin:$PATH
 nim e install_nimble.nims
 nim e tests/test_nimscript.nims
 nimble update
-nimble install zip opengl sdl1 jester niminst
+nimble install zip opengl sdl1 jester@#head niminst

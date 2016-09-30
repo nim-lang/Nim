@@ -1408,6 +1408,7 @@ proc copyNode*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1426,6 +1427,7 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1445,6 +1447,7 @@ proc copyTree*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id

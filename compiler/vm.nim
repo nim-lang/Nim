@@ -171,6 +171,7 @@ proc copyValue(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1071,7 +1072,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]
-      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments})
+      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments})
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.debug[pc], hintQuitCalled)
