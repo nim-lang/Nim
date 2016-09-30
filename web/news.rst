@@ -2,6 +2,9 @@
 News
 ====
 
+`2016-09-30 Nim Version 0.15.0 released <news/2016_09_00_version_0_15_0_released.html>`_
+===================================
+
 `2016-09-03 Nim Community Survey results <news/2016_09_03_nim_community_survey_results.html>`_
 ===================================
 

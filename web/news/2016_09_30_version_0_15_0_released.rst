@@ -465,7 +465,7 @@ via a commit, for a full list see
   (`#4699 <https://github.com/nim-lang/Nim/issues/4699>`_)
 
 - Fixed "Closing AsyncEvent now also unregisters it on non-Windows platforms"
-    (`#4694 <https://github.com/nim-lang/Nim/issues/4694>`_)
+  (`#4694 <https://github.com/nim-lang/Nim/issues/4694>`_)
 - Fixed "Don't update handle in upcoming/asyncdispatch poll() if it was closed"
   (`#4697 <https://github.com/nim-lang/Nim/issues/4697>`_)
 - Fixed "generated local variables declared outside block"
