@@ -1,2 +1,0 @@
-import system
-quit(QuitFailure)

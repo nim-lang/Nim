@@ -4,14 +4,14 @@ discard """
 """
 import osproc, os
 
-const filename = when defined(Windows): "tfalse.exe" else: "tfalse"
+const filename = when defined(Windows): "tafalse.exe" else: "tafalse"
+let dir = getCurrentDir() / "tests" / "osproc"
+doAssert fileExists(dir / filename)
 
-doAssert fileExists(getCurrentDir() / "tests" / "osproc" / filename)
-
-var p = startProcess(filename, getCurrentDir() / "tests" / "osproc")
+var p = startProcess(filename, dir)
 doAssert(waitForExit(p) == QuitFailure)
 
-p = startProcess(filename, getCurrentDir() / "tests" / "osproc")
+p = startProcess(filename, dir)
 var running = true
 while running:
   running = running(p)
