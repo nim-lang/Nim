@@ -36,8 +36,8 @@
   ; Get installation folder from registry if available
   InstallDirRegKey HKCU "Software\c.name\c.version" ""
 
-  ; Request admin level application privileges.
-  RequestExecutionLevel admin
+  ; Request user level application privileges.
+  RequestExecutionLevel user
 
   ; Allow installation to the root drive directory.
   AllowRootDirInstall false
