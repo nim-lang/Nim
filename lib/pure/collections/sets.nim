@@ -58,7 +58,7 @@ proc isValid*[A](s: HashSet[A]): bool =
   ## initialized. Example:
   ##
   ## .. code-block ::
-  ##   proc savePreferences(options: Set[string]) =
+  ##   proc savePreferences(options: HashSet[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
   result = not s.data.isNil
@@ -72,7 +72,7 @@ proc len*[A](s: HashSet[A]): int =
   ##
   ## .. code-block::
   ##
-  ##   var values: Set[int]
+  ##   var values: HashSet[int]
   ##   assert(not values.isValid)
   ##   assert values.len == 0
   result = s.counter
@@ -256,10 +256,12 @@ proc incl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
-template doWhile(a: expr, b: stmt): stmt =
+template doWhile(a, b) =
   while true:
     b
     if not a: break
+
+proc default[T](t: typedesc[T]): T {.inline.} = discard
 
 proc excl*[A](s: var HashSet[A], key: A) =
   ## Excludes `key` from the set `s`.
@@ -277,12 +279,14 @@ proc excl*[A](s: var HashSet[A], key: A) =
   var msk = high(s.data)
   if i >= 0:
     s.data[i].hcode = 0
+    s.data[i].key = default(type(s.data[i].key))
     dec(s.counter)
     while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
       var j = i         # The correctness of this depends on (h+1) in nextTry,
       var r = j         # though may be adaptable to other simple sequences.
       s.data[i].hcode = 0              # mark current EMPTY
-      doWhile ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
+      s.data[i].key = default(type(s.data[i].key))
+      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
         i = (i + 1) and msk            # increment mod table size
         if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
           return
@@ -334,7 +338,7 @@ proc init*[A](s: var HashSet[A], initialSize=64) =
   ## existing values and calling `excl() <#excl,TSet[A],A>`_ on them. Example:
   ##
   ## .. code-block ::
-  ##   var a: Set[int]
+  ##   var a: HashSet[int]
   ##   a.init(4)
   ##   a.incl(2)
   ##   a.init
@@ -367,7 +371,7 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] =
   result = initSet[A](rightSize(keys.len))
   for key in items(keys): result.incl(key)
 
-template dollarImpl(): stmt {.dirty.} =
+template dollarImpl() {.dirty.} =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
@@ -611,7 +615,7 @@ proc card*[A](s: OrderedSet[A]): int {.inline.} =
   ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
   result = s.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
   var h = s.first
   while h >= 0:
     var nxt = s.data[h].next

@@ -12,32 +12,21 @@
 import
   ast, astalgo, lexer, msgs, strutils, wordrecg
 
-proc hasSon(father, son: PNode): bool =
-  for i in countup(0, sonsLen(father) - 1):
-    if father.sons[i] == son:
-      return true
-  result = false
-
-proc cyclicTreeAux(n, s: PNode): bool =
-  if n == nil:
-    return false
-  if hasSon(s, n):
-    return true
-  var m = sonsLen(s)
-  addSon(s, n)
+proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
+  if n == nil: return
+  for v in visited:
+    if v == n: return true
   if not (n.kind in {nkEmpty..nkNilLit}):
-    for i in countup(0, sonsLen(n) - 1):
-      if cyclicTreeAux(n.sons[i], s):
-        return true
-  result = false
-  delSon(s, m)
+    visited.add(n)
+    for nSon in n.sons:
+      if cyclicTreeAux(nSon, visited): return true
+    discard visited.pop()
 
 proc cyclicTree*(n: PNode): bool =
-  var s = newNodeI(nkEmpty, n.info)
-  result = cyclicTreeAux(n, s)
+  var visited: seq[PNode] = @[]
+  cyclicTreeAux(n, visited)
 
 proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
-  result = false
   if a == b:
     result = true
   elif (a != nil) and (b != nil) and (a.kind == b.kind):
@@ -61,7 +50,6 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
         result = true
 
 proc sameTree*(a, b: PNode): bool =
-  result = false
   if a == b:
     result = true
   elif a != nil and b != nil and a.kind == b.kind:
@@ -84,17 +72,6 @@ proc sameTree*(a, b: PNode): bool =
           if not sameTree(a.sons[i], b.sons[i]): return
         result = true
 
-proc getProcSym*(call: PNode): PSym =
-  result = call.sons[0].sym
-
-proc getOpSym*(op: PNode): PSym =
-  if op.kind notin {nkCall, nkHiddenCallConv, nkCommand, nkCallStrLit}:
-    result = nil
-  else:
-    if sonsLen(op) <= 0: internalError(op.info, "getOpSym")
-    elif op.sons[0].kind == nkSym: result = op.sons[0].sym
-    else: result = nil
-
 proc getMagic*(op: PNode): TMagic =
   case op.kind
   of nkCallKinds:
@@ -103,13 +80,14 @@ proc getMagic*(op: PNode): TMagic =
     else: result = mNone
   else: result = mNone
 
-proc treeToSym*(t: PNode): PSym =
-  result = t.sym
-
 proc isConstExpr*(n: PNode): bool =
-  result = (n.kind in
-      {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-       nkFloatLit..nkFloat64Lit, nkNilLit}) or (nfAllConst in n.flags)
+  const atomKinds = {nkCharLit..nkNilLit} # Char, Int, UInt, Str, Float and Nil literals
+  n.kind in atomKinds or nfAllConst in n.flags
+
+proc isCaseObj*(n: PNode): bool =
+  if n.kind == nkRecCase: return true
+  for i in 0..<safeLen(n):
+    if n[i].isCaseObj: return true
 
 proc isDeepConstExpr*(n: PNode): bool =
   case n.kind
@@ -119,31 +97,15 @@ proc isDeepConstExpr*(n: PNode): bool =
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])
   of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure:
-    for i in 0 .. <n.len:
+    for i in ord(n.kind == nkObjConstr) .. <n.len:
       if not isDeepConstExpr(n.sons[i]): return false
-    # XXX once constant objects are supported by the codegen this needs to be
-    # weakened:
-    result = n.typ.isNil or n.typ.skipTypes({tyGenericInst, tyDistinct}).kind != tyObject
+    if n.typ.isNil: result = true
+    else:
+      let t = n.typ.skipTypes({tyGenericInst, tyDistinct})
+      if t.kind in {tyRef, tyPtr}: return false
+      if t.kind != tyObject or not isCaseObj(t.n):
+        result = true
   else: discard
-
-proc flattenTreeAux(d, a: PNode, op: TMagic) =
-  if (getMagic(a) == op):     # a is a "leaf", so add it:
-    for i in countup(1, sonsLen(a) - 1): # BUGFIX
-      flattenTreeAux(d, a.sons[i], op)
-  else:
-    addSon(d, copyTree(a))
-
-proc flattenTree*(root: PNode, op: TMagic): PNode =
-  result = copyNode(root)
-  if getMagic(root) == op:
-    # BUGFIX: forget to copy prc
-    addSon(result, copyNode(root.sons[0]))
-    flattenTreeAux(result, root, op)
-
-proc swapOperands*(op: PNode) =
-  var tmp = op.sons[1]
-  op.sons[1] = op.sons[2]
-  op.sons[2] = tmp
 
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
@@ -163,7 +125,6 @@ proc unnestStmts(n, result: PNode) =
     result.add(n)
 
 proc flattenStmts*(n: PNode): PNode =
-  ## flattens a nested statement list; used for pattern matching
   result = newNodeI(nkStmtList, n.info)
   unnestStmts(n, result)
   if result.len == 1:

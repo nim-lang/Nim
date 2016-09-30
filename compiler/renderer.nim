@@ -146,12 +146,6 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
   else:
     g.pendingWhitespace = s.len
 
-proc putLong(g: var TSrcGen, kind: TTokType, s: string, lineLen: int) =
-  # use this for tokens over multiple lines.
-  addPendingNL(g)
-  addTok(g, kind, s)
-  g.lineLen = lineLen
-
 proc toNimChar(c: char): string =
   case c
   of '\0': result = "\\0"
@@ -263,9 +257,6 @@ proc pushCom(g: var TSrcGen, n: PNode) =
 
 proc popAllComs(g: var TSrcGen) =
   setLen(g.comStack, 0)
-
-proc popCom(g: var TSrcGen) =
-  setLen(g.comStack, len(g.comStack) - 1)
 
 const
   Space = " "
@@ -492,7 +483,7 @@ proc fits(g: TSrcGen, x: int): bool =
 
 type
   TSubFlag = enum
-    rfLongMode, rfNoIndent, rfInConstExpr
+    rfLongMode, rfInConstExpr
   TSubFlags = set[TSubFlag]
   TContext = tuple[spacing: int, flags: TSubFlags]
 
@@ -675,16 +666,6 @@ proc gfor(g: var TSrcGen, n: PNode) =
   gcoms(g)
   gstmts(g, n.sons[length - 1], c)
 
-proc gmacro(g: var TSrcGen, n: PNode) =
-  var c: TContext
-  initContext(c)
-  gsub(g, n.sons[0])
-  putWithSpace(g, tkColon, ":")
-  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > MaxLineLen):
-    incl(c.flags, rfLongMode)
-  gcoms(g)
-  gsons(g, n, c, 1)
-
 proc gcase(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
@@ -704,7 +685,10 @@ proc gcase(g: var TSrcGen, n: PNode) =
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
-    put(g, tkSymbol, renderDefinitionName(n.sons[namePos].sym))
+    let s = n.sons[namePos].sym
+    put(g, tkSymbol, renderDefinitionName(s))
+    if sfGenSym in s.flags:
+      put(g, tkIntLit, $s.id)
   else:
     gsub(g, n.sons[namePos])
 
@@ -798,7 +782,8 @@ proc gident(g: var TSrcGen, n: PNode) =
   else:
     t = tkOpr
   put(g, t, s)
-  if n.kind == nkSym and renderIds in g.flags: put(g, tkIntLit, $n.sym.id)
+  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
+    put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:

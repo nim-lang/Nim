@@ -47,8 +47,11 @@ proc semGenericStmtScope(c: PContext, n: PNode,
   result = semGenericStmt(c, n, flags, ctx)
   closeScope(c)
 
-template macroToExpand(s: expr): expr =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfImmediate in s.flags)
+template macroToExpand(s): untyped =
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
+
+template macroToExpandSym(s): untyped =
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1)
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx): PNode =
@@ -61,14 +64,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skProc, skMethod, skIterator, skConverter, skModule:
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
-    if macroToExpand(s):
+    if macroToExpandSym(s):
       styleCheckUse(n.info, s)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
       result = symChoice(c, n, s, scOpen)
   of skMacro:
-    if macroToExpand(s):
+    if macroToExpandSym(s):
       styleCheckUse(n.info, s)
       result = semMacroExpr(c, n, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
@@ -124,7 +127,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
 
-  let luf = if withinMixin notin flags: {checkUndeclared} else: {}
+  let luf = if withinMixin notin flags: {checkUndeclared, checkModule} else: {checkModule}
 
   var s = qualifiedLookUp(c, n, luf)
   if s != nil:
@@ -199,24 +202,25 @@ proc semGenericStmt(c: PContext, n: PNode,
     if s != nil:
       incl(s.flags, sfUsed)
       mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles}
-      let scOption = if s.name.id in ctx.toMixin: scForceOpen else: scOpen
+      let sc = symChoice(c, fn, s,
+            if s.name.id in ctx.toMixin: scForceOpen else: scOpen)
       case s.kind
       of skMacro:
-        if macroToExpand(s):
+        if macroToExpand(s) and sc.safeLen <= 1:
           styleCheckUse(fn.info, s)
           result = semMacroExpr(c, n, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, flags, ctx)
         else:
-          n.sons[0] = symChoice(c, fn, s, scOption)
+          n.sons[0] = sc
           result = n
         mixinContext = true
       of skTemplate:
-        if macroToExpand(s):
+        if macroToExpand(s) and sc.safeLen <= 1:
           styleCheckUse(fn.info, s)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, flags, ctx)
         else:
-          n.sons[0] = symChoice(c, fn, s, scOption)
+          n.sons[0] = sc
           result = n
         # BUGFIX: we must not return here, we need to do first phase of
         # symbol lookup. Also since templates and macros can do scope injections
@@ -227,7 +231,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         # Leave it as an identifier.
         discard
       of skProc, skMethod, skIterator, skConverter, skModule:
-        result.sons[0] = symChoice(c, fn, s, scOption)
+        result.sons[0] = sc
         # do not check of 's.magic==mRoof' here because it might be some
         # other '^' but after overload resolution the proper one:
         if ctx.bracketExpr != nil and n.len == 2 and s.name.s == "^":
@@ -426,7 +430,12 @@ proc semGenericStmt(c: PContext, n: PNode,
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos], flags, ctx)
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos], flags, ctx)
     var body: PNode
-    if n.sons[namePos].kind == nkSym: body = n.sons[namePos].sym.getBody
+    if n.sons[namePos].kind == nkSym:
+      let s = n.sons[namePos].sym
+      if sfGenSym in s.flags and s.ast == nil:
+        body = n.sons[bodyPos]
+      else:
+        body = s.getBody
     else: body = n.sons[bodyPos]
     n.sons[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)

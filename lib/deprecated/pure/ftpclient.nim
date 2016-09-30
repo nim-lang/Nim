@@ -129,10 +129,10 @@ proc ftpClient*(address: string, port = Port(21),
   result.csock = socket()
   if result.csock == invalidSocket: raiseOSError(osLastError())
 
-template blockingOperation(sock: Socket, body: stmt) {.immediate.} =
+template blockingOperation(sock: Socket, body: untyped) =
   body
 
-template blockingOperation(sock: asyncio.AsyncSocket, body: stmt) {.immediate.} =
+template blockingOperation(sock: asyncio.AsyncSocket, body: untyped) =
   sock.setBlocking(true)
   body
   sock.setBlocking(false)

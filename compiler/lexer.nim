@@ -138,7 +138,7 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
 proc isKeyword*(kind: TTokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
-template ones(n: expr): expr = ((1 shl n)-1) # for utf-8 conversion
+template ones(n): untyped = ((1 shl n)-1) # for utf-8 conversion
 
 proc isNimIdentifier*(s: string): bool =
   if s[0] in SymStartChars:
@@ -211,9 +211,6 @@ proc closeLexer*(lex: var TLexer) =
   inc(gLinesCompiled, lex.lineNumber)
   closeBaseLexer(lex)
 
-proc getColumn(L: TLexer): int =
-  result = getColNumber(L, L.bufpos)
-
 proc getLineInfo(L: TLexer): TLineInfo =
   result = newLineInfo(L.fileIdx, L.lineNumber, getColNumber(L, L.bufpos))
 
@@ -236,12 +233,6 @@ proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
 
 proc matchTwoChars(L: TLexer, first: char, second: set[char]): bool =
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in second)
-
-proc isFloatLiteral(s: string): bool =
-  for i in countup(0, len(s) - 1):
-    if s[i] in {'.', 'e', 'E'}:
-      return true
-  result = false
 
 {.push overflowChecks: off.}
 # We need to parse the largest uint literal without overflow checks
@@ -735,7 +726,8 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       if  c == '\226' and
           buf[pos+1] == '\128' and
           buf[pos+2] == '\147':  # It's a 'magic separator' en-dash Unicode
-        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars:
+        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars or
+            isMagicIdentSeparatorRune(buf, pos+magicIdentSeparatorRuneByteWidth) or pos == L.bufpos:
           lexMessage(L, errInvalidToken, "–")
           break
         inc(pos, magicIdentSeparatorRuneByteWidth)
@@ -747,7 +739,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       h = h !& ord(c)
       inc(pos)
     of '_':
-      if buf[pos+1] notin SymChars:
+      if buf[pos+1] notin SymChars or isMagicIdentSeparatorRune(buf, pos+1):
         lexMessage(L, errInvalidToken, "_")
         break
       inc(pos)
@@ -892,10 +884,10 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       inc(indent)
 
     when defined(nimfix):
-      template doContinue(): expr =
+      template doContinue(): untyped =
         buf[pos] == '#' and (col == indent or lastBackslash > 0)
     else:
-      template doContinue(): expr =
+      template doContinue(): untyped =
         buf[pos] == '#' and buf[pos+1] == '#'
     if doContinue():
       tok.literal.add "\n"
@@ -941,9 +933,9 @@ proc skip(L: var TLexer, tok: var TToken) =
           break
       tok.strongSpaceA = 0
       when defined(nimfix):
-        template doBreak(): expr = buf[pos] > ' '
+        template doBreak(): untyped = buf[pos] > ' '
       else:
-        template doBreak(): expr =
+        template doBreak(): untyped =
           buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#')
       if doBreak():
         tok.indent = indent
@@ -1056,7 +1048,8 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '_':
       inc(L.bufpos)
-      if L.buf[L.bufpos] notin SymChars:
+      if L.buf[L.bufpos] notin SymChars+{'_'} and not
+          isMagicIdentSeparatorRune(L.buf, L.bufpos):
         tok.tokType = tkSymbol
         tok.ident = getIdent("_")
       else:
@@ -1077,6 +1070,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       tok.tokType = tkCharLit
     of '0'..'9':
       getNumber(L, tok)
+      let c = L.buf[L.bufpos]
+      if c in SymChars+{'_'}:
+        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     else:
       if c in OpChars:
         getOperator(L, tok)

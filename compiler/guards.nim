@@ -728,12 +728,12 @@ proc simpleSlice*(a, b: PNode): BiggestInt =
     result = -1
 
 
-template isMul(x): expr = x.getMagic in someMul
-template isDiv(x): expr = x.getMagic in someDiv
-template isAdd(x): expr = x.getMagic in someAdd
-template isSub(x): expr = x.getMagic in someSub
-template isVal(x): expr = x.kind in {nkCharLit..nkUInt64Lit}
-template isIntVal(x, y): expr = x.intVal == y
+template isMul(x): untyped = x.getMagic in someMul
+template isDiv(x): untyped = x.getMagic in someDiv
+template isAdd(x): untyped = x.getMagic in someAdd
+template isSub(x): untyped = x.getMagic in someSub
+template isVal(x): untyped = x.kind in {nkCharLit..nkUInt64Lit}
+template isIntVal(x, y): untyped = x.intVal == y
 
 import macros
 
@@ -776,8 +776,8 @@ proc isMinusOne(n: PNode): bool =
 proc pleViaModel(model: TModel; aa, bb: PNode): TImplication
 
 proc ple(m: TModel; a, b: PNode): TImplication =
-  template `<=?`(a,b): expr = ple(m,a,b) == impYes
-  template `>=?`(a,b): expr = ple(m, nkIntLit.newIntNode(b), a) == impYes
+  template `<=?`(a,b): untyped = ple(m,a,b) == impYes
+  template `>=?`(a,b): untyped = ple(m, nkIntLit.newIntNode(b), a) == impYes
 
   #   0 <= 3
   if a.isValue and b.isValue:

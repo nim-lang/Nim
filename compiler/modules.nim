@@ -29,13 +29,14 @@ var
   gMemCacheData*: seq[TModuleInMemory] = @[]
     ## XXX: we should implement recycling of file IDs
     ## if the user keeps renaming modules, the file IDs will keep growing
+  gFuzzyGraphChecking*: bool # nimsuggest uses this. XXX figure out why.
+  packageSyms: TStrTable
+
+initStrTable(packageSyms)
 
 proc getModule*(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
     result = gCompiledModules[fileIdx]
-
-template hash(x: PSym): expr =
-  gMemCacheData[x.position].hash
 
 proc hashChanged(fileIdx: int32): bool =
   internalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
@@ -45,7 +46,7 @@ proc hashChanged(fileIdx: int32): bool =
                                        else: hashNotChanged
     # echo "TESTING Hash: ", fileIdx.toFilename, " ", result
 
-  case gMemCacheData[fileIdx].hashStatus:
+  case gMemCacheData[fileIdx].hashStatus
   of hashHasChanged:
     result = true
   of hashNotChanged:
@@ -90,6 +91,7 @@ proc resetAllModules* =
     if gCompiledModules[i] != nil:
       resetModule(i.int32)
   resetPackageCache()
+  initStrTable(packageSyms)
   # for m in cgenModules(): echo "CGEN MODULE FOUND"
 
 proc resetAllModulesHard* =
@@ -97,6 +99,7 @@ proc resetAllModulesHard* =
   gCompiledModules.setLen 0
   gMemCacheData.setLen 0
   magicsys.resetSysTypes()
+  initStrTable(packageSyms)
   # XXX
   #gOwners = @[]
 
@@ -105,12 +108,16 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
     resetModule(fileIdx)
     return Yes
 
-  if gMemCacheData[fileIdx].needsRecompile != Maybe:
-    return gMemCacheData[fileIdx].needsRecompile
+  if gFuzzyGraphChecking:
+    if gMemCacheData[fileIdx].needsRecompile != Maybe:
+      return gMemCacheData[fileIdx].needsRecompile
+  else:
+    # cycle detection: We claim that a cycle does no harm.
+    if gMemCacheData[fileIdx].needsRecompile == Probing:
+      return No
 
-  if optForceFullMake in gGlobalOptions or
-     hashChanged(fileIdx):
-       markDirty
+  if optForceFullMake in gGlobalOptions or hashChanged(fileIdx):
+    markDirty()
 
   if gMemCacheData[fileIdx].deps != nil:
     gMemCacheData[fileIdx].needsRecompile = Probing
@@ -118,7 +125,7 @@ proc checkDepMem(fileIdx: int32): TNeedRecompile =
       let d = checkDepMem(dep)
       if d in {Yes, Recompiled}:
         # echo fileIdx.toFilename, " depends on ", dep.toFilename, " ", d
-        markDirty
+        markDirty()
 
   gMemCacheData[fileIdx].needsRecompile = No
   return No
@@ -135,8 +142,16 @@ proc newModule(fileIdx: int32): PSym =
     rawMessage(errInvalidModuleName, result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
-  result.owner = newSym(skPackage, getIdent(getPackageName(filename)), nil,
-                        result.info)
+  let pack = getIdent(getPackageName(filename))
+  var packSym = packageSyms.strTableGet(pack)
+  if packSym == nil:
+    let pck = getPackageName(filename)
+    let pck2 = if pck.len > 0: pck else: "unknown"
+    packSym = newSym(skPackage, getIdent(pck2), nil, result.info)
+    initStrTable(packSym.tab)
+    packageSyms.strTableAdd(packSym)
+
+  result.owner = packSym
   result.position = fileIdx
 
   growCache gMemCacheData, fileIdx
@@ -146,6 +161,11 @@ proc newModule(fileIdx: int32): PSym =
   incl(result.flags, sfUsed)
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself
+  let existing = strTableGet(packSym.tab, result.name)
+  if existing != nil and existing.info.fileIndex != result.info.fileIndex:
+    localError(result.info, "module names need to be unique per Nimble package; module clashes with " & existing.info.fileIndex.toFullPath)
+  # strTableIncl() for error corrections:
+  discard strTableIncl(packSym.tab, result)
 
 proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
@@ -166,14 +186,11 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
         return
     else:
       result.id = getID()
-    if sfMainModule in flags and gProjectIsStdin:
-      processModule(result, llStreamOpen(stdin), rd)
-    else:
-      processModule(result, nil, rd)
+    let validFile = processModule(result, if sfMainModule in flags and gProjectIsStdin: llStreamOpen(stdin) else: nil, rd)
     if optCaasEnabled in gGlobalOptions:
       gMemCacheData[fileIdx].compiledAt = gLastCmdTime
       gMemCacheData[fileIdx].needsRecompile = Recompiled
-      doHash fileIdx
+      if validFile: doHash fileIdx
   else:
     if checkDepMem(fileIdx) == Yes:
       result = compileModule(fileIdx, flags)
@@ -184,8 +201,8 @@ proc importModule*(s: PSym, fileIdx: int32): PSym {.procvar.} =
   # this is called by the semantic checking phase
   result = compileModule(fileIdx, {})
   if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
-  if sfSystemModule in result.flags:
-    localError(result.info, errAttemptToRedefine, result.name.s)
+  #if sfSystemModule in result.flags:
+  #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:
   gNotes = if s.owner.id == gMainPackageId: gMainPackageNotes
            else: ForeignPackageNotes
@@ -196,12 +213,6 @@ proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
     growCache gMemCacheData, fileIdx
     addDep(s, fileIdx)
     doHash(fileIdx)
-
-proc `==^`(a, b: string): bool =
-  try:
-    result = sameFile(a, b)
-  except OSError:
-    result = false
 
 proc compileSystemModule* =
   if magicsys.systemModule == nil:

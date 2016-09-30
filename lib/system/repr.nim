@@ -16,7 +16,7 @@ proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
-  var buf: array [0..59, char]
+  var buf: array[0..59, char]
   discard c_sprintf(buf, "%p", x)
   return $buf
 
@@ -24,7 +24,7 @@ proc `$`(x: uint64): string =
   if x == 0:
     result = "0"
   else:
-    var buf: array [60, char]
+    var buf: array[60, char]
     var i = 0
     var n = x
     while n != 0:
@@ -73,23 +73,20 @@ proc reprChar(x: char): string {.compilerRtl.} =
   add result, "\'"
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-  # we read an 'int' but this may have been too large, so mask the other bits:
-  let b = (sizeof(int)-typ.size)*8 # bits
-  let m = 1 shl (b-1) # mask
-  var o = e and ((1 shl b)-1) # clear upper bits
-  o = (o xor m) - m # sign extend
-  # XXX we need a proper narrowing based on signedness here
-  #e and ((1 shl (typ.size*8)) - 1)
+  ## Return string representation for enumeration values
+  var n = typ.node
   if ntfEnumHole notin typ.flags:
-    if o <% typ.node.len:
-      return $typ.node.sons[o].name
+    let o = e - n.sons[0].offset
+    if o >= 0 and o <% typ.node.len:
+      return $n.sons[o].name
   else:
     # ugh we need a slow linear search:
-    var n = typ.node
     var s = n.sons
     for i in 0 .. n.len-1:
-      if s[i].offset == o: return $s[i].name
-  result = $o & " (invalid data!)"
+      if s[i].offset == e:
+        return $s[i].name
+
+  result = $e & " (invalid data!)"
 
 type
   PByteArray = ptr array[0.. 0xffff, int8]

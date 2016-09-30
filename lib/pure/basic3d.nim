@@ -117,7 +117,6 @@ proc safeArccos(v:float):float=
   return arccos(clamp(v,-1.0,1.0))
 
 template makeBinOpVector(s:expr)=
-  ## implements binary operators + , - , * and / for vectors
   proc s*(a,b:Vector3d):Vector3d {.inline,noInit.} =
     vector3d(s(a.x,b.x),s(a.y,b.y),s(a.z,b.z))
   proc s*(a:Vector3d,b:float):Vector3d {.inline,noInit.}  =
@@ -126,11 +125,10 @@ template makeBinOpVector(s:expr)=
     vector3d(s(a,b.x),s(a,b.y),s(a,b.z))
 
 template makeBinOpAssignVector(s:expr)=
-  ## implements inplace binary operators += , -= , /= and *= for vectors
   proc s*(a:var Vector3d,b:Vector3d) {.inline.} =
-    s(a.x,b.x) ; s(a.y,b.y) ; s(a.z,b.z)
+    s(a.x,b.x); s(a.y,b.y); s(a.z,b.z)
   proc s*(a:var Vector3d,b:float) {.inline.} =
-    s(a.x,b) ; s(a.y,b) ; s(a.z,b)
+    s(a.x,b); s(a.y,b); s(a.z,b)
 
 
 

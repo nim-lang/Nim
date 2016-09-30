@@ -1,4 +1,6 @@
-import unittest, sequtils, nre, optional_nonstrict
+import unittest, sequtils
+import nre except toSeq
+import optional_nonstrict
 
 suite "find":
   test "find text":

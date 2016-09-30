@@ -1,13 +1,13 @@
 discard """
   file: "tsidee4.nim"
-  line: 15
-  errormsg: "type mismatch"
+  line: 12
+  errormsg: "'noSideEffect' can have side effects"
 """
 
 var
   global: int
 
-proc dontcare(x: int): int = return x
+proc dontcare(x: int): int = return global
 
 proc noSideEffect(x, y: int, p: proc (a: int): int {.noSideEffect.}): int {.noSideEffect.} =
   return x + y + dontcare(x)

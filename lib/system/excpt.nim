@@ -11,7 +11,8 @@
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
 var
-  errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign.})
+  errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
+                                            nimcall.})
     ## Function that will be called
     ## instead of stdmsg.write when printing stacktrace.
     ## Unstable API.
@@ -26,7 +27,7 @@ else:
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(0, msg, nil, 0)
 
-proc showErrorMessage(data: cstring) =
+proc showErrorMessage(data: cstring) {.gcsafe.} =
   if errorMessageWriter != nil:
     errorMessageWriter($data)
   else:
@@ -90,13 +91,13 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 
   when not hasThreadSupport:
     var
-      tempAddresses: array [0..127, pointer] # should not be alloc'd on stack
+      tempAddresses: array[0..127, pointer] # should not be alloc'd on stack
       tempDlInfo: TDl_info
 
   proc auxWriteStackTraceWithBacktrace(s: var string) =
     when hasThreadSupport:
       var
-        tempAddresses: array [0..127, pointer] # but better than a threadvar
+        tempAddresses: array[0..127, pointer] # but better than a threadvar
         tempDlInfo: TDl_info
     # This is allowed to be expensive since it only happens during crashes
     # (but this way you don't need manual stack tracing)
@@ -124,12 +125,12 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 
 when not hasThreadSupport:
   var
-    tempFrames: array [0..127, PFrame] # should not be alloc'd on stack
+    tempFrames: array[0..127, PFrame] # should not be alloc'd on stack
 
 proc auxWriteStackTrace(f: PFrame, s: var string) =
   when hasThreadSupport:
     var
-      tempFrames: array [0..127, PFrame] # but better than a threadvar
+      tempFrames: array[0..127, PFrame] # but better than a threadvar
   const
     firstCalls = 32
   var
@@ -250,12 +251,12 @@ proc raiseExceptionAux(e: ref Exception) =
             inc L, slen
         template add(buf, s: expr) =
           xadd(buf, s, s.len)
-        var buf: array [0..2000, char]
+        var buf: array[0..2000, char]
         var L = 0
         add(buf, "Error: unhandled exception: ")
         if not isNil(e.msg): add(buf, e.msg)
         add(buf, " [")
-        xadd(buf, e.name, c_strlen(e.name))
+        xadd(buf, e.name, e.name.len)
         add(buf, "]\n")
         showErrorMessage(buf)
       quitOrDebug()

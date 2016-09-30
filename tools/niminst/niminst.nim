@@ -18,7 +18,7 @@ import
 
 const
   maxOS = 20 # max number of OSes
-  maxCPU = 10 # max number of CPUs
+  maxCPU = 20 # max number of CPUs
   buildShFile = "build.sh"
   buildBatFile32 = "build.bat"
   buildBatFile64 = "build64.bat"
@@ -202,14 +202,34 @@ proc parseCmdLine(c: var ConfigData) =
   if c.infile.len == 0: quit(Usage)
   if c.mainfile.len == 0: c.mainfile = changeFileExt(c.infile, "nim")
 
-proc ignoreFile(f, root: string, allowHtml: bool): bool =
+proc eqT(a, b: string; t: proc (a: char): char{.nimcall.}): bool =
+  ## equality under a transformation ``t``. candidate for the stdlib?
+  var i = 0
+  var j = 0
+  while i < a.len and j < b.len:
+    let aa = t a[i]
+    let bb = t b[j]
+    if aa == '\0':
+      inc i
+      if bb == '\0': inc j
+    elif bb == '\0': inc j
+    else:
+      if aa != bb: return false
+      inc i
+      inc j
+  result = i >= a.len and j >= b.len
+
+proc tPath(c: char): char =
+  if c == '\\': '/'
+  else: c
+
+proc ignoreFile(f, explicit: string, allowHtml: bool): bool =
   let (_, name, ext) = splitFile(f)
   let html = if not allowHtml: ".html" else: ""
-  let explicit = splitPath(root).tail
-  result = (ext in ["", ".exe", ".idx"] or
-            ext == html or name[0] == '.') and name & ext != explicit
+  result = (ext in ["", ".exe", ".idx", ".o", ".obj", ".dylib"] or
+            ext == html or name[0] == '.') and not eqT(f, explicit, tPath)
 
-proc walkDirRecursively(s: var seq[string], root: string,
+proc walkDirRecursively(s: var seq[string], root, explicit: string,
                         allowHtml: bool) =
   let tail = splitPath(root).tail
   if tail == "nimcache" or tail[0] == '.':
@@ -221,21 +241,21 @@ proc walkDirRecursively(s: var seq[string], root: string,
     else:
       case k
       of pcFile, pcLinkToFile:
-        if not ignoreFile(f, root, allowHtml):
+        if not ignoreFile(f, explicit, allowHtml):
           add(s, unixToNativePath(f))
       of pcDir:
-        walkDirRecursively(s, f, allowHtml)
+        walkDirRecursively(s, f, explicit, allowHtml)
       of pcLinkToDir: discard
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
     if existsDir(p):
-      walkDirRecursively(s, p, false)
+      walkDirRecursively(s, p, p, false)
     else:
       var i = 0
-      for f in walkFiles(p):
+      for f in walkPattern(p):
         if existsDir(f):
-          walkDirRecursively(s, f, false)
+          walkDirRecursively(s, f, p, false)
         elif not ignoreFile(f, p, false):
           add(s, unixToNativePath(f))
           inc(i)
@@ -427,7 +447,8 @@ proc readCFiles(c: var ConfigData, osA, cpuA: int) =
           # HACK: we conditionally add ``-lm -ldl``, so remove them from the
           # linker flags:
           c.linker.flags = c.linker.flags.replaceWord("-lm").replaceWord(
-                           "-ldl").strip
+                           "-ldl").replaceWord("-lroot").replaceWord(
+                           "-lnetwork").strip
         else:
           if cmpIgnoreStyle(k.key, "libpath") == 0:
             c.libpath = k.value

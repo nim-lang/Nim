@@ -6,7 +6,7 @@ export
   opengl
 
 type
-  EGL* = object of E_Base
+  EGL* = object of Exception
   EGL_code* = object of EGL
     code*: EGL_err
   EGL_err {.pure.} = enum

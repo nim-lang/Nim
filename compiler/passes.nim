@@ -46,12 +46,6 @@ proc makePass*(open: TPassOpen = nil,
   result.close = close
   result.process = process
 
-  # This implements a memory preserving scheme: Top level statements are
-  # processed in a pipeline. The compiler never looks at a whole module
-  # any longer. However, this is simple to change, as new passes may perform
-  # whole program optimizations. For now, we avoid it to save a lot of memory.
-proc processModule*(module: PSym, stream: PLLStream, rd: PRodReader)
-
 # the semantic checker needs these:
 var
   gImportModule*: proc (m: PSym, fileIdx: int32): PSym {.nimcall.}
@@ -160,7 +154,8 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
     importStmt.addSon str
     if not processTopLevelStmt(importStmt, a): break
 
-proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
+proc processModule*(module: PSym, stream: PLLStream,
+                    rd: PRodReader): bool {.discardable.} =
   var
     p: TParsers
     a: TPassContextArray
@@ -173,7 +168,7 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
       s = llStreamOpen(filename, fmRead)
       if s == nil:
         rawMessage(errCannotOpenFile, filename)
-        return
+        return false
     else:
       s = stream
     while true:
@@ -211,4 +206,4 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
     var n = loadInitSection(rd)
     for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)
-
+  result = true

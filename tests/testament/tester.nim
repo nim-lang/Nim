@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, re, times
+  algorithm, compiler/nodejs, re, times, sets
 
 const
   resultsFile = "testresults.html"
@@ -334,6 +334,11 @@ proc testSpec(r: var TResults, test: TTest) =
 
     let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
     var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
+
+    # Treat all failure codes from nodejs as 1. Older versions of nodejs used
+    # to return other codes, but for us it is sufficient to know that it's not 0.
+    if exitCode != 0: exitCode = 1
+
     let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
                else: strip(buf.string)
     let expectedOut = strip(expected.outp)
@@ -387,6 +392,10 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
   # start with 'actionCompile', will be overwritten in the spec:
   result = TTest(cat: cat, name: test, options: options,
                  target: target, action: action, startTime: epochTime())
+
+const
+  # array of modules disabled from compilation test of stdlib.
+  disabledFiles = ["-"]
 
 include categories
 

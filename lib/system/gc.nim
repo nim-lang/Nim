@@ -51,6 +51,7 @@ type
     waMarkGlobal,    # part of the backup/debug mark&sweep
     waMarkPrecise,   # part of the backup/debug mark&sweep
     waZctDecRef, waPush
+    #, waDebug
 
   Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
     # A ref type can have a finalizer that is called before the object's
@@ -115,6 +116,8 @@ template gcAssert(cond: bool, msg: string) =
       echo "[GCASSERT] ", msg
       GC_disable()
       writeStackTrace()
+      #var x: ptr int
+      #echo x[]
       quit 1
 
 proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
@@ -152,10 +155,10 @@ proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
   if c.typ != nil: kind = ord(c.typ.kind)
   when leakDetector:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
+    c_fprintf(stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
               msg, c, kind, c.refcount shr rcShift, c.filename, c.line)
   else:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
+    c_fprintf(stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
               msg, c, kind, c.refcount shr rcShift, c.color)
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =
@@ -452,10 +455,13 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector and not hasThreadSupport:
-    if framePtr != nil and framePtr.prev != nil:
-      res.filename = framePtr.prev.filename
-      res.line = framePtr.prev.line
+  when leakDetector:
+    res.filename = nil
+    res.line = 0
+    when not hasThreadSupport:
+      if framePtr != nil and framePtr.prev != nil:
+        res.filename = framePtr.prev.filename
+        res.line = framePtr.prev.line
   # refcount is zero, color is black, but mark it to be in the ZCT
   res.refcount = ZctFlag
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
@@ -503,10 +509,13 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector and not hasThreadSupport:
-    if framePtr != nil and framePtr.prev != nil:
-      res.filename = framePtr.prev.filename
-      res.line = framePtr.prev.line
+  when leakDetector:
+    res.filename = nil
+    res.line = 0
+    when not hasThreadSupport:
+      if framePtr != nil and framePtr.prev != nil:
+        res.filename = framePtr.prev.filename
+        res.line = framePtr.prev.line
   res.refcount = rcIncrement # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   when logGC: writeCell("new cell", res)
@@ -648,7 +657,7 @@ when logGC:
     else:
       writeCell("cell {", s)
       forAllChildren(s, waDebug)
-      c_fprintf(c_stdout, "}\n")
+      c_fprintf(stdout, "}\n")
 
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
@@ -659,7 +668,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c)
+    #  c_fprintf(stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
@@ -822,7 +831,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
+        c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
 
 when defined(nimCoroutines):
   proc currentStackSizes(): int =

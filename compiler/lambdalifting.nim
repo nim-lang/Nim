@@ -226,8 +226,14 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
 template isIterator*(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
 
+proc liftingHarmful(owner: PSym): bool {.inline.} =
+  ## lambda lifting can be harmful for JS-like code generators.
+  let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
+  result = gCmd in {cmdCompileToPHP, cmdCompileToJS} and not isCompileTime
+
 proc liftIterSym*(n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
+  if liftingHarmful(owner): return n
   let iter = n.sym
   assert iter.isIterator
 
@@ -838,6 +844,7 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
         nkBreakState(cl.state)
         ...
     """
+  if liftingHarmful(owner): return body
   var L = body.len
   if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
     localError(body.info, "ignored invalid for loop")

@@ -15,36 +15,36 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 
 from os import getEnv, existsEnv, dirExists, fileExists, walkDir
 
-template mathop(op) {.immediate, dirty.} =
+template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
-template osop(op) {.immediate, dirty.} =
+template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
 
-template systemop(op) {.immediate, dirty.} =
+template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
-template wrap1f_math(op) {.immediate, dirty.} =
+template wrap1f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0)))
   mathop op
 
-template wrap2f_math(op) {.immediate, dirty.} =
+template wrap2f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
   mathop op
 
-template wrap1s_os(op) {.immediate, dirty.} =
+template wrap1s_os(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getString(a, 0)))
   osop op
 
-template wrap1s_system(op) {.immediate, dirty.} =
+template wrap1s_system(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getString(a, 0)))
   systemop op
 
-template wrap2svoid_system(op) {.immediate, dirty.} =
+template wrap2svoid_system(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     op(getString(a, 0), getString(a, 1))
   systemop op

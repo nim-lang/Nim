@@ -68,7 +68,7 @@ when defined(emscripten):
     mmapDescr.realSize = realSize
     mmapDescr.realPointer = realPointer
 
-    c_fprintf(c_stdout, "[Alloc] size %d %d realSize:%d realPos:%d\n", block_size, cast[int](result), realSize, cast[int](realPointer))
+    #c_fprintf(stdout, "[Alloc] size %d %d realSize:%d realPos:%d\n", block_size, cast[int](result), realSize, cast[int](realPointer))
 
   proc osTryAllocPages(size: int): pointer = osAllocPages(size)
 
@@ -87,6 +87,8 @@ elif defined(posix):
     const MAP_ANONYMOUS = 0x1000
   elif defined(solaris):
     const MAP_ANONYMOUS = 0x100
+  elif defined(linux):
+    const MAP_ANONYMOUS = 0x20
   else:
     var
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
@@ -148,8 +150,9 @@ elif defined(windows):
     #VirtualFree(p, size, MEM_DECOMMIT)
 
 elif hostOS == "standalone":
+  const StandaloneHeapSize {.intdefine.}: int = 1024 * PageSize
   var
-    theHeap: array[1024*PageSize, float64] # 'float64' for alignment
+    theHeap: array[StandaloneHeapSize, float64] # 'float64' for alignment
     bumpPointer = cast[int](addr theHeap)
 
   proc osAllocPages(size: int): pointer {.inline.} =

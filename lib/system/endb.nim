@@ -329,14 +329,14 @@ proc dbgStackFrame(s: cstring, start: int, currFrame: PFrame) =
 
 proc readLine(f: File, line: var StaticStr): bool =
   while true:
-    var c = fgetc(f)
+    var c = c_fgetc(f)
     if c < 0'i32:
       if line.len > 0: break
       else: return false
     if c == 10'i32: break # LF
     if c == 13'i32:  # CR
-      c = fgetc(f) # is the next char LF?
-      if c != 10'i32: ungetc(c, f) # no, put the character back
+      c = c_fgetc(f) # is the next char LF?
+      if c != 10'i32: discard c_ungetc(c, f) # no, put the character back
       break
     add line, chr(int(c))
   result = true
@@ -475,7 +475,7 @@ proc dbgWriteStackTrace(f: PFrame) =
     it = f
     i = 0
     total = 0
-    tempFrames: array [0..127, PFrame]
+    tempFrames: array[0..127, PFrame]
   # setup long head:
   while it != nil and i <= high(tempFrames)-firstCalls:
     tempFrames[i] = it

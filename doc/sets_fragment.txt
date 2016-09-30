@@ -1,5 +1,5 @@
-The set type models the mathematical notion of a set. The set's
-basetype can only be an ordinal type of a certain size, namely:
+The set type models the mathematical notion of a set. The set's basetype can
+only be an ordinal type of a certain size, namely:
   * ``int8``-``int16``
   * ``uint8``/``byte``-``uint16``
   * ``char``

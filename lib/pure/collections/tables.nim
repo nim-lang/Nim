@@ -16,6 +16,39 @@
 ## semantics, this means that ``=`` performs a copy of the hash table.
 ## For **reference** semantics use the ``Ref`` variant: ``TableRef``,
 ## ``OrderedTableRef``, ``CountTableRef``.
+## To give an example, when `a` is a Table, then `var b = a` gives `b`
+## as a new independent table. b is initialised with the contents of `a`.
+## Changing `b` does not affect `a` and vice versa:
+##
+## .. code-block::
+##   import tables
+##
+##   var
+##     a = {1: "one", 2: "two"}.toTable  # creates a Table
+##     b = a
+##
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
+##
+##   b[3] = "three"
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two, 3: three}
+##   echo a == b  # output: false
+##
+## On the other hand, when `a` is a TableRef instead, then changes to `b` also affect `a`.
+## Both `a` and `b` reference the same data structure:
+##
+## .. code-block::
+##   import tables
+##
+##   var
+##     a = {1: "one", 2: "two"}.newTable  # creates a TableRef
+##     b = a
+##
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
+##
+##   b[3] = "three"
+##   echo a, b  # output: {1: one, 2: two, 3: three}{1: one, 2: two, 3: three}
+##   echo a == b  # output: true
+##
 ##
 ## If you are using simple standard types like ``int`` or ``string`` for the
 ## keys of the table you won't have any problems, but as soon as you try to use
@@ -80,12 +113,12 @@ type
 
 {.deprecated: [TTable: Table, PTable: TableRef].}
 
-template maxHash(t): expr {.immediate.} = high(t.data)
-template dataLen(t): expr = len(t.data)
+template maxHash(t): untyped = high(t.data)
+template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
-proc clear*[A, B](t: Table[A, B] | TableRef[A, B]) =
+proc clear*[A, B](t: var Table[A, B] | TableRef[A, B]) =
   ## Resets the table so that it is empty.
   clearImpl()
 
@@ -102,7 +135,7 @@ proc len*[A, B](t: Table[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template get(t, key): untyped {.immediate.} =
+template get(t, key): untyped =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   mixin rawGet
@@ -115,7 +148,7 @@ template get(t, key): untyped {.immediate.} =
     else:
       raise newException(KeyError, "key not found")
 
-template getOrDefaultImpl(t, key): untyped {.immediate.} =
+template getOrDefaultImpl(t, key): untyped =
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -237,9 +270,12 @@ proc enlarge[A, B](t: var Table[A, B]) =
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
   for i in countup(0, high(n)):
-    if isFilled(n[i].hcode):
-      var j = -1 - rawGetKnownHC(t, n[i].key, n[i].hcode)
-      rawInsert(t, t.data, n[i].key, n[i].val, n[i].hcode, j)
+    let eh = n[i].hcode
+    if isFilled(eh):
+      var j: Hash = eh and maxHash(t)
+      while isFilled(t.data[j].hcode):
+        j = nextTry(j, maxHash(t))
+      rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
@@ -278,7 +314,7 @@ proc toTable*[A, B](pairs: openArray[(A,
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
-template dollarImpl(): stmt {.dirty.} =
+template dollarImpl(): untyped {.dirty.} =
   if t.len == 0:
     result = "{:}"
   else:
@@ -298,18 +334,17 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
-template equalsImpl() =
+template equalsImpl(t) =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
     # to use the slow route here:
     for key, val in s:
-      # prefix notation leads to automatic dereference in case of PTable
       if not t.hasKey(key): return false
-      if t[key] != val: return false
+      if t.getOrDefault(key) != val: return false
     return true
 
 proc `==`*[A, B](s, t: Table[A, B]): bool =
-  equalsImpl()
+  equalsImpl(t)
 
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.
@@ -399,7 +434,7 @@ proc `$`*[A, B](t: TableRef[A, B]): string =
 proc `==`*[A, B](s, t: TableRef[A, B]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
-  else: equalsImpl()
+  else: equalsImpl(t[])
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
   ## Index the collection with the proc provided.
@@ -425,13 +460,13 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) =
+proc clear*[A, B](t: var OrderedTable[A, B] | OrderedTableRef[A, B]) =
   ## Resets the table so that it is empty.
   clearImpl()
   t.first = -1
   t.last = -1
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -617,7 +652,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -754,7 +789,7 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: CountTable[A] | CountTable[A]) =
+proc clear*[A](t: var CountTable[A] | CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
   t.counter = 0
@@ -792,7 +827,7 @@ proc rawGet[A](t: CountTable[A], key: A): int =
     h = nextTry(h, high(t.data))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template ctget(t, key: untyped): untyped {.immediate.} =
+template ctget(t, key: untyped): untyped =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:

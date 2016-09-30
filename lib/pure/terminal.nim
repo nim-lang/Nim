@@ -60,6 +60,21 @@ when defined(windows):
     lpConsoleScreenBufferInfo: ptr CONSOLE_SCREEN_BUFFER_INFO): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
 
+  proc terminalWidthIoctl*(handles: openArray[Handle]): int =
+    var csbi: CONSOLE_SCREEN_BUFFER_INFO
+    for h in handles:
+      if getConsoleScreenBufferInfo(h, addr csbi) != 0:
+        return int(csbi.srWindow.Right - csbi.srWindow.Left + 1)
+    return 0
+
+  proc terminalWidth*(): int =
+    var w: int = 0
+    w = terminalWidthIoctl([ getStdHandle(STD_INPUT_HANDLE),
+                             getStdHandle(STD_OUTPUT_HANDLE),
+                             getStdHandle(STD_ERROR_HANDLE) ] )
+    if w > 0: return w
+    return 80
+
   proc setConsoleCursorPosition(hConsoleOutput: HANDLE,
                                 dwCursorPosition: COORD): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "SetConsoleCursorPosition".}
@@ -123,7 +138,7 @@ when defined(windows):
     if f == stderr: hStderr else: hStdout
 
 else:
-  import termios
+  import termios, posix, os, parseutils
 
   proc setRaw(fd: FileHandle, time: cint = TCSAFLUSH) =
     var mode: Termios
@@ -136,6 +151,33 @@ else:
     mode.c_cc[VMIN] = 1.cuchar
     mode.c_cc[VTIME] = 0.cuchar
     discard fd.tcsetattr(time, addr mode)
+
+  proc terminalWidthIoctl*(fds: openArray[int]): int =
+    ## Returns terminal width from first fd that supports the ioctl.
+
+    var win: IOctl_WinSize
+    for fd in fds:
+      if ioctl(cint(fd), TIOCGWINSZ, addr win) != -1:
+        return int(win.ws_col)
+    return 0
+
+  var L_ctermid{.importc, header: "<stdio.h>".}: cint
+  proc terminalWidth*(): int =
+    ## Returns some reasonable terminal width from either standard file
+    ## descriptors, controlling terminal, environment variables or tradition.
+
+    var w = terminalWidthIoctl([0, 1, 2])   #Try standard file descriptors
+    if w > 0: return w
+    var cterm = newString(L_ctermid)        #Try controlling tty
+    var fd = open(ctermid(cstring(cterm)), O_RDONLY)
+    if fd != -1:
+      w = terminalWidthIoctl([ int(fd) ])
+    discard close(fd)
+    if w > 0: return w
+    var s = getEnv("COLUMNS")               #Try standard env var
+    if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
+      return w
+    return 80                               #Finally default to venerable value
 
 proc setCursorPos*(f: File, x, y: int) =
   ## Sets the terminal's cursor to the (x,y) position.
@@ -384,7 +426,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
     var old = getAttributes(h) and not 0x0007
     if bright:
       old = old or FOREGROUND_INTENSITY
-    const lookup: array [ForegroundColor, int] = [
+    const lookup: array[ForegroundColor, int] = [
       0,
       (FOREGROUND_RED),
       (FOREGROUND_GREEN),
@@ -406,7 +448,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
     var old = getAttributes(h) and not 0x0070
     if bright:
       old = old or BACKGROUND_INTENSITY
-    const lookup: array [BackgroundColor, int] = [
+    const lookup: array[BackgroundColor, int] = [
       0,
       (BACKGROUND_RED),
       (BACKGROUND_GREEN),
@@ -493,17 +535,21 @@ template styledEcho*(args: varargs[expr]): expr =
   ## Echoes styles arguments to stdout using ``styledWriteLine``.
   callStyledEcho(args)
 
-when defined(nimdoc):
-  proc getch*(): char =
-    ## Read a single character from the terminal, blocking until it is entered.
-    ## The character is not printed to the terminal. This is not available for
-    ## Windows.
-    discard
-elif not defined(windows):
-  proc getch*(): char =
-    ## Read a single character from the terminal, blocking until it is entered.
-    ## The character is not printed to the terminal. This is not available for
-    ## Windows.
+proc getch*(): char =
+  ## Read a single character from the terminal, blocking until it is entered.
+  ## The character is not printed to the terminal.
+  when defined(windows):
+    let fd = getStdHandle(STD_INPUT_HANDLE)
+    var keyEvent = KEY_EVENT_RECORD()
+    var numRead: cint 
+    while true:
+      # Block until character is entered
+      doAssert(waitForSingleObject(fd, INFINITE) == WAIT_OBJECT_0)
+      doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
+      if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
+        continue
+      return char(keyEvent.uChar)
+  else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
     discard fd.tcgetattr(addr oldMode)

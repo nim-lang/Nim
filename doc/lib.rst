@@ -97,6 +97,10 @@ String handling
   case of a string, splitting a string into substrings, searching for
   substrings, replacing substrings.
 
+* `strmisc <strmisc.html>`_
+  This module contains uncommon string handling operations that do not
+  fit with the commonly used operations in strutils.
+
 * `parseutils <parseutils.html>`_
   This module contains helpers for parsing tokens, numbers, identifiers, etc.
 
@@ -578,4 +582,4 @@ Nim programming language.
   nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
   <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList"></script>
+  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>

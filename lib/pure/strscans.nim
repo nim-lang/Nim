@@ -258,7 +258,8 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       conds.add resLen
   result.add conditionsToIfChain(conds, idx, res, 0)
   if fullMatch:
-    result.add newCall(bindSym">=", idx, newCall(bindSym"len", input))
+    result.add newCall(bindSym"and", res,
+      newCall(bindSym">=", idx, newCall(bindSym"len", input)))
   else:
     result.add res
 

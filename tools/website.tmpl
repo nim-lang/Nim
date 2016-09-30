@@ -66,7 +66,7 @@
             </a>
           </div>
           <div id="slide1" class="niaslide">
-            <a href="news.html#Z2016-01-27-nim-in-action-is-now-available">
+            <a href="news/2016_01_27_nim_in_action_is_now_available.html">
               <img src="${rootDir}assets/niminaction/banner.jpg" alt="New in Manning Early Access Program: Nim in Action!"/>
             </a>
           </div>
@@ -180,8 +180,8 @@ runForever()
 				<div id="foot-links">
 					<div>
 						<h4>Documentation</h4>
-						<a href="documentation.html">Stable Documentation</a>
-						<a href="learn.html">Learning Resources</a>
+						<a href="${rootDir}documentation.html">Stable Documentation</a>
+						<a href="${rootDir}learn.html">Learning Resources</a>
 					<!--	<a href="">Development Documentation</a> -->
 						<a href="https://github.com/nim-lang/nim">Issues &amp; Requests</a>
 					</div>
@@ -218,13 +218,9 @@ runForever()
 </html>
 #end proc
 #
+#
 #proc generateSponsors(sponsors: seq[Sponsor]): string =
 #result = ""
-<h1 id="our-current-sponsors">Our Current Sponsors</h1>
-<p>This page lists the companies and individuals that are, very kindly, contributing a
-monthly amount to help sustain Nim's development. For more details take a
-look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
-<dl>
 #for sponsor in sponsors:
   <dt class="level-${sponsor.level}">
     #if sponsor.url.len > 0:
@@ -247,6 +243,24 @@ look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campa
     Donated $$${sponsor.allTime} in total since ${sponsor.since}
   </dd>
 #end for
+#end proc
+#proc generateSponsorsPage(activeSponsors, inactiveSponsors: seq[Sponsor]): string =
+#result = ""
+<h1 id="our-current-sponsors">Our Current Sponsors</h1>
+<p>This section lists the companies and individuals that are, very kindly, contributing a
+monthly amount to help sustain Nim's development. For more details take a
+look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
+<p class="lastUpdate">Last updated: ${getTime().getGMTime().format("dd/MM/yyyy")}</p>
+<dl>
+${generateSponsors(activeSponsors)}
+</dl>
+#
+<h1 id="our-past-sponsors">Our Past Sponsors</h1>
+<p>This section lists the companies and individuals that have contributed
+money in the past to help sustain Nim's development. For more details take a
+look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
+<dl>
+${generateSponsors(inactiveSponsors)}
 </dl>
 #
 #end proc

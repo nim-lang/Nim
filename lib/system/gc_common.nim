@@ -63,7 +63,7 @@ when defined(nimCoroutines):
       stack.next = gch.stack
       gch.stack.prev = stack
       gch.stack = stack
-    # c_fprintf(c_stdout, "[GC] added stack 0x%016X\n", starts)
+    # c_fprintf(stdout, "[GC] added stack 0x%016X\n", starts)
 
   proc GC_removeStack*(starts: pointer) {.cdecl, exportc.} =
     var stack = gch.stack
@@ -143,7 +143,7 @@ else:
 when not defined(useNimRtl):
   {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
+    #c_fprintf(stdout, "stack bottom: %p;\n", theStackBottom)
     # the first init must be the one that defines the stack bottom:
     when defined(nimCoroutines):
       GC_addStack(theStackBottom)
@@ -152,7 +152,7 @@ when not defined(useNimRtl):
       else:
         var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
         var b = cast[ByteAddress](gch.stackBottom)
-        #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
+        #c_fprintf(stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
         when stackIncreases:
           gch.stackBottom = cast[pointer](min(a, b))
         else:
@@ -239,7 +239,7 @@ else:
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array [0..7, pointer]
+      type PStackSlice = ptr array[0..7, pointer]
       var registers {.noinit.}: Registers
       getRegisters(registers)
       for i in registers.low .. registers.high:
@@ -277,7 +277,7 @@ else:
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array [0..7, pointer]
+      type PStackSlice = ptr array[0..7, pointer]
       var registers {.noinit.}: C_JmpBuf
       if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
         var max = cast[ByteAddress](gch.stackBottom)

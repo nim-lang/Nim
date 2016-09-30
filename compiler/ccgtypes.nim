@@ -25,8 +25,9 @@ proc isKeyword(w: PIdent): bool =
 proc mangleField(name: PIdent): string =
   result = mangle(name.s)
   if isKeyword(name):
-    result[0] = result[0].toUpper # Mangling makes everything lowercase,
-                                  # but some identifiers are C keywords
+    result[0] = result[0].toUpperAscii
+    # Mangling makes everything lowercase,
+    # but some identifiers are C keywords
 
 proc hashOwner(s: PSym): FilenameHash =
   var m = s
@@ -150,6 +151,9 @@ proc mapType(typ: PType): TCTypeKind =
   of tyCString: result = ctCString
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
+  of tyStatic:
+    if typ.n != nil: result = mapType(lastSon typ)
+    else: internalError("mapType")
   else: internalError("mapType")
 
 proc mapReturnType(typ: PType): TCTypeKind =
@@ -202,11 +206,9 @@ proc cacheGetType(tab: TIdTable, key: PType): Rope =
   # linear search is not necessary anymore:
   result = Rope(idTableGet(tab, key))
 
-proc getTempName(): Rope =
-  result = rfmt(nil, "TMP$1", rope(backendId()))
-
-proc getGlobalTempName(): Rope =
-  result = rfmt(nil, "TMP$1", rope(backendId()))
+proc getTempName(m: BModule): Rope =
+  result = m.tmpBase & rope(m.labels)
+  inc m.labels
 
 proc ccgIntroducedPtr(s: PSym): bool =
   var pt = skipTypes(s.typ, typedescInst)
@@ -258,6 +260,11 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
+  of tyStatic:
+    if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
+    else: internalError("tyStatic for getSimpleTypeDesc")
+  of tyGenericInst:
+    result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
 proc pushType(m: BModule, typ: PType) =
@@ -418,7 +425,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       addf(result, "union{$n$1} $2;$n", [unionBody, uname])
   of nkSym:
     field = n.sym
-    if field.typ.kind == tyEmpty: return
+    if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     sname = mangleRecFieldName(field, rectype)
     if accessExpr != nil: ae = "$1.$2" % [accessExpr, sname]
@@ -468,11 +475,11 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
         hasField = true
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
-                      [getTypeDescAux(m, typ.sons[0], check)])
+                      [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
-                      [getTypeDescAux(m, typ.sons[0], check)])
+                      [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       hasField = true
   else:
     addf(result, " {$n", [name])
@@ -539,7 +546,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   of tyRef, tyPtr, tyVar:
     var star = if t.kind == tyVar and tfVarIsPtr notin typ.flags and
                     compileToCpp(m): "&" else: "*"
-    var et = t.lastSon
+    var et = typ.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
     if etB.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}:
       # this is correct! sets have no proper base type, so we treat
@@ -665,7 +672,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
             chunkStart = i
 
             let typeInSlot = resolveStarsInCppType(typ, idx + 1, stars)
-            if typeInSlot == nil or typeInSlot.kind == tyEmpty:
+            if typeInSlot == nil or typeInSlot.kind == tyVoid:
               result.add(~"void")
             else:
               result.add getTypeDescAux(m, typeInSlot, check)
@@ -724,7 +731,7 @@ type
 proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
   assert t.kind == tyProc
   var check = initIntSet()
-  result = getTempName()
+  result = getTempName(m)
   var rettype, desc: Rope
   genProcParams(m, t, rettype, desc, check, declareEnvironment=kind != clHalf)
   if not isImportedType(t):
@@ -736,14 +743,6 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
           "N_NIMCALL_PTR($2, ClPrc) $3;$n" &
           "void* ClEnv;$n} $1;$n",
            [result, rettype, desc])
-
-proc getTypeDesc(m: BModule, magic: string): Rope =
-  var sym = magicsys.getCompilerProc(magic)
-  if sym != nil:
-    result = getTypeDesc(m, sym.typ)
-  else:
-    rawMessage(errSystemNeeds, magic)
-    result = nil
 
 proc finishTypeDescriptions(m: BModule) =
   var i = 0
@@ -813,7 +812,9 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
   var base: Rope
   if (sonsLen(typ) > 0) and (typ.sons[0] != nil):
-    base = genTypeInfo(m, typ.sons[0])
+    var x = typ.sons[0]
+    if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
+    base = genTypeInfo(m, x)
   else:
     base = rope("0")
   genTypeInfoAuxBase(m, typ, origType, name, base)
@@ -839,7 +840,7 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: Rope) =
     if L == 1:
       genObjectFields(m, typ, n.sons[0], expr)
     elif L > 0:
-      var tmp = getTempName()
+      var tmp = getTempName(m)
       addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, rope(L)])
       for i in countup(0, L-1):
         var tmp2 = getNimNode(m)
@@ -887,10 +888,11 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: Rope) =
       else: internalError(n.info, "genObjectFields(nkRecCase)")
   of nkSym:
     var field = n.sym
-    addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
-        "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
-        "$1.name = $5;$n", [expr, getTypeDesc(m, typ),
-        field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
+    if field.bitsize == 0:
+      addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
+          "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
+          "$1.name = $5;$n", [expr, getTypeDesc(m, typ),
+          field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
   else: internalError(n.info, "genObjectFields")
 
 proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
@@ -902,7 +904,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
   addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
   while t != nil:
-    t = t.skipTypes(abstractInst)
+    t = t.skipTypes(skipPtrs)
     t.flags.incl tfObjHasKids
     t = t.sons[0]
 
@@ -911,7 +913,7 @@ proc genTupleInfo(m: BModule, typ: PType, name: Rope) =
   var expr = getNimNode(m)
   var length = sonsLen(typ)
   if length > 0:
-    var tmp = getTempName()
+    var tmp = getTempName(m)
     addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, rope(length)])
     for i in countup(0, length - 1):
       var a = typ.sons[i]
@@ -935,7 +937,7 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope) =
   # anyway. We generate a cstring array and a loop over it. Exceptional
   # positions will be reset after the loop.
   genTypeInfoAux(m, typ, typ, name)
-  var nodePtrs = getTempName()
+  var nodePtrs = getTempName(m)
   var length = sonsLen(typ.n)
   addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n",
        [nodePtrs, rope(length)])
@@ -955,8 +957,8 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope) =
     if field.position != i or tfEnumHasHoles in typ.flags:
       addf(specialCases, "$1.offset = $2;$n", [elemNode, rope(field.position)])
       hasHoles = true
-  var enumArray = getTempName()
-  var counter = getTempName()
+  var enumArray = getTempName(m)
+  var counter = getTempName(m)
   addf(m.s[cfsTypeInit1], "NI $1;$n", [counter])
   addf(m.s[cfsTypeInit1], "static char* NIM_CONST $1[$2] = {$n$3};$n",
        [enumArray, rope(length), enumNames])
@@ -993,9 +995,6 @@ proc fakeClosureType(owner: PSym): PType =
 type
   TTypeInfoReason = enum  ## for what do we need the type info?
     tiNew,                ## for 'new'
-    tiNewSeq,             ## for 'newSeq'
-    tiNonVariantAsgn,     ## for generic assignment without variants
-    tiVariantAsgn         ## for generic assignment with variants
 
 include ccgtrav
 
@@ -1024,9 +1023,12 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
          [result, rope(typeToString(t))])
     return "(&".rope & result & ")".rope
   case t.kind
-  of tyEmpty: result = rope"0"
+  of tyEmpty, tyVoid: result = rope"0"
   of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
     genTypeInfoAuxBase(m, t, t, result, rope"0")
+  of tyStatic:
+    if t.n != nil: result = genTypeInfo(m, lastSon t)
+    else: internalError("genTypeInfo(" & $t.kind & ')')
   of tyProc:
     if t.callConv != ccClosure:
       genTypeInfoAuxBase(m, t, t, result, rope"0")

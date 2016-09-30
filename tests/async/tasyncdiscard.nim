@@ -10,7 +10,7 @@ discard """
 6
 '''
 """
-import asyncio, asyncdispatch, asyncnet
+import asyncdispatch, asyncnet
 
 proc main {.async.} =
   proc f: Future[int] {.async.} =

@@ -26,7 +26,6 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-include "system/ansi_c"
 include ospaths
 
 when defined(posix):
@@ -36,6 +35,23 @@ when defined(posix):
   else:
     var
       pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
+
+proc c_remove(filename: cstring): cint {.
+  importc: "remove", header: "<stdio.h>".}
+proc c_rename(oldname, newname: cstring): cint {.
+  importc: "rename", header: "<stdio.h>".}
+proc c_system(cmd: cstring): cint {.
+  importc: "system", header: "<stdlib.h>".}
+proc c_strerror(errnum: cint): cstring {.
+  importc: "strerror", header: "<string.h>".}
+proc c_strlen(a: cstring): cint {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
+proc c_getenv(env: cstring): cstring {.
+  importc: "getenv", header: "<stdlib.h>".}
+proc c_putenv(env: cstring): cint {.
+  importc: "putenv", header: "<stdlib.h>".}
+
+var errno {.importc, header: "<errno.h>".}: cint
 
 proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Retrieves the operating system's error flag, ``errno``.
@@ -50,18 +66,18 @@ proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
     if err != 0'i32:
       when useWinUnicode:
         var msgbuf: WideCString
-        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
+        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
           if msgbuf != nil: localFree(cast[pointer](msgbuf))
       else:
         var msgbuf: cstring
-        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200,
+        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
                           nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)
   if errno != 0'i32:
-    result = $os.strerror(errno)
+    result = $os.c_strerror(errno)
 
 {.push warning[deprecated]: off.}
 proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
@@ -114,7 +130,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
           if msgbuf != nil: localFree(msgbuf)
   else:
     if errorCode != OSErrorCode(0'i32):
-      result = $os.strerror(errorCode.int32)
+      result = $os.c_strerror(errorCode.int32)
 
 proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
@@ -157,24 +173,24 @@ proc osLastError*(): OSErrorCode =
 
 when defined(windows):
   when useWinUnicode:
-    template wrapUnary(varname, winApiProc, arg: expr) {.immediate.} =
+    template wrapUnary(varname, winApiProc, arg: untyped) =
       var varname = winApiProc(newWideCString(arg))
 
-    template wrapBinary(varname, winApiProc, arg, arg2: expr) {.immediate.} =
+    template wrapBinary(varname, winApiProc, arg, arg2: untyped) =
       var varname = winApiProc(newWideCString(arg), arg2)
     proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
       result = findFirstFileW(newWideCString(a), b)
-    template findNextFile(a, b: expr): expr = findNextFileW(a, b)
-    template getCommandLine(): expr = getCommandLineW()
+    template findNextFile(a, b: untyped): untyped = findNextFileW(a, b)
+    template getCommandLine(): untyped = getCommandLineW()
 
-    template getFilename(f: expr): expr =
+    template getFilename(f: untyped): untyped =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
-    template findFirstFile(a, b: expr): expr = findFirstFileA(a, b)
-    template findNextFile(a, b: expr): expr = findNextFileA(a, b)
-    template getCommandLine(): expr = getCommandLineA()
+    template findFirstFile(a, b: untyped): untyped = findFirstFileA(a, b)
+    template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
+    template getCommandLine(): untyped = getCommandLineA()
 
-    template getFilename(f: expr): expr = $f.cFilename
+    template getFilename(f: untyped): untyped = $f.cFilename
 
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
@@ -320,7 +336,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns the full path of `filename`, raises OSError in case of an error.
+  ## Returns the full (`absolute`:idx:) path of the file `filename`, raises OSError in case of an error.
   when defined(windows):
     const bufsize = 3072'i32
     when useWinUnicode:
@@ -564,9 +580,9 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if moveFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError())
+      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
     else:
-      if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError())
+      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
   else:
     if c_rename(source, dest) != 0'i32:
       raiseOSError(osLastError(), $strerror(errno))
@@ -579,12 +595,12 @@ when not declared(ENOENT) and not defined(Windows):
 
 when defined(Windows):
   when useWinUnicode:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileW(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
+    template deleteFile(file: untyped): untyped  = deleteFileW(file)
+    template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesW(file, attrs)
   else:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileA(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
+    template deleteFile(file: untyped): untyped = deleteFileA(file)
+    template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
@@ -762,12 +778,26 @@ iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].}
     yield (TaintedString(substr(environment[i], 0, p-1)),
            TaintedString(substr(environment[i], p+1)))
 
-iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
-  ## Iterate over all the files that match the `pattern`. On POSIX this uses
-  ## the `glob`:idx: call.
-  ##
-  ## `pattern` is OS dependent, but at least the "\*.ext"
-  ## notation is supported.
+# Templates for filtering directories and files
+when defined(windows):
+  template isDir(f: WIN32_FIND_DATA): bool =
+    (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
+  template isFile(f: WIN32_FIND_DATA): bool =
+    not isDir(f)
+else:
+  template isDir(f: string): bool =
+    dirExists(f)
+  template isFile(f: string): bool =
+    fileExists(f)
+
+template defaultWalkFilter(item): bool =
+  ## Walk filter used to return true on both
+  ## files and directories
+  true
+
+template walkCommon(pattern: string, filter) =
+  ## Common code for getting the files and directories with the
+  ## specified `pattern`
   when defined(windows):
     var
       f: WIN32_FIND_DATA
@@ -776,8 +806,7 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
     if res != -1:
       defer: findClose(res)
       while true:
-        if not skipFindData(f) and
-            (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) == 0'i32:
+        if not skipFindData(f) and filter(f):
           # Windows bug/gotcha: 't*.nim' matches 'tfoo.nims' -.- so we check
           # that the file extensions have the same length ...
           let ff = getFilename(f)
@@ -799,7 +828,33 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
     if res == 0:
       for i in 0.. f.gl_pathc - 1:
         assert(f.gl_pathv[i] != nil)
-        yield $f.gl_pathv[i]
+        let path = $f.gl_pathv[i]
+        if filter(path):
+          yield path
+
+iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect].} =
+  ## Iterate over all the files and directories that match the `pattern`.
+  ## On POSIX this uses the `glob`:idx: call.
+  ##
+  ## `pattern` is OS dependent, but at least the "\*.ext"
+  ## notation is supported.
+  walkCommon(pattern, defaultWalkFilter)
+
+iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect].} =
+  ## Iterate over all the files that match the `pattern`. On POSIX this uses
+  ## the `glob`:idx: call.
+  ##
+  ## `pattern` is OS dependent, but at least the "\*.ext"
+  ## notation is supported.
+  walkCommon(pattern, isFile)
+
+iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect].} =
+  ## Iterate over all the directories that match the `pattern`.
+  ## On POSIX this uses the `glob`:idx: call.
+  ##
+  ## `pattern` is OS dependent, but at least the "\*.ext"
+  ## notation is supported.
+  walkCommon(pattern, isDir)
 
 type
   PathComponent* = enum   ## Enumeration specifying a path component.
@@ -809,6 +864,20 @@ type
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
 {.deprecated: [TPathComponent: PathComponent].}
+
+
+when defined(posix):
+  proc getSymlinkFileKind(path: string): PathComponent =
+    # Helper function.
+    var s: Stat
+    assert(path != "")
+    if stat(path, s) < 0'i32:
+      raiseOSError(osLastError())
+    if S_ISDIR(s.st_mode):
+      result = pcLinkToDir
+    else:
+      result = pcLinkToFile
+
 
 proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
@@ -876,13 +945,15 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
                   if dirExists(y): k = pcLinkToDir
-                  else: k = succ(k)
+                  else: k = pcLinkToFile
                 yield (k, y)
                 continue
 
             if lstat(y, s) < 0'i32: break
-            if S_ISDIR(s.st_mode): k = pcDir
-            if S_ISLNK(s.st_mode): k = succ(k)
+            if S_ISDIR(s.st_mode):
+              k = pcDir
+            elif S_ISLNK(s.st_mode):
+              k = getSymlinkFileKind(y)
             yield (k, y)
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
@@ -992,7 +1063,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
 
 proc createSymlink*(src, dest: string) =
   ## Create a symbolic link at `dest` which points to the item specified
-  ## by `src`. On most operating systems, will fail if a lonk
+  ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## **Warning**:
   ## Some OS's (such as Microsoft Windows) restrict the creation
@@ -1015,8 +1086,8 @@ proc createHardlink*(src, dest: string) =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Most OS's restrict the creation of hard links to
-  ## root users (administrators) .
+  ## **Warning**: Some OS's restrict the creation of hard links to
+  ## root users (administrators).
   when defined(Windows):
     when useWinUnicode:
       var wSrc = newWideCString(src)
@@ -1067,7 +1138,7 @@ proc parseCmdLine*(c: string): seq[string] {.
   while true:
     setLen(a, 0)
     # eat all delimiting whitespace
-    while c[i] == ' ' or c[i] == '\t' or c [i] == '\l' or c [i] == '\r' : inc(i)
+    while c[i] == ' ' or c[i] == '\t' or c[i] == '\l' or c[i] == '\r' : inc(i)
     when defined(windows):
       # parse a single argument according to the above rules:
       if c[i] == '\0': break
@@ -1447,13 +1518,13 @@ type
     lastWriteTime*: Time # Time file was last modified/written to.
     creationTime*: Time # Time file was created. Not supported on all systems!
 
-template rawToFormalFileInfo(rawInfo, formalInfo): expr =
+template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
-    template toTime(e: FILETIME): expr {.gensym.} = winTimeToUnixTime(rdFileTime(e)) # local templates default to bind semantics
-    template merge(a, b): expr = a or (b shl 32)
+    template toTime(e: FILETIME): untyped {.gensym.} = winTimeToUnixTime(rdFileTime(e)) # local templates default to bind semantics
+    template merge(a, b): untyped = a or (b shl 32)
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
     formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
@@ -1478,7 +1549,7 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
 
 
   else:
-    template checkAndIncludeMode(rawMode, formalMode: expr) =
+    template checkAndIncludeMode(rawMode, formalMode: untyped) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
@@ -1502,8 +1573,11 @@ template rawToFormalFileInfo(rawInfo, formalInfo): expr =
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
     formalInfo.kind = pcFile
-    if S_ISDIR(rawInfo.st_mode): formalInfo.kind = pcDir
-    if S_ISLNK(rawInfo.st_mode): formalInfo.kind.inc()
+    if S_ISDIR(rawInfo.st_mode):
+      formalInfo.kind = pcDir
+    elif S_ISLNK(rawInfo.st_mode):
+      assert(path != "") # symlinks can't occur for file handles
+      formalInfo.kind = getSymlinkFileKind(path)
 
 proc getFileInfo*(handle: FileHandle): FileInfo =
   ## Retrieves file information for the file object represented by the given
@@ -1519,12 +1593,12 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
     var realHandle = get_osfhandle(handle)
     if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
       raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, "", result)
   else:
     var rawInfo: Stat
     if fstat(handle, rawInfo) < 0'i32:
       raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, "", result)
 
 proc getFileInfo*(file: File): FileInfo =
   if file.isNil:
@@ -1553,7 +1627,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
       raiseOSError(osLastError())
     if getFileInformationByHandle(handle, addr rawInfo) == 0:
       raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, path, result)
     discard closeHandle(handle)
   else:
     var rawInfo: Stat
@@ -1563,7 +1637,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
     else:
       if lstat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, path, result)
 
 proc isHidden*(path: string): bool =
   ## Determines whether a given path is hidden or not. Returns false if the

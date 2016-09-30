@@ -44,7 +44,7 @@ __clang__
 #if defined(_MSC_VER)
 #  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
 #  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
-#  pragma warning(disable: 4710 4711 4774 4800 4820 4996)
+#  pragma warning(disable: 4710 4711 4774 4800 4820 4996 4090)
 #endif
 /* ------------------------------------------------------------------------- */
 
@@ -102,7 +102,7 @@ __clang__
        defined __ICL || \
        defined __DMC__ || \
        defined __BORLANDC__ )
-#  define NIM_THREADVAR __declspec(thread) 
+#  define NIM_THREADVAR __declspec(thread)
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
        defined __SUNPRO_C || \
@@ -347,9 +347,6 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
 
 #define float64ToInt64(x) ((NI64) (x))
 
-#define zeroMem(a, size) memset(a, 0, size)
-#define equalMem(a, b, size) (memcmp(a, b, size) == 0)
-
 #define STRING_LITERAL(name, str, length) \
   static const struct {                   \
     TGenericSeq Sup;                      \
@@ -418,16 +415,6 @@ struct TFrame {
 
 #define NIM_POSIX_INIT  __attribute__((constructor))
 
-#if defined(_MSCVER) && defined(__i386__)
-__declspec(naked) int __fastcall NimXadd(volatile int* pNum, int val) {
-  __asm {
-    lock xadd dword ptr [ECX], EDX
-    mov EAX, EDX
-    ret
-  }
-}
-#endif
-
 #ifdef __GNUC__
 #  define likely(x) __builtin_expect(x, 1)
 #  define unlikely(x) __builtin_expect(x, 0)
@@ -452,8 +439,8 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 
 /* Test to see if Nim and the C compiler agree on the size of a pointer.
    On disagreement, your C compiler will say something like:
-   "error: 'assert_numbits' declared as an array with a negative size" */
-typedef int assert_numbits[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+   "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
+typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
 #endif
 
 #ifdef  __cplusplus

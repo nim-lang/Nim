@@ -25,7 +25,7 @@ proc whiteTex*(): TTex =
   setTexParams()
 
   var pixel = [255'u8, 255'u8, 255'u8, 255'u8]
-  ?glTexImage2D(GLtexture2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA, cGLUnsignedByte, pixel[0].addr)
+  ?glTexImage2D(GLtexture2D, 0, GLint GL_RGBA, 1, 1, 0, GL_BGRA, cGLUnsignedByte, pixel[0].addr)
   ?glBindTexture(GLtexture2D, 0)
 
   result = gWhiteTex

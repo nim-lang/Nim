@@ -87,7 +87,7 @@ proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
     result = nil
 
 proc destroyFieldOrFields(c: PContext, field: PNode, holder: PNode): PNode =
-  template maybeAddLine(e: expr): stmt =
+  template maybeAddLine(e) =
     let stmt = e
     if stmt != nil:
       if result == nil: result = newNode(nkStmtList)
@@ -139,6 +139,7 @@ proc instantiateDestructor(c: PContext, typ: PType): PType =
   t = t.skipTypes({tyGenericInst})
   case t.kind
   of tySequence, tyArray, tyArrayConstr, tyOpenArray, tyVarargs:
+    t.destructor = analyzingDestructor
     if instantiateDestructor(c, t.sons[0]) != nil:
       t.destructor = getCompilerProc"nimDestroyRange"
       return t

@@ -39,55 +39,49 @@ doAssert t4.format("M MM MMM MMMM") == "10 10 Oct October"
 doAssert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
 doAssert((t4 - initInterval(years = 7, minutes = 34, seconds = 24)).format("yyyy mm ss") == "1990 24 10")
 
-var s = "Tuesday at 09:04am on Dec 15, 2015"
-var f = "dddd at hh:mmtt on MMM d, yyyy"
-doAssert($s.parse(f) == "Tue Dec 15 09:04:00 2015")
+proc parseTest(s, f, sExpected: string, ydExpected: int) =
+  let parsed = s.parse(f)
+  doAssert($parsed == sExpected)
+  doAssert(parsed.yearday == ydExpected)
+proc parseTestTimeOnly(s, f, sExpected: string) =
+  doAssert(sExpected in $s.parse(f))
+
+parseTest("Tuesday at 09:04am on Dec 15, 2015",
+    "dddd at hh:mmtt on MMM d, yyyy", "Tue Dec 15 09:04:00 2015", 348)
 # ANSIC       = "Mon Jan _2 15:04:05 2006"
-s = "Thu Jan 12 15:04:05 2006"
-f = "ddd MMM dd HH:mm:ss yyyy"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("Thu Jan 12 15:04:05 2006", "ddd MMM dd HH:mm:ss yyyy",
+    "Thu Jan 12 15:04:05 2006", 11)
 # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-s = "Thu Jan 12 15:04:05 MST 2006"
-f = "ddd MMM dd HH:mm:ss ZZZ yyyy"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("Thu Jan 12 15:04:05 MST 2006", "ddd MMM dd HH:mm:ss ZZZ yyyy",
+    "Thu Jan 12 15:04:05 2006", 11)
 # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
-s = "Thu Jan 12 15:04:05 -07:00 2006"
-f = "ddd MMM dd HH:mm:ss zzz yyyy"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("Mon Feb 29 15:04:05 -07:00 2016", "ddd MMM dd HH:mm:ss zzz yyyy",
+    "Mon Feb 29 15:04:05 2016", 59) # leap day
 # RFC822      = "02 Jan 06 15:04 MST"
-s = "12 Jan 16 15:04 MST"
-f = "dd MMM yy HH:mm ZZZ"
-doAssert($s.parse(f) == "Tue Jan 12 15:04:00 2016")
+parseTest("12 Jan 16 15:04 MST", "dd MMM yy HH:mm ZZZ",
+    "Tue Jan 12 15:04:00 2016", 11)
 # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
-s = "12 Jan 16 15:04 -07:00"
-f = "dd MMM yy HH:mm zzz"
-doAssert($s.parse(f) == "Tue Jan 12 15:04:00 2016")
+parseTest("01 Mar 16 15:04 -07:00", "dd MMM yy HH:mm zzz",
+    "Tue Mar  1 15:04:00 2016", 60) # day after february in leap year
 # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
-s = "Monday, 12-Jan-06 15:04:05 MST"
-f = "dddd, dd-MMM-yy HH:mm:ss ZZZ"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("Monday, 12-Jan-06 15:04:05 MST", "dddd, dd-MMM-yy HH:mm:ss ZZZ",
+    "Thu Jan 12 15:04:05 2006", 11)
 # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
-s = "Thu, 12 Jan 2006 15:04:05 MST"
-f = "ddd, dd MMM yyyy HH:mm:ss ZZZ"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("Sun, 01 Mar 2015 15:04:05 MST", "ddd, dd MMM yyyy HH:mm:ss ZZZ",
+    "Sun Mar  1 15:04:05 2015", 59) # day after february in non-leap year
 # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
-s = "Thu, 12 Jan 2006 15:04:05 -07:00"
-f = "ddd, dd MMM yyyy HH:mm:ss zzz"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("Thu, 12 Jan 2006 15:04:05 -07:00", "ddd, dd MMM yyyy HH:mm:ss zzz",
+    "Thu Jan 12 15:04:05 2006", 11)
 # RFC3339     = "2006-01-02T15:04:05Z07:00"
-s = "2006-01-12T15:04:05Z-07:00"
-f = "yyyy-MM-ddTHH:mm:ssZzzz"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
-f = "yyyy-MM-dd'T'HH:mm:ss'Z'zzz"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-ddTHH:mm:ssZzzz",
+    "Thu Jan 12 15:04:05 2006", 11)
+parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-dd'T'HH:mm:ss'Z'zzz",
+    "Thu Jan 12 15:04:05 2006", 11)
 # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
-s = "2006-01-12T15:04:05.999999999Z-07:00"
-f = "yyyy-MM-ddTHH:mm:ss.999999999Zzzz"
-doAssert($s.parse(f) == "Thu Jan 12 15:04:05 2006")
+parseTest("2006-01-12T15:04:05.999999999Z-07:00",
+    "yyyy-MM-ddTHH:mm:ss.999999999Zzzz", "Thu Jan 12 15:04:05 2006", 11)
 # Kitchen     = "3:04PM"
-s = "3:04PM"
-f = "h:mmtt"
-doAssert "15:04:00" in $s.parse(f)
+parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
 #when not defined(testing):
 #  echo "Kitchen: " & $s.parse(f)
 #  var ti = timeToTimeInfo(getTime())

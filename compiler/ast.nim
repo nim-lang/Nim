@@ -271,13 +271,14 @@ type
   TSymFlags* = set[TSymFlag]
 
 const
-  sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
   sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
   sfNoInit* = sfMainModule       # don't generate code to init the variable
 
   sfImmediate* = sfDeadCodeElim
     # macro or template is immediately expanded
     # without considering any possible overloads
+  sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
+    # in a generic context
 
   sfDirty* = sfPure
     # template is not hygienic (old styled template)
@@ -395,6 +396,9 @@ type
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
 
+    tyVoid #\
+      # now different from tyEmpty, hurray!
+
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
   assert TTypeKind.high.ord <= 63
@@ -433,7 +437,7 @@ type
     nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
-    nfIsCursor  # this node is attached a cursor; used for idetools
+    nfPreventCg # this node should be ignored by the codegen
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 28)
@@ -528,8 +532,6 @@ const
   tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
     # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
     # deprecated and this mess can be cleaned up.
-  tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
-                      # 'empty' ('@[]' has the type 'seq[empty]').
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
@@ -544,7 +546,7 @@ type
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
-    mNew, mNewFinalize, mNewSeq,
+    mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
     mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
@@ -590,6 +592,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
+    mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
@@ -609,7 +612,7 @@ type
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
-    mNimvm
+    mNimvm, mIntDefine, mStrDefine
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -722,10 +725,7 @@ type
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
-    r*: Rope                 # rope value of location (code generators)
-    heapRoot*: Rope          # keeps track of the enclosing heap object that
-                              # owns this location (required by GC algorithms
-                              # employing heap snapshots or sliding views)
+    r*: Rope                  # rope value of location (code generators)
 
   # ---------------- end of backend information ------------------------------
 
@@ -743,10 +743,6 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
-    usedBy*: seq[int32]       # list of modules using the generic
-                              # needed in caas mode for purging the cache
-                              # XXX: it's possible to switch to a
-                              # simple ref count here
     compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
@@ -764,12 +760,11 @@ type
     case kind*: TSymKind
     of skType, skGenericParam:
       typeInstCache*: seq[PType]
-      typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       #scope*: PScope          # the scope where the proc was defined
-    of skModule:
+    of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
       # be replaced with a newer version, we must decrement the usage count
@@ -848,6 +843,7 @@ type
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
     assignment*: PSym         # overriden '=' operator
+    methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
@@ -858,9 +854,6 @@ type
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
-  TTable* = object   # the same as table[PObject] of PObject
-    counter*: int
-    data*: TPairSeq
 
   TIdPair* = object
     key*: PIdObj
@@ -932,7 +925,7 @@ const
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfIsRef, nfIsCursor, nfLL}
+                                      nfIsRef, nfPreventCg, nfLL}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -963,7 +956,6 @@ const
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 var
   gMainPackageId*: int
-  gMainPackageNotes*: TNoteKinds
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
@@ -987,12 +979,12 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
-template `-|`*(b, s: expr): expr =
+template `-|`*(b, s: untyped): untyped =
   (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
-template `{}`*(n: PNode, i: int): expr = n[i -| n]
-template `{}=`*(n: PNode, i: int, s: PNode): stmt =
+template `{}`*(n: PNode, i: int): untyped = n[i -| n]
+template `{}=`*(n: PNode, i: int, s: PNode) =
   n.sons[i -| n] = s
 
 when defined(useNodeIds):
@@ -1103,12 +1095,6 @@ proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
   if isNil(src.data): return
   newSeq(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
-
-proc copyTable*(dest: var TTable, src: TTable) =
-  dest.counter = src.counter
-  if isNil(src.data): return
-  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
@@ -1324,10 +1310,6 @@ proc initStrTable*(x: var TStrTable) =
 proc newStrTable*: TStrTable =
   initStrTable(result)
 
-proc initTable(x: var TTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
 proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
@@ -1426,6 +1408,7 @@ proc copyNode*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1444,6 +1427,7 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1463,6 +1447,7 @@ proc copyTree*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1508,19 +1493,9 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc replaceSons(n: PNode, oldKind, newKind: TNodeKind) =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i].kind == oldKind: n.sons[i].kind = newKind
-
-proc sonsNotNil(n: PNode): bool =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i] == nil:
-      return false
-  result = true
-
 proc getInt*(a: PNode): BiggestInt =
   case a.kind
-  of nkIntLit..nkUInt64Lit: result = a.intVal
+  of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
     internalError(a.info, "getInt")
     result = 0
@@ -1587,7 +1562,7 @@ proc isAtom*(n: PNode): bool {.inline.} =
 
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
-  result = t == nil or t.kind in {tyEmpty, tyStmt}
+  result = t == nil or t.kind in {tyVoid, tyStmt}
 
 proc makeStmtList*(n: PNode): PNode =
   if n.kind == nkStmtList:

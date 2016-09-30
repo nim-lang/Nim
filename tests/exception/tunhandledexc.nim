@@ -14,10 +14,9 @@ proc genErrors(s: string) =
     raise newException(EsomeotherErr, "bla")
 
 when true:
+  try: discard except: discard
+
   try:
     genErrors("errssor!")
   except ESomething:
     echo("Error happened")
-
-
-

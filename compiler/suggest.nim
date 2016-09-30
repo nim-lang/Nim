@@ -138,7 +138,7 @@ proc suggestField(c: PContext, s: PSym, outputs: var int) =
     suggestResult(symToSuggest(s, isLocal=true, $ideSug, 100))
     inc outputs
 
-template wholeSymTab(cond, section: expr) {.immediate.} =
+template wholeSymTab(cond, section: untyped) =
   var isLocal = true
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
@@ -273,7 +273,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       while true:
         suggestObject(c, t.n, outputs)
         if t.sons[0] == nil: break
-        t = skipTypes(t.sons[0], {tyGenericInst})
+        t = skipTypes(t.sons[0], skipPtrs)
       suggestOperations(c, n, typ, outputs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, outputs)
@@ -393,6 +393,8 @@ proc suggestSym*(info: TLineInfo; s: PSym; isDecl=true) {.inline.} =
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
+  if s.kind == skEnumField and s.owner != nil:
+    incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
@@ -411,17 +413,16 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
     result = ast.emptyNode
 
 proc suggestExpr*(c: PContext, node: PNode) =
-  if nfIsCursor notin node.flags:
-    if gTrackPos.line < 0: return
-    var cp = inCheckpoint(node.info)
-    if cp == cpNone: return
+  if gTrackPos.line < 0: return
+  var cp = inCheckpoint(node.info)
+  if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
 
   if gIdeCmd == ideSug:
-    var n = if nfIsCursor in node.flags: node else: findClosestDot(node)
+    var n = findClosestDot(node)
     if n == nil: n = node
     if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
@@ -434,7 +435,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       suggestEverything(c, n, outputs)
 
   elif gIdeCmd == ideCon:
-    var n = if nfIsCursor in node.flags: node else: findClosestCall(node)
+    var n = findClosestCall(node)
     if n == nil: n = node
     if n.kind in nkCallKinds:
       var a = copyNode(n)

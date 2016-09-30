@@ -7,8 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. Deprecated. Consider using the ``nre``
-## or ``pegs`` modules instead.
+## Regular expression support for Nim. This module still has some
+## obscure bugs and limitations,
+## consider using the ``nre`` or ``pegs`` modules instead.
+## We had to de-deprecate this module since too much code relies on it
+## and many people prefer its API over ``nre``'s.
 ##
 ## **Note:** The 're' proc defaults to the **extended regular expression
 ## syntax** which lets you use whitespace freely to make your regexes readable.
@@ -27,8 +30,6 @@
 
 import
   pcre, strutils, rtarrays
-
-{.deprecated.}
 
 const
   MaxSubpatterns* = 20
@@ -78,7 +79,7 @@ proc finalizeRegEx(x: Regex) =
   if not isNil(x.e):
     pcre.free_substring(cast[cstring](x.e))
 
-proc re*(s: string, flags = {reExtended, reStudy}): Regex {.deprecated.} =
+proc re*(s: string, flags = {reExtended, reStudy}): Regex =
   ## Constructor of regular expressions. Note that Nim's
   ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
@@ -358,7 +359,7 @@ proc parallelReplace*(s: string, subs: openArray[
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
   ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+  ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
   writeFile(outfile, x.parallelReplace(subs))

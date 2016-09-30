@@ -183,7 +183,7 @@ proc newSeqCall(c: PContext; x, y: PNode): PNode =
 
 proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
-  of tyNone, tyEmpty: discard
+  of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
       tyPtr, tyString, tyRef:
     defaultOp(c, t, body, x, y)
@@ -203,7 +203,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyObject, tyDistinct:
     if not considerOverloadedOp(c, t, body, x, y):
-      if t.sons[0] != nil: liftBodyAux(c, t.sons[0], body, x, y)
+      if t.sons[0] != nil:
+        liftBodyAux(c, t.sons[0].skipTypes(skipPtrs), body, x, y)
       if t.kind == tyObject: liftBodyObj(c, t.n, body, x, y)
   of tyTuple:
     liftBodyTup(c, t, body, x, y)

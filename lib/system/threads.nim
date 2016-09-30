@@ -24,7 +24,7 @@
 ##  import locks
 ##
 ##  var
-##    thr: array [0..4, Thread[tuple[a,b: int]]]
+##    thr: array[0..4, Thread[tuple[a,b: int]]]
 ##    L: Lock
 ##
 ##  proc threadFunc(interval: tuple[a,b: int]) {.thread.} =
@@ -51,7 +51,7 @@ const
 
 when defined(windows):
   type
-    SysThread = Handle
+    SysThread* = Handle
     WinThreadProc = proc (x: pointer): int32 {.stdcall.}
   {.deprecated: [TSysThread: SysThread, TWinThreadProc: WinThreadProc].}
 
@@ -117,16 +117,21 @@ else:
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
+  when defined(linux):
+    type Time = clong
+  else:
+    type Time = int
+
   type
-    SysThread {.importc: "pthread_t", header: "<sys/types.h>",
+    SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
                  final, pure.} = object
     Pthread_attr {.importc: "pthread_attr_t",
                      header: "<sys/types.h>", final, pure.} = object
 
     Timespec {.importc: "struct timespec",
                 header: "<time.h>", final, pure.} = object
-      tv_sec: int
-      tv_nsec: int
+      tv_sec: Time
+      tv_nsec: clong
   {.deprecated: [TSysThread: SysThread, Tpthread_attr: PThreadAttr,
                 Ttimespec: Timespec].}
 
@@ -193,7 +198,7 @@ when emulatedThreadVars:
 # allocations are needed. Currently less than 7K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
 type
-  ThreadLocalStorage = array [0..1_000, float]
+  ThreadLocalStorage = array[0..1_000, float]
 
   PGcThread = ptr GcThread
   GcThread {.pure, inheritable.} = object
@@ -326,7 +331,9 @@ else:
     when TArg is void:
       thrd.dataFn()
     else:
-      thrd.dataFn(thrd.data)
+      var x: TArg
+      deepCopy(x, thrd.data)
+      thrd.dataFn(x)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
@@ -349,6 +356,8 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
   when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
+  when declared(initAllocator):
+    initAllocator()
   var thrd = cast[ptr Thread[TArg]](closure)
   threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is
@@ -373,6 +382,10 @@ else:
 proc running*[TArg](t: Thread[TArg]): bool {.inline.} =
   ## returns true if `t` is running.
   result = t.dataFn != nil
+
+proc handle*[TArg](t: Thread[TArg]): SysThread {.inline.} =
+  ## returns the thread handle of `t`.
+  result = t.sys
 
 when hostOS == "windows":
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
@@ -410,7 +423,7 @@ when false:
 
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread.},
+                           tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -432,7 +445,7 @@ when hostOS == "windows":
 
 else:
   proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread.},
+                           tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -455,7 +468,7 @@ else:
     cpusetIncl(cpu.cint, s)
     setAffinity(t.sys, sizeof(s), s)
 
-proc createThread*(t: var Thread[void], tp: proc () {.thread.}) =
+proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
 
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =

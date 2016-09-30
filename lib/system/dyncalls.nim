@@ -52,11 +52,14 @@ when defined(posix):
   #
 
   # c stuff:
-  var
-    RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
+  when defined(linux) or defined(macosx):
+    const RTLD_NOW = cint(2)
+  else:
+    var
+      RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: cint
 
   proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: cstring, mode: int): LibHandle {.
+  proc dlopen(path: cstring, mode: cint): LibHandle {.
       importc, header: "<dlfcn.h>".}
   proc dlsym(lib: LibHandle, name: cstring): ProcAddr {.
       importc, header: "<dlfcn.h>".}

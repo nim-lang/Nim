@@ -12,7 +12,7 @@
 
 # We do this here before the 'import' statement so 'defined' does not get
 # confused with 'TGCMode.gcGenerational' etc.
-template bootSwitch(name, expr, userString: expr): expr =
+template bootSwitch(name, expr, userString) =
   # Helper to build boot constants, for debugging you can 'echo' the else part.
   const name = if expr: " " & userString else: ""
 
@@ -158,7 +158,7 @@ var
   enableNotes: TNoteKinds
   disableNotes: TNoteKinds
 
-proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
+proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string) =
   var id = ""  # arg = "X]:on|off"
   var i = 0
@@ -181,10 +181,13 @@ proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   case whichKeyword(substr(arg, i))
   of wOn:
     incl(gNotes, n)
+    incl(gMainPackageNotes, n)
     incl(enableNotes, n)
   of wOff:
     excl(gNotes, n)
+    excl(gMainPackageNotes, n)
     incl(disableNotes, n)
+    excl(ForeignPackageNotes, n)
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processCompile(filename: string) =
@@ -214,6 +217,15 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "none": result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
     else: localError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
   of "verbosity": result = $gVerbosity == arg
+  of "app":
+    case arg.normalize
+    of "gui":       result = contains(gGlobalOptions, optGenGuiApp)
+    of "console":   result = not contains(gGlobalOptions, optGenGuiApp)
+    of "lib":       result = contains(gGlobalOptions, optGenDynLib) and
+                      not contains(gGlobalOptions, optGenGuiApp)
+    of "staticlib": result = contains(gGlobalOptions, optGenStaticLib) and
+                      not contains(gGlobalOptions, optGenGuiApp)
+    else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool =
@@ -341,7 +353,11 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
     expectArg(switch, arg, pass, info)
-    defineSymbol(arg)
+    if {':', '='} in arg:
+      splitSwitch(arg, key, val, pass, info)
+      defineSymbol(key, val)
+    else:
+      defineSymbol(arg)
   of "undef", "u":
     expectArg(switch, arg, pass, info)
     undefSymbol(arg)
@@ -409,6 +425,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     if processOnOffSwitchOrList({optHints}, arg, pass, info): listHints()
   of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
+  of "excessivestacktrace": processOnOffSwitchG({optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)
   of "debugger":
     case arg.normalize
@@ -542,6 +559,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     gNotes = NotesVerbosity[gVerbosity]
     incl(gNotes, enableNotes)
     excl(gNotes, disableNotes)
+    gMainPackageNotes = gNotes
   of "parallelbuild":
     expectArg(switch, arg, pass, info)
     gNumberOfProcessors = parseInt(arg)

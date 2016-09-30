@@ -67,7 +67,15 @@ type                          # please make sure we have under 32 options
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
+    optExcessiveStackTrace    # fully qualified module filenames
+
   TGlobalOptions* = set[TGlobalOption]
+
+const
+  harmlessOptions* = {optForceFullMake, optNoLinking, optReportConceptFailures,
+    optRun, optUseColors, optStdout}
+
+type
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -127,10 +135,10 @@ var
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
 
-template compilationCachePresent*: expr =
+template compilationCachePresent*: untyped =
   {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
-template optPreserveOrigSource*: expr =
+template optPreserveOrigSource*: untyped =
   optEmbedOrigSrc in gGlobalOptions
 
 const
@@ -149,6 +157,7 @@ const
 var
   gConfigVars* = newStringTable(modeStyleInsensitive)
   gDllOverrides = newStringTable(modeCaseInsensitive)
+  gModuleOverrides* = newStringTable(modeStyleInsensitive)
   gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
   libpath* = ""
   gProjectName* = "" # holds a name like 'nim'
@@ -209,9 +218,7 @@ proc setDefaultLibpath*() =
 
     # Special rule to support other tools (nimble) which import the compiler
     # modules and make use of them.
-    let realNimPath = # Make sure we expand the symlink
-      if symlinkExists(findExe("nim")): expandSymlink(findExe("nim"))
-      else: findExe("nim")
+    let realNimPath = findExe("nim")
     # Find out if $nim/../../lib/system.nim exists.
     let parentNimLibPath = realNimPath.parentDir().parentDir() / "lib"
     if not fileExists(libpath / "system.nim") and
@@ -219,7 +226,7 @@ proc setDefaultLibpath*() =
       libpath = parentNimLibPath
 
 proc canonicalizePath*(path: string): string =
-  when not FileSystemCaseSensitive: result = path.expandFilename.toLower
+  when not FileSystemCaseSensitive: result = path.expandFilename.toLowerAscii
   else: result = path.expandFilename
 
 proc shortenDir*(dir: string): string =
@@ -237,6 +244,8 @@ proc removeTrailingDirSep*(path: string): string =
     result = substr(path, 0, len(path) - 2)
   else:
     result = path
+
+include packagehandling
 
 proc getNimcacheDir*: string =
   result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
@@ -256,54 +265,6 @@ proc pathSubs*(p, config: string): string =
     "nimcache", getNimcacheDir()])
   if '~' in result:
     result = result.replace("~", home)
-
-template newPackageCache(): expr =
-  newStringTable(when FileSystemCaseSensitive:
-                   modeCaseInsensitive
-                 else:
-                   modeCaseSensitive)
-
-var packageCache = newPackageCache()
-
-proc resetPackageCache*() = packageCache = newPackageCache()
-
-iterator myParentDirs(p: string): string =
-  # XXX os's parentDirs is stupid (multiple yields) and triggers an old bug...
-  var current = p
-  while true:
-    current = current.parentDir
-    if current.len == 0: break
-    yield current
-
-proc getPackageName*(path: string): string =
-  var parents = 0
-  block packageSearch:
-    for d in myParentDirs(path):
-      if packageCache.hasKey(d):
-        #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
-        return packageCache[d]
-      inc parents
-      for file in walkFiles(d / "*.nimble"):
-        result = file.splitFile.name
-        break packageSearch
-      for file in walkFiles(d / "*.babel"):
-        result = file.splitFile.name
-        break packageSearch
-  # we also store if we didn't find anything:
-  if result.isNil: result = ""
-  for d in myParentDirs(path):
-    #echo "set cache ", d, " |", result, "|", parents
-    packageCache[d] = result
-    dec parents
-    if parents <= 0: break
-
-proc withPackageName*(path: string): string =
-  let x = path.getPackageName
-  if x.len == 0:
-    result = path
-  else:
-    let (p, file, ext) = path.splitFile
-    result = (p / (x & '_' & file)) & ext
 
 proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
@@ -372,17 +333,25 @@ proc rawFindFile2(f: string): string =
     it = PStrEntry(it.next)
   result = ""
 
+template patchModule() {.dirty.} =
+  if result.len > 0 and gModuleOverrides.len > 0:
+    let key = getPackageName(result) & "_" & splitFile(result).name
+    if gModuleOverrides.hasKey(key):
+      let ov = gModuleOverrides[key]
+      if ov.len > 0: result = ov
+
 proc findFile*(f: string): string {.procvar.} =
   if f.isAbsolute:
     result = if f.existsFile: f else: ""
   else:
     result = f.rawFindFile
     if result.len == 0:
-      result = f.toLower.rawFindFile
+      result = f.toLowerAscii.rawFindFile
       if result.len == 0:
         result = f.rawFindFile2
         if result.len == 0:
-          result = f.toLower.rawFindFile2
+          result = f.toLowerAscii.rawFindFile2
+  patchModule()
 
 proc findModule*(modulename, currentModule: string): string =
   # returns path to module
@@ -401,6 +370,7 @@ proc findModule*(modulename, currentModule: string): string =
   result = currentPath / m
   if not existsFile(result):
     result = findFile(m)
+  patchModule()
 
 proc libCandidates*(s: string, dest: var seq[string]) =
   var le = strutils.find(s, '(')
@@ -441,10 +411,10 @@ proc binaryStrSearch*(x: openArray[string], y: string): int =
       return mid
   result = - 1
 
-template nimdbg*: expr = c.module.fileIdx == gProjectMainIdx
-template cnimdbg*: expr = p.module.module.fileIdx == gProjectMainIdx
-template pnimdbg*: expr = p.lex.fileIdx == gProjectMainIdx
-template lnimdbg*: expr = L.fileIdx == gProjectMainIdx
+template nimdbg*: untyped = c.module.fileIdx == gProjectMainIdx
+template cnimdbg*: untyped = p.module.module.fileIdx == gProjectMainIdx
+template pnimdbg*: untyped = p.lex.fileIdx == gProjectMainIdx
+template lnimdbg*: untyped = L.fileIdx == gProjectMainIdx
 
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:
