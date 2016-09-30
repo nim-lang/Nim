@@ -3,9 +3,88 @@ Version 0.15.0 released
 
 .. container:: metadata
 
-  Posted by Dominik Picheta and Andreas Rumpf on 17/09/2016
+  Posted by Dominik Picheta and Andreas Rumpf on 30/09/2016
 
-Some text here.
+We're happy to announce that the latest release of Nim, version 0.15.0, is now
+available!
+
+As always, you can grab the latest version from the
+`downloads page <http://nim-lang.org/download.html>`_.
+
+This release includes almost 180 bug fixes and improvements. To see a full list
+of changes, take a look at the detailed changelog
+`below <#changelog>`_.
+
+Some of the most significant changes in this release include: improvements to
+the documentation, addition of a new ``multisync`` macro, and a new
+``HttpClient`` implementation.
+
+Documentation
+~~~~~~~~~~~~~
+
+All pages in the documentation now contain a search box and a drop down to
+select how procedures should be sorted. This allows you to search for
+procedures, types, macros and more from any documentation page.
+
+.. raw::html
+
+  <a href="../assets/news/images/0.15.0/doc_search.gif">
+    <img src="../assets/news/images/0.15.0/doc_search.gif" alt="Doc search" style="width:100%"/>
+  </a>
+
+Sorting the procedures by type shows a more natural table of contents. This
+should also help you to find procedures and other identifiers.
+
+.. raw::html
+
+  <a href="../assets/news/images/0.15.0/doc_sort.gif">
+    <img src="../assets/news/images/0.15.0/doc_sort.gif" alt="Doc sort" style="width:100%"/>
+  </a>
+
+Multisync macro
+~~~~~~~~~~~~~~~
+
+The ``multisync`` macro was implemented to enable you to define both
+synchronous and asynchronous IO procedures without having to duplicate a
+lot of code.
+
+As an example, consider the ``recvTwice`` procedure below:
+
+.. code-block:: nim
+  proc recvTwice(socket: Socket | AsyncSocket): Future[string] {.multisync.} =
+    result = ""
+    result.add(await socket.recv(25))
+    result.add(await socket.recv(20))
+
+The ``multisync`` macro will transform this procedure into the following:
+
+.. code-block:: nim
+  proc recvTwice(socket: Socket): string =
+    result = ""
+    result.add(socket.recv(25))
+    result.add(socket.recv(20))
+
+  proc recvTwice(socket: AsyncSocket): Future[string] {.async.} =
+    result = ""
+    result.add(await socket.recv(25))
+    result.add(await socket.recv(20))
+
+Allowing you to use ``recvTwice`` with both synchronous and asynchronous sockets.
+
+HttpClient
+~~~~~~~~~~
+
+Many of the ``httpclient`` module's procedures have been deprecated in
+favour of a new implementation using the ``multisync`` macro. There are now
+two types: ``HttpClient`` and ``AsyncHttpClient``. Both of these implement the
+same procedures and functionality, the only difference is timeout support and
+whether they are blocking or not.
+
+See the `httpclient <http://nim-lang.org/docs/httpclient.html>`_ module
+documentation for more information.
+
+Changelog
+~~~~~~~~~
 
 Changes affecting backwards compatibility
 -----------------------------------------
@@ -140,6 +219,14 @@ Library Additions
 - The ``async`` macro will now complete ``FutureVar[T]`` parameters
   automatically unless they have been completed already.
 
+Tool Additions
+--------------
+
+- The documentation is now searchable and sortable by type.
+- Pragmas are now hidden by default in the documentation to reduce noise.
+- Edit links are now present in the documentation.
+
+
 Compiler Additions
 ------------------
 
@@ -174,7 +261,7 @@ Bugfixes
 The list below has been generated based on the commits in Nim's git
 repository. As such it lists only the issues which have been closed
 via a commit, for a full list see
-`this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222016-06-22+..+2016-09-28%22+>`_.
+`this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222016-06-22+..+2016-09-30%22+>`_.
 
 - Fixed "RFC: should startsWith and endsWith work with characters?"
   (`#4252 <https://github.com/nim-lang/Nim/issues/4252>`_)
