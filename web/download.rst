@@ -12,7 +12,7 @@ and Clang on Mac.
 Binaries
 --------
 
-Unfortunately, right now we only provide binaries for Windows. You can download
+Right now binaries are only provided for Windows. You can download
 an installer for both 32 bit and 64 bit versions of Windows below.
 
 * | 32 bit: `nim-0.14.2_x32.exe <download/nim-0.14.2_x32.exe>`_
@@ -27,8 +27,7 @@ Installation based on generated C code
 --------------------------------------
 
 This installation method is the preferred way for Linux, Mac OS X, and other Unix
-like systems. Binary packages may be provided later.
-
+like systems.
 
 Firstly, download this archive:
 
@@ -87,7 +86,7 @@ Docker Hub
 ----------
 
 The `official Docker images <https://hub.docker.com/r/nimlang/nim/>`_
-are published Docker Hub and include the compiler and Nimble. There are images
+are published on Docker Hub and include the compiler and Nimble. There are images
 for standalone scripts as well as Nimble packages.
 
 Get the latest stable image::
