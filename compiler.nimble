@@ -1,6 +1,6 @@
 [Package]
 name = "compiler"
-version = "0.14.3"
+version = "0.15.0"
 author = "Andreas Rumpf"
 description = "Compiler package providing the compiler sources as a library."
 license = "MIT"
@@ -8,4 +8,4 @@ license = "MIT"
 InstallDirs = "doc, compiler"
 
 [Deps]
-Requires: "nim >= 0.13.0"
+Requires: "nim >= 0.14.0"
