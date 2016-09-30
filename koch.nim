@@ -15,6 +15,11 @@ when defined(gcc) and defined(windows):
   else:
     {.link: "icons/koch_icon.o".}
 
+when defined(amd64) and defined(windows) and defined(vcc):
+  {.link: "icons/koch-amd64-windows-vcc.res" .}
+when defined(i386) and defined(windows) and defined(vcc):
+  {.link: "icons/koch-i386-windows-vcc.res" .}
+
 import
   os, strutils, parseopt, osproc, streams
 

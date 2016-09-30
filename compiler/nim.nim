@@ -13,6 +13,11 @@ when defined(gcc) and defined(windows):
   else:
     {.link: "icons/nim_icon.o".}
 
+when defined(amd64) and defined(windows) and defined(vcc):
+  {.link: "icons/nim-amd64-windows-vcc.res" .}
+when defined(i386) and defined(windows) and defined(vcc):
+  {.link: "icons/nim-i386-windows-vcc.res" .}
+
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt, service,
