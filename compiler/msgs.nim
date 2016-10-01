@@ -521,7 +521,7 @@ const
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace},
+    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
 
 const
