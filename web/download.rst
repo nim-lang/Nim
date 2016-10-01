@@ -3,17 +3,12 @@ Download the compiler
 
 You can download the latest version of the Nim compiler here.
 
-**Note:** The Nim compiler requires a C compiler to compile software. On
-Windows we recommend that you use
-`Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
-and Clang on Mac.
-
-
 Binaries
 --------
 
 Right now binaries are only provided for Windows. You can download
-an installer for both 32 bit and 64 bit versions of Windows below.
+an installer for both 32 bit and 64 bit versions of Windows below. These
+installers have everything you need to use Nim, including a C compiler.
 
 * | 32 bit: `nim-0.15.0_x32.exe <download/nim-0.15.0_x32.exe>`_
   | SHA-256  0ca8931e3369735bbafdf93de98a8fd0f425870f1173845e7601922a5e00c3c2
@@ -25,6 +20,11 @@ you started with Nim development!
 
 Installation based on generated C code
 --------------------------------------
+
+**Note:** The Nim compiler requires a C compiler to compile software. On
+Windows we recommend that you use
+`Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
+and Clang on Mac. The Windows installers above already includes a C compiler.
 
 This installation method is the preferred way for Linux, Mac OS X, and other Unix
 like systems.
