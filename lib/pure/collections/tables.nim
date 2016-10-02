@@ -118,7 +118,11 @@ template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
-proc clear*[A, B](t: var Table[A, B] | TableRef[A, B]) =
+proc clear*[A, B](t: var Table[A, B]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+
+proc clear*[A, B](t: TableRef[A, B]) =
   ## Resets the table so that it is empty.
   clearImpl()
 
