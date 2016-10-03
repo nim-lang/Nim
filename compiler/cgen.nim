@@ -867,10 +867,11 @@ proc genMainProc(m: BModule) =
     MainProcsWithResult =
       MainProcs & "\treturn nim_program_result;$N"
 
-    NimMainBody =
-      "N_CDECL(void, NimMainInner)(void) {$N" &
+    NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
-      "}$N$N" &
+      "}$N$N"
+      
+    NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)();$N" &
         "\tPreMain();$N" &
@@ -878,6 +879,8 @@ proc genMainProc(m: BModule) =
         "$2" &
         "\t(*inner)();$N" &
       "}$N$N"
+
+    NimMainBody = NimMainInner & NimMainProc
 
     PosixNimMain =
       "int cmdCount;$N" &
@@ -906,7 +909,7 @@ proc genMainProc(m: BModule) =
       "                        LPSTR lpCmdLine, int nCmdShow) {$N" &
       MainProcsWithResult & "}$N$N"
 
-    WinNimDllMain = "N_LIB_EXPORT " & NimMainBody
+    WinNimDllMain = NimMainInner & "N_LIB_EXPORT " & NimMainProc
 
     WinCDllMain =
       "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $N" &
