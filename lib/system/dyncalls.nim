@@ -26,6 +26,8 @@ proc nimLoadLibraryError(path: string) =
   stderr.rawWrite("could not load: ")
   stderr.rawWrite(path)
   stderr.rawWrite("\n")
+  when not(defined(nimDebugDlOpen)):
+    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
   quit(1)
 
 proc procAddrError(name: cstring) {.noinline.} =
