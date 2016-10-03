@@ -120,6 +120,8 @@ when allowForeignThreadGc:
     ## switches are used
     if not localGcInitialized:
       localGcInitialized = true
+      when declared(initAllocator):
+        initAllocator()
       var stackTop {.volatile.}: pointer
       setStackBottom(addr(stackTop))
       initGC()
