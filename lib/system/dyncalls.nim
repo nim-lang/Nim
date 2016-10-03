@@ -74,7 +74,8 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        c_fprintf(c_stderr, "%s\n", error)
+        stderr.write(error)
+        stderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
