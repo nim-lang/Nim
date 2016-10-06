@@ -2731,7 +2731,7 @@ when not defined(JS): #and not defined(nimscript):
     proc setStdIoUnbuffered*() {.tags: [], benign.}
       ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
 
-    proc close*(f: File) {.tags: [].}
+    proc close*(f: File) {.tags: [], gcsafe.}
       ## Closes the file.
 
     proc endOfFile*(f: File): bool {.tags: [], benign.}
