@@ -26,6 +26,8 @@ proc nimLoadLibraryError(path: string) =
   stderr.rawWrite("could not load: ")
   stderr.rawWrite(path)
   stderr.rawWrite("\n")
+  when not(defined(nimDebugDlOpen)):
+    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
   quit(1)
 
 proc procAddrError(name: cstring) {.noinline.} =
@@ -74,7 +76,8 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        c_fprintf(c_stderr, "%s\n", error)
+        stderr.write(error)
+        stderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
