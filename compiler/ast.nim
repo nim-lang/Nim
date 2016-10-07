@@ -11,7 +11,7 @@
 
 import
   msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
-  intsets, idgen
+  intsets, idgen, algorithm
 
 type
   TCallingConvention* = enum
@@ -1556,6 +1556,32 @@ iterator items*(n: PNode): PNode =
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
   for i in 0.. <n.len: yield (i, n.sons[i])
+
+iterator allFields*(ty: PType): PNode =
+  ## Iterate over all fields in an object or tuple type.
+  ##
+  ## If the object type has a case section, all branches are traversed.
+
+  assert: ty.kind in {tyObject, tyTuple}
+
+  # reversed to iterate in definition order
+  var queue = ty.n.sons.reversed
+
+  while queue.len > 0:
+    let cur = queue.pop
+    case cur.kind
+    of nkSym:
+      yield cur
+    of nkRecCase:
+      queue.add(cur.sons.reversed)
+    of nkOfBranch, nkElse:
+      # the first one is the branch value list
+      queue.add(cur.sons[1..^1].reversed)
+    of nkRecList:
+      if cur.sons != nil:
+        queue.add(cur.sons.reversed)
+    else:
+      internalError(cur.info, "allFields(unexpected node)")
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
