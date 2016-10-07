@@ -1576,7 +1576,7 @@ iterator allFields*(ty: PType): PNode =
       queue.add(cur.sons.reversed)
     of nkOfBranch, nkElse:
       # the first one is the branch value list
-      queue.add(cur.sons[1..^1].reversed)
+      queue.add(cur.sons[^1])
     of nkRecList:
       if cur.sons != nil:
         queue.add(cur.sons.reversed)
