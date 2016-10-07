@@ -1565,7 +1565,9 @@ iterator allFields*(ty: PType): PNode =
   assert: ty.kind in {tyObject, tyTuple}
 
   # reversed to iterate in definition order
-  var queue = ty.n.sons.reversed
+  var queue = newSeq[PNode]()
+  if ty.n.sons != nil:
+    queue.add(ty.n.sons.reversed)
 
   while queue.len > 0:
     let cur = queue.pop
