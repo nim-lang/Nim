@@ -136,8 +136,10 @@ proc isCastable(dst, src: PType): bool =
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
   if skipTypes(dst, abstractInst-{tyOpenArray}).kind == tyOpenArray:
     return false
-  var dstSize, srcSize: BiggestInt
+  if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
+    return false
 
+  var dstSize, srcSize: BiggestInt
   dstSize = computeSize(dst)
   srcSize = computeSize(src)
   if dstSize < 0:
