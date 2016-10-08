@@ -61,12 +61,6 @@ the easiest way of installing Nimble is via:
 $ nim e install_nimble.nims
 ```
 
-**Warning:** If you install Nimble this way, you will not be able to use binary
-Nimble packages or update Nimble easily.
-The [Nimble readme](https://github.com/nim-lang/nimble#installation)
-provides thorough instructions on how to install Nimble, so that this isn't a
-problem.
-
 ## Community
 [![Join the Chat at irc.freenode.net#nim](https://img.shields.io/badge/IRC-join_chat_in_%23nim-blue.svg)](https://webchat.freenode.net/?channels=nim)
 [![Join the Gitter channel](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nim-lang/Nim)
