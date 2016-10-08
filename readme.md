@@ -51,13 +51,6 @@ instead of ``build.sh``.
 The ``koch`` tool is the Nim build tool, more ``koch`` related options are
 documented in [doc/koch.rst](doc/koch.rst).
 
-To complete the installation you should also build Nim's tools like
-``nimsuggest``, ``nimble`` or ``nimgrep``:
-
-```
-nim e install_tools.nims
-```
-
 
 ## Nimble
 [Nimble](https://github.com/nim-lang/nimble) is Nim's package manager. For the
