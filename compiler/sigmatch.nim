@@ -1567,8 +1567,13 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
 
 
 proc setSon(father: PNode, at: int, son: PNode) =
-  if sonsLen(father) <= at: setLen(father.sons, at + 1)
+  let oldLen = father.len
+  if oldLen <= at:
+    setLen(father.sons, at + 1)
   father.sons[at] = son
+  # insert potential 'void' parameters:
+  #for i in oldLen ..< at:
+  #  father.sons[i] = newNodeIT(nkEmpty, son.info, getSysType(tyVoid))
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
 proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
