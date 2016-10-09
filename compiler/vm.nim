@@ -1242,7 +1242,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
 
       createStr regs[ra]
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                     regs[rc].node.strVal, regs[rd].node.strVal)
+                                     regs[rc].node.strVal, regs[rd].node.strVal,
+                                     c.debug[pc])
     of opcNError:
       stackTrace(c, tos, pc, errUser, regs[ra].node.strVal)
     of opcNWarning:

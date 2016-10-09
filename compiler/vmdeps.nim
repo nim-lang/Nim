@@ -19,7 +19,8 @@ proc readOutput(p: Process): string =
     result.setLen(result.len - "\n".len)
   discard p.waitForExit
 
-proc opGorge*(cmd, input, cache: string): string =
+proc opGorge*(cmd, input, cache: string, info: TLineInfo): string =
+  let workingDir = parentDir(info.toFullPath)
   if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
     let h = secureHash(cmd & "\t" & input & "\t" & cache)
     let filename = options.toGeneratedFile("gorge_" & $h, "txt")
@@ -30,7 +31,8 @@ proc opGorge*(cmd, input, cache: string): string =
       return
     var readSuccessful = false
     try:
-      var p = startProcess(cmd, options={poEvalCommand, poStderrToStdout})
+      var p = startProcess(cmd, workingDir,
+                           options={poEvalCommand, poStderrToStdout})
       if input.len != 0:
         p.inputStream.write(input)
         p.inputStream.close()
@@ -41,7 +43,8 @@ proc opGorge*(cmd, input, cache: string): string =
       if not readSuccessful: result = ""
   else:
     try:
-      var p = startProcess(cmd, options={poEvalCommand, poStderrToStdout})
+      var p = startProcess(cmd, workingDir,
+                           options={poEvalCommand, poStderrToStdout})
       if input.len != 0:
         p.inputStream.write(input)
         p.inputStream.close()
