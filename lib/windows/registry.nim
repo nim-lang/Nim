@@ -1,3 +1,14 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2016 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## This module is experimental and its interface may change.
+
 import winlean, os
 
 type
