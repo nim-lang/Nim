@@ -617,9 +617,8 @@ when haveZipLib:
     else:
       quit("Cannot open for writing: " & n)
 
-proc xzDist(c: var ConfigData) =
+proc xzDist(c: var ConfigData; windowsZip=false) =
   let proj = toLower(c.name) & "-" & c.version
-  var n = "$#.tar.xz" % proj
   let tmpDir = if c.outdir.len == 0: "build" else: c.outdir
 
   template processFile(z, dest, src) =
@@ -636,15 +635,17 @@ proc xzDist(c: var ConfigData) =
   processFile(z, proj / makeFile, "build" / makeFile)
   processFile(z, proj / installShFile, installShFile)
   processFile(z, proj / deinstallShFile, deinstallShFile)
-  for f in walkFiles(c.libpath / "lib/*.h"):
-    processFile(z, proj / "c_code" / extractFilename(f), f)
-  for osA in 1..c.oses.len:
-    for cpuA in 1..c.cpus.len:
-      var dir = buildDir(osA, cpuA)
-      for k, f in walkDir("build" / dir):
-        if k == pcFile: processFile(z, proj / dir / extractFilename(f), f)
+  if not windowsZip:
+    for f in walkFiles(c.libpath / "lib/*.h"):
+      processFile(z, proj / "c_code" / extractFilename(f), f)
+    for osA in 1..c.oses.len:
+      for cpuA in 1..c.cpus.len:
+        var dir = buildDir(osA, cpuA)
+        for k, f in walkDir("build" / dir):
+          if k == pcFile: processFile(z, proj / dir / extractFilename(f), f)
 
-  for cat in items({fcConfig..fcOther, fcUnix, fcNimble}):
+  let osSpecific = if windowsZip: fcWindows else: fcUnix
+  for cat in items({fcConfig..fcOther, osSpecific, fcNimble}):
     echo("Current category: ", cat)
     for f in items(c.cat[cat]): processFile(z, proj / f, f)
 
@@ -656,10 +657,15 @@ proc xzDist(c: var ConfigData) =
     let oldDir = getCurrentDir()
     setCurrentDir(tmpDir)
     try:
-      if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" % proj) != 0:
-        # try old 'tar' without --exclude feature:
-        if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
+      if windowsZip:
+        if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
           echo("External program failed")
+      else:
+        if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" %
+                        proj) != 0:
+          # try old 'tar' without --exclude feature:
+          if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
+            echo("External program failed")
     finally:
       setCurrentDir(oldDir)
 
@@ -725,10 +731,7 @@ if actionCSource in c.actions:
 if actionScripts in c.actions:
   writeInstallScripts(c)
 if actionZip in c.actions:
-  when haveZipLib:
-    zipDist(c)
-  else:
-    quit("libzip is not installed")
+  xzDist(c, true)
 if actionXz in c.actions:
   xzDist(c)
 if actionDeb in c.actions:

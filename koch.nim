@@ -20,11 +20,6 @@ import
 
 const VersionAsString = system.NimVersion #"0.10.2"
 
-when defined(withUpdate):
-  import httpclient
-when defined(haveZipLib):
-  import zipfiles
-
 const
   HelpText = """
 +-----------------------------------------------------------------+
@@ -68,7 +63,10 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
-proc exe(f: string): string = return addFileExt(f, ExeExt)
+proc exe(f: string): string =
+  result = addFileExt(f, ExeExt)
+  when defined(windows):
+    result = result.replace('/','\\')
 
 proc findNim(): string =
   var nim = "nim".exe
@@ -144,7 +142,7 @@ proc copyExe(source, dest: string) =
   inclFilePermissions(dest, {fpUserExec})
 
 const
-  compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
+  compileNimInst = "tools/niminst/niminst"
 
 proc csource(args: string) =
   exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource --main:compiler/nim.nim compiler/installer.ini $1" %
@@ -177,6 +175,7 @@ proc bundleNimsuggest(buildExe: bool) =
 
 proc zip(args: string) =
   bundleNimbleSrc()
+  bundleNimsuggest(false)
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
@@ -317,20 +316,6 @@ proc clean(args: string) =
       removeDir(path)
 
 # -------------- builds a release ---------------------------------------------
-
-#[
-proc run7z(platform: string, patterns: varargs[string]) =
-  const tmpDir = "nim-" & VersionAsString
-  createDir tmpDir
-  try:
-    for pattern in patterns:
-      for f in walkFiles(pattern):
-        if "nimcache" notin f:
-          copyFile(f, tmpDir / f)
-    exec("7z a -tzip $1-$2.zip $1" % [tmpDir, platform])
-  finally:
-    removeDir tmpDir
-]#
 
 proc winRelease() =
   exec(r"call ci\nsis_build.bat " & VersionAsString)
