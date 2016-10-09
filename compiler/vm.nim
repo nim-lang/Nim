@@ -1235,15 +1235,35 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module)
-    of opcGorge:
+    of opcGorge, opcGorgeEx:
       decodeBC(rkNode)
       inc pc
       let rd = c.code[pc].regA
-
-      createStr regs[ra]
-      regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                     regs[rc].node.strVal, regs[rd].node.strVal,
-                                     c.debug[pc])
+      let gorgeRes = opGorge(regs[rb].node.strVal, regs[rc].node.strVal,
+                             regs[rd].node.strVal, c.debug[pc])
+      if gorgeRes.resultCode == -1:
+        stackTrace(c, tos, pc, errExecutionOfProgramFailed,
+                regs[rb].node.strVal)
+      elif gorgeRes.resultCode != 0 and instr.opcode == opcGorge:
+        let re = c.code[pc].regB
+        if regs[re].intVal == 1:
+          stackTrace(c, tos, pc, errExecutionOfProgramFailed,
+                     regs[rb].node.strVal & " returned " & $gorgeRes.resultCode)
+        else:
+          createStr regs[ra]
+          regs[ra].node.strVal = ""
+      elif instr.opCode == opcGorge:
+        createStr regs[ra]
+        regs[ra].node.strVal = gorgeRes.output
+      else:
+        regs[ra].node = newNode(nkPar)
+        var
+          retOutput = newNode(nkStrLit)
+          retCode = newNode(nkIntLit)
+        retOutput.strVal = gorgeRes.output
+        retCode.intVal = gorgeRes.resultCode
+        regs[ra].node.add(retOutput)
+        regs[ra].node.add(retCode)
     of opcNError:
       stackTrace(c, tos, pc, errUser, regs[ra].node.strVal)
     of opcNWarning:

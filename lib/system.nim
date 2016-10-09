@@ -3289,12 +3289,14 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ## `slurp <#slurp>`_ is an alias for ``staticRead``.
 
-proc gorge*(command: string, input = "", cache = ""): string {.
-  magic: "StaticExec".} = discard
+proc gorge*(command: string, input = "", cache = "",
+            onErrorBreak: bool = false): string
+    {.magic: "StaticExec".} = discard
   ## This is an alias for `staticExec <#staticExec>`_.
 
-proc staticExec*(command: string, input = "", cache = ""): string {.
-  magic: "StaticExec".} = discard
+proc staticExec*(command: string, input = "", cache = "",
+                 onErrorBreak: bool = false): string
+    {.magic: "StaticExec".} = discard
   ## Executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
@@ -3315,6 +3317,18 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##
   ## .. code-block:: nim
   ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
+  ##
+  ## If ``onErrorBreak`` is true, execution will stop with a stacktrace if the
+  ## process did not return 0.
+
+proc gorgeEx*(command: string, input = "", cache = ""):
+    tuple[output: string, resultCode: int] {.magic: "StaticExecEx".} = discard
+  ## This is an alias for `staticExecEx <#staticExecEx>`_.
+
+proc staticExecEx*(command: string, input = "", cache = ""):
+    tuple[output: string, resultCode: int] {.magic: "StaticExecEx".} = discard
+  ## Like `staticExec <#staticExec>`_, but returns the command's output and
+  ## result code.
 
 proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}

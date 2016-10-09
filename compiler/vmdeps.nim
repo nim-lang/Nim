@@ -9,48 +9,42 @@
 
 import ast, types, msgs, os, osproc, streams, options, idents, securehash
 
-proc readOutput(p: Process): string =
-  result = ""
-  var output = p.outputStream
-  while not output.atEnd:
-    result.add(output.readLine)
-    result.add("\n")
-  if result.len > 0:
-    result.setLen(result.len - "\n".len)
-  discard p.waitForExit
+proc execute(cmd, input, workingDir: string, info: TLineInfo):
+    tuple[output: string, resultCode: int] =
+  result.output = ""
+  try:
+    var p = startProcess(cmd, workingDir,
+                         options={poEvalCommand, poStderrToStdout})
+    if input.len != 0:
+      p.inputStream.write(input)
+      p.inputStream.close()
+    var output = p.outputStream
+    while not output.atEnd:
+      result.output.add(output.readLine)
+      result.output.add("\n")
+    if result.output.len > 0:
+      result.output.setLen(result.output.len - "\n".len)
+    result.resultCode = p.waitForExit
+  except IOError, OSError:
+    localError(info, errExecutionOfProgramFailed, cmd)
+    result.resultCode = -1
 
-proc opGorge*(cmd, input, cache: string, info: TLineInfo): string =
+proc opGorge*(cmd, input, cache: string, info: TLineInfo):
+    tuple[output: string, resultCode: int] =
   let workingDir = parentDir(info.toFullPath)
   if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
     let h = secureHash(cmd & "\t" & input & "\t" & cache)
     let filename = options.toGeneratedFile("gorge_" & $h, "txt")
     var f: File
     if open(f, filename):
-      result = f.readAll
+      result = (f.readAll, 0)
       f.close
       return
-    var readSuccessful = false
-    try:
-      var p = startProcess(cmd, workingDir,
-                           options={poEvalCommand, poStderrToStdout})
-      if input.len != 0:
-        p.inputStream.write(input)
-        p.inputStream.close()
-      result = p.readOutput
-      readSuccessful = true
-      writeFile(filename, result)
-    except IOError, OSError:
-      if not readSuccessful: result = ""
+    result = execute(cmd, input, workingDir, info)
+    if result.resultCode == 0:
+      writeFile(filename, result.output)
   else:
-    try:
-      var p = startProcess(cmd, workingDir,
-                           options={poEvalCommand, poStderrToStdout})
-      if input.len != 0:
-        p.inputStream.write(input)
-        p.inputStream.close()
-      result = p.readOutput
-    except IOError, OSError:
-      result = ""
+    result = execute(cmd, input, workingDir, info)
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:

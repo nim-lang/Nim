@@ -543,7 +543,7 @@ type
     mNone,
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
-    mEcho, mShallowCopy, mSlurp, mStaticExec,
+    mEcho, mShallowCopy, mSlurp, mStaticExec, mStaticExecEx,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
