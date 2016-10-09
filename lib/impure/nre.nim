@@ -431,7 +431,6 @@ proc initRegex(pattern: string, flags: int, study = true): Regex =
     raise SyntaxError(msg: $errorMsg, pos: errOffset, pattern: pattern)
 
   if study:
-    # XXX investigate JIT
     var options: cint = 0
     var hasJit: cint
     if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
