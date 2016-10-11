@@ -783,24 +783,24 @@ proc years*(y: int): TimeInterval {.inline.} =
 
 proc `+=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by adding the interval `ti`
-  t = toTime(getLocalTime(t) + ti)
+  t = toTime(getGMTime(t) + ti)
 
 proc `+`*(t: Time, ti: TimeInterval): Time =
   ## adds the interval `ti` to Time `t`
-  ## by converting to localTime, adding the interval, and converting back
+  ## by converting to GMTime, adding the interval, and converting back
   ##
   ## ``echo getTime() + 1.day``
-  result = toTime(getLocalTime(t) + ti)
+  result = toTime(getGMTime(t) + ti)
 
 proc `-=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by subtracting the interval `ti`
-  t = toTime(getLocalTime(t) - ti)
+  t = toTime(getGMTime(t) - ti)
 
 proc `-`*(t: Time, ti: TimeInterval): Time =
   ## adds the interval `ti` to Time `t`
   ##
   ## ``echo getTime() - 1.day``
-  result = toTime(getLocalTime(t) - ti)
+  result = toTime(getGMTime(t) - ti)
 
 proc formatToken(info: TimeInfo, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
