@@ -459,8 +459,8 @@ when not defined(JS):
     importc: "gmtime", header: "<time.h>", tags: [].}
   proc timec(timer: ptr Time): Time {.
     importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: StructTM): Time {.
-    importc: "mktime", header: "<time.h>", tags: [].}
+  proc timegm(t: StructTM): Time {.
+    importc: "timegm", header: "<time.h>", tags: [].}
   proc asctime(tblock: StructTM): cstring {.
     importc: "asctime", header: "<time.h>", tags: [].}
   proc ctime(time: ptr Time): cstring {.
@@ -568,13 +568,13 @@ when not defined(JS):
 
   proc timeInfoToTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    return mktime(timeInfoToTM(cTimeInfo))
+    # because the header of timegm is broken in my version of libc
+    return timegm(timeInfoToTM(cTimeInfo))
 
   proc toTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    return mktime(timeInfoToTM(cTimeInfo))
+    # because the header of timegm is broken in my version of libc
+    return timegm(timeInfoToTM(cTimeInfo))
 
   proc toStringTillNL(p: cstring): string =
     result = ""
