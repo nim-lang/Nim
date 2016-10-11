@@ -445,6 +445,15 @@ proc gcInvariant*() =
     markForDebug(gch)
 {.pop.}
 
+template setFrameInfo(c: PCell) =
+  when leakDetector:
+    if framePtr != nil and framePtr.prev != nil:
+      c.filename = framePtr.prev.filename
+      c.line = framePtr.prev.line
+    else:
+      c.filename = nil
+      c.line = 0
+
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   sysAssert(allocInv(gch.region), "rawNewObj begin")
@@ -455,13 +464,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector:
-    res.filename = nil
-    res.line = 0
-    when not hasThreadSupport:
-      if framePtr != nil and framePtr.prev != nil:
-        res.filename = framePtr.prev.filename
-        res.line = framePtr.prev.line
+  setFrameInfo(res)
   # refcount is zero, color is black, but mark it to be in the ZCT
   res.refcount = ZctFlag
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
@@ -509,13 +512,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector:
-    res.filename = nil
-    res.line = 0
-    when not hasThreadSupport:
-      if framePtr != nil and framePtr.prev != nil:
-        res.filename = framePtr.prev.filename
-        res.line = framePtr.prev.line
+  setFrameInfo(res)
   res.refcount = rcIncrement # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   when logGC: writeCell("new cell", res)
