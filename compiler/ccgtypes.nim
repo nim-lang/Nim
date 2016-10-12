@@ -475,11 +475,11 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
         hasField = true
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
-                      [getTypeDescAux(m, typ.sons[0], check)])
+                      [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
-                      [getTypeDescAux(m, typ.sons[0], check)])
+                      [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       hasField = true
   else:
     addf(result, " {$n", [name])
@@ -546,7 +546,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   of tyRef, tyPtr, tyVar:
     var star = if t.kind == tyVar and tfVarIsPtr notin typ.flags and
                     compileToCpp(m): "&" else: "*"
-    var et = t.lastSon
+    var et = typ.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
     if etB.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}:
       # this is correct! sets have no proper base type, so we treat
@@ -744,14 +744,6 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
           "void* ClEnv;$n} $1;$n",
            [result, rettype, desc])
 
-proc getTypeDesc(m: BModule, magic: string): Rope =
-  var sym = magicsys.getCompilerProc(magic)
-  if sym != nil:
-    result = getTypeDesc(m, sym.typ)
-  else:
-    rawMessage(errSystemNeeds, magic)
-    result = nil
-
 proc finishTypeDescriptions(m: BModule) =
   var i = 0
   while i < len(m.typeStack):
@@ -820,7 +812,9 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
   var base: Rope
   if (sonsLen(typ) > 0) and (typ.sons[0] != nil):
-    base = genTypeInfo(m, typ.sons[0])
+    var x = typ.sons[0]
+    if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
+    base = genTypeInfo(m, x)
   else:
     base = rope("0")
   genTypeInfoAuxBase(m, typ, origType, name, base)
@@ -894,10 +888,11 @@ proc genObjectFields(m: BModule, typ: PType, n: PNode, expr: Rope) =
       else: internalError(n.info, "genObjectFields(nkRecCase)")
   of nkSym:
     var field = n.sym
-    addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
-        "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
-        "$1.name = $5;$n", [expr, getTypeDesc(m, typ),
-        field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
+    if field.bitsize == 0:
+      addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
+          "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
+          "$1.name = $5;$n", [expr, getTypeDesc(m, typ),
+          field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
   else: internalError(n.info, "genObjectFields")
 
 proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
@@ -909,7 +904,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
   addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
   while t != nil:
-    t = t.skipTypes(abstractInst)
+    t = t.skipTypes(skipPtrs)
     t.flags.incl tfObjHasKids
     t = t.sons[0]
 
@@ -1000,9 +995,6 @@ proc fakeClosureType(owner: PSym): PType =
 type
   TTypeInfoReason = enum  ## for what do we need the type info?
     tiNew,                ## for 'new'
-    tiNewSeq,             ## for 'newSeq'
-    tiNonVariantAsgn,     ## for generic assignment without variants
-    tiVariantAsgn         ## for generic assignment with variants
 
 include ccgtrav
 

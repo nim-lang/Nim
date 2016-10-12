@@ -39,13 +39,16 @@ proc semStmt(c: PContext, n: PNode): PNode
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
-proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
+
+proc isArrayConstr(n: PNode): bool {.inline.} =
+  result = n.kind == nkBracket and
+    n.typ.skipTypes(abstractInst).kind == tyArray
 
 template semIdeForTemplateOrGenericCheck(n, requiresCheck) =
   # we check quickly if the node is where the cursor is
@@ -187,7 +190,6 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
   # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
-proc semStmtScope(c: PContext, n: PNode): PNode
 
 proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
   let t = typeAllowed(typ, kind)
@@ -252,7 +254,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = arg
       # for 'tcnstseq' we support [] to become 'seq'
       if eOrig.typ.skipTypes(abstractInst).kind == tySequence and
-         arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
+         isArrayConstr(arg):
         arg.typ = eOrig.typ
 
 proc tryConstExpr(c: PContext, n: PNode): PNode =
@@ -445,6 +447,8 @@ proc isImportSystemStmt(n: PNode): bool =
   else: discard
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
+  if n.kind == nkDefer:
+    localError(n.info, "defer statement not supported at top level")
   if c.topStmts == 0 and not isImportSystemStmt(n):
     if sfSystemModule notin c.module.flags and
         n.kind notin {nkEmpty, nkCommentStmt}:

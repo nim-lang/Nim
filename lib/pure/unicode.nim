@@ -24,7 +24,7 @@ proc `<=%`*(a, b: Rune): bool = return int(a) <=% int(b)
 proc `<%`*(a, b: Rune): bool = return int(a) <% int(b)
 proc `==`*(a, b: Rune): bool = return int(a) == int(b)
 
-template ones(n: expr): expr = ((1 shl n)-1)
+template ones(n: untyped): untyped = ((1 shl n)-1)
 
 proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
   ## Returns the number of Unicode characters of the string ``s``
@@ -49,7 +49,7 @@ proc runeLenAt*(s: string, i: Natural): int =
   elif ord(s[i]) shr 1 == 0b1111110: result = 6
   else: result = 1
 
-template fastRuneAt*(s: string, i: int, result: expr, doInc = true) =
+template fastRuneAt*(s: string, i: int, result: untyped, doInc = true) =
   ## Returns the Unicode character ``s[i]`` in ``result``. If ``doInc == true``
   ## ``i`` is incremented by the number of bytes that have been processed.
   bind ones
@@ -1628,7 +1628,7 @@ proc reversed*(s: string): string =
     blockPos = 0
     r: Rune
 
-  template reverseUntil(pos): stmt =
+  template reverseUntil(pos) =
     var j = pos - 1
     while j > blockPos:
       result[newPos] = s[j]

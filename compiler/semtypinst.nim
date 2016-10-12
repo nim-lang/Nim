@@ -86,7 +86,7 @@ type
 
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
-proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode): PNode
+proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0): PNode
 
 template checkMetaInvariants(cl: TReplTypeVars, t: PType) =
   when false:
@@ -151,7 +151,7 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
 
   return n
 
-proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
+proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   if n == nil: return
   result = copyNode(n)
   if n.typ != nil:
@@ -195,7 +195,9 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode): PNode =
     var length = sonsLen(n)
     if length > 0:
       newSons(result, length)
-      for i in countup(0, length - 1):
+      if start > 0:
+        result.sons[0] = n.sons[0]
+      for i in countup(start, length - 1):
         result.sons[i] = replaceTypeVarsN(cl, n.sons[i])
 
 proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
@@ -462,8 +464,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
               r = skipTypes(r2, {tyPtr, tyRef})
           result.sons[i] = r
           propagateToOwner(result, r)
-
-      result.n = replaceTypeVarsN(cl, result.n)
+      # bug #4677: Do not instantiate effect lists
+      result.n = replaceTypeVarsN(cl, result.n, ord(result.kind==tyProc))
 
       case result.kind
       of tyArray:

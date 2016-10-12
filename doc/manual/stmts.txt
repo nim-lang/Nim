@@ -462,10 +462,10 @@ While statement
 Example:
 
 .. code-block:: nim
-  echo "Please tell me your password: \n"
+  echo "Please tell me your password:"
   var pw = readLine(stdin)
   while pw != "12345":
-    echo "Wrong password! Next try: \n"
+    echo "Wrong password! Next try:"
     pw = readLine(stdin)
 
 

@@ -259,3 +259,13 @@ proc tcFlow*(fd: cint; action: cint): cint {.importc: "tcflow",
 # Get process group ID for session leader for controlling terminal FD.
 
 proc tcGetSid*(fd: cint): Pid {.importc: "tcgetsid", header: "<termios.h>".}
+
+# Window size ioctl.  Should work on on any Unix that xterm has been ported to.
+var TIOCGWINSZ*{.importc, header: "<sys/ioctl.h>".}: culong
+
+type IOctl_WinSize* {.importc: "struct winsize", header: "<sys/ioctl.h>",
+                      final, pure.} = object
+  ws_row*, ws_col*, ws_xpixel*, ws_ypixel*: cushort
+
+proc ioctl*(fd: cint, request: culong, reply: ptr IOctl_WinSize): int {.
+  importc: "ioctl", header: "<stdio.h>", varargs.}

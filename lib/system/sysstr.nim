@@ -110,6 +110,11 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     result.len = src.len
     copyMem(addr(result.data), addr(src.data), src.len + 1)
 
+proc copyDeepString(src: NimString): NimString {.inline.} =
+  if src != nil:
+    result = rawNewStringNoInit(src.len)
+    result.len = src.len
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
@@ -292,7 +297,7 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
     buf[n+2] = '\0'
   # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
   # We want to get rid of these here:
-  if buf[n-1] == 'N':
+  if buf[n-1] in {'n', 'N'}:
     result = "nan"
   elif buf[n-1] == 'F':
     if buf[0] == '-':

@@ -375,6 +375,11 @@ proc contains*(s: Selector, key: SelectorKey): bool =
   when not defined(nimdoc):
     return key.fd in s and s.fds[key.fd] == key
 
+proc len*(s: Selector): int =
+  ## Retrieves the number of registered file descriptors in this Selector.
+  when not defined(nimdoc):
+    return s.fds.len
+
 {.deprecated: [TEvent: Event, PSelectorKey: SelectorKey,
    TReadyInfo: ReadyInfo, PSelector: Selector].}
 

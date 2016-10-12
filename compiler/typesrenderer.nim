@@ -19,20 +19,14 @@ proc renderPlainSymbolName*(n: PNode): string =
   ## for the HTML hyperlinks.
   result = ""
   case n.kind
-  of nkPostfix:
-    for i in 0 .. <n.len:
-      result = renderPlainSymbolName(n[<n.len])
-      if result.len > 0:
-        return
+  of nkPostfix, nkAccQuoted:
+    result = renderPlainSymbolName(n[<n.len])
   of nkIdent:
-    if n.ident.s != "*":
-      result = n.ident.s
+    result = n.ident.s
   of nkSym:
     result = n.sym.renderDefinitionName(noQuotes = true)
   of nkPragmaExpr:
     result = renderPlainSymbolName(n[0])
-  of nkAccQuoted:
-    result = renderPlainSymbolName(n[<n.len])
   else:
     internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
   assert(not result.isNil)

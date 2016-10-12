@@ -65,7 +65,7 @@ type
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
     errXCannotBePassedToProcVar,
-    errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProc, errImplOfXNotAllowed,
+    errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProcX, errImplOfXNotAllowed,
     errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValueX,
     errInvalidDiscard, errIllegalConvFromXtoY, errCannotBindXTwice,
     errInvalidOrderInArrayConstructor,
@@ -274,7 +274,7 @@ const
     errWrongNumberOfArguments: "wrong number of arguments",
     errXCannotBePassedToProcVar: "\'$1\' cannot be passed to a procvar",
     errXCannotBeInParamDecl: "$1 cannot be declared in parameter declaration",
-    errPragmaOnlyInHeaderOfProc: "pragmas are only allowed in the header of a proc",
+    errPragmaOnlyInHeaderOfProcX: "pragmas are only allowed in the header of a proc; redefinition of $1",
     errImplOfXNotAllowed: "implementation of \'$1\' is not allowed",
     errImplOfXexpected: "implementation of \'$1\' expected",
     errNoSymbolToBorrowFromFound: "no symbol to borrow from found",
@@ -521,7 +521,7 @@ const
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace},
+    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
 
 const
@@ -660,8 +660,6 @@ const
   WarningColor = fgYellow
   HintTitle    = "Hint: "
   HintColor    = fgGreen
-  InfoTitle    = "Info: "
-  InfoColor    = fgCyan
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)

@@ -47,7 +47,7 @@ proc rawHandleSelf(c: PContext; owner: PSym) =
         while t.kind == tyObject:
           addObjFieldsToLocalScope(c, t.n)
           if t.sons[0] == nil: break
-          t = t.sons[0].skipTypes(abstractPtrs)
+          t = t.sons[0].skipTypes(skipPtrs)
 
 proc pushProcCon*(c: PContext; owner: PSym) =
   rawPushProcCon(c, owner)
@@ -97,22 +97,6 @@ proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
       if inst.compilesId == id and sameInstantiation(entry, inst[]):
         return inst.sym
 
-proc removeDefaultParamValues(n: PNode) =
-  # we remove default params, because they cannot be instantiated properly
-  # and they are not needed anyway for instantiation (each param is already
-  # provided).
-  when false:
-    for i in countup(1, sonsLen(n)-1):
-      var a = n.sons[i]
-      if a.kind != nkIdentDefs: IllFormedAst(a)
-      var L = a.len
-      if a.sons[L-1].kind != nkEmpty and a.sons[L-2].kind != nkEmpty:
-        # ``param: typ = defaultVal``.
-        # We don't need defaultVal for semantic checking and it's wrong for
-        # ``cmp: proc (a, b: T): int = cmp``. Hm, for ``cmp = cmp`` that is
-        # not possible... XXX We don't solve this issue here.
-        a.sons[L-1] = ast.emptyNode
-
 proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
   if n.kind == nkSym and sfGenSym in n.sym.flags and n.sym.owner == orig:
@@ -127,17 +111,6 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
-
-proc addProcDecls(c: PContext, fn: PSym) =
-  # get the proc itself in scope (e.g. for recursion)
-  addDecl(c, fn)
-
-  for i in 1 .. <fn.typ.n.len:
-    var param = fn.typ.n.sons[i].sym
-    param.owner = fn
-    addParamOrResult(c, param, fn.kind)
-
-  maybeAddResult(c, fn, fn.ast)
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
@@ -172,9 +145,10 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       popInfoContext()
 
 proc sideEffectsCheck(c: PContext, s: PSym) =
-  if {sfNoSideEffect, sfSideEffect} * s.flags ==
-      {sfNoSideEffect, sfSideEffect}:
-    localError(s.info, errXhasSideEffects, s.name.s)
+  when false:
+    if {sfNoSideEffect, sfSideEffect} * s.flags ==
+        {sfNoSideEffect, sfSideEffect}:
+      localError(s.info, errXhasSideEffects, s.name.s)
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
@@ -186,9 +160,6 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
   result = replaceTypeVarsT(cl, header)
-
-proc instGenericContainer(c: PContext, n: PNode, header: PType): PType =
-  result = instGenericContainer(c, n.info, header)
 
 proc instantiateProcType(c: PContext, pt: TIdTable,
                           prc: PSym, info: TLineInfo) =

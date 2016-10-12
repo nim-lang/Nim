@@ -44,14 +44,21 @@ when defined(nimdoc):
 
     Event* {.pure.} = enum
       ## An enum which hold event types
-      Read,    ## Descriptor is available for read
-      Write,   ## Descriptor is available for write
-      Timer,   ## Timer descriptor is completed
-      Signal,  ## Signal is raised
-      Process, ## Process is finished
-      Vnode,   ## Currently not supported
-      User,    ## User event is raised
-      Error    ## Error happens while waiting, for descriptor
+      Read,        ## Descriptor is available for read
+      Write,       ## Descriptor is available for write
+      Timer,       ## Timer descriptor is completed
+      Signal,      ## Signal is raised
+      Process,     ## Process is finished
+      Vnode,       ## BSD specific file change happens
+      User,        ## User event is raised
+      Error,       ## Error happens while waiting, for descriptor
+      VnodeWrite,  ## NOTE_WRITE (BSD specific, write to file occured)
+      VnodeDelete, ## NOTE_DELETE (BSD specific, unlink of file occured)
+      VnodeExtend, ## NOTE_EXTEND (BSD specific, file extended)
+      VnodeAttrib, ## NOTE_ATTRIB (BSD specific, file attributes changed)
+      VnodeLink,   ## NOTE_LINK (BSD specific, file link count changed)
+      VnodeRename, ## NOTE_RENAME (BSD specific, file renamed)
+      VnodeRevoke  ## NOTE_REVOKE (BSD specific, file revoke occured)
 
     ReadyKey*[T] = object
       ## An object which holds result for descriptor
@@ -106,6 +113,15 @@ when defined(nimdoc):
     ## Registers selector event ``ev`` to selector ``s``.
     ## ``data`` application-defined data, which to be passed, when
     ## ``ev`` happens.
+
+  proc registerVnode*[T](s: Selector[T], fd: cint, events: set[Event],
+                         data: T) =
+    ## Registers selector BSD/MacOSX specific vnode events for file
+    ## descriptor ``fd`` and events ``events``.
+    ## ``data`` application-defined data, which to be passed, when
+    ## vnode event happens.
+    ##
+    ## This function is supported only by BSD and MacOSX.
 
   proc newSelectEvent*(): SelectEvent =
     ## Creates new event ``SelectEvent``.
@@ -194,7 +210,9 @@ else:
       deallocShared(cast[pointer](sa))
   type
     Event* {.pure.} = enum
-      Read, Write, Timer, Signal, Process, Vnode, User, Error, Oneshot
+      Read, Write, Timer, Signal, Process, Vnode, User, Error, Oneshot,
+      VnodeWrite, VnodeDelete, VnodeExtend, VnodeAttrib, VnodeLink,
+      VnodeRename, VnodeRevoke
 
     ReadyKey*[T] = object
       fd* : int

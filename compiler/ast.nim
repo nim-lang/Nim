@@ -437,7 +437,7 @@ type
     nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
-    nfIsCursor  # this node is attached a cursor; used for idetools
+    nfPreventCg # this node should be ignored by the codegen
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 28)
@@ -725,10 +725,7 @@ type
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
-    r*: Rope                 # rope value of location (code generators)
-    heapRoot*: Rope          # keeps track of the enclosing heap object that
-                              # owns this location (required by GC algorithms
-                              # employing heap snapshots or sliding views)
+    r*: Rope                  # rope value of location (code generators)
 
   # ---------------- end of backend information ------------------------------
 
@@ -746,10 +743,6 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
-    usedBy*: seq[int32]       # list of modules using the generic
-                              # needed in caas mode for purging the cache
-                              # XXX: it's possible to switch to a
-                              # simple ref count here
     compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
@@ -767,7 +760,6 @@ type
     case kind*: TSymKind
     of skType, skGenericParam:
       typeInstCache*: seq[PType]
-      typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
@@ -862,9 +854,6 @@ type
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
-  TTable* = object   # the same as table[PObject] of PObject
-    counter*: int
-    data*: TPairSeq
 
   TIdPair* = object
     key*: PIdObj
@@ -936,7 +925,7 @@ const
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfIsRef, nfIsCursor, nfLL}
+                                      nfIsRef, nfPreventCg, nfLL}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1106,12 +1095,6 @@ proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
   if isNil(src.data): return
   newSeq(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
-
-proc copyTable*(dest: var TTable, src: TTable) =
-  dest.counter = src.counter
-  if isNil(src.data): return
-  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
@@ -1327,10 +1310,6 @@ proc initStrTable*(x: var TStrTable) =
 proc newStrTable*: TStrTable =
   initStrTable(result)
 
-proc initTable(x: var TTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
 proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
@@ -1429,6 +1408,7 @@ proc copyNode*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1447,6 +1427,7 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1466,6 +1447,7 @@ proc copyTree*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1511,19 +1493,9 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc replaceSons(n: PNode, oldKind, newKind: TNodeKind) =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i].kind == oldKind: n.sons[i].kind = newKind
-
-proc sonsNotNil(n: PNode): bool =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i] == nil:
-      return false
-  result = true
-
 proc getInt*(a: PNode): BiggestInt =
   case a.kind
-  of nkIntLit..nkUInt64Lit: result = a.intVal
+  of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
     internalError(a.info, "getInt")
     result = 0

@@ -516,12 +516,11 @@ pre .end { background:url("images/tabEnd.png") no-repeat left bottom; }
       padding:5px 30px;
       margin-bottom:20px;
       border:8px solid rgba(0,0,0,.8);
-      border-right-width:16px;
+      border-right-width:0;
       border-top-width:0;
       border-bottom-width:0;
       border-radius:3px;
-      background:rgba(0,0,0,0.1);
-      box-shadow:1px 3px 12px rgba(0,0,0,.4); }
+      background:rgba(0,0,0,0.1); }
     .standout h2 { margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed rgba(0,0,0,.8); }
     .standout li { margin:0 !important; padding-top:10px; border-top:1px dashed rgba(0,0,0,.2); }
     .standout ul { padding-bottom:5px; }
@@ -609,6 +608,15 @@ dt.level-1 {
 p.lastUpdate {
   font-size: 12pt;
   color: #6d6d6d;
+}
+
+/* quotes */
+
+blockquote {
+  padding: 0px 8px;
+  margin: 10px 0px;
+  border-left: 2px solid rgb(61, 61, 61);
+  color: rgb(109, 109, 109);
 }
 
 /* News articles */

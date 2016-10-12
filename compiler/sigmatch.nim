@@ -352,18 +352,28 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
-proc isObjectSubtype(a, f: PType): int =
+proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var t = a
   assert t.kind == tyObject
   var depth = 0
+  var last = a
   while t != nil and not sameObjectTypes(f, t):
     assert t.kind == tyObject
     t = t.sons[0]
     if t == nil: break
-    t = skipTypes(t, {tyGenericInst})
+    last = t
+    t = skipTypes(t, skipPtrs)
     inc depth
   if t != nil:
+    if fGenericOrigin != nil and last.kind == tyGenericInst and
+        last.len-1 == fGenericOrigin.len:
+      for i in countup(1, sonsLen(fGenericOrigin) - 1):
+        let x = PType(idTableGet(c.bindings, fGenericOrigin.sons[i]))
+        if x == nil:
+          put(c, fGenericOrigin.sons[i], last.sons[i])
     result = depth
+  else:
+    result = -1
 
 type
   SkippedPtr = enum skippedNone, skippedRef, skippedPtr
@@ -840,12 +850,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
       if result < isGeneric: result = isNone
-    of tyArrayConstr:
-      if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty):
-        result = isSubtype    # [] is allowed here
-      elif typeRel(c, base(f), a.sons[1]) >= isGeneric:
-        result = isSubtype
-    of tyArray:
+    of tyArray, tyArrayConstr:
       if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty):
         result = isSubtype
       elif typeRel(c, base(f), a.sons[1]) >= isGeneric:
@@ -896,7 +901,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isEqual
         # elif tfHasMeta in f.flags: result = recordRel(c, f, a)
       else:
-        var depth = isObjectSubtype(a, f)
+        var depth = isObjectSubtype(c, a, f, nil)
         if depth > 0:
           inc(c.inheritancePenalty, depth)
           result = isSubtype
@@ -1012,6 +1017,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = isGeneric
     else:
       let genericBody = f.sons[0]
+      var askip = skippedNone
+      var fskip = skippedNone
+      let aobj = x.skipToObject(askip)
+      let fobj = genericBody.lastSon.skipToObject(fskip)
+      if fobj != nil and aobj != nil and askip == fskip:
+        let depth = isObjectSubtype(c, aobj, fobj, f)
+        if depth >= 0:
+          c.inheritancePenalty += depth
+          return if depth == 0: isGeneric else: isSubtype
       result = typeRel(c, genericBody, x)
       if result != isNone:
         # see tests/generics/tgeneric3.nim for an example that triggers this
@@ -1075,7 +1089,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyBuiltInTypeClass:
     considerPreviousT:
       let targetKind = f.sons[0].kind
-      if targetKind == a.skipTypes({tyRange, tyGenericInst}).kind or
+      if targetKind == a.skipTypes({tyRange, tyGenericInst, tyBuiltInTypeClass}).kind or
          (targetKind in {tyProc, tyPointer} and a.kind == tyNil):
         put(c, f, a)
         return isGeneric
@@ -1310,8 +1324,9 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semOverloadedCall(c, call, call, routineKinds)
+  result = c.semExpr(c, call)
   if result != nil:
+    if result.typ == nil: return nil
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f.sons[0], result.typ)
     if r < isGeneric: return nil
@@ -1320,13 +1335,6 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
     m.baseTypeMatch = true
-    # bug #4545: allow the call to go through a 'var T':
-    let vt = result.sons[0].typ.sons[1]
-    if vt.kind == tyVar:
-      let x = result.sons[1]
-      let va = newNodeIT(nkHiddenAddr, x.info, vt)
-      va.add x
-      result.sons[1] = va
 
 proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   case r
@@ -1559,8 +1567,13 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
 
 
 proc setSon(father: PNode, at: int, son: PNode) =
-  if sonsLen(father) <= at: setLen(father.sons, at + 1)
+  let oldLen = father.len
+  if oldLen <= at:
+    setLen(father.sons, at + 1)
   father.sons[at] = son
+  # insert potential 'void' parameters:
+  #for i in oldLen ..< at:
+  #  father.sons[i] = newNodeIT(nkEmpty, son.info, getSysType(tyVoid))
 
 # we are allowed to modify the calling node in the 'prepare*' procs:
 proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
@@ -1591,17 +1604,17 @@ proc prepareNamedParam(a: PNode) =
     a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
 
 proc arrayConstr(c: PContext, n: PNode): PType =
-  result = newTypeS(tyArrayConstr, c)
+  result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, 0, n.info))
   addSonSkipIntLit(result, skipTypes(n.typ, {tyGenericInst, tyVar, tyOrdinal}))
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
-  result = newTypeS(tyArrayConstr, c)
+  result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, -1, info))
   rawAddSon(result, newTypeS(tyEmpty, c)) # needs an empty basetype!
 
 proc incrIndexType(t: PType) =
-  assert t.kind == tyArrayConstr
+  assert t.kind == tyArray
   inc t.sons[0].n.sons[1].intVal
 
 template isVarargsUntyped(x): untyped =

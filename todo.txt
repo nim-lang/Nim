@@ -53,7 +53,6 @@ Bugs
 - VM: ptr/ref T cannot work in general
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - ConcreteTypes in a 'case' means we don't check for duplicated case branches
-- BUG: echo with template `$`*(info: TLineInfo): expr = toFileLineCol(info)
 
 
 GC

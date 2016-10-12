@@ -110,6 +110,8 @@ proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
   result = newOrPrevType(kind, prev, c)
   if sonsLen(n) == 2:
     var base = semTypeNode(c, n.sons[1], nil)
+    if base.kind == tyVoid:
+      localError(n.info, errTIsNotAConcreteType, typeToString(base))
     addSonSkipIntLit(result, base)
   else:
     localError(n.info, errXExpectsOneTypeParam, kindStr)
@@ -659,11 +661,12 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   if n.sonsLen == 0: return newConstraint(c, tyObject)
   var check = initIntSet()
   var pos = 0
-  var base: PType = nil
+  var base, realBase: PType = nil
   # n.sons[0] contains the pragmas (if any). We process these later...
   checkSonsLen(n, 3)
   if n.sons[1].kind != nkEmpty:
-    base = skipTypesOrNil(semTypeNode(c, n.sons[1].sons[0], nil), skipPtrs)
+    realBase = semTypeNode(c, n.sons[1].sons[0], nil)
+    base = skipTypesOrNil(realBase, skipPtrs)
     if base.isNil:
       localError(n.info, errIllegalRecursionInTypeX, "object")
     else:
@@ -674,9 +677,10 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
         if concreteBase.kind != tyError:
           localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
         base = nil
+        realBase = nil
   if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
-  rawAddSon(result, base)
+  rawAddSon(result, realBase)
   if result.n.isNil:
     result.n = newNodeI(nkRecList, n.info)
   else:
@@ -1137,14 +1141,12 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
   checkSonsLen(n, 2)
   openScope(c)
   result = semProcTypeNode(c, n.sons[0], nil, prev, kind, isType=true)
+  # start with 'ccClosure', but of course pragmas can overwrite this:
+  result.callConv = ccClosure
   # dummy symbol for `pragma`:
   var s = newSymS(kind, newIdentNode(getIdent("dummy"), n.info), c)
   s.typ = result
-  if n.sons[1].kind == nkEmpty or n.sons[1].len == 0:
-    if result.callConv == ccDefault:
-      result.callConv = ccClosure
-      #Message(n.info, warnImplicitClosure, renderTree(n))
-  else:
+  if n.sons[1].kind != nkEmpty and n.sons[1].len > 0:
     pragma(c, s, n.sons[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(result, n.sons[1])
   closeScope(c)

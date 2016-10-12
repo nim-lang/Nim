@@ -7,11 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(nodejs):
-  proc alert*(s: cstring) {.importc: "console.log", nodecl.}
-else:
-  proc alert*(s: cstring) {.importc, nodecl.}
-
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
@@ -52,11 +47,30 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result = newString(1)
   result[0] = x
 
+proc isNimException(): bool {.asmNoStackFrame.} =
+  when defined(nimphp):
+    asm "return isset(`lastJSError`['m_type']);"
+  else:
+    asm "return `lastJSError`.m_type;"
+
+proc getCurrentException*(): ref Exception =
+  if isNimException(): result = cast[ref Exception](lastJSError)
+
 proc getCurrentExceptionMsg*(): string =
   if lastJSError != nil:
-    return $lastJSError.message
-  else:
-    return ""
+    if isNimException():
+      return cast[Exception](lastJSError).msg
+    else:
+      when not defined(nimphp):
+        var msg: cstring
+        {.emit: """
+        if (`lastJSError`.message !== undefined) {
+          `msg` = `lastJSError`.message;
+        }
+        """.}
+        if not msg.isNil:
+          return $msg
+  return ""
 
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
@@ -91,54 +105,56 @@ proc auxWriteStackTrace(f: PCallFrame): string =
 proc rawWriteStackTrace(): string =
   if framePtr != nil:
     result = "Traceback (most recent call last)\n" & auxWriteStackTrace(framePtr)
-    framePtr = nil
-  elif lastJSError != nil:
-    result = $lastJSError.stack
   else:
     result = "No stack traceback available\n"
 
 proc getStackTrace*(): string = rawWriteStackTrace()
+proc getStackTrace*(e: ref Exception): string = e.trace
 
 proc unhandledException(e: ref Exception) {.
     compilerproc, asmNoStackFrame.} =
-  when NimStackTrace:
-    var buf = rawWriteStackTrace()
+  var buf = ""
+  if e.msg != nil and e.msg[0] != '\0':
+    add(buf, "Error: unhandled exception: ")
+    add(buf, e.msg)
   else:
-    var buf = ""
-    if e.msg != nil and e.msg[0] != '\0':
-      add(buf, "Error: unhandled exception: ")
-      add(buf, e.msg)
-    else:
-      add(buf, "Error: unhandled exception")
-    add(buf, " [")
-    add(buf, e.name)
-    add(buf, "]\n")
-    alert(buf)
+    add(buf, "Error: unhandled exception")
+  add(buf, " [")
+  add(buf, e.name)
+  add(buf, "]\n")
+  when NimStackTrace:
+    add(buf, rawWriteStackTrace())
+  let cbuf : cstring = buf
+  framePtr = nil
+  {.emit: """
+  if (typeof(Error) !== "undefined") {
+    throw new Error(`cbuf`);
+  }
+  else {
+    throw `cbuf`;
+  }
+  """.}
 
 proc raiseException(e: ref Exception, ename: cstring) {.
     compilerproc, asmNoStackFrame.} =
   e.name = ename
-  when not defined(noUnhandledHandler):
-    if excHandler == 0:
-      unhandledException(e)
+  if excHandler == 0:
+    unhandledException(e)
   when defined(nimphp):
     asm """throw new Exception($`e`["message"]);"""
   else:
+    when NimStackTrace:
+      e.trace = rawWriteStackTrace()
     asm "throw `e`;"
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if lastJSError == nil:
     raise newException(ReraiseError, "no exception to reraise")
   else:
-    when not defined(noUnhandledHandler):
-      if excHandler == 0:
-        var isNimException: bool
-        when defined(nimphp):
-          asm "`isNimException` = isset(`lastJSError`['m_type']);"
-        else:
-          asm "`isNimException` = lastJSError.m_type;"
-        if isNimException:
-          unhandledException(cast[ref Exception](lastJSError))
+    if excHandler == 0:
+      if isNimException():
+        unhandledException(cast[ref Exception](lastJSError))
+
     asm "throw lastJSError;"
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
@@ -873,3 +889,10 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {
   # evaluate sign
   number = number * sign
   result = i - start
+
+when defined(nodejs):
+  # Deprecated. Use `alert` defined in dom.nim
+  proc alert*(s: cstring) {.importc: "console.log", nodecl, deprecated.}
+else:
+  # Deprecated. Use `alert` defined in dom.nim
+  proc alert*(s: cstring) {.importc, nodecl, deprecated.}

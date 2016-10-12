@@ -172,7 +172,7 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
     if field != nil: break
     t = t.sons[0]
     if t == nil: break
-    t = t.skipTypes(abstractInst)
+    t = t.skipTypes(skipPtrs)
   #if field == nil:
   #  echo "FIELD ", b
   #  debug deref.typ
@@ -193,7 +193,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
     if result != nil: break
     t = t.sons[0]
     if t == nil: break
-    t = t.skipTypes(abstractInst)
+    t = t.skipTypes(skipPtrs)
 
 proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
   # returns a[].b as a node

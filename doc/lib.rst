@@ -582,4 +582,4 @@ Nim programming language.
   nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
   <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList"></script>
+  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>

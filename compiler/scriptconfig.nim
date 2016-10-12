@@ -43,6 +43,7 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
   template cbos(name, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
+        errorMsg = nil
         try:
           body
         except OSError:
@@ -150,7 +151,7 @@ proc runNimScript*(scriptName: string; freshDefines=true) =
   vm.globalCtx = setupVM(m, scriptName)
 
   compileSystemModule()
-  processModule(m, llStreamOpen(scriptName, fmRead), nil)
+  discard processModule(m, llStreamOpen(scriptName, fmRead), nil)
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetAllModulesHard()

@@ -16,8 +16,6 @@ import
   condsyms, ropes, idents, securehash, rodread, passes, importer, idgen,
   rodutils
 
-# implementation
-
 type
   TRodWriter = object of TPassContext
     module: PSym
@@ -38,13 +36,6 @@ type
     origFile: string
 
   PRodWriter = ref TRodWriter
-
-proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter
-proc addModDep(w: PRodWriter, dep: string)
-proc addInclDep(w: PRodWriter, dep: string)
-proc addInterfaceSym(w: PRodWriter, s: PSym)
-proc addStmt(w: PRodWriter, n: PNode)
-proc writeRod(w: PRodWriter)
 
 proc getDefines(): string =
   result = ""
@@ -83,19 +74,20 @@ proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter =
   result.converters = ""
   result.methods = ""
   result.init = ""
-  result.origFile = module.info.toFilename
+  result.origFile = module.info.toFullPath
   result.data = newStringOfCap(12_000)
 
-proc addModDep(w: PRodWriter, dep: string) =
+proc addModDep(w: PRodWriter, dep: string; info: TLineInfo) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
-  encodeVInt(fileIdx(w, dep), w.modDeps)
+  let resolved = dep.findModule(info.toFullPath)
+  encodeVInt(fileIdx(w, resolved), w.modDeps)
 
 const
   rodNL = "\x0A"
 
-proc addInclDep(w: PRodWriter, dep: string) =
-  var resolved = dep.findModule(w.module.info.toFullPath)
-  encodeVInt(fileIdx(w, dep), w.inclDeps)
+proc addInclDep(w: PRodWriter, dep: string; info: TLineInfo) =
+  let resolved = dep.findModule(info.toFullPath)
+  encodeVInt(fileIdx(w, resolved), w.inclDeps)
   add(w.inclDeps, " ")
   encodeStr($secureHashFile(resolved), w.inclDeps)
   add(w.inclDeps, rodNL)
@@ -108,6 +100,10 @@ proc pushType(w: PRodWriter, t: PType) =
 proc pushSym(w: PRodWriter, s: PSym) =
   # check so that the stack does not grow too large:
   if iiTableGet(w.index.tab, s.id) == InvalidKey:
+    when false:
+      if s.kind == skMethod:
+        echo "encoding ", s.id, " ", s.name.s
+        writeStackTrace()
     w.sstack.add(s)
 
 proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
@@ -127,7 +123,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     result.add(',')
     encodeVInt(n.info.line, result)
     result.add(',')
-    encodeVInt(fileIdx(w, toFilename(n.info)), result)
+    encodeVInt(fileIdx(w, toFullPath(n.info)), result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -147,7 +143,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.typ.id, result)
     pushType(w, n.typ)
   case n.kind
-  of nkCharLit..nkInt64Lit:
+  of nkCharLit..nkUInt64Lit:
     if n.intVal != 0:
       result.add('!')
       encodeVBiggestInt(n.intVal, result)
@@ -229,6 +225,27 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.align != 2:
     add(result, '=')
     encodeVInt(t.align, result)
+  if t.lockLevel.ord != UnspecifiedLockLevel.ord:
+    add(result, '\14')
+    encodeVInt(t.lockLevel.int16, result)
+  if t.destructor != nil and t.destructor.id != 0:
+    add(result, '\15')
+    encodeVInt(t.destructor.id, result)
+    pushSym(w, t.destructor)
+  if t.deepCopy != nil:
+    add(result, '\16')
+    encodeVInt(t.deepcopy.id, result)
+    pushSym(w, t.deepcopy)
+  if t.assignment != nil:
+    add(result, '\17')
+    encodeVInt(t.assignment.id, result)
+    pushSym(w, t.assignment)
+  for i, s in items(t.methods):
+    add(result, '\18')
+    encodeVInt(i, result)
+    add(result, '\19')
+    encodeVInt(s.id, result)
+    pushSym(w, s)
   encodeLoc(w, t.loc, result)
   for i in countup(0, sonsLen(t) - 1):
     if t.sons[i] == nil:
@@ -245,6 +262,19 @@ proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   encodeStr($lib.name, result)
   add(result, '|')
   encodeNode(w, info, lib.path, result)
+
+proc encodeInstantiations(w: PRodWriter; s: seq[PInstantiation];
+                          result: var string) =
+  for t in s:
+    result.add('\15')
+    encodeVInt(t.sym.id, result)
+    pushSym(w, t.sym)
+    for tt in t.concreteTypes:
+      result.add('\17')
+      encodeVInt(tt.id, result)
+      pushType(w, tt)
+    result.add('\20')
+    encodeVInt(t.compilesId, result)
 
 proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s == nil:
@@ -266,7 +296,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   result.add(',')
   if s.info.line != -1'i16: encodeVInt(s.info.line, result)
   result.add(',')
-  encodeVInt(fileIdx(w, toFilename(s.info)), result)
+  encodeVInt(fileIdx(w, toFullPath(s.info)), result)
   if s.owner != nil:
     result.add('*')
     encodeVInt(s.owner.id, result)
@@ -291,6 +321,31 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s.constraint != nil:
     add(result, '#')
     encodeNode(w, unknownLineInfo(), s.constraint, result)
+  case s.kind
+  of skType, skGenericParam:
+    for t in s.typeInstCache:
+      result.add('\14')
+      encodeVInt(t.id, result)
+      pushType(w, t)
+  of routineKinds:
+    encodeInstantiations(w, s.procInstCache, result)
+    if s.gcUnsafetyReason != nil:
+      result.add('\16')
+      encodeVInt(s.gcUnsafetyReason.id, result)
+      pushSym(w, s.gcUnsafetyReason)
+  of skModule, skPackage:
+    encodeInstantiations(w, s.usedGenerics, result)
+    # we don't serialize:
+    #tab*: TStrTable         # interface table for modules
+  of skLet, skVar, skField, skForVar:
+    if s.guard != nil:
+      result.add('\18')
+      encodeVInt(s.guard.id, result)
+      pushSym(w, s.guard)
+    if s.bitsize != 0:
+      result.add('\19')
+      encodeVInt(s.bitsize, result)
+  else: discard
   # lazy loading will soon reload the ast lazily, so the ast needs to be
   # the last entry of a symbol:
   if s.ast != nil:
@@ -298,16 +353,6 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
     # it is not necessary, but Nim's heavy compile-time evaluation features
     # make that unfeasible nowadays:
     encodeNode(w, s.info, s.ast, result)
-    when false:
-      var codeAst: PNode = nil
-      if not astNeeded(s):
-        codeAst = s.ast.sons[codePos]
-        # ugly hack to not store the AST:
-        s.ast.sons[codePos] = ast.emptyNode
-      encodeNode(w, s.info, s.ast, result)
-      if codeAst != nil:
-        # resore the AST:
-        s.ast.sons[codePos] = codeAst
 
 proc addToIndex(w: var TIndex, key, val: int) =
   if key - w.lastIdxKey == 1:
@@ -562,13 +607,15 @@ proc process(c: PPassContext, n: PNode): PNode =
       #            addInterfaceSym(w, a.sons[j].sym);
       #        end
   of nkImportStmt:
-    for i in countup(0, sonsLen(n) - 1): addModDep(w, getModuleName(n.sons[i]))
+    for i in countup(0, sonsLen(n) - 1):
+      addModDep(w, getModuleName(n.sons[i]), n.info)
     addStmt(w, n)
-  of nkFromStmt:
-    addModDep(w, getModuleName(n.sons[0]))
+  of nkFromStmt, nkImportExceptStmt:
+    addModDep(w, getModuleName(n.sons[0]), n.info)
     addStmt(w, n)
   of nkIncludeStmt:
-    for i in countup(0, sonsLen(n) - 1): addInclDep(w, getModuleName(n.sons[i]))
+    for i in countup(0, sonsLen(n) - 1):
+      addInclDep(w, getModuleName(n.sons[i]), n.info)
   of nkPragma:
     addStmt(w, n)
   else:

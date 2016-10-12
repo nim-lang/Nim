@@ -33,6 +33,9 @@ when withRealTime and not declared(getTicks):
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 
+when hasThreadSupport:
+  include sharedlist
+
 type
   ObjectSpaceIter = object
     state: range[-1..0]
@@ -96,7 +99,7 @@ type
     stat: GcStat
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
     spaceIter: ObjectSpaceIter
-    dumpHeapFile: File # File that is used for GC_dumpHeap
+    pDumpHeapFile: pointer # File that is used for GC_dumpHeap
     when hasThreadSupport:
       toDispose: SharedList[pointer]
 
@@ -612,6 +615,9 @@ template checkTime {.dirty.} =
 
 # ---------------- dump heap ----------------
 
+template dumpHeapFile(gch: var GcHeap): File =
+  cast[File](gch.pDumpHeapFile)
+
 proc debugGraph(s: PCell) =
   c_fprintf(gch.dumpHeapFile, "child %p\n", s)
 
@@ -625,7 +631,7 @@ proc GC_dumpHeap*(file: File) =
   ## Dumps the GCed heap's content to a file. Can be useful for
   ## debugging. Produces an undocumented text file format that
   ## can be translated into "dot" syntax via the "heapdump2dot" tool.
-  gch.dumpHeapFile = file
+  gch.pDumpHeapFile = file
   var spaceIter: ObjectSpaceIter
   var d = gch.decStack.d
   for i in 0 .. < gch.decStack.len:
@@ -643,7 +649,7 @@ proc GC_dumpHeap*(file: File) =
       writeCell(file, "cell ", c)
       forAllChildren(c, waDebug)
       c_fprintf(file, "end\n")
-  gch.dumpHeapFile = nil
+  gch.pDumpHeapFile = nil
 
 proc GC_dumpHeap() =
   var f: File

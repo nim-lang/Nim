@@ -51,6 +51,7 @@ instead of ``build.sh``.
 The ``koch`` tool is the Nim build tool, more ``koch`` related options are
 documented in [doc/koch.rst](doc/koch.rst).
 
+
 ## Nimble
 [Nimble](https://github.com/nim-lang/nimble) is Nim's package manager. For the
 source based installations where you added Nim's ``bin`` directory to your PATH
@@ -60,21 +61,18 @@ the easiest way of installing Nimble is via:
 $ nim e install_nimble.nims
 ```
 
-**Warning:** If you install Nimble this way, you will not be able to use binary
-Nimble packages or update Nimble easily.
-The [Nimble readme](https://github.com/nim-lang/nimble#installation)
-provides thorough instructions on how to install Nimble, so that this isn't a
-problem.
-
 ## Community
 [![Join the Chat at irc.freenode.net#nim](https://img.shields.io/badge/IRC-join_chat_in_%23nim-blue.svg)](https://webchat.freenode.net/?channels=nim)
+[![Join the Gitter channel](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nim-lang/Nim)
 [![Get help](https://img.shields.io/badge/Forum-get%20help-4eb899.svg)](http://forum.nim-lang.org)
 [![Stackoverflow](https://img.shields.io/badge/stackoverflow-use_%23nim_tag-yellow.svg)](http://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15)
 [![Follow @nim_lang!](https://img.shields.io/twitter/follow/nim_lang.svg?style=social)](https://twitter.com/nim_lang)
 
 * The [forum](http://forum.nim-lang.org/) - the best place to ask questions and to discuss Nim.
-* [IRC (Freenode#nim)](https://webchat.freenode.net/?channels=nim) - the best place to discuss
+* [IRC (Freenode#nim)](https://webchat.freenode.net/?channels=nim) - a place to discuss
   Nim in real-time, this is also where most development decision get made!
+* [Gitter](https://gitter.im/nim-lang/Nim) allows to discuss Nim from your browser, one click to join.
+  There is a bridge between Gitter and IRC channels.
 * [Stackoverflow](http://stackoverflow.com/questions/tagged/nim)
 
 ## Contributing

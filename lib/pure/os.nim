@@ -580,9 +580,9 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if moveFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError())
+      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
     else:
-      if moveFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError())
+      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
   else:
     if c_rename(source, dest) != 0'i32:
       raiseOSError(osLastError(), $strerror(errno))
@@ -595,12 +595,12 @@ when not declared(ENOENT) and not defined(Windows):
 
 when defined(Windows):
   when useWinUnicode:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileW(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
+    template deleteFile(file: untyped): untyped  = deleteFileW(file)
+    template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesW(file, attrs)
   else:
-    template deleteFile(file: expr): expr {.immediate.} = deleteFileA(file)
-    template setFileAttributes(file, attrs: expr): expr {.immediate.} =
+    template deleteFile(file: untyped): untyped = deleteFileA(file)
+    template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
@@ -865,6 +865,20 @@ type
 
 {.deprecated: [TPathComponent: PathComponent].}
 
+
+when defined(posix):
+  proc getSymlinkFileKind(path: string): PathComponent =
+    # Helper function.
+    var s: Stat
+    assert(path != "")
+    if stat(path, s) < 0'i32:
+      raiseOSError(osLastError())
+    if S_ISDIR(s.st_mode):
+      result = pcLinkToDir
+    else:
+      result = pcLinkToFile
+
+
 proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
@@ -931,13 +945,15 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
                   if dirExists(y): k = pcLinkToDir
-                  else: k = succ(k)
+                  else: k = pcLinkToFile
                 yield (k, y)
                 continue
 
             if lstat(y, s) < 0'i32: break
-            if S_ISDIR(s.st_mode): k = pcDir
-            if S_ISLNK(s.st_mode): k = succ(k)
+            if S_ISDIR(s.st_mode):
+              k = pcDir
+            elif S_ISLNK(s.st_mode):
+              k = getSymlinkFileKind(y)
             yield (k, y)
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
@@ -1047,7 +1063,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
 
 proc createSymlink*(src, dest: string) =
   ## Create a symbolic link at `dest` which points to the item specified
-  ## by `src`. On most operating systems, will fail if a lonk
+  ## by `src`. On most operating systems, will fail if a link already exists.
   ##
   ## **Warning**:
   ## Some OS's (such as Microsoft Windows) restrict the creation
@@ -1070,8 +1086,8 @@ proc createHardlink*(src, dest: string) =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Most OS's restrict the creation of hard links to
-  ## root users (administrators) .
+  ## **Warning**: Some OS's restrict the creation of hard links to
+  ## root users (administrators).
   when defined(Windows):
     when useWinUnicode:
       var wSrc = newWideCString(src)
@@ -1502,7 +1518,7 @@ type
     lastWriteTime*: Time # Time file was last modified/written to.
     creationTime*: Time # Time file was created. Not supported on all systems!
 
-template rawToFormalFileInfo(rawInfo, formalInfo): untyped =
+template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
@@ -1557,8 +1573,11 @@ template rawToFormalFileInfo(rawInfo, formalInfo): untyped =
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
     formalInfo.kind = pcFile
-    if S_ISDIR(rawInfo.st_mode): formalInfo.kind = pcDir
-    if S_ISLNK(rawInfo.st_mode): formalInfo.kind.inc()
+    if S_ISDIR(rawInfo.st_mode):
+      formalInfo.kind = pcDir
+    elif S_ISLNK(rawInfo.st_mode):
+      assert(path != "") # symlinks can't occur for file handles
+      formalInfo.kind = getSymlinkFileKind(path)
 
 proc getFileInfo*(handle: FileHandle): FileInfo =
   ## Retrieves file information for the file object represented by the given
@@ -1574,12 +1593,12 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
     var realHandle = get_osfhandle(handle)
     if getFileInformationByHandle(realHandle, addr rawInfo) == 0:
       raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, "", result)
   else:
     var rawInfo: Stat
     if fstat(handle, rawInfo) < 0'i32:
       raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, "", result)
 
 proc getFileInfo*(file: File): FileInfo =
   if file.isNil:
@@ -1608,7 +1627,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
       raiseOSError(osLastError())
     if getFileInformationByHandle(handle, addr rawInfo) == 0:
       raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, path, result)
     discard closeHandle(handle)
   else:
     var rawInfo: Stat
@@ -1618,7 +1637,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
     else:
       if lstat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError())
-    rawToFormalFileInfo(rawInfo, result)
+    rawToFormalFileInfo(rawInfo, path, result)
 
 proc isHidden*(path: string): bool =
   ## Determines whether a given path is hidden or not. Returns false if the

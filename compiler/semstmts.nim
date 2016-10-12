@@ -155,7 +155,10 @@ proc discardCheck(c: PContext, result: PNode) =
       else:
         var n = result
         while n.kind in skipForDiscardable: n = n.lastSon
-        localError(n.info, errDiscardValueX, result.typ.typeToString)
+        if result.typ.kind == tyProc:
+          localError(n.info, "value of type '" & result.typ.typeToString & "' has to be discarded; for a function call use ()")
+        else:
+          localError(n.info, errDiscardValueX, result.typ.typeToString)
 
 proc semIf(c: PContext, n: PNode): PNode =
   result = n
@@ -659,7 +662,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
     var typ = n.sons[0].typ
-    if typ.kind != tyRef or typ.sons[0].kind != tyObject:
+    if typ.kind != tyRef or typ.lastSon.kind != tyObject:
       localError(n.info, errExprCannotBeRaised)
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
@@ -1141,11 +1144,6 @@ type
   TProcCompilationSteps = enum
     stepRegisterSymbol,
     stepDetermineType,
-    stepCompileBody
-
-proc isForwardDecl(s: PSym): bool =
-  internalAssert s.kind == skProc
-  result = s.ast[bodyPos].kind != nkEmpty
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
@@ -1183,8 +1181,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.ast = n
     #s.scope = c.currentScope
 
-    # if typeIsDetermined: assert phase == stepCompileBody
-    # else: assert phase == stepDetermineType
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
@@ -1234,7 +1230,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       implicitPragmas(c, s, n, validPragmas)
   else:
     if n.sons[pragmasPos].kind != nkEmpty:
-      localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProc)
+      localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX,
+        "'" & proto.name.s & "' from " & $proto.info)
     if sfForward notin proto.flags:
       wrongRedefinition(n.info, proto.name.s)
     excl(proto.flags, sfForward)
@@ -1403,6 +1400,11 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if namePos >= result.safeLen: return result
   var s = result.sons[namePos].sym
   var t = s.typ
+  var allUntyped = true
+  for i in 1 .. t.n.len-1:
+    let param = t.n.sons[i].sym
+    if param.typ.kind != tyExpr: allUntyped = false
+  if allUntyped: incl(s.flags, sfAllUntyped)
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "macro")
   if n.sons[bodyPos].kind == nkEmpty:
     localError(n.info, errImplOfXexpected, s.name.s)
@@ -1566,8 +1568,3 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc semStmt(c: PContext, n: PNode): PNode =
   # now: simply an alias:
   result = semExprNoType(c, n)
-
-proc semStmtScope(c: PContext, n: PNode): PNode =
-  openScope(c)
-  result = semStmt(c, n)
-  closeScope(c)

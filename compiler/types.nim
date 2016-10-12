@@ -94,7 +94,8 @@ proc invalidGenericInst(f: PType): bool =
 
 proc isPureObject(typ: PType): bool =
   var t = typ
-  while t.kind == tyObject and t.sons[0] != nil: t = t.sons[0]
+  while t.kind == tyObject and t.sons[0] != nil:
+    t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
 proc getOrdValue(n: PNode): BiggestInt =
@@ -144,10 +145,6 @@ proc elemType*(t: PType): PType =
   of tyArray, tyArrayConstr: result = t.sons[1]
   else: result = t.lastSon
   assert(result != nil)
-
-proc skipGeneric(t: PType): PType =
-  result = t
-  while result.kind == tyGenericInst: result = lastSon(result)
 
 proc isOrdinalType(t: PType): bool =
   assert(t != nil)
@@ -232,7 +229,8 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   if result: return
   case t.kind
   of tyObject:
-    result = searchTypeForAux(t.sons[0], predicate, marker)
+    if t.sons[0] != nil:
+      result = searchTypeForAux(t.sons[0].skipTypes(skipPtrs), predicate, marker)
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
   of tyGenericInst, tyDistinct:
     result = searchTypeForAux(lastSon(t), predicate, marker)
@@ -269,7 +267,9 @@ proc analyseObjectWithTypeFieldAux(t: PType,
       if searchTypeNodeForAux(t.n, isObjectWithTypeFieldPredicate, marker):
         return frEmbedded
     for i in countup(0, sonsLen(t) - 1):
-      res = analyseObjectWithTypeFieldAux(t.sons[i], marker)
+      var x = t.sons[i]
+      if x != nil: x = x.skipTypes(skipPtrs)
+      res = analyseObjectWithTypeFieldAux(x, marker)
       if res == frEmbedded:
         return frEmbedded
       if res == frHeader: result = frHeader
@@ -578,10 +578,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc resultType(t: PType): PType =
-  assert(t.kind == tyProc)
-  result = t.sons[0]          # nil is allowed
-
 proc base(t: PType): PType =
   result = t.sons[0]
 
@@ -661,7 +657,14 @@ proc lengthOrd(t: PType): BiggestInt =
   case t.kind
   of tyInt64, tyInt32, tyInt: result = lastOrd(t)
   of tyDistinct, tyConst, tyMutable: result = lengthOrd(t.sons[0])
-  else: result = lastOrd(t) - firstOrd(t) + 1
+  else:
+    let last = lastOrd t
+    let first = firstOrd t
+    # XXX use a better overflow check here:
+    if last == high(BiggestInt) and first <= 0:
+      result = last
+    else:
+      result = lastOrd(t) - firstOrd(t) + 1
 
 # -------------- type equality -----------------------------------------------
 
@@ -771,18 +774,6 @@ proc equalParams(a, b: PNode): TParamsEquality =
       else:
         result = paramsIncompatible # overloading by different
                                     # result types does not work
-
-proc sameLiteral(x, y: PNode): bool =
-  if x.kind == y.kind:
-    case x.kind
-    of nkCharLit..nkInt64Lit: result = x.intVal == y.intVal
-    of nkFloatLit..nkFloat64Lit: result = x.floatVal == y.floatVal
-    of nkNilLit: result = true
-    else: assert(false)
-
-proc sameRanges(a, b: PNode): bool =
-  result = sameLiteral(a.sons[0], b.sons[0]) and
-           sameLiteral(a.sons[1], b.sons[1])
 
 proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
   # two tuples are equivalent iff the names, types and positions are the same;
@@ -1070,10 +1061,10 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       of nkNone..nkNilLit:
         discard
       else:
+        if n.kind == nkRecCase and kind in {skProc, skConst}:
+          return n[0].typ
         for i in countup(0, sonsLen(n) - 1):
           let it = n.sons[i]
-          if it.kind == nkRecCase and kind in {skProc, skConst}:
-            return n.typ
           result = typeAllowedNode(marker, it, kind, flags)
           if result != nil: break
 
@@ -1306,7 +1297,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     a = maxAlign
   of tyObject:
     if typ.sons[0] != nil:
-      result = computeSizeAux(typ.sons[0], a)
+      result = computeSizeAux(typ.sons[0].skipTypes(skipPtrs), a)
       if result < 0: return
       maxAlign = a
     elif isObjectWithTypeFieldPredicate(typ):

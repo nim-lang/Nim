@@ -20,11 +20,6 @@ import
 
 const VersionAsString = system.NimVersion #"0.10.2"
 
-when defined(withUpdate):
-  import httpclient
-when defined(haveZipLib):
-  import zipfiles
-
 const
   HelpText = """
 +-----------------------------------------------------------------+
@@ -40,7 +35,7 @@ Options:
   --help, -h               shows this help and quits
 Possible Commands:
   boot [options]           bootstraps with given command line options
-  install [bindir]         installs to given directory; Unix only!
+  distrohelper [bindir]    helper for distro packagers
   geninstall               generate ./install.sh; Unix only!
   testinstall              test tar.xz package; Unix only! Only for devs!
   clean                    cleans Nim project; removes generated files
@@ -52,8 +47,6 @@ Possible Commands:
   xz                       builds the installation XZ package
   nsis [options]           builds the NSIS Setup installer (for Windows)
   tests [options]          run the testsuite
-  update                   updates nim to the latest version from github
-                           (compile koch with -d:withUpdate to enable)
   temp options             creates a temporary compiler for testing
   winrelease               creates a release (for coredevs only)
 Boot options:
@@ -69,7 +62,10 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
-proc exe(f: string): string = return addFileExt(f, ExeExt)
+proc exe(f: string): string =
+  result = addFileExt(f, ExeExt)
+  when defined(windows):
+    result = result.replace('/','\\')
 
 proc findNim(): string =
   var nim = "nim".exe
@@ -123,6 +119,8 @@ proc testUnixInstall() =
       execCleanPath("./koch boot -d:release", destDir / "bin")
       # check the docs build:
       execCleanPath("./koch web", destDir / "bin")
+      # check nimble builds:
+      execCleanPath("./bin/nim e install_tools.nims")
       # check the tests work:
       execCleanPath("./koch tests", destDir / "bin")
     else:
@@ -143,13 +141,13 @@ proc copyExe(source, dest: string) =
   inclFilePermissions(dest, {fpUserExec})
 
 const
-  compileNimInst = "-d:useLibzipSrc tools/niminst/niminst"
+  compileNimInst = "tools/niminst/niminst"
 
 proc csource(args: string) =
   exec("$4 cc $1 -r $3 --var:version=$2 --var:mingw=none csource --main:compiler/nim.nim compiler/installer.ini $1" %
        [args, VersionAsString, compileNimInst, findNim()])
 
-proc bundleNimble() =
+proc bundleNimbleSrc() =
   if dirExists("dist/nimble/.git"):
     exec("git --git-dir dist/nimble/.git pull")
   else:
@@ -157,20 +155,38 @@ proc bundleNimble() =
   let tags = execProcess("git --git-dir dist/nimble/.git tag -l v*").splitLines
   let tag = tags[^1]
   exec("git --git-dir dist/nimble/.git checkout " & tag)
+
+proc bundleNimbleExe() =
+  bundleNimbleSrc()
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
   exec(findNim() & " c dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
+proc bundleNimsuggest(buildExe: bool) =
+  if dirExists("dist/nimsuggest/.git"):
+    exec("git --git-dir dist/nimsuggest/.git pull")
+  else:
+    exec("git clone https://github.com/nim-lang/nimsuggest.git dist/nimsuggest")
+  if buildExe:
+    exec(findNim() & " c --noNimblePath -p:compiler dist/nimsuggest/nimsuggest.nim")
+    copyExe("dist/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
+
+proc bundleFinishExe() =
+  exec(findNim() & " c finish.nim")
+
 proc zip(args: string) =
-  bundleNimble()
+  bundleNimbleSrc()
+  bundleNimsuggest(false)
+  bundleFinishExe()
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
 proc xz(args: string) =
-  bundleNimble()
+  bundleNimbleSrc()
+  bundleNimsuggest(false)
   exec("$3 cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst, findNim()])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim xz compiler/installer.ini" %
@@ -181,7 +197,9 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
 proc nsis(args: string) =
-  bundleNimble()
+  bundleNimbleExe()
+  bundleNimsuggest(true)
+  bundleFinishExe()
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   #buildTool("tools/nimgrep", args)
@@ -195,11 +213,8 @@ proc geninstall(args="") =
   exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini $#" %
        [findNim(), compileNimInst, VersionAsString, args])
 
-proc install(args: string) =
-  geninstall()
-  exec("sh ./install.sh $#" % args)
-
 proc web(args: string) =
+  exec("$# js tools/dochack/dochack.nim" % findNim())
   exec("$# cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
        [findNim(), args, VersionAsString])
 
@@ -244,11 +259,13 @@ proc boot(args: string) =
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
   let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
+  let smartNimcache = if "release" in args: "rnimcache" else: "dnimcache"
 
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " $# $# compiler" / "nim.nim" % [bootOptions, args]
+    exec i.thVersion & " $# $# --nimcache:$# compiler" / "nim.nim" % [bootOptions, args,
+        smartNimcache]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -273,7 +290,7 @@ proc cleanAux(dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
-      var (dir, name, ext) = splitFile(path)
+      var (_, name, ext) = splitFile(path)
       if ext == "" or cleanExt.contains(ext):
         if not ignore.contains(name):
           echo "removing: ", path
@@ -302,99 +319,14 @@ proc clean(args: string) =
       echo "removing dir: ", path
       removeDir(path)
 
-# -------------- update -------------------------------------------------------
-
-when defined(withUpdate):
-  when defined(windows):
-    {.warning: "Windows users: Make sure to run 'koch update' in Bash.".}
-
-  proc update(args: string) =
-    when defined(windows):
-      echo("Windows users: Make sure to be running this in Bash. ",
-           "If you aren't, press CTRL+C now.")
-
-    var thisDir = getAppDir()
-    var git = findExe("git")
-    echo("Checking for git repo and git executable...")
-    if existsDir(thisDir & "/.git") and git != "":
-      echo("Git repo found!")
-      # use git to download latest source
-      echo("Checking for updates...")
-      discard startCmd(git & " fetch origin master")
-      var procs = startCmd(git & " diff origin/master master")
-      var errcode = procs.waitForExit()
-      var output = readLine(procs.outputStream)
-      echo(output)
-      if errcode == 0:
-        if output == "":
-          # No changes
-          echo("No update. Exiting...")
-          return
-        else:
-          echo("Fetching updates from repo...")
-          var pullout = execCmdEx(git & " pull origin master")
-          if pullout[1] != 0:
-            quit("An error has occurred.")
-          else:
-            if pullout[0].startsWith("Already up-to-date."):
-              quit("No new changes fetched from the repo. " &
-                   "Local branch must be ahead of it. Exiting...")
-      else:
-        quit("An error has occurred.")
-
-    else:
-      echo("No repo or executable found!")
-      when defined(haveZipLib):
-        echo("Falling back.. Downloading source code from repo...")
-        # use dom96's httpclient to download zip
-        downloadFile("https://github.com/Araq/Nim/zipball/master",
-                     thisDir / "update.zip")
-        try:
-          echo("Extracting source code from archive...")
-          var zip: TZipArchive
-          discard open(zip, thisDir & "/update.zip", fmRead)
-          extractAll(zip, thisDir & "/")
-        except:
-          quit("Error reading archive.")
-      else:
-        quit("No failback available. Exiting...")
-
-    echo("Starting update...")
-    boot(args)
-    echo("Update complete!")
-
 # -------------- builds a release ---------------------------------------------
 
-proc run7z(platform: string, patterns: varargs[string]) =
-  const tmpDir = "nim-" & VersionAsString
-  createDir tmpDir
-  try:
-    for pattern in patterns:
-      for f in walkFiles(pattern):
-        if "nimcache" notin f:
-          copyFile(f, tmpDir / f)
-    exec("7z a -tzip $1-$2.zip $1" % [tmpDir, platform])
-  finally:
-    removeDir tmpDir
-
 proc winRelease() =
-  boot(" -d:release")
-  #buildTool("tools/niminst/niminst", " -d:release")
-  buildTool("tools/nimgrep", " -d:release")
-  buildTool("compiler/nimfix/nimfix", " -d:release")
-  buildTool("compiler/nimsuggest/nimsuggest", " -d:release")
-
-  #run7z("win32", "bin/nim.exe", "bin/c2nim.exe", "bin/nimgrep.exe",
-  #      "bin/nimfix.exe",
-  #      "bin/nimble.exe", "bin/*.dll",
-  #      "config", "dist/*.dll", "examples", "lib",
-  #      "readme.txt", "contributors.txt", "copying.txt")
-
-  # second step: XXX build 64 bit version
+  exec(r"call ci\nsis_build.bat " & VersionAsString)
 
 # -------------- tests --------------------------------------------------------
 
-template `|`(a, b): expr = (if a.len > 0: a else: b)
+template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
@@ -444,14 +376,9 @@ of cmdArgument:
   of "xz": xz(op.cmdLineRest)
   of "nsis": nsis(op.cmdLineRest)
   of "geninstall": geninstall(op.cmdLineRest)
-  of "install": install(op.cmdLineRest)
+  of "distrohelper": geninstall()
   of "testinstall": testUnixInstall()
   of "test", "tests": tests(op.cmdLineRest)
-  of "update":
-    when defined(withUpdate):
-      update(op.cmdLineRest)
-    else:
-      quit "this Koch has not been compiled with -d:withUpdate"
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
   else: showHelp()

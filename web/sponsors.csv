@@ -1,31 +1,34 @@
 logo, name, url, this_month, all_time, since, level
-assets/bountysource/secondspectrum.png,Second Spectrum,http://www.secondspectrum.com/,250,750,"May 5, 2016",250
-assets/bountysource/xored.svg,"Xored Software, Inc.",http://xored.com/,250,500,"Jun 20, 2016",250
-,avsej,http://avsej.net,75,85,"Jun 10, 2016",75
-,shkolnick-kun,https://github.com/shkolnick-kun,75,75,"Jul 6, 2016",75
-,flyx,http://flyx.org,35,140,"Apr 7, 2016",75
-,endragor,https://github.com/endragor,25,100,"Apr 7, 2016",25
-,euantorano,http://euantorano.co.uk,25,50,"Jun 7, 2016",25
-,FedericoCeratto,http://firelet.net,25,100,"Apr 7, 2016",25
-,"Adrian Veith",,25,100,"Apr 20, 2016",25
-,xxlabaza,https://github.com/xxlabaza,25,45,"Jun 17, 2016",25
-,"Yuriy Glukhov",,25,100,"Apr 6, 2016",25
-,"Jonathan Arnett",,10,30,"May 20, 2016",10
-,"Oskari Timperi",,10,20,"Jun 8, 2016",10
-,zachaysan,http://venn.lc,10,20,"Jun 7, 2016",10
-,"Matthew Baulch",,10,20,"Jun 7, 2016",10
-,RationalG,https://github.com/RationalG,10,20,"Jun 17, 2016",10
-,btbytes,https://www.btbytes.com/,10,40,"Apr 6, 2016",10
-,niebaopeng,https://github.com/niebaopeng,10,30,"Apr 15, 2016",10
-,moigagoo,http://sloth-ci.com,5,15,"May 13, 2016",5
-,calind,http://calindon.net,5,10,"Jun 7, 2016",5
-,swalf,https://github.com/swalf,5,35,"May 9, 2016",5
-,johnnovak,http://www.johnnovak.net/,5,20,"Apr 29, 2016",5
-,RyanMarcus,http://rmarcus.info,5,5,"Jul 19, 2016",5
-,Blumenversand,https://blumenversender.com/,5,5,"Jul 21, 2016",5
-,lenzenmi,https://github.com/lenzenmi,5,5,"Jul 28, 2016",5
-,"Handojo Goenadi",,5,20,"Apr 19, 2016",5
-,"Date in Asia",,5,5,"Jul 30, 2016",5
-,"Matthew Newton",,5,20,"Apr 20, 2016",5
-,"Michael D. Sklaroff",,1,4,"Apr 27, 2016",1
-,"Svend Knudsen",,1,4,"Apr 11, 2016",1
+assets/bountysource/secondspectrum.png,Second Spectrum,http://www.secondspectrum.com/,250,1250,"May 5, 2016",250
+assets/bountysource/xored.svg,"Xored Software, Inc.",http://xored.com/,250,1000,"Jun 20, 2016",250
+,shkolnick-kun,https://github.com/shkolnick-kun,75,225,"Jul 6, 2016",75
+,flyx,http://flyx.org,35,210,"Apr 7, 2016",75
+,"Yuriy Glukhov",,25,150,"Apr 6, 2016",25
+,endragor,https://github.com/endragor,25,150,"Apr 7, 2016",25
+,FedericoCeratto,http://firelet.net,25,150,"Apr 7, 2016",25
+,"Adrian Veith",,25,150,"Apr 20, 2016",25
+,skunkiferous,https://github.com/skunkiferous,100,100,"Oct 2, 2016",150
+,euantorano,http://euantorano.co.uk,25,100,"Jun 7, 2016",25
+,xxlabaza,https://github.com/xxlabaza,25,95,"Jun 17, 2016",25
+,btbytes,https://www.btbytes.com/,10,60,"Apr 6, 2016",10
+,niebaopeng,https://github.com/niebaopeng,10,50,"Apr 15, 2016",10
+,"Jonathan Arnett",,10,50,"May 20, 2016",10
+,swalf,https://github.com/swalf,5,45,"May 9, 2016",5
+,zolern,https://github.com/zolern,10,40,"Apr 15, 2016",10
+,"pyloor ",https://schwarz-weiss.cc/,10,40,"May 16, 2016",10
+,zachaysan,http://venn.lc,10,40,"Jun 7, 2016",10
+,"Matthew Baulch",,10,40,"Jun 7, 2016",10
+,"Oskari Timperi",,10,40,"Jun 8, 2016",10
+,"Handojo Goenadi",,5,35,"Apr 19, 2016",5
+,"Matthew Newton",,5,30,"Apr 20, 2016",5
+,johnnovak,http://www.johnnovak.net/,5,30,"Apr 29, 2016",5
+,RyanMarcus,http://rmarcus.info,5,15,"Jul 19, 2016",5
+,lenzenmi,https://github.com/lenzenmi,5,15,"Jul 28, 2016",5
+,cpunion,https://github.com/cpunion,10,10,"Sep 9, 2016",10
+,pandada8,https://github.com/pandada8,5,10,"Aug 12, 2016",5
+,abeaumont,http://alfredobeaumont.org/blog,5,10,"Aug 12, 2016",5
+,"Svend Knudsen",,1,6,"Apr 11, 2016",1
+,"Michael D. Sklaroff",,1,6,"Apr 27, 2016",1
+,csoriano89,https://github.com/csoriano89,5,5,"Sep 7, 2016",5
+,nicck,,1,2,"Aug 9, 2016",1
+,campbellr,,1,1,"Sep 4, 2016",1

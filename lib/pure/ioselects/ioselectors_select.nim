@@ -155,9 +155,9 @@ when defined(windows):
     result.wsock = wsock
 
   proc setEvent*(ev: SelectEvent) =
-    var data: int = 1
+    var data: uint64 = 1
     if winlean.send(ev.wsock, cast[pointer](addr data),
-                    cint(sizeof(int)), 0) != sizeof(int):
+                    cint(sizeof(uint64)), 0) != sizeof(uint64):
       raiseOSError(osLastError())
 
   proc close*(ev: SelectEvent) =

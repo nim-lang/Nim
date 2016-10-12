@@ -34,6 +34,22 @@ proc sameMethodDispatcher(a, b: PSym): bool =
 
 proc determineType(c: PContext, s: PSym)
 
+proc initCandidateSymbols(c: PContext, headSymbol: PNode,
+                       initialBinding: PNode,
+                       filter: TSymKinds,
+                       best, alt: var TCandidate,
+                       o: var TOverloadIter): seq[tuple[s: PSym, scope: int]] =
+  result = @[]
+  var symx = initOverloadIter(o, c, headSymbol)
+  while symx != nil:
+    if symx.kind in filter:
+      result.add((symx, o.lastOverloadScope))
+      symx = nextOverloadIter(o, c, headSymbol)
+  if result.len > 0:
+    initCandidate(c, best, result[0].s, initialBinding, result[0].scope)
+    initCandidate(c, alt, result[0].s, initialBinding, result[0].scope)
+    best.state = csNoMatch
+
 proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        n, orig: PNode,
                        initialBinding: PNode,
@@ -41,66 +57,62 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors) =
   var o: TOverloadIter
-  # thanks to the lazy semchecking for operands, we need to iterate over the
-  # symbol table *before* any call to 'initCandidate' which might invoke
-  # semExpr which might modify the symbol table in cases like
-  # 'init(a, 1, (var b = new(Type2); b))'.
-  var symx = initOverloadIter(o, c, headSymbol)
-  let symScope = o.lastOverloadScope
-
-  var syms: seq[tuple[a: PSym, b: int]] = @[]
-  while symx != nil:
-    if symx.kind in filter:
-      syms.add((symx, o.lastOverloadScope))
-    symx = nextOverloadIter(o, c, headSymbol)
-  if syms.len == 0:
-    when false:
-      if skIterator notin filter:
-        # also try iterators, but these are 2nd class:
-        symx = initOverloadIter(o, c, headSymbol)
-        while symx != nil:
-          if symx.kind == skIterator:
-            syms.add((symx, 100))
-          symx = nextOverloadIter(o, c, headSymbol)
-        if syms.len == 0: return
+  var sym = initOverloadIter(o, c, headSymbol)
+  var scope = o.lastOverloadScope
+  # Thanks to the lazy semchecking for operands, we need to check whether
+  # 'initCandidate' modifies the symbol table (via semExpr).
+  # This can occur in cases like 'init(a, 1, (var b = new(Type2); b))'
+  let counterInitial = c.currentScope.symbols.counter
+  var syms: seq[tuple[s: PSym, scope: int]]
+  var nextSymIndex = 0
+  while sym != nil:
+    if sym.kind in filter:
+      # Initialise 'best' and 'alt' with the first available symbol
+      initCandidate(c, best, sym, initialBinding, scope)
+      initCandidate(c, alt, sym, initialBinding, scope)
+      best.state = csNoMatch
+      break
     else:
-      return
-
+      sym = nextOverloadIter(o, c, headSymbol)
+      scope = o.lastOverloadScope
   var z: TCandidate
-  initCandidate(c, best, syms[0][0], initialBinding, symScope)
-  initCandidate(c, alt, syms[0][0], initialBinding, symScope)
-  best.state = csNoMatch
-
-  for i in 0 .. <syms.len:
-    let sym = syms[i][0]
+  while sym != nil:
+    if sym.kind notin filter:
+      sym = nextOverloadIter(o, c, headSymbol)
+      scope = o.lastOverloadScope
+      continue
     determineType(c, sym)
-    initCandidate(c, z, sym, initialBinding, syms[i][1])
-
-    #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
-    #  gDebug = true
-    matches(c, n, orig, z)
-    if errors != nil:
-      errors.safeAdd((sym, int z.mutabilityProblem))
-      if z.errors != nil:
-        for err in z.errors:
-          errors.add(err)
-    if z.state == csMatch:
-      # little hack so that iterators are preferred over everything else:
-      if sym.kind == skIterator: inc(z.exactMatches, 200)
-      case best.state
-      of csEmpty, csNoMatch: best = z
-      of csMatch:
-        var cmp = cmpCandidates(best, z)
-        if cmp < 0: best = z   # x is better than the best so far
-        elif cmp == 0: alt = z # x is as good as the best so far
-        else: discard
-      #if sym.name.s == "cmp" and (n.info ?? "rstgen.nim") and n.info.line == 516:
-      #  echo "Matches ", n.info, " ", typeToString(sym.typ)
-      #  debug sym
-      #  writeMatches(z)
-      #  for i in 1 .. <len(z.call):
-      #    z.call[i].typ.debug
-      #  quit 1
+    initCandidate(c, z, sym, initialBinding, scope)
+    if c.currentScope.symbols.counter == counterInitial or syms != nil:
+      matches(c, n, orig, z)
+      if errors != nil:
+        errors.safeAdd((sym, int z.mutabilityProblem))
+        if z.errors != nil:
+          for err in z.errors:
+            errors.add(err)
+      if z.state == csMatch:
+        # little hack so that iterators are preferred over everything else:
+        if sym.kind == skIterator: inc(z.exactMatches, 200)
+        case best.state
+        of csEmpty, csNoMatch: best = z
+        of csMatch:
+          var cmp = cmpCandidates(best, z)
+          if cmp < 0: best = z   # x is better than the best so far
+          elif cmp == 0: alt = z # x is as good as the best so far
+    else:
+      # Symbol table has been modified. Restart and pre-calculate all syms
+      # before any further candidate init and compare. SLOW, but rare case.
+      syms = initCandidateSymbols(c, headSymbol, initialBinding, filter, best, alt, o)
+    if syms == nil:
+      sym = nextOverloadIter(o, c, headSymbol)
+      scope = o.lastOverloadScope
+    elif nextSymIndex < syms.len:
+      # rare case: retrieve the next pre-calculated symbol
+      sym = syms[nextSymIndex].s
+      scope = syms[nextSymIndex].scope
+      nextSymIndex += 1
+    else:
+      break
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
@@ -203,6 +215,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       if result.state != csMatch:
         n.sons.delete(1)
         orig.sons.delete(1)
+        excl n.flags, nfExprCall
       else: return
 
     if nfDotField in n.flags:
@@ -462,3 +475,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var resolved = semOverloadedCall(c, call, call, {fn.kind})
     if resolved != nil:
       result = resolved.sons[0].sym
+      if not compareTypes(result.typ.sons[0], fn.typ.sons[0], dcEqIgnoreDistinct):
+        result = nil
+      elif result.magic in {mArrPut, mArrGet}:
+        # cannot borrow these magics for now
+        result = nil
+

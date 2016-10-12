@@ -171,6 +171,7 @@ proc copyValue(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -269,6 +270,7 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
         c.currentExceptionA = nil
         # execute the corresponding handler:
         while c.code[pc2].opcode == opcExcept: inc pc2
+        discard f.safePoints.pop
         return (pc2, f)
       inc pc2
       if c.code[pc2].opcode != opcExcept and nextExceptOrFinally >= 0:
@@ -282,7 +284,8 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
       pc2 = nextExceptOrFinally
     if c.code[pc2].opcode == opcFinally:
       # execute the corresponding handler, but don't quit walking the stack:
-      return (pc2, f)
+      discard f.safePoints.pop
+      return (pc2+1, f)
     # not the right one:
     discard f.safePoints.pop
 
@@ -964,7 +967,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we'll execute in the 'raise' handler
       let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
       inc pc, rbx
-      assert c.code[pc+1].opcode in {opcExcept, opcFinally}
+      while c.code[pc+1].opcode == opcExcept:
+        let rbx = c.code[pc+1].regBx - wordExcess - 1
+        inc pc, rbx
+      #assert c.code[pc+1].opcode in {opcExcept, opcFinally}
+      if c.code[pc+1].opcode != opcFinally:
+        # in an except handler there is no active safe point for the 'try':
+        tos.popSafePoint()
     of opcFinally:
       # just skip it; it's followed by the code we need to execute anyway
       tos.popSafePoint()
@@ -1063,7 +1072,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]
-      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments})
+      regs[ra].node.strVal = renderTree(regs[rb].regToNode, {renderNoComments, renderDocComments})
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.debug[pc], hintQuitCalled)

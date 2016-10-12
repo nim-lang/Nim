@@ -6,6 +6,9 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+# Architecture-specific optimizations and features.
+# arch.nim can be imported by only a subset of the
+# architectures supported by Nim.
 
 when defined(windows):
   const

@@ -118,7 +118,11 @@ template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
-proc clear*[A, B](t: Table[A, B] | TableRef[A, B]) =
+proc clear*[A, B](t: var Table[A, B]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+
+proc clear*[A, B](t: TableRef[A, B]) =
   ## Resets the table so that it is empty.
   clearImpl()
 
@@ -270,9 +274,12 @@ proc enlarge[A, B](t: var Table[A, B]) =
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
   for i in countup(0, high(n)):
-    if isFilled(n[i].hcode):
-      var j = -1 - rawGetKnownHC(t, n[i].key, n[i].hcode)
-      rawInsert(t, t.data, n[i].key, n[i].val, n[i].hcode, j)
+    let eh = n[i].hcode
+    if isFilled(eh):
+      var j: Hash = eh and maxHash(t)
+      while isFilled(t.data[j].hcode):
+        j = nextTry(j, maxHash(t))
+      rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
@@ -457,7 +464,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A, B](t: OrderedTable[A, B] | OrderedTableRef[A, B]) =
+proc clear*[A, B](t: var OrderedTable[A, B] | OrderedTableRef[A, B]) =
   ## Resets the table so that it is empty.
   clearImpl()
   t.first = -1
@@ -786,7 +793,7 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: CountTable[A] | CountTableRef[A]) =
+proc clear*[A](t: var CountTable[A] | CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
   t.counter = 0

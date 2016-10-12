@@ -359,7 +359,7 @@ proc parallelReplace*(s: string, subs: openArray[
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
   ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+  ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
   writeFile(outfile, x.parallelReplace(subs))

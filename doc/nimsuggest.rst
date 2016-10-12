@@ -80,7 +80,7 @@ a location. A query location consists of:
 
 ``col``
     An integer with the column you are going to query. For the
-    compiler columns start at **1**.
+    compiler columns start at **0**.
 
 
 Definitions
@@ -160,7 +160,7 @@ tab characters (``\t``). The values of each column are:
 6. Line where the symbol is located in the file. Lines start to
    count at **1**.
 7. Column where the symbol is located in the file. Columns start
-   to count at **1**.
+   to count at **0**.
 8. Docstring for the symbol if available or the empty string. To
    differentiate the docstring from end of answer,
    the docstring is always provided enclosed in double quotes, and

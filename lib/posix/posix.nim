@@ -1694,6 +1694,8 @@ var
 
   INADDR_ANY* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 local host address.
+  INADDR_LOOPBACK* {.importc, header: "<netinet/in.h>".}: InAddrScalar
+    ## IPv4 loopback address.
   INADDR_BROADCAST* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 broadcast address.
 
@@ -2652,6 +2654,12 @@ proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
 
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
+
+proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>".}
+  ## Create a temporary file.
+  ##
+  ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
+  ## can't be a string literal. If in doubt copy the string before passing it.
 
 proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>".}

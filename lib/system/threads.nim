@@ -331,7 +331,9 @@ else:
     when TArg is void:
       thrd.dataFn()
     else:
-      thrd.dataFn(thrd.data)
+      var x: TArg
+      deepCopy(x, thrd.data)
+      thrd.dataFn(x)
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
@@ -354,6 +356,8 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
   when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
+  when declared(initAllocator):
+    initAllocator()
   var thrd = cast[ptr Thread[TArg]](closure)
   threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is
@@ -419,7 +423,7 @@ when false:
 
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread.},
+                           tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -441,7 +445,7 @@ when hostOS == "windows":
 
 else:
   proc createThread*[TArg](t: var Thread[TArg],
-                           tp: proc (arg: TArg) {.thread.},
+                           tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
@@ -464,7 +468,7 @@ else:
     cpusetIncl(cpu.cint, s)
     setAffinity(t.sys, sizeof(s), s)
 
-proc createThread*(t: var Thread[void], tp: proc () {.thread.}) =
+proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
 
 proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =

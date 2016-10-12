@@ -136,8 +136,10 @@ proc isCastable(dst, src: PType): bool =
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
   if skipTypes(dst, abstractInst-{tyOpenArray}).kind == tyOpenArray:
     return false
-  var dstSize, srcSize: BiggestInt
+  if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
+    return false
 
+  var dstSize, srcSize: BiggestInt
   dstSize = computeSize(dst)
   srcSize = computeSize(src)
   if dstSize < 0:
@@ -409,13 +411,11 @@ proc changeType(n: PNode, newType: PType, check: bool) =
   n.typ = newType
 
 proc arrayConstrType(c: PContext, n: PNode): PType =
-  var typ = newTypeS(tyArrayConstr, c)
+  var typ = newTypeS(tyArray, c)
   rawAddSon(typ, nil)     # index type
   if sonsLen(n) == 0:
     rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else:
-    var x = n.sons[0]
-    var lastIndex: BiggestInt = sonsLen(n) - 1
     var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
     addSonSkipIntLit(typ, t)
   typ.sons[0] = makeRangeType(c, 0, sonsLen(n) - 1, n.info)
@@ -423,7 +423,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
 
 proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = newNodeI(nkBracket, n.info)
-  result.typ = newTypeS(tyArrayConstr, c)
+  result.typ = newTypeS(tyArray, c)
   rawAddSon(result.typ, nil)     # index type
   if sonsLen(n) == 0:
     rawAddSon(result.typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
@@ -468,59 +468,11 @@ proc fixAbstractType(c: PContext, n: PNode) =
     if it.kind == nkHiddenSubConv and
         skipTypes(it.typ, abstractVar).kind notin {tyOpenArray, tyVarargs}:
       if skipTypes(it.sons[1].typ, abstractVar).kind in
-            {tyNil, tyArrayConstr, tyTuple, tySet}:
+            {tyNil, tyTuple, tySet} or it[1].isArrayConstr:
         var s = skipTypes(it.typ, abstractVar)
         if s.kind != tyExpr:
           changeType(it.sons[1], s, check=true)
         n.sons[i] = it.sons[1]
-  when false:
-    # XXX finally rewrite that crap!
-    for i in countup(1, sonsLen(n) - 1):
-      var it = n.sons[i]
-      case it.kind
-      of nkHiddenStdConv, nkHiddenSubConv:
-        if it.sons[1].kind == nkBracket:
-          it.sons[1].typ = arrayConstrType(c, it.sons[1])
-          #it.sons[1] = semArrayConstr(c, it.sons[1])
-        if skipTypes(it.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
-          #if n.sons[0].kind == nkSym and IdentEq(n.sons[0].sym.name, "[]="):
-          #  debug(n)
-
-          var s = skipTypes(it.sons[1].typ, abstractVar)
-          if s.kind == tyArrayConstr and s.sons[1].kind == tyEmpty:
-            s = copyType(s, getCurrOwner(), false)
-            skipTypes(s, abstractVar).sons[1] = elemType(
-                skipTypes(it.typ, abstractVar))
-            it.sons[1].typ = s
-          elif s.kind == tySequence and s.sons[0].kind == tyEmpty:
-            s = copyType(s, getCurrOwner(), false)
-            skipTypes(s, abstractVar).sons[0] = elemType(
-                skipTypes(it.typ, abstractVar))
-            it.sons[1].typ = s
-
-        elif skipTypes(it.sons[1].typ, abstractVar).kind in
-            {tyNil, tyArrayConstr, tyTuple, tySet}:
-          var s = skipTypes(it.typ, abstractVar)
-          if s.kind != tyExpr:
-            changeType(it.sons[1], s, check=true)
-          n.sons[i] = it.sons[1]
-      of nkBracket:
-        # an implicitly constructed array (passed to an open array):
-        n.sons[i] = semArrayConstr(c, it, {})
-      else:
-        discard
-        #if (it.typ == nil):
-        #  InternalError(it.info, "fixAbstractType: " & renderTree(it))
-
-proc skipObjConv(n: PNode): PNode =
-  case n.kind
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if skipTypes(n.sons[1].typ, abstractPtrs).kind in {tyTuple, tyObject}:
-      result = n.sons[1]
-    else:
-      result = n
-  of nkObjUpConv, nkObjDownConv: result = n.sons[0]
-  else: result = n
 
 proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult =
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
@@ -701,9 +653,6 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
         result.sons[0] = newSymNode(errorSym(c, n))
-      if sfNoSideEffect notin callee.flags:
-        if {sfImportc, sfSideEffect} * callee.flags != {}:
-          incl(c.p.owner.flags, sfSideEffect)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
 
@@ -804,9 +753,6 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       result = m.call
       instGenericConvertersSons(c, result, m)
-    # we assume that a procedure that calls something indirectly
-    # has side-effects:
-    if tfNoSideEffect notin t.flags: incl(c.p.owner.flags, sfSideEffect)
   elif t != nil and t.kind == tyTypeDesc:
     if n.len == 1: return semObjConstr(c, n, flags)
     return semConv(c, n)
@@ -986,7 +932,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         tyTuple, tySet, tyUInt..tyUInt64:
       if s.magic == mNone: result = inlineConst(n, s)
       else: result = newSymNode(s, n.info)
-    of tyArrayConstr, tySequence:
+    of tyArray, tySequence:
       # Consider::
       #     const x = []
       #     proc p(a: openarray[int])
@@ -1040,9 +986,6 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
 
     markUsed(n.info, s)
     styleCheckUse(n.info, s)
-    # if a proc accesses a global variable, it is not side effect free:
-    if sfGlobal in s.flags:
-      incl(c.p.owner.flags, sfSideEffect)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
     # not sure the symbol really ends up being used:
@@ -1091,7 +1034,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
               result = check
             return result
           if ty.sons[0] == nil: break
-          ty = skipTypes(ty.sons[0], {tyGenericInst})
+          ty = skipTypes(ty.sons[0], skipPtrs)
     # old code, not sure if it's live code:
     markUsed(n.info, s)
     styleCheckUse(n.info, s)
@@ -1169,7 +1112,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       f = lookupInRecordAndBuildCheck(c, n, ty.n, i, check)
       if f != nil: break
       if ty.sons[0] == nil: break
-      ty = skipTypes(ty.sons[0], {tyGenericInst})
+      ty = skipTypes(ty.sons[0], skipPtrs)
     if f != nil:
       if fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
@@ -1421,8 +1364,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   # a = b # both are vars, means: a[] = b[]
   # a = b # b no 'var T' means: a = addr(b)
   var le = a.typ
-  if skipTypes(le, {tyGenericInst}).kind != tyVar and
-      isAssignable(c, a) == arNone:
+  if (skipTypes(le, {tyGenericInst}).kind != tyVar and
+        isAssignable(c, a) == arNone) or
+      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!
     localError(a.info, errXCannotBeAssignedTo,
                renderTree(a, {renderNoComments}))
@@ -2128,7 +2072,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       f = lookupInRecordAndBuildCheck(c, it, t.n, id, check)
       if f != nil: break
       if t.sons[0] == nil: break
-      t = skipTypes(t.sons[0], {tyGenericInst})
+      t = skipTypes(t.sons[0], skipPtrs)
     if f != nil and fieldVisible(c, f):
       it.sons[0] = newSymNode(f)
       e = fitNode(c, f.typ, e)
@@ -2145,7 +2089,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     while true:
       checkInitialized(objType.n, ids, n.info)
       if objType.sons[0] == nil: break
-      objType = skipTypes(objType.sons[0], {tyGenericInst})
+      objType = skipTypes(objType.sons[0], skipPtrs)
 
 proc semBlock(c: PContext, n: PNode): PNode =
   result = n

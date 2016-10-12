@@ -73,7 +73,9 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     for i in countup(0, sonsLen(typ) - 1):
-      genTraverseProc(c, accessor.parentObj(c.p.module), typ.sons[i])
+      var x = typ.sons[i]
+      if x != nil: x = x.skipTypes(skipPtrs)
+      genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
     let typ = getUniqueType(typ)

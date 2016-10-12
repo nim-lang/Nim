@@ -38,9 +38,6 @@ proc getModule*(fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < gCompiledModules.len:
     result = gCompiledModules[fileIdx]
 
-template hash(x: PSym): untyped =
-  gMemCacheData[x.position].hash
-
 proc hashChanged(fileIdx: int32): bool =
   internalAssert fileIdx >= 0 and fileIdx < gMemCacheData.len
 
@@ -189,14 +186,11 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
         return
     else:
       result.id = getID()
-    if sfMainModule in flags and gProjectIsStdin:
-      processModule(result, llStreamOpen(stdin), rd)
-    else:
-      processModule(result, nil, rd)
+    let validFile = processModule(result, if sfMainModule in flags and gProjectIsStdin: llStreamOpen(stdin) else: nil, rd)
     if optCaasEnabled in gGlobalOptions:
       gMemCacheData[fileIdx].compiledAt = gLastCmdTime
       gMemCacheData[fileIdx].needsRecompile = Recompiled
-      doHash fileIdx
+      if validFile: doHash fileIdx
   else:
     if checkDepMem(fileIdx) == Yes:
       result = compileModule(fileIdx, flags)
@@ -219,12 +213,6 @@ proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
     growCache gMemCacheData, fileIdx
     addDep(s, fileIdx)
     doHash(fileIdx)
-
-proc `==^`(a, b: string): bool =
-  try:
-    result = sameFile(a, b)
-  except OSError:
-    result = false
 
 proc compileSystemModule* =
   if magicsys.systemModule == nil:

@@ -167,10 +167,6 @@ proc linefmt(p: BProc, s: TCProcSection, frmt: FormatStr,
              args: varargs[Rope]) =
   add(p.s(s), indentLine(p, ropecg(p.module, frmt, args)))
 
-proc appLineCg(p: BProc, r: var Rope, frmt: FormatStr,
-               args: varargs[Rope]) =
-  add(r, indentLine(p, ropecg(p.module, frmt, args)))
-
 proc safeLineNm(info: TLineInfo): int =
   result = toLinenumber(info)
   if result < 0: result = 0 # negative numbers are not allowed in #line
@@ -250,7 +246,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     if not p.module.compileToCpp:
       while (s.kind == tyObject) and (s.sons[0] != nil):
         add(r, ".Sup")
-        s = skipTypes(s.sons[0], abstractInst)
+        s = skipTypes(s.sons[0], skipPtrs)
     linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t))
   of frEmbedded:
     # worst case for performance:
@@ -259,8 +255,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
 
 type
   TAssignmentFlag = enum
-    needToCopy, needForSubtypeCheck, afDestIsNil, afDestIsNotNil, afSrcIsNil,
-    afSrcIsNotNil, needToKeepAlive
+    needToCopy, afDestIsNil, afDestIsNotNil, afSrcIsNil, afSrcIsNotNil
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
@@ -328,8 +323,9 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "LOC" & rope(p.labels)
-  addf(p.blocks[0].sections[cpsLocals],
-     "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
+  #addf(p.blocks[0].sections[cpsLocals],
+  #   "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
+  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   #result.a = - 1
   result.t = t
@@ -337,31 +333,6 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.s = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
-
-proc keepAlive(p: BProc, toKeepAlive: TLoc) =
-  when false:
-    # deactivated because of the huge slowdown this causes; GC will take care
-    # of interior pointers instead
-    if optRefcGC notin gGlobalOptions: return
-    var result: TLoc
-    var fid = rope(p.gcFrameId)
-    result.r = "GCFRAME.F" & fid
-    addf(p.gcFrameType, "  $1 F$2;$n",
-        [getTypeDesc(p.module, toKeepAlive.t), fid])
-    inc(p.gcFrameId)
-    result.k = locTemp
-    #result.a = -1
-    result.t = toKeepAlive.t
-    result.s = OnStack
-    result.flags = {}
-
-    if not isComplexValueType(skipTypes(toKeepAlive.t, abstractVarRange)):
-      linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(result), rdLoc(toKeepAlive))
-    else:
-      useStringh(p.module)
-      linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-           addrLoc(result), addrLoc(toKeepAlive), rdLoc(result))
 
 proc initGCFrame(p: BProc): Rope =
   if p.gcFrameId > 0: result = "struct {$1} GCFRAME;$n" % [p.gcFrameType]
@@ -620,9 +591,6 @@ proc generateHeaders(m: BModule) =
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it.data)])
     it = PStrEntry(it.next)
 
-proc retIsNotVoid(s: PSym): bool =
-  result = (s.typ.sons[0] != nil) and not isInvalidReturnType(s.typ.sons[0])
-
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
   if p.maxFrameLen > 0:
@@ -649,6 +617,24 @@ proc closureSetup(p: BProc, prc: PSym) =
   linefmt(p, cpsStmts, "$1 = ($2) ClEnv;$n",
           rdLoc(env.loc), getTypeDesc(p.module, env.typ))
 
+proc easyResultAsgn(n: PNode): PNode =
+  const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt} +
+                    declarativeDefs
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    var i = 0
+    while i < n.len and n[i].kind in harmless: inc i
+    if i < n.len: result = easyResultAsgn(n[i])
+  of nkAsgn, nkFastAsgn:
+    if n[0].kind == nkSym and skResult == n[0].sym.kind:
+      incl n.flags, nfPreventCg
+      return n[1]
+  of nkReturnStmt:
+    if n.len > 0:
+      result = easyResultAsgn(n[0])
+      if result != nil: incl n.flags, nfPreventCg
+  else: discard
+
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = genProcHeader(m, prc)
@@ -660,11 +646,17 @@ proc genProcAux(m: BModule, prc: PSym) =
     var res = prc.ast.sons[resultPos].sym # get result symbol
     if not isInvalidReturnType(prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
-      # declare the result symbol:
-      assignLocalVar(p, res)
-      assert(res.loc.r != nil)
+      if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(prc.getBody); val != nil):
+        var decl = localVarDecl(p, res)
+        var a: TLoc
+        initLocExprSingleUse(p, val, a)
+        linefmt(p, cpsStmts, "$1 = $2;$n", decl, rdLoc(a))
+      else:
+        # declare the result symbol:
+        assignLocalVar(p, res)
+        assert(res.loc.r != nil)
+        initLocalVar(p, res, immediateAsgn=false)
       returnStmt = rfmt(nil, "\treturn $1;$n", rdLoc(res.loc))
-      initLocalVar(p, res, immediateAsgn=false)
     else:
       fillResult(res)
       assignParam(p, res)
@@ -796,7 +788,7 @@ proc genProc(m: BModule, prc: PSym) =
           genProcAux(generatedHeader, prc)
 
 proc genVarPrototypeAux(m: BModule, sym: PSym) =
-  assert(sfGlobal in sym.flags)
+  #assert(sfGlobal in sym.flags)
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap)
   if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id):
@@ -824,12 +816,12 @@ proc addIntTypes(result: var Rope) {.inline.} =
 proc getCopyright(cfile: string): Rope =
   if optCompileOnly in gGlobalOptions:
     result = ("/* Generated by Nim Compiler v$1 */$N" &
-        "/*   (c) 2015 Andreas Rumpf */$N" &
+        "/*   (c) 2016 Andreas Rumpf */$N" &
         "/* The generated code is subject to the original license. */$N") %
         [rope(VersionAsString)]
   else:
     result = ("/* Generated by Nim Compiler v$1 */$N" &
-        "/*   (c) 2015 Andreas Rumpf */$N" &
+        "/*   (c) 2016 Andreas Rumpf */$N" &
         "/* The generated code is subject to the original license. */$N" &
         "/* Compiled for: $2, $3, $4 */$N" &
         "/* Command for C compiler:$n   $5 */$N") %
@@ -875,10 +867,11 @@ proc genMainProc(m: BModule) =
     MainProcsWithResult =
       MainProcs & "\treturn nim_program_result;$N"
 
-    NimMainBody =
-      "N_CDECL(void, NimMainInner)(void) {$N" &
+    NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
-      "}$N$N" &
+      "}$N$N"
+      
+    NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)();$N" &
         "\tPreMain();$N" &
@@ -886,6 +879,8 @@ proc genMainProc(m: BModule) =
         "$2" &
         "\t(*inner)();$N" &
       "}$N$N"
+
+    NimMainBody = NimMainInner & NimMainProc
 
     PosixNimMain =
       "int cmdCount;$N" &
@@ -914,7 +909,7 @@ proc genMainProc(m: BModule) =
       "                        LPSTR lpCmdLine, int nCmdShow) {$N" &
       MainProcsWithResult & "}$N$N"
 
-    WinNimDllMain = "N_LIB_EXPORT " & NimMainBody
+    WinNimDllMain = NimMainInner & "N_LIB_EXPORT " & NimMainProc
 
     WinCDllMain =
       "BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fwdreason, $N" &
@@ -1020,7 +1015,7 @@ proc genInitCode(m: BModule) =
       var procname = makeCString(m.module.name.s)
       add(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
     else:
-      add(prc, ~"\tTFrame F; FR.len = 0;$N")
+      add(prc, ~"\tTFrame FR; FR.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit))
   add(prc, m.preInitProc.s(cpsInit))

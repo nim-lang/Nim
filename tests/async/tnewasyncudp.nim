@@ -39,8 +39,11 @@ proc prepareAddress(intaddr: uint32, intport: uint16): ptr Sockaddr_in =
 proc launchSwarm(name: ptr SockAddr) {.async.} =
   var i = 0
   var k = 0
+  var buffer: array[16384, char]
+  var slen = sizeof(Sockaddr_in).SockLen
+  var saddr = Sockaddr_in()
   while i < swarmSize:
-    var peeraddr = prepareAddress(INADDR_ANY, 0)
+    var peeraddr = prepareAddress(INADDR_LOOPBACK, 0)
     var sock = newAsyncNativeSocket(nativesockets.AF_INET,
                                     nativesockets.SOCK_DGRAM,
                                     Protocol.IPPROTO_UDP)
@@ -50,10 +53,19 @@ proc launchSwarm(name: ptr SockAddr) {.async.} =
     let sockport = getSockName(sock.SocketHandle).int
     k = 0
     while k < messagesToSend:
+      zeroMem(addr(buffer[0]), 16384)
+      zeroMem(cast[pointer](addr(saddr)), sizeof(Sockaddr_in))      
       var message = "Message " & $(i * messagesToSend + k)
       await sendTo(sock, addr message[0], len(message),
                    name, sizeof(Sockaddr_in).SockLen)
-      saveSendingPort(sockport)
+      var size = await recvFromInto(sock, cast[pointer](addr buffer[0]),
+                                    16384, cast[ptr SockAddr](addr saddr),
+                                    addr slen)
+      size = 0
+      var grammString = $buffer
+      if grammString == message:
+        saveSendingPort(sockport)
+        inc(recvCount)
       inc(k)
     closeSocket(sock)
     inc(i)
@@ -75,13 +87,14 @@ proc readMessages(server: AsyncFD) {.async.} =
     var grammString = $buffer
     if grammString.startswith("Message ") and
        saddr.sin_addr.s_addr == 0x100007F:
+      await sendTo(server, addr grammString[0], len(grammString),
+                   cast[ptr SockAddr](addr saddr), slen)
       inc(msgCount)
       saveReceivedPort(ntohs(saddr.sin_port).int)
-      inc(recvCount)
     inc(i)
 
 proc createServer() {.async.} =
-  var name = prepareAddress(INADDR_ANY, serverPort)
+  var name = prepareAddress(INADDR_LOOPBACK, serverPort)
   var server = newAsyncNativeSocket(nativesockets.AF_INET,
                                     nativesockets.SOCK_DGRAM,
                                     Protocol.IPPROTO_UDP)
@@ -90,7 +103,7 @@ proc createServer() {.async.} =
     raiseOSError(osLastError())
   asyncCheck readMessages(server)
 
-var name = prepareAddress(0x7F000001, serverPort) # 127.0.0.1
+var name = prepareAddress(INADDR_LOOPBACK, serverPort) # 127.0.0.1
 asyncCheck createServer()
 asyncCheck launchSwarm(cast[ptr SockAddr](name))
 while true:
