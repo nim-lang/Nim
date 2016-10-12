@@ -266,13 +266,13 @@ proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
   result.milliseconds = `mod`(milliseconds, 1000)
   carryO = `div`(milliseconds, 1000)
   result.seconds = `mod`(carryO + seconds, 60)
-  carryO = `div`(seconds, 60)
+  carryO = `div`(carryO + seconds, 60)
   result.minutes = `mod`(carryO + minutes, 60)
-  carryO = `div`(minutes, 60)
+  carryO = `div`(carryO + minutes, 60)
   result.hours = `mod`(carryO + hours, 24)
-  carryO = `div`(hours, 24)
+  carryO = `div`(carryO + hours, 24)
   result.days = carryO + days
-  carryO = 0
+
   result.months = `mod`(months, 12)
   carryO = `div`(months, 12)
   result.years = carryO + years
@@ -283,13 +283,13 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
   result.milliseconds = `mod`(ti1.milliseconds + ti2.milliseconds, 1000)
   carryO = `div`(ti1.milliseconds + ti2.milliseconds, 1000)
   result.seconds = `mod`(carryO + ti1.seconds + ti2.seconds, 60)
-  carryO = `div`(ti1.seconds + ti2.seconds, 60)
+  carryO = `div`(carryO + ti1.seconds + ti2.seconds, 60)
   result.minutes = `mod`(carryO + ti1.minutes + ti2.minutes, 60)
-  carryO = `div`(ti1.minutes + ti2.minutes, 60)
+  carryO = `div`(carryO + ti1.minutes + ti2.minutes, 60)
   result.hours = `mod`(carryO + ti1.hours + ti2.hours, 24)
-  carryO = `div`(ti1.hours + ti2.hours, 24)
+  carryO = `div`(carryO + ti1.hours + ti2.hours, 24)
   result.days = carryO + ti1.days + ti2.days
-  carryO = 0
+
   result.months = `mod`(ti1.months + ti2.months, 12)
   carryO = `div`(ti1.months + ti2.months, 12)
   result.years = carryO + ti1.years + ti2.years
