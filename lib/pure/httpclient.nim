@@ -50,6 +50,20 @@
 ##
 ##   echo client.postContent("http://validator.w3.org/check", multipart=data)
 ##
+## You can also make post requests with custom headers. 
+## This example sets ``Content-Type`` to ``application/json``
+## and uses a json object for the body
+##
+## .. code-block:: Nim
+##   import httpclient, json
+##   
+##   let client = newHttpClient()
+##   client.headers = newHttpHeaders({ "Content-Type": "application/json" })
+##   let body = %*{
+##       "data": "some text"
+##   }
+##   echo client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##
 ## Progress reporting
 ## ==================
 ##
