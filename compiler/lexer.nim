@@ -127,7 +127,7 @@ type
                               # this is needed because scanning comments
                               # needs so much look-ahead
     currLineIndent*: int
-    strongSpaces*: bool
+    strongSpaces*, allowTabs*: bool
     errorHandler*: TErrorHandler
 
 var gLinesCompiled*: int  # all lines that have been compiled
@@ -915,7 +915,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
       inc(tok.strongSpaceA)
     of '\t':
-      lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
+      if not L.allowTabs: lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
       inc(pos)
     of CR, LF:
       pos = handleCRLF(L, pos)
