@@ -115,6 +115,12 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
+  template testWithNone(filename: untyped) =
+    testSpec r, makeTest("tests/gc" / filename, options &
+                  " --gc:none", cat, actionRun)
+    testSpec r, makeTest("tests/gc" / filename, options &
+                  " -d:release --gc:none", cat, actionRun)
+
   template testWithoutMs(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options, cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
@@ -144,6 +150,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcleak"
   test "gcleak2"
   test "gctest"
+  testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
   # Disabled because it works and takes too long to run:
