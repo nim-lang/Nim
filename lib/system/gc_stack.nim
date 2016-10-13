@@ -465,4 +465,10 @@ proc getFreeMem(): int = tlRegion.remaining
 proc getTotalMem(): int =
   result = tlRegion.totalSize
 
+proc getOccupiedMem*(r: MemRegion): int =
+  result = r.totalSize - r.remaining
+proc getFreeMem*(r: MemRegion): int = r.remaining
+proc getTotalMem*(r: MemRegion): int =
+  result = r.totalSize
+
 proc setStackBottom(theStackBottom: pointer) = discard
