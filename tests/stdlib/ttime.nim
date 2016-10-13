@@ -141,3 +141,10 @@ doAssert initInterval(months = 13) == initInterval(months = 1, years = 1)
 let day = 24.hours
 let tomorrow = getTime() + day
 doAssert tomorrow - getTime() == 60*60*24
+
+doAssert milliseconds(1000 * 60) == minutes(1)
+doAssert milliseconds(1000 * 60 * 60) == hours(1)
+doAssert milliseconds(1000 * 60 * 60 * 24) == days(1)
+doAssert seconds(60 * 60) == hours(1)
+doAssert seconds(60 * 60 * 24) == days(1)
+doAssert seconds(60 * 60 + 65) == (hours(1) + minutes(1) + seconds(5))
