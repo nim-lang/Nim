@@ -94,6 +94,9 @@ case $uos in
     myos="haiku"
     LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
     ;;
+  *mingw* ) 
+    myos="windows" 
+    ;;
   *)
     echo 2>&1 "Error: unknown operating system: $uos"
     exit 1
