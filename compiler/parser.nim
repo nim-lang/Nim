@@ -28,15 +28,15 @@ import
   llstream, lexer, idents, strutils, ast, astalgo, msgs
 
 type
-  TParser*{.final.} = object  # A TParser object represents a module that
-                              # is being parsed
-    currInd: int              # current indentation level
+  TParser*{.final.} = object   # A TParser object represents a file that
+                               # is being parsed
+    currInd: int               # current indentation level
     firstTok, strongSpaces: bool # Has the first token been read?
                                  # Is strongSpaces on?
-    lex*: TLexer              # The lexer that is used for parsing
-    tok*: TToken              # The current token
-    inPragma: int             # Pragma level
-    inSemiStmtList: int
+    lex*: TLexer               # The lexer that is used for parsing
+    tok*: TToken               # The current token
+    inPragma*: int             # Pragma level
+    inSemiStmtList*: int
 
 proc parseAll*(p: var TParser): PNode
 proc closeParser*(p: var TParser)
