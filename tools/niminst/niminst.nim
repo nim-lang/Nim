@@ -630,6 +630,10 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
     if not dirExists(destDir): createDir(destDir)
     copyFileWithPermissions(src, dest)
 
+  if not existsFile("build" / buildBatFile32):
+    quit("No C sources found in ./build/, please build by running " &
+         "./koch csource -d:release.")
+
   processFile(proj / buildBatFile32, "build" / buildBatFile32)
   processFile(proj / buildBatFile64, "build" / buildBatFile64)
   processFile(proj / buildShFile, "build" / buildShFile)

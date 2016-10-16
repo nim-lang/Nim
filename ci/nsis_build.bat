@@ -21,11 +21,8 @@ cd web\upload
 move /y docs-%NIMVER%.zip download
 cd ..\..
 
-Rem Build .zip file:
-rem koch csources -d:release
-rem koch xz -d:release
-rem move /y build\nim-%NIMVER%.zip web\upload\download
-
+Rem Build csources
+koch csources -d:release || exit /b
 
 rem Grab C sources and nimsuggest
 git clone --depth 1 https://github.com/nim-lang/csources.git
