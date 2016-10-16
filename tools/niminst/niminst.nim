@@ -621,37 +621,38 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
   let proj = toLower(c.name) & "-" & c.version
   let tmpDir = if c.outdir.len == 0: "build" else: c.outdir
 
-  template processFile(z, dest, src) =
-    let s = src
-    let d = dest
-    echo "Copying ", s, " to ", tmpDir / d
-    let destdir = tmpdir / d.splitFile.dir
-    if not dirExists(destdir): createDir(destdir)
-    copyFileWithPermissions(s, tmpDir / d)
+  template processFile(destFile, src) =
+    let dest = tmpDir / destFile
+    echo "Copying ", src, " to ", dest
+    if not existsFile(src):
+      echo "[Warning] Source file doesn't exist: ", src
+    let destDir = dest.splitFile.dir
+    if not dirExists(destDir): createDir(destDir)
+    copyFileWithPermissions(src, dest)
 
-  processFile(z, proj / buildBatFile32, "build" / buildBatFile32)
-  processFile(z, proj / buildBatFile64, "build" / buildBatFile64)
-  processFile(z, proj / buildShFile, "build" / buildShFile)
-  processFile(z, proj / makeFile, "build" / makeFile)
-  processFile(z, proj / installShFile, installShFile)
-  processFile(z, proj / deinstallShFile, deinstallShFile)
+  processFile(proj / buildBatFile32, "build" / buildBatFile32)
+  processFile(proj / buildBatFile64, "build" / buildBatFile64)
+  processFile(proj / buildShFile, "build" / buildShFile)
+  processFile(proj / makeFile, "build" / makeFile)
+  processFile(proj / installShFile, installShFile)
+  processFile(proj / deinstallShFile, deinstallShFile)
   if not windowsZip:
     for f in walkFiles(c.libpath / "lib/*.h"):
-      processFile(z, proj / "c_code" / extractFilename(f), f)
+      processFile(proj / "c_code" / extractFilename(f), f)
     for osA in 1..c.oses.len:
       for cpuA in 1..c.cpus.len:
         var dir = buildDir(osA, cpuA)
         for k, f in walkDir("build" / dir):
-          if k == pcFile: processFile(z, proj / dir / extractFilename(f), f)
+          if k == pcFile: processFile(proj / dir / extractFilename(f), f)
 
   let osSpecific = if windowsZip: fcWindows else: fcUnix
   for cat in items({fcConfig..fcOther, osSpecific, fcNimble}):
     echo("Current category: ", cat)
-    for f in items(c.cat[cat]): processFile(z, proj / f, f)
+    for f in items(c.cat[cat]): processFile(proj / f, f)
 
   # Copy the .nimble file over
   let nimbleFile = c.nimblePkgName & ".nimble"
-  processFile(z, proj / nimbleFile, nimbleFile)
+  processFile(proj / nimbleFile, nimbleFile)
 
   when true:
     let oldDir = getCurrentDir()
