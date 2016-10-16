@@ -1194,21 +1194,21 @@ else:
         var fd = keys[i].fd.SocketHandle
         let events = keys[i].events
 
-        if Event.Read in events:
+        if Event.Read in events or events == {Event.Error}:
           let cb = keys[i].data.readCB
-          doAssert(cb != nil)
-          if cb(fd.AsyncFD):
-            p.selector.withData(fd, adata) do:
-              if adata.readCB == cb:
-                adata.readCB = nil
+          if cb != nil:
+            if cb(fd.AsyncFD):
+              p.selector.withData(fd, adata) do:
+                if adata.readCB == cb:
+                  adata.readCB = nil
 
-        if Event.Write in events:
+        if Event.Write in events or events == {Event.Error}:
           let cb = keys[i].data.writeCB
-          doAssert(cb != nil)
-          if cb(fd.AsyncFD):
-            p.selector.withData(fd, adata) do:
-              if adata.writeCB == cb:
-                adata.writeCB = nil
+          if cb != nil:
+            if cb(fd.AsyncFD):
+              p.selector.withData(fd, adata) do:
+                if adata.writeCB == cb:
+                  adata.writeCB = nil
 
         when supportedPlatform:
           if (customSet * events) != {}:

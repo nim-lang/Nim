@@ -1055,7 +1055,7 @@ else:
         # so that exceptions can be raised from `send(...)` and
         # `recv(...)` routines.
 
-        if EvRead in info.events:
+        if EvRead in info.events or info.events == {EvError}:
           # Callback may add items to ``data.readCBs`` which causes issues if
           # we are iterating over ``data.readCBs`` at the same time. We therefore
           # make a copy to iterate over.
@@ -1066,7 +1066,7 @@ else:
               # Callback wants to be called again.
               data.readCBs.add(cb)
 
-        if EvWrite in info.events:
+        if EvWrite in info.events or info.events == {EvError}:
           let currentCBs = data.writeCBs
           data.writeCBs = @[]
           for cb in currentCBs:
