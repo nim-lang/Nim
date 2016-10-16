@@ -43,7 +43,7 @@ koch_temp nsis -d:release || exit /b
 koch_temp zip -d:release || exit /b
 dir build
 move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x32.exe || exit /b
-move /y build\nim_%NIMVER%.zip build\nim-%NIMVER%_x32.zip || exit /b
+move /y build\nim-%NIMVER%.zip build\nim-%NIMVER%_x32.zip || exit /b
 
 
 ReM Build Win64 version:
@@ -56,4 +56,4 @@ koch_temp boot -d:release || exit /b
 koch_temp nsis -d:release || exit /b
 koch_temp zip -d:release || exit /b
 move /y build\nim_%NIMVER%.exe build\nim-%NIMVER%_x64.exe || exit /b
-move /y build\nim_%NIMVER%.zip build\nim-%NIMVER%_x64.zip || exit /b
+move /y build\nim-%NIMVER%.zip build\nim-%NIMVER%_x64.zip || exit /b
