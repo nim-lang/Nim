@@ -132,7 +132,7 @@ export Port, SocketFlag
 ##        # Handle exception
 ##
 ## Unfortunately the semantics of the try statement may not always be correct,
-## and occassionally the compilation may fail altogether.
+## and occasionally the compilation may fail altogether.
 ## As such it is better to use the former style when possible.
 ##
 ## Discarding futures

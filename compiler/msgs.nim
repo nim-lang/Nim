@@ -215,7 +215,7 @@ const
     errOrdinalTypeExpected: "ordinal type expected",
     errOrdinalOrFloatTypeExpected: "ordinal or float type expected",
     errOverOrUnderflow: "over- or underflow",
-    errCannotEvalXBecauseIncompletelyDefined: "cannot evalutate '$1' because type is not defined completely",
+    errCannotEvalXBecauseIncompletelyDefined: "cannot evaluate '$1' because type is not defined completely",
     errChrExpectsRange0_255: "\'chr\' expects an int in the range 0..255",
     errDynlibRequiresExportc: "\'dynlib\' requires \'exportc\'",
     errUndeclaredFieldX: "undeclared field: \'$1\'",
