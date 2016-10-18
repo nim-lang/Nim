@@ -3676,7 +3676,7 @@ template closureScope*(body: untyped): untyped =
 when defined(nimconfig):
   include "system/nimscript"
 
-when defined(windows) and appType == "console" and not defined(nimconfig):
+when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
