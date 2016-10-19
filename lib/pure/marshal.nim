@@ -249,19 +249,19 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
   loadAny(p, a, t)
   close(p)
 
-proc load*[T](s: Stream, data: var T) =
+proc load*[T](s: Stream, data: var T) {.procvar.} =
   ## loads `data` from the stream `s`. Raises `EIO` in case of an error.
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
-proc store*[T](s: Stream, data: T) =
+proc store*[T](s: Stream, data: T) {.procvar.} =
   ## stores `data` into the stream `s`. Raises `EIO` in case of an error.
   var stored = initIntSet()
   var d: T
   shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
-proc `$$`*[T](x: T): string =
+proc `$$`*[T](x: T): string {.procvar.} =
   ## returns a string representation of `x`.
   var stored = initIntSet()
   var d: T
@@ -270,7 +270,7 @@ proc `$$`*[T](x: T): string =
   storeAny(s, toAny(d), stored)
   result = s.data
 
-proc to*[T](data: string): T =
+proc to*[T](data: string): T {.procvar.} =
   ## reads data and transforms it to a ``T``.
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
