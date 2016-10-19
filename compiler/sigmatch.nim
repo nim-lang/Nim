@@ -1021,11 +1021,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       var fskip = skippedNone
       let aobj = x.skipToObject(askip)
       let fobj = genericBody.lastSon.skipToObject(fskip)
+      var depth = -1
       if fobj != nil and aobj != nil and askip == fskip:
-        let depth = isObjectSubtype(c, aobj, fobj, f)
-        if depth >= 0:
-          c.inheritancePenalty += depth
-          return if depth == 0: isGeneric else: isSubtype
+        depth = isObjectSubtype(c, aobj, fobj, f)
       result = typeRel(c, genericBody, x)
       if result != isNone:
         # see tests/generics/tgeneric3.nim for an example that triggers this
@@ -1047,6 +1045,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           else:
             put(c, f.sons[i], x)
 
+      if depth >= 0:
+        c.inheritancePenalty += depth
+        # bug #4863: We still need to bind generic alias crap, so
+        # we cannot return immediately:
+        result = if depth == 0: isGeneric else: isSubtype
   of tyAnd:
     considerPreviousT:
       result = isEqual
