@@ -28,7 +28,7 @@ proc raiseInvalidXml(errors: seq[string]) =
 proc addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
-proc parse(x: var XmlParser, errors: var seq[string]): XmlNode
+proc parse(x: var XmlParser, errors: var seq[string]): XmlNode {.gcsafe.}
 
 proc untilElementEnd(x: var XmlParser, result: XmlNode,
                      errors: var seq[string]) =
