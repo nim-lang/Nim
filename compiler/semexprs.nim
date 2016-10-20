@@ -695,6 +695,22 @@ proc semBracketedMacro(c: PContext; outer, inner: PNode; s: PSym;
   else: assert(false)
   return
 
+proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
+  result = n
+  let callee = result.sons[0].sym
+  case callee.kind
+  of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
+  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
+  else:
+    semFinishOperands(c, result)
+    activate(c, result)
+    fixAbstractType(c, result)
+    analyseIfAddressTakenInCall(c, result)
+    if callee.magic != mNone:
+      result = magicsAfterOverloadResolution(c, result, flags)
+  if c.inTypeClass == 0:
+    result = evalAtCompileTime(c, result)
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   checkMinSonsLen(n, 1)
@@ -773,27 +789,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # See bug #904 of how to trigger it:
       return result
   #result = afterCallActions(c, result, nOrig, flags)
-  fixAbstractType(c, result)
-  analyseIfAddressTakenInCall(c, result)
-  if result.sons[0].kind == nkSym and result.sons[0].sym.magic != mNone:
-    result = magicsAfterOverloadResolution(c, result, flags)
-  result = evalAtCompileTime(c, result)
-
-proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
-  result = n
-  let callee = result.sons[0].sym
-  case callee.kind
-  of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
-  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
+  if result.sons[0].kind == nkSym:
+    result = afterCallActions(c, result, nOrig, flags)
   else:
-    semFinishOperands(c, result)
-    activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
-    if callee.magic != mNone:
-      result = magicsAfterOverloadResolution(c, result, flags)
-  if c.inTypeClass == 0:
-    result = evalAtCompileTime(c, result)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this seems to be a hotspot in the compiler!
