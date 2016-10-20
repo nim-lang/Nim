@@ -34,7 +34,7 @@ when defined(amd64):
     Reg* {.pure.} = enum
       AX, BX, CX, DX, SI, DI, BP, SP, IP, R8, R9, R10, R11, R12, R13, R14, R15, TOTAL
 
-elif defined(i386):
+elif defined(i386) or defined(nimdoc):
     # identical fastcall calling convention on all x86 OS
     type
       JmpBufReg* {.pure.} = enum
