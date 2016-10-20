@@ -213,6 +213,10 @@ proc geninstall(args="") =
   exec("$# cc -r $# --var:version=$# --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini $#" %
        [findNim(), compileNimInst, VersionAsString, args])
 
+proc install(args: string) =
+  geninstall()
+  exec("sh ./install.sh $#" % args)
+
 proc web(args: string) =
   exec("$# js tools/dochack/dochack.nim" % findNim())
   exec("$# cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
@@ -377,6 +381,7 @@ of cmdArgument:
   of "nsis": nsis(op.cmdLineRest)
   of "geninstall": geninstall(op.cmdLineRest)
   of "distrohelper": geninstall()
+  of "install": install(op.cmdLineRest)
   of "testinstall": testUnixInstall()
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
