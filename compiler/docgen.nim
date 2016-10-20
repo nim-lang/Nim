@@ -184,7 +184,7 @@ proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
   result = genComment(d, n).rope
   if result == nil:
-    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy}:
+    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in countup(0, len(n)-1):
         result = genRecComment(d, n.sons[i])
         if result != nil: return
