@@ -89,7 +89,7 @@ Compile_options:
   will be passed to the Nim compiler
 """
 
-  rYearMonthDay = r"(\d{4})_(\d{2})_(\d{2})"
+  rYearMonthDay = r"on\s+(\d{2})\/(\d{2})\/(\d{4})"
   rssUrl = "http://nim-lang.org/news.xml"
   rssNewsUrl = "http://nim-lang.org/news.html"
   activeSponsors = "web/sponsors.csv"
@@ -347,6 +347,7 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # Goes through each news file, returns its date/title.
   result = @[]
+  var matches: array[3, string]
   let reYearMonthDay = re(rYearMonthDay)
   for kind, path in walkDir(inputFilename):
     let (dir, name, ext) = path.splitFile
@@ -354,8 +355,8 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
       let content = readFile(path)
       let title = content.splitLines()[0]
       let urlPath = "news/" & name & ".html"
-      if name =~ reYearMonthDay:
-        result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
+      if content.find(reYearMonthDay, matches) >= 0:
+        result.add(TRssItem(year: matches[2], month: matches[1], day: matches[0],
           title: title, url: "http://nim-lang.org/" & urlPath,
           content: content))
   result.reverse()
