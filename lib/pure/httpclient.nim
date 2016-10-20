@@ -446,7 +446,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
 
   # get the socket ready. If we are connecting through a proxy to SSL,
-  # send the appropiate CONNECT header. If not, simply connect to the proper
+  # send the appropriate CONNECT header. If not, simply connect to the proper
   # host (which may still be the proxy, for normal HTTP)
   if proxy != nil and hostUrl.scheme == "https":
     when defined(ssl):
@@ -750,7 +750,7 @@ proc newHttpClient*(userAgent = defUserAgent,
   ## ``proxy`` specifies an HTTP proxy to use for this HTTP client's
   ## connections.
   ##
-  ## ``timeout`` specifies the number of miliseconds to allow before a
+  ## ``timeout`` specifies the number of milliseconds to allow before a
   ## ``TimeoutError`` is raised.
   new result
   result.headers = newHttpHeaders()

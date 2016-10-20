@@ -122,7 +122,7 @@ when isMainModule:
       inc occur[x]
     for i, oc in occur:
       if oc < 69:
-        doAssert false, "too few occurances of " & $i
+        doAssert false, "too few occurrences of " & $i
       elif oc > 130:
-        doAssert false, "too many occurances of " & $i
+        doAssert false, "too many occurrences of " & $i
   main()
