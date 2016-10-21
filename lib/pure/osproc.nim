@@ -703,6 +703,7 @@ elif not defined(useNimRtl):
     sysArgs: cstringArray
     sysEnv: cstringArray
     workingDir: cstring
+    currentDir: cstring
     pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
     optionPoUsePath: bool
     optionPoParentStreams: bool
@@ -772,6 +773,7 @@ elif not defined(useNimRtl):
     data.optionPoUsePath = poUsePath in options
     data.optionPoStdErrToStdOut = poStdErrToStdOut in options
     data.workingDir = workingDir
+    data.currentDir = getCurrentDir()
 
     when useProcessAuxSpawn:
       pid = startProcessAuxSpawn(data)
@@ -835,7 +837,6 @@ elif not defined(useNimRtl):
           chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
 
       var res: cint
-      # FIXME: chdir is global to process
       if data.workingDir.len > 0:
         setCurrentDir($data.workingDir)
       var pid: Pid
@@ -844,6 +845,9 @@ elif not defined(useNimRtl):
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
       else:
         res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+
+      if data.workingDir.len > 0:
+        setCurrentDir($data.currentDir)
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
