@@ -148,3 +148,19 @@ doAssert milliseconds(1000 * 60 * 60 * 24) == days(1)
 doAssert seconds(60 * 60) == hours(1)
 doAssert seconds(60 * 60 * 24) == days(1)
 doAssert seconds(60 * 60 + 65) == (hours(1) + minutes(1) + seconds(5))
+
+# Bug with parse not setting DST properly if the current local DST differs from
+# the date being parsed. Need to test parse dates both in and out of DST. We
+# are testing that be relying on the fact that tranforming a TimeInfo to a Time
+# and back again will correctly set the DST value. With the incorrect parse
+# behavior this will introduce a one hour offset from the named time and the
+# parsed time if the DST value differs between the current time and the date we
+# are parsing.
+#
+# Unfortunately these tests depend on the locale of the system in which they
+# are run. They will not be meaningful when run in a locale without DST. They
+# also assume that Jan. 1 and Jun. 1 will have differing isDST values.
+let dstT1 = parse("2016-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
+let dstT2 = parse("2016-06-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
+doAssert dstT1 == getLocalTime(toTime(dstT1))
+doAssert dstT2 == getLocalTime(toTime(dstT2))

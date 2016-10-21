@@ -1248,12 +1248,18 @@ proc parse*(value, layout: string): TimeInfo =
       else:
         parseToken(info, token, value, j)
         token = ""
-  # Reset weekday (might not have been provided and the default may be wrong)
-  # and yearday (is never provided directly and therefore probably wrong)
-  let processed = getLocalTime(toTime(info))
-  info.weekday = processed.weekday
-  info.yearday = processed.yearday
-  return info
+
+  # We are going to process the date to find out if we are in DST, because the
+  # default based on the current time may be wrong. Calling getLocalTime will
+  # set this correctly, but the actual time may be offset from when we called
+  # toTime with a possibly incorrect DST setting, so we are only going to take
+  # the isDST from this result.
+  let correctDST = getLocalTime(toTime(info))
+  info.isDST = correctDST.isDST
+
+  # Now we preocess it again with the correct isDST to correct things like
+  # weekday and yearday.
+  return getLocalTime(toTime(info))
 
 # Leap year calculations are adapted from:
 # http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
