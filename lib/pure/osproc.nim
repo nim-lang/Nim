@@ -774,7 +774,7 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
     when useProcessAuxSpawn:
-      var currentDir = getCurrentDir()
+      let currentDir = getCurrentDir()
       pid = startProcessAuxSpawn(data)
       if workingDir.len > 0:
         setCurrentDir(currentDir)

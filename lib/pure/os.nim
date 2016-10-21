@@ -50,6 +50,8 @@ proc c_getenv(env: cstring): cstring {.
   importc: "getenv", header: "<stdlib.h>".}
 proc c_putenv(env: cstring): cint {.
   importc: "putenv", header: "<stdlib.h>".}
+proc c_free(p: pointer) {.
+  importc: "free", header: "<stdlib.h>".}
 
 var errno {.importc, header: "<errno.h>".}: cint
 
@@ -303,24 +305,47 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns the `current working directory`:idx:.
-  const bufsize = 512 # should be enough
   when defined(windows):
+    var bufsize = MAX_PATH.int32
     when useWinUnicode:
       var res = newWideCString("", bufsize)
-      var L = getCurrentDirectoryW(bufsize, res)
-      if L == 0'i32: raiseOSError(osLastError())
-      result = res$L
+      while true:
+        var L = getCurrentDirectoryW(bufsize, res)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
     else:
       result = newString(bufsize)
-      var L = getCurrentDirectoryA(bufsize, result)
-      if L == 0'i32: raiseOSError(osLastError())
-      setLen(result, L)
+      while true:
+        var L = getCurrentDirectoryA(bufsize, result)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          result = newString(L)
+          bufsize = L
+        else:
+          setLen(result, L)
+          break
   else:
+    var bufsize = 1024 # should be enough
     result = newString(bufsize)
-    if getcwd(result, bufsize) != nil:
-      setLen(result, c_strlen(result))
-    else:
-      raiseOSError(osLastError())
+    while true:
+      if getcwd(result, bufsize) != nil:
+        setLen(result, c_strlen(result))
+        break
+      else:
+        let err = osLastError()
+        if err.int32 == ERANGE:
+          bufsize = bufsize shl 1
+          doAssert(bufsize >= 0)
+          result = newString(bufsize)
+        else:
+          raiseOSError(osLastError())
 
 proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   ## Sets the `current working directory`:idx:; `OSError` is raised if
@@ -336,28 +361,45 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns the full (`absolute`:idx:) path of the file `filename`, raises OSError in case of an error.
+  ## Returns the full (`absolute`:idx:) path of the file `filename`,
+  ## raises OSError in case of an error.
   when defined(windows):
-    const bufsize = 3072'i32
+    var bufsize = MAX_PATH.int32
     when useWinUnicode:
-      var unused: WideCString
-      var res = newWideCString("", bufsize div 2)
-      var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
-      if L <= 0'i32 or L >= bufsize:
-        raiseOSError(osLastError())
-      result = res$L
+      var unused: WideCString = nil
+      var res = newWideCString("", bufsize)
+      while true:
+        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
     else:
-      var unused: cstring
+      var unused: cstring = nil
       result = newString(bufsize)
-      var L = getFullPathNameA(filename, bufsize, result, unused)
-      if L <= 0'i32 or L >= bufsize: raiseOSError(osLastError())
-      setLen(result, L)
+      while true:
+        var L = getFullPathNameA(filename, bufsize, result, unused)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          result = newString(L)
+          bufsize = L
+        else:
+          setLen(result, L)
+          break
   else:
-    # careful, realpath needs to take an allocated buffer according to Posix:
-    result = newString(pathMax)
-    var r = realpath(filename, result)
-    if r.isNil: raiseOSError(osLastError())
-    setLen(result, c_strlen(result))
+    # according to Posix we don't need to allocate space for result pathname.
+    # But we need to free return value with free(3).
+    var r = realpath(filename, nil)
+    if r.isNil:
+      raiseOSError(osLastError())
+    else:
+      result = $r
+      c_free(cast[pointer](r))
 
 when defined(Windows):
   proc openHandle(path: string, followSymlink=true): Handle =
