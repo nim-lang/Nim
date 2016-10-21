@@ -303,24 +303,47 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns the `current working directory`:idx:.
-  const bufsize = 512 # should be enough
   when defined(windows):
+    var bufsize = MAX_PATH
     when useWinUnicode:
       var res = newWideCString("", bufsize)
-      var L = getCurrentDirectoryW(bufsize, res)
-      if L == 0'i32: raiseOSError(osLastError())
-      result = res$L
+      while true:
+        var L = getCurrentDirectoryW(bufsize.int32, res)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
     else:
       result = newString(bufsize)
-      var L = getCurrentDirectoryA(bufsize, result)
-      if L == 0'i32: raiseOSError(osLastError())
-      setLen(result, L)
+      while true:
+        var L = getCurrentDirectoryA(bufsize.int32, result)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          result = newString(L)
+          bufsize = L
+        else:
+          setLen(result, L)
+          break
   else:
+    var bufsize = 1024 # should be enough
     result = newString(bufsize)
-    if getcwd(result, bufsize) != nil:
-      setLen(result, c_strlen(result))
-    else:
-      raiseOSError(osLastError())
+    while true:
+      if getcwd(result, bufsize) != nil:
+        setLen(result, c_strlen(result))
+        break
+      else:
+        let err = osLastError()
+        if err.int32 == ERANGE:
+          bufsize = bufsize shl 1
+          doAssert(bufsize >= 0)
+          result = newString(bufsize)
+        else:
+          raiseOSError(osLastError())
 
 proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   ## Sets the `current working directory`:idx:; `OSError` is raised if
