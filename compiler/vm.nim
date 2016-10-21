@@ -900,7 +900,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if newPc < pc: handleJmpBack()
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
-        newSeq(newFrame.slots, prc.offset)
+        newSeq(newFrame.slots, prc.offset+ord(isClosure))
         if not isEmptyType(prc.typ.sons[0]) or prc.kind == skMacro:
           putIntoReg(newFrame.slots[0], getNullValue(prc.typ.sons[0], prc.info))
         for i in 1 .. rc-1:
