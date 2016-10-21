@@ -12,7 +12,13 @@ As always, you can grab the latest version from the
 `downloads page <http://nim-lang.org/download.html>`_.
 
 This release is a pure bugfix release fixing the most pressing issues and
-regressions of 0.15.0. To see a full list of changes, take a look at the
+regressions of 0.15.0. For Windows we now provide zipfiles in addition to the
+NSIS based installer which proves to be hard to maintain and after all these
+months still has serious issues. So we encourage you download the .zip
+file instead of the .exe file! Unzip it somewhere, run ``finish.exe`` to
+detect your MingW installation, done.
+
+To see a full list of changes, take a look at the
 detailed changelog `below <#changelog>`_.
 
 

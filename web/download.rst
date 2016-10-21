@@ -3,11 +3,28 @@ Download the compiler
 
 You can download the latest version of the Nim compiler here.
 
-Binaries
---------
+Windows
+-------
 
-Right now binaries are only provided for Windows. You can download
-an installer for both 32 bit and 64 bit versions of Windows below. These
+Zips
+%%%%
+
+We now encourage you to install via the provided zipfiles:
+
+* | 32 bit: `nim-0.15.2_x32.zip <download/nim-0.15.2_x32.zip>`_
+  | SHA-256
+* | 64 bit: `nim-0.15.2_x64.zip <download/nim-0.15.2_x64.zip>`_
+  | SHA-256
+
+Unzip these where you want and optionally run ``finish.exe`` to
+detect your MingW environment.
+
+Exes
+%%%%
+
+You can download an installer for both 32 bit and 64 bit versions of
+Windows below. Note that these installers have some known issues and
+so will unlikely to be provided further in the future. These
 installers have everything you need to use Nim, including a C compiler.
 
 * | 32 bit: `nim-0.15.2_x32.exe <download/nim-0.15.2_x32.exe>`_
