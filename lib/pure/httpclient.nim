@@ -18,14 +18,14 @@
 ##
 ## .. code-block:: Nim
 ##   var client = newHttpClient()
-##   echo(getContent("http://google.com"))
+##   echo client.getContent("http://google.com")
 ##
 ## The same action can also be performed asynchronously, simply use the
 ## ``AsyncHttpClient``:
 ##
 ## .. code-block:: Nim
 ##   var client = newAsyncHttpClient()
-##   echo(await getContent("http://google.com"))
+##   echo await client.getContent("http://google.com")
 ##
 ## The functionality implemented by ``HttpClient`` and ``AsyncHttpClient``
 ## is the same, so you can use whichever one suits you best in the examples
