@@ -1374,7 +1374,7 @@ proc safeInheritanceDiff*(a, b: PType): int =
   if a.kind == tyError or b.kind == tyError:
     result = -1
   else:
-    result = inheritanceDiff(a, b)
+    result = inheritanceDiff(a.skipTypes(skipPtrs), b.skipTypes(skipPtrs))
 
 proc compatibleEffectsAux(se, re: PNode): bool =
   if re.isNil: return false
