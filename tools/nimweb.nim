@@ -502,9 +502,11 @@ proc buildWebsite(c: var TConfigData) =
 proc main(c: var TConfigData) =
   buildWebsite(c)
   buildJS("web/upload")
-  buildAddDoc(c, "web/upload")
-  buildDocSamples(c, "web/upload")
-  buildDoc(c, "web/upload")
+  const docup = "web/upload/" & NimVersion
+  createDir(docup)
+  buildAddDoc(c, docup)
+  buildDocSamples(c, docup)
+  buildDoc(c, docup)
   buildDocSamples(c, "doc")
   buildDoc(c, "doc")
 
