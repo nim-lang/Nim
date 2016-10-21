@@ -774,7 +774,10 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
     when useProcessAuxSpawn:
+      var currentDir = getCurrentDir()
       pid = startProcessAuxSpawn(data)
+      if workingDir.len > 0:
+        setCurrentDir(currentDir)
     else:
       pid = startProcessAuxFork(data)
 
@@ -835,7 +838,6 @@ elif not defined(useNimRtl):
           chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
 
       var res: cint
-      # FIXME: chdir is global to process
       if data.workingDir.len > 0:
         setCurrentDir($data.workingDir)
       var pid: Pid
