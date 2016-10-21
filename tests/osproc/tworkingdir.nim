@@ -9,8 +9,8 @@ when defined(windows):
   discard
 else:
   let dir1 = getCurrentDir()
-  var process = startProcess("/usr/bin/true", "/usr/bin")
+  var process = startProcess("/usr/bin/env", "/usr/bin", ["true"])
   let dir2 = getCurrentDir()
   discard process.waitForExit()
   process.close()
-  doAssert(dir1 == dir2)
+  doAssert(dir1 == dir2, $dir1 & " != " & $dir2)

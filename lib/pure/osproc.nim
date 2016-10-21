@@ -774,12 +774,12 @@ elif not defined(useNimRtl):
     data.workingDir = workingDir
 
     when useProcessAuxSpawn:
-      pid = startProcessAuxSpawn(data)
-    else:
       var currentDir = getCurrentDir()
-      pid = startProcessAuxFork(data)
+      pid = startProcessAuxSpawn(data)
       if workingDir.len > 0:
         setCurrentDir(currentDir)
+    else:
+      pid = startProcessAuxFork(data)
 
     # Parent process. Copy process information.
     if poEchoCmd in options:
