@@ -104,13 +104,14 @@ proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
+  var space: cint = 80
   # Use the currently reserved space for a first try
-  when defined(nimscript):
-    var space: cint = 80
+  if line.string.isNil:
+    line = TaintedString(newStringOfCap(80))
   else:
-    var space: cint = cint(cast[PGenericSeq](line.string).space)
-  line.string.setLen(space)
-
+    when not defined(nimscript):
+      space = cint(cast[PGenericSeq](line.string).space)
+    line.string.setLen(space)
   while true:
     # memset to \l so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \l
