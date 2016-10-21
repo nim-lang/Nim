@@ -721,7 +721,8 @@ proc track(tracked: PEffects, n: PNode) =
           # and it's not a recursive call:
           if not (a.kind == nkSym and a.sym == tracked.owner):
             markSideEffect(tracked, a)
-    for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
+    if a.kind != nkSym or a.sym.magic != mNBindSym:
+      for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
