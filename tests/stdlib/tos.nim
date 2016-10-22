@@ -38,8 +38,6 @@ false
 false
 true
 true
-true
-false
 '''
 """
 # test os path creation, iteration, and deletion
@@ -99,9 +97,4 @@ removeDir(dirs[0])
 # createDir should properly handle trailing separator
 createDir(dname / "")
 echo dirExists(dname) # true
-removeDir(dname)
-
-# Check createDir return value
-echo createDir(dname) # true
-echo createDir(dname) # false
 removeDir(dname)

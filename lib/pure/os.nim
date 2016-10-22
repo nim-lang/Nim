@@ -1009,10 +1009,15 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
     of pcDir: removeDir(path)
   rawRemoveDir(dir)
 
-proc rawCreateDir(dir: string): bool =
-  # Create directory.
-  # Does not create parent directories (fails if parent does not exist).
-  # Returns `true` if the directory was created, `false` if it already exists.
+proc tryCreateDir*(dir: string): bool =
+  ## Try to create a `directory`:idx: `dir`.
+  ##
+  ## Does not create parent directories (fails if parent does not exist).
+  ## Returns `true` if a new directory was created, `false` if *path*
+  ## (not necessarily a directory) `dir` already exists.
+
+  # This is a thin wrapper over mkDir (or alternatives on other systems),
+  # so in case of a pre-existing path we don't check that it is a directory.
   when defined(solaris):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
@@ -1043,16 +1048,14 @@ proc rawCreateDir(dir: string): bool =
     else:
       raiseOSError(osLastError())
 
-proc createDir*(dir: string): bool {.discardable, rtl,
-  extern: "nos$1", tags: [WriteDirEffect].} =
+proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## Creates the `directory`:idx: `dir`.
   ##
   ## The directory may contain several subdirectories that do not exist yet.
-  ## The full path is created. If this fails, `OSError` is raised.
-  ##
-  ## Returns `true` if the directory did not previously exist
+  ## The full path is created. If this fails, `OSError` is raised. It does **not**
+  ## fail if the path already exists because for most usages this does not
+  ## indicate an error.
   var omitNext = false
-  result = false
   when doslike:
     omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
@@ -1060,10 +1063,10 @@ proc createDir*(dir: string): bool {.discardable, rtl,
       if omitNext:
         omitNext = false
       else:
-        result = rawCreateDir(substr(dir, 0, i-1))
+        discard tryCreateDir(substr(dir, 0, i-1))
   # The loop does not create the dir itself if it doesn't end in separator
   if dir[^1] notin {DirSep, AltSep}:
-    result = rawCreateDir(dir)
+    discard tryCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [WriteIOEffect, ReadIOEffect], benign.} =
