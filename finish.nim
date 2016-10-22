@@ -93,15 +93,17 @@ when defined(windows):
       except OSError, IOError:
         result = false
 
-  proc tryDirs(dirs: varargs[string]): string =
+  proc tryDirs(incompat: var seq[string]; dirs: varargs[string]): string =
     let bits = $(sizeof(pointer)*8)
     for d in dirs:
       if dirExists d:
         let x = expandFilename(d / "bin")
         if checkGccArch(x): return x
+        else: incompat.add x
       elif dirExists(d & bits):
         let x = expandFilename((d & bits) / "bin")
         if checkGccArch(x): return x
+        else: incompat.add x
 
 proc main() =
   when defined(windows):
@@ -110,13 +112,15 @@ proc main() =
       HKEY_CURRENT_USER)
     var alreadyInPath = false
     var mingWchoices: seq[string] = @[]
+    var incompat: seq[string] = @[]
     for x in p.split(';'):
       let y = expandFilename(if x[0] == '"' and x[^1] == '"':
                   substr(x, 1, x.len-2) else: x)
       if y == desiredPath: alreadyInPath = true
       if y.toLowerAscii.contains("mingw"):
-        if dirExists(y) and checkGccArch(y):
-          mingWchoices.add y
+        if dirExists(y):
+          if checkGccArch(y): mingWchoices.add y
+          else: incompat.add y
 
     if alreadyInPath:
       echo "bin/nim.exe is already in your PATH [Skipping]"
@@ -126,9 +130,12 @@ proc main() =
         addToPathEnv(desiredPath)
     if mingWchoices.len == 0:
       # No mingw in path, so try a few locations:
-      let alternative = tryDirs("dist/mingw", "../mingw", r"C:\mingw")
+      let alternative = tryDirs(incompat, "dist/mingw", "../mingw", r"C:\mingw")
       if alternative.len == 0:
-        echo "No MingW found in PATH and no candidate found " &
+        if incompat.len > 0:
+          echo "The following *incompatible* MingW installations exist"
+          for x in incompat: echo x
+        echo "No compatible MingW candidates found " &
              "in the standard locations [Error]"
       else:
         if askBool("Found a MingW directory that is not in your PATH.\n" &
