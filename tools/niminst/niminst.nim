@@ -313,7 +313,7 @@ proc parseIniFile(c: var ConfigData) =
       of cfgSectionStart:
         section = normalize(k.section)
       of cfgKeyValuePair:
-        var v = k.value % c.vars
+        var v = `%`(k.value, c.vars, {useEnvironment})
         c.vars[k.key] = v
 
         case section
@@ -621,7 +621,7 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
   let proj = toLowerAscii(c.name) & "-" & c.version
   let tmpDir = if c.outdir.len == 0: "build" else: c.outdir
 
-  template processFile(destFile, src) =
+  proc processFile(destFile, src: string) =
     let dest = tmpDir / destFile
     echo "Copying ", src, " to ", dest
     if not existsFile(src):
@@ -648,6 +648,10 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
         var dir = buildDir(osA, cpuA)
         for k, f in walkDir("build" / dir):
           if k == pcFile: processFile(proj / dir / extractFilename(f), f)
+  else:
+    for f in items(c.cat[fcWinBin]):
+      let filename = f.extractFilename
+      processFile(proj / "bin" / filename, f)
 
   let osSpecific = if windowsZip: fcWindows else: fcUnix
   for cat in items({fcConfig..fcOther, osSpecific, fcNimble}):
