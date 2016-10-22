@@ -26,8 +26,8 @@ when defined(macosx) or defined(freebsd):
     const MAX_DESCRIPTORS_ID = 29 # KERN_MAXFILESPERPROC (MacOS)
   else:
     const MAX_DESCRIPTORS_ID = 27 # KERN_MAXFILESPERPROC (FreeBSD)
-  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr int,
-              newp: pointer, newplen: int): cint
+  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
+              newp: pointer, newplen: csize): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
                                       #include <sys/sysctl.h>"""}
 elif defined(netbsd) or defined(openbsd):
@@ -35,8 +35,8 @@ elif defined(netbsd) or defined(openbsd):
   # KERN_MAXFILES, because KERN_MAXFILES is always bigger,
   # than KERN_MAXFILESPERPROC.
   const MAX_DESCRIPTORS_ID = 7 # KERN_MAXFILES
-  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr int,
-              newp: pointer, newplen: int): cint
+  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
+              newp: pointer, newplen: csize): cint
        {.importc: "sysctl",header: """#include <sys/param.h>
                                       #include <sys/sysctl.h>"""}
 
@@ -72,7 +72,7 @@ type SelectEvent* = ptr SelectEventImpl
 
 proc newSelector*[T](): Selector[T] =
   var maxFD = 0.cint
-  var size = sizeof(cint)
+  var size = csize(sizeof(cint))
   var namearr = [1.cint, MAX_DESCRIPTORS_ID.cint]
   # Obtain maximum number of file descriptors for process
   if sysctl(addr(namearr[0]), 2, cast[pointer](addr maxFD), addr size,
