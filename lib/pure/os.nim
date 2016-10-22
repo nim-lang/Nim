@@ -1064,8 +1064,10 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
         omitNext = false
       else:
         discard tryCreateDir(substr(dir, 0, i-1))
+
   # The loop does not create the dir itself if it doesn't end in separator
-  if dir[^1] notin {DirSep, AltSep}:
+  if dir.len > 0 and not omitNext and
+     dir[^1] notin {DirSep, AltSep}:
     discard tryCreateDir(dir)
 
 proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
