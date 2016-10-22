@@ -36,6 +36,10 @@ false
 false
 false
 false
+true
+true
+true
+false
 '''
 """
 # test os path creation, iteration, and deletion
@@ -86,3 +90,18 @@ for file in files:
 
 removeDir(dname)
 echo dirExists(dname)
+
+# createDir should create recursive directories
+createDir(dirs[0] / dirs[1])
+echo dirExists(dirs[0] / dirs[1]) # true
+removeDir(dirs[0])
+
+# createDir should properly handle trailing separator
+createDir(dname / "")
+echo dirExists(dname) # true
+removeDir(dname)
+
+# Check createDir return value
+echo createDir(dname) # true
+echo createDir(dname) # false
+removeDir(dname)
