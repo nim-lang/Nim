@@ -434,8 +434,8 @@ when not declared(getEnv) or defined(nimscript):
     ## On Windows, network paths are considered absolute too.
     when doslike:
       var len = len(path)
-      result = (len > 1 and path[0] in {'/', '\\'}) or
-               (len > 2 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
+      result = (len > 0 and path[0] in {'/', '\\'}) or
+               (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
     elif defined(macos):
       result = path.len > 0 and path[0] != ':'
     elif defined(RISCOS):
