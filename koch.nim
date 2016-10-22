@@ -263,7 +263,7 @@ proc boot(args: string) =
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
   let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
-  let smartNimcache = if "release" in args: "rnimcache" else: "dnimcache"
+  let smartNimcache = if "release" in args: "nimcache/release" else: "nimcache/debug"
 
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
