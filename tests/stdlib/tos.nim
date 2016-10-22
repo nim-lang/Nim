@@ -38,6 +38,7 @@ false
 false
 true
 true
+Raises
 '''
 """
 # test os path creation, iteration, and deletion
@@ -98,3 +99,12 @@ removeDir(dirs[0])
 createDir(dname / "")
 echo dirExists(dname) # true
 removeDir(dname)
+
+# createDir should raise IOError if the path exists
+# and is not a directory
+open(dname, fmWrite).close
+try:
+  createDir(dname)
+except IOError:
+  echo "Raises"
+removeFile(dname)
