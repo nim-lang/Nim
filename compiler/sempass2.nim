@@ -204,16 +204,21 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet) =
   let u = s.gcUnsafetyReason
   if u != nil and not cycleCheck.containsOrIncl(u.id):
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
-    if u.kind in {skLet, skVar}:
+    case u.kind
+    of skLet, skVar:
       message(s.info, msgKind,
         ("'$#' is not GC-safe as it accesses '$#'" &
         " which is a global using GC'ed memory") % [s.name.s, u.name.s])
-    elif u.kind in routineKinds:
+    of routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
       listGcUnsafety(u, true, cycleCheck)
       message(s.info, msgKind,
         "'$#' is not GC-safe as it calls '$#'" %
+        [s.name.s, u.name.s])
+    of skParam:
+      message(s.info, msgKind,
+        "'$#' is not GC-safe as it performs an indirect call via '$#'" %
         [s.name.s, u.name.s])
     else:
       internalAssert u.kind == skUnknown
