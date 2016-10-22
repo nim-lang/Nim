@@ -122,14 +122,14 @@ proc main() =
       echo "bin/nim.exe is already in your PATH [Skipping]"
     else:
       if askBool("nim.exe is not in your PATH environment variable.\n" &
-          " Should it be added permanently? (y/n) "):
+          "Should it be added permanently? (y/n) "):
         addToPathEnv(desiredPath)
     if mingWchoices.len == 0:
       # No mingw in path, so try a few locations:
       let alternative = tryDirs("dist/mingw", "../mingw", r"C:\mingw")
       if alternative.len == 0:
         echo "No MingW found in PATH and no candidate found " &
-            " in the standard locations [Error]"
+             "in the standard locations [Error]"
       else:
         if askBool("Found a MingW directory that is not in your PATH.\n" &
                    alternative &
