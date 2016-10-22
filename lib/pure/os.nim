@@ -1015,21 +1015,20 @@ proc rawCreateDir(dir: string): bool =
   # Returns `true` if the directory was created, `false` if it already exists.
   when defined(solaris):
     let res = mkdir(dir, 0o777)
-    case res
-    of 0'i32:
+    if res == 0'i32:
       result = true
-    of EEXIST, ENOSYS:
+    elif errno in {EEXIST, ENOSYS}:
       result = false
     else:
       raiseOSError(osLastError())
   elif defined(unix):
     let res = mkdir(dir, 0o777)
-    case res
-    of 0'i32:
+    if res == 0'i32:
       result = true
-    of EEXIST:
+    elif errno == EEXIST:
       result = false
     else:
+      echo res
       raiseOSError(osLastError())
   else:
     when useWinUnicode:
