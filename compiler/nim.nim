@@ -56,12 +56,12 @@ proc handleCmdLine() =
     loadConfigs(DefaultConfig) # load all config files
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(scriptFile)
+      runNimScript(scriptFile, freshDefines=false)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == gProjectFull: return
     elif fileExists(gProjectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(gProjectPath / "config.nims")
+      runNimScript(gProjectPath / "config.nims", freshDefines=false)
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
@@ -84,6 +84,14 @@ proc handleCmdLine() =
             ex = quoteShell(
               completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
           execExternalProgram(findNodeJs() & " " & ex & ' ' & commands.arguments)
+        elif gCmd == cmdCompileToPHP:
+          var ex: string
+          if options.outFile.len > 0:
+            ex = options.outFile.prependCurDir.quoteShell
+          else:
+            ex = quoteShell(
+              completeCFilePath(changeFileExt(gProjectFull, "php").prependCurDir))
+          execExternalProgram("php " & ex & ' ' & commands.arguments)
         else:
           var binPath: string
           if options.outFile.len > 0:

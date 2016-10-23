@@ -11,7 +11,7 @@
 
 import strutils, db_sqlite, md5
 
-var db: TDbConn
+var db: DbConn
 
 # We *hash* the relevant information into 128 bit hashes. This should be good
 # enough to prevent any collisions.
@@ -33,7 +33,7 @@ type
 const
   cb64 = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
-    "O", "P", "Q", "R", "S", "T" "U", "V", "W", "X", "Y", "Z",
+    "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
     "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -158,7 +158,6 @@ proc hashType(c: var MD5Context, t: PType) =
     if tfThread in t.flags: c &= ".thread"
   else:
     for i in 0.. <t.len: c.hashType(t.sons[i])
-  if tfShared in t.flags: c &= "shared"
   if tfNotNil in t.flags: c &= "not nil"
 
 proc canonConst(n: PNode): TUid =
@@ -276,7 +275,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     return
   # we need no surrounding [] here because the type is in a line of its own
   if t.kind == tyForward: internalError("encodeType: tyForward")
-  # for the new rodfile viewer we use a preceeding [ so that the data section
+  # for the new rodfile viewer we use a preceding [ so that the data section
   # can easily be disambiguated:
   add(result, '[')
   encodeVInt(ord(t.kind), result)
@@ -384,18 +383,28 @@ proc createDb() =
       interfHash varchar(256) not null,
       fullHash varchar(256) not null,
 
-      created timestamp not null default (DATETIME('now')),
+      created timestamp not null default (DATETIME('now'))
     );""")
 
   db.exec(sql"""
+    create table if not exists Backend(
+      id integer primary key,
+      strongdeps varchar(max) not null,
+      weakdeps varchar(max) not null,
+      header varchar(max) not null,
+      code varchar(max) not null
+    )
+
     create table if not exists Symbol(
       id integer primary key,
       module integer not null,
+      backend integer not null,
       name varchar(max) not null,
       data varchar(max) not null,
       created timestamp not null default (DATETIME('now')),
 
-      foreign key (module) references module(id)
+      foreign key (module) references Module(id),
+      foreign key (backend) references Backend(id)
     );""")
 
   db.exec(sql"""
@@ -409,8 +418,4 @@ proc createDb() =
       foreign key (module) references module(id)
     );""")
 
-
-  #db.exec(sql"""
-  #  --create unique index if not exists TsstNameIx on TestResult(name);
-  #  """, [])
 

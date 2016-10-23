@@ -42,7 +42,10 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = semSubscript(c, result, flags)
   c.p.bracketExpr = oldBracketExpr
   if result.isNil:
-    localError(n.info, "could not resolve: " & $n)
+    let x = copyTree(n)
+    x.sons[0] = newIdentNode(getIdent"[]", n.info)
+    bracketNotFoundError(c, x)
+    #localError(n.info, "could not resolve: " & $n)
     result = n
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
@@ -111,8 +114,12 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
-  result.typ = makeRangeType(c, firstOrd(n.sons[1].typ),
-                                lastOrd(n.sons[1].typ), n.info)
+  let parType = n.sons[1].typ
+  if isOrdinalType(parType) or parType.kind == tySet:
+    result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
+  else:
+    localError(n.info, errOrdinalTypeExpected)
+    result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -130,7 +137,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     return errorNode(c, n)
 
   let id = newIdentNode(getIdent(sl.strVal), n.info)
-  let s = qualifiedLookUp(c, id)
+  let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
@@ -143,13 +150,6 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc isStrangeArray(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind == tyArray and t.firstOrd != 0
-
-proc isNegative(n: PNode): bool =
-  let n = n.skipConv
-  if n.kind in {nkCharLit..nkUInt64Lit}:
-    result = n.intVal < 0
-  elif n.kind in nkCallKinds and n.sons[0].kind == nkSym:
-    result = n.sons[0].sym.magic in {mUnaryMinusI, mUnaryMinusI64}
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
@@ -178,10 +178,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-    # disallow negative indexing for now:
-    if not c.p.bracketExpr.isNil:
-      if isNegative(n.sons[1]) or (n.len > 2 and isNegative(n.sons[2])):
-        localError(n.info, "use '^' instead of '-'; negative indexing is obsolete")
   of mRoof:
     let bracketExpr = if n.len == 3: n.sons[2] else: c.p.bracketExpr
     if bracketExpr.isNil:
@@ -207,7 +203,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
         result = n.sons[1]
       else:
         result = newNodeIT(nkCall, n.info, getSysType(tyInt))
-        result.add newSymNode(getSysMagic("-", mSubI), n.info)
+        let subi = getSysMagic("-", mSubI)
+        #echo "got ", typeToString(subi.typ)
+        result.add newSymNode(subi, n.info)
         result.add lenExprB
         result.add n.sons[1]
   of mPlugin:

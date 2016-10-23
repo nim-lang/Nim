@@ -46,7 +46,7 @@ const
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
-    wInjectStmt, wDeprecated, wExperimental}
+    wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
@@ -55,7 +55,7 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims}
+    wBorrow, wGcSafe, wExportNims, wPartial}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
@@ -63,11 +63,12 @@ const
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
-    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims}
+    wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
+    wIntDefine, wStrDefine}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
-  allRoutinePragmas* = procPragmas + iteratorPragmas + lambdaPragmas
+  allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
@@ -89,43 +90,38 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
       else:
         invalidPragma(it)
 
-proc setExternName(s: PSym, extname: string) =
-  s.loc.r = rope(extname % s.name.s)
+proc setExternName(s: PSym, extname: string, info: TLineInfo) =
+  # special cases to improve performance:
+  if extname == "$1":
+    s.loc.r = rope(s.name.s)
+  elif '$' notin extname:
+    s.loc.r = rope(extname)
+  else:
+    try:
+      s.loc.r = rope(extname % s.name.s)
+    except ValueError:
+      localError(info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   if gCmd == cmdPretty and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
 
-proc makeExternImport(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc makeExternImport(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
 
-proc validateExternCName(s: PSym, info: TLineInfo) =
-  ## Validates that the symbol name in s.loc.r is a valid C identifier.
-  ##
-  ## Valid identifiers are those alphanumeric including the underscore not
-  ## starting with a number. If the check fails, a generic error will be
-  ## displayed to the user.
-  let target = $s.loc.r
-  if target.len < 1 or target[0] notin IdentStartChars or
-      not target.allCharsInSet(IdentChars):
-    localError(info, errGenerated, "invalid exported symbol")
-
 proc makeExternExport(s: PSym, extname: string, info: TLineInfo) =
-  setExternName(s, extname)
-  # XXX to fix make it work with nimrtl.
-  #if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC}:
-  #  validateExternCName(s, info)
+  setExternName(s, extname, info)
   incl(s.flags, sfExportc)
 
-proc processImportCompilerProc(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc processImportCompilerProc(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
   incl(s.loc.flags, lfImportCompilerProc)
 
-proc processImportCpp(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc processImportCpp(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   incl(s.flags, sfInfixCall)
   excl(s.flags, sfForward)
@@ -133,8 +129,8 @@ proc processImportCpp(s: PSym, extname: string) =
   incl(m.flags, sfCompileToCpp)
   extccomp.gMixedMode = true
 
-proc processImportObjC(s: PSym, extname: string) =
-  setExternName(s, extname)
+proc processImportObjC(s: PSym, extname: string, info: TLineInfo) =
+  setExternName(s, extname, info)
   incl(s.flags, sfImportc)
   incl(s.flags, sfNamedParamCall)
   excl(s.flags, sfForward)
@@ -256,8 +252,9 @@ proc expectDynlibNode(c: PContext, n: PNode): PNode =
 
 proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
-    POptionEntry(c.optionStack.tail).dynlib = getLib(c, libDynamic,
-        expectDynlibNode(c, n))
+    let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
+    if not lib.isOverriden:
+      POptionEntry(c.optionStack.tail).dynlib = lib
   else:
     if n.kind == nkExprColonExpr:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
@@ -276,6 +273,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
 proc processNote(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (sonsLen(n) == 2) and
       (n.sons[0].kind == nkBracketExpr) and
+      (n.sons[0].sons.len == 2) and
       (n.sons[0].sons[1].kind == nkIdent) and
       (n.sons[0].sons[0].kind == nkIdent):
       #and (n.sons[1].kind == nkIdent):
@@ -391,21 +389,25 @@ type
   TLinkFeature = enum
     linkNormal, linkSys
 
-proc processCompile(c: PContext, n: PNode) =
+proc relativeFile(c: PContext; n: PNode; ext=""): string =
   var s = expectStrLit(c, n)
-  var found = findFile(s)
-  if found == "": found = s
-  var trunc = changeFileExt(found, "")
-  if not isAbsolute(found):
-    found = parentDir(n.info.toFullPath) / found
+  if ext.len > 0 and splitFile(s).ext == "":
+    s = addFileExt(s, ext)
+  result = parentDir(n.info.toFullPath) / s
+  if not fileExists(result):
+    if isAbsolute(s): result = s
+    else:
+      result = findFile(s)
+      if result.len == 0: result = s
+
+proc processCompile(c: PContext, n: PNode) =
+  let found = relativeFile(c, n)
+  let trunc = found.changeFileExt("")
   extccomp.addExternalFileToCompile(found)
   extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
-  var f = expectStrLit(c, n)
-  if splitFile(f).ext == "": f = addFileExt(f, CC[cCompiler].objExt)
-  var found = findFile(f)
-  if found == "": found = f # use the default
+  let found = relativeFile(c, n, CC[cCompiler].objExt)
   case feature
   of linkNormal: extccomp.addFileToLink(found)
   of linkSys:
@@ -443,6 +445,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(sub))
         if e != nil:
           if e.kind == skStub: loadStub(e)
+          incl(e.flags, sfUsed)
           addSon(result, newSymNode(e))
         else:
           addSon(result, newStrNode(nkStrLit, sub))
@@ -563,12 +566,14 @@ proc deprecatedStmt(c: PContext; pragma: PNode) =
     localError(pragma.info, "list of key:value pairs expected"); return
   for n in pragma:
     if n.kind in {nkExprColonExpr, nkExprEqExpr}:
-      let dest = qualifiedLookUp(c, n[1])
+      let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
+      assert dest != nil
       let src = considerQuotedIdent(n[0])
       let alias = newSym(skAlias, src, dest, n[0].info)
       incl(alias.flags, sfExported)
       if sfCompilerProc in dest.flags: markCompilerProc(alias)
       addInterfaceDecl(c, alias)
+      n.sons[1] = newSymNode(dest)
     else:
       localError(n.info, "key:value pair expected")
 
@@ -588,7 +593,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
       # and perform the lookup on demand instead.
       result = newSym(skUnknown, considerQuotedIdent(n), nil, n.info)
   else:
-    result = qualifiedLookUp(c, n)
+    result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
@@ -615,20 +620,23 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wExportc:
         makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
         incl(sym.flags, sfUsed) # avoid wrong hints
-      of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"))
+      of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportCompilerProc:
-        processImportCompilerProc(sym, getOptionalStr(c, it, "$1"))
-      of wExtern: setExternName(sym, expectStrLit(c, it))
+        processImportCompilerProc(sym, getOptionalStr(c, it, "$1"), it.info)
+      of wExtern: setExternName(sym, expectStrLit(c, it), it.info)
       of wImmediate:
-        if sym.kind in {skTemplate, skMacro}: incl(sym.flags, sfImmediate)
+        if sym.kind in {skTemplate, skMacro}:
+          incl(sym.flags, sfImmediate)
+          incl(sym.flags, sfAllUntyped)
+          message(n.info, warnDeprecated, "use 'untyped' parameters instead; immediate")
         else: invalidPragma(it)
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
         else: invalidPragma(it)
       of wImportCpp:
-        processImportCpp(sym, getOptionalStr(c, it, "$1"))
+        processImportCpp(sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportObjC:
-        processImportObjC(sym, getOptionalStr(c, it, "$1"))
+        processImportObjC(sym, getOptionalStr(c, it, "$1"), it.info)
       of wAlign:
         if sym.typ == nil: invalidPragma(it)
         var align = expectIntLit(c, it)
@@ -743,7 +751,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         incl(sym.flags, sfThread)
         incl(sym.flags, sfProcvar)
-        if sym.typ != nil: incl(sym.typ.flags, tfThread)
+        if sym.typ != nil:
+          incl(sym.typ.flags, tfThread)
+          if sym.typ.callConv == ccClosure: sym.typ.callConv = ccDefault
       of wGcSafe:
         noVal(it)
         if sym.kind != skType: incl(sym.flags, sfThread)
@@ -834,6 +844,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym.kind != skType or sym.typ == nil: invalidPragma(it)
         else: incl(sym.typ.flags, tfByCopy)
+      of wPartial:
+        noVal(it)
+        if sym.kind != skType or sym.typ == nil: invalidPragma(it)
+        else:
+          incl(sym.typ.flags, tfPartial)
+          # .partial types can only work with dead code elimination
+          # to prevent the codegen from doing anything before we compiled
+          # the whole program:
+          incl gGlobalOptions, optDeadCodeElim
       of wInject, wGensym:
         # We check for errors, but do nothing with these pragmas otherwise
         # as they are handled directly in 'evalTemplate'.
@@ -874,11 +893,20 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           c.module.flags.incl sfExperimental
         else:
           localError(it.info, "'experimental' pragma only valid as toplevel statement")
+      of wThis:
+        if it.kind == nkExprColonExpr:
+          c.selfName = considerQuotedIdent(it[1])
+        else:
+          c.selfName = getIdent("self")
       of wNoRewrite:
         noVal(it)
       of wBase:
         noVal(it)
         sym.flags.incl sfBase
+      of wIntDefine:
+        sym.magic = mIntDefine
+      of wStrDefine:
+        sym.magic = mStrDefine
       else: invalidPragma(it)
     else: invalidPragma(it)
 

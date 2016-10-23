@@ -9,6 +9,7 @@
 
 ## This module contains Nim's support for locks and condition vars.
 
+const insideRLocksModule = false
 include "system/syslocks"
 
 type
@@ -54,3 +55,13 @@ proc wait*(cond: var Cond, lock: var Lock) {.inline.} =
 proc signal*(cond: var Cond) {.inline.} =
   ## sends a signal to the condition variable `cond`.
   signalSysCond(cond)
+
+template withLock*(a: Lock, body: untyped) =
+  ## Acquires the given lock, executes the statements in body and
+  ## releases the lock after the statements finish executing.
+  a.acquire()
+  {.locks: [a].}:
+    try:
+      body
+    finally:
+      a.release()

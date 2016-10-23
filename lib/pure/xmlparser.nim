@@ -28,7 +28,7 @@ proc raiseInvalidXml(errors: seq[string]) =
 proc addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
-proc parse(x: var XmlParser, errors: var seq[string]): XmlNode
+proc parse(x: var XmlParser, errors: var seq[string]): XmlNode {.gcsafe.}
 
 proc untilElementEnd(x: var XmlParser, result: XmlNode,
                      errors: var seq[string]) =
@@ -164,3 +164,6 @@ when isMainModule:
       var xml = loadXml(filePath, errors)
       assert(errors.len == 0, "The file tests/testdata/doc1.xml should be parsed without errors.")
 
+    block bug1518:
+      var err: seq[string] = @[]
+      assert $parsexml(newStringStream"<tag>One &amp; two</tag>", "temp.xml", err) == "<tag>One &amp; two</tag>"

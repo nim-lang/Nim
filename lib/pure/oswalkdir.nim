@@ -1,3 +1,11 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
 
 ## Compile-time only version for walkDir if you need it at compile-time
 ## for JavaScript.

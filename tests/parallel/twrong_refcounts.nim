@@ -2,7 +2,7 @@ discard """
   output: "Success"
 """
 
-import math, threadPool
+import math, random, threadPool
 
 # ---
 

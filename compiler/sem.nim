@@ -39,13 +39,16 @@ proc semStmt(c: PContext, n: PNode): PNode
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
-proc instGenericContainer(c: PContext, n: PNode, header: PType): PType
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
+
+proc isArrayConstr(n: PNode): bool {.inline.} =
+  result = n.kind == nkBracket and
+    n.typ.skipTypes(abstractInst).kind == tyArray
 
 template semIdeForTemplateOrGenericCheck(n, requiresCheck) =
   # we check quickly if the node is where the cursor is
@@ -59,17 +62,10 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
   # templates perform some quick check whether the cursor is actually in
   # the generic or template.
   when defined(nimsuggest):
-    assert gCmd == cmdIdeTools
-    if requiresCheck:
+    if gCmd == cmdIdeTools and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
-
-proc typeMismatch(n: PNode, formal, actual: PType) =
-  if formal.kind != tyError and actual.kind != tyError:
-    localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
-        typeToString(actual) & ") " &
-        `%`(msgKindToString(errButExpectedX), [typeToString(formal)]))
 
 proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
   if arg.typ.isNil:
@@ -171,7 +167,7 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
-  proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLower
+  proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
 
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
@@ -191,10 +187,9 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
-  # identifier with visability
+  # identifier with visibility
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
-proc semStmtScope(c: PContext, n: PNode): PNode
 
 proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
   let t = typeAllowed(typ, kind)
@@ -259,7 +254,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = arg
       # for 'tcnstseq' we support [] to become 'seq'
       if eOrig.typ.skipTypes(abstractInst).kind == tySequence and
-         arg.typ.skipTypes(abstractInst).kind == tyArrayConstr:
+         isArrayConstr(arg):
         arg.typ = eOrig.typ
 
 proc tryConstExpr(c: PContext, n: PNode): PNode =
@@ -313,6 +308,13 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
 
 include hlo, seminst, semcall
 
+when false:
+  # hopefully not required:
+  proc resetSemFlag(n: PNode) =
+    excl n.flags, nfSem
+    for i in 0 ..< n.safeLen:
+      resetSemFlag(n[i])
+
 proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
                        flags: TExprFlags): PNode =
   ## Semantically check the output of a macro.
@@ -326,6 +328,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
   c.friendModules.add(s.owner.getModule)
 
   result = n
+  excl(n.flags, nfSem)
+  #resetSemFlag n
   if s.typ.sons[0] == nil:
     result = semStmt(c, result)
   else:
@@ -360,7 +364,6 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
-
   result = evalMacroCall(c.module, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
@@ -416,17 +419,44 @@ proc myOpen(module: PSym): PPassContext =
   c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags:
     magicsys.systemModule = module # set global variable!
-  else:
-    c.importTable.addSym magicsys.systemModule # import the "System" identifier
-    importAllSymbols(c, magicsys.systemModule)
   c.topLevelScope = openScope(c)
+  # don't be verbose unless the module belongs to the main package:
+  if module.owner.id == gMainPackageId:
+    gNotes = gMainPackageNotes
+  else:
+    if gMainPackageNotes == {}: gMainPackageNotes = gNotes
+    gNotes = ForeignPackageNotes
   result = c
 
 proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
   result = myOpen(module)
   for m in items(rd.methods): methodDef(m, true)
 
+proc isImportSystemStmt(n: PNode): bool =
+  if magicsys.systemModule == nil: return false
+  case n.kind
+  of nkImportStmt:
+    for x in n:
+      let f = checkModuleName(x)
+      if f == magicsys.systemModule.info.fileIndex:
+        return true
+  of nkImportExceptStmt, nkFromStmt:
+    let f = checkModuleName(n[0])
+    if f == magicsys.systemModule.info.fileIndex:
+      return true
+  else: discard
+
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
+  if n.kind == nkDefer:
+    localError(n.info, "defer statement not supported at top level")
+  if c.topStmts == 0 and not isImportSystemStmt(n):
+    if sfSystemModule notin c.module.flags and
+        n.kind notin {nkEmpty, nkCommentStmt}:
+      c.importTable.addSym magicsys.systemModule # import the "System" identifier
+      importAllSymbols(c, magicsys.systemModule)
+      inc c.topStmts
+  else:
+    inc c.topStmts
   if sfNoForward in c.module.flags:
     result = semAllTypeSections(c, n)
   else:

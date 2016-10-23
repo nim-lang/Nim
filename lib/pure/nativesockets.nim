@@ -12,7 +12,7 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import unsigned, os
+import os
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -27,7 +27,7 @@ else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
     EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET
-  export Sockaddr_storage
+  export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
   Sockaddr_in6,
@@ -38,7 +38,7 @@ export
   SOL_SOCKET,
   SOMAXCONN,
   SO_ACCEPTCONN, SO_BROADCAST, SO_DEBUG, SO_DONTROUTE,
-  SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR,
+  SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR, SO_REUSEPORT,
   MSG_PEEK
 
 when defined(macosx) and not defined(nimdoc):
@@ -219,31 +219,67 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
 proc dealloc*(ai: ptr AddrInfo) =
   freeaddrinfo(ai)
 
-proc ntohl*(x: int32): int32 =
-  ## Converts 32-bit integers from network to host byte order.
+proc ntohl*(x: uint32): uint32 =
+  ## Converts 32-bit unsigned integers from network to host byte order.
   ## On machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
   when cpuEndian == bigEndian: result = x
-  else: result = (x shr 24'i32) or
-                 (x shr 8'i32 and 0xff00'i32) or
-                 (x shl 8'i32 and 0xff0000'i32) or
-                 (x shl 24'i32)
+  else: result = (x shr 24'u32) or
+                 (x shr 8'u32 and 0xff00'u32) or
+                 (x shl 8'u32 and 0xff0000'u32) or
+                 (x shl 24'u32)
 
-proc ntohs*(x: int16): int16 =
-  ## Converts 16-bit integers from network to host byte order. On machines
-  ## where the host byte order is the same as network byte order, this is
-  ## a no-op; otherwise, it performs a 2-byte swap operation.
+template ntohl*(x: int32): expr {.deprecated.} =
+  ## Converts 32-bit integers from network to host byte order.
+  ## On machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 4-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, IPv4
+  ## addresses are now treated as unsigned integers. Please use the unsigned
+  ## version of this template.
+  cast[int32](ntohl(cast[uint32](x)))
+
+proc ntohs*(x: uint16): uint16 =
+  ## Converts 16-bit unsigned integers from network to host byte order. On
+  ## machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 2-byte swap operation.
   when cpuEndian == bigEndian: result = x
-  else: result = (x shr 8'i16) or (x shl 8'i16)
+  else: result = (x shr 8'u16) or (x shl 8'u16)
 
-template htonl*(x: int32): expr =
+template ntohs*(x: int16): expr {.deprecated.} =
+  ## Converts 16-bit integers from network to host byte order. On
+  ## machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 2-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, where port
+  ## numbers became unsigned integers. Please use the unsigned version of
+  ## this template.
+  cast[int16](ntohs(cast[uint16](x)))
+
+template htonl*(x: int32): expr {.deprecated.} =
   ## Converts 32-bit integers from host to network byte order. On machines
   ## where the host byte order is the same as network byte order, this is
   ## a no-op; otherwise, it performs a 4-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, IPv4
+  ## addresses are now treated as unsigned integers. Please use the unsigned
+  ## version of this template.
   nativesockets.ntohl(x)
 
-template htons*(x: int16): expr =
-  ## Converts 16-bit positive integers from host to network byte order.
+template htonl*(x: uint32): expr =
+  ## Converts 32-bit unsigned integers from host to network byte order. On
+  ## machines where the host byte order is the same as network byte order,
+  ## this is a no-op; otherwise, it performs a 4-byte swap operation.
+  nativesockets.ntohl(x)
+
+template htons*(x: int16): expr {.deprecated.} =
+  ## Converts 16-bit integers from host to network byte order.
+  ## On machines where the host byte order is the same as network byte
+  ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
+  ## **Warning**: This template is deprecated since 0.14.0, where port
+  ## numbers became unsigned integers. Please use the unsigned version of
+  ## this template.
+  nativesockets.ntohs(x)
+
+template htons*(x: uint16): expr =
+  ## Converts 16-bit unsigned integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   nativesockets.ntohs(x)
@@ -290,8 +326,13 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
                                   cint(AF_INET))
     if s == nil: raiseOSError(osLastError())
   else:
-    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
-                                cint(posix.AF_INET))
+    var s =
+      when defined(android4):
+        posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
+                            cint(posix.AF_INET))
+      else:
+        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
+                            cint(posix.AF_INET))
     if s == nil:
       raiseOSError(osLastError(), $hstrerror(h_errno))
 

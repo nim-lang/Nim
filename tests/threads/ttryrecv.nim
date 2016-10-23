@@ -4,10 +4,10 @@ discard """
 
 # bug #1816
 
-from math import random
+from random import random
 from os import sleep
 
-type PComm = ptr TChannel[int]
+type PComm = ptr Channel[int]
 
 proc doAction(outC: PComm) {.thread.} =
   for i in 0.. <5:
@@ -15,8 +15,8 @@ proc doAction(outC: PComm) {.thread.} =
     send(outC[], i)
 
 var
-  thr: TThread[PComm]
-  chan: TChannel[int]
+  thr: Thread[PComm]
+  chan: Channel[int]
 
 open(chan)
 createThread[PComm](thr, doAction, addr(chan))

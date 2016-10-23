@@ -28,6 +28,9 @@ template mulThreshold(x): expr {.immediate.} = x * 2
 
 when defined(memProfiler):
   proc nimProfile(requestedSize: int)
+  
+when hasThreadSupport:
+  import sharedlist
 
 type
   WalkOp = enum
@@ -68,6 +71,8 @@ type
     recGcLock: int           # prevent recursion via finalizers; no thread lock
     region: MemRegion        # garbage collected region
     stat: GcStat
+    when hasThreadSupport:
+      toDispose: SharedList[pointer]
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
 {.deprecated: [TWalkOp: WalkOp, TFinalizer: Finalizer, TGcStat: GcStat,
               TGlobalMarkerProc: GlobalMarkerProc, TGcHeap: GcHeap].}
@@ -179,6 +184,8 @@ proc initGC() =
     when withBitvectors:
       init(gch.allocated)
       init(gch.marked)
+    when hasThreadSupport:
+      gch.toDispose = initSharedList[pointer]()
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
@@ -321,6 +328,9 @@ proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
 # ----------------- collector -----------------------------------------------
 
 proc mark(gch: var GcHeap, c: PCell) =
+  when hasThreadSupport:
+    for c in gch.toDispose:
+      nimGCunref(c)
   when withBitvectors:
     incl(gch.marked, c)
     gcAssert gch.tempStack.len == 0, "stack not empty!"

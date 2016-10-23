@@ -24,7 +24,7 @@ proc main() {.async.} =
     var file = openAsync(fn, fmAppend)
     await file.write("\ntest2")
     let errorTest = file.readAll()
-    await errorTest
+    echo await errorTest
     doAssert errorTest.failed
     file.close()
     file = openAsync(fn, fmRead)

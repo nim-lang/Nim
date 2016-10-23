@@ -148,7 +148,10 @@ proc write*[T](s: Stream, x: T) =
 proc write*(s: Stream, x: string) =
   ## writes the string `x` to the the stream `s`. No length field or
   ## terminating zero is written.
-  writeData(s, cstring(x), x.len)
+  when nimvm:
+    writeData(s, cstring(x), x.len)
+  else:
+    if x.len > 0: writeData(s, unsafeAddr x[0], x.len)
 
 proc writeLn*(s: Stream, args: varargs[string, `$`]) {.deprecated.} =
   ## **Deprecated since version 0.11.4:** Use **writeLine** instead.
@@ -186,7 +189,7 @@ proc readBool*(s: Stream): bool =
   read(s, result)
 
 proc peekBool*(s: Stream): bool =
-  ## peeks a bool from the stream `s`. Raises `EIO` if an error occured.
+  ## peeks a bool from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
 proc readInt8*(s: Stream): int8 =
@@ -303,66 +306,66 @@ proc peekLine*(s: Stream): TaintedString =
   defer: setPosition(s, pos)
   result = readLine(s)
 
-type
-  StringStream* = ref StringStreamObj ## a stream that encapsulates a string
-  StringStreamObj* = object of StreamObj
-    data*: string
-    pos: int
-
-{.deprecated: [PStringStream: StringStream, TStringStream: StringStreamObj].}
-
-proc ssAtEnd(s: Stream): bool =
-  var s = StringStream(s)
-  return s.pos >= s.data.len
-
-proc ssSetPosition(s: Stream, pos: int) =
-  var s = StringStream(s)
-  s.pos = clamp(pos, 0, s.data.len)
-
-proc ssGetPosition(s: Stream): int =
-  var s = StringStream(s)
-  return s.pos
-
-proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
-  var s = StringStream(s)
-  result = min(bufLen, s.data.len - s.pos)
-  if result > 0:
-    copyMem(buffer, addr(s.data[s.pos]), result)
-    inc(s.pos, result)
-
-proc ssPeekData(s: Stream, buffer: pointer, bufLen: int): int =
-  var s = StringStream(s)
-  result = min(bufLen, s.data.len - s.pos)
-  if result > 0:
-    copyMem(buffer, addr(s.data[s.pos]), result)
-
-proc ssWriteData(s: Stream, buffer: pointer, bufLen: int) =
-  var s = StringStream(s)
-  if bufLen <= 0:
-    return
-  if s.pos + bufLen > s.data.len:
-    setLen(s.data, s.pos + bufLen)
-  copyMem(addr(s.data[s.pos]), buffer, bufLen)
-  inc(s.pos, bufLen)
-
-proc ssClose(s: Stream) =
-  var s = StringStream(s)
-  s.data = nil
-
-proc newStringStream*(s: string = ""): StringStream =
-  ## creates a new stream from the string `s`.
-  new(result)
-  result.data = s
-  result.pos = 0
-  result.closeImpl = ssClose
-  result.atEndImpl = ssAtEnd
-  result.setPositionImpl = ssSetPosition
-  result.getPositionImpl = ssGetPosition
-  result.readDataImpl = ssReadData
-  result.peekDataImpl = ssPeekData
-  result.writeDataImpl = ssWriteData
-
 when not defined(js):
+
+  type
+    StringStream* = ref StringStreamObj ## a stream that encapsulates a string
+    StringStreamObj* = object of StreamObj
+      data*: string
+      pos: int
+
+  {.deprecated: [PStringStream: StringStream, TStringStream: StringStreamObj].}
+
+  proc ssAtEnd(s: Stream): bool =
+    var s = StringStream(s)
+    return s.pos >= s.data.len
+
+  proc ssSetPosition(s: Stream, pos: int) =
+    var s = StringStream(s)
+    s.pos = clamp(pos, 0, s.data.len)
+
+  proc ssGetPosition(s: Stream): int =
+    var s = StringStream(s)
+    return s.pos
+
+  proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
+    var s = StringStream(s)
+    result = min(bufLen, s.data.len - s.pos)
+    if result > 0:
+      copyMem(buffer, addr(s.data[s.pos]), result)
+      inc(s.pos, result)
+
+  proc ssPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+    var s = StringStream(s)
+    result = min(bufLen, s.data.len - s.pos)
+    if result > 0:
+      copyMem(buffer, addr(s.data[s.pos]), result)
+
+  proc ssWriteData(s: Stream, buffer: pointer, bufLen: int) =
+    var s = StringStream(s)
+    if bufLen <= 0:
+      return
+    if s.pos + bufLen > s.data.len:
+      setLen(s.data, s.pos + bufLen)
+    copyMem(addr(s.data[s.pos]), buffer, bufLen)
+    inc(s.pos, bufLen)
+
+  proc ssClose(s: Stream) =
+    var s = StringStream(s)
+    s.data = nil
+
+  proc newStringStream*(s: string = ""): StringStream =
+    ## creates a new stream from the string `s`.
+    new(result)
+    result.data = s
+    result.pos = 0
+    result.closeImpl = ssClose
+    result.atEndImpl = ssAtEnd
+    result.setPositionImpl = ssSetPosition
+    result.getPositionImpl = ssGetPosition
+    result.readDataImpl = ssReadData
+    result.peekDataImpl = ssPeekData
+    result.writeDataImpl = ssWriteData
 
   type
     FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`

@@ -3,7 +3,7 @@ set -e
 set -x
 
 if [ ! -e csources/.git ]; then
-	git clone --depth 1 git://github.com/nim-lang/csources.git csources
+	git clone --depth 1 https://github.com/nim-lang/csources.git csources
 fi
 
 cd "csources"
@@ -18,5 +18,3 @@ set +x
 
 echo
 echo 'Install Nim using "./install.sh <dir>" or "sudo ./install.sh <dir>".'
-
-exit 0

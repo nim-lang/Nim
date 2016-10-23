@@ -8,10 +8,6 @@ from strutils import
   `%`,
   ffDecimal
 
-from unsigned import
-  `shr`,
-  `and`
-
 type
   TColor* = tuple[r, g, b, a: TR]
 

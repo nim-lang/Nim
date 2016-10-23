@@ -52,7 +52,7 @@ proc Connect*(irc: var TIRC, nick: string, host: string, port: int = 6667) =
     connect(irc.Socket, host, TPort(port), TDomain.AF_INET)
     send(irc.Socket,"USER " & nick & " " & nick & " " & nick & " " & nick & "\r\L")
     send(irc.Socket,"NICK " & nick & "\r\L")
-    var thread: TThread[TIRC]
+    var thread: Thread[TIRC]
     createThread(thread, handleData, irc)
     irc.Thread = thread
 

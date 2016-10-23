@@ -28,7 +28,7 @@ The parser uses a stack of indentation levels: the stack consists of integers
 counting the spaces. The indentation information is queried at strategic
 places in the parser but ignored otherwise: The pseudo terminal ``IND{>}``
 denotes an indentation that consists of more spaces than the entry at the top
-of the stack; IND{=} an indentation that has the same number of spaces. ``DED``
+of the stack; ``IND{=}`` an indentation that has the same number of spaces. ``DED``
 is another pseudo terminal that describes the *action* of popping a value
 from the stack, ``IND{>}`` then implies to push onto the stack.
 
@@ -88,7 +88,7 @@ Multiline comments support nesting:
   proc p[T](x: T) = discard
   ]#
 
-Multiline documentation comments look like and support nesting too:
+Multiline documentation comments also exist and support nesting too:
 
 .. code-block:: nim
   proc foo =
@@ -116,7 +116,7 @@ operator characters instead.
 The following keywords are reserved and cannot be used as identifiers:
 
 .. code-block:: nim
-   :file: keywords.txt
+   :file: ../keywords.txt
 
 Some keywords are unused; they are reserved for future developments of the
 language.
@@ -399,7 +399,7 @@ These keywords are also operators:
 `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
 
-``*:`` is as a special case the two tokens `*`:tok: and `:`:tok:
+``*:`` is as a special case treated as the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).
 
 

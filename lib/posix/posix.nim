@@ -35,6 +35,15 @@ const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
+when defined(linux):
+  # On Linux:
+  # timer_{create,delete,settime,gettime},
+  # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
+  {.passL: "-lrt".}
+when defined(solaris):
+  # On Solaris hstrerror lives in libresolv
+  {.passL: "-lresolv".}
+
 when false:
   const
     C_IRUSR = 0c000400 ## Read by owner.
@@ -101,7 +110,7 @@ type
                     ## (not POSIX)
       when defined(linux) or defined(bsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
-    d_name*: array [0..255, char] ## Name of entry.
+    d_name*: array[0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
             header: "<fcntl.h>".} = object ## flock type
@@ -233,7 +242,7 @@ type
                    ## network to which this node is attached, if any.
       release*,    ## Current release level of this implementation.
       version*,    ## Current version level of this release.
-      machine*: array [0..255, char] ## Name of the hardware type on which the
+      machine*: array[0..255, char] ## Name of the hardware type on which the
                                      ## system is running.
 
   Sem* {.importc: "sem_t", header: "<semaphore.h>", final, pure.} = object
@@ -439,6 +448,14 @@ when hasSpawnH:
     Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
                                  header: "<spawn.h>", final, pure.} = object
 
+when defined(linux):
+  # from sys/un.h
+  const Sockaddr_un_path_length* = 108
+else:
+  # according to http://pubs.opengroup.org/onlinepubs/009604499/basedefs/sys/un.h.html
+  # this is >=92
+  const Sockaddr_un_path_length* = 92
+
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
@@ -446,7 +463,12 @@ type
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
     sa_family*: TSa_Family         ## Address family.
-    sa_data*: array [0..255, char] ## Socket address (variable-length data).
+    sa_data*: array[0..255, char] ## Socket address (variable-length data).
+
+  Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
+              pure, final.} = object ## struct sockaddr_un
+    sun_family*: TSa_Family         ## Address family.
+    sun_path*: array[0..Sockaddr_un_path_length-1, char] ## Socket path
 
   Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",
@@ -486,11 +508,11 @@ type
     l_onoff*: cint  ## Indicates whether linger option is enabled.
     l_linger*: cint ## Linger time, in seconds.
 
-  InPort* = int16 ## unsigned!
-  InAddrScalar* = int32 ## unsigned!
+  InPort* = uint16
+  InAddrScalar* = uint32
 
   InAddrT* {.importc: "in_addr_t", pure, final,
-             header: "<netinet/in.h>".} = int32 ## unsigned!
+             header: "<netinet/in.h>".} = uint32
 
   InAddr* {.importc: "struct in_addr", pure, final,
              header: "<netinet/in.h>".} = object ## struct in_addr
@@ -504,7 +526,7 @@ type
 
   In6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr
-    s6_addr*: array [0..15, char]
+    s6_addr*: array[0..15, char]
 
   Sockaddr_in6* {.importc: "struct sockaddr_in6", pure, final,
                    header: "<netinet/in.h>".} = object ## struct sockaddr_in6
@@ -1604,6 +1626,16 @@ else:
   var
     MAP_POPULATE*: cint = 0
 
+when defined(linux) or defined(nimdoc):
+  when defined(alpha) or defined(mips) or defined(parisc) or
+      defined(sparc) or defined(nimdoc):
+    const SO_REUSEPORT* = cint(0x0200)
+      ## Multiple binding: load balancing on incoming TCP connections
+      ## or UDP packets. (Requires Linux kernel > 3.9)
+  else:
+    const SO_REUSEPORT* = cint(15)
+else:
+  var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
@@ -1612,6 +1644,10 @@ when defined(macosx):
     MSG_NOSIGNAL* = 0'i32
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
+elif defined(solaris):
+  # Solaris dont have MSG_NOSIGNAL
+  const
+    MSG_NOSIGNAL* = 0'i32
 else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
@@ -1658,6 +1694,8 @@ var
 
   INADDR_ANY* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 local host address.
+  INADDR_LOOPBACK* {.importc, header: "<netinet/in.h>".}: InAddrScalar
+    ## IPv4 loopback address.
   INADDR_BROADCAST* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 broadcast address.
 
@@ -2309,9 +2347,9 @@ proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Tm): int {.importc, header: "<time.h>".}
 proc strptime*(a1, a2: cstring, a3: var Tm): cstring {.importc, header: "<time.h>".}
 proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
-proc timer_create*(a1: var ClockId, a2: var SigEvent,
+proc timer_create*(a1: ClockId, a2: var SigEvent,
                a3: var Timer): cint {.importc, header: "<time.h>".}
-proc timer_delete*(a1: var Timer): cint {.importc, header: "<time.h>".}
+proc timer_delete*(a1: Timer): cint {.importc, header: "<time.h>".}
 proc timer_gettime*(a1: Timer, a2: var Itimerspec): cint {.
   importc, header: "<time.h>".}
 proc timer_getoverrun*(a1: Timer): cint {.importc, header: "<time.h>".}
@@ -2357,8 +2395,14 @@ proc sigrelse*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigset*(a1: int, a2: proc (x: cint) {.noconv.}) {.
   importc, header: "<signal.h>".}
 proc sigsuspend*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
-proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
+
+when defined(android):
+  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
+                   a3: var Timespec, sigsetsize: csize = sizeof(culong)*2): cint {.importc: "__rt_sigtimedwait", header:"<signal.h>".}
+else:
+  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
                    a3: var Timespec): cint {.importc, header: "<signal.h>".}
+
 proc sigwait*(a1: var Sigset, a2: var cint): cint {.
   importc, header: "<signal.h>".}
 proc sigwaitinfo*(a1: var Sigset, a2: var SigInfo): cint {.
@@ -2574,8 +2618,12 @@ proc gai_strerror*(a1: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>
 proc getaddrinfo*(a1, a2: cstring, a3: ptr AddrInfo,
                   a4: var ptr AddrInfo): cint {.importc, header: "<netdb.h>".}
 
-proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
-                    importc, header: "<netdb.h>".}
+when not defined(android4):
+  proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
+                      importc, header: "<netdb.h>".}
+else:
+  proc gethostbyaddr*(a1: cstring, a2: cint, a3: cint): ptr Hostent {.
+                      importc, header: "<netdb.h>".}
 proc gethostbyname*(a1: cstring): ptr Hostent {.importc, header: "<netdb.h>".}
 proc gethostent*(): ptr Hostent {.importc, header: "<netdb.h>".}
 
@@ -2607,7 +2655,13 @@ proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
 
-proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
+proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>".}
+  ## Create a temporary file.
+  ##
+  ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
+  ## can't be a string literal. If in doubt copy the string before passing it.
+
+proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>".}
   ## Sets file access and modification times.
   ##
@@ -2618,3 +2672,17 @@ proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
   ## Returns zero on success.
   ##
   ## For more information read http://www.unix.com/man-page/posix/3/utimes/.
+
+proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
+
+template onSignal*(signals: varargs[cint], body: untyped) =
+  ## Setup code to be executed when Unix signals are received. Example:
+  ## from posix import SIGINT, SIGTERM
+  ## onSignal(SIGINT, SIGTERM):
+  ##   echo "bye"
+
+  for s in signals:
+    handle_signal(s,
+      proc (sig: cint) {.noconv.} =
+        body
+    )

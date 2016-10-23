@@ -57,6 +57,8 @@ proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
 
 proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   if typ == nil: return
+
+  let typ = getUniqueType(typ)
   var p = c.p
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc:
@@ -71,7 +73,9 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
     lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     for i in countup(0, sonsLen(typ) - 1):
-      genTraverseProc(c, accessor.parentObj(c.p.module), typ.sons[i])
+      var x = typ.sons[i]
+      if x != nil: x = x.skipTypes(skipPtrs)
+      genTraverseProc(c, accessor.parentObj(c.p.module), x)
     if typ.n != nil: genTraverseProc(c, accessor, typ.n)
   of tyTuple:
     let typ = getUniqueType(typ)
@@ -98,7 +102,7 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
 proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
-  result = getGlobalTempName()
+  result = getTempName(m)
 
   case reason
   of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
@@ -133,7 +137,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
   var sLoc = s.loc.r
-  result = getGlobalTempName()
+  result = getTempName(m)
 
   if sfThread in s.flags and emulatedThreadVars():
     accessThreadLocalVar(p, s)
@@ -141,7 +145,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
 
   c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
   c.p = p
-  let header = "N_NIMCALL(void, $1)()" % [result]
+  let header = "N_NIMCALL(void, $1)(void)" % [result]
   genTraverseProc(c, sLoc, s.loc.t)
 
   let generatedProc = "$1 {$n$2$3$4}$n" %

@@ -18,13 +18,13 @@ proc emulatedThreadVars(): bool =
 proc accessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars() and not p.threadVarAccessed:
     p.threadVarAccessed = true
-    p.module.usesThreadVars = true
+    incl p.module.flags, usesThreadVars
     addf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV;$n", [])
     add(p.procSec(cpsInit),
       ropecg(p.module, "\tNimTV = (NimThreadVars*) #GetThreadLocalVars();$n"))
 
 var
-  nimtv: Rope                 # nimrod thread vars; the struct body
+  nimtv: Rope                 # Nim thread vars; the struct body
   nimtvDeps: seq[PType] = @[]  # type deps: every module needs whole struct
   nimtvDeclared = initIntSet() # so that every var/field exists only once
                                # in the struct
@@ -51,7 +51,7 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
     addf(m.s[cfsVars], " $1;$n", [s.loc.r])
 
 proc generateThreadLocalStorage(m: BModule) =
-  if nimtv != nil and (m.usesThreadVars or sfMainModule in m.module.flags):
+  if nimtv != nil and (usesThreadVars in m.flags or sfMainModule in m.module.flags):
     for t in items(nimtvDeps): discard getTypeDesc(m, t)
     addf(m.s[cfsSeqTypes], "typedef struct {$1} NimThreadVars;$n", [nimtv])
 

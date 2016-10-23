@@ -36,6 +36,7 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wObjChecks,
+    wIntDefine, wStrDefine,
 
     wDestroy,
 
@@ -66,6 +67,7 @@ type
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit,
     wAsmNoStackFrame,
     wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
+    wPartial,
 
     wAuto, wBool, wCatch, wChar, wClass,
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
@@ -120,7 +122,7 @@ const
 
     ":", "::", "=", ".", "..",
     "*", "-",
-    "magic", "thread", "final", "profiler", "objchecks",
+    "magic", "thread", "final", "profiler", "objchecks", "intdefine", "strdefine",
 
     "destroy",
 
@@ -151,7 +153,7 @@ const
     "computedgoto", "injectstmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
-    "guard", "locks",
+    "guard", "locks", "partial",
 
     "auto", "bool", "catch", "char", "class",
     "const_cast", "default", "delete", "double",

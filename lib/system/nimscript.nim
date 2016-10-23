@@ -39,6 +39,9 @@ proc getCurrentDir(): string = builtin
 proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
   builtin
 
+proc warningImpl(arg, orig: string) = discard
+proc hintImpl(arg, orig: string) = discard
+
 proc paramStr*(i: int): string =
   ## Retrieves the ``i``'th command line parameter.
   builtin
@@ -51,6 +54,31 @@ proc switch*(key: string, val="") =
   ## Sets a Nim compiler command line switch, for
   ## example ``switch("checks", "on")``.
   builtin
+
+proc warning*(name: string; val: bool) =
+  ## Disables or enables a specific warning.
+  let v = if val: "on" else: "off"
+  warningImpl(name & "]:" & v, "warning[" & name & "]:" & v)
+
+proc hint*(name: string; val: bool) =
+  ## Disables or enables a specific hint.
+  let v = if val: "on" else: "off"
+  hintImpl(name & "]:" & v, "hint[" & name & "]:" & v)
+
+proc patchFile*(package, filename, replacement: string) =
+  ## Overrides the location of a given file belonging to the
+  ## passed package.
+  ## If the ``replacement`` is not an absolute path, the path
+  ## is interpreted to be local to the Nimscript file that contains
+  ## the call to ``patchFile``, Nim's ``--path`` is not used at all
+  ## to resolve the filename!
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   patchFile("stdlib", "asyncdispatch", "patches/replacement")
+  discard
 
 proc getCommand*(): string =
   ## Gets the Nim command that the compiler has been invoked with, for example
@@ -74,7 +102,7 @@ proc getEnv*(key: string): string {.tags: [ReadIOEffect].} =
   builtin
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
-  ## Checks for the existance of an environment variable named `key`.
+  ## Checks for the existence of an environment variable named `key`.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
@@ -93,6 +121,10 @@ proc existsFile*(filename: string): bool =
 proc existsDir*(dir: string): bool =
   ## An alias for ``dirExists``.
   dirExists(dir)
+
+proc selfExe*(): string =
+  ## Returns the currently running nim or nimble executable.
+  builtin
 
 proc toExe*(filename: string): string =
   ## On Windows adds ".exe" to `filename`, else returns `filename` unmodified.
@@ -180,6 +212,15 @@ proc exec*(command: string, input: string, cache = "") {.
   log "exec: " & command:
     echo staticExec(command, input, cache)
 
+proc selfExec*(command: string) =
+  ## Executes an external command with the current nim/nimble executable.
+  ## ``Command`` must not contain the "nim " part.
+  let c = selfExe() & " " & command
+  log "exec: " & c:
+    if rawExec(c) != 0:
+      raise newException(OSError, "FAILED: " & c)
+    checkOsError()
+
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.
   builtin
@@ -189,7 +230,7 @@ proc get*(key: string): string =
   builtin
 
 proc exists*(key: string): bool =
-  ## Checks for the existance of a configuration 'key'
+  ## Checks for the existence of a configuration 'key'
   ## like 'gcc.options.always'.
   builtin
 
@@ -206,7 +247,7 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ##
   ## The change is permanent for the rest of the execution, since this is just
   ## a shortcut for `os.setCurrentDir()
-  ## <http://nim-lang.org/os.html#setCurrentDir,string>`_ . Use the `withDir()
+  ## <http://nim-lang.org/docs/os.html#setCurrentDir,string>`_ . Use the `withDir()
   ## <#withDir>`_ template if you want to perform a temporary change only.
   setCurrentDir(dir)
   checkOsError()
@@ -260,7 +301,7 @@ var
   author*: string      ## Nimble support: The package's author.
   description*: string ## Nimble support: The package's description.
   license*: string     ## Nimble support: The package's license.
-  srcdir*: string      ## Nimble support: The package's source directory.
+  srcDir*: string      ## Nimble support: The package's source directory.
   binDir*: string      ## Nimble support: The package's binary directory.
   backend*: string     ## Nimble support: The package's backend.
 

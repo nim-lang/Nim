@@ -20,6 +20,8 @@
 ## **Note**: This interface will change as soon as the compiler supports
 ## closures and proper coroutines.
 
+include "system/inclrtl"
+
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
@@ -355,7 +357,7 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
     inc(j)
 
 
-template filterIt*(seq1, pred: expr): expr =
+template filterIt*(seq1, pred: untyped): untyped =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -369,12 +371,12 @@ template filterIt*(seq1, pred: expr): expr =
   ##      notAcceptable = filterIt(temperatures, it > 50 or it < -10)
   ##    assert acceptable == @[-2.0, 24.5, 44.31]
   ##    assert notAcceptable == @[-272.15, 99.9, -113.44]
-  var result {.gensym.} = newSeq[type(seq1[0])]()
+  var result = newSeq[type(seq1[0])]()
   for it {.inject.} in items(seq1):
     if pred: result.add(it)
   result
 
-template keepItIf*(varSeq: seq, pred: expr) =
+template keepItIf*(varSeq: seq, pred: untyped) =
   ## Convenience template around the ``keepIf`` proc to reduce typing.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -409,7 +411,7 @@ proc all*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): bool =
       return false
   return true
 
-template allIt*(seq1, pred: expr): bool {.immediate.} =
+template allIt*(seq1, pred: untyped): bool =
   ## Checks if every item fulfills the predicate.
   ##
   ## Example:
@@ -418,7 +420,7 @@ template allIt*(seq1, pred: expr): bool {.immediate.} =
   ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
   ##   assert allIt(numbers, it < 10) == true
   ##   assert allIt(numbers, it < 9) == false
-  var result {.gensym.} = true
+  var result = true
   for it {.inject.} in items(seq1):
     if not pred:
       result = false
@@ -440,7 +442,7 @@ proc any*[T](seq1: seq[T], pred: proc(item: T): bool {.closure.}): bool =
       return true
   return false
 
-template anyIt*(seq1, pred: expr): bool {.immediate.} =
+template anyIt*(seq1, pred: untyped): bool =
   ## Checks if some item fulfills the predicate.
   ##
   ## Example:
@@ -449,14 +451,14 @@ template anyIt*(seq1, pred: expr): bool {.immediate.} =
   ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
   ##   assert anyIt(numbers, it > 8) == true
   ##   assert anyIt(numbers, it > 9) == false
-  var result {.gensym.} = false
+  var result = false
   for it {.inject.} in items(seq1):
     if pred:
       result = true
       break
   result
 
-template toSeq*(iter: expr): expr {.immediate.} =
+template toSeq*(iter: untyped): untyped {.oldimmediate.} =
   ## Transforms any iterator into a sequence.
   ##
   ## Example:
@@ -482,7 +484,7 @@ template toSeq*(iter: expr): expr {.immediate.} =
       result.add(x)
     result
 
-template foldl*(sequence, operation: expr): expr =
+template foldl*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
   ##
   ## The sequence is required to have at least a single element. Debug versions
@@ -508,17 +510,43 @@ template foldl*(sequence, operation: expr): expr =
   ##   assert subtraction == -15, "Subtraction is (((5)-9)-11)"
   ##   assert multiplication == 495, "Multiplication is (((5)*9)*11)"
   ##   assert concatenation == "nimiscool"
-  assert sequence.len > 0, "Can't fold empty sequences"
-  var result {.gensym.}: type(sequence[0])
-  result = sequence[0]
-  for i in 1..<sequence.len:
+  let s = sequence
+  assert s.len > 0, "Can't fold empty sequences"
+  var result: type(s[0])
+  result = s[0]
+  for i in 1..<s.len:
     let
       a {.inject.} = result
-      b {.inject.} = sequence[i]
+      b {.inject.} = s[i]
     result = operation
   result
 
-template foldr*(sequence, operation: expr): expr =
+template foldl*(sequence, operation, first): untyped =
+  ## Template to fold a sequence from left to right, returning the accumulation.
+  ##
+  ## This version of ``foldl`` gets a starting parameter. This makes it possible
+  ## to accumulate the sequence into a different type than the sequence elements.
+  ##
+  ## The ``operation`` parameter should be an expression which uses the variables
+  ## ``a`` and ``b`` for each step of the fold. The ``first`` parameter is the
+  ## start value (the first ``a``) and therefor defines the type of the result.
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let
+  ##     numbers = @[0, 8, 1, 5]
+  ##     digits = foldl(numbers, a & (chr(b + ord('0'))), "")
+  ##   assert digits == "0815"
+  var result: type(first)
+  result = first
+  for x in items(sequence):
+    let
+      a {.inject.} = result
+      b {.inject.} = x
+    result = operation
+  result
+
+template foldr*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from right to left, returning the accumulation.
   ##
   ## The sequence is required to have at least a single element. Debug versions
@@ -544,17 +572,18 @@ template foldr*(sequence, operation: expr): expr =
   ##   assert subtraction == 7, "Subtraction is (5-(9-(11)))"
   ##   assert multiplication == 495, "Multiplication is (5*(9*(11)))"
   ##   assert concatenation == "nimiscool"
-  assert sequence.len > 0, "Can't fold empty sequences"
-  var result {.gensym.}: type(sequence[0])
-  result = sequence[sequence.len - 1]
-  for i in countdown(sequence.len - 2, 0):
+  let s = sequence
+  assert s.len > 0, "Can't fold empty sequences"
+  var result: type(s[0])
+  result = sequence[s.len - 1]
+  for i in countdown(s.len - 2, 0):
     let
-      a {.inject.} = sequence[i]
+      a {.inject.} = s[i]
       b {.inject.} = result
     result = operation
   result
 
-template mapIt*(seq1, typ, op: expr): expr {.deprecated.}=
+template mapIt*(seq1, typ, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -569,13 +598,13 @@ template mapIt*(seq1, typ, op: expr): expr {.deprecated.}=
   ##   assert strings == @["4", "8", "12", "16"]
   ## **Deprecated since version 0.12.0:** Use the ``mapIt(seq1, op)``
   ##   template instead.
-  var result {.gensym.}: seq[typ] = @[]
+  var result: seq[typ] = @[]
   for it {.inject.} in items(seq1):
     result.add(op)
   result
 
 
-template mapIt*(seq1, op: expr): expr =
+template mapIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -604,7 +633,7 @@ template mapIt*(seq1, op: expr): expr =
       result.add(op)
   result
 
-template applyIt*(varSeq, op: expr) =
+template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -621,7 +650,7 @@ template applyIt*(varSeq, op: expr) =
 
 
 
-template newSeqWith*(len: int, init: expr): expr =
+template newSeqWith*(len: int, init: untyped): untyped =
   ## creates a new sequence, calling `init` to initialize each value. Example:
   ##
   ## .. code-block::
@@ -630,10 +659,10 @@ template newSeqWith*(len: int, init: expr): expr =
   ##   seq2D[1][0] = true
   ##   seq2D[0][1] = true
   ##
-  ##   import math
+  ##   import random
   ##   var seqRand = newSeqWith(20, random(10))
   ##   echo seqRand
-  var result {.gensym.} = newSeq[type(init)](len)
+  var result = newSeq[type(init)](len)
   for i in 0 .. <len:
     result[i] = init
   result

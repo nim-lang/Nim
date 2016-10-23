@@ -11,7 +11,7 @@ Just a dumb little game
 
 ### How to build?
 
-* `git clone --recursive git://github.com/fowlmouth/keineSchweine.git somedir`
+* `git clone --recursive https://github.com/fowlmouth/keineSchweine.git somedir`
 * `cd somedir`
 *  `nim c -r nakefile test` or `nim c -r keineschweine && ./keineschweine`
 

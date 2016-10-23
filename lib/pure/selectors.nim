@@ -9,7 +9,7 @@
 
 # TODO: Docs.
 
-import os, unsigned, hashes
+import os, hashes
 
 when defined(linux):
   import posix, epoll
@@ -118,7 +118,7 @@ elif defined(linux):
         # are therefore constantly ready. (leading to 100% CPU usage).
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
           raiseOSError(osLastError())
-        s.fds.mget(fd).events = events
+        s.fds[fd].events = events
       else:
         var event = createEventStruct(events, fd)
         if s.fds[fd].events == {}:
@@ -129,14 +129,15 @@ elif defined(linux):
         else:
           if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fd, addr(event)) != 0:
             raiseOSError(osLastError())
-        s.fds.mget(fd).events = events
+        s.fds[fd].events = events
 
   proc unregister*(s: var Selector, fd: SocketHandle) =
-    if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
-      let err = osLastError()
-      if err.cint notin {ENOENT, EBADF}:
-        # TODO: Why do we sometimes get an EBADF? Is this normal?
-        raiseOSError(err)
+    if s.fds[fd].events != {}:
+      if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fd, nil) != 0:
+        let err = osLastError()
+        if err.cint notin {ENOENT, EBADF}:
+          # TODO: Why do we sometimes get an EBADF? Is this normal?
+          raiseOSError(err)
     s.fds.del(fd)
 
   proc close*(s: var Selector) =
@@ -229,7 +230,7 @@ elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
         modifyKQueue(s.kqFD, fd, event, EV_ADD)
       for event in previousEvents-events:
         modifyKQueue(s.kqFD, fd, event, EV_DELETE)
-      s.fds.mget(fd).events = events
+      s.fds[fd].events = events
 
   proc unregister*(s: var Selector, fd: SocketHandle) =
     for event in s.fds[fd].events:
@@ -298,7 +299,7 @@ elif not defined(nimdoc):
   proc update*(s: var Selector, fd: SocketHandle, events: set[Event]) =
     #if not s.fds.hasKey(fd):
     #  raise newException(ValueError, "File descriptor not found.")
-    s.fds.mget(fd).events = events
+    s.fds[fd].events = events
 
   proc unregister*(s: var Selector, fd: SocketHandle) =
     s.fds.del(fd)
@@ -373,6 +374,11 @@ proc contains*(s: Selector, key: SelectorKey): bool =
   ## the new one may have the same value.
   when not defined(nimdoc):
     return key.fd in s and s.fds[key.fd] == key
+
+proc len*(s: Selector): int =
+  ## Retrieves the number of registered file descriptors in this Selector.
+  when not defined(nimdoc):
+    return s.fds.len
 
 {.deprecated: [TEvent: Event, PSelectorKey: SelectorKey,
    TReadyInfo: ReadyInfo, PSelector: Selector].}

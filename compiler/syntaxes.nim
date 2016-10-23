@@ -97,10 +97,7 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
       discard llStreamReadLine(s, line)
       i = 0
       inc linenumber
-    if line[i] == '#' and line[i+1] in {'?', '!'}:
-      if line[i+1] == '!':
-        message(newLineInfo(filename, linenumber, 1),
-                warnDeprecated, "use '#?' instead; '#!'")
+    if line[i] == '#' and line[i+1] == '?':
       inc(i, 2)
       while line[i] in Whitespace: inc(i)
       var q: TParser

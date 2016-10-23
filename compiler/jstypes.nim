@@ -34,7 +34,8 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
     s = genTypeInfo(p, field.typ)
     result = ("{kind: 1, offset: \"$1\", len: 0, " &
         "typ: $2, name: $3, sons: null}") %
-                   [mangleName(field), s, makeJSString(field.name.s)]
+                   [mangleName(field, p.target), s,
+                    makeJSString(field.name.s)]
   of nkRecCase:
     length = sonsLen(n)
     if (n.sons[0].kind != nkSym): internalError(n.info, "genObjectFields")
@@ -61,7 +62,8 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
       addf(result, "[SetConstr($1), $2]",
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
-        "typ: $2, name: $4, sons: [$5]}") % [mangleName(field), s,
+        "typ: $2, name: $4, sons: [$5]}") % [
+        mangleName(field, p.target), s,
         rope(lengthOrd(field.typ)), makeJSString(field.name.s), result]
   else: internalError(n.info, "genObjectFields")
 
@@ -74,7 +76,7 @@ proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
   addf(p.g.typeInfo, "$1.node = NNI$2;$n", [name, rope(typ.id)])
   if (typ.kind == tyObject) and (typ.sons[0] != nil):
     addf(p.g.typeInfo, "$1.base = $2;$n",
-         [name, genTypeInfo(p, typ.sons[0])])
+         [name, genTypeInfo(p, typ.sons[0].skipTypes(skipPtrs))])
 
 proc genTupleFields(p: PProc, typ: PType): Rope =
   var s: Rope = nil
@@ -115,7 +117,26 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
     addf(p.g.typeInfo, "$1.base = $2;$n",
          [name, genTypeInfo(p, typ.sons[0])])
 
+proc genEnumInfoPHP(p: PProc; t: PType): Rope =
+  let t = t.skipTypes({tyGenericInst, tyDistinct})
+  result = "$$NTI$1" % [rope(t.id)]
+  p.declareGlobal(t.id, result)
+  if containsOrIncl(p.g.typeInfoGenerated, t.id): return
+
+  let length = sonsLen(t.n)
+  var s: Rope = nil
+  for i in countup(0, length - 1):
+    if (t.n.sons[i].kind != nkSym): internalError(t.n.info, "genEnumInfo")
+    let field = t.n.sons[i].sym
+    if i > 0: add(s, ", " & tnl)
+    let extName = if field.ast == nil: field.name.s else: field.ast.strVal
+    addf(s, "$# => $#$n",
+         [rope(field.position), makeJSString(extName)])
+  prepend(p.g.typeInfo, "$$$# = $#;$n" % [result, s])
+
 proc genTypeInfo(p: PProc, typ: PType): Rope =
+  if p.target == targetPHP:
+    return makeJSString(typeToString(typ, preferModuleInfo))
   let t = typ.skipTypes({tyGenericInst, tyDistinct})
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
@@ -144,4 +165,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   of tyEnum: genEnumInfo(p, t, result)
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)
+  of tyStatic:
+    if t.n != nil: result = genTypeInfo(p, lastSon t)
+    else: internalError("genTypeInfo(" & $t.kind & ')')
   else: internalError("genTypeInfo(" & $t.kind & ')')

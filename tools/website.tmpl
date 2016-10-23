@@ -1,22 +1,33 @@
 #? stdtmpl | standard
-#proc generateHTMLPage(c: var TConfigData, currentTab, content, rss: string): string =
+#proc generateHTMLPage(c: var TConfigData, currentTab, title, content, rss,
+#   rootDir = ""): string =
 #  result = ""
 <!DOCTYPE html>
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
-    <title>$c.projectTitle</title>
-    <link rel="stylesheet" type="text/css" href="assets/style.css" />
-    <link rel="shortcut icon" href="assets/images/favicon.ico">
+    <title>${title} - $c.projectTitle</title>
+    <link rel="stylesheet" type="text/css" href="${rootDir}assets/style.css?t=2320" />
+    <link rel="shortcut icon" href="${rootDir}assets/images/favicon.ico">
   #if len(rss) > 0:
     <link href="$rss" title="Recent changes" type="application/atom+xml" rel="alternate">
   #end if
   </head>
   <body>
+    <div id="bountysource">
+      <a href="https://salt.bountysource.com/teams/nim">
+      <div class="page-layout" style="padding: 2pt 2pt 2pt 30pt">
+  	<img src="${rootDir}assets/bountysource/bountysource.png" style="width: 20px; float: left;">
+        <span style="margin-left: 10pt; float: left; margin-top: 2pt;">Fund Nim and help us develop it further!</span>
+        <img src="https://api.bountysource.com/badge/team?team_id=19072&style=raised" style="margin-top: 2pt; margin-left: 10pt"/>
+      </div>
+      </a>
+    </div>
+
     <header id="head">
       <div class="page-layout tall">
         <div id="head-logo"></div>
-        <a id="head-logo-link" href="index.html"></a>
+        <a id="head-logo-link" href="${rootDir}index.html"></a>
         <nav id="head-links">
       #for i in 0.. c.tabs.len-1:
       # let t = c.tabs[i].val
@@ -30,7 +41,7 @@
       #   if t.contains('.'):
             href="${t}" title = "$c.projectName - $name">$name</a>
       #   else:
-            href="${t}.html" title = "$c.projectName - $name">$name</a>
+            href="${rootDir}${t}.html" title = "$c.projectName - $name">$name</a>
       #   end if
       # end if
       #end for
@@ -49,7 +60,17 @@
 #  if currentTab == "index":
         <div id="slideshow">
           <!-- slides -->
-          <div id="slide0" class="active codeslide2">
+          <div id="slide0" class="active niaslide">
+            <a href="sponsors.html">
+              <img src="${rootDir}assets/bountysource/meet_sponsors.png" alt="Meet our BountySource sponsors!"/>
+            </a>
+          </div>
+          <div id="slide1" class="niaslide">
+            <a href="news/2016_01_27_nim_in_action_is_now_available.html">
+              <img src="${rootDir}assets/niminaction/banner.jpg" alt="New in Manning Early Access Program: Nim in Action!"/>
+            </a>
+          </div>
+          <div id="slide2" class="codeslide2">
             <div>
               <h2>Nim is simple..</h2>
 <pre>
@@ -83,7 +104,7 @@ p.greet() <span class="cmt"># or greet(p)</span>
 </pre>
              </div>
           </div>
-          <div id="slide1" class="codeslide3">
+          <div id="slide3" class="codeslide3">
             <div>
               <h2>C FFI is easy in Nim..</h2>
 <pre>
@@ -119,6 +140,8 @@ runForever()
         <div id="slideshow-nav">
           <div id="slideControl0" onclick="slideshow_click(0)" class="active"></div>
           <div id="slideControl1" onclick="slideshow_click(1)"></div>
+          <div id="slideControl2" onclick="slideshow_click(2)"></div>
+          <div id="slideControl3" onclick="slideshow_click(3)"></div>
         </div>
 #  end
         <aside id="sidebar">
@@ -134,7 +157,7 @@ runForever()
 #  if len(c.ticker) > 0:
 					<h3 class="blue">Latest News</h3>
 					<div id="sidebar-news">
-          $c.ticker
+          ${c.ticker % rootDir}
 					</div>
 #  end if
 				</aside>
@@ -157,8 +180,8 @@ runForever()
 				<div id="foot-links">
 					<div>
 						<h4>Documentation</h4>
-						<a href="documentation.html">Stable Documentation</a>
-						<a href="learn.html">Learning Resources</a>
+						<a href="${rootDir}documentation.html">Stable Documentation</a>
+						<a href="${rootDir}learn.html">Learning Resources</a>
 					<!--	<a href="">Development Documentation</a> -->
 						<a href="https://github.com/nim-lang/nim">Issues &amp; Requests</a>
 					</div>
@@ -178,7 +201,7 @@ runForever()
 		</footer>
 
 #  if currentTab == "index":
-  <script src="assets/index.js"></script>
+  <script src="${rootDir}assets/index.js"></script>
 # end if
 #  if c.gaId != nil:
   <script>
@@ -193,3 +216,51 @@ runForever()
 #  end if
 </body>
 </html>
+#end proc
+#
+#
+#proc generateSponsors(sponsors: seq[Sponsor]): string =
+#result = ""
+#for sponsor in sponsors:
+  <dt class="level-${sponsor.level}">
+    #if sponsor.url.len > 0:
+      <a href="${sponsor.url}" target="_blank">${sponsor.name}</a>
+    #else:
+      ${sponsor.name}
+    #end if
+  </dt>
+  <dd class="logo">
+    #if sponsor.logo.len > 0:
+    <a href="${sponsor.url}" target="_blank">
+      <img alt="${sponsor.name}'s logo" src="${sponsor.logo}"/>
+    </a>
+    #end if
+  </dd>
+  <dd class="this_month">
+    Donated <b>$$${sponsor.thisMonth}</b> this month
+  </dd>
+  <dd class="legend">
+    Donated $$${sponsor.allTime} in total since ${sponsor.since}
+  </dd>
+#end for
+#end proc
+#proc generateSponsorsPage(activeSponsors, inactiveSponsors: seq[Sponsor]): string =
+#result = ""
+<h1 id="our-current-sponsors">Our Current Sponsors</h1>
+<p>This section lists the companies and individuals that are, very kindly, contributing a
+monthly amount to help sustain Nim's development. For more details take a
+look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
+<p class="lastUpdate">Last updated: ${getTime().getGMTime().format("dd/MM/yyyy")}</p>
+<dl>
+${generateSponsors(activeSponsors)}
+</dl>
+#
+<h1 id="our-past-sponsors">Our Past Sponsors</h1>
+<p>This section lists the companies and individuals that have contributed
+money in the past to help sustain Nim's development. For more details take a
+look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
+<dl>
+${generateSponsors(inactiveSponsors)}
+</dl>
+#
+#end proc

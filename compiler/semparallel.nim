@@ -74,8 +74,6 @@ type
     currentSpawnId: int
     inLoop: int
 
-let opSlice = createMagic("slice", mSlice)
-
 proc initAnalysisCtx(): AnalysisCtx =
   result.locals = @[]
   result.slices = @[]
@@ -123,7 +121,7 @@ proc checkLocal(c: AnalysisCtx; n: PNode) =
   else:
     for i in 0 .. <n.safeLen: checkLocal(c, n.sons[i])
 
-template `?`(x): expr = x.renderTree
+template `?`(x): untyped = x.renderTree
 
 proc checkLe(c: AnalysisCtx; a, b: PNode) =
   case proveLe(c.guards, a, b)
@@ -262,7 +260,7 @@ proc min(a, b: PNode): PNode =
 
 proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 
-template pushSpawnId(c: expr, body: stmt) {.immediate, dirty.} =
+template pushSpawnId(c, body) {.dirty.} =
   inc c.spawns
   let oldSpawnId = c.currentSpawnId
   c.currentSpawnId = c.spawns
@@ -399,7 +397,9 @@ proc transformSlices(n: PNode): PNode =
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
-      result.add opSlice.newSymNode
+      let opSlice = newSymNode(createMagic("slice", mSlice))
+      opSlice.typ = getSysType(tyInt)
+      result.add opSlice
       result.add n[1]
       let slice = n[2].skipStmtList
       result.add slice[1]

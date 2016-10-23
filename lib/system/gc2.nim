@@ -33,6 +33,9 @@ when withRealTime and not declared(getTicks):
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 
+when hasThreadSupport:
+  include sharedlist
+
 type
   ObjectSpaceIter = object
     state: range[-1..0]
@@ -52,7 +55,8 @@ type
   WalkOp = enum
     waMarkGlobal,    # part of the backup mark&sweep
     waMarkGrey,
-    waZctDecRef #, waDebug
+    waZctDecRef,
+    waDebug
 
   Phase {.pure.} = enum
     None, Marking, Sweeping
@@ -78,7 +82,7 @@ type
 
   GcHeap = object # this contains the zero count and
                   # non-zero count table
-    black: int    # either 0 or 1.
+    black, red: int # either 0 or 1.
     stack: ptr GcStack
     stackBottom: pointer
     phase: Phase
@@ -95,6 +99,9 @@ type
     stat: GcStat
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
     spaceIter: ObjectSpaceIter
+    pDumpHeapFile: pointer # File that is used for GC_dumpHeap
+    when hasThreadSupport:
+      toDispose: SharedList[pointer]
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -104,8 +111,7 @@ when not defined(useNimRtl):
 
 proc initGC() =
   when not defined(useNimRtl):
-    when traceGC:
-      for i in low(CellState)..high(CellState): init(states[i])
+    gch.red = (1-gch.black)
     gch.cycleThreshold = InitialCycleThreshold
     gch.stat.stackScans = 0
     gch.stat.cycleCollections = 0
@@ -118,6 +124,16 @@ proc initGC() =
     init(gch.decStack)
     init(gch.additionalRoots)
     init(gch.greyStack)
+    when hasThreadSupport:
+      gch.toDispose = initSharedList[pointer]()
+
+# Which color to use for new objects is tricky: When we're marking,
+# they have to be *white* so that everything is marked that is only
+# reachable from them. However, when we are sweeping, they have to
+# be black, so that we don't free them prematuredly. In order to save
+# a comparison gch.phase == Phase.Marking, we use the pseudo-color
+# 'red' for new objects.
+template allocColor(): untyped = gch.red
 
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
@@ -158,18 +174,30 @@ template color(c): expr = c.refCount and colorMask
 template setColor(c, col) =
   c.refcount = c.refcount and not colorMask or col
 
-proc writeCell(msg: cstring, c: PCell) =
+proc writeCell(file: File; msg: cstring, c: PCell) =
   var kind = -1
   if c.typ != nil: kind = ord(c.typ.kind)
-  when leakDetector:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
-              msg, c, kind, c.refcount shr rcShift, c.filename, c.line)
+  let col = if c.color == rcGrey: 'g'
+            elif c.color == gch.black: 'b'
+            else: 'w'
+  when useCellIds:
+    let id = c.id
   else:
-    c_fprintf(c_stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
-              msg, c, kind, c.refcount shr rcShift, c.color)
+    let id = c
+  when leakDetector:
+    c_fprintf(file, "%s %p %d rc=%ld color=%c from %s(%ld)\n",
+              msg, id, kind, c.refcount shr rcShift, col, c.filename, c.line)
+  else:
+    c_fprintf(file, "%s %p %d rc=%ld color=%c\n",
+              msg, id, kind, c.refcount shr rcShift, col)
+
+proc writeCell(msg: cstring, c: PCell) =
+  stdout.writeCell(msg, c)
+
+proc myastToStr[T](x: T): string {.magic: "AstToStr", noSideEffect.}
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =
-  when traceGC: traceCell(cell, state)
+  when traceGC: writeCell(myastToStr(state), cell)
 
 # forward declarations:
 proc collectCT(gch: var GcHeap) {.benign.}
@@ -236,7 +264,11 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
     dec(i)
 
 template markGrey(x: PCell) =
-  if x.color == 1-gch.black and gch.phase == Phase.Marking:
+  if x.color != 1-gch.black and gch.phase == Phase.Marking:
+    if not isAllocatedPtr(gch.region, x):
+      c_fprintf(stdout, "[GC] markGrey proc: %p\n", x)
+      #GC_dumpHeap()
+      sysAssert(false, "wtf")
     x.setColor(rcGrey)
     add(gch.greyStack, x)
 
@@ -425,7 +457,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
   # refcount is zero, color is black, but mark it to be in the ZCT
-  res.refcount = ZctFlag or gch.black
+  res.refcount = ZctFlag or allocColor()
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   # its refcount is zero, so add it to the ZCT:
   addNewObjToZCT(res, gch)
@@ -468,11 +500,11 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector and not hasThreadSupport:
+  when leakDetector:
     if framePtr != nil and framePtr.prev != nil:
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
-  res.refcount = rcIncrement or gch.black # refcount is 1
+  res.refcount = rcIncrement or allocColor() # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   when logGC: writeCell("new cell", res)
   gcTrace(res, csAllocated)
@@ -536,7 +568,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
       # A better fix would be to emit the location specific write barrier for
       # 'growObj', but this is lots of more work and who knows what new problems
       # this would create.
-      res.refcount = rcIncrement or gch.black
+      res.refcount = rcIncrement or allocColor()
       decRef(ol)
   else:
     sysAssert(ol.typ != nil, "growObj: 5")
@@ -568,7 +600,7 @@ template takeTime {.dirty.} =
 
 template checkTime {.dirty.} =
   if debugticker <= 0:
-    echo "in loop"
+    #echo "in loop"
     debugticker = 1000
   when withRealTime:
     if steps == 0:
@@ -581,6 +613,52 @@ template checkTime {.dirty.} =
         if duration >= gch.maxPause - 50_000:
           return false
 
+# ---------------- dump heap ----------------
+
+template dumpHeapFile(gch: var GcHeap): File =
+  cast[File](gch.pDumpHeapFile)
+
+proc debugGraph(s: PCell) =
+  c_fprintf(gch.dumpHeapFile, "child %p\n", s)
+
+proc dumpRoot(gch: var GcHeap; s: PCell) =
+  if isAllocatedPtr(gch.region, s):
+    c_fprintf(gch.dumpHeapFile, "global_root %p\n", s)
+  else:
+    c_fprintf(gch.dumpHeapFile, "global_root_invalid %p\n", s)
+
+proc GC_dumpHeap*(file: File) =
+  ## Dumps the GCed heap's content to a file. Can be useful for
+  ## debugging. Produces an undocumented text file format that
+  ## can be translated into "dot" syntax via the "heapdump2dot" tool.
+  gch.pDumpHeapFile = file
+  var spaceIter: ObjectSpaceIter
+  var d = gch.decStack.d
+  for i in 0 .. < gch.decStack.len:
+    if isAllocatedPtr(gch.region, d[i]):
+      c_fprintf(file, "onstack %p\n", d[i])
+    else:
+      c_fprintf(file, "onstack_invalid %p\n", d[i])
+  for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+  while true:
+    let x = allObjectsAsProc(gch.region, addr spaceIter)
+    if spaceIter.state < 0: break
+    if isCell(x):
+      # cast to PCell is correct here:
+      var c = cast[PCell](x)
+      writeCell(file, "cell ", c)
+      forAllChildren(c, waDebug)
+      c_fprintf(file, "end\n")
+  gch.pDumpHeapFile = nil
+
+proc GC_dumpHeap() =
+  var f: File
+  if open(f, "heap.txt", fmWrite):
+    GC_dumpHeap(f)
+    f.close()
+  else:
+    c_fprintf(stdout, "cannot write heap.txt")
+
 # ---------------- cycle collector -------------------------------------------
 
 proc freeCyclicCell(gch: var GcHeap, c: PCell) =
@@ -588,6 +666,9 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
 
   var d = gch.decStack.d
   for i in 0..gch.decStack.len-1:
+    if d[i] == c:
+      writeCell("freeing ", c)
+      GC_dumpHeap()
     gcAssert d[i] != c, "wtf man, freeing obviously alive stuff?!!"
 
   prepareDealloc(c)
@@ -602,8 +683,9 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
 
 proc sweep(gch: var GcHeap): bool =
   takeStartTime(100)
-  echo "loop start"
-  let black = gch.black
+  #echo "loop start"
+  let white = 1-gch.black
+  #c_fprintf(stdout, "black is %d\n", black)
   while true:
     let x = allObjectsAsProc(gch.region, addr gch.spaceIter)
     if gch.spaceIter.state < 0: break
@@ -612,37 +694,62 @@ proc sweep(gch: var GcHeap): bool =
       # cast to PCell is correct here:
       var c = cast[PCell](x)
       gcAssert c.color != rcGrey, "cell is still grey?"
-      if c.color != black: freeCyclicCell(gch, c)
+      if c.color == white: freeCyclicCell(gch, c)
       # Since this is incremental, we MUST not set the object to 'white' here.
       # We could set all the remaining objects to white after the 'sweep'
       # completed but instead we flip the meaning of black/white to save one
       # traversal over the heap!
     checkTime()
   # prepare for next iteration:
-  echo "loop end"
+  #echo "loop end"
   gch.spaceIter = ObjectSpaceIter()
   result = true
 
-proc markRoot(gch: var GcHeap, c: PCell) =
-  # since we start with 'black' cells, we need to mark them here too:
-  if c.color != rcGrey:
+proc markRoot(gch: var GcHeap, c: PCell) {.inline.} =
+  if c.color == 1-gch.black:
     c.setColor(rcGrey)
     add(gch.greyStack, c)
+  elif c.color == rcGrey:
+    var isGrey = false
+    var d = gch.decStack.d
+    for i in 0..gch.decStack.len-1:
+      if d[i] == c:
+        isGrey = true
+        break
+    if not isGrey:
+      gcAssert false, "markRoot: root is already grey?!"
 
 proc markIncremental(gch: var GcHeap): bool =
   var L = addr(gch.greyStack.len)
   takeStartTime(100)
   while L[] > 0:
     var c = gch.greyStack.d[0]
-    sysAssert(isAllocatedPtr(gch.region, c), "markIncremental: isAllocatedPtr")
+    if not isAllocatedPtr(gch.region, c):
+      c_fprintf(stdout, "[GC] not allocated anymore: %p\n", c)
+      #GC_dumpHeap()
+      sysAssert(false, "wtf")
+
+    #sysAssert(isAllocatedPtr(gch.region, c), "markIncremental: isAllocatedPtr")
     gch.greyStack.d[0] = gch.greyStack.d[L[] - 1]
     dec(L[])
     takeTime()
     if c.color == rcGrey:
       c.setColor(gch.black)
       forAllChildren(c, waMarkGrey)
+    elif c.color == (1-gch.black):
+      gcAssert false, "wtf why are there white object in the greystack?"
     checkTime()
   gcAssert gch.greyStack.len == 0, "markIncremental: greystack not empty "
+
+  # assert that all local roots are black by now:
+  var d = gch.decStack.d
+  var errors = false
+  for i in 0..gch.decStack.len-1:
+    gcAssert(isAllocatedPtr(gch.region, d[i]), "markIncremental: isAllocatedPtr 2")
+    if d[i].color != gch.black:
+      writeCell("not black ", d[i])
+      errors = true
+  gcAssert(not errors, "wtf something wrong hre")
   result = true
 
 proc markGlobals(gch: var GcHeap) =
@@ -654,28 +761,6 @@ proc markLocals(gch: var GcHeap) =
     sysAssert isAllocatedPtr(gch.region, d[i]), "markLocals"
     markRoot(gch, d[i])
 
-when logGC:
-  var
-    cycleCheckA: array[100, PCell]
-    cycleCheckALen = 0
-
-  proc alreadySeen(c: PCell): bool =
-    for i in 0 .. <cycleCheckALen:
-      if cycleCheckA[i] == c: return true
-    if cycleCheckALen == len(cycleCheckA):
-      gcAssert(false, "cycle detection overflow")
-      quit 1
-    cycleCheckA[cycleCheckALen] = c
-    inc cycleCheckALen
-
-  proc debugGraph(s: PCell) =
-    if alreadySeen(s):
-      writeCell("child cell (already seen) ", s)
-    else:
-      writeCell("cell {", s)
-      forAllChildren(s, waDebug)
-      c_fprintf(c_stdout, "}\n")
-
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
   var c: PCell = usrToCell(p)
@@ -685,7 +770,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c)
+    #  c_fprintf(stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
@@ -693,17 +778,31 @@ proc doOperation(p: pointer, op: WalkOp) =
     decRef(c)
     #if c.refcount <% rcIncrement: addZCT(gch.zct, c)
   of waMarkGlobal:
+    template handleRoot =
+      if gch.dumpHeapFile.isNil:
+        markRoot(gch, c)
+      else:
+        dumpRoot(gch, c)
     when hasThreadSupport:
       # could point to a cell which we don't own and don't want to touch/trace
-      if isAllocatedPtr(gch.region, c):
-        markRoot(gch, c)
+      if isAllocatedPtr(gch.region, c): handleRoot()
     else:
-      markRoot(gch, c)
+      #gcAssert(isAllocatedPtr(gch.region, c), "doOperation: waMarkGlobal")
+      if not isAllocatedPtr(gch.region, c):
+        c_fprintf(stdout, "[GC] not allocated anymore: MarkGlobal %p\n", c)
+        #GC_dumpHeap()
+        sysAssert(false, "wtf")
+      handleRoot()
+    discard allocInv(gch.region)
   of waMarkGrey:
+    if not isAllocatedPtr(gch.region, c):
+      c_fprintf(stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
+      #GC_dumpHeap()
+      sysAssert(false, "wtf")
     if c.color == 1-gch.black:
       c.setColor(rcGrey)
       add(gch.greyStack, c)
-  #of waDebug: debugGraph(c)
+  of waDebug: debugGraph(c)
 
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, WalkOp(op))
@@ -711,22 +810,35 @@ proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
 proc collectZCT(gch: var GcHeap): bool {.benign.}
 
 proc collectCycles(gch: var GcHeap): bool =
+  when hasThreadSupport:
+    for c in gch.toDispose:
+      nimGCunref(c)
+
   # ensure the ZCT 'color' is not used:
   while gch.zct.len > 0: discard collectZCT(gch)
+
   case gch.phase
-  of Phase.None, Phase.Marking:
-    #if gch.phase == Phase.None:
+  of Phase.None:
     gch.phase = Phase.Marking
     markGlobals(gch)
+
+    c_fprintf(stdout, "collectCycles: introduced bug E %ld\n", gch.phase)
+    discard allocInv(gch.region)
+  of Phase.Marking:
+    # since locals do not have a write barrier, we need
+    # to keep re-scanning them :-( but there is really nothing we can
+    # do about that.
     markLocals(gch)
     if markIncremental(gch):
       gch.phase = Phase.Sweeping
+      gch.red = 1 - gch.red
   of Phase.Sweeping:
     gcAssert gch.greyStack.len == 0, "greystack not empty"
     if sweep(gch):
       gch.phase = Phase.None
       # flip black/white meanings:
       gch.black = 1 - gch.black
+      gcAssert gch.red == 1 - gch.black, "red color is wrong"
       result = true
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
@@ -766,7 +878,7 @@ proc collectZCT(gch: var GcHeap): bool =
     gch.zct.d[0] = gch.zct.d[L[] - 1]
     dec(L[])
     takeTime()
-    if c.refcount <% rcIncrement:
+    if c.refcount <% rcIncrement and c.color != rcGrey:
       # It may have a RC > 0, if it is in the hardware stack or
       # it has not been removed yet from the ZCT. This is because
       # ``incref`` does not bother to remove the cell from the ZCT
@@ -824,7 +936,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
+        c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
 
 when defined(nimCoroutines):
   proc currentStackSizes(): int =
@@ -858,7 +970,19 @@ when withRealTime:
         strongAdvice:
       collectCTBody(gch)
 
-  proc GC_step*(us: int, strongAdvice = false) = GC_step(gch, us, strongAdvice)
+  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+    var stackTop {.volatile.}: pointer
+    let prevStackBottom = gch.stackBottom
+    if stackSize >= 0:
+      stackTop = addr(stackTop)
+      when stackIncreases:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
+      else:
+        gch.stackBottom = cast[pointer](
+          cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
+    GC_step(gch, us, strongAdvice)
+    gch.stackBottom = prevStackBottom
 
 when not defined(useNimRtl):
   proc GC_disable() =

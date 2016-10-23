@@ -65,7 +65,7 @@ type
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
     errXCannotBePassedToProcVar,
-    errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProc, errImplOfXNotAllowed,
+    errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProcX, errImplOfXNotAllowed,
     errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValueX,
     errInvalidDiscard, errIllegalConvFromXtoY, errCannotBindXTwice,
     errInvalidOrderInArrayConstructor,
@@ -215,7 +215,7 @@ const
     errOrdinalTypeExpected: "ordinal type expected",
     errOrdinalOrFloatTypeExpected: "ordinal or float type expected",
     errOverOrUnderflow: "over- or underflow",
-    errCannotEvalXBecauseIncompletelyDefined: "cannot evalutate '$1' because type is not defined completely",
+    errCannotEvalXBecauseIncompletelyDefined: "cannot evaluate '$1' because type is not defined completely",
     errChrExpectsRange0_255: "\'chr\' expects an int in the range 0..255",
     errDynlibRequiresExportc: "\'dynlib\' requires \'exportc\'",
     errUndeclaredFieldX: "undeclared field: \'$1\'",
@@ -274,7 +274,7 @@ const
     errWrongNumberOfArguments: "wrong number of arguments",
     errXCannotBePassedToProcVar: "\'$1\' cannot be passed to a procvar",
     errXCannotBeInParamDecl: "$1 cannot be declared in parameter declaration",
-    errPragmaOnlyInHeaderOfProc: "pragmas are only allowed in the header of a proc",
+    errPragmaOnlyInHeaderOfProcX: "pragmas are only allowed in the header of a proc; redefinition of $1",
     errImplOfXNotAllowed: "implementation of \'$1\' is not allowed",
     errImplOfXexpected: "implementation of \'$1\' expected",
     errNoSymbolToBorrowFromFound: "no symbol to borrow from found",
@@ -471,6 +471,8 @@ type
     shortName*: string         # short name of the module
     quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
+    quotedFullName*: Rope      # cached quoted full name for codegen
+                               # purposes
 
     lines*: seq[Rope]          # the source code of the module
                                #   used for better error messages and
@@ -505,7 +507,7 @@ const
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
                                          hintSuccessX, hintPath, hintConf,
-                                         hintProcessing,
+                                         hintProcessing, hintPattern,
                                          hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,
@@ -514,19 +516,20 @@ const
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
-                                         hintPath, hintConf,
+                                         hintPath,
                                          hintDependency,
-                                         hintExecuting,
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace},
+    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
 
 const
   InvalidFileIDX* = int32(-1)
 
 var
+  ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
+    hintQuitCalled, hintExecuting}
   filenameToIndexTbl = initTable[string, int32]()
   fileInfos*: seq[TFileInfo] = @[]
   systemFileIdx*: int32
@@ -561,6 +564,7 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   let fileName = projPath.extractFilename
   result.shortName = fileName.changeFileExt("")
   result.quotedName = fileName.makeCString
+  result.quotedFullName = fullPath.makeCString
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
 
@@ -616,6 +620,7 @@ var
   gHintCounter*: int = 0
   gWarnCounter*: int = 0
   gErrorMax*: int = 1         # stop after gErrorMax errors
+  gMainPackageNotes*: TNoteKinds = NotesVerbosity[1]
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = int16(-1)
@@ -655,8 +660,6 @@ const
   WarningColor = fgYellow
   HintTitle    = "Hint: "
   HintColor    = fgGreen
-  InfoTitle    = "Info: "
-  InfoColor    = fgCyan
 
 proc getInfoContextLen*(): int = return msgContext.len
 proc setInfoContextLen*(L: int) = setLen(msgContext, L)
@@ -755,7 +758,7 @@ proc msgWriteln*(s: string, flags: MsgFlags = {}) =
         flushFile(stderr)
 
 macro callIgnoringStyle(theProc: typed, first: typed,
-                        args: varargs[expr]): stmt =
+                        args: varargs[typed]): untyped =
   let typForegroundColor = bindSym"ForegroundColor".getType
   let typBackgroundColor = bindSym"BackgroundColor".getType
   let typStyle = bindSym"Style".getType
@@ -772,7 +775,7 @@ macro callIgnoringStyle(theProc: typed, first: typed,
        typ != typTerminalCmd:
       result.add(arg)
 
-macro callStyledWriteLineStderr(args: varargs[expr]): stmt =
+macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
   result = newCall(bindSym"styledWriteLine")
   result.add(bindSym"stderr")
   for arg in children(args[0][1]):
@@ -784,7 +787,7 @@ template callWritelnHook(args: varargs[string, `$`]) =
     s.add arg
   writelnHook s
 
-template styledMsgWriteln*(args: varargs[expr]) =
+template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in gGlobalOptions:
@@ -828,7 +831,7 @@ proc quit(msg: TMsgKind) =
 proc log*(s: string) {.procvar.} =
   var f: File
   if open(f, "nimsuggest.log", fmAppend):
-    f.writeln(s)
+    f.writeLine(s)
     close(f)
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
@@ -995,11 +998,11 @@ proc internalError*(errMsg: string) =
   writeContext(unknownLineInfo())
   rawMessage(errInternal, errMsg)
 
-template assertNotNil*(e: expr): expr =
+template assertNotNil*(e): untyped =
   if e == nil: internalError($instantiationInfo())
   e
 
-template internalAssert*(e: bool): stmt =
+template internalAssert*(e: bool) =
   if not e: internalError($instantiationInfo())
 
 proc addSourceLine*(fileIdx: int32, line: string) =
@@ -1022,7 +1025,10 @@ proc sourceLine*(i: TLineInfo): Rope =
 
 proc quotedFilename*(i: TLineInfo): Rope =
   internalAssert i.fileIndex >= 0
-  result = fileInfos[i.fileIndex].quotedName
+  if optExcessiveStackTrace in gGlobalOptions:
+    result = fileInfos[i.fileIndex].quotedFullName
+  else:
+    result = fileInfos[i.fileIndex].quotedName
 
 ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   case err

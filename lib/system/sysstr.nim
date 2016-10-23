@@ -30,7 +30,7 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
   if a == nil or b == nil: return false
   return a.len == b.len and
-    c_memcmp(a.data, b.data, a.len) == 0'i32
+    equalMem(addr(a.data), addr(b.data), a.len)
 
 when declared(allocAtomic):
   template allocStr(size: expr): expr =
@@ -71,7 +71,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   if len > 0:
     result = rawNewStringNoInit(len)
     result.len = len
-    c_memcpy(result.data, addr(s.data[start]), len)
+    copyMem(addr(result.data), addr(s.data[start]), len)
     result.data[len] = '\0'
   else:
     result = rawNewString(len)
@@ -82,10 +82,11 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewStringNoInit(len)
   result.len = len
-  c_memcpy(result.data, str, len + 1)
+  copyMem(addr(result.data), str, len + 1)
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
-  result = toNimStr(str, c_strlen(str))
+  if str == nil: NimString(nil)
+  else: toNimStr(str, str.len)
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -94,7 +95,7 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
       result.len = src.len
-      c_memcpy(result.data, src.data, src.len + 1)
+      copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -107,8 +108,13 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
     result.len = src.len
-    c_memcpy(result.data, src.data, src.len + 1)
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
+proc copyDeepString(src: NimString): NimString {.inline.} =
+  if src != nil:
+    result = rawNewStringNoInit(src.len)
+    result.len = src.len
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
@@ -177,7 +183,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  c_memcpy(addr(dest.data[dest.len]), src.data, src.len + 1)
+  copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
   inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
@@ -228,7 +234,8 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and
-         not defined(gcMarkAndSweep) and not defined(gogc):
+         not defined(gcMarkAndSweep) and not defined(gogc) and
+         not defined(gcStack):
       when false: # compileOption("gc", "v2"):
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
@@ -290,7 +297,7 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
     buf[n+2] = '\0'
   # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
   # We want to get rid of these here:
-  if buf[n-1] == 'N':
+  if buf[n-1] in {'n', 'N'}:
     result = "nan"
   elif buf[n-1] == 'F':
     if buf[0] == '-':
@@ -300,46 +307,42 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
   else:
     result = $buf
 
-proc strtod(buf: cstring, endptr: ptr cstring): float64 {.importc,
-  header: "<stdlib.h>", noSideEffect.}
-
-var decimalPoint: char
-
-proc getDecimalPoint(): char =
-  result = decimalPoint
-  if result == '\0':
-    if strtod("0,5", nil) == 0.5: result = ','
-    else: result = '.'
-    # yes this is threadsafe in practice, spare me:
-    decimalPoint = result
+proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
+  importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
+  powtens =   [ 1e0,   1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8,  1e9,
+                1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
+                1e20, 1e21, 1e22]
 
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerProc.} =
-  # This routine leverages `strtod()` for the non-trivial task of
-  # parsing floating point numbers correctly. Because `strtod()` is
-  # locale-dependent with respect to the radix character, we create
-  # a copy where the decimal point is replaced with the locale's
-  # radix character.
+  # This routine attempt to parse float that can parsed quickly.
+  # ie whose integer part can fit inside a 53bits integer.
+  # their real exponent must also be <= 22. If the float doesn't follow
+  # these restrictions, transform the float into this form:
+  #  INTEGER * 10 ^ exponent and leave the work to standard `strtod()`.
+  # This avoid the problems of decimal character portability.
+  # see: http://www.exploringbinary.com/fast-path-decimal-to-floating-point-conversion/
   var
     i = start
     sign = 1.0
-    t: array[500, char] # flaviu says: 325 is the longest reasonable literal
-    ti = 0
-    hasdigits = false
-
-  template addToBuf(c) =
-    if ti < t.high:
-      t[ti] = c; inc(ti)
+    kdigits, fdigits = 0
+    exponent: int
+    integer: uint64
+    fraction: uint64
+    frac_exponent= 0
+    exp_sign = 1
+    first_digit = -1
+    has_sign = false
 
   # Sign?
   if s[i] == '+' or s[i] == '-':
+    has_sign = true
     if s[i] == '-':
       sign = -1.0
-    t[ti] = s[i]
-    inc(i); inc(ti)
+    inc(i)
 
   # NaN?
   if s[i] == 'N' or s[i] == 'n':
@@ -359,40 +362,111 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
           return i+3 - start
     return 0
 
+  if s[i] in {'0'..'9'}:
+      first_digit = (s[i].ord - '0'.ord)
   # Integer part?
   while s[i] in {'0'..'9'}:
-    hasdigits = true
-    addToBuf(s[i])
-    inc(i);
+    inc(kdigits)
+    integer = integer * 10'u64 + (s[i].ord - '0'.ord).uint64
+    inc(i)
     while s[i] == '_': inc(i)
 
   # Fractional part?
   if s[i] == '.':
-    addToBuf(getDecimalPoint())
     inc(i)
+    # if no integer part, Skip leading zeros
+    if kdigits <= 0:
+      while s[i] == '0':
+        inc(frac_exponent)
+        inc(i)
+        while s[i] == '_': inc(i)
+
+    if first_digit == -1 and s[i] in {'0'..'9'}:
+      first_digit = (s[i].ord - '0'.ord)
+    # get fractional part
     while s[i] in {'0'..'9'}:
-      hasdigits = true
-      addToBuf(s[i])
+      inc(fdigits)
+      inc(frac_exponent)
+      integer = integer * 10'u64 + (s[i].ord - '0'.ord).uint64
       inc(i)
       while s[i] == '_': inc(i)
-  if not hasdigits:
+
+  # if has no digits: return error
+  if kdigits + fdigits <= 0 and
+     (i == start or # no char consumed (empty string).
+     (i == start + 1 and has_sign)): # or only '+' or '-
     return 0
 
-  # Exponent?
   if s[i] in {'e', 'E'}:
-    addToBuf(s[i])
     inc(i)
-    if s[i] in {'+', '-'}:
-      addToBuf(s[i])
+    if s[i] == '+' or s[i] == '-':
+      if s[i] == '-':
+        exp_sign = -1
+
       inc(i)
     if s[i] notin {'0'..'9'}:
       return 0
     while s[i] in {'0'..'9'}:
-      addToBuf(s[i])
+      exponent = exponent * 10 + (ord(s[i]) - ord('0'))
       inc(i)
-      while s[i] == '_': inc(i)
-  number = strtod(t, nil)
+      while s[i] == '_': inc(i) # underscores are allowed and ignored
+
+  var real_exponent = exp_sign*exponent - frac_exponent
+  let exp_negative = real_exponent < 0
+  var abs_exponent = abs(real_exponent)
+
+  # if exponent greater than can be represented: +/- zero or infinity
+  if abs_exponent > 999:
+    if exp_negative:
+      number = 0.0*sign
+    else:
+      number = Inf*sign
+    return i - start
+
+  # if integer is representable in 53 bits:  fast path
+  # max fast path integer is  1<<53 - 1 or  8999999999999999 (16 digits)
+  if kdigits + fdigits <= 16 and first_digit <= 8:
+    # max float power of ten with set bits above the 53th bit is 10^22
+    if abs_exponent <= 22:
+      if exp_negative:
+        number = sign * integer.float / powtens[abs_exponent]
+      else:
+        number = sign * integer.float * powtens[abs_exponent]
+      return i - start
+
+    # if exponent is greater try to fit extra exponent above 22 by multiplying
+    # integer part is there is space left.
+    let slop = 15 - kdigits - fdigits
+    if  abs_exponent <= 22 + slop and not exp_negative:
+      number = sign * integer.float * powtens[slop] * powtens[abs_exponent-slop]
+      return i - start
+
+  # if failed: slow path with strtod.
+  var t: array[500, char] # flaviu says: 325 is the longest reasonable literal
+  var ti = 0
+  let maxlen = t.high - "e+000".len # reserve enough space for exponent
+
   result = i - start
+  i = start
+  # re-parse without error checking, any error should be handled by the code above.
+  while s[i] in {'0'..'9','+','-'}:
+    if ti < maxlen:
+      t[ti] = s[i]; inc(ti)
+    inc(i)
+    while s[i] in {'.', '_'}: # skip underscore and decimal point
+      inc(i)
+
+  # insert exponent
+  t[ti] = 'E'; inc(ti)
+  t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+  inc(ti, 3)
+
+  # insert adjusted exponent
+  t[ti-1] = ('0'.ord + abs_exponent mod 10).char; abs_exponent = abs_exponent div 10
+  t[ti-2] = ('0'.ord + abs_exponent mod 10).char; abs_exponent = abs_exponent div 10
+  t[ti-3] = ('0'.ord + abs_exponent mod 10).char
+
+  number = c_strtod(t, nil)
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newString(sizeof(x)*4)

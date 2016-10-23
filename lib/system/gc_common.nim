@@ -7,6 +7,31 @@
 #    distribution, for details about the copyright.
 #
 
+type
+  ForeignCell* = object
+    data*: pointer
+    owner: ptr GcHeap
+
+proc protect*(x: pointer): ForeignCell =
+  nimGCref(x)
+  result.data = x
+  result.owner = addr(gch)
+
+proc dispose*(x: ForeignCell) =
+  when hasThreadSupport:
+    # if we own it we can free it directly:
+    if x.owner == addr(gch):
+      nimGCunref(x.data)
+    else:
+      x.owner.toDispose.add(x.data)
+  else:
+    nimGCunref(x.data)
+
+proc isNotForeign*(x: ForeignCell): bool =
+  ## returns true if 'x' belongs to the calling thread.
+  ## No deep copy has to be performed then.
+  x.owner == addr(gch)
+
 proc len(stack: ptr GcStack): int =
   if stack == nil:
     return 0
@@ -38,7 +63,7 @@ when defined(nimCoroutines):
       stack.next = gch.stack
       gch.stack.prev = stack
       gch.stack = stack
-    # c_fprintf(c_stdout, "[GC] added stack 0x%016X\n", starts)
+    # c_fprintf(stdout, "[GC] added stack 0x%016X\n", starts)
 
   proc GC_removeStack*(starts: pointer) {.cdecl, exportc.} =
     var stack = gch.stack
@@ -78,19 +103,30 @@ iterator items(stack: ptr GcStack): ptr GcStack =
     yield s
     s = s.next
 
-var
-  localGcInitialized {.rtlThreadVar.}: bool
+# There will be problems with GC in foreign threads if `threads` option is off or TLS emulation is enabled
+const allowForeignThreadGc = compileOption("threads") and not compileOption("tlsEmulation")
 
-proc setupForeignThreadGc*() =
-  ## call this if you registered a callback that will be run from a thread not
-  ## under your control. This has a cheap thread-local guard, so the GC for
-  ## this thread will only be initialized once per thread, no matter how often
-  ## it is called.
-  if not localGcInitialized:
-    localGcInitialized = true
-    var stackTop {.volatile.}: pointer
-    setStackBottom(addr(stackTop))
-    initGC()
+when allowForeignThreadGc:
+  var
+    localGcInitialized {.rtlThreadVar.}: bool
+
+  proc setupForeignThreadGc*() =
+    ## Call this if you registered a callback that will be run from a thread not
+    ## under your control. This has a cheap thread-local guard, so the GC for
+    ## this thread will only be initialized once per thread, no matter how often
+    ## it is called.
+    ##
+    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## switches are used
+    if not localGcInitialized:
+      localGcInitialized = true
+      initAllocator()
+      var stackTop {.volatile.}: pointer
+      setStackBottom(addr(stackTop))
+      initGC()
+else:
+  template setupForeignThreadGc*(): stmt =
+    {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
@@ -108,7 +144,7 @@ else:
 when not defined(useNimRtl):
   {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(c_stdout, "stack bottom: %p;\n", theStackBottom)
+    #c_fprintf(stdout, "stack bottom: %p;\n", theStackBottom)
     # the first init must be the one that defines the stack bottom:
     when defined(nimCoroutines):
       GC_addStack(theStackBottom)
@@ -117,7 +153,7 @@ when not defined(useNimRtl):
       else:
         var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
         var b = cast[ByteAddress](gch.stackBottom)
-        #c_fprintf(c_stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
+        #c_fprintf(stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
         when stackIncreases:
           gch.stackBottom = cast[pointer](min(a, b))
         else:
@@ -131,9 +167,9 @@ when defined(sparc): # For SPARC architecture.
   proc isOnStack(p: pointer): bool =
     var stackTop {.volatile.}: pointer
     stackTop = addr(stackTop)
-    var b = cast[TAddress](gch.stackBottom)
-    var a = cast[TAddress](stackTop)
-    var x = cast[TAddress](p)
+    var b = cast[ByteAddress](gch.stackBottom)
+    var a = cast[ByteAddress](stackTop)
+    var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
   template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
@@ -150,7 +186,7 @@ when defined(sparc): # For SPARC architecture.
     # Addresses decrease as the stack grows.
     while sp <= max:
       gcMark(gch, sp[])
-      sp = cast[PPointer](cast[TAddress](sp) +% sizeof(pointer))
+      sp = cast[PPointer](cast[ByteAddress](sp) +% sizeof(pointer))
 
 elif defined(ELATE):
   {.error: "stack marking code is to be written for this architecture".}
@@ -204,7 +240,7 @@ else:
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array [0..7, pointer]
+      type PStackSlice = ptr array[0..7, pointer]
       var registers {.noinit.}: Registers
       getRegisters(registers)
       for i in registers.low .. registers.high:
@@ -242,7 +278,7 @@ else:
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array [0..7, pointer]
+      type PStackSlice = ptr array[0..7, pointer]
       var registers {.noinit.}: C_JmpBuf
       if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
         var max = cast[ByteAddress](gch.stackBottom)

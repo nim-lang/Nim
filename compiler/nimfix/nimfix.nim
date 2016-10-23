@@ -73,7 +73,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         of "auto": gStyleCheck = StyleCheck.Auto
         else: localError(gCmdLineInfo, errOnOrOffExpected)
       of "wholeproject": gOnlyMainfile = false
-      of "besteffort": msgs.gErrorMax = high(int) # dont stop after first error
+      of "besteffort": msgs.gErrorMax = high(int) # don't stop after first error
       else:
         processSwitch(pass, p)
     of cmdArgument:

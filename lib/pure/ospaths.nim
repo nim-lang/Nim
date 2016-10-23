@@ -10,7 +10,7 @@
 # Included by the ``os`` module but a module in its own right for NimScript
 # support.
 
-when isMainModule:
+when not declared(os):
   {.pragma: rtl.}
   import strutils
 
@@ -434,8 +434,8 @@ when not declared(getEnv) or defined(nimscript):
     ## On Windows, network paths are considered absolute too.
     when doslike:
       var len = len(path)
-      result = (len > 1 and path[0] in {'/', '\\'}) or
-               (len > 2 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
+      result = (len > 0 and path[0] in {'/', '\\'}) or
+               (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
     elif defined(macos):
       result = path.len > 0 and path[0] != ':'
     elif defined(RISCOS):
@@ -556,21 +556,49 @@ when declared(getEnv) or defined(nimscript):
           yield substr(s, first, last-1)
           inc(last)
 
-  proc findExe*(exe: string): string {.
+  when not defined(windows) and declared(os):
+    proc checkSymlink(path: string): bool =
+      var rawInfo: Stat
+      if lstat(path, rawInfo) < 0'i32: result = false
+      else: result = S_ISLNK(rawInfo.st_mode)
+
+  proc findExe*(exe: string, followSymlinks: bool = true): string {.
     tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
     ## Searches for `exe` in the current working directory and then
     ## in directories listed in the ``PATH`` environment variable.
     ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
     ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
+    ## If the system supports symlinks it also resolves them until it
+    ## meets the actual file. This behavior can be disabled if desired.
     result = addFileExt(exe, ExeExt)
     if existsFile(result): return
     var path = string(getEnv("PATH"))
     for candidate in split(path, PathSep):
       when defined(windows):
-        var x = candidate / result
+        var x = (if candidate[0] == '"' and candidate[^1] == '"':
+                  substr(candidate, 1, candidate.len-2) else: candidate) /
+               result
       else:
         var x = expandTilde(candidate) / result
-      if existsFile(x): return x
+      if existsFile(x):
+        when not defined(windows) and declared(os):
+          while followSymlinks: # doubles as if here
+            if x.checkSymlink:
+              var r = newString(256)
+              var len = readlink(x, r, 256)
+              if len < 0:
+                raiseOSError(osLastError())
+              if len > 256:
+                r = newString(len+1)
+                len = readlink(x, r, len)
+              setLen(r, len)
+              if isAbsolute(r):
+                x = r
+              else:
+                x = parentDir(x) / r
+            else:
+              break
+        return x
     result = ""
 
 when defined(nimscript) or (defined(nimdoc) and not declared(os)):

@@ -145,13 +145,7 @@ type
 
   PRodReader* = ref TRodReader
 
-var rodCompilerprocs*: TStrTable
-
-proc handleSymbolFile*(module: PSym): PRodReader
-# global because this is needed by magicsys
-proc loadInitSection*(r: PRodReader): PNode
-
-# implementation
+var rodCompilerprocs*: TStrTable # global because this is needed by magicsys
 
 proc rawLoadStub(s: PSym)
 
@@ -206,7 +200,7 @@ proc decodeNodeLazyBody(r: PRodReader, fInfo: TLineInfo,
       var id = decodeVInt(r.s, r.pos)
       result.typ = rrGetType(r, id, result.info)
     case result.kind
-    of nkCharLit..nkInt64Lit:
+    of nkCharLit..nkUInt64Lit:
       if r.s[r.pos] == '!':
         inc(r.pos)
         result.intVal = decodeVBiggestInt(r.s, r.pos)
@@ -324,6 +318,29 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     result.align = decodeVInt(r.s, r.pos).int16
   else:
     result.align = 2
+
+  if r.s[r.pos] == '\14':
+    inc(r.pos)
+    result.lockLevel = decodeVInt(r.s, r.pos).TLockLevel
+  else:
+    result.lockLevel = UnspecifiedLockLevel
+
+  if r.s[r.pos] == '\15':
+    inc(r.pos)
+    result.destructor = rrGetSym(r, decodeVInt(r.s, r.pos), info)
+  if r.s[r.pos] == '\16':
+    inc(r.pos)
+    result.deepCopy = rrGetSym(r, decodeVInt(r.s, r.pos), info)
+  if r.s[r.pos] == '\17':
+    inc(r.pos)
+    result.assignment = rrGetSym(r, decodeVInt(r.s, r.pos), info)
+  while r.s[r.pos] == '\18':
+    inc(r.pos)
+    let x = decodeVInt(r.s, r.pos)
+    doAssert r.s[r.pos] == '\19'
+    inc(r.pos)
+    let y = rrGetSym(r, decodeVInt(r.s, r.pos), info)
+    result.methods.safeAdd((x, y))
   decodeLoc(r, result.loc, info)
   while r.s[r.pos] == '^':
     inc(r.pos)
@@ -348,6 +365,22 @@ proc decodeLib(r: PRodReader, info: TLineInfo): PLib =
     if r.s[r.pos] != '|': internalError("decodeLib: 2")
     inc(r.pos)
     result.path = decodeNode(r, info)
+
+proc decodeInstantiations(r: PRodReader; info: TLineInfo;
+                          s: var seq[PInstantiation]) =
+  while r.s[r.pos] == '\15':
+    inc(r.pos)
+    var ii: PInstantiation
+    new ii
+    ii.sym = rrGetSym(r, decodeVInt(r.s, r.pos), info)
+    ii.concreteTypes = @[]
+    while r.s[r.pos] == '\17':
+      inc(r.pos)
+      ii.concreteTypes.add rrGetType(r, decodeVInt(r.s, r.pos), info)
+    if r.s[r.pos] == '\20':
+      inc(r.pos)
+      ii.compilesId = decodeVInt(r.s, r.pos)
+    s.safeAdd ii
 
 proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   var
@@ -423,6 +456,27 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
   if r.s[r.pos] == '#':
     inc(r.pos)
     result.constraint = decodeNode(r, unknownLineInfo())
+  case result.kind
+  of skType, skGenericParam:
+    while r.s[r.pos] == '\14':
+      inc(r.pos)
+      result.typeInstCache.safeAdd rrGetType(r, decodeVInt(r.s, r.pos), result.info)
+  of routineKinds:
+    decodeInstantiations(r, result.info, result.procInstCache)
+    if r.s[r.pos] == '\16':
+      inc(r.pos)
+      result.gcUnsafetyReason = rrGetSym(r, decodeVInt(r.s, r.pos), result.info)
+  of skModule, skPackage:
+    decodeInstantiations(r, result.info, result.usedGenerics)
+  of skLet, skVar, skField, skForVar:
+    if r.s[r.pos] == '\18':
+      inc(r.pos)
+      result.guard = rrGetSym(r, decodeVInt(r.s, r.pos), result.info)
+    if r.s[r.pos] == '\19':
+      inc(r.pos)
+      result.bitsize = decodeVInt(r.s, r.pos).int16
+  else: discard
+
   if r.s[r.pos] == '(':
     if result.kind in routineKinds:
       result.ast = decodeNodeLazyBody(r, result.info, result)
@@ -527,7 +581,7 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
   # new command forces us to consider it here :-)
   case old
   of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-      cmdCompileToJS, cmdCompileToLLVM:
+      cmdCompileToJS, cmdCompileToPHP, cmdCompileToLLVM:
     if new in {cmdDoc, cmdCheck, cmdIdeTools, cmdPretty, cmdDef,
                cmdInteractive}:
       return false
@@ -566,7 +620,8 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
     of "GOPTIONS":
       inc(r.pos)              # skip ':'
       var dep = cast[TGlobalOptions](int32(decodeVInt(r.s, r.pos)))
-      if gGlobalOptions != dep: r.reason = rrOptions
+      if gGlobalOptions-harmlessOptions != dep-harmlessOptions:
+        r.reason = rrOptions
     of "CMD":
       inc(r.pos)              # skip ':'
       var dep = cast[TCommands](int32(decodeVInt(r.s, r.pos)))
@@ -580,14 +635,14 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
         if not condsyms.isDefined(getIdent(w)):
           r.reason = rrDefines #MessageOut('not defined, but should: ' + w);
         if r.s[r.pos] == ' ': inc(r.pos)
-      if (d != countDefinedSymbols()): r.reason = rrDefines
+      if d != countDefinedSymbols(): r.reason = rrDefines
     of "FILES":
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       while r.s[r.pos] != ')':
-        let relativePath = decodeStr(r.s, r.pos)
-        let resolvedPath = relativePath.findModule(r.origFile)
-        let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
+        let finalPath = decodeStr(r.s, r.pos)
+        #let resolvedPath = relativePath.findModule(r.origFile)
+        #let finalPath = if resolvedPath.len > 0: resolvedPath else: relativePath
         r.files.add(finalPath.fileInfoIdx)
         inc(r.pos)            # skip #10
         inc(r.line)
@@ -683,8 +738,11 @@ proc newRodReader(modfilename: string, hash: SecureHash,
     if version != RodFileVersion:
       # since ROD files are only for caching, no backwards compatibility is
       # needed
+      #echo "expected version ", version, " ", RodFileVersion
+      result.memfile.close
       result = nil
   else:
+    result.memfile.close
     result = nil
 
 proc rrGetType(r: PRodReader, id: int, info: TLineInfo): PType =
@@ -762,7 +820,7 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
       result = decodeSymSafePos(r, d, info)
   if result != nil and result.kind == skStub: rawLoadStub(result)
 
-proc loadInitSection(r: PRodReader): PNode =
+proc loadInitSection*(r: PRodReader): PNode =
   if r.initIdx == 0 or r.dataIdx == 0: internalError("loadInitSection")
   var oldPos = r.pos
   r.pos = r.initIdx
@@ -818,9 +876,8 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
   var hash = getHash(fileIdx)
   gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
-  var r: PRodReader = nil
   var rodfile = toGeneratedFile(filename.withPackageName, RodExt)
-  r = newRodReader(rodfile, hash, fileIdx)
+  var r = newRodReader(rodfile, hash, fileIdx)
   if r == nil:
     result = (if existsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
   else:
@@ -847,7 +904,7 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
   gMods[fileIdx].rd = r
   gMods[fileIdx].reason = result  # now we know better
 
-proc handleSymbolFile(module: PSym): PRodReader =
+proc handleSymbolFile*(module: PSym): PRodReader =
   let fileIdx = module.fileIdx
   if optSymbolFiles notin gGlobalOptions:
     module.id = getID()
@@ -923,7 +980,7 @@ proc writeNode(f: File; n: PNode) =
       f.write('^')
       f.write(n.typ.id)
     case n.kind
-    of nkCharLit..nkInt64Lit:
+    of nkCharLit..nkUInt64Lit:
       if n.intVal != 0:
         f.write('!')
         f.write(n.intVal)

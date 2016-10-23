@@ -1,5 +1,5 @@
 import
-  streams, md5, sockets, unsigned,
+  streams, md5, sockets,
   sg_packets, zlib_helpers, idgen
 type
   TClientType* = enum

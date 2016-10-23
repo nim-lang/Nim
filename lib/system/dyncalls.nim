@@ -23,16 +23,18 @@ proc rawWrite(f: File, s: string) =
 
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
-  stdout.rawWrite("could not load: ")
-  stdout.rawWrite(path)
-  stdout.rawWrite("\n")
+  stderr.rawWrite("could not load: ")
+  stderr.rawWrite(path)
+  stderr.rawWrite("\n")
+  when not(defined(nimDebugDlOpen)):
+    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
   quit(1)
 
 proc procAddrError(name: cstring) {.noinline.} =
   # carefully written to avoid memory allocation:
-  stdout.rawWrite("could not import: ")
-  stdout.write(name)
-  stdout.rawWrite("\n")
+  stderr.rawWrite("could not import: ")
+  stderr.write(name)
+  stderr.rawWrite("\n")
   quit(1)
 
 # this code was inspired from Lua's source code:
@@ -52,11 +54,14 @@ when defined(posix):
   #
 
   # c stuff:
-  var
-    RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
+  when defined(linux) or defined(macosx):
+    const RTLD_NOW = cint(2)
+  else:
+    var
+      RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: cint
 
   proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: cstring, mode: int): LibHandle {.
+  proc dlopen(path: cstring, mode: cint): LibHandle {.
       importc, header: "<dlfcn.h>".}
   proc dlsym(lib: LibHandle, name: cstring): ProcAddr {.
       importc, header: "<dlfcn.h>".}
@@ -71,7 +76,8 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        c_fprintf(c_stdout, "%s\n", error)
+        stderr.write(error)
+        stderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
@@ -109,9 +115,31 @@ elif defined(windows) or defined(dos):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result != nil: return
+    const decorated_length = 250
+    var decorated: array[decorated_length, char]
+    decorated[0] = '_'
+    var m = 1
+    while m < (decorated_length - 5):
+      if name[m - 1] == '\x00': break
+      decorated[m] = name[m - 1]
+      inc(m)
+    decorated[m] = '@'
     for i in countup(0, 50):
-      var decorated = "_" & $name & "@" & $(i * 4)
-      result = getProcAddress(cast[THINSTANCE](lib), cstring(decorated))
+      var k = i * 4
+      if k div 100 == 0: 
+        if k div 10 == 0:
+          m = m + 1
+        else:
+          m = m + 2
+      else:
+        m = m + 3
+      decorated[m + 1] = '\x00'
+      while true:
+        decorated[m] = chr(ord('0') + (k %% 10))
+        dec(m)
+        k = k div 10
+        if k == 0: break
+      result = getProcAddress(cast[THINSTANCE](lib), decorated)
       if result != nil: return
     procAddrError(name)
 
