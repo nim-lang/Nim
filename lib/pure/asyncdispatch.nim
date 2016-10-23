@@ -1007,6 +1007,8 @@ else:
   proc newAsyncNativeSocket*(domain: cint, sockType: cint,
                              protocol: cint): AsyncFD =
     result = newNativeSocket(domain, sockType, protocol).AsyncFD
+    if result.int == -1:
+      raiseOSError(osLastError())
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
       result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
@@ -1016,6 +1018,8 @@ else:
                              sockType: SockType = SOCK_STREAM,
                              protocol: Protocol = IPPROTO_TCP): AsyncFD =
     result = newNativeSocket(domain, sockType, protocol).AsyncFD
+    if result.int == -1:
+      raiseOSError(osLastError())
     result.SocketHandle.setBlocking(false)
     when defined(macosx):
       result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
