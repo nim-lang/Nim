@@ -246,6 +246,11 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(osLastError())
     p.handles.incl(fd)
 
+  proc getSystemHandle*(): Handle =
+    ## Retrieves handle of associated IOCP handle.
+    let p = getGlobalDispatcher()
+    result = p.ioPort
+
   proc verifyPresence(fd: AsyncFD) =
     ## Ensures that file descriptor has been registered with the dispatcher.
     let p = getGlobalDispatcher()
