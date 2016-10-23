@@ -16,10 +16,17 @@ regressions of 0.15.0. For Windows we now provide zipfiles in addition to the
 NSIS based installer which proves to be hard to maintain and after all these
 months still has serious issues. So we encourage you download the .zip
 file instead of the .exe file! Unzip it somewhere, run ``finish.exe`` to
-detect your MingW installation, done.
+detect your MingW installation, done. ``finish.exe`` can also set your PATH
+environment variable.
 
-To see a full list of changes, take a look at the
-detailed changelog `below <#changelog>`_.
+
+Bugfixes
+--------
+
+The list below has been generated based on the commits in Nim's git
+repository. As such it lists only the issues which have been closed
+via a commit, for a full list see
+`this link on Github <https://github.com/nim-lang/Nim/issues?utf8=%E2%9C%93&q=is%3Aissue+closed%3A%222016-09-30+..+2016-10-23%22+>`_.
 
 
 - Fixed "`NimMain` not exported in DLL, but `NimMainInner` is"
