@@ -3,7 +3,7 @@ Version 0.15.2 released
 
 .. container:: metadata
 
-  Posted by Andreas Rumpf on 21/10/2016
+  Posted by Andreas Rumpf on 23/10/2016
 
 We're happy to announce that the latest release of Nim, version 0.15.2, is now
 available!
@@ -46,3 +46,25 @@ detailed changelog `below <#changelog>`_.
   (`#3078 <https://github.com/nim-lang/Nim/issues/3078>`_)
 - Fixed "nim doc does not generate doc comments correctly"
   (`#4913 <https://github.com/nim-lang/Nim/issues/4913>`_)
+- Fixed "nim doc2 fails on ARM when running against lib/pure/coro.nim"
+  (`#4879 <https://github.com/nim-lang/Nim/issues/4879>`_)
+- Fixed "xmlparser does not unescape correctly"
+  (`#1518 <https://github.com/nim-lang/Nim/issues/1518>`_)
+- Fixed "[docs] mysterious "raise hook""
+  (`#3485 <https://github.com/nim-lang/Nim/issues/3485>`_)
+- Fixed "assertion failure in non-release Nim when compiling NimYAML"
+  (`#4869 <https://github.com/nim-lang/Nim/issues/4869>`_)
+- Fixed "A closure causes nimscript to fail with unhandled exception"
+  (`#4906 <https://github.com/nim-lang/Nim/issues/4906>`_)
+- Fixed "startProcess changes working directory"
+  (`#4867 <https://github.com/nim-lang/Nim/issues/4867>`_)
+- Fixed "bindsym to void template produces ICE"
+  (`#4808 <https://github.com/nim-lang/Nim/issues/4808>`_)
+- Fixed "readline(TFile, var string) segfaults if second argument is nil"
+  (`#564 <https://github.com/nim-lang/Nim/issues/564>`_)
+- Fixed "times.parse gives the wrong day of the week for the first hour of the day."
+  (`#4922 <https://github.com/nim-lang/Nim/issues/4922>`_)
+- Fixed "Internal error when passing parameter proc inside .gcsafe closure"
+  (`#4927 <https://github.com/nim-lang/Nim/issues/4927>`_)
+- Fixed "Upcoming asyncdispatch doesn't compile with C++ backend on OS X"
+  (`#4928 <https://github.com/nim-lang/Nim/issues/4928>`_)
