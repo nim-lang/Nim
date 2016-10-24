@@ -349,9 +349,9 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyUnused0,
-    tyUnused1, tyMutable, tyVarargs,
-    tyUnused
+    tyUnused0, tyUnused1, tyUnused2,
+    tyVarargs,
+    tyUnused,
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass #\

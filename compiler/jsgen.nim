@@ -151,8 +151,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyBaseIndex
-  of tyRange, tyDistinct, tyOrdinal, tyMutable, tyProxy:
-    result = mapType(t.sons[0])
+  of tyRange, tyDistinct, tyOrdinal, tyProxy: result = mapType(t.sons[0])
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
@@ -170,7 +169,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyUnused, tyUnused0, tyUnused1: internalError("mapType")
+  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("mapType")
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   if p.target == targetPHP: result = etyObject
