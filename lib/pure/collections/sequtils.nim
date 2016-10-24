@@ -228,7 +228,7 @@ proc apply*[T](data: var seq[T], op: proc (x: var T) {.closure.})
   ##   var a = @["1", "2", "3", "4"]
   ##   echo repr(a)
   ##   # --> ["1", "2", "3", "4"]
-  ##   map(a, proc(x: var string) = x &= "42")
+  ##   apply(a, proc(x: var string) = x &= "42")
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ##
@@ -247,7 +247,7 @@ proc apply*[T](data: var seq[T], op: proc (x: T): T {.closure.})
   ##   var a = @["1", "2", "3", "4"]
   ##   echo repr(a)
   ##   # --> ["1", "2", "3", "4"]
-  ##   map(a, proc(x: string): string = x & "42")
+  ##   apply(a, proc(x: string): string = x & "42")
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ##
