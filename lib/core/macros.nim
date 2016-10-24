@@ -91,7 +91,7 @@ type
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
     ntyUnused0,
-    ntyConst, ntyMutable, ntyVarargs,
+    ntyUnused1, ntyMutable, ntyVarargs,
     ntyUnused,
     ntyError,
     ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,

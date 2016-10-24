@@ -350,7 +350,7 @@ type
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
     tyUnused0,
-    tyConst, tyMutable, tyVarargs,
+    tyUnused1, tyMutable, tyVarargs,
     tyUnused
     tyProxy # used as errornous type (for idetools)
 
