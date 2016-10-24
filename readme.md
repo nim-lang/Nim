@@ -27,7 +27,8 @@ To build from source you will need:
     are: clang, Visual C++, Intel's C++ compiler
   * git or wget
 
-**Note:** When installing ``gcc`` on Ubuntu (and likely other distros) ensure that the ``build-essentials`` package is installed also.
+**Note:** When installing ``gcc`` on Ubuntu (and likely other distros) ensure
+that the ``build-essentials`` package is installed also.
 
 If you are on a fairly modern *nix system, the following steps should work:
 
@@ -58,7 +59,7 @@ source based installations where you added Nim's ``bin`` directory to your PATH
 the easiest way of installing Nimble is via:
 
 ```
-$ nim e install_nimble.nims
+$ koch nimble
 ```
 
 ## Community

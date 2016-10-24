@@ -61,7 +61,7 @@ Now open a terminal and follow these instructions:
 ``cd ~/programs/nim``.
 * run ``sh build.sh``.
 * Add ``$your_install_dir/bin`` to your PATH.
-* To build associated tools like ``nimble`` and ``nimsuggest`` run ``nim e install_tools.nims``.
+* To build associated tools like ``nimble`` and ``nimsuggest`` run ``nim c koch && koch tools``.
 
 After restarting your terminal, you should be able to run ``nim -v``
 which should show you the version of Nim you just installed.
@@ -94,6 +94,7 @@ and then to build it::
   cd ..
   bin/nim c koch
   ./koch boot -d:release
+  koch tools
 
 You should then add the ``./bin`` (make sure to expand this into an
 absolute path) directory to your ``PATH``.
