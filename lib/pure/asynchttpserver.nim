@@ -86,7 +86,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## --------
   ## .. code-block::nim
   ##    proc handler(req: Request) {.async.} =
-  ##      if $req.url.path == "/hello-world":
+  ##      if req.url.path == "/hello-world":
   ##        let msg = %* {"message": "Hello World"}
   ##        let headers = newHttpHeaders([("Content-Type","application/json")])
   ##        await req.respond(Http200, $msg, headers)
