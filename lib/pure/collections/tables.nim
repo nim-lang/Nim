@@ -949,6 +949,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
+    if t.data[index].val == 0: dec(t.counter)
   else:
     if mustRehash(len(t.data), t.counter): enlarge(t)
     rawInsert(t, t.data, key, val)
