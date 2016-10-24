@@ -62,7 +62,6 @@ type
     tyUInt16,
     tyUInt32,
     tyUInt64,
-    tyBigNum,
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
   TNimNode {.codegenType.} = object

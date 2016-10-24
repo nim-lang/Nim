@@ -93,7 +93,7 @@ proc getUniqueType*(key: PType): PType =
     # produced instead of ``NI``.
     result = key
   of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString,
-      tyCString, tyNone, tyBigNum, tyVoid:
+      tyCString, tyNone, tyVoid:
     result = gCanonicalTypes[k]
     if result == nil:
       gCanonicalTypes[k] = key
@@ -106,7 +106,7 @@ proc getUniqueType*(key: PType): PType =
   of tyDistinct:
     if key.deepCopy != nil: result = key
     else: result = getUniqueType(lastSon(key))
-  of tyGenericInst, tyOrdinal, tyMutable, tyConst, tyStatic:
+  of tyGenericInst, tyOrdinal, tyStatic:
     result = getUniqueType(lastSon(key))
     #let obj = lastSon(key)
     #if obj.sym != nil and obj.sym.name.s == "TOption":
@@ -153,7 +153,7 @@ proc getUniqueType*(key: PType): PType =
     else:
       # ugh, we need the canon here:
       result = slowSearch(key, k)
-  of tyUnused: internalError("getUniqueType")
+  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("getUniqueType")
 
 proc tableGetType*(tab: TIdTable, key: PType): RootRef =
   # returns nil if we need to declare this type

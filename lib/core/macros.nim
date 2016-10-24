@@ -78,7 +78,7 @@ type
     nnkBreakState
 
   NimNodeKinds* = set[NimNodeKind]
-  NimTypeKind* = enum
+  NimTypeKind* = enum  # some types are no longer used, see ast.nim
     ntyNone, ntyBool, ntyChar, ntyEmpty,
     ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
     ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
@@ -90,8 +90,8 @@ type
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
-    ntyBigNum,
-    ntyConst, ntyMutable, ntyVarargs,
+    ntyUnused0, ntyUnused1, ntyUnused2,
+    ntyVarargs,
     ntyUnused,
     ntyError,
     ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,
@@ -889,6 +889,30 @@ proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compiletime.} =
 proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
+
+macro expandMacros*(body: typed): untyped =
+  ## Expands one level of macro - useful for debugging.
+  ## Can be used to inspect what happens when a macro call is expanded,
+  ## without altering its result.
+  ##
+  ## For instance,
+  ##
+  ## .. code-block:: nim
+  ##   import future, macros
+  ##
+  ##   let
+  ##     x = 10
+  ##     y = 20
+  ##   expandMacros:
+  ##     dump(x + y)
+  ##
+  ## will actually dump `x + y`, but at the same time will print at
+  ## compile time the expansion of the ``dump`` macro, which in this
+  ## case is ``debugEcho ["x + y", " = ", x + y]``.
+  template inner(x: untyped): untyped = x
+
+  result = getAst(inner(body))
+  echo result.toStrLit
 
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =
