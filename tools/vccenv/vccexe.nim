@@ -1,9 +1,9 @@
 import strtabs, os, osproc, vccenv
 
 when defined(release):
-  let vccOptions = { poParentStreams }
+  let vccOptions = {poParentStreams}
 else:
-  let vccOptions = { poEchoCmd, poParentStreams }
+  let vccOptions = {poEchoCmd, poParentStreams}
 
 when isMainModule:
   var vccEnvStrTab: StringTableRef = nil
@@ -17,9 +17,8 @@ when isMainModule:
     for vccEnvKey, vccEnvVal in vccEnvStrTab:
       putEnv(vccEnvKey, vccEnvVal)
   let vccProcess = startProcess(
-      "link".addFileExt(ExeExt), 
+      "cl.exe",
       args = commandLineParams(),
       options = vccOptions
     )
   quit vccProcess.waitForExit()
-    
