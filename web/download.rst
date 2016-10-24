@@ -94,7 +94,6 @@ and then to build it::
   cd ..
   bin/nim c koch
   ./koch boot -d:release
-  koch tools
 
 You should then add the ``./bin`` (make sure to expand this into an
 absolute path) directory to your ``PATH``.
