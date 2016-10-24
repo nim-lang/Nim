@@ -4,7 +4,7 @@ template getScriptDir(): string =
   parentDir(instantiationInfo(-1, true).filename)
 
 const
-  execName = when defined(windows): "tgorge.bat" else: "./tgorge.sh"
+  execName = when defined(windows): "tgorge.bat" else: "sh tgorge.sh"
   relOutput = gorge(execName)
   absOutput = gorge(getScriptDir() / execName)
 
