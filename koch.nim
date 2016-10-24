@@ -49,6 +49,7 @@ Possible Commands:
   tests [options]          run the testsuite
   temp options             creates a temporary compiler for testing
   winrelease               creates a release (for coredevs only)
+  nimble                   builds the Nimble tool
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -148,6 +149,8 @@ proc csource(args: string) =
        [args, VersionAsString, compileNimInst, findNim()])
 
 proc bundleNimbleSrc() =
+  ## bunldeNimbleSrc() bundles a specific Nimble commit with the tarball. We
+  ## always bundle the latest official release.
   if dirExists("dist/nimble/.git"):
     exec("git --git-dir dist/nimble/.git pull")
   else:
@@ -162,6 +165,23 @@ proc bundleNimbleExe() =
   # to pick it up:
   exec(findNim() & " c dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
+
+proc buildNimble() =
+  ## buildNimble() builds Nimble for the building via "github". As such, we
+  ## choose the most recent commit of Nimble too.
+  var installDir = "dist/nimble"
+  if dirExists("dist/nimble/.git"):
+    exec("git --git-dir dist/nimble/.git pull")
+  else:
+    # if dist/nimble exist, but is not a git repo, don't mess with it:
+    if dirExists(installDir):
+      var id = 0
+      while dirExists("dist/nimble" & $id):
+        inc id
+      installDir = "dist/nimble" & $id
+    exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
+  exec(findNim() & " c " & installDir / "src/nimble.nim")
+  copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
   if dirExists("dist/nimsuggest/.git"):
@@ -371,7 +391,7 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
-  of "docs": web("--onlyDocs " & op.cmdLineRest)
+  of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
   of "json2": web("--json2 " & op.cmdLineRest)
   of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
   of "web0":
@@ -389,5 +409,6 @@ of cmdArgument:
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
+  of "nimble": buildNimble()
   else: showHelp()
 of cmdEnd: showHelp()
