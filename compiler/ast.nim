@@ -347,7 +347,7 @@ type
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
     tyBigNum,
     tyConst, tyMutable, tyVarargs,
-    tyIter, # unused
+    tyUnused # kept for enum ordinal compatibility
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass #\

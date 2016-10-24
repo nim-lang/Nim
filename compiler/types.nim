@@ -572,7 +572,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       addSep(prag)
       add(prag, "locks: " & $t.lockLevel)
     if len(prag) != 0: add(result, "{." & prag & ".}")
-  of tyVarargs, tyIter:
+  of tyVarargs:
     result = typeToStr[t.kind] % typeToString(t.sons[0])
   else:
     result = typeToStr[t.kind]
@@ -965,7 +965,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyArrayConstr,
-     tyArray, tyProc, tyConst, tyMutable, tyVarargs, tyIter,
+     tyArray, tyProc, tyConst, tyMutable, tyVarargs,
      tyOrdinal, tyTypeClasses, tyFieldAccessor:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
@@ -980,6 +980,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
         sameValue(a.n.sons[1], b.n.sons[1])
   of tyGenericInst: discard
   of tyNone: result = false
+  of tyUnused: internalError("sameFlags")
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1143,7 +1144,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     else: result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
   of tyPtr:
     result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
-  of tyArrayConstr, tySet, tyConst, tyMutable, tyIter:
+  of tyArrayConstr, tySet, tyConst, tyMutable:
     for i in countup(0, sonsLen(t) - 1):
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if result != nil: break
@@ -1160,6 +1161,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
+  of tyUnused: internalError("typeAllowedAux")
 
 proc typeAllowed*(t: PType, kind: TSymKind): PType =
   # returns 'nil' on success and otherwise the part of the type that is
@@ -1311,7 +1313,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if result < 0: return
     if a < maxAlign: a = maxAlign
     result = align(result, a)
-  of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst, tyIter:
+  of tyGenericInst, tyDistinct, tyGenericBody, tyMutable, tyConst:
     result = computeSizeAux(lastSon(typ), a)
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
