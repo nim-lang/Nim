@@ -173,7 +173,9 @@ proc bundleNimsuggest(buildExe: bool) =
     copyExe("dist/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
 
 proc bundleFinishExe() =
-  exec(findNim() & " c finish.nim")
+  exec(findNim() & " c tools/finish.nim")
+  copyExe("tools/finish".exe, "finish".exe)
+  removeFile("tools/finish".exe)
 
 proc zip(args: string) =
   bundleNimbleSrc()
