@@ -104,23 +104,31 @@ proc testGetFileInfo =
 
     createDir(dirPath)
     writeFile(filePath, "")
-    createSymlink(dirPath, linkDirPath)
-    createSymlink(filePath, linkFilePath)
+    when defined(posix):
+      createSymlink(dirPath, linkDirPath)
+      createSymlink(filePath, linkFilePath)
 
     let
       dirInfo = getFileInfo(dirPath)
       fileInfo = getFileInfo(filePath)
-      linkDirInfo = getFileInfo(linkDirPath, followSymlink = false)
-      linkFileInfo = getFileInfo(linkFilePath, followSymlink = false)
+    when defined(posix):
+      let
+        linkDirInfo = getFileInfo(linkDirPath, followSymlink = false)
+        linkFileInfo = getFileInfo(linkFilePath, followSymlink = false)
 
     echo dirInfo.kind
     echo fileInfo.kind
-    echo linkDirInfo.kind
-    echo linkFileInfo.kind
+    when defined(posix):
+      echo linkDirInfo.kind
+      echo linkFileInfo.kind
+    else:
+      echo pcLinkToDir
+      echo pcLinkToFile
 
     removeDir(dirPath)
     removeFile(filePath)
-    removeFile(linkDirPath)
-    removeFile(linkFilePath)
+    when defined(posix):
+      removeFile(linkDirPath)
+      removeFile(linkFilePath)
 
 testGetFileInfo()
