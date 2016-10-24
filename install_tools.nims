@@ -3,6 +3,8 @@ import ospaths
 
 mode = ScriptMode.Verbose
 
+echo "This script is deprecated. Use 'koch tools' instead."
+
 if not dirExists"dist/nimble":
   echo "[Error] This script only works for the tarball."
 else:
@@ -11,8 +13,8 @@ else:
       " dist/nimble/src/nimble.nim"
 
   let nimsugExe = "./bin/nimsuggest".toExe
-  selfExec "c --noNimblePath -p:compiler -o:" & nimsugExe &
+  selfExec "c --noNimblePath -d:release -p:compiler -o:" & nimsugExe &
       " dist/nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "./bin/nimgrep".toExe
-  selfExec "c -o:./bin/nimgrep tools/nimgrep.nim"
+  selfExec "c -d:release -o:" & nimgrepExe & " tools/nimgrep.nim"
