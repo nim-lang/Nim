@@ -269,9 +269,6 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyUInt16: result = atomicType("uint16", mUint16)
   of tyUInt32: result = atomicType("uint32", mUint32)
   of tyUInt64: result = atomicType("uint64", mUint64)
-  of tyBigNum: result = atomicType("bignum", mNone)
-  of tyConst: result = mapTypeToBracket("const", mNone, t, info)
-  of tyMutable: result = mapTypeToBracket("mutable", mNone, t, info)
   of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
   of tyProxy: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
@@ -294,7 +291,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused: internalError("mapTypeToAstX")
+  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("mapTypeToAstX")
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(t, info, false, true)
