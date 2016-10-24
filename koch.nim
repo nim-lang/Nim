@@ -203,15 +203,16 @@ proc bundleNimsuggest(buildExe: bool) =
     copyExe("dist/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
     removeFile("dist/nimsuggest/nimsuggest".exe)
 
-proc bundleFinishExe() =
+proc bundleWinTools() =
   nimexec("c tools/finish.nim")
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
+  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
 
 proc zip(args: string) =
   bundleNimbleSrc()
   bundleNimsuggest(false)
-  bundleFinishExe()
+  bundleWinTools()
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
@@ -247,7 +248,7 @@ proc buildTools() =
 proc nsis(args: string) =
   bundleNimbleExe()
   bundleNimsuggest(true)
-  bundleFinishExe()
+  bundleWinTools()
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
   #buildTool("tools/nimgrep", args)
