@@ -92,7 +92,7 @@ type
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
     ntyBigNum,
     ntyConst, ntyMutable, ntyVarargs,
-    ntyIter,
+    ntyUnused,
     ntyError,
     ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,
     ntyAnd, ntyOr, ntyNot

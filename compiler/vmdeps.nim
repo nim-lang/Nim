@@ -270,7 +270,6 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyConst: result = mapTypeToBracket("const", mNone, t, info)
   of tyMutable: result = mapTypeToBracket("mutable", mNone, t, info)
   of tyVarargs: result = mapTypeToBracket("varargs", mVarargs, t, info)
-  of tyIter: result = mapTypeToBracket("iter", mNone, t, info)
   of tyProxy: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
     result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
@@ -292,6 +291,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
+  of tyUnused: internalError("mapTypeToAstX")
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(t, info, false, true)
