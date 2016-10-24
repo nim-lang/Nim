@@ -29,7 +29,7 @@ type
   TRssItem = object
     year, month, day, title, url, content: string
   TAction = enum
-    actAll, actOnlyWebsite, actPdf, actJson2
+    actAll, actOnlyWebsite, actPdf, actJson2, actOnlyDocs
 
   Sponsor = object
     logo: string
@@ -72,7 +72,7 @@ include "website.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  version = "0.7"
+  version = "0.8"
   usage = "nimweb - Nim Website Generator Version " & version & """
 
   (c) 2015 Andreas Rumpf
@@ -85,6 +85,8 @@ Options:
   -v, --version       shows the version
   --website           only build the website, not the full documentation
   --pdf               build the PDF version of the documentation
+  --json2             build JSON of the documentation
+  --onlyDocs          build only the documentation
 Compile_options:
   will be passed to the Nim compiler
 """
@@ -157,6 +159,7 @@ proc parseCmdLine(c: var TConfigData) =
       of "website": action = actOnlyWebsite
       of "pdf": action = actPdf
       of "json2": action = actJson2
+      of "onlydocs": action = actOnlyDocs
       of "googleanalytics":
         c.gaId = val
         c.nimArgs.add("--doc.googleAnalytics:" & val & " ")
@@ -315,6 +318,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
   exec(findNim() & " buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
+  createDir(destPath)
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
@@ -507,8 +511,14 @@ proc main(c: var TConfigData) =
   buildAddDoc(c, docup)
   buildDocSamples(c, docup)
   buildDoc(c, docup)
-  buildDocSamples(c, "doc")
-  buildDoc(c, "doc")
+  createDir("doc/html")
+  buildDocSamples(c, "doc/html")
+  buildDoc(c, "doc/html")
+
+proc onlyDocs(c: var TConfigData) =
+  createDir("doc/html")
+  buildDocSamples(c, "doc/html")
+  buildDoc(c, "doc/html")
 
 proc json2(c: var TConfigData) =
   const destPath = "web/json2"
@@ -529,6 +539,7 @@ parseCmdLine(c)
 parseIniFile(c)
 case action
 of actOnlyWebsite: buildWebsite(c)
-of actPdf: buildPdfDoc(c, "doc")
+of actPdf: buildPdfDoc(c, "doc/pdf")
+of actOnlyDocs: onlyDocs(c)
 of actAll: main(c)
 of actJson2: json2(c)

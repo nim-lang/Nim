@@ -72,7 +72,7 @@ when defined(windows):
       createShortcut(getCurrentDir() / "start.bat", dest / "Nim",
                      getCurrentDir() / r"icons\nim.ico")
       if fileExists("doc/overview.html"):
-        createShortcut(getCurrentDir() / "doc" / "overview.html",
+        createShortcut(getCurrentDir() / "doc" / "html" / "overview.html",
                        dest / "Overview")
       if dirExists(r"dist\aporia-0.4.0"):
         createShortcut(getCurrentDir() / r"dist\aporia-0.4.0\bin\aporia.exe",

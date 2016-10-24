@@ -369,6 +369,7 @@ of cmdArgument:
   of "boot": boot(op.cmdLineRest)
   of "clean": clean(op.cmdLineRest)
   of "web": web(op.cmdLineRest)
+  of "docs": web("--onlyDocs " & op.cmdLineRest)
   of "json2": web("--json2 " & op.cmdLineRest)
   of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
   of "web0":
