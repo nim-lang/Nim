@@ -69,7 +69,7 @@ when defined(windows):
     if askBool("Would like to add Nim-" & NimVersion &
                " to your start menu? (y/n) "):
       createDir(dest)
-      createShortcut(getCurrentDir() / "start.bat", dest / "Nim",
+      createShortcut(getCurrentDir() / "tools" / "start.bat", dest / "Nim",
                      getCurrentDir() / r"icons\nim.ico")
       if fileExists("doc/overview.html"):
         createShortcut(getCurrentDir() / "doc" / "html" / "overview.html",
