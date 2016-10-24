@@ -925,7 +925,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   case a.kind
   of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
-     tyInt..tyBigNum, tyStmt, tyExpr, tyVoid:
+     tyInt..tyUInt64, tyStmt, tyExpr, tyVoid:
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
     result = exprStructuralEquivalent(a.n, b.n) and sameFlags(a, b)
@@ -980,7 +980,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
         sameValue(a.n.sons[1], b.n.sons[1])
   of tyGenericInst: discard
   of tyNone: result = false
-  of tyUnused: internalError("sameFlags")
+  of tyUnused, tyUnused0: internalError("sameFlags")
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1121,7 +1121,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = t
   of tyNil:
     if kind != skConst: result = t
-  of tyString, tyBool, tyChar, tyEnum, tyInt..tyBigNum, tyCString, tyPointer:
+  of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString, tyPointer:
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
@@ -1161,7 +1161,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
-  of tyUnused: internalError("typeAllowedAux")
+  of tyUnused, tyUnused0: internalError("typeAllowedAux")
 
 proc typeAllowed*(t: PType, kind: TSymKind): PType =
   # returns 'nil' on success and otherwise the part of the type that is
@@ -1252,8 +1252,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if typ.callConv == ccClosure: result = 2 * ptrSize
     else: result = ptrSize
     a = ptrSize
-  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray,
-     tyBigNum:
+  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       result = szIllegalRecursion

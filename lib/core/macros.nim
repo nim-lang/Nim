@@ -78,7 +78,7 @@ type
     nnkBreakState
 
   NimNodeKinds* = set[NimNodeKind]
-  NimTypeKind* = enum
+  NimTypeKind* = enum  # some types are no longer used, see ast.nim
     ntyNone, ntyBool, ntyChar, ntyEmpty,
     ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
     ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
@@ -90,7 +90,7 @@ type
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
-    ntyBigNum,
+    ntyUnused0,
     ntyConst, ntyMutable, ntyVarargs,
     ntyUnused,
     ntyError,

@@ -93,7 +93,7 @@ proc getUniqueType*(key: PType): PType =
     # produced instead of ``NI``.
     result = key
   of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString,
-      tyCString, tyNone, tyBigNum, tyVoid:
+      tyCString, tyNone, tyVoid:
     result = gCanonicalTypes[k]
     if result == nil:
       gCanonicalTypes[k] = key
@@ -153,7 +153,7 @@ proc getUniqueType*(key: PType): PType =
     else:
       # ugh, we need the canon here:
       result = slowSearch(key, k)
-  of tyUnused: internalError("getUniqueType")
+  of tyUnused, tyUnused0: internalError("getUniqueType")
 
 proc tableGetType*(tab: TIdTable, key: PType): RootRef =
   # returns nil if we need to declare this type

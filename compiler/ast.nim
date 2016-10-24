@@ -317,6 +317,10 @@ type
   TTypeKind* = enum  # order is important!
                      # Don't forget to change hti.nim if you make a change here
                      # XXX put this into an include file to avoid this issue!
+                     # several types are no longer used (guess which), but a
+                     # spot in the sequence is kept for backwards compatibility
+                     # (apparently something with bootstrapping)
+                     # if you need to add a type, they can apparently be reused
     tyNone, tyBool, tyChar,
     tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
@@ -345,9 +349,9 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyBigNum,
+    tyUnused0,
     tyConst, tyMutable, tyVarargs,
-    tyUnused # kept for enum ordinal compatibility
+    tyUnused
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass #\
