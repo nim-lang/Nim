@@ -81,6 +81,17 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## content.
   ##
   ## This procedure will **not** close the client socket.
+  ##
+  ## Examples
+  ## --------
+  ## .. code-block::nim
+  ##    proc handler(req: Request) {.async.} =
+  ##      if $req.url.path == "/hello-world":
+  ##        let msg = %* {"message": "Hello World"}
+  ##        let headers = newHttpHeaders([("Content-Type","application/json")])
+  ##        await req.respond(Http200, $msg, headers)
+  ##      else:
+  ##        await req.respond(Http404, "Not Found")
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
   if headers != nil:
