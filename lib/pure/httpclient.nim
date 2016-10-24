@@ -958,8 +958,10 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
   if client.currentURL.hostname != url.hostname or
-      client.currentURL.scheme != url.scheme:
-    if client.connected: client.close()
+      client.currentURL.scheme != url.scheme or
+      client.currentURL.port != url.port:
+    if client.connected:
+      client.close()
 
     when client is HttpClient:
       client.socket = newSocket()
