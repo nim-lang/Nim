@@ -1,4 +1,4 @@
-import strutils, strtabs, os, osproc, parseopt, vccenv
+import strutils, strtabs, os, osproc, vccenv
 
 when defined(release):
   let vccOptions = {poParentStreams}
