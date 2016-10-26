@@ -173,7 +173,7 @@ type
 
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode): void
+                  lastError = (-1).OSErrorCode): void {.gcsafe.}
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
