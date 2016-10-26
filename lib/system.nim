@@ -2176,25 +2176,34 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   for i in 0..y.len-1:
     result[i+1] = y[i]
 
-when not defined(nimscript):
-  when not defined(JS) or defined(nimphp):
-    proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
-      result = cast[pointer](x)
+proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
+  ## Generic equals operator for sequences: relies on a equals operator for
+  ## the element type `T`.
+  when nimvm:
+    if x.isNil and y.isNil:
+      return true
   else:
-    proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
-      asm """return `x`"""
-
-  proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
-    ## Generic equals operator for sequences: relies on a equals operator for
-    ## the element type `T`.
+    when not defined(JS) or defined(nimphp):
+      proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
+        result = cast[pointer](x)
+    else:
+      proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
+        asm """return `x`"""
+    
     if seqToPtr(x) == seqToPtr(y):
-      result = true
-    elif seqToPtr(x) == nil or seqToPtr(y) == nil:
-      result = false
-    elif x.len == y.len:
-      for i in 0..x.len-1:
-        if x[i] != y[i]: return false
-      result = true
+      return true
+      
+  if x.isNil or y.isNil:
+    return false
+  
+  if x.len != y.len:
+    return false
+    
+  for i in 0..x.len-1:
+    if x[i] != y[i]:
+      return false
+
+  return true
 
 proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
@@ -2632,10 +2641,15 @@ when not defined(JS): #and not defined(nimscript):
 
   include "system/ansi_c"
 
-  when not defined(nimscript):
-    proc cmp(x, y: string): int =
+  proc cmp(x, y: string): int =
+    when nimvm:
+      if x < y: result = -1
+      elif x > y: result = 1
+      else: result = 0
+    else:
       result = int(c_strcmp(x, y))
 
+  when not defined(nimscript):
     proc zeroMem(p: pointer, size: Natural) =
       c_memset(p, 0, size)
     proc copyMem(dest, source: pointer, size: Natural) =
@@ -2644,12 +2658,6 @@ when not defined(JS): #and not defined(nimscript):
       c_memmove(dest, source, size)
     proc equalMem(a, b: pointer, size: Natural): bool =
       c_memcmp(a, b, size) == 0
-
-  else:
-    proc cmp(x, y: string): int =
-      if x < y: result = -1
-      elif x > y: result = 1
-      else: result = 0
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
