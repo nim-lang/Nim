@@ -870,7 +870,7 @@ proc genMainProc(m: BModule) =
     NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
       "}$N$N"
-      
+
     NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)();$N" &
@@ -972,7 +972,13 @@ proc getSomeInitName(m: PSym, suffix: string): Rope =
   result.add m.name.s
   result.add suffix
 
-proc getInitName(m: PSym): Rope = getSomeInitName(m, "Init000")
+proc getInitName(m: PSym): Rope =
+  if sfMainModule in m.flags:
+    # generate constant name for main module, for "easy" debugging.
+    result = rope"NimMainModule"
+  else:
+    result = getSomeInitName(m, "Init000")
+
 proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
 proc registerModuleToMain(m: PSym) =
