@@ -1680,7 +1680,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
       if (rawInfo.st_mode and rawMode) != 0'i32:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
-    formalInfo.size = uint(rawInfo.st_size)
+    formalInfo.size = BiggestInt(rawInfo.st_size)
     formalInfo.linkCount = rawInfo.st_Nlink
     formalInfo.lastAccessTime = rawInfo.st_atime
     formalInfo.lastWriteTime = rawInfo.st_mtime
