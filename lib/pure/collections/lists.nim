@@ -10,6 +10,9 @@
 ## Implementation of singly and doubly linked lists. Because it makes no sense
 ## to do so, the 'next' and 'prev' pointers are not hidden from you and can
 ## be manipulated directly for efficiency.
+##
+## Note: The SinglyLinkedList only allows `prepend()` because it implements a FILO or LIFO list,
+##  and the
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
@@ -223,13 +226,31 @@ proc contains*[T](L: DoublyLinkedRing[T], value: T): bool {.inline.} =
 
 proc prepend*[T](L: var SinglyLinkedList[T],
                  n: SinglyLinkedNode[T]) {.inline.} =
-  ## prepends a node to `L`. Efficiency: O(1).
+  ## prepends a node `n` to `L`. Efficiency: O(1).
   n.next = L.head
+  if L.head != nil:
+    assert(L.head.prev == nil)
+    L.head.prev = n
   L.head = n
+  if L.tail == nil: L.tail = n
+
+proc append*[T](L: var SinglyLinkedList[T],
+                 n: SinglyLinkedNode[T]) {.inline.} =
+  ## appends a node 'n' to `L`. Efficiency: O(1).
+  n.next = nil
+  if L.tail != nil:
+    assert(L.tail.next == nil)
+    L.tail.next = n
+  L.tail = n
+  if L.head == nil: L.head = n
 
 proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
-  ## prepends a node to `L`. Efficiency: O(1).
+  ## prepends a value to `L`. Efficiency: O(1).
   prepend(L, newSinglyLinkedNode(value))
+
+proc append*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
+  ## prepends a value to `L`. Efficiency: O(1).
+  append(L, newSinglyLinkedNode(value))
 
 proc append*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## appends a node `n` to `L`. Efficiency: O(1).
@@ -341,3 +362,155 @@ proc remove*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
       L.head = nil
     else:
       L.head = L.head.prev
+
+proc toSeq*[T](sll: SinglyLinkedList[T]): seq[T] =
+  result = @[]
+  for v in sll.items:
+    result.add(v)
+
+proc toSeq*[T](dll: DoublyLinkedList[T]): seq[T] =
+  result = @[]
+  for v in dll.items:
+    result.add(v)
+
+proc toSeq*[T](slr: SinglyLinkedRing[T]): seq[T] =
+  result = @[]
+  for v in slr.items:
+    result.add(v)
+
+proc toSeq*[T](dlr: DoublyLinkedRing[T]): seq[T] =
+  result = @[]
+  for v in dlr.items:
+    result.add(v)
+
+proc toSinglyLinkedList*[T](s: seq[T]): SinglyLinkedList[T] =
+  ## Return a SinglyLinkedList containing a copy of the elements from `s`
+  ##
+  ## .. code-block:: nim
+  ##   var a = @[1, 2, 3, 4].toSinglyLinkedList()
+  result = initSinglyLinkedList[T]()
+  for v in s:
+    result.append(v)
+
+proc toDoublyLinkedList*[T](s: openArray[T]): DoublyLinkedList[T] =
+  ## Return a DoublyLinkedList containing a copy of the elements from `s`
+  ##
+  ## .. code-block:: nim
+  ##   var a = @[1, 2, 3, 4].toDoublyLinkedList()
+  result = initDoublyLinkedList[T]()
+  for v in s:
+    result.append(v)
+
+proc toSinglyLinkedRing*[T](s: openArray[T]): SinglyLinkedRing[T] =
+  ## Return a SinglyLinkedRing containing a copy of the elements from `s`
+  ##
+  ## .. code-block:: nim
+  ##   var a = @[1, 2, 3, 4].toSinglyLinkedRing()
+  result = initSinglyLinkedRing[T]()
+  for v in s:
+    result.append(v)
+
+proc toDoublyLinkedRing*[T](s: openArray[T]): DoublyLinkedRing[T] =
+  ## Return a DoublyLinkedRing containing a copy of the elements from `s`
+  ##
+  ## .. code-block:: nim
+  ##   var a = @[1, 2, 3, 4].toDoublyLinkedRing()
+  result = initDoublyLinkedRing[T]()
+  for v in s:
+    result.append(v)
+
+proc map*[T, S](lst: SinglyLinkedList[T], op: proc (x: T): S {.closure.}): SinglyLinkedList[S] {.inline.} =
+  ## Returns a new SinglyLinkedList with the results of `op` applied to every item in
+  ## `lst`.
+  ##
+  ## Since the input is not modified you can use this version of ``map`` to
+  ## transform the type of the elements in the input sequence. Example:
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     a = @[1, 2, 3, 4].toSinglyLinkedList()
+  ##     b = map(a, proc(x: int): string = $x)
+  ##   assert b == @["1", "2", "3", "4"].toSinglyLinkedList()
+  result = initSinglyLinkedList[S]()
+  for x in lst.items:
+    result.append(op(x))
+
+proc map*[T, S](lst: DoublyLinkedList[T], op: proc (x: T): S {.closure.}): DoublyLinkedList[S] {.inline.} =
+  ## Returns a new DoublyLinkedList with the results of `op` applied to every item in
+  ## `lst`.
+  ##
+  ## Since the input is not modified you can use this version of ``map`` to
+  ## transform the type of the elements in the input sequence. Example:
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     a = @[1, 2, 3, 4].toDoublyLinkedList()
+  ##     b = map(a, proc(x: int): string = $x)
+  ##   assert b == @["1", "2", "3", "4"].toDoublyLinkedList()
+  result = initDoublyLinkedList[S]()
+  for x in lst.items:
+    result.append(op(x))
+
+proc map*[T, S](lst: SinglyLinkedRing[T], op: proc (x: T): S {.closure.}): SinglyLinkedRing[S] {.inline.} =
+  ## Returns a new SinglyLinkedRing with the results of `op` applied to every item in
+  ## `lst`.
+  ##
+  ## Since the input is not modified you can use this version of ``map`` to
+  ## transform the type of the elements in the input sequence. Example:
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     a = @[1, 2, 3, 4].toSinglyLinkedRing()
+  ##     b = map(a, proc(x: int): string = $x)
+  ##   assert b == @["1", "2", "3", "4"].toSinglyLinkedRing()
+  result = initSinglyLinkedRing[S]()
+  for x in lst.items:
+    result.append(op(x))
+
+proc map*[T, S](lst: DoublyLinkedRing[T], op: proc (x: T): S {.closure.}): DoublyLinkedRing[S] {.inline.} =
+  ## Returns a new DoublyLinkedRing with the results of `op` applied to every item in
+  ## `lst`.
+  ##
+  ## Since the input is not modified you can use this version of ``map`` to
+  ## transform the type of the elements in the input sequence. Example:
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     a = @[1, 2, 3, 4].toDoublyLinkedRing()
+  ##     b = map(a, proc(x: int): string = $x)
+  ##   assert b == @["1", "2", "3", "4"].toDoublyLinkedRing()
+  result = initDoublyLinkedRing[S]()
+  for x in lst.items():
+    result.append(op(x))
+
+proc `==`[T](a, b: SinglyLinkedList[T]): bool {.inline.} =
+  result = (a.toSeq() == b.toSeq())
+
+proc `==`[T](a, b: DoublyLinkedList[T]): bool {.inline.} =
+  result = (a.toSeq() == b.toSeq())
+
+proc `==`[T](a, b: SinglyLinkedRing[T]): bool {.inline.} =
+  result = (a.toSeq() == b.toSeq())
+
+proc `==`[T](a, b: DoublyLinkedRing[T]): bool {.inline.} =
+  result = (a.toSeq() == b.toSeq())
+
+when isMainModule:
+  var
+    sll = @[1, 2, 3, 4].toSinglyLinkedList()
+    dll = @[1, 2, 3, 4].toDoublyLinkedList()
+    slr = @[1, 2, 3, 4].toSinglyLinkedRing()
+    dlr = @[1, 2, 3, 4].toDoublyLinkedRing()
+    sllm = map(sll, proc(x: int): string = $x)
+    dllm = map(dll, proc(x: int): string = $x)
+    slrm = map(slr, proc(x: int): string = $x)
+    dlrm = map(dlr, proc(x: int): string = $x)
+
+  assert sllm.toSeq() == @["1", "2", "3", "4"]
+  assert sllm == toSinglyLinkedList(@["1", "2", "3", "4"])
+  assert dllm.toSeq() == @["1", "2", "3", "4"]
+  assert dllm == toDoublyLinkedList(@["1", "2", "3", "4"])
+  assert slrm.toSeq() == @["1", "2", "3", "4"]
+  assert slrm == toSinglyLinkedRing(@["1", "2", "3", "4"])
+  assert dlrm.toSeq() == @["1", "2", "3", "4"]
+  assert dlrm == toDoublyLinkedRing(@["1", "2", "3", "4"])

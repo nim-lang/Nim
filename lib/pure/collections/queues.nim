@@ -146,7 +146,7 @@ proc add*[T](q: var Queue[T], item: T) =
       shallowCopy(n[i], x)
     shallowCopy(q.data, n)
     q.mask = cap*2 - 1
-    q.wr = q.count
+    q.wr = 0
     q.rd = 0
   inc q.count
   q.data[q.wr] = item
@@ -176,6 +176,79 @@ proc `$`*[T](q: Queue[T]): string =
     if result.len > 1: result.add(", ")
     result.add($x)
   result.add("]")
+
+proc toSeq*[T](q: Queue): seq[T] {.inline.} =
+  ## Returns the elements of queue `q` as a sequence
+  result = q.data
+
+proc toQueue*[T](s: seq[T]): Queue[T] {.inline.} =
+  ## Returns the sequence or array `s` as a Queue
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     a = @[1, 2, 3, 4].toQueue()
+  ##   echo a
+  ##   # --> [1, 2, 3, 4]
+  let cap = nextPowerOfTwo(s.len)
+  result.count = s.len    # set this first to avoid bounds checks
+  result.data = s
+  result.mask = cap - 1
+  result.rd = 0
+  result.wr = s.len and result.mask
+
+proc map*[T, S](q: Queue[T], op: proc (x: T): S {.closure.}):
+                                                            Queue[S]{.inline.} =
+  ## Returns a new Queue with the results of `op` applied to every item in
+  ## `q`.
+  ##
+  ## Since the input is not modified you can use this version of ``map`` to
+  ## transform the type of the elements in the input sequence. Example:
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     a = @[1, 2, 3, 4].toQueue()
+  ##     b = map(a, proc(x: int): string = $x)
+  ##   assert b == @["1", "2", "3", "4"]
+  result = initQueue[S](q.mask + 1)
+  result.count = q.count
+  result.rd = q.rd
+  result.wr = q.wr
+  result.mask = q.mask
+  for i in 0..<q.len: result[i] = op(q[i])
+
+proc apply*[T](q: var Queue[T], op: proc (x: var T) {.closure.})
+                                                              {.inline.} =
+  ## Applies `op` to every item in `data` modifying it directly.
+  ##
+  ## Note that this requires your input and output types to
+  ## be the same, since they are modified in-place.
+  ## The parameter function takes a ``var T`` type parameter.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var a = @["1", "2", "3", "4"].toQueue()
+  ##   apply(a, proc(x: var string) = x &= "42")
+  ##   echo a
+  ##   # --> ["142", "242", "342", "442"]
+  ##
+  for i in 0..<q.len: op(q.data[i])
+
+proc apply*[T](q: var Queue[T], op: proc (x: T): T {.closure.})
+                                                              {.inline.} =
+  ## Applies `op` to every item in `data` modifying it directly.
+  ##
+  ## Note that this requires your input and output types to
+  ## be the same, since they are modified in-place.
+  ## The parameter function takes and returns a ``T`` type variable.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var a = @["1", "2", "3", "4"]
+  ##   apply(a, proc(x: string): string = x & "42")
+  ##   echo a
+  ##   # --> ["142", "242", "342", "442"]
+  ##
+  for i in 0..<q.len: q.data[i] = op(q.data[i])
 
 when isMainModule:
   var q = initQueue[int](1)
