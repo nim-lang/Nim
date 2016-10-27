@@ -756,7 +756,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
   ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   new(result)
-  result[] = initOrderedTable[A, B]()
+  result[] = initOrderedTable[A, B](initialSize)
 
 proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
