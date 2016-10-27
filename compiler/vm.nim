@@ -76,12 +76,13 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     msgWriteln(s)
 
 proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                msg: TMsgKind, arg = "") =
+                msg: TMsgKind, arg = "", n: PNode = nil) =
   msgWriteln("stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
   # XXX test if we want 'globalError' for every mode
-  if c.mode == emRepl: globalError(c.debug[pc], msg, arg)
-  else: localError(c.debug[pc], msg, arg)
+  let lineInfo = if n == nil: c.debug[pc] else: n.info
+  if c.mode == emRepl: globalError(lineInfo, msg, arg)
+  else: localError(lineInfo, msg, arg)
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, errUnhandledExceptionX,
@@ -1245,7 +1246,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                      regs[rc].node.strVal, regs[rd].node.strVal,
                                      c.debug[pc])
     of opcNError:
-      stackTrace(c, tos, pc, errUser, regs[ra].node.strVal)
+      decodeB(rkNode)
+      let a = regs[ra].node
+      let b = regs[rb].node
+      stackTrace(c, tos, pc, errUser, a.strVal, if b.kind == nkNilLit: nil else: b)
     of opcNWarning:
       message(c.debug[pc], warnUser, regs[ra].node.strVal)
     of opcNHint:
