@@ -47,12 +47,12 @@ type
 {.deprecated: [TQueue: Queue].}
 
 proc initQueue*[T](initialSize: int = 4): Queue[T] =
-  ## Create a new queue.
-  ## Optionally, the initial capacity can be reserved via `initialSize` as a
+  ## Create a new Queue.
+  ## Optionally, the initial capacity can be reserved via ``initialSize`` as a
   ## performance optimization. The length of a newly created queue will still
   ## be 0.
   ##
-  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## ``initialSize`` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
   ## `math <math.html>`_ module.
   assert isPowerOfTwo(initialSize)
@@ -60,7 +60,7 @@ proc initQueue*[T](initialSize: int = 4): Queue[T] =
   newSeq(result.data, initialSize)
 
 proc len*[T](q: Queue[T]): int {.inline.}=
-  ## Return the number of elements of `q`.
+  ## Return the number of elements of ``q``.
   result = q.count
 
 template emptyCheck(q) =
@@ -77,57 +77,57 @@ template xBoundsCheck(q, i) =
                          "Out of bounds: " & $i & " > " & $(q.count - 1))
 
 proc front*[T](q: Queue[T]): T {.inline.}=
-  ## Return the oldest element of `q`. Equivalent to `q.pop()` but does not
+  ## Return the oldest element of ``q``. Equivalent to ``q.pop()`` but does not
   ## remove it from the queue.
   emptyCheck(q)
   result = q.data[q.rd]
 
 proc back*[T](q: Queue[T]): T {.inline.} =
-  ## Return the newest element of `q` but does not remove it from the queue.
+  ## Return the newest element of ``q`` but does not remove it from the queue.
   emptyCheck(q)
   result = q.data[q.wr - 1 and q.mask]
 
 proc `[]`*[T](q: Queue[T], i: Natural) : T {.inline.} =
-  ## Access the i-th element of `q` by order of insertion.
-  ## q[0] is the oldest (the next one q.pop() will extract),
-  ## q[^1] is the newest (last one added to the queue).
+  ## Access the i-th element of ``q`` by order of insertion.
+  ## ``q[0]`` is the oldest (the next one ``q.pop()`` will extract),
+  ## ``q[^1]`` is the newest (last one added to the queue).
   xBoundsCheck(q, i)
   return q.data[q.rd + i and q.mask]
 
 proc `[]`*[T](q: var Queue[T], i: Natural): var T {.inline.} =
-  ## Access the i-th element of `q` and returns a mutable
+  ## Access the i-th element of ``q`` and returns a mutable
   ## reference to it.
   xBoundsCheck(q, i)
   return q.data[q.rd + i and q.mask]
 
 proc `[]=`* [T] (q: var Queue[T], i: Natural, val : T) {.inline.} =
-  ## Change the i-th element of `q`.
+  ## Change the i-th element of ``q``.
   xBoundsCheck(q, i)
   q.data[q.rd + i and q.mask] = val
 
 iterator items*[T](q: Queue[T]): T =
-  ## Yield every element of `q`.
+  ## Yield every element of ``q``.
   var i = q.rd
   for c in 0 ..< q.count:
     yield q.data[i]
     i = (i + 1) and q.mask
 
 iterator mitems*[T](q: var Queue[T]): var T =
-  ## Yield every element of `q`.
+  ## Yield every element of ``q``.
   var i = q.rd
   for c in 0 ..< q.count:
     yield q.data[i]
     i = (i + 1) and q.mask
 
 iterator pairs*[T](q: Queue[T]): tuple[key: int, val: T] =
-  ## Yield every (position, value) of `q`.
+  ## Yield every (position, value) of ``q``.
   var i = q.rd
   for c in 0 ..< q.count:
     yield (c, q.data[i])
     i = (i + 1) and q.mask
 
 proc contains*[T](q: Queue[T], item: T): bool {.inline.} =
-  ## Return true if `item` is in `q` or false if not found. Usually used
+  ## Return true if ``item`` is in ``q`` or false if not found. Usually used
   ## via the ``in`` operator. It is the equivalent of ``q.find(item) >= 0``.
   ##
   ## .. code-block:: Nim
@@ -138,7 +138,7 @@ proc contains*[T](q: Queue[T], item: T): bool {.inline.} =
   return false
 
 proc add*[T](q: var Queue[T], item: T) =
-  ## Add an `item` to the end of the queue `q`.
+  ## Add an ``item`` to the end of the Queue ``q``.
   var cap = q.mask+1
   if unlikely(q.count >= cap):
     var n = newSeq[T](cap*2)
@@ -146,7 +146,7 @@ proc add*[T](q: var Queue[T], item: T) =
       shallowCopy(n[i], x)
     shallowCopy(q.data, n)
     q.mask = cap*2 - 1
-    q.wr = 0
+    q.wr = q.count
     q.rd = 0
   inc q.count
   q.data[q.wr] = item
@@ -154,7 +154,7 @@ proc add*[T](q: var Queue[T], item: T) =
 
 proc default[T](t: typedesc[T]): T {.inline.} = discard
 proc pop*[T](q: var Queue[T]): T {.inline, discardable.} =
-  ## Remove and returns the first (oldest) element of the queue `q`.
+  ## Remove and returns the first (oldest) element of the Queue ``q``.
   emptyCheck(q)
   dec q.count
   result = q.data[q.rd]
@@ -177,12 +177,28 @@ proc `$`*[T](q: Queue[T]): string =
     result.add($x)
   result.add("]")
 
-proc toSeq*[T](q: Queue): seq[T] {.inline.} =
-  ## Returns the elements of queue `q` as a sequence
-  result = q.data
+proc `==`*[T](a, b: Queue[T]): bool {.inline} =
+  ## Returns True if Queues ``a`` and ``b`` contain matching data
+  result = (a.data == b.data) and (a.rd == b.rd) and (a.count == b.count)
+
+proc toSeq*[T](q: Queue[T]): seq[T] {.inline.} =
+  ## Returns the elements of queue ``q`` as a sequence
+  if q.count == 0: return @[]
+  let wr = (q.wr - 1) and q.mask
+  var i = 0
+  if wr < q.rd:
+    result = newSeq[T](q.len)
+    for j in q.rd .. q.mask:
+      result[i] = q.data[j]
+      inc i
+    for j in 0 .. wr:
+      result[i] = q.data[j]
+      inc i
+  else:
+    result = q.data[q.rd..wr]
 
 proc toQueue*[T](s: seq[T]): Queue[T] {.inline.} =
-  ## Returns the sequence or array `s` as a Queue
+  ## Returns the sequence or array ``s`` as a Queue
   ##
   ## .. code-block:: nim
   ##   let
@@ -198,10 +214,10 @@ proc toQueue*[T](s: seq[T]): Queue[T] {.inline.} =
 
 proc map*[T, S](q: Queue[T], op: proc (x: T): S {.closure.}):
                                                             Queue[S]{.inline.} =
-  ## Returns a new Queue with the results of `op` applied to every item in
-  ## `q`.
+  ## Returns a new Queue with the results of ``op`` applied to every item in
+  ## ``q``.
   ##
-  ## Since the input is not modified you can use this version of ``map`` to
+  ## Since the input is not modified, use this ``map`` (rather than ``apply``) to
   ## transform the type of the elements in the input sequence. Example:
   ##
   ## .. code-block:: nim
@@ -218,7 +234,7 @@ proc map*[T, S](q: Queue[T], op: proc (x: T): S {.closure.}):
 
 proc apply*[T](q: var Queue[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
-  ## Applies `op` to every item in `data` modifying it directly.
+  ## Applies ``op`` to every item in ``data`` modifying it directly.
   ##
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
@@ -250,7 +266,28 @@ proc apply*[T](q: var Queue[T], op: proc (x: T): T {.closure.})
   ##
   for i in 0..<q.len: q.data[i] = op(q.data[i])
 
+template newQueueWith*(len: int, init: untyped): untyped =
+  ## creates a new Queue, calling ``init`` to initialize each value. Example:
+  ##
+  ## .. code-block::
+  ##   var q2D = newQueueWith(10, newSeq[bool](5))
+  ##   q2D[0][0] = true
+  ##   q2D[1][0] = true
+  ##   q2D[0][1] = true
+  ##
+  ##   import random
+  ##   var qRand = newQueueWith(20, random(10))
+  ##   echo qRand
+  var result = initQueue[type(init)](nextPowerOfTwo(len))
+  result.count = len      # set this first to avoid bounds checks
+  for i in 0 .. <len:
+    result.data[i] = init
+  result.wr = result.count and result.mask
+  result
+
 when isMainModule:
+  import random
+
   var q = initQueue[int](1)
   q.add(123)
   q.add(9)
@@ -326,3 +363,57 @@ when isMainModule:
   foo(2,1)
   foo(1,5)
   foo(3,2)
+
+  block:  #  toSeq() & toQueue()
+    var a = @["1", "2", "3", "4"].toQueue()
+    assert a.toSeq() == @["1", "2", "3", "4"]
+
+  block:  #  toSeq() for empty queue
+    var
+      s: seq[string] = @[]
+      a = s.toQueue()
+    assert a.toSeq() == s
+
+  block:  #  map()
+    var a = @["1", "2", "3", "4"].toQueue()
+    let b = map(a, proc(x: string): string = (x & "42"))
+    assert b == @["142", "242", "342", "442"].toQueue()
+
+  block:  #  apply()
+    var a = @["1", "2", "3", "4"].toQueue()
+    apply(a, proc(x: var string) = x &= "42")
+    assert a == @["142", "242", "342", "442"].toQueue()
+
+    a = @["1", "2", "3", "4"].toQueue()
+    apply(a, proc(x: string): string = (x & "42"))
+    assert a == @["142", "242", "342", "442"].toQueue()
+
+  block:  #  `==`
+    var
+      a = @["1", "2", "3", "4"].toQueue()
+      b = @["1", "2", "3", "4"].toQueue()
+    assert a == b
+    b.enqueue("23")
+    assert a != b
+    b = @["2", "1", "3", "4"].toQueue()
+    assert a != b
+
+  block:  #  newQueueWith()
+    var
+      qRand = newQueueWith(10, random(10))
+      c = 0
+    assert qRand.toSeq().len == 10
+    for v in qRand.items(): c += v
+    assert c != 0
+
+  block:  #  toSeq()  for wrapped queue
+    var x = initQueue[int](4)
+    x.add(1); x.add(2); x.add(3); x.add(4);   # -> [1,2,3,4]
+    x.pop(); x.pop()                          # -> [-,-,3,4]
+    assert x.toSeq() == @[3,4]
+    x.add(5)                                  # -> [5,-,3,4]
+    assert x.toSeq() == @[3,4,5]
+    x.add(6)                                  # -> [5,6,3,4]
+    assert x.toSeq() == @[3,4,5,6]
+    x.add(7)                                  # -> [3,4,5,6,7,-,-,-]
+    assert x.toSeq() == @[3,4,5,6,7]
