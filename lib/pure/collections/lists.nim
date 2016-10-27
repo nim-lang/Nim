@@ -821,14 +821,12 @@ when isMainModule:
     dlr = @[1, 2, 3, 4].toDoublyLinkedRing()
 
     # map()
-
     sllm = map(sll, proc(x: int): string = $x)
     dllm = map(dll, proc(x: int): string = $x)
     slrm = map(slr, proc(x: int): string = $x)
     dlrm = map(dlr, proc(x: int): string = $x)
 
   block:  # toSeq()
-
     assert @[1,3,2,4].toSinglyLinkedList() == @[1,3,2,4].toSinglyLinkedList()
     assert sllm.toSeq() == @["1", "2", "3", "4"]
     assert sllm == toSinglyLinkedList(@["1", "2", "3", "4"])
@@ -840,7 +838,6 @@ when isMainModule:
     assert dlrm == toDoublyLinkedRing(@["1", "2", "3", "4"])
 
   block:  # apply( var T )
-
     sll.apply(proc(x: var int) = (x *= 2))
     assert sll == @[2,4,6,8].toSinglyLinkedList()
     sll.remove(4)
@@ -874,7 +871,6 @@ when isMainModule:
     assert dlr == @[6,8].toDoublyLinkedRing()
 
   block:  # apply( T: T )
-
     sll.prepend(4); sll.prepend(2)
     sll.apply(proc(x: int): int = (1*x))
     assert sll == @[2,4,6,8].toSinglyLinkedList()
@@ -912,7 +908,6 @@ when isMainModule:
     assert dlr == @[6,8].toDoublyLinkedRing()
 
   blocK:  # findAll()
-
     var c = 0
     sll.prepend(2); sll.prepend(4); sll.prepend(2)
     for n in sll.findAll(2): c += n.value
@@ -934,7 +929,6 @@ when isMainModule:
     assert c == 4
 
   block:  # newSinglyLinkedList
-
     var
       sllRand = newSinglyLinkedListWith(10, random(10))
       c = 0
@@ -943,7 +937,6 @@ when isMainModule:
     assert c != 0
 
   block:  # newDoublyLinkedList
-
     var
       dllRand = newDoublyLinkedListWith(10, random(10))
       c = 0
@@ -952,7 +945,6 @@ when isMainModule:
     assert c != 0
 
   block:  # newSinglyLinkedRing
-
     var
       slrRand = newSinglyLinkedRingWith(10, random(10))
       c = 0
@@ -961,7 +953,6 @@ when isMainModule:
     assert c != 0
 
   block:  # newDoublyLinkedRing
-
     var
       dlrRand = newDoublyLinkedRingWith(10, random(10))
       c = 0
