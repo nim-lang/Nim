@@ -235,7 +235,7 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
   ## const.
   discard
 
-proc error*(msg: string) {.magic: "NError", benign.}
+proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
 proc warning*(msg: string) {.magic: "NWarning", benign.}
@@ -377,19 +377,19 @@ proc expectKind*(n: NimNode, k: NimNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check the AST that is passed to them.
-  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind)
+  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind, n)
 
 proc expectMinLen*(n: NimNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len < min: error("macro expects a node with " & $min & " children")
+  if n.len < min: error("macro expects a node with " & $min & " children", n)
 
 proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## checks that `n` has exactly `len` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len != len: error("macro expects a node with " & $len & " children")
+  if n.len != len: error("macro expects a node with " & $len & " children", n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =

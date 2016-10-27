@@ -31,6 +31,8 @@ Changes affecting backwards compatibility
 Library Additions
 -----------------
 
+- Added new parameter to ``error`` proc of ``macro`` module to provide better
+  error message
 
 Tool Additions
 --------------

@@ -1068,7 +1068,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     else:
       # setter
       unused(n, dest)
-      genUnaryStmt(c, n, opcNError)
+      genBinaryStmt(c, n, opcNError)
   of mNCallSite:
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
