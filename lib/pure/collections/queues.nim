@@ -7,7 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-## Implementation of a `queue`:idx:. The underlying implementation uses a ``seq``.
+## Implementation of a `queue`:idx:, also called a FIFO or LILO buffer.
+##
+## The underlying implementation uses a ``seq``.
 ##
 ## None of the procs that get an individual value from the queue can be used
 ## on an empty queue.
@@ -28,8 +30,8 @@
 ##
 ##     # The following two lines don't need any checking on access due to the
 ##     # logic of the program, but that would not be the case if `a` could be 0.
-##     assert q.front == 1
-##     assert q.back == a
+##     doAssert q.front == 1
+##     doAssert q.back == a
 ##
 ##     while q.len > 0:  # checking if the queue is empty
 ##       echo q.pop()
@@ -37,7 +39,7 @@
 ## Note: For inter thread communication use
 ## a `Channel <channels.html>`_ instead.
 
-import math
+from math import nextPowerOfTwo, isPowerOfTwo
 
 type
   Queue*[T] = object ## A queue.
@@ -48,16 +50,14 @@ type
 
 proc initQueue*[T](initialSize: int = 4): Queue[T] =
   ## Create a new Queue.
+  ##
   ## Optionally, the initial capacity can be reserved via ``initialSize`` as a
   ## performance optimization. The length of a newly created queue will still
   ## be 0.
   ##
-  ## ``initialSize`` needs to be a power of two. If you need to accept runtime
-  ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
-  assert isPowerOfTwo(initialSize)
-  result.mask = initialSize-1
-  newSeq(result.data, initialSize)
+  ## `Internally, the allocated size is nextPowerOfTwo(initialSize)`
+  result.mask = nextPowerOfTwo(initialSize)-1
+  newSeq(result.data, result.mask+1)
 
 proc len*[T](q: Queue[T]): int {.inline.}=
   ## Return the number of elements of ``q``.
@@ -153,7 +153,7 @@ proc add*[T](q: var Queue[T], item: T) =
   q.wr = (q.wr + 1) and q.mask
 
 proc default[T](t: typedesc[T]): T {.inline.} = discard
-proc pop*[T](q: var Queue[T]): T {.inline, discardable.} =
+proc pop*[T](q: var Queue[T]): T {.discardable.} =
   ## Remove and returns the first (oldest) element of the Queue ``q``.
   emptyCheck(q)
   dec q.count
@@ -170,7 +170,8 @@ proc dequeue*[T](q: var Queue[T]): T =
   q.pop()
 
 proc `$`*[T](q: Queue[T]): string =
-  ## Turn a queue into its string representation.
+  ## Return the string representation of the elements of ``q``
+  ## (enclosed by ``[`` ``]``)
   result = "["
   for x in items(q):  # Don't remove the items here for reasons that don't fit in this margin.
     if result.len > 1: result.add(", ")
@@ -178,11 +179,11 @@ proc `$`*[T](q: Queue[T]): string =
   result.add("]")
 
 proc `==`*[T](a, b: Queue[T]): bool {.inline} =
-  ## Returns True if Queues ``a`` and ``b`` contain matching data
+  ## Returns ``true`` if Queues ``a`` and ``b`` contain equivalent data
   result = (a.data == b.data) and (a.rd == b.rd) and (a.count == b.count)
 
 proc toSeq*[T](q: Queue[T]): seq[T] {.inline.} =
-  ## Returns the elements of queue ``q`` as a sequence
+  ## Returns a copy of the elements of ``q`` as a sequence
   if q.count == 0: return @[]
   let wr = (q.wr - 1) and q.mask
   var i = 0
@@ -198,7 +199,9 @@ proc toSeq*[T](q: Queue[T]): seq[T] {.inline.} =
     result = q.data[q.rd..wr]
 
 proc toQueue*[T](s: seq[T]): Queue[T] {.inline.} =
-  ## Returns the sequence or array ``s`` as a Queue
+  ## Returns the Queue containing a copy of the elements of sequence or array ``s``
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   let
@@ -217,8 +220,12 @@ proc map*[T, S](q: Queue[T], op: proc (x: T): S {.closure.}):
   ## Returns a new Queue with the results of ``op`` applied to every item in
   ## ``q``.
   ##
-  ## Since the input is not modified, use this ``map`` (rather than ``apply``) to
-  ## transform the type of the elements in the input sequence. Example:
+  ## Since the input is not modified, use this ``map`` to
+  ## transform the type of the elements in the input sequence.
+  ##
+  ## Use ``apply`` to directly modify ``q``.
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   let
@@ -239,6 +246,9 @@ proc apply*[T](q: var Queue[T], op: proc (x: var T) {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``var T`` type parameter.
+  ##
+  ## Use ``map`` to leave ``q`` unmodified.
+  ##
   ## Example:
   ##
   ## .. code-block:: nim
@@ -256,6 +266,9 @@ proc apply*[T](q: var Queue[T], op: proc (x: T): T {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes and returns a ``T`` type variable.
+  ##
+  ## Use ``map`` to leave ``q`` unmodified.
+  ##
   ## Example:
   ##
   ## .. code-block:: nim
@@ -267,7 +280,9 @@ proc apply*[T](q: var Queue[T], op: proc (x: T): T {.closure.})
   for i in 0..<q.len: q.data[i] = op(q.data[i])
 
 template newQueueWith*(len: int, init: untyped): untyped =
-  ## creates a new Queue, calling ``init`` to initialize each value. Example:
+  ## creates a new Queue, calling ``init`` to initialize each value.
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   var q2D = newQueueWith(10, newSeq[bool](5))
@@ -286,7 +301,9 @@ template newQueueWith*(len: int, init: untyped): untyped =
   result
 
 when isMainModule:
-  import random
+  when defined(doc) or defined(doc2): discard
+  else:
+    from random import random
 
   var q = initQueue[int](1)
   q.add(123)
@@ -298,36 +315,36 @@ when isMainModule:
   var second = q.pop()
   q.add(789)
 
-  assert first == 123
-  assert second == 9
-  assert($q == "[4, 56, 6, 789]")
+  doAssert first == 123
+  doAssert second == 9
+  doAssert($q == "[4, 56, 6, 789]")
 
-  assert q[0] == q.front and q.front == 4
-  assert q[^1] == q.back and q.back == 789
+  doAssert q[0] == q.front and q.front == 4
+  doAssert q[^1] == q.back and q.back == 789
   q[0] = 42
   q[^1] = 7
 
-  assert 6 in q and 789 notin q
-  assert q.find(6) >= 0
-  assert q.find(789) < 0
+  doAssert 6 in q and 789 notin q
+  doAssert q.find(6) >= 0
+  doAssert q.find(789) < 0
 
   for i in -2 .. 10:
     if i in q:
-      assert q.contains(i) and q.find(i) >= 0
+      doAssert q.contains(i) and q.find(i) >= 0
     else:
-      assert(not q.contains(i) and q.find(i) < 0)
+      doAssert(not q.contains(i) and q.find(i) < 0)
 
   when compileOption("boundChecks"):
     try:
       echo q[99]
-      assert false
+      doAssert false
     except IndexError:
       discard
 
     try:
-      assert q.len == 4
+      doAssert q.len == 4
       for i in 0 ..< 5: q.pop()
-      assert false
+      doAssert false
     except IndexError:
       discard
 
@@ -337,24 +354,24 @@ when isMainModule:
   q.pop()
   q.pop()
   for i in 5 .. 8: q.add i
-  assert $q == "[3, 4, 5, 6, 7, 8]"
+  doAssert $q == "[3, 4, 5, 6, 7, 8]"
 
   # Similar to proc from the documentation example
   proc foo(a, b: Positive) = # assume random positive values for `a` and `b`.
     var q = initQueue[int]()
-    assert q.len == 0
+    doAssert q.len == 0
     for i in 1 .. a: q.add i
 
     if b < q.len: # checking before indexed access.
-      assert q[b] == b + 1
+      doAssert q[b] == b + 1
 
     # The following two lines don't need any checking on access due to the logic
     # of the program, but that would not be the case if `a` could be 0.
-    assert q.front == 1
-    assert q.back == a
+    doAssert q.front == 1
+    doAssert q.back == a
 
     while q.len > 0: # checking if the queue is empty
-      assert q.pop() > 0
+      doAssert q.pop() > 0
 
   #foo(0,0)
   foo(8,5)
@@ -366,54 +383,54 @@ when isMainModule:
 
   block:  #  toSeq() & toQueue()
     var a = @["1", "2", "3", "4"].toQueue()
-    assert a.toSeq() == @["1", "2", "3", "4"]
+    doAssert a.toSeq() == @["1", "2", "3", "4"]
 
   block:  #  toSeq() for empty queue
     var
       s: seq[string] = @[]
       a = s.toQueue()
-    assert a.toSeq() == s
+    doAssert a.toSeq() == s
 
   block:  #  map()
     var a = @["1", "2", "3", "4"].toQueue()
     let b = map(a, proc(x: string): string = (x & "42"))
-    assert b == @["142", "242", "342", "442"].toQueue()
+    doAssert b == @["142", "242", "342", "442"].toQueue()
 
   block:  #  apply()
     var a = @["1", "2", "3", "4"].toQueue()
     apply(a, proc(x: var string) = x &= "42")
-    assert a == @["142", "242", "342", "442"].toQueue()
+    doAssert a == @["142", "242", "342", "442"].toQueue()
 
     a = @["1", "2", "3", "4"].toQueue()
     apply(a, proc(x: string): string = (x & "42"))
-    assert a == @["142", "242", "342", "442"].toQueue()
+    doAssert a == @["142", "242", "342", "442"].toQueue()
 
   block:  #  `==`
     var
       a = @["1", "2", "3", "4"].toQueue()
       b = @["1", "2", "3", "4"].toQueue()
-    assert a == b
+    doAssert a == b
     b.enqueue("23")
-    assert a != b
+    doAssert a != b
     b = @["2", "1", "3", "4"].toQueue()
-    assert a != b
+    doAssert a != b
 
   block:  #  newQueueWith()
     var
       qRand = newQueueWith(10, random(10))
       c = 0
-    assert qRand.toSeq().len == 10
+    doAssert qRand.toSeq().len == 10
     for v in qRand.items(): c += v
-    assert c != 0
+    doAssert c != 0
 
   block:  #  toSeq()  for wrapped queue
     var x = initQueue[int](4)
     x.add(1); x.add(2); x.add(3); x.add(4);   # -> [1,2,3,4]
     x.pop(); x.pop()                          # -> [-,-,3,4]
-    assert x.toSeq() == @[3,4]
+    doAssert x.toSeq() == @[3,4]
     x.add(5)                                  # -> [5,-,3,4]
-    assert x.toSeq() == @[3,4,5]
+    doAssert x.toSeq() == @[3,4,5]
     x.add(6)                                  # -> [5,6,3,4]
-    assert x.toSeq() == @[3,4,5,6]
+    doAssert x.toSeq() == @[3,4,5,6]
     x.add(7)                                  # -> [3,4,5,6,7,-,-,-]
-    assert x.toSeq() == @[3,4,5,6,7]
+    doAssert x.toSeq() == @[3,4,5,6,7]
