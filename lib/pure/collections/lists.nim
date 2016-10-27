@@ -741,8 +741,77 @@ proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: T): T {.closure.})
   ##
   for v in lst.mitems: v = op(v)
 
+template newSinglyLinkedListWith*(len: int, init: untyped): untyped =
+  ## creates a new SinglyLinkedList, calling `init` to initialize each value. Example:
+  ##
+  ## .. code-block::
+  ##   var sllSeq = newSinglyLinkedListWith(20, newSeq[bool](10))
+  ##   for s in sllSeq.mitems:
+  ##     for i in 0..<s.len:
+  ##       s[i] = ture
+  ##
+  ##   import random
+  ##   var sllRand = newSinglyLinkedListWith(20, random(10))
+  ##   echo sllRand
+  var result = initSinglyLinkedList[type(init)]()
+  for i in 0 .. <len:
+    result.append(init)
+  result
+
+template newDoublyLinkedListWith*(len: int, init: untyped): untyped =
+  ## creates a new DoublyLinkedList, calling `init` to initialize each value. Example:
+  ##
+  ## .. code-block::
+  ##   var dllSeq = newDoublyLinkedListWith(20, newSeq[bool](10))
+  ##   for s in dllSeq.mitems:
+  ##     for i in 0..<s.len:
+  ##       s[i] = ture
+  ##
+  ##   import random
+  ##   var dllRand = newDoublyLinkedListWith(20, random(10))
+  ##   echo dllRand
+  var result = initDoublyLinkedList[type(init)]()
+  for i in 0 .. <len:
+    result.append(init)
+  result
+
+template newSinglyLinkedRingWith*(len: int, init: untyped): untyped =
+  ## creates a new SinglyLinkedRing, calling `init` to initialize each value. Example:
+  ##
+  ## .. code-block::
+  ##   var slrSeq = newSinglyLinkedRingWith(20, newSeq[bool](10))
+  ##   for s in slrSeq.mitems:
+  ##     for i in 0..<s.len:
+  ##       s[i] = ture
+  ##
+  ##   import random
+  ##   var slrRand = newSinglyLinkedRingWith(20, random(10))
+  ##   echo slrRand
+  var result = initSinglyLinkedRing[type(init)]()
+  for i in 0 .. <len:
+    result.append(init)
+  result
+
+template newDoublyLinkedRingWith*(len: int, init: untyped): untyped =
+  ## creates a new DoublyLinkedRing, calling `init` to initialize each value. Example:
+  ##
+  ## .. code-block::
+  ##   var dlrSeq = newDoublyLinkedRingWith(20, newSeq[bool](10))
+  ##   for s in dlrSeq.mitems:
+  ##     for i in 0..<s.len:
+  ##       s[i] = ture
+  ##
+  ##   import random
+  ##   var dlrRand = newDoublyLinkedRingWith(20, random(10))
+  ##   echo dlrRand
+  var result = initDoublyLinkedRing[type(init)]()
+  for i in 0 .. <len:
+    result.append(init)
+  result
 
 when isMainModule:
+  import random
+
   var
     # totoSinglyLinkedList(), .....
 
@@ -863,3 +932,39 @@ when isMainModule:
     dlr.prepend(2); dlr.prepend(4); dlr.prepend(2)
     for n in dlr.findAll(2): c += n.value
     assert c == 4
+
+  block:  # newSinglyLinkedList
+
+    var
+      sllRand = newSinglyLinkedListWith(10, random(10))
+      c = 0
+    assert sllRand.toSeq().len == 10
+    for v in sllRand.items: c += v
+    assert c != 0
+
+  block:  # newDoublyLinkedList
+
+    var
+      dllRand = newDoublyLinkedListWith(10, random(10))
+      c = 0
+    assert dllRand.toSeq().len == 10
+    for v in dllRand.items: c += v
+    assert c != 0
+
+  block:  # newSinglyLinkedRing
+
+    var
+      slrRand = newSinglyLinkedRingWith(10, random(10))
+      c = 0
+    assert slrRand.toSeq().len == 10
+    for v in slrRand.items: c += v
+    assert c != 0
+
+  block:  # newDoublyLinkedRing
+
+    var
+      dlrRand = newDoublyLinkedRingWith(10, random(10))
+      c = 0
+    assert dlrRand.toSeq().len == 10
+    for v in dlrRand.items: c += v
+    assert c != 0
