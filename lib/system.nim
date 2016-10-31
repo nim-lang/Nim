@@ -1827,7 +1827,7 @@ const
   NimMinor*: int = 15
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 2
+  NimPatch*: int = 3
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2189,16 +2189,16 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     else:
       proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
         asm """return `x`"""
-    
+
     if seqToPtr(x) == seqToPtr(y):
       return true
-      
+
   if x.isNil or y.isNil:
     return false
-  
+
   if x.len != y.len:
     return false
-    
+
   for i in 0..x.len-1:
     if x[i] != y[i]:
       return false
