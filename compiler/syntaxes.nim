@@ -26,7 +26,7 @@ const
                                               "strip"]
 
 type
-  TParsers*{.final.} = object
+  TParsers* = object
     skin*: TParserKind
     parser*: TParser
 
@@ -101,9 +101,9 @@ proc parsePipe(filename: string, inputStream: PLLStream): PNode =
       inc(i, 2)
       while line[i] in Whitespace: inc(i)
       var q: TParser
-      openParser(q, filename, llStreamOpen(substr(line, i)))
+      parser.openParser(q, filename, llStreamOpen(substr(line, i)))
       result = parser.parseAll(q)
-      closeParser(q)
+      parser.closeParser(q)
     llStreamClose(s)
 
 proc getFilter(ident: PIdent): TFilterKind =
