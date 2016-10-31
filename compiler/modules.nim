@@ -186,14 +186,16 @@ proc compileModule*(fileIdx: int32; cache: IdentCache, flags: TSymFlags): PSym =
         return
     else:
       result.id = getID()
-    let validFile = processModule(result, if sfMainModule in flags and gProjectIsStdin: llStreamOpen(stdin) else: nil, rd)
+    let validFile = processModule(result,
+      if sfMainModule in flags and gProjectIsStdin: stdin.llStreamOpen else: nil,
+      rd, cache)
     if optCaasEnabled in gGlobalOptions:
       gMemCacheData[fileIdx].compiledAt = gLastCmdTime
       gMemCacheData[fileIdx].needsRecompile = Recompiled
       if validFile: doHash fileIdx
   else:
     if checkDepMem(fileIdx) == Yes:
-      result = compileModule(fileIdx, flags)
+      result = compileModule(fileIdx, cache, flags)
     else:
       result = gCompiledModules[fileIdx]
 
@@ -208,16 +210,16 @@ proc importModule*(s: PSym, fileIdx: int32; cache: IdentCache): PSym {.procvar.}
            else: ForeignPackageNotes
 
 proc includeModule*(s: PSym, fileIdx: int32; cache: IdentCache): PNode {.procvar.} =
-  result = syntaxes.parseFile(fileIdx)
+  result = syntaxes.parseFile(fileIdx, cache)
   if optCaasEnabled in gGlobalOptions:
     growCache gMemCacheData, fileIdx
     addDep(s, fileIdx)
     doHash(fileIdx)
 
-proc compileSystemModule* =
+proc compileSystemModule*(cache: IdentCache) =
   if magicsys.systemModule == nil:
     systemFileIdx = fileInfoIdx(options.libpath/"system.nim")
-    discard compileModule(systemFileIdx, {sfSystemModule})
+    discard compileModule(systemFileIdx, cache, {sfSystemModule})
 
 proc wantMainModule* =
   if gProjectFull.len == 0:
@@ -227,15 +229,15 @@ proc wantMainModule* =
 passes.gIncludeFile = includeModule
 passes.gImportModule = importModule
 
-proc compileProject*(projectFileIdx = -1'i32) =
+proc compileProject*(cache: IdentCache; projectFileIdx = -1'i32) =
   wantMainModule()
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
   let projectFile = if projectFileIdx < 0: gProjectMainIdx else: projectFileIdx
   if projectFile == systemFileIdx:
-    discard compileModule(projectFile, {sfMainModule, sfSystemModule})
+    discard compileModule(projectFile, cache, {sfMainModule, sfSystemModule})
   else:
-    compileSystemModule()
-    discard compileModule(projectFile, {sfMainModule})
+    compileSystemModule(cache)
+    discard compileModule(projectFile, cache, {sfMainModule})
 
 proc makeModule*(filename: string): PSym =
   result = newModule(fileInfoIdx filename)

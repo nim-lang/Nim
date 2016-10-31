@@ -2276,7 +2276,7 @@ proc myOpenCached(s: PSym, rd: PRodReader): PPassContext =
   internalError("symbol files are not possible with the JS code generator")
   result = nil
 
-proc myOpen(s: PSym): PPassContext =
+proc myOpen(s: PSym; cache: IdentCache): PPassContext =
   var r = newModule(s)
   r.target = if gCmd == cmdCompileToPHP: targetPHP else: targetJS
   result = r

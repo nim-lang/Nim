@@ -620,7 +620,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
   let a = semExpr(c, n.sons[0])
-  result = evalStaticExpr(c.module, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.cache, a, c.p.owner)
   if result.isNil:
     localError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode
@@ -861,7 +861,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           s = newNodeIT(nkCurly, n.info, setType)
           for j in countup(0, sonsLen(it) - 2): addSon(s, copyTree(it.sons[j]))
           var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(inExpr, newSymNode(ast.opContains, n.info))
+          addSon(inExpr, newSymNode(opContains, n.info))
           addSon(inExpr, s)
           addSon(inExpr, copyTree(r.sons[0]))
           addSon(check, inExpr)
@@ -874,11 +874,11 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             check = newNodeI(nkCheckedFieldExpr, n.info)
             addSon(check, ast.emptyNode) # make space for access node
           var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(inExpr, newSymNode(ast.opContains, n.info))
+          addSon(inExpr, newSymNode(opContains, n.info))
           addSon(inExpr, s)
           addSon(inExpr, copyTree(r.sons[0]))
           var notExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(notExpr, newSymNode(ast.opNot, n.info))
+          addSon(notExpr, newSymNode(opNot, n.info))
           addSon(notExpr, inExpr)
           addSon(check, notExpr)
           return

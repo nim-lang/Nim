@@ -142,7 +142,7 @@ type
     methods*: TSymSeq
     origFile: string
     inViewMode: bool
-    cache: IdentCache
+    cache*: IdentCache
 
   PRodReader* = ref TRodReader
 

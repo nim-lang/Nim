@@ -112,9 +112,6 @@ proc getIdent*(self: IdentCache; identifier: string): PIdent =
 proc getIdent*(self: IdentCache; identifier: string, h: Hash): PIdent =
   result = getIdent(cstring(identifier), len(identifier), h)
 
-proc identEq*(self: IdentCache; id: PIdent, name: string): bool =
-  result = id.id == getIdent(name).id
-
 proc newIdentCache*(): IdentCache =
   if legacy.isNil:
     result = IdentCache()
@@ -135,4 +132,6 @@ proc whichKeyword*(id: PIdent): TSpecialWord =
 
 proc getIdent*(identifier: string): PIdent =
   ## for backwards compatibility.
+  if legacy.isNil:
+    discard newIdentCache()
   legacy.getIdent identifier

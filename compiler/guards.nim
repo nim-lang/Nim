@@ -84,10 +84,6 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
 proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
 let
-  opNot* = createMagic("not", mNot)
-  opContains* = createMagic("contains", mInSet)
-
-let
   opLe = createMagic("<=", mLeI)
   opLt = createMagic("<", mLtI)
   opAnd = createMagic("and", mAnd)

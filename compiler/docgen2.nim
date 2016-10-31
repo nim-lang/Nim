@@ -49,7 +49,7 @@ proc processNodeJson(c: PPassContext, n: PNode): PNode =
   var g = PGen(c)
   generateJson(g.doc, n)
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module

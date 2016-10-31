@@ -1174,7 +1174,7 @@ proc newModule(module: PSym): BModule =
     if (sfDeadCodeElim in module.flags):
       internalError("added pending module twice: " & module.filename)
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(module: PSym; cache: IdentCache): PPassContext =
   result = newModule(module)
   if optGenIndex in gGlobalOptions and generatedHeader == nil:
     let f = if headerFile.len > 0: headerFile else: gProjectFull

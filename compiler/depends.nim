@@ -46,7 +46,7 @@ proc generateDot(project: string) =
       rope(changeFileExt(extractFilename(project), "")), gDotGraph],
             changeFileExt(project, "dot"))
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module

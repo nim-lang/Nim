@@ -398,8 +398,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         addSon(n, prc.ast)
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(module: PSym): PPassContext =
-  var c = newContext(module)
+proc myOpen(module: PSym; cache: IdentCache): PPassContext =
+  var c = newContext(module, cache)
   if c.p != nil: internalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
@@ -428,8 +428,8 @@ proc myOpen(module: PSym): PPassContext =
     gNotes = ForeignPackageNotes
   result = c
 
-proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
-  result = myOpen(module)
+proc myOpenCached(module: PSym; rd: PRodReader): PPassContext =
+  result = myOpen(module, rd.cache)
   for m in items(rd.methods): methodDef(m, true)
 
 proc isImportSystemStmt(n: PNode): bool =
