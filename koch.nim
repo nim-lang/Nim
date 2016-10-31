@@ -194,14 +194,10 @@ proc buildNimble() =
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
-  if dirExists("dist/nimsuggest/.git"):
-    exec("git --git-dir dist/nimsuggest/.git pull")
-  else:
-    exec("git clone https://github.com/nim-lang/nimsuggest.git dist/nimsuggest")
   if buildExe:
-    nimexec("c --noNimblePath -d:release -p:compiler dist/nimsuggest/nimsuggest.nim")
-    copyExe("dist/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
-    removeFile("dist/nimsuggest/nimsuggest".exe)
+    nimexec("c --noNimblePath -d:release -p:compiler tools/nimsuggest/nimsuggest.nim")
+    copyExe("tools/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
+    removeFile("tools/nimsuggest/nimsuggest".exe)
 
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
