@@ -199,7 +199,6 @@ proc bundleNimsuggest(buildExe: bool) =
     copyExe("tools/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
     removeFile("tools/nimsuggest/nimsuggest".exe)
 
-
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
   copyExe("tools/finish".exe, "finish".exe)
