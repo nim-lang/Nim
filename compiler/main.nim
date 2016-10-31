@@ -193,9 +193,7 @@ proc resetMemory =
   resetRopeCache()
   resetSysTypes()
   gOwners = @[]
-  for i in low(buckets)..high(buckets):
-    buckets[i] = nil
-  idAnon = nil
+  resetIdentCache()
 
   # XXX: clean these global vars
   # ccgstmts.gBreakpoints
@@ -235,7 +233,7 @@ const
   SimulateCaasMemReset = false
   PrintRopeCacheStats = false
 
-proc mainCommand* =
+proc mainCommand*(cache: IdentCache) =
   when SimulateCaasMemReset:
     gGlobalOptions.incl(optCaasEnabled)
 
@@ -276,37 +274,37 @@ proc mainCommand* =
   of "doc":
     wantMainModule()
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     commandDoc()
   of "doc2":
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     defineSymbol("nimdoc")
     commandDoc2(false)
   of "rst2html":
     gCmd = cmdRst2html
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     commandRst2Html()
   of "rst2tex":
     gCmd = cmdRst2tex
-    loadConfigs(DocTexConfig)
+    loadConfigs(DocTexConfig, cache)
     commandRst2TeX()
   of "jsondoc":
     wantMainModule()
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     wantMainModule()
     defineSymbol("nimdoc")
     commandJson()
   of "jsondoc2":
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     wantMainModule()
     defineSymbol("nimdoc")
     commandDoc2(true)
   of "buildindex":
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     commandBuildIndex()
   of "gendepend":
     gCmd = cmdGenDepend
@@ -394,3 +392,5 @@ proc mainCommand* =
     resetMemory()
 
   resetAttributes()
+
+proc mainCommand*() = mainCommand(newIdentCache())

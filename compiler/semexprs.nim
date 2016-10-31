@@ -607,12 +607,12 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       call.add(a)
     #echo "NOW evaluating at compile time: ", call.renderTree
     if sfCompileTime in callee.flags:
-      result = evalStaticExpr(c.module, call, c.p.owner)
+      result = evalStaticExpr(c.module, c.cache, call, c.p.owner)
       if result.isNil:
         localError(n.info, errCannotInterpretNodeX, renderTree(call))
       else: result = fixupTypeAfterEval(c, result, n)
     else:
-      result = evalConstExpr(c.module, call)
+      result = evalConstExpr(c.module, c.cache, call)
       if result.isNil: result = n
       else: result = fixupTypeAfterEval(c, result, n)
     #if result != n:
@@ -1574,9 +1574,9 @@ proc getMagicSym(magic: TMagic): PSym =
   result = newSym(skProc, getIdent($magic), systemModule, gCodegenLineInfo)
   result.magic = magic
 
-proc newAnonSym(kind: TSymKind, info: TLineInfo,
+proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo,
                 owner = getCurrOwner()): PSym =
-  result = newSym(kind, idAnon, owner, info)
+  result = newSym(kind, c.cache.idAnon, owner, info)
   result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
@@ -1648,7 +1648,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
 
   processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
 
-  doBlk.sons[namePos] = newAnonSym(skTemplate, n.info).newSymNode
+  doBlk.sons[namePos] = newAnonSym(c, skTemplate, n.info).newSymNode
   if ids.len > 0:
     doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
     doBlk[paramsPos].add getSysSym("stmt").newSymNode # return type

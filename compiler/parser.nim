@@ -73,18 +73,20 @@ proc getTok(p: var TParser) =
   rawGetTok(p.lex, p.tok)
 
 proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream,
+                 cache: IdentCache;
                  strongSpaces=false) =
   ## Open a parser, using the given arguments to set up its internal state.
   ##
   initToken(p.tok)
-  openLexer(p.lex, fileIdx, inputStream)
+  openLexer(p.lex, fileIdx, inputStream, cache)
   getTok(p)                   # read the first token
   p.firstTok = true
   p.strongSpaces = strongSpaces
 
 proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
+                 cache: IdentCache;
                  strongSpaces=false) =
-  openParser(p, filename.fileInfoIdx, inputStream, strongSpaces)
+  openParser(p, filename.fileInfoIdx, inputStream, cache, strongSpaces)
 
 proc closeParser(p: var TParser) =
   ## Close a parser, freeing up its resources.
@@ -320,9 +322,9 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
                                 tkParLe..tkParDotRi}:
           accm.add(tokToStr(p.tok))
           getTok(p)
-        result.add(newIdentNodeP(getIdent(accm), p))
+        result.add(newIdentNodeP(p.lex.cache.getIdent(accm), p))
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
-        result.add(newIdentNodeP(getIdent(tokToStr(p.tok)), p))
+        result.add(newIdentNodeP(p.lex.cache.getIdent(tokToStr(p.tok)), p))
         getTok(p)
       else:
         parMessage(p, errIdentifierExpected, p.tok)
@@ -923,7 +925,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     optPar(p)
     eat(p, tkParRi)
   let hasRet = if retColon: p.tok.tokType == tkColon
-               else: p.tok.tokType == tkOpr and identEq(p.tok.ident, "->")
+               else: p.tok.tokType == tkOpr and p.tok.ident.s == "->"
   if hasRet and p.tok.indent < 0:
     getTok(p)
     optInd(p, result)
@@ -2023,7 +2025,8 @@ proc parseTopLevelStmt(p: var TParser): PNode =
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
       break
 
-proc parseString*(s: string; filename: string = ""; line: int = 0;
+proc parseString*(s: string; cache: IdentCache; filename: string = "";
+                  line: int = 0;
                   errorHandler: TErrorHandler = nil): PNode =
   ## Parses a string into an AST, returning the top node.
   ## `filename` and `line`, although optional, provide info so that the
@@ -2036,7 +2039,7 @@ proc parseString*(s: string; filename: string = ""; line: int = 0;
   # XXX for now the builtin 'parseStmt/Expr' functions do not know about strong
   # spaces...
   parser.lex.errorHandler = errorHandler
-  openParser(parser, filename, stream, false)
+  openParser(parser, filename, stream, cache, false)
 
   result = parser.parseAll
   closeParser(parser)

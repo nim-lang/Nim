@@ -34,6 +34,7 @@ type
     tstack: TTypeSeq         # a stack of types to process
     files: TStringSeq
     origFile: string
+    cache: IdentCache
 
   PRodWriter = ref TRodWriter
 
@@ -54,7 +55,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
 template filename*(w: PRodWriter): string =
   w.module.filename
 
-proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter =
+proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter =
   new(result)
   result.sstack = @[]
   result.tstack = @[]
@@ -76,6 +77,7 @@ proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter =
   result.init = ""
   result.origFile = module.info.toFullPath
   result.data = newStringOfCap(12_000)
+  result.cache = cache
 
 proc addModDep(w: PRodWriter, dep: string; info: TLineInfo) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
@@ -621,9 +623,9 @@ proc process(c: PPassContext, n: PNode): PNode =
   else:
     discard
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(module.fileIdx.getHash, module)
+  var w = newRodWriter(module.fileIdx.getHash, module, cache)
   rawAddInterfaceSym(w, module)
   result = w
 

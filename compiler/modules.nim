@@ -167,7 +167,7 @@ proc newModule(fileIdx: int32): PSym =
   # strTableIncl() for error corrections:
   discard strTableIncl(packSym.tab, result)
 
-proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
+proc compileModule*(fileIdx: int32; cache: IdentCache, flags: TSymFlags): PSym =
   result = getModule(fileIdx)
   if result == nil:
     growCache gMemCacheData, fileIdx
@@ -180,7 +180,7 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
       gMainPackageId = result.owner.id
 
     if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
-      rd = handleSymbolFile(result)
+      rd = handleSymbolFile(result, cache)
       if result.id < 0:
         internalError("handleSymbolFile should have set the module\'s ID")
         return
@@ -197,9 +197,9 @@ proc compileModule*(fileIdx: int32, flags: TSymFlags): PSym =
     else:
       result = gCompiledModules[fileIdx]
 
-proc importModule*(s: PSym, fileIdx: int32): PSym {.procvar.} =
+proc importModule*(s: PSym, fileIdx: int32; cache: IdentCache): PSym {.procvar.} =
   # this is called by the semantic checking phase
-  result = compileModule(fileIdx, {})
+  result = compileModule(fileIdx, cache, {})
   if optCaasEnabled in gGlobalOptions: addDep(s, fileIdx)
   #if sfSystemModule in result.flags:
   #  localError(result.info, errAttemptToRedefine, result.name.s)
@@ -207,7 +207,7 @@ proc importModule*(s: PSym, fileIdx: int32): PSym {.procvar.} =
   gNotes = if s.owner.id == gMainPackageId: gMainPackageNotes
            else: ForeignPackageNotes
 
-proc includeModule*(s: PSym, fileIdx: int32): PNode {.procvar.} =
+proc includeModule*(s: PSym, fileIdx: int32; cache: IdentCache): PNode {.procvar.} =
   result = syntaxes.parseFile(fileIdx)
   if optCaasEnabled in gGlobalOptions:
     growCache gMemCacheData, fileIdx

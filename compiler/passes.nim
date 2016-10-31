@@ -21,7 +21,7 @@ type
 
   PPassContext* = ref TPassContext
 
-  TPassOpen* = proc (module: PSym): PPassContext {.nimcall.}
+  TPassOpen* = proc (module: PSym; cache: IdentCache): PPassContext {.nimcall.}
   TPassOpenCached* =
     proc (module: PSym, rd: PRodReader): PPassContext {.nimcall.}
   TPassClose* = proc (p: PPassContext, n: PNode): PNode {.nimcall.}
@@ -48,8 +48,8 @@ proc makePass*(open: TPassOpen = nil,
 
 # the semantic checker needs these:
 var
-  gImportModule*: proc (m: PSym, fileIdx: int32): PSym {.nimcall.}
-  gIncludeFile*: proc (m: PSym, fileIdx: int32): PNode {.nimcall.}
+  gImportModule*: proc (m: PSym, fileIdx: int32; cache: IdentCache): PSym {.nimcall.}
+  gIncludeFile*: proc (m: PSym, fileIdx: int32; cache: IdentCache): PNode {.nimcall.}
 
 # implementation
 
@@ -90,22 +90,23 @@ proc registerPass*(p: TPass) =
   gPasses[gPassesLen] = p
   inc(gPassesLen)
 
-proc carryPass*(p: TPass, module: PSym, m: TPassData): TPassData =
-  var c = p.open(module)
+proc carryPass*(p: TPass, module: PSym; cache: IdentCache;
+                m: TPassData): TPassData =
+  var c = p.open(module, cache)
   result.input = p.process(c, m.input)
   result.closeOutput = if p.close != nil: p.close(c, m.closeOutput)
                        else: m.closeOutput
 
-proc carryPasses*(nodes: PNode, module: PSym, passes: TPasses) =
+proc carryPasses*(nodes: PNode, module: PSym; cache: IdentCache; passes: TPasses) =
   var passdata: TPassData
   passdata.input = nodes
   for pass in passes:
-    passdata = carryPass(pass, module, passdata)
+    passdata = carryPass(pass, module, cache, passdata)
 
-proc openPasses(a: var TPassContextArray, module: PSym) =
+proc openPasses(a: var TPassContextArray, module: PSym; cache: IdentCache) =
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].open):
-      a[i] = gPasses[i].open(module)
+      a[i] = gPasses[i].open(module, cache)
     else: a[i] = nil
 
 proc openPassesCached(a: var TPassContextArray, module: PSym, rd: PRodReader) =
@@ -155,14 +156,14 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
     if not processTopLevelStmt(importStmt, a): break
 
 proc processModule*(module: PSym, stream: PLLStream,
-                    rd: PRodReader): bool {.discardable.} =
+                    rd: PRodReader; cache: IdentCache): bool {.discardable.} =
   var
     p: TParsers
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
   if rd == nil:
-    openPasses(a, module)
+    openPasses(a, module, cache)
     if stream == nil:
       let filename = fileIdx.toFullPathConsiderDirty
       s = llStreamOpen(filename, fmRead)
@@ -172,7 +173,7 @@ proc processModule*(module: PSym, stream: PLLStream,
     else:
       s = stream
     while true:
-      openParsers(p, fileIdx, s)
+      openParsers(p, fileIdx, s, cache)
 
       if sfSystemModule notin module.flags:
         # XXX what about caching? no processing then? what if I change the

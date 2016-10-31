@@ -13,8 +13,7 @@
 # does not support strings. Without this the code would
 # be slow and unreadable.
 
-import
-  hashes, strutils, idents
+from strutils import cmpIgnoreStyle
 
 # Keywords must be kept sorted and within a range
 
@@ -180,17 +179,3 @@ proc findStr*(a: openArray[string], s: string): int =
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
-
-proc whichKeyword*(id: PIdent): TSpecialWord =
-  if id.id < 0: result = wInvalid
-  else: result = TSpecialWord(id.id)
-
-proc whichKeyword*(id: string): TSpecialWord =
-  result = whichKeyword(getIdent(id))
-
-proc initSpecials() =
-  # initialize the keywords:
-  for s in countup(succ(low(specialWords)), high(specialWords)):
-    getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
-
-initSpecials()

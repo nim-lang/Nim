@@ -106,6 +106,7 @@ type
     instTypeBoundOp*: proc (c: PContext; dc: PSym; t: PType; info: TLineInfo;
                             op: TTypeAttachedOp; col: int): PSym {.nimcall.}
     selfName*: PIdent
+    cache*: IdentCache
     signatures*: TStrTable
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
@@ -116,29 +117,13 @@ proc filename*(c: PContext): string =
   # the module's filename
   return c.module.filename
 
-proc newContext*(module: PSym): PContext
-
-proc lastOptionEntry*(c: PContext): POptionEntry
-proc newOptionEntry*(): POptionEntry
-proc newLib*(kind: TLibKind): PLib
-proc addToLib*(lib: PLib, sym: PSym)
-proc makePtrType*(c: PContext, baseType: PType): PType
-proc newTypeS*(kind: TTypeKind, c: PContext): PType
-proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext)
-
 proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel
            else: 0
 
-# owner handling:
-proc getCurrOwner*(): PSym
-proc pushOwner*(owner: PSym)
-proc popOwner*()
-# implementation
-
 var gOwners*: seq[PSym] = @[]
 
-proc getCurrOwner(): PSym =
+proc getCurrOwner*(): PSym =
   # owner stack (used for initializing the
   # owner field of syms)
   # the documentation comment always gets
@@ -146,27 +131,27 @@ proc getCurrOwner(): PSym =
   # BUGFIX: global array is needed!
   result = gOwners[high(gOwners)]
 
-proc pushOwner(owner: PSym) =
+proc pushOwner*(owner: PSym) =
   add(gOwners, owner)
 
-proc popOwner() =
+proc popOwner*() =
   var length = len(gOwners)
   if length > 0: setLen(gOwners, length - 1)
   else: internalError("popOwner")
 
-proc lastOptionEntry(c: PContext): POptionEntry =
+proc lastOptionEntry*(c: PContext): POptionEntry =
   result = POptionEntry(c.optionStack.tail)
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
-proc newOptionEntry(): POptionEntry =
+proc newOptionEntry*(): POptionEntry =
   new(result)
   result.options = gOptions
   result.defaultCC = ccDefault
   result.dynlib = nil
   result.notes = gNotes
 
-proc newContext(module: PSym): PContext =
+proc newContext*(module: PSym; cache: IdentCache): PContext =
   new(result)
   result.ambiguousSymbols = initIntSet()
   initLinkedList(result.optionStack)
@@ -180,6 +165,7 @@ proc newContext(module: PSym): PContext =
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
+  result.cache = cache
   initStrTable(result.signatures)
 
 
@@ -196,16 +182,19 @@ proc addConverter*(c: PContext, conv: PSym) =
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
 
-proc newLib(kind: TLibKind): PLib =
+proc newLib*(kind: TLibKind): PLib =
   new(result)
   result.kind = kind          #initObjectSet(result.syms)
 
-proc addToLib(lib: PLib, sym: PSym) =
+proc addToLib*(lib: PLib, sym: PSym) =
   #if sym.annex != nil and not isGenericRoutine(sym):
   #  LocalError(sym.info, errInvalidPragma)
   sym.annex = lib
 
-proc makePtrType(c: PContext, baseType: PType): PType =
+proc newTypeS*(kind: TTypeKind, c: PContext): PType =
+  result = newType(kind, getCurrOwner())
+
+proc makePtrType*(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
   addSonSkipIntLit(result, baseType.assertNotNil)
 
@@ -222,7 +211,7 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
-  let sym = newSym(skType, idAnon, getCurrOwner(), info).linkTo(typedesc)
+  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
@@ -284,9 +273,6 @@ template rangeHasStaticIf*(t: PType): bool =
 template getStaticTypeFromRange*(t: PType): PType =
   t.n[1][0][1].typ
 
-proc newTypeS(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, getCurrOwner())
-
 proc errorType*(c: PContext): PType =
   ## creates a type representing an error state
   result = newTypeS(tyError, c)
@@ -295,7 +281,7 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
-proc fillTypeS(dest: PType, kind: TTypeKind, c: PContext) =
+proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
   dest.owner = getCurrOwner()
   dest.size = - 1

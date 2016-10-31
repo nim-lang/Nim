@@ -1050,8 +1050,6 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
-var anyGlobal* = newSym(skVar, getIdent("*"), nil, unknownLineInfo())
-
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or
@@ -1582,14 +1580,6 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
-
-proc createMagic*(name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-  result.magic = m
-
-let
-  opNot* = createMagic("not", mNot)
-  opContains* = createMagic("contains", mInSet)
 
 when false:
   proc containsNil*(n: PNode): bool =

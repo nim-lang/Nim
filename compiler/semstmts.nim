@@ -524,7 +524,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       addDefer(c, result, v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
-  if hasCompileTime: vm.setupCompileTimeVar(c.module, result)
+  if hasCompileTime: vm.setupCompileTimeVar(c.module, c.cache, result)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -820,7 +820,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
           if containsOrIncl(c.includedFiles, f):
             localError(n.info, errRecursiveDependencyX, f.toFilename)
           else:
-            let code = gIncludeFile(c.module, f)
+            let code = gIncludeFile(c.module, f, c.cache)
             gatherStmts c, code, result
             excl(c.includedFiles, f)
     of nkStmtList:
@@ -922,7 +922,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     if m == nil:
       if key.kind == nkIdent and key.ident.id == ord(wDelegator):
         if considerQuotedIdent(prc.sons[namePos]).s == "()":
-          prc.sons[namePos] = newIdentNode(idDelegator, prc.info)
+          prc.sons[namePos] = newIdentNode(c.cache.idDelegator, prc.info)
           prc.sons[pragmasPos] = copyExcept(n, i)
         else:
           localError(prc.info, errOnlyACallOpCanBeDelegator)
@@ -965,7 +965,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   checkSonsLen(n, bodyPos + 1)
   var s: PSym
   if n[namePos].kind != nkSym:
-    s = newSym(skProc, idAnon, getCurrOwner(), n.info)
+    s = newSym(skProc, c.cache.idAnon, getCurrOwner(), n.info)
     s.ast = n
     n.sons[namePos] = newSymNode(s)
   else:
@@ -1159,7 +1159,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     assert phase == stepRegisterSymbol
 
     if n[namePos].kind == nkEmpty:
-      s = newSym(kind, idAnon, getCurrOwner(), n.info)
+      s = newSym(kind, c.cache.idAnon, getCurrOwner(), n.info)
       incl(s.flags, sfUsed)
       isAnon = true
     else:
@@ -1418,7 +1418,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
       if containsOrIncl(c.includedFiles, f):
         localError(n.info, errRecursiveDependencyX, f.toFilename)
       else:
-        addSon(result, semStmt(c, gIncludeFile(c.module, f)))
+        addSon(result, semStmt(c, gIncludeFile(c.module, f, c.cache)))
         excl(c.includedFiles, f)
 
 proc setLine(n: PNode, info: TLineInfo) =
@@ -1445,7 +1445,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #writeStackTrace()
   let a = semStmt(c, n.sons[0])
   n.sons[0] = a
-  evalStaticStmt(c.module, a, c.p.owner)
+  evalStaticStmt(c.module, c.cache, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
   result.sons[0] = emptyNode
   when false:

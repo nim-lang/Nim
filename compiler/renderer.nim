@@ -54,8 +54,6 @@ proc isKeyword*(i: PIdent): bool =
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
     result = true
 
-proc isKeyword*(s: string): bool = isKeyword(getIdent(s))
-
 proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   ## Returns the definition name of the symbol.
   ##
