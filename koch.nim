@@ -230,7 +230,7 @@ proc buildTool(toolname, args: string) =
 proc buildTools() =
   let nimsugExe = "bin/nimsuggest".exe
   nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
-      " dist/nimsuggest/nimsuggest.nim"
+      " tools/nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
