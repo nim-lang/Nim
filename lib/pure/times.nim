@@ -184,7 +184,8 @@ proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
-proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], benign, deprecated.}
+proc timeInfoToTime*(timeInfo: TimeInfo): Time
+    {.tags: [TimeEffect], benign, deprecated.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -193,7 +194,7 @@ proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [], benign, deprecated.}
   ## **Warning:** This procedure is deprecated since version 0.14.0.
   ## Use ``toTime`` instead.
 
-proc toTime*(timeInfo: TimeInfo): Time {.tags: [], benign.}
+proc toTime*(timeInfo: TimeInfo): Time {.tags: [TimeEffect], benign.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -211,7 +212,8 @@ proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign.} =
 proc toSeconds*(time: Time): float {.tags: [], raises: [], benign.}
   ## Returns the time in seconds since the unix epoch.
 
-proc `$` *(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.}
+proc `$` *(timeInfo: TimeInfo): string
+    {.tags: [TimeEffect], raises: [], benign.}
   ## converts a `TimeInfo` object to a string representation.
 proc `$` *(time: Time): string {.tags: [], raises: [], benign.}
   ## converts a calendar time to a string representation.
@@ -424,7 +426,8 @@ when not defined(JS):
 
 when not defined(JS):
   # C wrapper:
-  when defined(freebsd) or defined(netbsd) or defined(openbsd):
+  when defined(freebsd) or defined(netbsd) or defined(openbsd) or
+      defined(macosx):
     type
       StructTM {.importc: "struct tm", final.} = object
         second {.importc: "tm_sec".},
@@ -479,46 +482,24 @@ when not defined(JS):
     const
       weekDays: array[0..6, WeekDay] = [
         dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-    when defined(freebsd) or defined(netbsd) or defined(openbsd):
-      TimeInfo(second: int(tm.second),
-        minute: int(tm.minute),
-        hour: int(tm.hour),
-        monthday: int(tm.monthday),
-        month: Month(tm.month),
-        year: tm.year + 1900'i32,
-        weekday: weekDays[int(tm.weekday)],
-        yearday: int(tm.yearday),
-        isDST: tm.isdst > 0,
-        tzname: if local:
-            if tm.isdst > 0:
-              getTzname().DST
-            else:
-              getTzname().nonDST
+    TimeInfo(second: int(tm.second),
+      minute: int(tm.minute),
+      hour: int(tm.hour),
+      monthday: int(tm.monthday),
+      month: Month(tm.month),
+      year: tm.year + 1900'i32,
+      weekday: weekDays[int(tm.weekday)],
+      yearday: int(tm.yearday),
+      isDST: tm.isdst > 0,
+      tzname: if local:
+          if tm.isdst > 0:
+            getTzname().DST
           else:
-            "UTC",
-        # BSD stores in `gmtoff` offset east of UTC in seconds,
-        # but posix systems using west of UTC in seconds
-        timezone: if local: -(tm.gmtoff) else: 0
-      )
-    else:
-      TimeInfo(second: int(tm.second),
-        minute: int(tm.minute),
-        hour: int(tm.hour),
-        monthday: int(tm.monthday),
-        month: Month(tm.month),
-        year: tm.year + 1900'i32,
-        weekday: weekDays[int(tm.weekday)],
-        yearday: int(tm.yearday),
-        isDST: tm.isdst > 0,
-        tzname: if local:
-            if tm.isdst > 0:
-              getTzname().DST
-            else:
-              getTzname().nonDST
-          else:
-            "UTC",
-        timezone: if local: getTimezone() else: 0
-      )
+            getTzname().nonDST
+        else:
+          "UTC",
+      timezone: if local: getTimezone() else: 0
+    )
 
 
   proc timeInfoToTM(t: TimeInfo): StructTM =
@@ -569,12 +550,18 @@ when not defined(JS):
   proc timeInfoToTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
-    return mktime(timeInfoToTM(cTimeInfo))
+    result = mktime(timeInfoToTM(cTimeInfo))
+    # mktime is defined to interpret the input as local time. As timeInfoToTM
+    # does ignore the timezone, we need to adjust this here.
+    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
 
   proc toTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
-    return mktime(timeInfoToTM(cTimeInfo))
+    result = mktime(timeInfoToTM(cTimeInfo))
+    # mktime is defined to interpret the input as local time. As timeInfoToTM
+    # does ignore the timezone, we need to adjust this here.
+    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
 
   proc toStringTillNL(p: cstring): string =
     result = ""
@@ -584,8 +571,13 @@ when not defined(JS):
       inc(i)
 
   proc `$`(timeInfo: TimeInfo): string =
+    # asctime interprets its input as local time, so we first convert the value
+    # to local time if necessary
+    let
+      localTimeInfo = if timeInfo.timezone == getTimezone(): timeInfo else:
+        getLocalTime(toTime(timeInfo))
+      p = asctime(timeInfoToTM(localTimeInfo))
     # BUGFIX: asctime returns a newline at the end!
-    var p = asctime(timeInfoToTM(timeInfo))
     result = toStringTillNL(p)
 
   proc `$`(time: Time): string =
@@ -675,14 +667,7 @@ elif defined(JS):
     result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
 
-  proc timeInfoToTime*(timeInfo: TimeInfo): Time =
-    result = internGetTime()
-    result.setSeconds(timeInfo.second)
-    result.setMinutes(timeInfo.minute)
-    result.setHours(timeInfo.hour)
-    result.setMonth(ord(timeInfo.month))
-    result.setFullYear(timeInfo.year)
-    result.setDate(timeInfo.monthday)
+  proc timeInfoToTime*(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
   proc toTime*(timeInfo: TimeInfo): Time =
     result = internGetTime()
@@ -692,6 +677,7 @@ elif defined(JS):
     result.setMonth(ord(timeInfo.month))
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
+    result = result + initInterval(seconds=timeInfo.timezone)
 
   proc `$`(timeInfo: TimeInfo): string = return $(toTime(timeInfo))
   proc `$`(time: Time): string = return $time.toLocaleString()
@@ -1257,7 +1243,7 @@ proc parse*(value, layout: string): TimeInfo =
   let correctDST = getLocalTime(toTime(info))
   info.isDST = correctDST.isDST
 
-  # Now we preocess it again with the correct isDST to correct things like
+  # Now we process it again with the correct isDST to correct things like
   # weekday and yearday.
   return getLocalTime(toTime(info))
 
