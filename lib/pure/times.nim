@@ -84,7 +84,7 @@ elif defined(windows):
       timezone {.importc: "_timezone", header: "<time.h>".}: int
       tzname {.importc: "_tzname", header: "<time.h>"}: array[0..1, cstring]
   else:
-    type TimeImpl {.importc: "time_t", header: "<time.h>".} = int32
+    type TimeImpl {.importc: "time_t", header: "<time.h>".} = int
     var
       timezone {.importc, header: "<time.h>".}: int
       tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
