@@ -438,7 +438,7 @@ proc `$`*[A, B](t: TableRef[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: TableRef[A, B]): bool =
-  ## The `==` operator for hash tables. Returns ``true`` iff either both tables 
+  ## The `==` operator for hash tables. Returns ``true`` iff either both tables
   ## are ``nil`` or none is ``nil`` and the content of both tables contains the
   ## same key-value pairs. Insert order does not matter.
   if isNil(s): result = isNil(t)
@@ -616,8 +616,8 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
-  ## The `==` operator for ordered hash tables. Both the content and the order
-  ## must be equal for this to return ``true``.
+  ## The `==` operator for ordered hash tables. Returns true iff both the
+  ## content and the order are equal.
   if s.counter == t.counter:
     forAllOrderedPairs:
       if s.data[h] != t.data[h]: return false
@@ -768,9 +768,12 @@ proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
-  ## The `==` operator for ordered hash tables. Both the content and the order
-  ## must be equal for this to return ``true``.
-  result = s[] == t[]
+  ## The `==` operator for ordered hash tables. Returns true iff either both
+  ## tables are ``nil`` or none is ``nil`` and the content and the order of
+  ## both are equal.
+  if isNil(s): result = isNil(t)
+  elif isNil(t): result = false
+  else: result = s[] == t[]
 
 proc sort*[A, B](t: OrderedTableRef[A, B],
                  cmp: proc (x,y: (A, B)): int) =
@@ -1070,9 +1073,12 @@ proc `$`*[A](t: CountTableRef[A]): string =
   dollarImpl()
 
 proc `==`*[A](s, t: CountTableRef[A]): bool =
-  ## The `==` operator for count tables. Returns ``true`` iff both tables
-  ## contain the same keys with the same count. Insert order does not matter.
-  result = s[] == t[]
+  ## The `==` operator for count tables. Returns ``true`` iff either both tables
+  ## are ``nil`` or none is ``nil`` and both contain the same keys with the same
+  ## count. Insert order does not matter.
+  if isNil(s): result = isNil(t)
+  elif isNil(t): result = false
+  else: result = s[] == t[]
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
