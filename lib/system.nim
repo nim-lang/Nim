@@ -2334,8 +2334,11 @@ proc collectionToString[T: set | seq](x: T, b, e: string): string =
   var firstElement = true
   for value in items(x):
     if not firstElement: result.add(", ")
-    if value.isNil: result.add "nil"
-    else: result.add($value)
+    when compiles(value.isNil):
+      if value.isNil: result.add "nil"
+      else: result.add($value)
+    else:
+      result.add($value)
     firstElement = false
   result.add(e)
 
