@@ -203,12 +203,6 @@ proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign.} =
 proc toSeconds*(time: Time): float {.tags: [], raises: [], benign.}
   ## Returns the time in seconds since the unix epoch.
 
-proc `$` *(timeInfo: TimeInfo): string
-    {.tags: [TimeEffect], raises: [], benign.}
-  ## converts a `TimeInfo` object to a string representation.
-proc `$` *(time: Time): string {.tags: [], raises: [], benign.}
-  ## converts a calendar time to a string representation.
-
 proc `-`*(a, b: Time): int64 {.
   rtl, extern: "ntDiffTime", tags: [], raises: [], benign.}
   ## computes the difference of two calendar times. Result is in seconds.
@@ -449,12 +443,6 @@ when not defined(JS):
     importc: "time", header: "<time.h>", tags: [].}
   proc mktime(t: StructTM): Time {.
     importc: "mktime", header: "<time.h>", tags: [].}
-  proc asctime(tblock: StructTM): cstring {.
-    importc: "asctime", header: "<time.h>", tags: [].}
-  proc ctime(time: ptr Time): cstring {.
-    importc: "ctime", header: "<time.h>", tags: [].}
-  #  strftime(s: CString, maxsize: int, fmt: CString, t: tm): int {.
-  #    importc: "strftime", header: "<time.h>".}
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
   proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
     tags: [].}
@@ -548,21 +536,6 @@ when not defined(JS):
       add(result, p[i])
       inc(i)
 
-  proc `$`(timeInfo: TimeInfo): string =
-    # asctime interprets its input as local time, so we first convert the value
-    # to local time if necessary
-    let
-      localTimeInfo = if timeInfo.timezone == getTimezone(): timeInfo else:
-        getLocalTime(toTime(timeInfo))
-      p = asctime(timeInfoToTM(localTimeInfo))
-    # BUGFIX: asctime returns a newline at the end!
-    result = toStringTillNL(p)
-
-  proc `$`(time: Time): string =
-    # BUGFIX: ctime returns a newline at the end!
-    var a = time
-    return toStringTillNL(ctime(addr(a)))
-
   const
     epochDiff = 116444736000000000'i64
     rateDiff = 10000000'i64 # 100 nsecs
@@ -652,9 +625,6 @@ elif defined(JS):
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
     result.setSeconds(timeInfo.second + timeInfo.timezone)
-
-  proc `$`(timeInfo: TimeInfo): string = return $(toTime(timeInfo))
-  proc `$`(time: Time): string = return $time.toLocaleString()
 
   proc `-` (a, b: Time): int64 =
     return a.getTime() - b.getTime()
@@ -851,22 +821,33 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     if fyear.len != 5: fyear = repeat('0', 5-fyear.len()) & fyear
     buf.add(fyear)
   of "z":
-    let hrs = (info.timezone div 60) div 60
-    buf.add($hrs)
+    let
+      factor = if info.timezone <= 0: -1 else: 1
+      hours = (factor * info.timezone) div 3600
+    if factor == 1: buf.add('-')
+    else: buf.add('+')
+    buf.add($hours)
   of "zz":
-    let hrs = (info.timezone div 60) div 60
-
-    buf.add($hrs)
-    if hrs.abs < 10:
-      var atIndex = buf.len-(($hrs).len-(if hrs < 0: 1 else: 0))
-      buf.insert("0", atIndex)
+    let
+      factor = if info.timezone <= 0: -1 else: 1
+      hours = (factor * info.timezone) div 3600
+    if factor == 1: buf.add('-')
+    else: buf.add('+')
+    if hours < 10: buf.add('0')
+    buf.add($hours)
   of "zzz":
-    let hrs = (info.timezone div 60) div 60
+    let
+      factor = if info.timezone <= 0: -1 else: 1
+      hours = (factor * info.timezone) div 3600
+      minutes = (factor * info.timezone) mod 60
+    if factor == 1: buf.add('-')
+    else: buf.add('+')
+    if hours < 10: buf.add('0')
+    buf.add($hours)
+    buf.add(':')
+    if minutes < 10: buf.add('0')
+    buf.add($minutes)
 
-    buf.add($hrs & ":00")
-    if hrs.abs < 10:
-      var atIndex = buf.len-(($hrs & ":00").len-(if hrs < 0: 1 else: 0))
-      buf.insert("0", atIndex)
   of "":
     discard
   else:
@@ -903,8 +884,7 @@ proc format*(info: TimeInfo, f: string): string =
   ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
   ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
   ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
-  ##    zzz      Same as above but with ``:00``.                                                    ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
-  ##    ZZZ      Displays the name of the timezone.                                                 ``GMT -> GMT``, ``EST -> EST``
+  ##    zzz      Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
   ## ==========  =================================================================================  ================================================
   ##
   ## Other strings can be inserted by putting them in ``''``. For example
@@ -941,6 +921,17 @@ proc format*(info: TimeInfo, f: string): string =
         currentF = ""
 
     inc(i)
+
+proc `$`*(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.} =
+  ## converts a `TimeInfo` object to a string representation.
+  ## it will use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  try: result = format(timeInfo, "yyyy-MM-dd'T'HH:mm:sszzz")
+  except ValueError: assert false # cannot happen because format string is valid
+
+proc `$`*(time: Time): string {.tags: [TimeEffect], raises: [], benign.} =
+  ## converts a `Time` value to a string representation. It will use the local
+  ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  $getLocalTime(time)
 
 {.pop.}
 
@@ -1161,7 +1152,6 @@ proc parse*(value, layout: string): TimeInfo =
   ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
   ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
   ##    zzz      Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
-  ##    ZZZ      Displays the name of the timezone.                                                 ``GMT -> GMT``, ``EST -> EST``
   ## ==========  =================================================================================  ================================================
   ##
   ## Other strings can be inserted by putting them in ``''``. For example
