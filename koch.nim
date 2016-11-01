@@ -56,6 +56,7 @@ Possible Commands:
   winrelease               creates a release (for coredevs only)
   nimble                   builds the Nimble tool
   tools                    builds Nim related tools
+  pushcsource              push generated C sources to its repo! Only for devs!
 Boot options:
   -d:release               produce a release version of the compiler
   -d:tinyc                 include the Tiny C backend (not supported on Windows)
@@ -227,19 +228,18 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
 proc buildTools() =
-  if not dirExists"dist/nimble":
-    echo "[Error] 'koch tools' only works for the tarball."
-  else:
+  let nimsugExe = "bin/nimsuggest".exe
+  nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
+      " dist/nimsuggest/nimsuggest.nim"
+
+  let nimgrepExe = "bin/nimgrep".exe
+  nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
+  if dirExists"dist/nimble":
     let nimbleExe = "bin/nimble".exe
     nimexec "c --noNimblePath -p:compiler -o:" & nimbleExe &
         " dist/nimble/src/nimble.nim"
-
-    let nimsugExe = "bin/nimsuggest".exe
-    nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
-        " dist/nimsuggest/nimsuggest.nim"
-
-    let nimgrepExe = "bin/nimgrep".exe
-    nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
+  else:
+    buildNimble()
 
 proc nsis(args: string) =
   bundleNimbleExe()
@@ -399,6 +399,38 @@ proc temp(args: string) =
   copyExe(output, finalDest)
   if args.len > 0: exec(finalDest & " " & args)
 
+proc copyDir(src, dest: string) =
+  for kind, path in walkDir(src, relative=true):
+    case kind
+    of pcDir: copyDir(dest / path, src / path)
+    of pcFile:
+      createDir(dest)
+      copyFile(src / path, dest / path)
+    else: discard
+
+proc pushCsources() =
+  if not dirExists("../csources/.git"):
+    quit "[Error] no csources git repository found"
+  csource("-d:release")
+  let cwd = getCurrentDir()
+  try:
+    copyDir("build/c_code", "../csources/c_code")
+    copyFile("build/build.sh", "../csources/build.sh")
+    copyFile("build/build.bat", "../csources/build.bat")
+    copyFile("build/build64.bat", "../csources/build64.bat")
+    copyFile("build/makefile", "../csources/makefile")
+
+    setCurrentDir("../csources")
+    for kind, path in walkDir("c_code"):
+      if kind == pcDir:
+        exec("git add " & path / "*.c")
+    exec("git commit -am \"updated csources to version " & NimVersion & "\"")
+    exec("git push origin master")
+    exec("git tag -am \"Version $1\" v$1" % NimVersion)
+    exec("git push origin v$1" % NimVersion)
+  finally:
+    setCurrentDir(cwd)
+
 proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
@@ -432,5 +464,6 @@ of cmdArgument:
   of "winrelease": winRelease()
   of "nimble": buildNimble()
   of "tools": buildTools()
+  of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()
 of cmdEnd: showHelp()
