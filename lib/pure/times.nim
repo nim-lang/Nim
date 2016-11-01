@@ -66,12 +66,6 @@ when defined(posix) and not defined(JS):
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
-  var
-    tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
-  # we also need tzset() to make sure that tzname is initialized
-  proc tzset() {.importc, header: "<time.h>".}
-  # calling tzset() implicitly to initialize tzname data.
-  tzset()
 
 elif defined(windows):
   import winlean
@@ -82,12 +76,10 @@ elif defined(windows):
     # visual c's c runtime exposes these under a different name
     var
       timezone {.importc: "_timezone", header: "<time.h>".}: int
-      tzname {.importc: "_tzname", header: "<time.h>"}: array[0..1, cstring]
   else:
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int
     var
       timezone {.importc, header: "<time.h>".}: int
-      tzname {.importc, header: "<time.h>" .}: array[0..1, cstring]
 
   type
     Time* = distinct TimeImpl
@@ -154,7 +146,6 @@ type
                               ## Always 0 if the target is JS.
     isDST*: bool              ## Determines whether DST is in effect. Always
                               ## ``False`` if time is UTC.
-    tzname*: string           ## The timezone this time is in. E.g. GMT
     timezone*: int            ## The offset of the (non-DST) timezone in seconds
                               ## west of UTC.
 
@@ -236,12 +227,6 @@ proc `==`*(a, b: Time): bool {.
   rtl, extern: "ntEqTime", tags: [], raises: [].} =
   ## returns true if ``a == b``, that is if both times represent the same value
   result = a - b == 0
-
-when not defined(JS):
-  proc getTzname*(): tuple[nonDST, DST: string] {.tags: [TimeEffect], raises: [],
-    benign.}
-    ## returns the local timezone; ``nonDST`` is the name of the local non-DST
-    ## timezone, ``DST`` is the name of the local DST timezone.
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
@@ -371,7 +356,7 @@ proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ## very accurate.
   let t = toSeconds(toTime(a))
   let secs = toSeconds(a, interval)
-  if a.tzname == "UTC":
+  if a.timezone == 0:
     result = getGMTime(fromSeconds(t + secs))
   else:
     result = getLocalTime(fromSeconds(t + secs))
@@ -391,7 +376,7 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   intval.months = - interval.months
   intval.years = - interval.years
   let secs = toSeconds(a, intval)
-  if a.tzname == "UTC":
+  if a.timezone == 0:
     result = getGMTime(fromSeconds(t + secs))
   else:
     result = getLocalTime(fromSeconds(t + secs))
@@ -491,13 +476,6 @@ when not defined(JS):
       weekday: weekDays[int(tm.weekday)],
       yearday: int(tm.yearday),
       isDST: tm.isdst > 0,
-      tzname: if local:
-          if tm.isdst > 0:
-            getTzname().DST
-          else:
-            getTzname().nonDST
-        else:
-          "UTC",
       timezone: if local: getTimezone() else: 0
     )
 
@@ -596,9 +574,6 @@ when not defined(JS):
   proc winTimeToUnixTime*(t: int64): Time =
     ## converts a Windows time to a UNIX `Time` (``time_t``)
     result = Time((t - epochDiff) div rateDiff)
-
-  proc getTzname(): tuple[nonDST, DST: string] =
-    return ($tzname[0], $tzname[1])
 
   proc getTimezone(): int =
     when defined(freebsd) or defined(netbsd) or defined(openbsd):
@@ -892,8 +867,6 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     if hrs.abs < 10:
       var atIndex = buf.len-(($hrs & ":00").len-(if hrs < 0: 1 else: 0))
       buf.insert("0", atIndex)
-  of "ZZZ":
-    buf.add(info.tzname)
   of "":
     discard
   else:
@@ -1154,9 +1127,6 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 4
     info.timezone += factor * value[j..j+1].parseInt() * 60
     j += 2
-  of "ZZZ":
-    info.tzname = value[j..j+2].toUpperAscii()
-    j += 3
   else:
     # Ignore the token and move forward in the value string by the same length
     j += token.len

@@ -10,26 +10,26 @@ import
 # Tue 19 Jan 03:14:07 GMT 2038
 
 var t = getGMTime(fromSeconds(2147483647))
-doAssert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
-doAssert t.format("ddd ddMMMhh:mm:ssZZZyyyy") == "Tue 19Jan03:14:07UTC2038"
+doAssert t.format("ddd dd MMM hh:mm:ss yyyy") == "Tue 19 Jan 03:14:07 2038"
+doAssert t.format("ddd ddMMMhh:mm:ssyyyy") == "Tue 19Jan03:14:072038"
 
 doAssert t.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-  "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 0 00 00:00 UTC"
+  " ss t tt y yy yyy yyyy yyyyy z zz zzz") ==
+  "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 0 00 00:00"
 
 doAssert t.format("yyyyMMddhhmmss") == "20380119031407"
 
 var t2 = getGMTime(fromSeconds(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
 doAssert t2.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-  "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00 UTC"
+  " ss t tt y yy yyy yyyy yyyyy z zz zzz") ==
+  "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00"
 
 when not defined(JS):
   when sizeof(Time) == 8:
     var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
     doAssert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-      " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-      "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
+      " ss t tt y yy yyy yyyy yyyyy z zz zzz") ==
+      "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00"
     doAssert t3.format(":,[]()-/") == ":,[]()-/"
 
 var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
@@ -52,22 +52,22 @@ parseTest("Tuesday at 09:04am on Dec 15, 2015",
 parseTest("Thu Jan 12 15:04:05 2006", "ddd MMM dd HH:mm:ss yyyy",
     "Thu Jan 12 15:04:05 2006", 11)
 # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-parseTest("Thu Jan 12 15:04:05 MST 2006", "ddd MMM dd HH:mm:ss ZZZ yyyy",
+parseTest("Thu Jan 12 15:04:05 2006", "ddd MMM dd HH:mm:ss yyyy",
     "Thu Jan 12 15:04:05 2006", 11)
 # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
 parseTest("Mon Feb 29 15:04:05 -07:00 2016", "ddd MMM dd HH:mm:ss zzz yyyy",
     "Mon Feb 29 15:04:05 2016", 59) # leap day
 # RFC822      = "02 Jan 06 15:04 MST"
-parseTest("12 Jan 16 15:04 MST", "dd MMM yy HH:mm ZZZ",
+parseTest("12 Jan 16 15:04", "dd MMM yy HH:mm",
     "Tue Jan 12 15:04:00 2016", 11)
 # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
 parseTest("01 Mar 16 15:04 -07:00", "dd MMM yy HH:mm zzz",
     "Tue Mar  1 15:04:00 2016", 60) # day after february in leap year
 # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
-parseTest("Monday, 12-Jan-06 15:04:05 MST", "dddd, dd-MMM-yy HH:mm:ss ZZZ",
+parseTest("Monday, 12-Jan-06 15:04:05", "dddd, dd-MMM-yy HH:mm:ss",
     "Thu Jan 12 15:04:05 2006", 11)
 # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
-parseTest("Sun, 01 Mar 2015 15:04:05 MST", "ddd, dd MMM yyyy HH:mm:ss ZZZ",
+parseTest("Sun, 01 Mar 2015 15:04:05", "ddd, dd MMM yyyy HH:mm:ss",
     "Sun Mar  1 15:04:05 2015", 59) # day after february in non-leap year
 # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
 parseTest("Thu, 12 Jan 2006 15:04:05 -07:00", "ddd, dd MMM yyyy HH:mm:ss zzz",
