@@ -1127,31 +1127,33 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 4
   of "z":
     if value[j] == '+':
-      info.timezone = parseInt($value[j+1])
+      info.timezone = 0-parseInt($value[j+1]) * 3600
     elif value[j] == '-':
-      info.timezone = 0-parseInt($value[j+1])
+      info.timezone = parseInt($value[j+1]) * 3600
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (z), got: " & value[j])
     j += 2
   of "zz":
     if value[j] == '+':
-      info.timezone = value[j+1..j+2].parseInt()
+      info.timezone = 0-value[j+1..j+2].parseInt() * 3600
     elif value[j] == '-':
-      info.timezone = 0-value[j+1..j+2].parseInt()
+      info.timezone = value[j+1..j+2].parseInt() * 3600
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zz), got: " & value[j])
     j += 3
   of "zzz":
-    if value[j] == '+':
-      info.timezone = value[j+1..j+2].parseInt()
-    elif value[j] == '-':
-      info.timezone = 0-value[j+1..j+2].parseInt()
+    var factor = 0
+    if value[j] == '+': factor = -1
+    elif value[j] == '-': factor = 1
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zzz), got: " & value[j])
-    j += 6
+    info.timezone = factor * value[j+1..j+2].parseInt() * 3600
+    j += 4
+    info.timezone += factor * value[j..j+1].parseInt() * 60
+    j += 2
   of "ZZZ":
     info.tzname = value[j..j+2].toUpperAscii()
     j += 3
@@ -1188,7 +1190,7 @@ proc parse*(value, layout: string): TimeInfo =
   ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
   ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
   ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
-  ##    zzz      Same as above but with ``:00``.                                                    ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
+  ##    zzz      Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
   ##    ZZZ      Displays the name of the timezone.                                                 ``GMT -> GMT``, ``EST -> EST``
   ## ==========  =================================================================================  ================================================
   ##
