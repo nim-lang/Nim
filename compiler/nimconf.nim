@@ -179,7 +179,7 @@ proc parseAssignment(L: var TLexer, tok: var TToken) =
     if tok.tokType == tkBracketRi: confTok(L, tok)
     else: lexMessage(L, errTokenExpected, "']'")
     add(val, ']')
-  let percent = tok.ident.s == "%="
+  let percent = tok.ident != nil and tok.ident.s == "%="
   if tok.tokType in {tkColon, tkEquals} or percent:
     if len(val) > 0: add(val, ':')
     confTok(L, tok)           # skip ':' or '=' or '%'
