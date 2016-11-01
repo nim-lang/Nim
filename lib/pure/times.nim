@@ -671,13 +671,12 @@ elif defined(JS):
 
   proc toTime*(timeInfo: TimeInfo): Time =
     result = internGetTime()
-    result.setSeconds(timeInfo.second)
     result.setMinutes(timeInfo.minute)
     result.setHours(timeInfo.hour)
     result.setMonth(ord(timeInfo.month))
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
-    result = result + initInterval(seconds=timeInfo.timezone)
+    result.setSeconds(timeInfo.second + timeInfo.timezone)
 
   proc `$`(timeInfo: TimeInfo): string = return $(toTime(timeInfo))
   proc `$`(time: Time): string = return $time.toLocaleString()
