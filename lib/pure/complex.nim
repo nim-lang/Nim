@@ -376,16 +376,6 @@ proc `$`*(z: Complex): string =
 
 {.pop.}
 
-proc FFT*(dataSource : seq[float]):seq[Complex]= 
-  var N=len(dataSource) 
-  for i in 0..N: 
-    for n in 0..N:
-     var IF=i.float
-     var nF=n.float
-     var NF=N.float
-     result[n].re+=cos(-2*PI*IF*nF/NF)*dataSource[n]
-     result[n].im+=sin(-2*PI*IF*nF/NF)*dataSource[n]
-
 when isMainModule:
   var z = (0.0, 0.0)
   var oo = (1.0,1.0)
