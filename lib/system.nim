@@ -2629,6 +2629,8 @@ when not defined(JS): #and not defined(nimscript):
     FileMode* = enum           ## The file mode when opening a file.
       fmRead,                   ## Open the file for read access only.
       fmWrite,                  ## Open the file for write access only.
+                                ## If the file does not exist, it will be
+                                ## created.
       fmReadWrite,              ## Open the file for read and write access.
                                 ## If the file does not exist, it will be
                                 ## created.
