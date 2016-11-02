@@ -110,6 +110,10 @@ proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
   result = newOrPrevType(kind, prev, c)
   if sonsLen(n) == 2:
     var base = semTypeNode(c, n.sons[1], nil)
+    if base.kind == tyBuiltInTypeClass:
+      if base.base.kind == tyObject:
+        localError(n.info, errGenerated, msgKindToString(errTCannotBeUsedAsXParam) % [
+          typeToString(base.base), kindStr])
     if base.kind == tyVoid:
       localError(n.info, errTIsNotAConcreteType, typeToString(base))
     addSonSkipIntLit(result, base)
