@@ -246,6 +246,7 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
 proc all*[T](futs: varargs[Future[T]]): auto =
   ## Returns a future which will complete once
   ## all futures in ``futs`` complete.
+  ## If the argument is empty, the returned future completes immediately.
   ##
   ## If the awaited futures are not ``Future[void]``, the returned future
   ## will hold the values of all awaited futures in a sequence.
@@ -270,6 +271,9 @@ proc all*[T](futs: varargs[Future[T]]): auto =
           if completedFutures == totalFutures:
             retFuture.complete()
 
+    if totalFutures == 0:
+      retFuture.complete()
+
     return retFuture
 
   else:
@@ -291,5 +295,8 @@ proc all*[T](futs: varargs[Future[T]]): auto =
               retFuture.complete(retValues)
 
       setCallback(i)
+
+    if retValues.len == 0:
+      retFuture.complete(retValues)
 
     return retFuture
