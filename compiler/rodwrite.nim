@@ -577,15 +577,25 @@ proc process(c: PPassContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
     #var s = n.sons[namePos].sym
     #addInterfaceSym(w, s)
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef,
+  of nkProcDef, nkIteratorDef, nkConverterDef,
       nkTemplateDef, nkMacroDef:
-    var s = n.sons[namePos].sym
+    let s = n.sons[namePos].sym
     if s == nil: internalError(n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
       internalError(n.info, "rodwrite.process: body is nil")
     if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
         sfForward notin s.flags:
       addInterfaceSym(w, s)
+  of nkMethodDef:
+    let s = n.sons[namePos].sym
+    if s == nil: internalError(n.info, "rodwrite.process")
+    if n.sons[bodyPos] == nil:
+      internalError(n.info, "rodwrite.process: body is nil")
+    if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
+        sfForward notin s.flags:
+      pushSym(w, s)
+      processStacks(w, false)
+
   of nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]

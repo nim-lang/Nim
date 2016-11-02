@@ -165,8 +165,9 @@ proc methodDef*(s: PSym, fromCache: bool) =
       if witness.isNil: witness = gMethods[i].methods[0]
   # create a new dispatcher:
   add(gMethods, (methods: @[s], dispatcher: createDispatcher(s)))
-  if fromCache:
-    internalError(s.info, "no method dispatcher found")
+  #echo "adding ", s.info
+  #if fromCache:
+  #  internalError(s.info, "no method dispatcher found")
   if witness != nil:
     localError(s.info, "invalid declaration order; cannot attach '" & s.name.s &
                        "' to method defined here: " & $witness.info)
