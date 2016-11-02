@@ -133,9 +133,9 @@ proc processClient(client: AsyncSocket, address: string,
     assert client != nil
     request.client = client
 
-    # We should skip empty lines before the request
+    # We should skip at least one empty line before the request
     # https://tools.ietf.org/html/rfc7230#section-3.5
-    while true:
+    for i in 0..1:
       lineFut.mget().setLen(0)
       lineFut.clean()
       await client.recvLineInto(lineFut) # TODO: Timeouts.

@@ -989,8 +989,11 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
     client.currentURL = url
     client.connected = true
 
-proc withFallback(override, fallback: HttpHeaders): HttpHeaders =
-  # Left-biased map union for `HttpHeaders`
+proc override(fallback, override: HttpHeaders): HttpHeaders =
+  # Right-biased map union for `HttpHeaders`
+  if override.isNil:
+    return fallback
+
   result = newHttpHeaders()
   # Copy by value
   result.table[] = fallback.table[]
@@ -999,7 +1002,7 @@ proc withFallback(override, fallback: HttpHeaders): HttpHeaders =
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod: string, body = "",
-              overrideHeaders: HttpHeaders = nil): Future[Response] {.multisync.} =
+              headers: HttpHeaders = nil): Future[Response] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the custom method string specified by ``httpMethod``.
   ##
@@ -1032,19 +1035,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   else:
     await newConnection(client, connectionUrl)
 
-  var effectiveHeaders: HttpHeaders
-  if overrideHeaders != nil:
-    effectiveHeaders = overrideHeaders.withFallback(client.headers)
-  else:
-    effectiveHeaders = client.headers
+  let effectiveHeaders = client.headers.override(headers)
 
   if not effectiveHeaders.hasKey("user-agent") and client.userAgent != "":
     effectiveHeaders["User-Agent"] = client.userAgent
 
-  var headers = generateHeaders(requestUrl, httpMethod,
-                                effectiveHeaders, body, client.proxy)
+  var headersString = generateHeaders(requestUrl, httpMethod,
+                                      effectiveHeaders, body, client.proxy)
 
-  await client.socket.send(headers)
+  await client.socket.send(headersString)
   if body != "":
     await client.socket.send(body)
 
@@ -1056,7 +1055,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod = HttpGET, body = "",
-              overrideHeaders: HttpHeaders = nil): Future[Response] {.multisync.} =
+              headers: HttpHeaders = nil): Future[Response] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.
   ##
@@ -1067,7 +1066,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ## When a request is made to a different hostname, the current connection will
   ## be closed.
   result = await request(client, url, $httpMethod, body,
-                         overrideHeaders = overrideHeaders)
+                         headers = headers)
 
 proc get*(client: HttpClient | AsyncHttpClient,
           url: string): Future[Response] {.multisync.} =
@@ -1115,13 +1114,13 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
       x
   var xb = mpBody.withNewLine() & body
 
-  var overrideHeaders = newHttpHeaders()
+  var headers = newHttpHeaders()
   if multipart != nil:
-    overrideHeaders["Content-Type"] = mpHeader.split(": ")[1]
-  overrideHeaders["Content-Length"] = $len(xb)
+    headers["Content-Type"] = mpHeader.split(": ")[1]
+  headers["Content-Length"] = $len(xb)
 
   result = await client.request(url, HttpPOST, xb,
-                                overrideHeaders = overrideHeaders)
+                                headers = headers)
   # Handle redirects.
   var lastURL = url
   for i in 1..client.maxRedirects:
@@ -1129,7 +1128,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": HttpGet else: HttpPost
       result = await client.request(redirectTo, meth, xb,
-                                    overrideHeaders = overrideHeaders)
+                                    headers = headers)
       lastURL = redirectTo
 
 proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
