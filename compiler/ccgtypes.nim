@@ -206,6 +206,10 @@ proc cacheGetType(tab: TIdTable, key: PType): Rope =
   # linear search is not necessary anymore:
   result = Rope(idTableGet(tab, key))
 
+proc addAbiCheck(m: BModule, t: PType, name: Rope) =
+  if isDefined("checkabi"):
+    addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(getSize(t))])
+
 proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
@@ -266,6 +270,11 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyGenericInst:
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
+
+  if result != nil and typ.isImportedType():
+    if cacheGetType(m.typeCache, typ) == nil:
+      idTablePut(m.typeCache, typ, result)
+      addAbiCheck(m, typ, result)
 
 proc pushType(m: BModule, typ: PType) =
   add(m.typeStack, typ)
@@ -656,6 +665,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t.sons[1], check)
       addf(m.s[cfsTypes], "typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
+    else: addAbiCheck(m, t, result)
   of tyObject, tyTuple:
     if isImportedCppType(t) and typ.kind == tyGenericInst:
       # for instantiated templates we do not go through the type cache as the
@@ -703,8 +713,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
                     else: getTupleDesc(m, t, result, check)
       if not isImportedType(t):
         add(m.s[cfsTypes], recdesc)
-      elif tfIncompleteStruct notin t.flags and isDefined("checkabi"):
-        addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [result, rope(getSize(t))])
+      elif tfIncompleteStruct notin t.flags: addAbiCheck(m, t, result)
   of tySet:
     result = getTypeName(t.lastSon) & "Set"
     idTablePut(m.typeCache, t, result)
