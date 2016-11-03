@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import debuginfo
+import debuginfo, sighashes
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -29,14 +29,27 @@ proc mangleField(name: PIdent): string =
     # Mangling makes everything lowercase,
     # but some identifiers are C keywords
 
-proc hashOwner(s: PSym): FilenameHash =
+proc hashOwner(s: PSym): SigHash =
   var m = s
   while m.kind != skModule: m = m.owner
   let p = m.owner
   assert p.kind == skPackage
   result = gDebugInfo.register(p.name.s, m.name.s)
 
-proc mangleName(s: PSym): Rope =
+proc idOrSig(m: BModule; s: PSym): BiggestInt =
+  if s.kind in routineKinds and s.typ != nil and sfExported in s.flags:
+    # signatures for exported routines are reliable enough to
+    # produce a unique name and this means produced C++ is more stable wrt
+    # Nim changes:
+    let h = hashType(s.typ, {considerParamNames})
+    if m.hashConflicts.containsOrIncl(cast[int](h)):
+      result = s.id
+    else:
+      result = BiggestInt(h)
+  else:
+    result = s.id
+
+proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     let keepOrigName = s.kind in skLocalVars - {skForVar} and
@@ -86,7 +99,7 @@ proc mangleName(s: PSym): Rope =
       result.add "0"
     else:
       add(result, ~"_")
-      add(result, rope(s.id))
+      add(result, rope(m.idOrSig(s)))
       add(result, ~"_")
       add(result, rope(hashOwner(s).BiggestInt))
     s.loc.r = result
@@ -95,12 +108,22 @@ proc typeName(typ: PType): Rope =
   result = if typ.sym != nil: typ.sym.name.s.mangle.rope
            else: ~"TY"
 
-proc getTypeName(typ: PType): Rope =
+proc getTypeName(m: BModule; typ: PType): Rope =
   if typ.sym != nil and {sfImportc, sfExportc} * typ.sym.flags != {}:
     result = typ.sym.loc.r
   else:
     if typ.loc.r == nil:
-      typ.loc.r = typ.typeName & typ.id.rope
+      when false:
+        # doesn't work yet and would require bigger rewritings
+        let h = hashType(typ, {considerParamNames})
+        let sig =
+          if m.hashConflicts.containsOrIncl(cast[int](h)):
+            BiggestInt typ.id
+          else:
+            BiggestInt h
+      else:
+        let sig = BiggestInt typ.id
+      typ.loc.r = typ.typeName & sig.rope
     result = typ.loc.r
   if result == nil: internalError("getTypeName: " & $typ.kind)
 
@@ -235,9 +258,9 @@ proc fillResult(param: PSym) =
     incl(param.loc.flags, lfIndirect)
     param.loc.s = OnUnknown
 
-proc typeNameOrLiteral(t: PType, literal: string): Rope =
+proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
-    result = getTypeName(t)
+    result = getTypeName(m, t)
   else:
     result = rope(literal)
 
@@ -249,16 +272,16 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
       "NU", "NU8", "NU16", "NU32", "NU64"]
   case typ.kind
   of tyPointer:
-    result = typeNameOrLiteral(typ, "void*")
+    result = typeNameOrLiteral(m, typ, "void*")
   of tyString:
     discard cgsym(m, "NimStringDesc")
-    result = typeNameOrLiteral(typ, "NimStringDesc*")
-  of tyCString: result = typeNameOrLiteral(typ, "NCSTRING")
-  of tyBool: result = typeNameOrLiteral(typ, "NIM_BOOL")
-  of tyChar: result = typeNameOrLiteral(typ, "NIM_CHAR")
-  of tyNil: result = typeNameOrLiteral(typ, "0")
+    result = typeNameOrLiteral(m, typ, "NimStringDesc*")
+  of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
+  of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
+  of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
+  of tyNil: result = typeNameOrLiteral(m, typ, "0")
   of tyInt..tyUInt64:
-    result = typeNameOrLiteral(typ, NumericalTypeToStr[typ.kind])
+    result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
   of tyStatic:
     if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
@@ -290,7 +313,7 @@ proc getTypeForward(m: BModule, typ: PType): Rope =
   if result != nil: return
   case typ.kind
   of tySequence, tyTuple, tyObject:
-    result = getTypeName(typ)
+    result = getTypeName(m, typ)
     if not isImportedType(typ):
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
           [structOrUnion(typ), result])
@@ -336,7 +359,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: add(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleName(param),
+    fillLoc(param.loc, locParam, param.typ, mangleName(m, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(param):
       add(params, getTypeDescWeak(m, param.typ, check))
@@ -583,7 +606,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     let t = if t.kind == tyRange: t.lastSon else: t
     result = cacheGetType(m.typeCache, t)
     if result == nil:
-      result = getTypeName(t)
+      result = getTypeName(m, t)
       if not (isImportedCppType(t) or
           (sfImportc in t.sym.flags and t.sym.magic == mNone)):
         idTablePut(m.typeCache, t, result)
@@ -609,7 +632,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
           gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
             name: t.sym.name.s, values: vals))
   of tyProc:
-    result = getTypeName(t)
+    result = getTypeName(m, t)
     idTablePut(m.typeCache, t, result)
     var rettype, desc: Rope
     genProcParams(m, t, rettype, desc, check, true, true)
@@ -627,7 +650,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     # with the name of the struct, not with the pointer to the struct:
     result = cacheGetType(m.forwTypeCache, t)
     if result == nil:
-      result = getTypeName(t)
+      result = getTypeName(m, t)
       if not isImportedType(t):
         addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
             [structOrUnion(t), result])
@@ -650,7 +673,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
   of tyArrayConstr, tyArray:
     var n: BiggestInt = lengthOrd(t)
     if n <= 0: n = 1   # make an array of at least one element
-    result = getTypeName(t)
+    result = getTypeName(m, t)
     idTablePut(m.typeCache, t, result)
     if not isImportedType(t):
       let foo = getTypeDescAux(m, t.sons[1], check)
@@ -660,7 +683,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     if isImportedCppType(t) and typ.kind == tyGenericInst:
       # for instantiated templates we do not go through the type cache as the
       # the type cache is not aware of 'tyGenericInst'.
-      let cppName = getTypeName(t)
+      let cppName = getTypeName(m, t)
       var i = 0
       var chunkStart = 0
       while i < cppName.data.len:
@@ -693,7 +716,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
     else:
       result = cacheGetType(m.forwTypeCache, t)
       if result == nil:
-        result = getTypeName(t)
+        result = getTypeName(m, t)
         if not isImportedType(t):
           addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
              [structOrUnion(t), result])
@@ -703,7 +726,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
                     else: getTupleDesc(m, t, result, check)
       if not isImportedType(t): add(m.s[cfsTypes], recdesc)
   of tySet:
-    result = getTypeName(t.lastSon) & "Set"
+    result = getTypeName(m, t.lastSon) & "Set"
     idTablePut(m.typeCache, t, result)
     if not isImportedType(t):
       let s = int(getSize(t))
@@ -764,7 +787,7 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
   elif prc.typ.callConv == ccInline:
     result.add "static "
   var check = initIntSet()
-  fillLoc(prc.loc, locProc, prc.typ, mangleName(prc), OnUnknown)
+  fillLoc(prc.loc, locProc, prc.typ, mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
@@ -810,7 +833,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
   var base: Rope
-  if (sonsLen(typ) > 0) and (typ.sons[0] != nil):
+  if sonsLen(typ) > 0 and typ.sons[0] != nil:
     var x = typ.sons[0]
     if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
     base = genTypeInfo(m, x)
@@ -1005,7 +1028,17 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
 proc genTypeInfo(m: BModule, t: PType): Rope =
   let origType = t
   var t = getUniqueType(t)
-  result = "NTI$1" % [rope(t.id)]
+
+  when false:
+    let h = hashType(t, {considerParamNames})
+    let tid = if m.hashConflicts.containsOrIncl(cast[int](h)):
+                BiggestInt t.id
+              else:
+                BiggestInt h
+  else:
+    let tid = t.id
+
+  result = "NTI$1" % [rope(tid)]
   if containsOrIncl(m.typeInfoMarker, t.id):
     return "(&".rope & result & ")".rope
 

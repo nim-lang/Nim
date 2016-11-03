@@ -11,14 +11,15 @@
 ## to Nim. The data structure has been designed to produce something useful with Nim's marshal
 ## module.
 
+import sighashes
+
 type
-  FilenameHash* = uint32
   FilenameMapping* = object
     package*, file*: string
-    mangled*: FilenameHash
+    mangled*: SigHash
   EnumDesc* = object
     size*: int
-    owner*: FilenameHash
+    owner*: SigHash
     id*: int
     name*: string
     values*: seq[(string, int)]
@@ -28,11 +29,7 @@ type
     enums*: seq[EnumDesc]
     conflicts*: bool
 
-proc sdbmHash(hash: FilenameHash, c: char): FilenameHash {.inline.} =
-  return FilenameHash(c) + (hash shl 6) + (hash shl 16) - hash
-
-proc sdbmHash(package, file: string): FilenameHash =
-  template `&=`(x, c) = x = sdbmHash(x, c)
+proc sdbmHash(package, file: string): SigHash =
   result = 0
   for i in 0..<package.len:
     result &= package[i]
@@ -40,7 +37,7 @@ proc sdbmHash(package, file: string): FilenameHash =
   for i in 0..<file.len:
     result &= file[i]
 
-proc register*(self: var DebugInfo; package, file: string): FilenameHash =
+proc register*(self: var DebugInfo; package, file: string): SigHash =
   result = sdbmHash(package, file)
   for f in self.files:
     if f.mangled == result:
@@ -49,7 +46,7 @@ proc register*(self: var DebugInfo; package, file: string): FilenameHash =
       break
   self.files.add(FilenameMapping(package: package, file: file, mangled: result))
 
-proc hasEnum*(self: DebugInfo; ename: string; id: int; owner: FilenameHash): bool =
+proc hasEnum*(self: DebugInfo; ename: string; id: int; owner: SigHash): bool =
   for en in self.enums:
     if en.owner == owner and en.name == ename and en.id == id: return true
 

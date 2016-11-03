@@ -385,9 +385,9 @@ proc symStack(w: PRodWriter): int =
       inc result
     elif iiTableGet(w.index.tab, s.id) == InvalidKey:
       var m = getModule(s)
-      if m == nil and s.kind != skPackage:
+      if m == nil and s.kind != skPackage and sfGenSym notin s.flags:
         internalError("symStack: module nil: " & s.name.s)
-      if s.kind == skPackage or m.id == w.module.id or sfFromGeneric in s.flags:
+      if s.kind == skPackage or {sfFromGeneric, sfGenSym} * s.flags != {} or m.id == w.module.id:
         # put definition in here
         var L = w.data.len
         addToIndex(w.index, s.id, L)

@@ -20,8 +20,11 @@ type
     preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
-proc base*(t: PType): PType
-  # ------------------- type iterator: ----------------------------------------
+
+proc base*(t: PType): PType =
+  result = t.sons[0]
+
+# ------------------- type iterator: ----------------------------------------
 type
   TTypeIter* = proc (t: PType, closure: RootRef): bool {.nimcall.} # true if iteration should stop
   TTypeMutator* = proc (t: PType, closure: RootRef): PType {.nimcall.} # copy t and mutate it
@@ -444,8 +447,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i], preferGenericArg))
     add(result, ']')
   of tyTypeDesc:
-    if t.base.kind == tyNone: result = "typedesc"
-    else: result = "typedesc[" & typeToString(t.base) & "]"
+    if t.sons[0].kind == tyNone: result = "typedesc"
+    else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
   of tyStatic:
     internalAssert t.len > 0
     if prefer == preferGenericArg and t.n != nil:
@@ -571,9 +574,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   else:
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
-
-proc base(t: PType): PType =
-  result = t.sons[0]
 
 proc firstOrd(t: PType): BiggestInt =
   case t.kind

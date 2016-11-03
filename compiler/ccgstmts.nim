@@ -970,7 +970,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         if r == nil:
           # if no name has already been given,
           # it doesn't matter much:
-          r = mangleName(sym)
+          r = mangleName(p.module, sym)
           sym.loc.r = r       # but be consequent!
         res.add($r)
     else: internalError(t.sons[i].info, "genAsmOrEmitStmt()")

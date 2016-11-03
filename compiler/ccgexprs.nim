@@ -1953,7 +1953,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skMethod:
       if {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
-        fillProcLoc(sym)
+        fillProcLoc(p.module, sym)
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)

@@ -359,7 +359,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
 
 proc localVarDecl(p: BProc; s: PSym): Rope =
   if s.loc.k == locNone:
-    fillLoc(s.loc, locLocalVar, s.typ, mangleName(s), OnStack)
+    fillLoc(s.loc, locLocalVar, s.typ, mangleName(p.module, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   result = getTypeDesc(p.module, s.loc.t)
   if s.constraint.isNil:
@@ -387,7 +387,7 @@ proc mangleDynLibProc(sym: PSym): Rope
 
 proc assignGlobalVar(p: BProc, s: PSym) =
   if s.loc.k == locNone:
-    fillLoc(s.loc, locGlobalVar, s.typ, mangleName(s), OnHeap)
+    fillLoc(s.loc, locGlobalVar, s.typ, mangleName(p.module, s), OnHeap)
 
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
@@ -426,9 +426,9 @@ proc assignParam(p: BProc, s: PSym) =
   assert(s.loc.r != nil)
   localDebugInfo(p, s)
 
-proc fillProcLoc(sym: PSym) =
+proc fillProcLoc(m: BModule; sym: PSym) =
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locProc, sym.typ, mangleName(sym), OnStack)
+    fillLoc(sym.loc, locProc, sym.typ, mangleName(m, sym), OnStack)
 
 proc getLabel(p: BProc): TLabel =
   inc(p.labels)
@@ -729,7 +729,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     add(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", header))
 
 proc genProcNoForward(m: BModule, prc: PSym) =
-  fillProcLoc(prc)
+  fillProcLoc(m, prc)
   useHeader(m, prc)
   if lfImportCompilerProc in prc.loc.flags:
     # dependency to a compilerproc:
@@ -757,7 +757,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
   useHeader(m, sym)
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locData, sym.typ, mangleName(sym), OnStatic)
+    fillLoc(sym.loc, locData, sym.typ, mangleName(p.module, sym), OnStatic)
   if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
@@ -778,7 +778,7 @@ proc isActivated(prc: PSym): bool = prc.typ != nil
 
 proc genProc(m: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc): return
-  fillProcLoc(prc)
+  fillProcLoc(m, prc)
   if sfForward in prc.flags: addForwardedProc(m, prc)
   else:
     genProcNoForward(m, prc)
@@ -792,7 +792,7 @@ proc genProc(m: BModule, prc: PSym) =
 proc genVarPrototypeAux(m: BModule, sym: PSym) =
   #assert(sfGlobal in sym.flags)
   useHeader(m, sym)
-  fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(sym), OnHeap)
+  fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(m, sym), OnHeap)
   if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id):
     return
   if sym.owner.id != m.module.id:
@@ -1107,6 +1107,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.forwardedProcs = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
+  result.hashConflicts = initIntSet()
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
@@ -1140,6 +1141,7 @@ proc resetModule*(m: BModule) =
   nullify m.s
   m.typeNodes = 0
   m.nimTypes = 0
+  m.hashConflicts = initIntSet()
   nullify m.extensionLoaders
 
   # indicate that this is now cached module

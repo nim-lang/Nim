@@ -127,6 +127,7 @@ type
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                               # OpenGL wrapper
     injectStmt*: Rope
+    hashConflicts*: IntSet
 
 var
   mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
