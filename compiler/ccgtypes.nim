@@ -37,7 +37,8 @@ proc hashOwner(s: PSym): SigHash =
   result = gDebugInfo.register(p.name.s, m.name.s)
 
 proc idOrSig(m: BModule; s: PSym): BiggestInt =
-  if s.kind in routineKinds and s.typ != nil and sfExported in s.flags:
+  if s.kind in routineKinds and s.typ != nil and sfExported in s.flags and
+     s.typ.callConv != ccInline:
     # signatures for exported routines are reliable enough to
     # produce a unique name and this means produced C++ is more stable wrt
     # Nim changes:
@@ -113,17 +114,19 @@ proc getTypeName(m: BModule; typ: PType): Rope =
     result = typ.sym.loc.r
   else:
     if typ.loc.r == nil:
-      when false:
+      when true:
         # doesn't work yet and would require bigger rewritings
-        let h = hashType(typ, {considerParamNames})
+        let h = hashType(typ, {considerParamNames})# and 0x0fff_ffffu32
         let sig =
-          if m.hashConflicts.containsOrIncl(cast[int](h)):
+          if m.hashConflicts.containsOrIncl(cast[int](h)) and false:
             BiggestInt typ.id
           else:
             BiggestInt h
       else:
         let sig = BiggestInt typ.id
-      typ.loc.r = typ.typeName & sig.rope
+      typ.loc.r = typ.typeName & sig.rope #& ("_" & m.module.name.s)
+      if typ.kind != tySet:
+        typ.loc.r.add "_" & m.module.name.s
     result = typ.loc.r
   if result == nil: internalError("getTypeName: " & $typ.kind)
 

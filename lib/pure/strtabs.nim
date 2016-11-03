@@ -108,7 +108,7 @@ proc rawGet(t: StringTableRef, key: string): int =
     h = nextTry(h, high(t.data))
   result = - 1
 
-template get(t: StringTableRef, key: string): stmt {.immediate.} =
+template get(t: StringTableRef, key: string) =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:
