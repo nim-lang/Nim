@@ -114,8 +114,10 @@ proc main() =
     var mingWchoices: seq[string] = @[]
     var incompat: seq[string] = @[]
     for x in p.split(';'):
-      let y = expandFilename(if x[0] == '"' and x[^1] == '"':
-                  substr(x, 1, x.len-2) else: x)
+      if x.len == 0: continue
+      let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
+                                    substr(x, 1, x.len-2) else: x)
+              except: ""
       if y == desiredPath: alreadyInPath = true
       if y.toLowerAscii.contains("mingw"):
         if dirExists(y):
