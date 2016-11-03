@@ -732,6 +732,12 @@ proc `-`*(t: Time, ti: TimeInterval): Time =
   ## ``echo getTime() - 1.day``
   result = toTime(getLocalTime(t) - ti)
 
+const
+  secondsInMin = 60
+  secondsInHour = 60*60
+  secondsInDay = 60*60*24
+  epochStartYear = 1970
+
 proc formatToken(info: TimeInfo, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
   ##
@@ -823,14 +829,14 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
   of "z":
     let
       factor = if info.timezone <= 0: -1 else: 1
-      hours = (factor * info.timezone) div 3600
+      hours = (factor * info.timezone) div secondsInHour
     if factor == 1: buf.add('-')
     else: buf.add('+')
     buf.add($hours)
   of "zz":
     let
       factor = if info.timezone <= 0: -1 else: 1
-      hours = (factor * info.timezone) div 3600
+      hours = (factor * info.timezone) div secondsInHour
     if factor == 1: buf.add('-')
     else: buf.add('+')
     if hours < 10: buf.add('0')
@@ -838,7 +844,7 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
   of "zzz":
     let
       factor = if info.timezone <= 0: -1 else: 1
-      hours = (factor * info.timezone) div 3600
+      hours = (factor * info.timezone) div secondsInHour
       minutes = (factor * info.timezone) mod 60
     if factor == 1: buf.add('-')
     else: buf.add('+')
@@ -924,8 +930,9 @@ proc format*(info: TimeInfo, f: string): string =
 
 proc `$`*(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.} =
   ## converts a `TimeInfo` object to a string representation.
-  ## it will use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
-  try: result = format(timeInfo, "yyyy-MM-dd'T'HH:mm:sszzz")
+  ## It uses the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  try:
+    result = format(timeInfo, "yyyy-MM-dd'T'HH:mm:sszzz") # todo: optimize this
   except ValueError: assert false # cannot happen because format string is valid
 
 proc `$`*(time: Time): string {.tags: [TimeEffect], raises: [], benign.} =
@@ -1091,18 +1098,18 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 4
   of "z":
     if value[j] == '+':
-      info.timezone = 0-parseInt($value[j+1]) * 3600
+      info.timezone = 0 - parseInt($value[j+1]) * secondsInHour
     elif value[j] == '-':
-      info.timezone = parseInt($value[j+1]) * 3600
+      info.timezone = parseInt($value[j+1]) * secondsInHour
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (z), got: " & value[j])
     j += 2
   of "zz":
     if value[j] == '+':
-      info.timezone = 0-value[j+1..j+2].parseInt() * 3600
+      info.timezone = 0 - value[j+1..j+2].parseInt() * secondsInHour
     elif value[j] == '-':
-      info.timezone = value[j+1..j+2].parseInt() * 3600
+      info.timezone = value[j+1..j+2].parseInt() * secondsInHour
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zz), got: " & value[j])
@@ -1114,7 +1121,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zzz), got: " & value[j])
-    info.timezone = factor * value[j+1..j+2].parseInt() * 3600
+    info.timezone = factor * value[j+1..j+2].parseInt() * secondsInHour
     j += 4
     info.timezone += factor * value[j..j+1].parseInt() * 60
     j += 2
@@ -1236,12 +1243,6 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
   let days = daySpan - countLeapYears(daySpan div 365)
   result.years = days div 365
   result.days = days mod 365
-
-const
-  secondsInMin = 60
-  secondsInHour = 60*60
-  secondsInDay = 60*60*24
-  epochStartYear = 1970
 
 proc getDayOfWeek*(day, month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
