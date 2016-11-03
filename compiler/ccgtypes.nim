@@ -703,7 +703,7 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
                     else: getTupleDesc(m, t, result, check)
       if not isImportedType(t):
         add(m.s[cfsTypes], recdesc)
-      elif tfIncompleteStruct notin t.flags:
+      elif tfIncompleteStruct notin t.flags and isDefined("checkabi"):
         addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [result, rope(getSize(t))])
   of tySet:
     result = getTypeName(t.lastSon) & "Set"

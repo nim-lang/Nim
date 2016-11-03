@@ -258,6 +258,10 @@ Define               Effect
 ``ssl``              Enables OpenSSL support for the sockets module.
 ``memProfiler``      Enables memory profiling for the native GC.
 ``uClibc``           Use uClibc instead of libc. (Relevant for Unix-like OSes)
+``checkAbi``         When using types from C headers, add checks that compare
+                     what's in the Nim file with what's in the C header
+                     (requires a C compiler with _Static_assert support, like
+                     any C11 compiler)
 ==================   =========================================================
 
 

@@ -460,10 +460,6 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  include <sys/types.h>
 #endif
 
-/* Compile with -t:-DNIM_CHECK_ABI to enable */
-#ifdef NIM_CHECK_ABI
-#  define NIM_CHECK_SIZE(typ, sz) \
+/* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
+#define NIM_CHECK_SIZE(typ, sz) \
   _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
-#else
-#  define NIM_CHECK_SIZE(typ, sz)
-#endif
