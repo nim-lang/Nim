@@ -701,7 +701,10 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
       idTablePut(m.typeCache, t, result) # always call for sideeffects:
       let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, result, check)
                     else: getTupleDesc(m, t, result, check)
-      if not isImportedType(t): add(m.s[cfsTypes], recdesc)
+      if not isImportedType(t):
+        add(m.s[cfsTypes], recdesc)
+      elif tfIncompleteStruct notin t.flags:
+        addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [result, rope(getSize(t))])
   of tySet:
     result = getTypeName(t.lastSon) & "Set"
     idTablePut(m.typeCache, t, result)
