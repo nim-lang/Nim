@@ -841,15 +841,19 @@ elif not defined(useNimRtl):
       if data.workingDir.len > 0:
         setCurrentDir($data.workingDir)
       var pid: Pid
+      var err: OSErrorCode
 
       if data.optionPoUsePath:
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        if res != 0'i32: err = osLastError()
       else:
         res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        if res != 0'i32: err = osLastError()
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
-      chck res
+      if res != 0'i32: raiseOSError(err)
+
       return pid
   else:
     proc startProcessAuxFork(data: StartProcessData): Pid =
