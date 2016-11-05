@@ -1,4 +1,4 @@
-# Test that basic editing. We replace the 'false' by 'true' to
+# Test basic editing. We replace the 'false' by 'true' to
 # see whether then the z field is suggested.
 
 const zField = 0i32

@@ -60,7 +60,7 @@ var
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use|dus|chk|highlight|outline file.nim[;dirtyfile.nim]:line:col\n" &
+  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline file.nim[;dirtyfile.nim]:line:col\n" &
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
@@ -104,13 +104,13 @@ proc sexp(s: seq[Suggest]): SexpNode =
   for sug in s:
     result.add(sexp(sug))
 
-proc listEPC(): SexpNode =
+proc listEpc(): SexpNode =
   # This function is called from Emacs to show available options.
   let
     argspecs = sexp("file line column dirtyfile".split(" ").map(newSSymbol))
     docstring = sexp("line starts at 1, column at 0, dirtyfile is optional")
   result = newSList()
-  for command in ["sug", "con", "def", "use", "dus", "chk"]:
+  for command in ["sug", "con", "def", "use", "dus", "chk", "mod"]:
     let
       cmd = sexp(command)
       methodDesc = newSList()
@@ -162,7 +162,8 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     #  resetModule gProjectMainIdx
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
-    graph.compileProject(cache, dirtyIdx)
+    if gIdeCmd != ideMod:
+      graph.compileProject(cache, dirtyIdx)
   if gIdeCmd in {ideUse, ideDus}:
     let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: usageSym
     if u != nil:
@@ -238,6 +239,7 @@ proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   of "def": gIdeCmd = ideDef
   of "use": gIdeCmd = ideUse
   of "dus": gIdeCmd = ideDus
+  of "mod": gIdeCmd = ideMod
   of "chk":
     gIdeCmd = ideChk
     incl(gGlobalOptions, optIdeDebug)
