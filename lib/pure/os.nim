@@ -613,6 +613,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
       if bytesread != bufSize: break
     dealloc(buf)
     close(s)
+    flushFile(d)
     close(d)
 
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
