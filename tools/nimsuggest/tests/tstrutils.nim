@@ -1,6 +1,6 @@
 discard """
-$nimsuggest --tester ../nim/lib/pure/strutils.nim
->def ../nim/lib/pure/strutils.nim:2300:6
+$nimsuggest --tester lib/pure/strutils.nim
+>def lib/pure/strutils.nim:2300:6
 def;;skTemplate;;system.doAssert;;proc (cond: bool, msg: string): typed;;*/lib/system.nim;;*;;9;;"";;100
 """
 

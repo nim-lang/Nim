@@ -11,7 +11,7 @@ type
     script: seq[(string, string)]
 
 const
-  curDir = when defined(windows): "" else: "./"
+  curDir = when defined(windows): "" else: ""
   DummyEof = "!EOF!"
 
 proc parseTest(filename: string): Test =
@@ -90,7 +90,7 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  for x in walkFiles("tests/t*.nim"):
+  for x in walkFiles(getAppDir() / "tests/t*.nim"):
     echo "Test ", x
     failures += runTest(expandFilename(x))
   if failures > 0:
