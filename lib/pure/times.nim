@@ -459,8 +459,8 @@ when not defined(JS):
     importc: "gmtime", header: "<time.h>", tags: [].}
   proc timec(timer: ptr Time): Time {.
     importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: StructTM): Time {.
-    importc: "mktime", header: "<time.h>", tags: [].}
+  proc timegm(t: StructTM): Time {.
+    importc: "timegm", header: "<time.h>", tags: [].}
   proc asctime(tblock: StructTM): cstring {.
     importc: "asctime", header: "<time.h>", tags: [].}
   proc ctime(time: ptr Time): cstring {.
@@ -568,13 +568,13 @@ when not defined(JS):
 
   proc timeInfoToTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    return mktime(timeInfoToTM(cTimeInfo))
+    # because the header of timegm is broken in my version of libc
+    return timegm(timeInfoToTM(cTimeInfo))
 
   proc toTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    return mktime(timeInfoToTM(cTimeInfo))
+    # because the header of timegm is broken in my version of libc
+    return timegm(timeInfoToTM(cTimeInfo))
 
   proc toStringTillNL(p: cstring): string =
     result = ""
@@ -783,24 +783,24 @@ proc years*(y: int): TimeInterval {.inline.} =
 
 proc `+=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by adding the interval `ti`
-  t = toTime(getLocalTime(t) + ti)
+  t = toTime(getGMTime(t) + ti)
 
 proc `+`*(t: Time, ti: TimeInterval): Time =
   ## adds the interval `ti` to Time `t`
-  ## by converting to localTime, adding the interval, and converting back
+  ## by converting to GMTime, adding the interval, and converting back
   ##
   ## ``echo getTime() + 1.day``
-  result = toTime(getLocalTime(t) + ti)
+  result = toTime(getGMTime(t) + ti)
 
 proc `-=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by subtracting the interval `ti`
-  t = toTime(getLocalTime(t) - ti)
+  t = toTime(getGMTime(t) - ti)
 
 proc `-`*(t: Time, ti: TimeInterval): Time =
   ## adds the interval `ti` to Time `t`
   ##
   ## ``echo getTime() - 1.day``
-  result = toTime(getLocalTime(t) - ti)
+  result = toTime(getGMTime(t) - ti)
 
 proc formatToken(info: TimeInfo, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
