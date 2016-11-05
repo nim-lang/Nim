@@ -16,6 +16,8 @@ import
   condsyms, ropes, idents, securehash, rodread, passes, importer, idgen,
   rodutils
 
+from modulegraphs import ModuleGraph
+
 type
   TRodWriter = object of TPassContext
     module: PSym
@@ -633,7 +635,7 @@ proc process(c: PPassContext, n: PNode): PNode =
   else:
     discard
 
-proc myOpen(module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
   var w = newRodWriter(module.fileIdx.getHash, module, cache)
   rawAddInterfaceSym(w, module)

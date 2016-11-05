@@ -27,7 +27,7 @@ proc parseTest(filename: string): Test =
   for x in lines(filename):
     let marker = x.find(cursorMarker)+1
     if marker > 0:
-      markers.add filename & ";" & dest & ":" & $i & ":" & $marker
+      markers.add "\"" & filename & "\";\"" & dest & "\":" & $i & ":" & $marker
       tmp.writeLine x.replace(cursorMarker, "")
     else:
       tmp.writeLine x
@@ -90,7 +90,7 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  for x in walkFiles("tests/t*.nim"):
+  for x in walkFiles(getAppDir() / "tests/t*.nim"):
     echo "Test ", x
     failures += runTest(expandFilename(x))
   if failures > 0:

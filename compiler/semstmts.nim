@@ -820,7 +820,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
           if containsOrIncl(c.includedFiles, f):
             localError(n.info, errRecursiveDependencyX, f.toFilename)
           else:
-            let code = gIncludeFile(c.module, f, c.cache)
+            let code = gIncludeFile(c.graph, c.module, f, c.cache)
             gatherStmts c, code, result
             excl(c.includedFiles, f)
     of nkStmtList:
@@ -1418,7 +1418,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
       if containsOrIncl(c.includedFiles, f):
         localError(n.info, errRecursiveDependencyX, f.toFilename)
       else:
-        addSon(result, semStmt(c, gIncludeFile(c.module, f, c.cache)))
+        addSon(result, semStmt(c, gIncludeFile(c.graph, c.module, f, c.cache)))
         excl(c.includedFiles, f)
 
 proc setLine(n: PNode, info: TLineInfo) =

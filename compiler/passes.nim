@@ -13,7 +13,7 @@
 import
   strutils, lists, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, rodread, idgen
+  nimsets, syntaxes, times, rodread, idgen, modulegraphs
 
 type
   TPassContext* = object of RootObj # the pass's context
@@ -21,9 +21,9 @@ type
 
   PPassContext* = ref TPassContext
 
-  TPassOpen* = proc (module: PSym; cache: IdentCache): PPassContext {.nimcall.}
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext {.nimcall.}
   TPassOpenCached* =
-    proc (module: PSym, rd: PRodReader): PPassContext {.nimcall.}
+    proc (graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext {.nimcall.}
   TPassClose* = proc (p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
@@ -48,8 +48,8 @@ proc makePass*(open: TPassOpen = nil,
 
 # the semantic checker needs these:
 var
-  gImportModule*: proc (m: PSym, fileIdx: int32; cache: IdentCache): PSym {.nimcall.}
-  gIncludeFile*: proc (m: PSym, fileIdx: int32; cache: IdentCache): PNode {.nimcall.}
+  gImportModule*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PSym {.nimcall.}
+  gIncludeFile*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PNode {.nimcall.}
 
 # implementation
 
@@ -90,29 +90,32 @@ proc registerPass*(p: TPass) =
   gPasses[gPassesLen] = p
   inc(gPassesLen)
 
-proc carryPass*(p: TPass, module: PSym; cache: IdentCache;
+proc carryPass*(g: ModuleGraph; p: TPass, module: PSym; cache: IdentCache;
                 m: TPassData): TPassData =
-  var c = p.open(module, cache)
+  var c = p.open(g, module, cache)
   result.input = p.process(c, m.input)
   result.closeOutput = if p.close != nil: p.close(c, m.closeOutput)
                        else: m.closeOutput
 
-proc carryPasses*(nodes: PNode, module: PSym; cache: IdentCache; passes: TPasses) =
+proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
+                  cache: IdentCache; passes: TPasses) =
   var passdata: TPassData
   passdata.input = nodes
   for pass in passes:
-    passdata = carryPass(pass, module, cache, passdata)
+    passdata = carryPass(g, pass, module, cache, passdata)
 
-proc openPasses(a: var TPassContextArray, module: PSym; cache: IdentCache) =
+proc openPasses(g: ModuleGraph; a: var TPassContextArray;
+                module: PSym; cache: IdentCache) =
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].open):
-      a[i] = gPasses[i].open(module, cache)
+      a[i] = gPasses[i].open(g, module, cache)
     else: a[i] = nil
 
-proc openPassesCached(a: var TPassContextArray, module: PSym, rd: PRodReader) =
+proc openPassesCached(g: ModuleGraph; a: var TPassContextArray, module: PSym,
+                      rd: PRodReader) =
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].openCached):
-      a[i] = gPasses[i].openCached(module, rd)
+      a[i] = gPasses[i].openCached(g, module, rd)
       if a[i] != nil:
         a[i].fromCache = true
     else:
@@ -155,7 +158,7 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
     importStmt.addSon str
     if not processTopLevelStmt(importStmt, a): break
 
-proc processModule*(module: PSym, stream: PLLStream,
+proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
                     rd: PRodReader; cache: IdentCache): bool {.discardable.} =
   var
     p: TParsers
@@ -163,7 +166,7 @@ proc processModule*(module: PSym, stream: PLLStream,
     s: PLLStream
     fileIdx = module.fileIdx
   if rd == nil:
-    openPasses(a, module, cache)
+    openPasses(graph, a, module, cache)
     if stream == nil:
       let filename = fileIdx.toFullPathConsiderDirty
       s = llStreamOpen(filename, fmRead)
@@ -203,7 +206,7 @@ proc processModule*(module: PSym, stream: PLLStream,
     # id synchronization point for more consistent code generation:
     idSynchronizationPoint(1000)
   else:
-    openPassesCached(a, module, rd)
+    openPassesCached(graph, a, module, rd)
     var n = loadInitSection(rd)
     for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)

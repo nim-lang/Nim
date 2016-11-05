@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2012 Andreas Rumpf
+#        (c) Copyright 2016 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,7 +13,8 @@ import
   strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef
+  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
+  modulegraphs
 
 type
   TOptionEntry* = object of lists.TListEntry # entries to put on a
@@ -107,6 +108,7 @@ type
                             op: TTypeAttachedOp; col: int): PSym {.nimcall.}
     selfName*: PIdent
     cache*: IdentCache
+    graph*: ModuleGraph
     signatures*: TStrTable
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
@@ -151,7 +153,7 @@ proc newOptionEntry*(): POptionEntry =
   result.dynlib = nil
   result.notes = gNotes
 
-proc newContext*(module: PSym; cache: IdentCache): PContext =
+proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
   new(result)
   result.ambiguousSymbols = initIntSet()
   initLinkedList(result.optionStack)
@@ -166,6 +168,7 @@ proc newContext*(module: PSym; cache: IdentCache): PContext =
   result.generics = @[]
   result.unknownIdents = initIntSet()
   result.cache = cache
+  result.graph = graph
   initStrTable(result.signatures)
 
 

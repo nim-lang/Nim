@@ -18,6 +18,8 @@ import
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
   semparallel, lowerings, pluginsupport, plugins.active
 
+from modulegraphs import ModuleGraph
+
 when defined(nimfix):
   import nimfix.prettybase
 
@@ -398,8 +400,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         addSon(n, prc.ast)
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(module: PSym; cache: IdentCache): PPassContext =
-  var c = newContext(module, cache)
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+  var c = newContext(graph, module, cache)
   if c.p != nil: internalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
@@ -428,8 +430,8 @@ proc myOpen(module: PSym; cache: IdentCache): PPassContext =
     gNotes = ForeignPackageNotes
   result = c
 
-proc myOpenCached(module: PSym; rd: PRodReader): PPassContext =
-  result = myOpen(module, rd.cache)
+proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
+  result = myOpen(graph, module, rd.cache)
   for m in items(rd.methods): methodDef(m, true)
 
 proc isImportSystemStmt(n: PNode): bool =
