@@ -12,6 +12,8 @@
 import
   os, options, ast, astalgo, msgs, ropes, idents, passes, importer
 
+from modulegraphs import ModuleGraph
+
 proc generateDot*(project: string)
 
 type
@@ -46,7 +48,7 @@ proc generateDot(project: string) =
       rope(changeFileExt(extractFilename(project), "")), gDotGraph],
             changeFileExt(project, "dot"))
 
-proc myOpen(module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module

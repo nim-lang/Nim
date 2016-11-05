@@ -14,14 +14,14 @@ when defined(gcc) and defined(windows):
     {.link: "icons/nim_icon.o".}
 
 when defined(amd64) and defined(windows) and defined(vcc):
-  {.link: "icons/nim-amd64-windows-vcc.res" .}
+  {.link: "icons/nim-amd64-windows-vcc.res".}
 when defined(i386) and defined(windows) and defined(vcc):
-  {.link: "icons/nim-i386-windows-vcc.res" .}
+  {.link: "icons/nim-i386-windows-vcc.res".}
 
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt, service,
-  nodejs, scriptconfig, idents
+  nodejs, scriptconfig, idents, modulegraphs
 
 when hasTinyCBackend:
   import tccgen
@@ -73,7 +73,7 @@ proc handleCmdLine(cache: IdentCache) =
     processCmdLine(passCmd2, "")
     if options.command == "":
       rawMessage(errNoCommand, command)
-    mainCommand(cache)
+    mainCommand(newModuleGraph(), cache)
     if optHints in gOptions and hintGCStats in gNotes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:

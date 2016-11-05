@@ -27,7 +27,7 @@ proc parseTest(filename: string): Test =
   for x in lines(filename):
     let marker = x.find(cursorMarker)+1
     if marker > 0:
-      markers.add filename & ";" & dest & ":" & $i & ":" & $marker
+      markers.add "\"" & filename & "\";\"" & dest & "\":" & $i & ":" & $marker
       tmp.writeLine x.replace(cursorMarker, "")
     else:
       tmp.writeLine x

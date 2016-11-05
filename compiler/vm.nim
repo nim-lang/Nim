@@ -24,6 +24,8 @@ import
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 
+from modulegraphs import ModuleGraph
+
 when hasFFI:
   import evalffi
 
@@ -1516,7 +1518,7 @@ proc setupGlobalCtx(module: PSym; cache: IdentCache) =
   else:
     refresh(globalCtx, module)
 
-proc myOpen(module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowFFI, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())

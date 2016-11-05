@@ -35,6 +35,8 @@ import
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
   intsets, cgmeth, lowerings
 
+from modulegraphs import ModuleGraph
+
 type
   TTarget = enum
     targetJS, targetPHP
@@ -2272,11 +2274,11 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     for obj, content in items(globals.classes):
       genClass(obj, content, ext)
 
-proc myOpenCached(s: PSym, rd: PRodReader): PPassContext =
+proc myOpenCached(graph: ModuleGraph; s: PSym, rd: PRodReader): PPassContext =
   internalError("symbol files are not possible with the JS code generator")
   result = nil
 
-proc myOpen(s: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; s: PSym; cache: IdentCache): PPassContext =
   var r = newModule(s)
   r.target = if gCmd == cmdCompileToPHP: targetPHP else: targetJS
   result = r

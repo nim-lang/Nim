@@ -17,7 +17,7 @@ import compiler/options, compiler/commands, compiler/modules, compiler/sem,
   compiler/passes, compiler/passaux, compiler/msgs, compiler/nimconf,
   compiler/extccomp, compiler/condsyms, compiler/lists,
   compiler/sigmatch, compiler/ast, compiler/scriptconfig,
-  compiler/idents
+  compiler/idents, compiler/modulegraphs
 
 when defined(windows):
   import winlean
@@ -128,19 +128,19 @@ proc findNode(n: PNode): PSym =
       let res = n.sons[i].findNode
       if res != nil: return res
 
-proc symFromInfo(gTrackPos: TLineInfo): PSym =
-  let m = getModule(gTrackPos.fileIndex)
+proc symFromInfo(graph: ModuleGraph; gTrackPos: TLineInfo): PSym =
+  let m = graph.getModule(gTrackPos.fileIndex)
   #echo m.isNil, " I knew it ", gTrackPos.fileIndex
   if m != nil and m.ast != nil:
     result = m.ast.findNode
 
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
-             cache: IdentCache) =
+             graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
     logStr("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile & "[" & $line & ":" & $col & "]")
   gIdeCmd = cmd
   if cmd == ideUse and suggestVersion != 2:
-    modules.resetAllModules()
+    graph.resetAllModules()
   var isKnownFile = true
   let dirtyIdx = file.fileInfoIdx(isKnownFile)
 
@@ -152,23 +152,26 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   if suggestVersion < 2:
     usageSym = nil
   if not isKnownFile:
-    compileProject(cache)
+    graph.compileProject(cache)
   if suggestVersion == 2 and gIdeCmd in {ideUse, ideDus} and
       dirtyfile.len == 0:
     discard "no need to recompile anything"
   else:
-    resetModule dirtyIdx
-    if dirtyIdx != gProjectMainIdx:
-      resetModule gProjectMainIdx
-    compileProject(cache, dirtyIdx)
+    #resetModule dirtyIdx
+    #if dirtyIdx != gProjectMainIdx:
+    #  resetModule gProjectMainIdx
+    graph.markDirty dirtyIdx
+    graph.markClientsDirty dirtyIdx
+    graph.compileProject(cache, dirtyIdx)
   if gIdeCmd in {ideUse, ideDus}:
-    let u = if suggestVersion >= 2: symFromInfo(gTrackPos) else: usageSym
+    let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: usageSym
     if u != nil:
       listUsages(u)
     else:
       localError(gTrackPos, "found no symbol at this position " & $gTrackPos)
 
-proc executeEpc(cmd: IdeCmd, args: SexpNode; cache: IdentCache) =
+proc executeEpc(cmd: IdeCmd, args: SexpNode;
+                graph: ModuleGraph; cache: IdentCache) =
   let
     file = args[0].getStr
     line = args[1].getNum
@@ -176,7 +179,7 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode; cache: IdentCache) =
   var dirtyfile = ""
   if len(args) > 3:
     dirtyfile = args[3].getStr(nil)
-  execute(cmd, file, dirtyfile, int(line), int(column), cache)
+  execute(cmd, file, dirtyfile, int(line), int(column), graph, cache)
 
 proc returnEpc(socket: var Socket, uid: BiggestInt, s: SexpNode|string,
                return_symbol = "return") =
@@ -192,7 +195,7 @@ template sendEpc(results: typed, tdef, hook: untyped) =
       else: s
     )
 
-  executeEpc(gIdeCmd, args, cache)
+  executeEpc(gIdeCmd, args, graph, cache)
   let res = sexp(results)
   if gLogging:
     logStr($res)
@@ -215,7 +218,7 @@ proc connectToNextFreePort(server: Socket, host: string): Port =
   let (_, port) = server.getLocalAddr
   result = port
 
-proc parseCmdLine(cmd: string; cache: IdentCache) =
+proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   template toggle(sw) =
     if sw in gGlobalOptions:
       excl(gGlobalOptions, sw)
@@ -256,25 +259,25 @@ proc parseCmdLine(cmd: string; cache: IdentCache) =
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
 
-  execute(gIdeCmd, orig, dirtyfile, line, col-1, cache)
+  execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
 
-proc serveStdin(cache: IdentCache) =
+proc serveStdin(graph: ModuleGraph; cache: IdentCache) =
   if gEmitEof:
     echo DummyEof
     while true:
       let line = readLine(stdin)
-      parseCmdLine line, cache
+      parseCmdLine line, graph, cache
       echo DummyEof
       flushFile(stdout)
   else:
     echo Help
     var line = ""
     while readLineFromStdin("> ", line):
-      parseCmdLine line, cache
+      parseCmdLine line, graph, cache
       echo ""
       flushFile(stdout)
 
-proc serveTcp(cache: IdentCache) =
+proc serveTcp(graph: ModuleGraph; cache: IdentCache) =
   var server = newSocket()
   server.bindAddr(gPort, gAddress)
   var inp = "".TaintedString
@@ -288,12 +291,12 @@ proc serveTcp(cache: IdentCache) =
     accept(server, stdoutSocket)
 
     stdoutSocket.readLine(inp)
-    parseCmdLine inp.string, cache
+    parseCmdLine inp.string, graph, cache
 
     stdoutSocket.send("\c\L")
     stdoutSocket.close()
 
-proc serveEpc(server: Socket; cache: IdentCache) =
+proc serveEpc(server: Socket; graph: ModuleGraph; cache: IdentCache) =
   var client = newSocket()
   # Wait for connection
   accept(server, client)
@@ -346,11 +349,7 @@ proc serveEpc(server: Socket; cache: IdentCache) =
                          "unexpected call: " & epcAPI
       raise newException(EUnexpectedCommand, errMessage)
 
-template beCompatible() =
-  when compiles(modules.gFuzzyGraphChecking):
-    modules.gFuzzyGraphChecking = true
-
-proc mainCommand(cache: IdentCache) =
+proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   clearPasses()
   registerPass verbosePass
   registerPass semPass
@@ -368,26 +367,23 @@ proc mainCommand(cache: IdentCache) =
 
   case gMode
   of mstdin:
-    beCompatible()
-    compileProject(cache)
+    compileProject(graph, cache)
     #modules.gFuzzyGraphChecking = false
-    serveStdin(cache)
+    serveStdin(graph, cache)
   of mtcp:
     # until somebody accepted the connection, produce no output (logging is too
     # slow for big projects):
     msgs.writelnHook = proc (msg: string) = discard
-    beCompatible()
-    compileProject(cache)
+    compileProject(graph, cache)
     #modules.gFuzzyGraphChecking = false
-    serveTcp(cache)
+    serveTcp(graph, cache)
   of mepc:
-    beCompatible()
     var server = newSocket()
     let port = connectToNextFreePort(server, "localhost")
     server.listen()
     echo port
-    compileProject(cache)
-    serveEpc(server, cache)
+    compileProject(graph, cache)
+    serveEpc(server, graph, cache)
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
@@ -464,7 +460,9 @@ proc handleCmdLine(cache: IdentCache) =
     extccomp.initVars()
     processCmdLine(passCmd2, "")
 
-    mainCommand(cache)
+    let graph = newModuleGraph()
+    graph.suggestMode = true
+    mainCommand(graph, cache)
 
 when false:
   proc quitCalled() {.noconv.} =

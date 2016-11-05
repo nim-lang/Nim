@@ -162,7 +162,7 @@ proc importModuleAs(n: PNode, realModule: PSym): PSym =
 proc myImportModule(c: PContext, n: PNode): PSym =
   var f = checkModuleName(n)
   if f != InvalidFileIDX:
-    result = importModuleAs(n, gImportModule(c.module, f, c.cache))
+    result = importModuleAs(n, gImportModule(c.graph, c.module, f, c.cache))
     # we cannot perform this check reliably because of
     # test: modules/import_in_config)
     if result.info.fileIndex == c.module.info.fileIndex and

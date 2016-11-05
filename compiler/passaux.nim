@@ -12,7 +12,9 @@
 import
   strutils, ast, astalgo, passes, idents, msgs, options, idgen
 
-proc verboseOpen(s: PSym; cache: IdentCache): PPassContext =
+from modulegraphs import ModuleGraph
+
+proc verboseOpen(graph: ModuleGraph; s: PSym; cache: IdentCache): PPassContext =
   #MessageOut('compiling ' + s.name.s);
   result = nil                # we don't need a context
   rawMessage(hintProcessing, s.name.s)
