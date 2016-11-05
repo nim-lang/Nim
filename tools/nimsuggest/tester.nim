@@ -7,7 +7,7 @@ import os, osproc, strutils, streams, re
 
 type
   Test = object
-    cmd: string
+    cmd, dest: string
     script: seq[(string, string)]
 
 const
@@ -17,17 +17,17 @@ const
 proc parseTest(filename: string): Test =
   const cursorMarker = "#[!]#"
   let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
-  let dest = getTempDir() / extractFilename(filename)
-  result.cmd = nimsug & " --tester " & dest
+  result.dest = getTempDir() / extractFilename(filename)
+  result.cmd = nimsug & " --tester " & result.dest
   result.script = @[]
-  var tmp = open(dest, fmWrite)
+  var tmp = open(result.dest, fmWrite)
   var specSection = 0
   var markers = newSeq[string]()
   var i = 1
   for x in lines(filename):
     let marker = x.find(cursorMarker)+1
     if marker > 0:
-      markers.add "\"" & filename & "\";\"" & dest & "\":" & $i & ":" & $marker
+      markers.add "\"" & filename & "\";\"" & result.dest & "\":" & $i & ":" & $marker
       tmp.writeLine x.replace(cursorMarker, "")
     else:
       tmp.writeLine x
@@ -36,6 +36,8 @@ proc parseTest(filename: string): Test =
     elif specSection == 1:
       if x.startsWith("$nimsuggest"):
         result.cmd = x % ["nimsuggest", nimsug, "file", filename]
+      elif x.startsWith("!edit"):
+        result.script.add((x, ""))
       elif x.startsWith(">"):
         # since 'markers' here are not complete yet, we do the $substitutions
         # afterwards
@@ -49,6 +51,18 @@ proc parseTest(filename: string): Test =
   # now that we know the markers, substitute them:
   for a in mitems(result.script):
     a[0] = a[0] % markers
+
+proc edit(tmpfile, cmd: string) =
+  let x = cmd.splitWhitespace()
+  let f = if x.len >= 4: x[3] else: tmpfile
+  try:
+    let content = readFile(f)
+    let newcontent = content.replace(x[1], x[2])
+    if content == newcontent:
+      quit "wrong test case: edit had no effect"
+    writeFile(f, newcontent)
+  except IOError:
+    quit "cannot edit file " & tmpfile
 
 proc smartCompare(pattern, x: string): bool =
   if pattern.contains('*'):
@@ -69,17 +83,20 @@ proc runTest(filename: string): int =
     while outp.readLine(a):
       if a == DummyEof: break
     for req, resp in items(s.script):
-      inp.writeLine(req)
-      inp.flush()
-      var answer = ""
-      while outp.readLine(a):
-        if a == DummyEof: break
-        answer.add a
-        answer.add '\L'
-      if resp != answer and not smartCompare(resp, answer):
-        report.add "\nTest failed: " & filename
-        report.add "\n  Expected:  " & resp
-        report.add "\n  But got:   " & answer
+      if req.startsWith("!edit"):
+        edit(s.dest, req)
+      else:
+        inp.writeLine(req)
+        inp.flush()
+        var answer = ""
+        while outp.readLine(a):
+          if a == DummyEof: break
+          answer.add a
+          answer.add '\L'
+        if resp != answer and not smartCompare(resp, answer):
+          report.add "\nTest failed: " & filename
+          report.add "\n  Expected:  " & resp
+          report.add "\n  But got:   " & answer
   finally:
     inp.writeLine("quit")
     inp.flush()
