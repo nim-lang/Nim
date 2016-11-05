@@ -11,7 +11,7 @@ type
     script: seq[(string, string)]
 
 const
-  curDir = when defined(windows): "" else: "./"
+  curDir = when defined(windows): "" else: ""
   DummyEof = "!EOF!"
 
 proc parseTest(filename: string): Test =
