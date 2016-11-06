@@ -158,8 +158,8 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     discard "no need to recompile anything"
   else:
     let modIdx = graph.parentModule(dirtyIdx)
-    graph.markDirty modIdx
-    graph.markClientsDirty modIdx
+    graph.markDirty dirtyIdx
+    graph.markClientsDirty dirtyIdx
     if gIdeCmd != ideMod:
       graph.compileProject(cache, modIdx)
   if gIdeCmd in {ideUse, ideDus}:
