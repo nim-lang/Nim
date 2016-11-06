@@ -156,7 +156,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)
 
   # ensure we load 'system.nim' again for the real non-config stuff!
-  #resetAllModulesHard()
+  resetSystemArtifacts()
   vm.globalCtx = nil
   # do not remove the defined symbols
   #initDefines()

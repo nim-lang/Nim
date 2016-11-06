@@ -118,6 +118,9 @@ when false:
     gMemCacheData[fileIdx].needsRecompile = No
     return No
 
+proc resetSystemArtifacts*() =
+  magicsys.resetSysTypes()
+
 proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
