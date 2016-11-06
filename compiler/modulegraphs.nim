@@ -25,7 +25,7 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets
+import ast, intsets, tables
 
 type
   ModuleGraph* = ref object
@@ -34,6 +34,8 @@ type
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
+    inclToMod*: Table[int32, int32] # mapping of include file to the
+                                    # first module that included it
 
 {.this: g.}
 
@@ -42,11 +44,13 @@ proc newModuleGraph*(): ModuleGraph =
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.modules = @[]
+  result.inclToMod = initTable[int32, int32]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
   deps = initIntSet()
   modules = @[]
+  inclToMod = initTable[int32, int32]()
 
 proc getModule*(g: ModuleGraph; fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < modules.len:
@@ -60,6 +64,18 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: int32) =
     # we compute the transitive closure later when quering the graph lazily.
     # this improve efficiency quite a lot:
     invalidTransitiveClosure = true
+
+proc addIncludeDep*(g: ModuleGraph; module, includeFile: int32) =
+  discard hasKeyOrPut(inclToMod, includeFile, module)
+
+proc parentModule*(g: ModuleGraph; fileIdx: int32): int32 =
+  ## returns 'fileIdx' if the file belonging to this index is
+  ## directly used as a module or else the module that first
+  ## references this include file.
+  if fileIdx >= 0 and fileIdx < modules.len and modules[fileIdx] != nil:
+    result = fileIdx
+  else:
+    result = inclToMod.getOrDefault(fileIdx)
 
 proc transitiveClosure(g: var IntSet; n: int) =
   # warshall's algorithm

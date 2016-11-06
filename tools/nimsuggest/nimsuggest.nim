@@ -157,13 +157,11 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
       dirtyfile.len == 0:
     discard "no need to recompile anything"
   else:
-    #resetModule dirtyIdx
-    #if dirtyIdx != gProjectMainIdx:
-    #  resetModule gProjectMainIdx
-    graph.markDirty dirtyIdx
-    graph.markClientsDirty dirtyIdx
+    let modIdx = graph.parentModule(dirtyIdx)
+    graph.markDirty modIdx
+    graph.markClientsDirty modIdx
     if gIdeCmd != ideMod:
-      graph.compileProject(cache, dirtyIdx)
+      graph.compileProject(cache, modIdx)
   if gIdeCmd in {ideUse, ideDus}:
     let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: usageSym
     if u != nil:

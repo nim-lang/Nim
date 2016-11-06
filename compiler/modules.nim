@@ -208,6 +208,7 @@ proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
                     cache: IdentCache): PNode {.procvar.} =
   result = syntaxes.parseFile(fileIdx, cache)
   graph.addDep(s, fileIdx)
+  graph.addIncludeDep(s.position.int32, fileIdx)
 
 proc compileSystemModule*(graph: ModuleGraph; cache: IdentCache) =
   if magicsys.systemModule == nil:
