@@ -32,12 +32,6 @@ proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.benign.} =
       genericDeepCopyAux(dest, src, m)
   of nkNone: sysAssert(false, "genericDeepCopyAux")
 
-proc copyDeepString(src: NimString): NimString {.inline.} =
-  if src != nil:
-    result = rawNewStringNoInit(src.len)
-    result.len = src.len
-    c_memcpy(result.data, src.data, src.len + 1)
-
 proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
   var
     d = cast[ByteAddress](dest)
@@ -70,10 +64,11 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
   of tyObject:
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
-    var pint = cast[ptr PNimType](dest)
-    pint[] = cast[ptr PNimType](src)[]
     if mt.base != nil:
       genericDeepCopyAux(dest, src, mt.base)
+    else:
+      var pint = cast[ptr PNimType](dest)
+      pint[] = cast[ptr PNimType](src)[]
     genericDeepCopyAux(dest, src, mt.node)
   of tyTuple:
     genericDeepCopyAux(dest, src, mt.node)
@@ -103,16 +98,16 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
         else:
           let realType = x.typ
           let z = newObj(realType, realType.base.size)
-
           unsureAsgnRef(cast[PPointer](dest), z)
           x.typ = cast[PNimType](cast[int](z) or 1)
           genericDeepCopyAux(z, s2, realType.base)
           x.typ = realType
       else:
-        let realType = mt
-        let z = newObj(realType, realType.base.size)
+        let size = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[].size
+                   else: mt.base.size
+        let z = newObj(mt, size)
         unsureAsgnRef(cast[PPointer](dest), z)
-        genericDeepCopyAux(z, s2, realType.base)
+        genericDeepCopyAux(z, s2, mt.base)
   of tyPtr:
     # no cycle check here, but also not really required
     let s2 = cast[PPointer](src)[]
@@ -124,7 +119,9 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
     copyMem(dest, src, mt.size)
 
 proc genericDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+  GC_disable()
   genericDeepCopyAux(dest, src, mt)
+  GC_enable()
 
 proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   # also invoked for 'string'

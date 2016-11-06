@@ -281,7 +281,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
   assertReply(await(ftp.expectReply()), "226")
 
 proc defaultOnProgressChanged*(total, progress: BiggestInt,
-    speed: float): Future[void] {.nimcall,gcsafe.} =
+    speed: float): Future[void] {.nimcall,gcsafe,procvar.} =
   ## Default FTP ``onProgressChanged`` handler. Does nothing.
   result = newFuture[void]()
   #echo(total, " ", progress, " ", speed)
@@ -354,6 +354,20 @@ proc store*(ftp: AsyncFtpClient, file, dest: string,
 
   await doUpload(ftp, destFile, onProgressChanged)
 
+proc rename*(ftp: AsyncFtpClient, nameFrom: string, nameTo: string) {.async.} =
+  ## Rename a file or directory on the remote FTP Server from current name
+  ## ``name_from`` to new name ``name_to``
+  assertReply(await ftp.send("RNFR " & name_from), "350")
+  assertReply(await ftp.send("RNTO " & name_to), "250")
+
+proc removeFile*(ftp: AsyncFtpClient, filename: string) {.async.} =
+  ## Delete a file ``filename`` on the remote FTP server
+  assertReply(await ftp.send("DELE " & filename), "250")
+
+proc removeDir*(ftp: AsyncFtpClient, dir: string) {.async.} =
+  ## Delete a directory ``dir`` on the remote FTP server
+  assertReply(await ftp.send("RMD " & dir), "250")
+
 proc newAsyncFtpClient*(address: string, port = Port(21),
     user, pass = ""): AsyncFtpClient =
   ## Creates a new ``AsyncFtpClient`` object.
@@ -373,6 +387,11 @@ when not defined(testing) and isMainModule:
     echo await ftp.listDirs()
     await ftp.store("payload.jpg", "payload.jpg")
     await ftp.retrFile("payload.jpg", "payload2.jpg")
+    await ftp.rename("payload.jpg", "payload_renamed.jpg")
+    await ftp.store("payload.jpg", "payload_remove.jpg")
+    await ftp.removeFile("payload_remove.jpg")
+    await ftp.createDir("deleteme")
+    await ftp.removeDir("deleteme")
     echo("Finished")
 
   waitFor main(ftp)

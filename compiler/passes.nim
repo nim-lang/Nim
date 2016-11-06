@@ -13,7 +13,7 @@
 import
   strutils, lists, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, rodread, idgen
+  nimsets, syntaxes, times, rodread, idgen, modulegraphs
 
 type
   TPassContext* = object of RootObj # the pass's context
@@ -21,9 +21,9 @@ type
 
   PPassContext* = ref TPassContext
 
-  TPassOpen* = proc (module: PSym): PPassContext {.nimcall.}
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext {.nimcall.}
   TPassOpenCached* =
-    proc (module: PSym, rd: PRodReader): PPassContext {.nimcall.}
+    proc (graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext {.nimcall.}
   TPassClose* = proc (p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
@@ -46,16 +46,10 @@ proc makePass*(open: TPassOpen = nil,
   result.close = close
   result.process = process
 
-  # This implements a memory preserving scheme: Top level statements are
-  # processed in a pipeline. The compiler never looks at a whole module
-  # any longer. However, this is simple to change, as new passes may perform
-  # whole program optimizations. For now, we avoid it to save a lot of memory.
-proc processModule*(module: PSym, stream: PLLStream, rd: PRodReader)
-
 # the semantic checker needs these:
 var
-  gImportModule*: proc (m: PSym, fileIdx: int32): PSym {.nimcall.}
-  gIncludeFile*: proc (m: PSym, fileIdx: int32): PNode {.nimcall.}
+  gImportModule*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PSym {.nimcall.}
+  gIncludeFile*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PNode {.nimcall.}
 
 # implementation
 
@@ -96,28 +90,32 @@ proc registerPass*(p: TPass) =
   gPasses[gPassesLen] = p
   inc(gPassesLen)
 
-proc carryPass*(p: TPass, module: PSym, m: TPassData): TPassData =
-  var c = p.open(module)
+proc carryPass*(g: ModuleGraph; p: TPass, module: PSym; cache: IdentCache;
+                m: TPassData): TPassData =
+  var c = p.open(g, module, cache)
   result.input = p.process(c, m.input)
   result.closeOutput = if p.close != nil: p.close(c, m.closeOutput)
                        else: m.closeOutput
 
-proc carryPasses*(nodes: PNode, module: PSym, passes: TPasses) =
+proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
+                  cache: IdentCache; passes: TPasses) =
   var passdata: TPassData
   passdata.input = nodes
   for pass in passes:
-    passdata = carryPass(pass, module, passdata)
+    passdata = carryPass(g, pass, module, cache, passdata)
 
-proc openPasses(a: var TPassContextArray, module: PSym) =
+proc openPasses(g: ModuleGraph; a: var TPassContextArray;
+                module: PSym; cache: IdentCache) =
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].open):
-      a[i] = gPasses[i].open(module)
+      a[i] = gPasses[i].open(g, module, cache)
     else: a[i] = nil
 
-proc openPassesCached(a: var TPassContextArray, module: PSym, rd: PRodReader) =
+proc openPassesCached(g: ModuleGraph; a: var TPassContextArray, module: PSym,
+                      rd: PRodReader) =
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].openCached):
-      a[i] = gPasses[i].openCached(module, rd)
+      a[i] = gPasses[i].openCached(g, module, rd)
       if a[i] != nil:
         a[i].fromCache = true
     else:
@@ -160,24 +158,25 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
     importStmt.addSon str
     if not processTopLevelStmt(importStmt, a): break
 
-proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
+proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
+                    rd: PRodReader; cache: IdentCache): bool {.discardable.} =
   var
     p: TParsers
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
   if rd == nil:
-    openPasses(a, module)
+    openPasses(graph, a, module, cache)
     if stream == nil:
       let filename = fileIdx.toFullPathConsiderDirty
       s = llStreamOpen(filename, fmRead)
       if s == nil:
         rawMessage(errCannotOpenFile, filename)
-        return
+        return false
     else:
       s = stream
     while true:
-      openParsers(p, fileIdx, s)
+      openParsers(p, fileIdx, s, cache)
 
       if sfSystemModule notin module.flags:
         # XXX what about caching? no processing then? what if I change the
@@ -207,8 +206,8 @@ proc processModule(module: PSym, stream: PLLStream, rd: PRodReader) =
     # id synchronization point for more consistent code generation:
     idSynchronizationPoint(1000)
   else:
-    openPassesCached(a, module, rd)
+    openPassesCached(graph, a, module, rd)
     var n = loadInitSection(rd)
     for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)
-
+  result = true

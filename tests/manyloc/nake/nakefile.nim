@@ -1,5 +1,5 @@
 import nake
-import httpclient, zip/zipfiles, times, math, sequtils
+import httpclient, zip/zipfiles, times, random, sequtils
 nakeImports
 
 randomize()
@@ -145,7 +145,7 @@ task "download", "download game assets":
     echo "Extracted the libs dir. Copy the ones you need to this dir."
 
 task "zip-lib", "zip up the libs dir":
-  var z: TZipArchive
+  var z: ZipArchive
   if not z.open("libs-" & getDateStr() & ".zip", fmReadWrite):
     quit "Could not open zip"
   for file in walkDirRec("libs", {pcFile, pcDir}):

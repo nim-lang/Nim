@@ -15,31 +15,36 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 
 from os import getEnv, existsEnv, dirExists, fileExists, walkDir
 
-template mathop(op) {.immediate, dirty.} =
+template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
-template osop(op) {.immediate, dirty.} =
+template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
 
-template systemop(op) {.immediate, dirty.} =
+template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
-template wrap1f(op) {.immediate, dirty.} =
+template wrap1f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0)))
   mathop op
 
-template wrap2f(op) {.immediate, dirty.} =
+template wrap2f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0), getFloat(a, 1)))
   mathop op
 
-template wrap1s(op) {.immediate, dirty.} =
+template wrap1s_os(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getString(a, 0)))
   osop op
 
-template wrap2svoid(op) {.immediate, dirty.} =
+template wrap1s_system(op) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, op(getString(a, 0)))
+  systemop op
+
+template wrap2svoid_system(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     op(getString(a, 0), getString(a, 1))
   systemop op
@@ -55,34 +60,35 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
                               newStrNode(nkStrLit, f))
 
 proc registerAdditionalOps*(c: PCtx) =
-  wrap1f(sqrt)
-  wrap1f(ln)
-  wrap1f(log10)
-  wrap1f(log2)
-  wrap1f(exp)
-  wrap1f(round)
-  wrap1f(arccos)
-  wrap1f(arcsin)
-  wrap1f(arctan)
-  wrap2f(arctan2)
-  wrap1f(cos)
-  wrap1f(cosh)
-  wrap2f(hypot)
-  wrap1f(sinh)
-  wrap1f(sin)
-  wrap1f(tan)
-  wrap1f(tanh)
-  wrap2f(pow)
-  wrap1f(trunc)
-  wrap1f(floor)
-  wrap1f(ceil)
-  wrap2f(fmod)
+  wrap1f_math(sqrt)
+  wrap1f_math(ln)
+  wrap1f_math(log10)
+  wrap1f_math(log2)
+  wrap1f_math(exp)
+  wrap1f_math(round)
+  wrap1f_math(arccos)
+  wrap1f_math(arcsin)
+  wrap1f_math(arctan)
+  wrap2f_math(arctan2)
+  wrap1f_math(cos)
+  wrap1f_math(cosh)
+  wrap2f_math(hypot)
+  wrap1f_math(sinh)
+  wrap1f_math(sin)
+  wrap1f_math(tan)
+  wrap1f_math(tanh)
+  wrap2f_math(pow)
+  wrap1f_math(trunc)
+  wrap1f_math(floor)
+  wrap1f_math(ceil)
+  wrap2f_math(fmod)
 
-  wrap1s(getEnv)
-  wrap1s(existsEnv)
-  wrap1s(dirExists)
-  wrap1s(fileExists)
-  wrap2svoid(writeFile)
+  wrap1s_os(getEnv)
+  wrap1s_os(existsEnv)
+  wrap1s_os(dirExists)
+  wrap1s_os(fileExists)
+  wrap2svoid_system(writeFile)
+  wrap1s_system(readFile)
   systemop getCurrentExceptionMsg
   registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
     setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))

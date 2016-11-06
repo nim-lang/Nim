@@ -21,7 +21,7 @@ const
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
   leakDetector = false
-  overwriteFree = false
+  overwriteFree = defined(nimBurnFree) # overwrite memory with 0xFF before free
   trackAllocationSource = leakDetector
 
   cycleGC = true # (de)activate the cycle GC
@@ -300,7 +300,7 @@ elif defined(gogc):
   proc setStackBottom(theStackBottom: pointer) = discard
 
   proc alloc(size: Natural): pointer =
-    result = cmalloc(size)
+    result = c_malloc(size)
     if result == nil: raiseOutOfMem()
 
   proc alloc0(size: Natural): pointer =
@@ -308,13 +308,13 @@ elif defined(gogc):
     zeroMem(result, size)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    result = crealloc(p, newsize)
+    result = c_realloc(p, newsize)
     if result == nil: raiseOutOfMem()
 
-  proc dealloc(p: pointer) = cfree(p)
+  proc dealloc(p: pointer) = c_free(p)
 
   proc allocShared(size: Natural): pointer =
-    result = cmalloc(size)
+    result = c_malloc(size)
     if result == nil: raiseOutOfMem()
 
   proc allocShared0(size: Natural): pointer =
@@ -322,10 +322,10 @@ elif defined(gogc):
     zeroMem(result, size)
 
   proc reallocShared(p: pointer, newsize: Natural): pointer =
-    result = crealloc(p, newsize)
+    result = c_realloc(p, newsize)
     if result == nil: raiseOutOfMem()
 
-  proc deallocShared(p: pointer) = cfree(p)
+  proc deallocShared(p: pointer) = c_free(p)
 
   when hasThreadSupport:
     proc getFreeSharedMem(): int = discard
@@ -352,6 +352,12 @@ elif defined(gogc):
     result = newObj(typ, len * typ.base.size + GenericSeqSize)
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
+    cast[PGenericSeq](result).elemSize = typ.base.size
+
+  proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
+    result = newObj(typ, cap * typ.base.size + GenericSeqSize)
+    cast[PGenericSeq](result).len = 0
+    cast[PGenericSeq](result).reserved = cap
     cast[PGenericSeq](result).elemSize = typ.base.size
 
   proc growObj(old: pointer, newsize: int): pointer =
@@ -389,26 +395,41 @@ elif defined(nogc) and defined(useMalloc):
 
   when not defined(useNimRtl):
     proc alloc(size: Natural): pointer =
-      result = cmalloc(size)
-      if result == nil: raiseOutOfMem()
+      var x = c_malloc(size + sizeof(size))
+      if x == nil: raiseOutOfMem()
+
+      cast[ptr int](x)[] = size
+      result = cast[pointer](cast[int](x) + sizeof(size))
+
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
     proc realloc(p: pointer, newsize: Natural): pointer =
-      result = crealloc(p, newsize)
-      if result == nil: raiseOutOfMem()
-    proc dealloc(p: pointer) = cfree(p)
+      var x = cast[pointer](cast[int](p) - sizeof(newsize))
+      let oldsize = cast[ptr int](x)[]
+
+      x = c_realloc(x, newsize + sizeof(newsize))
+
+      if x == nil: raiseOutOfMem()
+
+      cast[ptr int](x)[] = newsize
+      result = cast[pointer](cast[int](x) + sizeof(newsize))
+
+      if newsize > oldsize:
+        zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+
+    proc dealloc(p: pointer) = c_free(cast[pointer](cast[int](p) - sizeof(int)))
 
     proc allocShared(size: Natural): pointer =
-      result = cmalloc(size)
+      result = c_malloc(size)
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
     proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = crealloc(p, newsize)
+      result = c_realloc(p, newsize)
       if result == nil: raiseOutOfMem()
-    proc deallocShared(p: pointer) = cfree(p)
+    proc deallocShared(p: pointer) = c_free(p)
 
     proc GC_disable() = discard
     proc GC_enable() = discard
@@ -432,6 +453,7 @@ elif defined(nogc) and defined(useMalloc):
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
+
   proc newObjNoInit(typ: PNimType, size: int): pointer =
     result = alloc(size)
 
@@ -491,6 +513,7 @@ elif defined(nogc):
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
+
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
@@ -511,11 +534,12 @@ elif defined(nogc):
   include "system/cellsets"
 
 else:
-  include "system/alloc"
+  when not defined(gcStack):
+    include "system/alloc"
 
-  include "system/cellsets"
-  when not leakDetector and not useCellIds:
-    sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
+    include "system/cellsets"
+    when not leakDetector and not useCellIds:
+      sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
   elif defined(gcStack):
@@ -528,5 +552,11 @@ else:
     include "system/gc"
   else:
     include "system/gc"
+
+when not declared(nimNewSeqOfCap):
+  proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
+    result = newObj(typ, addInt(mulInt(cap, typ.base.size), GenericSeqSize))
+    cast[PGenericSeq](result).len = 0
+    cast[PGenericSeq](result).reserved = cap
 
 {.pop.}

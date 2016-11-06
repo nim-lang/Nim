@@ -24,7 +24,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   of skMacro:
     result = semMacroExpr(c, n, orig, s)
   of skTemplate:
-    result = semTemplateExpr(c, n, s)
+    result = semTemplateExpr(c, n, s, {efFromHlo})
   else:
     result = semDirectOp(c, n, {})
   if optHints in gOptions and hintPattern in gNotes:

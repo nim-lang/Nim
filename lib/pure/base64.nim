@@ -90,6 +90,8 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
     if r+4 != result.len:
       setLen(result, r+4)
   else:
+    if r != result.len:
+      setLen(result, r)
     #assert(r == result.len)
     discard
 
@@ -162,4 +164,3 @@ when isMainModule:
                  "asure.", longText]
   for t in items(tests):
     assert decode(encode(t)) == t
-

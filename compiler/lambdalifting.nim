@@ -226,8 +226,14 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
 template isIterator*(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
 
+proc liftingHarmful(owner: PSym): bool {.inline.} =
+  ## lambda lifting can be harmful for JS-like code generators.
+  let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
+  result = gCmd in {cmdCompileToPHP, cmdCompileToJS} and not isCompileTime
+
 proc liftIterSym*(n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
+  if liftingHarmful(owner): return n
   let iter = n.sym
   assert iter.isIterator
 
@@ -716,11 +722,16 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #localError(n.info, "internal error: closure to closure created")
         # now we know better, so patch it:
         n.sons[0] = x.sons[0]
+        n.sons[1] = x.sons[1]
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let m = newSymNode(n[namePos].sym)
       m.typ = n.typ
       result = liftCapturedVars(m, owner, d, c)
+  of nkHiddenStdConv:
+    if n.len == 2:
+      n.sons[1] = liftCapturedVars(n[1], owner, d, c)
+      if n[1].kind == nkClosure: result = n[1]
   else:
     if owner.isIterator:
       if n.kind == nkYieldStmt:
@@ -833,6 +844,7 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
         nkBreakState(cl.state)
         ...
     """
+  if liftingHarmful(owner): return body
   var L = body.len
   if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
     localError(body.info, "ignored invalid for loop")

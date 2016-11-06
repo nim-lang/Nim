@@ -227,8 +227,8 @@ floating pointer values at compile time; this means expressions like
 Boolean type
 ------------
 The boolean type is named `bool`:idx: in Nim and can be one of the two
-pre-defined values ``true`` and ``false``. Conditions in while,
-if, elif, when statements need to be of type bool.
+pre-defined values ``true`` and ``false``. Conditions in ``while``,
+``if``, ``elif``, ``when``-statements need to be of type ``bool``.
 
 This condition holds::
 
@@ -390,7 +390,10 @@ i-th *unichar*. The iterator ``runes`` from the `unicode module
 
 cstring type
 ------------
-The ``cstring`` type represents a pointer to a zero-terminated char array
+
+The ``cstring`` type meaning `compatible string` is the native representation
+of a string for the compilation backend. For the C backend the ``cstring`` type
+represents a pointer to a zero-terminated char array
 compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
 interfacing with C. The index operation ``s[i]`` means the i-th *char* of
 ``s``; however no bounds checking for ``cstring`` is performed making the
@@ -421,7 +424,6 @@ string from a cstring:
   var cstr: cstring = str
   var newstr: string = $cstr
 
-
 Structured types
 ----------------
 A variable of a structured type can hold multiple values at the same
@@ -435,7 +437,9 @@ has the same type. Arrays always have a fixed length which is specified at
 compile time (except for open arrays). They can be indexed by any ordinal type.
 A parameter ``A`` may be an *open array*, in which case it is indexed by
 integers from 0 to ``len(A)-1``. An array expression may be constructed by the
-array constructor ``[]``.
+array constructor ``[]``. The element type of this array expression is
+inferred from the type of the first element. All other elements need to be
+implicitly convertable to this type.
 
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays,
@@ -459,6 +463,8 @@ Example:
     y: IntSeq
   x = [1, 2, 3, 4, 5, 6]  # [] is the array constructor
   y = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence
+
+  let z = [1.0, 2, 3, 4] # the type of z is array[0..3, float]
 
 The lower bound of an array or sequence may be received by the built-in proc
 ``low()``, the higher bound by ``high()``. The length may be
@@ -539,12 +545,12 @@ not wrapped in another implicit array construction:
   takeV([123, 2, 1]) # takeV's T is "int", not "array of int"
 
 
-``varargs[expr]`` is treated specially: It matches a variable list of arguments
+``varargs[typed]`` is treated specially: It matches a variable list of arguments
 of arbitrary type but *always* constructs an implicit array. This is required
 so that the builtin ``echo`` proc does what is expected:
 
 .. code-block:: nim
-  proc echo*(x: varargs[expr, `$`]) {...}
+  proc echo*(x: varargs[typed, `$`]) {...}
 
   echo @[1, 2, 3]
   # prints "@[1, 2, 3]" and not "123"
@@ -603,7 +609,7 @@ is similar to the ``instanceof`` operator in Java.
       age: int        # no * means that the field is hidden
 
     Student = ref object of Person # a student is a person
-      id: int                  # with an id field
+      id: int                      # with an id field
 
   var
     student: Student
@@ -694,7 +700,7 @@ branch switch ``system.reset`` has to be used.
 Set type
 --------
 
-.. include:: sets_fragment.txt
+.. include:: ../sets_fragment.txt
 
 Reference and pointer types
 ---------------------------
@@ -710,7 +716,8 @@ untraced references are *unsafe*. However for certain low-level operations
 (accessing the hardware) untraced references are unavoidable.
 
 Traced references are declared with the **ref** keyword, untraced references
-are declared with the **ptr** keyword.
+are declared with the **ptr** keyword.  In general, a `ptr T` is implicitly
+convertible to the `pointer` type.
 
 An empty subscript ``[]`` notation can be used to derefer a reference,
 the ``addr`` procedure returns the address of an item. An address is always
@@ -1082,7 +1089,7 @@ But it seems all this boilerplate code needs to be repeated for the ``Euro``
 currency. This can be solved with templates_.
 
 .. code-block:: nim
-  template additive(typ: typedesc): stmt =
+  template additive(typ: typedesc) =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
 
@@ -1090,18 +1097,18 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template multiplicative(typ, base: typedesc): stmt =
+  template multiplicative(typ, base: typedesc) =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template comparable(typ: typedesc): stmt =
+  template comparable(typ: typedesc) =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
 
-  template defineCurrency(typ, base: expr): stmt =
+  template defineCurrency(typ, base: untyped) =
     type
       typ* = distinct base
     additive(typ)
@@ -1256,4 +1263,4 @@ Is the same as:
 
 However later versions of the language might change this to mean "infer the
 parameters' types from the body". Then the above ``foo`` would be rejected as
-the parameters' types can not be infered from an empty ``discard`` statement.
+the parameters' types can not be inferred from an empty ``discard`` statement.

@@ -226,6 +226,18 @@ proc noWhitespace(n: XmlNode): bool =
 
 proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
   ## adds the textual representation of `n` to `result`.
+
+  proc addEscapedAttr(result: var string, s: string) =
+    # `addEscaped` alternative with less escaped characters.
+    # Only to be used for escaping attribute values enclosed in double quotes!
+    for c in items(s):
+      case c
+      of '<': result.add("&lt;")
+      of '>': result.add("&gt;")
+      of '&': result.add("&amp;")
+      of '"': result.add("&quot;")
+      else: result.add(c)
+
   if n == nil: return
   case n.k
   of xnElement:
@@ -236,7 +248,7 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
         result.add(' ')
         result.add(key)
         result.add("=\"")
-        result.addEscaped(val)
+        result.addEscapedAttr(val)
         result.add('"')
     if n.len > 0:
       result.add('>')
@@ -381,6 +393,5 @@ proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   findAll(n, tag, result)
 
 when isMainModule:
-  let link = "http://nim-lang.org"
-  assert """<a href="""" & escape(link) & """">Nim rules.</a>""" ==
+  assert """<a href="http://nim-lang.org">Nim rules.</a>""" ==
     $(<>a(href="http://nim-lang.org", newText("Nim rules.")))

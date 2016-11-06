@@ -11,11 +11,21 @@
 ##
 ## This module implements boilerplate to make unit testing easy.
 ##
+## The test status and name is printed after any output or traceback.
+##
 ## Example:
 ##
 ## .. code:: nim
 ##
 ##   suite "description for this stuff":
+##     echo "suite setup: run once before the tests"
+##
+##     setup:
+##       echo "run before each test"
+##
+##     teardown:
+##       echo "run after each test":
+##
 ##     test "essential truths":
 ##       # give up and stop if this fails
 ##       require(true)
@@ -30,6 +40,13 @@
 ##       let v = @[1, 2, 3]  # you can do initialization here
 ##       expect(IndexError):
 ##         discard v[4]
+##
+##     echo "suite teardown: run once after the tests"
+##
+##
+## Tests can be nested, however failure of a nested test will not mark the
+## parent test as failed. Setup and teardown are inherited. Setup can be
+## overridden locally.
 
 import
   macros
@@ -41,7 +58,11 @@ when not defined(ECMAScript):
   import terminal
 
 type
-  TestStatus* = enum OK, FAILED ## The status of a test when it is done.
+  TestStatus* = enum ## The status of a test when it is done.
+    OK,
+    FAILED,
+    SKIPPED
+
   OutputLevel* = enum  ## The output verbosity of the tests.
     PRINT_ALL,         ## Print as much as possible.
     PRINT_FAILURES,    ## Print only the failed tests.
@@ -73,7 +94,16 @@ checkpoints = @[]
 proc shouldRun(testName: string): bool =
   result = true
 
-template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
+proc startSuite(name: string) =
+  template rawPrint() = echo("\n[Suite] ", name) 
+  when not defined(ECMAScript):
+    if colorOutput:
+      styledEcho styleBright, fgBlue, "\n[Suite] ", fgWhite, name
+    else: rawPrint()
+  else: rawPrint()
+
+
+template suite*(name, body) {.dirty.} =
   ## Declare a test suite identified by `name` with optional ``setup``
   ## and/or ``teardown`` section.
   ##
@@ -99,35 +129,43 @@ template suite*(name: expr, body: stmt): stmt {.immediate, dirty.} =
   ##
   ## .. code-block::
   ##
-  ##  [OK] 2 + 2 = 4
-  ##  [OK] (2 + -2) != 4
+  ##  [Suite] test suite for addition
+  ##    [OK] 2 + 2 = 4
+  ##    [OK] (2 + -2) != 4
   block:
-    template setup(setupBody: stmt): stmt {.immediate, dirty.} =
+    bind startSuite
+    template setup(setupBody: untyped) {.dirty.} =
       var testSetupIMPLFlag = true
-      template testSetupIMPL: stmt {.immediate, dirty.} = setupBody
+      template testSetupIMPL: untyped {.dirty.} = setupBody
 
-    template teardown(teardownBody: stmt): stmt {.immediate, dirty.} =
+    template teardown(teardownBody: untyped) {.dirty.} =
       var testTeardownIMPLFlag = true
-      template testTeardownIMPL: stmt {.immediate, dirty.} = teardownBody
+      template testTeardownIMPL: untyped {.dirty.} = teardownBody
 
+    let testInSuiteImplFlag = true
+    startSuite name
     body
 
-proc testDone(name: string, s: TestStatus) =
+proc testDone(name: string, s: TestStatus, indent: bool) =
   if s == FAILED:
     programResult += 1
-
+  let prefix = if indent: "  " else: ""
   if outputLevel != PRINT_NONE and (outputLevel == PRINT_ALL or s == FAILED):
-    template rawPrint() = echo("[", $s, "] ", name)
+    template rawPrint() = echo(prefix, "[", $s, "] ", name)
     when not defined(ECMAScript):
       if colorOutput and not defined(ECMAScript):
-        var color = (if s == OK: fgGreen else: fgRed)
-        styledEcho styleBright, color, "[", $s, "] ", fgWhite, name
+        var color = case s
+                    of OK: fgGreen
+                    of FAILED: fgRed
+                    of SKIPPED: fgYellow
+                    else: fgWhite
+        styledEcho styleBright, color, prefix, "[", $s, "] ", fgWhite, name
       else:
         rawPrint()
     else:
       rawPrint()
 
-template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
+template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
   ##
   ## .. code-block:: nim
@@ -160,7 +198,7 @@ template test*(name: expr, body: stmt): stmt {.immediate, dirty.} =
       fail()
 
     finally:
-      testDone name, testStatusIMPL
+      testDone name, testStatusIMPL, declared(testInSuiteImplFlag)
 
 proc checkpoint*(msg: string) =
   ## Set a checkpoint identified by `msg`. Upon test failure all
@@ -190,8 +228,9 @@ template fail* =
   ##
   ## outputs "Checkpoint A" before quitting.
   bind checkpoints
+  let prefix = if declared(testInSuiteImplFlag): "    " else: ""
   for msg in items(checkpoints):
-    echo msg
+    echo prefix, msg
 
   when not defined(ECMAScript):
     if abortOnError: quit(1)
@@ -203,7 +242,23 @@ template fail* =
 
   checkpoints = @[]
 
-macro check*(conditions: stmt): stmt {.immediate.} =
+template skip* =
+  ## Mark the test as skipped. Should be used directly
+  ## in case when it is not possible to perform test
+  ## for reasons depending on outer environment,
+  ## or certain application logic conditions or configurations.
+  ## The test code is still executed.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  if not isGLConextCreated():
+  ##    skip()
+  bind checkpoints
+
+  testStatusIMPL = SKIPPED
+  checkpoints = @[]
+
+macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
   ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
@@ -213,12 +268,12 @@ macro check*(conditions: stmt): stmt {.immediate.} =
   ##
   ##  import strutils
   ##
-  ##  check("AKB48".toLower() == "akb48")
+  ##  check("AKB48".toLowerAscii() == "akb48")
   ##
   ##  let teams = {'A', 'K', 'B', '4', '8'}
   ##
   ##  check:
-  ##    "AKB48".toLower() == "akb48"
+  ##    "AKB48".toLowerAscii() == "akb48"
   ##    'C' in teams
   let checked = callsite()[1]
   var
@@ -236,31 +291,34 @@ macro check*(conditions: stmt): stmt {.immediate.} =
 
   proc inspectArgs(exp: NimNode): NimNode =
     result = copyNimTree(exp)
-    for i in countup(1, exp.len - 1):
-      if exp[i].kind notin nnkLiterals:
-        inc counter
-        var arg = newIdentNode(":p" & $counter)
-        var argStr = exp[i].toStrLit
-        var paramAst = exp[i]
-        if exp[i].kind == nnkIdent:
-          argsPrintOuts.add getAst(print(argStr, paramAst))
-        if exp[i].kind in nnkCallKinds:
-          var callVar = newIdentNode(":c" & $counter)
-          argsAsgns.add getAst(asgn(callVar, paramAst))
-          result[i] = callVar
-          argsPrintOuts.add getAst(print(argStr, callVar))
-        if exp[i].kind == nnkExprEqExpr:
-          # ExprEqExpr
-          #   Ident !"v"
-          #   IntLit 2
-          result[i] = exp[i][1]
-        if exp[i].typekind notin {ntyTypeDesc}:
-          argsAsgns.add getAst(asgn(arg, paramAst))
-          argsPrintOuts.add getAst(print(argStr, arg))
-          if exp[i].kind != nnkExprEqExpr:
-            result[i] = arg
-          else:
-            result[i][1] = arg
+    if exp[0].kind == nnkIdent and
+        $exp[0] in ["and", "or", "not", "in", "notin", "==", "<=",
+                    ">=", "<", ">", "!=", "is", "isnot"]:
+      for i in countup(1, exp.len - 1):
+        if exp[i].kind notin nnkLiterals:
+          inc counter
+          var arg = newIdentNode(":p" & $counter)
+          var argStr = exp[i].toStrLit
+          var paramAst = exp[i]
+          if exp[i].kind == nnkIdent:
+            argsPrintOuts.add getAst(print(argStr, paramAst))
+          if exp[i].kind in nnkCallKinds:
+            var callVar = newIdentNode(":c" & $counter)
+            argsAsgns.add getAst(asgn(callVar, paramAst))
+            result[i] = callVar
+            argsPrintOuts.add getAst(print(argStr, callVar))
+          if exp[i].kind == nnkExprEqExpr:
+            # ExprEqExpr
+            #   Ident !"v"
+            #   IntLit 2
+            result[i] = exp[i][1]
+          if exp[i].typekind notin {ntyTypeDesc}:
+            argsAsgns.add getAst(asgn(arg, paramAst))
+            argsPrintOuts.add getAst(print(argStr, arg))
+            if exp[i].kind != nnkExprEqExpr:
+              result[i] = arg
+            else:
+              result[i][1] = arg
 
   case checked.kind
   of nnkCallKinds:
@@ -292,7 +350,7 @@ macro check*(conditions: stmt): stmt {.immediate.} =
 
     result = getAst(rewrite(checked, checked.lineinfo, checked.toStrLit))
 
-template require*(conditions: stmt): stmt {.immediate.} =
+template require*(conditions: untyped) =
   ## Same as `check` except any failed test causes the program to quit
   ## immediately. Any teardown statements are not executed and the failed
   ## test output is not generated.
@@ -302,7 +360,7 @@ template require*(conditions: stmt): stmt {.immediate.} =
     check conditions
   abortOnError = savedAbortOnError
 
-macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
+macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## Test if `body` raises an exception found in the passed `exceptions`.
   ## The test passes if the raised exception is part of the acceptable
   ## exceptions. Otherwise, it fails.
@@ -310,7 +368,7 @@ macro expect*(exceptions: varargs[expr], body: stmt): stmt {.immediate.} =
   ##
   ## .. code-block:: nim
   ##
-  ##  import math
+  ##  import math, random
   ##  proc defectiveRobot() =
   ##    randomize()
   ##    case random(1..4)

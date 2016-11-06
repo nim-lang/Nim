@@ -4,6 +4,9 @@ Special Operators
 dot operators
 -------------
 
+**Note**: Dot operators are still experimental and so need to be enabled
+via ``{.experimental.}``.
+
 Nim offers a special family of dot operators that can be used to
 intercept and rewrite proc call and field access attempts, referring
 to previously undeclared symbol names. They can be used to provide a

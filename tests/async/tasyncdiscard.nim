@@ -10,7 +10,7 @@ discard """
 6
 '''
 """
-import asyncio, asyncdispatch, asyncnet
+import asyncdispatch, asyncnet
 
 proc main {.async.} =
   proc f: Future[int] {.async.} =
@@ -36,4 +36,4 @@ proc main {.async.} =
   discard await g()
   echo 6
 
-asyncCheck main()
+waitFor(main())

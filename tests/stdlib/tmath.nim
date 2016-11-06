@@ -1,4 +1,4 @@
-import math
+import math, random
 import unittest
 import sets
 

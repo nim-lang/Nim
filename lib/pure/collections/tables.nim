@@ -16,6 +16,39 @@
 ## semantics, this means that ``=`` performs a copy of the hash table.
 ## For **reference** semantics use the ``Ref`` variant: ``TableRef``,
 ## ``OrderedTableRef``, ``CountTableRef``.
+## To give an example, when `a` is a Table, then `var b = a` gives `b`
+## as a new independent table. b is initialised with the contents of `a`.
+## Changing `b` does not affect `a` and vice versa:
+##
+## .. code-block::
+##   import tables
+##
+##   var
+##     a = {1: "one", 2: "two"}.toTable  # creates a Table
+##     b = a
+##
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
+##
+##   b[3] = "three"
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two, 3: three}
+##   echo a == b  # output: false
+##
+## On the other hand, when `a` is a TableRef instead, then changes to `b` also affect `a`.
+## Both `a` and `b` reference the same data structure:
+##
+## .. code-block::
+##   import tables
+##
+##   var
+##     a = {1: "one", 2: "two"}.newTable  # creates a TableRef
+##     b = a
+##
+##   echo a, b  # output: {1: one, 2: two}{1: one, 2: two}
+##
+##   b[3] = "three"
+##   echo a, b  # output: {1: one, 2: two, 3: three}{1: one, 2: two, 3: three}
+##   echo a == b  # output: true
+##
 ##
 ## If you are using simple standard types like ``int`` or ``string`` for the
 ## keys of the table you won't have any problems, but as soon as you try to use
@@ -80,10 +113,18 @@ type
 
 {.deprecated: [TTable: Table, PTable: TableRef].}
 
-template maxHash(t): expr {.immediate.} = high(t.data)
-template dataLen(t): expr = len(t.data)
+template maxHash(t): untyped = high(t.data)
+template dataLen(t): untyped = len(t.data)
 
 include tableimpl
+
+proc clear*[A, B](t: var Table[A, B]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+
+proc clear*[A, B](t: TableRef[A, B]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
 
 proc rightSize*(count: Natural): int {.inline.} =
   ## Return the value of `initialSize` to support `count` items.
@@ -98,7 +139,7 @@ proc len*[A, B](t: Table[A, B]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template get(t, key): untyped {.immediate.} =
+template get(t, key): untyped =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   mixin rawGet
@@ -111,7 +152,7 @@ template get(t, key): untyped {.immediate.} =
     else:
       raise newException(KeyError, "key not found")
 
-template getOrDefaultImpl(t, key): untyped {.immediate.} =
+template getOrDefaultImpl(t, key): untyped =
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -135,6 +176,51 @@ proc mget*[A, B](t: var Table[A, B], key: A): var B {.deprecated.} =
   get(t, key)
 
 proc getOrDefault*[A, B](t: Table[A, B], key: A): B = getOrDefaultImpl(t, key)
+
+template withValue*[A, B](t: var Table[A, B], key: A,
+                          value, body: untyped) =
+  ## retrieves the value at ``t[key]``.
+  ## `value` can be modified in the scope of the ``withValue`` call.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   sharedTable.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     value.name = "username"
+  ##     value.uid = 1000
+  ##
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    var value {.inject.} = addr(t.data[index].val)
+    body
+
+template withValue*[A, B](t: var Table[A, B], key: A,
+                          value, body1, body2: untyped) =
+  ## retrieves the value at ``t[key]``.
+  ## `value` can be modified in the scope of the ``withValue`` call.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   table.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     value.name = "username"
+  ##     value.uid = 1000
+  ##   do:
+  ##     # block is executed when ``key`` not in ``t``
+  ##     raise newException(KeyError, "Key not found")
+  ##
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    var value {.inject.} = addr(t.data[index].val)
+    body1
+  else:
+    body2
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
@@ -188,9 +274,12 @@ proc enlarge[A, B](t: var Table[A, B]) =
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
   for i in countup(0, high(n)):
-    if isFilled(n[i].hcode):
-      var j = -1 - rawGetKnownHC(t, n[i].key, n[i].hcode)
-      rawInsert(t, t.data, n[i].key, n[i].val, n[i].hcode, j)
+    let eh = n[i].hcode
+    if isFilled(eh):
+      var j: Hash = eh and maxHash(t)
+      while isFilled(t.data[j].hcode):
+        j = nextTry(j, maxHash(t))
+      rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
@@ -229,7 +318,7 @@ proc toTable*[A, B](pairs: openArray[(A,
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
 
-template dollarImpl(): stmt {.dirty.} =
+template dollarImpl(): untyped {.dirty.} =
   if t.len == 0:
     result = "{:}"
   else:
@@ -249,18 +338,19 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
   result = t[].hasKey(key)
 
-template equalsImpl() =
+template equalsImpl(s, t: typed): typed =
   if s.counter == t.counter:
     # different insertion orders mean different 'data' seqs, so we have
     # to use the slow route here:
     for key, val in s:
-      # prefix notation leads to automatic dereference in case of PTable
       if not t.hasKey(key): return false
-      if t[key] != val: return false
+      if t.getOrDefault(key) != val: return false
     return true
 
 proc `==`*[A, B](s, t: Table[A, B]): bool =
-  equalsImpl()
+  ## The `==` operator for hash tables. Returns ``true`` iff the content of both
+  ## tables contains the same key-value pairs. Insert order does not matter.
+  equalsImpl(s, t)
 
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.
@@ -348,9 +438,12 @@ proc `$`*[A, B](t: TableRef[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: TableRef[A, B]): bool =
+  ## The `==` operator for hash tables. Returns ``true`` iff either both tables
+  ## are ``nil`` or none is ``nil`` and the content of both tables contains the
+  ## same key-value pairs. Insert order does not matter.
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
-  else: equalsImpl()
+  else: equalsImpl(s[], t[])
 
 proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): TableRef[C, B] =
   ## Index the collection with the proc provided.
@@ -376,7 +469,17 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+proc clear*[A, B](t: var OrderedTable[A, B]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+  t.first = -1
+  t.last = -1
+
+proc clear*[A, B](t: var OrderedTableRef[A, B]) =
+  ## Resets the table so that is is empty.
+  clear(t[])
+
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -512,6 +615,15 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
 
+proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
+  ## The `==` operator for ordered hash tables. Returns true iff both the
+  ## content and the order are equal.
+  if s.counter == t.counter:
+    forAllOrderedPairs:
+      if s.data[h] != t.data[h]: return false
+    result = true
+  else: result = false
+
 proc sort*[A, B](t: var OrderedTable[A, B],
                  cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
@@ -562,7 +674,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: stmt) {.dirty, immediate.} =
+template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -644,7 +756,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
   ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   new(result)
-  result[] = initOrderedTable[A, B]()
+  result[] = initOrderedTable[A, B](initialSize)
 
 proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
@@ -655,6 +767,14 @@ proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The `$` operator for ordered hash tables.
   dollarImpl()
 
+proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
+  ## The `==` operator for ordered hash tables. Returns true iff either both
+  ## tables are ``nil`` or none is ``nil`` and the content and the order of
+  ## both are equal.
+  if isNil(s): result = isNil(t)
+  elif isNil(t): result = false
+  else: result = s[] == t[]
+
 proc sort*[A, B](t: OrderedTableRef[A, B],
                  cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
@@ -662,6 +782,27 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   ## call but key lookup and insertions remain possible after `sort` (in
   ## contrast to the `sort` for count tables).
   t[].sort(cmp)
+
+proc del*[A, B](t: var OrderedTable[A, B], key: A) =
+  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  var prev = -1
+  let hc = hash(key)
+  forAllOrderedPairs:
+    if t.data[h].hcode == hc:
+      if t.first == h:
+        t.first = t.data[h].next
+      else:
+        t.data[prev].next = t.data[h].next
+      var zeroValue : type(t.data[h])
+      t.data[h] = zeroValue
+      dec t.counter
+      break
+    else:
+      prev = h
+
+proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
+  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  t[].del(key)
 
 # ------------------------------ count tables -------------------------------
 
@@ -677,6 +818,11 @@ type
 proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
+
+proc clear*[A](t: var CountTable[A] | CountTableRef[A]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+  t.counter = 0
 
 iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
@@ -711,7 +857,7 @@ proc rawGet[A](t: CountTable[A], key: A): int =
     h = nextTry(h, high(t.data))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template ctget(t, key: untyped): untyped {.immediate.} =
+template ctget(t, key: untyped): untyped =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:
@@ -796,11 +942,17 @@ proc `$`*[A](t: CountTable[A]): string =
   ## The `$` operator for count tables.
   dollarImpl()
 
+proc `==`*[A](s, t: CountTable[A]): bool =
+  ## The `==` operator for count tables. Returns ``true`` iff both tables
+  ## contain the same keys with the same count. Insert order does not matter.
+  equalsImpl(s, t)
+
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
+    if t.data[index].val == 0: dec(t.counter)
   else:
     if mustRehash(len(t.data), t.counter): enlarge(t)
     rawInsert(t, t.data, key, val)
@@ -920,6 +1072,14 @@ proc `$`*[A](t: CountTableRef[A]): string =
   ## The `$` operator for count tables.
   dollarImpl()
 
+proc `==`*[A](s, t: CountTableRef[A]): bool =
+  ## The `==` operator for count tables. Returns ``true`` iff either both tables
+  ## are ``nil`` or none is ``nil`` and both contain the same keys with the same
+  ## count. Insert order does not matter.
+  if isNil(s): result = isNil(t)
+  elif isNil(t): result = false
+  else: result = s[] == t[]
+
 proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   t[].inc(key, val)
@@ -984,6 +1144,26 @@ when isMainModule:
   s3[p1] = 30_000
   s3[p2] = 45_000
 
+  block: # Ordered table should preserve order after deletion
+    var
+      s4 = initOrderedTable[int, int]()
+    s4[1] = 1
+    s4[2] = 2
+    s4[3] = 3
+
+    var prev = 0
+    for i in s4.values:
+      doAssert(prev < i)
+      prev = i
+
+    s4.del(2)
+    doAssert(2 notin s4)
+    doAssert(s4.len == 2)
+    prev = 0
+    for i in s4.values:
+      doAssert(prev < i)
+      prev = i
+
   var
     t1 = initCountTable[string]()
     t2 = initCountTable[string]()
@@ -1040,3 +1220,12 @@ when isMainModule:
     doAssert 0 == t.getOrDefault(testKey)
     t.inc(testKey,3)
     doAssert 3 == t.getOrDefault(testKey)
+
+  # Clear tests
+  var clearTable = newTable[int, string]()
+  clearTable[42] = "asd"
+  clearTable[123123] = "piuyqwb "
+  doAssert clearTable[42] == "asd"
+  clearTable.clear()
+  doAssert(not clearTable.hasKey(123123))
+  doAssert clearTable.getOrDefault(42) == nil

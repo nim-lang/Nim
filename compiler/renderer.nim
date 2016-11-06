@@ -54,8 +54,6 @@ proc isKeyword*(i: PIdent): bool =
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
     result = true
 
-proc isKeyword*(s: string): bool = isKeyword(getIdent(s))
-
 proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   ## Returns the definition name of the symbol.
   ##
@@ -145,12 +143,6 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
       inc(g.lineLen, len(s))
   else:
     g.pendingWhitespace = s.len
-
-proc putLong(g: var TSrcGen, kind: TTokType, s: string, lineLen: int) =
-  # use this for tokens over multiple lines.
-  addPendingNL(g)
-  addTok(g, kind, s)
-  g.lineLen = lineLen
 
 proc toNimChar(c: char): string =
   case c
@@ -264,9 +256,6 @@ proc pushCom(g: var TSrcGen, n: PNode) =
 proc popAllComs(g: var TSrcGen) =
   setLen(g.comStack, 0)
 
-proc popCom(g: var TSrcGen) =
-  setLen(g.comStack, len(g.comStack) - 1)
-
 const
   Space = " "
 
@@ -298,8 +287,7 @@ proc lsub(n: PNode): int
 proc litAux(n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                          tyConst, tyMutable}:
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal}:
       result = lastSon(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n
@@ -492,7 +480,7 @@ proc fits(g: TSrcGen, x: int): bool =
 
 type
   TSubFlag = enum
-    rfLongMode, rfNoIndent, rfInConstExpr
+    rfLongMode, rfInConstExpr
   TSubFlags = set[TSubFlag]
   TContext = tuple[spacing: int, flags: TSubFlags]
 
@@ -675,16 +663,6 @@ proc gfor(g: var TSrcGen, n: PNode) =
   gcoms(g)
   gstmts(g, n.sons[length - 1], c)
 
-proc gmacro(g: var TSrcGen, n: PNode) =
-  var c: TContext
-  initContext(c)
-  gsub(g, n.sons[0])
-  putWithSpace(g, tkColon, ":")
-  if longMode(n) or (lsub(n.sons[1]) + g.lineLen > MaxLineLen):
-    incl(c.flags, rfLongMode)
-  gcoms(g)
-  gsons(g, n, c, 1)
-
 proc gcase(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
@@ -704,7 +682,10 @@ proc gcase(g: var TSrcGen, n: PNode) =
 proc gproc(g: var TSrcGen, n: PNode) =
   var c: TContext
   if n.sons[namePos].kind == nkSym:
-    put(g, tkSymbol, renderDefinitionName(n.sons[namePos].sym))
+    let s = n.sons[namePos].sym
+    put(g, tkSymbol, renderDefinitionName(s))
+    if sfGenSym in s.flags:
+      put(g, tkIntLit, $s.id)
   else:
     gsub(g, n.sons[namePos])
 
@@ -712,7 +693,11 @@ proc gproc(g: var TSrcGen, n: PNode) =
     gpattern(g, n.sons[patternPos])
   let oldCheckAnon = g.checkAnon
   g.checkAnon = true
-  gsub(g, n.sons[genericParamsPos])
+  if renderNoBody in g.flags and n[miscPos].kind != nkEmpty and
+      n[miscPos][1].kind != nkEmpty:
+    gsub(g, n[miscPos][1])
+  else:
+    gsub(g, n.sons[genericParamsPos])
   g.checkAnon = oldCheckAnon
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])
@@ -794,7 +779,8 @@ proc gident(g: var TSrcGen, n: PNode) =
   else:
     t = tkOpr
   put(g, t, s)
-  if n.kind == nkSym and renderIds in g.flags: put(g, tkIntLit, $n.sym.id)
+  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
+    put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -802,7 +788,7 @@ proc doParamsAux(g: var TSrcGen, params: PNode) =
     gsemicolon(g, params, 1)
     put(g, tkParRi, ")")
 
-  if params.sons[0].kind != nkEmpty:
+  if params.len > 0 and params.sons[0].kind != nkEmpty:
     putWithSpace(g, tkOpr, "->")
     gsub(g, params.sons[0])
 

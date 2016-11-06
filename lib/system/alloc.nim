@@ -27,15 +27,14 @@ const
 
 type
   PTrunk = ptr Trunk
-  Trunk {.final.} = object
+  Trunk = object
     next: PTrunk         # all nodes are connected with this pointer
     key: int             # start address at bit 0
     bits: array[0..IntsPerTrunk-1, int] # a bit vector
 
   TrunkBuckets = array[0..255, PTrunk]
-  IntSet {.final.} = object
+  IntSet = object
     data: TrunkBuckets
-{.deprecated: [TIntSet: IntSet, TTrunk: Trunk, TTrunkBuckets: TrunkBuckets].}
 
 type
   AlignType = BiggestFloat
@@ -64,8 +63,6 @@ type
     next, prev: PBigChunk    # chunks of the same (or bigger) size
     align: int
     data: AlignType      # start of usable memory
-{.deprecated: [TAlignType: AlignType, TFreeCell: FreeCell, TBaseChunk: BaseChunk,
-              TBigChunk: BigChunk, TSmallChunk: SmallChunk].}
 
 template smallChunkOverhead(): expr = sizeof(SmallChunk)-sizeof(AlignType)
 template bigChunkOverhead(): expr = sizeof(BigChunk)-sizeof(AlignType)
@@ -79,18 +76,18 @@ template bigChunkOverhead(): expr = sizeof(BigChunk)-sizeof(AlignType)
 
 type
   PLLChunk = ptr LLChunk
-  LLChunk {.pure.} = object ## *low-level* chunk
+  LLChunk = object ## *low-level* chunk
     size: int                # remaining size
     acc: int                 # accumulator
     next: PLLChunk           # next low-level chunk; only needed for dealloc
 
   PAvlNode = ptr AvlNode
-  AvlNode {.pure, final.} = object
+  AvlNode = object
     link: array[0..1, PAvlNode] # Left (0) and right (1) links
     key, upperBound: int
     level: int
 
-  MemRegion {.final, pure.} = object
+  MemRegion = object
     minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
     llmem: PLLChunk
@@ -99,12 +96,13 @@ type
     freeChunksList: PBigChunk # XXX make this a datastructure with O(1) access
     chunkStarts: IntSet
     root, deleted, last, freeAvlNodes: PAvlNode
+    locked: bool # if locked, we cannot free pages.
 {.deprecated: [TLLChunk: LLChunk, TAvlNode: AvlNode, TMemRegion: MemRegion].}
 
 # shared:
 var
-  bottomData: AvlNode
-  bottom: PAvlNode
+  bottomData {.threadvar.}: AvlNode
+  bottom {.threadvar.}: PAvlNode
 
 {.push stack_trace: off.}
 proc initAllocator() =
@@ -234,7 +232,8 @@ proc isSmallChunk(c: PChunk): bool {.inline.} =
 proc chunkUnused(c: PChunk): bool {.inline.} =
   result = not c.used
 
-iterator allObjects(m: MemRegion): pointer {.inline.} =
+iterator allObjects(m: var MemRegion): pointer {.inline.} =
+  m.locked = true
   for s in elements(m.chunkStarts):
     # we need to check here again as it could have been modified:
     if s in m.chunkStarts:
@@ -252,6 +251,7 @@ iterator allObjects(m: MemRegion): pointer {.inline.} =
         else:
           let c = cast[PBigChunk](c)
           yield addr(c.data)
+  m.locked = false
 
 proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
                       magic: "Plugin", compileTime.}
@@ -311,7 +311,7 @@ proc freeOsChunks(a: var MemRegion, p: pointer, size: int) =
   osDeallocPages(p, size)
   decCurrMem(a, size)
   dec(a.freeMem, size)
-  #c_fprintf(c_stdout, "[Alloc] back to OS: %ld\n", size)
+  #c_fprintf(stdout, "[Alloc] back to OS: %ld\n", size)
 
 proc isAccessible(a: MemRegion, p: pointer): bool {.inline.} =
   result = contains(a.chunkStarts, pageIndex(p))
@@ -324,9 +324,9 @@ proc contains[T](list, x: T): bool =
 
 proc writeFreeList(a: MemRegion) =
   var it = a.freeChunksList
-  c_fprintf(c_stdout, "freeChunksList: %p\n", it)
+  c_fprintf(stdout, "freeChunksList: %p\n", it)
   while it != nil:
-    c_fprintf(c_stdout, "it: %p, next: %p, prev: %p\n",
+    c_fprintf(stdout, "it: %p, next: %p, prev: %p\n",
               it, it.next, it.prev)
     it = it.next
 
@@ -385,7 +385,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
           excl(a.chunkStarts, pageIndex(c))
           c = cast[PBigChunk](le)
 
-  if c.size < ChunkOsReturn or doNotUnmap:
+  if c.size < ChunkOsReturn or doNotUnmap or a.locked:
     incl(a, a.chunkStarts, pageIndex(c))
     updatePrevSize(a, c, c.size)
     listAdd(a.freeChunksList, c)
@@ -442,26 +442,29 @@ proc getSmallChunk(a: var MemRegion): PSmallChunk =
 # -----------------------------------------------------------------------------
 proc isAllocatedPtr(a: MemRegion, p: pointer): bool {.benign.}
 
-proc allocInv(a: MemRegion): bool =
-  ## checks some (not all yet) invariants of the allocator's data structures.
-  for s in low(a.freeSmallChunks)..high(a.freeSmallChunks):
-    var c = a.freeSmallChunks[s]
-    while not (c == nil):
-      if c.next == c:
-        echo "[SYSASSERT] c.next == c"
-        return false
-      if not (c.size == s * MemAlign):
-        echo "[SYSASSERT] c.size != s * MemAlign"
-        return false
-      var it = c.freeList
-      while not (it == nil):
-        if not (it.zeroField == 0):
-          echo "[SYSASSERT] it.zeroField != 0"
-          c_printf("%ld %p\n", it.zeroField, it)
+when true:
+  template allocInv(a: MemRegion): bool = true
+else:
+  proc allocInv(a: MemRegion): bool =
+    ## checks some (not all yet) invariants of the allocator's data structures.
+    for s in low(a.freeSmallChunks)..high(a.freeSmallChunks):
+      var c = a.freeSmallChunks[s]
+      while not (c == nil):
+        if c.next == c:
+          echo "[SYSASSERT] c.next == c"
           return false
-        it = it.next
-      c = c.next
-  result = true
+        if not (c.size == s * MemAlign):
+          echo "[SYSASSERT] c.size != s * MemAlign"
+          return false
+        var it = c.freeList
+        while not (it == nil):
+          if not (it.zeroField == 0):
+            echo "[SYSASSERT] it.zeroField != 0"
+            c_printf("%ld %p\n", it.zeroField, it)
+            return false
+          it = it.next
+        c = c.next
+    result = true
 
 proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(allocInv(a), "rawAlloc: begin")
@@ -469,7 +472,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
   var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= requestedSize, "insufficient allocated size!")
-  #c_fprintf(c_stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
+  #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
   if size <= SmallChunkSize-smallChunkOverhead():
     # allocate a small block: for small chunks, we use only its next pointer
     var s = size div MemAlign
@@ -490,7 +493,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert(allocInv(a), "rawAlloc: begin c != nil")
       sysAssert c.next != c, "rawAlloc 5"
       #if c.size != size:
-      #  c_fprintf(c_stdout, "csize: %lld; size %lld\n", c.size, size)
+      #  c_fprintf(stdout, "csize: %lld; size %lld\n", c.size, size)
       sysAssert c.size == size, "rawAlloc 6"
       if c.freeList == nil:
         sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,

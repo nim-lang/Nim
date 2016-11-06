@@ -1,0 +1,83 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2016 Joey Payne
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+## This module contains various string utility routines that are uncommonly
+## used in comparison to `strutils <strutils.html>`_.
+
+import strutils
+
+{.deadCodeElim: on.}
+
+proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
+  procvar.} =
+  ## Expand tab characters in `s` by `tabSize` spaces
+
+  result = newStringOfCap(s.len + s.len shr 2)
+  var pos = 0
+
+  template addSpaces(n) =
+    for j in 0 ..< n:
+      result.add(' ')
+      pos += 1
+
+  for i in 0 ..< len(s):
+    let c = s[i]
+    if c == '\t':
+      let
+        denominator = if tabSize > 0: tabSize else: 1
+        numSpaces = tabSize - pos mod denominator
+
+      addSpaces(numSpaces)
+    else:
+      result.add(c)
+      pos += 1
+    if c == '\l':
+      pos = 0
+
+proc partition*(s: string, sep: string,
+                right: bool = false): (string, string, string)
+                {.noSideEffect, procvar.} =
+  ## Split the string at the first or last occurrence of `sep` into a 3-tuple
+  ##
+  ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or
+  ## (`s`, "", "") if `sep` is not found and `right` is false or
+  ## ("", "", `s`) if `sep` is not found and `right` is true
+  let position = if right: s.rfind(sep) else: s.find(sep)
+  if position != -1:
+    return (s[0 ..< position], sep, s[position + sep.len ..< s.len])
+  return if right: ("", "", s) else: (s, "", "")
+
+proc rpartition*(s: string, sep: string): (string, string, string)
+                {.noSideEffect, procvar.} =
+  ## Split the string at the last occurrence of `sep` into a 3-tuple
+  ##
+  ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or
+  ## ("", "", `s`) if `sep` is not found
+  return partition(s, sep, right = true)
+
+when isMainModule:
+  doAssert expandTabs("\t", 4) == "    "
+  doAssert expandTabs("\tfoo\t", 4) == "    foo "
+  doAssert expandTabs("\tfoo\tbar", 4) == "    foo bar"
+  doAssert expandTabs("\tfoo\tbar\t", 4) == "    foo bar "
+  doAssert expandTabs("", 4) == ""
+  doAssert expandTabs("", 0) == ""
+  doAssert expandTabs("\t\t\t", 0) == ""
+
+  doAssert partition("foo:bar", ":") == ("foo", ":", "bar")
+  doAssert partition("foobarbar", "bar") == ("foo", "bar", "bar")
+  doAssert partition("foobarbar", "bank") == ("foobarbar", "", "")
+  doAssert partition("foobarbar", "foo") == ("", "foo", "barbar")
+  doAssert partition("foofoobar", "bar") == ("foofoo", "bar", "")
+
+  doAssert rpartition("foo:bar", ":") == ("foo", ":", "bar")
+  doAssert rpartition("foobarbar", "bar") == ("foobar", "bar", "")
+  doAssert rpartition("foobarbar", "bank") == ("", "", "foobarbar")
+  doAssert rpartition("foobarbar", "foo") == ("", "foo", "barbar")
+  doAssert rpartition("foofoobar", "bar") == ("foofoo", "bar", "")

@@ -22,7 +22,11 @@ proc getModuleName*(n: PNode): string =
   # The proc won't perform any checks that the path is actually valid
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
-    result = unixToNativePath(n.strVal)
+    try:
+      result = pathSubs(n.strVal, n.info.toFullPath().splitFile().dir)
+    except ValueError:
+      localError(n.info, "invalid path: " & n.strVal)
+      result = n.strVal
   of nkIdent:
     result = n.ident.s
   of nkSym:
@@ -158,8 +162,11 @@ proc importModuleAs(n: PNode, realModule: PSym): PSym =
 proc myImportModule(c: PContext, n: PNode): PSym =
   var f = checkModuleName(n)
   if f != InvalidFileIDX:
-    result = importModuleAs(n, gImportModule(c.module, f))
-    if result.info.fileIndex == n.info.fileIndex:
+    result = importModuleAs(n, gImportModule(c.graph, c.module, f, c.cache))
+    # we cannot perform this check reliably because of
+    # test: modules/import_in_config)
+    if result.info.fileIndex == c.module.info.fileIndex and
+        result.info.fileIndex == n.info.fileIndex:
       localError(n.info, errGenerated, "A module cannot import itself")
     if sfDeprecated in result.flags:
       message(n.info, warnDeprecated, result.name.s)
@@ -172,7 +179,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
     var m = myImportModule(c, n.sons[i])
     if m != nil:
       # ``addDecl`` needs to be done before ``importAllSymbols``!
-      addDecl(c, m)             # add symbol to symbol table of module
+      addDecl(c, m, n.info)             # add symbol to symbol table of module
       importAllSymbolsExcept(c, m, emptySet)
       #importForwarded(c, m.ast, emptySet)
 
@@ -182,7 +189,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)
-    addDecl(c, m)               # add symbol to symbol table of module
+    addDecl(c, m, n.info)               # add symbol to symbol table of module
     for i in countup(1, sonsLen(n) - 1):
       if n.sons[i].kind != nkNilLit:
         importSymbol(c, n.sons[i], m)
@@ -193,7 +200,7 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)
-    addDecl(c, m)               # add symbol to symbol table of module
+    addDecl(c, m, n.info)               # add symbol to symbol table of module
     var exceptSet = initIntSet()
     for i in countup(1, sonsLen(n) - 1):
       let ident = lookups.considerQuotedIdent(n.sons[i])

@@ -15,7 +15,7 @@ import
 from msgs import TLineInfo
 
 type
-  TLabel* = Rope             # for the C generator a label is just a rope
+  TLabel* = Rope              # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
     cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
@@ -89,28 +89,32 @@ type
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
     gcFrameId*: Natural       # for the GC stack marking
-    gcFrameType*: Rope       # the struct {} we put the GC markers into
+    gcFrameType*: Rope        # the struct {} we put the GC markers into
 
   TTypeSeq* = seq[PType]
+
+  Codegenflag* = enum
+    preventStackTrace,  # true if stack traces need to be prevented
+    usesThreadVars,     # true if the module uses a thread var
+    frameDeclared,      # hack for ROD support so that we don't declare
+                        # a frame var twice in an init proc
+    isHeaderFile,       # C source file is the header file
+    includesStringh,    # C source file already includes ``<string.h>``
+    objHasKidsValid     # whether we can rely on tfObjHasKids
   TCGen = object of TPassContext # represents a C source file
+    s*: TCFileSections        # sections of the C file
+    flags*: set[Codegenflag]
     module*: PSym
     filename*: string
-    s*: TCFileSections        # sections of the C file
-    preventStackTrace*: bool  # true if stack traces need to be prevented
-    usesThreadVars*: bool     # true if the module uses a thread var
-    frameDeclared*: bool      # hack for ROD support so that we don't declare
-                              # a frame var twice in an init proc
-    isHeaderFile*: bool       # C source file is the header file
-    includesStringh*: bool    # C source file already includes ``<string.h>``
-    objHasKidsValid*: bool    # whether we can rely on tfObjHasKids
     cfilename*: string        # filename of the module (including path,
                               # without extension)
+    tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TIdTable      # cache the generated types
     forwTypeCache*: TIdTable  # cache for forward declarations of types
-    declaredThings*: IntSet  # things we have declared in this .c file
-    declaredProtos*: IntSet  # prototypes we have declared in this .c file
+    declaredThings*: IntSet   # things we have declared in this .c file
+    declaredProtos*: IntSet   # prototypes we have declared in this .c file
     headerFiles*: TLinkedList # needed headers to include
-    typeInfoMarker*: IntSet  # needed for generating type information
+    typeInfoMarker*: IntSet   # needed for generating type information
     initProc*: BProc          # code for init procedure
     postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc

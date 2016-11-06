@@ -12,7 +12,7 @@ include "system/inclrtl"
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
 
-## .. include:: ../doc/astspec.txt
+## .. include:: ../../doc/astspec.txt
 
 type
   NimNodeKind* = enum
@@ -78,7 +78,7 @@ type
     nnkBreakState
 
   NimNodeKinds* = set[NimNodeKind]
-  NimTypeKind* = enum
+  NimTypeKind* = enum  # some types are no longer used, see ast.nim
     ntyNone, ntyBool, ntyChar, ntyEmpty,
     ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
     ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
@@ -90,9 +90,9 @@ type
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
-    ntyBigNum,
-    ntyConst, ntyMutable, ntyVarargs,
-    ntyIter,
+    ntyUnused0, ntyUnused1, ntyUnused2,
+    ntyVarargs,
+    ntyUnused,
     ntyError,
     ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,
     ntyAnd, ntyOr, ntyNot
@@ -197,6 +197,18 @@ proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
   ## means the node should have been obtained via `getType`.
 
+proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for a specific instance
+
+proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for a specific instance
+
+proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for the implementation
+
+proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
+  ## Like getType except it includes generic parameters for the implementation
+
 proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
@@ -223,7 +235,7 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
   ## const.
   discard
 
-proc error*(msg: string) {.magic: "NError", benign.}
+proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
 proc warning*(msg: string) {.magic: "NWarning", benign.}
@@ -321,7 +333,7 @@ proc parseStmt*(s: string): NimNode {.noSideEffect, compileTime.} =
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 
-proc getAst*(macroOrTemplate: expr): NimNode {.magic: "ExpandToAst", noSideEffect.}
+proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
   ## Example:
   ##
@@ -330,7 +342,7 @@ proc getAst*(macroOrTemplate: expr): NimNode {.magic: "ExpandToAst", noSideEffec
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-proc quote*(bl: stmt, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
+proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate NimNode expressions
@@ -365,19 +377,19 @@ proc expectKind*(n: NimNode, k: NimNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check the AST that is passed to them.
-  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind)
+  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind, n)
 
 proc expectMinLen*(n: NimNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len < min: error("macro expects a node with " & $min & " children")
+  if n.len < min: error("macro expects a node with " & $min & " children", n)
 
 proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## checks that `n` has exactly `len` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len != len: error("macro expects a node with " & $len & " children")
+  if n.len != len: error("macro expects a node with " & $len & " children", n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
@@ -496,7 +508,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
 
   add(result, ")")
 
-macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
+macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toTree` function. Printing is done *at compile time*.
   ##
@@ -504,17 +516,17 @@ macro dumpTree*(s: stmt): stmt {.immediate.} = echo s.treeRepr
   ## tree and to discover what kind of nodes must be created to represent
   ## a certain expression/statement.
 
-macro dumpLisp*(s: stmt): stmt {.immediate.} = echo s.lispRepr
+macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the `toLisp` function. Printing is done *at compile time*.
   ##
   ## See `dumpTree`.
 
-macro dumpTreeImm*(s: stmt): stmt {.immediate, deprecated.} = echo s.treeRepr
-  ## The ``immediate`` version of `dumpTree`.
+macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
+  ## Deprecated.
 
-macro dumpLispImm*(s: stmt): stmt {.immediate, deprecated.} = echo s.lispRepr
-  ## The ``immediate`` version of `dumpLisp`.
+macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
+  ## Deprecated.
 
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
@@ -651,7 +663,7 @@ proc copyChildrenTo*(src, dest: NimNode) {.compileTime.}=
   for i in 0 .. < src.len:
     dest.add src[i].copyNimTree
 
-template expectRoutine(node: NimNode): stmt =
+template expectRoutine(node: NimNode) =
   expectKind(node, RoutineNodes)
 
 proc name*(someProc: NimNode): NimNode {.compileTime.} =
@@ -680,8 +692,16 @@ proc `pragma=`*(someProc: NimNode; val: NimNode){.compileTime.}=
   assert val.kind in {nnkEmpty, nnkPragma}
   someProc[4] = val
 
+proc addPragma*(someProc, pragma: NimNode) {.compileTime.} =
+  ## Adds pragma to routine definition
+  someProc.expectRoutine
+  var pragmaNode = someProc.pragma
+  if pragmaNode.isNil or pragmaNode.kind == nnkEmpty:
+    pragmaNode = newNimNode(nnkPragma)
+    someProc.pragma = pragmaNode
+  pragmaNode.add(pragma)
 
-template badNodeKind(k; f): stmt{.immediate.} =
+template badNodeKind(k, f) =
   assert false, "Invalid node kind " & $k & " for macros.`" & $f & "`"
 
 proc body*(someProc: NimNode): NimNode {.compileTime.} =
@@ -738,20 +758,19 @@ iterator children*(n: NimNode): NimNode {.inline.} =
   for i in 0 ..< n.len:
     yield n[i]
 
-template findChild*(n: NimNode; cond: expr): NimNode {.
-  immediate, dirty.} =
+template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ## Find the first child node matching condition (or nil).
   ##
   ## .. code-block:: nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
   ##                          it.basename.ident == !"foo")
   block:
-    var result: NimNode
+    var res: NimNode
     for it in n.children:
       if cond:
-        result = it
+        res = it
         break
-    result
+    res
 
 proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
   ## Insert node B into A at pos
@@ -796,17 +815,17 @@ proc infix*(a: NimNode; op: string;
 proc unpackPostfix*(node: NimNode): tuple[node: NimNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPostfix
-  result = (node[0], $node[1])
+  result = (node[1], $node[0])
 
 proc unpackPrefix*(node: NimNode): tuple[node: NimNode; op: string] {.
   compileTime.} =
   node.expectKind nnkPrefix
-  result = (node[0], $node[1])
+  result = (node[1], $node[0])
 
 proc unpackInfix*(node: NimNode): tuple[left: NimNode; op: string;
                                         right: NimNode] {.compileTime.} =
   assert node.kind == nnkInfix
-  result = (node[0], $node[1], node[2])
+  result = (node[1], $node[0], node[2])
 
 proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for copyNimTree().
@@ -818,6 +837,8 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     else: result = c
   var i = 0
   var j = 0
+  # first char is case sensitive
+  if a[0] != b[0]: return 1
   while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo
@@ -828,14 +849,28 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     inc(i)
     inc(j)
 
-proc eqIdent* (a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   ## Check if two idents are identical.
+
+proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
+  ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
+  ## is the same as ``s``. Note that this is the preferred way to check! Most
+  ## other ways like ``node.ident`` are much more error-prone, unfortunately.
+  case node.kind
+  of nnkIdent:
+    result = node.ident == !s
+  of nnkSym:
+    result = eqIdent($node.symbol, s)
+  of nnkOpenSymChoice, nnkClosedSymChoice:
+    result = eqIdent($node[0], s)
+  else:
+    result = false
 
 proc hasArgOfName* (params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
   assert params.kind == nnkFormalParams
   for i in 1 .. <params.len:
-    template node: expr = params[i]
+    template node: untyped = params[i]
     if name.eqIdent( $ node[0]):
       return true
 
@@ -855,8 +890,32 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
 
+macro expandMacros*(body: typed): untyped =
+  ## Expands one level of macro - useful for debugging.
+  ## Can be used to inspect what happens when a macro call is expanded,
+  ## without altering its result.
+  ##
+  ## For instance,
+  ##
+  ## .. code-block:: nim
+  ##   import future, macros
+  ##
+  ##   let
+  ##     x = 10
+  ##     y = 20
+  ##   expandMacros:
+  ##     dump(x + y)
+  ##
+  ## will actually dump `x + y`, but at the same time will print at
+  ## compile time the expansion of the ``dump`` macro, which in this
+  ## case is ``debugEcho ["x + y", " = ", x + y]``.
+  template inner(x: untyped): untyped = x
+
+  result = getAst(inner(body))
+  echo result.toStrLit
+
 when not defined(booting):
-  template emit*(e: static[string]): stmt =
+  template emit*(e: static[string]): untyped {.deprecated.} =
     ## accepts a single string argument and treats it as nim code
     ## that should be inserted verbatim in the program
     ## Example:
@@ -864,6 +923,7 @@ when not defined(booting):
     ## .. code-block:: nim
     ##   emit("echo " & '"' & "hello world".toUpper & '"')
     ##
-    macro payload: stmt {.gensym.} =
+    ## Deprecated since version 0.15 since it's so rarely useful.
+    macro payload: untyped {.gensym.} =
       result = parseStmt(e)
     payload()

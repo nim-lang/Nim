@@ -172,7 +172,7 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
     if field != nil: break
     t = t.sons[0]
     if t == nil: break
-    t = t.skipTypes(abstractInst)
+    t = t.skipTypes(skipPtrs)
   #if field == nil:
   #  echo "FIELD ", b
   #  debug deref.typ
@@ -193,7 +193,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
     if result != nil: break
     t = t.sons[0]
     if t == nil: break
-    t = t.skipTypes(abstractInst)
+    t = t.skipTypes(skipPtrs)
 
 proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
   # returns a[].b as a node
@@ -284,7 +284,7 @@ proc addLocalVar(varSection, varInit: PNode; owner: PSym; typ: PType;
       varInit.add newFastAsgnStmt(newSymNode(result), v)
     else:
       let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
-      deepCopyCall.sons[0] = newSymNode(createMagic("deepCopy", mDeepCopy))
+      deepCopyCall.sons[0] = newSymNode(getSysMagic("deepCopy", mDeepCopy))
       deepCopyCall.sons[1] = newSymNode(result)
       deepCopyCall.sons[2] = v
       varInit.add deepCopyCall
@@ -356,7 +356,7 @@ proc createWrapperProc(f: PNode; threadParam, argsParam: PSym;
       if fk == fvGC: "data" else: "blob", fv.info), call)
     if fk == fvGC:
       let incRefCall = newNodeI(nkCall, fv.info, 2)
-      incRefCall.sons[0] = newSymNode(createMagic("GCref", mGCref))
+      incRefCall.sons[0] = newSymNode(getSysMagic("GCref", mGCref))
       incRefCall.sons[1] = indirectAccess(threadLocalProm.newSymNode,
                                           "data", fv.info)
       body.add incRefCall
@@ -446,7 +446,7 @@ proc genHigh*(n: PNode): PNode =
   else:
     result = newNodeI(nkCall, n.info, 2)
     result.typ = getSysType(tyInt)
-    result.sons[0] = newSymNode(createMagic("high", mHigh))
+    result.sons[0] = newSymNode(getSysMagic("high", mHigh))
     result.sons[1] = n
 
 proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
@@ -471,6 +471,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
       let slice = newNodeI(nkCall, n.info, 4)
       slice.typ = n.typ
       slice.sons[0] = newSymNode(createMagic("slice", mSlice))
+      slice.sons[0].typ = getSysType(tyInt) # fake type
       var fieldB = newSym(skField, tmpName, objType.owner, n.info)
       fieldB.typ = getSysType(tyInt)
       objType.addField(fieldB)
@@ -577,6 +578,8 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   var fn = n.sons[0]
   # templates and macros are in fact valid here due to the nature of
   # the transformation:
+  if fn.kind == nkClosure:
+    localError(n.info, "closure in spawn environment is not allowed")
   if not (fn.kind == nkSym and fn.sym.kind in {skProc, skTemplate, skMacro,
                                                skMethod, skConverter}):
     # for indirect calls we pass the function pointer in the scratchObj

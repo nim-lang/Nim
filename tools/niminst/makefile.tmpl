@@ -1,13 +1,13 @@
 #? stdtmpl(subsChar='?') | standard
-#proc generateMakefile(c: ConfigData): string = 
+#proc generateMakefile(c: ConfigData): string =
 #  result = "# Generated from niminst\n" &
 #           "# Template is in tools/niminst/makefile.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
 CC = gcc
 LINKER = gcc
-COMP_FLAGS = ?{c.ccompiler.flags}
-LINK_FLAGS = ?{c.linker.flags}
+COMP_FLAGS = $(CPPFLAGS) $(CFLAGS) ?{c.ccompiler.flags}
+LINK_FLAGS = $(LDFLAGS) ?{c.linker.flags}
 binDir = ?{firstBinPath(c).toUnix}
 
 koch := $(shell sh -c 'test -s ../koch.nim && echo "yes"')
@@ -157,7 +157,7 @@ endif
 %.o: %.c
 	$(CC) $(COMP_FLAGS) -Ic_code -c $< -o $@
 
-?{"$(binDir)/" & toLower(c.name)}: $(oFiles)
+?{"$(binDir)/" & toLowerAscii(c.name)}: $(oFiles)
 	@mkdir -p $(binDir)
 	$(LINKER) -o $@ $^ $(LINK_FLAGS)
 	@echo "SUCCESS"
@@ -165,4 +165,4 @@ endif
 .PHONY: clean
 
 clean:
-	rm -f $(oFiles) ?{"$(binDir)/" & toLower(c.name)}
+	rm -f $(oFiles) ?{"$(binDir)/" & toLowerAscii(c.name)}

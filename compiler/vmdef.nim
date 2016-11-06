@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, intsets
+import ast, passes, msgs, idents, intsets
 
 const
   byteExcess* = 128 # we use excess-K for immediates
@@ -203,16 +203,18 @@ type
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
     callbacks*: seq[tuple[key: string, value: VmCallback]]
     errorFlag*: string
+    cache*: IdentCache
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "")
+    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
+    cache: cache)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
@@ -230,10 +232,10 @@ const
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
-template opcode*(x: TInstr): TOpcode {.immediate.} = TOpcode(x.uint32 and 0xff'u32)
-template regA*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
-template regB*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
-template regC*(x: TInstr): TRegister {.immediate.} = TRegister(x.uint32 shr 24'u32)
-template regBx*(x: TInstr): int {.immediate.} = (x.uint32 shr 16'u32).int
+template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
+template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
+template regB*(x: TInstr): TRegister = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
+template regC*(x: TInstr): TRegister = TRegister(x.uint32 shr 24'u32)
+template regBx*(x: TInstr): int = (x.uint32 shr 16'u32).int
 
-template jmpDiff*(x: TInstr): int {.immediate.} = regBx(x) - wordExcess
+template jmpDiff*(x: TInstr): int = regBx(x) - wordExcess

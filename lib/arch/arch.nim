@@ -6,6 +6,9 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+# Architecture-specific optimizations and features.
+# arch.nim can be imported by only a subset of the
+# architectures supported by Nim.
 
 when defined(windows):
   const
@@ -31,7 +34,7 @@ when defined(amd64):
     Reg* {.pure.} = enum
       AX, BX, CX, DX, SI, DI, BP, SP, IP, R8, R9, R10, R11, R12, R13, R14, R15, TOTAL
 
-elif defined(i386):
+elif defined(i386) or defined(nimdoc):
     # identical fastcall calling convention on all x86 OS
     type
       JmpBufReg* {.pure.} = enum

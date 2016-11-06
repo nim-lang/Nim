@@ -29,28 +29,24 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
       of nnkExprColonExpr:
         identDefs.add ident[0]
         identDefs.add ident[1]
-      of nnkIdent:
+      else:
         identDefs.add newIdentNode("i" & $i)
         identDefs.add(ident)
-      else:
-        error("Incorrect type list in proc type declaration.")
       identDefs.add newEmptyNode()
       formalParams.add identDefs
-  of nnkIdent:
+  else:
     var identDefs = newNimNode(nnkIdentDefs)
     identDefs.add newIdentNode("i0")
     identDefs.add(p)
     identDefs.add newEmptyNode()
     formalParams.add identDefs
-  else:
-    error("Incorrect type list in proc type declaration.")
 
   result.add formalParams
   result.add newEmptyNode()
   #echo(treeRepr(result))
   #echo(result.toStrLit())
 
-macro `=>`*(p, b: expr): expr {.immediate.} =
+macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
   ##
   ## .. code-block:: nim
@@ -111,7 +107,7 @@ macro `=>`*(p, b: expr): expr {.immediate.} =
   #echo(result.toStrLit())
   #return result # TODO: Bug?
 
-macro `->`*(p, b: expr): expr {.immediate.} =
+macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types.
   ##
   ## .. code-block:: nim
@@ -129,7 +125,7 @@ macro `->`*(p, b: expr): expr {.immediate.} =
 type ListComprehension = object
 var lc*: ListComprehension
 
-macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
+macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
   ## List comprehension, returns a sequence. `comp` is the actual list
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
   ## the type that will be stored inside the result seq.
@@ -181,3 +177,24 @@ macro `[]`*(lc: ListComprehension, comp, typ: expr): expr =
               newIdentNode("@"),
               newNimNode(nnkBracket))),
           result))))
+
+
+macro dump*(x: typed): untyped =
+  ## Dumps the content of an expression, useful for debugging.
+  ## It accepts any expression and prints a textual representation
+  ## of the tree representing the expression - as it would appear in
+  ## source code - together with the value of the expression.
+  ##
+  ## As an example,
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     x = 10
+  ##     y = 20
+  ##   dump(x + y)
+  ##
+  ## will print ``x + y = 30``.
+  let s = x.toStrLit
+  let r = quote do:
+    debugEcho `s`, " = ", `x`
+  return r

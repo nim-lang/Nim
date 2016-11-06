@@ -183,7 +183,7 @@ proc newSeqCall(c: PContext; x, y: PNode): PNode =
 
 proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
-  of tyNone, tyEmpty: discard
+  of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
       tyPtr, tyString, tyRef:
     defaultOp(c, t, body, x, y)
@@ -203,7 +203,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyObject, tyDistinct:
     if not considerOverloadedOp(c, t, body, x, y):
-      if t.sons[0] != nil: liftBodyAux(c, t.sons[0], body, x, y)
+      if t.sons[0] != nil:
+        liftBodyAux(c, t.sons[0].skipTypes(skipPtrs), body, x, y)
       if t.kind == tyObject: liftBodyObj(c, t.n, body, x, y)
   of tyTuple:
     liftBodyTup(c, t, body, x, y)
@@ -220,14 +221,15 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add newAsgnStmt(x, call)
   of tyVarargs, tyOpenArray:
     localError(c.info, errGenerated, "cannot copy openArray")
-  of tyFromExpr, tyIter, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
+  of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
-     tyMutable, tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
-     tyTypeDesc, tyGenericInvocation, tyBigNum, tyConst, tyForward:
+     tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
+     tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange,
      tyGenericInst, tyFieldAccessor, tyStatic, tyVar:
     liftBodyAux(c, lastSon(t), body, x, y)
+  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)

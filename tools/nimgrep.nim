@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "1.0"
+  Version = "1.1"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -135,7 +135,7 @@ proc processFile(filename: string) =
   if optVerbose in options:
     stdout.writeLine(filename)
     stdout.flushFile()
-  var pegp: TPeg
+  var pegp: Peg
   var rep: Regex
   var result: string
 
@@ -161,7 +161,7 @@ proc processFile(filename: string) =
       t = findBounds(buffer, pegp, matches, i)
     else:
       t = findBounds(buffer, rep, matches, i)
-    if t.first <= 0: break
+    if t.first < 0: break
     inc(line, countLines(buffer, i, t.first-1))
 
     var wholeMatch = buffer.substr(t.first, t.last)
@@ -213,7 +213,7 @@ proc hasRightExt(filename: string, exts: seq[string]): bool =
     if os.cmpPaths(x, y) == 0: return true
 
 proc styleInsensitive(s: string): string =
-  template addx: stmt =
+  template addx =
     result.add(s[i])
     inc(i)
   result = ""

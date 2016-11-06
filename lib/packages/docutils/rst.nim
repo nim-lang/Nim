@@ -49,7 +49,7 @@ type
               TMsgKind: MsgKind].}
 
 const
-  messages: array [MsgKind, string] = [
+  messages: array[MsgKind, string] = [
     meCannotOpenFile: "cannot open '$1'",
     meExpected: "'$1' expected",
     meGridTableNotImplemented: "grid table is not implemented",
@@ -322,6 +322,11 @@ proc newSharedState(options: RstParseOptions,
   result.options = options
   result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
   result.findFile = if not isNil(findFile): findFile else: defaultFindFile
+
+proc findRelativeFile(p: RstParser; filename: string): string =
+  result = p.filename.splitFile.dir / filename
+  if not existsFile(result):
+    result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line,
@@ -1500,7 +1505,7 @@ proc dirInclude(p: var RstParser): PRstNode =
   result = nil
   var n = parseDirective(p, {hasArg, argIsFile, hasOptions}, nil)
   var filename = strip(addNodes(n.sons[0]))
-  var path = p.s.findFile(filename)
+  var path = p.findRelativeFile(filename)
   if path == "":
     rstMessage(p, meCannotOpenFile, filename)
   else:
@@ -1511,7 +1516,7 @@ proc dirInclude(p: var RstParser): PRstNode =
     else:
       var q: RstParser
       initParser(q, p.s)
-      q.filename = filename
+      q.filename = path
       q.col += getTokens(readFile(path), false, q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
@@ -1538,7 +1543,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   result = parseDirective(p, {hasArg, hasOptions}, parseLiteralBlock)
   var filename = strip(getFieldValue(result, "file"))
   if filename != "":
-    var path = p.s.findFile(filename)
+    var path = p.findRelativeFile(filename)
     if path == "": rstMessage(p, meCannotOpenFile, filename)
     var n = newRstNode(rnLiteralBlock)
     add(n, newRstNode(rnLeaf, readFile(path)))
@@ -1590,7 +1595,7 @@ proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
   var filename = getFieldValue(result, "file")
   if filename.len > 0:
-    var path = p.s.findFile(filename)
+    var path = p.findRelativeFile(filename)
     if path.len == 0:
       rstMessage(p, meCannotOpenFile, filename)
     else:

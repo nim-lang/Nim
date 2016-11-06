@@ -76,7 +76,7 @@ proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
   addf(p.g.typeInfo, "$1.node = NNI$2;$n", [name, rope(typ.id)])
   if (typ.kind == tyObject) and (typ.sons[0] != nil):
     addf(p.g.typeInfo, "$1.base = $2;$n",
-         [name, genTypeInfo(p, typ.sons[0])])
+         [name, genTypeInfo(p, typ.sons[0].skipTypes(skipPtrs))])
 
 proc genTupleFields(p: PProc, typ: PType): Rope =
   var s: Rope = nil
@@ -165,4 +165,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   of tyEnum: genEnumInfo(p, t, result)
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)
+  of tyStatic:
+    if t.n != nil: result = genTypeInfo(p, lastSon t)
+    else: internalError("genTypeInfo(" & $t.kind & ')')
   else: internalError("genTypeInfo(" & $t.kind & ')')

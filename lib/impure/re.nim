@@ -7,8 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. Deprecated. Consider using the ``nre``
-## or ``pegs`` modules instead.
+## Regular expression support for Nim. This module still has some
+## obscure bugs and limitations,
+## consider using the ``nre`` or ``pegs`` modules instead.
+## We had to de-deprecate this module since too much code relies on it
+## and many people prefer its API over ``nre``'s.
 ##
 ## **Note:** The 're' proc defaults to the **extended regular expression
 ## syntax** which lets you use whitespace freely to make your regexes readable.
@@ -22,13 +25,11 @@
 ## though.
 ## PRCE's licence follows:
 ##
-## .. include:: ../doc/regexprs.txt
+## .. include:: ../../doc/regexprs.txt
 ##
 
 import
   pcre, strutils, rtarrays
-
-{.deprecated.}
 
 const
   MaxSubpatterns* = 20
@@ -78,7 +79,7 @@ proc finalizeRegEx(x: Regex) =
   if not isNil(x.e):
     pcre.free_substring(cast[cstring](x.e))
 
-proc re*(s: string, flags = {reExtended, reStudy}): Regex {.deprecated.} =
+proc re*(s: string, flags = {reExtended, reStudy}): Regex =
   ## Constructor of regular expressions. Note that Nim's
   ## extended raw string literals support this syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
@@ -86,7 +87,12 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex {.deprecated.} =
   result.h = rawCompile(s, cast[cint](flags - {reStudy}))
   if reStudy in flags:
     var msg: cstring
-    result.e = pcre.study(result.h, 0, addr msg)
+    var options: cint = 0
+    var hasJit: cint
+    if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
+      if hasJit == 1'i32:
+        options = pcre.STUDY_JIT_COMPILE
+    result.e = pcre.study(result.h, options, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
 
 proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
@@ -213,7 +219,7 @@ proc find*(s: string, pattern: Regex, start = 0): int =
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, nil, s, len(s).cint, start.cint, 0'i32,
+    res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
       cast[ptr cint](rawMatches), 3)
   if res < 0'i32: return res
   return rawMatches[0]
@@ -358,7 +364,7 @@ proc parallelReplace*(s: string, subs: openArray[
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
   ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+  ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
   writeFile(outfile, x.parallelReplace(subs))

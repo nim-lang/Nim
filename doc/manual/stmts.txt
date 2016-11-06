@@ -462,10 +462,10 @@ While statement
 Example:
 
 .. code-block:: nim
-  echo "Please tell me your password: \n"
+  echo "Please tell me your password:"
   var pw = readLine(stdin)
   while pw != "12345":
-    echo "Wrong password! Next try: \n"
+    echo "Wrong password! Next try:"
     pw = readLine(stdin)
 
 
@@ -576,6 +576,9 @@ name ``c`` should default to type ``Context``, ``n`` should default to
 
 The ``using`` section uses the same indentation based grouping syntax as
 a ``var`` or ``let`` section.
+
+Note that ``using`` is not applied for ``template`` since untyped template
+parameters default to the type ``system.untyped``.
 
 
 If expression

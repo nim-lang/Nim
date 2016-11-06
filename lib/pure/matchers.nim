@@ -8,6 +8,10 @@
 #
 
 ## This module contains various string matchers for email addresses, etc.
+##
+## **Warning:** This module is deprecated since version 0.14.0.
+{.deprecated.}
+
 {.deadCodeElim: on.}
 
 {.push debugger:off .} # the user does not want to trace a part

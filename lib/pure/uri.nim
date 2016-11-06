@@ -264,6 +264,11 @@ proc `/`*(x: Uri, path: string): Uri =
   ##   let bar = parseUri("http://example.com/foo/bar/") / "baz"
   ##   assert bar.path == "/foo/bar/baz"
   result = x
+
+  if result.path.len == 0:
+    result.path = path
+    return
+
   if result.path[result.path.len-1] == '/':
     if path[0] == '/':
       result.path.add(path[1 .. path.len-1])
@@ -442,3 +447,8 @@ when isMainModule:
   # bug #3207
   block:
     doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
+
+  # bug #4959
+  block:
+    let foo = parseUri("http://example.com") / "/baz"
+    doAssert foo.path == "/baz"

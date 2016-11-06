@@ -63,19 +63,25 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
     while true:
       aa = skipTypes(aa, {tyGenericInst})
       bb = skipTypes(bb, {tyGenericInst})
-      if (aa.kind == bb.kind) and (aa.kind in {tyVar, tyPtr, tyRef}):
+      if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef}:
         aa = aa.lastSon
         bb = bb.lastSon
       else:
         break
     if sameType(aa, bb):
-      if aa.kind == tyObject and result != Invalid: result = Yes
+      if aa.kind == tyObject and result != Invalid:
+        result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject:
       let diff = inheritanceDiff(bb, aa)
       if diff < 0:
-        if result != Invalid: result = Yes
+        if result != Invalid:
+          result = Yes
+        else:
+          return No
       elif diff != high(int):
         result = Invalid
+      else:
+        return No
     else:
       return No
 
@@ -139,15 +145,16 @@ proc fixupDispatcher(meth, disp: PSym) =
         disp.typ.lockLevel = meth.typ.lockLevel
 
 proc methodDef*(s: PSym, fromCache: bool) =
-  var L = len(gMethods)
+  let L = len(gMethods)
   var witness: PSym
   for i in countup(0, L - 1):
-    var disp = gMethods[i].dispatcher
+    let disp = gMethods[i].dispatcher
     case sameMethodBucket(disp, s)
     of Yes:
       add(gMethods[i].methods, s)
       attachDispatcher(s, lastSon(disp.ast))
       fixupDispatcher(s, disp)
+      #echo "fixup ", disp.name.s, " ", disp.id
       when useEffectSystem: checkMethodEffects(disp, s)
       if sfBase in s.flags and gMethods[i].methods[0] != s:
         # already exists due to forwarding definition?
@@ -158,8 +165,9 @@ proc methodDef*(s: PSym, fromCache: bool) =
       if witness.isNil: witness = gMethods[i].methods[0]
   # create a new dispatcher:
   add(gMethods, (methods: @[s], dispatcher: createDispatcher(s)))
-  if fromCache:
-    internalError(s.info, "no method dispatcher found")
+  #echo "adding ", s.info
+  #if fromCache:
+  #  internalError(s.info, "no method dispatcher found")
   if witness != nil:
     localError(s.info, "invalid declaration order; cannot attach '" & s.name.s &
                        "' to method defined here: " & $witness.info)
@@ -181,7 +189,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
       var aa = skipTypes(a.typ.sons[col], skipPtrs)
       var bb = skipTypes(b.typ.sons[col], skipPtrs)
       var d = inheritanceDiff(aa, bb)
-      if (d != high(int)):
+      if (d != high(int)) and d != 0:
         return d
 
 proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =

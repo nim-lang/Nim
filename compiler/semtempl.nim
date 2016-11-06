@@ -51,9 +51,10 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
   var i = 0
   a = initOverloadIter(o, c, n)
   while a != nil:
+    if a.kind != skModule:
+      inc(i)
+      if i > 1: break
     a = nextOverloadIter(o, c, n)
-    inc(i)
-    if i > 1: break
   if i <= 1 and r != scForceOpen:
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
@@ -68,8 +69,9 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     result = newNodeIT(kind, n.info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
-      incl(a.flags, sfUsed)
-      addSon(result, newSymNode(a, n.info))
+      if a.kind != skModule:
+        incl(a.flags, sfUsed)
+        addSon(result, newSymNode(a, n.info))
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
@@ -80,7 +82,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
     # the same symbol!
     # This is however not true anymore for hygienic templates as semantic
     # processing for them changes the symbol table...
-    let s = qualifiedLookUp(c, a)
+    let s = qualifiedLookUp(c, a, {checkUndeclared})
     if s != nil:
       # we need to mark all symbols:
       let sc = symChoice(c, n, s, scClosed)
@@ -284,35 +286,6 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   result = n
   for i in 0.. < n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
-
-proc wrapInBind(c: var TemplCtx; n: PNode; opr: string): PNode =
-  let ident = getIdent(opr)
-  if ident.id in c.toInject: return n
-
-  let s = searchInScopes(c.c, ident)
-  if s != nil:
-    var callee: PNode
-    if contains(c.toBind, s.id):
-      callee = symChoice(c.c, n, s, scClosed)
-    elif contains(c.toMixin, s.name.id):
-      callee = symChoice(c.c, n, s, scForceOpen)
-    elif s.owner == c.owner and sfGenSym in s.flags:
-      # template tmp[T](x: var seq[T]) =
-      # var yz: T
-      incl(s.flags, sfUsed)
-      callee = newSymNode(s, n.info)
-      styleCheckUse(n.info, s)
-    else:
-      callee = semTemplSymbol(c.c, n, s)
-
-    let call = newNodeI(nkCall, n.info)
-    call.add(callee)
-    for i in 0 .. n.len-1: call.add(n[i])
-    result = newNodeI(nkBind, n.info, 2)
-    result.sons[0] = n
-    result.sons[1] = call
-  else:
-    result = n
 
 proc oprIsRoof(n: PNode): bool =
   const roof = "^"
@@ -577,13 +550,16 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     gp = newNodeI(nkGenericParams, n.info)
   # process parameters:
+  var allUntyped = true
   if n.sons[paramsPos].kind != nkEmpty:
     semParamList(c, n.sons[paramsPos], gp, s)
     # a template's parameters are not gensym'ed even if that was originally the
     # case as we determine whether it's a template parameter in the template
     # body by the absence of the sfGenSym flag:
     for i in 1 .. s.typ.n.len-1:
-      s.typ.n.sons[i].sym.flags.excl sfGenSym
+      let param = s.typ.n.sons[i].sym
+      param.flags.excl sfGenSym
+      if param.typ.kind != tyExpr: allUntyped = false
     if sonsLen(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
@@ -599,6 +575,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     s.typ.n = newNodeI(nkFormalParams, n.info)
     rawAddSon(s.typ, newTypeS(tyStmt, c))
     addSon(s.typ.n, newNodeIT(nkType, n.info, s.typ.sons[0]))
+  if allUntyped: incl(s.flags, sfAllUntyped)
   if n.sons[patternPos].kind != nkEmpty:
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   var ctx: TemplCtx
@@ -628,8 +605,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     c.patterns.add(s)
 
 proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
-  template templToExpand(s: expr): expr =
-    s.kind == skTemplate and (s.typ.len == 1 or sfImmediate in s.flags)
+  template templToExpand(s: untyped): untyped =
+    s.kind == skTemplate and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
   proc newParam(c: var TemplCtx, n: PNode, s: PSym): PNode =
     # the param added in the current scope is actually wrong here for

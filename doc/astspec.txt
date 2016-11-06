@@ -33,7 +33,7 @@ contains:
       of nnkIdent:
         ident: NimIdent                ## the identifier
       of nnkSym:
-        symbol: NimSymbol              ## the symbol (after symbol lookup phase)
+        symbol: NimSym                 ## the symbol (after symbol lookup phase)
       else:
         sons: seq[NimNode]             ## the node's sons (or children)
 
@@ -1184,6 +1184,7 @@ Nim type                     Corresponding AST
 ``proc``                     ``nnkProcTy``
 ``iterator``                 ``nnkIteratorTy``
 ``object``                   ``nnkObjectTy``
+-------------                ---------------------------------------------
 
 Take special care when declaring types as ``proc``. The behavior is similar
 to ``Procedure declaration``, below, but does not treat ``nnkGenericParams``.

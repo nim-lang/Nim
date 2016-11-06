@@ -95,9 +95,24 @@ block orderedTableTest1:
   for key, val in mpairs(t): val = 99
   for val in mvalues(t): assert val == 99
 
+block orderedTableTest2:
+  var
+    s = initOrderedTable[string, int]()
+    t = initOrderedTable[string, int]()
+  assert s == t
+  for key, val in items(data): t[key] = val
+  assert s != t
+  for key, val in items(sorteddata): s[key] = val
+  assert s != t
+  t.clear()
+  assert s != t
+  for key, val in items(sorteddata): t[key] = val
+  assert s == t
+
 block countTableTest1:
   var s = data.toTable
   var t = initCountTable[string]()
+  
   for k in s.keys: t.inc(k)
   for k in t.keys: assert t[k] == 1
   t.inc("90", 3)
@@ -114,6 +129,24 @@ block countTableTest1:
     of 2: assert k == "34" and v == 2
     else: break
     inc i
+
+block countTableTest2:
+  var
+    s = initCountTable[int]()
+    t = initCountTable[int]()
+  assert s == t
+  s.inc(1)
+  assert s != t
+  t.inc(2)
+  assert s != t
+  t.inc(1)
+  assert s != t
+  s.inc(2)
+  assert s == t
+  s.inc(1)
+  assert s != t
+  t.inc(1)
+  assert s == t
 
 block mpairsTableTest1:
   var t = initTable[string, int]()
@@ -133,6 +166,29 @@ block mpairsTableTest1:
 
 block SyntaxTest:
   var x = toTable[int, string]({:})
+
+# Until #4448 is fixed, these tests will fail
+when false:
+  block clearTableTest:
+    var t = data.toTable
+    assert t.len() != 0
+    t.clear()
+    assert t.len() == 0
+
+  block clearOrderedTableTest:
+    var t = data.toOrderedTable
+    assert t.len() != 0
+    t.clear()
+    assert t.len() == 0
+
+  block clearCountTableTest:
+    var t = initCountTable[string]()
+    t.inc("90", 3)
+    t.inc("12", 2)
+    t.inc("34", 1)
+    assert t.len() != 0
+    t.clear()
+    assert t.len() == 0
 
 proc orderedTableSortTest() =
   var t = initOrderedTable[string, int](2)

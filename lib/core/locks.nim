@@ -9,6 +9,7 @@
 
 ## This module contains Nim's support for locks and condition vars.
 
+const insideRLocksModule = false
 include "system/syslocks"
 
 type

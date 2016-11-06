@@ -8,7 +8,7 @@ type
   TShaderType* {.pure.} = enum
     frag = GL_FRAGMENT_SHADER,
     vert   = GL_VERTEX_SHADER
-  E_Shader* = object of E_Base
+  E_Shader* = object of Exception
   E_UnknownShaderType* = object of E_Shader
 
 converter pathToShaderType*(s: string): TShaderType =

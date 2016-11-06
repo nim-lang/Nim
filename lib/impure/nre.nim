@@ -15,6 +15,8 @@ from math import ceil
 import options
 from unicode import runeLenAt
 
+export options
+
 
 ## What is NRE?
 ## ============
@@ -24,46 +26,34 @@ from unicode import runeLenAt
 ## Licencing
 ## ---------
 ##
-## PCRE has some additional terms that you must comply with if you use this module.::
+## PCRE has `some additional terms`_ that you must agree to in order to use
+## this module.
 ##
-## > Copyright (c) 1997-2001 University of Cambridge
-## >
-## > Permission is granted to anyone to use this software for any purpose on any
-## > computer system, and to redistribute it freely, subject to the following
-## > restrictions:
-## >
-## > 1. This software is distributed in the hope that it will be useful,
-## >    but WITHOUT ANY WARRANTY; without even the implied warranty of
-## >    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-## >
-## > 2. The origin of this software must not be misrepresented, either by
-## >    explicit claim or by omission. In practice, this means that if you use
-## >    PCRE in software that you distribute to others, commercially or
-## >    otherwise, you must put a sentence like this
-## >
-## >      Regular expression support is provided by the PCRE library package,
-## >      which is open source software, written by Philip Hazel, and copyright
-## >      by the University of Cambridge, England.
-## >
-## >    somewhere reasonably visible in your documentation and in any relevant
-## >    files or online help data or similar. A reference to the ftp site for
-## >    the source, that is, to
-## >
-## >      ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/
-## >
-## >    should also be given in the documentation. However, this condition is not
-## >    intended to apply to whole chains of software. If package A includes PCRE,
-## >    it must acknowledge it, but if package B is software that includes package
-## >    A, the condition is not imposed on package B (unless it uses PCRE
-## >    independently).
-## >
-## > 3. Altered versions must be plainly marked as such, and must not be
-## >    misrepresented as being the original software.
-## >
-## > 4. If PCRE is embedded in any software that is released under the GNU
-## >    General Purpose Licence (GPL), or Lesser General Purpose Licence (LGPL),
-## >    then the terms of that licence shall supersede any condition above with
-## >    which it is incompatible.
+## .. _`some additional terms`: http://pcre.sourceforge.net/license.txt
+##
+## Example
+## -------
+##
+## .. code-block:: nim
+##
+##     import nre
+##
+##     let vowels = re"[aeoui]"
+##
+##     for match in "moigagoo".findIter(vowels):
+##       echo match.matchBounds
+##     # (a: 1, b: 1)
+##     # (a: 2, b: 2)
+##     # (a: 4, b: 4)
+##     # (a: 6, b: 6)
+##     # (a: 7, b: 7)
+##
+##     let firstVowel = "foo".find(vowels)
+##     let hasVowel = firstVowel.isSome()
+##     if hasVowel:
+##       let matchBounds = firstVowel.get().captureBounds[-1]
+##       echo "first vowel @", matchBounds.get().a
+##       # first vowel @1
 
 
 # Type definitions {{{
@@ -125,11 +115,11 @@ type
     ## -  ``(*NO_STUDY)`` - turn off studying; study is enabled by default
     ##
     ## For more details on the leading option groups, see the `Option
-    ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`__
+    ## Setting <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#OPTION_SETTING>`_
     ## and the `Newline
-    ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`__
+    ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`_
     ## sections of the `PCRE syntax
-    ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`__.
+    ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`_.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
@@ -284,7 +274,7 @@ proc `[]`*(pattern: Captures, name: string): string =
   let pattern = RegexMatch(pattern)
   return pattern.captures[pattern.pattern.captureNameToId.fget(name)]
 
-template toTableImpl(cond: bool): stmt {.immediate, dirty.} =
+template toTableImpl(cond: untyped) {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
     let nextVal = pattern[key]
     if cond:
@@ -301,7 +291,7 @@ proc toTable*(pattern: CaptureBounds, default = none(Slice[int])):
   result = initTable[string, Option[Slice[int]]]()
   toTableImpl(nextVal.isNone)
 
-template itemsImpl(cond: bool): stmt {.immediate, dirty.} =
+template itemsImpl(cond: untyped) {.dirty.} =
   for i in 0 .. <RegexMatch(pattern).pattern.captureCount:
     let nextVal = pattern[i]
     # done in this roundabout way to avoid multiple yields (potential code
@@ -441,8 +431,12 @@ proc initRegex(pattern: string, flags: int, study = true): Regex =
     raise SyntaxError(msg: $errorMsg, pos: errOffset, pattern: pattern)
 
   if study:
-    # XXX investigate JIT
-    result.pcreExtra = pcre.study(result.pcreObj, 0x0, addr errorMsg)
+    var options: cint = 0
+    var hasJit: cint
+    if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
+      if hasJit == 1'i32:
+        options = pcre.STUDY_JIT_COMPILE
+    result.pcreExtra = pcre.study(result.pcreObj, options, addr errorMsg)
     if errorMsg != nil:
       raise StudyError(msg: $errorMsg)
 
@@ -493,17 +487,17 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
       raise RegexInternalError(msg : "Unknown internal error: " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
-  ## Like ```find(...)`` <#proc-find>`__, but anchored to the start of the
+  ## Like ```find(...)`` <#proc-find>`_, but anchored to the start of the
   ## string. This means that ``"foo".match(re"f") == true``, but
   ## ``"foo".match(re"o") == false``.
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
-  ## Works the same as ```find(...)`` <#proc-find>`__, but finds every
+  ## Works the same as ```find(...)`` <#proc-find>`_, but finds every
   ## non-overlapping match. ``"2222".find(re"22")`` is ``"22", "22"``, not
   ## ``"22", "22", "22"``.
   ##
-  ## Arguments are the same as ```find(...)`` <#proc-find>`__
+  ## Arguments are the same as ```find(...)`` <#proc-find>`_
   ##
   ## Variants:
   ##
@@ -566,6 +560,16 @@ proc findAll*(str: string, pattern: Regex, start = 0, endpos = int.high): seq[st
   for match in str.findIter(pattern, start, endpos):
     result.add(match.match)
 
+proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool =
+  ## Determine if the string contains the given pattern between the end and
+  ## start positions:
+  ## -  "abc".contains(re"bc") == true
+  ## -  "abc".contains(re"cd") == false
+  ## -  "abc".contains(re"a", start = 1) == false
+  ##
+  ## Same as ``isSome(str.find(pattern, start, endpos))``.
+  return isSome(str.find(pattern, start, endpos))
+
 proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] =
   ## Splits the string with the given regex. This works according to the
   ## rules that Perl and Javascript use:
@@ -581,7 +585,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ##    strings in the output seq.
   ##    ``"1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]``
   ##
-  ## ``start`` behaves the same as in ```find(...)`` <#proc-find>`__.
+  ## ``start`` behaves the same as in ```find(...)`` <#proc-find>`_.
   result = @[]
   var lastIdx = start
   var splits = 0
@@ -625,7 +629,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
     result.add(str.substr(bounds.b + 1, str.high))
 
 template replaceImpl(str: string, pattern: Regex,
-                     replacement: expr): stmt {.immediate, dirty.} =
+                     replacement: untyped) {.dirty.} =
   # XXX seems very similar to split, maybe I can reduce code duplication
   # somehow?
   result = ""

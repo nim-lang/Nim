@@ -16,54 +16,56 @@
                        # of the standard library!
 
 
-proc fputs(c: cstring, f: File) {.importc: "fputs", header: "<stdio.h>",
-  tags: [WriteIOEffect].}
-proc fgets(c: cstring, n: int, f: File): cstring {.
+proc c_fdopen(filehandle: cint, mode: cstring): File {.
+  importc: "fdopen", header: "<stdio.h>".}
+proc c_fputs(c: cstring, f: File): cint {.
+  importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
+proc c_fgets(c: cstring, n: cint, f: File): cstring {.
   importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
-proc fgetc(stream: File): cint {.importc: "fgetc", header: "<stdio.h>",
-  tags: [ReadIOEffect].}
-proc ungetc(c: cint, f: File) {.importc: "ungetc", header: "<stdio.h>",
-  tags: [].}
-proc putc(c: char, stream: File) {.importc: "putc", header: "<stdio.h>",
-  tags: [WriteIOEffect].}
-proc fprintf(f: File, frmt: cstring) {.importc: "fprintf",
-  header: "<stdio.h>", varargs, tags: [WriteIOEffect].}
-proc strlen(c: cstring): int {.
-  importc: "strlen", header: "<string.h>", tags: [].}
+proc c_fgetc(stream: File): cint {.
+  importc: "fgetc", header: "<stdio.h>", tags: [ReadIOEffect].}
+proc c_ungetc(c: cint, f: File): cint {.
+  importc: "ungetc", header: "<stdio.h>", tags: [].}
+proc c_putc(c: cint, stream: File): cint {.
+  importc: "putc", header: "<stdio.h>", tags: [WriteIOEffect].}
+proc c_fflush(f: File): cint {.
+  importc: "fflush", header: "<stdio.h>".}
+proc c_fclose(f: File): cint {.
+  importc: "fclose", header: "<stdio.h>".}
 
 # C routine that is used here:
-proc fread(buf: pointer, size, n: int, f: File): int {.
+proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
-proc fseek(f: File, offset: clong, whence: int): int {.
+proc c_fseek(f: File, offset: clong, whence: cint): cint {.
   importc: "fseek", header: "<stdio.h>", tags: [].}
-proc ftell(f: File): int {.importc: "ftell", header: "<stdio.h>", tags: [].}
-proc ferror(f: File): int {.importc: "ferror", header: "<stdio.h>", tags: [].}
-proc setvbuf(stream: File, buf: pointer, typ, size: cint): cint {.
-  importc, header: "<stdio.h>", tags: [].}
-proc memchr(s: pointer, c: cint, n: csize): pointer {.
-  importc: "memchr", header: "<string.h>", tags: [].}
-proc memset(s: pointer, c: cint, n: csize) {.
-  header: "<string.h>", importc: "memset", tags: [].}
-proc fwrite(buf: pointer, size, n: int, f: File): int {.
-  importc: "fwrite", noDecl.}
+proc c_ftell(f: File): clong {.
+  importc: "ftell", header: "<stdio.h>", tags: [].}
+proc c_ferror(f: File): cint {.
+  importc: "ferror", header: "<stdio.h>", tags: [].}
+proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
+  importc: "setvbuf", header: "<stdio.h>", tags: [].}
+proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
+  importc: "fwrite", header: "<stdio.h>".}
 
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
 
 {.push stackTrace:off, profiler:off.}
 proc readBuffer(f: File, buffer: pointer, len: Natural): int =
-  result = fread(buffer, 1, len, f)
+  result = c_fread(buffer, 1, len, f)
 
 proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
   result = readBuffer(f, addr(a[start]), len)
 
 proc readChars(f: File, a: var openArray[char], start, len: Natural): int =
+  if (start + len) > len(a):
+    raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)
 
-proc write(f: File, c: cstring) = fputs(c, f)
+proc write(f: File, c: cstring) = discard c_fputs(c, f)
 
 proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
-  result = fwrite(buffer, 1, len, f)
+  result = c_fwrite(buffer, 1, len, f)
 
 proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
@@ -95,23 +97,29 @@ else:
 const
   BufSize = 4000
 
+proc close*(f: File) = discard c_fclose(f)
+proc readChar*(f: File): char = result = char(c_fgetc(f))
+proc flushFile*(f: File) = discard c_fflush(f)
+proc getFileHandle*(f: File): FileHandle = c_fileno(f)
+
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
+  var sp: cint = 80
   # Use the currently reserved space for a first try
-  when defined(nimscript):
-    var space = 80
+  if line.string.isNil:
+    line = TaintedString(newStringOfCap(80))
   else:
-    var space = cast[PGenericSeq](line.string).space
-  line.string.setLen(space)
-
+    when not defined(nimscript):
+      sp = cint(cast[PGenericSeq](line.string).space)
+    line.string.setLen(sp)
   while true:
     # memset to \l so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \l
-    memset(addr line.string[pos], '\l'.ord, space)
-    if fgets(addr line.string[pos], space, f) == nil:
+    c_memset(addr line.string[pos], '\l'.ord, sp)
+    if c_fgets(addr line.string[pos], sp, f) == nil:
       line.string.setLen(0)
       return false
-    let m = memchr(addr line.string[pos], '\l'.ord, space)
+    let m = c_memchr(addr line.string[pos], '\l'.ord, sp)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
@@ -122,17 +130,17 @@ proc readLine(f: File, line: var TaintedString): bool =
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
       elif last > 0 and line.string[last-1] == '\0':
-        if last < pos + space - 1 and line.string[last+1] != '\0':
+        if last < pos + sp - 1 and line.string[last+1] != '\0':
           dec last
       line.string.setLen(last)
       return true
     else:
       # fgets will have inserted a null byte at the end of the string.
-      dec space
+      dec sp
     # No \l found: Increase buffer and read more
-    inc pos, space
-    space = 128 # read in 128 bytes at a time
-    line.string.setLen(pos+space)
+    inc pos, sp
+    sp = 128 # read in 128 bytes at a time
+    line.string.setLen(pos+sp)
 
 proc readLine(f: File): TaintedString =
   result = TaintedString(newStringOfCap(80))
@@ -140,23 +148,23 @@ proc readLine(f: File): TaintedString =
 
 proc write(f: File, i: int) =
   when sizeof(int) == 8:
-    fprintf(f, "%lld", i)
+    c_fprintf(f, "%lld", i)
   else:
-    fprintf(f, "%ld", i)
+    c_fprintf(f, "%ld", i)
 
 proc write(f: File, i: BiggestInt) =
   when sizeof(BiggestInt) == 8:
-    fprintf(f, "%lld", i)
+    c_fprintf(f, "%lld", i)
   else:
-    fprintf(f, "%ld", i)
+    c_fprintf(f, "%ld", i)
 
 proc write(f: File, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
-proc write(f: File, r: float32) = fprintf(f, "%g", r)
-proc write(f: File, r: BiggestFloat) = fprintf(f, "%g", r)
+proc write(f: File, r: float32) = c_fprintf(f, "%g", r)
+proc write(f: File, r: BiggestFloat) = c_fprintf(f, "%g", r)
 
-proc write(f: File, c: char) = putc(c, f)
+proc write(f: File, c: char) = discard c_putc(ord(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
@@ -176,15 +184,15 @@ proc readAllBuffer(file: File): string =
 
 proc rawFileSize(file: File): int =
   # this does not raise an error opposed to `getFileSize`
-  var oldPos = ftell(file)
-  discard fseek(file, 0, 2) # seek the end of the file
-  result = ftell(file)
-  discard fseek(file, clong(oldPos), 0)
+  var oldPos = c_ftell(file)
+  discard c_fseek(file, 0, 2) # seek the end of the file
+  result = c_ftell(file)
+  discard c_fseek(file, clong(oldPos), 0)
 
 proc endOfFile(f: File): bool =
   # do not blame me; blame the ANSI C standard this is so brain-damaged
-  var c = fgetc(f)
-  ungetc(c, f)
+  var c = c_fgetc(f)
+  discard c_ungetc(c, f)
   return c < 0'i32
 
 proc readAllFile(file: File, len: int): string =
@@ -195,7 +203,7 @@ proc readAllFile(file: File, len: int): string =
   if endOfFile(file):
     if bytes < len:
       result.setLen(bytes)
-  elif ferror(file) != 0:
+  elif c_ferror(file) != 0:
     raiseEIO("error while reading from file")
   else:
     # We read all the bytes but did not reach the EOF
@@ -234,8 +242,7 @@ when declared(stdout):
 
 # interface to the C procs:
 
-when (defined(windows) and not defined(useWinAnsi)) or defined(nimdoc):
-  include "system/widestrs"
+include "system/widestrs"
 
 when defined(windows) and not defined(useWinAnsi):
   when defined(cpp):
@@ -265,23 +272,40 @@ else:
     importc: "freopen", nodecl.}
 
 const
-  FormatOpen: array [FileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]
+  FormatOpen: array[FileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]
     #"rt", "wt", "w+t", "r+t", "at"
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
 
 when defined(posix) and not defined(nimscript):
-  type
-    Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+  when defined(linux) and defined(amd64):
+    type
+      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
 
-    Stat {.importc: "struct stat",
-             header: "<sys/stat.h>", final, pure.} = object ## struct stat
-      st_mode: Mode        ## Mode of file
+      # fillers ensure correct size & offsets
+      Stat {.importc: "struct stat",
+              header: "<sys/stat.h>", final, pure.} = object ## struct stat
+        filler_1: array[24, char]
+        st_mode: Mode        ## Mode of file
+        filler_2: array[144 - 24 - 4, char]
 
-  proc S_ISDIR(m: Mode): bool {.importc, header: "<sys/stat.h>".}
-    ## Test for a directory.
+    proc S_ISDIR(m: Mode): bool =
+      ## Test for a directory.
+      (m and 0o170000) == 0o40000
 
-  proc fstat(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
+  else:
+    type
+      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+
+      Stat {.importc: "struct stat",
+               header: "<sys/stat.h>", final, pure.} = object ## struct stat
+        st_mode: Mode        ## Mode of file
+
+    proc S_ISDIR(m: Mode): bool {.importc, header: "<sys/stat.h>".}
+      ## Test for a directory.
+
+  proc c_fstat(a1: cint, a2: var Stat): cint {.
+    importc: "fstat", header: "<sys/stat.h>".}
 
 proc open(f: var File, filename: string,
           mode: FileMode = fmRead,
@@ -294,44 +318,37 @@ proc open(f: var File, filename: string,
       # be opened.
       var f2 = cast[File](p)
       var res: Stat
-      if fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
+      if c_fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
         close(f2)
         return false
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
-      discard setvbuf(f, nil, IOFBF, bufSize.cint)
+      discard c_setvbuf(f, nil, IOFBF, bufSize.cint)
     elif bufSize == 0:
-      discard setvbuf(f, nil, IONBF, 0)
+      discard c_setvbuf(f, nil, IONBF, 0)
 
 proc reopen(f: File, filename: string, mode: FileMode = fmRead): bool =
   var p: pointer = freopen(filename, FormatOpen[mode], f)
   result = p != nil
 
-proc fdopen(filehandle: FileHandle, mode: cstring): File {.
-  importc: "fdopen", header: "<stdio.h>".}
-
 proc open(f: var File, filehandle: FileHandle, mode: FileMode): bool =
-  f = fdopen(filehandle, FormatOpen[mode])
+  f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
 proc setFilePos(f: File, pos: int64) =
-  if fseek(f, clong(pos), 0) != 0:
+  if c_fseek(f, clong(pos), 0) != 0:
     raiseEIO("cannot set file position")
 
 proc getFilePos(f: File): int64 =
-  result = ftell(f)
+  result = c_ftell(f)
   if result < 0: raiseEIO("cannot retrieve file position")
 
 proc getFileSize(f: File): int64 =
   var oldPos = getFilePos(f)
-  discard fseek(f, 0, 2) # seek the end of the file
+  discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
-
-when not declared(close):
-  proc close(f: File) {.
-    importc: "fclose", header: "<stdio.h>", tags: [].}
 
 proc readFile(filename: string): TaintedString =
   var f: File
@@ -352,5 +369,13 @@ proc writeFile(filename, content: string) =
       close(f)
   else:
     sysFatal(IOError, "cannot open: ", filename)
+
+proc setStdIoUnbuffered() =
+  when declared(stdout):
+    discard c_setvbuf(stdout, nil, IONBF, 0)
+  when declared(stderr):
+    discard c_setvbuf(stderr, nil, IONBF, 0)
+  when declared(stdin):
+    discard c_setvbuf(stdin, nil, IONBF, 0)
 
 {.pop.}
