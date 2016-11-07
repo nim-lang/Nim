@@ -179,3 +179,14 @@ let dstT1 = parse("2016-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
 let dstT2 = parse("2016-06-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
 doAssert dstT1 == getLocalTime(toTime(dstT1))
 doAssert dstT2 == getLocalTime(toTime(dstT2))
+
+# Comparison between Time objects should be detected by compiler
+# as 'noSideEffect'.
+proc cmpTimeNoSideEffect(t1: Time, t2: Time): bool {.noSideEffect.} =
+  result = t1 == t2
+doAssert cmpTimeNoSideEffect(0.fromSeconds, 0.fromSeconds)
+# Additionally `==` generic for seq[T] has explicit 'noSideEffect' pragma
+# so we can check above condition by comparing seq[Time] sequences
+let seqA: seq[Time] = @[]
+let seqB: seq[Time] = @[]
+doAssert seqA == seqB
