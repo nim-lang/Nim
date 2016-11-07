@@ -147,7 +147,10 @@ type
     isDST*: bool              ## Determines whether DST is in effect. Always
                               ## ``False`` if time is UTC.
     timezone*: int            ## The offset of the (non-DST) timezone in seconds
-                              ## west of UTC.
+                              ## west of UTC. Note that the sign of this number
+                              ## is the opposite of the one in a formatted
+                              ## timezone string like ``+01:00`` (which would be
+                              ## parsed into the timezone ``-3600``).
 
   ## I make some assumptions about the data in here. Either
   ## everything should be positive or everything negative. Zero is
@@ -529,13 +532,6 @@ when not defined(JS):
     # does ignore the timezone, we need to adjust this here.
     result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
 
-  proc toStringTillNL(p: cstring): string =
-    result = ""
-    var i = 0
-    while p[i] != '\0' and p[i] != '\10' and p[i] != '\13':
-      add(result, p[i])
-      inc(i)
-
   const
     epochDiff = 116444736000000000'i64
     rateDiff = 10000000'i64 # 100 nsecs
@@ -827,26 +823,21 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     if fyear.len != 5: fyear = repeat('0', 5-fyear.len()) & fyear
     buf.add(fyear)
   of "z":
-    let
-      factor = if info.timezone <= 0: -1 else: 1
-      hours = (factor * info.timezone) div secondsInHour
-    if factor == 1: buf.add('-')
+    let hours = abs(info.timezone) div secondsInHour
+    if info.timezone < 0: buf.add('-')
     else: buf.add('+')
     buf.add($hours)
   of "zz":
-    let
-      factor = if info.timezone <= 0: -1 else: 1
-      hours = (factor * info.timezone) div secondsInHour
-    if factor == 1: buf.add('-')
+    let hours = abs(info.timezone) div secondsInHour
+    if info.timezone < 0: buf.add('-')
     else: buf.add('+')
     if hours < 10: buf.add('0')
     buf.add($hours)
   of "zzz":
     let
-      factor = if info.timezone <= 0: -1 else: 1
-      hours = (factor * info.timezone) div secondsInHour
-      minutes = (factor * info.timezone) mod 60
-    if factor == 1: buf.add('-')
+      hours = abs(info.timezone) div secondsInHour
+      minutes = abs(info.timezone) mod 60
+    if info.timezone < 0: buf.add('-')
     else: buf.add('+')
     if hours < 10: buf.add('0')
     buf.add($hours)
