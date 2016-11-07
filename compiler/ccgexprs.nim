@@ -592,9 +592,9 @@ proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
 proc genIsNil(p: BProc, e: PNode, d: var TLoc) =
   let t = skipTypes(e.sons[1].typ, abstractRange)
   if t.kind == tyProc and t.callConv == ccClosure:
-    unaryExpr(p, e, d, "$1.ClPrc == 0")
+    unaryExpr(p, e, d, "($1.ClPrc == 0)")
   else:
-    unaryExpr(p, e, d, "$1 == 0")
+    unaryExpr(p, e, d, "($1 == 0)")
 
 proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
