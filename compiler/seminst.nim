@@ -38,8 +38,9 @@ proc rawPushProcCon(c: PContext, owner: PSym) =
 proc rawHandleSelf(c: PContext; owner: PSym) =
   if c.selfName != nil and owner.kind in {skProc, skMethod, skConverter, skIterator, skMacro} and owner.typ != nil:
     let params = owner.typ.n
-    if params.len > 1:
-      let arg = params[1].sym
+    var i = 1
+    while i < params.len:
+      let arg = params[i].sym
       if arg.name.id == c.selfName.id:
         c.p.selfSym = arg
         arg.flags.incl sfIsSelf
@@ -48,6 +49,8 @@ proc rawHandleSelf(c: PContext; owner: PSym) =
           addObjFieldsToLocalScope(c, t.n)
           if t.sons[0] == nil: break
           t = t.sons[0].skipTypes(skipPtrs)
+        break
+      i += 1
 
 proc pushProcCon*(c: PContext; owner: PSym) =
   rawPushProcCon(c, owner)
