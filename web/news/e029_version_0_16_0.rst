@@ -26,7 +26,9 @@ Changes affecting backwards compatibility
 
 - ``staticExec`` now uses the directory of the nim file that contains the
   ``staticExec`` call as the current working directory.
-
+- ``TimeInfo.tzname`` has been removed from ``times`` module because it was
+  broken. Because of this, the option ``"ZZZ"`` will no longer work in format
+  strings for formatting and parsing.
 
 Library Additions
 -----------------
