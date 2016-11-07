@@ -217,21 +217,21 @@ proc `$` *(time: Time): string {.tags: [], raises: [], benign.}
   ## converts a calendar time to a string representation.
 
 proc `-`*(a, b: Time): int64 {.
-  rtl, extern: "ntDiffTime", tags: [], raises: [], benign.}
+  rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign.}
   ## computes the difference of two calendar times. Result is in seconds.
 
 proc `<`*(a, b: Time): bool {.
-  rtl, extern: "ntLtTime", tags: [], raises: [].} =
+  rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
   ## returns true iff ``a < b``, that is iff a happened before b.
   result = a - b < 0
 
 proc `<=` * (a, b: Time): bool {.
-  rtl, extern: "ntLeTime", tags: [], raises: [].}=
+  rtl, extern: "ntLeTime", tags: [], raises: [], noSideEffect.}=
   ## returns true iff ``a <= b``.
   result = a - b <= 0
 
 proc `==`*(a, b: Time): bool {.
-  rtl, extern: "ntEqTime", tags: [], raises: [].} =
+  rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect.} =
   ## returns true if ``a == b``, that is if both times represent the same value
   result = a - b == 0
 
