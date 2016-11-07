@@ -104,7 +104,7 @@ elif defined(JS):
       getMinutes: proc (): int {.tags: [], raises: [], benign.}
       getMonth: proc (): int {.tags: [], raises: [], benign.}
       getSeconds: proc (): int {.tags: [], raises: [], benign.}
-      getTime: proc (): int {.tags: [], raises: [], benign.}
+      getTime: proc (): int {.tags: [], raises: [], noSideEffect, benign.}
       getTimezoneOffset: proc (): int {.tags: [], raises: [], benign.}
       getDate: proc (): int {.tags: [], raises: [], benign.}
       getUTCDate: proc (): int {.tags: [], raises: [], benign.}
