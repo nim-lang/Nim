@@ -48,6 +48,7 @@ xcuserdata/
 /testresults.json
 testament.db
 /csources
+dist/
 
 # Private directories and files (IDEs)
 .*/
