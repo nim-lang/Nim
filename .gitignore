@@ -21,6 +21,7 @@ tags
 install.sh
 deinstall.sh
 
+doc/html/
 doc/*.html
 doc/*.pdf
 doc/*.idx
