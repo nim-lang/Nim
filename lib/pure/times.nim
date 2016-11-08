@@ -824,21 +824,21 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     buf.add(fyear)
   of "z":
     let hours = abs(info.timezone) div secondsInHour
-    if info.timezone < 0: buf.add('-')
-    else: buf.add('+')
+    if info.timezone < 0: buf.add('+')
+    else: buf.add('-')
     buf.add($hours)
   of "zz":
     let hours = abs(info.timezone) div secondsInHour
-    if info.timezone < 0: buf.add('-')
-    else: buf.add('+')
+    if info.timezone < 0: buf.add('+')
+    else: buf.add('-')
     if hours < 10: buf.add('0')
     buf.add($hours)
   of "zzz":
     let
       hours = abs(info.timezone) div secondsInHour
       minutes = abs(info.timezone) mod 60
-    if info.timezone < 0: buf.add('-')
-    else: buf.add('+')
+    if info.timezone < 0: buf.add('+')
+    else: buf.add('-')
     if hours < 10: buf.add('0')
     buf.add($hours)
     buf.add(':')
