@@ -9,19 +9,63 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast
+import ast, md5
+export md5.`==`
 
-type
-  SigHash* = uint32  ## a hash good enough for a filename or a proc signature
+when false:
+  type
+    SigHash* = uint32  ## a hash good enough for a filename or a proc signature
 
-proc sdbmHash(hash: SigHash, c: char): SigHash {.inline.} =
-  return SigHash(c) + (hash shl 6) + (hash shl 16) - hash
+  proc sdbmHash(hash: SigHash, c: char): SigHash {.inline.} =
+    return SigHash(c) + (hash shl 6) + (hash shl 16) - hash
 
-template `&=`*(x: var SigHash, c: char) = x = sdbmHash(x, c)
-template `&=`*(x: var SigHash, s: string) =
-  for c in s: x = sdbmHash(x, c)
+  template `&=`*(x: var SigHash, c: char) = x = sdbmHash(x, c)
+  template `&=`*(x: var SigHash, s: string) =
+    for c in s: x = sdbmHash(x, c)
 
-proc hashSym(c: var SigHash, s: PSym) =
+else:
+  type
+    SigHash* = Md5Digest
+
+  const
+    cb64 = [
+      "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
+      "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+      "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n",
+      "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+      "0", "1", "2", "3", "4", "5", "6", "7", "8", "9a",
+      "9b", "9c"]
+
+  proc toBase64a(s: cstring, len: int): string =
+    ## encodes `s` into base64 representation.
+    result = newStringOfCap(((len + 2) div 3) * 4)
+    var i = 0
+    while i < len - 2:
+      let a = ord(s[i])
+      let b = ord(s[i+1])
+      let c = ord(s[i+2])
+      result.add cb64[a shr 2]
+      result.add cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
+      result.add cb64[((b and 0x0F) shl 2) or ((c and 0xC0) shr 6)]
+      result.add cb64[c and 0x3F]
+      inc(i, 3)
+    if i < len-1:
+      let a = ord(s[i])
+      let b = ord(s[i+1])
+      result.add cb64[a shr 2]
+      result.add cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
+      result.add cb64[((b and 0x0F) shl 2)]
+    elif i < len:
+      let a = ord(s[i])
+      result.add cb64[a shr 2]
+      result.add cb64[(a and 3) shl 4]
+
+  proc `$`*(u: SigHash): string =
+    toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
+  proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
+  proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+
+proc hashSym(c: var MD5Context, s: PSym) =
   if sfAnon in s.flags or s.kind == skGenericParam:
     c &= ":anon"
   else:
@@ -31,9 +75,9 @@ proc hashSym(c: var SigHash, s: PSym) =
       c &= "."
       it = it.owner
 
-proc hashTree(c: var SigHash, n: PNode) =
+proc hashTree(c: var MD5Context, n: PNode) =
   template lowlevel(v) =
-    for i in 0..<sizeof(v): c = sdbmHash(c, cast[cstring](unsafeAddr(v))[i])
+    md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
 
   if n == nil:
     c &= "\255"
@@ -63,7 +107,7 @@ type
   ConsiderFlag* = enum
     considerParamNames
 
-proc hashType(c: var SigHash, t: PType; flags: set[ConsiderFlag]) =
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   # modelled after 'typeToString'
   if t == nil:
     c &= "\254"
@@ -133,5 +177,35 @@ proc hashType(c: var SigHash, t: PType; flags: set[ConsiderFlag]) =
   if tfNotNil in t.flags: c &= "not nil"
 
 proc hashType*(t: PType; flags: set[ConsiderFlag]): SigHash =
-  result = 0
-  hashType result, t, flags
+  var c: MD5Context
+  md5Init c
+  hashType c, t, flags
+  md5Final c, result
+
+proc hashProc*(s: PSym): SigHash =
+  var c: MD5Context
+  md5Init c
+  hashType c, s.typ, {considerParamNames}
+
+  var m = s
+  while m.kind != skModule: m = m.owner
+  let p = m.owner
+  assert p.kind == skPackage
+  c &= p.name.s
+  c &= "."
+  c &= m.name.s
+
+  md5Final c, result
+
+proc hashOwner*(s: PSym): SigHash =
+  var c: MD5Context
+  md5Init c
+  var m = s
+  while m.kind != skModule: m = m.owner
+  let p = m.owner
+  assert p.kind == skPackage
+  c &= p.name.s
+  c &= "."
+  c &= m.name.s
+
+  md5Final c, result

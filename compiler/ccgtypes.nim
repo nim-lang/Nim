@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import debuginfo, sighashes
+import sighashes
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -29,26 +29,29 @@ proc mangleField(name: PIdent): string =
     # Mangling makes everything lowercase,
     # but some identifiers are C keywords
 
-proc hashOwner(s: PSym): SigHash =
-  var m = s
-  while m.kind != skModule: m = m.owner
-  let p = m.owner
-  assert p.kind == skPackage
-  result = gDebugInfo.register(p.name.s, m.name.s)
+when false:
+  proc hashOwner(s: PSym): SigHash =
+    var m = s
+    while m.kind != skModule: m = m.owner
+    let p = m.owner
+    assert p.kind == skPackage
+    result = gDebugInfo.register(p.name.s, m.name.s)
 
-proc idOrSig(m: BModule; s: PSym): BiggestInt =
+proc idOrSig(m: BModule; s: PSym): Rope =
   if s.kind in routineKinds and s.typ != nil and sfExported in s.flags and
      s.typ.callConv != ccInline:
     # signatures for exported routines are reliable enough to
     # produce a unique name and this means produced C++ is more stable wrt
     # Nim changes:
-    let h = hashType(s.typ, {considerParamNames})
-    if m.hashConflicts.containsOrIncl(cast[int](h)):
-      result = s.id
-    else:
-      result = BiggestInt(h)
+    when false:
+      let h = hashType(s.typ, {considerParamNames})
+      if m.hashConflicts.containsOrIncl(cast[int](h)):
+        result = s.id
+      else:
+        result = BiggestInt(h)
+    result = rope($hashProc(s))
   else:
-    result = s.id
+    result = rope s.id
 
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
@@ -100,9 +103,9 @@ proc mangleName(m: BModule; s: PSym): Rope =
       result.add "0"
     else:
       add(result, ~"_")
-      add(result, rope(m.idOrSig(s)))
-      add(result, ~"_")
-      add(result, rope(hashOwner(s).BiggestInt))
+      add(result, m.idOrSig(s))
+      #add(result, ~"_")
+      #add(result, rope(hashOwner(s).BiggestInt))
     s.loc.r = result
 
 proc typeName(typ: PType): Rope =
@@ -114,7 +117,7 @@ proc getTypeName(m: BModule; typ: PType): Rope =
     result = typ.sym.loc.r
   else:
     if typ.loc.r == nil:
-      when true:
+      when false:
         # doesn't work yet and would require bigger rewritings
         let h = hashType(typ, {considerParamNames})# and 0x0fff_ffffu32
         let sig =
@@ -125,8 +128,8 @@ proc getTypeName(m: BModule; typ: PType): Rope =
       else:
         let sig = BiggestInt typ.id
       typ.loc.r = typ.typeName & sig.rope #& ("_" & m.module.name.s)
-      if typ.kind != tySet:
-        typ.loc.r.add "_" & m.module.name.s
+      #if typ.kind != tySet:
+      #  typ.loc.r.add "_" & m.module.name.s
     result = typ.loc.r
   if result == nil: internalError("getTypeName: " & $typ.kind)
 
@@ -625,15 +628,16 @@ proc getTypeDescAux(m: BModule, typ: PType, check: var IntSet): Rope =
           of 4: addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
           of 8: addf(m.s[cfsTypes], "typedef NI64 $1;$n", [result])
           else: internalError(t.sym.info, "getTypeDescAux: enum")
-        let owner = hashOwner(t.sym)
-        if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
-          var vals: seq[(string, int)] = @[]
-          for i in countup(0, t.n.len - 1):
-            assert(t.n.sons[i].kind == nkSym)
-            let field = t.n.sons[i].sym
-            vals.add((field.name.s, field.position.int))
-          gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
-            name: t.sym.name.s, values: vals))
+        when false:
+          let owner = hashOwner(t.sym)
+          if not gDebugInfo.hasEnum(t.sym.name.s, t.sym.info.line, owner):
+            var vals: seq[(string, int)] = @[]
+            for i in countup(0, t.n.len - 1):
+              assert(t.n.sons[i].kind == nkSym)
+              let field = t.n.sons[i].sym
+              vals.add((field.name.s, field.position.int))
+            gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
+              name: t.sym.name.s, values: vals))
   of tyProc:
     result = getTypeName(m, t)
     idTablePut(m.typeCache, t, result)

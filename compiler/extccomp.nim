@@ -16,7 +16,7 @@ import
   lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs,
   securehash, streams
 
-from debuginfo import writeDebugInfo
+#from debuginfo import writeDebugInfo
 
 type
   TSystemCC* = enum
@@ -734,8 +734,8 @@ proc callCCompiler*(projectfile: string) =
       if not noAbsolutePaths():
         if not exefile.isAbsolute():
           exefile = joinPath(splitFile(projectfile).dir, exefile)
-      if optCDebug in gGlobalOptions:
-        writeDebugInfo(exefile.changeFileExt("ndb"))
+      #if optCDebug in gGlobalOptions:
+      #  writeDebugInfo(exefile.changeFileExt("ndb"))
       exefile = quoteShell(exefile)
       let linkOptions = getLinkOptions() & " " &
                         getConfigVar(cCompiler, ".options.linker")

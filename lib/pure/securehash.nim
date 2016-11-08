@@ -173,21 +173,6 @@ proc sha1(src: string): Sha1Digest =
   ## Calculate SHA1 from input string
   sha1(src, src.len)
 
-proc `!&`*(h: Hash, val: int): Hash {.inline.} =
-  ## mixes a hash value `h` with `val` to produce a new hash value. This is
-  ## only needed if you need to implement a hash proc for a new datatype.
-  result = h +% val
-  result = result +% result shl 10
-  result = result xor (result shr 6)
-
-proc `!$`*(h: Hash): Hash {.inline.} =
-  ## finishes the computation of the hash value. This is
-  ## only needed if you need to implement a hash proc for a new datatype.
-
-proc
-proc hashData*(data: pointer, size: int): Hash =
-
-
 proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
 proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
 proc `$`*(self: SecureHash): string =

@@ -7,9 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-## The compiler can generate debuginfo to help debuggers in translating back from C/C++/JS code
-## to Nim. The data structure has been designed to produce something useful with Nim's marshal
-## module.
+## The compiler can generate debuginfo to help debuggers in translating back
+## from C/C++/JS code to Nim. The data structure has been designed to produce
+## something useful with Nim's marshal module.
 
 import sighashes
 
