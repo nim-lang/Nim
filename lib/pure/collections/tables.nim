@@ -244,6 +244,26 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
+import algorithm
+
+iterator sortedPairs*[A, B](t: Table[A, B],
+  cmp: proc (x, y: A): int {.closure.};
+  order = SortOrder.Ascending): (A, B) =
+  ## iterates over any (key, value) pair in the table `t` in sorted order
+  ## based on the comparator `cmp`
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   for key, val in sortedPairs(t, system.cmp[string]):
+  ##     ...
+  ##
+  var keys: seq[A] = @[]
+  for k in t.keys():
+    keys.add k
+  sort(keys, cmp, order)
+  for k in keys:
+    yield (k, t[k])
+
 iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
   ## iterates over any (key, value) pair in the table `t`. The values
   ## can be modified.

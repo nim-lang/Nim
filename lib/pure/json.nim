@@ -971,8 +971,17 @@ proc escapeJson*(s: string): string =
       result.add(toHex(r, 4))
   result.add("\"")
 
+iterator getPairs(node: JsonNode, sort_keys: bool): (string, JsonNode) {.inline.} =
+  # Iterate over pairs() or sortedPairs() depending on sort_keys
+  if sort_keys:
+    for key, val in sortedPairs(node.fields, system.cmp):
+      yield (key, val)
+  else:
+    for key, val in pairs(node.fields):
+      yield (key, val)
+
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
-              lstArr = false, currIndent = 0) =
+              lstArr = false, currIndent = 0, sort_keys = false) =
   case node.kind
   of JObject:
     if currIndent != 0 and not lstArr: result.nl(ml)
@@ -981,7 +990,9 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{")
       result.nl(ml) # New line
       var i = 0
-      for key, val in pairs(node.fields):
+
+      for key, val in node.getPairs(sort_keys):
+
         if i > 0:
           result.add(", ")
           result.nl(ml) # New Line
@@ -991,7 +1002,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
         result.add(escapeJson(key))
         result.add(": ")
         toPretty(result, val, indent, ml, false,
-                 newIndent(currIndent, indent, ml))
+                 newIndent(currIndent, indent, ml), sort_keys=sort_keys)
       result.nl(ml)
       result.indent(currIndent) # indent the same as {
       result.add("}")
@@ -1019,7 +1030,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
           result.add(", ")
           result.nl(ml) # New Line
         toPretty(result, node.elems[i], indent, ml,
-            true, newIndent(currIndent, indent, ml))
+            true, newIndent(currIndent, indent, ml), sort_keys=sort_keys)
       result.nl(ml)
       result.indent(currIndent)
       result.add("]")
@@ -1028,11 +1039,11 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     result.add("null")
 
-proc pretty*(node: JsonNode, indent = 2): string =
+proc pretty*(node: JsonNode, indent = 2, sort_keys = false): string =
   ## Returns a JSON Representation of `node`, with indentation and
-  ## on multiple lines.
+  ## on multiple lines. Optionally sort keys in lexicographically.
   result = ""
-  toPretty(result, node, indent)
+  toPretty(result, node, indent, sort_keys=sort_keys)
 
 proc toUgly*(result: var string, node: JsonNode) =
   ## Converts `node` to its JSON Representation, without
