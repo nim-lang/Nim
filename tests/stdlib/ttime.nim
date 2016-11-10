@@ -202,3 +202,24 @@ for tz in [
   doAssert ti.format("z") == tz[1]
   doAssert ti.format("zz") == tz[2]
   doAssert ti.format("zzz") == tz[3]
+
+block dstTest:
+  let nonDst = TimeInfo(year: 2015, month: mJan, monthday: 01, yearday: 0,
+      weekday: dThu, hour: 00, minute: 00, second: 00, isDST: false, timezone: 0)
+  var dst = nonDst
+  dst.isDst = true
+  # note that both isDST == true and isDST == false are valid here because
+  # DST is in effect on January 1st in some southern parts of Australia.
+
+  doAssert nonDst.toTime() - dst.toTime() == 3600
+  doAssert nonDst.format("z") == "+0"
+  doAssert dst.format("z") == "+1"
+
+  # parsing will set isDST in relation to the local time. We take a date in
+  # January and one in July to maximize the probability to hit one date with DST
+  # and one without on the local machine. However, this is not guaranteed.
+  let
+    parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
+    parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-ss HH:mm:sszzz")
+  doAssert toTime(parsedJan) == fromSeconds(1452394800)
+  doAssert toTime(parsedJul) == fromSeconds(1467342000)

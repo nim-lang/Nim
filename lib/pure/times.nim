@@ -144,8 +144,9 @@ type
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
                               ## Always 0 if the target is JS.
-    isDST*: bool              ## Determines whether DST is in effect. Always
-                              ## ``False`` if time is UTC.
+    isDST*: bool              ## Determines whether DST is in effect.
+                              ## Semantically, this adds another negative hour
+                              ## offset to the time in addition to the timezone.
     timezone*: int            ## The offset of the (non-DST) timezone in seconds
                               ## west of UTC. Note that the sign of this number
                               ## is the opposite of the one in a formatted
@@ -824,28 +825,32 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     if fyear.len != 5: fyear = repeat('0', 5-fyear.len()) & fyear
     buf.add(fyear)
   of "z":
-    let hours = abs(info.timezone) div secondsInHour
-    if info.timezone <= 0: buf.add('+')
+    let
+      nonDstTz = info.timezone - int(info.isDst) * secondsInHour
+      hours = abs(nonDstTz) div secondsInHour
+    if nonDstTz <= 0: buf.add('+')
     else: buf.add('-')
     buf.add($hours)
   of "zz":
-    let hours = abs(info.timezone) div secondsInHour
-    if info.timezone <= 0: buf.add('+')
+    let
+      nonDstTz = info.timezone - int(info.isDst) * secondsInHour
+      hours = abs(nonDstTz) div secondsInHour
+    if nonDstTz <= 0: buf.add('+')
     else: buf.add('-')
     if hours < 10: buf.add('0')
     buf.add($hours)
   of "zzz":
     let
-      hours = abs(info.timezone) div secondsInHour
-      minutes = (abs(info.timezone) div secondsInMin) mod minutesInHour
-    if info.timezone <= 0: buf.add('+')
+      nonDstTz = info.timezone - int(info.isDst) * secondsInHour
+      hours = abs(nonDstTz) div secondsInHour
+      minutes = (abs(nonDstTz) div secondsInMin) mod minutesInHour
+    if nonDstTz <= 0: buf.add('+')
     else: buf.add('-')
     if hours < 10: buf.add('0')
     buf.add($hours)
     buf.add(':')
     if minutes < 10: buf.add('0')
     buf.add($minutes)
-
   of "":
     discard
   else:
@@ -1000,7 +1005,6 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
   of "M":
     var pd = parseInt(value[j..j+1], sv)
     info.month = Month(sv-1)
-    info.monthday = sv
     j += pd
   of "MM":
     var month = value[j..j+1].parseInt()
@@ -1166,6 +1170,7 @@ proc parse*(value, layout: string): TimeInfo =
   info.hour = 0
   info.minute = 0
   info.second = 0
+  info.isDST = false # DST is never encoded in timestamps.
   while true:
     case layout[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
@@ -1194,14 +1199,6 @@ proc parse*(value, layout: string): TimeInfo =
       else:
         parseToken(info, token, value, j)
         token = ""
-
-  # We are going to process the date to find out if we are in DST, because the
-  # default based on the current time may be wrong. Calling getLocalTime will
-  # set this correctly, but the actual time may be offset from when we called
-  # toTime with a possibly incorrect DST setting, so we are only going to take
-  # the isDST from this result.
-  let correctDST = getLocalTime(toTime(info))
-  info.isDST = correctDST.isDST
 
   # Now we process it again with the correct isDST to correct things like
   # weekday and yearday.
