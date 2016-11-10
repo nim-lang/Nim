@@ -264,6 +264,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "implicitstatic": result = contains(gOptions, optImplicitStatic)
   of "patterns": result = contains(gOptions, optPatterns)
   of "experimental": result = gExperimentalMode
+  of "excessivestacktrace": result = contains(gGlobalOptions, optExcessiveStackTrace)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc processPath(path: string, info: TLineInfo,
