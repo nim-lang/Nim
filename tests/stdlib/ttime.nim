@@ -219,7 +219,7 @@ block dstTest:
   # January and one in July to maximize the probability to hit one date with DST
   # and one without on the local machine. However, this is not guaranteed.
   let
+    parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
     parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
-    parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-ss HH:mm:sszzz")
-  doAssert toTime(parsedJan) == fromSeconds(1452394800)
+  doAssert toTime(parsedJan) == fromSeconds(1451962800)
   doAssert toTime(parsedJul) == fromSeconds(1467342000)

@@ -279,16 +279,20 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
   carryO = `div`(ti1.months + ti2.months, 12)
   result.years = carryO + ti1.years + ti2.years
 
+proc `-`*(ti: TimeInterval): TimeInterval =
+  result = TimeInterval(
+    milliseconds: -ti.milliseconds,
+    seconds: -ti.seconds,
+    minutes: -ti.minutes,
+    hours: -ti.hours,
+    days: -ti.days,
+    months: -ti.months,
+    years: -ti.years
+  )
+
 proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ## Subtracts TimeInterval ``ti1`` from ``ti2``.
-  result = ti1
-  result.milliseconds -= ti2.milliseconds
-  result.seconds -= ti2.seconds
-  result.minutes -= ti2.minutes
-  result.hours -= ti2.hours
-  result.days -= ti2.days
-  result.months -= ti2.months
-  result.years -= ti2.years
+  result = ti1 + (-ti2)
 
 proc isLeapYear*(year: int): bool =
   ## returns true if ``year`` is a leap year
@@ -364,16 +368,9 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
-  let t = toSeconds(toTime(a))
-  var intval: TimeInterval
-  intval.milliseconds = - interval.milliseconds
-  intval.seconds = - interval.seconds
-  intval.minutes = - interval.minutes
-  intval.hours = - interval.hours
-  intval.days = - interval.days
-  intval.months = - interval.months
-  intval.years = - interval.years
-  let secs = toSeconds(a, intval)
+  let
+    t = toSeconds(toTime(a))
+    secs = toSeconds(a, -interval)
   if a.timezone == 0:
     result = getGMTime(fromSeconds(t + secs))
   else:
