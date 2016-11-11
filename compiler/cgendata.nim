@@ -10,7 +10,8 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, astalgo, ropes, passes, options, intsets, lists, platform
+  ast, astalgo, ropes, passes, options, intsets, lists, platform, sighashes,
+  tables
 
 from msgs import TLineInfo
 
@@ -92,6 +93,7 @@ type
     gcFrameType*: Rope        # the struct {} we put the GC markers into
 
   TTypeSeq* = seq[PType]
+  TypeCache* = Table[SigHash, Rope]
 
   Codegenflag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
@@ -109,12 +111,12 @@ type
     cfilename*: string        # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
-    typeCache*: TIdTable      # cache the generated types
-    forwTypeCache*: TIdTable  # cache for forward declarations of types
+    typeCache*: TypeCache     # cache the generated types
+    forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
     headerFiles*: TLinkedList # needed headers to include
-    typeInfoMarker*: IntSet   # needed for generating type information
+    typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
     postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc
@@ -127,7 +129,6 @@ type
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                               # OpenGL wrapper
     injectStmt*: Rope
-    hashConflicts*: IntSet
 
 var
   mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope

@@ -10,7 +10,10 @@
 ## Computes hash values for routine (proc, method etc) signatures.
 
 import ast, md5
-export md5.`==`
+from hashes import Hash
+from astalgo import debug
+from types import typeToString
+from strutils import startsWith
 
 when false:
   type
@@ -25,7 +28,7 @@ when false:
 
 else:
   type
-    SigHash* = Md5Digest
+    SigHash* = distinct Md5Digest
 
   const
     cb64 = [
@@ -39,6 +42,7 @@ else:
   proc toBase64a(s: cstring, len: int): string =
     ## encodes `s` into base64 representation.
     result = newStringOfCap(((len + 2) div 3) * 4)
+    result.add '_'
     var i = 0
     while i < len - 2:
       let a = ord(s[i])
@@ -64,6 +68,15 @@ else:
     toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
   proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
   proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+
+  proc `==`*(a, b: SigHash): bool =
+    # {.borrow.}
+    result = equalMem(unsafeAddr a, unsafeAddr b, sizeof(a))
+
+  proc hash*(u: SigHash): Hash =
+    result = 0
+    for x in 0..3:
+      result = (result shl 8) or u.MD5Digest[x].int
 
 proc hashSym(c: var MD5Context, s: PSym) =
   if sfAnon in s.flags or s.kind == skGenericParam:
@@ -105,28 +118,46 @@ proc hashTree(c: var MD5Context, n: PNode) =
 
 type
   ConsiderFlag* = enum
-    considerParamNames
+    CoProc
+    CoType
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
-  # modelled after 'typeToString'
   if t == nil:
     c &= "\254"
     return
 
   c &= char(t.kind)
 
-  # Every cyclic type in Nim need to be constructed via some 't.sym', so this
-  # is actually safe without an infinite recursion check:
-  if t.sym != nil and sfAnon notin t.sym.flags:
-    # t.n for literals, but not for e.g. objects!
-    if t.kind in {tyFloat, tyInt}: c.hashTree(t.n)
-    c.hashSym(t.sym)
+  case t.kind
+  of tyGenericInst:
+    var x = t.lastSon
+    if x.kind == tyGenericBody: x = x.lastSon
+    if x.kind == tyTuple:
+      c.hashType x, flags
+      return
+    for i in countup(0, sonsLen(t) - 2):
+      c.hashType t.sons[i], flags
     return
+  of tyGenericInvocation:
+    for i in countup(0, sonsLen(t) - 1):
+      c.hashType t.sons[i], flags
+    return
+  of tyDistinct:
+    if CoType in flags:
+      c.hashType t.lastSon, flags
+    else:
+      c.hashSym(t.sym)
+    return
+  else:
+    discard
 
   case t.kind
-  of tyGenericBody, tyGenericInst, tyGenericInvocation:
-    for i in countup(0, sonsLen(t) - 1 - ord(t.kind != tyGenericInvocation)):
-      c.hashType t.sons[i], flags
+  of tyObject, tyEnum:
+    # Every cyclic type in Nim need to be constructed via some 't.sym', so this
+    # is actually safe without an infinite recursion check:
+    c.hashSym(t.sym)
+  of tyRef, tyPtr, tyGenericBody:
+    c.hashType t.lastSon, flags
   of tyUserTypeClass:
     if t.sym != nil and t.sym.owner != nil:
       c &= t.sym.owner.name.s
@@ -139,11 +170,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       c.hashType t.sons[i], flags
   of tyFromExpr, tyFieldAccessor:
     c.hashTree(t.n)
-  of tyArrayConstr:
-    c.hashTree(t.sons[0].n)
-    c.hashType(t.sons[1], flags)
   of tyTuple:
-    if t.n != nil:
+    if t.n != nil and CoType notin flags:
       assert(sonsLen(t.n) == sonsLen(t))
       for i in countup(0, sonsLen(t.n) - 1):
         assert(t.n.sons[i].kind == nkSym)
@@ -154,11 +182,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags
   of tyRange:
-    c.hashTree(t.n)
+    if CoType notin flags: c.hashTree(t.n)
     c.hashType(t.sons[0], flags)
   of tyProc:
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
-    if considerParamNames in flags and t.n != nil:
+    if CoProc in flags and t.n != nil:
       let params = t.n
       for i in 1..<params.len:
         let param = params[i].sym
@@ -170,22 +198,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       for i in 0.. <t.len: c.hashType(t.sons[i], flags)
     c &= char(t.callConv)
-    if tfNoSideEffect in t.flags: c &= ".noSideEffect"
-    if tfThread in t.flags: c &= ".thread"
+    if CoType notin flags:
+      if tfNoSideEffect in t.flags: c &= ".noSideEffect"
+      if tfThread in t.flags: c &= ".thread"
   else:
     for i in 0.. <t.len: c.hashType(t.sons[i], flags)
-  if tfNotNil in t.flags: c &= "not nil"
+  if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 
-proc hashType*(t: PType; flags: set[ConsiderFlag]): SigHash =
+proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
   var c: MD5Context
   md5Init c
   hashType c, t, flags
-  md5Final c, result
+  md5Final c, result.Md5Digest
 
 proc hashProc*(s: PSym): SigHash =
   var c: MD5Context
   md5Init c
-  hashType c, s.typ, {considerParamNames}
+  hashType c, s.typ, {CoProc}
 
   var m = s
   while m.kind != skModule: m = m.owner
@@ -195,7 +224,7 @@ proc hashProc*(s: PSym): SigHash =
   c &= "."
   c &= m.name.s
 
-  md5Final c, result
+  md5Final c, result.Md5Digest
 
 proc hashOwner*(s: PSym): SigHash =
   var c: MD5Context
@@ -208,4 +237,4 @@ proc hashOwner*(s: PSym): SigHash =
   c &= "."
   c &= m.name.s
 
-  md5Final c, result
+  md5Final c, result.Md5Digest

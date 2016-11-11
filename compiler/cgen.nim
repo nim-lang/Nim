@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, securehash, bitsets, idents, lists, types,
   ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel
+  lowerings, semparallel, tables
 
 from modulegraphs import ModuleGraph
 
@@ -263,6 +263,7 @@ type
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 proc isComplexValueType(t: PType): bool {.inline.} =
+  let t = t.skipTypes(abstractInst)
   result = t.kind in {tyArray, tyArrayConstr, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
@@ -296,7 +297,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
-  let typ = skipTypes(loc.t, abstractRange)
+  let typ = loc.t
   if not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
       getTypeDesc(p.module, typ))
@@ -325,13 +326,9 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "LOC" & rope(p.labels)
-  #addf(p.blocks[0].sections[cpsLocals],
-  #   "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
   linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
-  #result.a = - 1
   result.t = t
-  #result.t = getUniqueType(t)
   result.s = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
@@ -1094,10 +1091,10 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.declaredProtos = initIntSet()
   result.cfilename = filename
   result.filename = filename
-  initIdTable(result.typeCache)
-  initIdTable(result.forwTypeCache)
+  result.typeCache = initTable[SigHash, Rope]()
+  result.forwTypeCache = initTable[SigHash, Rope]()
   result.module = module
-  result.typeInfoMarker = initIntSet()
+  result.typeInfoMarker = initTable[SigHash, Rope]()
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newPreInitProc(result)
@@ -1107,7 +1104,6 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.forwardedProcs = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
-  result.hashConflicts = initIntSet()
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
@@ -1124,7 +1120,7 @@ proc resetModule*(m: BModule) =
   # away all the data that was written to disk
   initLinkedList(m.headerFiles)
   m.declaredProtos = initIntSet()
-  initIdTable(m.forwTypeCache)
+  m.forwTypeCache = initTable[SigHash, Rope]()
   m.initProc = newProc(nil, m)
   m.initProc.options = initProcOptions(m)
   m.preInitProc = newPreInitProc(m)
@@ -1141,7 +1137,6 @@ proc resetModule*(m: BModule) =
   nullify m.s
   m.typeNodes = 0
   m.nimTypes = 0
-  m.hashConflicts = initIntSet()
   nullify m.extensionLoaders
 
   # indicate that this is now cached module
