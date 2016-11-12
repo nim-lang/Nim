@@ -58,7 +58,6 @@ proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
 proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   if typ == nil: return
 
-  let typ = getUniqueType(typ)
   var p = c.p
   case typ.kind
   of tyGenericInst, tyGenericBody, tyTypeDesc:
@@ -99,16 +98,18 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   genTraverseProc(c, "$1->data[$2]" % [accessor, i.r], typ.sons[0])
   lineF(p, cpsStmts, "}$n", [])
 
-proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): Rope =
+proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
+                     reason: TTypeInfoReason): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
-  result = getTempName(m)
+  result = "Marker_" & getTypeName(m, origTyp, sig)
+  let typ = origTyp.skipTypes(abstractInst)
 
   case reason
   of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
   else: assert false
 
-  let header = "N_NIMCALL(void, $1)(void* p, NI op)" % [result]
+  let header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [result]
 
   let t = getTypeDesc(m, typ)
   lineF(p, cpsLocals, "$1 a;$n", [t])
@@ -119,7 +120,7 @@ proc genTraverseProc(m: BModule, typ: PType, reason: TTypeInfoReason): Rope =
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".rope, typ)
   else:
-    if skipTypes(typ.sons[0], typedescInst).kind in {tyArrayConstr, tyArray}:
+    if skipTypes(typ.sons[0], typedescInst).kind == tyArray:
       # C's arrays are broken beyond repair:
       genTraverseProc(c, "a".rope, typ.sons[0])
     else:
@@ -145,7 +146,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
 
   c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
   c.p = p
-  let header = "N_NIMCALL(void, $1)(void)" % [result]
+  let header = "static N_NIMCALL(void, $1)(void)" % [result]
   genTraverseProc(c, sLoc, s.loc.t)
 
   let generatedProc = "$1 {$n$2$3$4}$n" %

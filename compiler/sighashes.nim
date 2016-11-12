@@ -69,6 +69,9 @@ else:
   proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
   proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
 
+  template lowlevel(v) =
+    md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
+
   proc `==`*(a, b: SigHash): bool =
     # {.borrow.}
     result = equalMem(unsafeAddr a, unsafeAddr b, sizeof(a))
@@ -89,9 +92,6 @@ proc hashSym(c: var MD5Context, s: PSym) =
       it = it.owner
 
 proc hashTree(c: var MD5Context, n: PNode) =
-  template lowlevel(v) =
-    md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
-
   if n == nil:
     c &= "\255"
     return
@@ -155,7 +155,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyObject, tyEnum:
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
-    c.hashSym(t.sym)
+    if t.sym != nil:
+      c.hashSym(t.sym)
+    else:
+      lowlevel(t.id)
   of tyRef, tyPtr, tyGenericBody:
     c.hashType t.lastSon, flags
   of tyUserTypeClass:
@@ -182,7 +185,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags
   of tyRange:
-    if CoType notin flags: c.hashTree(t.n)
+    #if CoType notin flags:
+    c.hashTree(t.n)
     c.hashType(t.sons[0], flags)
   of tyProc:
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
@@ -205,11 +209,20 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     for i in 0.. <t.len: c.hashType(t.sons[i], flags)
   if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 
+when defined(debugSigHashes):
+  import db_sqlite
+
+  let db = open(connection="sighashes.db", user="araq", password="",
+                database="sighashes")
+
 proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
   var c: MD5Context
   md5Init c
   hashType c, t, flags
   md5Final c, result.Md5Digest
+  when defined(debugSigHashes):
+    db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
+            typeToString(t), $result)
 
 proc hashProc*(s: PSym): SigHash =
   var c: MD5Context

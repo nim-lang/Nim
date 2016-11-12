@@ -111,6 +111,10 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   else:
     if typ.loc.r == nil:
       typ.loc.r = typ.typeName & $sig
+    else:
+      when defined(debugSigHashes):
+        # check consistency:
+        assert($typ.loc.r == $(typ.typeName & $sig))
     result = typ.loc.r
   if result == nil: internalError("getTypeName: " & $typ.kind)
 
@@ -593,7 +597,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   of tyEnum:
     result = cacheGetType(m.typeCache, sig)
     if result == nil:
-      result = getTypeName(m, t, sig)
+      result = getTypeName(m, origTyp, sig)
       if not (isImportedCppType(t) or
           (sfImportc in t.sym.flags and t.sym.magic == mNone)):
         m.typeCache[sig] = result
@@ -730,7 +734,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                     else: getTupleDesc(m, t, result, check)
       if not isImportedType(t): add(m.s[cfsTypes], recdesc)
   of tySet:
-    result = getTypeName(m, t.lastSon, hashType t.lastSon) & "Set"
+    result = getTypeName(m, t.lastSon, hashType t.lastSon) & "_Set"
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(t))
@@ -1066,7 +1070,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   of tySequence, tyRef:
     genTypeInfoAux(m, t, t, result)
     if gSelectedGC >= gcMarkAndSweep:
-      let markerProc = genTraverseProc(m, t, tiNew)
+      let markerProc = genTraverseProc(m, origType, sig, tiNew)
       addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
   of tyPtr, tyRange: genTypeInfoAux(m, t, t, result)
   of tyArrayConstr, tyArray: genArrayInfo(m, t, result)
