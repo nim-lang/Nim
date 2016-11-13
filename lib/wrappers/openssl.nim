@@ -14,37 +14,31 @@
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
 when useWinVersion:
-  when not defined(staticOpenSSL):
-    when not defined(nimOldDlls) and defined(cpu64):
-      const
-        DLLSSLName = "(ssleay64|libssl64).dll"
-        DLLUtilName = "libeay64.dll"
-    else:
-      const
-        DLLSSLName = "(ssleay32|libssl32).dll"
-        DLLUtilName = "libeay32.dll"
+  when not defined(nimOldDlls) and defined(cpu64):
+    const
+      DLLSSLName = "(ssleay64|libssl64).dll"
+      DLLUtilName = "libeay64.dll"
+  else:
+    const
+      DLLSSLName = "(ssleay32|libssl32).dll"
+      DLLUtilName = "libeay32.dll"
 
   from winlean import SocketHandle
 else:
-  when not defined(staticOpenSSL):
+  const
+    versions = "(|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
+  when defined(macosx):
     const
-      versions = "(|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
-    when defined(macosx):
-      const
-        DLLSSLName = "libssl" & versions & ".dylib"
-        DLLUtilName = "libcrypto" & versions & ".dylib"
-    else:
-      const
-        DLLSSLName = "libssl.so" & versions
-        DLLUtilName = "libcrypto.so" & versions
+      DLLSSLName = "libssl" & versions & ".dylib"
+      DLLUtilName = "libcrypto" & versions & ".dylib"
+  else:
+    const
+      DLLSSLName = "libssl.so" & versions
+      DLLUtilName = "libcrypto.so" & versions
   from posix import SocketHandle
 
-when defined(staticOpenSSL):
-  {.pragma: sslImport, cdecl.}
-  {.pragma: utilImport, cdecl.}
-else:
-  {.pragma: sslImport, cdecl, dynlib: DLLSSLName.}
-  {.pragma: utilImport, cdecl, dynlib: DLLUtilName.}
+{.pragma: sslImport, cdecl, dynlib: DLLSSLName.}
+{.pragma: utilImport, cdecl, dynlib: DLLUtilName.}
 
 type
   SslStruct {.final, pure.} = object
