@@ -76,6 +76,7 @@ const defineSsl = defined(ssl) or defined(nimdoc)
 when defineSsl:
   import openssl
 
+
 # Note: The enumerations are mapped to Window's constants.
 
 when defineSsl:
@@ -550,10 +551,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
 
   if address == "":
     var name: Sockaddr_in
-    when useWinVersion:
-      name.sin_family = toInt(AF_INET).int16
-    else:
-      name.sin_family = toInt(AF_INET)
+    name.sin_family = toInt(AF_INET)
     name.sin_port = htons(port.uint16)
     name.sin_addr.s_addr = htonl(INADDR_ANY)
     if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),

@@ -27,7 +27,9 @@ proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
 
 type
-  C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
+  C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>", final, pure.} = object
+    when defined(linux) and defined(amd64):
+      data: array[200, char]
 
 when defined(windows):
   const

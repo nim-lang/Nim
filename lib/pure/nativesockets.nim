@@ -111,8 +111,8 @@ proc `==`*(a, b: Port): bool {.borrow.}
 proc `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
-proc toInt*(domain: Domain): cint
-  ## Converts the Domain enum to a platform-dependent ``cint``.
+proc toInt*(domain: Domain): int16
+  ## Converts the Domain enum to a platform-dependent ``int16``.
 
 proc toInt*(typ: SockType): cint
   ## Converts the SockType enum to a platform-dependent ``cint``.
@@ -121,7 +121,7 @@ proc toInt*(p: Protocol): cint
   ## Converts the Protocol enum to a platform-dependent ``cint``.
 
 when not useWinVersion:
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): int16 =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
@@ -147,7 +147,7 @@ when not useWinVersion:
     else: discard
 
 else:
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): int16 =
     result = toU16(ord(domain))
 
   proc toInt(typ: SockType): cint =

@@ -434,6 +434,10 @@ when not defined(JS):
           weekday {.importc: "tm_wday".},
           yearday {.importc: "tm_yday".},
           isdst {.importc: "tm_isdst".}: cint
+        when defined(linux):
+          gmtoff: clong  ## GMT offset, in seconds
+          zone: cstring
+
   type
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int

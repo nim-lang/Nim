@@ -100,6 +100,9 @@ type
 
 {.deprecated: [TSocketHandle: SocketHandle].}
 
+# The types below are os-specific and the given nim types are an approximation
+# that happens to match linux/amd64 - once the code is compiled, the correct
+# types from the headers will be used in the C code
 type
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
@@ -127,9 +130,16 @@ type
 
   Glob* {.importc: "glob_t", header: "<glob.h>",
            final, pure.} = object ## glob_t
-    gl_pathc*: int          ## Count of paths matched by pattern.
+    gl_pathc*: csize          ## Count of paths matched by pattern.
     gl_pathv*: cstringArray ## Pointer to a list of matched pathnames.
-    gl_offs*: int           ## Slots to reserve at the beginning of gl_pathv.
+    gl_offs*: csize           ## Slots to reserve at the beginning of gl_pathv.
+    when defined(linux) and defined(amd64):
+      gl_flags: cint
+      gl_closedir: pointer
+      gl_readdir: pointer
+      gl_opendir: pointer
+      gl_lstat: pointer
+      gl_stat: pointer
 
   Group* {.importc: "struct group", header: "<grp.h>",
             final, pure.} = object ## struct group
@@ -185,54 +195,67 @@ type
     pw_dir*: cstring    ## Initial working directory.
     pw_shell*: cstring  ## Program to use as shell.
 
-  Blkcnt* {.importc: "blkcnt_t", header: "<sys/types.h>".} = int
+  Blkcnt* {.importc: "blkcnt_t", header: "<sys/types.h>".} = clong
     ## used for file block counts
-  Blksize* {.importc: "blksize_t", header: "<sys/types.h>".} = int
+  Blksize* {.importc: "blksize_t", header: "<sys/types.h>".} = clong
     ## used for block sizes
-  Clock* {.importc: "clock_t", header: "<sys/types.h>".} = int
-  ClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = int
-  Dev* {.importc: "dev_t", header: "<sys/types.h>".} = int
-  Fsblkcnt* {.importc: "fsblkcnt_t", header: "<sys/types.h>".} = int
-  Fsfilcnt* {.importc: "fsfilcnt_t", header: "<sys/types.h>".} = int
-  Gid* {.importc: "gid_t", header: "<sys/types.h>".} = int
-  Id* {.importc: "id_t", header: "<sys/types.h>".} = int
-  Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
-  Key* {.importc: "key_t", header: "<sys/types.h>".} = int
+  Clock* {.importc: "clock_t", header: "<sys/types.h>".} = clong
+  ClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = int32
+  Dev* {.importc: "dev_t", header: "<sys/types.h>".} = int64
+  Fsblkcnt* {.importc: "fsblkcnt_t", header: "<sys/types.h>".} = clong
+  Fsfilcnt* {.importc: "fsfilcnt_t", header: "<sys/types.h>".} = culong
+  Gid* {.importc: "gid_t", header: "<sys/types.h>".} = uint32
+  Id* {.importc: "id_t", header: "<sys/types.h>".} = uint32
+  Ino* {.importc: "ino_t", header: "<sys/types.h>".} = culong
+  Key* {.importc: "key_t", header: "<sys/types.h>".} = int32
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
-  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
-  Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
-  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int
-  Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
+  Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = culong
+  Off* {.importc: "off_t", header: "<sys/types.h>".} = clong
+  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
+  Pthread_attr* {.importc: "pthread_attr_t",
+                  header: "<sys/types.h>", pure, final.} = object
+    when defined(linux) and defined(amd64):
+      data: array[56, uint8]
   Pthread_barrier* {.importc: "pthread_barrier_t",
-                      header: "<sys/types.h>".} = int
+                      header: "<sys/types.h>", pure, final.} = object
+    when defined(linux) and defined(amd64):
+      data: array[32, uint8]
   Pthread_barrierattr* {.importc: "pthread_barrierattr_t",
-                          header: "<sys/types.h>".} = int
-  Pthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>".} = int
+                          header: "<sys/types.h>".} = cint
+  Pthread_cond* {.importc: "pthread_cond_t",
+                   header: "<sys/types.h>", pure, final.} = object
+    when defined(linux) and defined(amd64):
+      data: array[48, uint8]
   Pthread_condattr* {.importc: "pthread_condattr_t",
-                       header: "<sys/types.h>".} = int
-  Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = int
-  Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>".} = int
+                      header: "<sys/types.h>".} = cint
+  Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
+  Pthread_mutex* {.importc: "pthread_mutex_t",
+                   header: "<sys/types.h>", pure, final.} = object
+    when defined(linux) and defined(amd64):
+      data: array[40, uint8]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
-                        header: "<sys/types.h>".} = int
-  Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = int
+                        header: "<sys/types.h>".} = cint
+  Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = cint
   Pthread_rwlock* {.importc: "pthread_rwlock_t",
-                     header: "<sys/types.h>".} = int
+                     header: "<sys/types.h>", pure, final.} = object
+    when defined(linux) and defined(amd64):
+      data: array[56, uint8]
   Pthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
-                         header: "<sys/types.h>".} = int
+                         header: "<sys/types.h>".} = cint
   Pthread_spinlock* {.importc: "pthread_spinlock_t",
-                       header: "<sys/types.h>".} = int
-  Pthread* {.importc: "pthread_t", header: "<sys/types.h>".} = int
-  Suseconds* {.importc: "suseconds_t", header: "<sys/types.h>".} = int
+                       header: "<sys/types.h>".} = cint
+  Pthread* {.importc: "pthread_t", header: "<sys/types.h>".} = culong
+  Suseconds* {.importc: "suseconds_t", header: "<sys/types.h>".} = clong
   #Ttime* {.importc: "time_t", header: "<sys/types.h>".} = int
-  Timer* {.importc: "timer_t", header: "<sys/types.h>".} = int
+  Timer* {.importc: "timer_t", header: "<sys/types.h>".} = pointer
   Trace_attr* {.importc: "trace_attr_t", header: "<sys/types.h>".} = int
   Trace_event_id* {.importc: "trace_event_id_t",
                      header: "<sys/types.h>".} = int
   Trace_event_set* {.importc: "trace_event_set_t",
                       header: "<sys/types.h>".} = int
   Trace_id* {.importc: "trace_id_t", header: "<sys/types.h>".} = int
-  Uid* {.importc: "uid_t", header: "<sys/types.h>".} = int
-  Useconds* {.importc: "useconds_t", header: "<sys/types.h>".} = int
+  Uid* {.importc: "uid_t", header: "<sys/types.h>".} = uint32
+  Useconds* {.importc: "useconds_t", header: "<sys/types.h>".} = uint32
 
   Utsname* {.importc: "struct utsname",
               header: "<sys/utsname.h>",
@@ -258,10 +281,12 @@ type
            header: "<sys/stat.h>", final, pure.} = object ## struct stat
     st_dev*: Dev          ## Device ID of device containing file.
     st_ino*: Ino          ## File serial number.
-    st_mode*: Mode        ## Mode of file (see below).
     st_nlink*: Nlink      ## Number of hard links to the file.
+    st_mode*: Mode        ## Mode of file (see below).
     st_uid*: Uid          ## User ID of file.
     st_gid*: Gid          ## Group ID of file.
+    when defined(linux) and defined(amd64):
+      pad0: cint
     st_rdev*: Dev         ## Device ID (if file is character or block special).
     st_size*: Off         ## For regular files, the file size in bytes.
                            ## For symbolic links, the length in bytes of the
@@ -270,13 +295,18 @@ type
                            ## For a typed memory object, the length in bytes.
                            ## For other file types, the use of this field is
                            ## unspecified.
-    st_atime*: Time        ## Time of last access.
-    st_mtime*: Time        ## Time of last data modification.
-    st_ctime*: Time        ## Time of last status change.
     st_blksize*: Blksize   ## A file system-specific preferred I/O block size
                            ## for this object. In some file system types, this
                            ## may vary from file to file.
     st_blocks*: Blkcnt     ## Number of blocks allocated for this object.
+    st_atime*: Time        ## Time of last access.
+    st_atimensec*: culong  ## Nanosecond part of last access time
+    st_mtime*: Time        ## Time of last data modification.
+    st_mtimensec*: culong  ## Nanosecond part of last modification time
+    st_ctime*: Time        ## Time of last status change.
+    st_ctimensec*: culong  ## Nanosecond part of last status time
+    when defined(linux) and defined(amd64):
+      reserved: array[3, clong]
 
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
@@ -311,6 +341,10 @@ type
     tm_wday*: cint  ## Day of week [0,6] (Sunday =0).
     tm_yday*: cint  ## Day of year [0,365].
     tm_isdst*: cint ## Daylight Savings flag.
+    when defined(linux):
+      tm_gmtoff: clong  ## GMT offset, in seconds
+      tm_zone: cstring
+
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
     tv_sec*: Time  ## Seconds.
@@ -325,6 +359,8 @@ type
     ## accessed as an atomic entity, even in the presence of asynchronous
     ## interrupts.
   Sigset* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
+    when defined(linux) and defined(amd64):
+      data: array[1024 div (8*sizeof(culong)), culong]
 
   SigEvent* {.importc: "struct sigevent",
                header: "<signal.h>", final, pure.} = object ## struct sigevent
@@ -362,16 +398,19 @@ type
   SigInfo* {.importc: "siginfo_t",
               header: "<signal.h>", final, pure.} = object ## siginfo_t
     si_signo*: cint    ## Signal number.
-    si_code*: cint     ## Signal code.
     si_errno*: cint    ## If non-zero, an errno value associated with
                        ## this signal, as defined in <errno.h>.
+    si_code*: cint     ## Signal code.
     si_pid*: Pid       ## Sending process ID.
     si_uid*: Uid       ## Real user ID of sending process.
     si_addr*: pointer  ## Address of faulting instruction.
     si_status*: cint   ## Exit value or signal.
     si_band*: int      ## Band event for SIGPOLL.
     si_value*: SigVal  ## Signal value.
-
+    when defined(linux):
+      pad: array[72, uint8]  # TODO: The actual C type is a union - this pad
+                             # makes the size correct, but the offsets
+                             # of the fields are still wrong!
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = cint
 
@@ -393,6 +432,8 @@ type
     tv_usec*: int ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
+    when defined(linux) and defined(amd64):
+      fds_bits: array[1024 div (8 * sizeof(clong)), clong]
   Mcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
                final, pure.} = object
   Ucontext* {.importc: "ucontext_t", header: "<ucontext.h>",
@@ -458,12 +499,12 @@ else:
 
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cshort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
     sa_family*: TSa_Family         ## Address family.
-    sa_data*: array[0..255, char] ## Socket address (variable-length data).
+    sa_data*: array[14, char] ## Socket address (variable-length data).
 
   Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
               pure, final.} = object ## struct sockaddr_un
@@ -523,6 +564,8 @@ type
     sin_family*: TSa_Family ## AF_INET.
     sin_port*: InPort      ## Port number.
     sin_addr*: InAddr      ## IP address.
+    when defined(linux):
+      pad: array[8, uint8]
 
   In6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr
@@ -1661,13 +1704,13 @@ var
   MSG_WAITALL* {.importc, header: "<sys/socket.h>".}: cint
     ## Attempt to fill the read buffer.
 
-  AF_INET* {.importc, header: "<sys/socket.h>".}: cint
+  AF_INET* {.importc, header: "<sys/socket.h>".}: TSa_Family
     ## Internet domain sockets for use with IPv4 addresses.
-  AF_INET6* {.importc, header: "<sys/socket.h>".}: cint
+  AF_INET6* {.importc, header: "<sys/socket.h>".}: TSa_Family
     ## Internet domain sockets for use with IPv6 addresses.
-  AF_UNIX* {.importc, header: "<sys/socket.h>".}: cint
+  AF_UNIX* {.importc, header: "<sys/socket.h>".}: TSa_Family
     ## UNIX domain sockets.
-  AF_UNSPEC* {.importc, header: "<sys/socket.h>".}: cint
+  AF_UNSPEC* {.importc, header: "<sys/socket.h>".}: TSa_Family
     ## Unspecified.
 
   SHUT_RD* {.importc, header: "<sys/socket.h>".}: cint

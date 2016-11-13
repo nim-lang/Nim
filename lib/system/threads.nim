@@ -123,10 +123,12 @@ else:
     type Time = int
 
   type
-    SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
-                 final, pure.} = object
+    SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = distinct culong
     Pthread_attr {.importc: "pthread_attr_t",
-                     header: "<sys/types.h>", final, pure.} = object
+                     header: "<sys/types.h>", pure, final.} = object
+      when defined(linux) and defined(amd64):
+        data: array[56, uint8]
+
 
     Timespec {.importc: "struct timespec",
                 header: "<time.h>", final, pure.} = object
@@ -152,7 +154,7 @@ else:
 
   type
     ThreadVarSlot {.importc: "pthread_key_t", pure, final,
-                   header: "<sys/types.h>".} = object
+                   header: "<sys/types.h>".} = distinct cuint
   {.deprecated: [TThreadVarSlot: ThreadVarSlot].}
 
   proc pthread_getspecific(a1: ThreadVarSlot): pointer {.

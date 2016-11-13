@@ -77,15 +77,16 @@ when defined(Windows):
 
 else:
   type
-    SysLock {.importc: "pthread_mutex_t", pure, final,
-               header: """#include <sys/types.h>
-                          #include <pthread.h>""".} = object
-    SysLockAttr {.importc: "pthread_mutexattr_t", pure, final
-               header: """#include <sys/types.h>
-                          #include <pthread.h>""".} = object
-    SysCond {.importc: "pthread_cond_t", pure, final,
-               header: """#include <sys/types.h>
-                          #include <pthread.h>""".} = object
+    SysLock {.importc: "pthread_mutex_t",
+               header: "<sys/types.h>", pure, final.} = object
+      when defined(linux) and defined(amd64):
+        data: array[40, uint8]
+    SysLockAttr {.importc: "pthread_mutexattr_t",
+               header: "<sys/types.h>".} = distinct cint
+    SysCond {.importc: "pthread_cond_t",
+               header: "<sys/types.h>", pure, final.} = object
+      when defined(linux) and defined(amd64):
+        data: array[48, uint8]
     SysLockType = distinct cint
 
   proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) {.

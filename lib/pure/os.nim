@@ -514,17 +514,17 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
     var a: Stat
     if stat(filename, a) < 0'i32: raiseOSError(osLastError())
     result = {}
-    if (a.st_mode and S_IRUSR) != 0'i32: result.incl(fpUserRead)
-    if (a.st_mode and S_IWUSR) != 0'i32: result.incl(fpUserWrite)
-    if (a.st_mode and S_IXUSR) != 0'i32: result.incl(fpUserExec)
+    if (a.st_mode and S_IRUSR) != 0: result.incl(fpUserRead)
+    if (a.st_mode and S_IWUSR) != 0: result.incl(fpUserWrite)
+    if (a.st_mode and S_IXUSR) != 0: result.incl(fpUserExec)
 
-    if (a.st_mode and S_IRGRP) != 0'i32: result.incl(fpGroupRead)
-    if (a.st_mode and S_IWGRP) != 0'i32: result.incl(fpGroupWrite)
-    if (a.st_mode and S_IXGRP) != 0'i32: result.incl(fpGroupExec)
+    if (a.st_mode and S_IRGRP) != 0: result.incl(fpGroupRead)
+    if (a.st_mode and S_IWGRP) != 0: result.incl(fpGroupWrite)
+    if (a.st_mode and S_IXGRP) != 0: result.incl(fpGroupExec)
 
-    if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
-    if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
-    if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
+    if (a.st_mode and S_IROTH) != 0: result.incl(fpOthersRead)
+    if (a.st_mode and S_IWOTH) != 0: result.incl(fpOthersWrite)
+    if (a.st_mode and S_IXOTH) != 0: result.incl(fpOthersExec)
   else:
     when useWinUnicode:
       wrapUnary(res, getFileAttributesW, filename)
@@ -1678,11 +1678,11 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
 
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
-      if (rawInfo.st_mode and rawMode) != 0'i32:
+      if (rawInfo.st_mode and rawMode) != 0:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
-    formalInfo.linkCount = rawInfo.st_Nlink
+    formalInfo.linkCount = BiggestInt(rawInfo.st_Nlink)
     formalInfo.lastAccessTime = rawInfo.st_atime
     formalInfo.lastWriteTime = rawInfo.st_mtime
     formalInfo.creationTime = rawInfo.st_ctime
@@ -1724,7 +1724,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo =
     rawToFormalFileInfo(rawInfo, "", result)
   else:
     var rawInfo: Stat
-    if fstat(handle, rawInfo) < 0'i32:
+    if fstat(handle, rawInfo) < 0:
       raiseOSError(osLastError())
     rawToFormalFileInfo(rawInfo, "", result)
 
