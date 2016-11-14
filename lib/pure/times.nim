@@ -1097,6 +1097,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (z), got: " & value[j])
+    info.isDST = false
     j += 2
   of "zz":
     if value[j] == '+':
@@ -1106,6 +1107,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zz), got: " & value[j])
+    info.isDST = false
     j += 3
   of "zzz":
     var factor = 0
@@ -1118,6 +1120,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 4
     info.timezone += factor * value[j..j+1].parseInt() * 60
     j += 2
+    info.isDST = false
   else:
     # Ignore the token and move forward in the value string by the same length
     j += token.len
@@ -1167,7 +1170,8 @@ proc parse*(value, layout: string): TimeInfo =
   info.hour = 0
   info.minute = 0
   info.second = 0
-  info.isDST = false # DST is never encoded in timestamps.
+  info.isDST = true # using this is flag for checking whether a timezone has \
+      # been read (because DST is always false when a tz is parsed)
   while true:
     case layout[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
@@ -1197,8 +1201,17 @@ proc parse*(value, layout: string): TimeInfo =
         parseToken(info, token, value, j)
         token = ""
 
-  # Now we process it again with the correct isDST to correct things like
-  # weekday and yearday.
+  if info.isDST:
+    # means that no timezone has been parsed. In this case, we need to check
+    # whether the date is within DST of the local time.
+    let tmp = getLocalTime(toTime(info))
+    # correctly set isDST so that the following step works on the correct time
+    info.isDST = tmp.isDST
+
+  # Correct weekday and yearday; transform timestamp to local time.
+  # There currently is no way of returning this with the original (parsed)
+  # timezone while also setting weekday and yearday (we are depending on stdlib
+  # to provide this calculation).
   return getLocalTime(toTime(info))
 
 # Leap year calculations are adapted from:
