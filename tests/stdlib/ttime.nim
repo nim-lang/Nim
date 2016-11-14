@@ -190,3 +190,15 @@ doAssert cmpTimeNoSideEffect(0.fromSeconds, 0.fromSeconds)
 let seqA: seq[Time] = @[]
 let seqB: seq[Time] = @[]
 doAssert seqA == seqB
+
+for tz in [
+    (0, "+0", "+00", "+00:00"), # UTC
+    (-3600, "+1", "+01", "+01:00"), # CET
+    (-39600, "+11", "+11", "+11:00"), # two digits
+    (-1800, "+0", "+00", "+00:30"), # half an hour
+    (7200, "-2", "-02", "-02:00"), # positive
+    (38700, "-10", "-10", "-10:45")]: # positive with three quaters hour
+  let ti = TimeInfo(monthday: 1, timezone: tz[0])
+  doAssert ti.format("z") == tz[1]
+  doAssert ti.format("zz") == tz[2]
+  doAssert ti.format("zzz") == tz[3]
