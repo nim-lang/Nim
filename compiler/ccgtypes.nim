@@ -910,7 +910,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
   if typ.kind == tyObject: genTypeInfoAux(m, typ, origType, name)
   else: genTypeInfoAuxBase(m, typ, origType, name, rope("0"))
   var tmp = getNimNode(m)
-  if not isImportedCppType(typ):
+  if not isImportedType(typ):
     genObjectFields(m, typ, typ.n, tmp)
   addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
