@@ -29,7 +29,7 @@ proc execute(cmd, input, workingDir: string, info: TLineInfo):
     localError(info, errExecutionOfProgramFailed, cmd)
     result.resultCode = -1
 
-proc opGorge*(cmd, input, cache: string, info: TLineInfo):
+proc opGorgeEx*(cmd, input, cache: string, info: TLineInfo):
     tuple[output: string, resultCode: int] =
   let workingDir = parentDir(info.toFullPath)
   if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
