@@ -96,6 +96,10 @@ parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-dd'T'HH:mm:ss'Z'zzz",
 # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
 parseTest("2006-01-12T15:04:05.999999999Z-07:00",
     "yyyy-MM-ddTHH:mm:ss.999999999Zzzz", "2006-01-12T22:04:05+00:00", 11)
+for tzFormat in ["z", "zz", "zzz"]:
+  # formatting timezone as 'Z' for UTC
+  parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
+      "2001-01-12T22:04:05+00:00", 11)
 # Kitchen     = "3:04PM"
 parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
 #when not defined(testing):

@@ -1090,29 +1090,42 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     info.year = value[j..j+3].parseInt()
     j += 4
   of "z":
+    info.isDST = false
     if value[j] == '+':
       info.timezone = 0 - parseInt($value[j+1]) * secondsInHour
     elif value[j] == '-':
       info.timezone = parseInt($value[j+1]) * secondsInHour
+    elif value[j] == 'Z':
+      info.timezone = 0
+      j += 1
+      return
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (z), got: " & value[j])
-    info.isDST = false
     j += 2
   of "zz":
+    info.isDST = false
     if value[j] == '+':
       info.timezone = 0 - value[j+1..j+2].parseInt() * secondsInHour
     elif value[j] == '-':
       info.timezone = value[j+1..j+2].parseInt() * secondsInHour
+    elif value[j] == 'Z':
+      info.timezone = 0
+      j += 1
+      return
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zz), got: " & value[j])
-    info.isDST = false
     j += 3
   of "zzz":
+    info.isDST = false
     var factor = 0
     if value[j] == '+': factor = -1
     elif value[j] == '-': factor = 1
+    elif value[j] == 'Z':
+      info.timezone = 0
+      j += 1
+      return
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zzz), got: " & value[j])
@@ -1120,7 +1133,6 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 4
     info.timezone += factor * value[j..j+1].parseInt() * 60
     j += 2
-    info.isDST = false
   else:
     # Ignore the token and move forward in the value string by the same length
     j += token.len
