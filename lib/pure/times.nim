@@ -1138,8 +1138,11 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += token.len
 
 proc parse*(value, layout: string): TimeInfo =
-  ## This function parses a date/time string using the standard format identifiers (below)
-  ## The function defaults information not provided in the format string from the running program (timezone, month, year, etc)
+  ## This function parses a date/time string using the standard format
+  ## identifiers as listed below. The function defaults information not provided
+  ## in the format string from the running program (timezone, month, year, etc).
+  ## Daylight saving time is only set if no timezone is given and the given date
+  ## lies within the DST period of the current locale.
   ##
   ## ==========  =================================================================================  ================================================
   ## Specifier   Description                                                                        Example
@@ -1164,7 +1167,7 @@ proc parse*(value, layout: string): TimeInfo =
   ##    tt       Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
   ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
   ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
-  ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
+  ##    z        Displays the timezone offset from UTC. ``Z`` is parsed as ``+0``                   ``GMT+7 -> +7``, ``GMT-5 -> -5``
   ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
   ##    zzz      Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
   ## ==========  =================================================================================  ================================================
