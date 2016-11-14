@@ -60,9 +60,9 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
 
   var p = c.p
   case typ.kind
-  of tyGenericInst, tyGenericBody, tyTypeDesc:
+  of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias:
     genTraverseProc(c, accessor, lastSon(typ))
-  of tyArrayConstr, tyArray:
+  of tyArray:
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc
     getTemp(p, getSysType(tyInt), i)

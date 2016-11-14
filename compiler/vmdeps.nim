@@ -136,7 +136,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyStmt: result = atomicType("stmt", mStmt)
   of tyVoid: result = atomicType("void", mVoid)
   of tyEmpty: result = atomicType("empty", mNone)
-  of tyArrayConstr, tyArray:
+  of tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array", mArray)
     if inst and t.sons[0].kind == tyRange:
@@ -159,7 +159,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     for i in 0 .. < t.len:
       result.add mapTypeToAst(t.sons[i], info)
-  of tyGenericInst:
+  of tyGenericInst, tyAlias:
     if inst:
       if allowRecursion:
         result = mapTypeToAstR(t.lastSon, info)

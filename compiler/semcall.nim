@@ -370,7 +370,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
 
 proc canDeref(n: PNode): bool {.inline.} =
   result = n.len >= 2 and (let t = n[1].typ;
-    t != nil and t.skipTypes({tyGenericInst}).kind in {tyPtr, tyRef})
+    t != nil and t.skipTypes({tyGenericInst, tyAlias}).kind in {tyPtr, tyRef})
 
 proc tryDeref(n: PNode): PNode =
   result = newNodeI(nkHiddenDeref, n.info)

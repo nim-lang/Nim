@@ -322,7 +322,7 @@ type
                      # (apparently something with bootstrapping)
                      # if you need to add a type, they can apparently be reused
     tyNone, tyBool, tyChar,
-    tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
+    tyEmpty, tyAlias, tyNil, tyExpr, tyStmt, tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
@@ -907,7 +907,7 @@ const
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
     tyGenericParam}
 
-  StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray,
+  StructuralEquivTypes*: TTypeKinds = {tyNil, tyTuple, tyArray,
     tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
     tyVarargs}
 
@@ -920,7 +920,7 @@ const
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
     tyFloat..tyFloat128, tyUInt..tyUInt64}
-  ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet,
+  ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
@@ -1370,8 +1370,8 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if tfHasAsgn in elem.flags:
-    let o2 = elem.skipTypes({tyGenericInst})
-    if o2.kind in {tyTuple, tyObject, tyArray, tyArrayConstr,
+    let o2 = elem.skipTypes({tyGenericInst, tyAlias})
+    if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
@@ -1381,7 +1381,7 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
-    let elemB = elem.skipTypes({tyGenericInst})
+    let elemB = elem.skipTypes({tyGenericInst, tyAlias})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.

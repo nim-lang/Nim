@@ -159,7 +159,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       c.hashSym(t.sym)
     else:
       lowlevel(t.id)
-  of tyRef, tyPtr, tyGenericBody:
+  of tyRef, tyPtr, tyGenericBody, tyAlias:
     c.hashType t.lastSon, flags
   of tyUserTypeClass:
     if t.sym != nil and t.sym.owner != nil:

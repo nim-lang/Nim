@@ -139,7 +139,7 @@ proc declareGlobal(p: PProc; id: int; r: Rope) =
     p.locals.addf("global $1;$n", [r])
 
 const
-  MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray,
+  MappedToObject = {tyObject, tyArray, tyTuple, tyOpenArray,
     tySet, tyVarargs}
 
 proc mapType(typ: PType): TJSTypeKind =
@@ -153,18 +153,19 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyBaseIndex
-  of tyRange, tyDistinct, tyOrdinal, tyProxy: result = mapType(t.sons[0])
+  of tyRange, tyDistinct, tyOrdinal, tyProxy:
+    result = mapType(t.sons[0])
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
   of tyString, tySequence: result = etySeq
-  of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, tyVarargs:
+  of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs:
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
-     tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid:
+     tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid, tyAlias:
     result = etyNone
   of tyStatic:
     if t.n != nil: result = mapType(lastSon t)
@@ -796,8 +797,8 @@ proc generateHeader(p: PProc, typ: PType): Rope =
         add(result, name)
         add(result, "_Idx")
     elif not (i == 1 and param.name.s == "this"):
-      let k = param.typ.skipTypes({tyGenericInst}).kind
-      if k in { tyVar, tyRef, tyPtr, tyPointer }:
+      let k = param.typ.skipTypes({tyGenericInst, tyAlias}).kind
+      if k in {tyVar, tyRef, tyPtr, tyPointer}:
         add(result, "&")
       add(result, "$")
       add(result, name)
@@ -964,7 +965,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   internalAssert a.typ != etyBaseIndex and b.typ != etyBaseIndex
   r.address = a.res
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
-  if typ.kind in {tyArray, tyArrayConstr}: first = firstOrd(typ.sons[0])
+  if typ.kind == tyArray: first = firstOrd(typ.sons[0])
   else: first = 0
   if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
@@ -985,8 +986,7 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
-  of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
-     tyVarargs:
+  of tyArray, tyOpenArray, tySequence, tyString, tyCString, tyVarargs:
     genArrayAddr(p, n, r)
   of tyTuple:
     if p.target == targetPHP:
@@ -1066,8 +1066,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     else:
       let kindOfIndexedExpr = skipTypes(n.sons[0].sons[0].typ, abstractVarRange).kind
       case kindOfIndexedExpr
-      of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
-          tyVarargs:
+      of tyArray, tyOpenArray, tySequence, tyString, tyCString, tyVarargs:
         genArrayAddr(p, n.sons[0], r)
       of tyTuple:
         genFieldAddr(p, n.sons[0], r)
@@ -1387,13 +1386,13 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("0", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
-  of tyRange, tyGenericInst:
+  of tyRange, tyGenericInst, tyAlias:
     result = createVar(p, lastSon(typ), indirect)
   of tySet:
     result = putToSeq("{}" | "array()", indirect)
   of tyBool:
     result = putToSeq("false", indirect)
-  of tyArray, tyArrayConstr:
+  of tyArray:
     let length = int(lengthOrd(t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)

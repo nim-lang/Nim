@@ -133,10 +133,10 @@ proc mapType(typ: PType): TCTypeKind =
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(typ)
-  of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctArray
+  of tyOpenArray, tyArray, tyVarargs: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
-     tyTypeDesc:
+     tyTypeDesc, tyAlias:
     result = mapType(lastSon(typ))
   of tyEnum:
     if firstOrd(typ) < 0:
@@ -152,7 +152,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tyPtr, tyVar, tyRef:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
-    of tyOpenArray, tyArrayConstr, tyArray, tyVarargs: result = ctPtrToArray
+    of tyOpenArray, tyArray, tyVarargs: result = ctPtrToArray
     #of tySet:
     #  if mapSetType(base) == ctArray: result = ctPtrToArray
     #  else: result = ctPtr
@@ -277,7 +277,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyStatic:
     if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
     else: internalError("tyStatic for getSimpleTypeDesc")
-  of tyGenericInst:
+  of tyGenericInst, tyAlias:
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
@@ -334,7 +334,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
   if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {
-          tyArray, tyOpenArray, tyVarargs, tyArrayConstr}:
+          tyArray, tyOpenArray, tyVarargs}:
     result = OnStack
   else:
     result = OnUnknown
@@ -543,7 +543,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
-                          tyDistinct, tyRange, tyStatic}
+                          tyDistinct, tyRange, tyStatic, tyAlias}
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
@@ -565,7 +565,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
-    if etB.kind in {tyArrayConstr, tyArray, tyOpenArray, tyVarargs}:
+    if etB.kind in {tyArray, tyOpenArray, tyVarargs}:
       # this is correct! sets have no proper base type, so we treat
       # ``var set[char]`` in `getParamTypeDesc`
       et = elemType(etB)
@@ -742,7 +742,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       of 1, 2, 4, 8: addf(m.s[cfsTypes], "typedef NU$2 $1;$n", [result, rope(s*8)])
       else: addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
              [result, rope(getSize(t))])
-  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc:
+  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias:
     result = getTypeDescAux(m, lastSon(t), check)
   else:
     internalError("getTypeDescAux(" & $t.kind & ')')
@@ -1073,7 +1073,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
       let markerProc = genTraverseProc(m, origType, sig, tiNew)
       addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
   of tyPtr, tyRange: genTypeInfoAux(m, t, t, result)
-  of tyArrayConstr, tyArray: genArrayInfo(m, t, result)
+  of tyArray: genArrayInfo(m, t, result)
   of tySet: genSetInfo(m, t, result)
   of tyEnum: genEnumInfo(m, t, result)
   of tyObject: genObjectInfo(m, t, origType, result)

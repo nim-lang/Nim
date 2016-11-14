@@ -108,7 +108,7 @@ proc getUniqueType*(key: PType): PType =
     of tyDistinct:
       if key.deepCopy != nil: result = key
       else: result = getUniqueType(lastSon(key))
-    of tyGenericInst, tyOrdinal, tyStatic:
+    of tyGenericInst, tyOrdinal, tyStatic, tyAlias:
       result = getUniqueType(lastSon(key))
       #let obj = lastSon(key)
       #if obj.sym != nil and obj.sym.name.s == "TOption":
@@ -122,7 +122,7 @@ proc getUniqueType*(key: PType): PType =
         result = key
       else:
         result = slowSearch(key, k)
-    of tyArrayConstr, tyGenericInvocation, tyGenericBody,
+    of tyGenericInvocation, tyGenericBody,
        tyOpenArray, tyArray, tySet, tyRange, tyTuple,
        tySequence, tyForward, tyVarargs, tyProxy:
       # we have to do a slow linear search because types may need

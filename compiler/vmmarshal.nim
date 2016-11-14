@@ -102,7 +102,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
       else:
         storeAny(s, t.lastSon, a[i], stored)
     s.add("]")
-  of tyRange, tyGenericInst: storeAny(s, t.lastSon, a, stored)
+  of tyRange, tyGenericInst, tyAlias: storeAny(s, t.lastSon, a, stored)
   of tyEnum:
     # we need a slow linear search because of enums with holes:
     for e in items(t.n):
@@ -275,7 +275,7 @@ proc loadAny(p: var JsonParser, t: PType,
       next(p)
       return
     raiseParseErr(p, "float expected")
-  of tyRange, tyGenericInst: result = loadAny(p, t.lastSon, tab)
+  of tyRange, tyGenericInst, tyAlias: result = loadAny(p, t.lastSon, tab)
   else:
     internalError "cannot marshal at compile-time " & t.typeToString
 

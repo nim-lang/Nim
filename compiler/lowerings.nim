@@ -441,7 +441,7 @@ proc newIntLit*(value: BiggestInt): PNode =
   result.typ = getSysType(tyInt)
 
 proc genHigh*(n: PNode): PNode =
-  if skipTypes(n.typ, abstractVar).kind in {tyArrayConstr, tyArray}:
+  if skipTypes(n.typ, abstractVar).kind == tyArray:
     result = newIntLit(lastOrd(skipTypes(n.typ, abstractVar)))
   else:
     result = newNodeI(nkCall, n.info, 2)

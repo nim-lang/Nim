@@ -62,7 +62,7 @@ proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: Rope, s: TStorageLoc) =
 proc isSimpleConst(typ: PType): bool =
   let t = skipTypes(typ, abstractVar)
   result = t.kind notin
-      {tyTuple, tyObject, tyArray, tyArrayConstr, tySet, tySequence} and not
+      {tyTuple, tyObject, tyArray, tySet, tySequence} and not
       (t.kind == tyProc and t.callConv == ccClosure)
 
 proc useStringh(m: BModule) =
@@ -264,7 +264,7 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 proc isComplexValueType(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst)
-  result = t.kind in {tyArray, tyArrayConstr, tySet, tyTuple, tyObject} or
+  result = t.kind in {tyArray, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
 proc resetLoc(p: BProc, loc: var TLoc) =

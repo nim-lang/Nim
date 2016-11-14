@@ -187,7 +187,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
       tyPtr, tyString, tyRef:
     defaultOp(c, t, body, x, y)
-  of tyArrayConstr, tyArray, tySequence:
+  of tyArray, tySequence:
     if tfHasAsgn in t.flags:
       if t.kind == tySequence:
         # XXX add 'nil' handling here
@@ -227,7 +227,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange,
-     tyGenericInst, tyFieldAccessor, tyStatic, tyVar:
+     tyGenericInst, tyFieldAccessor, tyStatic, tyVar, tyAlias:
     liftBodyAux(c, lastSon(t), body, x, y)
   of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("liftBodyAux")
 
@@ -276,7 +276,7 @@ proc liftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
   #echo "Produced this ", n
 
 proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
-  let t = typ.skipTypes({tyGenericInst, tyVar})
+  let t = typ.skipTypes({tyGenericInst, tyVar, tyAlias})
   result = t.assignment
   if result.isNil:
     result = liftBody(c, t, info)

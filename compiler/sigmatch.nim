@@ -158,7 +158,7 @@ proc sumGeneric(t: PType): int =
   var isvar = 1
   while true:
     case t.kind
-    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyArrayConstr,
+    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody:
       t = t.lastSon
       inc result
@@ -175,6 +175,7 @@ proc sumGeneric(t: PType): int =
       for i in 0 .. <t.len: result += t.sons[i].sumGeneric
       break
     of tyGenericParam, tyExpr, tyStatic, tyStmt: break
+    of tyAlias: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64:
@@ -273,11 +274,6 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
 proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
 proc concreteType(c: TCandidate, t: PType): PType =
   case t.kind
-  of tyArrayConstr:
-    # make it an array
-    result = newType(tyArray, t.owner)
-    addSonSkipIntLit(result, t.sons[0]) # XXX: t.owner is wrong for ID!
-    addSonSkipIntLit(result, t.sons[1]) # XXX: semantic checking for the type?
   of tyNil:
     result = nil              # what should it be?
   of tyTypeDesc:
@@ -394,7 +390,7 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
       inc ptrs
       skipped = skippedPtr
       r = r.lastSon
-    of tyGenericBody, tyGenericInst:
+    of tyGenericBody, tyGenericInst, tyAlias:
       r = r.lastSon
     else:
       break
@@ -692,7 +688,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   # for example, but unfortunately `prepareOperand` is not called in certain
   # situation when nkDotExpr are rotated to nkDotCalls
 
-  if a.kind == tyGenericInst and
+  if a.kind in {tyGenericInst, tyAlias} and
       skipTypes(f, {tyVar}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
@@ -799,11 +795,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if aOrig.kind == tyVar: result = typeRel(c, f.base, aOrig.base)
     else: result = typeRel(c, f.base, aOrig)
     subtypeCheck()
-  of tyArray, tyArrayConstr:
-    # tyArrayConstr cannot happen really, but
-    # we wanna be safe here
+  of tyArray:
     case a.kind
-    of tyArray, tyArrayConstr:
+    of tyArray:
       var fRange = f.sons[0]
       if fRange.kind == tyGenericParam:
         var prev = PType(idTableGet(c.bindings, fRange))
@@ -848,7 +842,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     of tyOpenArray, tyVarargs:
       result = typeRel(c, base(f), base(a))
       if result < isGeneric: result = isNone
-    of tyArray, tyArrayConstr:
+    of tyArray:
       if (f.sons[0].kind != tyGenericParam) and (a.sons[1].kind == tyEmpty):
         result = isSubtype
       elif typeRel(c, base(f), a.sons[1]) >= isGeneric:
@@ -984,7 +978,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyEmpty, tyVoid:
     if a.kind == f.kind: result = isEqual
 
-  of tyGenericInst:
+  of tyGenericInst, tyAlias:
     result = typeRel(c, lastSon(f), a)
 
   of tyGenericBody:
@@ -1090,7 +1084,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyBuiltInTypeClass:
     considerPreviousT:
       let targetKind = f.sons[0].kind
-      if targetKind == a.skipTypes({tyRange, tyGenericInst, tyBuiltInTypeClass}).kind or
+      if targetKind == a.skipTypes({tyRange, tyGenericInst, tyBuiltInTypeClass, tyAlias}).kind or
          (targetKind in {tyProc, tyPointer} and a.kind == tyNil):
         put(c, f, a)
         return isGeneric
