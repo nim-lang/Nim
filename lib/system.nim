@@ -2623,7 +2623,7 @@ when not defined(JS): #and not defined(nimscript):
   # ----------------- IO Part ------------------------------------------------
   type
     CFile {.importc: "FILE", header: "<stdio.h>",
-            final, incompletestruct.} = pointer
+            final, incompletestruct.} = object
     File* = ptr CFile ## The type representing a file handle.
 
     FileMode* = enum           ## The file mode when opening a file.

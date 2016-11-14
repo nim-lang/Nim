@@ -301,7 +301,7 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   ## operations. The file's first byte has the index zero.
   f.offset = pos
   when not defined(windows) and not defined(nimdoc):
-    let ret = lseek(f.fd.cint, pos, SEEK_SET)
+    let ret = lseek(f.fd.cint, Off(pos), SEEK_SET)
     if ret == -1:
       raiseOSError(osLastError())
 

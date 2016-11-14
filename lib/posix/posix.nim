@@ -515,6 +515,8 @@ type
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
     ss_family*: TSa_Family ## Address family.
+    when defined(linux) and defined(amd64):
+      pad: array[128 - sizeof(TSa_Family), uint8]
 
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex
