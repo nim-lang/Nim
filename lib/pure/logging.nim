@@ -172,18 +172,26 @@ when not defined(js):
     var (path, name, _) = splitFile(getAppFilename())
     result = changeFileExt(path / name, "log")
 
+  proc newFileLogger*(file: File,
+                      levelThreshold = lvlAll,
+                      fmtStr = defaultFmtStr): FileLogger =
+    ## Creates a new file logger. This logger logs to ``file``.
+    new(result)
+    result.file = file
+    result.levelThreshold = levelThreshold
+    result.fmtStr = fmtStr
+
   proc newFileLogger*(filename = defaultFilename(),
                       mode: FileMode = fmAppend,
                       levelThreshold = lvlAll,
                       fmtStr = defaultFmtStr,
                       bufSize: int = -1): FileLogger =
-    ## Creates a new file logger. This logger logs to a file.
+    ## Creates a new file logger. This logger logs to a file, specified
+    ## by ``fileName``.
     ## Use ``bufSize`` as size of the output buffer when writing the file
     ## (-1: use system defaults, 0: unbuffered, >0: fixed buffer size).
-    new(result)
-    result.levelThreshold = levelThreshold
-    result.file = open(filename, mode, bufSize = bufSize)
-    result.fmtStr = fmtStr
+    let file = open(filename, mode, bufSize = bufSize)
+    newFileLogger(file, levelThreshold, fmtStr)
 
   # ------
 
