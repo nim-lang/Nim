@@ -144,8 +144,9 @@ type
     yearday*: range[0..365]   ## The number of days since January 1,
                               ## in the range 0 to 365.
                               ## Always 0 if the target is JS.
-    isDST*: bool              ## Determines whether DST is in effect. Always
-                              ## ``False`` if time is UTC.
+    isDST*: bool              ## Determines whether DST is in effect.
+                              ## Semantically, this adds another negative hour
+                              ## offset to the time in addition to the timezone.
     timezone*: int            ## The offset of the (non-DST) timezone in seconds
                               ## west of UTC. Note that the sign of this number
                               ## is the opposite of the one in a formatted
@@ -278,16 +279,20 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
   carryO = `div`(ti1.months + ti2.months, 12)
   result.years = carryO + ti1.years + ti2.years
 
+proc `-`*(ti: TimeInterval): TimeInterval =
+  result = TimeInterval(
+    milliseconds: -ti.milliseconds,
+    seconds: -ti.seconds,
+    minutes: -ti.minutes,
+    hours: -ti.hours,
+    days: -ti.days,
+    months: -ti.months,
+    years: -ti.years
+  )
+
 proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ## Subtracts TimeInterval ``ti1`` from ``ti2``.
-  result = ti1
-  result.milliseconds -= ti2.milliseconds
-  result.seconds -= ti2.seconds
-  result.minutes -= ti2.minutes
-  result.hours -= ti2.hours
-  result.days -= ti2.days
-  result.months -= ti2.months
-  result.years -= ti2.years
+  result = ti1 + (-ti2)
 
 proc isLeapYear*(year: int): bool =
   ## returns true if ``year`` is a leap year
@@ -363,16 +368,9 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
   ##
   ## **Note:** This has been only briefly tested, it is inaccurate especially
   ## when you subtract so much that you reach the Julian calendar.
-  let t = toSeconds(toTime(a))
-  var intval: TimeInterval
-  intval.milliseconds = - interval.milliseconds
-  intval.seconds = - interval.seconds
-  intval.minutes = - interval.minutes
-  intval.hours = - interval.hours
-  intval.days = - interval.days
-  intval.months = - interval.months
-  intval.years = - interval.years
-  let secs = toSeconds(a, intval)
+  let
+    t = toSeconds(toTime(a))
+    secs = toSeconds(a, -interval)
   if a.timezone == 0:
     result = getGMTime(fromSeconds(t + secs))
   else:
@@ -824,28 +822,32 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     if fyear.len != 5: fyear = repeat('0', 5-fyear.len()) & fyear
     buf.add(fyear)
   of "z":
-    let hours = abs(info.timezone) div secondsInHour
-    if info.timezone <= 0: buf.add('+')
+    let
+      nonDstTz = info.timezone - int(info.isDst) * secondsInHour
+      hours = abs(nonDstTz) div secondsInHour
+    if nonDstTz <= 0: buf.add('+')
     else: buf.add('-')
     buf.add($hours)
   of "zz":
-    let hours = abs(info.timezone) div secondsInHour
-    if info.timezone <= 0: buf.add('+')
+    let
+      nonDstTz = info.timezone - int(info.isDst) * secondsInHour
+      hours = abs(nonDstTz) div secondsInHour
+    if nonDstTz <= 0: buf.add('+')
     else: buf.add('-')
     if hours < 10: buf.add('0')
     buf.add($hours)
   of "zzz":
     let
-      hours = abs(info.timezone) div secondsInHour
-      minutes = (abs(info.timezone) div secondsInMin) mod minutesInHour
-    if info.timezone <= 0: buf.add('+')
+      nonDstTz = info.timezone - int(info.isDst) * secondsInHour
+      hours = abs(nonDstTz) div secondsInHour
+      minutes = (abs(nonDstTz) div secondsInMin) mod minutesInHour
+    if nonDstTz <= 0: buf.add('+')
     else: buf.add('-')
     if hours < 10: buf.add('0')
     buf.add($hours)
     buf.add(':')
     if minutes < 10: buf.add('0')
     buf.add($minutes)
-
   of "":
     discard
   else:
@@ -1000,7 +1002,6 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
   of "M":
     var pd = parseInt(value[j..j+1], sv)
     info.month = Month(sv-1)
-    info.monthday = sv
     j += pd
   of "MM":
     var month = value[j..j+1].parseInt()
@@ -1089,27 +1090,42 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     info.year = value[j..j+3].parseInt()
     j += 4
   of "z":
+    info.isDST = false
     if value[j] == '+':
       info.timezone = 0 - parseInt($value[j+1]) * secondsInHour
     elif value[j] == '-':
       info.timezone = parseInt($value[j+1]) * secondsInHour
+    elif value[j] == 'Z':
+      info.timezone = 0
+      j += 1
+      return
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (z), got: " & value[j])
     j += 2
   of "zz":
+    info.isDST = false
     if value[j] == '+':
       info.timezone = 0 - value[j+1..j+2].parseInt() * secondsInHour
     elif value[j] == '-':
       info.timezone = value[j+1..j+2].parseInt() * secondsInHour
+    elif value[j] == 'Z':
+      info.timezone = 0
+      j += 1
+      return
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zz), got: " & value[j])
     j += 3
   of "zzz":
+    info.isDST = false
     var factor = 0
     if value[j] == '+': factor = -1
     elif value[j] == '-': factor = 1
+    elif value[j] == 'Z':
+      info.timezone = 0
+      j += 1
+      return
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zzz), got: " & value[j])
@@ -1122,8 +1138,11 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += token.len
 
 proc parse*(value, layout: string): TimeInfo =
-  ## This function parses a date/time string using the standard format identifiers (below)
-  ## The function defaults information not provided in the format string from the running program (timezone, month, year, etc)
+  ## This function parses a date/time string using the standard format
+  ## identifiers as listed below. The function defaults information not provided
+  ## in the format string from the running program (timezone, month, year, etc).
+  ## Daylight saving time is only set if no timezone is given and the given date
+  ## lies within the DST period of the current locale.
   ##
   ## ==========  =================================================================================  ================================================
   ## Specifier   Description                                                                        Example
@@ -1148,7 +1167,7 @@ proc parse*(value, layout: string): TimeInfo =
   ##    tt       Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
   ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
   ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
-  ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
+  ##    z        Displays the timezone offset from UTC. ``Z`` is parsed as ``+0``                   ``GMT+7 -> +7``, ``GMT-5 -> -5``
   ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
   ##    zzz      Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
   ## ==========  =================================================================================  ================================================
@@ -1166,6 +1185,8 @@ proc parse*(value, layout: string): TimeInfo =
   info.hour = 0
   info.minute = 0
   info.second = 0
+  info.isDST = true # using this is flag for checking whether a timezone has \
+      # been read (because DST is always false when a tz is parsed)
   while true:
     case layout[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
@@ -1195,16 +1216,17 @@ proc parse*(value, layout: string): TimeInfo =
         parseToken(info, token, value, j)
         token = ""
 
-  # We are going to process the date to find out if we are in DST, because the
-  # default based on the current time may be wrong. Calling getLocalTime will
-  # set this correctly, but the actual time may be offset from when we called
-  # toTime with a possibly incorrect DST setting, so we are only going to take
-  # the isDST from this result.
-  let correctDST = getLocalTime(toTime(info))
-  info.isDST = correctDST.isDST
+  if info.isDST:
+    # means that no timezone has been parsed. In this case, we need to check
+    # whether the date is within DST of the local time.
+    let tmp = getLocalTime(toTime(info))
+    # correctly set isDST so that the following step works on the correct time
+    info.isDST = tmp.isDST
 
-  # Now we process it again with the correct isDST to correct things like
-  # weekday and yearday.
+  # Correct weekday and yearday; transform timestamp to local time.
+  # There currently is no way of returning this with the original (parsed)
+  # timezone while also setting weekday and yearday (we are depending on stdlib
+  # to provide this calculation).
   return getLocalTime(toTime(info))
 
 # Leap year calculations are adapted from:
