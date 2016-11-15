@@ -1827,7 +1827,7 @@ const
   NimMinor*: int = 15
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 1
+  NimPatch*: int = 3
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2176,25 +2176,34 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   for i in 0..y.len-1:
     result[i+1] = y[i]
 
-when not defined(nimscript):
-  when not defined(JS) or defined(nimphp):
-    proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
-      result = cast[pointer](x)
+proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
+  ## Generic equals operator for sequences: relies on a equals operator for
+  ## the element type `T`.
+  when nimvm:
+    if x.isNil and y.isNil:
+      return true
   else:
-    proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
-      asm """return `x`"""
+    when not defined(JS) or defined(nimphp):
+      proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
+        result = cast[pointer](x)
+    else:
+      proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
+        asm """return `x`"""
 
-  proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
-    ## Generic equals operator for sequences: relies on a equals operator for
-    ## the element type `T`.
     if seqToPtr(x) == seqToPtr(y):
-      result = true
-    elif seqToPtr(x) == nil or seqToPtr(y) == nil:
-      result = false
-    elif x.len == y.len:
-      for i in 0..x.len-1:
-        if x[i] != y[i]: return false
-      result = true
+      return true
+
+  if x.isNil or y.isNil:
+    return false
+
+  if x.len != y.len:
+    return false
+
+  for i in 0..x.len-1:
+    if x[i] != y[i]:
+      return false
+
+  return true
 
 proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
@@ -2325,7 +2334,11 @@ proc collectionToString[T: set | seq](x: T, b, e: string): string =
   var firstElement = true
   for value in items(x):
     if not firstElement: result.add(", ")
-    result.add($value)
+    when compiles(value.isNil):
+      if value.isNil: result.add "nil"
+      else: result.add($value)
+    else:
+      result.add($value)
     firstElement = false
   result.add(e)
 
@@ -2581,10 +2594,11 @@ else:
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
-  when not defined(nimscript) and not defined(nogc):
+  when hasAlloc:
     when not defined(gcStack):
       proc initGC()
-    when not defined(boehmgc) and not defined(useMalloc) and not defined(gogc) and not defined(gcStack):
+    when not defined(boehmgc) and not defined(useMalloc) and
+        not defined(gogc) and not defined(gcStack):
       proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
@@ -2602,7 +2616,6 @@ when not defined(JS): #and not defined(nimscript):
       when declared(setStackBottom):
         setStackBottom(locals)
 
-  when hasAlloc:
     var
       strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
 
@@ -2616,6 +2629,8 @@ when not defined(JS): #and not defined(nimscript):
     FileMode* = enum           ## The file mode when opening a file.
       fmRead,                   ## Open the file for read access only.
       fmWrite,                  ## Open the file for write access only.
+                                ## If the file does not exist, it will be
+                                ## created.
       fmReadWrite,              ## Open the file for read and write access.
                                 ## If the file does not exist, it will be
                                 ## created.
@@ -2632,10 +2647,15 @@ when not defined(JS): #and not defined(nimscript):
 
   include "system/ansi_c"
 
-  when not defined(nimscript):
-    proc cmp(x, y: string): int =
+  proc cmp(x, y: string): int =
+    when nimvm:
+      if x < y: result = -1
+      elif x > y: result = 1
+      else: result = 0
+    else:
       result = int(c_strcmp(x, y))
 
+  when not defined(nimscript):
     proc zeroMem(p: pointer, size: Natural) =
       c_memset(p, 0, size)
     proc copyMem(dest, source: pointer, size: Natural) =
@@ -2644,12 +2664,6 @@ when not defined(JS): #and not defined(nimscript):
       c_memmove(dest, source, size)
     proc equalMem(a, b: pointer, size: Natural): bool =
       c_memcmp(a, b, size) == 0
-
-  else:
-    proc cmp(x, y: string): int =
-      if x < y: result = -1
-      elif x > y: result = 1
-      else: result = 0
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
@@ -3690,7 +3704,7 @@ template closureScope*(body: untyped): untyped =
 when defined(nimconfig):
   include "system/nimscript"
 
-when defined(windows) and appType == "console" and not defined(nimconfig):
+when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage

@@ -115,6 +115,12 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
+  template testWithNone(filename: untyped) =
+    testSpec r, makeTest("tests/gc" / filename, options &
+                  " --gc:none", cat, actionRun)
+    testSpec r, makeTest("tests/gc" / filename, options &
+                  " -d:release --gc:none", cat, actionRun)
+
   template testWithoutMs(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options, cat, actionRun)
     testSpec r, makeTest("tests/gc" / filename, options &
@@ -144,6 +150,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcleak"
   test "gcleak2"
   test "gctest"
+  testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
   # Disabled because it works and takes too long to run:
@@ -375,8 +382,14 @@ proc `&.?`(a, b: string): string =
 proc `&?.`(a, b: string): string =
   # candidate for the stdlib?
   result = if a.endswith(b): a else: a & b
+  
+proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
+  let test = "tests" & DirSep &.? cat.string / test
 
-proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: string = "t*.nim") =
+  if existsFile(test): testSpec r, makeTest(test, options, cat)
+  else: echo "[Warning] - ", test, " test does not exist"
+
+proc processCategory(r: var TResults, cat: Category, options: string) =
   case cat.string.normalize
   of "rodfiles":
     when false: compileRodFiles(r, cat, options)
@@ -417,5 +430,5 @@ proc processCategory(r: var TResults, cat: Category, options: string, fileGlob: 
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
   else:
-    for name in os.walkFiles("tests" & DirSep &.? cat.string / fileGlob):
+    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)

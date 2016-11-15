@@ -123,7 +123,7 @@ when defined(macosx) or defined(freebsd):
     NOTE_USECONDS*   = 0x00000004'u32 ## data is microseconds
     NOTE_NSECONDS*   = 0x00000008'u32 ## data is nanoseconds
 else:
-  # NetBSD and OpenBSD doesnt support NOTE_{TIME} constants, but
+  # NetBSD and OpenBSD doesn't support NOTE_{TIME} constants, but
   # support EVFILT_TIMER with granularity of milliseconds.
   const
     NOTE_MSECONDS*   = 0x00000000'u32

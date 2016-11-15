@@ -202,7 +202,7 @@
     ; Shortcuts
     #  if d.len >= 6:
     #    let startMenuEntry = d[5]
-    #    let e = splitFile(startMenuEntry).name.capitalize
+    #    let e = splitFile(startMenuEntry).name.capitalizeAscii
       !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
         CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\?{e}.lnk" "$INSTDIR\?dir\?{startMenuEntry.toWin}"
       !insertmacro MUI_STARTMENU_WRITE_END

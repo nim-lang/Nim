@@ -10,7 +10,7 @@
 # tree helper routines
 
 import
-  ast, astalgo, lexer, msgs, strutils, wordrecg
+  ast, astalgo, lexer, msgs, strutils, wordrecg, idents
 
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   if n == nil: return

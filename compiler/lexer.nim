@@ -127,8 +127,9 @@ type
                               # this is needed because scanning comments
                               # needs so much look-ahead
     currLineIndent*: int
-    strongSpaces*: bool
+    strongSpaces*, allowTabs*: bool
     errorHandler*: TErrorHandler
+    cache*: IdentCache
 
 var gLinesCompiled*: int  # all lines that have been compiled
 
@@ -164,7 +165,6 @@ proc tokToStr*(tok: TToken): string =
     if tok.ident != nil:
       result = tok.ident.s
     else:
-      internalError("tokToStr")
       result = ""
 
 proc prettyTok*(tok: TToken): string =
@@ -175,8 +175,6 @@ proc printTok*(tok: TToken) =
   msgWriteln($tok.line & ":" & $tok.col & "\t" &
       TokTypeToStr[tok.tokType] & " " & tokToStr(tok))
 
-var dummyIdent: PIdent
-
 proc initToken*(L: var TToken) =
   L.tokType = tkInvalid
   L.iNumber = 0
@@ -185,7 +183,7 @@ proc initToken*(L: var TToken) =
   L.literal = ""
   L.fNumber = 0.0
   L.base = base10
-  L.ident = dummyIdent
+  L.ident = nil
 
 proc fillToken(L: var TToken) =
   L.tokType = tkInvalid
@@ -195,17 +193,20 @@ proc fillToken(L: var TToken) =
   setLen(L.literal, 0)
   L.fNumber = 0.0
   L.base = base10
-  L.ident = dummyIdent
+  L.ident = nil
 
-proc openLexer*(lex: var TLexer, fileIdx: int32, inputstream: PLLStream) =
+proc openLexer*(lex: var TLexer, fileIdx: int32, inputstream: PLLStream;
+                 cache: IdentCache) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
   lex.indentAhead = - 1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
+  lex.cache = cache
 
-proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream) =
-  openLexer(lex, filename.fileInfoIdx, inputstream)
+proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream;
+                cache: IdentCache) =
+  openLexer(lex, filename.fileInfoIdx, inputstream, cache)
 
 proc closeLexer*(lex: var TLexer) =
   inc(gLinesCompiled, lex.lineNumber)
@@ -746,7 +747,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
 
     else: break
   h = !$h
-  tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   L.bufpos = pos
   if (tok.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
@@ -757,7 +758,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
 proc endOperator(L: var TLexer, tok: var TToken, pos: int,
                  hash: Hash) {.inline.} =
   var h = !$hash
-  tok.ident = getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
   else: tok.tokType = TTokType(tok.ident.id - oprLow + ord(tkColon))
   L.bufpos = pos
@@ -847,34 +848,23 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   tok.tokType = tkComment
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
-  when not defined(nimfix):
-    assert buf[pos+1] == '#'
-    if buf[pos+2] == '[':
-      skipMultiLineComment(L, tok, pos+3, true)
-      return
-    inc(pos, 2)
+  assert buf[pos+1] == '#'
+  if buf[pos+2] == '[':
+    skipMultiLineComment(L, tok, pos+3, true)
+    return
+  inc(pos, 2)
 
   var toStrip = 0
   while buf[pos] == ' ':
     inc pos
     inc toStrip
 
-  when defined(nimfix):
-    var col = getColNumber(L, pos)
   while true:
     var lastBackslash = -1
     while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}:
       if buf[pos] == '\\': lastBackslash = pos+1
       add(tok.literal, buf[pos])
       inc(pos)
-    when defined(nimfix):
-      if lastBackslash > 0:
-        # a backslash is a continuation character if only followed by spaces
-        # plus a newline:
-        while buf[lastBackslash] == ' ': inc(lastBackslash)
-        if buf[lastBackslash] notin {CR, LF, nimlexbase.EndOfFile}:
-          # false positive:
-          lastBackslash = -1
 
     pos = handleCRLF(L, pos)
     buf = L.buf
@@ -883,21 +873,13 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       inc(pos)
       inc(indent)
 
-    when defined(nimfix):
-      template doContinue(): untyped =
-        buf[pos] == '#' and (col == indent or lastBackslash > 0)
-    else:
-      template doContinue(): untyped =
-        buf[pos] == '#' and buf[pos+1] == '#'
-    if doContinue():
+    if buf[pos] == '#' and buf[pos+1] == '#':
       tok.literal.add "\n"
-      when defined(nimfix): col = indent
-      else:
-        inc(pos, 2)
-        var c = toStrip
-        while buf[pos] == ' ' and c > 0:
-          inc pos
-          dec c
+      inc(pos, 2)
+      var c = toStrip
+      while buf[pos] == ' ' and c > 0:
+        inc pos
+        dec c
       inc tok.iNumber
     else:
       if buf[pos] > ' ':
@@ -915,7 +897,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
       inc(tok.strongSpaceA)
     of '\t':
-      lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
+      if not L.allowTabs: lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
       inc(pos)
     of CR, LF:
       pos = handleCRLF(L, pos)
@@ -932,27 +914,19 @@ proc skip(L: var TLexer, tok: var TToken) =
         else:
           break
       tok.strongSpaceA = 0
-      when defined(nimfix):
-        template doBreak(): untyped = buf[pos] > ' '
-      else:
-        template doBreak(): untyped =
-          buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#')
-      if doBreak():
+      if buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#'):
         tok.indent = indent
         L.currLineIndent = indent
         break
     of '#':
-      when defined(nimfix):
-        break
+      # do not skip documentation comment:
+      if buf[pos+1] == '#': break
+      if buf[pos+1] == '[':
+        skipMultiLineComment(L, tok, pos+2, false)
+        pos = L.bufpos
+        buf = L.buf
       else:
-        # do not skip documentation comment:
-        if buf[pos+1] == '#': break
-        if buf[pos+1] == '[':
-          skipMultiLineComment(L, tok, pos+2, false)
-          pos = L.bufpos
-          buf = L.buf
-        else:
-          while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
+        while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
     else:
       break                   # EndOfFile also leaves the loop
   L.bufpos = pos
@@ -1051,7 +1025,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       if L.buf[L.bufpos] notin SymChars+{'_'} and not
           isMagicIdentSeparatorRune(L.buf, L.bufpos):
         tok.tokType = tkSymbol
-        tok.ident = getIdent("_")
+        tok.ident = L.cache.getIdent("_")
       else:
         tok.literal = $c
         tok.tokType = tkInvalid
@@ -1084,5 +1058,3 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         tok.tokType = tkInvalid
         lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
         inc(L.bufpos)
-
-dummyIdent = getIdent("")

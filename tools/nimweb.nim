@@ -29,7 +29,7 @@ type
   TRssItem = object
     year, month, day, title, url, content: string
   TAction = enum
-    actAll, actOnlyWebsite, actPdf, actJson2
+    actAll, actOnlyWebsite, actPdf, actJson2, actOnlyDocs
 
   Sponsor = object
     logo: string
@@ -72,7 +72,7 @@ include "website.tmpl"
 # ------------------------- configuration file -------------------------------
 
 const
-  version = "0.7"
+  version = "0.8"
   usage = "nimweb - Nim Website Generator Version " & version & """
 
   (c) 2015 Andreas Rumpf
@@ -85,11 +85,13 @@ Options:
   -v, --version       shows the version
   --website           only build the website, not the full documentation
   --pdf               build the PDF version of the documentation
+  --json2             build JSON of the documentation
+  --onlyDocs          build only the documentation
 Compile_options:
   will be passed to the Nim compiler
 """
 
-  rYearMonthDay = r"(\d{4})_(\d{2})_(\d{2})"
+  rYearMonthDay = r"on\s+(\d{2})\/(\d{2})\/(\d{4})"
   rssUrl = "http://nim-lang.org/news.xml"
   rssNewsUrl = "http://nim-lang.org/news.html"
   activeSponsors = "web/sponsors.csv"
@@ -157,6 +159,7 @@ proc parseCmdLine(c: var TConfigData) =
       of "website": action = actOnlyWebsite
       of "pdf": action = actPdf
       of "json2": action = actJson2
+      of "onlydocs": action = actOnlyDocs
       of "googleanalytics":
         c.gaId = val
         c.nimArgs.add("--doc.googleAnalytics:" & val & " ")
@@ -315,6 +318,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
   exec(findNim() & " buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
+  createDir(destPath)
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
@@ -347,6 +351,7 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # Goes through each news file, returns its date/title.
   result = @[]
+  var matches: array[3, string]
   let reYearMonthDay = re(rYearMonthDay)
   for kind, path in walkDir(inputFilename):
     let (dir, name, ext) = path.splitFile
@@ -354,8 +359,8 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
       let content = readFile(path)
       let title = content.splitLines()[0]
       let urlPath = "news/" & name & ".html"
-      if name =~ reYearMonthDay:
-        result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
+      if content.find(reYearMonthDay, matches) >= 0:
+        result.add(TRssItem(year: matches[2], month: matches[1], day: matches[0],
           title: title, url: "http://nim-lang.org/" & urlPath,
           content: content))
   result.reverse()
@@ -501,11 +506,19 @@ proc buildWebsite(c: var TConfigData) =
 proc main(c: var TConfigData) =
   buildWebsite(c)
   buildJS("web/upload")
-  buildAddDoc(c, "web/upload")
-  buildDocSamples(c, "web/upload")
-  buildDoc(c, "web/upload")
-  buildDocSamples(c, "doc")
-  buildDoc(c, "doc")
+  const docup = "web/upload/" & NimVersion
+  createDir(docup)
+  buildAddDoc(c, docup)
+  buildDocSamples(c, docup)
+  buildDoc(c, docup)
+  createDir("doc/html")
+  buildDocSamples(c, "doc/html")
+  buildDoc(c, "doc/html")
+
+proc onlyDocs(c: var TConfigData) =
+  createDir("doc/html")
+  buildDocSamples(c, "doc/html")
+  buildDoc(c, "doc/html")
 
 proc json2(c: var TConfigData) =
   const destPath = "web/json2"
@@ -526,6 +539,7 @@ parseCmdLine(c)
 parseIniFile(c)
 case action
 of actOnlyWebsite: buildWebsite(c)
-of actPdf: buildPdfDoc(c, "doc")
+of actPdf: buildPdfDoc(c, "doc/pdf")
+of actOnlyDocs: onlyDocs(c)
 of actAll: main(c)
 of actJson2: json2(c)

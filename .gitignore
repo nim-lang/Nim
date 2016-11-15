@@ -21,6 +21,7 @@ tags
 install.sh
 deinstall.sh
 
+doc/html/
 doc/*.html
 doc/*.pdf
 doc/*.idx
@@ -47,6 +48,7 @@ xcuserdata/
 /testresults.json
 testament.db
 /csources
+dist/
 
 # Private directories and files (IDEs)
 .*/

@@ -3,7 +3,6 @@ import os
 template getScriptDir(): string =
   parentDir(instantiationInfo(-1, true).filename)
 
-
 block gorge:
   const
     execName = when defined(windows): "tgorge.bat" else: "./tgorge.sh"

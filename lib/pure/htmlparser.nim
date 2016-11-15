@@ -494,12 +494,15 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
       else: discard
       result.addNode(parse(x, errors))
     of xmlElementEnd:
-      if cmpIgnoreCase(x.elemName, result.tag) == 0:
-        next(x)
-      else:
+      if cmpIgnoreCase(x.elemName, result.tag) != 0:
         #echo "5; expected: ", result.htmltag, " ", x.elemName
         adderr(expected(x, result))
-        # do not skip it here!
+        # this seems to do better match error corrections in browsers:
+        while x.kind in {xmlElementEnd, xmlWhitespace}:
+          if x.kind == xmlElementEnd and cmpIgnoreCase(x.elemName, result.tag) == 0:
+            break
+          next(x)
+      next(x)
       break
     of xmlEof:
       adderr(expected(x, result))

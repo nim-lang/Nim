@@ -716,7 +716,8 @@ untraced references are *unsafe*. However for certain low-level operations
 (accessing the hardware) untraced references are unavoidable.
 
 Traced references are declared with the **ref** keyword, untraced references
-are declared with the **ptr** keyword.
+are declared with the **ptr** keyword.  In general, a `ptr T` is implicitly
+convertible to the `pointer` type.
 
 An empty subscript ``[]`` notation can be used to derefer a reference,
 the ``addr`` procedure returns the address of an item. An address is always

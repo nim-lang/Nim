@@ -177,3 +177,24 @@ macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
               newIdentNode("@"),
               newNimNode(nnkBracket))),
           result))))
+
+
+macro dump*(x: typed): untyped =
+  ## Dumps the content of an expression, useful for debugging.
+  ## It accepts any expression and prints a textual representation
+  ## of the tree representing the expression - as it would appear in
+  ## source code - together with the value of the expression.
+  ##
+  ## As an example,
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     x = 10
+  ##     y = 20
+  ##   dump(x + y)
+  ##
+  ## will print ``x + y = 30``.
+  let s = x.toStrLit
+  let r = quote do:
+    debugEcho `s`, " = ", `x`
+  return r

@@ -124,17 +124,17 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
 
 proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
-  case whichKeyword(arg)
-  of wOn: gOptions = gOptions + op
-  of wOff: gOptions = gOptions - op
+  case arg.normalize
+  of "on": gOptions = gOptions + op
+  of "off": gOptions = gOptions - op
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processOnOffSwitchOrList(op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo): bool =
   result = false
-  case whichKeyword(arg)
-  of wOn: gOptions = gOptions + op
-  of wOff: gOptions = gOptions - op
+  case arg.normalize
+  of "on": gOptions = gOptions + op
+  of "off": gOptions = gOptions - op
   else:
     if arg == "list":
       result = true
@@ -143,9 +143,9 @@ proc processOnOffSwitchOrList(op: TOptions, arg: string, pass: TCmdLinePass,
 
 proc processOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdLinePass,
                          info: TLineInfo) =
-  case whichKeyword(arg)
-  of wOn: gGlobalOptions = gGlobalOptions + op
-  of wOff: gGlobalOptions = gGlobalOptions - op
+  case arg.normalize
+  of "on": gGlobalOptions = gGlobalOptions + op
+  of "off": gGlobalOptions = gGlobalOptions - op
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc expectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
@@ -178,12 +178,12 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     var x = findStr(msgs.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(info, "unknown warning: " & id)
-  case whichKeyword(substr(arg, i))
-  of wOn:
+  case substr(arg, i).normalize
+  of "on":
     incl(gNotes, n)
     incl(gMainPackageNotes, n)
     incl(enableNotes, n)
-  of wOff:
+  of "off":
     excl(gNotes, n)
     excl(gMainPackageNotes, n)
     incl(disableNotes, n)
@@ -630,12 +630,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "dynliboverride":
     dynlibOverride(switch, arg, pass, info)
   of "cs":
+    # only supported for compatibility. Does nothing.
     expectArg(switch, arg, pass, info)
-    case arg
-    of "partial": idents.firstCharIsCS = true
-    of "none": idents.firstCharIsCS = false
-    else: localError(info, errGenerated,
-      "'partial' or 'none' expected, but found " & arg)
   of "experimental":
     expectNoArg(switch, arg, pass, info)
     gExperimentalMode = true

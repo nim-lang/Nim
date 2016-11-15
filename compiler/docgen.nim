@@ -184,7 +184,7 @@ proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
   result = genComment(d, n).rope
   if result == nil:
-    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy}:
+    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in countup(0, len(n)-1):
         result = genRecComment(d, n.sons[i])
         if result != nil: return
@@ -514,7 +514,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
     result["code"] = %r.buf
 
 proc checkForFalse(n: PNode): bool =
-  result = n.kind == nkIdent and identEq(n.ident, "false")
+  result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
 
 proc traceDeps(d: PDoc, n: PNode) =
   const k = skModule
@@ -691,7 +691,7 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
       discard "fixme: error report"
 
 proc commandDoc*() =
-  var ast = parseFile(gProjectMainIdx)
+  var ast = parseFile(gProjectMainIdx, newIdentCache())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
@@ -721,7 +721,7 @@ proc commandRst2TeX*() =
   commandRstAux(gProjectFull, TexExt)
 
 proc commandJson*() =
-  var ast = parseFile(gProjectMainIdx)
+  var ast = parseFile(gProjectMainIdx, newIdentCache())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true

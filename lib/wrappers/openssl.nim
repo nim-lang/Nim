@@ -26,7 +26,7 @@ when useWinVersion:
   from winlean import SocketHandle
 else:
   const
-    versions = "(|.10|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
+    versions = "(|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
   when defined(macosx):
     const
       DLLSSLName = "libssl" & versions & ".dylib"
@@ -261,11 +261,14 @@ proc ERR_error_string*(e: cInt, buf: cstring): cstring{.cdecl,
 proc ERR_get_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
-proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSSL_add_all_algorithms_conf".}
+when defined(android):
+    template OpenSSL_add_all_algorithms*() = discard
+else:
+    proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSSL_add_all_algorithms_conf".}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-when not useWinVersion and not defined(macosx):
+when not useWinVersion and not defined(macosx) and not defined(android):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
@@ -279,7 +282,7 @@ when not useWinVersion and not defined(macosx):
     if p != nil: dealloc(p)
 
 proc CRYPTO_malloc_init*() =
-  when not useWinVersion and not defined(macosx):
+  when not useWinVersion and not defined(macosx) and not defined(android):
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.

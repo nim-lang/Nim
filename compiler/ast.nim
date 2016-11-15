@@ -317,6 +317,10 @@ type
   TTypeKind* = enum  # order is important!
                      # Don't forget to change hti.nim if you make a change here
                      # XXX put this into an include file to avoid this issue!
+                     # several types are no longer used (guess which), but a
+                     # spot in the sequence is kept for backwards compatibility
+                     # (apparently something with bootstrapping)
+                     # if you need to add a type, they can apparently be reused
     tyNone, tyBool, tyChar,
     tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
@@ -345,9 +349,9 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyBigNum,
-    tyConst, tyMutable, tyVarargs,
-    tyIter, # unused
+    tyUnused0, tyUnused1, tyUnused2,
+    tyVarargs,
+    tyUnused,
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass #\
@@ -1046,8 +1050,6 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
-var anyGlobal* = newSym(skVar, getIdent("*"), nil, unknownLineInfo())
-
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or
@@ -1578,14 +1580,6 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
-
-proc createMagic*(name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-  result.magic = m
-
-let
-  opNot* = createMagic("not", mNot)
-  opContains* = createMagic("contains", mInSet)
 
 when false:
   proc containsNil*(n: PNode): bool =

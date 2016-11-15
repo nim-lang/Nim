@@ -549,8 +549,6 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
   of tyNil:
     result = f.allowsNil
-  of tyIter:
-    if tfIterator in f.flags: result = typeRel(c, f.base, a.base)
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
@@ -1021,11 +1019,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       var fskip = skippedNone
       let aobj = x.skipToObject(askip)
       let fobj = genericBody.lastSon.skipToObject(fskip)
+      var depth = -1
       if fobj != nil and aobj != nil and askip == fskip:
-        let depth = isObjectSubtype(c, aobj, fobj, f)
-        if depth >= 0:
-          c.inheritancePenalty += depth
-          return if depth == 0: isGeneric else: isSubtype
+        depth = isObjectSubtype(c, aobj, fobj, f)
       result = typeRel(c, genericBody, x)
       if result != isNone:
         # see tests/generics/tgeneric3.nim for an example that triggers this
@@ -1047,6 +1043,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           else:
             put(c, f.sons[i], x)
 
+      if depth >= 0:
+        c.inheritancePenalty += depth
+        # bug #4863: We still need to bind generic alias crap, so
+        # we cannot return immediately:
+        result = if depth == 0: isGeneric else: isSubtype
   of tyAnd:
     considerPreviousT:
       result = isEqual
@@ -1219,13 +1220,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = typeRel(c, prev.base, a.base)
       else:
         result = isNone
-
-  of tyIter:
-    if a.kind == tyIter or
-      (a.kind == tyProc and tfIterator in a.flags):
-      result = typeRel(c, f.base, a.base)
-    else:
-      result = isNone
 
   of tyStmt:
     if aOrig != nil and tfOldSchoolExprStmt notin f.flags:
@@ -1584,8 +1578,9 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
   elif a.typ.isNil:
     # XXX This is unsound! 'formal' can differ from overloaded routine to
     # overloaded routine!
-    let flags = if formal.kind == tyIter: {efDetermineType, efWantIterator}
-                else: {efDetermineType, efAllowStmt}
+    let flags = {efDetermineType, efAllowStmt}
+                #if formal.kind == tyIter: {efDetermineType, efWantIterator}
+                #else: {efDetermineType, efAllowStmt}
                 #elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
                 #else: {efDetermineType}
     result = c.semOperand(c, a, flags)

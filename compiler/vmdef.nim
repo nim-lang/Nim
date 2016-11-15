@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, intsets
+import ast, passes, msgs, idents, intsets
 
 const
   byteExcess* = 128 # we use excess-K for immediates
@@ -204,16 +204,18 @@ type
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
     callbacks*: seq[tuple[key: string, value: VmCallback]]
     errorFlag*: string
+    cache*: IdentCache
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "")
+    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
+    cache: cache)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module

@@ -204,16 +204,21 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet) =
   let u = s.gcUnsafetyReason
   if u != nil and not cycleCheck.containsOrIncl(u.id):
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
-    if u.kind in {skLet, skVar}:
+    case u.kind
+    of skLet, skVar:
       message(s.info, msgKind,
         ("'$#' is not GC-safe as it accesses '$#'" &
         " which is a global using GC'ed memory") % [s.name.s, u.name.s])
-    elif u.kind in routineKinds:
+    of routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
       listGcUnsafety(u, true, cycleCheck)
       message(s.info, msgKind,
         "'$#' is not GC-safe as it calls '$#'" %
+        [s.name.s, u.name.s])
+    of skParam:
+      message(s.info, msgKind,
+        "'$#' is not GC-safe as it performs an indirect call via '$#'" %
         [s.name.s, u.name.s])
     else:
       internalAssert u.kind == skUnknown
@@ -721,7 +726,8 @@ proc track(tracked: PEffects, n: PNode) =
           # and it's not a recursive call:
           if not (a.kind == nkSym and a.sym == tracked.owner):
             markSideEffect(tracked, a)
-    for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
+    if a.kind != nkSym or a.sym.magic != mNBindSym:
+      for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]

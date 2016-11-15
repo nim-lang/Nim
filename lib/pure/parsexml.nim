@@ -142,9 +142,9 @@ proc kind*(my: XmlParser): XmlEventKind {.inline.} =
 template charData*(my: XmlParser): string =
   ## returns the character data for the events: ``xmlCharData``,
   ## ``xmlWhitespace``, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
-  ## Raises an assertion in debug mode if ``my.kind`` is not one 
+  ## Raises an assertion in debug mode if ``my.kind`` is not one
   ## of those events. In release mode, this will not trigger an error
-  ## but the value returned will not be valid. 
+  ## but the value returned will not be valid.
   assert(my.kind in {xmlCharData, xmlWhitespace, xmlComment, xmlCData,
                      xmlSpecial})
   my.a
@@ -152,49 +152,49 @@ template charData*(my: XmlParser): string =
 template elementName*(my: XmlParser): string =
   ## returns the element name for the events: ``xmlElementStart``,
   ## ``xmlElementEnd``, ``xmlElementOpen``
-  ## Raises an assertion in debug mode if ``my.kind`` is not one 
+  ## Raises an assertion in debug mode if ``my.kind`` is not one
   ## of those events. In release mode, this will not trigger an error
-  ## but the value returned will not be valid. 
+  ## but the value returned will not be valid.
   assert(my.kind in {xmlElementStart, xmlElementEnd, xmlElementOpen})
   my.a
 
 template entityName*(my: XmlParser): string =
   ## returns the entity name for the event: ``xmlEntity``
-  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## Raises an assertion in debug mode if ``my.kind`` is not
   ## ``xmlEntity``. In release mode, this will not trigger an error
-  ## but the value returned will not be valid. 
+  ## but the value returned will not be valid.
   assert(my.kind == xmlEntity)
   my.a
 
 template attrKey*(my: XmlParser): string =
   ## returns the attribute key for the event ``xmlAttribute``
-  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## Raises an assertion in debug mode if ``my.kind`` is not
   ## ``xmlAttribute``. In release mode, this will not trigger an error
-  ## but the value returned will not be valid. 
+  ## but the value returned will not be valid.
   assert(my.kind == xmlAttribute)
   my.a
 
 template attrValue*(my: XmlParser): string =
   ## returns the attribute value for the event ``xmlAttribute``
-  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## Raises an assertion in debug mode if ``my.kind`` is not
   ## ``xmlAttribute``. In release mode, this will not trigger an error
-  ## but the value returned will not be valid. 
+  ## but the value returned will not be valid.
   assert(my.kind == xmlAttribute)
   my.b
 
 template piName*(my: XmlParser): string =
   ## returns the processing instruction name for the event ``xmlPI``
-  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## Raises an assertion in debug mode if ``my.kind`` is not
   ## ``xmlPI``. In release mode, this will not trigger an error
-  ## but the value returned will not be valid. 
+  ## but the value returned will not be valid.
   assert(my.kind == xmlPI)
   my.a
 
 template piRest*(my: XmlParser): string =
   ## returns the rest of the processing instruction for the event ``xmlPI``
-  ## Raises an assertion in debug mode if ``my.kind`` is not 
+  ## Raises an assertion in debug mode if ``my.kind`` is not
   ## ``xmlPI``. In release mode, this will not trigger an error
-  ## but the value returned will not be valid. 
+  ## but the value returned will not be valid.
   assert(my.kind == xmlPI)
   my.b
 
@@ -572,6 +572,10 @@ proc parseAttribute(my: var XmlParser) =
           inc(pos)
   else:
     markError(my, errQuoteExpected)
+    # error corrections: guess what was meant
+    while buf[pos] != '>' and buf[pos] > ' ':
+      add(my.b, buf[pos])
+      inc pos
   my.bufpos = pos
   parseWhitespace(my, skip=true)
 
@@ -636,12 +640,14 @@ proc rawGetTok(my: var XmlParser) =
 
 proc getTok(my: var XmlParser) =
   while true:
+    let lastKind = my.kind
     rawGetTok(my)
     case my.kind
     of xmlComment:
       if my.options.contains(reportComments): break
     of xmlWhitespace:
-      if my.options.contains(reportWhitespace): break
+      if my.options.contains(reportWhitespace) or lastKind in {xmlCharData, xmlComment, xmlEntity}:
+        break
     else: break
 
 proc next*(my: var XmlParser) =

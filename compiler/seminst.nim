@@ -58,7 +58,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
   for i, a in n.pairs:
     internalAssert a.kind == nkSym
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic, tyIter}+tyTypeClasses:
+    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     let symKind = if q.typ.kind == tyStatic: skConst else: skType
     var s = newSym(symKind, q.name, getCurrOwner(), q.info)
@@ -99,7 +99,8 @@ proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
 
 proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
-  if n.kind == nkSym and sfGenSym in n.sym.flags and n.sym.owner == orig:
+  if n.kind == nkSym and sfGenSym in n.sym.flags and
+      (n.sym.owner == orig or n.sym.owner.kind == skPackage):
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
     if x == nil:

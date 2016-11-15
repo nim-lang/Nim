@@ -147,7 +147,7 @@ the ``raise`` statement is the only way to raise an exception.
 If no exception name is given, the current exception is `re-raised`:idx:. The
 `ReraiseError`:idx: exception is raised if there is no exception to
 re-raise. It follows that the ``raise`` statement *always* raises an
-exception (unless a raise hook has been provided).
+exception.
 
 
 Exception hierarchy

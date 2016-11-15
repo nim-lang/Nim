@@ -3,6 +3,8 @@ import ospaths
 
 mode = ScriptMode.Verbose
 
+echo "This script is deprecated. Use 'koch nimble' instead."
+
 var id = 0
 while dirExists("nimble" & $id):
   inc id
@@ -20,4 +22,4 @@ try:
   mvFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
 except OSError:
   cpFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
-  
+

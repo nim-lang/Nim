@@ -3,17 +3,34 @@ Download the compiler
 
 You can download the latest version of the Nim compiler here.
 
-Binaries
---------
+Windows
+-------
 
-Right now binaries are only provided for Windows. You can download
-an installer for both 32 bit and 64 bit versions of Windows below. These
+Zips
+%%%%
+
+We now encourage you to install via the provided zipfiles:
+
+* | 32 bit: `nim-0.15.2_x32.zip <download/nim-0.15.2_x32.zip>`_
+  | SHA-256  0f1bfb74751f55e090140a361c08e9f39f1dd03f1f0c070c061f2d5049ab9f96
+* | 64 bit: `nim-0.15.2_x64.zip <download/nim-0.15.2_x64.zip>`_
+  | SHA-256  ceea42de6ebcd41032ee51f04526dc4cf2cbb0958ca6ad2321cf21944e05f553
+
+Unzip these where you want and optionally run ``finish.exe`` to
+detect your MingW environment.
+
+Exes
+%%%%
+
+You can download an installer for both 32 bit and 64 bit versions of
+Windows below. Note that these installers have some known issues and
+so will unlikely to be provided further in the future. These
 installers have everything you need to use Nim, including a C compiler.
 
-* | 32 bit: `nim-0.15.0_x32.exe <download/nim-0.15.0_x32.exe>`_
-  | SHA-256  0ca8931e3369735bbafdf93de98a8fd0f425870f1173845e7601922a5e00c3c2
-* | 64 bit: `nim-0.15.0_x64.exe <download/nim-0.15.0_x64.exe>`_
-  | SHA-256  7bb9321cd9fb2860d36ee9b248e0202d7d4e36e2272a2f128fbce96fd4a9bfd6
+* | 32 bit: `nim-0.15.2_x32.exe <download/nim-0.15.2_x32.exe>`_
+  | SHA-256  8d648295dbd59cb315c98926a1da9f1f68773a1a2ef3d9d4c91c59387167efa3
+* | 64 bit: `nim-0.15.2_x64.exe <download/nim-0.15.2_x64.exe>`_
+  | SHA-256  8c7efc6571921c2d2e5e995f801d4229ea1de19fbdabdcba1628307bd4612392
 
 These installers also include Aporia, Nimble and other useful Nim tools to get
 you started with Nim development!
@@ -31,8 +48,8 @@ like systems.
 
 Firstly, download this archive:
 
-* | `nim-0.15.0.tar.xz (4.5MB) <download/nim-0.15.0.tar.xz>`_
-  | SHA-256  c514535050b2b2156147bbe6e23aafe07cd996b2afa2c81fa9a09e1cd8c669fb
+* | `nim-0.15.2.tar.xz (4.5MB) <download/nim-0.15.2.tar.xz>`_
+  | SHA-256  905df2316262aa2cbacae067acf45fc05c2a71c8c6fde1f2a70c927ebafcfe8a
 
 Extract the archive. Then copy the extracted files into your chosen installation
 directory, ideally somewhere in your home directory.
@@ -44,7 +61,7 @@ Now open a terminal and follow these instructions:
 ``cd ~/programs/nim``.
 * run ``sh build.sh``.
 * Add ``$your_install_dir/bin`` to your PATH.
-* To build associated tools like ``nimble`` and ``nimsuggest`` run ``nim e install_tools.nims``.
+* To build associated tools like ``nimble`` and ``nimsuggest`` run ``nim c koch && koch tools``.
 
 After restarting your terminal, you should be able to run ``nim -v``
 which should show you the version of Nim you just installed.

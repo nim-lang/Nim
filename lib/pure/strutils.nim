@@ -179,9 +179,10 @@ proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
   if s.len() == 0:
     return false
 
-  result = true
   for c in s:
-    result = c.isLowerAscii() and result
+    if not c.isLowerAscii():
+      return false
+  true
 
 proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsUpperAsciiStr".}=
@@ -193,9 +194,10 @@ proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
   if s.len() == 0:
     return false
 
-  result = true
   for c in s:
-    result = c.isUpperAscii() and result
+    if not c.isUpperAscii():
+      return false
+  true
 
 proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerAsciiChar".} =

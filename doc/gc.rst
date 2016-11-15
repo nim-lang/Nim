@@ -19,8 +19,10 @@ This document describes how the GC works and how to tune it for
 
 The basic algorithm is *Deferred Reference Counting* with cycle detection.
 References on the stack are not counted for better performance (and easier C
-code generation). The GC **never** scans the whole heap but it may scan the
-delta-subgraph of the heap that changed since its last run.
+code generation). Cycle detection is currently done by a simple mark&sweep
+GC that has to scan the full (thread local heap). ``--gc:v2`` replaces this
+with an incremental mark and sweep. That it is not production ready yet,
+however.
 
 
 The GC is only triggered in a memory allocation operation. It is not triggered
@@ -34,17 +36,7 @@ Cycle collector
 ===============
 
 The cycle collector can be en-/disabled independently from the other parts of
-the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``. The
-compiler analyses the types for their possibility to build cycles, but often
-it is necessary to help this analysis with the ``acyclic`` pragma (see
-`acyclic <manual.html#acyclic-pragma>`_ for further information).
-
-You can also use the ``acyclic`` pragma for data that is cyclic in reality and
-then break up the cycles explicitly with ``GC_addCycleRoot``. This can be a
-very valuable optimization; the Nim compiler itself relies on this
-optimization trick to improve performance. Note that ``GC_addCycleRoot`` is
-a quick operation; the root is only registered for the next run of the
-cycle collector.
+the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``.
 
 
 Realtime support
@@ -55,19 +47,19 @@ defined via ``--define:useRealtimeGC`` (you can put this into your config
 file as well). With this switch the GC supports the following operations:
 
 .. code-block:: nim
-  proc GC_setMaxPause*(MaxPauseInUs: int)
+  proc GC_setMaxPause*(maxPauseInUs: int)
   proc GC_step*(us: int, strongAdvice = false, stackSize = -1)
 
-The unit of the parameters ``MaxPauseInUs`` and ``us`` is microseconds.
+The unit of the parameters ``maxPauseInUs`` and ``us`` is microseconds.
 
 These two procs are the two modus operandi of the realtime GC:
 
 (1) GC_SetMaxPause Mode
 
     You can call ``GC_SetMaxPause`` at program startup and then each triggered
-    GC run tries to not take longer than ``MaxPause`` time. However, it is
+    GC run tries to not take longer than ``maxPause`` time. However, it is
     possible (and common) that the work is nevertheless not evenly distributed
-    as each call to ``new`` can trigger the GC and thus take  ``MaxPause``
+    as each call to ``new`` can trigger the GC and thus take  ``maxPause``
     time.
 
 (2) GC_step Mode
@@ -86,8 +78,8 @@ These two procs are the two modus operandi of the realtime GC:
 These procs provide a "best effort" realtime guarantee; in particular the
 cycle collector is not aware of deadlines yet. Deactivate it to get more
 predictable realtime behaviour. Tests show that a 2ms max pause
-time will be met in almost all cases on modern CPUs unless the cycle collector
-is triggered.
+time will be met in almost all cases on modern CPUs (with the cycle collector
+disabled).
 
 
 Time measurement

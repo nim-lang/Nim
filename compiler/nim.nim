@@ -13,10 +13,15 @@ when defined(gcc) and defined(windows):
   else:
     {.link: "icons/nim_icon.o".}
 
+when defined(amd64) and defined(windows) and defined(vcc):
+  {.link: "icons/nim-amd64-windows-vcc.res".}
+when defined(i386) and defined(windows) and defined(vcc):
+  {.link: "icons/nim-i386-windows-vcc.res".}
+
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt, service,
-  nodejs, scriptconfig
+  nodejs, scriptconfig, idents, modulegraphs
 
 when hasTinyCBackend:
   import tccgen
@@ -32,7 +37,7 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc handleCmdLine() =
+proc handleCmdLine(cache: IdentCache) =
   if paramCount() == 0:
     writeCommandLineUsage()
   else:
@@ -56,19 +61,19 @@ proc handleCmdLine() =
     loadConfigs(DefaultConfig) # load all config files
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(scriptFile, freshDefines=false)
+      runNimScript(cache, scriptFile, freshDefines=false)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == gProjectFull: return
     elif fileExists(gProjectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(gProjectPath / "config.nims", freshDefines=false)
+      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false)
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
     processCmdLine(passCmd2, "")
     if options.command == "":
       rawMessage(errNoCommand, command)
-    mainCommand()
+    mainCommand(newModuleGraph(), cache)
     if optHints in gOptions and hintGCStats in gNotes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
@@ -112,5 +117,5 @@ when compileOption("gc", "v2") or compileOption("gc", "refc"):
 condsyms.initDefines()
 
 when not defined(selftest):
-  handleCmdLine()
+  handleCmdLine(newIdentCache())
   msgQuit(int8(msgs.gErrorCounter > 0))

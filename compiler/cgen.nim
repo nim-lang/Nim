@@ -16,6 +16,8 @@ import
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, semparallel
 
+from modulegraphs import ModuleGraph
+
 import strutils except `%` # collides with ropes.`%`
 
 when options.hasTinyCBackend:
@@ -870,7 +872,7 @@ proc genMainProc(m: BModule) =
     NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
       "}$N$N"
-      
+
     NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)();$N" &
@@ -972,7 +974,13 @@ proc getSomeInitName(m: PSym, suffix: string): Rope =
   result.add m.name.s
   result.add suffix
 
-proc getInitName(m: PSym): Rope = getSomeInitName(m, "Init000")
+proc getInitName(m: PSym): Rope =
+  if sfMainModule in m.flags:
+    # generate constant name for main module, for "easy" debugging.
+    result = rope"NimMainModule"
+  else:
+    result = getSomeInitName(m, "Init000")
+
 proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
 proc registerModuleToMain(m: PSym) =
@@ -1168,7 +1176,7 @@ proc newModule(module: PSym): BModule =
     if (sfDeadCodeElim in module.flags):
       internalError("added pending module twice: " & module.filename)
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   result = newModule(module)
   if optGenIndex in gGlobalOptions and generatedHeader == nil:
     let f = if headerFile.len > 0: headerFile else: gProjectFull
@@ -1203,7 +1211,7 @@ proc getCFile(m: BModule): string =
       else: ".c"
   result = changeFileExt(completeCFilePath(m.cfilename.withPackageName), ext)
 
-proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
+proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
   assert optSymbolFiles in gGlobalOptions
   var m = newModule(module)
   readMergeInfo(getCFile(m), m)

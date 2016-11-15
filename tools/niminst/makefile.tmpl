@@ -157,7 +157,7 @@ endif
 %.o: %.c
 	$(CC) $(COMP_FLAGS) -Ic_code -c $< -o $@
 
-?{"$(binDir)/" & toLower(c.name)}: $(oFiles)
+?{"$(binDir)/" & toLowerAscii(c.name)}: $(oFiles)
 	@mkdir -p $(binDir)
 	$(LINKER) -o $@ $^ $(LINK_FLAGS)
 	@echo "SUCCESS"
@@ -165,4 +165,4 @@ endif
 .PHONY: clean
 
 clean:
-	rm -f $(oFiles) ?{"$(binDir)/" & toLower(c.name)}
+	rm -f $(oFiles) ?{"$(binDir)/" & toLowerAscii(c.name)}

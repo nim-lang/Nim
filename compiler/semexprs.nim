@@ -607,12 +607,12 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       call.add(a)
     #echo "NOW evaluating at compile time: ", call.renderTree
     if sfCompileTime in callee.flags:
-      result = evalStaticExpr(c.module, call, c.p.owner)
+      result = evalStaticExpr(c.module, c.cache, call, c.p.owner)
       if result.isNil:
         localError(n.info, errCannotInterpretNodeX, renderTree(call))
       else: result = fixupTypeAfterEval(c, result, n)
     else:
-      result = evalConstExpr(c.module, call)
+      result = evalConstExpr(c.module, c.cache, call)
       if result.isNil: result = n
       else: result = fixupTypeAfterEval(c, result, n)
     #if result != n:
@@ -620,7 +620,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
   let a = semExpr(c, n.sons[0])
-  result = evalStaticExpr(c.module, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.cache, a, c.p.owner)
   if result.isNil:
     localError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode
@@ -694,6 +694,22 @@ proc semBracketedMacro(c: PContext; outer, inner: PNode; s: PSym;
   of skTemplate: result = semTemplateExpr(c, outer, s, flags)
   else: assert(false)
   return
+
+proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
+  result = n
+  let callee = result.sons[0].sym
+  case callee.kind
+  of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
+  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
+  else:
+    semFinishOperands(c, result)
+    activate(c, result)
+    fixAbstractType(c, result)
+    analyseIfAddressTakenInCall(c, result)
+    if callee.magic != mNone:
+      result = magicsAfterOverloadResolution(c, result, flags)
+  if c.inTypeClass == 0:
+    result = evalAtCompileTime(c, result)
 
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
@@ -773,27 +789,11 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # See bug #904 of how to trigger it:
       return result
   #result = afterCallActions(c, result, nOrig, flags)
-  fixAbstractType(c, result)
-  analyseIfAddressTakenInCall(c, result)
-  if result.sons[0].kind == nkSym and result.sons[0].sym.magic != mNone:
-    result = magicsAfterOverloadResolution(c, result, flags)
-  result = evalAtCompileTime(c, result)
-
-proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
-  result = n
-  let callee = result.sons[0].sym
-  case callee.kind
-  of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
-  of skTemplate: result = semTemplateExpr(c, result, callee, flags)
+  if result.sons[0].kind == nkSym:
+    result = afterCallActions(c, result, nOrig, flags)
   else:
-    semFinishOperands(c, result)
-    activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
-    if callee.magic != mNone:
-      result = magicsAfterOverloadResolution(c, result, flags)
-  if c.inTypeClass == 0:
-    result = evalAtCompileTime(c, result)
 
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this seems to be a hotspot in the compiler!
@@ -861,7 +861,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           s = newNodeIT(nkCurly, n.info, setType)
           for j in countup(0, sonsLen(it) - 2): addSon(s, copyTree(it.sons[j]))
           var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(inExpr, newSymNode(ast.opContains, n.info))
+          addSon(inExpr, newSymNode(opContains, n.info))
           addSon(inExpr, s)
           addSon(inExpr, copyTree(r.sons[0]))
           addSon(check, inExpr)
@@ -874,11 +874,11 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             check = newNodeI(nkCheckedFieldExpr, n.info)
             addSon(check, ast.emptyNode) # make space for access node
           var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(inExpr, newSymNode(ast.opContains, n.info))
+          addSon(inExpr, newSymNode(opContains, n.info))
           addSon(inExpr, s)
           addSon(inExpr, copyTree(r.sons[0]))
           var notExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(notExpr, newSymNode(ast.opNot, n.info))
+          addSon(notExpr, newSymNode(opNot, n.info))
           addSon(notExpr, inExpr)
           addSon(check, notExpr)
           return
@@ -1574,9 +1574,9 @@ proc getMagicSym(magic: TMagic): PSym =
   result = newSym(skProc, getIdent($magic), systemModule, gCodegenLineInfo)
   result.magic = magic
 
-proc newAnonSym(kind: TSymKind, info: TLineInfo,
+proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo,
                 owner = getCurrOwner()): PSym =
-  result = newSym(kind, idAnon, owner, info)
+  result = newSym(kind, c.cache.idAnon, owner, info)
   result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
@@ -1648,7 +1648,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
 
   processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
 
-  doBlk.sons[namePos] = newAnonSym(skTemplate, n.info).newSymNode
+  doBlk.sons[namePos] = newAnonSym(c, skTemplate, n.info).newSymNode
   if ids.len > 0:
     doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
     doBlk[paramsPos].add getSysSym("stmt").newSymNode # return type

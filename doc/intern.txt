@@ -459,7 +459,7 @@ This should produce roughly this code:
     PEnv = ref object
       x: int # data
 
-  proc anon(y: int, c: PClosure): int =
+  proc anon(y: int, c: PEnv): int =
     return y + c.x
 
   proc add(x: int): tuple[prc, data] =

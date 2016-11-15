@@ -52,13 +52,13 @@ when defined(nimdoc):
       Vnode,       ## BSD specific file change happens
       User,        ## User event is raised
       Error,       ## Error happens while waiting, for descriptor
-      VnodeWrite,  ## NOTE_WRITE (BSD specific, write to file occured)
-      VnodeDelete, ## NOTE_DELETE (BSD specific, unlink of file occured)
+      VnodeWrite,  ## NOTE_WRITE (BSD specific, write to file occurred)
+      VnodeDelete, ## NOTE_DELETE (BSD specific, unlink of file occurred)
       VnodeExtend, ## NOTE_EXTEND (BSD specific, file extended)
       VnodeAttrib, ## NOTE_ATTRIB (BSD specific, file attributes changed)
       VnodeLink,   ## NOTE_LINK (BSD specific, file link count changed)
       VnodeRename, ## NOTE_RENAME (BSD specific, file renamed)
-      VnodeRevoke  ## NOTE_REVOKE (BSD specific, file revoke occured)
+      VnodeRevoke  ## NOTE_REVOKE (BSD specific, file revoke occurred)
 
     ReadyKey*[T] = object
       ## An object which holds result for descriptor
@@ -140,7 +140,7 @@ when defined(nimdoc):
 
   proc flush*[T](s: Selector[T]) =
     ## Flushes all changes was made to kernel pool/queue.
-    ## This function is usefull only for BSD and MacOS, because
+    ## This function is useful only for BSD and MacOS, because
     ## kqueue supports bulk changes to be made.
     ## On Linux/Windows and other Posix compatible operation systems,
     ## ``flush`` is alias for `discard`.

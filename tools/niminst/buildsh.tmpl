@@ -53,7 +53,7 @@ uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
 case $uos in
   *linux* )
     myos="linux"
-    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lrt"
     ;;
   *dragonfly* )
     myos="freebsd"
@@ -93,6 +93,9 @@ case $uos in
   *haiku* )
     myos="haiku"
     LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
+    ;;
+  *mingw* )
+    myos="windows"
     ;;
   *)
     echo 2>&1 "Error: unknown operating system: $uos"
@@ -144,7 +147,7 @@ case $myos in
     $CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
-    $LINKER -o ?{"$binDir/" & toLower(c.name)} ?linkCmd $LINK_FLAGS
+    $LINKER -o ?{"$binDir/" & toLowerAscii(c.name)} ?linkCmd $LINK_FLAGS
     ;;
 #    end for
   *)

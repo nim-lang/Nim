@@ -462,7 +462,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
-    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
+    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:

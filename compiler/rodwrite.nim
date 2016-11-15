@@ -16,6 +16,8 @@ import
   condsyms, ropes, idents, securehash, rodread, passes, importer, idgen,
   rodutils
 
+from modulegraphs import ModuleGraph
+
 type
   TRodWriter = object of TPassContext
     module: PSym
@@ -34,6 +36,7 @@ type
     tstack: TTypeSeq         # a stack of types to process
     files: TStringSeq
     origFile: string
+    cache: IdentCache
 
   PRodWriter = ref TRodWriter
 
@@ -54,7 +57,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
 template filename*(w: PRodWriter): string =
   w.module.filename
 
-proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter =
+proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter =
   new(result)
   result.sstack = @[]
   result.tstack = @[]
@@ -76,6 +79,7 @@ proc newRodWriter(hash: SecureHash, module: PSym): PRodWriter =
   result.init = ""
   result.origFile = module.info.toFullPath
   result.data = newStringOfCap(12_000)
+  result.cache = cache
 
 proc addModDep(w: PRodWriter, dep: string; info: TLineInfo) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
@@ -575,15 +579,25 @@ proc process(c: PPassContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
     #var s = n.sons[namePos].sym
     #addInterfaceSym(w, s)
-  of nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef,
+  of nkProcDef, nkIteratorDef, nkConverterDef,
       nkTemplateDef, nkMacroDef:
-    var s = n.sons[namePos].sym
+    let s = n.sons[namePos].sym
     if s == nil: internalError(n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
       internalError(n.info, "rodwrite.process: body is nil")
     if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
         sfForward notin s.flags:
       addInterfaceSym(w, s)
+  of nkMethodDef:
+    let s = n.sons[namePos].sym
+    if s == nil: internalError(n.info, "rodwrite.process")
+    if n.sons[bodyPos] == nil:
+      internalError(n.info, "rodwrite.process: body is nil")
+    if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
+        sfForward notin s.flags:
+      pushSym(w, s)
+      processStacks(w, false)
+
   of nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]
@@ -621,9 +635,9 @@ proc process(c: PPassContext, n: PNode): PNode =
   else:
     discard
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(module.fileIdx.getHash, module)
+  var w = newRodWriter(module.fileIdx.getHash, module, cache)
   rawAddInterfaceSym(w, module)
   result = w
 

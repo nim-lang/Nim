@@ -459,3 +459,7 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #elif defined(__FreeBSD__)
 #  include <sys/types.h>
 #endif
+
+/* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
+#define NIM_CHECK_SIZE(typ, sz) \
+  _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")

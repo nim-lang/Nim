@@ -230,6 +230,8 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     # builtin slice keeps lvalue-ness:
     if getMagic(n) in {mArrGet, mSlice}:
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
+    elif n.typ != nil and n.typ.kind == tyVar:
+      result = arLValue
   of nkStmtList, nkStmtListExpr:
     if n.typ != nil:
       result = isAssignable(owner, n.lastSon, isUnsafeAddr)

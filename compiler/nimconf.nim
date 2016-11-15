@@ -156,7 +156,7 @@ proc checkSymbol(L: TLexer, tok: TToken) =
     lexMessage(L, errIdentifierExpected, tokToStr(tok))
 
 proc parseAssignment(L: var TLexer, tok: var TToken) =
-  if tok.ident.id == getIdent("-").id or tok.ident.id == getIdent("--").id:
+  if tok.ident.s == "-" or tok.ident.s == "--":
     confTok(L, tok)           # skip unnecessary prefix
   var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
@@ -179,14 +179,14 @@ proc parseAssignment(L: var TLexer, tok: var TToken) =
     if tok.tokType == tkBracketRi: confTok(L, tok)
     else: lexMessage(L, errTokenExpected, "']'")
     add(val, ']')
-  let percent = tok.ident.id == getIdent("%=").id
+  let percent = tok.ident != nil and tok.ident.s == "%="
   if tok.tokType in {tkColon, tkEquals} or percent:
     if len(val) > 0: add(val, ':')
     confTok(L, tok)           # skip ':' or '=' or '%'
     checkSymbol(L, tok)
     add(val, tokToStr(tok))
     confTok(L, tok)           # skip symbol
-    while tok.ident != nil and tok.ident.id == getIdent("&").id:
+    while tok.ident != nil and tok.ident.s == "&":
       confTok(L, tok)
       checkSymbol(L, tok)
       add(val, tokToStr(tok))
@@ -197,7 +197,7 @@ proc parseAssignment(L: var TLexer, tok: var TToken) =
   else:
     processSwitch(s, val, passPP, info)
 
-proc readConfigFile(filename: string) =
+proc readConfigFile(filename: string; cache: IdentCache) =
   var
     L: TLexer
     tok: TToken
@@ -205,7 +205,7 @@ proc readConfigFile(filename: string) =
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     initToken(tok)
-    openLexer(L, filename, stream)
+    openLexer(L, filename, stream, cache)
     tok.tokType = tkEof       # to avoid a pointless warning
     confTok(L, tok)           # read in the first token
     while tok.tokType != tkEof: parseAssignment(L, tok)
@@ -225,22 +225,22 @@ proc getSystemConfigPath(filename: string): string =
     if not existsFile(result): result = joinPath([p, "etc", filename])
     if not existsFile(result): result = "/etc/" & filename
 
-proc loadConfigs*(cfg: string) =
+proc loadConfigs*(cfg: string; cache: IdentCache) =
   setDefaultLibpath()
 
   if optSkipConfigFile notin gGlobalOptions:
-    readConfigFile(getSystemConfigPath(cfg))
+    readConfigFile(getSystemConfigPath(cfg), cache)
 
   if optSkipUserConfigFile notin gGlobalOptions:
-    readConfigFile(getUserConfigPath(cfg))
+    readConfigFile(getUserConfigPath(cfg), cache)
 
   var pd = if gProjectPath.len > 0: gProjectPath else: getCurrentDir()
   if optSkipParentConfigFiles notin gGlobalOptions:
     for dir in parentDirs(pd, fromRoot=true, inclusive=false):
-      readConfigFile(dir / cfg)
+      readConfigFile(dir / cfg, cache)
 
   if optSkipProjConfigFile notin gGlobalOptions:
-    readConfigFile(pd / cfg)
+    readConfigFile(pd / cfg, cache)
 
     if gProjectName.len != 0:
       # new project wide config file:
@@ -251,4 +251,8 @@ proc loadConfigs*(cfg: string) =
         projectConfig = changeFileExt(gProjectFull, "nimrod.cfg")
         if fileExists(projectConfig):
           rawMessage(warnDeprecated, projectConfig)
-      readConfigFile(projectConfig)
+      readConfigFile(projectConfig, cache)
+
+proc loadConfigs*(cfg: string) =
+  # for backwards compatibility only.
+  loadConfigs(cfg, newIdentCache())

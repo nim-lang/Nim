@@ -81,6 +81,17 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## content.
   ##
   ## This procedure will **not** close the client socket.
+  ##
+  ## Examples
+  ## --------
+  ## .. code-block::nim
+  ##    proc handler(req: Request) {.async.} =
+  ##      if req.url.path == "/hello-world":
+  ##        let msg = %* {"message": "Hello World"}
+  ##        let headers = newHttpHeaders([("Content-Type","application/json")])
+  ##        await req.respond(Http200, $msg, headers)
+  ##      else:
+  ##        await req.respond(Http404, "Not Found")
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
   if headers != nil:
@@ -122,14 +133,21 @@ proc processClient(client: AsyncSocket, address: string,
     assert client != nil
     request.client = client
 
-    # First line - GET /path HTTP/1.1
-    lineFut.mget().setLen(0)
-    lineFut.clean()
-    await client.recvLineInto(lineFut) # TODO: Timeouts.
-    if lineFut.mget == "":
-      client.close()
-      return
+    # We should skip at least one empty line before the request
+    # https://tools.ietf.org/html/rfc7230#section-3.5
+    for i in 0..1:
+      lineFut.mget().setLen(0)
+      lineFut.clean()
+      await client.recvLineInto(lineFut) # TODO: Timeouts.
 
+      if lineFut.mget == "":
+        client.close()
+        return
+
+      if lineFut.mget != "\c\L":
+        break
+
+    # First line - GET /path HTTP/1.1
     var i = 0
     for linePart in lineFut.mget.split(' '):
       case i

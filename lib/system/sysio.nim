@@ -104,21 +104,22 @@ proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
+  var sp: cint = 80
   # Use the currently reserved space for a first try
-  when defined(nimscript):
-    var space: cint = 80
+  if line.string.isNil:
+    line = TaintedString(newStringOfCap(80))
   else:
-    var space: cint = cint(cast[PGenericSeq](line.string).space)
-  line.string.setLen(space)
-
+    when not defined(nimscript):
+      sp = cint(cast[PGenericSeq](line.string).space)
+    line.string.setLen(sp)
   while true:
     # memset to \l so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \l
-    c_memset(addr line.string[pos], '\l'.ord, space)
-    if c_fgets(addr line.string[pos], space, f) == nil:
+    c_memset(addr line.string[pos], '\l'.ord, sp)
+    if c_fgets(addr line.string[pos], sp, f) == nil:
       line.string.setLen(0)
       return false
-    let m = c_memchr(addr line.string[pos], '\l'.ord, space)
+    let m = c_memchr(addr line.string[pos], '\l'.ord, sp)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
@@ -129,17 +130,17 @@ proc readLine(f: File, line: var TaintedString): bool =
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
       elif last > 0 and line.string[last-1] == '\0':
-        if last < pos + space - 1 and line.string[last+1] != '\0':
+        if last < pos + sp - 1 and line.string[last+1] != '\0':
           dec last
       line.string.setLen(last)
       return true
     else:
       # fgets will have inserted a null byte at the end of the string.
-      dec space
+      dec sp
     # No \l found: Increase buffer and read more
-    inc pos, space
-    space = 128 # read in 128 bytes at a time
-    line.string.setLen(pos+space)
+    inc pos, sp
+    sp = 128 # read in 128 bytes at a time
+    line.string.setLen(pos+sp)
 
 proc readLine(f: File): TaintedString =
   result = TaintedString(newStringOfCap(80))
