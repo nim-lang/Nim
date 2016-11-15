@@ -106,6 +106,7 @@ proc typeName(typ: PType): Rope =
            else: ~"TY"
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
+  let typ = if typ.kind == tyAlias: typ.lastSon else: typ
   if typ.sym != nil and {sfImportc, sfExportc} * typ.sym.flags != {}:
     result = typ.sym.loc.r
   else:

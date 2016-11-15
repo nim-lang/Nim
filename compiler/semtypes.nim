@@ -1152,6 +1152,13 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
     when useEffectSystem: setEffectsForProcType(result, n.sons[1])
   closeScope(c)
 
+proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
+  if typeExpr.kind in {tyObject, tyEnum, tyDistinct} and prev != nil:
+    result = newTypeS(tyAlias, c)
+    result.rawAddSon typeExpr
+    result.sym = prev.sym
+    assignType(prev, result)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1267,15 +1274,18 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mTuple: result = semTuple(c, n, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
-    var typeExpr = semExpr(c, n)
+    let typeExpr = semExpr(c, n)
     if typeExpr.typ.kind != tyTypeDesc:
       localError(n.info, errTypeExpected)
       result = errorType(c)
     else:
       result = typeExpr.typ.base
       if result.isMetaType:
-        var preprocessed = semGenericStmt(c, n)
+        let preprocessed = semGenericStmt(c, n)
         result = makeTypeFromExpr(c, preprocessed.copyTree)
+      else:
+        let alias = maybeAliasType(c, result, prev)
+        if alias != nil: result = alias
   of nkIdent, nkAccQuoted:
     var s = semTypeIdent(c, n)
     if s.typ == nil:
@@ -1287,16 +1297,23 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     elif prev == nil:
       result = s.typ
     else:
-      assignType(prev, s.typ)
-      # bugfix: keep the fresh id for aliases to integral types:
-      if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
-                           tyUInt..tyUInt64}:
-        prev.id = s.typ.id
-      result = prev
+      let alias = maybeAliasType(c, s.typ, prev)
+      if alias != nil:
+        result = alias
+      else:
+        assignType(prev, s.typ)
+        # bugfix: keep the fresh id for aliases to integral types:
+        if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+                             tyUInt..tyUInt64}:
+          prev.id = s.typ.id
+        result = prev
   of nkSym:
     if n.sym.kind == skType and n.sym.typ != nil:
       var t = n.sym.typ
-      if prev == nil:
+      let alias = maybeAliasType(c, t, prev)
+      if alias != nil:
+        result = alias
+      elif prev == nil:
         result = t
       else:
         assignType(prev, t)

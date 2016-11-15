@@ -126,8 +126,6 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     c &= "\254"
     return
 
-  c &= char(t.kind)
-
   case t.kind
   of tyGenericInst:
     var x = t.lastSon
@@ -148,8 +146,13 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c.hashSym(t.sym)
     return
+  of tyAlias:
+    c.hashType t.lastSon, flags
+    return
   else:
     discard
+
+  c &= char(t.kind)
 
   case t.kind
   of tyObject, tyEnum:
@@ -159,7 +162,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       c.hashSym(t.sym)
     else:
       lowlevel(t.id)
-  of tyRef, tyPtr, tyGenericBody, tyAlias:
+  of tyRef, tyPtr, tyGenericBody:
     c.hashType t.lastSon, flags
   of tyUserTypeClass:
     if t.sym != nil and t.sym.owner != nil:

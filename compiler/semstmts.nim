@@ -745,7 +745,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       var t = semTypeNode(c, a.sons[2], s.typ)
       if s.typ == nil:
         s.typ = t
-      elif t != s.typ:
+      elif t != s.typ and (s.typ == nil or s.typ.kind != tyAlias):
         # this can happen for e.g. tcan_alias_specialised_generic:
         assignType(s.typ, t)
         #debug s.typ
@@ -804,8 +804,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         assert t != nil
         if t.kind in {tyObject, tyEnum, tyDistinct}:
           assert s.typ != nil
-          assignType(s.typ, t)
-          s.typ.id = t.id     # same id
+          if s.typ.kind != tyAlias:
+            assignType(s.typ, t)
+            s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
       if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
         checkForMetaFields(s.typ.n)
