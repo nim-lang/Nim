@@ -1250,7 +1250,7 @@ proc IPv6_loopback*(): IpAddress =
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
 
 proc `==`*(lhs, rhs: IpAddress): bool =
-  ## Compares two IpAddresses for Equality. Returns two if the addresses are equal
+  ## Compares two IpAddresses for Equality. Returns true if the addresses are equal
   if lhs.family != rhs.family: return false
   if lhs.family == IpAddressFamily.IPv4:
     for i in low(lhs.address_v4) .. high(lhs.address_v4):
