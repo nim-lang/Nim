@@ -112,7 +112,7 @@ block orderedTableTest2:
 block countTableTest1:
   var s = data.toTable
   var t = initCountTable[string]()
-  
+
   for k in s.keys: t.inc(k)
   for k in t.keys: assert t[k] == 1
   t.inc("90", 3)
@@ -166,6 +166,29 @@ block mpairsTableTest1:
 
 block SyntaxTest:
   var x = toTable[int, string]({:})
+
+block zeroHashKeysTest:
+  proc doZeroHashValueTest[T, K, V](t: T, nullHashKey: K, value: V) =
+    let initialLen = t.len
+    var testTable = t
+    testTable[nullHashKey] = value
+    assert testTable[nullHashKey] == value
+    assert testTable.len == initialLen + 1
+    testTable.del(nullHashKey)
+    assert testTable.len == initialLen
+
+  # with empty table
+  doZeroHashValueTest(toTable[int,int]({:}), 0, 42)
+  doZeroHashValueTest(toTable[string,int]({:}), "", 23)
+  doZeroHashValueTest(toOrderedTable[int,int]({:}), 0, 42)
+  doZeroHashValueTest(toOrderedTable[string,int]({:}), "", 23)
+
+  # with non-empty table
+  doZeroHashValueTest(toTable[int,int]({1:2}), 0, 42)
+  doZeroHashValueTest(toTable[string,string]({"foo": "bar"}), "", "zero")
+  doZeroHashValueTest(toOrderedTable[int,int]({3:4}), 0, 42)
+  doZeroHashValueTest(toOrderedTable[string,string]({"egg": "sausage"}),
+      "", "spam")
 
 # Until #4448 is fixed, these tests will fail
 when false:

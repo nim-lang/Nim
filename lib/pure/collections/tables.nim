@@ -224,7 +224,7 @@ template withValue*[A, B](t: var Table[A, B], key: A,
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
-  var h: Hash = hash(key) and high(t.data)
+  var h: Hash = genHash(key) and high(t.data)
   while isFilled(t.data[h].hcode):
     if t.data[h].key == key:
       yield t.data[h].val
@@ -479,7 +479,7 @@ proc clear*[A, B](t: var OrderedTableRef[A, B]) =
   ## Resets the table so that is is empty.
   clear(t[])
 
-template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
+template forAllOrderedPairs(yieldStmt: untyped): typed {.dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -674,13 +674,6 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
-  var h = t.first
-  while h >= 0:
-    var nxt = t.data[h].next
-    if isFilled(t.data[h].hcode): yieldStmt
-    h = nxt
-
 iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order.
@@ -786,7 +779,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
   var prev = -1
-  let hc = hash(key)
+  let hc = genHash(key)
   forAllOrderedPairs:
     if t.data[h].hcode == hc:
       if t.first == h:

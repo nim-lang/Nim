@@ -39,16 +39,22 @@ template rawGetKnownHCImpl() {.dirty.} =
     h = nextTry(h, maxHash(t))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template rawGetImpl() {.dirty.} =
+template genHashImpl(key, hc: typed) =
   hc = hash(key)
   if hc == 0:       # This almost never taken branch should be very predictable.
     hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
+
+template genHash(key: typed): Hash =
+  var res: Hash
+  genHashImpl(key, res)
+  res
+
+template rawGetImpl() {.dirty.} =
+  genHashImpl(key, hc)
   rawGetKnownHCImpl()
 
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
-  hc = hash(key)
-  if hc == 0:
-    hc = 314159265
+  genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
   while isFilled(t.data[h].hcode):
     h = nextTry(h, maxHash(t))
