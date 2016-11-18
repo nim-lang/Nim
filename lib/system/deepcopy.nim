@@ -13,10 +13,12 @@ type
     data: array[0..0xff_ffff, (pointer, pointer)]
 
 template hashPtr(key: pointer): int = cast[int](key) shr 8
+template allocPtrTable: untyped =
+  cast[PtrTable](alloc0(sizeof(int)*2 + sizeof(pointer)*2*cap))
 
 proc rehash(t: PtrTable): PtrTable =
   let cap = (t.max+1) * 2
-  result = cast[PtrTable](alloc0(sizeof(int)*2 + sizeof(pointer)*cap))
+  result = allocPtrTable()
   result.counter = t.counter
   result.max = cap-1
   for i in 0..t.max:
@@ -29,7 +31,7 @@ proc rehash(t: PtrTable): PtrTable =
 
 proc initPtrTable(): PtrTable =
   const cap = 32
-  result = cast[PtrTable](alloc0(sizeof(int)*2 + sizeof(pointer)*cap))
+  result = allocPtrTable()
   result.counter = 0
   result.max = cap-1
 
