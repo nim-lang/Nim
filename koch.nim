@@ -391,13 +391,28 @@ proc tests(args: string) =
     quit("tests failed", QuitFailure)
 
 proc temp(args: string) =
+  proc splitArgs(a: string): (string, string) =
+    # every --options before the command (indicated by starting
+    # with not a dash) is part of the bootArgs, the rest is part
+    # of the programArgs:
+    let args = os.parseCmdLine a
+    result = ("", "")
+    var i = 0
+    while i < args.len and args[i][0] == '-':
+      result[0].add " " & quoteShell(args[i])
+      inc i
+    while i < args.len:
+      result[1].add " " & quoteShell(args[i])
+      inc i
+
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current
   # commit.
-  exec("nim c compiler" / "nim", 125)
+  let (bootArgs, programArgs) = splitArgs(args)
+  exec("nim c " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
-  if args.len > 0: exec(finalDest & " " & args)
+  if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
 proc copyDir(src, dest: string) =
   for kind, path in walkDir(src, relative=true):
