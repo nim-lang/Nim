@@ -29,6 +29,12 @@
 ##   a = b
 ##   echo($$a[]) # produces "{}", not "{f: 0}"
 ##
+##   # unmarshal
+##   let c = to[B]("""{"f": 2}""")
+##
+##   # marshal
+##   let s = $$c
+
 ## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
 
 import streams, typeinfo, json, intsets, tables, unicode
