@@ -9,6 +9,7 @@
 
 ## This module contains procs for `serialization`:idx: and `deseralization`:idx:
 ## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
+## Warning: The serialization format could change in future!
 ##
 ## **Restriction**: For objects their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
