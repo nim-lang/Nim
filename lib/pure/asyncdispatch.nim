@@ -1061,28 +1061,34 @@ else:
           # make a copy to iterate over.
           let currentCBs = data.readCBs
           data.readCBs = @[]
+          # Using another sequence because callbacks themselves can add
+          # other callbacks.
+          var newCBs: seq[Callback] = @[]
           for cb in currentCBs:
-            if data.readCBs.len > 0:
+            if newCBs.len > 0:
               # A callback has already returned with EAGAIN, don't call any
               # others until next `poll`.
-              data.readCBs.add(cb)
+              newCBs.add(cb)
             else:
               if not cb(data.fd):
                 # Callback wants to be called again.
-                data.readCBs.add(cb)
+                newCBs.add(cb)
+          data.readCBs = newCBs & data.readCBs
 
         if EvWrite in info.events or info.events == {EvError}:
           let currentCBs = data.writeCBs
           data.writeCBs = @[]
+          var newCBs: seq[Callback] = @[]
           for cb in currentCBs:
-            if data.writeCBs.len > 0:
+            if newCBs.len > 0:
               # A callback has already returned with EAGAIN, don't call any
               # others until next `poll`.
-              data.writeCBs.add(cb)
+              newCBs.add(cb)
             else:
               if not cb(data.fd):
                 # Callback wants to be called again.
-                data.writeCBs.add(cb)
+                newCBs.add(cb)
+          data.writeCBs = newCBs & data.writeCBs
 
         if info.key in p.selector:
           var newEvents: set[Event]
