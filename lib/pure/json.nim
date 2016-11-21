@@ -1078,9 +1078,11 @@ proc toUgly*(result: var string, node: JsonNode) =
   of JString:
     node.str.escapeJson(result)
   of JInt:
-    result.add($node.num)
+    when defined(js): result.add($node.num)
+    else: result.add(node.num)
   of JFloat:
-    result.add($node.fnum)
+    when defined(js): result.add($node.fnum)
+    else: result.add(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
