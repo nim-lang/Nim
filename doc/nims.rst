@@ -75,22 +75,8 @@ done:
 Nimble integration
 ==================
 
-A ``project.nims`` file can also be used as an alternative to
-a ``project.nimble`` file to specify the meta information (for example, author,
-description) and dependencies of a Nimble package. This means you can easily
-have platform specific dependencies:
-
-.. code-block:: nim
-
-  version = "1.0"
-  author = "The green goo."
-  description = "Lexer generation and regex implementation for Nim."
-  license = "MIT"
-
-  when defined(windows):
-    requires "oldwinapi >= 1.0"
-  else:
-    requires "gtk2 >= 1.0"
+See the `Nimble readme <https://github.com/nim-lang/nimble#readme>`_
+for more information.
 
 
 
