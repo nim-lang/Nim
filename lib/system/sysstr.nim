@@ -263,27 +263,32 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
   result.len = newLen
 
 # --------------- other string routines ----------------------------------
-proc nimIntToStr(x: int): string {.compilerRtl.} =
-  result = newString(sizeof(x)*4)
+proc add*(result: var string; x: int64) =
+  let base = result.len
+  setLen(result, base + sizeof(x)*4)
   var i = 0
   var y = x
   while true:
     var d = y div 10
-    result[i] = chr(abs(int(y - d*10)) + ord('0'))
+    result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
     inc(i)
     y = d
     if y == 0: break
   if x < 0:
-    result[i] = '-'
+    result[base+i] = '-'
     inc(i)
-  setLen(result, i)
+  setLen(result, base+i)
   # mirror the string:
   for j in 0..i div 2 - 1:
-    swap(result[j], result[i-j-1])
+    swap(result[base+j], result[base+i-j-1])
 
-proc nimFloatToStr(f: float): string {.compilerproc.} =
+proc nimIntToStr(x: int): string {.compilerRtl.} =
+  result = newStringOfCap(sizeof(x)*4)
+  result.add x
+
+proc add*(result: var string; x: float) =
   var buf: array[0..64, char]
-  var n: int = c_sprintf(buf, "%.16g", f)
+  var n: int = c_sprintf(buf, "%.16g", x)
   var hasDot = false
   for i in 0..n-1:
     if buf[i] == ',':
@@ -298,14 +303,18 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
   # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
   # We want to get rid of these here:
   if buf[n-1] in {'n', 'N'}:
-    result = "nan"
+    result.add "nan"
   elif buf[n-1] == 'F':
     if buf[0] == '-':
-      result = "-inf"
+      result.add "-inf"
     else:
-      result = "inf"
+      result.add "inf"
   else:
-    result = $buf
+    result.add buf
+
+proc nimFloatToStr(f: float): string {.compilerproc.} =
+  result = newStringOfCap(8)
+  result.add f
 
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
@@ -469,22 +478,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   number = c_strtod(t, nil)
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
-  result = newString(sizeof(x)*4)
-  var i = 0
-  var y = x
-  while true:
-    var d = y div 10
-    result[i] = chr(abs(int(y - d*10)) + ord('0'))
-    inc(i)
-    y = d
-    if y == 0: break
-  if x < 0:
-    result[i] = '-'
-    inc(i)
-  setLen(result, i)
-  # mirror the string:
-  for j in 0..i div 2 - 1:
-    swap(result[j], result[i-j-1])
+  result = newStringOfCap(sizeof(x)*4)
+  result.add x
 
 proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"
