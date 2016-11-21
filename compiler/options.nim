@@ -34,7 +34,8 @@ type                          # please make sure we have under 32 options
     optProfiler,              # profiler turned on
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
-    optPatterns               # en/disable pattern matching
+    optPatterns,              # en/disable pattern matching
+    optMemTracker
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**

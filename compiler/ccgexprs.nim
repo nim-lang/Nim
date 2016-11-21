@@ -355,6 +355,14 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: internalError("genAssignment: " & $ty.kind)
 
+  if optMemTracker in p.options and dest.s in {OnHeap, OnUnknown}:
+    #writeStackTrace()
+    #echo p.currLineInfo, " requesting"
+    linefmt(p, cpsStmts, "#memTrackerWrite((void*)$1, $2, $3, $4);$n",
+            addrLoc(dest), rope getSize(dest.t),
+            makeCString(p.currLineInfo.toFullPath),
+            rope p.currLineInfo.safeLineNm)
+
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
   var ty = skipTypes(dest.t, abstractVarRange)
   case ty.kind
@@ -1946,6 +1954,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
       d.s = OnStatic
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
+  p.currLineInfo = n.info
   case n.kind
   of nkSym:
     var sym = n.sym

@@ -68,6 +68,7 @@ type
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
+    currLineInfo*: TLineInfo  # AST codegen will make this superfluous
     nestedTryStmts*: seq[PNode]   # in how many nested try statements we are
                                   # (the vars must be volatile then)
     inExceptBlock*: int       # are we currently inside an except block?

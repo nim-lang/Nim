@@ -323,7 +323,8 @@ proc processOption(c: PContext, n: PNode): bool =
     of wStacktrace: onOff(c, n, {optStackTrace})
     of wLinetrace: onOff(c, n, {optLineTrace})
     of wDebugger: onOff(c, n, {optEndb})
-    of wProfiler: onOff(c, n, {optProfiler})
+    of wProfiler: onOff(c, n, {optProfiler, optMemTracker})
+    of wMemTracker: onOff(c, n, {optMemTracker})
     of wByRef: onOff(c, n, {optByRef})
     of wDynlib: processDynLib(c, n, nil)
     of wOptimization:
