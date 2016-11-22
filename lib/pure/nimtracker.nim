@@ -9,7 +9,7 @@
 
 ## Memory tracking support for Nim.
 
-when not defined(memTracker):
+when not defined(memTracker) and not isMainModule:
   {.error: "Memory tracking support is turned off!".}
 
 {.push memtracker: off.}
@@ -31,21 +31,22 @@ template sbind(x: int; value) =
     if ret != SQLITE_OK:
       quit "could not bind value"
 
-proc logEntries(log: TrackLog) {.nimcall.} =
-  for i in 0..log.count-1:
-    var success = false
-    let e = log.data[i]
-    discard sqlite3.reset(insertStmt)
-    discard clearBindings(insertStmt)
-    sbind 1, e.op
-    sbind(2, cast[int](e.address))
-    sbind 3, e.size
-    sbind 4, e.file
-    sbind 5, e.line
-    if step(insertStmt) == SQLITE_DONE:
-      success = true
-    if not success:
-      quit "could not write to database!"
+when defined(memTracker):
+  proc logEntries(log: TrackLog) {.nimcall.} =
+    for i in 0..log.count-1:
+      var success = false
+      let e = log.data[i]
+      discard sqlite3.reset(insertStmt)
+      discard clearBindings(insertStmt)
+      sbind 1, e.op
+      sbind(2, cast[int](e.address))
+      sbind 3, e.size
+      sbind 4, e.file
+      sbind 5, e.line
+      if step(insertStmt) == SQLITE_DONE:
+        success = true
+      if not success:
+        quit "could not write to database!"
 
 proc execQuery(q: string) =
   var s: Pstmt
@@ -72,7 +73,8 @@ if sqlite3.open("memtrack.db", dbHandle) == SQLITE_OK:
   const query = "INSERT INTO tracking(op, address, size, file, line) values (?, ?, ?, ?, ?)"
   if prepare_v2(dbHandle, query,
       query.len, insertStmt, nil) == SQLITE_OK:
-    setTrackLogger logEntries
+    when defined(memTracker):
+      setTrackLogger logEntries
   else:
     quit "could not prepare statement B " & $sqlite3.errmsg(dbHandle)
 {.pop.}
