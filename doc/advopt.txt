@@ -62,6 +62,8 @@ Advanced options:
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --patterns:on|off         turn pattern matching on|off
   --memTracker:on|off       turn memory tracker on|off
+  --excessiveStackTrace:on|off
+                            stack traces use full file paths
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
