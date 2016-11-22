@@ -130,7 +130,7 @@ type
 
 const
   SQLITE_STATIC* = nil
-  SQLITE_TRANSIENT* = cast[Tbind_destructor_func](- 1)
+  SQLITE_TRANSIENT* = cast[Tbind_destructor_func](-1)
 
 proc close*(para1: PSqlite3): int32{.cdecl, dynlib: Lib, importc: "sqlite3_close".}
 proc exec*(para1: PSqlite3, sql: cstring, para3: Callback, para4: pointer,
