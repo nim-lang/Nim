@@ -744,6 +744,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, f.typ, r, a.s)
   else:
     let field = lookupFieldAgain(p, ty, f, r)
+    if field.loc.r == nil: fillObjectFields(p.module, ty)
     if field.loc.r == nil: internalError(e.info, "genRecordField 3 " & typeToString(ty))
     addf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r, a.s)
@@ -792,6 +793,7 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     var r = rdLoc(a)
     let f = e.sons[0].sons[1].sym
     let field = lookupFieldAgain(p, ty, f, r)
+    if field.loc.r == nil: fillObjectFields(p.module, ty)
     if field.loc.r == nil:
       internalError(e.info, "genCheckedRecordField") # generate the checks:
     genFieldCheck(p, e, r, field, ty)
@@ -1156,6 +1158,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     var tmp2: TLoc
     tmp2.r = r
     let field = lookupFieldAgain(p, ty, it.sons[0].sym, tmp2.r)
+    if field.loc.r == nil: fillObjectFields(p.module, ty)
     if field.loc.r == nil: internalError(e.info, "genObjConstr")
     if it.len == 3 and optFieldCheck in p.options:
       genFieldCheck(p, it.sons[2], r, field, ty)

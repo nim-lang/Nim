@@ -466,6 +466,12 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
   result = genRecordFieldsAux(m, typ.n, nil, typ, check)
 
+proc fillObjectFields*(m: BModule; typ: PType) =
+  # sometimes generic objects are not consistently merged. We patch over
+  # this fact here.
+  var check = initIntSet()
+  discard getRecordFields(m, typ, check)
+
 proc getRecordDesc(m: BModule, typ: PType, name: Rope,
                    check: var IntSet): Rope =
   # declare the record:
@@ -725,11 +731,11 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         result = getTypeName(m, origTyp, sig)
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
-          addf(m.s[cfsForwardTypes], "/* tyObject: $1 $2 $3 */", [rope typeToString t,
+          addf(m.s[cfsForwardTypes], "/* tyObject: $1 $2 $3 */", [rope typeToString origTyp,
             rope t.id, rope m.module.id])
           addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
              [structOrUnion(t), result])
-        doAssert m.forwTypeCache[sig] == result
+        assert m.forwTypeCache[sig] == result
       m.typeCache[sig] = result # always call for sideeffects:
       let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, result, check)
                     else: getTupleDesc(m, t, result, check)
@@ -752,6 +758,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   excl(check, t.id)
 
 proc getTypeDesc(m: BModule, typ: PType): Rope =
+  echo "getTypeDesc called!"
   var check = initIntSet()
   result = getTypeDescAux(m, typ, check)
 

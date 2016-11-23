@@ -21,12 +21,13 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false)
 
-proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode) =
+proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode;
+                     typ: PType) =
   if n == nil: return
   case n.kind
   of nkRecList:
     for i in countup(0, sonsLen(n) - 1):
-      genTraverseProc(c, accessor, n.sons[i])
+      genTraverseProc(c, accessor, n.sons[i], typ)
   of nkRecCase:
     if (n.sons[0].kind != nkSym): internalError(n.info, "genTraverseProc")
     var p = c.p
@@ -39,11 +40,13 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode) =
         genCaseRange(c.p, branch)
       else:
         lineF(p, cpsStmts, "default:$n", [])
-      genTraverseProc(c, accessor, lastSon(branch))
+      genTraverseProc(c, accessor, lastSon(branch), typ)
       lineF(p, cpsStmts, "break;$n", [])
     lineF(p, cpsStmts, "} $n", [])
   of nkSym:
     let field = n.sym
+    if field.typ.kind == tyVoid: return
+    if field.loc.r == nil: fillObjectFields(c.p.module, typ)
     if field.loc.t == nil:
       internalError(n.info, "genTraverseProc()")
     genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.loc.t)
@@ -75,7 +78,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
       var x = typ.sons[i]
       if x != nil: x = x.skipTypes(skipPtrs)
       genTraverseProc(c, accessor.parentObj(c.p.module), x)
-    if typ.n != nil: genTraverseProc(c, accessor, typ.n)
+    if typ.n != nil: genTraverseProc(c, accessor, typ.n, typ)
   of tyTuple:
     let typ = getUniqueType(typ)
     for i in countup(0, sonsLen(typ) - 1):

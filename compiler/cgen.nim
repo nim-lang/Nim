@@ -361,7 +361,7 @@ proc localVarDecl(p: BProc; s: PSym): Rope =
   if s.loc.k == locNone:
     fillLoc(s.loc, locLocalVar, s.typ, mangleName(p.module, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
-  result = getTypeDesc(p.module, s.loc.t)
+  result = getTypeDesc(p.module, s.typ)
   if s.constraint.isNil:
     if sfRegister in s.flags: add(result, " register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
