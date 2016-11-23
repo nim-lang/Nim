@@ -46,7 +46,7 @@ proc handleCmdLine(cache: IdentCache) =
     if gProjectName == "-":
       gProjectName = "stdinfile"
       gProjectFull = "stdinfile"
-      gProjectPath = getCurrentDir()
+      gProjectPath = canonicalizePath getCurrentDir()
       gProjectIsStdin = true
     elif gProjectName != "":
       try:
@@ -54,10 +54,10 @@ proc handleCmdLine(cache: IdentCache) =
       except OSError:
         gProjectFull = gProjectName
       let p = splitFile(gProjectFull)
-      gProjectPath = p.dir
+      gProjectPath = canonicalizePath p.dir
       gProjectName = p.name
     else:
-      gProjectPath = getCurrentDir()
+      gProjectPath = canonicalizePath getCurrentDir()
     loadConfigs(DefaultConfig) # load all config files
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):

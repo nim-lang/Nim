@@ -1,3 +1,8 @@
+discard """
+  file: "mrecmod2.nim"
+  line: 2
+  errormsg: "recursive module dependency detected"
+"""
 type
   T1* = int  # Module A exports the type ``T1``
 

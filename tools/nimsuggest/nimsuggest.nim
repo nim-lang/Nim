@@ -431,10 +431,10 @@ proc handleCmdLine(cache: IdentCache) =
       except OSError:
         gProjectFull = gProjectName
       var p = splitFile(gProjectFull)
-      gProjectPath = p.dir
+      gProjectPath = canonicalizePath p.dir
       gProjectName = p.name
     else:
-      gProjectPath = getCurrentDir()
+      gProjectPath = canonicalizePath getCurrentDir()
 
     # Find Nim's prefix dir.
     let binaryPath = findExe("nim")

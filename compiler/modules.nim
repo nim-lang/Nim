@@ -231,6 +231,7 @@ proc compileProject*(graph: ModuleGraph; cache: IdentCache;
   wantMainModule()
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
   let projectFile = if projectFileIdx < 0: gProjectMainIdx else: projectFileIdx
+  graph.importStack.add projectFile
   if projectFile == systemFileIdx:
     discard graph.compileModule(projectFile, cache, {sfMainModule, sfSystemModule})
   else:

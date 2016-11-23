@@ -676,9 +676,8 @@ proc getInfoContext*(index: int): TLineInfo =
   if i >=% L: result = unknownLineInfo()
   else: result = msgContext[i]
 
-proc toFilename*(fileIdx: int32): string =
-  if fileIdx < 0: result = "???"
-  else: result = fileInfos[fileIdx].projPath
+template toFilename*(fileIdx: int32): string =
+  (if fileIdx < 0: "???" else: fileInfos[fileIdx].projPath)
 
 proc toFullPath*(fileIdx: int32): string =
   if fileIdx < 0: result = "???"
