@@ -1,5 +1,6 @@
 discard """
   output: "ok"
+  disabled: "true"
 """
 
 import tables, lists
