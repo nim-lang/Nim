@@ -564,41 +564,52 @@ when declared(getEnv) or defined(nimscript):
 
   proc findExe*(exe: string, followSymlinks: bool = true): string {.
     tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
-    ## Searches for `exe` in the current working directory and then
-    ## in directories listed in the ``PATH`` environment variable.
-    ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
-    ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
-    ## If the system supports symlinks it also resolves them until it
-    ## meets the actual file. This behavior can be disabled if desired.
-    result = addFileExt(exe, ExeExt)
-    if existsFile(result): return
+    ## Searches for `exe` in the current working directory and then in
+    ## directories listed in the ``PATH`` environment variable. Returns "" if
+    ## the `exe` cannot be found. On DOS-like platforms, `exe`, `bat` or `cmd`
+    ## is added the `ExeExt <#ExeExt>`_ file extension if it has none. If the
+    ## system supports symlinks it also resolves them until it meets the
+    ## actual file. This behavior can be disabled if desired.
+    when defined(windows):
+      template winExistsFile(path:string = "")=
+        for ext in [ExeExt, ScriptExt, "cmd"]:
+          var x = addFileExt(exe, ext)
+          if path.len > 0:
+            x = path / x
+          if existsFile(x):
+            return x
+      winExistsFile()
+    else:
+      result = addFileExt(exe, ExeExt)
+      if existsFile(result): return
+
     var path = string(getEnv("PATH"))
     for candidate in split(path, PathSep):
       when defined(windows):
-        var x = (if candidate[0] == '"' and candidate[^1] == '"':
-                  substr(candidate, 1, candidate.len-2) else: candidate) /
-               result
+        let canPath = (if candidate[0] == '"' and candidate[^1] == '"':
+                  substr(candidate, 1, candidate.len-2) else: candidate)
+        winExistsFile(canPath)
       else:
-        var x = expandTilde(candidate) / result
-      if existsFile(x):
-        when not defined(windows) and declared(os):
-          while followSymlinks: # doubles as if here
-            if x.checkSymlink:
-              var r = newString(256)
-              var len = readlink(x, r, 256)
-              if len < 0:
-                raiseOSError(osLastError())
-              if len > 256:
-                r = newString(len+1)
-                len = readlink(x, r, len)
-              setLen(r, len)
-              if isAbsolute(r):
-                x = r
+        var x = expandTilde(candidate) / exe
+        if existsFile(x):
+          when declared(os):
+            while followSymlinks: # doubles as if here
+              if x.checkSymlink:
+                var r = newString(256)
+                var len = readlink(x, r, 256)
+                if len < 0:
+                  raiseOSError(osLastError())
+                if len > 256:
+                  r = newString(len+1)
+                  len = readlink(x, r, len)
+                setLen(r, len)
+                if isAbsolute(r):
+                  x = r
+                else:
+                  x = parentDir(x) / r
               else:
-                x = parentDir(x) / r
-            else:
-              break
-        return x
+                break
+          return x
     result = ""
 
 when defined(nimscript) or (defined(nimdoc) and not declared(os)):
