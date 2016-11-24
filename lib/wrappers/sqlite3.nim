@@ -110,7 +110,7 @@ type
 
   Callback* = proc (para1: pointer, para2: int32, para3,
                      para4: cstringArray): int32{.cdecl.}
-  Tbind_destructor_func* = proc (para1: pointer){.cdecl.}
+  Tbind_destructor_func* = proc (para1: pointer){.cdecl, locks: 0, tags: [].}
   Create_function_step_func* = proc (para1: Pcontext, para2: int32,
                                       para3: PValueArg){.cdecl.}
   Create_function_func_func* = proc (para1: Pcontext, para2: int32,

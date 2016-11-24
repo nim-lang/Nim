@@ -32,7 +32,7 @@ template sbind(x: int; value) =
       quit "could not bind value"
 
 when defined(memTracker):
-  proc logEntries(log: TrackLog) {.nimcall.} =
+  proc logEntries(log: TrackLog) {.nimcall, locks: 0, tags: [].} =
     for i in 0..log.count-1:
       var success = false
       let e = log.data[i]

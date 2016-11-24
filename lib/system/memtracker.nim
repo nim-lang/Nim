@@ -27,8 +27,9 @@ type
     line*: int
   TrackLog* = object
     count*: int
+    disabled: bool
     data*: array[4000, LogEntry]
-  TrackLogger* = proc (log: TrackLog) {.nimcall.}
+  TrackLogger* = proc (log: TrackLog) {.nimcall, tags: [], locks: 0.}
 
 var
   gLog*: TrackLog
@@ -38,11 +39,12 @@ proc setTrackLogger*(logger: TrackLogger) =
   gLogger = logger
 
 proc addEntry(entry: LogEntry) =
-  if gLog.count > high(gLog.data):
-    gLogger(gLog)
-    gLog.count = 0
-  gLog.data[gLog.count] = entry
-  inc gLog.count
+  if not gLog.disabled:
+    if gLog.count > high(gLog.data):
+      gLogger(gLog)
+      gLog.count = 0
+    gLog.data[gLog.count] = entry
+    inc gLog.count
 
 proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerProc.} =
   addEntry LogEntry(op: "write", address: address,
@@ -51,6 +53,12 @@ proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.co
 proc memTrackerOp*(op: cstring; address: pointer; size: int) =
   addEntry LogEntry(op: op, address: address, size: size,
       file: "", line: 0)
+
+proc memTrackerDisable*() =
+  gLog.disabled = true
+
+proc memTrackerEnable*() =
+  gLog.disabled = false
 
 proc logPendingOps() {.noconv.} =
   # forward declared and called from Nim's signal handler.
