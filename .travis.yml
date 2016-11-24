@@ -24,7 +24,7 @@ script:
   - ./koch boot -d:release
   - ./koch nimble
   - nim e tests/test_nimscript.nims
-  - nimble install zip
+  - nimble install zip -y
   - nimble install opengl
   - nimble install sdl1
   - nimble install jester@#head
