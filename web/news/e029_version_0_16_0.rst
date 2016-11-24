@@ -29,8 +29,6 @@ Changes affecting backwards compatibility
 - ``TimeInfo.tzname`` has been removed from ``times`` module because it was
   broken. Because of this, the option ``"ZZZ"`` will no longer work in format
   strings for formatting and parsing.
-- Recursive module dependencies are now completely disallowed.
-
 
 Library Additions
 -----------------
