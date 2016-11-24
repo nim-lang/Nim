@@ -169,7 +169,7 @@ proc myImportModule(c: PContext, n: PNode): PSym =
     if recursion >= 0:
       var err = ""
       for i in countup(recursion, L-1):
-        if i > 0: err.add "\n"
+        if i > recursion: err.add "\n"
         err.add toFullPath(c.graph.importStack[i]) & " imports " &
                 toFullPath(c.graph.importStack[i+1])
       localError(n.info, "recursive module dependency detected:\n" & err)

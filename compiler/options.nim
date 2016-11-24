@@ -232,10 +232,10 @@ proc canonicalizePath*(path: string): string =
 
 proc shortenDir*(dir: string): string =
   ## returns the interesting part of a dir
-  var prefix = getPrefixDir() & DirSep
+  var prefix = gProjectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
-  prefix = gProjectPath & DirSep
+  prefix = getPrefixDir() & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
