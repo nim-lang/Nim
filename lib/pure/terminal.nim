@@ -29,6 +29,8 @@ when defined(windows):
     BACKGROUND_GREEN = 32
     BACKGROUND_RED = 64
     BACKGROUND_INTENSITY = 128
+    FOREGROUND_RGB = FOREGROUND_RED or FOREGROUND_GREEN or FOREGROUND_BLUE
+    BACKGROUND_RGB = BACKGROUND_RED or BACKGROUND_GREEN or BACKGROUND_BLUE
 
   type
     SHORT = int16
@@ -369,12 +371,13 @@ proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
   when defined(windows):
     let h = conHandle(f)
+    var old = getAttributes(h) and (FOREGROUND_RGB or BACKGROUND_RGB)
     var a = 0'i16
     if styleBright in style: a = a or int16(FOREGROUND_INTENSITY)
     if styleBlink in style: a = a or int16(BACKGROUND_INTENSITY)
     if styleReverse in style: a = a or 0x4000'i16 # COMMON_LVB_REVERSE_VIDEO
     if styleUnderscore in style: a = a or 0x8000'i16 # COMMON_LVB_UNDERSCORE
-    discard setConsoleTextAttribute(h, a)
+    discard setConsoleTextAttribute(h, old or a)
   else:
     for s in items(style):
       f.write("\e[" & $ord(s) & 'm')
@@ -423,7 +426,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   ## Sets the terminal's foreground color.
   when defined(windows):
     let h = conHandle(f)
-    var old = getAttributes(h) and not 0x0007
+    var old = getAttributes(h) and not FOREGROUND_RGB
     if bright:
       old = old or FOREGROUND_INTENSITY
     const lookup: array[ForegroundColor, int] = [
@@ -445,7 +448,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   ## Sets the terminal's background color.
   when defined(windows):
     let h = conHandle(f)
-    var old = getAttributes(h) and not 0x0070
+    var old = getAttributes(h) and not BACKGROUND_RGB
     if bright:
       old = old or BACKGROUND_INTENSITY
     const lookup: array[BackgroundColor, int] = [
