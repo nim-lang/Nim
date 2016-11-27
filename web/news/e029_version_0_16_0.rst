@@ -36,6 +36,10 @@ Library Additions
 - Added new parameter to ``error`` proc of ``macro`` module to provide better
   error message
 
+- Added ``hideCursor`` and ``showCursor`` to the ``terminal``
+  `(doc) <http://nim-lang.org/docs/terminal.html>`_ module.
+
+
 Tool Additions
 --------------
 
