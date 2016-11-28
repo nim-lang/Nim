@@ -853,6 +853,8 @@ type
     align*: int16             # the type's alignment requirements
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
+    typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
+                              # type.
 
   TPair* = object
     key*, val*: RootRef

@@ -310,6 +310,9 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # generics *when the type is constructed*:
     newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
                                             attachedDeepCopy, 1)
+  newbody.typeInst = result
+  if newbody.kind == tyRef:
+    newbody.lastSon.typeInst = result
   let asgn = newbody.assignment
   if asgn != nil and sfFromGeneric notin asgn.flags:
     # '=' needs to be instantiated for generics when the type is constructed:

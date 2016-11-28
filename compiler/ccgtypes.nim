@@ -758,7 +758,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   excl(check, t.id)
 
 proc getTypeDesc(m: BModule, typ: PType): Rope =
-  echo "getTypeDesc called!"
   var check = initIntSet()
   result = getTypeDescAux(m, typ, check)
 

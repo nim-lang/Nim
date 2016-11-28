@@ -159,10 +159,14 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
-      if "Future:" in t.sym.name.s:
-        writeStackTrace()
-        echo "yes ", t.sym.name.s
-        #quit 1
+      #if "Future:" in t.sym.name.s and t.typeInst == nil:
+      #  writeStackTrace()
+      #  echo "yes ", t.sym.name.s
+      #  #quit 1
+      if t.typeInst != nil:
+        assert t.typeInst.kind == tyGenericInst
+        for i in countup(1, sonsLen(t.typeInst) - 2):
+          c.hashType t.typeInst.sons[i], flags
       c.hashSym(t.sym)
     else:
       lowlevel(t.id)
