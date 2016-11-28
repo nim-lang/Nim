@@ -68,6 +68,8 @@ else:
     toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
   proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
   proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+  proc `&=`(c: var MD5Context, i: BiggestInt) =
+    md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
 
   template lowlevel(v) =
     md5Update(c, cast[cstring](unsafeAddr(v)), sizeof(v))
@@ -127,15 +129,6 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     return
 
   case t.kind
-  of tyGenericInst:
-    var x = t.lastSon
-    if x.kind == tyGenericBody: x = x.lastSon
-    if x.kind == tyTuple:
-      c.hashType x, flags
-      return
-    for i in countup(0, sonsLen(t) - 2):
-      c.hashType t.sons[i], flags
-    return
   of tyGenericInvocation:
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
@@ -146,16 +139,19 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c.hashSym(t.sym)
     return
-  of tyAlias:
+  of tyAlias, tyGenericInst:
     c.hashType t.lastSon, flags
     return
   else:
     discard
 
   c &= char(t.kind)
-
   case t.kind
   of tyObject, tyEnum:
+    if t.typeInst != nil:
+      assert t.typeInst.kind == tyGenericInst
+      for i in countup(1, sonsLen(t.typeInst) - 2):
+        c.hashType t.typeInst.sons[i], flags
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
@@ -163,13 +159,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       #  writeStackTrace()
       #  echo "yes ", t.sym.name.s
       #  #quit 1
-      if t.typeInst != nil:
-        assert t.typeInst.kind == tyGenericInst
-        for i in countup(1, sonsLen(t.typeInst) - 2):
-          c.hashType t.typeInst.sons[i], flags
       c.hashSym(t.sym)
     else:
-      lowlevel(t.id)
+      c &= t.id
   of tyRef, tyPtr, tyGenericBody:
     c.hashType t.lastSon, flags
   of tyUserTypeClass:
@@ -247,7 +239,10 @@ proc hashProc*(s: PSym): SigHash =
   c &= p.name.s
   c &= "."
   c &= m.name.s
-
+  # so that createThread[void]() (aka generic specialization) gets a unique
+  # hash, we also hash the line information. This is pretty bad, but the best
+  # solution for now:
+  c &= s.info.line
   md5Final c, result.Md5Digest
 
 proc hashOwner*(s: PSym): SigHash =

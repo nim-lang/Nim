@@ -1059,15 +1059,17 @@ proc genReset(p: BProc, n: PNode) =
 
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
-  let refType = a.t
+  let typ = a.t
   var b: TLoc
   initLoc(b, locExpr, a.t, OnHeap)
+  let refType = typ.skipTypes(abstractInst)
+  assert refType.kind == tyRef
   let bt = refType.lastSon
   if sizeExpr.isNil:
     sizeExpr = "sizeof($1)" %
         [getTypeDesc(p.module, bt)]
-  let args = [getTypeDesc(p.module, refType),
-              genTypeInfo(p.module, refType),
+  let args = [getTypeDesc(p.module, typ),
+              genTypeInfo(p.module, typ),
               sizeExpr]
   if a.s == OnHeap and usesNativeGC():
     # use newObjRC1 as an optimization

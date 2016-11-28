@@ -287,8 +287,9 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   else: result = nil
 
   if result != nil and typ.isImportedType():
-    if cacheGetType(m.typeCache, typ) == nil:
-      idTablePut(m.typeCache, typ, result)
+    let sig = hashType typ
+    if cacheGetType(m.typeCache, sig) == nil:
+      m.typeCache[sig] = result
       addAbiCheck(m, typ, result)
 
 proc pushType(m: BModule, typ: PType) =
@@ -861,8 +862,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
   var base: Rope
-  if sonsLen(typ) > 0 and typ.sons[0] != nil:
-    var x = typ.sons[0]
+  if sonsLen(typ) > 0 and typ.lastSon != nil:
+    var x = typ.lastSon
     if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
     base = genTypeInfo(m, x)
   else:
