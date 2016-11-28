@@ -85,6 +85,10 @@ when not declared(getEnv) or defined(nimscript):
         ## The file extension of a script file. For example: "" for POSIX,
         ## "bat" on Windows.
 
+      ExeExts* = @[""]
+        ## Sequence of supported file extensions of executables. For example:
+        ## @[""] for POSIX, @["exe", "cmd", "bat"] on Windows.
+
       DynlibFormat* = "lib$1.so"
         ## The format string to turn a filename into a `DLL`:idx: file (also
         ## called `shared object`:idx: on some operating systems).
@@ -99,6 +103,7 @@ when not declared(getEnv) or defined(nimscript):
       FileSystemCaseSensitive* = false
       ExeExt* = ""
       ScriptExt* = ""
+      ExeExts* = @[""]
       DynlibFormat* = "$1.dylib"
 
     #  MacOS paths
@@ -130,6 +135,7 @@ when not declared(getEnv) or defined(nimscript):
       FileSystemCaseSensitive* = false
       ExeExt* = "exe"
       ScriptExt* = "bat"
+      ExeExts* = @[ExeExt, ScriptExt, "cmd"]
       DynlibFormat* = "$1.dll"
   elif defined(PalmOS) or defined(MorphOS):
     const
@@ -140,6 +146,7 @@ when not declared(getEnv) or defined(nimscript):
       FileSystemCaseSensitive* = false
       ExeExt* = ""
       ScriptExt* = ""
+      ExeExts* = @[""]
       DynlibFormat* = "$1.prc"
   elif defined(RISCOS):
     const
@@ -150,6 +157,7 @@ when not declared(getEnv) or defined(nimscript):
       FileSystemCaseSensitive* = true
       ExeExt* = ""
       ScriptExt* = ""
+      ExeExts* = @[""]
       DynlibFormat* = "lib$1.so"
   else: # UNIX-like operating system
     const
@@ -161,6 +169,7 @@ when not declared(getEnv) or defined(nimscript):
       FileSystemCaseSensitive* = true
       ExeExt* = ""
       ScriptExt* = ""
+      ExeExts* = @[""]
       DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
 
   const
@@ -562,37 +571,25 @@ when declared(getEnv) or defined(nimscript):
       if lstat(path, rawInfo) < 0'i32: result = false
       else: result = S_ISLNK(rawInfo.st_mode)
 
-  proc findExe*(exe: string, followSymlinks: bool = true): string {.
+  proc findExe*(exe: string, followSymlinks: bool = true, extensions: seq[string] = ExeExts): string {.
     tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
     ## Searches for `exe` in the current working directory and then in
     ## directories listed in the ``PATH`` environment variable. Returns "" if
     ## the `exe` cannot be found. On DOS-like platforms, `exe`, `bat` or `cmd`
-    ## is added the `ExeExt <#ExeExt>`_ file extension if it has none. If the
+    ## is added the `ExeExts <#ExeExts>`_ file extension if it has none. If the
     ## system supports symlinks it also resolves them until it meets the
     ## actual file. This behavior can be disabled if desired.
-    when defined(windows):
-      template winExistsFile(path:string = "")=
-        for ext in [ExeExt, ScriptExt, "cmd"]:
-          var x = addFileExt(exe, ext)
-          if path.len > 0:
-            x = path / x
-          if existsFile(x):
-            return x
-      winExistsFile()
-    else:
-      result = addFileExt(exe, ExeExt)
-      if existsFile(result): return
 
-    var path = string(getEnv("PATH"))
-    for candidate in split(path, PathSep):
-      when defined(windows):
-        let canPath = (if candidate[0] == '"' and candidate[^1] == '"':
-                  substr(candidate, 1, candidate.len-2) else: candidate)
-        winExistsFile(canPath)
-      else:
-        var x = expandTilde(candidate) / exe
+    template findInExtensions(path:string = "")=
+      for ext in extensions:
+        var x = addFileExt(exe, ext)
+        if path.len > 0:
+          when defined(windows):
+            x = path / x
+          else:
+            x = expandTilde(path) / x
         if existsFile(x):
-          when declared(os):
+          when declared(os) and not defined(windows):
             while followSymlinks: # doubles as if here
               if x.checkSymlink:
                 var r = newString(256)
@@ -610,6 +607,17 @@ when declared(getEnv) or defined(nimscript):
               else:
                 break
           return x
+
+    findInExtensions()
+
+    var path = string(getEnv("PATH"))
+    for candidate in split(path, PathSep):
+      when defined(windows):
+        let canPath = (if candidate[0] == '"' and candidate[^1] == '"':
+                  substr(candidate, 1, candidate.len-2) else: candidate)
+        findInExtensions(canPath)
+      else:
+        findInExtensions(candidate)
     result = ""
 
 when defined(nimscript) or (defined(nimdoc) and not declared(os)):
