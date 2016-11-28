@@ -39,8 +39,10 @@
 
 import math
 
+{.warning: "`queues` module is deprecated - use `deques` instead".}
+
 type
-  Queue*[T] = object ## A queue.
+  Queue* {.deprecated.} [T] = object ## A queue.
     data: seq[T]
     rd, wr, count, mask: int
 
