@@ -18,15 +18,15 @@ echo v[2]
 
 # bug #569
 
-import queues
+import deques
 
 type
   TWidget = object
-    names: Queue[string]
+    names: Deque[string]
 
-var w = TWidget(names: initQueue[string]())
+var w = TWidget(names: initDeque[string]())
 
-add(w.names, "Whopie")
+addLast(w.names, "Whopie")
 
 for n in w.names: echo(n)
 
