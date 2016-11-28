@@ -1159,10 +1159,10 @@ when isMainModule:
       doAssert(prev < i)
       prev = i
 
-  block: # Deletion from OrederedTable should account for collision groups. See issue #5057.
+  block: # Deletion from OrderedTable should account for collision groups. See issue #5057.
     # The bug is reproducible only with exact keys
-    const key1 = "boy_jackpot.inGamma1"
-    const key2 = "boy_jackpot.outBlack2"
+    const key1 = "boy_jackpot.inGamma"
+    const key2 = "boy_jackpot.outBlack"
 
     var t = {
         key1: 0,
