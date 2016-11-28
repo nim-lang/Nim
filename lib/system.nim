@@ -1272,12 +1272,14 @@ const
 
   seqShallowFlag = low(int)
 
+{.push profiler: off.}
 when defined(nimKnowsNimvm):
   let nimvm* {.magic: "Nimvm".}: bool = false
     ## may be used only in "when" expression.
     ## It is true in Nim VM context and false otherwise
 else:
   const nimvm*: bool = false
+{.pop.}
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -2544,6 +2546,7 @@ when hostOS == "standalone":
   include "$projectpath/panicoverride"
 
 when not declared(sysFatal):
+  {.push profiler: off.}
   when hostOS == "standalone":
     proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
       panic(message)
@@ -2563,6 +2566,7 @@ when not declared(sysFatal):
       new(e)
       e.msg = message & arg
       raise e
+  {.pop.}
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## get type information for `x`. Ordinary code should not use this, but
@@ -2616,8 +2620,10 @@ when not defined(JS): #and not defined(nimscript):
       when declared(setStackBottom):
         setStackBottom(locals)
 
+    {.push profiler: off.}
     var
       strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
+    {.pop.}
 
 
   # ----------------- IO Part ------------------------------------------------
@@ -2950,6 +2956,8 @@ when not defined(JS): #and not defined(nimscript):
         ## lead to the ``raise`` statement. This only works for debug builds.
 
     {.push stack_trace: off, profiler:off.}
+    when defined(memtracker):
+      include "system/memtracker"
     when hostOS == "standalone":
       include "system/embedded"
     else:
@@ -2992,7 +3000,9 @@ when not defined(JS): #and not defined(nimscript):
       else:
         result = n.sons[n.len]
 
+    {.push profiler:off.}
     when hasAlloc: include "system/mmdisp"
+    {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc: include "system/sysstr"
     {.pop.}

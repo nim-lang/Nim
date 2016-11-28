@@ -445,6 +445,15 @@ proc gcInvariant*() =
     markForDebug(gch)
 {.pop.}
 
+template setFrameInfo(c: PCell) =
+  when leakDetector:
+    if framePtr != nil and framePtr.prev != nil:
+      c.filename = framePtr.prev.filename
+      c.line = framePtr.prev.line
+    else:
+      c.filename = nil
+      c.line = 0
+
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   sysAssert(allocInv(gch.region), "rawNewObj begin")
@@ -455,19 +464,14 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector:
-    res.filename = nil
-    res.line = 0
-    when not hasThreadSupport:
-      if framePtr != nil and framePtr.prev != nil:
-        res.filename = framePtr.prev.filename
-        res.line = framePtr.prev.line
+  setFrameInfo(res)
   # refcount is zero, color is black, but mark it to be in the ZCT
   res.refcount = ZctFlag
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   # its refcount is zero, so add it to the ZCT:
   addNewObjToZCT(res, gch)
   when logGC: writeCell("new cell", res)
+  track("rawNewObj", res, size)
   gcTrace(res, csAllocated)
   release(gch)
   when useCellIds:
@@ -509,16 +513,11 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
-  when leakDetector:
-    res.filename = nil
-    res.line = 0
-    when not hasThreadSupport:
-      if framePtr != nil and framePtr.prev != nil:
-        res.filename = framePtr.prev.filename
-        res.line = framePtr.prev.line
+  setFrameInfo(res)
   res.refcount = rcIncrement # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   when logGC: writeCell("new cell", res)
+  track("newObjRC1", res, size)
   gcTrace(res, csAllocated)
   release(gch)
   when useCellIds:
@@ -561,6 +560,8 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
     writeCell("growObj new cell", res)
   gcTrace(ol, csZctFreed)
   gcTrace(res, csAllocated)
+  track("growObj old", ol, 0)
+  track("growObj new", res, newsize)
   when reallyDealloc:
     sysAssert(allocInv(gch.region), "growObj before dealloc")
     if ol.refcount shr rcShift <=% 1:
@@ -604,6 +605,7 @@ proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
 proc freeCyclicCell(gch: var GcHeap, c: PCell) =
   prepareDealloc(c)
   gcTrace(c, csCycFreed)
+  track("cycle collector dealloc cell", c, 0)
   when logGC: writeCell("cycle collector dealloc cell", c)
   when reallyDealloc:
     sysAssert(allocInv(gch.region), "free cyclic cell")
@@ -673,6 +675,7 @@ proc doOperation(p: pointer, op: WalkOp) =
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
     when logGC: writeCell("decref (from doOperation)", c)
+    track("waZctDecref", p, 0)
     decRef(c)
     #if c.refcount <% rcIncrement: addZCT(gch.zct, c)
   of waPush:
@@ -765,6 +768,7 @@ proc collectZCT(gch: var GcHeap): bool =
       # In any case, it should be removed from the ZCT. But not
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**
       when logGC: writeCell("zct dealloc cell", c)
+      track("zct dealloc cell", c, 0)
       gcTrace(c, csZctFreed)
       # We are about to free the object, call the finalizer BEFORE its
       # children are deleted as well, because otherwise the finalizer may

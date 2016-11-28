@@ -143,7 +143,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
     result.add(sc)
   else:
-    localError(n.sons[1].info, errUndeclaredIdentifier, sl.strVal)
+    errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 

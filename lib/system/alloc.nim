@@ -15,6 +15,10 @@
 
 include osalloc
 
+template track(op, address, size) =
+  when defined(memTracker):
+    memTrackerOp(op, address, size)
+
 # We manage *chunks* of memory. Each chunk is a multiple of the page size.
 # Each chunk starts at an address that is divisible by the page size. Chunks
 # that are bigger than ``ChunkOsReturn`` are returned back to the operating
@@ -645,6 +649,7 @@ proc alloc(allocator: var MemRegion, size: Natural): pointer =
   cast[ptr FreeCell](result).zeroField = 1 # mark it as used
   sysAssert(not isAllocatedPtr(allocator, result), "alloc")
   result = cast[pointer](cast[ByteAddress](result) +% sizeof(FreeCell))
+  track("alloc", result, size)
 
 proc alloc0(allocator: var MemRegion, size: Natural): pointer =
   result = alloc(allocator, size)
@@ -658,6 +663,7 @@ proc dealloc(allocator: var MemRegion, p: pointer) =
   sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc 2")
   rawDealloc(allocator, x)
   sysAssert(not isAllocatedPtr(allocator, x), "dealloc 3")
+  track("dealloc", p, 0)
 
 proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
   if newsize > 0:

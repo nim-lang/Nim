@@ -221,6 +221,10 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   # linear search is not necessary anymore:
   result = tab.getOrDefault(sig)
 
+proc addAbiCheck(m: BModule, t: PType, name: Rope) =
+  if isDefined("checkabi"):
+    addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(getSize(t))])
+
 proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
@@ -281,6 +285,11 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyGenericInst, tyAlias:
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
+
+  if result != nil and typ.isImportedType():
+    if cacheGetType(m.typeCache, typ) == nil:
+      idTablePut(m.typeCache, typ, result)
+      addAbiCheck(m, typ, result)
 
 proc pushType(m: BModule, typ: PType) =
   add(m.typeStack, typ)
@@ -678,6 +687,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t.sons[1], check)
       addf(m.s[cfsTypes], "typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
+    else: addAbiCheck(m, t, result)
   of tyObject, tyTuple:
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
       # for instantiated templates we do not go through the type cache as the
@@ -739,7 +749,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       m.typeCache[sig] = result # always call for sideeffects:
       let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, result, check)
                     else: getTupleDesc(m, t, result, check)
-      if not isImportedType(t): add(m.s[cfsTypes], recdesc)
+      if not isImportedType(t):
+        add(m.s[cfsTypes], recdesc)
+      elif tfIncompleteStruct notin t.flags: addAbiCheck(m, t, result)
   of tySet:
     result = getTypeName(m, t.lastSon, hashType t.lastSon) & "_Set"
     m.typeCache[sig] = result
@@ -841,6 +853,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
   #else MessageOut("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
+  if isDefined("nimTypeNames"):
+    addf(m.s[cfsTypeInit3], "$1.name = $2;$n", [name, makeCstring typeToString origType])
   discard cgsym(m, "TNimType")
   addf(m.s[cfsVars], "TNimType $1; /* $2 */$n",
        [name, rope(typeToString(typ))])

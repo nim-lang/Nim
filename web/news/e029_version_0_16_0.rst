@@ -35,6 +35,9 @@ Library Additions
 
 - Added new parameter to ``error`` proc of ``macro`` module to provide better
   error message
+- Added new ``deques`` module intended to replace ``queues``.
+  ``deques`` provides a superset of ``queues`` API with clear naming.
+  ``queues`` module is now deprecated and will be removed in the future.
 
 Tool Additions
 --------------

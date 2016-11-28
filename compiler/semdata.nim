@@ -110,6 +110,7 @@ type
     cache*: IdentCache
     graph*: ModuleGraph
     signatures*: TStrTable
+    recursiveDep*: string
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s

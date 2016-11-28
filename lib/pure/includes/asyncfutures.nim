@@ -263,13 +263,13 @@ proc all*[T](futs: varargs[Future[T]]): auto =
 
     for fut in futs:
       fut.callback = proc(f: Future[T]) =
-        if f.failed:
-          retFuture.fail(f.error)
-        elif not retFuture.finished:
-          inc(completedFutures)
-
-          if completedFutures == totalFutures:
-            retFuture.complete()
+        inc(completedFutures)
+        if not retFuture.finished:
+          if f.failed:
+            retFuture.fail(f.error)
+          else:
+            if completedFutures == totalFutures:
+              retFuture.complete()
 
     if totalFutures == 0:
       retFuture.complete()
@@ -285,14 +285,15 @@ proc all*[T](futs: varargs[Future[T]]): auto =
     for i, fut in futs:
       proc setCallback(i: int) =
         fut.callback = proc(f: Future[T]) =
-          if f.failed:
-            retFuture.fail(f.error)
-          elif not retFuture.finished:
-            retValues[i] = f.read()
-            inc(completedFutures)
+          inc(completedFutures)
+          if not retFuture.finished:
+            if f.failed:
+              retFuture.fail(f.error)
+            else:
+              retValues[i] = f.read()
 
-            if completedFutures == len(retValues):
-              retFuture.complete(retValues)
+              if completedFutures == len(retValues):
+                retFuture.complete(retValues)
 
       setCallback(i)
 

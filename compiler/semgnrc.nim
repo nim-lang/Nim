@@ -107,7 +107,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   var s = searchInScopes(c, ident).skipAlias(n)
   if s == nil:
     if ident.id notin ctx.toMixin and withinMixin notin flags:
-      localError(n.info, errUndeclaredIdentifier, ident.s)
+      errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     if withinBind in flags:
       result = symChoice(c, n, s, scClosed)
@@ -195,7 +195,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     if s == nil and withinMixin notin flags and
         fn.kind in {nkIdent, nkAccQuoted} and
         considerQuotedIdent(fn).id notin ctx.toMixin:
-      localError(n.info, errUndeclaredIdentifier, fn.renderTree)
+      errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
     var first = 0
     var mixinContext = false

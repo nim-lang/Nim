@@ -242,6 +242,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "linetrace": result = contains(gOptions, optLineTrace)
   of "debugger": result = contains(gOptions, optEndb)
   of "profiler": result = contains(gOptions, optProfiler)
+  of "memtracker": result = contains(gOptions, optMemTracker)
   of "checks", "x": result = gOptions * ChecksOptions == ChecksOptions
   of "floatchecks":
     result = gOptions * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
@@ -264,6 +265,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "implicitstatic": result = contains(gOptions, optImplicitStatic)
   of "patterns": result = contains(gOptions, optPatterns)
   of "experimental": result = gExperimentalMode
+  of "excessivestacktrace": result = contains(gGlobalOptions, optExcessiveStackTrace)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc processPath(path: string, info: TLineInfo,
@@ -445,6 +447,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     processOnOffSwitch({optProfiler}, arg, pass, info)
     if optProfiler in gOptions: defineSymbol("profiler")
     else: undefSymbol("profiler")
+  of "memtracker":
+    processOnOffSwitch({optMemTracker}, arg, pass, info)
+    if optMemTracker in gOptions: defineSymbol("memtracker")
+    else: undefSymbol("memtracker")
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)

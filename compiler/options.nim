@@ -34,7 +34,8 @@ type                          # please make sure we have under 32 options
     optProfiler,              # profiler turned on
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
-    optPatterns               # en/disable pattern matching
+    optPatterns,              # en/disable pattern matching
+    optMemTracker
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -231,10 +232,10 @@ proc canonicalizePath*(path: string): string =
 
 proc shortenDir*(dir: string): string =
   ## returns the interesting part of a dir
-  var prefix = getPrefixDir() & DirSep
+  var prefix = gProjectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
-  prefix = gProjectPath & DirSep
+  prefix = getPrefixDir() & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir

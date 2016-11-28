@@ -86,6 +86,8 @@ type
     finalizer: pointer # the finalizer for the type
     marker: proc (p: pointer, op: int) {.nimcall, benign.} # marker proc for GC
     deepcopy: proc (p: pointer): pointer {.nimcall, benign.}
+    when defined(nimTypeNames):
+      name: cstring
   PNimType = ptr TNimType
 
 # node.len may be the ``first`` element of a set
