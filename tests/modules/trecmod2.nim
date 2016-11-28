@@ -1,15 +1,13 @@
 discard """
-  file: "mrecmod2.nim"
-  line: 2
-  errormsg: "recursive module dependency detected"
+  output: "4"
 """
 type
   T1* = int  # Module A exports the type ``T1``
 
 import mrecmod2   # the compiler starts parsing B
-
+# the manual says this should work
 proc main() =
-  var i = p(3) # works because B has been parsed completely here
+  echo p(3) # works because B has been parsed completely here
 
 main()
 

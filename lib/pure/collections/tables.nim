@@ -778,20 +778,22 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
-  var prev = -1
+  var n: OrderedKeyValuePairSeq[A, B]
+  newSeq(n, len(t.data))
+  var h = t.first
+  t.first = -1
+  t.last = -1
+  swap(t.data, n)
   let hc = genHash(key)
-  forAllOrderedPairs:
-    if t.data[h].hcode == hc:
-      if t.first == h:
-        t.first = t.data[h].next
+  while h >= 0:
+    var nxt = n[h].next
+    if isFilled(n[h].hcode):
+      if n[h].hcode == hc and n[h].key == key:
+        dec t.counter
       else:
-        t.data[prev].next = t.data[h].next
-      var zeroValue : type(t.data[h])
-      t.data[h] = zeroValue
-      dec t.counter
-      break
-    else:
-      prev = h
+        var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
+        rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
+    h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
@@ -1156,6 +1158,20 @@ when isMainModule:
     for i in s4.values:
       doAssert(prev < i)
       prev = i
+
+  block: # Deletion from OrderedTable should account for collision groups. See issue #5057.
+    # The bug is reproducible only with exact keys
+    const key1 = "boy_jackpot.inGamma"
+    const key2 = "boy_jackpot.outBlack"
+
+    var t = {
+        key1: 0,
+        key2: 0
+    }.toOrderedTable()
+
+    t.del(key1)
+    assert(t.len == 1)
+    assert(key2 in t)
 
   var
     t1 = initCountTable[string]()

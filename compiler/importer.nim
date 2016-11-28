@@ -100,7 +100,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   let ident = lookups.considerQuotedIdent(n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
-    localError(n.info, errUndeclaredIdentifier, ident.s)
+    errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     if s.kind == skStub: loadStub(s)
     if s.kind notin ExportableSymKinds:
@@ -172,13 +172,13 @@ proc myImportModule(c: PContext, n: PNode): PSym =
         if i > recursion: err.add "\n"
         err.add toFullPath(c.graph.importStack[i]) & " imports " &
                 toFullPath(c.graph.importStack[i+1])
-      localError(n.info, "recursive module dependency detected:\n" & err)
+      c.recursiveDep = err
     result = importModuleAs(n, gImportModule(c.graph, c.module, f, c.cache))
     #echo "set back to ", L
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
     # test: modules/import_in_config)
-    when false:
+    when true:
       if result.info.fileIndex == c.module.info.fileIndex and
           result.info.fileIndex == n.info.fileIndex:
         localError(n.info, errGenerated, "A module cannot import itself")

@@ -816,6 +816,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
   #else MessageOut("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
+  if isDefined("nimTypeNames"):
+    addf(m.s[cfsTypeInit3], "$1.name = $2;$n", [name, makeCstring typeToString origType])
   discard cgsym(m, "TNimType")
   addf(m.s[cfsVars], "TNimType $1; /* $2 */$n",
        [name, rope(typeToString(typ))])

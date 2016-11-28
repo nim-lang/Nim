@@ -1551,7 +1551,7 @@ proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
   if isCallExpr(n):
     var expandedSym = qualifiedLookUp(c, n[0], {checkUndeclared})
     if expandedSym == nil:
-      localError(n.info, errUndeclaredIdentifier, n[0].renderTree)
+      errorUndeclaredIdentifier(c, n.info, n[0].renderTree)
       return errorSym(c, n[0])
 
     if expandedSym.kind notin {skMacro, skTemplate}:
