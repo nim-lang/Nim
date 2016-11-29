@@ -179,23 +179,15 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
-when defined(windows):
-  proc getLocalTime*(t: Time): TimeInfo
-      {.tags: [TimeEffect], raises: [ValueError], benign.}
-    ## converts the calendar time `t` to broken-time representation,
-    ## expressed relative to the user's specified time zone.
-  proc getGMTime*(t: Time): TimeInfo
-      {.tags: [TimeEffect], raises: [ValueError], benign.}
-    ## converts the calendar time `t` to broken-down time representation,
-    ## expressed in Coordinated Universal Time (UTC).
-else:
-  proc getLocalTime*(t: Time): TimeInfo
-      {.tags: [TimeEffect], raises: [], benign.}
-    ## converts the calendar time `t` to broken-time representation,
-    ## expressed relative to the user's specified time zone.
-  proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
-    ## converts the calendar time `t` to broken-down time representation,
-    ## expressed in Coordinated Universal Time (UTC).
+
+proc getLocalTime*(t: Time): TimeInfo
+    {.tags: [TimeEffect], raises: [ValueError], benign.}
+  ## converts the calendar time `t` to broken-time representation,
+  ## expressed relative to the user's specified time zone.
+proc getGMTime*(t: Time): TimeInfo
+    {.tags: [TimeEffect], raises: [ValueError], benign.}
+  ## converts the calendar time `t` to broken-down time representation,
+  ## expressed in Coordinated Universal Time (UTC).
 
 proc timeInfoToTime*(timeInfo: TimeInfo): Time
     {.tags: [TimeEffect], benign, deprecated.}
@@ -537,7 +529,7 @@ when not defined(JS):
       if isNil(gmt):
         raise newException(ValueError,
                            "Cannot convert pre-1970 timestamp to TimeInfo")
-    else: assert(not lt.isNil)
+    else: assert(not gmt.isNil)
     result = tmToTimeInfo(gmt[], false)
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
@@ -559,26 +551,38 @@ when not defined(JS):
       if result == Time(-1) and cTimeInfo.year <= 1970:
         # raise the year to 1971 because Windows' mktime returns -1 for times
         # before 1970. Store the number of seconds we raised in secondOffset so
-        # we can readjust later on.
+        # we can readjust later on. We raise to 1971 because a date in 1970 may
+        # become a date in 1969 when applying timezone offset.
+        #
+        # This code assumes that we use the Gregorian calendar from 15.10.1582
+        # onwards. The day before 15.10.1582 is the 04.10.1582 in Julian
+        # calendar. There is a leap year on every year number divisible by 4 in
+        # both calendars, but in Gregorian calendar, years divisible by 100 are
+        # not leap years onless they are also divisible by 400.
 
         # first, check if we are in front, behind or at a leap day.
         var leapAdjust: TimeImpl = 0
         if cTimeInfo.month > mFeb:
           leapAdjust = 1
         elif cTimeInfo.month == mFeb and cTimeInfo.monthday == 29:
+          # since the target year (1971) does not have a leap day, we need to
+          # move one day backwards.
           cTimeInfo.monthday = 28
           secondOffset -= secondsInDay
 
-        # substract non-leap years on years divisible by 100, but not by 400,
-        # BUT ONLY for years after the Gregorian calendar reform (1582)
+        # for every Gregorian calendar year divisible by 100 but not divisible
+        # by 400, substract one day. This is the error we will make when adding
+        # one leap day every four years later. To only hit Gregorian years, we
+        # take a maximum of all matching years between 1582 and 2000.
         let yearsBefore2000 = 2000 - cTimeInfo.year - leapAdjust
         const gregorianYearsBefore2000 = 2000 - 1582
         secondOffset -= secondsInDay *
-            min(((yearsBefore2000 mod 100) - (yearsBefore2000 mod 400)),
-                ((gregorianYearsBefore2000 mod 100) -
-                 (gregorianYearsBefore2000 mod 400)))
+            min(((yearsBefore2000 div 100) - (yearsBefore2000 div 400)),
+                ((gregorianYearsBefore2000 div 100) -
+                 (gregorianYearsBefore2000 div 400)))
 
-        # substract 10 days missing in 1582
+        # substract 10 days missing in 1582 if we are at or before the last
+        # Julian day
         if cTimeInfo.year < 1582 or (cTimeInfo.year == 1582 and
             (cTimeInfo.month < mOct or
              (cTimeInfo.month == mOct and cTimeInfo.monthday <= 4))):
