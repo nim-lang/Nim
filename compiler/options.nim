@@ -372,17 +372,6 @@ proc findModule*(modulename, currentModule: string): string =
     result = findFile(m)
   patchModule()
 
-proc libCandidates*(s: string, dest: var seq[string]) =
-  var le = strutils.find(s, '(')
-  var ri = strutils.find(s, ')', le+1)
-  if le >= 0 and ri > le:
-    var prefix = substr(s, 0, le - 1)
-    var suffix = substr(s, ri + 1)
-    for middle in split(substr(s, le + 1, ri - 1), '|'):
-      libCandidates(prefix & middle & suffix, dest)
-  else:
-    add(dest, s)
-
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0
   let ende = strutils.find(s, {'(', ')', '.'})

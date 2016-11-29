@@ -17,6 +17,7 @@ import
   lowerings, semparallel
 
 from modulegraphs import ModuleGraph
+from dynlib import libCandidates
 
 import strutils except `%` # collides with ropes.`%`
 

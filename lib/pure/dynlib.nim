@@ -11,20 +11,22 @@
 ## libraries. On POSIX this uses the ``dlsym`` mechanism, on
 ## Windows ``LoadLibrary``.
 
+import strutils
+
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
 
 {.deprecated: [TLibHandle: LibHandle].}
 
-proc loadLib*(path: string, global_symbols=false): LibHandle
+proc loadLib*(path: string, global_symbols=false): LibHandle {.gcsafe.}
   ## loads a library from `path`. Returns nil if the library could not
   ## be loaded.
 
-proc loadLib*(): LibHandle
+proc loadLib*(): LibHandle {.gcsafe.}
   ## gets the handle from the current executable. Returns nil if the
   ## library could not be loaded.
 
-proc unloadLib*(lib: LibHandle)
+proc unloadLib*(lib: LibHandle) {.gcsafe.}
   ## unloads the library `lib`
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
@@ -34,7 +36,7 @@ proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
   e.msg = "could not find symbol: " & $name
   raise e
 
-proc symAddr*(lib: LibHandle, name: cstring): pointer
+proc symAddr*(lib: LibHandle, name: cstring): pointer {.gcsafe.}
   ## retrieves the address of a procedure/variable from `lib`. Returns nil
   ## if the symbol could not be found.
 
@@ -43,6 +45,28 @@ proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
   ## `EInvalidLibrary` if the symbol could not be found.
   result = symAddr(lib, name)
   if result == nil: raiseInvalidLibrary(name)
+
+proc libCandidates*(s: string, dest: var seq[string]) =
+  ## given a library name pattern `s` write possible library names to `dest`.
+  var le = strutils.find(s, '(')
+  var ri = strutils.find(s, ')', le+1)
+  if le >= 0 and ri > le:
+    var prefix = substr(s, 0, le - 1)
+    var suffix = substr(s, ri + 1)
+    for middle in split(substr(s, le + 1, ri - 1), '|'):
+      libCandidates(prefix & middle & suffix, dest)
+  else:
+    add(dest, s)
+
+proc loadLibPattern*(pattern: string, global_symbols=false): LibHandle =
+  ## loads a library with name matching `pattern`, similar to what `dlimport`
+  ## pragma does. Returns nil if the library could not be loaded.
+  ## Warning: this proc uses the GC and so cannot be used to load the GC.
+  var candidates = newSeq[string]()
+  libCandidates(pattern, candidates)
+  for c in candidates:
+    result = loadLib(c, global_symbols)
+    if not result.isNil: break
 
 when defined(posix):
   #

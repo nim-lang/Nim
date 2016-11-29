@@ -37,6 +37,8 @@ else:
       DLLUtilName = "libcrypto.so" & versions
   from posix import SocketHandle
 
+import dynlib
+
 type
   SslStruct {.final, pure.} = object
   SslPtr* = ptr SslStruct
@@ -185,15 +187,60 @@ const
   BIO_C_DO_STATE_MACHINE = 101
   BIO_C_GET_SSL = 110
 
-proc SSL_library_init*(): cInt{.cdecl, dynlib: DLLSSLName, importc, discardable.}
-proc SSL_load_error_strings*(){.cdecl, dynlib: DLLSSLName, importc.}
+# Here we're trying to stay compatible with openssl 1.0.* and 1.1.*. Some
+# symbols are loaded dynamically and we don't use them if not found.
+var dl {.threadvar.}: LibHandle
+template loadSSLLib() =
+    if dl.isNil:
+        dl = loadLib()
+        if dl.isNil:
+            dl = loadLibPattern(DLLSSLName)
+
+proc SSL_library_init*(): cint {.discardable.} =
+  loadSSLLib()
+  if not dl.isNil:
+    let theProc = cast[proc(): cint {.cdecl.}](symAddr(dl, "SSL_library_init"))
+    if not theProc.isNil: result = theProc()
+
+proc SSL_load_error_strings*() =
+  loadSSLLib()
+  if not dl.isNil:
+    let theProc = cast[proc() {.cdecl.}](symAddr(dl, "SSL_load_error_strings"))
+    if not theProc.isNil: theProc()
+
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
-proc SSLv23_client_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSLv23_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSLv2_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSLv3_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
+
+proc SSLv23_client_method*(): PSSL_METHOD {.deprecated.} =
+  loadSSLLib()
+  if not dl.isNil:
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv23_client_method"))
+    if not theProc.isNil: result = theProc()
+  if result.isNil: result = TLSv1_method()
+
+proc SSLv23_method*(): PSSL_METHOD {.deprecated.} =
+  loadSSLLib()
+  if not dl.isNil:
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv23_method"))
+    if not theProc.isNil:
+      result = theProc()
+  if result.isNil:
+    result = TLSv1_method()
+
+proc SSLv2_method*(): PSSL_METHOD {.deprecated.} =
+  loadSSLLib()
+  if not dl.isNil:
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv2_method"))
+    if not theProc.isNil: result = theProc()
+  if result.isNil: result = TLSv1_method()
+
+proc SSLv3_method*(): PSSL_METHOD {.deprecated.} =
+  loadSSLLib()
+  if not dl.isNil:
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv3_method"))
+    if not theProc.isNil: result = theProc()
+  if result.isNil: result = TLSv1_method()
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -261,10 +308,11 @@ proc ERR_error_string*(e: cInt, buf: cstring): cstring{.cdecl,
 proc ERR_get_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
-when defined(android):
-    template OpenSSL_add_all_algorithms*() = discard
-else:
-    proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSSL_add_all_algorithms_conf".}
+proc OpenSSL_add_all_algorithms*() =
+  loadSSLLib()
+  if not dl.isNil:
+    let theProc = cast[proc() {.cdecl.}](symAddr(dl, "OPENSSL_add_all_algorithms_conf"))
+    if not theProc.isNil: theProc()
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
