@@ -1003,15 +1003,11 @@ proc `$`*(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.} =
     result = format(timeInfo, "yyyy-MM-dd'T'HH:mm:sszzz") # todo: optimize this
   except ValueError: assert false # cannot happen because format string is valid
 
-proc `$`*(time: Time): string {.tags: [TimeEffect], raises: [], benign.} =
+proc `$`*(time: Time): string
+    {.tags: [TimeEffect], raises: [ValueError], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
-  when defined(windows):
-    try: result = $getLocalTime(time)
-    except ValueError:
-      result = $TimeImpl(time) & " seconds before Jan 1st 1970"
-  else:
-    result = $getLocalTime(time)
+  result = $getLocalTime(time)
 
 {.pop.}
 
