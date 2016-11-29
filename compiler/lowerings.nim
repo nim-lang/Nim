@@ -114,6 +114,10 @@ proc createObj*(owner: PSym, info: TLineInfo): PType =
   rawAddSon(result, nil)
   incl result.flags, tfFinal
   result.n = newNodeI(nkRecList, info)
+  let s = newSym(skType, getIdent("Env_" & info.toFilename & "_" & $info.line),
+                 owner, info)
+  s.typ = result
+  result.sym = s
 
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
