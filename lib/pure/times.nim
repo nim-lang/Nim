@@ -514,14 +514,6 @@ when not defined(JS):
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
 
-  proc timeInfoToTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
-
   proc toTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
@@ -529,6 +521,8 @@ when not defined(JS):
     # mktime is defined to interpret the input as local time. As timeInfoToTM
     # does ignore the timezone, we need to adjust this here.
     result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+
+  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
   const
     epochDiff = 116444736000000000'i64
