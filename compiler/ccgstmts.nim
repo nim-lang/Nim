@@ -48,7 +48,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     return
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
-  var t = tup.t.getUniqueType
+  var t = tup.t.skipTypes(abstractInst)
   for i in countup(0, L-3):
     var v = n.sons[i].sym
     if sfCompileTime in v.flags: continue
