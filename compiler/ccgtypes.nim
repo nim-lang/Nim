@@ -565,17 +565,19 @@ const
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
   var t = origTyp.skipTypes(irrelevantForBackend)
-  if t.sym != nil: useHeader(m, t.sym)
-  if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
-  let sig = hashType(origTyp)
-  result = getTypePre(m, t, sig)
-  if result != nil: return
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
       internalError("cannot generate C type for: " & typeToString(origTyp))
     # XXX: this BUG is hard to fix -> we need to introduce helper structs,
     # but determining when this needs to be done is hard. We should split
     # C type generation into an analysis and a code generation phase somehow.
+  if t.sym != nil: useHeader(m, t.sym)
+  if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
+  let sig = hashType(origTyp)
+  result = getTypePre(m, t, sig)
+  if result != nil:
+    excl(check, t.id)
+    return
   case t.kind
   of tyRef, tyPtr, tyVar:
     var star = if t.kind == tyVar and tfVarIsPtr notin origTyp.flags and
