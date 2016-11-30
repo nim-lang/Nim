@@ -878,9 +878,11 @@ when defined(windows) or defined(nimdoc):
               deallocShared(cast[pointer](pcd))
               raiseOSError(osLastError())
             else:
-              # we ref pcd.ovl one more time, because it will be unrefed in
-              # poll()
+              # we incref `pcd.ovl` and `protect` callback one more time,
+              # because it will be unrefed and disposed in `poll()` after
+              # callback finishes.
               GC_ref(pcd.ovl)
+              pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
     )
     # We need to protect our callback environment value, so GC will not free it
     # accidentally.
@@ -988,6 +990,9 @@ when defined(windows) or defined(nimdoc):
         deallocShared(cast[pointer](pcd))
         p.handles.excl(fd)
       else:
+        # if callback returned `false`, then it wants to be called again, so
+        # we need to ref and protect `pcd.ovl` again, because it will be
+        # unrefed and disposed in `poll()`.
         GC_ref(pcd.ovl)
         pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
 
@@ -1073,6 +1078,9 @@ when defined(windows) or defined(nimdoc):
         if ev.hWaiter != 0: unregister(ev)
         deallocShared(cast[pointer](pcd))
       else:
+        # if callback returned `false`, then it wants to be called again, so
+        # we need to ref and protect `pcd.ovl` again, because it will be
+        # unrefed and disposed in `poll()`.
         GC_ref(pcd.ovl)
         pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
 
@@ -1082,17 +1090,8 @@ when defined(windows) or defined(nimdoc):
   initAll()
 else:
   import ioselectors
-  when defined(windows):
-    import winlean
-    const
-      EINTR = WSAEINPROGRESS
-      EINPROGRESS = WSAEINPROGRESS
-      EWOULDBLOCK = WSAEWOULDBLOCK
-      EAGAIN = EINPROGRESS
-      MSG_NOSIGNAL = 0
-  else:
-    from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
-                      MSG_NOSIGNAL
+  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+                    MSG_NOSIGNAL
 
   const supportedPlatform = defined(linux) or defined(freebsd) or
                             defined(netbsd) or defined(openbsd) or
