@@ -817,7 +817,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
   if flags != 0:
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
   if isDefined("nimTypeNames"):
-    addf(m.s[cfsTypeInit3], "$1.name = $2;$n", [name, makeCstring typeToString origType])
+    addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
+        [name, makeCstring typeToString(origType, preferName)])
   discard cgsym(m, "TNimType")
   addf(m.s[cfsVars], "TNimType $1; /* $2 */$n",
        [name, rope(typeToString(typ))])
