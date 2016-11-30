@@ -893,9 +893,11 @@ when defined(windows) or defined(nimdoc):
               deallocShared(cast[pointer](pcd))
               raiseOSError(osLastError())
             else:
-              # we ref pcd.ovl one more time, because it will be unrefed in
-              # poll()
+              # we incref `pcd.ovl` and `protect` callback one more time,
+              # because it will be unrefed and disposed in `poll()` after
+              # callback finishes.
               GC_ref(pcd.ovl)
+              pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
     )
     # We need to protect our callback environment value, so GC will not free it
     # accidentally.
@@ -956,17 +958,8 @@ when defined(windows) or defined(nimdoc):
   initAll()
 else:
   import selectors
-  when defined(windows):
-    import winlean
-    const
-      EINTR = WSAEINPROGRESS
-      EINPROGRESS = WSAEINPROGRESS
-      EWOULDBLOCK = WSAEWOULDBLOCK
-      EAGAIN = EINPROGRESS
-      MSG_NOSIGNAL = 0
-  else:
-    from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
-                      MSG_NOSIGNAL
+  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+                    MSG_NOSIGNAL
 
   type
     AsyncFD* = distinct cint
