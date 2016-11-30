@@ -1070,9 +1070,7 @@ when defined(windows) or defined(nimdoc):
       if cb(fd):
         # we need this check to avoid exception, if `unregister(event)` was
         # called in callback.
-        if ev.hWaiter != 0:
-          GC_ref(pcd.ovl)
-          pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+        if ev.hWaiter != 0: unregister(ev)
         deallocShared(cast[pointer](pcd))
       else:
         GC_ref(pcd.ovl)
