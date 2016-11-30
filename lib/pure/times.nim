@@ -436,6 +436,13 @@ when not defined(JS):
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
 
+  when defined(windows):
+    proc timegm(t: StructTM): Time {.
+      importc: "_mkgmtime", header: "<time.h>", tags: [].}
+  else:
+    proc timegm(t: StructTM): Time {.
+      importc: "timegm", header: "<time.h>", tags: [].}
+
   proc localtime(timer: ptr Time): TimeInfoPtr {.
     importc: "localtime", header: "<time.h>", tags: [].}
   proc gmtime(timer: ptr Time): TimeInfoPtr {.
@@ -516,19 +523,17 @@ when not defined(JS):
 
   proc timeInfoToTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+    # because the header of timegm is broken in my version of libc
+    result = timegm(timeInfoToTM(cTimeInfo))
+    # As timeInfoToTM does ignore the timezone, we need to adjust this here.
+    result = Time(TimeImpl(result) + timeInfo.timezone)
 
   proc toTime(timeInfo: TimeInfo): Time =
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+    # because the header of timegm is broken in my version of libc
+    result = timegm(timeInfoToTM(cTimeInfo))
+    # As timeInfoToTM does ignore the timezone, we need to adjust this here.
+    result = Time(TimeImpl(result) + timeInfo.timezone)
 
   const
     epochDiff = 116444736000000000'i64
