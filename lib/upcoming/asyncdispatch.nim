@@ -827,7 +827,7 @@ when defined(windows) or defined(nimdoc):
                                        cast[pointer](p.ovl))
   {.pop.}
 
-  template registerWaitableEvent(mask) =
+  proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: Dword) =
     let p = getGlobalDispatcher()
     var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).Dword
     var hEvent = wsaCreateEvent()
@@ -919,7 +919,7 @@ when defined(windows) or defined(nimdoc):
     ## Be sure your callback ``cb`` returns ``true``, if you want to remove
     ## watch of `read` notifications, and ``false``, if you want to continue
     ## receiving notifies.
-    registerWaitableEvent(FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
+    registerWaitableEvent(fd, cb, FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
 
   proc addWrite*(fd: AsyncFD, cb: Callback) =
     ## Start watching the file descriptor for write availability and then call
@@ -936,7 +936,7 @@ when defined(windows) or defined(nimdoc):
     ## Be sure your callback ``cb`` returns ``true``, if you want to remove
     ## watch of `write` notifications, and ``false``, if you want to continue
     ## receiving notifies.
-    registerWaitableEvent(FD_WRITE or FD_CONNECT or FD_CLOSE)
+    registerWaitableEvent(fd, cb, FD_WRITE or FD_CONNECT or FD_CLOSE)
 
   template registerWaitableHandle(p, hEvent, flags, pcd, timeout, handleCallback) =
     let handleFD = AsyncFD(hEvent)
@@ -944,7 +944,8 @@ when defined(windows) or defined(nimdoc):
     pcd.handleFd = handleFD
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = CompletionData(fd: handleFD, cb: handleCallback)
+    ol.data.fd = handleFD
+    ol.data.cb = handleCallback
     # We need to protect our callback environment value, so GC will not free it
     # accidentally.
     ol.data.cell = system.protect(rawEnv(ol.data.cb))
@@ -986,6 +987,9 @@ when defined(windows) or defined(nimdoc):
         discard closeHandle(hEvent)
         deallocShared(cast[pointer](pcd))
         p.handles.excl(fd)
+      else:
+        GC_ref(pcd.ovl)
+        pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
 
     registerWaitableHandle(p, hEvent, flags, pcd, timeout, timercb)
 
@@ -1066,8 +1070,13 @@ when defined(windows) or defined(nimdoc):
       if cb(fd):
         # we need this check to avoid exception, if `unregister(event)` was
         # called in callback.
-        if ev.hWaiter != 0: unregister(ev)
+        if ev.hWaiter != 0:
+          GC_ref(pcd.ovl)
+          pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
         deallocShared(cast[pointer](pcd))
+      else:
+        GC_ref(pcd.ovl)
+        pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
 
     registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
     ev.hWaiter = pcd.waitFd
