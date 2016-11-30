@@ -1274,7 +1274,8 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
   let aOrig = nOrig[0]
-  result = newNode(nkCall, n.info, sons = @[setterId, a[0], semExpr(c, n[1])])
+  result = newNode(nkCall, n.info, sons = @[setterId, a[0],
+                                            semExprWithType(c, n[1])])
   result.flags.incl nfDotSetter
   let orig = newNode(nkCall, n.info, sons = @[setterId, aOrig[0], nOrig[1]])
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
