@@ -227,8 +227,7 @@ proc setDefaultLibpath*() =
       libpath = parentNimLibPath
 
 proc canonicalizePath*(path: string): string =
-  when not FileSystemCaseSensitive: result = path.expandFilename.toLowerAscii
-  else: result = path.expandFilename
+  result = path.expandFilename
 
 proc shortenDir*(dir: string): string =
   ## returns the interesting part of a dir
