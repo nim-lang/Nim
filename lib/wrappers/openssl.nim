@@ -189,58 +189,56 @@ const
 
 # Here we're trying to stay compatible with openssl 1.0.* and 1.1.*. Some
 # symbols are loaded dynamically and we don't use them if not found.
-var dl {.threadvar.}: LibHandle
-template loadSSLLib() =
-    if dl.isNil:
-        dl = loadLib()
-        if dl.isNil:
-            dl = loadLibPattern(DLLSSLName)
+proc thisModule(): LibHandle {.inline.} =
+  var thisMod {.global.}: LibHandle
+  if thisMod.isNil: thisMod = loadLib()
+  result = thisMod
+
+proc sslModule(): LibHandle {.inline.} =
+  var sslMod {.global.}: LibHandle
+  if sslMod.isNil: sslMod = loadLibPattern(DLLSSLName)
+  result = sslMod
+
+proc sslSym(name: string): pointer =
+  var dl = thisModule()
+  if not dl.isNil:
+    result = symAddr(dl, name)
+  if result.isNil:
+    dl = sslModule()
+    if not dl.isNil:
+      result = symAddr(dl, name)
 
 proc SSL_library_init*(): cint {.discardable.} =
-  loadSSLLib()
-  if not dl.isNil:
-    let theProc = cast[proc(): cint {.cdecl.}](symAddr(dl, "SSL_library_init"))
-    if not theProc.isNil: result = theProc()
+  let theProc = cast[proc(): cint {.cdecl.}](sslSym("SSL_library_init"))
+  if not theProc.isNil: result = theProc()
 
 proc SSL_load_error_strings*() =
-  loadSSLLib()
-  if not dl.isNil:
-    let theProc = cast[proc() {.cdecl.}](symAddr(dl, "SSL_load_error_strings"))
-    if not theProc.isNil: theProc()
+  let theProc = cast[proc() {.cdecl.}](sslSym("SSL_load_error_strings"))
+  if not theProc.isNil: theProc()
 
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
 proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSLv23_client_method*(): PSSL_METHOD {.deprecated.} =
-  loadSSLLib()
-  if not dl.isNil:
-    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv23_client_method"))
-    if not theProc.isNil: result = theProc()
-  if result.isNil: result = TLSv1_method()
+  let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv23_client_method"))
+  if not theProc.isNil: result = theProc()
+  else: result = TLSv1_method()
 
 proc SSLv23_method*(): PSSL_METHOD {.deprecated.} =
-  loadSSLLib()
-  if not dl.isNil:
-    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv23_method"))
-    if not theProc.isNil:
-      result = theProc()
-  if result.isNil:
-    result = TLSv1_method()
+  let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv23_method"))
+  if not theProc.isNil: result = theProc()
+  else: result = TLSv1_method()
 
 proc SSLv2_method*(): PSSL_METHOD {.deprecated.} =
-  loadSSLLib()
-  if not dl.isNil:
-    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv2_method"))
-    if not theProc.isNil: result = theProc()
-  if result.isNil: result = TLSv1_method()
+  let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv2_method"))
+  if not theProc.isNil: result = theProc()
+  else: result = TLSv1_method()
 
 proc SSLv3_method*(): PSSL_METHOD {.deprecated.} =
-  loadSSLLib()
-  if not dl.isNil:
-    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](symAddr(dl, "SSLv3_method"))
-    if not theProc.isNil: result = theProc()
-  if result.isNil: result = TLSv1_method()
+  let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv3_method"))
+  if not theProc.isNil: result = theProc()
+  else: result = TLSv1_method()
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -309,10 +307,8 @@ proc ERR_get_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OpenSSL_add_all_algorithms*() =
-  loadSSLLib()
-  if not dl.isNil:
-    let theProc = cast[proc() {.cdecl.}](symAddr(dl, "OPENSSL_add_all_algorithms_conf"))
-    if not theProc.isNil: theProc()
+  let theProc = cast[proc() {.cdecl.}](sslSym("OPENSSL_add_all_algorithms_conf"))
+  if not theProc.isNil: theProc()
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
