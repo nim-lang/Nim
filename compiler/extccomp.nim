@@ -34,7 +34,7 @@ type
   TInfoCCProps* = set[TInfoCCProp]
   TInfoCC* = tuple[
     name: string,        # the short name of the compiler
-    objExt: string,      # the compiler's object file extenstion
+    objExt: string,      # the compiler's object file extension
     optSpeed: string,    # the options for optimization for speed
     optSize: string,     # the options for optimization for size
     compilerExe: string, # the compiler's executable

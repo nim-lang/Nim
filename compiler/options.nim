@@ -227,7 +227,16 @@ proc setDefaultLibpath*() =
       libpath = parentNimLibPath
 
 proc canonicalizePath*(path: string): string =
-  result = path.expandFilename
+  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
+  # case corrections, so we have to use this convoluted way of retrieving
+  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
+  # of 'import uri'):
+  when defined(windows):
+    result = path.expandFilename
+    for x in walkFiles(result):
+      return x
+  else:
+    result = path.expandFilename
 
 proc shortenDir*(dir: string): string =
   ## returns the interesting part of a dir

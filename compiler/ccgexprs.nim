@@ -1129,7 +1129,11 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
 
 proc genConstExpr(p: BProc, n: PNode): Rope
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
-  if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
+  proc forbiddenType(t: PType): bool {.inline.} =
+    result = t.kind == tyObject and not isObjLackingTypeField(t)
+    #echo "forbidden type ", result
+  if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr and
+      not forbiddenType(n.typ):
     var t = getUniqueType(n.typ)
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
@@ -1144,8 +1148,8 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
     result = false
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
-  if handleConstExpr(p, e, d): return
   #echo rendertree e, " ", e.isDeepConstExpr
+  if handleConstExpr(p, e, d): return
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
   getTemp(p, t, tmp)
