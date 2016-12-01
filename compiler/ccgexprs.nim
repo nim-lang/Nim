@@ -1147,8 +1147,8 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
     result = false
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
-  if handleConstExpr(p, e, d): return
   #echo rendertree e, " ", e.isDeepConstExpr
+  if handleConstExpr(p, e, d): return
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
   getTemp(p, t, tmp)
@@ -2148,6 +2148,11 @@ proc genNamedConstExpr(p: BProc, n: PNode): Rope =
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)
   result = rope("{")
+  let t = n.typ.skipTypes(abstractInst)
+  if n.kind == nkObjConstr and not isObjLackingTypeField(t) and
+      not p.module.compileToCpp:
+    addf(result, "{$1}", [genTypeInfo(p.module, t)])
+    if n.len > 1: add(result, ",")
   for i in countup(ord(n.kind == nkObjConstr), length - 2):
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
   if length > ord(n.kind == nkObjConstr):

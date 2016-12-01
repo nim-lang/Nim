@@ -227,8 +227,16 @@ proc setDefaultLibpath*() =
       libpath = parentNimLibPath
 
 proc canonicalizePath*(path: string): string =
-  when not FileSystemCaseSensitive: result = path.expandFilename.toLowerAscii
-  else: result = path.expandFilename
+  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
+  # case corrections, so we have to use this convoluted way of retrieving
+  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
+  # of 'import uri'):
+  when defined(windows):
+    result = path.expandFilename
+    for x in walkFiles(result):
+      return x
+  else:
+    result = path.expandFilename
 
 proc shortenDir*(dir: string): string =
   ## returns the interesting part of a dir
@@ -372,17 +380,6 @@ proc findModule*(modulename, currentModule: string): string =
   if not existsFile(result):
     result = findFile(m)
   patchModule()
-
-proc libCandidates*(s: string, dest: var seq[string]) =
-  var le = strutils.find(s, '(')
-  var ri = strutils.find(s, ')', le+1)
-  if le >= 0 and ri > le:
-    var prefix = substr(s, 0, le - 1)
-    var suffix = substr(s, ri + 1)
-    for middle in split(substr(s, le + 1, ri - 1), '|'):
-      libCandidates(prefix & middle & suffix, dest)
-  else:
-    add(dest, s)
 
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0

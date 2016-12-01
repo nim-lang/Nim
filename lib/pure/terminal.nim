@@ -13,6 +13,8 @@
 ## Windows API.
 ## Changing the style is permanent even after program termination! Use the
 ## code ``system.addQuitProc(resetAttributes)`` to restore the defaults.
+## Similarly, if you hide the cursor, make sure to unhide it with
+## ``showCursor`` before quitting.
 
 import macros
 
@@ -29,6 +31,8 @@ when defined(windows):
     BACKGROUND_GREEN = 32
     BACKGROUND_RED = 64
     BACKGROUND_INTENSITY = 128
+    FOREGROUND_RGB = FOREGROUND_RED or FOREGROUND_GREEN or FOREGROUND_BLUE
+    BACKGROUND_RGB = BACKGROUND_RED or BACKGROUND_GREEN or BACKGROUND_BLUE
 
   type
     SHORT = int16
@@ -49,6 +53,10 @@ when defined(windows):
       srWindow: SMALL_RECT
       dwMaximumWindowSize: COORD
 
+    CONSOLE_CURSOR_INFO = object
+      dwSize: DWORD
+      bVisible: WINBOOL
+
   proc duplicateHandle(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                        hTargetProcessHandle: HANDLE, lpTargetHandle: ptr HANDLE,
                        dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
@@ -59,6 +67,14 @@ when defined(windows):
   proc getConsoleScreenBufferInfo(hConsoleOutput: HANDLE,
     lpConsoleScreenBufferInfo: ptr CONSOLE_SCREEN_BUFFER_INFO): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
+
+  proc getConsoleCursorInfo(hConsoleOutput: HANDLE,
+      lpConsoleCursorInfo: ptr CONSOLE_CURSOR_INFO): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "GetConsoleCursorInfo".}
+
+  proc setConsoleCursorInfo(hConsoleOutput: HANDLE,
+      lpConsoleCursorInfo: ptr CONSOLE_CURSOR_INFO): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "SetConsoleCursorInfo".}
 
   proc terminalWidthIoctl*(handles: openArray[Handle]): int =
     var csbi: CONSOLE_SCREEN_BUFFER_INFO
@@ -178,6 +194,30 @@ else:
     if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
       return w
     return 80                               #Finally default to venerable value
+
+when defined(windows):
+  proc setCursorVisibility(f: File, visible: bool) =
+    var ccsi: CONSOLE_CURSOR_INFO
+    let h = conHandle(f)
+    if getConsoleCursorInfo(h, addr(ccsi)) == 0:
+      raiseOSError(osLastError())
+    ccsi.bVisible = if visible: 1 else: 0
+    if setConsoleCursorInfo(h, addr(ccsi)) == 0:
+      raiseOSError(osLastError())
+
+proc hideCursor*(f: File) =
+  ## Hides the cursor.
+  when defined(windows):
+    setCursorVisibility(f, false)
+  else:
+    f.write("\e[?25l")
+
+proc showCursor*(f: File) =
+  ## Shows the cursor.
+  when defined(windows):
+    setCursorVisibility(f, true)
+  else:
+    f.write("\e[?25h")
 
 proc setCursorPos*(f: File, x, y: int) =
   ## Sets the terminal's cursor to the (x,y) position.
@@ -369,12 +409,13 @@ proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
   when defined(windows):
     let h = conHandle(f)
+    var old = getAttributes(h) and (FOREGROUND_RGB or BACKGROUND_RGB)
     var a = 0'i16
     if styleBright in style: a = a or int16(FOREGROUND_INTENSITY)
     if styleBlink in style: a = a or int16(BACKGROUND_INTENSITY)
     if styleReverse in style: a = a or 0x4000'i16 # COMMON_LVB_REVERSE_VIDEO
     if styleUnderscore in style: a = a or 0x8000'i16 # COMMON_LVB_UNDERSCORE
-    discard setConsoleTextAttribute(h, a)
+    discard setConsoleTextAttribute(h, old or a)
   else:
     for s in items(style):
       f.write("\e[" & $ord(s) & 'm')
@@ -423,7 +464,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   ## Sets the terminal's foreground color.
   when defined(windows):
     let h = conHandle(f)
-    var old = getAttributes(h) and not 0x0007
+    var old = getAttributes(h) and not FOREGROUND_RGB
     if bright:
       old = old or FOREGROUND_INTENSITY
     const lookup: array[ForegroundColor, int] = [
@@ -445,7 +486,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   ## Sets the terminal's background color.
   when defined(windows):
     let h = conHandle(f)
-    var old = getAttributes(h) and not 0x0070
+    var old = getAttributes(h) and not BACKGROUND_RGB
     if bright:
       old = old or BACKGROUND_INTENSITY
     const lookup: array[BackgroundColor, int] = [
@@ -558,6 +599,8 @@ proc getch*(): char =
     discard fd.tcsetattr(TCSADRAIN, addr oldMode)
 
 # Wrappers assuming output to stdout:
+template hideCursor*() = hideCursor(stdout)
+template showCursor*() = showCursor(stdout)
 template setCursorPos*(x, y: int) = setCursorPos(stdout, x, y)
 template setCursorXPos*(x: int)   = setCursorXPos(stdout, x)
 when defined(windows):

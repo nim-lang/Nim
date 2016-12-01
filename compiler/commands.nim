@@ -226,6 +226,8 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "staticlib": result = contains(gGlobalOptions, optGenStaticLib) and
                       not contains(gGlobalOptions, optGenGuiApp)
     else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
+  of "dynliboverride":
+    result = isDynlibOverride(arg)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool =

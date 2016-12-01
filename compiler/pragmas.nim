@@ -490,6 +490,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(n.info, errIntLiteralExpected)
       else:
+        # XXX this produces weird paths which are not properly resolved:
         n.info.fileIndex = msgs.fileInfoIdx(x.strVal)
         n.info.line = int16(y.intVal)
     else:

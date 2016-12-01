@@ -827,7 +827,7 @@ when defined(windows) or defined(nimdoc):
                                        cast[pointer](p.ovl))
   {.pop.}
 
-  template registerWaitableEvent(mask) =
+  proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: Dword) =
     let p = getGlobalDispatcher()
     var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).Dword
     var hEvent = wsaCreateEvent()
@@ -878,9 +878,11 @@ when defined(windows) or defined(nimdoc):
               deallocShared(cast[pointer](pcd))
               raiseOSError(osLastError())
             else:
-              # we ref pcd.ovl one more time, because it will be unrefed in
-              # poll()
+              # we incref `pcd.ovl` and `protect` callback one more time,
+              # because it will be unrefed and disposed in `poll()` after
+              # callback finishes.
               GC_ref(pcd.ovl)
+              pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
     )
     # We need to protect our callback environment value, so GC will not free it
     # accidentally.
@@ -919,7 +921,7 @@ when defined(windows) or defined(nimdoc):
     ## Be sure your callback ``cb`` returns ``true``, if you want to remove
     ## watch of `read` notifications, and ``false``, if you want to continue
     ## receiving notifies.
-    registerWaitableEvent(FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
+    registerWaitableEvent(fd, cb, FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
 
   proc addWrite*(fd: AsyncFD, cb: Callback) =
     ## Start watching the file descriptor for write availability and then call
@@ -936,7 +938,7 @@ when defined(windows) or defined(nimdoc):
     ## Be sure your callback ``cb`` returns ``true``, if you want to remove
     ## watch of `write` notifications, and ``false``, if you want to continue
     ## receiving notifies.
-    registerWaitableEvent(FD_WRITE or FD_CONNECT or FD_CLOSE)
+    registerWaitableEvent(fd, cb, FD_WRITE or FD_CONNECT or FD_CLOSE)
 
   template registerWaitableHandle(p, hEvent, flags, pcd, timeout, handleCallback) =
     let handleFD = AsyncFD(hEvent)
@@ -944,7 +946,8 @@ when defined(windows) or defined(nimdoc):
     pcd.handleFd = handleFD
     var ol = PCustomOverlapped()
     GC_ref(ol)
-    ol.data = CompletionData(fd: handleFD, cb: handleCallback)
+    ol.data.fd = handleFD
+    ol.data.cb = handleCallback
     # We need to protect our callback environment value, so GC will not free it
     # accidentally.
     ol.data.cell = system.protect(rawEnv(ol.data.cb))
@@ -986,6 +989,12 @@ when defined(windows) or defined(nimdoc):
         discard closeHandle(hEvent)
         deallocShared(cast[pointer](pcd))
         p.handles.excl(fd)
+      else:
+        # if callback returned `false`, then it wants to be called again, so
+        # we need to ref and protect `pcd.ovl` again, because it will be
+        # unrefed and disposed in `poll()`.
+        GC_ref(pcd.ovl)
+        pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
 
     registerWaitableHandle(p, hEvent, flags, pcd, timeout, timercb)
 
@@ -1068,6 +1077,12 @@ when defined(windows) or defined(nimdoc):
         # called in callback.
         if ev.hWaiter != 0: unregister(ev)
         deallocShared(cast[pointer](pcd))
+      else:
+        # if callback returned `false`, then it wants to be called again, so
+        # we need to ref and protect `pcd.ovl` again, because it will be
+        # unrefed and disposed in `poll()`.
+        GC_ref(pcd.ovl)
+        pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
 
     registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
     ev.hWaiter = pcd.waitFd
@@ -1075,17 +1090,8 @@ when defined(windows) or defined(nimdoc):
   initAll()
 else:
   import ioselectors
-  when defined(windows):
-    import winlean
-    const
-      EINTR = WSAEINPROGRESS
-      EINPROGRESS = WSAEINPROGRESS
-      EWOULDBLOCK = WSAEWOULDBLOCK
-      EAGAIN = EINPROGRESS
-      MSG_NOSIGNAL = 0
-  else:
-    from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
-                      MSG_NOSIGNAL
+  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+                    MSG_NOSIGNAL
 
   const supportedPlatform = defined(linux) or defined(freebsd) or
                             defined(netbsd) or defined(openbsd) or

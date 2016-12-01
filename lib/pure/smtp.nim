@@ -256,24 +256,48 @@ proc close*(smtp: AsyncSmtp) {.async.} =
   smtp.sock.close()
 
 when not defined(testing) and isMainModule:
-  #var msg = createMessage("Test subject!",
-  #     "Hello, my name is dom96.\n What\'s yours?", @["dominik@localhost"])
-  #echo(msg)
+  # To test with a real SMTP service, create a smtp.ini file, e.g.:
+  # username = ""
+  # password = ""
+  # smtphost = "smtp.gmail.com"
+  # port = 465
+  # use_tls = true
+  # sender = ""
+  # recipient = ""
 
-  #var smtpConn = connect("localhost", Port 25, false, true)
-  #smtpConn.sendmail("root@localhost", @["dominik@localhost"], $msg)
+  import parsecfg
 
-  #echo(decode("a17sm3701420wbe.12"))
-  proc main() {.async.} =
-    var client = newAsyncSmtp("smtp.gmail.com", Port(465), true)
+  proc `[]`(c: Config, key: string): string = c.getSectionValue("", key)
+
+  let
+    conf = loadConfig("smtp.ini")
+    msg = createMessage("Hello from Nim's SMTP!",
+      "Hello!\n Is this awesome or what?", @[conf["recipient"]])
+
+  assert conf["smtphost"] != ""
+
+  proc async_test() {.async.} =
+    let client = newAsyncSmtp(
+      conf["smtphost"],
+      conf["port"].parseInt.Port,
+      conf["use_tls"].parseBool
+    )
     await client.connect()
-    await client.auth("johndoe", "foo")
-    var msg = createMessage("Hello from Nim's SMTP!",
-                            "Hello!!!!.\n Is this awesome or what?",
-                            @["blah@gmail.com"])
-    echo(msg)
-    await client.sendMail("blah@gmail.com", @["blah@gmail.com"], $msg)
-
+    await client.auth(conf["username"], conf["password"])
+    await client.sendMail(conf["sender"], @[conf["recipient"]], $msg)
     await client.close()
+    echo "async email sent"
 
-  waitFor main()
+  proc sync_test() =
+    var smtpConn = connect(
+      conf["smtphost"],
+      conf["port"].parseInt.Port,
+      conf["use_tls"].parseBool,
+      true, # debug
+    )
+    smtpConn.auth(conf["username"], conf["password"])
+    smtpConn.sendmail(conf["sender"], @[conf["recipient"]], $msg)
+    echo "sync email sent"
+
+  waitFor async_test()
+  sync_test()
