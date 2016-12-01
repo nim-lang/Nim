@@ -9,6 +9,6 @@ import jester
 import asyncdispatch, asyncnet
 
 # bug #5081
-import nre
+#import nre
 
 echo "hello"
