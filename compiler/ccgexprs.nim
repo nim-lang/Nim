@@ -2152,7 +2152,8 @@ proc genNamedConstExpr(p: BProc, n: PNode): Rope =
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)
   result = rope("{")
-  if n.kind == nkObjConstr and not isObjLackingTypeField(n.typ):
+  if n.kind == nkObjConstr and not isObjLackingTypeField(n.typ) and
+      not p.module.compileToCpp:
     addf(result, "{$1}", [genTypeInfo(p.module, n.typ)])
     if n.len > 1: add(result, ",")
   for i in countup(ord(n.kind == nkObjConstr), length - 2):
