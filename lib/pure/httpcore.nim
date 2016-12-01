@@ -154,6 +154,10 @@ proc add*(headers: HttpHeaders, key, value: string) =
   else:
     headers.table[key.toLowerAscii].add(value)
 
+proc del*(headers: HttpHeaders, key: string) =
+  ## Delete the header entries associated with ``key``
+  headers.table.del(key.toLowerAscii)
+
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
   ## Yields each key, value pair.
   for k, v in headers.table:
