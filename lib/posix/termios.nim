@@ -16,7 +16,7 @@ type
 {.deprecated: [Tcflag: Cflag].}
 
 const
-  NCCS* = 32
+  NCCS* = when defined(macosx): 20 else: 32
 
 type
   Termios* {.importc: "struct termios", header: "<termios.h>".} = object
@@ -28,174 +28,136 @@ type
 
 # cc characters
 
-const
-  VINTR* = 0
-  VQUIT* = 1
-  VERASE* = 2
-  VKILL* = 3
-  VEOF* = 4
-  VTIME* = 5
-  VMIN* = 6
-  VSWTC* = 7
-  VSTART* = 8
-  VSTOP* = 9
-  VSUSP* = 10
-  VEOL* = 11
-  VREPRINT* = 12
-  VDISCARD* = 13
-  VWERASE* = 14
-  VLNEXT* = 15
-  VEOL2* = 16
+var
+  VINTR* {.importc, header: "<termios.h>".}: cint
+  VQUIT* {.importc, header: "<termios.h>".}: cint
+  VERASE* {.importc, header: "<termios.h>".}: cint
+  VKILL* {.importc, header: "<termios.h>".}: cint
+  VEOF* {.importc, header: "<termios.h>".}: cint
+  VTIME* {.importc, header: "<termios.h>".}: cint
+  VMIN* {.importc, header: "<termios.h>".}: cint
+  VSTART* {.importc, header: "<termios.h>".}: cint
+  VSTOP* {.importc, header: "<termios.h>".}: cint
+  VSUSP* {.importc, header: "<termios.h>".}: cint
+  VEOL* {.importc, header: "<termios.h>".}: cint
 
 # iflag bits
 
-const
-  IGNBRK* = 1
-  BRKINT* = 2
-  IGNPAR* = 4
-  PARMRK* = 10
-  INPCK* = 20
-  ISTRIP* = 40
-  INLCR* = 100
-  IGNCR* = 200
-  ICRNL* = 400
-  IUCLC* = 1000
-  IXON* = 2000
-  IXANY* = 4000
-  IXOFF* = 10000
-  IMAXBEL* = 20000
-  IUTF8* = 40000
+var
+  IGNBRK* {.importc, header: "<termios.h>".}: Cflag
+  BRKINT* {.importc, header: "<termios.h>".}: Cflag
+  IGNPAR* {.importc, header: "<termios.h>".}: Cflag
+  PARMRK* {.importc, header: "<termios.h>".}: Cflag
+  INPCK* {.importc, header: "<termios.h>".}: Cflag
+  ISTRIP* {.importc, header: "<termios.h>".}: Cflag
+  INLCR* {.importc, header: "<termios.h>".}: Cflag
+  IGNCR* {.importc, header: "<termios.h>".}: Cflag
+  ICRNL* {.importc, header: "<termios.h>".}: Cflag
+  IUCLC* {.importc, header: "<termios.h>".}: Cflag
+  IXON* {.importc, header: "<termios.h>".}: Cflag
+  IXANY* {.importc, header: "<termios.h>".}: Cflag
+  IXOFF* {.importc, header: "<termios.h>".}: Cflag
 
 # oflag bits
 
-const
-  OPOST* = 1
-  OLCUC* = 2
-  ONLCR* = 4
-  OCRNL* = 10
-  ONOCR* = 20
-  ONLRET* = 40
-  OFILL* = 100
-  OFDEL* = 200
-  NLDLY* = 400
-  NL0* = 0
-  NL1* = 400
-  CRDLY* = 3000
-  CR0* = 0
-  CR1* = 1000
-  CR2* = 2000
-  CR3* = 3000
-  TABDLY* = 14000
-  TAB0* = 0
-  TAB1* = 4000
-  TAB2* = 10000
-  TAB3* = 14000
-  BSDLY* = 20000
-  BS0* = 0
-  BS1* = 20000
-  FFDLY* = 0o000000100000
-  FF0* = 0
-  FF1* = 0o000000100000
-  VTDLY* = 40000
-  VT0* = 0
-  VT1* = 40000
-  XTABS* = 14000
+var
+  OPOST* {.importc, header: "<termios.h>".}: Cflag
+  ONLCR* {.importc, header: "<termios.h>".}: Cflag
+  OCRNL* {.importc, header: "<termios.h>".}: Cflag
+  ONOCR* {.importc, header: "<termios.h>".}: Cflag
+  ONLRET* {.importc, header: "<termios.h>".}: Cflag
+  OFILL* {.importc, header: "<termios.h>".}: Cflag
+  OFDEL* {.importc, header: "<termios.h>".}: Cflag
+  NLDLY* {.importc, header: "<termios.h>".}: Cflag
+  NL0* {.importc, header: "<termios.h>".}: Cflag
+  NL1* {.importc, header: "<termios.h>".}: Cflag
+  CRDLY* {.importc, header: "<termios.h>".}: Cflag
+  CR0* {.importc, header: "<termios.h>".}: Cflag
+  CR1* {.importc, header: "<termios.h>".}: Cflag
+  CR2* {.importc, header: "<termios.h>".}: Cflag
+  CR3* {.importc, header: "<termios.h>".}: Cflag
+  TABDLY* {.importc, header: "<termios.h>".}: Cflag
+  TAB0* {.importc, header: "<termios.h>".}: Cflag
+  TAB1* {.importc, header: "<termios.h>".}: Cflag
+  TAB2* {.importc, header: "<termios.h>".}: Cflag
+  TAB3* {.importc, header: "<termios.h>".}: Cflag
+  BSDLY* {.importc, header: "<termios.h>".}: Cflag
+  BS0* {.importc, header: "<termios.h>".}: Cflag
+  BS1* {.importc, header: "<termios.h>".}: Cflag
+  FFDLY* {.importc, header: "<termios.h>".}: Cflag
+  FF0* {.importc, header: "<termios.h>".}: Cflag
+  FF1* {.importc, header: "<termios.h>".}: Cflag
+  VTDLY* {.importc, header: "<termios.h>".}: Cflag
+  VT0* {.importc, header: "<termios.h>".}: Cflag
+  VT1* {.importc, header: "<termios.h>".}: Cflag
 
 # cflag bit meaning
 
-const
-  CBAUD* = 10017
-  B0* = 0
-  B50* = 1
-  B75* = 2
-  B110* = 3
-  B134* = 4
-  B150* = 5
-  B200* = 6
-  B300* = 7
-  B600* = 10
-  B1200* = 11
-  B1800* = 12
-  B2400* = 13
-  B4800* = 14
-  B9600* = 15
-  B19200* = 16
-  B38400* = 17
-  EXTA* = B19200
-  EXTB* = B38400
-  CSIZE* = 60
-  CS5* = 0
-  CS6* = 20
-  CS7* = 40
-  CS8* = 60
-  CSTOPB* = 100
-  CREAD* = 200
-  PARENB* = 400
-  PARODD* = 1000
-  HUPCL* = 2000
-  CLOCAL* = 4000
-  CBAUDEX* = 10000
-  B57600* = 10001
-  B115200* = 10002
-  B230400* = 10003
-  B460800* = 10004
-  B500000* = 10005
-  B576000* = 10006
-  B921600* = 10007
-  B1000000* = 10010
-  B1152000* = 10011
-  B1500000* = 10012
-  B2000000* = 10013
-  B2500000* = 10014
-  B3000000* = 10015
-  B3500000* = 10016
-  B4000000* = 10017
-  MAX_BAUD* = B4000000
-  CIBAUD* = 2003600000
-  CMSPAR* = 0o010000000000
-  CRTSCTS* = 0o020000000000
+var
+  B0* {.importc, header: "<termios.h>".}: Speed
+  B50* {.importc, header: "<termios.h>".}: Speed
+  B75* {.importc, header: "<termios.h>".}: Speed
+  B110* {.importc, header: "<termios.h>".}: Speed
+  B134* {.importc, header: "<termios.h>".}: Speed
+  B150* {.importc, header: "<termios.h>".}: Speed
+  B200* {.importc, header: "<termios.h>".}: Speed
+  B300* {.importc, header: "<termios.h>".}: Speed
+  B600* {.importc, header: "<termios.h>".}: Speed
+  B1200* {.importc, header: "<termios.h>".}: Speed
+  B1800* {.importc, header: "<termios.h>".}: Speed
+  B2400* {.importc, header: "<termios.h>".}: Speed
+  B4800* {.importc, header: "<termios.h>".}: Speed
+  B9600* {.importc, header: "<termios.h>".}: Speed
+  B19200* {.importc, header: "<termios.h>".}: Speed
+  B38400* {.importc, header: "<termios.h>".}: Speed
+  EXTA* {.importc, header: "<termios.h>".}: Speed
+  EXTB* {.importc, header: "<termios.h>".}: Speed
+  CSIZE* {.importc, header: "<termios.h>".}: Cflag
+  CS5* {.importc, header: "<termios.h>".}: Cflag
+  CS6* {.importc, header: "<termios.h>".}: Cflag
+  CS7* {.importc, header: "<termios.h>".}: Cflag
+  CS8* {.importc, header: "<termios.h>".}: Cflag
+  CSTOPB* {.importc, header: "<termios.h>".}: Cflag
+  CREAD* {.importc, header: "<termios.h>".}: Cflag
+  PARENB* {.importc, header: "<termios.h>".}: Cflag
+  PARODD* {.importc, header: "<termios.h>".}: Cflag
+  HUPCL* {.importc, header: "<termios.h>".}: Cflag
+  CLOCAL* {.importc, header: "<termios.h>".}: Cflag
 
 # lflag bits
 
-const
-  ISIG* = 1
-  ICANON* = 2
-  XCASE* = 4
-  ECHO* = 10
-  ECHOE* = 20
-  ECHOK* = 40
-  ECHONL* = 100
-  NOFLSH* = 200
-  TOSTOP* = 400
-  ECHOCTL* = 1000
-  ECHOPRT* = 2000
-  ECHOKE* = 4000
-  FLUSHO* = 10000
-  PENDIN* = 40000
-  IEXTEN* = 0o000000100000
-  EXTPROC* = 0o000000200000
+var
+  ISIG* {.importc, header: "<termios.h>".}: Cflag
+  ICANON* {.importc, header: "<termios.h>".}: Cflag
+  ECHO* {.importc, header: "<termios.h>".}: Cflag
+  ECHOE* {.importc, header: "<termios.h>".}: Cflag
+  ECHOK* {.importc, header: "<termios.h>".}: Cflag
+  ECHONL* {.importc, header: "<termios.h>".}: Cflag
+  NOFLSH* {.importc, header: "<termios.h>".}: Cflag
+  TOSTOP* {.importc, header: "<termios.h>".}: Cflag
+  IEXTEN* {.importc, header: "<termios.h>".}: Cflag
 
 # tcflow() and TCXONC use these
 
-const
-  TCOOFF* = 0
-  TCOON* = 1
-  TCIOFF* = 2
-  TCION* = 3
+var
+  TCOOFF* {.importc, header: "<termios.h>".}: cint
+  TCOON* {.importc, header: "<termios.h>".}: cint
+  TCIOFF* {.importc, header: "<termios.h>".}: cint
+  TCION* {.importc, header: "<termios.h>".}: cint
 
 # tcflush() and TCFLSH use these
 
-const
-  TCIFLUSH* = 0
-  TCOFLUSH* = 1
-  TCIOFLUSH* = 2
+var
+  TCIFLUSH* {.importc, header: "<termios.h>".}: cint
+  TCOFLUSH* {.importc, header: "<termios.h>".}: cint
+  TCIOFLUSH* {.importc, header: "<termios.h>".}: cint
 
 # tcsetattr uses these
 
-const
-  TCSANOW* = 0
-  TCSADRAIN* = 1
-  TCSAFLUSH* = 2
+var
+  TCSANOW* {.importc, header: "<termios.h>".}: cint
+  TCSADRAIN* {.importc, header: "<termios.h>".}: cint
+  TCSAFLUSH* {.importc, header: "<termios.h>".}: cint
 
 # Compare a character C to a value VAL from the `cc' array in a
 #   `struct termios'.  If VAL is _POSIX_VDISABLE, no character can match it.
@@ -221,10 +183,6 @@ proc cfSetIspeed*(termios: ptr Termios; speed: Speed): cint {.
     importc: "cfsetispeed", header: "<termios.h>".}
 # Set both the input and output baud rates in *TERMIOS_OP to SPEED.
 
-proc cfSetSpeed*(termios: ptr Termios; speed: Speed): cint {.
-    importc: "cfsetspeed", header: "<termios.h>".}
-# Put the state of FD into *TERMIOS_P.
-
 proc tcGetAttr*(fd: cint; termios: ptr Termios): cint {.
     importc: "tcgetattr", header: "<termios.h>".}
 # Set the state of FD to *TERMIOS_P.
@@ -233,10 +191,6 @@ proc tcGetAttr*(fd: cint; termios: ptr Termios): cint {.
 proc tcSetAttr*(fd: cint; optional_actions: cint; termios: ptr Termios): cint {.
     importc: "tcsetattr", header: "<termios.h>".}
 # Set *TERMIOS_P to indicate raw mode.
-
-proc cfMakeRaw*(termios: ptr Termios) {.importc: "cfmakeraw",
-    header: "<termios.h>".}
-# Send zero bits on FD.
 
 proc tcSendBreak*(fd: cint; duration: cint): cint {.importc: "tcsendbreak",
     header: "<termios.h>".}
@@ -258,13 +212,10 @@ proc tcFlow*(fd: cint; action: cint): cint {.importc: "tcflow",
     header: "<termios.h>".}
 # Get process group ID for session leader for controlling terminal FD.
 
-proc tcGetSid*(fd: cint): Pid {.importc: "tcgetsid", header: "<termios.h>".}
-
 # Window size ioctl.  Should work on on any Unix that xterm has been ported to.
 var TIOCGWINSZ*{.importc, header: "<sys/ioctl.h>".}: culong
 
-type IOctl_WinSize* {.importc: "struct winsize", header: "<sys/ioctl.h>",
-                      final, pure.} = object
+type IOctl_WinSize* = object
   ws_row*, ws_col*, ws_xpixel*, ws_ypixel*: cushort
 
 proc ioctl*(fd: cint, request: culong, reply: ptr IOctl_WinSize): int {.
