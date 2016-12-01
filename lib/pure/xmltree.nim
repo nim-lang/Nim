@@ -97,19 +97,18 @@ proc innerText*(n: XmlNode): string =
   ## - If `n` is `xnElement`, runs recursively on each child node and
   ##   concatenates the results.
   ## - Otherwise returns an empty string.
-  var res = ""
-  proc worker(n: XmlNode) =
+  proc worker(res: var string, n: XmlNode) =
     case n.k
-    of { xnText, xnEntity }:
+    of xnText, xnEntity:
       res.add(n.fText)
     of xnElement:
       for sub in n.s:
-        worker(sub)
+        worker(res, sub)
     else:
       discard
 
-  worker(n)
-  res
+  result = ""
+  worker(result, n)
 
 proc tag*(n: XmlNode): string {.inline.} =
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.
