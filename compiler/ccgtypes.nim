@@ -43,7 +43,12 @@ proc idOrSig(m: BModule; s: PSym): Rope =
     # signatures for exported routines are reliable enough to
     # produce a unique name and this means produced C++ is more stable wrt
     # Nim changes:
-    result = rope($hashProc(s))
+    let sig = hashProc(s)
+    result = rope($sig)
+    let counter = m.sigConflicts.getOrDefault(sig)
+    if counter != 0:
+      result.add "_" & rope counter
+    m.sigConflicts.inc(sig)
   else:
     result = "_" & rope s.id
 

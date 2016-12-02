@@ -250,7 +250,7 @@ proc hashProc*(s: PSym): SigHash =
   # so that createThread[void]() (aka generic specialization) gets a unique
   # hash, we also hash the line information. This is pretty bad, but the best
   # solution for now:
-  c &= s.info.line
+  #c &= s.info.line
   md5Final c, result.Md5Digest
 
 proc hashOwner*(s: PSym): SigHash =
