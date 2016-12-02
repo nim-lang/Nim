@@ -965,7 +965,7 @@ elif not defined(useNimRtl):
     var ret : int
     var status : cint = 1
     ret = waitpid(p.id, status, WNOHANG)
-    if WIFEXITED(status):
+    if ret == int(p.id) and WIFEXITED(status):
       p.exitStatus = status
     if ret == 0: return true # Can't establish status. Assume running.
     result = ret == int(p.id)
