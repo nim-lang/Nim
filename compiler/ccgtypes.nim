@@ -318,13 +318,14 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
   if result != nil: return
   result = getTypePre(m, typ, sig)
   if result != nil: return
-  case typ.skipTypes(abstractInst).kind
+  let concrete = typ.skipTypes(abstractInst)
+  case concrete.kind
   of tySequence, tyTuple, tyObject:
     result = getTypeName(m, typ, sig)
     m.forwTypeCache[sig] = result
-    if not isImportedType(typ):
+    if not isImportedType(concrete):
       addf(m.s[cfsForwardTypes], "/* getTypeForward: $1 $2 $3 */", [rope typeToString typ,
-          rope typ.id, rope m.module.id])
+          rope typ.id, rope($typ.kind)])
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
           [structOrUnion(typ), result])
     doAssert m.forwTypeCache[sig] == result
