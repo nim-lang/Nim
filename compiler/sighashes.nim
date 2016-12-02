@@ -217,6 +217,14 @@ when defined(debugSigHashes):
 
   let db = open(connection="sighashes.db", user="araq", password="",
                 database="sighashes")
+  db.exec(sql"DROP TABLE IF EXISTS sighashes")
+  db.exec sql"""CREATE TABLE sighashes(
+    id integer primary key,
+    hash varchar(5000) not null,
+    type varchar(5000) not null,
+    unique (hash, type))"""
+  #  select hash, type from sighashes where hash in
+  # (select hash from sighashes group by hash having count(*) > 1) order by hash;
 
 proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
   var c: MD5Context
