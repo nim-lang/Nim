@@ -147,6 +147,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
 
   c &= char(t.kind)
   case t.kind
+  of tyBool, tyChar, tyInt..tyUInt64:
+    # no canonicalization for integral types, so that e.g. ``pid_t`` is
+    # produced instead of ``NI``:
+    if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
+      c.hashSym(t.sym)
   of tyObject, tyEnum:
     if t.typeInst != nil:
       assert t.typeInst.kind == tyGenericInst
@@ -162,8 +167,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       c.hashSym(t.sym)
     else:
       c &= t.id
-  of tyRef, tyPtr, tyGenericBody:
+  of tyRef, tyPtr, tyGenericBody, tyVar:
     c.hashType t.lastSon, flags
+    if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyUserTypeClass:
     if t.sym != nil and t.sym.owner != nil:
       c &= t.sym.owner.name.s
