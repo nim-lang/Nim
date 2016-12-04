@@ -916,6 +916,9 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope) =
     var tmp = discriminatorTableName(m, typ, field)
     var L = lengthOrd(field.typ)
     assert L > 0
+    if field.loc.r == nil: fillObjectFields(m, typ)
+    if field.loc.t == nil:
+      internalError(n.info, "genObjectFields")
     addf(m.s[cfsTypeInit3], "$1.kind = 3;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
         "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
@@ -949,6 +952,9 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope) =
   of nkSym:
     var field = n.sym
     if field.bitsize == 0:
+      if field.loc.r == nil: fillObjectFields(m, typ)
+      if field.loc.t == nil:
+        internalError(n.info, "genObjectFields")
       addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
           "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
           "$1.name = $5;$n", [expr, getTypeDesc(m, origType),

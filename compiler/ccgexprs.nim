@@ -718,6 +718,8 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
     a: TLoc
     i: int
   initLocExpr(p, e.sons[0], a)
+  let tupType = a.t.skipTypes(abstractInst)
+  assert tupType.kind == tyTuple
   d.inheritLocation(a)
   discard getTypeDesc(p.module, a.t) # fill the record's fields.loc
   var r = rdLoc(a)
@@ -725,7 +727,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   of nkIntLit..nkUInt64Lit: i = int(e.sons[1].intVal)
   else: internalError(e.info, "genTupleElem")
   addf(r, ".Field$1", [rope(i)])
-  putIntoDest(p, d, a.t.sons[i], r, a.s)
+  putIntoDest(p, d, tupType.sons[i], r, a.s)
 
 proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope): PSym =
   var ty = ty
