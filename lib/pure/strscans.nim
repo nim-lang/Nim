@@ -41,6 +41,10 @@ substrings starting with ``$``. These constructions are available:
                     The match is allowed to be of 0 length.
 ``$+``              Matches until the token following the ``$+`` was found.
                     The match must consist of at least one char.
+``$/``              Skips until the token following the ``$/`` was found.
+                    The match is allowed to be of 0 length.
+``$-``              Skips until the token following the ``$-`` was found.
+                    The match must consist of at least one char.
 ``${foo}``          User defined matcher. Uses the proc ``foo`` to perform
                     the match. See below for more details.
 ``$[foo]``          Call user defined proc ``foo`` to **skip** some optional
@@ -206,6 +210,17 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         else:
           error("no string var given for $" & pattern[p])
         inc i
+      of '/', '-':
+        var min = ord(pattern[p] == '-')
+        var q=p+1
+        var token = ""
+        while q < pattern.len and pattern[q] != '$':
+          token.add pattern[q]
+          inc q
+        var resLen = genSym(nskLet, "resLen")
+        conds.add newLetStmt(resLen, newCall(bindSym"skipUntil", input, newLit(token), idx))
+        conds.add newCall(bindSym"!=", resLen, newLit min)
+        conds.add resLen
       of '{':
         inc p
         var nesting = 0
