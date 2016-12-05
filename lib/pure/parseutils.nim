@@ -148,6 +148,20 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
   ## Returns number of characters skipped.
   while s[result+start] != until and s[result+start] != '\0': inc(result)
 
+proc skipUntil*(s: string, until: string, start = 0): int {.inline.} =
+  ## Skips all characters until the string `until` is found
+  ## or the end is reached.
+  ## Returns number of characters skipped.
+  var i = start
+  while i < s.len:
+    if s[i] == until[0]:
+      var u = 1
+      while i+u < s.len and u < until.len and s[i+u] == until[u]:
+        inc u
+      if u >= until.len: break
+    inc(i)
+  result = i-start
+
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   ## Skips all characters while one char from the set `token` is found.
   ## Returns number of characters skipped.
