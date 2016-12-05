@@ -31,7 +31,7 @@ const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const supportedPlatform = defined(macosx) or defined(freebsd) or
                           defined(netbsd) or defined(openbsd) or
-                          defined(linux)
+                          (defined(linux) and not defined(android))
 
 const bsdPlatform = defined(macosx) or defined(freebsd) or
                     defined(netbsd) or defined(openbsd)

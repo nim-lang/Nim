@@ -14,27 +14,29 @@ import posix, times
 # Maximum number of events that can be returned
 const MAX_EPOLL_RESULT_EVENTS = 64
 
-type
-  SignalFdInfo* {.importc: "struct signalfd_siginfo",
-                  header: "<sys/signalfd.h>", pure, final.} = object
-    ssi_signo*: uint32
-    ssi_errno*: int32
-    ssi_code*: int32
-    ssi_pid*: uint32
-    ssi_uid*: uint32
-    ssi_fd*: int32
-    ssi_tid*: uint32
-    ssi_band*: uint32
-    ssi_overrun*: uint32
-    ssi_trapno*: uint32
-    ssi_status*: int32
-    ssi_int*: int32
-    ssi_ptr*: uint64
-    ssi_utime*: uint64
-    ssi_stime*: uint64
-    ssi_addr*: uint64
-    pad* {.importc: "__pad".}: array[0..47, uint8]
+when not defined(android):
+  type
+    SignalFdInfo* {.importc: "struct signalfd_siginfo",
+                    header: "<sys/signalfd.h>", pure, final.} = object
+      ssi_signo*: uint32
+      ssi_errno*: int32
+      ssi_code*: int32
+      ssi_pid*: uint32
+      ssi_uid*: uint32
+      ssi_fd*: int32
+      ssi_tid*: uint32
+      ssi_band*: uint32
+      ssi_overrun*: uint32
+      ssi_trapno*: uint32
+      ssi_status*: int32
+      ssi_int*: int32
+      ssi_ptr*: uint64
+      ssi_utime*: uint64
+      ssi_stime*: uint64
+      ssi_addr*: uint64
+      pad* {.importc: "__pad".}: array[0..47, uint8]
 
+type
   eventFdData {.importc: "eventfd_t",
                 header: "<sys/eventfd.h>", pure, final.} = uint64
   epoll_data {.importc: "union epoll_data", header: "<sys/epoll.h>",
@@ -68,12 +70,22 @@ proc timerfd_create(clock_id: ClockId, flags: cint): cint
 proc timerfd_settime(ufd: cint, flags: cint,
                       utmr: var Itimerspec, otmr: var Itimerspec): cint
      {.cdecl, importc: "timerfd_settime", header: "<sys/timerfd.h>".}
-proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
-     {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
 proc eventfd(count: cuint, flags: cint): cint
      {.cdecl, importc: "eventfd", header: "<sys/eventfd.h>".}
-proc ulimit(cmd: cint): clong
-     {.importc: "ulimit", header: "<ulimit.h>", varargs.}
+
+when not defined(android):
+  proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
+       {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
+
+var RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
+                    header: "<sys/resource.h>".}: cint
+type
+  rlimit {.importc: "struct rlimit",
+           header: "<sys/resource.h>", pure, final.} = object
+    rlim_cur: int
+    rlim_max: int
+proc getrlimit(resource: cint, rlp: var rlimit): cint
+     {.importc: "getrlimit",header: "<sys/resource.h>".}
 
 when hasThreadSupport:
   type
@@ -97,7 +109,10 @@ type
   SelectEvent* = ptr SelectEventImpl
 
 proc newSelector*[T](): Selector[T] =
-  var maxFD = int(ulimit(4, 0))
+  var a = rlimit()
+  if getrlimit(RLIMIT_NOFILE, a) != 0:
+    raiseOsError(osLastError())
+  var maxFD = int(a.rlim_max)
   doAssert(maxFD > 0)
 
   var epollFD = epoll_create(MAX_EPOLL_RESULT_EVENTS)
@@ -194,39 +209,53 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   doAssert(pkey.ident != 0)
 
   if pkey.events != {}:
-    if pkey.events * {Event.Read, Event.Write} != {}:
-      var epv = epoll_event()
-      if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
-        raiseOSError(osLastError())
-      dec(s.count)
-    elif Event.Timer in pkey.events:
-      var epv = epoll_event()
-      if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
-        raiseOSError(osLastError())
-      discard posix.close(fdi.cint)
-      dec(s.count)
-    elif Event.Signal in pkey.events:
-      var epv = epoll_event()
-      if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
-        raiseOSError(osLastError())
-      var nmask, omask: Sigset
-      discard sigemptyset(nmask)
-      discard sigemptyset(omask)
-      discard sigaddset(nmask, cint(s.fds[fdi].param))
-      unblockSignals(nmask, omask)
-      discard posix.close(fdi.cint)
-      dec(s.count)
-    elif Event.Process in pkey.events:
-      var epv = epoll_event()
-      if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
-        raiseOSError(osLastError())
-      var nmask, omask: Sigset
-      discard sigemptyset(nmask)
-      discard sigemptyset(omask)
-      discard sigaddset(nmask, SIGCHLD)
-      unblockSignals(nmask, omask)
-      discard posix.close(fdi.cint)
-      dec(s.count)
+    when not defined(android):
+      if pkey.events * {Event.Read, Event.Write} != {}:
+        var epv = epoll_event()
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        dec(s.count)
+      elif Event.Timer in pkey.events:
+        var epv = epoll_event()
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        discard posix.close(fdi.cint)
+        dec(s.count)
+      elif Event.Signal in pkey.events:
+        var epv = epoll_event()
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        var nmask, omask: Sigset
+        discard sigemptyset(nmask)
+        discard sigemptyset(omask)
+        discard sigaddset(nmask, cint(s.fds[fdi].param))
+        unblockSignals(nmask, omask)
+        discard posix.close(fdi.cint)
+        dec(s.count)
+      elif Event.Process in pkey.events:
+        var epv = epoll_event()
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        var nmask, omask: Sigset
+        discard sigemptyset(nmask)
+        discard sigemptyset(omask)
+        discard sigaddset(nmask, SIGCHLD)
+        unblockSignals(nmask, omask)
+        discard posix.close(fdi.cint)
+        dec(s.count)
+    else:
+      if pkey.events * {Event.Read, Event.Write} != {}:
+        var epv = epoll_event()
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        dec(s.count)
+      elif Event.Timer in pkey.events:
+        var epv = epoll_event()
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          raiseOSError(osLastError())
+        discard posix.close(fdi.cint)
+        dec(s.count)
+
   pkey.ident = 0
   pkey.events = {}
 
@@ -280,60 +309,61 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   inc(s.count)
   result = fdi
 
-proc registerSignal*[T](s: Selector[T], signal: int,
-                        data: T): int {.discardable.} =
-  var
-    nmask: Sigset
-    omask: Sigset
+when not defined(android):
+  proc registerSignal*[T](s: Selector[T], signal: int,
+                          data: T): int {.discardable.} =
+    var
+      nmask: Sigset
+      omask: Sigset
 
-  discard sigemptyset(nmask)
-  discard sigemptyset(omask)
-  discard sigaddset(nmask, cint(signal))
-  blockSignals(nmask, omask)
+    discard sigemptyset(nmask)
+    discard sigemptyset(omask)
+    discard sigaddset(nmask, cint(signal))
+    blockSignals(nmask, omask)
 
-  let fdi = signalfd(-1, nmask, 0).int
-  if fdi == -1:
-    raiseOSError(osLastError())
-  setNonBlocking(fdi.cint)
+    let fdi = signalfd(-1, nmask, 0).int
+    if fdi == -1:
+      raiseOSError(osLastError())
+    setNonBlocking(fdi.cint)
 
-  s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+    s.checkFd(fdi)
+    doAssert(s.fds[fdi].ident == 0)
 
-  var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
-  epv.data.u64 = fdi.uint
-  if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
-    raiseOSError(osLastError())
-  s.setKey(fdi, signal, {Event.Signal}, signal, data)
-  inc(s.count)
-  result = fdi
+    var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
+    epv.data.u64 = fdi.uint
+    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+      raiseOSError(osLastError())
+    s.setKey(fdi, signal, {Event.Signal}, signal, data)
+    inc(s.count)
+    result = fdi
 
-proc registerProcess*[T](s: Selector, pid: int,
-                         data: T): int {.discardable.} =
-  var
-    nmask: Sigset
-    omask: Sigset
+  proc registerProcess*[T](s: Selector, pid: int,
+                           data: T): int {.discardable.} =
+    var
+      nmask: Sigset
+      omask: Sigset
 
-  discard sigemptyset(nmask)
-  discard sigemptyset(omask)
-  discard sigaddset(nmask, posix.SIGCHLD)
-  blockSignals(nmask, omask)
+    discard sigemptyset(nmask)
+    discard sigemptyset(omask)
+    discard sigaddset(nmask, posix.SIGCHLD)
+    blockSignals(nmask, omask)
 
-  let fdi = signalfd(-1, nmask, 0).int
-  if fdi == -1:
-    raiseOSError(osLastError())
-  setNonBlocking(fdi.cint)
+    let fdi = signalfd(-1, nmask, 0).int
+    if fdi == -1:
+      raiseOSError(osLastError())
+    setNonBlocking(fdi.cint)
 
-  s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+    s.checkFd(fdi)
+    doAssert(s.fds[fdi].ident == 0)
 
-  var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
-  epv.data.u64 = fdi.uint
-  epv.events = EPOLLIN or EPOLLRDHUP
-  if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
-    raiseOSError(osLastError())
-  s.setKey(fdi, pid, {Event.Process, Event.Oneshot}, pid, data)
-  inc(s.count)
-  result = fdi
+    var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
+    epv.data.u64 = fdi.uint
+    epv.events = EPOLLIN or EPOLLRDHUP
+    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+      raiseOSError(osLastError())
+    s.setKey(fdi, pid, {Event.Process, Event.Oneshot}, pid, data)
+    inc(s.count)
+    result = fdi
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   let fdi = int(ev.efd)
@@ -382,40 +412,60 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         events.incl(Event.Error)
       if (pevents and EPOLLOUT) != 0:
         events.incl(Event.Write)
-      if (pevents and EPOLLIN) != 0:
-        if Event.Read in skey.events:
-          events.incl(Event.Read)
-        elif Event.Timer in skey.events:
-          var data: uint64 = 0
-          if posix.read(fdi.cint, addr data, sizeof(uint64)) != sizeof(uint64):
-            raiseOSError(osLastError())
-          events = {Event.Timer}
-        elif Event.Signal in skey.events:
-          var data = SignalFdInfo()
-          if posix.read(fdi.cint, addr data,
-                        sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
-            raiseOsError(osLastError())
-          events = {Event.Signal}
-        elif Event.Process in skey.events:
-          var data = SignalFdInfo()
-          if posix.read(fdi.cint, addr data,
-                        sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
-            raiseOsError(osLastError())
-          if cast[int](data.ssi_pid) == skey.param:
-            events = {Event.Process}
-          else:
-            inc(i)
-            continue
-        elif Event.User in skey.events:
-          var data: uint64 = 0
-          if posix.read(fdi.cint, addr data, sizeof(uint64)) != sizeof(uint64):
-            let err = osLastError()
-            if err == OSErrorCode(EAGAIN):
+      when not defined(android):
+        if (pevents and EPOLLIN) != 0:
+          if Event.Read in skey.events:
+            events.incl(Event.Read)
+          elif Event.Timer in skey.events:
+            var data: uint64 = 0
+            if posix.read(fdi.cint, addr data, sizeof(uint64)) != sizeof(uint64):
+              raiseOSError(osLastError())
+            events = {Event.Timer}
+          elif Event.Signal in skey.events:
+            var data = SignalFdInfo()
+            if posix.read(fdi.cint, addr data,
+                          sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
+              raiseOsError(osLastError())
+            events = {Event.Signal}
+          elif Event.Process in skey.events:
+            var data = SignalFdInfo()
+            if posix.read(fdi.cint, addr data,
+                          sizeof(SignalFdInfo)) != sizeof(SignalFdInfo):
+              raiseOsError(osLastError())
+            if cast[int](data.ssi_pid) == skey.param:
+              events = {Event.Process}
+            else:
               inc(i)
               continue
-            else:
-              raiseOSError(err)
-          events = {Event.User}
+          elif Event.User in skey.events:
+            var data: uint64 = 0
+            if posix.read(fdi.cint, addr data, sizeof(uint64)) != sizeof(uint64):
+              let err = osLastError()
+              if err == OSErrorCode(EAGAIN):
+                inc(i)
+                continue
+              else:
+                raiseOSError(err)
+            events = {Event.User}
+      else:
+        if (pevents and EPOLLIN) != 0:
+          if Event.Read in skey.events:
+            events.incl(Event.Read)
+          elif Event.Timer in skey.events:
+            var data: uint64 = 0
+            if posix.read(fdi.cint, addr data, sizeof(uint64)) != sizeof(uint64):
+              raiseOSError(osLastError())
+            events = {Event.Timer}
+          elif Event.User in skey.events:
+            var data: uint64 = 0
+            if posix.read(fdi.cint, addr data, sizeof(uint64)) != sizeof(uint64):
+              let err = osLastError()
+              if err == OSErrorCode(EAGAIN):
+                inc(i)
+                continue
+              else:
+                raiseOSError(err)
+            events = {Event.User}
 
       skey.key.events = events
       results[k] = skey.key
