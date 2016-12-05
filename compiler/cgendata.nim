@@ -104,6 +104,17 @@ type
     isHeaderFile,       # C source file is the header file
     includesStringh,    # C source file already includes ``<string.h>``
     objHasKidsValid     # whether we can rely on tfObjHasKids
+
+
+  BModuleList* = ref object of RootObj
+    mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
+    mapping*: Rope             # the generated mapping file (if requested)
+    modules*: seq[BModule]     # list of all compiled modules
+    forwardedProcsCounter*: int
+    generatedHeader*: BModule
+    breakPointId*: int
+    breakpoints*: Rope # later the breakpoints are inserted into the main proc
+
   TCGen = object of TPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
     flags*: set[Codegenflag]
@@ -131,13 +142,7 @@ type
                                               # OpenGL wrapper
     injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
-
-var
-  mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
-    # varuious parts of the main module
-  gMapping*: Rope             # the generated mapping file (if requested)
-  gModules*: seq[BModule] = @[] # list of all compiled modules
-  gForwardedProcsCounter*: int = 0
+    g*: BModuleList
 
 proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # section in the current block
@@ -146,10 +151,6 @@ proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
 proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
-
-proc bmod*(module: PSym): BModule =
-  # obtains the BModule for a given module PSym
-  result = gModules[module.position]
 
 proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
@@ -161,10 +162,11 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
 
-iterator cgenModules*: BModule =
-  for i in 0..high(gModules):
+proc newModuleList*(): BModuleList = BModuleList(modules: @[])
+
+iterator cgenModules*(g: BModuleList): BModule =
+  for i in 0..high(g.modules):
     # ultimately, we are iterating over the file ids here.
     # some "files" won't have an associated cgen module (like stdin)
     # and we must skip over them.
-    if gModules[i] != nil: yield gModules[i]
-
+    if g.modules[i] != nil: yield g.modules[i]

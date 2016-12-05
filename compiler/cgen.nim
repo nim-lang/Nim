@@ -26,20 +26,13 @@ when options.hasTinyCBackend:
 
 # implementation
 
-var
-  generatedHeader: BModule
-
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.forwardedProcs.add(prc)
-  inc(gForwardedProcsCounter)
-
-proc getCgenModule(s: PSym): BModule =
-  result = if s.position >= 0 and s.position < gModules.len: gModules[s.position]
-           else: nil
+  inc(m.g.forwardedProcsCounter)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
-  result = gModules[ms.position]
+  result = m.g.modules[ms.position]
 
 proc emitLazily(s: PSym): bool {.inline.} =
   result = optDeadCodeElim in gGlobalOptions or
@@ -772,8 +765,8 @@ proc requestConstImpl(p: BProc, sym: PSym) =
     let headerDecl = "extern NIM_CONST $1 $2;$n" %
         [getTypeDesc(m, sym.loc.t), sym.loc.r]
     add(m.s[cfsData], headerDecl)
-    if sfExportc in sym.flags and generatedHeader != nil:
-      add(generatedHeader.s[cfsData], headerDecl)
+    if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
+      add(p.module.g.generatedHeader.s[cfsData], headerDecl)
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
@@ -784,11 +777,11 @@ proc genProc(m: BModule, prc: PSym) =
   else:
     genProcNoForward(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-        generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-      genProcPrototype(generatedHeader, prc)
+        m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
+      genProcPrototype(m.g.generatedHeader, prc)
       if prc.typ.callConv == ccInline:
-        if not containsOrIncl(generatedHeader.declaredThings, prc.id):
-          genProcAux(generatedHeader, prc)
+        if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
+          genProcAux(m.g.generatedHeader, prc)
 
 proc genVarPrototypeAux(m: BModule, sym: PSym) =
   #assert(sfGlobal in sym.flags)
@@ -946,23 +939,24 @@ proc genMainProc(m: BModule) =
   else:
     nimMain = PosixNimMain
     otherMain = PosixCMain
-  if gBreakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
+  if m.g.breakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
   if optEndb in gOptions:
-    gBreakpoints.add(m.genFilenames)
+    m.g.breakpoints.add(m.genFilenames)
 
   let initStackBottomCall =
     if platform.targetOS == osStandalone or gSelectedGC == gcNone: "".rope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
   inc(m.labels)
   appcg(m, m.s[cfsProcs], PreMainBody, [
-    mainDatInit, gBreakpoints, otherModsInit,
+    m.g.mainDatInit, m.g.breakpoints, m.g.otherModsInit,
      if emulatedThreadVars() and platform.targetOS != osStandalone:
        ropecg(m, "\t#initThreadVarsEmulation();$N")
      else:
        "".rope,
      initStackBottomCall])
 
-  appcg(m, m.s[cfsProcs], nimMain, [mainModInit, initStackBottomCall, rope(m.labels)])
+  appcg(m, m.s[cfsProcs], nimMain,
+        [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin gGlobalOptions:
     appcg(m, m.s[cfsProcs], otherMain, [])
 
@@ -984,19 +978,19 @@ proc getInitName(m: PSym): Rope =
 
 proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
-proc registerModuleToMain(m: PSym) =
+proc registerModuleToMain(g: BModuleList; m: PSym) =
   var
     init = m.getInitName
     datInit = m.getDatInitName
-  addf(mainModProcs, "NIM_EXTERNC N_NOINLINE(void, $1)(void);$N", [init])
-  addf(mainModProcs, "NIM_EXTERNC N_NOINLINE(void, $1)(void);$N", [datInit])
+  addf(g.mainModProcs, "NIM_EXTERNC N_NOINLINE(void, $1)(void);$N", [init])
+  addf(g.mainModProcs, "NIM_EXTERNC N_NOINLINE(void, $1)(void);$N", [datInit])
   if sfSystemModule notin m.flags:
-    addf(mainDatInit, "\t$1();$N", [datInit])
+    addf(g.mainDatInit, "\t$1();$N", [datInit])
     let initCall = "\t$1();$N" % [init]
     if sfMainModule in m.flags:
-      add(mainModInit, initCall)
+      add(g.mainModInit, initCall)
     else:
-      add(otherModsInit, initCall)
+      add(g.otherModsInit, initCall)
 
 proc genInitCode(m: BModule) =
   var initname = getInitName(m.module)
@@ -1087,7 +1081,7 @@ proc newPostInitProc(m: BModule): BProc =
 proc initProcOptions(m: BModule): TOptions =
   if sfSystemModule in m.module.flags: gOptions-{optStackTrace} else: gOptions
 
-proc rawNewModule(module: PSym, filename: string): BModule =
+proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   new(result)
   result.tmpBase = rope("T" & $hashOwner(module) & "_")
   initLinkedList(result.headerFiles)
@@ -1109,6 +1103,7 @@ proc rawNewModule(module: PSym, filename: string): BModule =
   result.forwardedProcs = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
+  result.g = g
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack botton initialization:
   if sfSystemModule in module.flags:
@@ -1147,6 +1142,7 @@ proc resetModule*(m: BModule) =
   # indicate that this is now cached module
   # the cache will be invalidated by nullifying gModules
   m.fromCache = true
+  m.g = nil
 
   # we keep only the "merge info" information for the module
   # and the properties that can't change:
@@ -1160,31 +1156,35 @@ proc resetModule*(m: BModule) =
   # m.labels
   # m.FrameDeclared
 
-proc resetCgenModules* =
-  for m in cgenModules(): resetModule(m)
+proc resetCgenModules*(g: BModuleList) =
+  for m in cgenModules(g): resetModule(m)
 
-proc rawNewModule(module: PSym): BModule =
-  result = rawNewModule(module, module.position.int32.toFullPath)
+proc rawNewModule(g: BModuleList; module: PSym): BModule =
+  result = rawNewModule(g, module, module.position.int32.toFullPath)
 
-proc newModule(module: PSym): BModule =
+proc newModule(g: BModuleList; module: PSym): BModule =
   # we should create only one cgen module for each module sym
-  internalAssert getCgenModule(module) == nil
-
-  result = rawNewModule(module)
-  growCache gModules, module.position
-  gModules[module.position] = result
+  result = rawNewModule(g, module)
+  growCache g.modules, module.position
+  g.modules[module.position] = result
 
   if (optDeadCodeElim in gGlobalOptions):
     if (sfDeadCodeElim in module.flags):
       internalError("added pending module twice: " & module.filename)
 
+template injectG() {.dirty.} =
+  if graph.backend == nil:
+    graph.backend = newModuleList()
+  let g = BModuleList(graph.backend)
+
 proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
-  result = newModule(module)
-  if optGenIndex in gGlobalOptions and generatedHeader == nil:
+  injectG()
+  result = newModule(g, module)
+  if optGenIndex in gGlobalOptions and g.generatedHeader == nil:
     let f = if headerFile.len > 0: headerFile else: gProjectFull
-    generatedHeader = rawNewModule(module,
+    g.generatedHeader = rawNewModule(g, module,
       changeFileExt(completeCFilePath(f), hExt))
-    incl generatedHeader.flags, isHeaderFile
+    incl g.generatedHeader.flags, isHeaderFile
 
 proc writeHeader(m: BModule) =
   var result = getCopyright(m.filename)
@@ -1214,8 +1214,9 @@ proc getCFile(m: BModule): string =
   result = changeFileExt(completeCFilePath(m.cfilename.withPackageName), ext)
 
 proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
+  injectG()
   assert optSymbolFiles in gGlobalOptions
-  var m = newModule(module)
+  var m = newModule(g, module)
   readMergeInfo(getCFile(m), m)
   result = m
 
@@ -1236,8 +1237,8 @@ proc finishModule(m: BModule) =
       internalError(prc.info, "still forwarded: " & prc.name.s)
     genProcNoForward(m, prc)
     inc(i)
-  assert(gForwardedProcsCounter >= i)
-  dec(gForwardedProcsCounter, i)
+  assert(m.g.forwardedProcsCounter >= i)
+  dec(m.g.forwardedProcsCounter, i)
   setLen(m.forwardedProcs, 0)
 
 proc shouldRecompile(code: Rope, cfile: string): bool =
@@ -1265,7 +1266,7 @@ proc writeModule(m: BModule, pending: bool) =
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
       # generate main file:
-      add(m.s[cfsProcHeaders], mainModProcs)
+      add(m.s[cfsProcHeaders], m.g.mainModProcs)
       generateThreadVarsSize(m)
 
     var code = genModule(m, cfile)
@@ -1313,7 +1314,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     m.initProc.options = initProcOptions(m)
     genStmts(m.initProc, n)
   # cached modules need to registered too:
-  registerModuleToMain(m.module)
+  registerModuleToMain(m.g, m.module)
 
   if sfMainModule in m.module.flags:
     incl m.flags, objHasKidsValid
@@ -1321,21 +1322,22 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)
 
-proc cgenWriteModules* =
+proc cgenWriteModules*(backend: RootRef) =
+  let g = BModuleList(backend)
   # we need to process the transitive closure because recursive module
   # deps are allowed (and the system module is processed in the wrong
   # order anyway)
-  if generatedHeader != nil: finishModule(generatedHeader)
-  while gForwardedProcsCounter > 0:
-    for m in cgenModules():
+  if g.generatedHeader != nil: finishModule(g.generatedHeader)
+  while g.forwardedProcsCounter > 0:
+    for m in cgenModules(g):
       if not m.fromCache:
         finishModule(m)
-  for m in cgenModules():
+  for m in cgenModules(g):
     if m.fromCache:
       m.updateCachedModule
     else:
       m.writeModule(pending=true)
-  writeMapping(gMapping)
-  if generatedHeader != nil: writeHeader(generatedHeader)
+  writeMapping(g.mapping)
+  if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 
 const cgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)

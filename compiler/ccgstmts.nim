@@ -206,8 +206,8 @@ proc genSingleVar(p: BProc, a: PNode) =
     genObjectInit(p.module.preInitProc, cpsInit, v.typ, v.loc, true)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
-    if sfExportc in v.flags and generatedHeader != nil:
-      genVarPrototypeAux(generatedHeader, v)
+    if sfExportc in v.flags and p.module.g.generatedHeader != nil:
+      genVarPrototypeAux(p.module.g.generatedHeader, v)
     registerGcRoot(p, v)
   else:
     let value = a.sons[2]
@@ -1024,10 +1024,6 @@ proc genEmit(p: BProc, t: PNode) =
     genLineDir(p, t)
     line(p, cpsStmts, s)
 
-var
-  breakPointId: int = 0
-  gBreakpoints: Rope # later the breakpoints are inserted into the main proc
-
 proc genBreakPoint(p: BProc, t: PNode) =
   var name: string
   if optEndb in p.options:
@@ -1035,10 +1031,10 @@ proc genBreakPoint(p: BProc, t: PNode) =
       assert(t.sons[1].kind in {nkStrLit..nkTripleStrLit})
       name = normalize(t.sons[1].strVal)
     else:
-      inc(breakPointId)
-      name = "bp" & $breakPointId
+      inc(p.module.g.breakPointId)
+      name = "bp" & $p.module.g.breakPointId
     genLineDir(p, t)          # BUGFIX
-    appcg(p.module, gBreakpoints,
+    appcg(p.module, p.module.g.breakpoints,
          "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
         rope(toLinenumber(t.info)), makeCString(toFilename(t.info)),
         makeCString(name)])

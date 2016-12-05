@@ -38,6 +38,7 @@ type
                                     # first module that included it
     importStack*: seq[int32]  # The current import stack. Used for detecting recursive
                               # module dependencies.
+    backend*: RootRef # minor hack so that a backend can extend this easily
 
 {.this: g.}
 

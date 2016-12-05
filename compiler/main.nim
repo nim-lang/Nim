@@ -64,7 +64,7 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
-  cgenWriteModules()
+  cgenWriteModules(graph.backend)
   if gCmd != cmdRun:
     extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
 

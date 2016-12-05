@@ -1084,7 +1084,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   let owner = t.skipTypes(typedescPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
-    discard genTypeInfo(owner.bmod, origType)
+    discard genTypeInfo(m.g.modules[owner.position], origType)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
