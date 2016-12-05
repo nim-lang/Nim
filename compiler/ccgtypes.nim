@@ -107,8 +107,10 @@ proc mangleName(m: BModule; s: PSym): Rope =
     s.loc.r = result
 
 proc typeName(typ: PType): Rope =
-  result = if typ.sym != nil: typ.sym.name.s.mangle.rope
-           else: ~"TY"
+  result = if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
+             typ.sym.name.s.mangle.rope
+           else:
+             ~"TY"
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   let typ = if typ.kind == tyAlias: typ.lastSon else: typ
@@ -1078,6 +1080,14 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   if result != nil:
     return "(&".rope & result & ")".rope
 
+  result = m.g.typeInfoMarker.getOrDefault(sig)
+  if result != nil:
+    discard cgsym(m, "TNimType")
+    discard cgsym(m, "TNimNode")
+    addf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n",
+         [result, rope(typeToString(t))])
+    return "(&".rope & result & ")".rope
+
   result = "NTI$1" % [rope($sig)]
   m.typeInfoMarker[sig] = result
 
@@ -1091,6 +1101,8 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     addf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n",
          [result, rope(typeToString(t))])
     return "(&".rope & result & ")".rope
+
+  m.g.typeInfoMarker[sig] = result
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"
   of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:

@@ -114,6 +114,7 @@ type
     generatedHeader*: BModule
     breakPointId*: int
     breakpoints*: Rope # later the breakpoints are inserted into the main proc
+    typeInfoMarker*: TypeCache
 
   TCGen = object of TPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -162,7 +163,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
 
-proc newModuleList*(): BModuleList = BModuleList(modules: @[])
+proc newModuleList*(): BModuleList =
+  BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope]())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for i in 0..high(g.modules):
