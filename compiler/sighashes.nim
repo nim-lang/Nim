@@ -165,6 +165,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       #  echo "yes ", t.sym.name.s
       #  #quit 1
       c.hashSym(t.sym)
+      if sfAnon in t.sym.flags:
+        # generated object names can be identical, so we need to
+        # disambiguate furthermore by hashing the field types and names:
+        let n = t.n
+        for i in 0 ..< n.len:
+          assert n[i].kind == nkSym
+          let s = n[i].sym
+          c.hashSym s
+          c.hashType s.typ, flags
     else:
       c &= t.id
   of tyRef, tyPtr, tyGenericBody, tyVar:

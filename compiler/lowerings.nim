@@ -114,9 +114,10 @@ proc createObj*(owner: PSym, info: TLineInfo): PType =
   rawAddSon(result, nil)
   incl result.flags, tfFinal
   result.n = newNodeI(nkRecList, info)
-  when false:
+  when true:
     let s = newSym(skType, getIdent("Env_" & info.toFilename & "_" & $info.line),
                    owner, info)
+    incl s.flags, sfAnon
     s.typ = result
     result.sym = s
 
